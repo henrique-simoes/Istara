@@ -50,7 +50,7 @@ if [ -d "$INSTALL_DIR" ]; then
     git pull --ff-only 2>/dev/null || echo "   ⚠️  Could not pull (local changes?). Continuing with current version."
 else
     echo "📥 Cloning ReClaw to $INSTALL_DIR..."
-    git clone https://github.com/your-org/reclaw.git "$INSTALL_DIR"
+    git clone https://github.com/henrique-simoes/ReClaw.git "$INSTALL_DIR"
     cd "$INSTALL_DIR"
 fi
 

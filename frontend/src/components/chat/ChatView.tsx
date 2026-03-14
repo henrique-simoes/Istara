@@ -169,7 +169,7 @@ export default function ChatView() {
               <StopCircle size={12} /> Cancel
             </button>
           </div>
-        )
+        )}
 
         {streaming && streamingContent && (
           <div className="flex justify-center">

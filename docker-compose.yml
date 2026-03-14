@@ -29,7 +29,7 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - backend_data:/app/data
+      - ./data:/app/data
       - ${WATCH_DIR:-./data/watch}:/app/watch:ro
     environment:
       - OLLAMA_HOST=http://ollama:11434
@@ -70,4 +70,3 @@ services:
 
 volumes:
   ollama_data:
-  backend_data:
