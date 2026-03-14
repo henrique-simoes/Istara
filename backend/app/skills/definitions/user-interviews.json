@@ -1,0 +1,28 @@
+{
+  "name": "user-interviews",
+  "display_name": "User Interviews",
+  "description": "Plan, conduct, and analyze user interviews. Generate interview guides, process transcripts, extract nuggets and themes, synthesize findings.",
+  "phase": "discover",
+  "skill_type": "qualitative",
+  "version": "1.0.0",
+  "enabled": true,
+  "implementation": "custom",
+  "module": "app.skills.discover.user_interviews.UserInterviewsSkill",
+  "created_at": "2026-03-14T00:00:00Z",
+  "updated_at": "2026-03-14T00:00:00Z",
+  "metadata": {
+    "author": "ReClaw",
+    "tags": [
+      "discover",
+      "qualitative",
+      "custom"
+    ]
+  },
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-03-14T00:00:00Z",
+      "changes": "Initial creation"
+    }
+  ]
+}

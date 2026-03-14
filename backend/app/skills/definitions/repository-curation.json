@@ -1,0 +1,28 @@
+{
+  "name": "repository-curation",
+  "display_name": "Research Repository Curation",
+  "description": "Organize all research into searchable, tagged repository with atomic research principles.",
+  "phase": "deliver",
+  "skill_type": "mixed",
+  "version": "1.0.0",
+  "enabled": true,
+  "plan_prompt": "Plan research repository curation. Context: {context}\nInclude: taxonomy, tagging scheme, linking strategy, search optimization. Markdown.",
+  "execute_prompt": "Curate and organize research findings into a structured repository. Context: {context}\nData: {content}\nOrganize: tag all findings, link nuggets→facts→insights→recommendations,\nidentify gaps, suggest taxonomy improvements, create search-optimized summaries.",
+  "output_schema": "{{\"repository\": [{{\"finding\": \"...\", \"type\": \"nugget|fact|insight|recommendation\",\n\"tags\": [\"...\"], \"linked_to\": [\"...\"], \"project\": \"...\", \"phase\": \"...\"}}],\n\"taxonomy\": [{{\"category\": \"...\", \"tags\": [\"...\"]}}],\n\"gaps\": [{{\"area\": \"...\", \"missing\": \"...\"}}],\n\"summary\": \"...\"}}",
+  "created_at": "2026-03-14T00:00:00Z",
+  "updated_at": "2026-03-14T00:00:00Z",
+  "metadata": {
+    "author": "ReClaw",
+    "tags": [
+      "deliver",
+      "mixed"
+    ]
+  },
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-03-14T00:00:00Z",
+      "changes": "Initial creation from skill library"
+    }
+  ]
+}

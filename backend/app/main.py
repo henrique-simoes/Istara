@@ -7,7 +7,7 @@ from typing import AsyncGenerator
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import audit, chat, files, findings, projects, settings, tasks
+from app.api.routes import audit, chat, files, findings, projects, settings, skills, tasks
 from app.api.websocket import router as ws_router
 from app.agents.devops_agent import devops_agent
 from app.agents.ui_audit_agent import ui_audit_agent
@@ -15,6 +15,7 @@ from app.config import settings as app_settings
 from app.core.file_watcher import FileWatcher
 from app.models.database import init_db
 from app.skills.registry import load_default_skills
+from app.skills.skill_manager import skill_manager
 
 
 @asynccontextmanager
@@ -24,6 +25,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     app_settings.ensure_dirs()
     await init_db()
     load_default_skills()
+    skill_manager.load_all()  # Load individual skill definition files
 
     # Start file watcher
     watcher = FileWatcher()
@@ -72,6 +74,7 @@ app.include_router(findings.router, prefix="/api", tags=["Findings"])
 app.include_router(files.router, prefix="/api", tags=["Files"])
 app.include_router(settings.router, prefix="/api", tags=["Settings"])
 app.include_router(audit.router, prefix="/api", tags=["Audit"])
+app.include_router(skills.router, prefix="/api", tags=["Skills"])
 app.include_router(ws_router)
 
 
@@ -81,8 +84,8 @@ async def health_check() -> dict:
     return {"status": "healthy", "service": "reclaw"}
 
 
-@app.get("/api/skills")
-async def list_skills():
-    """List all registered skills."""
+@app.get("/api/skills/registry")
+async def list_registered_skills():
+    """List all registered skills from the runtime registry."""
     from app.skills.registry import registry
     return registry.to_dict()

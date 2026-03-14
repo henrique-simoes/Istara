@@ -1,0 +1,28 @@
+{
+  "name": "prototype-feedback",
+  "display_name": "Prototype Feedback Analysis",
+  "description": "Process feedback on prototypes, categorize by theme/severity/screen, track across iterations.",
+  "phase": "develop",
+  "skill_type": "mixed",
+  "version": "1.0.0",
+  "enabled": true,
+  "plan_prompt": "Plan prototype feedback collection. Context: {context}\nInclude: feedback dimensions, collection method, categorization scheme, iteration tracking. Markdown.",
+  "execute_prompt": "Analyze prototype feedback. Context: {context}\nData: {content}\nCategorize feedback by: screen/component, theme, severity, type (bug/ux/visual/content).\nTrack patterns across iterations if multiple rounds provided.",
+  "output_schema": "{{\"feedback_items\": [{{\"item\": \"...\", \"screen\": \"...\", \"theme\": \"...\",\n\"severity\": \"critical|major|minor\", \"type\": \"bug|ux|visual|content\",\n\"iteration\": 1, \"status\": \"new|recurring|resolved\"}}],\n\"themes\": [{{\"theme\": \"...\", \"count\": 0, \"severity_avg\": \"...\"}}],\n\"iteration_comparison\": {{\"improved\": [\"...\"], \"regressed\": [\"...\"], \"new\": [\"...\"]}},\n\"nuggets\": [{{\"text\": \"...\", \"tags\": [\"...\"]}}],\n\"recommendations\": [{{\"text\": \"...\", \"priority\": \"critical|high|medium|low\"}}],\n\"summary\": \"...\"}}",
+  "created_at": "2026-03-14T00:00:00Z",
+  "updated_at": "2026-03-14T00:00:00Z",
+  "metadata": {
+    "author": "ReClaw",
+    "tags": [
+      "develop",
+      "mixed"
+    ]
+  },
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-03-14T00:00:00Z",
+      "changes": "Initial creation from skill library"
+    }
+  ]
+}

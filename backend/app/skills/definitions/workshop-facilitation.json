@@ -1,0 +1,28 @@
+{
+  "name": "workshop-facilitation",
+  "display_name": "Workshop Facilitation",
+  "description": "Generate workshop agendas, activities, templates. Process workshop outputs into findings.",
+  "phase": "develop",
+  "skill_type": "qualitative",
+  "version": "1.0.0",
+  "enabled": true,
+  "plan_prompt": "Design a UX research workshop. Context: {context}\nInclude: objectives, participants, agenda, activities (design studio, crazy 8s, dot voting, etc.),\nmaterials needed, facilitation guide, time allocation. Markdown.",
+  "execute_prompt": "Analyze workshop outputs and synthesize findings. Context: {context}\nData: {content}\nExtract: ideas generated, votes/priorities, themes, decisions made,\naction items, areas of agreement/disagreement.",
+  "output_schema": "{{\"ideas\": [{{\"idea\": \"...\", \"votes\": 0, \"category\": \"...\"}}],\n\"themes\": [{{\"theme\": \"...\", \"ideas_count\": 0}}],\n\"decisions\": [{{\"decision\": \"...\", \"rationale\": \"...\", \"stakeholders\": [\"...\"]}}],\n\"action_items\": [{{\"action\": \"...\", \"owner\": \"...\", \"deadline\": \"...\"}}],\n\"nuggets\": [{{\"text\": \"...\", \"tags\": [\"...\"]}}],\n\"insights\": [{{\"text\": \"...\", \"confidence\": \"high|medium|low\"}}],\n\"summary\": \"...\"}}",
+  "created_at": "2026-03-14T00:00:00Z",
+  "updated_at": "2026-03-14T00:00:00Z",
+  "metadata": {
+    "author": "ReClaw",
+    "tags": [
+      "develop",
+      "qualitative"
+    ]
+  },
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-03-14T00:00:00Z",
+      "changes": "Initial creation from skill library"
+    }
+  ]
+}

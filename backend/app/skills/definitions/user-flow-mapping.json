@@ -1,0 +1,28 @@
+{
+  "name": "user-flow-mapping",
+  "display_name": "User Flow Mapping",
+  "description": "Document current-state user flows, identify friction points, map to research findings.",
+  "phase": "define",
+  "skill_type": "mixed",
+  "version": "1.0.0",
+  "enabled": true,
+  "plan_prompt": "Plan user flow documentation. Context: {context}\nInclude: flows to map, entry/exit points, decision points, error states. Markdown.",
+  "execute_prompt": "Document and analyze user flows. Context: {context}\nData: {content}\nMap: steps, decisions, branches, error states, friction points, drop-off risks.\nLink each friction point to research evidence.",
+  "output_schema": "{{\"flows\": [{{\"name\": \"...\", \"entry_point\": \"...\",\n\"steps\": [{{\"step\": \"...\", \"type\": \"action|decision|wait|error\",\n\"friction\": \"none|low|medium|high\", \"evidence\": \"...\"}}],\n\"branches\": [{{\"condition\": \"...\", \"path_a\": \"...\", \"path_b\": \"...\"}}],\n\"drop_off_risks\": [{{\"step\": \"...\", \"risk_level\": \"high|medium|low\", \"evidence\": \"...\"}}]}}],\n\"nuggets\": [{{\"text\": \"...\", \"tags\": [\"...\"]}}],\n\"insights\": [{{\"text\": \"...\", \"confidence\": \"high|medium|low\"}}],\n\"summary\": \"...\"}}",
+  "created_at": "2026-03-14T00:00:00Z",
+  "updated_at": "2026-03-14T00:00:00Z",
+  "metadata": {
+    "author": "ReClaw",
+    "tags": [
+      "define",
+      "mixed"
+    ]
+  },
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-03-14T00:00:00Z",
+      "changes": "Initial creation from skill library"
+    }
+  ]
+}

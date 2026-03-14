@@ -1,0 +1,28 @@
+{
+  "name": "journey-mapping",
+  "display_name": "Journey Mapping",
+  "description": "Build end-to-end journey maps with stages, actions, emotions, pain points, opportunities — all linked to evidence.",
+  "phase": "define",
+  "skill_type": "mixed",
+  "version": "1.0.0",
+  "enabled": true,
+  "plan_prompt": "Plan a journey mapping exercise.\nContext: {context}\nInclude: journey scope (start/end points), stages to map, data sources, persona to use,\nchannels/touchpoints to include, emotional mapping approach. Format as Markdown.",
+  "execute_prompt": "Create a user journey map from this research data.\nContext: {context}\n\nResearch data:\n{content}\n\nMap the journey with: stages, user actions, touchpoints, thoughts, emotions (positive/neutral/negative),\npain points, opportunities, moments of truth, and backstage processes.",
+  "output_schema": "{{\"journey_name\": \"...\", \"persona\": \"...\",\n\"stages\": [{{\"name\": \"...\", \"actions\": [\"...\"], \"touchpoints\": [\"...\"],\n\"thoughts\": [\"...\"], \"emotion\": \"positive|neutral|negative\", \"emotion_score\": -2,\n\"pain_points\": [\"...\"], \"opportunities\": [\"...\"], \"evidence\": [\"...\"]}}],\n\"moments_of_truth\": [{{\"stage\": \"...\", \"description\": \"...\", \"importance\": \"high|medium|low\"}}],\n\"nuggets\": [{{\"text\": \"...\", \"tags\": [\"...\"]}}],\n\"insights\": [{{\"text\": \"...\", \"confidence\": \"high|medium|low\"}}],\n\"recommendations\": [{{\"text\": \"...\", \"priority\": \"low|medium|high\"}}],\n\"summary\": \"...\"}}",
+  "created_at": "2026-03-14T00:00:00Z",
+  "updated_at": "2026-03-14T00:00:00Z",
+  "metadata": {
+    "author": "ReClaw",
+    "tags": [
+      "define",
+      "mixed"
+    ]
+  },
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-03-14T00:00:00Z",
+      "changes": "Initial creation from skill library"
+    }
+  ]
+}

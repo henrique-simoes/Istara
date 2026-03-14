@@ -1,0 +1,28 @@
+{
+  "name": "hmw-statements",
+  "display_name": "Problem Statements / HMW",
+  "description": "Generate 'How Might We' statements from insights, score by impact/feasibility.",
+  "phase": "define",
+  "skill_type": "qualitative",
+  "version": "1.0.0",
+  "enabled": true,
+  "plan_prompt": "Plan HMW statement generation. Context: {context}\nInclude: insight sources, HMW formulation rules, prioritization criteria. Markdown.",
+  "execute_prompt": "Generate How Might We statements from these research insights. Context: {context}\nData: {content}\nFor each insight, create 2-3 HMW statements at different scopes (broad, narrow, lateral).\nScore each by impact and feasibility.",
+  "output_schema": "{{\"hmw_statements\": [{{\"statement\": \"How might we...\",\n\"source_insight\": \"...\", \"scope\": \"broad|narrow|lateral\",\n\"impact\": \"high|medium|low\", \"feasibility\": \"high|medium|low\", \"score\": 0}}],\n\"prioritized_top_5\": [\"...\"],\n\"insights\": [{{\"text\": \"...\", \"confidence\": \"high|medium|low\"}}],\n\"summary\": \"...\"}}",
+  "created_at": "2026-03-14T00:00:00Z",
+  "updated_at": "2026-03-14T00:00:00Z",
+  "metadata": {
+    "author": "ReClaw",
+    "tags": [
+      "define",
+      "qualitative"
+    ]
+  },
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-03-14T00:00:00Z",
+      "changes": "Initial creation from skill library"
+    }
+  ]
+}

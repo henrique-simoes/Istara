@@ -1,0 +1,28 @@
+{
+  "name": "heuristic-evaluation",
+  "display_name": "Heuristic Evaluation",
+  "description": "Evaluate against Nielsen's 10 heuristics (or custom set), severity ratings, prioritized findings.",
+  "phase": "develop",
+  "skill_type": "qualitative",
+  "version": "1.0.0",
+  "enabled": true,
+  "plan_prompt": "Plan a heuristic evaluation. Context: {context}\nInclude: heuristic set (Nielsen's 10 or custom), evaluation scope, evaluator instructions,\nseverity rating scale (0-4), reporting template. Markdown.",
+  "execute_prompt": "Perform a heuristic evaluation. Context: {context}\nData: {content}\nEvaluate against Nielsen's 10 heuristics: visibility, match, control, consistency,\nerror prevention, recognition, flexibility, aesthetics, error recovery, help/documentation.\nRate severity 0-4 for each issue found.",
+  "output_schema": "{{\"heuristics\": [{{\"heuristic\": \"...\", \"issues\": [{{\"description\": \"...\",\n\"severity\": 0, \"location\": \"...\", \"recommendation\": \"...\"}}], \"score\": 0}}],\n\"overall_score\": 0,\n\"critical_issues\": [{{\"description\": \"...\", \"heuristic\": \"...\", \"severity\": 4}}],\n\"nuggets\": [{{\"text\": \"...\", \"tags\": [\"...\"]}}],\n\"recommendations\": [{{\"text\": \"...\", \"priority\": \"critical|high|medium|low\"}}],\n\"summary\": \"...\"}}",
+  "created_at": "2026-03-14T00:00:00Z",
+  "updated_at": "2026-03-14T00:00:00Z",
+  "metadata": {
+    "author": "ReClaw",
+    "tags": [
+      "develop",
+      "qualitative"
+    ]
+  },
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-03-14T00:00:00Z",
+      "changes": "Initial creation from skill library"
+    }
+  ]
+}

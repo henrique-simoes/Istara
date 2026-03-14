@@ -1,0 +1,28 @@
+{
+  "name": "survey-ai-detection",
+  "display_name": "Survey AI Response Detection",
+  "description": "Detect AI-generated survey responses using multiple heuristic and statistical methods.\n\nBased on academic research (Wu et al. 2025, Yang et al. 2024):\n- Linguistic analysis: perplexity scoring, burstiness, vocabulary diversity\n- Response pattern analysis: timing, straightlining, semantic similarity between responses\n- Statistical methods: response length distribution, lexical richness (TTR), coherence scores\n- Behavioral signals: completion time vs expected, copy-paste indicators, IP/device clustering",
+  "phase": "discover",
+  "skill_type": "quantitative",
+  "version": "1.0.0",
+  "enabled": true,
+  "plan_prompt": "Design an AI response detection protocol for survey data.\nContext: {context}\nInclude:\n1. Detection methods hierarchy (linguistic, behavioral, statistical)\n2. Perplexity and burstiness analysis approach\n3. Response timing analysis (too fast = suspicious)\n4. Semantic similarity clustering (AI responses tend to be similar)\n5. Vocabulary diversity metrics (Type-Token Ratio)\n6. Attention check / trap question design\n7. Threshold calibration (sensitivity vs specificity trade-off)\n8. False positive mitigation strategies\n9. Reporting format for flagged responses\nFormat as Markdown with academic references.",
+  "execute_prompt": "Analyze survey responses for AI-generated content.\nContext: {context}\n\nSurvey response data:\n{content}\n\nApply these detection methods:\n1. **Linguistic Analysis**: Calculate vocabulary diversity (TTR), average sentence length, \n   use of hedging language, formality consistency, repetitive phrasing patterns\n2. **Response Pattern Analysis**: Check for suspiciously uniform response lengths, \n   semantic similarity clusters (responses that are too similar to each other), \n   unnatural coherence across unrelated questions\n3. **Behavioral Signals**: Response completion time analysis, sequential response patterns,\n   copy-paste indicators, device/browser fingerprint analysis\n4. **Content Quality**: Check for generic/surface-level answers, absence of personal anecdotes,\n   overly structured responses, unusually comprehensive coverage\n5. **Statistical Outliers**: Identify responses that deviate from expected distributions\n\nFor each flagged response, provide: detection method, confidence score, evidence, \nand recommendation (remove/review/keep).",
+  "output_schema": "{{\"total_responses\": 0, \"flagged_count\": 0, \"flag_rate\": 0,\n\"detection_results\": [{{\"response_id\": \"...\", \"flag_level\": \"high|medium|low\",\n\"detection_methods\": [{{\"method\": \"...\", \"score\": 0, \"evidence\": \"...\"}}],\n\"overall_confidence\": 0, \"recommendation\": \"remove|review|keep\"}}],\n\"aggregate_analysis\": {{\n\"avg_response_length\": 0, \"length_std_dev\": 0,\n\"avg_vocabulary_diversity\": 0, \"semantic_similarity_clusters\": 0,\n\"suspicious_timing_count\": 0, \"straightlining_count\": 0}},\n\"clean_dataset_size\": 0,\n\"methodology_notes\": \"...\",\n\"facts\": [{{\"text\": \"...\"}}],\n\"insights\": [{{\"text\": \"...\", \"confidence\": \"high|medium|low\"}}],\n\"recommendations\": [{{\"text\": \"...\", \"priority\": \"critical|high|medium|low\"}}],\n\"summary\": \"...\"}}",
+  "created_at": "2026-03-14T00:00:00Z",
+  "updated_at": "2026-03-14T00:00:00Z",
+  "metadata": {
+    "author": "ReClaw",
+    "tags": [
+      "discover",
+      "quantitative"
+    ]
+  },
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-03-14T00:00:00Z",
+      "changes": "Initial creation from skill library"
+    }
+  ]
+}

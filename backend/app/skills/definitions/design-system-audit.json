@@ -1,0 +1,28 @@
+{
+  "name": "design-system-audit",
+  "display_name": "Design System Audit",
+  "description": "Evaluate consistency against design system, identify deviations, accessibility compliance.",
+  "phase": "deliver",
+  "skill_type": "mixed",
+  "version": "1.0.0",
+  "enabled": true,
+  "plan_prompt": "Plan a design system audit. Context: {context}\nInclude: components to audit, consistency checks, accessibility requirements, scoring criteria. Markdown.",
+  "execute_prompt": "Audit design system compliance. Context: {context}\nData: {content}\nCheck: component consistency, naming conventions, spacing/typography adherence,\ncolor usage, accessibility compliance, documentation completeness.",
+  "output_schema": "{{\"components\": [{{\"component\": \"...\", \"consistent\": true,\n\"deviations\": [{{\"deviation\": \"...\", \"severity\": \"critical|major|minor\"}}],\n\"accessibility\": \"pass|fail|partial\"}}],\n\"overall_consistency\": 0,\n\"recommendations\": [{{\"text\": \"...\", \"priority\": \"critical|high|medium|low\"}}],\n\"summary\": \"...\"}}",
+  "created_at": "2026-03-14T00:00:00Z",
+  "updated_at": "2026-03-14T00:00:00Z",
+  "metadata": {
+    "author": "ReClaw",
+    "tags": [
+      "deliver",
+      "mixed"
+    ]
+  },
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-03-14T00:00:00Z",
+      "changes": "Initial creation from skill library"
+    }
+  ]
+}

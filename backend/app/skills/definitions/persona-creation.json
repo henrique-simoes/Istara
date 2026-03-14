@@ -1,0 +1,28 @@
+{
+  "name": "persona-creation",
+  "display_name": "Persona Creation",
+  "description": "Synthesize evidence-based personas from research data. Every claim linked to sources.",
+  "phase": "define",
+  "skill_type": "qualitative",
+  "version": "1.0.0",
+  "enabled": true,
+  "plan_prompt": "Plan evidence-based persona creation.\nContext: {context}\nInclude: data sources to use, persona dimensions (goals, behaviors, pain points, context),\nsegmentation approach, validation plan. Format as Markdown.",
+  "execute_prompt": "Create evidence-based personas from this research data.\nContext: {context}\n\nResearch data:\n{content}\n\nCreate personas with: name, photo description, demographics, goals (functional/emotional/social),\nbehaviors, pain points, motivations, technology comfort, quote, scenario of use.\nEvery attribute must link to evidence.",
+  "output_schema": "{{\"personas\": [{{\"name\": \"...\", \"archetype\": \"...\", \"demographics\": {{}},\n\"goals\": [{{\"goal\": \"...\", \"type\": \"functional|emotional|social\", \"evidence\": \"...\"}}],\n\"behaviors\": [{{\"behavior\": \"...\", \"evidence\": \"...\"}}],\n\"pain_points\": [{{\"pain\": \"...\", \"severity\": 1-5, \"evidence\": \"...\"}}],\n\"motivations\": [\"...\"], \"quote\": \"...\", \"scenario\": \"...\"}}],\n\"segmentation_rationale\": \"...\",\n\"insights\": [{{\"text\": \"...\", \"confidence\": \"high|medium|low\"}}],\n\"summary\": \"...\"}}",
+  "created_at": "2026-03-14T00:00:00Z",
+  "updated_at": "2026-03-14T00:00:00Z",
+  "metadata": {
+    "author": "ReClaw",
+    "tags": [
+      "define",
+      "qualitative"
+    ]
+  },
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-03-14T00:00:00Z",
+      "changes": "Initial creation from skill library"
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "name": "survey-design",
+  "display_name": "Survey Design & Analysis",
+  "description": "Design surveys with bias checking, analyze responses with statistical summaries and cross-tabs.",
+  "phase": "discover",
+  "skill_type": "quantitative",
+  "version": "1.0.0",
+  "enabled": true,
+  "plan_prompt": "Design a UX research survey.\nContext: {context}\nInclude: research questions to answer, question types (Likert, multiple choice, open-ended, ranking),\nquestion wording (check for leading/double-barreled/loaded questions), response options,\nsurvey flow and logic, estimated completion time, sample size calculation, distribution strategy.\nFormat as Markdown.",
+  "execute_prompt": "Analyze survey response data.\nContext: {context}\n\nSurvey data:\n{content}\n\nPerform:\n1. Response summary statistics (counts, percentages, means)\n2. Cross-tabulation by demographics/segments\n3. Open-ended response thematic analysis\n4. Statistical significance tests where applicable\n5. Key findings and patterns\n6. Data quality assessment (completion rate, straightlining, attention checks)",
+  "output_schema": "{{\"response_summary\": [{{\"question\": \"...\", \"type\": \"...\", \"results\": {{}}}}],\n\"cross_tabs\": [{{\"dimension\": \"...\", \"findings\": \"...\"}}],\n\"themes\": [{{\"theme\": \"...\", \"frequency\": 0, \"example_responses\": [\"...\"]}}],\n\"data_quality\": {{\"completion_rate\": 0, \"straightlining_pct\": 0, \"flagged_responses\": 0}},\n\"nuggets\": [{{\"text\": \"...\", \"tags\": [\"...\"]}}],\n\"facts\": [{{\"text\": \"...\", \"evidence_count\": 0}}],\n\"insights\": [{{\"text\": \"...\", \"confidence\": \"high|medium|low\"}}],\n\"summary\": \"...\"}}",
+  "created_at": "2026-03-14T00:00:00Z",
+  "updated_at": "2026-03-14T00:00:00Z",
+  "metadata": {
+    "author": "ReClaw",
+    "tags": [
+      "discover",
+      "quantitative"
+    ]
+  },
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-03-14T00:00:00Z",
+      "changes": "Initial creation from skill library"
+    }
+  ]
+}

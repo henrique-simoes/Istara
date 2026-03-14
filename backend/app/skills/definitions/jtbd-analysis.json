@@ -1,0 +1,28 @@
+{
+  "name": "jtbd-analysis",
+  "display_name": "Jobs-to-be-Done Analysis",
+  "description": "Extract JTBD statements from research, identify functional/emotional/social jobs.",
+  "phase": "define",
+  "skill_type": "mixed",
+  "version": "1.0.0",
+  "enabled": true,
+  "plan_prompt": "Plan a Jobs-to-be-Done analysis. Context: {context}\nInclude: JTBD framework, interview questions for job extraction, outcome expectations analysis. Markdown.",
+  "execute_prompt": "Extract Jobs-to-be-Done from research data. Context: {context}\nData: {content}\nUse the format: \"When [situation], I want to [motivation], so I can [expected outcome].\"\nCategorize as functional, emotional, or social jobs. Identify hiring/firing criteria.",
+  "output_schema": "{{\"jobs\": [{{\"statement\": \"When..., I want to..., so I can...\",\n\"type\": \"functional|emotional|social\", \"importance\": \"high|medium|low\",\n\"satisfaction\": \"over-served|served|under-served|unserved\", \"evidence\": [\"...\"]}}],\n\"hiring_criteria\": [{{\"criterion\": \"...\", \"job\": \"...\"}}],\n\"firing_criteria\": [{{\"criterion\": \"...\", \"job\": \"...\"}}],\n\"insights\": [{{\"text\": \"...\", \"confidence\": \"high|medium|low\"}}],\n\"summary\": \"...\"}}",
+  "created_at": "2026-03-14T00:00:00Z",
+  "updated_at": "2026-03-14T00:00:00Z",
+  "metadata": {
+    "author": "ReClaw",
+    "tags": [
+      "define",
+      "mixed"
+    ]
+  },
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-03-14T00:00:00Z",
+      "changes": "Initial creation from skill library"
+    }
+  ]
+}

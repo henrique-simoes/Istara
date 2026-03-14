@@ -1,0 +1,28 @@
+{
+  "name": "empathy-mapping",
+  "display_name": "Empathy Mapping",
+  "description": "Create Says/Thinks/Does/Feels quadrants from interview data, identify contradictions.",
+  "phase": "define",
+  "skill_type": "qualitative",
+  "version": "1.0.0",
+  "enabled": true,
+  "plan_prompt": "Plan empathy mapping from research data. Context: {context}\nInclude approach, data sources, quadrant definitions, contradiction analysis method. Markdown.",
+  "execute_prompt": "Create empathy maps from research data. Context: {context}\nData: {content}\nMap: Says (direct quotes), Thinks (inferred beliefs), Does (observed behaviors),\nFeels (emotional states). Highlight contradictions between quadrants.",
+  "output_schema": "{{\"empathy_maps\": [{{\"persona\": \"...\",\n\"says\": [{{\"quote\": \"...\", \"source\": \"...\"}}],\n\"thinks\": [{{\"thought\": \"...\", \"evidence\": \"...\"}}],\n\"does\": [{{\"action\": \"...\", \"context\": \"...\"}}],\n\"feels\": [{{\"emotion\": \"...\", \"trigger\": \"...\"}}],\n\"contradictions\": [{{\"between\": \"says_vs_does\", \"description\": \"...\"}}]}}],\n\"insights\": [{{\"text\": \"...\", \"confidence\": \"high|medium|low\"}}],\n\"summary\": \"...\"}}",
+  "created_at": "2026-03-14T00:00:00Z",
+  "updated_at": "2026-03-14T00:00:00Z",
+  "metadata": {
+    "author": "ReClaw",
+    "tags": [
+      "define",
+      "qualitative"
+    ]
+  },
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-03-14T00:00:00Z",
+      "changes": "Initial creation from skill library"
+    }
+  ]
+}

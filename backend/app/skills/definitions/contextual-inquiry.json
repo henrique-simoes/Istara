@@ -1,0 +1,28 @@
+{
+  "name": "contextual-inquiry",
+  "display_name": "Contextual Inquiry",
+  "description": "Structure and analyze contextual inquiry observations — studying users in their natural work environment.",
+  "phase": "discover",
+  "skill_type": "qualitative",
+  "version": "1.0.0",
+  "enabled": true,
+  "implementation": "custom",
+  "module": "app.skills.discover.contextual_inquiry.ContextualInquirySkill",
+  "created_at": "2026-03-14T00:00:00Z",
+  "updated_at": "2026-03-14T00:00:00Z",
+  "metadata": {
+    "author": "ReClaw",
+    "tags": [
+      "discover",
+      "qualitative",
+      "custom"
+    ]
+  },
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-03-14T00:00:00Z",
+      "changes": "Initial creation"
+    }
+  ]
+}

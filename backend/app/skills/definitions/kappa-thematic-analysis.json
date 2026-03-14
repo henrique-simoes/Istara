@@ -1,0 +1,28 @@
+{
+  "name": "kappa-thematic-analysis",
+  "display_name": "Kappa Intercoder Thematic Analysis",
+  "description": "Thematic analysis with Cohen's/Fleiss' Kappa intercoder reliability.\nSupports agent-only, human-only, or agent+human coding with reliability measurement.",
+  "phase": "define",
+  "skill_type": "qualitative",
+  "version": "1.0.0",
+  "enabled": true,
+  "plan_prompt": "Design a Kappa-validated thematic analysis process.\nContext: {context}\nInclude:\n1. Codebook development process (inductive/deductive/hybrid)\n2. Coder training protocol\n3. Pilot coding round with Kappa measurement\n4. Kappa interpretation scale (Landis & Koch: slight/fair/moderate/substantial/almost perfect)\n5. Disagreement resolution process\n6. Iterative refinement until acceptable Kappa (≥0.6 moderate, ≥0.8 excellent)\n7. Agent-as-coder protocol: how the AI acts as a second coder\n8. Final coding with reliability reporting\nFormat as Markdown.",
+  "execute_prompt": "Perform thematic analysis with intercoder reliability measurement.\nContext: {context}\n\nData to code:\n{content}\n\nProcess:\n1. Generate initial codebook from data (open coding)\n2. Code all items using the codebook\n3. Generate a SECOND independent coding (as a reliability coder)\n4. Calculate Cohen's Kappa between the two codings\n5. Report agreement/disagreement per code\n6. Identify codes needing refinement (low agreement)\n7. Provide final consolidated coding with reliability metrics\n8. Group codes into themes with prevalence data",
+  "output_schema": "{{\"codebook\": [{{\"code\": \"...\", \"definition\": \"...\", \"examples\": [\"...\"],\n\"frequency\": 0}}],\n\"reliability\": {{\n\"kappa\": 0, \"interpretation\": \"slight|fair|moderate|substantial|almost_perfect\",\n\"agreement_pct\": 0, \"n_items\": 0, \"n_codes\": 0,\n\"per_code_agreement\": [{{\"code\": \"...\", \"agreement\": 0, \"kappa\": 0}}]}},\n\"coding_results\": [{{\"item_id\": \"...\", \"text\": \"...\",\n\"coder_1\": [\"...\"], \"coder_2\": [\"...\"], \"agreed\": [\"...\"], \"disagreed\": [\"...\"]}}],\n\"themes\": [{{\"name\": \"...\", \"codes\": [\"...\"], \"prevalence\": \"dominant|common|minor\",\n\"description\": \"...\"}}],\n\"refinement_needed\": [{{\"code\": \"...\", \"kappa\": 0, \"issue\": \"...\"}}],\n\"nuggets\": [{{\"text\": \"...\", \"tags\": [\"...\"]}}],\n\"insights\": [{{\"text\": \"...\", \"confidence\": \"high|medium|low\"}}],\n\"summary\": \"...\"}}",
+  "created_at": "2026-03-14T00:00:00Z",
+  "updated_at": "2026-03-14T00:00:00Z",
+  "metadata": {
+    "author": "ReClaw",
+    "tags": [
+      "define",
+      "qualitative"
+    ]
+  },
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-03-14T00:00:00Z",
+      "changes": "Initial creation from skill library"
+    }
+  ]
+}

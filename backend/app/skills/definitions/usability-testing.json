@@ -1,0 +1,28 @@
+{
+  "name": "usability-testing",
+  "display_name": "Usability Testing",
+  "description": "Create test scripts, process session data, calculate task success/time/errors, identify patterns.",
+  "phase": "develop",
+  "skill_type": "mixed",
+  "version": "1.0.0",
+  "enabled": true,
+  "plan_prompt": "Create a usability test plan. Context: {context}\nInclude: test objectives, tasks to test (with success criteria), participant profile,\ntest script, moderator guide, metrics to capture, environment setup. Markdown.",
+  "execute_prompt": "Analyze usability test results. Context: {context}\nData: {content}\nCalculate: task completion rates, time on task, error rates, satisfaction scores.\nIdentify: usability issues (severity rated), patterns across participants, design recommendations.",
+  "output_schema": "{{\"tasks\": [{{\"task\": \"...\", \"completion_rate\": 0, \"avg_time_seconds\": 0,\n\"error_rate\": 0, \"satisfaction\": 0, \"issues\": [{{\"issue\": \"...\", \"severity\": 1-4,\n\"frequency\": 0, \"recommendation\": \"...\"}}]}}],\n\"overall_metrics\": {{\"sus_score\": 0, \"task_success_avg\": 0}},\n\"nuggets\": [{{\"text\": \"...\", \"tags\": [\"...\"]}}],\n\"insights\": [{{\"text\": \"...\", \"confidence\": \"high|medium|low\"}}],\n\"recommendations\": [{{\"text\": \"...\", \"priority\": \"critical|high|medium|low\", \"effort\": \"low|medium|high\"}}],\n\"summary\": \"...\"}}",
+  "created_at": "2026-03-14T00:00:00Z",
+  "updated_at": "2026-03-14T00:00:00Z",
+  "metadata": {
+    "author": "ReClaw",
+    "tags": [
+      "develop",
+      "mixed"
+    ]
+  },
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-03-14T00:00:00Z",
+      "changes": "Initial creation from skill library"
+    }
+  ]
+}

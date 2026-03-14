@@ -1,0 +1,28 @@
+{
+  "name": "accessibility-audit",
+  "display_name": "Accessibility Audit",
+  "description": "Review against WCAG guidelines, identify violations, prioritize by impact, suggest fixes.",
+  "phase": "discover",
+  "skill_type": "mixed",
+  "version": "1.0.0",
+  "enabled": true,
+  "plan_prompt": "Create an accessibility audit plan.\nContext: {context}\nInclude: WCAG conformance level target (A/AA/AAA), audit scope, testing tools,\nassistive technology testing plan, prioritization framework. Format as Markdown.",
+  "execute_prompt": "Perform an accessibility audit analysis.\nContext: {context}\n\nAudit data / content:\n{content}\n\nEvaluate against WCAG 2.2 guidelines: perceivable, operable, understandable, robust.\nIdentify violations, severity, affected users, and remediation steps.",
+  "output_schema": "{{\"violations\": [{{\"criterion\": \"...\", \"level\": \"A|AA|AAA\", \"severity\": \"critical|major|minor\",\n\"description\": \"...\", \"affected_users\": \"...\", \"remediation\": \"...\"}}],\n\"compliance_score\": {{\"level_a\": 0, \"level_aa\": 0, \"level_aaa\": 0}},\n\"nuggets\": [{{\"text\": \"...\", \"tags\": [\"...\"]}}],\n\"recommendations\": [{{\"text\": \"...\", \"priority\": \"critical|high|medium|low\", \"effort\": \"low|medium|high\"}}],\n\"summary\": \"...\"}}",
+  "created_at": "2026-03-14T00:00:00Z",
+  "updated_at": "2026-03-14T00:00:00Z",
+  "metadata": {
+    "author": "ReClaw",
+    "tags": [
+      "discover",
+      "mixed"
+    ]
+  },
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-03-14T00:00:00Z",
+      "changes": "Initial creation from skill library"
+    }
+  ]
+}

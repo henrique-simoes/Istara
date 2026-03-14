@@ -1,0 +1,28 @@
+{
+  "name": "research-synthesis",
+  "display_name": "Research Synthesis Report",
+  "description": "Generate structured research reports: executive summary, methodology, findings, recommendations.",
+  "phase": "define",
+  "skill_type": "mixed",
+  "version": "1.0.0",
+  "enabled": true,
+  "plan_prompt": "Plan a research synthesis report. Context: {context}\nInclude: report structure, audience, key sections, data sources to synthesize. Markdown.",
+  "execute_prompt": "Synthesize all research data into a structured report. Context: {context}\nData: {content}\nGenerate: executive summary, methodology overview, key findings (organized by theme),\nsupporting evidence, implications, recommendations, limitations, next steps.",
+  "output_schema": "{{\"executive_summary\": \"...\",\n\"methodology\": \"...\",\n\"findings\": [{{\"theme\": \"...\", \"description\": \"...\", \"evidence\": [\"...\"], \"confidence\": \"high|medium|low\"}}],\n\"recommendations\": [{{\"text\": \"...\", \"priority\": \"critical|high|medium|low\", \"effort\": \"low|medium|high\"}}],\n\"limitations\": [\"...\"],\n\"next_steps\": [\"...\"],\n\"insights\": [{{\"text\": \"...\", \"confidence\": \"high|medium|low\"}}],\n\"summary\": \"...\"}}",
+  "created_at": "2026-03-14T00:00:00Z",
+  "updated_at": "2026-03-14T00:00:00Z",
+  "metadata": {
+    "author": "ReClaw",
+    "tags": [
+      "define",
+      "mixed"
+    ]
+  },
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-03-14T00:00:00Z",
+      "changes": "Initial creation from skill library"
+    }
+  ]
+}

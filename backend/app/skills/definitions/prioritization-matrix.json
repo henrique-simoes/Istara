@@ -1,0 +1,28 @@
+{
+  "name": "prioritization-matrix",
+  "display_name": "Prioritization Matrix",
+  "description": "Impact vs Effort scoring, MoSCoW prioritization, stakeholder alignment.",
+  "phase": "define",
+  "skill_type": "quantitative",
+  "version": "1.0.0",
+  "enabled": true,
+  "plan_prompt": "Plan a prioritization exercise. Context: {context}\nInclude: items to prioritize, scoring dimensions, stakeholder input process. Markdown.",
+  "execute_prompt": "Prioritize these research findings/opportunities. Context: {context}\nData: {content}\nScore each item on: impact (1-5), effort (1-5), confidence (1-5), urgency (1-5).\nApply MoSCoW categorization. Generate a prioritized roadmap.",
+  "output_schema": "{{\"items\": [{{\"item\": \"...\", \"impact\": 1, \"effort\": 1, \"confidence\": 1, \"urgency\": 1,\n\"score\": 0, \"moscow\": \"must|should|could|wont\", \"rationale\": \"...\"}}],\n\"quadrants\": {{\"quick_wins\": [\"...\"], \"big_bets\": [\"...\"], \"fill_ins\": [\"...\"], \"avoid\": [\"...\"]}},\n\"recommendations\": [{{\"text\": \"...\", \"priority\": \"critical|high|medium|low\"}}],\n\"summary\": \"...\"}}",
+  "created_at": "2026-03-14T00:00:00Z",
+  "updated_at": "2026-03-14T00:00:00Z",
+  "metadata": {
+    "author": "ReClaw",
+    "tags": [
+      "define",
+      "quantitative"
+    ]
+  },
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-03-14T00:00:00Z",
+      "changes": "Initial creation from skill library"
+    }
+  ]
+}

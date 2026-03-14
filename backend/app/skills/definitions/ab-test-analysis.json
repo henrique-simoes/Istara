@@ -1,0 +1,28 @@
+{
+  "name": "ab-test-analysis",
+  "display_name": "A/B Test Analysis",
+  "description": "Analyze A/B test results — statistical significance, confidence intervals, segment breakdowns.",
+  "phase": "develop",
+  "skill_type": "quantitative",
+  "version": "1.0.0",
+  "enabled": true,
+  "plan_prompt": "Plan an A/B test analysis. Context: {context}\nInclude: hypothesis, metrics, sample size requirements, test duration, segmentation plan. Markdown.",
+  "execute_prompt": "Analyze A/B test results. Context: {context}\nData: {content}\nCalculate: conversion rates per variant, statistical significance (p-value), confidence intervals,\neffect size, segment breakdowns, practical significance assessment.",
+  "output_schema": "{{\"variants\": [{{\"name\": \"...\", \"sample_size\": 0, \"conversions\": 0, \"rate\": 0}}],\n\"statistical_test\": {{\"p_value\": 0, \"significant\": false, \"confidence_level\": 0.95}},\n\"effect_size\": 0, \"confidence_interval\": [0, 0],\n\"segments\": [{{\"segment\": \"...\", \"winner\": \"...\", \"difference\": 0}}],\n\"facts\": [{{\"text\": \"...\"}}],\n\"insights\": [{{\"text\": \"...\", \"confidence\": \"high|medium|low\"}}],\n\"recommendations\": [{{\"text\": \"...\", \"priority\": \"low|medium|high\"}}],\n\"summary\": \"...\"}}",
+  "created_at": "2026-03-14T00:00:00Z",
+  "updated_at": "2026-03-14T00:00:00Z",
+  "metadata": {
+    "author": "ReClaw",
+    "tags": [
+      "develop",
+      "quantitative"
+    ]
+  },
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-03-14T00:00:00Z",
+      "changes": "Initial creation from skill library"
+    }
+  ]
+}

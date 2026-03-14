@@ -1,0 +1,28 @@
+{
+  "name": "research-retro",
+  "display_name": "Research Ops Retrospective",
+  "description": "Analyze research process effectiveness, identify improvements, update team practices.",
+  "phase": "deliver",
+  "skill_type": "qualitative",
+  "version": "1.0.0",
+  "enabled": true,
+  "plan_prompt": "Plan a research ops retrospective. Context: {context}\nInclude: process steps to review, metrics, team feedback collection, improvement framework. Markdown.",
+  "execute_prompt": "Conduct a research ops retrospective. Context: {context}\nData: {content}\nAnalyze: what worked, what didn't, process bottlenecks, tool effectiveness,\ntimeline adherence, quality of outputs, team satisfaction, improvement opportunities.",
+  "output_schema": "{{\"went_well\": [{{\"item\": \"...\", \"impact\": \"high|medium|low\"}}],\n\"improvements_needed\": [{{\"item\": \"...\", \"severity\": \"critical|major|minor\", \"suggestion\": \"...\"}}],\n\"process_metrics\": {{\"timeline_adherence\": 0, \"quality_score\": 0, \"team_satisfaction\": 0}},\n\"action_items\": [{{\"action\": \"...\", \"owner\": \"...\", \"priority\": \"high|medium|low\"}}],\n\"insights\": [{{\"text\": \"...\", \"confidence\": \"high|medium|low\"}}],\n\"summary\": \"...\"}}",
+  "created_at": "2026-03-14T00:00:00Z",
+  "updated_at": "2026-03-14T00:00:00Z",
+  "metadata": {
+    "author": "ReClaw",
+    "tags": [
+      "deliver",
+      "qualitative"
+    ]
+  },
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-03-14T00:00:00Z",
+      "changes": "Initial creation from skill library"
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "name": "affinity-mapping",
+  "display_name": "Affinity Mapping",
+  "description": "Auto-cluster research nuggets and notes into themes. Users can refine groupings interactively.",
+  "phase": "define",
+  "skill_type": "qualitative",
+  "version": "1.0.0",
+  "enabled": true,
+  "plan_prompt": "Create an affinity mapping plan for synthesizing research data.\nContext: {context}\nInclude: data preparation steps, clustering approach, theme naming conventions,\nhierarchy levels, validation process. Format as Markdown.",
+  "execute_prompt": "Perform affinity mapping on this research data.\nContext: {context}\n\nData to cluster:\n{content}\n\nCluster the data into themes:\n1. Group related items together\n2. Name each group with a descriptive theme\n3. Create hierarchy (sub-themes under main themes)\n4. Identify outliers that don't fit\n5. Note the strength of each theme (number of supporting items)",
+  "output_schema": "{{\"themes\": [{{\"name\": \"...\", \"description\": \"...\", \"items\": [\"...\"],\n\"sub_themes\": [{{\"name\": \"...\", \"items\": [\"...\"]}}], \"strength\": 0}}],\n\"outliers\": [{{\"item\": \"...\", \"possible_home\": \"...\"}}],\n\"nuggets\": [{{\"text\": \"...\", \"tags\": [\"...\"]}}],\n\"insights\": [{{\"text\": \"...\", \"confidence\": \"high|medium|low\"}}],\n\"summary\": \"...\"}}",
+  "created_at": "2026-03-14T00:00:00Z",
+  "updated_at": "2026-03-14T00:00:00Z",
+  "metadata": {
+    "author": "ReClaw",
+    "tags": [
+      "define",
+      "qualitative"
+    ]
+  },
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-03-14T00:00:00Z",
+      "changes": "Initial creation from skill library"
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "name": "thematic-analysis",
+  "display_name": "Thematic Analysis",
+  "description": "Rigorous coding (open → axial → selective), codebook management, inter-rater reliability.",
+  "phase": "define",
+  "skill_type": "qualitative",
+  "version": "1.0.0",
+  "enabled": true,
+  "plan_prompt": "Plan a thematic analysis. Context: {context}\nInclude: Braun & Clarke 6-phase approach, coding strategy, codebook structure,\nreliability measures, reflexivity considerations. Markdown.",
+  "execute_prompt": "Perform thematic analysis on this qualitative data. Context: {context}\nData: {content}\nFollow Braun & Clarke phases: familiarization, initial coding, theme searching,\ntheme reviewing, theme defining, report production.\nGenerate initial codes, then organize into themes and sub-themes.",
+  "output_schema": "{{\"codebook\": [{{\"code\": \"...\", \"definition\": \"...\", \"example\": \"...\", \"frequency\": 0}}],\n\"themes\": [{{\"name\": \"...\", \"definition\": \"...\", \"codes\": [\"...\"],\n\"sub_themes\": [{{\"name\": \"...\", \"codes\": [\"...\"]}}],\n\"prevalence\": \"dominant|common|minor\"}}],\n\"theme_map\": \"...\",\n\"nuggets\": [{{\"text\": \"...\", \"tags\": [\"...\"]}}],\n\"facts\": [{{\"text\": \"...\"}}],\n\"insights\": [{{\"text\": \"...\", \"confidence\": \"high|medium|low\"}}],\n\"summary\": \"...\"}}",
+  "created_at": "2026-03-14T00:00:00Z",
+  "updated_at": "2026-03-14T00:00:00Z",
+  "metadata": {
+    "author": "ReClaw",
+    "tags": [
+      "define",
+      "qualitative"
+    ]
+  },
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-03-14T00:00:00Z",
+      "changes": "Initial creation from skill library"
+    }
+  ]
+}

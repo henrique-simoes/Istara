@@ -1,0 +1,28 @@
+{
+  "name": "survey-generator",
+  "display_name": "Survey Generator",
+  "description": "Generate context-aware surveys from project knowledge — research questions, context layers, existing findings.",
+  "phase": "discover",
+  "skill_type": "mixed",
+  "version": "1.0.0",
+  "enabled": true,
+  "plan_prompt": "Plan survey generation from project context.\nContext: {context}\nInclude: research goals driving the survey, target audience, question types,\nlength constraints, distribution method, analysis plan. Markdown.",
+  "execute_prompt": "Generate a complete survey based on project context and research needs.\nContext: {context}\n\nExisting knowledge / gaps to fill:\n{content}\n\nCreate a survey with:\n1. Clear introduction and consent language\n2. Screener questions (if needed)\n3. Demographic questions (minimal, relevant only)\n4. Core questions organized by research theme\n5. Mix of question types (Likert, MC, ranking, open-ended)\n6. Attention check questions embedded naturally\n7. Anti-AI-response trap questions (subtle)\n8. Logical flow and skip logic recommendations\n9. Estimated completion time\n10. Quality: no leading, double-barreled, or loaded questions",
+  "output_schema": "{{\"survey\": {{\n\"title\": \"...\", \"introduction\": \"...\", \"estimated_time_minutes\": 0,\n\"sections\": [{{\"section_name\": \"...\", \"questions\": [{{\n\"id\": \"...\", \"text\": \"...\", \"type\": \"likert|multiple_choice|ranking|open_ended|matrix|slider\",\n\"options\": [\"...\"], \"required\": true, \"skip_logic\": \"...\",\n\"purpose\": \"...\", \"research_question\": \"...\"}}]}}],\n\"screener\": [{{\"question\": \"...\", \"qualifying_answer\": \"...\"}}],\n\"attention_checks\": [{{\"question\": \"...\", \"correct_answer\": \"...\"}}]}},\n\"quality_review\": [{{\"issue\": \"...\", \"question_id\": \"...\", \"suggestion\": \"...\"}}],\n\"analysis_plan\": [{{\"question_id\": \"...\", \"analysis_method\": \"...\"}}],\n\"summary\": \"...\"}}",
+  "created_at": "2026-03-14T00:00:00Z",
+  "updated_at": "2026-03-14T00:00:00Z",
+  "metadata": {
+    "author": "ReClaw",
+    "tags": [
+      "discover",
+      "mixed"
+    ]
+  },
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-03-14T00:00:00Z",
+      "changes": "Initial creation from skill library"
+    }
+  ]
+}
