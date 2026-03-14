@@ -1,5 +1,6 @@
 """Async Ollama client for model management and inference."""
 
+import json
 from typing import AsyncGenerator
 
 import httpx
@@ -52,8 +53,6 @@ class OllamaClient:
             resp.raise_for_status()
             async for line in resp.aiter_lines():
                 if line.strip():
-                    import json
-
                     yield json.loads(line)
 
     async def chat(
@@ -86,8 +85,6 @@ class OllamaClient:
         temperature: float = 0.7,
     ) -> AsyncGenerator[str, None]:
         """Streaming chat completion — yields content chunks."""
-        import json
-
         payload: dict = {
             "model": model or settings.ollama_model,
             "messages": messages,

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Send, Paperclip, Loader2 } from "lucide-react";
+import { Send, Paperclip, Loader2, StopCircle } from "lucide-react";
 import { useChatStore } from "@/stores/chatStore";
 import { useProjectStore } from "@/stores/projectStore";
 import { cn, formatDate } from "@/lib/utils";
@@ -9,7 +9,7 @@ import { files as filesApi } from "@/lib/api";
 import { ChatSkeleton } from "@/components/common/LoadingSkeleton";
 
 export default function ChatView() {
-  const { messages, streaming, streamingContent, error, sendMessage, fetchHistory } = useChatStore();
+  const { messages, streaming, streamingContent, error, sendMessage, fetchHistory, cancelStreaming } = useChatStore();
   const { activeProjectId } = useProjectStore();
   const [input, setInput] = useState("");
   const [loadingHistory, setLoadingHistory] = useState(false);
@@ -131,6 +131,25 @@ export default function ChatView() {
           <div className="mr-auto flex items-center gap-2 text-slate-400 px-4">
             <Loader2 size={16} className="animate-spin" />
             <span className="text-sm">Thinking...</span>
+            <button
+              onClick={cancelStreaming}
+              className="ml-2 flex items-center gap-1 text-xs text-red-400 hover:text-red-500"
+              aria-label="Cancel response"
+            >
+              <StopCircle size={12} /> Cancel
+            </button>
+          </div>
+        )
+
+        {streaming && streamingContent && (
+          <div className="flex justify-center">
+            <button
+              onClick={cancelStreaming}
+              className="flex items-center gap-1 px-3 py-1 text-xs text-red-400 hover:text-red-500 bg-red-50 dark:bg-red-900/20 rounded-full"
+              aria-label="Stop generating"
+            >
+              <StopCircle size={12} /> Stop generating
+            </button>
           </div>
         )}
 

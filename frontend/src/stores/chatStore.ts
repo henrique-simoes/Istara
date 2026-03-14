@@ -9,9 +9,11 @@ interface ChatStore {
   streaming: boolean;
   streamingContent: string;
   error: string | null;
+  abortController: AbortController | null;
 
   fetchHistory: (projectId: string) => Promise<void>;
   sendMessage: (projectId: string, content: string) => Promise<void>;
+  cancelStreaming: () => void;
   clearMessages: () => void;
 }
 
@@ -20,6 +22,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   streaming: false,
   streamingContent: "",
   error: null,
+  abortController: null,
 
   fetchHistory: async (projectId) => {
     try {
@@ -80,6 +83,14 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       }));
     } catch (e: any) {
       set({ error: e.message, streaming: false, streamingContent: "" });
+    }
+  },
+
+  cancelStreaming: () => {
+    const { abortController } = get();
+    if (abortController) {
+      abortController.abort();
+      set({ streaming: false, streamingContent: "", abortController: null });
     }
   },
 
