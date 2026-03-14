@@ -8,6 +8,10 @@ import {
   Bot,
   LayoutDashboard,
   FileText,
+  Mic,
+  BarChart3,
+  History,
+  Search,
   ChevronLeft,
   ChevronRight,
   Settings,
@@ -18,9 +22,10 @@ import { cn, phaseLabel } from "@/lib/utils";
 interface SidebarProps {
   activeView: string;
   onViewChange: (view: string) => void;
+  onSearchOpen?: () => void;
 }
 
-export default function Sidebar({ activeView, onViewChange }: SidebarProps) {
+export default function Sidebar({ activeView, onViewChange, onSearchOpen }: SidebarProps) {
   const {
     projects,
     activeProjectId,
@@ -47,7 +52,10 @@ export default function Sidebar({ activeView, onViewChange }: SidebarProps) {
     { id: "chat", icon: Bot, label: "Chat" },
     { id: "findings", icon: Diamond, label: "Findings" },
     { id: "tasks", icon: LayoutDashboard, label: "Tasks" },
+    { id: "interviews", icon: Mic, label: "Interviews" },
+    { id: "metrics", icon: BarChart3, label: "Metrics" },
     { id: "context", icon: FileText, label: "Context" },
+    { id: "history", icon: History, label: "History" },
     { id: "settings", icon: Settings, label: "Settings" },
   ];
 
@@ -74,12 +82,33 @@ export default function Sidebar({ activeView, onViewChange }: SidebarProps) {
         </button>
       </div>
 
+      {/* Search */}
+      {!collapsed && onSearchOpen && (
+        <button
+          onClick={onSearchOpen}
+          className="flex items-center gap-2 mx-2 mt-2 px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-400 text-sm hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+        >
+          <Search size={14} />
+          <span className="flex-1 text-left">Search...</span>
+          <kbd className="text-[10px] bg-slate-200 dark:bg-slate-700 px-1 py-0.5 rounded">⌘K</kbd>
+        </button>
+      )}
+      {collapsed && onSearchOpen && (
+        <button
+          onClick={onSearchOpen}
+          className="flex items-center justify-center mx-2 mt-2 p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-400"
+        >
+          <Search size={18} />
+        </button>
+      )}
+
       {/* Navigation */}
-      <nav className="p-2 space-y-1">
+      <nav className="p-2 space-y-0.5">
         {navItems.map((item) => (
           <button
             key={item.id}
             onClick={() => onViewChange(item.id)}
+            title={collapsed ? item.label : undefined}
             className={cn(
               "flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm transition-colors",
               activeView === item.id
@@ -95,7 +124,7 @@ export default function Sidebar({ activeView, onViewChange }: SidebarProps) {
 
       {/* Projects */}
       {!collapsed && (
-        <div className="flex-1 overflow-y-auto p-2">
+        <div className="flex-1 overflow-y-auto p-2 border-t border-slate-200 dark:border-slate-800 mt-1">
           <div className="flex items-center justify-between px-3 py-2">
             <span className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">
               Projects
