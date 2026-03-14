@@ -320,6 +320,36 @@ async def delete_recommendation(rec_id: str, db: AsyncSession = Depends(get_db))
 
 # --- Aggregated Findings View ---
 
+@router.get("/findings/search/{project_id}")
+async def search_findings(
+    project_id: str,
+    query: str = "",
+    top_k: int = 10,
+    db: AsyncSession = Depends(get_db),
+):
+    """Semantic search across project findings using the vector store."""
+    if not query:
+        return {"results": [], "query": ""}
+
+    from app.core.rag import retrieve_context
+
+    rag_context = await retrieve_context(project_id, query, top_k=top_k)
+
+    return {
+        "query": query,
+        "results": [
+            {
+                "text": r.text,
+                "source": r.source,
+                "page": r.page,
+                "score": round(r.score, 3),
+            }
+            for r in rag_context.retrieved
+        ],
+        "count": len(rag_context.retrieved),
+    }
+
+
 @router.get("/findings/summary/{project_id}")
 async def get_findings_summary(project_id: str, db: AsyncSession = Depends(get_db)):
     """Get a summary of all findings for a project, organized by phase."""

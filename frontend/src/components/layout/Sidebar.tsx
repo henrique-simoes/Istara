@@ -8,15 +8,17 @@ import {
   Bot,
   LayoutDashboard,
   FileText,
-  Mic,
-  BarChart3,
-  History,
   Search,
   ChevronLeft,
   ChevronRight,
   Settings,
+  History,
+  BarChart3,
+  Mic,
+  MoreHorizontal,
 } from "lucide-react";
 import { useProjectStore } from "@/stores/projectStore";
+import DarkModeToggle from "@/components/common/DarkModeToggle";
 import { cn, phaseLabel } from "@/lib/utils";
 
 interface SidebarProps {
@@ -36,6 +38,7 @@ export default function Sidebar({ activeView, onViewChange, onSearchOpen }: Side
   const [collapsed, setCollapsed] = useState(false);
   const [showNewProject, setShowNewProject] = useState(false);
   const [newProjectName, setNewProjectName] = useState("");
+  const [showSecondary, setShowSecondary] = useState(false);
 
   useEffect(() => {
     fetchProjects();
@@ -48,19 +51,26 @@ export default function Sidebar({ activeView, onViewChange, onSearchOpen }: Side
     setShowNewProject(false);
   };
 
-  const navItems = [
+  // Primary nav: 5 items (simplified from 8)
+  const primaryNav = [
     { id: "chat", icon: Bot, label: "Chat" },
     { id: "findings", icon: Diamond, label: "Findings" },
     { id: "tasks", icon: LayoutDashboard, label: "Tasks" },
     { id: "interviews", icon: Mic, label: "Interviews" },
-    { id: "metrics", icon: BarChart3, label: "Metrics" },
     { id: "context", icon: FileText, label: "Context" },
+  ];
+
+  // Secondary nav: accessible via "More" or header icons
+  const secondaryNav = [
+    { id: "metrics", icon: BarChart3, label: "Metrics" },
     { id: "history", icon: History, label: "History" },
     { id: "settings", icon: Settings, label: "Settings" },
   ];
 
   return (
     <aside
+      role="navigation"
+      aria-label="Main navigation"
       className={cn(
         "flex flex-col border-r border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 transition-all duration-300",
         collapsed ? "w-16" : "w-64"
@@ -74,40 +84,49 @@ export default function Sidebar({ activeView, onViewChange, onSearchOpen }: Side
             <span className="font-bold text-lg text-slate-900 dark:text-white">ReClaw</span>
           </div>
         )}
-        <button
-          onClick={() => setCollapsed(!collapsed)}
-          className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-500"
-        >
-          {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
-        </button>
+        <div className="flex items-center gap-1">
+          <DarkModeToggle />
+          <button
+            onClick={() => setCollapsed(!collapsed)}
+            className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-500"
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+          </button>
+        </div>
       </div>
 
       {/* Search */}
-      {!collapsed && onSearchOpen && (
+      {onSearchOpen && (
         <button
           onClick={onSearchOpen}
-          className="flex items-center gap-2 mx-2 mt-2 px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-400 text-sm hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+          aria-label="Search findings (Cmd+K)"
+          className={cn(
+            "flex items-center gap-2 mx-2 mt-2 rounded-lg transition-colors",
+            collapsed
+              ? "p-2 justify-center hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-400"
+              : "px-3 py-2 bg-slate-100 dark:bg-slate-800 text-slate-400 text-sm hover:bg-slate-200 dark:hover:bg-slate-700"
+          )}
         >
           <Search size={14} />
-          <span className="flex-1 text-left">Search...</span>
-          <kbd className="text-[10px] bg-slate-200 dark:bg-slate-700 px-1 py-0.5 rounded">⌘K</kbd>
-        </button>
-      )}
-      {collapsed && onSearchOpen && (
-        <button
-          onClick={onSearchOpen}
-          className="flex items-center justify-center mx-2 mt-2 p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-400"
-        >
-          <Search size={18} />
+          {!collapsed && (
+            <>
+              <span className="flex-1 text-left">Search...</span>
+              <kbd className="text-[10px] bg-slate-200 dark:bg-slate-700 px-1 py-0.5 rounded">⌘K</kbd>
+            </>
+          )}
         </button>
       )}
 
-      {/* Navigation */}
-      <nav className="p-2 space-y-0.5">
-        {navItems.map((item) => (
+      {/* Primary Navigation */}
+      <nav className="p-2 space-y-0.5" role="tablist" aria-label="Views">
+        {primaryNav.map((item) => (
           <button
             key={item.id}
             onClick={() => onViewChange(item.id)}
+            role="tab"
+            aria-selected={activeView === item.id}
+            aria-label={item.label}
             title={collapsed ? item.label : undefined}
             className={cn(
               "flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm transition-colors",
@@ -117,6 +136,37 @@ export default function Sidebar({ activeView, onViewChange, onSearchOpen }: Side
             )}
           >
             <item.icon size={18} />
+            {!collapsed && <span>{item.label}</span>}
+          </button>
+        ))}
+
+        {/* More toggle */}
+        <button
+          onClick={() => setShowSecondary(!showSecondary)}
+          aria-label="More views"
+          className="flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+        >
+          <MoreHorizontal size={18} />
+          {!collapsed && <span>More</span>}
+        </button>
+
+        {/* Secondary nav (collapsible) */}
+        {showSecondary && secondaryNav.map((item) => (
+          <button
+            key={item.id}
+            onClick={() => onViewChange(item.id)}
+            role="tab"
+            aria-selected={activeView === item.id}
+            aria-label={item.label}
+            className={cn(
+              "flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm transition-colors",
+              collapsed ? "" : "pl-6",
+              activeView === item.id
+                ? "bg-reclaw-100 text-reclaw-700 dark:bg-reclaw-900/30 dark:text-reclaw-400"
+                : "text-slate-500 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
+            )}
+          >
+            <item.icon size={16} />
             {!collapsed && <span>{item.label}</span>}
           </button>
         ))}
@@ -132,6 +182,7 @@ export default function Sidebar({ activeView, onViewChange, onSearchOpen }: Side
             <button
               onClick={() => setShowNewProject(!showNewProject)}
               className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-500"
+              aria-label="Create new project"
             >
               <Plus size={14} />
             </button>
@@ -146,16 +197,19 @@ export default function Sidebar({ activeView, onViewChange, onSearchOpen }: Side
                 onChange={(e) => setNewProjectName(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleCreateProject()}
                 className="w-full px-2 py-1.5 text-sm rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+                aria-label="New project name"
                 autoFocus
               />
             </div>
           )}
 
-          <div className="space-y-0.5">
+          <div className="space-y-0.5" role="listbox" aria-label="Projects">
             {projects.map((project) => (
               <button
                 key={project.id}
                 onClick={() => setActiveProject(project.id)}
+                role="option"
+                aria-selected={activeProjectId === project.id}
                 className={cn(
                   "flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm transition-colors",
                   activeProjectId === project.id
@@ -174,9 +228,7 @@ export default function Sidebar({ activeView, onViewChange, onSearchOpen }: Side
 
           {projects.length === 0 && (
             <p className="px-3 py-4 text-sm text-slate-400 text-center">
-              No projects yet.
-              <br />
-              Create one to get started.
+              No projects yet. Create one to get started.
             </p>
           )}
         </div>
