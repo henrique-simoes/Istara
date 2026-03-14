@@ -1,0 +1,15 @@
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
+sqlalchemy[asyncio]>=2.0.0
+aiosqlite>=0.20.0
+alembic>=1.14.0
+lancedb>=0.17.0
+pyarrow>=18.0.0
+httpx>=0.28.0
+watchfiles>=1.0.0
+python-multipart>=0.0.18
+pydantic-settings>=2.7.0
+pypdf>=5.0.0
+python-docx>=1.1.0
+python-magic>=0.4.27
+aiofiles>=24.1.0

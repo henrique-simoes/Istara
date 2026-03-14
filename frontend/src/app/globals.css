@@ -1,0 +1,54 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --sidebar-bg: #f8fafc;
+  --sidebar-text: #1e293b;
+  --background: #ffffff;
+  --foreground: #0f172a;
+}
+
+.dark {
+  --sidebar-bg: #0f172a;
+  --sidebar-text: #e2e8f0;
+  --background: #020617;
+  --foreground: #f8fafc;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #334155;
+}
+
+/* Chat message animation */
+.message-enter {
+  animation: fade-in 0.3s ease-out;
+}
+
+/* Streaming text cursor */
+.streaming-cursor::after {
+  content: "▊";
+  animation: pulse 1s infinite;
+  color: #22c55e;
+}

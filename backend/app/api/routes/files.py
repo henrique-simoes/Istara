@@ -1,0 +1,134 @@
+"""File upload and processing API routes."""
+
+import uuid
+from pathlib import Path
+
+import aiofiles
+from fastapi import APIRouter, Depends, HTTPException, UploadFile
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.config import settings
+from app.core.file_processor import get_supported_extensions, process_file
+from app.core.rag import VectorStore, ingest_chunks
+from app.models.database import get_db
+
+router = APIRouter()
+
+
+@router.post("/files/upload/{project_id}")
+async def upload_file(
+    project_id: str,
+    file: UploadFile,
+    db: AsyncSession = Depends(get_db),
+):
+    """Upload a file and process it into the project's knowledge base."""
+    # Validate extension
+    suffix = Path(file.filename or "").suffix.lower()
+    if suffix not in get_supported_extensions():
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported file type: {suffix}. Supported: {', '.join(get_supported_extensions())}",
+        )
+
+    # Save file to upload directory
+    project_upload_dir = Path(settings.upload_dir) / project_id
+    project_upload_dir.mkdir(parents=True, exist_ok=True)
+
+    file_id = str(uuid.uuid4())
+    safe_filename = f"{file_id}{suffix}"
+    file_path = project_upload_dir / safe_filename
+
+    async with aiofiles.open(file_path, "wb") as f:
+        content = await file.read()
+        await f.write(content)
+
+    # Process the file
+    result = process_file(file_path)
+
+    if result.error:
+        return {
+            "status": "error",
+            "file_id": file_id,
+            "filename": file.filename,
+            "error": result.error,
+        }
+
+    # Ingest chunks into vector store
+    chunks_indexed = await ingest_chunks(project_id, result.chunks)
+
+    return {
+        "status": "processed",
+        "file_id": file_id,
+        "filename": file.filename,
+        "saved_as": safe_filename,
+        "total_chars": result.total_chars,
+        "pages": result.pages,
+        "chunks_indexed": chunks_indexed,
+    }
+
+
+@router.get("/files/{project_id}")
+async def list_files(project_id: str):
+    """List all uploaded files for a project."""
+    project_upload_dir = Path(settings.upload_dir) / project_id
+    if not project_upload_dir.exists():
+        return {"files": []}
+
+    files = []
+    supported = set(get_supported_extensions())
+
+    for file_path in sorted(project_upload_dir.iterdir()):
+        if file_path.is_file() and file_path.suffix.lower() in supported:
+            stat = file_path.stat()
+            files.append({
+                "name": file_path.name,
+                "size_bytes": stat.st_size,
+                "modified": stat.st_mtime,
+                "type": file_path.suffix.lower(),
+            })
+
+    return {"files": files, "count": len(files)}
+
+
+@router.post("/files/{project_id}/reprocess")
+async def reprocess_files(project_id: str):
+    """Reprocess all files for a project (re-embed and re-index)."""
+    project_upload_dir = Path(settings.upload_dir) / project_id
+    if not project_upload_dir.exists():
+        return {"status": "no files", "processed": 0}
+
+    total_chunks = 0
+    processed_files = 0
+    errors = []
+
+    for file_path in project_upload_dir.iterdir():
+        if not file_path.is_file():
+            continue
+
+        result = process_file(file_path)
+        if result.error:
+            errors.append({"file": file_path.name, "error": result.error})
+            continue
+
+        if result.chunks:
+            chunks = await ingest_chunks(project_id, result.chunks)
+            total_chunks += chunks
+            processed_files += 1
+
+    return {
+        "status": "complete",
+        "processed": processed_files,
+        "total_chunks": total_chunks,
+        "errors": errors,
+    }
+
+
+@router.get("/files/{project_id}/stats")
+async def file_stats(project_id: str):
+    """Get vector store stats for a project."""
+    store = VectorStore(project_id)
+    count = await store.count()
+    return {
+        "project_id": project_id,
+        "indexed_chunks": count,
+    }
