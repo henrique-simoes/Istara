@@ -106,11 +106,30 @@ export default function FindingsView() {
         </h2>
 
         {/* Phase tabs */}
-        <div className="flex gap-1 bg-slate-100 dark:bg-slate-800 rounded-lg p-1">
+        <div
+          className="flex gap-1 bg-slate-100 dark:bg-slate-800 rounded-lg p-1"
+          role="tablist"
+          aria-label="Double Diamond phases"
+          onKeyDown={(e) => {
+            const phases: ProjectPhase[] = ["discover", "define", "develop", "deliver"];
+            const idx = phases.indexOf(activePhase);
+            if (e.key === "ArrowRight" && idx < phases.length - 1) {
+              e.preventDefault();
+              setActivePhase(phases[idx + 1]);
+            }
+            if (e.key === "ArrowLeft" && idx > 0) {
+              e.preventDefault();
+              setActivePhase(phases[idx - 1]);
+            }
+          }}
+        >
           {PHASE_TABS.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActivePhase(tab.id)}
+              role="tab"
+              aria-selected={activePhase === tab.id}
+              tabIndex={activePhase === tab.id ? 0 : -1}
               className={cn(
                 "flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors",
                 activePhase === tab.id
