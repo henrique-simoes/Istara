@@ -1,0 +1,28 @@
+{
+  "name": "design-critique",
+  "display_name": "Design Critique / Expert Review",
+  "description": "Structured critique using UX principles — Gestalt, visual hierarchy, cognitive load, etc.",
+  "phase": "develop",
+  "skill_type": "qualitative",
+  "version": "1.0.0",
+  "enabled": true,
+  "plan_prompt": "Plan a design critique. Context: {context}\nInclude: evaluation framework, design principles to apply, critique structure. Markdown.",
+  "execute_prompt": "Perform a structured design critique. Context: {context}\nData: {content}\nEvaluate: visual hierarchy, consistency, cognitive load, affordances, error prevention,\nfeedback, Gestalt principles, typography, color, spacing, responsive behavior.",
+  "output_schema": "{{\"evaluations\": [{{\"principle\": \"...\", \"score\": 0,\n\"findings\": [{{\"issue\": \"...\", \"severity\": \"critical|major|minor\", \"location\": \"...\",\n\"recommendation\": \"...\"}}]}}],\n\"strengths\": [\"...\"],\n\"overall_score\": 0,\n\"nuggets\": [{{\"text\": \"...\", \"tags\": [\"...\"]}}],\n\"recommendations\": [{{\"text\": \"...\", \"priority\": \"critical|high|medium|low\"}}],\n\"summary\": \"...\"}}",
+  "created_at": "2026-03-14T00:00:00Z",
+  "updated_at": "2026-03-14T00:00:00Z",
+  "metadata": {
+    "author": "ReClaw",
+    "tags": [
+      "develop",
+      "qualitative"
+    ]
+  },
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-03-14T00:00:00Z",
+      "changes": "Initial creation from skill library"
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "name": "task-analysis-quant",
+  "display_name": "Task Analysis (Quantitative)",
+  "description": "Task completion rates, time-on-task, error rates, efficiency metrics, benchmarks.",
+  "phase": "deliver",
+  "skill_type": "quantitative",
+  "version": "1.0.0",
+  "enabled": true,
+  "plan_prompt": "Plan quantitative task analysis. Context: {context}\nInclude: tasks to measure, metrics, benchmarks, data collection method. Markdown.",
+  "execute_prompt": "Analyze quantitative task performance data. Context: {context}\nData: {content}\nCalculate: completion rates, time-on-task (mean, median, 95th percentile), error rates,\nefficiency (lostness, deviations), learnability (improvement over attempts).",
+  "output_schema": "{{\"tasks\": [{{\"task\": \"...\", \"completion_rate\": 0, \"time_mean\": 0, \"time_median\": 0,\n\"time_p95\": 0, \"error_rate\": 0, \"efficiency\": 0, \"benchmark\": 0, \"vs_benchmark\": \"above|at|below\"}}],\n\"overall\": {{\"avg_completion\": 0, \"avg_time\": 0, \"avg_errors\": 0}},\n\"facts\": [{{\"text\": \"...\"}}],\n\"recommendations\": [{{\"text\": \"...\", \"priority\": \"low|medium|high\"}}],\n\"summary\": \"...\"}}",
+  "created_at": "2026-03-14T00:00:00Z",
+  "updated_at": "2026-03-14T00:00:00Z",
+  "metadata": {
+    "author": "ReClaw",
+    "tags": [
+      "deliver",
+      "quantitative"
+    ]
+  },
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-03-14T00:00:00Z",
+      "changes": "Initial creation from skill library"
+    }
+  ]
+}

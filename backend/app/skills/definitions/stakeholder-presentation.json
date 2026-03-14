@@ -1,0 +1,28 @@
+{
+  "name": "stakeholder-presentation",
+  "display_name": "Stakeholder Presentation",
+  "description": "Generate presentation content from findings, tailored to audience (exec/design/eng).",
+  "phase": "deliver",
+  "skill_type": "mixed",
+  "version": "1.0.0",
+  "enabled": true,
+  "plan_prompt": "Plan a stakeholder research presentation. Context: {context}\nInclude: audience analysis, key messages, narrative arc, supporting evidence selection. Markdown.",
+  "execute_prompt": "Generate a research presentation from findings. Context: {context}\nData: {content}\nCreate slides for: executive summary, methodology, key findings (with evidence),\nimpact assessment, recommendations (prioritized), next steps.\nTailor language and depth to the audience.",
+  "output_schema": "{{\"slides\": [{{\"title\": \"...\", \"content\": \"...\", \"speaker_notes\": \"...\",\n\"visuals\": \"...\"}}],\n\"key_messages\": [\"...\"],\n\"appendix\": [{{\"topic\": \"...\", \"detail\": \"...\"}}],\n\"summary\": \"...\"}}",
+  "created_at": "2026-03-14T00:00:00Z",
+  "updated_at": "2026-03-14T00:00:00Z",
+  "metadata": {
+    "author": "ReClaw",
+    "tags": [
+      "deliver",
+      "mixed"
+    ]
+  },
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-03-14T00:00:00Z",
+      "changes": "Initial creation from skill library"
+    }
+  ]
+}

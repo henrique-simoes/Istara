@@ -1,0 +1,28 @@
+{
+  "name": "card-sorting",
+  "display_name": "Card Sorting Analysis",
+  "description": "Analyze open/closed/hybrid card sorts — dendrograms, similarity matrices, IA recommendations.",
+  "phase": "develop",
+  "skill_type": "quantitative",
+  "version": "1.0.0",
+  "enabled": true,
+  "plan_prompt": "Plan card sorting research. Context: {context}\nInclude: sort type, cards/items, participant count, analysis approach. Markdown.",
+  "execute_prompt": "Analyze card sorting results. Context: {context}\nData: {content}\nGenerate: similarity matrix, category clusters, agreement rates, outlier items,\nIA recommendations, labeling suggestions.",
+  "output_schema": "{{\"categories\": [{{\"name\": \"...\", \"items\": [\"...\"], \"agreement_pct\": 0}}],\n\"similarity_pairs\": [{{\"item_a\": \"...\", \"item_b\": \"...\", \"similarity\": 0}}],\n\"outliers\": [{{\"item\": \"...\", \"reason\": \"...\"}}],\n\"ia_recommendations\": [{{\"recommendation\": \"...\", \"confidence\": \"high|medium|low\"}}],\n\"insights\": [{{\"text\": \"...\", \"confidence\": \"high|medium|low\"}}],\n\"summary\": \"...\"}}",
+  "created_at": "2026-03-14T00:00:00Z",
+  "updated_at": "2026-03-14T00:00:00Z",
+  "metadata": {
+    "author": "ReClaw",
+    "tags": [
+      "develop",
+      "quantitative"
+    ]
+  },
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-03-14T00:00:00Z",
+      "changes": "Initial creation from skill library"
+    }
+  ]
+}

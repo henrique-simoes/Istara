@@ -1,0 +1,28 @@
+{
+  "name": "competitive-analysis",
+  "display_name": "Competitive Analysis",
+  "description": "Research competitors, create feature matrices, identify UX patterns, gaps, and opportunities.",
+  "phase": "discover",
+  "skill_type": "mixed",
+  "version": "1.0.0",
+  "enabled": true,
+  "plan_prompt": "Create a competitive analysis plan for UX research.\nContext: {context}\nInclude: competitor selection criteria, evaluation dimensions (features, UX patterns, IA, onboarding, pricing),\ndata collection methods, comparison matrix template, analysis framework. Format as Markdown.",
+  "execute_prompt": "Analyze this competitive research data for UX insights.\nContext: {context}\n\nData:\n{content}\n\nExtract:\n1. Feature comparison matrix (our product vs competitors)\n2. UX pattern analysis (what competitors do well/poorly)\n3. Gap analysis (what competitors offer that we don't, and vice versa)\n4. Design pattern library (reusable patterns from competitors)\n5. Differentiation opportunities\n6. Key nuggets and insights",
+  "output_schema": "{{\"competitors\": [{{\"name\": \"...\", \"strengths\": [\"...\"], \"weaknesses\": [\"...\"]}}],\n\"feature_matrix\": [{{\"feature\": \"...\", \"our_product\": \"yes|no|partial\", \"competitor_a\": \"...\"}}],\n\"ux_patterns\": [{{\"pattern\": \"...\", \"used_by\": [\"...\"], \"quality\": \"good|average|poor\"}}],\n\"gaps\": [{{\"gap\": \"...\", \"type\": \"we_lack|they_lack\", \"priority\": \"low|medium|high\"}}],\n\"nuggets\": [{{\"text\": \"...\", \"tags\": [\"...\"]}}],\n\"insights\": [{{\"text\": \"...\", \"confidence\": \"high|medium|low\"}}],\n\"recommendations\": [{{\"text\": \"...\", \"priority\": \"low|medium|high\"}}],\n\"summary\": \"...\"}}",
+  "created_at": "2026-03-14T00:00:00Z",
+  "updated_at": "2026-03-14T00:00:00Z",
+  "metadata": {
+    "author": "ReClaw",
+    "tags": [
+      "discover",
+      "mixed"
+    ]
+  },
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-03-14T00:00:00Z",
+      "changes": "Initial creation from skill library"
+    }
+  ]
+}

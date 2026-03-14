@@ -1,0 +1,28 @@
+{
+  "name": "taxonomy-generator",
+  "display_name": "Taxonomy Generator",
+  "description": "Generate multi-level taxonomies for projects, tasks, features, and companies.\nSupports fine-tuning depth by context level (company-wide, product, feature, task).",
+  "phase": "define",
+  "skill_type": "mixed",
+  "version": "1.0.0",
+  "enabled": true,
+  "plan_prompt": "Plan taxonomy development.\nContext: {context}\nInclude: scope (what to taxonomize), hierarchy depth, naming conventions,\nmutual exclusivity rules, governance process. Markdown.",
+  "execute_prompt": "Generate a multi-level taxonomy from project/company context.\nContext: {context}\n\nContent to taxonomize:\n{content}\n\nCreate taxonomy at multiple levels:\n1. **Company level**: Product areas, user segments, business domains\n2. **Product level**: Features, user flows, content types\n3. **Project level**: Research themes, methods used, finding categories\n4. **Task level**: Task types, priorities, skill categories\n5. **Feature level**: Component types, interaction patterns, states\n\nFor each level:\n- Hierarchical categories with clear definitions\n- Mutually exclusive, collectively exhaustive (MECE) where possible\n- Tagging recommendations\n- Cross-references between levels",
+  "output_schema": "{{\"taxonomies\": {{\n\"company\": [{{\"category\": \"...\", \"definition\": \"...\",\n\"subcategories\": [{{\"name\": \"...\", \"definition\": \"...\"}}]}}],\n\"product\": [{{\"category\": \"...\", \"definition\": \"...\", \"subcategories\": [{{}}]}}],\n\"project\": [{{\"category\": \"...\", \"definition\": \"...\", \"subcategories\": [{{}}]}}],\n\"task\": [{{\"category\": \"...\", \"definition\": \"...\", \"subcategories\": [{{}}]}}],\n\"feature\": [{{\"category\": \"...\", \"definition\": \"...\", \"subcategories\": [{{}}]}}}},\n\"cross_references\": [{{\"from_level\": \"...\", \"from_category\": \"...\",\n\"to_level\": \"...\", \"to_category\": \"...\", \"relationship\": \"...\"}}],\n\"governance\": {{\"owner\": \"...\", \"review_cadence\": \"...\", \"change_process\": \"...\"}},\n\"summary\": \"...\"}}",
+  "created_at": "2026-03-14T00:00:00Z",
+  "updated_at": "2026-03-14T00:00:00Z",
+  "metadata": {
+    "author": "ReClaw",
+    "tags": [
+      "define",
+      "mixed"
+    ]
+  },
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-03-14T00:00:00Z",
+      "changes": "Initial creation from skill library"
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "name": "stakeholder-interviews",
+  "display_name": "Stakeholder Interviews",
+  "description": "Generate stakeholder interview guides, synthesize business goals, map assumptions vs evidence.",
+  "phase": "discover",
+  "skill_type": "qualitative",
+  "version": "1.0.0",
+  "enabled": true,
+  "plan_prompt": "Create a stakeholder interview plan for UX research.\nContext: {context}\nInclude: stakeholder mapping (who to interview and why), interview guide with questions about business goals,\nsuccess metrics, constraints, assumptions, timeline, and priorities. Format as Markdown.",
+  "execute_prompt": "Analyze stakeholder interview data.\nContext: {context}\n\nInterview data:\n{content}\n\nExtract: business goals, success metrics, assumptions (validated vs unvalidated), constraints,\norganizational politics/dynamics, alignment/misalignment between stakeholders, priorities, risks.",
+  "output_schema": "{{\"business_goals\": [{{\"goal\": \"...\", \"stakeholder\": \"...\", \"priority\": \"...\"}}],\n\"assumptions\": [{{\"assumption\": \"...\", \"validated\": false, \"evidence\": \"...\"}}],\n\"constraints\": [{{\"constraint\": \"...\", \"type\": \"technical|business|legal|timeline\"}}],\n\"alignment\": [{{\"topic\": \"...\", \"aligned\": true, \"stakeholders\": [\"...\"]}}],\n\"nuggets\": [{{\"text\": \"...\", \"tags\": [\"...\"]}}],\n\"insights\": [{{\"text\": \"...\", \"confidence\": \"high|medium|low\"}}],\n\"summary\": \"...\"}}",
+  "created_at": "2026-03-14T00:00:00Z",
+  "updated_at": "2026-03-14T00:00:00Z",
+  "metadata": {
+    "author": "ReClaw",
+    "tags": [
+      "discover",
+      "qualitative"
+    ]
+  },
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-03-14T00:00:00Z",
+      "changes": "Initial creation from skill library"
+    }
+  ]
+}

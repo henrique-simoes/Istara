@@ -1,0 +1,28 @@
+{
+  "name": "concept-testing",
+  "display_name": "Concept Testing",
+  "description": "Structure concept test protocols, analyze reactions, preference rankings.",
+  "phase": "develop",
+  "skill_type": "mixed",
+  "version": "1.0.0",
+  "enabled": true,
+  "plan_prompt": "Plan concept testing. Context: {context}\nInclude: concepts to test, evaluation criteria, testing method, feedback structure. Markdown.",
+  "execute_prompt": "Analyze concept testing feedback. Context: {context}\nData: {content}\nEvaluate: desirability, clarity, uniqueness, feasibility perception.\nRank concepts by preference. Identify strengths/weaknesses per concept.",
+  "output_schema": "{{\"concepts\": [{{\"name\": \"...\", \"desirability\": 0, \"clarity\": 0, \"uniqueness\": 0,\n\"strengths\": [\"...\"], \"weaknesses\": [\"...\"], \"participant_quotes\": [\"...\"]}}],\n\"ranking\": [\"...\"],\n\"nuggets\": [{{\"text\": \"...\", \"tags\": [\"...\"]}}],\n\"insights\": [{{\"text\": \"...\", \"confidence\": \"high|medium|low\"}}],\n\"recommendations\": [{{\"text\": \"...\", \"priority\": \"low|medium|high\"}}],\n\"summary\": \"...\"}}",
+  "created_at": "2026-03-14T00:00:00Z",
+  "updated_at": "2026-03-14T00:00:00Z",
+  "metadata": {
+    "author": "ReClaw",
+    "tags": [
+      "develop",
+      "mixed"
+    ]
+  },
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-03-14T00:00:00Z",
+      "changes": "Initial creation from skill library"
+    }
+  ]
+}

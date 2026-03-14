@@ -1,0 +1,28 @@
+{
+  "name": "analytics-review",
+  "display_name": "Analytics Review",
+  "description": "Interpret analytics exports — funnels, drop-offs, segments, anomalies, conversion paths.",
+  "phase": "discover",
+  "skill_type": "quantitative",
+  "version": "1.0.0",
+  "enabled": true,
+  "plan_prompt": "Create an analytics review plan for UX research.\nContext: {context}\nInclude: key metrics to examine, funnel stages, segments to compare, time periods,\ntools/exports needed, analysis approach. Format as Markdown.",
+  "execute_prompt": "Analyze this product analytics data for UX insights.\nContext: {context}\n\nAnalytics data:\n{content}\n\nAnalyze: conversion funnels, drop-off points, user segments, behavioral patterns,\ntime-on-task, error rates, feature usage, engagement trends, anomalies.",
+  "output_schema": "{{\"funnels\": [{{\"name\": \"...\", \"stages\": [{{\"stage\": \"...\", \"users\": 0, \"drop_off_pct\": 0}}]}}],\n\"segments\": [{{\"segment\": \"...\", \"key_metrics\": {{}}, \"notable_differences\": \"...\"}}],\n\"anomalies\": [{{\"metric\": \"...\", \"expected\": \"...\", \"actual\": \"...\", \"possible_cause\": \"...\"}}],\n\"nuggets\": [{{\"text\": \"...\", \"tags\": [\"...\"]}}],\n\"facts\": [{{\"text\": \"...\", \"evidence_count\": 0}}],\n\"insights\": [{{\"text\": \"...\", \"confidence\": \"high|medium|low\"}}],\n\"summary\": \"...\"}}",
+  "created_at": "2026-03-14T00:00:00Z",
+  "updated_at": "2026-03-14T00:00:00Z",
+  "metadata": {
+    "author": "ReClaw",
+    "tags": [
+      "discover",
+      "quantitative"
+    ]
+  },
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-03-14T00:00:00Z",
+      "changes": "Initial creation from skill library"
+    }
+  ]
+}

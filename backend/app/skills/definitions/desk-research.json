@@ -1,0 +1,28 @@
+{
+  "name": "desk-research",
+  "display_name": "Literature / Desk Research",
+  "description": "Summarize academic papers, industry reports, best practices relevant to the research domain.",
+  "phase": "discover",
+  "skill_type": "mixed",
+  "version": "1.0.0",
+  "enabled": true,
+  "plan_prompt": "Create a desk research plan.\nContext: {context}\nInclude: research questions, search strategy (databases, keywords), inclusion/exclusion criteria,\nsynthesis approach, expected outputs. Format as Markdown.",
+  "execute_prompt": "Analyze and synthesize this desk research / literature.\nContext: {context}\n\nContent:\n{content}\n\nExtract: key findings from each source, common themes across sources, contradictions,\nbest practices, frameworks, gaps in existing knowledge, relevance to the project.",
+  "output_schema": "{{\"sources\": [{{\"title\": \"...\", \"key_findings\": [\"...\"], \"relevance\": \"high|medium|low\"}}],\n\"themes\": [{{\"theme\": \"...\", \"sources_count\": 0, \"description\": \"...\"}}],\n\"best_practices\": [{{\"practice\": \"...\", \"evidence_strength\": \"strong|moderate|weak\"}}],\n\"gaps\": [{{\"gap\": \"...\", \"importance\": \"high|medium|low\"}}],\n\"nuggets\": [{{\"text\": \"...\", \"tags\": [\"...\"]}}],\n\"insights\": [{{\"text\": \"...\", \"confidence\": \"high|medium|low\"}}],\n\"summary\": \"...\"}}",
+  "created_at": "2026-03-14T00:00:00Z",
+  "updated_at": "2026-03-14T00:00:00Z",
+  "metadata": {
+    "author": "ReClaw",
+    "tags": [
+      "discover",
+      "mixed"
+    ]
+  },
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-03-14T00:00:00Z",
+      "changes": "Initial creation from skill library"
+    }
+  ]
+}

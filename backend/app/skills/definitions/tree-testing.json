@@ -1,0 +1,28 @@
+{
+  "name": "tree-testing",
+  "display_name": "Tree Testing Analysis",
+  "description": "Process tree test results — findability, success/directness scores, path analysis.",
+  "phase": "develop",
+  "skill_type": "quantitative",
+  "version": "1.0.0",
+  "enabled": true,
+  "plan_prompt": "Plan tree testing. Context: {context}\nInclude: tasks, tree structure, success criteria, metrics. Markdown.",
+  "execute_prompt": "Analyze tree test results. Context: {context}\nData: {content}\nCalculate: task success rates, directness scores, first-click accuracy,\npath analysis, problem areas in IA.",
+  "output_schema": "{{\"tasks\": [{{\"task\": \"...\", \"success_rate\": 0, \"directness\": 0,\n\"first_click_accuracy\": 0, \"common_paths\": [\"...\"], \"problem_nodes\": [\"...\"]}}],\n\"overall_findability\": 0,\n\"problem_areas\": [{{\"node\": \"...\", \"issue\": \"...\", \"severity\": \"high|medium|low\"}}],\n\"insights\": [{{\"text\": \"...\", \"confidence\": \"high|medium|low\"}}],\n\"recommendations\": [{{\"text\": \"...\", \"priority\": \"low|medium|high\"}}],\n\"summary\": \"...\"}}",
+  "created_at": "2026-03-14T00:00:00Z",
+  "updated_at": "2026-03-14T00:00:00Z",
+  "metadata": {
+    "author": "ReClaw",
+    "tags": [
+      "develop",
+      "quantitative"
+    ]
+  },
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-03-14T00:00:00Z",
+      "changes": "Initial creation from skill library"
+    }
+  ]
+}

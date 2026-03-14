@@ -1,0 +1,28 @@
+{
+  "name": "cognitive-walkthrough",
+  "display_name": "Cognitive Walkthrough",
+  "description": "Systematic task analysis: will user notice, understand, associate, interpret feedback?",
+  "phase": "develop",
+  "skill_type": "qualitative",
+  "version": "1.0.0",
+  "enabled": true,
+  "plan_prompt": "Plan a cognitive walkthrough. Context: {context}\nInclude: tasks, user profile, success criteria, walkthrough questions. Markdown.",
+  "execute_prompt": "Perform cognitive walkthrough analysis. Context: {context}\nData: {content}\nFor each step: Will the user try? Will they notice the correct action?\nWill they associate it with their goal? Will they interpret feedback correctly?",
+  "output_schema": "{{\"tasks\": [{{\"task\": \"...\",\n\"steps\": [{{\"step\": \"...\", \"will_try\": true, \"will_notice\": true,\n\"will_associate\": true, \"will_interpret\": true, \"issues\": [\"...\"]}}]}}],\n\"critical_failures\": [{{\"task\": \"...\", \"step\": \"...\", \"failure_type\": \"...\"}}],\n\"nuggets\": [{{\"text\": \"...\", \"tags\": [\"...\"]}}],\n\"recommendations\": [{{\"text\": \"...\", \"priority\": \"critical|high|medium|low\"}}],\n\"summary\": \"...\"}}",
+  "created_at": "2026-03-14T00:00:00Z",
+  "updated_at": "2026-03-14T00:00:00Z",
+  "metadata": {
+    "author": "ReClaw",
+    "tags": [
+      "develop",
+      "qualitative"
+    ]
+  },
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-03-14T00:00:00Z",
+      "changes": "Initial creation from skill library"
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "name": "interview-question-generator",
+  "display_name": "Interview Question Generator",
+  "description": "Generate interview questions from project context, research goals, and existing findings.",
+  "phase": "discover",
+  "skill_type": "qualitative",
+  "version": "1.0.0",
+  "enabled": true,
+  "plan_prompt": "Plan interview question generation from project context.\nContext: {context}\nInclude: research objectives, target participants, question categories, probing strategy. Markdown.",
+  "execute_prompt": "Generate interview questions based on project context and research needs.\nContext: {context}\n\nExisting knowledge / gaps to fill:\n{content}\n\nCreate:\n1. Opening/warm-up questions (2-3)\n2. Core questions organized by research theme (8-12)\n3. Each core question with 2-3 probing follow-ups\n4. Scenario-based questions where appropriate\n5. Critical incident questions (\"Tell me about a time when...\")\n6. Closing questions\n7. Question quality check (no leading, double-barreled, or yes/no questions)\n8. Annotations: WHY each question is asked and what it maps to",
+  "output_schema": "{{\"interview_guide\": {{\n\"warm_up\": [{{\"question\": \"...\", \"purpose\": \"...\"}}],\n\"core_themes\": [{{\"theme\": \"...\", \"research_question\": \"...\",\n\"questions\": [{{\"question\": \"...\", \"type\": \"open|scenario|critical_incident\",\n\"probes\": [\"...\"], \"purpose\": \"...\", \"maps_to\": \"...\"}}]}}],\n\"closing\": [{{\"question\": \"...\", \"purpose\": \"...\"}}]}},\n\"quality_check\": [{{\"issue\": \"...\", \"question\": \"...\", \"suggestion\": \"...\"}}],\n\"estimated_duration_minutes\": 0,\n\"summary\": \"...\"}}",
+  "created_at": "2026-03-14T00:00:00Z",
+  "updated_at": "2026-03-14T00:00:00Z",
+  "metadata": {
+    "author": "ReClaw",
+    "tags": [
+      "discover",
+      "qualitative"
+    ]
+  },
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-03-14T00:00:00Z",
+      "changes": "Initial creation from skill library"
+    }
+  ]
+}
