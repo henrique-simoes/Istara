@@ -75,12 +75,20 @@ export default function SearchModal({ open, onClose, onNavigate }: SearchModalPr
 
     try {
       // Search across all finding types
-      const [nuggets, facts, insights, recs] = await Promise.all([
-        findingsApi.nuggets(activeProjectId),
-        findingsApi.facts(activeProjectId),
-        findingsApi.insights(activeProjectId),
-        findingsApi.recommendations(activeProjectId),
-      ]);
+      // If project selected, search project. Otherwise search globally.
+      const [nuggets, facts, insights, recs] = activeProjectId
+        ? await Promise.all([
+            findingsApi.nuggets(activeProjectId),
+            findingsApi.facts(activeProjectId),
+            findingsApi.insights(activeProjectId),
+            findingsApi.recommendations(activeProjectId),
+          ])
+        : await Promise.all([
+            findingsApi.nuggets(),
+            findingsApi.facts(),
+            findingsApi.insights(),
+            findingsApi.recommendations(),
+          ]);
 
       const q = query.toLowerCase();
       const matched: SearchResult[] = [];
@@ -193,7 +201,9 @@ export default function SearchModal({ open, onClose, onNavigate }: SearchModalPr
             </div>
           ) : (
             <div className="p-8 text-center text-slate-400">
-              <p className="text-sm">Search across all findings in this project</p>
+              <p className="text-sm">
+              {activeProjectId ? "Search across all findings in this project" : "Search across all projects"}
+            </p>
               <p className="text-xs mt-1">
                 Nuggets, facts, insights, and recommendations
               </p>

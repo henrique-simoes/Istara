@@ -7,7 +7,7 @@ from typing import AsyncGenerator
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import agents, audit, chat, files, findings, projects, settings, skills, tasks
+from app.api.routes import agents, audit, chat, files, findings, metrics, projects, settings, skills, tasks
 from app.api.websocket import router as ws_router
 from app.agents.devops_agent import devops_agent
 from app.agents.ui_audit_agent import ui_audit_agent
@@ -90,6 +90,7 @@ app.include_router(settings.router, prefix="/api", tags=["Settings"])
 app.include_router(audit.router, prefix="/api", tags=["Audit"])
 app.include_router(skills.router, prefix="/api", tags=["Skills"])
 app.include_router(agents.router, prefix="/api", tags=["Agents"])
+app.include_router(metrics.router, prefix="/api", tags=["Metrics"])
 app.include_router(ws_router)
 
 
