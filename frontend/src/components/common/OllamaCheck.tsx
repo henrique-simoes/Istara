@@ -23,16 +23,26 @@ export default function OllamaCheck({ onRetry }: OllamaCheckProps) {
         </p>
 
         <div className="bg-slate-900 dark:bg-slate-800 rounded-xl p-4 text-left mb-6">
+          <div className="flex items-center gap-2 text-slate-400 text-xs mb-3">
+            <Terminal size={12} />
+            <span>If using Docker (recommended)</span>
+          </div>
+          <div className="font-mono text-sm space-y-1 mb-4">
+            <p className="text-slate-400"># Restart all services</p>
+            <p className="text-green-400">docker compose down && docker compose up</p>
+            <p className="text-slate-400 mt-2"># Pull a model</p>
+            <p className="text-green-400">docker exec reclaw-ollama ollama pull qwen3:latest</p>
+          </div>
           <div className="flex items-center gap-2 text-slate-400 text-xs mb-2">
             <Terminal size={12} />
-            <span>Terminal</span>
+            <span>If running locally (without Docker)</span>
           </div>
           <div className="font-mono text-sm space-y-1">
-            <p className="text-slate-400"># Install Ollama (if not installed)</p>
+            <p className="text-slate-400"># Install Ollama</p>
             <p className="text-green-400">curl -fsSL https://ollama.com/install.sh | sh</p>
             <p className="text-slate-400 mt-2"># Start Ollama</p>
             <p className="text-green-400">ollama serve</p>
-            <p className="text-slate-400 mt-2"># Pull a model (in another terminal)</p>
+            <p className="text-slate-400 mt-2"># Pull a model</p>
             <p className="text-green-400">ollama pull qwen3:latest</p>
           </div>
         </div>

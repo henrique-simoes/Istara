@@ -32,15 +32,21 @@ export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) 
   const [projectContext, setProjectContext] = useState("");
   const [uploading, setUploading] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
+  const [error, setError] = useState<string | null>(null);
   const { createProject, updateProject } = useProjectStore();
   const [createdProjectId, setCreatedProjectId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleCreateProject = async () => {
     if (!projectName.trim()) return;
-    const project = await createProject(projectName.trim());
-    setCreatedProjectId(project.id);
-    setStep(2);
+    setError(null);
+    try {
+      const project = await createProject(projectName.trim());
+      setCreatedProjectId(project.id);
+      setStep(2);
+    } catch (e: any) {
+      setError(e.message || "Failed to create project. Is the backend running?");
+    }
   };
 
   const handleSaveContext = async () => {
@@ -150,6 +156,12 @@ export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) 
                 className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-reclaw-500 mb-4"
                 autoFocus
               />
+
+              {error && (
+                <div className="mb-3 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 text-sm text-red-600 dark:text-red-400">
+                  ⚠️ {error}
+                </div>
+              )}
 
               <div className="flex justify-between">
                 <button

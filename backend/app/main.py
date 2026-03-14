@@ -31,6 +31,20 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     load_default_skills()
     skill_manager.load_all()
 
+    # Auto-pull default model if not available
+    from app.core.ollama import ollama
+    try:
+        if await ollama.health():
+            models = await ollama.list_models()
+            model_names = [m.get("name", "") for m in models]
+            if not any(app_settings.ollama_model in n for n in model_names):
+                import logging
+                logging.getLogger(__name__).info(f"Pulling default model: {app_settings.ollama_model}")
+                async for _ in ollama.pull_model(app_settings.ollama_model):
+                    pass
+    except Exception:
+        pass  # Don't block startup if model pull fails
+
     # Start file watcher
     watcher = FileWatcher()
     watcher_task = asyncio.create_task(watcher.start())
