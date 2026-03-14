@@ -21,6 +21,7 @@ interface Toast {
   message: string;
   timestamp: number;
   duration: number; // ms, 0 = sticky
+  actions?: { label: string; onClick: () => void }[];
 }
 
 const ICONS = {
@@ -114,7 +115,20 @@ export default function ToastNotification() {
         }
         case "suggestion": {
           const msg = event.data.message as string;
-          addToast("suggestion", "💡 Suggestion", msg, 0); // Sticky
+          // Suggestions get action buttons
+          const toast: Toast = {
+            id: `toast-${nextId++}`,
+            type: "suggestion",
+            title: "💡 Suggestion",
+            message: msg,
+            timestamp: Date.now(),
+            duration: 0, // Sticky
+            actions: [
+              { label: "Yes, go ahead", onClick: () => {} },
+              { label: "Not now", onClick: () => {} },
+            ],
+          };
+          setToasts((prev) => [...prev.slice(-4), toast]);
           break;
         }
         case "finding_created": {
@@ -154,9 +168,28 @@ export default function ToastNotification() {
             <button
               onClick={() => removeToast(toast.id)}
               className="p-0.5 rounded hover:bg-black/5 dark:hover:bg-white/5"
+              aria-label="Dismiss notification"
             >
               <X size={14} className="text-slate-400" />
             </button>
+            {toast.actions && toast.actions.length > 0 && (
+              <div className="flex gap-2 mt-2 ml-7">
+                {toast.actions.map((action, i) => (
+                  <button
+                    key={i}
+                    onClick={() => { action.onClick(); removeToast(toast.id); }}
+                    className={cn(
+                      "text-xs px-2 py-1 rounded",
+                      i === 0
+                        ? "bg-reclaw-600 text-white hover:bg-reclaw-700"
+                        : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-300"
+                    )}
+                  >
+                    {action.label}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         );
       })}
