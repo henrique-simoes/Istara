@@ -7,6 +7,7 @@ import { useProjectStore } from "@/stores/projectStore";
 import type { TaskStatus } from "@/lib/types";
 import { cn, statusLabel } from "@/lib/utils";
 import ConfirmDialog from "@/components/common/ConfirmDialog";
+import TaskEditor from "./TaskEditor";
 
 const COLUMNS: { id: TaskStatus; color: string }[] = [
   { id: "backlog", color: "border-t-slate-400" },
@@ -22,6 +23,7 @@ export default function KanbanBoard() {
   const [addingTo, setAddingTo] = useState<TaskStatus | null>(null);
   const [expandedTask, setExpandedTask] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [editingTask, setEditingTask] = useState<string | null>(null);
 
   useEffect(() => {
     if (activeProjectId) {
@@ -175,15 +177,26 @@ export default function KanbanBoard() {
                                 </p>
                               </div>
                             )}
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setDeleteConfirm(task.id);
-                              }}
-                              className="flex items-center gap-1 text-xs text-red-500 hover:text-red-600"
-                            >
-                              <Trash2 size={10} /> Delete
-                            </button>
+                            <div className="flex items-center gap-3">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditingTask(task.id);
+                                }}
+                                className="text-xs text-reclaw-600 hover:text-reclaw-700 font-medium"
+                              >
+                                ✏️ Edit
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setDeleteConfirm(task.id);
+                                }}
+                                className="flex items-center gap-1 text-xs text-red-500 hover:text-red-600"
+                              >
+                                <Trash2 size={10} /> Delete
+                              </button>
+                            </div>
                           </div>
                         )}
                       </div>
@@ -195,6 +208,17 @@ export default function KanbanBoard() {
           );
         })}
       </div>
+
+      {/* Task editor modal */}
+      {editingTask && (() => {
+        const task = tasks.find((t) => t.id === editingTask);
+        return task ? (
+          <TaskEditor
+            task={task}
+            onClose={() => { setEditingTask(null); if (activeProjectId) fetchTasks(activeProjectId); }}
+          />
+        ) : null;
+      })()}
 
       {/* Delete confirmation */}
       <ConfirmDialog

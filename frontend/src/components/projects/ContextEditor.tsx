@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { Save, Building2, FolderOpen, Shield, Eye, EyeOff } from "lucide-react";
 import { useProjectStore } from "@/stores/projectStore";
 import { cn } from "@/lib/utils";
+import ContextPreview from "@/components/common/ContextPreview";
+import AutoSaveWarning from "@/components/common/AutoSaveWarning";
 
 interface ContextSection {
   id: string;
@@ -53,6 +55,7 @@ export default function ContextEditor() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [expandedSection, setExpandedSection] = useState<string>("company");
+  const [hasChanges, setHasChanges] = useState(false);
 
   const project = projects.find((p) => p.id === activeProjectId);
 
@@ -189,6 +192,12 @@ export default function ContextEditor() {
             </div>
           );
         })}
+
+        {/* Context preview — "What I know" */}
+        <ContextPreview />
+
+        {/* Unsaved changes warning */}
+        <AutoSaveWarning hasUnsavedChanges={hasChanges} />
 
         {/* How it works */}
         <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 text-sm text-slate-500 dark:text-slate-400">
