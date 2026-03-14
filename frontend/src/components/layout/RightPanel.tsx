@@ -49,26 +49,26 @@ export default function RightPanel({ activeView, collapsed, onToggle }: RightPan
 
   const renderChatContext = () => (
     <div className="space-y-4">
-      {/* Recent insights */}
-      <Section title="💡 Recent Insights" count={recentInsights.length}>
+      {/* Semantically relevant findings */}
+      <Section title="💡 Related Insights" count={recentInsights.length}>
         {recentInsights.length === 0 ? (
-          <EmptyState text="No insights yet. Chat or run skills to generate findings." />
+          <EmptyState text="Insights appear here as you chat and run skills." />
         ) : (
           recentInsights.map((insight) => (
             <FindingCard
               key={insight.id}
               text={insight.text}
-              meta={`Confidence: ${Math.round(insight.confidence * 100)}%`}
+              meta={`${Math.round(insight.confidence * 100)}% confidence`}
               metaClass={confidenceColor(insight.confidence)}
             />
           ))
         )}
       </Section>
 
-      {/* Recent nuggets */}
-      <Section title="✨ Recent Nuggets" count={recentNuggets.length}>
+      {/* Recent evidence */}
+      <Section title="✨ Latest Evidence" count={recentNuggets.length}>
         {recentNuggets.length === 0 ? (
-          <EmptyState text="Upload files or run interview analysis to extract nuggets." />
+          <EmptyState text="Upload research files to start extracting evidence." />
         ) : (
           recentNuggets.map((nugget) => (
             <FindingCard
@@ -80,17 +80,30 @@ export default function RightPanel({ activeView, collapsed, onToggle }: RightPan
         )}
       </Section>
 
-      {/* Project stats */}
+      {/* Project health */}
       {summary && (
-        <Section title="📊 Project Stats">
+        <Section title="📊 Research Progress">
           <div className="grid grid-cols-2 gap-2">
             <StatBox label="Nuggets" value={summary.totals.nuggets} />
             <StatBox label="Facts" value={summary.totals.facts} />
             <StatBox label="Insights" value={summary.totals.insights} />
-            <StatBox label="Recs" value={summary.totals.recommendations} />
+            <StatBox label="Actions" value={summary.totals.recommendations} />
+          </div>
+          <div className="mt-2 text-[10px] text-slate-400 text-center">
+            {summary.totals.nuggets + summary.totals.facts + summary.totals.insights + summary.totals.recommendations} total findings
           </div>
         </Section>
       )}
+
+      {/* Quick skill suggestions */}
+      <Section title="⚡ Quick Actions">
+        <div className="space-y-1 text-xs">
+          <p className="text-slate-400">Type in chat:</p>
+          <p className="text-reclaw-600">"analyze interviews"</p>
+          <p className="text-reclaw-600">"create personas"</p>
+          <p className="text-reclaw-600">"run thematic analysis"</p>
+        </div>
+      </Section>
     </div>
   );
 

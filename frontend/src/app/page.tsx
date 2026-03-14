@@ -16,6 +16,7 @@ import SearchModal from "@/components/common/SearchModal";
 import ToastNotification from "@/components/common/ToastNotification";
 import ErrorBoundary from "@/components/common/ErrorBoundary";
 import KeyboardShortcuts from "@/components/common/KeyboardShortcuts";
+import MobileNav from "@/components/layout/MobileNav";
 import OnboardingWizard from "@/components/onboarding/OnboardingWizard";
 import OllamaCheck from "@/components/common/OllamaCheck";
 import { useProjectStore } from "@/stores/projectStore";
@@ -104,23 +105,32 @@ export default function Home() {
   return (
     <div className="h-screen flex flex-col">
       <div className="flex-1 flex overflow-hidden">
-        <Sidebar
-          activeView={activeView}
-          onViewChange={setActiveView}
-          onSearchOpen={() => setSearchOpen(true)}
-        />
-        <main className="flex-1 flex flex-col overflow-hidden" id="main-content">
+        {/* Sidebar: hidden on mobile, visible on lg+ */}
+        <div className="hidden lg:flex">
+          <Sidebar
+            activeView={activeView}
+            onViewChange={setActiveView}
+            onSearchOpen={() => setSearchOpen(true)}
+          />
+        </div>
+        <main className="flex-1 flex flex-col overflow-hidden pb-14 lg:pb-0" id="main-content">
           <ErrorBoundary>
             {renderView()}
           </ErrorBoundary>
         </main>
-        <RightPanel
-          activeView={activeView}
-          collapsed={rightPanelCollapsed}
-          onToggle={() => setRightPanelCollapsed(!rightPanelCollapsed)}
-        />
+        {/* Right panel: hidden on mobile */}
+        <div className="hidden xl:flex">
+          <RightPanel
+            activeView={activeView}
+            collapsed={rightPanelCollapsed}
+            onToggle={() => setRightPanelCollapsed(!rightPanelCollapsed)}
+          />
+        </div>
       </div>
-      <StatusBar />
+      <div className="hidden lg:block">
+        <StatusBar />
+      </div>
+      <MobileNav activeView={activeView} onViewChange={setActiveView} />
       <ToastNotification />
       <SearchModal open={searchOpen} onClose={() => setSearchOpen(false)} onNavigate={setActiveView} />
       <KeyboardShortcuts open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />

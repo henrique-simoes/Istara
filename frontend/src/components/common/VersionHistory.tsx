@@ -158,7 +158,25 @@ export default function VersionHistory() {
                               </div>
                             )}
 
-                            <button className="flex items-center gap-1 text-xs text-amber-600 hover:text-amber-700 font-medium">
+                            {/* Diff preview */}
+                            <div className="mb-3 rounded-lg bg-slate-900 dark:bg-slate-950 p-3 text-xs font-mono overflow-x-auto">
+                              <p className="text-slate-500 mb-1">--- {entry.commit_hash.slice(0, 7)}: {entry.message}</p>
+                              {entry.files_changed.map((file, fi) => (
+                                <p key={fi} className="text-green-400">+ Modified: {file}</p>
+                              ))}
+                              {entry.files_changed.length === 0 && (
+                                <p className="text-slate-500">No file details</p>
+                              )}
+                            </div>
+
+                            <button
+                              onClick={() => {
+                                if (window.confirm(`Rollback to ${entry.commit_hash.slice(0, 7)}? This reverts all changes after this point.`)) {
+                                  console.log("Rollback to:", entry.commit_hash);
+                                }
+                              }}
+                              className="flex items-center gap-1 text-xs text-amber-600 hover:text-amber-700 font-medium"
+                            >
                               <RotateCcw size={12} />
                               Rollback to this version
                             </button>

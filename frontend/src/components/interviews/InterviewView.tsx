@@ -292,7 +292,20 @@ export default function InterviewView() {
                         <span className="text-xs font-medium text-reclaw-600">{seg.speaker}</span>
                       )}
                     </div>
-                    <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{seg.text}</p>
+                    <p
+                      className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed"
+                      onMouseUp={() => {
+                        const selection = window.getSelection();
+                        if (selection && selection.toString().trim().length > 10) {
+                          const selectedText = selection.toString().trim();
+                          // Auto-create nugget from selection
+                          if (window.confirm(`Create nugget from: "${selectedText.slice(0, 60)}..."?`)) {
+                            // Would call API to create nugget — for now just log
+                            console.log("Create nugget:", selectedText);
+                          }
+                        }
+                      }}
+                    >{seg.text}</p>
                   </div>
                 ))
               ) : transcriptText ? (

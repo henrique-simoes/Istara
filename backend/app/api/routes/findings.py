@@ -320,6 +320,35 @@ async def delete_recommendation(rec_id: str, db: AsyncSession = Depends(get_db))
 
 # --- Aggregated Findings View ---
 
+@router.get("/findings/search/global")
+async def search_all_findings(
+    query: str = "",
+    limit: int = 20,
+    db: AsyncSession = Depends(get_db),
+):
+    """Search across ALL projects' findings (text-based)."""
+    if not query:
+        return {"results": [], "query": ""}
+
+    q = f"%{query}%"
+    results = []
+
+    for model, ftype in [(Nugget, "nugget"), (Fact, "fact"), (Insight, "insight"), (Recommendation, "recommendation")]:
+        rows = await db.execute(
+            select(model).where(model.text.ilike(q)).limit(limit // 4)
+        )
+        for item in rows.scalars().all():
+            results.append({
+                "type": ftype,
+                "text": item.text,
+                "project_id": item.project_id,
+                "phase": getattr(item, "phase", ""),
+                "confidence": getattr(item, "confidence", None),
+            })
+
+    return {"query": query, "results": results[:limit], "count": len(results)}
+
+
 @router.get("/findings/search/{project_id}")
 async def search_findings(
     project_id: str,
