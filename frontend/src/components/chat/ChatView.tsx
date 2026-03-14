@@ -6,17 +6,20 @@ import { useChatStore } from "@/stores/chatStore";
 import { useProjectStore } from "@/stores/projectStore";
 import { cn, formatDate } from "@/lib/utils";
 import { files as filesApi } from "@/lib/api";
+import { ChatSkeleton } from "@/components/common/LoadingSkeleton";
 
 export default function ChatView() {
   const { messages, streaming, streamingContent, error, sendMessage, fetchHistory } = useChatStore();
   const { activeProjectId } = useProjectStore();
   const [input, setInput] = useState("");
+  const [loadingHistory, setLoadingHistory] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (activeProjectId) {
-      fetchHistory(activeProjectId);
+      setLoadingHistory(true);
+      fetchHistory(activeProjectId).finally(() => setLoadingHistory(false));
     }
   }, [activeProjectId, fetchHistory]);
 

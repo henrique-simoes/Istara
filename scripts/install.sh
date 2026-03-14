@@ -60,6 +60,10 @@ if [ ! -f .env ]; then
     cp .env.example .env
 fi
 
+# Create required directories
+echo "📁 Creating data directories..."
+mkdir -p data/watch data/uploads data/projects data/lance_db
+
 echo ""
 echo "🚀 Starting ReClaw..."
 echo ""

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import ErrorBoundary from "@/components/common/ErrorBoundary";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -12,9 +13,20 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: `
+          try {
+            const t = localStorage.getItem('reclaw-theme');
+            const d = t === 'dark' || (!t && window.matchMedia('(prefers-color-scheme: dark)').matches);
+            if (d) document.documentElement.classList.add('dark');
+          } catch(e) {}
+        `}} />
+      </head>
       <body className="antialiased">
-        {children}
+        <ErrorBoundary>
+          {children}
+        </ErrorBoundary>
       </body>
     </html>
   );
