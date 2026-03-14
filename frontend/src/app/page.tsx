@@ -15,6 +15,7 @@ import SettingsView from "@/components/common/SettingsView";
 import SearchModal from "@/components/common/SearchModal";
 import ToastNotification from "@/components/common/ToastNotification";
 import ErrorBoundary from "@/components/common/ErrorBoundary";
+import KeyboardShortcuts from "@/components/common/KeyboardShortcuts";
 import OnboardingWizard from "@/components/onboarding/OnboardingWizard";
 import OllamaCheck from "@/components/common/OllamaCheck";
 import { useProjectStore } from "@/stores/projectStore";
@@ -24,7 +25,8 @@ export default function Home() {
   const [activeView, setActiveView] = useState("chat");
   const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
-  const [ollamaOk, setOllamaOk] = useState<boolean | null>(null); // null = checking
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [ollamaOk, setOllamaOk] = useState<boolean | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const { projects, fetchProjects } = useProjectStore();
 
@@ -49,10 +51,26 @@ export default function Home() {
 
   // Global Cmd+K for search
   useEffect(() => {
+    const viewKeys: Record<string, string> = { "1": "chat", "2": "findings", "3": "tasks", "4": "interviews", "5": "context" };
+
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
         e.preventDefault();
         setSearchOpen((prev) => !prev);
+      }
+      // ⌘1-5 for view switching
+      if ((e.metaKey || e.ctrlKey) && viewKeys[e.key]) {
+        e.preventDefault();
+        setActiveView(viewKeys[e.key]);
+      }
+      // ⌘. toggle right panel
+      if ((e.metaKey || e.ctrlKey) && e.key === ".") {
+        e.preventDefault();
+        setRightPanelCollapsed((prev) => !prev);
+      }
+      // ? for shortcut help (when not typing)
+      if (e.key === "?" && !["INPUT", "TEXTAREA"].includes((e.target as HTMLElement)?.tagName)) {
+        setShortcutsOpen((prev) => !prev);
       }
     };
     window.addEventListener("keydown", handler);
@@ -105,6 +123,7 @@ export default function Home() {
       <StatusBar />
       <ToastNotification />
       <SearchModal open={searchOpen} onClose={() => setSearchOpen(false)} onNavigate={setActiveView} />
+      <KeyboardShortcuts open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
       {showOnboarding && (
         <OnboardingWizard onComplete={() => setShowOnboarding(false)} />
       )}
