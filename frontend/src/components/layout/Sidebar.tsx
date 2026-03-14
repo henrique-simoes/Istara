@@ -7,6 +7,7 @@ import {
   Diamond,
   Bot,
   LayoutDashboard,
+  FileText,
   ChevronLeft,
   ChevronRight,
   Settings,
@@ -46,6 +47,7 @@ export default function Sidebar({ activeView, onViewChange }: SidebarProps) {
     { id: "chat", icon: Bot, label: "Chat" },
     { id: "findings", icon: Diamond, label: "Findings" },
     { id: "tasks", icon: LayoutDashboard, label: "Tasks" },
+    { id: "context", icon: FileText, label: "Context" },
     { id: "settings", icon: Settings, label: "Settings" },
   ];
 

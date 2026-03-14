@@ -1,11 +1,26 @@
-"""Skills management API — CRUD, versioning, self-improvement, health monitoring."""
+"""Skills management API — CRUD, versioning, self-improvement, execution, health monitoring."""
 
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
+from app.core.agent import agent
 from app.skills.skill_manager import skill_manager
+from app.skills.registry import registry
 
 router = APIRouter()
+
+
+class SkillExecuteRequest(BaseModel):
+    project_id: str
+    files: list[str] = []
+    parameters: dict = {}
+    user_context: str = ""
+
+
+class SkillPlanRequest(BaseModel):
+    project_id: str
+    user_context: str = ""
 
 
 class SkillCreateRequest(BaseModel):
@@ -150,3 +165,59 @@ async def reject_proposal(proposal_id: str, reason: str = ""):
     if not skill_manager.reject_proposal(proposal_id, reason):
         raise HTTPException(status_code=404, detail="Proposal not found or not pending")
     return {"status": "rejected", "proposal_id": proposal_id}
+
+
+# --- Skill Execution ---
+
+@router.post("/skills/{name}/execute")
+async def execute_skill(name: str, data: SkillExecuteRequest):
+    """Execute a skill on a project. Stores findings automatically.
+
+    This is the main way to invoke skills — from the UI, chat, or API.
+    The agent runs the skill, stores nuggets/facts/insights/recommendations,
+    and returns the output.
+    """
+    if not registry.get(name):
+        raise HTTPException(status_code=404, detail=f"Skill not found: {name}")
+
+    output = await agent.execute_skill(
+        skill_name=name,
+        project_id=data.project_id,
+        files=data.files,
+        parameters=data.parameters,
+        user_context=data.user_context,
+    )
+
+    return {
+        "success": output.success,
+        "summary": output.summary,
+        "nuggets_count": len(output.nuggets),
+        "facts_count": len(output.facts),
+        "insights_count": len(output.insights),
+        "recommendations_count": len(output.recommendations),
+        "suggestions": output.suggestions,
+        "errors": output.errors,
+        "artifacts": list(output.artifacts.keys()),
+    }
+
+
+@router.post("/skills/{name}/plan")
+async def plan_skill(name: str, data: SkillPlanRequest):
+    """Generate a research plan using a skill.
+
+    Returns a plan with steps, methods, and recommendations
+    without actually executing the skill.
+    """
+    if not registry.get(name):
+        raise HTTPException(status_code=404, detail=f"Skill not found: {name}")
+
+    plan = await agent.plan_skill(
+        skill_name=name,
+        project_id=data.project_id,
+        user_context=data.user_context,
+    )
+
+    if "error" in plan:
+        raise HTTPException(status_code=400, detail=plan["error"])
+
+    return plan

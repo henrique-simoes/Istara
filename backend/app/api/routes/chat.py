@@ -4,19 +4,116 @@ import json
 import uuid
 from datetime import datetime, timezone
 
+import re
+
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.agent import agent
 from app.core.ollama import ollama
 from app.core.rag import build_augmented_prompt, retrieve_context
 from app.models.database import get_db
 from app.models.message import Message
 from app.models.project import Project
+from app.skills.registry import registry
 
 router = APIRouter()
+
+
+def _detect_skill_intent(message: str) -> str | None:
+    """Detect if the user wants to run a specific skill from their message.
+
+    Returns skill name if detected, None otherwise.
+    """
+    msg = message.lower()
+
+    # Explicit triggers: "run X", "execute X", "analyze with X", "use X skill"
+    explicit = re.search(
+        r"(?:run|execute|use|start|do|perform|conduct)\s+(?:the\s+)?(?:a\s+)?(.+?)(?:\s+skill|\s+analysis|\s+on|\s+for|$)",
+        msg,
+    )
+
+    # Map common phrases to skill names
+    intent_map = {
+        "interview": "user-interviews",
+        "transcript": "user-interviews",
+        "analyze interview": "user-interviews",
+        "analyze transcript": "user-interviews",
+        "competitive analysis": "competitive-analysis",
+        "competitor": "competitive-analysis",
+        "survey design": "survey-design",
+        "create survey": "survey-generator",
+        "generate survey": "survey-generator",
+        "generate interview": "interview-question-generator",
+        "create interview guide": "interview-question-generator",
+        "affinity map": "affinity-mapping",
+        "cluster": "affinity-mapping",
+        "persona": "persona-creation",
+        "create persona": "persona-creation",
+        "journey map": "journey-mapping",
+        "empathy map": "empathy-mapping",
+        "jobs to be done": "jtbd-analysis",
+        "jtbd": "jtbd-analysis",
+        "how might we": "hmw-statements",
+        "hmw": "hmw-statements",
+        "user flow": "user-flow-mapping",
+        "thematic analysis": "thematic-analysis",
+        "code the data": "thematic-analysis",
+        "synthesize": "research-synthesis",
+        "synthesis report": "research-synthesis",
+        "prioritize": "prioritization-matrix",
+        "prioritization": "prioritization-matrix",
+        "usability test": "usability-testing",
+        "heuristic eval": "heuristic-evaluation",
+        "heuristic review": "heuristic-evaluation",
+        "a/b test": "ab-test-analysis",
+        "card sort": "card-sorting",
+        "tree test": "tree-testing",
+        "concept test": "concept-testing",
+        "cognitive walkthrough": "cognitive-walkthrough",
+        "design critique": "design-critique",
+        "expert review": "design-critique",
+        "prototype feedback": "prototype-feedback",
+        "workshop": "workshop-facilitation",
+        "sus score": "sus-umux-scoring",
+        "umux": "sus-umux-scoring",
+        "nps": "nps-analysis",
+        "task analysis": "task-analysis-quant",
+        "impact analysis": "regression-impact",
+        "design system audit": "design-system-audit",
+        "handoff": "handoff-documentation",
+        "presentation": "stakeholder-presentation",
+        "retro": "research-retro",
+        "retrospective": "research-retro",
+        "longitudinal": "longitudinal-tracking",
+        "taxonomy": "taxonomy-generator",
+        "kappa": "kappa-thematic-analysis",
+        "intercoder": "kappa-thematic-analysis",
+        "detect ai": "survey-ai-detection",
+        "bot detection": "survey-ai-detection",
+        "ai response": "survey-ai-detection",
+        "diary stud": "diary-studies",
+        "field stud": "field-studies",
+        "ethnograph": "field-studies",
+        "accessibility audit": "accessibility-audit",
+        "wcag": "accessibility-audit",
+        "desk research": "desk-research",
+        "literature review": "desk-research",
+        "stakeholder interview": "stakeholder-interviews",
+        "analytics review": "analytics-review",
+        "repository curation": "repository-curation",
+    }
+
+    for phrase, skill_name in intent_map.items():
+        if phrase in msg:
+            # Verify skill exists in registry
+            if registry.get(skill_name):
+                return skill_name
+
+    return None
 
 
 class ChatRequest(BaseModel):
@@ -58,6 +155,45 @@ async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db)):
     )
     db.add(user_msg)
     await db.commit()
+
+    # Check if the user is asking to run a specific skill
+    skill_intent = _detect_skill_intent(request.message)
+    if skill_intent:
+        # Execute the skill and return results as a chat message
+        output = await agent.execute_skill(
+            skill_name=skill_intent,
+            project_id=request.project_id,
+            user_context=request.message,
+        )
+        skill_response = (
+            f"🧩 **Ran {skill_intent}**\n\n"
+            f"{output.summary}\n\n"
+            f"📊 Results: {len(output.nuggets)} nuggets, {len(output.facts)} facts, "
+            f"{len(output.insights)} insights, {len(output.recommendations)} recommendations"
+        )
+        if output.suggestions:
+            skill_response += "\n\n💡 Suggestions:\n" + "\n".join(f"- {s}" for s in output.suggestions[:3])
+        if output.errors:
+            skill_response += "\n\n⚠️ Issues:\n" + "\n".join(f"- {e}" for e in output.errors)
+
+        # Save as assistant message
+        assistant_msg = Message(
+            id=str(uuid.uuid4()),
+            project_id=request.project_id,
+            role="assistant",
+            content=skill_response,
+        )
+        db.add(assistant_msg)
+        await db.commit()
+
+        async def skill_stream():
+            event_data = json.dumps({"type": "chunk", "content": skill_response})
+            yield f"data: {event_data}\n\n"
+            done_data = json.dumps({"type": "done", "message_id": assistant_msg.id, "sources": []})
+            yield f"data: {done_data}\n\n"
+
+        return StreamingResponse(skill_stream(), media_type="text/event-stream",
+                                  headers={"Cache-Control": "no-cache", "Connection": "keep-alive"})
 
     # Retrieve context via RAG
     rag_context = await retrieve_context(request.project_id, request.message)

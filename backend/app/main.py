@@ -11,6 +11,7 @@ from app.api.routes import audit, chat, files, findings, projects, settings, ski
 from app.api.websocket import router as ws_router
 from app.agents.devops_agent import devops_agent
 from app.agents.ui_audit_agent import ui_audit_agent
+from app.core.agent import agent as agent_orchestrator
 from app.config import settings as app_settings
 from app.core.file_watcher import FileWatcher
 from app.models.database import init_db
@@ -32,9 +33,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     watcher_task = asyncio.create_task(watcher.start())
     app.state.file_watcher = watcher
 
-    # Start audit agents
+    # Start audit agents and orchestrator
     devops_task = asyncio.create_task(devops_agent.start())
     ui_audit_task = asyncio.create_task(ui_audit_agent.start())
+    agent_task = asyncio.create_task(agent_orchestrator.start())
 
     yield
 
@@ -42,8 +44,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     watcher.stop()
     devops_agent.stop()
     ui_audit_agent.stop()
+    agent_orchestrator.stop()
 
-    for task in [watcher_task, devops_task, ui_audit_task]:
+    for task in [watcher_task, devops_task, ui_audit_task, agent_task]:
         task.cancel()
         try:
             await task
