@@ -94,17 +94,55 @@ cd backend
 python -m venv venv
 source venv/bin/activate
 pip install -e ".[dev]"
-uvicorn app.main:app --reload
+uvicorn app.main:app --reload --port 8000
 
-# Frontend
+# Frontend (new terminal)
 cd frontend
 npm install
 npm run dev
+
+# Ollama (new terminal)
+ollama serve
+ollama pull qwen3:latest
 ```
+
+## ⌨️ Keyboard Shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| ⌘K | Search findings |
+| ⌘1-5 | Switch views |
+| ⌘. | Toggle right panel |
+| ? | Keyboard shortcuts help |
+| Esc | Close modal |
+
+## 🤖 Agent System
+
+ReClaw runs multiple agents autonomously:
+- **Task Executor** — picks Kanban tasks and runs UXR skills
+- **DevOps Audit** — monitors data integrity and system health
+- **UI Audit** — evaluates heuristics and accessibility
+- **UX Evaluation** — assesses overall platform experience
+- **User Simulation** — end-to-end API testing
+- **Meta-Orchestrator** — coordinates all agents, prevents conflicts
+
+## 📜 Context Hierarchy
+
+6-level system prompt hierarchy (source of truth for all agent behavior):
+1. **Platform** — ReClaw UXR expertise (built-in)
+2. **Company** — organization, product, culture, terminology
+3. **Product** — features, users, domain knowledge
+4. **Project** — research questions, goals, timeline
+5. **Task** — per-task instructions from Kanban cards
+6. **Agent** — per-agent system prompts and constraints
 
 ## 📄 License
 
 MIT — see [LICENSE](LICENSE).
+
+## 🤝 Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions and guidelines.
 
 ---
 

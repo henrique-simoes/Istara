@@ -61,7 +61,8 @@ export default function StatusBar() {
       </div>
 
       <div className="flex items-center gap-4">
-        <span>🐾 ReClaw v0.1.0</span>
+        <span className="hidden sm:inline">Press <kbd className="px-1 py-0.5 bg-slate-200 dark:bg-slate-700 rounded text-[10px]">?</kbd> for shortcuts</span>
+        <span>🐾 ReClaw v{process.env.npm_package_version || "0.1.0"}</span>
       </div>
     </footer>
   );
