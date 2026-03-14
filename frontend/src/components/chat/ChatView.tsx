@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Send, Paperclip, Loader2, StopCircle } from "lucide-react";
+import { Send, Paperclip, Loader2, StopCircle, Upload } from "lucide-react";
 import { useChatStore } from "@/stores/chatStore";
 import { useProjectStore } from "@/stores/projectStore";
 import { cn, formatDate } from "@/lib/utils";
@@ -13,6 +13,7 @@ export default function ChatView() {
   const { activeProjectId } = useProjectStore();
   const [input, setInput] = useState("");
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -63,8 +64,37 @@ export default function ChatView() {
     );
   }
 
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    if (!activeProjectId) return;
+    const file = e.dataTransfer.files[0];
+    if (!file) return;
+    try {
+      const result = await filesApi.upload(activeProjectId, file);
+      await sendMessage(activeProjectId, `I just uploaded "${file.name}" (${result.chunks_indexed} chunks indexed). Can you analyze it?`);
+    } catch (err) {
+      console.error("Drop upload failed:", err);
+    }
+  };
+
   return (
-    <div className="flex-1 flex flex-col">
+    <div
+      className={cn("flex-1 flex flex-col", dragOver && "ring-2 ring-reclaw-500 ring-inset bg-reclaw-50/50 dark:bg-reclaw-900/10")}
+      onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={handleDrop}
+    >
+      {/* Drag overlay */}
+      {dragOver && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-reclaw-50/80 dark:bg-reclaw-900/80 pointer-events-none">
+          <div className="text-center">
+            <Upload size={40} className="mx-auto text-reclaw-500 mb-2" />
+            <p className="text-reclaw-700 dark:text-reclaw-400 font-medium">Drop files to upload</p>
+          </div>
+        </div>
+      )}
+
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.length === 0 && !streaming && (

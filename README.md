@@ -4,145 +4,206 @@
 
 ReClaw is an open-source research assistant that runs entirely on your machine. It helps UX researchers organize, analyze, and synthesize research findings using local LLMs — no data ever leaves your computer.
 
+> Think **OpenClaw meets Google NotebookLM meets Dovetail** — but running on your hardware, your models, your data.
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+
+---
+
 ## ✨ Features
 
-- **🤖 AI-Powered Analysis** — Process interview transcripts, surveys, analytics, and more
-- **💎 Double Diamond Framework** — Organize work across Discover → Define → Develop → Deliver
-- **🧬 Atomic Research** — Every insight traces back through Facts → Nuggets → Sources
-- **📁 RAG on Local Files** — Ask questions about your research data with retrieval-augmented generation
-- **📋 Kanban Task Board** — Direct the agent with interactive task cards
-- **🔍 40 UXR Skills** — Built-in methods for qualitative and quantitative research
-- **🖥️ Hardware-Aware** — Auto-detects your hardware and picks the best model configuration
-- **🔒 Local-First** — Your data stays on your machine. Always.
-- **🔄 Version History** — Every change is tracked, diffable, and rollbackable
+### 🤖 AI-Powered Research
+- **45 UXR skills** — qualitative and quantitative methods across the full Double Diamond
+- **Atomic Research** — every insight traces back: Recommendations → Insights → Facts → Nuggets → Sources
+- **RAG on local files** — ask questions about your research data with retrieval-augmented generation
+- **Self-checking** — the agent verifies its claims against source documents
+
+### 🖥️ Beautiful Research UI
+- **Chat** — conversational interface with skill execution ("analyze my interviews")
+- **Findings** — organized by Double Diamond phase with evidence chain drill-down
+- **Tasks** — Kanban board to direct the agent
+- **Interviews** — transcript viewer with nugget extraction and tag filtering
+- **Metrics** — SUS, NPS, task completion dashboards with benchmarks
+- **Search** — ⌘K global search across all findings
+- **Context** — editable company/project/guardrails layers
+- **History** — version tracking with rollback
+
+### 🔒 Local-First & Hardware-Aware
+- **Data never leaves your machine** — everything runs locally
+- **Auto-detects hardware** — picks the best model & quantization for your RAM/GPU
+- **Resource governor** — won't overwhelm your machine, reserves resources for other apps
+- **Docker one-command setup** — `docker compose up` and you're running
+
+### 🧠 Multi-Agent System
+- **Task Executor** — picks Kanban tasks, runs skills, stores findings
+- **DevOps Audit** — monitors data integrity, system health
+- **UI Audit** — heuristic evaluation, accessibility checking
+- **UX Evaluation** — holistic platform experience assessment
+- **User Simulation** — end-to-end API testing
+- **Meta-Orchestrator** — coordinates all agents, prevents conflicts
+
+---
 
 ## 🚀 Quick Start
 
 ### Prerequisites
 - [Docker](https://docs.docker.com/get-docker/) (Docker Desktop or Docker Engine)
+- 8GB RAM minimum (16GB recommended)
 
 ### One-Command Setup
 
 ```bash
-git clone https://github.com/your-org/reclaw.git
-cd reclaw
+git clone https://github.com/henrique-simoes/ReClaw.git
+cd ReClaw
 cp .env.example .env
+mkdir -p data/watch data/uploads data/projects data/lance_db
 docker compose up
 ```
 
-Then open [http://localhost:3000](http://localhost:3000) in your browser.
+Then open **http://localhost:3000** in your browser. 🎉
 
-On first run, ReClaw will:
-1. Pull the Ollama container
-2. Detect your hardware (RAM, GPU, CPU)
-3. Download the recommended model (Qwen 3.5 by default)
-4. Start the backend API and web UI
+> First run takes 3-5 minutes to build. After that, starts in seconds.
 
-### Using the Install Script
+📖 **[Full Setup Guide →](docs/SETUP-GUIDE.md)**
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/your-org/reclaw/main/scripts/install.sh | bash
+---
+
+## 📸 UI Overview
+
+| View | Description |
+|------|-------------|
+| 💬 **Chat** | Talk to the agent, drop files, trigger skills with natural language |
+| 🔍 **Findings** | Atomic Research organized by Double Diamond phase, click-to-drill-down |
+| 📋 **Tasks** | Kanban board with drag-and-drop, agent picks up and completes tasks |
+| 🎙️ **Interviews** | Transcript viewer with auto-extracted nuggets, tags, and analysis |
+| 📊 **Metrics** | SUS/NPS/task completion dashboards with industry benchmarks |
+| 📂 **Context** | Edit company, project, and guardrails context that guides the agent |
+| 🔄 **History** | Version timeline with diffs and rollback |
+| ⚙️ **Settings** | Hardware info, model management, system status |
+
+---
+
+## 🧩 45 UXR Skills
+
+### 💎 Discover (13 skills)
+User Interviews • Contextual Inquiry • Diary Studies • Competitive Analysis • Stakeholder Interviews • Survey Design & Analysis • Analytics Review • Desk Research • Field Studies / Ethnography • Accessibility Audit • **Survey AI Response Detection** • **Survey Generator** • **Interview Question Generator**
+
+### 💎 Define (12 skills)
+Affinity Mapping • Persona Creation • Journey Mapping • Empathy Mapping • JTBD Analysis • HMW Statements • User Flow Mapping • Thematic Analysis • Research Synthesis • Prioritization Matrix • **Kappa Intercoder Thematic Analysis** • **Taxonomy Generator**
+
+### 💎 Develop (10 skills)
+Usability Testing • Heuristic Evaluation • A/B Test Analysis • Card Sorting • Tree Testing • Concept Testing • Cognitive Walkthrough • Design Critique • Prototype Feedback • Workshop Facilitation
+
+### 💎 Deliver (10 skills)
+SUS/UMUX Scoring • NPS Analysis • Task Analysis • Regression/Impact Analysis • Design System Audit • Handoff Documentation • Repository Curation • Stakeholder Presentations • Research Retros • Longitudinal Tracking
+
+Skills follow the [OpenClaw AgentSkills standard](skills/README.md) — each is a self-contained directory with `SKILL.md`, references, and scripts.
+
+---
+
+## 📜 Context Hierarchy
+
+6-level system that ensures agents never hallucinate or go off-track:
+
 ```
+Level 0: Platform ──── ReClaw UXR expertise (built-in)
+Level 1: Company ───── Organization, product, culture, terminology
+Level 2: Product ───── Features, users, domain knowledge
+Level 3: Project ───── Research questions, goals, timeline
+Level 4: Task ──────── Per-task instructions from Kanban cards
+Level 5: Agent ─────── Per-agent system prompts and constraints
+```
+
+Each level is user-editable and composes into the agent's working context. Higher levels override lower levels. This is the single most important quality control mechanism in ReClaw.
+
+---
 
 ## 🏗️ Architecture
 
 ```
 Browser (localhost:3000)
-    ↕
-Frontend (Next.js) → Backend (FastAPI) → Ollama (Local LLMs)
-                         ↕                    ↕
-                    SQLite + LanceDB     Qwen 3.5 / etc.
+    ↕ HTTP/WebSocket
+Frontend (Next.js + React + Tailwind)
+    ↕ REST API + SSE Streaming
+Backend (FastAPI + SQLAlchemy + LanceDB)
+    ↕ Ollama API
+Ollama (Local LLMs: Qwen 3.5, etc.)
 ```
 
-- **Frontend:** Next.js with React, Tailwind CSS, shadcn/ui
-- **Backend:** Python FastAPI (async), SQLAlchemy, LanceDB
-- **LLM:** Ollama running Qwen 3.5 (auto-selected based on hardware)
-- **Vector Store:** LanceDB (embedded, no extra server)
-- **Database:** SQLite (metadata, projects, tasks, findings)
+| Component | Technology | Why |
+|-----------|-----------|-----|
+| Frontend | Next.js 14 + React + Tailwind + Zustand | Rich UI, SSR, great DX |
+| Backend | FastAPI (async) + SQLAlchemy | Best AI/ML ecosystem, async, fast |
+| Vector Store | LanceDB (embedded) | No extra server, low RAM footprint |
+| Database | SQLite (via aiosqlite) | Zero config, reliable, local |
+| LLM | Ollama | Hardware detection, multi-model, REST API |
+| Embedding | nomic-embed-text (via Ollama) | Runs on CPU, tiny footprint |
 
-## 📊 UI Views
-
-| View | Description |
-|------|-------------|
-| 💬 Chat | Conversational interface with RAG-augmented responses |
-| 🔍 Findings | Research findings organized by phase with Atomic Research drill-down |
-| 📋 Kanban | Task board for directing the agent |
-| 🎙️ Interviews | Transcript viewer with auto-highlighted nuggets |
-| 📊 Metrics | Quantitative benchmarks and trend tracking |
-| 📂 Context | Editable company/project/guardrails context layers |
-| 🔄 History | Version history with diffs and rollback |
-
-## 🧩 Skills (40 UXR Methods)
-
-### Discover
-User Interviews • Contextual Inquiry • Diary Studies • Competitive Analysis • Stakeholder Interviews • Survey Design • Analytics Review • Desk Research • Ethnography • Accessibility Audit
-
-### Define
-Affinity Mapping • Persona Creation • Journey Mapping • Empathy Mapping • JTBD Analysis • Problem Statements (HMW) • User Flow Mapping • Thematic Analysis • Research Synthesis • Prioritization Matrix
-
-### Develop
-Usability Testing • Heuristic Evaluation • A/B Test Analysis • Card Sorting • Tree Testing • Concept Testing • Cognitive Walkthrough • Design Critique • Prototype Feedback • Workshop Facilitation
-
-### Deliver
-SUS/UMUX Scoring • NPS Analysis • Task Analysis • Impact Analysis • Design System Audit • Handoff Documentation • Repository Curation • Stakeholder Presentations • Research Retros • Longitudinal Tracking
-
-## 🛠️ Development
-
-```bash
-# Backend
-cd backend
-python -m venv venv
-source venv/bin/activate
-pip install -e ".[dev]"
-uvicorn app.main:app --reload --port 8000
-
-# Frontend (new terminal)
-cd frontend
-npm install
-npm run dev
-
-# Ollama (new terminal)
-ollama serve
-ollama pull qwen3:latest
-```
+---
 
 ## ⌨️ Keyboard Shortcuts
 
 | Shortcut | Action |
 |----------|--------|
-| ⌘K | Search findings |
-| ⌘1-5 | Switch views |
-| ⌘. | Toggle right panel |
-| ? | Keyboard shortcuts help |
-| Esc | Close modal |
+| `⌘K` | Search findings |
+| `⌘1` – `⌘5` | Switch views (Chat, Findings, Tasks, Interviews, Context) |
+| `⌘.` | Toggle right panel |
+| `?` | Show keyboard shortcuts |
+| `Esc` | Close modal / cancel |
+| `Enter` | Send message / confirm |
 
-## 🤖 Agent System
+---
 
-ReClaw runs multiple agents autonomously:
-- **Task Executor** — picks Kanban tasks and runs UXR skills
-- **DevOps Audit** — monitors data integrity and system health
-- **UI Audit** — evaluates heuristics and accessibility
-- **UX Evaluation** — assesses overall platform experience
-- **User Simulation** — end-to-end API testing
-- **Meta-Orchestrator** — coordinates all agents, prevents conflicts
+## 🛠️ Development
 
-## 📜 Context Hierarchy
+```bash
+# Backend
+cd backend && python -m venv venv && source venv/bin/activate
+pip install -e ".[dev]"
+uvicorn app.main:app --reload --port 8000
 
-6-level system prompt hierarchy (source of truth for all agent behavior):
-1. **Platform** — ReClaw UXR expertise (built-in)
-2. **Company** — organization, product, culture, terminology
-3. **Product** — features, users, domain knowledge
-4. **Project** — research questions, goals, timeline
-5. **Task** — per-task instructions from Kanban cards
-6. **Agent** — per-agent system prompts and constraints
+# Frontend
+cd frontend && npm install && npm run dev
+
+# Ollama
+ollama serve && ollama pull qwen3:latest
+```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+---
+
+## 📊 Project Stats
+
+- **204+ files** across backend, frontend, skills, docs
+- **14,000+ lines of code**
+- **45 UXR skills** following OpenClaw standard
+- **5 autonomous agents** with meta-orchestrator
+- **6-level context hierarchy**
+- **Real-time WebSocket** updates
+
+---
+
+## 🗺️ Roadmap
+
+- [x] Core platform (chat, findings, tasks, skills)
+- [x] 45 UXR skills across all Double Diamond phases
+- [x] Multi-agent system with orchestrator
+- [x] Context hierarchy and resource governor
+- [x] Onboarding wizard
+- [x] Atomic Research evidence chains
+- [ ] URL-based routing and deep linking
+- [ ] Audio playback with transcript sync
+- [ ] Messaging integrations (Slack, WhatsApp, Telegram)
+- [ ] Team features (auth, shared knowledge, access control)
+- [ ] Native installers (dmg, exe, AppImage)
+- [ ] Skill marketplace
+
+---
 
 ## 📄 License
 
 MIT — see [LICENSE](LICENSE).
-
-## 🤝 Contributing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions and guidelines.
 
 ---
 
