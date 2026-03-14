@@ -6,6 +6,7 @@ import StatusBar from "@/components/layout/StatusBar";
 import ChatView from "@/components/chat/ChatView";
 import KanbanBoard from "@/components/kanban/KanbanBoard";
 import FindingsView from "@/components/findings/FindingsView";
+import ContextEditor from "@/components/projects/ContextEditor";
 import SettingsView from "@/components/common/SettingsView";
 
 export default function Home() {
@@ -19,6 +20,8 @@ export default function Home() {
         return <KanbanBoard />;
       case "findings":
         return <FindingsView />;
+      case "context":
+        return <ContextEditor />;
       case "settings":
         return <SettingsView />;
       default:
