@@ -7,13 +7,28 @@ import StatusBar from "@/components/layout/StatusBar";
 import ChatView from "@/components/chat/ChatView";
 import KanbanBoard from "@/components/kanban/KanbanBoard";
 import FindingsView from "@/components/findings/FindingsView";
+import InterviewView from "@/components/interviews/InterviewView";
+import MetricsView from "@/components/metrics/MetricsView";
 import ContextEditor from "@/components/projects/ContextEditor";
+import VersionHistory from "@/components/common/VersionHistory";
 import SettingsView from "@/components/common/SettingsView";
+import SearchModal from "@/components/common/SearchModal";
 import ToastNotification from "@/components/common/ToastNotification";
 
 export default function Home() {
   const [activeView, setActiveView] = useState("chat");
   const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+
+  // Global Cmd+K for search
+  if (typeof window !== "undefined") {
+    window.addEventListener("keydown", (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setSearchOpen((prev) => !prev);
+      }
+    });
+  }
 
   const renderView = () => {
     switch (activeView) {
@@ -23,8 +38,14 @@ export default function Home() {
         return <KanbanBoard />;
       case "findings":
         return <FindingsView />;
+      case "interviews":
+        return <InterviewView />;
+      case "metrics":
+        return <MetricsView />;
       case "context":
         return <ContextEditor />;
+      case "history":
+        return <VersionHistory />;
       case "settings":
         return <SettingsView />;
       default:
@@ -35,7 +56,11 @@ export default function Home() {
   return (
     <div className="h-screen flex flex-col">
       <div className="flex-1 flex overflow-hidden">
-        <Sidebar activeView={activeView} onViewChange={setActiveView} />
+        <Sidebar
+          activeView={activeView}
+          onViewChange={setActiveView}
+          onSearchOpen={() => setSearchOpen(true)}
+        />
         <main className="flex-1 flex flex-col overflow-hidden">
           {renderView()}
         </main>
@@ -47,6 +72,7 @@ export default function Home() {
       </div>
       <StatusBar />
       <ToastNotification />
+      <SearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
     </div>
   );
 }
