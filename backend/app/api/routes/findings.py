@@ -379,6 +379,125 @@ async def search_findings(
     }
 
 
+@router.get("/findings/{finding_type}/{finding_id}/evidence-chain")
+async def get_evidence_chain(
+    finding_type: str,
+    finding_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """Get the full evidence chain for a finding — traversing links up and down."""
+    type_map = {
+        "nugget": Nugget, "fact": Fact, "insight": Insight, "recommendation": Recommendation,
+    }
+    model = type_map.get(finding_type)
+    if not model:
+        raise HTTPException(status_code=400, detail=f"Invalid finding type: {finding_type}")
+
+    result = await db.execute(select(model).where(model.id == finding_id))
+    finding = result.scalar_one_or_none()
+    if not finding:
+        raise HTTPException(status_code=404, detail="Finding not found")
+
+    chain = {"recommendation": [], "insight": [], "fact": [], "nugget": []}
+
+    def parse_ids(raw):
+        if not raw:
+            return []
+        try:
+            return json.loads(raw)
+        except (json.JSONDecodeError, TypeError):
+            return []
+
+    project_id = finding.project_id
+
+    if finding_type == "recommendation":
+        # Drill down: rec → insights → facts → nuggets
+        chain["recommendation"] = [RecommendationResponse.from_orm_with_ids(finding)]
+        insight_ids = parse_ids(finding.insight_ids)
+        if insight_ids:
+            rows = await db.execute(select(Insight).where(Insight.id.in_(insight_ids)))
+            linked_insights = rows.scalars().all()
+            chain["insight"] = [InsightResponse.from_orm_with_ids(i) for i in linked_insights]
+            fact_ids = []
+            for i in linked_insights:
+                fact_ids.extend(parse_ids(i.fact_ids))
+            if fact_ids:
+                rows = await db.execute(select(Fact).where(Fact.id.in_(list(set(fact_ids)))))
+                linked_facts = rows.scalars().all()
+                chain["fact"] = [FactResponse.from_orm_with_ids(f) for f in linked_facts]
+                nugget_ids = []
+                for f in linked_facts:
+                    nugget_ids.extend(parse_ids(f.nugget_ids))
+                if nugget_ids:
+                    rows = await db.execute(select(Nugget).where(Nugget.id.in_(list(set(nugget_ids)))))
+                    chain["nugget"] = [NuggetResponse.from_orm_with_tags(n) for n in rows.scalars().all()]
+
+    elif finding_type == "insight":
+        chain["insight"] = [InsightResponse.from_orm_with_ids(finding)]
+        # Down: facts → nuggets
+        fact_ids = parse_ids(finding.fact_ids)
+        if fact_ids:
+            rows = await db.execute(select(Fact).where(Fact.id.in_(fact_ids)))
+            linked_facts = rows.scalars().all()
+            chain["fact"] = [FactResponse.from_orm_with_ids(f) for f in linked_facts]
+            nugget_ids = []
+            for f in linked_facts:
+                nugget_ids.extend(parse_ids(f.nugget_ids))
+            if nugget_ids:
+                rows = await db.execute(select(Nugget).where(Nugget.id.in_(list(set(nugget_ids)))))
+                chain["nugget"] = [NuggetResponse.from_orm_with_tags(n) for n in rows.scalars().all()]
+        # Up: recommendations that link to this insight
+        rows = await db.execute(select(Recommendation).where(Recommendation.project_id == project_id))
+        for rec in rows.scalars().all():
+            if finding_id in parse_ids(rec.insight_ids):
+                chain["recommendation"].append(RecommendationResponse.from_orm_with_ids(rec))
+
+    elif finding_type == "fact":
+        chain["fact"] = [FactResponse.from_orm_with_ids(finding)]
+        # Down: nuggets
+        nugget_ids = parse_ids(finding.nugget_ids)
+        if nugget_ids:
+            rows = await db.execute(select(Nugget).where(Nugget.id.in_(nugget_ids)))
+            chain["nugget"] = [NuggetResponse.from_orm_with_tags(n) for n in rows.scalars().all()]
+        # Up: insights → recommendations
+        rows = await db.execute(select(Insight).where(Insight.project_id == project_id))
+        for insight in rows.scalars().all():
+            if finding_id in parse_ids(insight.fact_ids):
+                chain["insight"].append(InsightResponse.from_orm_with_ids(insight))
+        if chain["insight"]:
+            insight_id_set = {i.id for i in chain["insight"]}
+            rows = await db.execute(select(Recommendation).where(Recommendation.project_id == project_id))
+            for rec in rows.scalars().all():
+                if any(iid in insight_id_set for iid in parse_ids(rec.insight_ids)):
+                    chain["recommendation"].append(RecommendationResponse.from_orm_with_ids(rec))
+
+    elif finding_type == "nugget":
+        chain["nugget"] = [NuggetResponse.from_orm_with_tags(finding)]
+        # Up: facts → insights → recommendations
+        rows = await db.execute(select(Fact).where(Fact.project_id == project_id))
+        for fact in rows.scalars().all():
+            if finding_id in parse_ids(fact.nugget_ids):
+                chain["fact"].append(FactResponse.from_orm_with_ids(fact))
+        if chain["fact"]:
+            fact_id_set = {f.id for f in chain["fact"]}
+            rows = await db.execute(select(Insight).where(Insight.project_id == project_id))
+            for insight in rows.scalars().all():
+                if any(fid in fact_id_set for fid in parse_ids(insight.fact_ids)):
+                    chain["insight"].append(InsightResponse.from_orm_with_ids(insight))
+        if chain["insight"]:
+            insight_id_set = {i.id for i in chain["insight"]}
+            rows = await db.execute(select(Recommendation).where(Recommendation.project_id == project_id))
+            for rec in rows.scalars().all():
+                if any(iid in insight_id_set for iid in parse_ids(rec.insight_ids)):
+                    chain["recommendation"].append(RecommendationResponse.from_orm_with_ids(rec))
+
+    return {
+        "finding_type": finding_type,
+        "finding_id": finding_id,
+        "chain": chain,
+    }
+
+
 @router.get("/findings/summary/{project_id}")
 async def get_findings_summary(project_id: str, db: AsyncSession = Depends(get_db)):
     """Get a summary of all findings for a project, organized by phase."""

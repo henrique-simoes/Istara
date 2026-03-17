@@ -57,6 +57,7 @@ class AgentOrchestrator:
     async def start(self) -> None:
         """Start the autonomous work loop."""
         self._running = True
+        self._wake_event = asyncio.Event()
         logger.info("Agent Orchestrator started.")
         await broadcast_agent_status("idle", "Agent ready, watching for tasks.")
 
@@ -69,7 +70,17 @@ class AgentOrchestrator:
                 await broadcast_agent_status("error", str(e))
                 interval = self._idle_interval
 
-            await asyncio.sleep(interval)
+            # Wait for interval OR immediate wake signal
+            try:
+                await asyncio.wait_for(self._wake_event.wait(), timeout=interval)
+                self._wake_event.clear()
+            except asyncio.TimeoutError:
+                pass
+
+    def wake(self) -> None:
+        """Wake the agent immediately to check for new tasks (e.g. after task assignment)."""
+        if hasattr(self, "_wake_event"):
+            self._wake_event.set()
 
     def stop(self) -> None:
         self._running = False
@@ -107,11 +118,33 @@ class AgentOrchestrator:
             return True
 
     async def _pick_next_task(self, db: AsyncSession) -> Task | None:
-        """Pick the highest priority task that's ready for work."""
-        # Look for tasks in backlog or in_progress (agent can resume)
+        """Pick the highest priority task that's ready for work.
+
+        Priority order:
+        1. Tasks explicitly assigned to this agent (agent_id = 'reclaw-main')
+        2. Unassigned tasks (agent_id IS NULL) — FIFO by position
+        """
+        # First: check for tasks explicitly assigned to the main agent
         result = await db.execute(
             select(Task)
-            .where(Task.status.in_([TaskStatus.BACKLOG, TaskStatus.IN_PROGRESS]))
+            .where(
+                Task.status.in_([TaskStatus.BACKLOG, TaskStatus.IN_PROGRESS]),
+                Task.agent_id == "reclaw-main",
+            )
+            .order_by(Task.position.asc(), Task.created_at.asc())
+            .limit(1)
+        )
+        task = result.scalar_one_or_none()
+        if task:
+            return task
+
+        # Then: pick unassigned tasks
+        result = await db.execute(
+            select(Task)
+            .where(
+                Task.status.in_([TaskStatus.BACKLOG, TaskStatus.IN_PROGRESS]),
+                Task.agent_id.is_(None),
+            )
             .order_by(Task.position.asc(), Task.created_at.asc())
             .limit(1)
         )
@@ -337,7 +370,14 @@ class AgentOrchestrator:
     async def _store_findings(
         self, db: AsyncSession, project_id: str, output: SkillOutput, task: Task
     ) -> None:
-        """Store skill output findings in the database."""
+        """Store skill output findings in the database with evidence chain links.
+
+        The Atomic Research hierarchy is: Nuggets → Facts → Insights → Recommendations.
+        Each level links to the one below via ID arrays (nugget_ids, fact_ids, insight_ids).
+        If skills provide explicit IDs, we use them. Otherwise, we auto-link:
+        all nuggets feed into all facts, all facts feed into all insights, etc.
+        This ensures every finding has traceable evidence.
+        """
         phase = "discover"  # Default — could be inferred from skill
 
         # Determine phase from skill
@@ -345,10 +385,16 @@ class AgentOrchestrator:
         if skill:
             phase = skill.phase.value
 
+        # Track created IDs for auto-linking
+        created_nugget_ids: list[str] = []
+        created_fact_ids: list[str] = []
+        created_insight_ids: list[str] = []
+
         # Store nuggets
         for nugget_data in output.nuggets:
+            nid = str(uuid.uuid4())
             nugget = Nugget(
-                id=str(uuid.uuid4()),
+                id=nid,
                 project_id=project_id,
                 text=nugget_data.get("text", ""),
                 source=nugget_data.get("source", task.title),
@@ -357,34 +403,48 @@ class AgentOrchestrator:
                 phase=phase,
             )
             db.add(nugget)
+            created_nugget_ids.append(nid)
 
-        # Store facts
+        # Store facts — link to nuggets
         for fact_data in output.facts:
+            fid = str(uuid.uuid4())
+            # Use explicit nugget_ids from skill output if provided, else link to all nuggets
+            linked_nuggets = fact_data.get("nugget_ids", created_nugget_ids)
             fact = Fact(
-                id=str(uuid.uuid4()),
+                id=fid,
                 project_id=project_id,
                 text=fact_data.get("text", ""),
+                nugget_ids=json.dumps(linked_nuggets),
                 phase=phase,
             )
             db.add(fact)
+            created_fact_ids.append(fid)
 
-        # Store insights
+        # Store insights — link to facts
         for insight_data in output.insights:
+            iid = str(uuid.uuid4())
+            # Use explicit fact_ids from skill output if provided, else link to all facts
+            linked_facts = insight_data.get("fact_ids", created_fact_ids)
             insight = Insight(
-                id=str(uuid.uuid4()),
+                id=iid,
                 project_id=project_id,
                 text=insight_data.get("text", ""),
+                fact_ids=json.dumps(linked_facts),
                 phase=phase,
                 impact=insight_data.get("impact", "medium"),
             )
             db.add(insight)
+            created_insight_ids.append(iid)
 
-        # Store recommendations
+        # Store recommendations — link to insights
         for rec_data in output.recommendations:
+            # Use explicit insight_ids from skill output if provided, else link to all insights
+            linked_insights = rec_data.get("insight_ids", created_insight_ids)
             rec = Recommendation(
                 id=str(uuid.uuid4()),
                 project_id=project_id,
                 text=rec_data.get("text", ""),
+                insight_ids=json.dumps(linked_insights),
                 phase=phase,
                 priority=rec_data.get("priority", "medium"),
                 effort=rec_data.get("effort", "medium"),

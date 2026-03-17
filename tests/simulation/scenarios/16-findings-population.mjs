@@ -144,6 +144,38 @@ export async function run(ctx) {
     checks.push({ name: "Findings summary API", passed: false, detail: e.message });
   }
 
+  // 5b. Verify evidence chain API — drill from first recommendation
+  try {
+    const allRecs = await api.get(`/api/findings/recommendations?project_id=${ctx.projectId}`);
+    const simRec = allRecs.find((r) => r.text.startsWith("[SIM]"));
+    if (simRec) {
+      const chain = await api.get(`/api/findings/recommendation/${simRec.id}/evidence-chain`);
+      const c = chain.chain || {};
+      const hasInsights = (c.insight || []).length > 0;
+      const hasFacts = (c.fact || []).length > 0;
+      const hasNuggets = (c.nugget || []).length > 0;
+      checks.push({
+        name: "Evidence chain: rec → insights",
+        passed: hasInsights,
+        detail: `${(c.insight || []).length} insights linked`,
+      });
+      checks.push({
+        name: "Evidence chain: rec → facts",
+        passed: hasFacts,
+        detail: `${(c.fact || []).length} facts linked`,
+      });
+      checks.push({
+        name: "Evidence chain: rec → nuggets",
+        passed: hasNuggets,
+        detail: `${(c.nugget || []).length} nuggets linked`,
+      });
+    } else {
+      checks.push({ name: "Evidence chain: find [SIM] rec", passed: false, detail: "No [SIM] recommendation found" });
+    }
+  } catch (e) {
+    checks.push({ name: "Evidence chain API", passed: false, detail: e.message });
+  }
+
   // 6. UI — navigate to Findings view
   await page.goto("http://localhost:3000", { waitUntil: "networkidle" });
   await page.waitForTimeout(2000);
