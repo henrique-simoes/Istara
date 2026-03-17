@@ -153,5 +153,13 @@ class OllamaClient:
         return True
 
 
-# Singleton instance
-ollama = OllamaClient()
+def _create_llm_client():
+    """Create the LLM client based on config."""
+    if settings.llm_provider == "lmstudio":
+        from app.core.lmstudio import LMStudioClient
+        return LMStudioClient()
+    return OllamaClient()
+
+
+# Singleton instance — provider chosen by LLM_PROVIDER env var
+ollama = _create_llm_client()

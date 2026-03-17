@@ -15,32 +15,29 @@ export default function OllamaCheck({ onRetry }: OllamaCheckProps) {
         </div>
 
         <h1 className="text-xl font-bold text-slate-900 dark:text-white mb-2">
-          Ollama Not Connected
+          LLM Provider Not Connected
         </h1>
         <p className="text-slate-500 mb-6">
-          ReClaw needs Ollama running locally to power the AI. It provides the language models
-          that analyze your research data.
+          ReClaw needs a local LLM provider (LM Studio or Ollama) running to power the AI.
+          It provides the language models that analyze your research data.
         </p>
 
         <div className="bg-slate-900 dark:bg-slate-800 rounded-xl p-4 text-left mb-6">
           <div className="flex items-center gap-2 text-slate-400 text-xs mb-3">
             <Terminal size={12} />
-            <span>If using Docker (recommended)</span>
+            <span>LM Studio (recommended)</span>
           </div>
           <div className="font-mono text-sm space-y-1 mb-4">
-            <p className="text-slate-400"># Restart all services</p>
-            <p className="text-green-400">docker compose down && docker compose up</p>
-            <p className="text-slate-400 mt-2"># Pull a model</p>
-            <p className="text-green-400">docker exec reclaw-ollama ollama pull qwen3:latest</p>
+            <p className="text-slate-400"># Open LM Studio and start the local server</p>
+            <p className="text-green-400">lms server start</p>
+            <p className="text-slate-400 mt-2"># Load a model in the LM Studio UI</p>
           </div>
           <div className="flex items-center gap-2 text-slate-400 text-xs mb-2">
             <Terminal size={12} />
-            <span>If running locally (without Docker)</span>
+            <span>Or use Ollama</span>
           </div>
           <div className="font-mono text-sm space-y-1">
-            <p className="text-slate-400"># Install Ollama</p>
-            <p className="text-green-400">curl -fsSL https://ollama.com/install.sh | sh</p>
-            <p className="text-slate-400 mt-2"># Start Ollama</p>
+            <p className="text-slate-400"># Start Ollama</p>
             <p className="text-green-400">ollama serve</p>
             <p className="text-slate-400 mt-2"># Pull a model</p>
             <p className="text-green-400">ollama pull qwen3:latest</p>
@@ -56,7 +53,7 @@ export default function OllamaCheck({ onRetry }: OllamaCheckProps) {
         </button>
 
         <p className="text-xs text-slate-400 mt-4">
-          If using Docker, Ollama starts automatically via docker-compose.
+          Set LLM_PROVIDER=lmstudio or LLM_PROVIDER=ollama in your backend .env file.
         </p>
       </div>
     </div>

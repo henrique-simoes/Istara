@@ -9,6 +9,9 @@ export function useWebSocket(onEvent?: (event: WSEvent) => void) {
   const wsRef = useRef<WebSocket | null>(null);
   const [connected, setConnected] = useState(false);
   const reconnectTimer = useRef<ReturnType<typeof setTimeout>>();
+  // Store callback in a ref so reconnect logic never depends on it
+  const onEventRef = useRef(onEvent);
+  onEventRef.current = onEvent;
 
   const connect = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) return;
@@ -27,7 +30,7 @@ export function useWebSocket(onEvent?: (event: WSEvent) => void) {
           ws.send(JSON.stringify({ type: "pong" }));
           return;
         }
-        onEvent?.(data);
+        onEventRef.current?.(data);
       } catch {
         // Skip malformed messages
       }
@@ -44,7 +47,7 @@ export function useWebSocket(onEvent?: (event: WSEvent) => void) {
     };
 
     wsRef.current = ws;
-  }, [onEvent]);
+  }, []);
 
   useEffect(() => {
     connect();
