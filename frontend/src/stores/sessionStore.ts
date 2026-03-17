@@ -9,10 +9,13 @@ interface SessionStore {
   activeSessionId: string | null;
   presets: Record<string, InferencePresetConfig> | null;
   loading: boolean;
+  /** Pending message to auto-send when ChatView mounts (set by "Send to Agent" flow) */
+  pendingPrefill: string | null;
 
   fetchSessions: (projectId: string) => Promise<void>;
   createSession: (projectId: string, title?: string, agentId?: string) => Promise<ChatSession>;
   selectSession: (id: string | null) => void;
+  setPendingPrefill: (message: string | null) => void;
   updateSession: (id: string, data: Record<string, unknown>) => Promise<void>;
   deleteSession: (id: string) => Promise<void>;
   toggleStar: (id: string) => Promise<void>;
@@ -28,6 +31,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   activeSessionId: null,
   presets: null,
   loading: false,
+  pendingPrefill: null,
 
   fetchSessions: async (projectId) => {
     set({ loading: true });
@@ -50,6 +54,8 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   },
 
   selectSession: (id) => set({ activeSessionId: id }),
+
+  setPendingPrefill: (message) => set({ pendingPrefill: message }),
 
   updateSession: async (id, data) => {
     const updated = await sessionsApi.update(id, data);

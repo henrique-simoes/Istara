@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
   ArrowLeft,
   Target,
@@ -11,7 +11,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { findings as findingsApi } from "@/lib/api";
-import { cn, confidenceColor } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import type { Nugget, Fact, Insight, Recommendation } from "@/lib/types";
 
 interface AtomicDrilldownProps {
@@ -25,21 +25,72 @@ interface AtomicDrilldownProps {
   onClose: () => void;
 }
 
-export default function AtomicDrilldown({ projectId, finding, onClose }: AtomicDrilldownProps) {
-  const [nuggets, setNuggets] = useState<Nugget[]>([]);
-  const [facts, setFacts] = useState<Fact[]>([]);
-  const [insights, setInsights] = useState<Insight[]>([]);
-  const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
+type FindingType = "recommendation" | "insight" | "fact" | "nugget";
 
-  useEffect(() => {
-    findingsApi.nuggets(projectId).then(setNuggets).catch(() => {});
-    findingsApi.facts(projectId).then(setFacts).catch(() => {});
-    findingsApi.insights(projectId).then(setInsights).catch(() => {});
-    findingsApi.recommendations(projectId).then(setRecommendations).catch(() => {});
+interface ChainData {
+  recommendation: Recommendation[];
+  insight: Insight[];
+  fact: Fact[];
+  nugget: Nugget[];
+}
+
+const EMPTY_CHAIN: ChainData = { recommendation: [], insight: [], fact: [], nugget: [] };
+
+export default function AtomicDrilldown({ projectId, finding: initialFinding, onClose }: AtomicDrilldownProps) {
+  const [activeFinding, setActiveFinding] = useState(initialFinding);
+  const [chain, setChain] = useState<ChainData>(EMPTY_CHAIN);
+  const [loading, setLoading] = useState(true);
+  // Navigation history for breadcrumb traversal
+  const [history, setHistory] = useState<Array<{ id: string; type: FindingType; text: string }>>([initialFinding]);
+
+  const loadChain = useCallback(async (type: string, id: string) => {
+    setLoading(true);
+    try {
+      const result = await findingsApi.evidenceChain(type, id);
+      setChain(result.chain || EMPTY_CHAIN);
+    } catch {
+      // Fallback: load all findings and try local linking
+      try {
+        const [nuggets, facts, insights, recs] = await Promise.all([
+          findingsApi.nuggets(projectId),
+          findingsApi.facts(projectId),
+          findingsApi.insights(projectId),
+          findingsApi.recommendations(projectId),
+        ]);
+        setChain(buildLocalChain({ id, type }, recs, insights, facts, nuggets));
+      } catch {
+        setChain(EMPTY_CHAIN);
+      }
+    }
+    setLoading(false);
   }, [projectId]);
 
-  // Build the evidence chain based on finding type
-  const chain = buildChain(finding, recommendations, insights, facts, nuggets);
+  useEffect(() => {
+    loadChain(activeFinding.type, activeFinding.id);
+  }, [activeFinding, loadChain]);
+
+  // Navigate to a different finding in the chain
+  const drillTo = (type: FindingType, item: { id: string; text: string }) => {
+    const newFinding = { id: item.id, type, text: item.text };
+    setHistory((prev) => [...prev, newFinding]);
+    setActiveFinding(newFinding);
+  };
+
+  // Breadcrumb navigation — click a level to filter to that type
+  const breadcrumbLevels: { type: FindingType; label: string; icon: string }[] = [
+    { type: "recommendation", label: "Recommendations", icon: "🎯" },
+    { type: "insight", label: "Insights", icon: "💡" },
+    { type: "fact", label: "Facts", icon: "📄" },
+    { type: "nugget", label: "Nuggets", icon: "✨" },
+  ];
+
+  const jumpToLevel = (type: FindingType) => {
+    // Find the first item of that type in the chain
+    const items = chain[type];
+    if (items.length > 0) {
+      drillTo(type, items[0] as any);
+    }
+  };
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
@@ -64,106 +115,147 @@ export default function AtomicDrilldown({ projectId, finding, onClose }: AtomicD
 
         {/* Chain visualization */}
         <div className="flex-1 overflow-y-auto p-4">
-          {/* Breadcrumb */}
-          <div className="flex items-center gap-1 text-xs text-slate-400 mb-6">
-            <span className="text-reclaw-600 font-medium">🎯 Recommendations</span>
+          {/* Clickable Breadcrumb */}
+          <div className="flex items-center gap-1 text-xs text-slate-400 mb-6 flex-wrap">
+            {breadcrumbLevels.map((level, idx) => {
+              const isActive = activeFinding.type === level.type;
+              const hasItems = chain[level.type]?.length > 0;
+              return (
+                <span key={level.type} className="flex items-center gap-1">
+                  {idx > 0 && <ChevronRight size={12} />}
+                  <button
+                    onClick={() => hasItems && jumpToLevel(level.type)}
+                    disabled={!hasItems}
+                    className={cn(
+                      "px-1.5 py-0.5 rounded transition-colors",
+                      isActive
+                        ? "text-reclaw-600 font-semibold bg-reclaw-50 dark:bg-reclaw-900/20"
+                        : hasItems
+                          ? "hover:text-reclaw-500 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                          : "opacity-40 cursor-default"
+                    )}
+                  >
+                    {level.icon} {level.label}
+                    {hasItems && (
+                      <span className="ml-1 text-[10px] text-slate-400">
+                        ({chain[level.type].length})
+                      </span>
+                    )}
+                  </button>
+                </span>
+              );
+            })}
             <ChevronRight size={12} />
-            <span>💡 Insights</span>
-            <ChevronRight size={12} />
-            <span>📄 Facts</span>
-            <ChevronRight size={12} />
-            <span>✨ Nuggets</span>
-            <ChevronRight size={12} />
-            <span>📁 Sources</span>
+            <span className="opacity-40">📁 Sources</span>
           </div>
 
-          {/* The selected finding (highlighted) */}
-          <div className="mb-6">
-            <ChainLevel
-              icon={getIcon(finding.type)}
-              label={finding.type.charAt(0).toUpperCase() + finding.type.slice(1)}
-              color={getColor(finding.type)}
-              highlighted
-            >
-              <div className="p-3 rounded-lg bg-reclaw-50 dark:bg-reclaw-900/20 border-2 border-reclaw-300 dark:border-reclaw-700">
-                <p className="text-sm text-slate-900 dark:text-white font-medium">
-                  {finding.text}
-                </p>
-              </div>
-            </ChainLevel>
-          </div>
-
-          {/* Supporting evidence */}
-          {chain.recommendations.length > 0 && finding.type !== "recommendation" && (
-            <ChainLevel icon={Target} label="Recommendations" color="text-green-600">
-              {chain.recommendations.map((r) => (
-                <EvidenceCard key={r.id} text={r.text} badges={[r.priority, r.effort]} />
-              ))}
-            </ChainLevel>
-          )}
-
-          {chain.insights.length > 0 && finding.type !== "insight" && (
-            <ChainLevel icon={Lightbulb} label="Insights" color="text-yellow-600">
-              {chain.insights.map((i) => (
-                <EvidenceCard
-                  key={i.id}
-                  text={i.text}
-                  badges={[`${Math.round(i.confidence * 100)}% confidence`, i.impact]}
-                />
-              ))}
-            </ChainLevel>
-          )}
-
-          {chain.facts.length > 0 && finding.type !== "fact" && (
-            <ChainLevel icon={FileText} label="Facts" color="text-blue-600">
-              {chain.facts.map((f) => (
-                <EvidenceCard key={f.id} text={f.text} />
-              ))}
-            </ChainLevel>
-          )}
-
-          {chain.nuggets.length > 0 && finding.type !== "nugget" && (
-            <ChainLevel icon={Sparkles} label="Nuggets (Raw Evidence)" color="text-purple-600">
-              {chain.nuggets.map((n) => (
-                <EvidenceCard
-                  key={n.id}
-                  text={n.text}
-                  source={n.source}
-                  sourceLocation={n.source_location}
-                  tags={n.tags}
-                />
-              ))}
-            </ChainLevel>
-          )}
-
-          {/* If we're at nugget level, show source */}
-          {finding.type === "nugget" && (
-            <ChainLevel icon={ExternalLink} label="Source" color="text-slate-600">
-              {nuggets
-                .filter((n) => n.id === finding.id)
-                .map((n) => (
-                  <div key={n.id} className="text-sm text-slate-600 dark:text-slate-400">
-                    <p>
-                      📁 <span className="font-mono">{n.source}</span>
+          {loading ? (
+            <div className="text-center py-8 text-slate-400 text-sm">Loading evidence chain...</div>
+          ) : (
+            <>
+              {/* The selected finding (highlighted) */}
+              <div className="mb-6">
+                <ChainLevel
+                  icon={getIcon(activeFinding.type)}
+                  label={activeFinding.type.charAt(0).toUpperCase() + activeFinding.type.slice(1)}
+                  color={getColor(activeFinding.type)}
+                  highlighted
+                >
+                  <div className="p-3 rounded-lg bg-reclaw-50 dark:bg-reclaw-900/20 border-2 border-reclaw-300 dark:border-reclaw-700">
+                    <p className="text-sm text-slate-900 dark:text-white font-medium">
+                      {activeFinding.text}
                     </p>
-                    {n.source_location && <p className="text-xs">@ {n.source_location}</p>}
                   </div>
-                ))}
-            </ChainLevel>
-          )}
-
-          {/* Empty state */}
-          {chain.insights.length === 0 &&
-            chain.facts.length === 0 &&
-            chain.nuggets.length === 0 &&
-            chain.recommendations.length === 0 && (
-              <div className="text-center py-8 text-slate-400">
-                <p className="text-sm">No linked evidence found yet.</p>
-                <p className="text-xs mt-1">
-                  As you run more skills, findings will be linked automatically.
-                </p>
+                </ChainLevel>
               </div>
-            )}
+
+              {/* Supporting evidence — show levels OTHER than the active one */}
+              {activeFinding.type !== "recommendation" && chain.recommendation.length > 0 && (
+                <ChainLevel icon={Target} label="Recommendations" color="text-green-600">
+                  {chain.recommendation.map((r: any) => (
+                    <EvidenceCard
+                      key={r.id}
+                      text={r.text}
+                      badges={[r.priority, r.effort].filter(Boolean)}
+                      onClick={() => drillTo("recommendation", r)}
+                    />
+                  ))}
+                </ChainLevel>
+              )}
+
+              {activeFinding.type !== "insight" && chain.insight.length > 0 && (
+                <ChainLevel icon={Lightbulb} label="Insights" color="text-yellow-600">
+                  {chain.insight.map((i: any) => (
+                    <EvidenceCard
+                      key={i.id}
+                      text={i.text}
+                      badges={[
+                        i.confidence != null ? `${Math.round(i.confidence * 100)}% confidence` : "",
+                        i.impact,
+                      ].filter(Boolean)}
+                      onClick={() => drillTo("insight", i)}
+                    />
+                  ))}
+                </ChainLevel>
+              )}
+
+              {activeFinding.type !== "fact" && chain.fact.length > 0 && (
+                <ChainLevel icon={FileText} label="Facts" color="text-blue-600">
+                  {chain.fact.map((f: any) => (
+                    <EvidenceCard
+                      key={f.id}
+                      text={f.text}
+                      onClick={() => drillTo("fact", f)}
+                    />
+                  ))}
+                </ChainLevel>
+              )}
+
+              {activeFinding.type !== "nugget" && chain.nugget.length > 0 && (
+                <ChainLevel icon={Sparkles} label="Nuggets (Raw Evidence)" color="text-purple-600">
+                  {chain.nugget.map((n: any) => (
+                    <EvidenceCard
+                      key={n.id}
+                      text={n.text}
+                      source={n.source}
+                      sourceLocation={n.source_location}
+                      tags={n.tags}
+                      onClick={() => drillTo("nugget", n)}
+                    />
+                  ))}
+                </ChainLevel>
+              )}
+
+              {/* If we're at nugget level, show source */}
+              {activeFinding.type === "nugget" && chain.nugget.length > 0 && (
+                <ChainLevel icon={ExternalLink} label="Source" color="text-slate-600">
+                  {chain.nugget
+                    .filter((n: any) => n.id === activeFinding.id)
+                    .map((n: any) => (
+                      <div key={n.id} className="text-sm text-slate-600 dark:text-slate-400">
+                        <p>
+                          📁 <span className="font-mono">{n.source}</span>
+                        </p>
+                        {n.source_location && <p className="text-xs">@ {n.source_location}</p>}
+                      </div>
+                    ))}
+                </ChainLevel>
+              )}
+
+              {/* Empty state — only show if NO linked evidence at all */}
+              {chain.insight.length === 0 &&
+                chain.fact.length === 0 &&
+                chain.nugget.length === 0 &&
+                chain.recommendation.length === 0 && (
+                  <div className="text-center py-8 text-slate-400">
+                    <p className="text-sm">No linked evidence found yet.</p>
+                    <p className="text-xs mt-1">
+                      As you run more skills, findings will be linked automatically.
+                    </p>
+                  </div>
+                )}
+            </>
+          )}
         </div>
       </div>
     </div>
@@ -172,16 +264,14 @@ export default function AtomicDrilldown({ projectId, finding, onClose }: AtomicD
 
 // --- Helpers ---
 
-function buildChain(
+/** Local fallback chain builder when API endpoint isn't available */
+function buildLocalChain(
   finding: { id: string; type: string },
   recs: Recommendation[],
   insights: Insight[],
   facts: Fact[],
   nuggets: Nugget[]
-) {
-  // Follow real relationships via linked IDs where available
-  // Fall back to showing all findings at same phase when no links exist
-
+): ChainData {
   const parseIds = (json: string | string[]): string[] => {
     if (Array.isArray(json)) return json;
     if (!json) return [];
@@ -194,56 +284,52 @@ function buildChain(
       const linkedInsightIds = rec ? parseIds(rec.insight_ids) : [];
       const linkedInsights = linkedInsightIds.length > 0
         ? insights.filter((i) => linkedInsightIds.includes(i.id))
-        : insights.slice(0, 5);
-
+        : [];
       const allFactIds = linkedInsights.flatMap((i) => parseIds(i.fact_ids));
       const linkedFacts = allFactIds.length > 0
         ? facts.filter((f) => allFactIds.includes(f.id))
-        : facts.slice(0, 5);
-
+        : [];
       const allNuggetIds = linkedFacts.flatMap((f) => parseIds(f.nugget_ids));
       const linkedNuggets = allNuggetIds.length > 0
         ? nuggets.filter((n) => allNuggetIds.includes(n.id))
-        : nuggets.slice(0, 8);
-
-      return { recommendations: [], insights: linkedInsights, facts: linkedFacts, nuggets: linkedNuggets };
+        : [];
+      return { recommendation: rec ? [rec] : [], insight: linkedInsights, fact: linkedFacts, nugget: linkedNuggets };
     }
     case "insight": {
       const insight = insights.find((i) => i.id === finding.id);
       const linkedFactIds = insight ? parseIds(insight.fact_ids) : [];
       const linkedFacts = linkedFactIds.length > 0
         ? facts.filter((f) => linkedFactIds.includes(f.id))
-        : facts.slice(0, 5);
-
+        : [];
       const allNuggetIds = linkedFacts.flatMap((f) => parseIds(f.nugget_ids));
       const linkedNuggets = allNuggetIds.length > 0
         ? nuggets.filter((n) => allNuggetIds.includes(n.id))
-        : nuggets.slice(0, 8);
-
-      // Find recommendations that link to this insight
+        : [];
       const linkedRecs = recs.filter((r) => parseIds(r.insight_ids).includes(finding.id));
-
-      return { recommendations: linkedRecs.length > 0 ? linkedRecs : recs.slice(0, 3), insights: [], facts: linkedFacts, nuggets: linkedNuggets };
+      return { recommendation: linkedRecs, insight: insight ? [insight] : [], fact: linkedFacts, nugget: linkedNuggets };
     }
     case "fact": {
       const fact = facts.find((f) => f.id === finding.id);
       const linkedNuggetIds = fact ? parseIds(fact.nugget_ids) : [];
       const linkedNuggets = linkedNuggetIds.length > 0
         ? nuggets.filter((n) => linkedNuggetIds.includes(n.id))
-        : nuggets.slice(0, 8);
-
-      // Find insights that reference this fact
+        : [];
       const linkedInsights = insights.filter((i) => parseIds(i.fact_ids).includes(finding.id));
-
-      return { recommendations: [], insights: linkedInsights.length > 0 ? linkedInsights : insights.slice(0, 3), facts: [], nuggets: linkedNuggets };
+      const insightIdSet = new Set(linkedInsights.map((i) => i.id));
+      const linkedRecs = recs.filter((r) => parseIds(r.insight_ids).some((id) => insightIdSet.has(id)));
+      return { recommendation: linkedRecs, insight: linkedInsights, fact: fact ? [fact] : [], nugget: linkedNuggets };
     }
     case "nugget": {
-      // Find facts that reference this nugget
       const linkedFacts = facts.filter((f) => parseIds(f.nugget_ids).includes(finding.id));
-      return { recommendations: [], insights: [], facts: linkedFacts.length > 0 ? linkedFacts : facts.slice(0, 3), nuggets: [] };
+      const factIdSet = new Set(linkedFacts.map((f) => f.id));
+      const linkedInsights = insights.filter((i) => parseIds(i.fact_ids).some((id) => factIdSet.has(id)));
+      const insightIdSet = new Set(linkedInsights.map((i) => i.id));
+      const linkedRecs = recs.filter((r) => parseIds(r.insight_ids).some((id) => insightIdSet.has(id)));
+      const nugget = nuggets.find((n) => n.id === finding.id);
+      return { recommendation: linkedRecs, insight: linkedInsights, fact: linkedFacts, nugget: nugget ? [nugget] : [] };
     }
     default:
-      return { recommendations: [], insights: [], facts: [], nuggets: [] };
+      return EMPTY_CHAIN;
   }
 }
 
@@ -299,15 +385,23 @@ function EvidenceCard({
   sourceLocation,
   badges,
   tags,
+  onClick,
 }: {
   text: string;
   source?: string;
   sourceLocation?: string;
   badges?: string[];
   tags?: string[];
+  onClick?: () => void;
 }) {
   return (
-    <div className="p-2.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+    <div
+      onClick={onClick}
+      className={cn(
+        "p-2.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700",
+        onClick && "cursor-pointer hover:border-reclaw-300 dark:hover:border-reclaw-700 hover:shadow-sm transition-all"
+      )}
+    >
       <p className="text-xs text-slate-700 dark:text-slate-300">{text}</p>
       <div className="flex items-center gap-2 mt-1.5 flex-wrap">
         {source && (
@@ -332,6 +426,9 @@ function EvidenceCard({
             {tag}
           </span>
         ))}
+        {onClick && (
+          <span className="text-[10px] text-reclaw-500 ml-auto">Click to drill in →</span>
+        )}
       </div>
     </div>
   );

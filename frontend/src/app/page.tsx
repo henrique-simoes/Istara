@@ -63,17 +63,23 @@ export default function Home() {
       } else if (detail?.view) {
         setActiveView(detail.view);
         // If navigating to chat with a specific agent, create/find a session for that agent
-        if (detail.agent_id && detail.view === "chat") {
-          const { sessions, createSession, selectSession } = useSessionStore.getState();
+        if (detail.view === "chat") {
+          const { sessions, createSession, selectSession, setPendingPrefill } = useSessionStore.getState();
           const { activeProjectId } = useProjectStore.getState();
           if (activeProjectId) {
-            const existing = sessions.find((s) => s.agent_id === detail.agent_id);
-            if (existing) {
-              selectSession(existing.id);
-            } else {
-              const agents = useAgentStore.getState().agents;
-              const agent = agents.find((a) => a.id === detail.agent_id);
-              await createSession(activeProjectId, `Chat with ${agent?.name || "Agent"}`, detail.agent_id);
+            if (detail.agent_id) {
+              const existing = sessions.find((s) => s.agent_id === detail.agent_id);
+              if (existing) {
+                selectSession(existing.id);
+              } else {
+                const agents = useAgentStore.getState().agents;
+                const agent = agents.find((a) => a.id === detail.agent_id);
+                await createSession(activeProjectId, `Chat with ${agent?.name || "Agent"}`, detail.agent_id);
+              }
+            }
+            // If a prefill message was provided (e.g. from "Send to Agent"), queue it
+            if (detail.prefill) {
+              setPendingPrefill(detail.prefill);
             }
           }
         }

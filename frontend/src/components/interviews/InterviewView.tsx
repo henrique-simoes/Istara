@@ -230,7 +230,7 @@ function SendToAgentButton({
             <span className="text-sm">🐾</span> ReClaw (Main)
           </button>
           {agents
-            .filter((a) => a.is_active)
+            .filter((a) => a.is_active && a.id !== "reclaw-main")
             .map((agent) => (
               <button
                 key={agent.id}

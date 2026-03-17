@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.database import get_db
 from app.models.task import Task, TaskStatus
+from app.core.agent import agent as agent_orchestrator
 
 router = APIRouter()
 
@@ -134,6 +135,11 @@ async def update_task(
 
     await db.commit()
     await db.refresh(task)
+
+    # If an agent was assigned, wake the orchestrator to pick up the task immediately
+    if "agent_id" in update_data and update_data["agent_id"]:
+        agent_orchestrator.wake()
+
     return task
 
 
