@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Send, Paperclip, Loader2, StopCircle, Upload, User, Settings2, Bot, Zap, ChevronDown, HelpCircle } from "lucide-react";
+import { Send, Paperclip, Loader2, StopCircle, Upload, User, Settings2, Bot, Zap, ChevronDown, HelpCircle, X, AlertTriangle } from "lucide-react";
 import { useChatStore } from "@/stores/chatStore";
 import { useProjectStore } from "@/stores/projectStore";
 import { useSessionStore } from "@/stores/sessionStore";
@@ -39,6 +39,155 @@ const PRESET_INFO: Record<string, { icon: string; label: string; desc: string }>
   custom: { icon: "🔧", label: "Custom", desc: "Your own temperature, tokens, context." },
 };
 
+function CustomLLMPanel({
+  session,
+  onUpdate,
+  onClose,
+}: {
+  session: any;
+  onUpdate: (data: Record<string, unknown>) => void;
+  onClose: () => void;
+}) {
+  const custom = session.custom_llm_settings || {};
+  const [temperature, setTemperature] = useState(custom.temperature ?? 0.7);
+  const [maxTokens, setMaxTokens] = useState(custom.max_tokens ?? 2048);
+  const [topP, setTopP] = useState(custom.top_p ?? 0.9);
+  const [reasoning, setReasoning] = useState(custom.reasoning ?? "balanced");
+
+  const isHighResource = maxTokens > 4096 || (reasoning === "deep" && temperature < 0.3);
+
+  const save = () => {
+    onUpdate({
+      inference_preset: "custom",
+      custom_llm_settings: { temperature, max_tokens: maxTokens, top_p: topP, reasoning },
+    });
+    onClose();
+  };
+
+  return (
+    <div className="absolute top-full left-0 mt-1 z-50 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl p-4 min-w-[320px]">
+      <div className="flex items-center justify-between mb-3">
+        <h4 className="text-sm font-semibold text-slate-900 dark:text-white">Custom LLM Settings</h4>
+        <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-0.5">
+          <X size={14} />
+        </button>
+      </div>
+
+      {/* Reasoning Level */}
+      <div className="mb-4">
+        <label className="text-xs font-medium text-slate-700 dark:text-slate-300 mb-1 block">
+          Reasoning Depth
+        </label>
+        <div className="grid grid-cols-3 gap-1">
+          {(["quick", "balanced", "deep"] as const).map((level) => (
+            <button
+              key={level}
+              onClick={() => setReasoning(level)}
+              className={cn(
+                "py-1.5 px-2 text-xs rounded-md transition-colors capitalize",
+                reasoning === level
+                  ? "bg-reclaw-600 text-white"
+                  : "bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-200"
+              )}
+            >
+              {level === "quick" ? "⚡ Quick" : level === "balanced" ? "⚖️ Balanced" : "🧠 Deep"}
+            </button>
+          ))}
+        </div>
+        <p className="text-[10px] text-slate-400 mt-1">
+          {reasoning === "quick" ? "Fast responses, less analysis" : reasoning === "balanced" ? "Good mix of speed and depth" : "Maximum analysis, slower responses"}
+        </p>
+      </div>
+
+      {/* Temperature */}
+      <div className="mb-4">
+        <div className="flex items-center justify-between mb-1">
+          <label className="text-xs font-medium text-slate-700 dark:text-slate-300">
+            Temperature
+          </label>
+          <span className="text-xs text-slate-500 font-mono">{temperature.toFixed(2)}</span>
+        </div>
+        <input
+          type="range"
+          min="0"
+          max="1.5"
+          step="0.05"
+          value={temperature}
+          onChange={(e) => setTemperature(parseFloat(e.target.value))}
+          className="w-full h-1.5 rounded-full appearance-none bg-slate-200 dark:bg-slate-700 accent-reclaw-600"
+        />
+        <div className="flex justify-between text-[10px] text-slate-400 mt-0.5">
+          <span>Precise</span>
+          <span>Creative</span>
+        </div>
+      </div>
+
+      {/* Max Tokens */}
+      <div className="mb-4">
+        <div className="flex items-center justify-between mb-1">
+          <label className="text-xs font-medium text-slate-700 dark:text-slate-300">
+            Max Output Tokens
+          </label>
+          <span className="text-xs text-slate-500 font-mono">{maxTokens}</span>
+        </div>
+        <input
+          type="range"
+          min="256"
+          max="8192"
+          step="256"
+          value={maxTokens}
+          onChange={(e) => setMaxTokens(parseInt(e.target.value))}
+          className="w-full h-1.5 rounded-full appearance-none bg-slate-200 dark:bg-slate-700 accent-reclaw-600"
+        />
+        <div className="flex justify-between text-[10px] text-slate-400 mt-0.5">
+          <span>Short (256)</span>
+          <span>Long (8192)</span>
+        </div>
+      </div>
+
+      {/* Top P */}
+      <div className="mb-4">
+        <div className="flex items-center justify-between mb-1">
+          <label className="text-xs font-medium text-slate-700 dark:text-slate-300">
+            Top P (Nucleus Sampling)
+          </label>
+          <span className="text-xs text-slate-500 font-mono">{topP.toFixed(2)}</span>
+        </div>
+        <input
+          type="range"
+          min="0.1"
+          max="1.0"
+          step="0.05"
+          value={topP}
+          onChange={(e) => setTopP(parseFloat(e.target.value))}
+          className="w-full h-1.5 rounded-full appearance-none bg-slate-200 dark:bg-slate-700 accent-reclaw-600"
+        />
+        <div className="flex justify-between text-[10px] text-slate-400 mt-0.5">
+          <span>Focused</span>
+          <span>Diverse</span>
+        </div>
+      </div>
+
+      {/* Resource warning */}
+      {isHighResource && (
+        <div className="mb-3 p-2 rounded-md bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+          <p className="text-[10px] text-amber-700 dark:text-amber-400 flex items-center gap-1">
+            <AlertTriangle size={10} /> High resource usage — may slow other agents or exceed local GPU memory.
+          </p>
+        </div>
+      )}
+
+      {/* Save */}
+      <button
+        onClick={save}
+        className="w-full py-1.5 bg-reclaw-600 text-white text-xs font-medium rounded-md hover:bg-reclaw-700 transition-colors"
+      >
+        Apply Settings
+      </button>
+    </div>
+  );
+}
+
 function ChatToolbar({
   activeSession,
   agents,
@@ -50,6 +199,7 @@ function ChatToolbar({
 }) {
   const [showPresets, setShowPresets] = useState(false);
   const [showAgents, setShowAgents] = useState(false);
+  const [showCustomPanel, setShowCustomPanel] = useState(false);
 
   if (!activeSession) return null;
 
@@ -123,7 +273,15 @@ function ChatToolbar({
             {Object.entries(PRESET_INFO).map(([key, info]) => (
               <button
                 key={key}
-                onClick={() => { onUpdateSession({ inference_preset: key }); setShowPresets(false); }}
+                onClick={() => {
+                  if (key === "custom") {
+                    setShowPresets(false);
+                    setShowCustomPanel(true);
+                  } else {
+                    onUpdateSession({ inference_preset: key });
+                    setShowPresets(false);
+                  }
+                }}
                 className={cn(
                   "w-full text-left px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-700",
                   currentPreset === key && "bg-reclaw-50 dark:bg-reclaw-900/20"
@@ -140,6 +298,13 @@ function ChatToolbar({
               </button>
             ))}
           </div>
+        )}
+        {showCustomPanel && (
+          <CustomLLMPanel
+            session={activeSession}
+            onUpdate={onUpdateSession}
+            onClose={() => setShowCustomPanel(false)}
+          />
         )}
       </div>
 

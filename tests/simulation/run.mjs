@@ -130,6 +130,9 @@ async function loadScenarios() {
     "14-agent-communication",
     "15-vector-db",
     "16-findings-population",
+    "17-full-pipeline",
+    "18-task-verification",
+    "19-file-preview",
   ];
 
   const scenarios = [];

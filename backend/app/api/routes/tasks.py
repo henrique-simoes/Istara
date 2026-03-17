@@ -159,6 +159,37 @@ async def move_task(
     return task
 
 
+@router.post("/tasks/{task_id}/verify")
+async def verify_task(task_id: str, db: AsyncSession = Depends(get_db)):
+    """Verify a task's output quality before marking as done."""
+    task = (await db.execute(select(Task).where(Task.id == task_id))).scalar_one_or_none()
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    issues = []
+    if not task.agent_notes or len(task.agent_notes) < 20:
+        issues.append("Agent notes are empty or too brief")
+    if "Error:" in (task.agent_notes or ""):
+        issues.append("Agent notes contain error messages")
+    if "No files provided" in (task.agent_notes or ""):
+        issues.append("Task failed due to missing files")
+    if task.progress < 1.0:
+        issues.append(f"Task progress incomplete ({task.progress})")
+
+    verified = len(issues) == 0
+
+    if verified and task.status == TaskStatus.IN_REVIEW:
+        task.status = TaskStatus.DONE
+        await db.commit()
+
+    return {
+        "task_id": task_id,
+        "verified": verified,
+        "issues": issues,
+        "status": task.status.value,
+    }
+
+
 @router.delete("/tasks/{task_id}", status_code=204)
 async def delete_task(task_id: str, db: AsyncSession = Depends(get_db)):
     """Delete a task."""

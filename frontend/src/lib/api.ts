@@ -152,6 +152,10 @@ export const files = {
   },
   list: (projectId: string) => request<any>(`/api/files/${projectId}`),
   stats: (projectId: string) => request<any>(`/api/files/${projectId}/stats`),
+  content: (projectId: string, filename: string) =>
+    request<{ filename: string; type: string; content: string | null; media_url?: string; pages?: number; size: number }>(
+      `/api/files/${projectId}/content/${encodeURIComponent(filename)}`
+    ),
 };
 
 // --- Skills ---
