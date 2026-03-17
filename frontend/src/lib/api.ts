@@ -128,6 +128,8 @@ export const findings = {
   },
   summary: (projectId: string) =>
     request<any>(`/api/findings/summary/${projectId}`),
+  evidenceChain: (findingType: string, findingId: string) =>
+    request<any>(`/api/findings/${findingType}/${findingId}/evidence-chain`),
   delete: (type: "nugget" | "fact" | "insight" | "recommendation", id: string) => {
     const plural: Record<string, string> = {
       nugget: "nuggets",

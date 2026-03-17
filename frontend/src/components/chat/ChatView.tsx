@@ -244,7 +244,7 @@ function ChatToolbar({
             >
               <span className="text-sm">🐾</span> ReClaw (Main)
             </button>
-            {agents.filter((a: any) => a.is_active).map((agent: any) => (
+            {agents.filter((a: any) => a.is_active && a.id !== "reclaw-main").map((agent: any) => (
               <button
                 key={agent.id}
                 onClick={() => { onUpdateSession({ agent_id: agent.id }); setShowAgents(false); }}
@@ -331,7 +331,7 @@ function ChatToolbar({
 export default function ChatView() {
   const { messages, streaming, streamingContent, error, sendMessage, fetchHistory, cancelStreaming } = useChatStore();
   const { activeProjectId } = useProjectStore();
-  const { activeSessionId, ensureDefault, updateSession } = useSessionStore();
+  const { activeSessionId, ensureDefault, updateSession, pendingPrefill, setPendingPrefill } = useSessionStore();
   const { agents, fetchAgents } = useAgentStore();
   const activeSession = useSessionStore((s) => s.activeSession());
   const [input, setInput] = useState("");
@@ -357,6 +357,15 @@ export default function ChatView() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, streamingContent]);
+
+  // Auto-send pending prefill message (from "Send to Agent" flow)
+  useEffect(() => {
+    if (pendingPrefill && activeProjectId && activeSessionId && !streaming && !loadingHistory) {
+      const msg = pendingPrefill;
+      setPendingPrefill(null);
+      sendMessage(activeProjectId, msg, activeSessionId);
+    }
+  }, [pendingPrefill, activeProjectId, activeSessionId, streaming, loadingHistory, setPendingPrefill, sendMessage]);
 
   const handleSend = () => {
     if (!input.trim() || !activeProjectId || streaming) return;
