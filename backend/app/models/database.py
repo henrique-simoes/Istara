@@ -41,6 +41,7 @@ async def init_db() -> None:
     # Import all models so they're registered with Base
     from app.models import finding, message, project, task  # noqa: F401
     from app.core.context_hierarchy import ContextDocument  # noqa: F401
+    from app.core.scheduler import ScheduledTask  # noqa: F401
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

@@ -1,6 +1,6 @@
 "use client";
 
-import { Bot, Diamond, LayoutDashboard, Mic, FileText } from "lucide-react";
+import { Bot, Diamond, LayoutDashboard, Mic, FileText, Wand2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface MobileNavProps {
@@ -14,6 +14,7 @@ const NAV_ITEMS = [
   { id: "tasks", icon: LayoutDashboard, label: "Tasks" },
   { id: "interviews", icon: Mic, label: "Interviews" },
   { id: "context", icon: FileText, label: "Context" },
+  { id: "skills", icon: Wand2, label: "Skills" },
 ];
 
 /**
