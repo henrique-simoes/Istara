@@ -7,8 +7,11 @@ from typing import AsyncGenerator
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import agents, audit, chat, files, findings, metrics, projects, settings, skills, tasks
+from app.api.routes import agents, audit, channels, chat, files, findings, metrics, projects, scheduler as scheduler_routes, settings, skills, tasks
 from app.api.websocket import router as ws_router
+from app.channels.base import channel_router
+from app.channels.slack import SlackAdapter
+from app.channels.telegram import TelegramAdapter
 from app.agents.devops_agent import devops_agent
 from app.agents.ui_audit_agent import ui_audit_agent
 from app.agents.ux_eval_agent import ux_eval_agent
@@ -17,6 +20,7 @@ from app.agents.orchestrator import meta_orchestrator
 from app.config import settings as app_settings
 from app.core.agent import agent as agent_orchestrator
 from app.core.file_watcher import FileWatcher
+from app.core.scheduler import scheduler
 from app.models.database import init_db
 from app.skills.registry import load_default_skills
 from app.skills.skill_manager import skill_manager
@@ -31,19 +35,28 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     load_default_skills()
     skill_manager.load_all()
 
-    # Auto-pull default model if not available
+    # Register channel adapters (opt-in — not auto-started)
+    channel_router.register(SlackAdapter())
+    channel_router.register(TelegramAdapter())
+
+    # Check LLM provider connectivity and auto-pull if using Ollama
+    import logging
+    _log = logging.getLogger(__name__)
     from app.core.ollama import ollama
     try:
         if await ollama.health():
-            models = await ollama.list_models()
-            model_names = [m.get("name", "") for m in models]
-            if not any(app_settings.ollama_model in n for n in model_names):
-                import logging
-                logging.getLogger(__name__).info(f"Pulling default model: {app_settings.ollama_model}")
-                async for _ in ollama.pull_model(app_settings.ollama_model):
-                    pass
+            _log.info(f"LLM provider ({app_settings.llm_provider}) is online.")
+            if app_settings.llm_provider == "ollama":
+                models = await ollama.list_models()
+                model_names = [m.get("name", "") for m in models]
+                if not any(app_settings.ollama_model in n for n in model_names):
+                    _log.info(f"Pulling default model: {app_settings.ollama_model}")
+                    async for _ in ollama.pull_model(app_settings.ollama_model):
+                        pass
+        else:
+            _log.warning(f"LLM provider ({app_settings.llm_provider}) is not reachable.")
     except Exception:
-        pass  # Don't block startup if model pull fails
+        pass  # Don't block startup if provider check fails
 
     # Start file watcher
     watcher = FileWatcher()
@@ -58,11 +71,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         asyncio.create_task(user_sim_agent.start()),
         asyncio.create_task(agent_orchestrator.start()),
         asyncio.create_task(meta_orchestrator.start()),
+        asyncio.create_task(scheduler.start()),
     ]
 
     yield
 
     # Shutdown
+    await channel_router.stop_all()
     watcher.stop()
     devops_agent.stop()
     ui_audit_agent.stop()
@@ -70,6 +85,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     user_sim_agent.stop()
     agent_orchestrator.stop()
     meta_orchestrator.stop()
+    scheduler.stop()
 
     for task in [watcher_task, *bg_tasks]:
         task.cancel()
@@ -105,6 +121,8 @@ app.include_router(audit.router, prefix="/api", tags=["Audit"])
 app.include_router(skills.router, prefix="/api", tags=["Skills"])
 app.include_router(agents.router, prefix="/api", tags=["Agents"])
 app.include_router(metrics.router, prefix="/api", tags=["Metrics"])
+app.include_router(scheduler_routes.router, prefix="/api", tags=["Schedules"])
+app.include_router(channels.router, prefix="/api", tags=["Channels"])
 app.include_router(ws_router)
 
 
