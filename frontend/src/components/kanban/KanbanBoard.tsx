@@ -90,6 +90,7 @@ export default function KanbanBoard() {
                 </div>
                 <button
                   onClick={() => setAddingTo(addingTo === col.id ? null : col.id)}
+                  aria-label={`Add task to ${statusLabel(col.id)}`}
                   className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-400"
                 >
                   <Plus size={14} />

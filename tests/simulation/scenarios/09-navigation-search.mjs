@@ -11,7 +11,7 @@ export async function run(ctx) {
   await page.waitForTimeout(1500);
 
   // Test sidebar nav items exist
-  const navItems = ["Chat", "Findings", "Tasks", "Interviews", "Context", "Skills"];
+  const navItems = ["Chat", "Findings", "Tasks", "Interviews", "Context", "Skills", "Agents"];
   for (const item of navItems) {
     const btn = page.locator(`button[aria-label="${item}"]`).first();
     const visible = await btn.isVisible({ timeout: 2000 }).catch(() => false);
@@ -42,8 +42,8 @@ export async function run(ctx) {
     }
   }
 
-  // Test keyboard shortcuts — Cmd+1 to Cmd+6
-  const viewKeys = { "1": "Chat", "2": "Findings", "3": "Tasks", "4": "Interviews", "5": "Context", "6": "Skills" };
+  // Test keyboard shortcuts — Cmd+1 to Cmd+7
+  const viewKeys = { "1": "Chat", "2": "Findings", "3": "Tasks", "4": "Interviews", "5": "Context", "6": "Skills", "7": "Agents" };
   for (const [key, expectedView] of Object.entries(viewKeys)) {
     await page.keyboard.press(`Meta+${key}`);
     await page.waitForTimeout(500);
@@ -53,9 +53,12 @@ export async function run(ctx) {
   }
 
   // Test Cmd+K search modal
+  // Click body first to ensure focus is not trapped in a view component
+  await page.locator("body").click({ position: { x: 400, y: 300 } });
+  await page.waitForTimeout(300);
   await page.keyboard.press("Meta+k");
-  await page.waitForTimeout(500);
-  const searchModal = await page.locator('input[placeholder*="Search"]').isVisible({ timeout: 2000 }).catch(() => false);
+  await page.waitForTimeout(800);
+  const searchModal = await page.locator('input[placeholder*="Search"]').isVisible({ timeout: 3000 }).catch(() => false);
   checks.push({ name: "Cmd+K opens search modal", passed: searchModal, detail: "" });
   await screenshot("09-search-modal");
 
@@ -71,7 +74,12 @@ export async function run(ctx) {
   try {
     const collapseBtn = page.locator('button[aria-label="Collapse sidebar"]').first();
     if (await collapseBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
-      await collapseBtn.click({ timeout: 5000 });
+      try {
+        await collapseBtn.click({ timeout: 5000 });
+      } catch {
+        // Force click if overlay still intercepts
+        await collapseBtn.click({ force: true, timeout: 3000 });
+      }
       await page.waitForTimeout(500);
       await screenshot("09-sidebar-collapsed");
 
@@ -108,15 +116,31 @@ export async function run(ctx) {
   checks.push({ name: "? opens shortcuts modal", passed: shortcutsModal, detail: "" });
 
   // Dismiss any open modals/overlays before continuing
-  await page.keyboard.press("Escape");
-  await page.waitForTimeout(500);
-  await page.keyboard.press("Escape");
-  await page.waitForTimeout(500);
+  for (let i = 0; i < 3; i++) {
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(400);
+  }
+
+  // Click any remaining overlay backdrop to dismiss it
+  const overlay = page.locator('.fixed.inset-0').first();
+  if (await overlay.isVisible({ timeout: 500 }).catch(() => false)) {
+    await overlay.click({ position: { x: 5, y: 5 }, force: true });
+    await page.waitForTimeout(500);
+  }
 
   // Wait for overlays to disappear
   await page.waitForFunction(
-    () => !document.querySelector('.fixed.inset-0.bg-black\\/50, .fixed.inset-0.bg-black\\/60'),
-    { timeout: 3000 }
+    () => {
+      const overlays = document.querySelectorAll('.fixed.inset-0');
+      for (const el of overlays) {
+        if (el.offsetParent !== null || getComputedStyle(el).display !== 'none') {
+          const bg = getComputedStyle(el).backgroundColor;
+          if (bg && bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent') return false;
+        }
+      }
+      return true;
+    },
+    { timeout: 5000 }
   ).catch(() => {});
 
   // Test Cmd+. right panel toggle

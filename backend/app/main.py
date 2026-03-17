@@ -7,7 +7,7 @@ from typing import AsyncGenerator
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import agents, audit, channels, chat, files, findings, metrics, projects, scheduler as scheduler_routes, settings, skills, tasks
+from app.api.routes import agents, audit, channels, chat, files, findings, metrics, projects, scheduler as scheduler_routes, sessions, settings, skills, tasks
 from app.api.websocket import router as ws_router
 from app.channels.base import channel_router
 from app.channels.slack import SlackAdapter
@@ -21,7 +21,9 @@ from app.config import settings as app_settings
 from app.core.agent import agent as agent_orchestrator
 from app.core.file_watcher import FileWatcher
 from app.core.scheduler import scheduler
-from app.models.database import init_db
+from app.models.database import async_session, init_db
+from app.services.agent_service import seed_system_agents
+from app.services.heartbeat import heartbeat_manager
 from app.skills.registry import load_default_skills
 from app.skills.skill_manager import skill_manager
 
@@ -33,6 +35,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     app_settings.ensure_dirs()
     await init_db()
     load_default_skills()
+
+    # Seed default system agents
+    async with async_session() as db:
+        await seed_system_agents(db)
     skill_manager.load_all()
 
     # Register channel adapters (opt-in — not auto-started)
@@ -71,6 +77,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         asyncio.create_task(user_sim_agent.start()),
         asyncio.create_task(agent_orchestrator.start()),
         asyncio.create_task(meta_orchestrator.start()),
+        asyncio.create_task(heartbeat_manager.start()),
         asyncio.create_task(scheduler.start()),
     ]
 
@@ -85,6 +92,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     user_sim_agent.stop()
     agent_orchestrator.stop()
     meta_orchestrator.stop()
+    heartbeat_manager.stop()
     scheduler.stop()
 
     for task in [watcher_task, *bg_tasks]:
@@ -123,6 +131,7 @@ app.include_router(agents.router, prefix="/api", tags=["Agents"])
 app.include_router(metrics.router, prefix="/api", tags=["Metrics"])
 app.include_router(scheduler_routes.router, prefix="/api", tags=["Schedules"])
 app.include_router(channels.router, prefix="/api", tags=["Channels"])
+app.include_router(sessions.router, prefix="/api", tags=["Sessions"])
 app.include_router(ws_router)
 
 

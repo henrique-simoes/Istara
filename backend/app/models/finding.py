@@ -19,6 +19,7 @@ class Nugget(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     project_id: Mapped[str] = mapped_column(ForeignKey("projects.id"), nullable=False)
+    agent_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     text: Mapped[str] = mapped_column(Text, nullable=False)
     source: Mapped[str] = mapped_column(String(500), nullable=False)
     source_location: Mapped[str] = mapped_column(String(255), default="")
@@ -44,6 +45,7 @@ class Fact(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     project_id: Mapped[str] = mapped_column(ForeignKey("projects.id"), nullable=False)
+    agent_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     text: Mapped[str] = mapped_column(Text, nullable=False)
     nugget_ids: Mapped[str] = mapped_column(Text, default="")  # JSON array of nugget IDs
     phase: Mapped[str] = mapped_column(String(20), default="discover")
@@ -67,6 +69,7 @@ class Insight(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     project_id: Mapped[str] = mapped_column(ForeignKey("projects.id"), nullable=False)
+    agent_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     text: Mapped[str] = mapped_column(Text, nullable=False)
     fact_ids: Mapped[str] = mapped_column(Text, default="")  # JSON array of fact IDs
     phase: Mapped[str] = mapped_column(String(20), default="define")
@@ -91,6 +94,7 @@ class Recommendation(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     project_id: Mapped[str] = mapped_column(ForeignKey("projects.id"), nullable=False)
+    agent_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     text: Mapped[str] = mapped_column(Text, nullable=False)
     insight_ids: Mapped[str] = mapped_column(Text, default="")  # JSON array of insight IDs
     phase: Mapped[str] = mapped_column(String(20), default="deliver")

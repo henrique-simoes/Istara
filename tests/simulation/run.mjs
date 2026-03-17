@@ -124,6 +124,7 @@ async function loadScenarios() {
     "08-kanban-workflow",
     "09-navigation-search",
     "10-settings-models",
+    "11-agents-system",
   ];
 
   const scenarios = [];
@@ -348,10 +349,11 @@ async function main() {
     headless,
     args: ["--no-sandbox"],
   });
-  const page = await browser.newPage({
+  const context = await browser.newContext({
     viewport: { width: 1280, height: 800 },
     colorScheme: "dark",
   });
+  const page = await context.newPage();
 
   const screenshotFn = async (name) => {
     try {

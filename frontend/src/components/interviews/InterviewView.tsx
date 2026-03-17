@@ -12,6 +12,8 @@ import {
   ChevronRight,
   Loader2,
   X,
+  FolderOpen,
+  Wand2,
 } from "lucide-react";
 import { useProjectStore } from "@/stores/projectStore";
 import { files as filesApi, findings as findingsApi, chat as chatApi } from "@/lib/api";
@@ -196,25 +198,64 @@ export default function InterviewView() {
 
         {/* File tabs */}
         {projectFiles.length > 0 && (
-          <div className="flex gap-1 p-2 overflow-x-auto border-b border-slate-200 dark:border-slate-800">
-            {projectFiles.map((f) => (
+          <div className="p-3 border-b border-slate-200 dark:border-slate-800">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-xs font-semibold text-slate-500 uppercase flex items-center gap-1.5">
+                <FolderOpen size={12} />
+                Files ({projectFiles.length})
+              </h3>
               <button
-                key={f.name}
-                onClick={() => handleFileSelect(f.name)}
-                className={cn(
-                  "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs whitespace-nowrap transition-colors",
-                  selectedFile === f.name
-                    ? "bg-reclaw-100 dark:bg-reclaw-900/30 text-reclaw-700"
-                    : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200"
-                )}
+                onClick={async () => {
+                  if (!activeProjectId) return;
+                  setAnalyzing(true);
+                  setAnalysisResult("");
+                  try {
+                    let result = "";
+                    for await (const event of chatApi.send(activeProjectId, "organize and rename all files in this project by type and category")) {
+                      if (event.type === "chunk") { result += event.content; setAnalysisResult(result); }
+                    }
+                    await loadProjectData();
+                  } catch (e) {}
+                  setAnalyzing(false);
+                }}
+                disabled={analyzing}
+                className="flex items-center gap-1 px-2 py-1 text-[10px] text-reclaw-600 hover:text-reclaw-700 hover:bg-reclaw-50 dark:hover:bg-reclaw-900/20 rounded-md disabled:opacity-50"
               >
-                <FileText size={12} />
-                {f.name}
-                <span className="text-[10px] text-slate-400">
-                  ({(f.size_bytes / 1024).toFixed(0)}KB)
-                </span>
+                <Wand2 size={10} /> Organize Files
               </button>
-            ))}
+            </div>
+            <div className="grid grid-cols-2 gap-1.5">
+              {projectFiles.map((f) => {
+                const shortName = (() => {
+                  const name = f.name || "";
+                  const parts = name.split("/");
+                  const filename = parts[parts.length - 1];
+                  // Strip UUID prefix (8-4-4-4-12 pattern followed by _ or -)
+                  const stripped = filename.replace(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}[-_]/i, "");
+                  if (stripped.length <= 24) return stripped;
+                  const ext = stripped.lastIndexOf(".") > 0 ? stripped.slice(stripped.lastIndexOf(".")) : "";
+                  return stripped.slice(0, 20) + "..." + ext;
+                })();
+                return (
+                  <button
+                    key={f.name}
+                    onClick={() => handleFileSelect(f.name)}
+                    className={cn(
+                      "flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-colors text-left",
+                      selectedFile === f.name
+                        ? "bg-reclaw-100 dark:bg-reclaw-900/30 text-reclaw-700"
+                        : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200"
+                    )}
+                  >
+                    <FileText size={12} className="shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="truncate font-medium">{shortName}</p>
+                      <p className="text-[10px] text-slate-400">{(f.size_bytes / 1024).toFixed(0)} KB</p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         )}
 

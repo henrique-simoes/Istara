@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     # Files
     upload_dir: str = "./data/uploads"
     projects_dir: str = "./data/projects"
+    agent_avatars_dir: str = "./data/agent_avatars"
 
     # Hardware resource budget
     resource_reserve_ram_gb: float = 4.0
@@ -49,7 +50,7 @@ class Settings(BaseSettings):
 
     def ensure_dirs(self) -> None:
         """Create required directories if they don't exist."""
-        for dir_path in [self.upload_dir, self.projects_dir, self.lance_db_path]:
+        for dir_path in [self.upload_dir, self.projects_dir, self.lance_db_path, self.agent_avatars_dir]:
             Path(dir_path).mkdir(parents=True, exist_ok=True)
 
 

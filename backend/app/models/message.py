@@ -15,6 +15,8 @@ class Message(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     project_id: Mapped[str] = mapped_column(ForeignKey("projects.id"), nullable=False)
+    session_id: Mapped[str | None] = mapped_column(ForeignKey("chat_sessions.id"), nullable=True)
+    agent_id: Mapped[str | None] = mapped_column(String(36), nullable=True)  # which agent sent this
     role: Mapped[str] = mapped_column(String(20), nullable=False)  # user, assistant, system
     content: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
@@ -23,3 +25,4 @@ class Message(Base):
 
     # Relationships
     project = relationship("Project", back_populates="messages")
+    session = relationship("ChatSession", back_populates="messages")

@@ -17,6 +17,7 @@ import {
   Mic,
   MoreHorizontal,
   Wand2,
+  Users,
 } from "lucide-react";
 import { useProjectStore } from "@/stores/projectStore";
 import DarkModeToggle from "@/components/common/DarkModeToggle";
@@ -60,6 +61,7 @@ export default function Sidebar({ activeView, onViewChange, onSearchOpen }: Side
     { id: "interviews", icon: Mic, label: "Interviews" },
     { id: "context", icon: FileText, label: "Context" },
     { id: "skills", icon: Wand2, label: "Skills" },
+    { id: "agents", icon: Users, label: "Agents" },
   ];
 
   // Secondary nav: accessible via "More" or header icons
@@ -121,31 +123,34 @@ export default function Sidebar({ activeView, onViewChange, onSearchOpen }: Side
       )}
 
       {/* Primary Navigation */}
-      <nav className="p-2 space-y-0.5" role="tablist" aria-label="Views">
-        {primaryNav.map((item) => (
-          <button
-            key={item.id}
-            onClick={() => onViewChange(item.id)}
-            role="tab"
-            aria-selected={activeView === item.id}
-            aria-label={item.label}
-            title={collapsed ? item.label : undefined}
-            className={cn(
-              "flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm transition-colors",
-              activeView === item.id
-                ? "bg-reclaw-100 text-reclaw-700 dark:bg-reclaw-900/30 dark:text-reclaw-400"
-                : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
-            )}
-          >
-            <item.icon size={18} />
-            {!collapsed && <span>{item.label}</span>}
-          </button>
-        ))}
+      <nav className="p-2 space-y-0.5" aria-label="Views">
+        <div role="tablist" aria-label="Main views">
+          {primaryNav.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => onViewChange(item.id)}
+              role="tab"
+              aria-selected={activeView === item.id}
+              aria-label={item.label}
+              title={collapsed ? item.label : undefined}
+              className={cn(
+                "flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm transition-colors",
+                activeView === item.id
+                  ? "bg-reclaw-100 text-reclaw-700 dark:bg-reclaw-900/30 dark:text-reclaw-400"
+                  : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+              )}
+            >
+              <item.icon size={18} />
+              {!collapsed && <span>{item.label}</span>}
+            </button>
+          ))}
+        </div>
 
         {/* More toggle */}
         <button
           onClick={() => setShowSecondary(!showSecondary)}
           aria-label="More views"
+          aria-expanded={showSecondary}
           className="flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
         >
           <MoreHorizontal size={18} />
@@ -153,25 +158,29 @@ export default function Sidebar({ activeView, onViewChange, onSearchOpen }: Side
         </button>
 
         {/* Secondary nav (collapsible) */}
-        {showSecondary && secondaryNav.map((item) => (
-          <button
-            key={item.id}
-            onClick={() => onViewChange(item.id)}
-            role="tab"
-            aria-selected={activeView === item.id}
-            aria-label={item.label}
-            className={cn(
-              "flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm transition-colors",
-              collapsed ? "" : "pl-6",
-              activeView === item.id
-                ? "bg-reclaw-100 text-reclaw-700 dark:bg-reclaw-900/30 dark:text-reclaw-400"
-                : "text-slate-500 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
-            )}
-          >
-            <item.icon size={16} />
-            {!collapsed && <span>{item.label}</span>}
-          </button>
-        ))}
+        {showSecondary && (
+          <div role="tablist" aria-label="Secondary views">
+            {secondaryNav.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => onViewChange(item.id)}
+                role="tab"
+                aria-selected={activeView === item.id}
+                aria-label={item.label}
+                className={cn(
+                  "flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm transition-colors",
+                  collapsed ? "" : "pl-6",
+                  activeView === item.id
+                    ? "bg-reclaw-100 text-reclaw-700 dark:bg-reclaw-900/30 dark:text-reclaw-400"
+                    : "text-slate-500 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
+                )}
+              >
+                <item.icon size={16} />
+                {!collapsed && <span>{item.label}</span>}
+              </button>
+            ))}
+          </div>
+        )}
       </nav>
 
       {/* Projects */}
