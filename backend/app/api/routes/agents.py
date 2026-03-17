@@ -1,84 +1,88 @@
-"""Agent management and orchestrator API routes."""
+"""Agent management, A2A messaging, and orchestrator API routes."""
 
-from fastapi import APIRouter, Depends, HTTPException
+from __future__ import annotations
+
+import shutil
+from pathlib import Path
+
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.agents.orchestrator import meta_orchestrator, AgentRole
+from app.agents.orchestrator import meta_orchestrator
 from app.agents.ux_eval_agent import ux_eval_agent
 from app.agents.user_sim_agent import user_sim_agent
+from app.config import settings
 from app.core.resource_governor import governor
 from app.core.context_hierarchy import context_hierarchy, ContextDocument
 from app.models.database import get_db
+from app.services import agent_service, a2a
 
 router = APIRouter()
 
 
-# --- Orchestrator ---
-
-@router.get("/agents/status")
-async def get_orchestrator_status():
-    """Get full orchestrator status with all agents."""
-    return meta_orchestrator.get_status()
-
-
-@router.get("/agents")
-async def list_agents():
-    """List all managed agents."""
-    return {"agents": [a.to_dict() for a in meta_orchestrator.list_agents()]}
-
-
-@router.get("/agents/{agent_id}")
-async def get_agent(agent_id: str):
-    """Get a specific agent's details."""
-    agent = meta_orchestrator.get_agent(agent_id)
-    if not agent:
-        raise HTTPException(status_code=404, detail="Agent not found")
-    return agent.to_dict()
-
-
-class AgentPromptUpdate(BaseModel):
-    system_prompt: str
-
-
-@router.patch("/agents/{agent_id}/prompt")
-async def update_agent_prompt(agent_id: str, data: AgentPromptUpdate):
-    """Update an agent's system prompt."""
-    if not meta_orchestrator.update_agent_prompt(agent_id, data.system_prompt):
-        raise HTTPException(status_code=404, detail="Agent not found")
-    return {"status": "updated", "agent_id": agent_id}
+# ───── Agent CRUD ─────
 
 
 class CreateAgentRequest(BaseModel):
     name: str
-    role: str = "task_executor"
-    system_prompt: str
+    role: str = "custom"
+    system_prompt: str = ""
+    capabilities: list[str] | None = None
+    heartbeat_interval: int = 60
 
 
-@router.post("/agents", status_code=201)
-async def create_agent(data: CreateAgentRequest):
-    """Create a custom agent with user-defined system prompt."""
-    try:
-        role = AgentRole(data.role)
-    except ValueError:
-        raise HTTPException(status_code=400, detail=f"Invalid role. Must be: {', '.join(r.value for r in AgentRole)}")
-
-    agent = meta_orchestrator.create_custom_agent(data.name, role, data.system_prompt)
-    return agent.to_dict()
+class UpdateAgentRequest(BaseModel):
+    name: str | None = None
+    system_prompt: str | None = None
+    capabilities: list[str] | None = None
+    heartbeat_interval: int | None = None
+    state: str | None = None
 
 
-@router.post("/agents/{agent_id}/pause")
-async def pause_agent(agent_id: str):
-    if not meta_orchestrator.pause_agent(agent_id):
-        raise HTTPException(status_code=404, detail="Agent not found or not pausable")
-    return {"status": "paused"}
+@router.get("/agents")
+async def list_agents(include_system: bool = True, db: AsyncSession = Depends(get_db)):
+    """List all active agents."""
+    agents = await agent_service.list_agents(db, include_system)
+    return {"agents": agents}
 
 
-@router.post("/agents/{agent_id}/resume")
-async def resume_agent(agent_id: str):
-    if not meta_orchestrator.resume_agent(agent_id):
-        raise HTTPException(status_code=404, detail="Agent not found or not paused")
-    return {"status": "resumed"}
+@router.get("/agents/capacity")
+async def check_capacity():
+    """Check hardware capacity for creating another agent."""
+    return await agent_service.check_capacity()
+
+
+@router.get("/agents/heartbeat/status")
+async def heartbeat_status(db: AsyncSession = Depends(get_db)):
+    """Get heartbeat status for all agents."""
+    agents = await agent_service.list_agents(db)
+    return {
+        "agents": [
+            {
+                "id": a["id"],
+                "name": a["name"],
+                "heartbeat_status": a["heartbeat_status"],
+                "last_heartbeat_at": a["last_heartbeat_at"],
+                "state": a["state"],
+            }
+            for a in agents
+        ]
+    }
+
+
+@router.get("/agents/a2a/log")
+async def get_a2a_log(limit: int = 100, db: AsyncSession = Depends(get_db)):
+    """Get the full A2A message log."""
+    messages = await a2a.get_full_log(db, limit)
+    return {"messages": messages}
+
+
+@router.get("/agents/status")
+async def get_orchestrator_status():
+    """Get full orchestrator status."""
+    return meta_orchestrator.get_status()
 
 
 @router.get("/agents/log/recent")
@@ -86,15 +90,153 @@ async def get_agent_log(limit: int = 50):
     return {"log": meta_orchestrator.get_work_log(limit)}
 
 
-# --- Resource Governor ---
+@router.post("/agents", status_code=201)
+async def create_agent(data: CreateAgentRequest, db: AsyncSession = Depends(get_db)):
+    """Create a new user agent."""
+    agent = await agent_service.create_agent(
+        db,
+        name=data.name,
+        role=data.role,
+        system_prompt=data.system_prompt,
+        capabilities=data.capabilities,
+        heartbeat_interval=data.heartbeat_interval,
+    )
+    try:
+        from app.api.websocket import manager as ws_manager
+        await ws_manager.broadcast("agent_created", agent)
+    except Exception:
+        pass
+    return agent
 
-@router.get("/resources")
-async def get_resource_status():
-    """Get current resource status and budget."""
-    return governor.get_status()
+
+@router.get("/agents/{agent_id}")
+async def get_agent(agent_id: str, db: AsyncSession = Depends(get_db)):
+    """Get a specific agent's full details."""
+    agent = await agent_service.get_agent(db, agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    return agent
 
 
-# --- UX Evaluation Agent ---
+@router.patch("/agents/{agent_id}")
+async def update_agent(agent_id: str, data: UpdateAgentRequest, db: AsyncSession = Depends(get_db)):
+    """Update an agent's configuration."""
+    updates = data.model_dump(exclude_unset=True)
+    if "heartbeat_interval" in updates:
+        updates["heartbeat_interval_seconds"] = updates.pop("heartbeat_interval")
+    agent = await agent_service.update_agent(db, agent_id, updates)
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    return agent
+
+
+@router.delete("/agents/{agent_id}", status_code=204)
+async def delete_agent(agent_id: str, db: AsyncSession = Depends(get_db)):
+    """Soft-delete an agent."""
+    if not await agent_service.delete_agent(db, agent_id):
+        raise HTTPException(status_code=404, detail="Agent not found or is a system agent")
+
+
+@router.post("/agents/{agent_id}/pause")
+async def pause_agent(agent_id: str, db: AsyncSession = Depends(get_db)):
+    from app.models.agent import AgentState
+    if not await agent_service.set_agent_state(db, agent_id, AgentState.PAUSED):
+        raise HTTPException(status_code=404, detail="Agent not found")
+    return {"status": "paused"}
+
+
+@router.post("/agents/{agent_id}/resume")
+async def resume_agent(agent_id: str, db: AsyncSession = Depends(get_db)):
+    from app.models.agent import AgentState
+    if not await agent_service.set_agent_state(db, agent_id, AgentState.IDLE):
+        raise HTTPException(status_code=404, detail="Agent not found")
+    return {"status": "resumed"}
+
+
+# ───── Avatar ─────
+
+
+@router.post("/agents/{agent_id}/avatar")
+async def upload_avatar(agent_id: str, file: UploadFile = File(...), db: AsyncSession = Depends(get_db)):
+    """Upload an avatar image for an agent."""
+    agent = await agent_service.get_agent(db, agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
+
+    if file.content_type not in ("image/png", "image/jpeg", "image/webp", "image/gif"):
+        raise HTTPException(status_code=400, detail="Avatar must be PNG, JPEG, WebP, or GIF")
+
+    ext = file.filename.split(".")[-1] if file.filename else "png"
+    filename = f"{agent_id}.{ext}"
+    avatar_dir = Path(settings.agent_avatars_dir)
+    avatar_dir.mkdir(parents=True, exist_ok=True)
+    dest = avatar_dir / filename
+
+    with open(dest, "wb") as f:
+        shutil.copyfileobj(file.file, f)
+
+    await agent_service.update_agent(db, agent_id, {"avatar_path": str(dest)})
+    return {"avatar_path": str(dest)}
+
+
+@router.get("/agents/{agent_id}/avatar")
+async def get_avatar(agent_id: str, db: AsyncSession = Depends(get_db)):
+    """Serve an agent's avatar image."""
+    agent = await agent_service.get_agent(db, agent_id)
+    if not agent or not agent.get("avatar_path"):
+        raise HTTPException(status_code=404, detail="No avatar found")
+    path = Path(agent["avatar_path"])
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="Avatar file missing")
+    return FileResponse(path)
+
+
+# ───── Agent Memory ─────
+
+
+@router.get("/agents/{agent_id}/memory")
+async def get_memory(agent_id: str, db: AsyncSession = Depends(get_db)):
+    memory = await agent_service.get_agent_memory(db, agent_id)
+    return {"agent_id": agent_id, "memory": memory}
+
+
+@router.patch("/agents/{agent_id}/memory")
+async def update_memory(agent_id: str, updates: dict, db: AsyncSession = Depends(get_db)):
+    memory = await agent_service.update_agent_memory(db, agent_id, updates)
+    return {"agent_id": agent_id, "memory": memory}
+
+
+# ───── A2A Messaging ─────
+
+
+class A2AMessageRequest(BaseModel):
+    to_agent_id: str | None = None
+    message_type: str = "consult"
+    content: str
+    metadata: dict | None = None
+
+
+@router.get("/agents/{agent_id}/messages")
+async def get_messages(agent_id: str, limit: int = 50, unread_only: bool = False, db: AsyncSession = Depends(get_db)):
+    messages = await a2a.get_messages(db, agent_id, limit, unread_only)
+    return {"messages": messages}
+
+
+@router.post("/agents/{agent_id}/messages")
+async def send_message(agent_id: str, data: A2AMessageRequest, db: AsyncSession = Depends(get_db)):
+    msg = await a2a.send_message(
+        db,
+        from_agent_id=agent_id,
+        to_agent_id=data.to_agent_id,
+        message_type=data.message_type,
+        content=data.content,
+        metadata=data.metadata,
+    )
+    return msg
+
+
+# ───── Audit Agents ─────
+
 
 @router.get("/audit/ux/latest")
 async def get_ux_eval():
@@ -106,11 +248,8 @@ async def get_ux_eval():
 
 @router.post("/audit/ux/run")
 async def trigger_ux_eval():
-    report = await ux_eval_agent.run_evaluation()
-    return report
+    return await ux_eval_agent.run_evaluation()
 
-
-# --- User Simulation Agent ---
 
 @router.get("/audit/sim/latest")
 async def get_sim_report():
@@ -122,15 +261,73 @@ async def get_sim_report():
 
 @router.post("/audit/sim/run")
 async def trigger_simulation():
-    report = await user_sim_agent.run_simulation()
-    return report
+    return await user_sim_agent.run_simulation()
 
 
-# --- Context Hierarchy ---
+# ───── Agent Export / Transfer ─────
+
+
+class AgentExportData(BaseModel):
+    name: str
+    role: str
+    system_prompt: str
+    capabilities: list[str]
+    heartbeat_interval: int
+    memory: dict
+
+
+@router.get("/agents/{agent_id}/export")
+async def export_agent(agent_id: str, db: AsyncSession = Depends(get_db)):
+    """Export an agent's configuration as a portable JSON config."""
+    agent = await agent_service.get_agent(db, agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    return {
+        "reclaw_version": "0.1.0",
+        "type": "agent_config",
+        "agent": {
+            "name": agent["name"],
+            "role": agent["role"],
+            "system_prompt": agent["system_prompt"],
+            "capabilities": agent["capabilities"],
+            "heartbeat_interval": agent["heartbeat_interval_seconds"],
+            "memory": agent["memory"],
+        },
+    }
+
+
+@router.post("/agents/import")
+async def import_agent(data: AgentExportData, db: AsyncSession = Depends(get_db)):
+    """Import an agent from an exported config."""
+    agent = await agent_service.create_agent(
+        db,
+        name=data.name,
+        role=data.role,
+        system_prompt=data.system_prompt,
+        capabilities=data.capabilities,
+        heartbeat_interval=data.heartbeat_interval,
+    )
+    # Apply memory if provided
+    if data.memory:
+        await agent_service.update_agent_memory(db, agent["id"], data.memory)
+        agent = await agent_service.get_agent(db, agent["id"])
+    return agent
+
+
+# ───── Resource Governor ─────
+
+
+@router.get("/resources")
+async def get_resource_status():
+    return governor.get_status()
+
+
+# ───── Context Hierarchy ─────
+
 
 class ContextCreateRequest(BaseModel):
     name: str
-    level_type: str  # platform, company, product, project, task, agent
+    level_type: str
     content: str
     project_id: str = ""
     parent_id: str = ""
@@ -150,7 +347,6 @@ async def list_contexts(
     project_id: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
-    """List context documents with optional filters."""
     docs = await context_hierarchy.list_contexts(db, level_type, project_id)
     return {
         "contexts": [
@@ -167,11 +363,9 @@ async def list_contexts(
 
 @router.post("/contexts", status_code=201)
 async def create_context(data: ContextCreateRequest, db: AsyncSession = Depends(get_db)):
-    """Create a new context document."""
     valid_types = {"platform", "company", "product", "project", "task", "agent"}
     if data.level_type not in valid_types:
         raise HTTPException(status_code=400, detail=f"Invalid level_type. Must be: {', '.join(valid_types)}")
-
     doc = await context_hierarchy.create_context(
         db, data.name, data.level_type, data.content,
         data.project_id, data.parent_id, data.priority,
@@ -181,7 +375,6 @@ async def create_context(data: ContextCreateRequest, db: AsyncSession = Depends(
 
 @router.get("/contexts/{doc_id}")
 async def get_context(doc_id: str, db: AsyncSession = Depends(get_db)):
-    """Get full context document."""
     from sqlalchemy import select
     result = await db.execute(select(ContextDocument).where(ContextDocument.id == doc_id))
     doc = result.scalar_one_or_none()
@@ -212,6 +405,5 @@ async def delete_context(doc_id: str, db: AsyncSession = Depends(get_db)):
 
 @router.get("/contexts/composed/{project_id}")
 async def get_composed_context(project_id: str, db: AsyncSession = Depends(get_db)):
-    """Get the fully composed context hierarchy for a project."""
     composed = await context_hierarchy.compose_context(db, project_id)
     return {"project_id": project_id, "composed_context": composed, "length": len(composed)}

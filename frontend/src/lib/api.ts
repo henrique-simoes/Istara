@@ -1,5 +1,7 @@
 /** API client for ReClaw backend. */
 
+import type { ChatSession, ChatMessage, InferencePresetConfig } from "@/lib/types";
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
@@ -12,6 +14,22 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     throw new Error(error.detail || `API error: ${res.status}`);
   }
   return res.json();
+}
+
+function get<T>(path: string): Promise<T> {
+  return request<T>(path);
+}
+
+function post<T>(path: string, data: unknown): Promise<T> {
+  return request<T>(path, { method: "POST", body: JSON.stringify(data) });
+}
+
+function patch<T>(path: string, data: unknown): Promise<T> {
+  return request<T>(path, { method: "PATCH", body: JSON.stringify(data) });
+}
+
+function del(path: string): Promise<Response> {
+  return fetch(`${API_BASE}${path}`, { method: "DELETE" });
 }
 
 // --- Projects ---
@@ -108,6 +126,15 @@ export const findings = {
   },
   summary: (projectId: string) =>
     request<any>(`/api/findings/summary/${projectId}`),
+  delete: (type: "nugget" | "fact" | "insight" | "recommendation", id: string) => {
+    const plural: Record<string, string> = {
+      nugget: "nuggets",
+      fact: "facts",
+      insight: "insights",
+      recommendation: "recommendations",
+    };
+    return fetch(`${API_BASE}/api/findings/${plural[type]}/${id}`, { method: "DELETE" });
+  },
 };
 
 // --- Files ---
@@ -163,6 +190,74 @@ export const skills = {
     reject: (id: string, reason = "") =>
       request<any>(`/api/skills/proposals/${id}/reject?reason=${encodeURIComponent(reason)}`, { method: "POST" }),
   },
+};
+
+// --- Agents ---
+
+export const agents = {
+  list: (includeSystem = true) =>
+    request<any>(`/api/agents?include_system=${includeSystem}`),
+  get: (id: string) => request<any>(`/api/agents/${id}`),
+  create: (data: {
+    name: string;
+    role?: string;
+    system_prompt?: string;
+    capabilities?: string[];
+    heartbeat_interval?: number;
+  }) => request<any>("/api/agents", { method: "POST", body: JSON.stringify(data) }),
+  update: (id: string, data: Record<string, unknown>) =>
+    request<any>(`/api/agents/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+  delete: (id: string) =>
+    fetch(`${API_BASE}/api/agents/${id}`, { method: "DELETE" }),
+  pause: (id: string) =>
+    request<any>(`/api/agents/${id}/pause`, { method: "POST" }),
+  resume: (id: string) =>
+    request<any>(`/api/agents/${id}/resume`, { method: "POST" }),
+  uploadAvatar: async (id: string, file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    const res = await fetch(`${API_BASE}/api/agents/${id}/avatar`, {
+      method: "POST",
+      body: formData,
+    });
+    if (!res.ok) throw new Error(`Upload error: ${res.status}`);
+    return res.json();
+  },
+  avatarUrl: (id: string) => `${API_BASE}/api/agents/${id}/avatar`,
+  memory: (id: string) => request<any>(`/api/agents/${id}/memory`),
+  updateMemory: (id: string, data: Record<string, unknown>) =>
+    request<any>(`/api/agents/${id}/memory`, { method: "PATCH", body: JSON.stringify(data) }),
+  messages: (id: string, limit = 50) =>
+    request<any>(`/api/agents/${id}/messages?limit=${limit}`),
+  sendMessage: (
+    id: string,
+    data: { to_agent_id?: string; content: string; message_type?: string }
+  ) =>
+    request<any>(`/api/agents/${id}/messages`, { method: "POST", body: JSON.stringify(data) }),
+  a2aLog: (limit = 100) => request<any>(`/api/agents/a2a/log?limit=${limit}`),
+  heartbeat: () => request<any>("/api/agents/heartbeat/status"),
+  capacity: () => request<any>("/api/agents/capacity"),
+};
+
+// --- Sessions ---
+
+export const sessions = {
+  list: (projectId: string) => get<{ sessions: ChatSession[] }>(`/sessions/${projectId}`).then(r => r.sessions),
+  create: (data: { project_id: string; title?: string; agent_id?: string; inference_preset?: string }) =>
+    post<ChatSession>("/sessions", data),
+  get: (sessionId: string) => get<ChatSession & { messages: ChatMessage[] }>(`/sessions/detail/${sessionId}`),
+  update: (sessionId: string, data: Record<string, unknown>) =>
+    patch<ChatSession>(`/sessions/${sessionId}`, data),
+  delete: (sessionId: string) => del(`/sessions/${sessionId}`),
+  star: (sessionId: string) => post<{ starred: boolean }>(`/sessions/${sessionId}/star`, {}),
+  ensureDefault: (projectId: string) => get<ChatSession>(`/sessions/${projectId}/ensure-default`),
+  presets: () => get<{ presets: Record<string, InferencePresetConfig> }>("/inference-presets").then(r => r.presets),
+};
+
+// --- Project Export ---
+
+export const projectExport = {
+  export: (projectId: string) => post<{ exported: boolean; path: string; files_count: number }>(`/projects/${projectId}/export`, {}),
 };
 
 // --- Settings ---

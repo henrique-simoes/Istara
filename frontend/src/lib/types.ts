@@ -36,6 +36,8 @@ export interface ChatMessage {
   content: string;
   created_at: string;
   sources?: { source: string; score: number; page?: number }[];
+  agent_id?: string;
+  agent_name?: string;
 }
 
 export interface Nugget {
@@ -119,6 +121,82 @@ export interface ModelRecommendation {
   context_length: number;
   gpu_layers: number;
   reason: string;
+}
+
+export type AgentRole = "task_executor" | "devops_audit" | "ui_audit" | "ux_evaluation" | "user_simulation" | "custom";
+export type AgentState = "idle" | "working" | "paused" | "error" | "stopped";
+export type HeartbeatStatus = "healthy" | "degraded" | "error" | "stopped";
+export type AgentCapability = "web_search" | "file_upload" | "skill_execution" | "task_creation" | "findings_write" | "chat" | "rag_retrieval" | "a2a_messaging";
+
+export interface Agent {
+  id: string;
+  name: string;
+  avatar_path: string | null;
+  role: AgentRole;
+  system_prompt: string;
+  capabilities: AgentCapability[];
+  memory: Record<string, unknown>;
+  heartbeat_interval_seconds: number;
+  heartbeat_status: HeartbeatStatus;
+  last_heartbeat_at: string | null;
+  state: AgentState;
+  current_task: string;
+  error_count: number;
+  executions: number;
+  is_system: boolean;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface A2AMessage {
+  id: string;
+  from_agent_id: string;
+  to_agent_id: string | null;
+  message_type: string;
+  content: string;
+  metadata: Record<string, unknown>;
+  read: boolean;
+  created_at: string;
+}
+
+export interface AgentCapacityCheck {
+  can_create: boolean;
+  reason: string;
+  current_agents: number;
+  max_agents: number;
+  ram_available_gb: number;
+  ram_total_gb: number;
+  cpu_cores: number;
+  pressure: string;
+}
+
+export type InferencePreset = "lightweight" | "medium" | "high" | "custom";
+
+export interface ChatSession {
+  id: string;
+  project_id: string;
+  title: string;
+  agent_id: string | null;
+  model_override: string | null;
+  inference_preset: InferencePreset;
+  custom_temperature: number | null;
+  custom_max_tokens: number | null;
+  custom_context_window: number | null;
+  starred: boolean;
+  archived: boolean;
+  message_count: number;
+  last_message_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface InferencePresetConfig {
+  label: string;
+  description: string;
+  temperature: number | null;
+  max_tokens: number | null;
+  context_window: number | null;
 }
 
 export interface WSEvent {

@@ -25,6 +25,7 @@ export default function DarkModeToggle() {
     <button
       onClick={toggle}
       className="p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 transition-colors"
+      aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
       title={dark ? "Switch to light mode" : "Switch to dark mode"}
     >
       {dark ? <Sun size={16} /> : <Moon size={16} />}

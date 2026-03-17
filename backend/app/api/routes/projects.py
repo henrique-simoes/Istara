@@ -1,13 +1,14 @@
 """Project CRUD API routes."""
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.core.versioning import ProjectVersioning
 from app.models.database import get_db
 from app.models.project import Project, ProjectPhase
@@ -161,3 +162,116 @@ async def get_project_versions(project_id: str, limit: int = 50):
         }
         for v in history
     ]
+
+
+@router.post("/projects/{project_id}/export")
+async def export_project(project_id: str, export_path: str | None = None, db: AsyncSession = Depends(get_db)):
+    """Export a project to a standalone folder on the user's computer.
+
+    If export_path is not provided, exports to ~/ReClaw-Projects/{project_name}/
+    """
+    import json
+    import shutil
+    from pathlib import Path
+
+    result = await db.execute(select(Project).where(Project.id == project_id))
+    project = result.scalar_one_or_none()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    # Determine export path
+    safe_name = "".join(c if c.isalnum() or c in "-_ " else "" for c in project.name).strip()
+    if not export_path:
+        export_path = str(Path.home() / "ReClaw-Projects" / safe_name)
+
+    export_dir = Path(export_path)
+    export_dir.mkdir(parents=True, exist_ok=True)
+
+    # Export project metadata
+    project_data = {
+        "id": project.id,
+        "name": project.name,
+        "description": project.description,
+        "phase": project.phase.value if project.phase else "discover",
+        "company_context": project.company_context,
+        "project_context": project.project_context,
+        "guardrails": project.guardrails,
+        "created_at": project.created_at.isoformat() if project.created_at else None,
+        "exported_at": datetime.now(timezone.utc).isoformat(),
+    }
+    (export_dir / "project.json").write_text(json.dumps(project_data, indent=2))
+
+    # Export findings
+    from app.models.finding import Nugget, Fact, Insight, Recommendation
+    findings_dir = export_dir / "findings"
+    findings_dir.mkdir(exist_ok=True)
+
+    for model, name in [(Nugget, "nuggets"), (Fact, "facts"), (Insight, "insights"), (Recommendation, "recommendations")]:
+        res = await db.execute(select(model).where(model.project_id == project_id))
+        items = res.scalars().all()
+        data = []
+        for item in items:
+            d = {c.name: getattr(item, c.name) for c in item.__table__.columns}
+            for k, v in d.items():
+                if hasattr(v, "isoformat"):
+                    d[k] = v.isoformat()
+            data.append(d)
+        (findings_dir / f"{name}.json").write_text(json.dumps(data, indent=2))
+
+    # Export tasks
+    from app.models.task import Task
+    res = await db.execute(select(Task).where(Task.project_id == project_id))
+    tasks = res.scalars().all()
+    tasks_data = []
+    for t in tasks:
+        d = {c.name: getattr(t, c.name) for c in t.__table__.columns}
+        for k, v in d.items():
+            if hasattr(v, "isoformat"):
+                d[k] = v.isoformat()
+            elif hasattr(v, "value"):
+                d[k] = v.value
+        tasks_data.append(d)
+    (export_dir / "tasks.json").write_text(json.dumps(tasks_data, indent=2))
+
+    # Export chat messages
+    from app.models.message import Message
+    res = await db.execute(
+        select(Message).where(Message.project_id == project_id).order_by(Message.created_at.asc())
+    )
+    messages = res.scalars().all()
+    msgs_data = [
+        {"id": m.id, "role": m.role, "content": m.content, "agent_id": m.agent_id, "created_at": m.created_at.isoformat() if m.created_at else None}
+        for m in messages
+    ]
+    (export_dir / "messages.json").write_text(json.dumps(msgs_data, indent=2))
+
+    # Copy uploaded files
+    uploads_src = Path(settings.upload_dir) / project_id
+    if uploads_src.exists():
+        uploads_dest = export_dir / "files"
+        if uploads_dest.exists():
+            shutil.rmtree(uploads_dest)
+        shutil.copytree(uploads_src, uploads_dest)
+
+    # Create a README
+    readme = f"""# {project.name}
+
+Exported from ReClaw on {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}
+
+## Contents
+- `project.json` — Project metadata and context
+- `findings/` — Research findings (nuggets, facts, insights, recommendations)
+- `tasks.json` — Kanban tasks
+- `messages.json` — Chat history
+- `files/` — Uploaded research files
+
+## Re-importing
+To import this project back into ReClaw, use the import feature or copy the files folder.
+"""
+    (export_dir / "README.md").write_text(readme)
+
+    return {
+        "exported": True,
+        "path": str(export_dir),
+        "files_count": len(list(export_dir.rglob("*"))),
+    }
