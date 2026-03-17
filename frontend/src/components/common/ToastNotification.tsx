@@ -151,33 +151,39 @@ export default function ToastNotification() {
         return (
           <div
             key={toast.id}
+            onClick={() => {
+              const event = new CustomEvent("reclaw:navigate", { detail: toast.type });
+              window.dispatchEvent(event);
+            }}
             className={cn(
-              "animate-fade-in border-l-4 rounded-lg shadow-lg p-3 flex items-start gap-3",
+              "animate-fade-in border-l-4 rounded-lg shadow-lg p-3 cursor-pointer",
               COLORS[toast.type]
             )}
           >
-            <Icon size={18} className={cn("shrink-0 mt-0.5", ICON_COLORS[toast.type])} />
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-slate-900 dark:text-white">
-                {toast.title}
-              </p>
-              <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5 line-clamp-2">
-                {toast.message}
-              </p>
+            <div className="flex items-start gap-3">
+              <Icon size={18} className={cn("shrink-0 mt-0.5", ICON_COLORS[toast.type])} />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-slate-900 dark:text-white">
+                  {toast.title}
+                </p>
+                <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
+                  {toast.message}
+                </p>
+              </div>
+              <button
+                onClick={(e) => { e.stopPropagation(); removeToast(toast.id); }}
+                className="p-0.5 rounded hover:bg-black/5 dark:hover:bg-white/5"
+                aria-label="Dismiss notification"
+              >
+                <X size={14} className="text-slate-400" />
+              </button>
             </div>
-            <button
-              onClick={() => removeToast(toast.id)}
-              className="p-0.5 rounded hover:bg-black/5 dark:hover:bg-white/5"
-              aria-label="Dismiss notification"
-            >
-              <X size={14} className="text-slate-400" />
-            </button>
             {toast.actions && toast.actions.length > 0 && (
-              <div className="flex gap-2 mt-2 ml-7">
+              <div className="flex gap-2 mt-2 pl-8">
                 {toast.actions.map((action, i) => (
                   <button
                     key={i}
-                    onClick={() => { action.onClick(); removeToast(toast.id); }}
+                    onClick={(e) => { e.stopPropagation(); action.onClick(); removeToast(toast.id); }}
                     className={cn(
                       "text-xs px-2 py-1 rounded",
                       i === 0

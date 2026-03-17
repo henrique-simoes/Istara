@@ -121,13 +121,13 @@ export default function ContextEditor() {
             onClick={handleSaveAll}
             disabled={saving}
             className={cn(
-              "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors",
+              "flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ml-4",
               saved
                 ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
                 : "bg-reclaw-600 text-white hover:bg-reclaw-700"
             )}
           >
-            <Save size={16} />
+            <Save size={14} />
             {saved ? "Saved!" : saving ? "Saving..." : "Save All"}
           </button>
         </div>

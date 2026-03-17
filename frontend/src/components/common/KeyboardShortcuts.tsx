@@ -16,6 +16,8 @@ const SHORTCUTS = [
   { keys: ["⌘", "3"], action: "Tasks view" },
   { keys: ["⌘", "4"], action: "Interviews view" },
   { keys: ["⌘", "5"], action: "Context view" },
+  { keys: ["⌘", "6"], action: "Skills view" },
+  { keys: ["⌘", "7"], action: "Agents view" },
   { keys: ["⌘", "N"], action: "New project" },
   { keys: ["⌘", "."], action: "Toggle right panel" },
   { keys: ["Esc"], action: "Close modal / cancel" },

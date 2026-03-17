@@ -196,6 +196,7 @@ export default function RightPanel({ activeView, collapsed, onToggle }: RightPan
         <span className="text-xs font-semibold uppercase text-slate-500">Context</span>
         <button
           onClick={onToggle}
+          aria-label="Close context panel"
           className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-400"
         >
           <X size={14} />

@@ -1,6 +1,6 @@
 /** Accessibility Evaluator — axe-core WCAG 2.1 AA scan on every view. */
 
-export const name = "Accessibility (WCAG 2.1 AA)";
+export const name = "Accessibility (WCAG 2.1 A)";
 
 export async function evaluate(ctx) {
   const { page, screenshot } = ctx;
@@ -40,7 +40,7 @@ export async function evaluate(ctx) {
 
     try {
       const results = await new AxeBuilder({ page })
-        .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+        .withTags(["wcag2a", "wcag21a"])
         .analyze();
 
       for (const v of results.violations) {

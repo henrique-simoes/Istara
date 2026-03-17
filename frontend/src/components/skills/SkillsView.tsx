@@ -266,6 +266,7 @@ export default function SkillsView() {
         <button
           onClick={fetchSkills}
           className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400"
+          aria-label="Refresh skills"
         >
           <RefreshCw size={16} />
         </button>
@@ -363,11 +364,16 @@ export default function SkillsView() {
                   className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden"
                 >
                   {/* Skill row */}
-                  <button
+                  <div
                     onClick={() =>
                       setExpandedSkill(expanded ? null : skill.name)
                     }
-                    className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-750 transition-colors"
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setExpandedSkill(expanded ? null : skill.name); } }}
+                    aria-expanded={expanded}
+                    aria-label={`${skill.display_name} — ${skill.description}`}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer"
                   >
                     {expanded ? (
                       <ChevronDown size={14} className="text-slate-400 shrink-0" />
@@ -407,22 +413,27 @@ export default function SkillsView() {
                           {health.executions} runs
                         </span>
                       )}
-                      <button
+                      <span
                         onClick={(e) => {
                           e.stopPropagation();
                           handleToggle(skill.name, skill.enabled);
                         }}
-                        className="text-slate-400 hover:text-slate-600"
+                        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); handleToggle(skill.name, skill.enabled); } }}
+                        role="switch"
+                        tabIndex={0}
+                        aria-checked={skill.enabled}
+                        aria-label={skill.enabled ? `Disable ${skill.display_name}` : `Enable ${skill.display_name}`}
                         title={skill.enabled ? "Disable" : "Enable"}
+                        className="text-slate-400 hover:text-slate-600 cursor-pointer"
                       >
                         {skill.enabled ? (
                           <ToggleRight size={20} className="text-green-500" />
                         ) : (
                           <ToggleLeft size={20} />
                         )}
-                      </button>
+                      </span>
                     </div>
-                  </button>
+                  </div>
 
                   {/* Expanded detail */}
                   {expanded && (
