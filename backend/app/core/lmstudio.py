@@ -50,6 +50,32 @@ class LMStudioClient:
         """No-op for LM Studio — models are managed via the GUI."""
         yield {"status": "LM Studio models are managed through the application UI."}
 
+    @staticmethod
+    def _sanitize_messages(messages: list[dict]) -> list[dict]:
+        """Sanitize messages for OpenAI-compatible API.
+
+        Filters invalid messages, merges consecutive system messages,
+        and ensures all fields are properly formatted.
+        """
+        sanitized = []
+        for msg in messages:
+            role = msg.get("role", "")
+            content = msg.get("content")
+            if role not in ("system", "user", "assistant"):
+                continue
+            if content is None or (isinstance(content, str) and not content.strip()):
+                continue
+            sanitized.append({"role": role, "content": str(content)})
+
+        # Merge consecutive system messages
+        merged: list[dict] = []
+        for msg in sanitized:
+            if merged and msg["role"] == "system" and merged[-1]["role"] == "system":
+                merged[-1]["content"] += "\n\n" + msg["content"]
+            else:
+                merged.append(msg)
+        return merged
+
     async def chat(
         self,
         messages: list[dict],
@@ -64,6 +90,7 @@ class LMStudioClient:
         msgs = list(messages)
         if system:
             msgs = [{"role": "system", "content": system}, *msgs]
+        msgs = self._sanitize_messages(msgs)
 
         payload = {
             "model": model or settings.lmstudio_model,
@@ -92,6 +119,7 @@ class LMStudioClient:
         msgs = list(messages)
         if system:
             msgs = [{"role": "system", "content": system}, *msgs]
+        msgs = self._sanitize_messages(msgs)
 
         payload = {
             "model": model or settings.lmstudio_model,

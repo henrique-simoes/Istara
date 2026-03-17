@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Plus, GripVertical, Bot, User, Trash2 } from "lucide-react";
+import { useEffect, useState, useRef } from "react";
+import { Plus, GripVertical, Bot, User, Trash2, ChevronDown } from "lucide-react";
 import { useTaskStore } from "@/stores/taskStore";
 import { useProjectStore } from "@/stores/projectStore";
-import type { TaskStatus } from "@/lib/types";
+import { useAgentStore } from "@/stores/agentStore";
+import type { Task, TaskStatus } from "@/lib/types";
 import { cn, statusLabel } from "@/lib/utils";
 import ConfirmDialog from "@/components/common/ConfirmDialog";
 import TaskEditor from "./TaskEditor";
@@ -16,9 +17,344 @@ const COLUMNS: { id: TaskStatus; color: string }[] = [
   { id: "done", color: "border-t-green-500" },
 ];
 
+const PRIORITY_COLORS: Record<string, string> = {
+  urgent: "border-l-red-500",
+  high: "border-l-orange-500",
+  medium: "border-l-blue-500",
+  low: "border-l-slate-300 dark:border-l-slate-600",
+};
+
+const PRIORITY_LABELS: Record<string, string> = {
+  urgent: "Urgent",
+  high: "High",
+  medium: "Medium",
+  low: "Low",
+};
+
+const PRIORITY_DOT_COLORS: Record<string, string> = {
+  urgent: "bg-red-500",
+  high: "bg-orange-500",
+  medium: "bg-blue-500",
+  low: "bg-slate-400",
+};
+
+function AgentMiniAvatar({ agentId }: { agentId: string }) {
+  const agents = useAgentStore((s) => s.agents);
+  const agent = agents.find((a) => a.id === agentId);
+  if (!agent) return null;
+
+  const bgColors = [
+    "bg-blue-500", "bg-green-500", "bg-purple-500", "bg-orange-500",
+    "bg-pink-500", "bg-cyan-500", "bg-indigo-500", "bg-teal-500",
+  ];
+  const colorIdx = agent.name.charCodeAt(0) % bgColors.length;
+
+  return (
+    <div
+      className={cn(
+        "w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-semibold shrink-0",
+        bgColors[colorIdx]
+      )}
+      title={agent.name}
+    >
+      {agent.name.charAt(0).toUpperCase()}
+    </div>
+  );
+}
+
+function AgentAssignMenu({
+  taskId,
+  currentAgentId,
+  onClose,
+}: {
+  taskId: string;
+  currentAgentId: string | null;
+  onClose: () => void;
+}) {
+  const agents = useAgentStore((s) => s.agents);
+  const { updateTask } = useTaskStore();
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        onClose();
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [onClose]);
+
+  return (
+    <div
+      ref={menuRef}
+      className="absolute right-0 top-8 z-50 w-48 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 py-1 max-h-56 overflow-y-auto"
+    >
+      <button
+        onClick={async (e) => {
+          e.stopPropagation();
+          await updateTask(taskId, { agent_id: null });
+          onClose();
+        }}
+        className={cn(
+          "w-full text-left px-3 py-2 text-xs hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2",
+          !currentAgentId && "bg-slate-50 dark:bg-slate-700"
+        )}
+      >
+        <span className="w-5 h-5 rounded-full bg-slate-200 dark:bg-slate-600 flex items-center justify-center text-[10px] text-slate-500">?</span>
+        <span className="text-slate-600 dark:text-slate-300">Unassigned</span>
+      </button>
+      {agents.filter((a) => a.is_active).map((agent) => {
+        const bgColors = [
+          "bg-blue-500", "bg-green-500", "bg-purple-500", "bg-orange-500",
+          "bg-pink-500", "bg-cyan-500", "bg-indigo-500", "bg-teal-500",
+        ];
+        const colorIdx = agent.name.charCodeAt(0) % bgColors.length;
+        return (
+          <button
+            key={agent.id}
+            onClick={async (e) => {
+              e.stopPropagation();
+              await updateTask(taskId, { agent_id: agent.id });
+              onClose();
+            }}
+            className={cn(
+              "w-full text-left px-3 py-2 text-xs hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2",
+              currentAgentId === agent.id && "bg-reclaw-50 dark:bg-reclaw-900/20"
+            )}
+          >
+            <span className={cn("w-5 h-5 rounded-full flex items-center justify-center text-white text-[10px] font-semibold", bgColors[colorIdx])}>
+              {agent.name.charAt(0).toUpperCase()}
+            </span>
+            <span className="text-slate-700 dark:text-slate-300 truncate">{agent.name}</span>
+            {agent.is_system && <span className="text-[9px] text-slate-400 ml-auto">system</span>}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function PriorityPicker({
+  taskId,
+  currentPriority,
+  onClose,
+}: {
+  taskId: string;
+  currentPriority: string;
+  onClose: () => void;
+}) {
+  const { updateTask } = useTaskStore();
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        onClose();
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [onClose]);
+
+  return (
+    <div
+      ref={menuRef}
+      className="absolute left-0 top-6 z-50 w-32 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 py-1"
+    >
+      {(["urgent", "high", "medium", "low"] as const).map((p) => (
+        <button
+          key={p}
+          onClick={async (e) => {
+            e.stopPropagation();
+            await updateTask(taskId, { priority: p });
+            onClose();
+          }}
+          className={cn(
+            "w-full text-left px-3 py-1.5 text-xs hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2",
+            currentPriority === p && "bg-slate-50 dark:bg-slate-700"
+          )}
+        >
+          <span className={cn("w-2 h-2 rounded-full", PRIORITY_DOT_COLORS[p])} />
+          <span className="text-slate-700 dark:text-slate-300">{PRIORITY_LABELS[p]}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function TaskCard({
+  task,
+  expanded,
+  onToggle,
+  onEdit,
+  onDelete,
+}: {
+  task: Task;
+  expanded: boolean;
+  onToggle: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const [showAgentMenu, setShowAgentMenu] = useState(false);
+  const [showPriorityMenu, setShowPriorityMenu] = useState(false);
+  const priority = task.priority || "medium";
+
+  return (
+    <div
+      draggable
+      onDragStart={(e) => e.dataTransfer.setData("taskId", task.id)}
+      onClick={onToggle}
+      className={cn(
+        "bg-white dark:bg-slate-800 rounded-lg p-3 shadow-sm border border-slate-200 dark:border-slate-700 cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow border-l-[3px]",
+        PRIORITY_COLORS[priority]
+      )}
+    >
+      <div className="flex items-start gap-2">
+        <GripVertical size={14} className="text-slate-300 mt-0.5 shrink-0" />
+        <div className="flex-1 min-w-0">
+          {/* Title row with agent avatar */}
+          <div className="flex items-start justify-between gap-1">
+            <p className="text-sm font-medium text-slate-900 dark:text-white truncate flex-1">
+              {task.title}
+            </p>
+            <div className="relative shrink-0">
+              {task.agent_id ? (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowAgentMenu(!showAgentMenu);
+                  }}
+                  className="hover:ring-2 hover:ring-reclaw-300 rounded-full"
+                  aria-label="Change assigned agent"
+                >
+                  <AgentMiniAvatar agentId={task.agent_id} />
+                </button>
+              ) : (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowAgentMenu(!showAgentMenu);
+                  }}
+                  className="w-6 h-6 rounded-full border-2 border-dashed border-slate-300 dark:border-slate-600 flex items-center justify-center hover:border-reclaw-400 transition-colors"
+                  aria-label="Assign agent"
+                >
+                  <Plus size={10} className="text-slate-400" />
+                </button>
+              )}
+              {showAgentMenu && (
+                <AgentAssignMenu
+                  taskId={task.id}
+                  currentAgentId={task.agent_id}
+                  onClose={() => setShowAgentMenu(false)}
+                />
+              )}
+            </div>
+          </div>
+
+          {/* Badges row */}
+          <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+            {task.skill_name && (
+              <span className="inline-block text-[10px] bg-reclaw-100 dark:bg-reclaw-900/30 text-reclaw-700 dark:text-reclaw-400 rounded px-1.5 py-0.5">
+                {task.skill_name}
+              </span>
+            )}
+            <div className="relative">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowPriorityMenu(!showPriorityMenu);
+                }}
+                className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600"
+                aria-label="Change priority"
+              >
+                <span className={cn("w-1.5 h-1.5 rounded-full", PRIORITY_DOT_COLORS[priority])} />
+                {PRIORITY_LABELS[priority]}
+                <ChevronDown size={8} />
+              </button>
+              {showPriorityMenu && (
+                <PriorityPicker
+                  taskId={task.id}
+                  currentPriority={priority}
+                  onClose={() => setShowPriorityMenu(false)}
+                />
+              )}
+            </div>
+          </div>
+
+          {/* Progress bar */}
+          {task.progress > 0 && task.progress < 1 && (
+            <div className="mt-2">
+              <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-1.5">
+                <div
+                  className="bg-reclaw-500 h-1.5 rounded-full transition-all"
+                  style={{ width: `${task.progress * 100}%` }}
+                />
+              </div>
+              <span className="text-[10px] text-slate-400 mt-0.5">
+                {Math.round(task.progress * 100)}%
+              </span>
+            </div>
+          )}
+
+          {/* Expanded details */}
+          {expanded && (
+            <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-700 space-y-2">
+              {task.description && (
+                <p className="text-xs text-slate-500">{task.description}</p>
+              )}
+              {task.agent_notes && (
+                <div className="text-xs">
+                  <span className="flex items-center gap-1 text-slate-400 mb-0.5">
+                    <Bot size={10} /> Agent notes
+                  </span>
+                  <p className="text-slate-600 dark:text-slate-300">
+                    {task.agent_notes}
+                  </p>
+                </div>
+              )}
+              {task.user_context && (
+                <div className="text-xs">
+                  <span className="flex items-center gap-1 text-slate-400 mb-0.5">
+                    <User size={10} /> Your context
+                  </span>
+                  <p className="text-slate-600 dark:text-slate-300">
+                    {task.user_context}
+                  </p>
+                </div>
+              )}
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onEdit();
+                  }}
+                  className="text-xs text-reclaw-600 hover:text-reclaw-700 font-medium"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDelete();
+                  }}
+                  className="flex items-center gap-1 text-xs text-red-500 hover:text-red-600"
+                >
+                  <Trash2 size={10} /> Delete
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function KanbanBoard() {
   const { tasks, fetchTasks, createTask, moveTask, deleteTask } = useTaskStore();
   const { activeProjectId } = useProjectStore();
+  const { agents, fetchAgents } = useAgentStore();
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [addingTo, setAddingTo] = useState<TaskStatus | null>(null);
   const [expandedTask, setExpandedTask] = useState<string | null>(null);
@@ -31,10 +367,14 @@ export default function KanbanBoard() {
     }
   }, [activeProjectId, fetchTasks]);
 
+  // Fetch agents for assignment dropdown
+  useEffect(() => {
+    if (agents.length === 0) fetchAgents();
+  }, [agents.length, fetchAgents]);
+
   const handleCreate = async (status: TaskStatus) => {
     if (!newTaskTitle.trim() || !activeProjectId) return;
     await createTask(activeProjectId, newTaskTitle.trim());
-    // If not backlog, move to the right column
     if (status !== "backlog") {
       const allTasks = useTaskStore.getState().tasks;
       const latest = allTasks[allTasks.length - 1];
@@ -58,7 +398,7 @@ export default function KanbanBoard() {
 
   return (
     <div className="flex-1 overflow-x-auto p-4">
-      <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">📋 Tasks</h2>
+      <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Tasks</h2>
 
       <div className="flex gap-4 min-w-max">
         {COLUMNS.map((col) => {
@@ -118,91 +458,14 @@ export default function KanbanBoard() {
               {/* Task cards */}
               <div className="p-2 space-y-2 min-h-[100px]">
                 {columnTasks.map((task) => (
-                  <div
+                  <TaskCard
                     key={task.id}
-                    draggable
-                    onDragStart={(e) => e.dataTransfer.setData("taskId", task.id)}
-                    onClick={() => setExpandedTask(expandedTask === task.id ? null : task.id)}
-                    className="bg-white dark:bg-slate-800 rounded-lg p-3 shadow-sm border border-slate-200 dark:border-slate-700 cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow"
-                  >
-                    <div className="flex items-start gap-2">
-                      <GripVertical size={14} className="text-slate-300 mt-0.5 shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-slate-900 dark:text-white truncate">
-                          {task.title}
-                        </p>
-
-                        {task.skill_name && (
-                          <span className="inline-block text-xs bg-reclaw-100 dark:bg-reclaw-900/30 text-reclaw-700 dark:text-reclaw-400 rounded px-1.5 py-0.5 mt-1">
-                            {task.skill_name}
-                          </span>
-                        )}
-
-                        {task.progress > 0 && task.progress < 1 && (
-                          <div className="mt-2">
-                            <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-1.5">
-                              <div
-                                className="bg-reclaw-500 h-1.5 rounded-full transition-all"
-                                style={{ width: `${task.progress * 100}%` }}
-                              />
-                            </div>
-                            <span className="text-xs text-slate-400 mt-0.5">
-                              {Math.round(task.progress * 100)}%
-                            </span>
-                          </div>
-                        )}
-
-                        {/* Expanded details */}
-                        {expandedTask === task.id && (
-                          <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-700 space-y-2">
-                            {task.description && (
-                              <p className="text-xs text-slate-500">{task.description}</p>
-                            )}
-                            {task.agent_notes && (
-                              <div className="text-xs">
-                                <span className="flex items-center gap-1 text-slate-400 mb-0.5">
-                                  <Bot size={10} /> Agent notes
-                                </span>
-                                <p className="text-slate-600 dark:text-slate-300">
-                                  {task.agent_notes}
-                                </p>
-                              </div>
-                            )}
-                            {task.user_context && (
-                              <div className="text-xs">
-                                <span className="flex items-center gap-1 text-slate-400 mb-0.5">
-                                  <User size={10} /> Your context
-                                </span>
-                                <p className="text-slate-600 dark:text-slate-300">
-                                  {task.user_context}
-                                </p>
-                              </div>
-                            )}
-                            <div className="flex items-center gap-3">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setEditingTask(task.id);
-                                }}
-                                className="text-xs text-reclaw-600 hover:text-reclaw-700 font-medium"
-                              >
-                                ✏️ Edit
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setDeleteConfirm(task.id);
-                                }}
-                                className="flex items-center gap-1 text-xs text-red-500 hover:text-red-600"
-                              >
-                                <Trash2 size={10} /> Delete
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
+                    task={task}
+                    expanded={expandedTask === task.id}
+                    onToggle={() => setExpandedTask(expandedTask === task.id ? null : task.id)}
+                    onEdit={() => setEditingTask(task.id)}
+                    onDelete={() => setDeleteConfirm(task.id)}
+                  />
                 ))}
               </div>
             </div>

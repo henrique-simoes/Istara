@@ -52,6 +52,20 @@ export default function Home() {
     });
   }, [fetchProjects]);
 
+  // Handle reclaw:navigate events from AgentsView, ToastNotification, etc.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (typeof detail === "string") {
+        setActiveView(detail);
+      } else if (detail?.view) {
+        setActiveView(detail.view);
+      }
+    };
+    window.addEventListener("reclaw:navigate", handler);
+    return () => window.removeEventListener("reclaw:navigate", handler);
+  }, []);
+
   // Global Cmd+K for search
   useEffect(() => {
     const viewKeys: Record<string, string> = { "1": "chat", "2": "findings", "3": "tasks", "4": "interviews", "5": "context", "6": "skills", "7": "agents" };
