@@ -9,6 +9,18 @@ from app.core.ollama import ollama
 router = APIRouter()
 
 
+def _active_model() -> str:
+    if settings.llm_provider == "lmstudio":
+        return settings.lmstudio_model
+    return settings.ollama_model
+
+
+def _embed_model() -> str:
+    if settings.llm_provider == "lmstudio":
+        return settings.lmstudio_embed_model
+    return settings.ollama_embed_model
+
+
 @router.get("/settings/hardware")
 async def get_hardware_info():
     """Get hardware detection results and model recommendation."""
@@ -49,37 +61,34 @@ async def get_hardware_info():
 
 @router.get("/settings/models")
 async def get_models():
-    """Get available and active models from Ollama."""
+    """Get available and active models."""
     healthy = await ollama.health()
     if not healthy:
         return {
             "status": "offline",
             "models": [],
-            "active_model": settings.ollama_model,
+            "active_model": _active_model(),
         }
 
     models = await ollama.list_models()
     return {
         "status": "online",
         "models": models,
-        "active_model": settings.ollama_model,
-        "embed_model": settings.ollama_embed_model,
+        "active_model": _active_model(),
+        "embed_model": _embed_model(),
     }
 
 
 @router.post("/settings/model")
 async def switch_model(model_name: str):
-    """Switch the active model (pulls if not available)."""
-    # Check if model is available
+    """Switch the active model (pulls if using Ollama)."""
     models = await ollama.list_models()
     model_names = [m.get("name", "") for m in models]
 
-    if model_name not in model_names:
-        # Try to pull it
+    if model_name not in model_names and settings.llm_provider == "ollama":
         try:
-            progress_updates = []
-            async for progress in ollama.pull_model(model_name):
-                progress_updates.append(progress)
+            async for _progress in ollama.pull_model(model_name):
+                pass
             return {
                 "status": "pulled",
                 "model": model_name,
@@ -92,29 +101,29 @@ async def switch_model(model_name: str):
                 "message": f"Failed to pull model: {e}",
             }
 
-    # Note: This is a runtime-only change. Persisting requires updating .env.
-    # We store it as app state rather than mutating the frozen settings object.
+    env_var = "LMSTUDIO_MODEL" if settings.llm_provider == "lmstudio" else "OLLAMA_MODEL"
     return {
         "status": "switched",
         "model": model_name,
-        "message": f"Model {model_name} is available. Update OLLAMA_MODEL in .env to persist across restarts.",
+        "message": f"Model {model_name} is available. Update {env_var} in .env to persist across restarts.",
     }
 
 
 @router.get("/settings/status")
 async def system_status():
     """Get overall system status."""
-    ollama_healthy = await ollama.health()
+    llm_healthy = await ollama.health()
 
     return {
-        "status": "healthy" if ollama_healthy else "degraded",
+        "status": "healthy" if llm_healthy else "degraded",
+        "provider": settings.llm_provider,
         "services": {
             "backend": "running",
-            "ollama": "connected" if ollama_healthy else "disconnected",
+            "llm": "connected" if llm_healthy else "disconnected",
         },
         "config": {
-            "model": settings.ollama_model,
-            "embed_model": settings.ollama_embed_model,
+            "model": _active_model(),
+            "embed_model": _embed_model(),
             "rag_chunk_size": settings.rag_chunk_size,
             "rag_top_k": settings.rag_top_k,
         },

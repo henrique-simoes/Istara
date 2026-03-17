@@ -127,6 +127,44 @@ export const files = {
   stats: (projectId: string) => request<any>(`/api/files/${projectId}/stats`),
 };
 
+// --- Skills ---
+
+export const skills = {
+  list: (phase?: string) => {
+    const params = phase ? `?phase=${phase}` : "";
+    return request<any>(`/api/skills${params}`);
+  },
+  get: (name: string) => request<any>(`/api/skills/${name}`),
+  create: (data: {
+    name: string;
+    display_name: string;
+    description: string;
+    phase: string;
+    skill_type: string;
+    plan_prompt?: string;
+    execute_prompt?: string;
+    output_schema?: string;
+  }) => request<any>("/api/skills", { method: "POST", body: JSON.stringify(data) }),
+  update: (name: string, data: Record<string, unknown>) =>
+    request<any>(`/api/skills/${name}`, { method: "PATCH", body: JSON.stringify(data) }),
+  delete: (name: string) =>
+    fetch(`${API_BASE}/api/skills/${name}`, { method: "DELETE" }),
+  toggle: (name: string, enabled: boolean) =>
+    request<any>(`/api/skills/${name}/toggle?enabled=${enabled}`, { method: "POST" }),
+  execute: (name: string, data: { project_id: string; user_context?: string }) =>
+    request<any>(`/api/skills/${name}/execute`, { method: "POST", body: JSON.stringify(data) }),
+  health: () => request<any>("/api/skills/health/all"),
+  skillHealth: (name: string) => request<any>(`/api/skills/${name}/health`),
+  proposals: {
+    pending: () => request<any>("/api/skills/proposals/pending"),
+    all: (limit = 50) => request<any>(`/api/skills/proposals/all?limit=${limit}`),
+    approve: (id: string) =>
+      request<any>(`/api/skills/proposals/${id}/approve`, { method: "POST" }),
+    reject: (id: string, reason = "") =>
+      request<any>(`/api/skills/proposals/${id}/reject?reason=${encodeURIComponent(reason)}`, { method: "POST" }),
+  },
+};
+
 // --- Settings ---
 
 export const settings = {

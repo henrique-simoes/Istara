@@ -204,5 +204,57 @@ class ContextHierarchy:
         return True
 
 
+    async def compose_context_with_budget(
+        self,
+        db: AsyncSession,
+        project_id: str | None = None,
+        task_context: str = "",
+        agent_context: str = "",
+        max_tokens: int | None = None,
+    ) -> str:
+        """Compose context and warn if it approaches the token budget.
+
+        Calls :meth:`compose_context` then checks the result against the
+        configured ``max_context_tokens``.  Logs a warning when the system
+        prompt alone exceeds 75 % of the budget — leaving little room for
+        messages and the model reply.
+
+        Args:
+            db: Database session.
+            project_id: Project to load contexts for.
+            task_context: Task-level context (from Kanban card).
+            agent_context: Agent-specific context (from agent config).
+            max_tokens: Override for the context-window limit (uses
+                ``settings.max_context_tokens`` by default).
+
+        Returns:
+            The composed system prompt string.
+        """
+        from app.config import settings
+        from app.core.token_counter import count_tokens
+
+        prompt = await self.compose_context(
+            db,
+            project_id=project_id,
+            task_context=task_context,
+            agent_context=agent_context,
+        )
+
+        budget = max_tokens or settings.max_context_tokens
+        prompt_tokens = count_tokens(prompt)
+        usage_pct = prompt_tokens / budget if budget else 0
+
+        if usage_pct > 0.75:
+            logger.warning(
+                "System prompt uses %.0f%% of context window "
+                "(%d / %d tokens). Chat history and reply space may be limited.",
+                usage_pct * 100,
+                prompt_tokens,
+                budget,
+            )
+
+        return prompt
+
+
 # Singleton
 context_hierarchy = ContextHierarchy()

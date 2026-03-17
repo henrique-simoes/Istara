@@ -16,6 +16,7 @@ import {
   BarChart3,
   Mic,
   MoreHorizontal,
+  Wand2,
 } from "lucide-react";
 import { useProjectStore } from "@/stores/projectStore";
 import DarkModeToggle from "@/components/common/DarkModeToggle";
@@ -58,6 +59,7 @@ export default function Sidebar({ activeView, onViewChange, onSearchOpen }: Side
     { id: "tasks", icon: LayoutDashboard, label: "Tasks" },
     { id: "interviews", icon: Mic, label: "Interviews" },
     { id: "context", icon: FileText, label: "Context" },
+    { id: "skills", icon: Wand2, label: "Skills" },
   ];
 
   // Secondary nav: accessible via "More" or header icons
