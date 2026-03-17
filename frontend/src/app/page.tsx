@@ -12,6 +12,7 @@ import MetricsView from "@/components/metrics/MetricsView";
 import ContextEditor from "@/components/projects/ContextEditor";
 import VersionHistory from "@/components/common/VersionHistory";
 import SettingsView from "@/components/common/SettingsView";
+import SkillsView from "@/components/skills/SkillsView";
 import SearchModal from "@/components/common/SearchModal";
 import ToastNotification from "@/components/common/ToastNotification";
 import ErrorBoundary from "@/components/common/ErrorBoundary";
@@ -27,17 +28,17 @@ export default function Home() {
   const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
-  const [ollamaOk, setOllamaOk] = useState<boolean | null>(null);
+  const [llmOk, setLlmOk] = useState<boolean | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const { projects, fetchProjects } = useProjectStore();
 
-  // Check Ollama on mount
+  // Check LLM provider on mount
   useEffect(() => {
     settingsApi.status()
       .then((s) => {
-        setOllamaOk(s.services?.ollama === "connected");
+        setLlmOk(s.services?.llm === "connected");
       })
-      .catch(() => setOllamaOk(false));
+      .catch(() => setLlmOk(false));
   }, []);
 
   // Check if first-run (no projects)
@@ -52,7 +53,7 @@ export default function Home() {
 
   // Global Cmd+K for search
   useEffect(() => {
-    const viewKeys: Record<string, string> = { "1": "chat", "2": "findings", "3": "tasks", "4": "interviews", "5": "context" };
+    const viewKeys: Record<string, string> = { "1": "chat", "2": "findings", "3": "tasks", "4": "interviews", "5": "context", "6": "skills" };
 
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
@@ -78,13 +79,13 @@ export default function Home() {
     return () => window.removeEventListener("keydown", handler);
   }, []);
 
-  // Show Ollama check if not connected
-  if (ollamaOk === false) {
+  // Show LLM check if not connected
+  if (llmOk === false) {
     return <OllamaCheck onRetry={() => {
-      setOllamaOk(null);
+      setLlmOk(null);
       settingsApi.status()
-        .then((s) => setOllamaOk(s.services?.ollama === "connected"))
-        .catch(() => setOllamaOk(false));
+        .then((s) => setLlmOk(s.services?.llm === "connected"))
+        .catch(() => setLlmOk(false));
     }} />;
   }
 
@@ -96,6 +97,7 @@ export default function Home() {
       case "interviews": return <InterviewView />;
       case "metrics": return <MetricsView />;
       case "context": return <ContextEditor />;
+      case "skills": return <SkillsView />;
       case "history": return <VersionHistory />;
       case "settings": return <SettingsView />;
       default: return <ChatView />;

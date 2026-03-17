@@ -61,8 +61,10 @@ export default function SettingsView() {
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-sm text-slate-500">Ollama:</span>
-            {systemStatus?.services?.ollama === "connected" ? (
+            <span className="text-sm text-slate-500">
+              LLM ({systemStatus?.provider || "unknown"}):
+            </span>
+            {systemStatus?.services?.llm === "connected" ? (
               <span className="flex items-center gap-1 text-sm text-green-600 font-medium">
                 <Wifi size={14} /> Connected
               </span>
@@ -211,7 +213,9 @@ export default function SettingsView() {
       <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
         <h3 className="font-medium text-slate-900 dark:text-white mb-2">Pull New Model</h3>
         <p className="text-xs text-slate-500 mb-3">
-          Download a new model from the Ollama registry.
+          {systemStatus?.provider === "lmstudio"
+            ? "Load models through LM Studio's UI, or enter a model name to switch."
+            : "Download a new model from the Ollama registry."}
         </p>
         <div className="flex gap-2">
           <input

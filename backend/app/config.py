@@ -8,10 +8,18 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
 
+    # LLM Provider: "ollama" or "lmstudio"
+    llm_provider: str = "lmstudio"
+
     # Ollama
     ollama_host: str = "http://localhost:11434"
     ollama_model: str = "qwen3:latest"
     ollama_embed_model: str = "nomic-embed-text"
+
+    # LM Studio (OpenAI-compatible API)
+    lmstudio_host: str = "http://localhost:1234"
+    lmstudio_model: str = "default"
+    lmstudio_embed_model: str = "default"
 
     # Database
     database_url: str = "sqlite+aiosqlite:///./data/reclaw.db"
@@ -27,6 +35,9 @@ class Settings(BaseSettings):
 
     # File watcher
     file_watch_interval_seconds: int = 5
+
+    # Context window
+    max_context_tokens: int = 8192
 
     # RAG
     rag_chunk_size: int = 512

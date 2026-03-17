@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.agent import agent
 from app.core.ollama import ollama
 from app.core.rag import build_augmented_prompt, retrieve_context
+from app.core.token_counter import context_guard
 from app.models.database import get_db, async_session
 from app.models.message import Message
 from app.models.project import Project
@@ -224,6 +225,14 @@ async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db)):
     # Add current message if not already in history
     if not messages or messages[-1]["content"] != request.message:
         messages.append({"role": "user", "content": request.message})
+
+    # --- Context window guard: trim history if it would overflow ----------
+    messages, trim_summary = context_guard.summarize_if_needed(
+        system_prompt, messages
+    )
+    if trim_summary:
+        # Prepend the trim note so the model knows history was truncated
+        messages.insert(0, {"role": "system", "content": trim_summary})
 
     async def generate():
         """Stream the LLM response as SSE events.
