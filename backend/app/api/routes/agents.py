@@ -39,6 +39,7 @@ class UpdateAgentRequest(BaseModel):
     capabilities: list[str] | None = None
     heartbeat_interval: int | None = None
     state: str | None = None
+    is_active: bool | None = None
 
 
 @router.get("/agents")

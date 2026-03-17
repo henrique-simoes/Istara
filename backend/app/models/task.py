@@ -34,6 +34,7 @@ class Task(Base):
     user_context: Mapped[str] = mapped_column(Text, default="")
     progress: Mapped[float] = mapped_column(Float, default=0.0)
     position: Mapped[int] = mapped_column(default=0)
+    priority: Mapped[str] = mapped_column(String(20), default="medium")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )

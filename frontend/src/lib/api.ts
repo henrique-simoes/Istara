@@ -242,22 +242,22 @@ export const agents = {
 // --- Sessions ---
 
 export const sessions = {
-  list: (projectId: string) => get<{ sessions: ChatSession[] }>(`/sessions/${projectId}`).then(r => r.sessions),
+  list: (projectId: string) => get<{ sessions: ChatSession[] }>(`/api/sessions/${projectId}`).then(r => r.sessions),
   create: (data: { project_id: string; title?: string; agent_id?: string; inference_preset?: string }) =>
-    post<ChatSession>("/sessions", data),
-  get: (sessionId: string) => get<ChatSession & { messages: ChatMessage[] }>(`/sessions/detail/${sessionId}`),
+    post<ChatSession>("/api/sessions", data),
+  get: (sessionId: string) => get<ChatSession & { messages: ChatMessage[] }>(`/api/sessions/detail/${sessionId}`),
   update: (sessionId: string, data: Record<string, unknown>) =>
-    patch<ChatSession>(`/sessions/${sessionId}`, data),
-  delete: (sessionId: string) => del(`/sessions/${sessionId}`),
-  star: (sessionId: string) => post<{ starred: boolean }>(`/sessions/${sessionId}/star`, {}),
-  ensureDefault: (projectId: string) => get<ChatSession>(`/sessions/${projectId}/ensure-default`),
-  presets: () => get<{ presets: Record<string, InferencePresetConfig> }>("/inference-presets").then(r => r.presets),
+    patch<ChatSession>(`/api/sessions/${sessionId}`, data),
+  delete: (sessionId: string) => del(`/api/sessions/${sessionId}`),
+  star: (sessionId: string) => post<{ starred: boolean }>(`/api/sessions/${sessionId}/star`, {}),
+  ensureDefault: (projectId: string) => get<ChatSession>(`/api/sessions/${projectId}/ensure-default`),
+  presets: () => get<{ presets: Record<string, InferencePresetConfig> }>("/api/inference-presets").then(r => r.presets),
 };
 
 // --- Project Export ---
 
 export const projectExport = {
-  export: (projectId: string) => post<{ exported: boolean; path: string; files_count: number }>(`/projects/${projectId}/export`, {}),
+  export: (projectId: string) => post<{ exported: boolean; path: string; files_count: number }>(`/api/projects/${projectId}/export`, {}),
 };
 
 // --- Settings ---

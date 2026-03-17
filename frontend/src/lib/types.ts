@@ -18,6 +18,7 @@ export interface Project {
 export interface Task {
   id: string;
   project_id: string;
+  agent_id: string | null;
   title: string;
   description: string;
   status: TaskStatus;
@@ -26,6 +27,7 @@ export interface Task {
   user_context: string;
   progress: number;
   position: number;
+  priority: string;
   created_at: string;
   updated_at: string;
 }

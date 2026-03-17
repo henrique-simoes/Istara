@@ -504,23 +504,72 @@ function AgentDetail({ agent }: { agent: Agent }) {
       )}
 
       {tab === "permissions" && (
-        <div className="space-y-2">
-          {ALL_CAPABILITIES.map((cap) => (
-            <div key={cap.id} className="flex items-center justify-between py-1">
-              <div>
-                <p className="text-xs font-medium text-slate-700 dark:text-slate-300">{cap.label}</p>
-                <p className="text-[10px] text-slate-400">{cap.description}</p>
-              </div>
-              <span className={cn(
-                "text-[10px] px-2 py-0.5 rounded-full",
-                agent.capabilities.includes(cap.id)
-                  ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                  : "bg-slate-100 text-slate-400 dark:bg-slate-800"
-              )}>
-                {agent.capabilities.includes(cap.id) ? "Enabled" : "Disabled"}
-              </span>
+        <div className="space-y-3">
+          {/* Master on/off toggle */}
+          <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
+            <div>
+              <p className="text-sm font-medium text-slate-700 dark:text-slate-300">Agent Active</p>
+              <p className="text-[10px] text-slate-400">Master switch — disables all capabilities when off</p>
             </div>
-          ))}
+            <button
+              onClick={async () => {
+                if (agent.is_active) {
+                  await pauseAgent(agent.id);
+                  await updateAgent(agent.id, { is_active: false });
+                } else {
+                  await resumeAgent(agent.id);
+                  await updateAgent(agent.id, { is_active: true });
+                }
+              }}
+              className={cn(
+                "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
+                agent.is_active ? "bg-reclaw-600" : "bg-slate-300 dark:bg-slate-600"
+              )}
+              role="switch"
+              aria-checked={agent.is_active}
+              aria-label="Toggle agent active"
+            >
+              <span className={cn(
+                "inline-block h-4 w-4 rounded-full bg-white transition-transform shadow-sm",
+                agent.is_active ? "translate-x-6" : "translate-x-1"
+              )} />
+            </button>
+          </div>
+
+          {/* Per-capability toggles */}
+          <div className={cn("space-y-1", !agent.is_active && "opacity-50 pointer-events-none")}>
+            {ALL_CAPABILITIES.map((cap) => {
+              const enabled = agent.capabilities.includes(cap.id);
+              return (
+                <div key={cap.id} className="flex items-center justify-between py-2 px-1">
+                  <div>
+                    <p className="text-xs font-medium text-slate-700 dark:text-slate-300">{cap.label}</p>
+                    <p className="text-[10px] text-slate-400">{cap.description}</p>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      const newCaps = enabled
+                        ? agent.capabilities.filter((c) => c !== cap.id)
+                        : [...agent.capabilities, cap.id];
+                      await updateAgent(agent.id, { capabilities: newCaps });
+                    }}
+                    className={cn(
+                      "relative inline-flex h-5 w-9 items-center rounded-full transition-colors",
+                      enabled ? "bg-reclaw-500" : "bg-slate-300 dark:bg-slate-600"
+                    )}
+                    role="switch"
+                    aria-checked={enabled}
+                    aria-label={`Toggle ${cap.label}`}
+                  >
+                    <span className={cn(
+                      "inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform shadow-sm",
+                      enabled ? "translate-x-[18px]" : "translate-x-0.5"
+                    )} />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>
