@@ -172,14 +172,27 @@ class AgentOrchestrator:
                 await broadcast_task_progress(task.id, 0.8, "Verifying findings...")
                 await self._verify_findings(db, project.id, output)
 
-            # Update task
-            task.status = TaskStatus.IN_REVIEW
-            task.progress = 1.0
-            task.agent_notes = output.summary
-            await db.commit()
+            # Self-verify output quality
+            verified, verify_reason = self._self_verify_output(output)
 
-            await broadcast_task_progress(task.id, 1.0, "Complete — ready for review.")
-            await broadcast_agent_status("idle", f"Completed: {task.title}")
+            if verified:
+                # Update task — passed verification
+                task.status = TaskStatus.IN_REVIEW
+                task.progress = 1.0
+                task.agent_notes = output.summary
+                await db.commit()
+
+                await broadcast_task_progress(task.id, 1.0, "Complete — ready for review.")
+                await broadcast_agent_status("idle", f"Completed: {task.title}")
+            else:
+                # Verification failed — keep in progress for retry/attention
+                task.status = TaskStatus.IN_PROGRESS
+                task.progress = 0.5
+                task.agent_notes = f"[Verification failed] {verify_reason}\n\n{output.summary}"
+                await db.commit()
+
+                await broadcast_task_progress(task.id, 0.5, f"Verification failed: {verify_reason}")
+                await broadcast_agent_status("warning", f"Needs attention: {task.title} — {verify_reason}")
 
             # Record skill usage
             skill_manager.record_execution(skill.name, output.success, 0.8 if output.success else 0.2)
@@ -189,7 +202,7 @@ class AgentOrchestrator:
                 for suggestion in output.suggestions[:3]:
                     await broadcast_suggestion(suggestion, project.id)
 
-            logger.info(f"Task completed: {task.title} — {output.summary}")
+            logger.info(f"Task {'completed' if verified else 'needs review'}: {task.title} — {output.summary}")
 
         except Exception as e:
             logger.error(f"Skill execution failed for task {task.id}: {e}")
@@ -291,13 +304,35 @@ class AgentOrchestrator:
 
         result = response.get("message", {}).get("content", "")
 
-        task.status = TaskStatus.IN_REVIEW
-        task.progress = 1.0
-        task.agent_notes = result
-        await db.commit()
+        # Verify the LLM response quality
+        error_patterns = ["error:", "failed", "unable to", "could not"]
+        result_lower = (result or "").lower()
+        has_error_pattern = any(p in result_lower for p in error_patterns)
 
-        await broadcast_task_progress(task.id, 1.0, "Complete — ready for review.")
-        await broadcast_agent_status("idle", f"Completed: {task.title}")
+        if not result or len(result.strip()) < 20 or has_error_pattern:
+            # Response is empty, too short, or contains error patterns
+            reason = (
+                "LLM response is empty"
+                if not result
+                else "LLM response too short (< 20 chars)"
+                if len(result.strip()) < 20
+                else "LLM response contains error patterns"
+            )
+            task.status = TaskStatus.IN_PROGRESS
+            task.progress = 0.5
+            task.agent_notes = f"[Verification failed] {reason}\n\n{result}"
+            await db.commit()
+
+            await broadcast_task_progress(task.id, 0.5, f"Verification failed: {reason}")
+            await broadcast_agent_status("warning", f"Needs attention: {task.title} — {reason}")
+        else:
+            task.status = TaskStatus.IN_REVIEW
+            task.progress = 1.0
+            task.agent_notes = result
+            await db.commit()
+
+            await broadcast_task_progress(task.id, 1.0, "Complete — ready for review.")
+            await broadcast_agent_status("idle", f"Completed: {task.title}")
 
     async def _store_findings(
         self, db: AsyncSession, project_id: str, output: SkillOutput, task: Task
@@ -381,6 +416,41 @@ class AgentOrchestrator:
                 except Exception as e:
                     logger.error(f"Verification failed for insight: {e}")
 
+    # --- Self-Verification ---
+
+    def _self_verify_output(self, output: SkillOutput) -> tuple[bool, str]:
+        """Verify the quality of a skill output before marking tasks as done.
+
+        Returns:
+            A tuple of (verified: bool, reason: str).
+        """
+        # Check explicit failure
+        if not output.success:
+            return False, f"Skill reported failure: {output.summary}"
+
+        # Check for errors
+        if output.errors:
+            return False, f"Skill produced errors: {'; '.join(output.errors)}"
+
+        # Check for error patterns in the summary
+        error_patterns = ["No files provided", "Error:", "failed", "could not", "unable to"]
+        summary_lower = (output.summary or "").lower()
+        for pattern in error_patterns:
+            if pattern.lower() in summary_lower:
+                return False, f"Output summary contains error pattern '{pattern}': {output.summary}"
+
+        # Check if output has any actual findings
+        total_findings = (
+            len(output.nuggets)
+            + len(output.facts)
+            + len(output.insights)
+            + len(output.recommendations)
+        )
+        if total_findings == 0:
+            return False, "No findings produced (0 nuggets, facts, insights, or recommendations)"
+
+        return True, "Output verified successfully"
+
     # --- Manual Skill Execution (from API/Chat) ---
 
     async def execute_skill(
@@ -421,15 +491,25 @@ class AgentOrchestrator:
             try:
                 output = await skill.execute(skill_input)
 
+                # Self-verify the output quality
+                verified, verify_reason = self._self_verify_output(output)
+
+                if verified:
+                    task_status = TaskStatus.DONE
+                    task_notes = output.summary
+                else:
+                    task_status = TaskStatus.IN_REVIEW
+                    task_notes = f"[Verification failed] {verify_reason}\n\n{output.summary}"
+
                 # Create a temporary task to store findings
                 task = Task(
                     id=str(uuid.uuid4()),
                     project_id=project_id,
                     title=f"Manual: {skill.display_name}",
                     skill_name=skill_name,
-                    status=TaskStatus.DONE,
+                    status=task_status,
                     progress=1.0,
-                    agent_notes=output.summary,
+                    agent_notes=task_notes,
                 )
                 db.add(task)
 
@@ -437,7 +517,11 @@ class AgentOrchestrator:
                 await self._store_findings(db, project_id, output, task)
 
                 skill_manager.record_execution(skill_name, output.success, 0.8 if output.success else 0.2)
-                await broadcast_agent_status("idle", f"Completed: {skill.display_name}")
+
+                if verified:
+                    await broadcast_agent_status("idle", f"Completed: {skill.display_name}")
+                else:
+                    await broadcast_agent_status("warning", f"Needs review: {skill.display_name} — {verify_reason}")
 
                 return output
 

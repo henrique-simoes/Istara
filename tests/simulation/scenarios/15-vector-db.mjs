@@ -61,14 +61,10 @@ P001: Automatic tagging of interview quotes. Like, highlight a passage and have 
     }
   }
 
-  // 3. Query the vector database
+  // 3. Query the vector database via findings search (uses RAG retrieve_context)
   try {
-    const result = await api.post("/api/rag/query", {
-      project_id: ctx.projectId,
-      query: "interview organization research workflow",
-      top_k: 3,
-    });
-    const results = result.results || result.chunks || [];
+    const result = await api.get(`/api/findings/search/${ctx.projectId}?query=interview+organization+research+workflow&top_k=3`);
+    const results = result.results || [];
     checks.push({
       name: "RAG query returns results",
       passed: Array.isArray(results) && results.length > 0,
@@ -79,7 +75,7 @@ P001: Automatic tagging of interview quotes. Like, highlight a passage and have 
     if (results.length > 0) {
       const first = results[0];
       const hasText = typeof first.text === "string" || typeof first.content === "string";
-      const hasScore = typeof first.score === "number" || typeof first.similarity === "number" || typeof first.distance === "number";
+      const hasScore = typeof first.score === "number";
       checks.push({
         name: "RAG result has text and score",
         passed: hasText,
@@ -104,12 +100,8 @@ P001: Automatic tagging of interview quotes. Like, highlight a passage and have 
 
   for (const { q, desc } of queries) {
     try {
-      const result = await api.post("/api/rag/query", {
-        project_id: ctx.projectId,
-        query: q,
-        top_k: 2,
-      });
-      const results = result.results || result.chunks || [];
+      const result = await api.get(`/api/findings/search/${ctx.projectId}?query=${encodeURIComponent(q)}&top_k=2`);
+      const results = result.results || [];
       checks.push({
         name: `RAG: ${desc}`,
         passed: Array.isArray(results),

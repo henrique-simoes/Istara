@@ -22,6 +22,7 @@ interface Toast {
   timestamp: number;
   duration: number; // ms, 0 = sticky
   actions?: { label: string; onClick: () => void }[];
+  navigateTo?: string; // view name to navigate to on click
 }
 
 const ICONS = {
@@ -57,7 +58,7 @@ export default function ToastNotification() {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   const addToast = useCallback(
-    (type: Toast["type"], title: string, message: string, duration = 5000) => {
+    (type: Toast["type"], title: string, message: string, duration = 5000, navigateTo?: string) => {
       const toast: Toast = {
         id: `toast-${nextId++}`,
         type,
@@ -65,6 +66,7 @@ export default function ToastNotification() {
         message,
         timestamp: Date.now(),
         duration,
+        navigateTo,
       };
       setToasts((prev) => [...prev.slice(-4), toast]); // Max 5 visible
     },
@@ -93,9 +95,9 @@ export default function ToastNotification() {
           const status = event.data.status as string;
           const details = event.data.details as string;
           if (status === "working") {
-            addToast("agent", "🤖 Agent Working", details, 8000);
+            addToast("agent", "🤖 Agent Working", details, 8000, "agents");
           } else if (status === "error") {
-            addToast("warning", "⚠️ Agent Error", details, 10000);
+            addToast("warning", "⚠️ Agent Error", details, 10000, "agents");
           }
           break;
         }
@@ -103,14 +105,14 @@ export default function ToastNotification() {
           const progress = Math.round(((event.data.progress as number) || 0) * 100);
           const notes = (event.data.notes as string) || "";
           if (progress === 100) {
-            addToast("success", "✅ Task Complete", notes, 5000);
+            addToast("success", "✅ Task Complete", notes, 5000, "tasks");
           }
           break;
         }
         case "file_processed": {
           const filename = event.data.filename as string;
           const chunks = event.data.chunks as number;
-          addToast("file", "📁 File Processed", `${filename} — ${chunks} chunks indexed`, 4000);
+          addToast("file", "📁 File Processed", `${filename} — ${chunks} chunks indexed`, 4000, "interviews");
           break;
         }
         case "suggestion": {
@@ -123,6 +125,7 @@ export default function ToastNotification() {
             message: msg,
             timestamp: Date.now(),
             duration: 0, // Sticky
+            navigateTo: "chat",
             actions: [
               { label: "Yes, go ahead", onClick: () => {} },
               { label: "Not now", onClick: () => {} },
@@ -132,7 +135,7 @@ export default function ToastNotification() {
           break;
         }
         case "finding_created": {
-          addToast("info", "🔍 New Finding", event.data.message as string || "New research finding added.", 4000);
+          addToast("info", "🔍 New Finding", event.data.message as string || "New research finding added.", 4000, "findings");
           break;
         }
       }
@@ -152,8 +155,10 @@ export default function ToastNotification() {
           <div
             key={toast.id}
             onClick={() => {
-              const event = new CustomEvent("reclaw:navigate", { detail: toast.type });
-              window.dispatchEvent(event);
+              if (toast.navigateTo) {
+                window.dispatchEvent(new CustomEvent("reclaw:navigate", { detail: { view: toast.navigateTo } }));
+              }
+              removeToast(toast.id);
             }}
             className={cn(
               "animate-fade-in border-l-4 rounded-lg shadow-lg p-3 cursor-pointer",

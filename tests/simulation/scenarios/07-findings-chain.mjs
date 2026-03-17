@@ -104,7 +104,9 @@ export async function run(ctx) {
   }
   await screenshot("07-phase-switching");
 
-  // Check right panel — Evidence Chain
+  // Check right panel — Evidence Chain (toggle open with Cmd+.)
+  await page.keyboard.press("Meta+.");
+  await page.waitForTimeout(800);
   const evidenceChain = await page.locator("text=Evidence Chain").isVisible().catch(() => false);
   checks.push({ name: "Evidence Chain panel visible", passed: evidenceChain, detail: "" });
 
