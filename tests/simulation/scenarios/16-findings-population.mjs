@@ -22,7 +22,7 @@ export async function run(ctx) {
 
   for (const nugget of nuggets) {
     try {
-      const created = await api.post(`/api/findings/${ctx.projectId}/nuggets`, nugget);
+      const created = await api.post(`/api/findings/nuggets`, { ...nugget, project_id: ctx.projectId });
       if (created.id) nuggetIds.push(created.id);
       checks.push({
         name: `Create nugget: ${nugget.text.substring(6, 50)}...`,
@@ -53,7 +53,7 @@ export async function run(ctx) {
 
   for (const fact of facts) {
     try {
-      const created = await api.post(`/api/findings/${ctx.projectId}/facts`, fact);
+      const created = await api.post(`/api/findings/facts`, { ...fact, project_id: ctx.projectId });
       if (created.id) factIds.push(created.id);
       checks.push({
         name: `Create fact: ${fact.text.substring(6, 50)}...`,
@@ -86,7 +86,7 @@ export async function run(ctx) {
 
   for (const insight of insights) {
     try {
-      const created = await api.post(`/api/findings/${ctx.projectId}/insights`, insight);
+      const created = await api.post(`/api/findings/insights`, { ...insight, project_id: ctx.projectId });
       if (created.id) insightIds.push(created.id);
       checks.push({
         name: `Create insight: ${insight.text.substring(6, 50)}...`,
@@ -120,7 +120,7 @@ export async function run(ctx) {
 
   for (const rec of recommendations) {
     try {
-      const created = await api.post(`/api/findings/${ctx.projectId}/recommendations`, rec);
+      const created = await api.post(`/api/findings/recommendations`, { ...rec, project_id: ctx.projectId });
       checks.push({
         name: `Create recommendation: ${rec.text.substring(6, 50)}...`,
         passed: !!created.id,
@@ -133,7 +133,7 @@ export async function run(ctx) {
 
   // 5. Verify summary
   try {
-    const summary = await api.get(`/api/findings/${ctx.projectId}/summary`);
+    const summary = await api.get(`/api/findings/summary/${ctx.projectId}`);
     const totals = summary.totals || {};
     checks.push({
       name: "Findings summary API",

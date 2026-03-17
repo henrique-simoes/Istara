@@ -123,28 +123,34 @@ export default function FindingsView() {
             }
           }}
         >
-          {PHASE_TABS.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActivePhase(tab.id)}
-              role="tab"
-              aria-selected={activePhase === tab.id}
-              tabIndex={activePhase === tab.id ? 0 : -1}
-              className={cn(
-                "flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors",
-                activePhase === tab.id
-                  ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm"
-                  : "text-slate-500 dark:text-slate-400 hover:text-slate-700"
-              )}
-            >
-              💎 {tab.label}
-              {phaseStats && (
-                <span className="ml-1.5 text-xs text-slate-400">
-                  ({(phaseStats.nuggets || 0) + (phaseStats.facts || 0) + (phaseStats.insights || 0) + (phaseStats.recommendations || 0)})
-                </span>
-              )}
-            </button>
-          ))}
+          {PHASE_TABS.map((tab) => {
+            const tabStats = summary?.by_phase[tab.id];
+            const tabTotal = tabStats
+              ? (tabStats.nuggets || 0) + (tabStats.facts || 0) + (tabStats.insights || 0) + (tabStats.recommendations || 0)
+              : 0;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActivePhase(tab.id)}
+                role="tab"
+                aria-selected={activePhase === tab.id}
+                tabIndex={activePhase === tab.id ? 0 : -1}
+                className={cn(
+                  "flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors",
+                  activePhase === tab.id
+                    ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm"
+                    : "text-slate-500 dark:text-slate-400 hover:text-slate-700"
+                )}
+              >
+                💎 {tab.label}
+                {summary && (
+                  <span className="ml-1.5 text-xs text-slate-400">
+                    ({tabTotal})
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
       </div>
 
