@@ -125,6 +125,11 @@ async function loadScenarios() {
     "09-navigation-search",
     "10-settings-models",
     "11-agents-system",
+    "12-chat-sessions",
+    "13-task-agent-assignment",
+    "14-agent-communication",
+    "15-vector-db",
+    "16-findings-population",
   ];
 
   const scenarios = [];

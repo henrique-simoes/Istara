@@ -57,8 +57,10 @@ coverage/
 *.tsbuildinfo
 tests/simulation/.results/
 
-# Runtime data (usage stats, generated configs)
+# Runtime data (usage stats, generated configs, skill evolution)
 backend/app/skills/definitions/_usage_stats.json
+backend/app/skills/definitions/_proposals.json
+backend/app/skills/definitions/_deleted/
 
 # Exported projects
 ReClaw-Projects/

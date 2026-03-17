@@ -35,6 +35,8 @@ class TaskUpdate(BaseModel):
     user_context: str | None = None
     progress: float | None = None
     position: int | None = None
+    agent_id: str | None = None
+    priority: str | None = None
 
 
 class TaskResponse(BaseModel):
@@ -42,6 +44,7 @@ class TaskResponse(BaseModel):
 
     id: str
     project_id: str
+    agent_id: str | None = None
     title: str
     description: str
     status: TaskStatus
@@ -50,6 +53,7 @@ class TaskResponse(BaseModel):
     user_context: str
     progress: float
     position: int
+    priority: str = "medium"
     created_at: datetime
     updated_at: datetime
 
