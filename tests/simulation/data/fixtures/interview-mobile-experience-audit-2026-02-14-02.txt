@@ -1,0 +1,39 @@
+Interview Transcript — Mobile Experience Audit
+Participant: Carlos Mendoza (Operations Manager, 500-2000)
+Date: 2026-02-14
+Duration: 25 minutes
+Research Goal: Understand why mobile session duration is 60% shorter than desktop
+
+[00:00] Interviewer: When do you typically use the mobile app versus the desktop version?
+[00:54] Carlos Mendoza: It depends on the situation, but generally Honestly, I almost gave up during the sign-up process It's not great, not terrible.
+[01:55] Interviewer: How does that compare to what you expected?
+[02:03] Carlos Mendoza: Honestly, that's been a pain point for us. The mobile app crashes at least once a day when I try to upload photos
+[02:41] Interviewer: Can you tell me more about that?
+[02:44] Carlos Mendoza: So, I love the keyboard shortcuts, they save me so much time I mean, it works, but there's room for improvement.
+[03:32] Interviewer: How does the mobile app fit into your workflow throughout the day?
+[03:40] Carlos Mendoza: Let me think about that. I think the biggest issue is just consistency, some parts feel modern and others feel like they haven't been updated in years It's not great, not terrible.
+[04:55] Interviewer: How did that affect your workflow?
+[05:00] Carlos Mendoza: Yeah, so this is where it gets frustrating. The file upload limit is way too small for the kind of documents we work with
+[06:20] Interviewer: What feels harder to do on your phone compared to your computer?
+[06:27] Carlos Mendoza: I have to say, I keep a sticky note on my monitor with the steps to do the export because it's not intuitive at all
+[07:32] Interviewer: What tasks do you try to complete on mobile?
+[07:35] Carlos Mendoza: That's probably my biggest complaint. The onboarding tutorial was so long I just skipped it, and then I was completely lost
+[08:06] Interviewer: How did that affect your workflow?
+[08:09] Carlos Mendoza: It depends on the situation, but generally I genuinely look forward to using the analytics view, it's the best-designed part of the product We've gotten used to it at this point.
+[08:39] Interviewer: Are there features you avoid using on mobile entirely?
+[08:46] Carlos Mendoza: Yeah, absolutely — It feels like it was designed by engineers for engineers, not for someone like me
+[09:31] Interviewer: How does that compare to what you expected?
+[09:35] Carlos Mendoza: One thing I genuinely enjoy is — I was pleasantly surprised by how fast the search results came back
+[10:31] Interviewer: How important is that to your day-to-day work?
+[10:36] Carlos Mendoza: Let me think about that. I love the keyboard shortcuts, they save me so much time I think it depends a lot on your use case.
+[11:58] Interviewer: Can you tell me more about that?
+[12:01] Carlos Mendoza: That's probably my biggest complaint. It sends me way too many email notifications and I can't figure out how to turn them off individually
+[12:39] Interviewer: What happened next?
+[12:43] Carlos Mendoza: Oh for sure, The mobile app is fine for checking things, but I'd never try to do real work on it
+[14:03] Interviewer: How did that affect your workflow?
+[14:06] Carlos Mendoza: I'll be blunt — Every time I export a report, the formatting is completely off and I have to fix it in Excel
+
+[14:41] Interviewer: That's really helpful. Is there anything else you'd like to add before we wrap up?
+[14:48] Carlos Mendoza: I'd just emphasize that The onboarding emails were genuinely helpful, they came at the right pace That's really the core of it for me.
+
+[END OF TRANSCRIPT]

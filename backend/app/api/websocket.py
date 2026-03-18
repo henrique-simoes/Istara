@@ -133,3 +133,23 @@ async def broadcast_suggestion(message: str, project_id: str, action: str = "") 
         "project_id": project_id,
         "action": action,
     })
+
+
+async def broadcast_resource_throttle(reason: str, resources: dict | None = None) -> None:
+    """Broadcast a resource throttle event (agent paused due to hardware)."""
+    await manager.broadcast("resource_throttle", {
+        "reason": reason,
+        "resources": resources or {},
+    })
+
+
+async def broadcast_task_queue_update(
+    project_id: str, pending: int, in_progress: int, completed: int
+) -> None:
+    """Broadcast task queue depth so users see progress."""
+    await manager.broadcast("task_queue_update", {
+        "project_id": project_id,
+        "pending": pending,
+        "in_progress": in_progress,
+        "completed": completed,
+    })

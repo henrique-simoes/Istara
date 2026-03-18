@@ -1,0 +1,33 @@
+Interview Transcript — Collaboration Features
+Participant: Rachel Kim (Marketing Manager, 10-50)
+Date: 2026-03-04
+Duration: 29 minutes
+Research Goal: Increase team workspace adoption from 23% to 50% of active accounts
+
+[00:00] Interviewer: How does your team currently collaborate on projects?
+[00:36] Rachel Kim: Let me think about that. I ended up asking a coworker to walk me through it because the help docs didn't make sense Some team members feel differently, but that's my take.
+[01:24] Interviewer: Did anyone on your team feel differently about that?
+[01:30] Rachel Kim: That's a good question. I would absolutely recommend it to my team, with a few caveats I mean, it works, but there's room for improvement.
+[02:59] Interviewer: Can you tell me more about that?
+[03:06] Rachel Kim: I'll be blunt — I can't customize the columns in the table view, so I'm always scrolling sideways to find what I need
+[03:46] Interviewer: How does that compare to what you expected?
+[03:51] Rachel Kim: That's probably my biggest complaint. I tried to set up the integration with Slack three times and it failed silently each time
+[05:12] Interviewer: What would make it easier to get your whole team on board?
+[05:17] Rachel Kim: Yeah, absolutely — The notifications are just noise at this point, I ignore all of them
+[06:31] Interviewer: How does that compare to what you expected?
+[06:35] Rachel Kim: Yeah, absolutely — I don't think the pricing page made it clear what I was actually getting
+[07:05] Interviewer: Can you tell me more about that?
+[07:09] Rachel Kim: Well, in our case, I keep a sticky note on my monitor with the steps to do the export because it's not intuitive at all I think it depends a lot on your use case.
+[07:53] Interviewer: What was your initial reaction?
+[08:01] Rachel Kim: Oh for sure, I was confused by the terminology, what you call a workspace I would call a project
+[08:52] Interviewer: What tools do you use alongside our product for team communication?
+[08:56] Rachel Kim: Let me think about that. Once I got the hang of it, the workflow felt pretty natural We've gotten used to it at this point.
+[09:36] Interviewer: What stops you from using the shared workspace features more often?
+[09:39] Rachel Kim: Oh for sure, It's one of those tools where you know the feature exists, you just can't find it
+[11:08] Interviewer: Can you describe a situation where collaborating in the product went well?
+[11:12] Rachel Kim: Yeah, absolutely — I was confused by the terminology, what you call a workspace I would call a project
+
+[12:17] Interviewer: That's really helpful. Is there anything else you'd like to add before we wrap up?
+[12:26] Rachel Kim: I'd just emphasize that Compared to what we used before, this is a huge improvement, but the bar was pretty low That's really the core of it for me.
+
+[END OF TRANSCRIPT]

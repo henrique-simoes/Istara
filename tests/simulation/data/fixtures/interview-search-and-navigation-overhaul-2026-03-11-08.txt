@@ -1,0 +1,37 @@
+Interview Transcript — Search and Navigation Overhaul
+Participant: Priya Patel (UX Designer, 10-50)
+Date: 2026-03-11
+Duration: 27 minutes
+Research Goal: Reduce support tickets related to 'can't find feature' by 35%
+
+[00:00] Interviewer: How do you usually find what you need in the product?
+[00:43] Priya Patel: Well, in our case, I use it every single day, so even small annoyances add up over time It's not great, not terrible.
+[01:44] Interviewer: Is that something you've experienced more than once?
+[01:47] Priya Patel: I have to say, I love the keyboard shortcuts, they save me so much time
+[02:26] Interviewer: Can you tell me more about that?
+[02:34] Priya Patel: Yeah, absolutely — The onboarding emails were genuinely helpful, they came at the right pace
+[03:06] Interviewer: What do you do when you can't find a feature you know exists?
+[03:09] Priya Patel: Oh for sure, Setting up the integration was a breeze, probably the smoothest part of the whole experience
+[04:16] Interviewer: How would you describe the navigation structure to a new colleague?
+[04:20] Priya Patel: So, I would absolutely recommend it to my team, with a few caveats I think it depends a lot on your use case.
+[05:11] Interviewer: Can you show me a time when you searched for something and it didn't work?
+[05:17] Priya Patel: Yeah, so this is where it gets frustrating. I can't customize the columns in the table view, so I'm always scrolling sideways to find what I need
+[05:55] Interviewer: What happened next?
+[05:58] Priya Patel: One thing I genuinely enjoy is — I'm not sure who decided the default view should show everything, it's completely overwhelming
+[06:43] Interviewer: What was your initial reaction?
+[06:48] Priya Patel: I'll be blunt — The permissions system is so confusing that we just give everyone admin access
+[07:18] Interviewer: What labels or terms feel confusing or unclear to you?
+[07:22] Priya Patel: Oh for sure, The notifications are just noise at this point, I ignore all of them
+[08:11] Interviewer: Could you walk me through a specific example?
+[08:15] Priya Patel: Yeah, so this is where it gets frustrating. Switching between projects is painfully slow, there's no quick switcher
+[09:05] Interviewer: What happened next?
+[09:13] Priya Patel: Well, in our case, The fact that I can't undo a bulk action makes me nervous every time I use it I think it depends a lot on your use case.
+[10:33] Interviewer: What did you try to do about it?
+[10:36] Priya Patel: It depends on the situation, but generally I was pleasantly surprised by how fast the search results came back I think it depends a lot on your use case.
+[11:45] Interviewer: When did you first notice that?
+[11:51] Priya Patel: Well, in our case, I was pleasantly surprised by how fast the search results came back We've gotten used to it at this point.
+
+[13:01] Interviewer: That's really helpful. Is there anything else you'd like to add before we wrap up?
+[13:08] Priya Patel: Just that I really hope these changes happen soon. The team is getting impatient.
+
+[END OF TRANSCRIPT]

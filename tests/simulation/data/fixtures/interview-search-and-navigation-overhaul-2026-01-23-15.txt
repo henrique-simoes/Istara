@@ -1,0 +1,33 @@
+Interview Transcript — Search and Navigation Overhaul
+Participant: Rachel Kim (Marketing Manager, 10-50)
+Date: 2026-01-23
+Duration: 27 minutes
+Research Goal: Reduce support tickets related to 'can't find feature' by 35%
+
+[00:00] Interviewer: How do you usually find what you need in the product?
+[00:38] Rachel Kim: So, It's one of those tools where you know the feature exists, you just can't find it I think it depends a lot on your use case.
+[01:51] Interviewer: What would an ideal solution look like for you?
+[01:56] Rachel Kim: One thing I genuinely enjoy is — I would absolutely recommend it to my team, with a few caveats
+[03:00] Interviewer: How would you describe the navigation structure to a new colleague?
+[03:07] Rachel Kim: Yeah, absolutely — I had to watch a YouTube tutorial to understand the reporting feature, and that shouldn't be necessary
+[03:45] Interviewer: What do you do when you can't find a feature you know exists?
+[03:48] Rachel Kim: It depends on the situation, but generally I remember thinking, why is this taking so many clicks? We've gotten used to it at this point.
+[04:35] Interviewer: Can you show me a time when you searched for something and it didn't work?
+[04:39] Rachel Kim: Yeah, so this is where it gets frustrating. The search bar basically never returns what I'm actually looking for
+[05:18] Interviewer: How does that compare to what you expected?
+[05:23] Rachel Kim: This is something that really bothers me. The color contrast is so low I can barely read the secondary text
+[06:15] Interviewer: Is that something you've experienced more than once?
+[06:23] Rachel Kim: That's a good question. Compared to what we used before, this is a huge improvement, but the bar was pretty low Some team members feel differently, but that's my take.
+[06:57] Interviewer: What labels or terms feel confusing or unclear to you?
+[07:00] Rachel Kim: Well, in our case, I remember thinking, why is this taking so many clicks? I think it depends a lot on your use case.
+[07:55] Interviewer: Is that something you've experienced more than once?
+[08:02] Rachel Kim: One thing I genuinely enjoy is — I was confused by the terminology, what you call a workspace I would call a project
+[08:51] Interviewer: What happened next?
+[08:55] Rachel Kim: This is something that really bothers me. Switching between projects is painfully slow, there's no quick switcher
+[09:32] Interviewer: Can you tell me more about that?
+[09:40] Rachel Kim: I'll be blunt — The help docs are always out of date and show screenshots from an older version
+
+[10:45] Interviewer: That's really helpful. Is there anything else you'd like to add before we wrap up?
+[10:53] Rachel Kim: One last thing — The permissions system is so confusing that we just give everyone admin access But otherwise, I think we hit everything.
+
+[END OF TRANSCRIPT]

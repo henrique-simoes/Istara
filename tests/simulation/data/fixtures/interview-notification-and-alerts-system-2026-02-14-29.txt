@@ -1,0 +1,29 @@
+Interview Transcript — Notification and Alerts System
+Participant: Sarah Chen (Product Manager, 50-200)
+Date: 2026-02-14
+Duration: 26 minutes
+Research Goal: Decrease notification opt-out rate from 68% to under 40%
+
+[00:00] Interviewer: How do you feel about the number of notifications you receive?
+[00:57] Sarah Chen: Well, in our case, I was confused by the terminology, what you call a workspace I would call a project It's not great, not terrible.
+[01:38] Interviewer: What would an ideal solution look like for you?
+[01:45] Sarah Chen: I have to say, The collaboration features are actually the main reason we chose this over the competitor
+[02:15] Interviewer: Which notifications are actually useful to you?
+[02:22] Sarah Chen: So, I would absolutely recommend it to my team, with a few caveats It's not great, not terrible.
+[03:39] Interviewer: How do you manage notifications across all the tools you use?
+[03:43] Sarah Chen: One thing I genuinely enjoy is — The onboarding emails were genuinely helpful, they came at the right pace
+[04:17] Interviewer: What would the ideal notification system look like for you?
+[04:21] Sarah Chen: Let me think about that. Once I got the hang of it, the workflow felt pretty natural We've gotten used to it at this point.
+[05:01] Interviewer: When did you first notice that?
+[05:06] Sarah Chen: It depends on the situation, but generally I remember thinking, why is this taking so many clicks? We've gotten used to it at this point.
+[06:20] Interviewer: Have you ever missed something important because you turned notifications off?
+[06:24] Sarah Chen: That's probably my biggest complaint. The mobile app crashes at least once a day when I try to upload photos
+[07:37] Interviewer: Is that something you've experienced more than once?
+[07:42] Sarah Chen: Let me think about that. I genuinely look forward to using the analytics view, it's the best-designed part of the product I mean, it works, but there's room for improvement.
+[09:03] Interviewer: How did that affect your workflow?
+[09:10] Sarah Chen: Oh for sure, Honestly, I almost gave up during the sign-up process
+
+[10:07] Interviewer: That's really helpful. Is there anything else you'd like to add before we wrap up?
+[10:17] Sarah Chen: Just that I really hope these changes happen soon. The team is getting impatient.
+
+[END OF TRANSCRIPT]

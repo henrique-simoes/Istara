@@ -138,6 +138,20 @@ export default function ToastNotification() {
           addToast("info", "🔍 New Finding", event.data.message as string || "New research finding added.", 4000, "findings");
           break;
         }
+        case "resource_throttle": {
+          const reason = event.data.reason as string;
+          addToast("warning", "⏸ Agent Paused", `Hardware throttle: ${reason}`, 10000, "agents");
+          break;
+        }
+        case "task_queue_update": {
+          const pending = event.data.pending as number;
+          const inProgress = event.data.in_progress as number;
+          const completed = event.data.completed as number;
+          if (pending > 0 || inProgress > 0) {
+            addToast("info", "📊 Queue Update", `${pending} pending, ${inProgress} active, ${completed} done`, 4000, "tasks");
+          }
+          break;
+        }
       }
     },
     [addToast]
