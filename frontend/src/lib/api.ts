@@ -278,4 +278,6 @@ export const settings = {
   status: () => request<any>("/api/settings/status"),
   switchModel: (model: string) =>
     request<any>(`/api/settings/model?model_name=${model}`, { method: "POST" }),
+  switchProvider: (provider: "ollama" | "lmstudio") =>
+    request<any>(`/api/settings/provider?provider=${provider}`, { method: "POST" }),
 };

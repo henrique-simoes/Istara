@@ -82,6 +82,7 @@ class LMStudioClient:
         model: str | None = None,
         system: str | None = None,
         temperature: float = 0.7,
+        max_tokens: int | None = None,
     ) -> dict:
         """Non-streaming chat completion.
 
@@ -92,12 +93,14 @@ class LMStudioClient:
             msgs = [{"role": "system", "content": system}, *msgs]
         msgs = self._sanitize_messages(msgs)
 
-        payload = {
+        payload: dict = {
             "model": model or settings.lmstudio_model,
             "messages": msgs,
             "temperature": temperature,
             "stream": False,
         }
+        if max_tokens:
+            payload["max_tokens"] = max_tokens
 
         client = await self._get_client()
         resp = await client.post("/v1/chat/completions", json=payload)
@@ -114,6 +117,7 @@ class LMStudioClient:
         model: str | None = None,
         system: str | None = None,
         temperature: float = 0.7,
+        max_tokens: int | None = None,
     ) -> AsyncGenerator[str, None]:
         """Streaming chat completion — yields content chunks."""
         msgs = list(messages)
@@ -121,12 +125,14 @@ class LMStudioClient:
             msgs = [{"role": "system", "content": system}, *msgs]
         msgs = self._sanitize_messages(msgs)
 
-        payload = {
+        payload: dict = {
             "model": model or settings.lmstudio_model,
             "messages": msgs,
             "temperature": temperature,
             "stream": True,
         }
+        if max_tokens:
+            payload["max_tokens"] = max_tokens
 
         client = await self._get_client()
         async with client.stream("POST", "/v1/chat/completions", json=payload, timeout=None) as resp:

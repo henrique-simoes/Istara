@@ -1,21 +1,27 @@
 {
   "name": "kappa-thematic-analysis",
   "display_name": "Kappa Intercoder Thematic Analysis",
-  "description": "Thematic analysis with Cohen's/Fleiss' Kappa intercoder reliability.\nSupports agent-only, human-only, or agent+human coding with reliability measurement.",
+  "description": "Thematic analysis with Cohen's Kappa intercoder reliability measurement. Runs two independent coding passes, compares agreement, calculates Kappa, and reconciles disagreements. Follows Landis & Koch interpretation scale.",
   "phase": "define",
   "skill_type": "qualitative",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "enabled": true,
-  "plan_prompt": "Design a Kappa-validated thematic analysis process.\nContext: {context}\nInclude:\n1. Codebook development process (inductive/deductive/hybrid)\n2. Coder training protocol\n3. Pilot coding round with Kappa measurement\n4. Kappa interpretation scale (Landis & Koch: slight/fair/moderate/substantial/almost perfect)\n5. Disagreement resolution process\n6. Iterative refinement until acceptable Kappa (≥0.6 moderate, ≥0.8 excellent)\n7. Agent-as-coder protocol: how the AI acts as a second coder\n8. Final coding with reliability reporting\nFormat as Markdown.",
-  "execute_prompt": "Perform thematic analysis with intercoder reliability measurement.\nContext: {context}\n\nData to code:\n{content}\n\nProcess:\n1. Generate initial codebook from data (open coding)\n2. Code all items using the codebook\n3. Generate a SECOND independent coding (as a reliability coder)\n4. Calculate Cohen's Kappa between the two codings\n5. Report agreement/disagreement per code\n6. Identify codes needing refinement (low agreement)\n7. Provide final consolidated coding with reliability metrics\n8. Group codes into themes with prevalence data",
-  "output_schema": "{{\"codebook\": [{{\"code\": \"...\", \"definition\": \"...\", \"examples\": [\"...\"],\n\"frequency\": 0}}],\n\"reliability\": {{\n\"kappa\": 0, \"interpretation\": \"slight|fair|moderate|substantial|almost_perfect\",\n\"agreement_pct\": 0, \"n_items\": 0, \"n_codes\": 0,\n\"per_code_agreement\": [{{\"code\": \"...\", \"agreement\": 0, \"kappa\": 0}}]}},\n\"coding_results\": [{{\"item_id\": \"...\", \"text\": \"...\",\n\"coder_1\": [\"...\"], \"coder_2\": [\"...\"], \"agreed\": [\"...\"], \"disagreed\": [\"...\"]}}],\n\"themes\": [{{\"name\": \"...\", \"codes\": [\"...\"], \"prevalence\": \"dominant|common|minor\",\n\"description\": \"...\"}}],\n\"refinement_needed\": [{{\"code\": \"...\", \"kappa\": 0, \"issue\": \"...\"}}],\n\"nuggets\": [{{\"text\": \"...\", \"tags\": [\"...\"]}}],\n\"insights\": [{{\"text\": \"...\", \"confidence\": \"high|medium|low\"}}],\n\"summary\": \"...\"}}",
+  "plan_prompt": "Design a Kappa-validated thematic analysis process.\nContext: {context}\n\nInclude:\n1. **Codebook development** (inductive/deductive/hybrid approach)\n   - How codes will be defined with inclusion/exclusion criteria\n   - Phrase-level coding (3-30 word segments, never single words)\n2. **Dual-coding protocol**\n   - First pass: systematic open coding\n   - Second pass: independent re-coding with fresh perspective\n   - Why independent passes matter for reliability\n3. **Kappa calculation**\n   - Cohen's Kappa formula: K = (Po - Pe) / (1 - Pe)\n   - Po = observed agreement, Pe = expected agreement by chance\n   - Interpretation (Landis & Koch 1977): <0.00 poor, 0.00-0.20 slight, 0.21-0.40 fair, 0.41-0.60 moderate, 0.61-0.80 substantial, 0.81-1.00 almost perfect\n4. **Disagreement resolution**\n   - Identify codes with low agreement\n   - Refine code definitions to reduce ambiguity\n   - Reconcile through discussion (or consolidation for AI)\n5. **Minimum thresholds**\n   - Target Kappa >= 0.60 (moderate) for exploratory research\n   - Target Kappa >= 0.80 (almost perfect) for confirmatory research\n6. **Iterative refinement** until acceptable Kappa achieved\n\nFormat as Markdown.",
+  "execute_prompt": "Perform thematic analysis with intercoder reliability on this data.\nContext: {context}\nData: {content}\n\nIMPORTANT CODING RULES:\n- Code MEANINGFUL PHRASES (3-30 words), never single words\n- Each nugget must be a verbatim or closely paraphrased segment from the data\n- Provide source attribution for each nugget\n\nPROCESS:\n\n**Step 1 - Codebook Development**\nRead the data and create an initial codebook with:\n- Code name, definition, inclusion criteria, exclusion criteria, example from data\n\n**Step 2 - First Coding Pass (Coder A)**\nSystematically code all meaningful segments using the codebook.\nBe thorough and code every relevant phrase.\n\n**Step 3 - Second Coding Pass (Coder B)**\nIndependently re-code the SAME data using the SAME codebook, but approach the data fresh.\nYou may assign different codes to the same segments.\n\n**Step 4 - Agreement Calculation**\nFor each coded segment, compare Coder A and Coder B assignments:\n- Count agreements (both assigned same code) and disagreements\n- Calculate observed agreement (Po) and expected agreement (Pe)\n- Calculate Cohen's Kappa: K = (Po - Pe) / (1 - Pe)\n- Calculate per-code Kappa\n\n**Step 5 - Disagreement Analysis**\nIdentify codes with low agreement (Kappa < 0.60).\nAnalyze why disagreement occurred (ambiguous definition, overlapping codes, etc.)\n\n**Step 6 - Reconciliation & Final Coding**\nProduce final consolidated coding resolving all disagreements.\nRefine codebook definitions where needed.\n\n**Step 7 - Theme Development**\nGroup final codes into themes following Braun & Clarke.",
+  "output_schema": "{{\"codebook\": [{{\"code\": \"...\", \"definition\": \"...\", \"inclusion_criteria\": \"...\", \"exclusion_criteria\": \"...\", \"examples\": [\"verbatim phrase\"],\n\"frequency\": 0}}],\n\"reliability\": {{\n\"kappa\": 0.0, \"interpretation\": \"slight|fair|moderate|substantial|almost_perfect\",\n\"observed_agreement\": 0.0, \"expected_agreement\": 0.0,\n\"n_items_coded\": 0, \"n_codes_used\": 0,\n\"per_code_agreement\": [{{\"code\": \"...\", \"agreement_pct\": 0.0, \"kappa\": 0.0}}],\n\"low_agreement_codes\": [{{\"code\": \"...\", \"kappa\": 0.0, \"issue\": \"why agreement is low\", \"resolution\": \"how it was resolved\"}}]}},\n\"coding_results\": [{{\"item_id\": \"seg_1\", \"text\": \"verbatim phrase (3-30 words)\", \"source\": \"filename\",\n\"coder_a\": [\"code1\"], \"coder_b\": [\"code2\"], \"final\": [\"reconciled_code\"], \"agreed\": true}}],\n\"themes\": [{{\"name\": \"...\", \"definition\": \"...\", \"codes\": [\"...\"], \"prevalence\": \"dominant|common|minor\",\n\"description\": \"narrative with evidence\"}}],\n\"nuggets\": [{{\"text\": \"verbatim phrase from data\", \"source\": \"filename\", \"tags\": [\"final_code\"]}}],\n\"insights\": [{{\"text\": \"...\", \"confidence\": \"high|medium|low\"}}],\n\"summary\": \"executive summary including reliability metrics\"}}",
   "created_at": "2026-03-14T00:00:00Z",
-  "updated_at": "2026-03-14T00:00:00Z",
+  "updated_at": "2026-03-17T00:00:00Z",
   "metadata": {
     "author": "ReClaw",
     "tags": [
       "define",
       "qualitative"
+    ],
+    "references": [
+      "Cohen, J. (1960). A coefficient of agreement for nominal scales.",
+      "Landis, J. R. & Koch, G. G. (1977). The measurement of observer agreement for categorical data.",
+      "Braun, V. & Clarke, V. (2006). Using thematic analysis in psychology.",
+      "Saldana, J. (2021). The Coding Manual for Qualitative Researchers."
     ]
   },
   "changelog": [
@@ -23,6 +29,11 @@
       "version": "1.0.0",
       "date": "2026-03-14T00:00:00Z",
       "changes": "Initial creation from skill library"
+    },
+    {
+      "version": "2.0.0",
+      "date": "2026-03-17T00:00:00Z",
+      "changes": "Comprehensive rewrite: proper dual-coding protocol, phrase-level coding, Kappa calculation with per-code breakdown, disagreement analysis and resolution"
     }
   ]
 }

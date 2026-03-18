@@ -456,10 +456,36 @@ export default function InterviewView() {
     setHighlightText(nugget.text.slice(0, 100)); // Use first 100 chars to match
   };
 
-  // Handle tag click — also highlight tag-related nugget texts and filter by source files
+  // Handle tag click — navigate to the first file that contains this tag
   const handleTagClick = (tag: string | null) => {
-    setActiveTag(activeTag === tag ? null : tag);
+    const newTag = activeTag === tag ? null : tag;
+    setActiveTag(newTag);
     setHighlightText(null);
+
+    // If a tag is activated, check if the currently selected file has nuggets with that tag.
+    // If not, jump to the first file that does.
+    if (newTag) {
+      const tagNuggets = nuggets.filter((n) => (n.tags || []).includes(newTag));
+      if (tagNuggets.length > 0) {
+        const currentFileHasTag = selectedFile && tagNuggets.some(
+          (n) => (n.source || "").includes((selectedFile || "").split("/").pop() || "___")
+        );
+        if (!currentFileHasTag) {
+          // Find the first file that has this tag
+          for (const nugget of tagNuggets) {
+            const source = nugget.source || "";
+            const matchFile = projectFiles.find(
+              (f) => source.includes(f.name) || f.name.includes(source.split("/").pop() || "___")
+            );
+            if (matchFile) {
+              setSelectedFile(matchFile.name);
+              setSelectedFileType(matchFile.type || "");
+              break;
+            }
+          }
+        }
+      }
+    }
   };
 
   // Tag creation from text selection in file preview
