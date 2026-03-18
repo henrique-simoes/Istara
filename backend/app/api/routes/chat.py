@@ -19,6 +19,7 @@ from app.core.token_counter import context_guard
 from app.models.database import get_db, async_session
 from app.models.message import Message
 from app.models.project import Project
+from app.models.session import ChatSession, INFERENCE_PRESETS
 from app.skills.registry import registry
 
 router = APIRouter()
@@ -199,6 +200,35 @@ async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db)):
         return StreamingResponse(skill_stream(), media_type="text/event-stream",
                                   headers={"Cache-Control": "no-cache", "Connection": "keep-alive"})
 
+    # --- Resolve session-specific inference settings ---
+    llm_temperature = 0.7
+    llm_max_tokens: int | None = None
+    llm_model: str | None = None
+
+    if request.session_id:
+        sess_result = await db.execute(
+            select(ChatSession).where(ChatSession.id == request.session_id)
+        )
+        session = sess_result.scalar_one_or_none()
+        if session:
+            preset_key = session.inference_preset.value if session.inference_preset else "medium"
+            preset = INFERENCE_PRESETS.get(preset_key, INFERENCE_PRESETS["medium"])
+
+            if preset_key == "custom":
+                llm_temperature = session.custom_temperature if session.custom_temperature is not None else 0.7
+                llm_max_tokens = session.custom_max_tokens
+            else:
+                llm_temperature = preset["temperature"] if preset["temperature"] is not None else 0.7
+                llm_max_tokens = preset["max_tokens"]
+
+            if session.model_override:
+                llm_model = session.model_override
+
+            # Update session message count and last_message_at
+            session.message_count = (session.message_count or 0) + 1
+            session.last_message_at = user_msg.created_at
+            await db.commit()
+
     # Retrieve context via RAG
     rag_context = await retrieve_context(request.project_id, request.message)
 
@@ -252,6 +282,9 @@ async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db)):
         try:
             async for chunk in ollama.chat_stream(
                 messages=messages,
+                model=llm_model,
+                temperature=llm_temperature,
+                max_tokens=llm_max_tokens,
             ):
                 full_response.append(chunk)
                 event_data = json.dumps({"type": "chunk", "content": chunk})

@@ -87,6 +87,7 @@ class OllamaClient:
         model: str | None = None,
         system: str | None = None,
         temperature: float = 0.7,
+        max_tokens: int | None = None,
     ) -> dict:
         """Non-streaming chat completion."""
         msgs = list(messages)
@@ -94,11 +95,15 @@ class OllamaClient:
             msgs = [{"role": "system", "content": system}, *msgs]
         msgs = self._sanitize_messages(msgs)
 
+        options: dict = {"temperature": temperature}
+        if max_tokens:
+            options["num_predict"] = max_tokens
+
         payload: dict = {
             "model": model or settings.ollama_model,
             "messages": msgs,
             "stream": False,
-            "options": {"temperature": temperature},
+            "options": options,
         }
 
         client = await self._get_client()
@@ -112,6 +117,7 @@ class OllamaClient:
         model: str | None = None,
         system: str | None = None,
         temperature: float = 0.7,
+        max_tokens: int | None = None,
     ) -> AsyncGenerator[str, None]:
         """Streaming chat completion — yields content chunks."""
         msgs = list(messages)
@@ -119,11 +125,15 @@ class OllamaClient:
             msgs = [{"role": "system", "content": system}, *msgs]
         msgs = self._sanitize_messages(msgs)
 
+        options: dict = {"temperature": temperature}
+        if max_tokens:
+            options["num_predict"] = max_tokens
+
         payload: dict = {
             "model": model or settings.ollama_model,
             "messages": msgs,
             "stream": True,
-            "options": {"temperature": temperature},
+            "options": options,
         }
 
         client = await self._get_client()

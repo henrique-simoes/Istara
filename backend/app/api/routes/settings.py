@@ -81,7 +81,7 @@ async def get_models():
 
 @router.post("/settings/model")
 async def switch_model(model_name: str):
-    """Switch the active model (pulls if using Ollama)."""
+    """Switch the active model at runtime (pulls if using Ollama and not available)."""
     models = await ollama.list_models()
     model_names = [m.get("name", "") for m in models]
 
@@ -89,11 +89,6 @@ async def switch_model(model_name: str):
         try:
             async for _progress in ollama.pull_model(model_name):
                 pass
-            return {
-                "status": "pulled",
-                "model": model_name,
-                "message": f"Model {model_name} pulled and ready.",
-            }
         except Exception as e:
             return {
                 "status": "error",
@@ -101,11 +96,38 @@ async def switch_model(model_name: str):
                 "message": f"Failed to pull model: {e}",
             }
 
+    # Update runtime settings so all subsequent LLM calls use the new model
+    if settings.llm_provider == "lmstudio":
+        settings.lmstudio_model = model_name
+    else:
+        settings.ollama_model = model_name
+
     env_var = "LMSTUDIO_MODEL" if settings.llm_provider == "lmstudio" else "OLLAMA_MODEL"
     return {
         "status": "switched",
         "model": model_name,
-        "message": f"Model {model_name} is available. Update {env_var} in .env to persist across restarts.",
+        "message": f"Model switched to {model_name}. Update {env_var} in .env to persist across restarts.",
+    }
+
+
+@router.post("/settings/provider")
+async def switch_provider(provider: str):
+    """Switch the LLM provider at runtime (ollama or lmstudio)."""
+    from fastapi import HTTPException
+    if provider not in ("ollama", "lmstudio"):
+        raise HTTPException(status_code=400, detail="Provider must be 'ollama' or 'lmstudio'")
+
+    settings.llm_provider = provider
+
+    # Recreate the LLM client singleton for the new provider
+    import app.core.ollama as ollama_module
+    ollama_module.ollama = ollama_module._create_llm_client()
+
+    return {
+        "status": "switched",
+        "provider": provider,
+        "model": _active_model(),
+        "message": f"Provider switched to {provider}. Update LLM_PROVIDER in .env to persist.",
     }
 
 

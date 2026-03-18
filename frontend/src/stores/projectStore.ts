@@ -4,6 +4,22 @@ import { create } from "zustand";
 import type { Project } from "@/lib/types";
 import { projects as projectsApi } from "@/lib/api";
 
+// Persist activeProjectId to localStorage so it survives page refreshes
+const PROJECT_KEY = "reclaw-active-project";
+
+function getSavedProjectId(): string | null {
+  if (typeof window === "undefined") return null;
+  try { return localStorage.getItem(PROJECT_KEY); } catch { return null; }
+}
+
+function saveProjectId(id: string | null) {
+  if (typeof window === "undefined") return;
+  try {
+    if (id) localStorage.setItem(PROJECT_KEY, id);
+    else localStorage.removeItem(PROJECT_KEY);
+  } catch {}
+}
+
 interface ProjectStore {
   projects: Project[];
   activeProjectId: string | null;
@@ -21,7 +37,7 @@ interface ProjectStore {
 
 export const useProjectStore = create<ProjectStore>((set, get) => ({
   projects: [],
-  activeProjectId: null,
+  activeProjectId: getSavedProjectId(),
   loading: false,
   error: null,
 
@@ -30,8 +46,11 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     try {
       const data = await projectsApi.list();
       set({ projects: data, loading: false });
-      // Auto-select first project if none selected
-      if (!get().activeProjectId && data.length > 0) {
+      // Restore saved project if it exists in the fetched list; fallback to first
+      const current = get().activeProjectId;
+      const hasCurrent = current && data.some((p) => p.id === current);
+      if (!hasCurrent && data.length > 0) {
+        saveProjectId(data[0].id);
         set({ activeProjectId: data[0].id });
       }
     } catch (e: any) {
@@ -39,10 +58,14 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     }
   },
 
-  setActiveProject: (id) => set({ activeProjectId: id }),
+  setActiveProject: (id) => {
+    saveProjectId(id);
+    set({ activeProjectId: id });
+  },
 
   createProject: async (name, description) => {
     const project = await projectsApi.create({ name, description });
+    saveProjectId(project.id);
     set((s) => ({
       projects: [project, ...s.projects],
       activeProjectId: project.id,
@@ -59,10 +82,14 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
 
   deleteProject: async (id) => {
     await projectsApi.delete(id);
-    set((s) => ({
-      projects: s.projects.filter((p) => p.id !== id),
-      activeProjectId: s.activeProjectId === id ? null : s.activeProjectId,
-    }));
+    set((s) => {
+      const newActiveId = s.activeProjectId === id ? null : s.activeProjectId;
+      saveProjectId(newActiveId);
+      return {
+        projects: s.projects.filter((p) => p.id !== id),
+        activeProjectId: newActiveId,
+      };
+    });
   },
 
   activeProject: () => {

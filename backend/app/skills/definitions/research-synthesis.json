@@ -1,21 +1,27 @@
 {
   "name": "research-synthesis",
   "display_name": "Research Synthesis Report",
-  "description": "Generate structured research reports: executive summary, methodology, findings, recommendations.",
+  "description": "Generate comprehensive research synthesis reports following industry standards (NNGroup). Structures findings through the Atomic Research hierarchy (Nuggets to Facts to Insights to Recommendations) with evidence chains, methodology documentation, and actionable deliverables.",
   "phase": "define",
   "skill_type": "mixed",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "enabled": true,
-  "plan_prompt": "Plan a research synthesis report. Context: {context}\nInclude: report structure, audience, key sections, data sources to synthesize. Markdown.",
-  "execute_prompt": "Synthesize all research data into a structured report. Context: {context}\nData: {content}\nGenerate: executive summary, methodology overview, key findings (organized by theme),\nsupporting evidence, implications, recommendations, limitations, next steps.",
-  "output_schema": "{{\"executive_summary\": \"...\",\n\"methodology\": \"...\",\n\"findings\": [{{\"theme\": \"...\", \"description\": \"...\", \"evidence\": [\"...\"], \"confidence\": \"high|medium|low\"}}],\n\"recommendations\": [{{\"text\": \"...\", \"priority\": \"critical|high|medium|low\", \"effort\": \"low|medium|high\"}}],\n\"limitations\": [\"...\"],\n\"next_steps\": [\"...\"],\n\"insights\": [{{\"text\": \"...\", \"confidence\": \"high|medium|low\"}}],\n\"summary\": \"...\"}}",
+  "plan_prompt": "Plan a research synthesis report.\nContext: {context}\n\nThe report should follow UX research industry standards (Nielsen Norman Group, Portigal, etc.).\n\nInclude:\n1. **Report structure**: Executive summary, methodology, findings, implications, recommendations\n2. **Audience analysis**: Who will read this and what do they need?\n3. **Evidence organization**: How findings map to the Atomic Research hierarchy\n   - Nuggets (raw observations/quotes) -> Facts (verified patterns) -> Insights (interpretive conclusions) -> Recommendations (actionable items)\n4. **Data sources to synthesize**: Which research activities feed into this report\n5. **Confidence framework**: How to assess and communicate confidence levels\n6. **Limitations section**: Scope, sample size, methodology constraints\n7. **Visual elements**: What diagrams, charts, or maps would strengthen the report\n\nFormat as Markdown.",
+  "execute_prompt": "Synthesize all research data into a comprehensive report.\nContext: {context}\nData: {content}\n\nFollow this structure:\n\n**1. Executive Summary** (1 paragraph)\nKey findings, most important insight, and top recommendation. Written for stakeholders who may only read this section.\n\n**2. Research Overview**\n- Objectives: What questions this research aimed to answer\n- Methodology: What methods were used, sample sizes, timeframes\n- Participants: Demographics and recruitment criteria (if applicable)\n\n**3. Key Findings** (organized by theme)\nFor each finding:\n- Clear finding statement\n- Supporting evidence (verbatim quotes, data points, observations)\n- Confidence level (high/medium/low) with justification\n- Number of supporting data points\n- Connection to research objectives\n\n**4. Atomic Research Evidence Chain**\nMap findings to the hierarchy:\n- Nuggets: Raw observations and quotes from the data\n- Facts: Patterns verified across multiple data points\n- Insights: Interpretive conclusions drawn from facts\n- Recommendations: Actionable items derived from insights\nShow which nuggets support which facts, which facts support which insights, etc.\n\n**5. Implications & Recommendations**\nFor each recommendation:\n- What to do and why\n- Supporting insights\n- Priority (critical/high/medium/low)\n- Estimated effort (low/medium/high)\n- Expected impact\n\n**6. Limitations**\n- What this research can and cannot tell us\n- Potential biases\n- Gaps requiring further research\n\n**7. Next Steps**\n- Recommended follow-up research\n- Open questions\n- Timeline suggestions",
+  "output_schema": "{{\"executive_summary\": \"1-paragraph summary for stakeholders\",\n\"methodology\": {{\"objectives\": [\"...\"], \"methods\": [\"...\"], \"sample_size\": \"...\", \"timeframe\": \"...\"}},\n\"findings\": [{{\"theme\": \"...\", \"statement\": \"clear finding\", \"evidence\": [\"supporting quotes/data\"], \"confidence\": \"high|medium|low\", \"data_points\": 0}}],\n\"evidence_chain\": {{\"nuggets_to_facts\": [{{\"nugget\": \"...\", \"supports_fact\": \"...\"}}], \"facts_to_insights\": [{{\"fact\": \"...\", \"supports_insight\": \"...\"}}], \"insights_to_recs\": [{{\"insight\": \"...\", \"supports_rec\": \"...\"}}]}},\n\"recommendations\": [{{\"text\": \"...\", \"supporting_insights\": [\"...\"], \"priority\": \"critical|high|medium|low\", \"effort\": \"low|medium|high\", \"expected_impact\": \"...\"}}],\n\"limitations\": [\"...\"],\n\"next_steps\": [{{\"action\": \"...\", \"method\": \"...\", \"priority\": \"high|medium|low\"}}],\n\"nuggets\": [{{\"text\": \"verbatim quote or observation\", \"source\": \"filename\", \"tags\": [\"theme\"]}}],\n\"facts\": [{{\"text\": \"verified pattern\"}}],\n\"insights\": [{{\"text\": \"interpretive conclusion\", \"confidence\": \"high|medium|low\"}}],\n\"summary\": \"executive summary\"}}",
   "created_at": "2026-03-14T00:00:00Z",
-  "updated_at": "2026-03-14T00:00:00Z",
+  "updated_at": "2026-03-17T00:00:00Z",
   "metadata": {
     "author": "ReClaw",
     "tags": [
       "define",
       "mixed"
+    ],
+    "references": [
+      "Portigal, S. (2013). Interviewing Users.",
+      "Nielsen Norman Group. Research report guidelines.",
+      "Tomer Sharon. Atomic Research methodology.",
+      "Pidcock, D. Atomic UX Research framework."
     ]
   },
   "changelog": [
@@ -23,6 +29,11 @@
       "version": "1.0.0",
       "date": "2026-03-14T00:00:00Z",
       "changes": "Initial creation from skill library"
+    },
+    {
+      "version": "2.0.0",
+      "date": "2026-03-17T00:00:00Z",
+      "changes": "Comprehensive rewrite: evidence chain mapping through Atomic Research hierarchy, proper report structure per NNGroup standards, confidence framework, limitations section, stakeholder-appropriate executive summary"
     }
   ]
 }
