@@ -4,6 +4,22 @@ import { create } from "zustand";
 import type { ChatSession, InferencePreset, InferencePresetConfig } from "@/lib/types";
 import { sessions as sessionsApi } from "@/lib/api";
 
+// Persist activeSessionId to localStorage so it survives page refreshes
+const ACTIVE_SESSION_KEY = "reclaw-active-session";
+
+function getSavedSessionId(): string | null {
+  if (typeof window === "undefined") return null;
+  try { return localStorage.getItem(ACTIVE_SESSION_KEY); } catch { return null; }
+}
+
+function saveSessionId(id: string | null) {
+  if (typeof window === "undefined") return;
+  try {
+    if (id) localStorage.setItem(ACTIVE_SESSION_KEY, id);
+    else localStorage.removeItem(ACTIVE_SESSION_KEY);
+  } catch {}
+}
+
 interface SessionStore {
   sessions: ChatSession[];
   activeSessionId: string | null;
@@ -28,7 +44,7 @@ interface SessionStore {
 
 export const useSessionStore = create<SessionStore>((set, get) => ({
   sessions: [],
-  activeSessionId: null,
+  activeSessionId: getSavedSessionId(),
   presets: null,
   loading: false,
   pendingPrefill: null,
@@ -37,7 +53,14 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     set({ loading: true });
     try {
       const sessions = await sessionsApi.list(projectId);
-      set({ sessions, loading: false });
+      // Restore saved session if it exists in the fetched list
+      const current = get().activeSessionId;
+      const hasCurrent = current && sessions.some((s) => s.id === current);
+      set({
+        sessions,
+        loading: false,
+        activeSessionId: hasCurrent ? current : get().activeSessionId,
+      });
     } catch {
       set({ loading: false });
     }
@@ -49,11 +72,15 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       title: title || "New Chat",
       agent_id: agentId,
     });
+    saveSessionId(session.id);
     set((s) => ({ sessions: [session, ...s.sessions], activeSessionId: session.id }));
     return session;
   },
 
-  selectSession: (id) => set({ activeSessionId: id }),
+  selectSession: (id) => {
+    saveSessionId(id);
+    set({ activeSessionId: id });
+  },
 
   setPendingPrefill: (message) => set({ pendingPrefill: message }),
 
@@ -66,10 +93,14 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
 
   deleteSession: async (id) => {
     await sessionsApi.delete(id);
-    set((s) => ({
-      sessions: s.sessions.filter((sess) => sess.id !== id),
-      activeSessionId: s.activeSessionId === id ? null : s.activeSessionId,
-    }));
+    set((s) => {
+      const newActiveId = s.activeSessionId === id ? null : s.activeSessionId;
+      saveSessionId(newActiveId);
+      return {
+        sessions: s.sessions.filter((sess) => sess.id !== id),
+        activeSessionId: newActiveId,
+      };
+    });
   },
 
   toggleStar: async (id) => {
@@ -94,9 +125,11 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     const session = await sessionsApi.ensureDefault(projectId);
     set((s) => {
       const exists = s.sessions.some((sess) => sess.id === session.id);
+      const newActiveId = s.activeSessionId || session.id;
+      saveSessionId(newActiveId);
       return {
         sessions: exists ? s.sessions : [session, ...s.sessions],
-        activeSessionId: s.activeSessionId || session.id,
+        activeSessionId: newActiveId,
       };
     });
     return session;

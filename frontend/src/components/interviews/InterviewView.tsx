@@ -21,6 +21,9 @@ import {
   ChevronDown,
   Send,
   Eye,
+  Plus,
+  Highlighter,
+  BarChart3,
 } from "lucide-react";
 import { useProjectStore } from "@/stores/projectStore";
 import { useAgentStore } from "@/stores/agentStore";
@@ -53,20 +56,87 @@ function isImage(type: string) {
   return [".jpg", ".jpeg", ".png", ".gif", ".webp"].includes(type);
 }
 
+/* ── Escape regex special chars ── */
+function escapeRegex(str: string) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/* ── Tag creation popover ── */
+function TagCreatePopover({
+  selectedText,
+  position,
+  onCreateTag,
+  onClose,
+}: {
+  selectedText: string;
+  position: { x: number; y: number };
+  onCreateTag: (tagName: string) => void;
+  onClose: () => void;
+}) {
+  const [tagName, setTagName] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
+  const handleSubmit = () => {
+    const name = tagName.trim() || selectedText.slice(0, 30).trim();
+    if (name) onCreateTag(name);
+  };
+
+  return (
+    <div
+      className="fixed z-50 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl p-3 w-64"
+      style={{ left: Math.min(position.x, window.innerWidth - 280), top: position.y + 10 }}
+    >
+      <div className="flex items-center gap-2 mb-2">
+        <Tag size={12} className="text-purple-600" />
+        <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Create Tag</span>
+        <button onClick={onClose} className="ml-auto text-slate-400 hover:text-slate-600">
+          <X size={12} />
+        </button>
+      </div>
+      <p className="text-[10px] text-slate-400 mb-2 truncate">
+        Selected: &ldquo;{selectedText.slice(0, 60)}{selectedText.length > 60 ? "..." : ""}&rdquo;
+      </p>
+      <input
+        ref={inputRef}
+        value={tagName}
+        onChange={(e) => setTagName(e.target.value)}
+        onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+        placeholder={selectedText.slice(0, 30)}
+        className="w-full px-2 py-1.5 text-xs border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-purple-500 mb-2"
+      />
+      <button
+        onClick={handleSubmit}
+        className="w-full px-2 py-1.5 text-xs bg-purple-600 text-white rounded-md hover:bg-purple-700 flex items-center justify-center gap-1"
+      >
+        <Plus size={10} /> Create Tag
+      </button>
+    </div>
+  );
+}
+
 /* ── File Content Preview ── */
 function FilePreview({
   projectId,
   filename,
   fileType,
   activeTag,
+  highlightText,
+  onTextSelect,
 }: {
   projectId: string;
   filename: string;
   fileType: string;
   activeTag: string | null;
+  highlightText: string | null;
+  onTextSelect?: (text: string, position: { x: number; y: number }) => void;
 }) {
   const [content, setContent] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const preRef = useRef<HTMLPreElement>(null);
 
   useEffect(() => {
     setLoading(true);
@@ -79,6 +149,29 @@ function FilePreview({
       .catch(() => setContent(null))
       .finally(() => setLoading(false));
   }, [projectId, filename]);
+
+  // Auto-scroll to first highlight match
+  useEffect(() => {
+    if (!preRef.current) return;
+    const mark = preRef.current.querySelector("mark");
+    if (mark) {
+      mark.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [activeTag, highlightText, content]);
+
+  // Handle text selection for tag creation
+  const handleMouseUp = useCallback(() => {
+    if (!onTextSelect) return;
+    const selection = window.getSelection();
+    const text = selection?.toString().trim();
+    if (text && text.length > 2) {
+      const range = selection?.getRangeAt(0);
+      const rect = range?.getBoundingClientRect();
+      if (rect) {
+        onTextSelect(text, { x: rect.left, y: rect.bottom });
+      }
+    }
+  }, [onTextSelect]);
 
   if (loading) {
     return (
@@ -143,15 +236,31 @@ function FilePreview({
     );
   }
 
-  // Highlight tag matches in content
-  if (activeTag && content) {
-    const regex = new RegExp(`(${activeTag.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`, "gi");
+  // Build combined highlight patterns (tag + nugget text)
+  const patterns: string[] = [];
+  if (activeTag) patterns.push(escapeRegex(activeTag));
+  if (highlightText) patterns.push(escapeRegex(highlightText));
+
+  if (patterns.length > 0) {
+    const regex = new RegExp(`(${patterns.join("|")})`, "gi");
     const parts = content.split(regex);
     return (
-      <pre className="text-sm text-slate-600 dark:text-slate-400 whitespace-pre-wrap font-mono leading-relaxed p-4">
+      <pre
+        ref={preRef}
+        onMouseUp={handleMouseUp}
+        className="text-sm text-slate-600 dark:text-slate-400 whitespace-pre-wrap font-mono leading-relaxed p-4 select-text cursor-text"
+      >
         {parts.map((part, i) =>
           regex.test(part) ? (
-            <mark key={i} className="bg-purple-200 dark:bg-purple-800/50 text-purple-900 dark:text-purple-200 rounded px-0.5">
+            <mark
+              key={i}
+              className={cn(
+                "rounded px-0.5",
+                highlightText && part.toLowerCase() === highlightText.toLowerCase()
+                  ? "bg-amber-200 dark:bg-amber-800/50 text-amber-900 dark:text-amber-200"
+                  : "bg-purple-200 dark:bg-purple-800/50 text-purple-900 dark:text-purple-200"
+              )}
+            >
               {part}
             </mark>
           ) : (
@@ -163,7 +272,11 @@ function FilePreview({
   }
 
   return (
-    <pre className="text-sm text-slate-600 dark:text-slate-400 whitespace-pre-wrap font-mono leading-relaxed p-4">
+    <pre
+      ref={preRef}
+      onMouseUp={handleMouseUp}
+      className="text-sm text-slate-600 dark:text-slate-400 whitespace-pre-wrap font-mono leading-relaxed p-4 select-text cursor-text"
+    >
       {content}
     </pre>
   );
@@ -262,11 +375,18 @@ export default function InterviewView() {
   const [nuggets, setNuggets] = useState<any[]>([]);
   const [tags, setTags] = useState<Record<string, number>>({});
   const [activeTag, setActiveTag] = useState<string | null>(null);
+  const [highlightText, setHighlightText] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Tag creation state
+  const [tagCreatePopover, setTagCreatePopover] = useState<{
+    text: string;
+    position: { x: number; y: number };
+  } | null>(null);
 
   const loadProjectData = useCallback(async () => {
     if (!activeProjectId) return;
@@ -318,6 +438,52 @@ export default function InterviewView() {
     setSelectedFile(filename);
     setSelectedFileType(type);
     setAnalysisResult("");
+    setHighlightText(null);
+  };
+
+  // Click a nugget → navigate to its source file and highlight the nugget text
+  const handleNuggetClick = (nugget: any) => {
+    const source = nugget.source || "";
+    // Try to find the file that matches the nugget source
+    const matchFile = projectFiles.find(
+      (f) => source.includes(f.name) || f.name.includes(source.split("/").pop() || "")
+    );
+    if (matchFile) {
+      setSelectedFile(matchFile.name);
+      setSelectedFileType(matchFile.type || "");
+    }
+    // Highlight the nugget text in the preview
+    setHighlightText(nugget.text.slice(0, 100)); // Use first 100 chars to match
+  };
+
+  // Handle tag click — also highlight tag-related nugget texts and filter by source files
+  const handleTagClick = (tag: string | null) => {
+    setActiveTag(activeTag === tag ? null : tag);
+    setHighlightText(null);
+  };
+
+  // Tag creation from text selection in file preview
+  const handleTextSelect = (text: string, position: { x: number; y: number }) => {
+    setTagCreatePopover({ text, position });
+  };
+
+  const handleCreateTag = async (tagName: string) => {
+    if (!activeProjectId || !tagCreatePopover) return;
+    setTagCreatePopover(null);
+
+    // Create a nugget with this tag from the selected text
+    try {
+      await findingsApi.createNugget(activeProjectId, {
+        text: tagCreatePopover.text,
+        source: selectedFile || "manual",
+        source_location: "",
+        tags: [tagName],
+      });
+      await loadProjectData();
+    } catch (e: any) {
+      // Fallback: add the tag locally for UX
+      setTags((prev) => ({ ...prev, [tagName]: (prev[tagName] || 0) + 1 }));
+    }
   };
 
   const handleAnalyze = async () => {
@@ -378,6 +544,16 @@ export default function InterviewView() {
 
   return (
     <div className="flex-1 flex overflow-hidden">
+      {/* Tag creation popover */}
+      {tagCreatePopover && (
+        <TagCreatePopover
+          selectedText={tagCreatePopover.text}
+          position={tagCreatePopover.position}
+          onCreateTag={handleCreateTag}
+          onClose={() => setTagCreatePopover(null)}
+        />
+      )}
+
       {/* Left: File preview & transcript */}
       <div className="flex-1 flex flex-col border-r border-slate-200 dark:border-slate-800">
         {/* Header */}
@@ -420,6 +596,24 @@ export default function InterviewView() {
             </button>
           </div>
         </div>
+
+        {/* Tag highlight bar */}
+        {(activeTag || highlightText) && (
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-purple-50 dark:bg-purple-900/20 border-b border-purple-200 dark:border-purple-800">
+            <Highlighter size={12} className="text-purple-600" />
+            <span className="text-[11px] text-purple-700 dark:text-purple-300">
+              Highlighting: {activeTag && <span className="font-medium">{activeTag}</span>}
+              {activeTag && highlightText && " + "}
+              {highlightText && <span className="font-medium italic">&ldquo;{highlightText.slice(0, 40)}...&rdquo;</span>}
+            </span>
+            <button
+              onClick={() => { setActiveTag(null); setHighlightText(null); }}
+              className="ml-auto text-purple-400 hover:text-purple-600"
+            >
+              <X size={12} />
+            </button>
+          </div>
+        )}
 
         {/* Error */}
         {error && (
@@ -468,6 +662,10 @@ export default function InterviewView() {
                   return stripped.slice(0, 20) + "..." + ext;
                 })();
                 const Icon = fileIcon(f.type || "");
+                // Show indicator if this file has matching nuggets for the active tag
+                const hasTagNuggets = activeTag && nuggets.some(
+                  (n) => (n.tags || []).includes(activeTag) && (n.source || "").includes(f.name.split("/").pop() || "")
+                );
                 return (
                   <button
                     key={f.name}
@@ -476,6 +674,8 @@ export default function InterviewView() {
                       "flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-colors text-left",
                       selectedFile === f.name
                         ? "bg-reclaw-100 dark:bg-reclaw-900/30 text-reclaw-700"
+                        : hasTagNuggets
+                        ? "bg-purple-50 dark:bg-purple-900/20 text-purple-700 border border-purple-200 dark:border-purple-800"
                         : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200"
                     )}
                   >
@@ -484,6 +684,9 @@ export default function InterviewView() {
                       <p className="truncate font-medium">{shortName}</p>
                       <p className="text-[10px] text-slate-400">{(f.size_bytes / 1024).toFixed(0)} KB</p>
                     </div>
+                    {hasTagNuggets && (
+                      <div className="w-2 h-2 rounded-full bg-purple-500 shrink-0" />
+                    )}
                   </button>
                 );
               })}
@@ -515,6 +718,7 @@ export default function InterviewView() {
             <div className="flex flex-col items-center justify-center h-full text-slate-400 gap-2 p-4">
               <ChevronRight size={24} className="text-slate-300" />
               <p className="text-sm">Select a file above to preview</p>
+              <p className="text-[10px] text-slate-300 mt-1">Tip: Select text in the preview to create tags</p>
             </div>
           ) : (
             <div>
@@ -552,6 +756,8 @@ export default function InterviewView() {
                   filename={selectedFile}
                   fileType={selectedFileType}
                   activeTag={activeTag}
+                  highlightText={highlightText}
+                  onTextSelect={handleTextSelect}
                 />
               )}
             </div>
@@ -567,11 +773,11 @@ export default function InterviewView() {
             <Tag size={12} /> Tags ({Object.keys(tags).length})
           </h3>
           {Object.keys(tags).length === 0 ? (
-            <p className="text-xs text-slate-400">Run interview analysis to extract themes and tags.</p>
+            <p className="text-xs text-slate-400">Run interview analysis to extract themes and tags, or select text and create tags manually.</p>
           ) : (
             <div className="flex flex-wrap gap-1">
               <button
-                onClick={() => setActiveTag(null)}
+                onClick={() => handleTagClick(null)}
                 className={cn(
                   "text-xs px-2 py-0.5 rounded-full transition-colors",
                   !activeTag ? "bg-reclaw-600 text-white" : "bg-slate-200 dark:bg-slate-700 text-slate-600"
@@ -582,7 +788,7 @@ export default function InterviewView() {
               {Object.entries(tags).sort((a, b) => b[1] - a[1]).map(([tag, count]) => (
                 <button
                   key={tag}
-                  onClick={() => setActiveTag(activeTag === tag ? null : tag)}
+                  onClick={() => handleTagClick(tag)}
                   className={cn(
                     "text-xs px-2 py-0.5 rounded-full transition-colors",
                     activeTag === tag ? "bg-purple-600 text-white" : "bg-purple-100 dark:bg-purple-900/30 text-purple-700"
@@ -605,39 +811,52 @@ export default function InterviewView() {
             <div className="text-center py-8">
               <Sparkles size={24} className="mx-auto text-slate-300 mb-2" />
               <p className="text-xs text-slate-400">
-                No nuggets yet. Upload transcripts and click "Analyze" to extract evidence.
+                No nuggets yet. Upload transcripts and click &ldquo;Analyze&rdquo; to extract evidence.
               </p>
             </div>
           ) : (
             <div className="space-y-2">
               {filteredNuggets.map((nugget) => (
-                <div key={nugget.id} className="p-2.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                <button
+                  key={nugget.id}
+                  onClick={() => handleNuggetClick(nugget)}
+                  className={cn(
+                    "w-full text-left p-2.5 rounded-lg border transition-colors",
+                    highlightText && nugget.text.slice(0, 100) === highlightText
+                      ? "bg-amber-50 dark:bg-amber-900/20 border-amber-300 dark:border-amber-700"
+                      : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-reclaw-300 dark:hover:border-reclaw-700"
+                  )}
+                >
                   <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
                     &ldquo;{nugget.text}&rdquo;
                   </p>
                   <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                    <span className="text-[10px] text-slate-400">
+                    <span className="text-[10px] text-slate-400 flex items-center gap-0.5">
+                      <FileText size={8} />
                       {(nugget.source || "").split("/").pop()}
                     </span>
                     {nugget.source_location && (
                       <span className="text-[10px] text-slate-400">@ {nugget.source_location}</span>
                     )}
                     {(nugget.tags || []).map((tag: string, i: number) => (
-                      <button
+                      <span
                         key={i}
-                        onClick={() => setActiveTag(activeTag === tag ? null : tag)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleTagClick(tag);
+                        }}
                         className={cn(
-                          "text-[10px] rounded px-1 py-0.5 transition-colors",
+                          "text-[10px] rounded px-1 py-0.5 transition-colors cursor-pointer",
                           activeTag === tag
                             ? "bg-purple-600 text-white"
                             : "bg-purple-100 dark:bg-purple-900/30 text-purple-600 hover:bg-purple-200"
                         )}
                       >
                         {tag}
-                      </button>
+                      </span>
                     ))}
                   </div>
-                </div>
+                </button>
               ))}
             </div>
           )}
@@ -648,9 +867,10 @@ export default function InterviewView() {
           <h3 className="text-xs font-semibold text-slate-500 uppercase mb-1">Quick Actions</h3>
           <div className="space-y-1">
             {[
-              { label: "Run thematic analysis on nuggets", intent: "run thematic analysis on all nuggets" },
-              { label: "Generate affinity map", intent: "create affinity map from findings" },
-              { label: "Create synthesis report", intent: "synthesize all findings into a report" },
+              { label: "Run thematic analysis on nuggets", intent: "run thematic analysis on all nuggets", icon: Sparkles },
+              { label: "Generate affinity map", intent: "create affinity map from findings", icon: FolderOpen },
+              { label: "Intercoder reliability (Kappa)", intent: "run intercoder reliability kappa analysis on all coded data", icon: BarChart3 },
+              { label: "Create synthesis report", intent: "synthesize all findings into a report", icon: FileText },
             ].map((action) => (
               <button
                 key={action.label}
@@ -668,9 +888,9 @@ export default function InterviewView() {
                   setAnalyzing(false);
                 }}
                 disabled={analyzing}
-                className="w-full text-left text-xs text-reclaw-600 hover:text-reclaw-700 py-1 disabled:opacity-50"
+                className="w-full text-left text-xs text-reclaw-600 hover:text-reclaw-700 py-1 disabled:opacity-50 flex items-center gap-1.5"
               >
-                → {action.label}
+                <action.icon size={10} /> {action.label}
               </button>
             ))}
           </div>

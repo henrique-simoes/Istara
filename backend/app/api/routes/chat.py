@@ -237,6 +237,11 @@ async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db)):
         # Prepend the trim note so the model knows history was truncated
         messages.insert(0, {"role": "system", "content": trim_summary})
 
+    # Prepend the system prompt into the messages list directly so the LLM
+    # client doesn't receive a separate `system=` param that would create
+    # duplicate system messages (root cause of LM Studio 400 errors).
+    messages = [{"role": "system", "content": system_prompt}, *messages]
+
     async def generate():
         """Stream the LLM response as SSE events.
 
@@ -247,7 +252,6 @@ async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db)):
         try:
             async for chunk in ollama.chat_stream(
                 messages=messages,
-                system=system_prompt,
             ):
                 full_response.append(chunk)
                 event_data = json.dumps({"type": "chunk", "content": chunk})
