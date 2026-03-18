@@ -1,0 +1,16 @@
+variant,metric,value,sample_size,confidence_interval_lower,confidence_interval_upper,p_value,significant
+control,click_through_rate,0.1188,2503,0.1013,0.1362,0.9379,false
+control,signup_rate,0.0811,2503,0.0695,0.0927,0.9839,false
+control,time_on_page_sec,64.7,2503,56.0,73.4,0.6872,false
+control,bounce_rate,0.4155,2503,0.3745,0.4564,0.7436,false
+control,task_completion_rate,0.7039,2503,0.6480,0.7598,0.6801,false
+variant_a,click_through_rate,0.1495,4415,0.1379,0.1611,0.0291,true
+variant_a,signup_rate,0.0953,4415,0.0863,0.1042,0.1896,false
+variant_a,time_on_page_sec,73.8,4415,67.8,79.7,0.1493,false
+variant_a,bounce_rate,0.3663,4415,0.3403,0.3923,0.0364,true
+variant_a,task_completion_rate,0.7560,4415,0.7129,0.7991,0.0179,true
+variant_b,click_through_rate,0.1231,3779,0.1067,0.1395,0.4532,false
+variant_b,signup_rate,0.0760,3779,0.0674,0.0846,0.4486,false
+variant_b,time_on_page_sec,62.1,3779,54.3,70.0,0.4547,false
+variant_b,bounce_rate,0.3963,3779,0.3674,0.4253,0.8641,false
+variant_b,task_completion_rate,0.7410,3779,0.6945,0.7875,0.7537,false

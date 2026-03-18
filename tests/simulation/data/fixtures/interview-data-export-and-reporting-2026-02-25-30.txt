@@ -1,0 +1,75 @@
+Interview Transcript — Data Export and Reporting
+Participant: Tomás García (Project Manager, 200-500)
+Date: 2026-02-25
+Duration: 61 minutes
+Research Goal: Reduce average report generation time and eliminate top 3 export errors
+
+[00:00] Interviewer: How often do you need to export data or create reports?
+[00:44] Tomás García: It depends on the situation, but generally I don't think the pricing page made it clear what I was actually getting It's not great, not terrible.
+[01:37] Interviewer: What happened next?
+[01:40] Tomás García: Yeah, absolutely — I remember thinking, why is this taking so many clicks?
+[02:51] Interviewer: What was your initial reaction?
+[02:56] Tomás García: Oh for sure, The permission system is surprisingly granular, we can control exactly who sees what
+[03:46] Interviewer: When did you first notice that?
+[03:53] Tomás García: So, I've never had a tool that actually made meetings shorter, but the shared boards did exactly that It's not great, not terrible.
+[04:29] Interviewer: Can you tell me more about that?
+[04:35] Tomás García: That's a good question. Compared to what we used before, this is a huge improvement, but the bar was pretty low I think it depends a lot on your use case.
+[05:51] Interviewer: What tools do you use to present or distribute the reports?
+[05:58] Tomás García: It depends on the situation, but generally I tried to set it up for my personal projects and it felt like overkill, it's really built for teams I think it depends a lot on your use case.
+[06:47] Interviewer: Are there reports you'd like to automate or schedule?
+[06:53] Tomás García: Let me think about that. I can create a complete project plan in about twenty minutes that would have taken me half a day before I mean, it works, but there's room for improvement.
+[07:58] Interviewer: Could you walk me through a specific example?
+[08:01] Tomás García: One thing I genuinely enjoy is — Our team velocity actually improved twenty percent in the first quarter after adopting it
+[09:28] Interviewer: What information do you wish was easier to pull out of the system?
+[09:32] Tomás García: That's probably my biggest complaint. I created a template but there's no way to share it with the rest of my organization
+[11:01] Interviewer: How did that affect your workflow?
+[11:06] Tomás García: That's a good question. The API documentation is actually readable, which is rare, our developers integrated it in a day It's not great, not terrible.
+[11:53] Interviewer: Have you ever run into errors or unexpected results during export?
+[11:58] Tomás García: It depends on the situation, but generally I think the biggest strength is how customizable the views are, everyone sets it up differently We've gotten used to it at this point.
+[12:58] Interviewer: Walk me through the last time you tried to generate a report.
+[13:01] Tomás García: One thing I genuinely enjoy is — I think the biggest improvement they could make is better exporting, the current PDF export is basic
+[14:23] Interviewer: Could you walk me through a specific example?
+[14:31] Tomás García: That's probably my biggest complaint. I needed to train five new team members and there's no way to share my custom views with them
+[15:01] Interviewer: Do you modify the exported data before sharing it, and if so, how?
+[15:09] Tomás García: Yeah, absolutely — I can tell the team that built this actually uses their own product, the little details show it
+[16:20] Interviewer: Have you ever had to apologize for a report error caused by the export process?
+[16:28] Tomás García: It depends on the situation, but generally I don't think the pricing page made it clear what I was actually getting We've gotten used to it at this point.
+[17:04] Interviewer: What would a one-click perfect report look like for you?
+[17:12] Tomás García: That's a good question. What I didn't expect was how much the reporting features improved our client communication It's not great, not terrible.
+[18:32] Interviewer: Did anyone on your team feel differently about that?
+[18:39] Tomás García: I'll be blunt — I can't attach more than one file at a time, so uploading ten documents takes forever
+[19:47] Interviewer: What's the most time-consuming part of the reporting process?
+[19:51] Tomás García: Oh for sure, I appreciate that keyboard navigation works everywhere, I rarely need to touch my mouse
+[20:52] Interviewer: How do you verify that an exported report is accurate?
+[20:56] Tomás García: I have to say, It took maybe fifteen minutes for the whole team to understand the basic concepts, which is impressive
+[22:16] Interviewer: Who are the reports typically for, and what format do they expect?
+[22:21] Tomás García: One thing I genuinely enjoy is — It took me way too long to figure out how to invite my team
+[23:04] Interviewer: When did you first notice that?
+[23:12] Tomás García: So, I recommended it to three other companies and two of them switched within a month I mean, it works, but there's room for improvement.
+[24:12] Interviewer: Could you walk me through a specific example?
+[24:16] Tomás García: Yeah, so this is where it gets frustrating. The file upload limit is way too small for the kind of documents we work with
+[24:52] Interviewer: Is that something you've experienced more than once?
+[24:58] Tomás García: Let me think about that. It feels like it was designed by engineers for engineers, not for someone like me It's not great, not terrible.
+[26:27] Interviewer: How does that compare to what you expected?
+[26:33] Tomás García: That's probably my biggest complaint. The maximum tag length is too short to be descriptive, so all our tags are cryptic abbreviations
+[28:00] Interviewer: Could you walk me through a specific example?
+[28:05] Tomás García: I have to say, I appreciate that keyboard navigation works everywhere, I rarely need to touch my mouse
+[29:08] Interviewer: Is that something you've experienced more than once?
+[29:15] Tomás García: That's a good question. Once I got the hang of it, the workflow felt pretty natural It's not great, not terrible.
+[30:33] Interviewer: What did you try to do about it?
+[30:36] Tomás García: I'll be blunt — The contrast between read and unread items is so subtle I can't tell them apart
+[31:20] Interviewer: How important is that to your day-to-day work?
+[31:25] Tomás García: One thing I genuinely enjoy is — The calendar integration was the tipping point for us, we were already using it but that made it indispensable
+[31:57] Interviewer: Could you walk me through a specific example?
+[32:02] Tomás García: One thing I genuinely enjoy is — The API documentation is actually readable, which is rare, our developers integrated it in a day
+[33:09] Interviewer: How important is that to your day-to-day work?
+[33:17] Tomás García: Well, in our case, I spent an entire afternoon trying to figure out why my filter wasn't saving, turns out it was a known bug It's not great, not terrible.
+[34:14] Interviewer: What would an ideal solution look like for you?
+[34:19] Tomás García: Yeah, so this is where it gets frustrating. When I collapse a section, it re-expands every time I come back to the page
+[35:15] Interviewer: How does that compare to what you expected?
+[35:21] Tomás García: Let me think about that. The onboarding emails were genuinely helpful, they came at the right pace I mean, it works, but there's room for improvement.
+
+[36:20] Interviewer: That's really helpful. Is there anything else you'd like to add before we wrap up?
+[36:25] Tomás García: No, I think that covers it. I appreciate you taking the time to ask about our experience.
+
+[END OF TRANSCRIPT]

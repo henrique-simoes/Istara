@@ -1,0 +1,85 @@
+Interview Transcript — Notification and Alerts System
+Participant: Liam Murphy (Support Specialist, 50-200)
+Date: 2026-02-02
+Duration: 58 minutes
+Research Goal: Decrease notification opt-out rate from 68% to under 40%
+
+[00:00] Interviewer: How do you feel about the number of notifications you receive?
+[00:48] Liam Murphy: It depends on the situation, but generally Once I got the hang of it, the workflow felt pretty natural I mean, it works, but there's room for improvement.
+[01:38] Interviewer: When did you first notice that?
+[01:43] Liam Murphy: I have to say, The customer support has been phenomenal, they responded to my issue in under an hour
+[02:47] Interviewer: Could you walk me through a specific example?
+[02:51] Liam Murphy: Yeah, so this is where it gets frustrating. I can't set different notification preferences for different projects
+[04:14] Interviewer: What would an ideal solution look like for you?
+[04:22] Liam Murphy: Honestly, that's been a pain point for us. The tool shows me information I don't have permission to act on, which is confusing
+[05:45] Interviewer: What notification from any product do you think is done really well?
+[05:48] Liam Murphy: That's a good question. The automations feature was a bit overwhelming at first but once I set up a few rules it saved hours every week I think it depends a lot on your use case.
+[07:18] Interviewer: Which notifications are actually useful to you?
+[07:23] Liam Murphy: So, The integration with our CI/CD pipeline means developers never have to leave the tool to update task status It's not great, not terrible.
+[08:18] Interviewer: How would you want to be notified about changes made by your teammates?
+[08:26] Liam Murphy: Yeah, absolutely — I've never had a tool that actually made meetings shorter, but the shared boards did exactly that
+[09:43] Interviewer: Have you ever missed something important because you turned notifications off?
+[09:49] Liam Murphy: Let me think about that. The way it handles recurring tasks is finally how I always thought it should work in other tools It's not great, not terrible.
+[10:41] Interviewer: What was your initial reaction?
+[10:49] Liam Murphy: Yeah, absolutely — I spent an entire afternoon trying to figure out why my filter wasn't saving, turns out it was a known bug
+[11:22] Interviewer: Do you differentiate between urgent and non-urgent alerts? How?
+[11:28] Liam Murphy: That's a good question. The real-time collaboration is what sold our CEO, she could see everyone's updates live Some team members feel differently, but that's my take.
+[12:23] Interviewer: How do you decide which notification channels to enable, email, push, in-app?
+[12:31] Liam Murphy: One thing I genuinely enjoy is — The mobile app is fine for checking things, but I'd never try to do real work on it
+[13:01] Interviewer: How does that compare to what you expected?
+[13:06] Liam Murphy: Oh for sure, The guest access feature is perfect for when we need to loop in contractors or clients temporarily
+[14:25] Interviewer: What was your initial reaction?
+[14:30] Liam Murphy: I have to say, The API documentation is actually readable, which is rare, our developers integrated it in a day
+[15:29] Interviewer: What would the ideal notification system look like for you?
+[15:35] Liam Murphy: That's actually something I really appreciate. I showed it to our operations team and they immediately saw how it could replace three tools they were using
+[16:38] Interviewer: How do you manage notifications across all the tools you use?
+[16:45] Liam Murphy: That's a good question. I've been using it for two years and I'm still discovering features I didn't know existed I think it depends a lot on your use case.
+[17:21] Interviewer: How does that compare to what you expected?
+[17:24] Liam Murphy: That's probably my biggest complaint. It takes six clicks to do something that should be a right-click context menu action
+[18:40] Interviewer: How did that affect your workflow?
+[18:45] Liam Murphy: One thing I genuinely enjoy is — Once I got the hang of it, the workflow felt pretty natural
+[19:29] Interviewer: How did that affect your workflow?
+[19:34] Liam Murphy: One thing I genuinely enjoy is — It handles large projects with hundreds of tasks without slowing down, which not every tool can claim
+[20:50] Interviewer: Have you ever been annoyed enough by a notification to consider leaving the product?
+[20:56] Liam Murphy: This is something that really bothers me. There's a three-second delay every time I switch tabs that breaks my concentration
+[21:49] Interviewer: Can you tell me more about that?
+[21:56] Liam Murphy: Well, in our case, It does what I need about eighty percent of the time, the other twenty percent I work around I think it depends a lot on your use case.
+[23:19] Interviewer: What happened next?
+[23:22] Liam Murphy: Yeah, so this is where it gets frustrating. It sends me way too many email notifications and I can't figure out how to turn them off individually
+[24:17] Interviewer: What information should a notification contain to be actionable?
+[24:20] Liam Murphy: This is something that really bothers me. The onboarding tutorial was so long I just skipped it, and then I was completely lost
+[24:50] Interviewer: Do you ever batch-check notifications at specific times or do you react to them immediately?
+[24:54] Liam Murphy: That's actually something I really appreciate. I can create a complete project plan in about twenty minutes that would have taken me half a day before
+[25:45] Interviewer: When did you first notice that?
+[25:48] Liam Murphy: That's a good question. Setting up the integration was a breeze, probably the smoothest part of the whole experience It's not great, not terrible.
+[26:24] Interviewer: What happened next?
+[26:28] Liam Murphy: Yeah, so this is where it gets frustrating. There's no way to see a chronological history of changes to a single task
+[27:37] Interviewer: What would an ideal solution look like for you?
+[27:43] Liam Murphy: I'll be blunt — The dependency arrows in the Gantt chart overlap so much they're completely unreadable
+[28:52] Interviewer: When did you first notice that?
+[28:59] Liam Murphy: Yeah, so this is where it gets frustrating. The chart visualization is misleading because the Y-axis doesn't start at zero and you can't change it
+[29:31] Interviewer: What did you try to do about it?
+[29:36] Liam Murphy: That's a good question. The search is actually intelligent, it finds tasks even when I can't remember the exact title I think it depends a lot on your use case.
+[30:49] Interviewer: How does that compare to what you expected?
+[30:53] Liam Murphy: That's probably my biggest complaint. The permissions system is so confusing that we just give everyone admin access
+[32:10] Interviewer: How did that affect your workflow?
+[32:14] Liam Murphy: That's actually something I really appreciate. I appreciate that they don't spam me with upgrade prompts, the free tier is genuinely useful
+[33:29] Interviewer: What happened next?
+[33:35] Liam Murphy: Let me think about that. The offline mode is crucial for me because I travel a lot and can't always count on good internet It's not great, not terrible.
+[34:36] Interviewer: How does that compare to what you expected?
+[34:41] Liam Murphy: I'll be blunt — The tool marks tasks as overdue at midnight but our team works across multiple time zones
+[35:47] Interviewer: When did you first notice that?
+[35:53] Liam Murphy: It depends on the situation, but generally The collaboration features are actually the main reason we chose this over the competitor It's not great, not terrible.
+[36:50] Interviewer: What happened next?
+[36:57] Liam Murphy: Yeah, so this is where it gets frustrating. Switching between projects is painfully slow, there's no quick switcher
+[37:51] Interviewer: Could you walk me through a specific example?
+[37:56] Liam Murphy: Well, in our case, I've used probably a dozen project management tools and this one has the best learning curve It's not great, not terrible.
+[39:06] Interviewer: What happened next?
+[39:11] Liam Murphy: Oh for sure, It's one of those tools where you know the feature exists, you just can't find it
+[39:51] Interviewer: When did you first notice that?
+[39:57] Liam Murphy: Well, in our case, It's the first tool where I actually trust the automated suggestions because they're contextually relevant I mean, it works, but there's room for improvement.
+
+[40:27] Interviewer: That's really helpful. Is there anything else you'd like to add before we wrap up?
+[40:37] Liam Murphy: No, I think that covers it. I appreciate you taking the time to ask about our experience.
+
+[END OF TRANSCRIPT]

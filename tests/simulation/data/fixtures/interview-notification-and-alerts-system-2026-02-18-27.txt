@@ -1,0 +1,77 @@
+Interview Transcript — Notification and Alerts System
+Participant: Priya Patel (UX Designer, 10-50)
+Date: 2026-02-18
+Duration: 54 minutes
+Research Goal: Decrease notification opt-out rate from 68% to under 40%
+
+[00:00] Interviewer: How do you feel about the number of notifications you receive?
+[00:37] Priya Patel: That's a good question. It feels like it was designed by engineers for engineers, not for someone like me I think it depends a lot on your use case.
+[01:51] Interviewer: How would you want to be notified about changes made by your teammates?
+[01:57] Priya Patel: Honestly, that's been a pain point for us. I can't customize the columns in the table view, so I'm always scrolling sideways to find what I need
+[02:33] Interviewer: What happened next?
+[02:38] Priya Patel: Yeah, absolutely — I actually really liked how the dashboard shows everything at a glance
+[03:14] Interviewer: Have you ever missed something important because you turned notifications off?
+[03:17] Priya Patel: This is something that really bothers me. I keep getting logged out randomly in the middle of my work
+[03:47] Interviewer: How did that affect your workflow?
+[03:54] Priya Patel: I'll be blunt — The comment threading doesn't work properly, replies sometimes appear out of order
+[04:36] Interviewer: Have you ever been annoyed enough by a notification to consider leaving the product?
+[04:43] Priya Patel: One thing I genuinely enjoy is — I don't think the pricing page made it clear what I was actually getting
+[06:05] Interviewer: How did that affect your workflow?
+[06:12] Priya Patel: Honestly, that's been a pain point for us. The dark mode has contrast issues that make some status badges completely invisible
+[06:56] Interviewer: What would the ideal notification system look like for you?
+[07:03] Priya Patel: Yeah, absolutely — It handles large projects with hundreds of tasks without slowing down, which not every tool can claim
+[08:33] Interviewer: What did you try to do about it?
+[08:41] Priya Patel: I'll be blunt — The auto-save never seems to work when I need it most, I've lost entire paragraphs of notes
+[09:23] Interviewer: What was your initial reaction?
+[09:31] Priya Patel: It depends on the situation, but generally Setting up the integration was a breeze, probably the smoothest part of the whole experience It's not great, not terrible.
+[10:52] Interviewer: Is that something you've experienced more than once?
+[10:56] Priya Patel: That's a good question. What frustrates me is that the free tier is so limited you can't really evaluate the product properly Some team members feel differently, but that's my take.
+[11:51] Interviewer: Do you ever batch-check notifications at specific times or do you react to them immediately?
+[11:57] Priya Patel: Yeah, so this is where it gets frustrating. I can't customize the columns in the table view, so I'm always scrolling sideways to find what I need
+[12:29] Interviewer: What notification from any product do you think is done really well?
+[12:35] Priya Patel: Oh for sure, We switched from a competitor specifically because of the resource allocation view, nothing else had it
+[14:03] Interviewer: Is that something you've experienced more than once?
+[14:07] Priya Patel: Well, in our case, I actually really liked how the dashboard shows everything at a glance I mean, it works, but there's room for improvement.
+[15:33] Interviewer: What was your initial reaction?
+[15:36] Priya Patel: That's probably my biggest complaint. When I paste a URL it doesn't auto-detect and create a clickable link
+[16:18] Interviewer: What happened next?
+[16:26] Priya Patel: Let me think about that. The milestone tracking keeps our stakeholders happy without requiring me to create separate presentations It's not great, not terrible.
+[17:16] Interviewer: Which notifications are actually useful to you?
+[17:20] Priya Patel: That's probably my biggest complaint. The comment threading doesn't work properly, replies sometimes appear out of order
+[18:07] Interviewer: How does that compare to what you expected?
+[18:15] Priya Patel: So, The search is actually intelligent, it finds tasks even when I can't remember the exact title We've gotten used to it at this point.
+[19:01] Interviewer: How do you manage notifications across all the tools you use?
+[19:04] Priya Patel: I'll be blunt — The link previews don't work for internal pages, so shared links are just cryptic URLs
+[20:13] Interviewer: How does that compare to what you expected?
+[20:18] Priya Patel: That's actually something I really appreciate. My biggest fear is that they'll change the interface in a major update and I'll have to relearn everything
+[21:47] Interviewer: What information should a notification contain to be actionable?
+[21:50] Priya Patel: That's actually something I really appreciate. We switched from a competitor specifically because of the resource allocation view, nothing else had it
+[22:46] Interviewer: How do you decide which notification channels to enable, email, push, in-app?
+[22:53] Priya Patel: So, Honestly, I almost gave up during the sign-up process Some team members feel differently, but that's my take.
+[24:06] Interviewer: Do you differentiate between urgent and non-urgent alerts? How?
+[24:13] Priya Patel: I have to say, The permission system is surprisingly granular, we can control exactly who sees what
+[25:07] Interviewer: How important is that to your day-to-day work?
+[25:12] Priya Patel: That's probably my biggest complaint. When I paste a URL it doesn't auto-detect and create a clickable link
+[26:03] Interviewer: What was your initial reaction?
+[26:08] Priya Patel: One thing I genuinely enjoy is — Once I got the hang of it, the workflow felt pretty natural
+[27:05] Interviewer: Did anyone on your team feel differently about that?
+[27:11] Priya Patel: I have to say, What I appreciate most is that it doesn't try to do everything, it does its core job well
+[28:10] Interviewer: Is that something you've experienced more than once?
+[28:14] Priya Patel: Yeah, so this is where it gets frustrating. The tool doesn't warn me before I navigate away from an unsaved form
+[28:45] Interviewer: What would an ideal solution look like for you?
+[28:51] Priya Patel: Honestly, that's been a pain point for us. The permissions system is so confusing that we just give everyone admin access
+[29:53] Interviewer: How important is that to your day-to-day work?
+[29:59] Priya Patel: Oh for sure, The way it handles dependencies between tasks is really elegant, I haven't seen that done better anywhere
+[31:17] Interviewer: How does that compare to what you expected?
+[31:21] Priya Patel: That's actually something I really appreciate. I genuinely enjoy the weekly summary it generates, it's surprisingly insightful for an automated report
+[31:53] Interviewer: What did you try to do about it?
+[31:57] Priya Patel: Well, in our case, I was skeptical about switching from spreadsheets but within a week I couldn't imagine going back We've gotten used to it at this point.
+[32:28] Interviewer: What happened next?
+[32:34] Priya Patel: Yeah, so this is where it gets frustrating. There's no way to see a chronological history of changes to a single task
+[33:59] Interviewer: How did that affect your workflow?
+[34:05] Priya Patel: Well, in our case, The weekly digest email is the one notification I actually look forward to getting It's not great, not terrible.
+
+[35:02] Interviewer: That's really helpful. Is there anything else you'd like to add before we wrap up?
+[35:12] Priya Patel: No, I think that covers it. I appreciate you taking the time to ask about our experience.
+
+[END OF TRANSCRIPT]

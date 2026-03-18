@@ -1,0 +1,73 @@
+Interview Transcript — Mobile Experience Audit
+Participant: Emily Watson (Customer Success Lead, 200-500)
+Date: 2026-03-03
+Duration: 63 minutes
+Research Goal: Understand why mobile session duration is 60% shorter than desktop
+
+[00:00] Interviewer: When do you typically use the mobile app versus the desktop version?
+[00:39] Emily Watson: Let me think about that. The guest access feature is perfect for when we need to loop in contractors or clients temporarily We've gotten used to it at this point.
+[01:32] Interviewer: How does that compare to what you expected?
+[01:40] Emily Watson: It depends on the situation, but generally It handles large projects with hundreds of tasks without slowing down, which not every tool can claim I mean, it works, but there's room for improvement.
+[02:59] Interviewer: What tasks do you try to complete on mobile?
+[03:02] Emily Watson: That's a good question. The real-time collaboration is what sold our CEO, she could see everyone's updates live We've gotten used to it at this point.
+[04:22] Interviewer: How often do you switch between mobile and desktop for the same task?
+[04:27] Emily Watson: I'll be blunt — There's no confirmation dialog before archiving a project, I've done it by accident twice
+[05:31] Interviewer: Are there features you avoid using on mobile entirely?
+[05:36] Emily Watson: It depends on the situation, but generally It's one of those tools where you know the feature exists, you just can't find it I mean, it works, but there's room for improvement.
+[06:35] Interviewer: What feels harder to do on your phone compared to your computer?
+[06:40] Emily Watson: So, Compared to what we used before, this is a huge improvement, but the bar was pretty low I think it depends a lot on your use case.
+[07:31] Interviewer: What notifications do you find useful on mobile versus distracting?
+[07:38] Emily Watson: This is something that really bothers me. The recurring task feature creates duplicates instead of resetting the original task
+[08:10] Interviewer: If you could only keep three features on the mobile version, which would they be?
+[08:18] Emily Watson: This is something that really bothers me. I can't export just the current filtered view, it always exports everything
+[09:48] Interviewer: How did that affect your workflow?
+[09:51] Emily Watson: It depends on the situation, but generally The timeline view changed how our whole team plans sprints, it's been a game changer It's not great, not terrible.
+[10:39] Interviewer: Is that something you've experienced more than once?
+[10:45] Emily Watson: Oh for sure, I remember thinking, why is this taking so many clicks?
+[12:14] Interviewer: When did you first notice that?
+[12:17] Emily Watson: One thing I genuinely enjoy is — The mobile app is fine for checking things, but I'd never try to do real work on it
+[13:16] Interviewer: Can you tell me more about that?
+[13:23] Emily Watson: Oh for sure, Our team velocity actually improved twenty percent in the first quarter after adopting it
+[14:22] Interviewer: What happened next?
+[14:29] Emily Watson: That's actually something I really appreciate. The search is actually intelligent, it finds tasks even when I can't remember the exact title
+[15:55] Interviewer: Have you ever given up on a task on mobile and waited until you were at your desk?
+[16:03] Emily Watson: Oh for sure, I was skeptical about switching from spreadsheets but within a week I couldn't imagine going back
+[16:59] Interviewer: Can you tell me more about that?
+[17:06] Emily Watson: Let me think about that. The onboarding emails were genuinely helpful, they came at the right pace It's not great, not terrible.
+[18:15] Interviewer: When did you first notice that?
+[18:22] Emily Watson: I have to say, I spent an entire afternoon trying to figure out why my filter wasn't saving, turns out it was a known bug
+[19:17] Interviewer: Did anyone on your team feel differently about that?
+[19:20] Emily Watson: This is something that really bothers me. The tool sends email notifications for my own actions, which clutters my inbox
+[20:22] Interviewer: How did that affect your workflow?
+[20:28] Emily Watson: Yeah, absolutely — I was pleasantly surprised by how fast the search results came back
+[21:26] Interviewer: What was the last thing that really frustrated you on the mobile app?
+[21:33] Emily Watson: Let me think about that. What I didn't expect was how much the reporting features improved our client communication We've gotten used to it at this point.
+[22:41] Interviewer: How does our mobile experience compare to other work apps you use on your phone?
+[22:46] Emily Watson: I have to say, What I didn't expect was how much the reporting features improved our client communication
+[23:58] Interviewer: What happened next?
+[24:05] Emily Watson: I'll be blunt — The error messages are completely useless, they just say something went wrong with no detail
+[25:14] Interviewer: Can you tell me more about that?
+[25:18] Emily Watson: I have to say, Compared to what we used before, this is a huge improvement, but the bar was pretty low
+[25:56] Interviewer: Could you walk me through a specific example?
+[26:02] Emily Watson: It depends on the situation, but generally I can tell the team that built this actually uses their own product, the little details show it We've gotten used to it at this point.
+[27:30] Interviewer: How important is that to your day-to-day work?
+[27:37] Emily Watson: Yeah, so this is where it gets frustrating. Our team can't agree on the taxonomy because the tool doesn't enforce consistent labeling
+[29:05] Interviewer: How did that affect your workflow?
+[29:08] Emily Watson: Oh for sure, I wish more tools had this level of thought put into the empty states, it's clear what you need to do
+[30:04] Interviewer: How does that compare to what you expected?
+[30:08] Emily Watson: That's a good question. I think the biggest issue is just consistency, some parts feel modern and others feel like they haven't been updated in years I mean, it works, but there's room for improvement.
+[31:02] Interviewer: How does the mobile app fit into your workflow throughout the day?
+[31:05] Emily Watson: That's probably my biggest complaint. The autocomplete in the search field suggests results from archived projects that aren't relevant anymore
+[32:10] Interviewer: What happened next?
+[32:15] Emily Watson: Yeah, so this is where it gets frustrating. The search bar basically never returns what I'm actually looking for
+[33:44] Interviewer: Do you use the mobile app in specific contexts, like commuting or in meetings?
+[33:51] Emily Watson: Well, in our case, The way it handles recurring tasks is finally how I always thought it should work in other tools I mean, it works, but there's room for improvement.
+[34:48] Interviewer: What did you try to do about it?
+[34:56] Emily Watson: That's probably my biggest complaint. There's no keyboard shortcut for the one action I do fifty times a day
+[36:15] Interviewer: How important is that to your day-to-day work?
+[36:23] Emily Watson: That's actually something I really appreciate. It's one of those tools where you know the feature exists, you just can't find it
+
+[37:52] Interviewer: That's really helpful. Is there anything else you'd like to add before we wrap up?
+[37:59] Emily Watson: No, I think that covers it. I appreciate you taking the time to ask about our experience.
+
+[END OF TRANSCRIPT]

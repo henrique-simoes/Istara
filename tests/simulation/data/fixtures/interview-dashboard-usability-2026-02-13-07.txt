@@ -1,0 +1,77 @@
+Interview Transcript — Dashboard Usability
+Participant: Priya Patel (UX Designer, 10-50)
+Date: 2026-02-13
+Duration: 60 minutes
+Research Goal: Improve time-to-insight from average 4.2 minutes to under 2 minutes
+
+[00:00] Interviewer: Walk me through how you typically start your day with the dashboard.
+[00:42] Priya Patel: That's a good question. Our team velocity actually improved twenty percent in the first quarter after adopting it I think it depends a lot on your use case.
+[02:10] Interviewer: What information do you look for first?
+[02:18] Priya Patel: Oh for sure, The automations feature was a bit overwhelming at first but once I set up a few rules it saved hours every week
+[03:44] Interviewer: If you could add one thing to the dashboard, what would it be?
+[03:49] Priya Patel: I have to say, My manager asked me to pull a report and it took me forty-five minutes to figure out how
+[04:45] Interviewer: What happened next?
+[04:52] Priya Patel: Well, in our case, I'm not sure who decided the default view should show everything, it's completely overwhelming I mean, it works, but there's room for improvement.
+[05:37] Interviewer: How easy is it to find the metrics that matter most to you?
+[05:41] Priya Patel: This is something that really bothers me. The dashboard widgets rearrange themselves every time I log in, which is disorienting
+[06:37] Interviewer: How important is that to your day-to-day work?
+[06:41] Priya Patel: Yeah, absolutely — I used to spend my Monday mornings organizing my week, now the tool basically does it for me
+[07:30] Interviewer: When did you first notice that?
+[07:35] Priya Patel: Yeah, so this is where it gets frustrating. It takes six clicks to do something that should be a right-click context menu action
+[08:33] Interviewer: When did you first notice that?
+[08:38] Priya Patel: Well, in our case, I've been using it for two years and I'm still discovering features I didn't know existed I think it depends a lot on your use case.
+[09:29] Interviewer: How did that affect your workflow?
+[09:35] Priya Patel: That's actually something I really appreciate. What makes it work for us is that it's flexible enough for both our engineering and marketing teams
+[10:27] Interviewer: Could you walk me through a specific example?
+[10:33] Priya Patel: Honestly, that's been a pain point for us. The dependency arrows in the Gantt chart overlap so much they're completely unreadable
+[11:52] Interviewer: Did anyone on your team feel differently about that?
+[11:57] Priya Patel: One thing I genuinely enjoy is — What I didn't expect was how much the reporting features improved our client communication
+[13:04] Interviewer: What did you try to do about it?
+[13:12] Priya Patel: I'll be blunt — The dark mode has contrast issues that make some status badges completely invisible
+[13:45] Interviewer: How does that compare to what you expected?
+[13:48] Priya Patel: So, The onboarding emails were genuinely helpful, they came at the right pace We've gotten used to it at this point.
+[14:29] Interviewer: What happened next?
+[14:33] Priya Patel: Yeah, so this is where it gets frustrating. The notification badge shows a number but when I click it, there's nothing new to see
+[15:57] Interviewer: How has your use of the dashboard changed since you first started?
+[16:00] Priya Patel: Let me think about that. The real-time collaboration is what sold our CEO, she could see everyone's updates live It's not great, not terrible.
+[17:22] Interviewer: Did anyone on your team feel differently about that?
+[17:26] Priya Patel: That's probably my biggest complaint. The mobile app crashes at least once a day when I try to upload photos
+[18:52] Interviewer: What was your initial reaction?
+[18:57] Priya Patel: Honestly, that's been a pain point for us. When I share a link with my team, they always have to log in again even if they already have accounts
+[20:20] Interviewer: How did that affect your workflow?
+[20:24] Priya Patel: That's a good question. It's rare that a tool actually makes me more productive rather than just feeling like more overhead I mean, it works, but there's room for improvement.
+[21:47] Interviewer: How important is that to your day-to-day work?
+[21:53] Priya Patel: Honestly, that's been a pain point for us. I accidentally deleted a project and there was no way to undo it
+[22:24] Interviewer: Did anyone on your team feel differently about that?
+[22:28] Priya Patel: Yeah, absolutely — The way archived projects are handled is clean, they're out of the way but easy to find when you need them
+[23:34] Interviewer: Could you walk me through a specific example?
+[23:37] Priya Patel: One thing I genuinely enjoy is — I can tell the team that built this actually uses their own product, the little details show it
+[24:26] Interviewer: What do you do when the dashboard shows something unexpected or alarming?
+[24:31] Priya Patel: Oh for sure, I think the mobile notifications could be smarter, right now I get alerts for things that don't need my attention
+[25:45] Interviewer: What's the most frustrating thing about the current dashboard layout?
+[25:48] Priya Patel: I'll be blunt — The session timeout is too short, I step away for ten minutes and have to log in again
+[26:43] Interviewer: Is that something you've experienced more than once?
+[26:47] Priya Patel: That's a good question. I genuinely enjoy the weekly summary it generates, it's surprisingly insightful for an automated report I think it depends a lot on your use case.
+[28:09] Interviewer: Do you ever share your dashboard view with others? How does that go?
+[28:16] Priya Patel: It depends on the situation, but generally The mobile app is fine for checking things, but I'd never try to do real work on it I mean, it works, but there's room for improvement.
+[29:05] Interviewer: Have you ever missed something important because it was hard to find?
+[29:08] Priya Patel: This is something that really bothers me. When I share a link with my team, they always have to log in again even if they already have accounts
+[29:56] Interviewer: What data do you still pull from other tools because the dashboard doesn't show it?
+[30:02] Priya Patel: That's probably my biggest complaint. The table sort only works on one column at a time and doesn't remember my preference
+[30:57] Interviewer: Can you tell me more about that?
+[31:04] Priya Patel: This is something that really bothers me. The file upload limit is way too small for the kind of documents we work with
+[32:21] Interviewer: What would an ideal solution look like for you?
+[32:24] Priya Patel: One thing I genuinely enjoy is — I ended up asking a coworker to walk me through it because the help docs didn't make sense
+[33:47] Interviewer: If you could rearrange the dashboard, what would you change?
+[33:50] Priya Patel: Oh for sure, The collaboration features are actually the main reason we chose this over the competitor
+[35:20] Interviewer: What did you try to do about it?
+[35:24] Priya Patel: That's probably my biggest complaint. The chart visualization is misleading because the Y-axis doesn't start at zero and you can't change it
+[36:05] Interviewer: How do you decide which widgets or sections to look at?
+[36:13] Priya Patel: That's a good question. I remember thinking, why is this taking so many clicks? I think it depends a lot on your use case.
+[37:19] Interviewer: What happened next?
+[37:27] Priya Patel: Oh for sure, I can create a complete project plan in about twenty minutes that would have taken me half a day before
+
+[38:07] Interviewer: That's really helpful. Is there anything else you'd like to add before we wrap up?
+[38:12] Priya Patel: Just that I really hope these changes happen soon. The team is getting impatient.
+
+[END OF TRANSCRIPT]

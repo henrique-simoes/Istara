@@ -1,0 +1,79 @@
+Interview Transcript — Data Export and Reporting
+Participant: Wei Zhang (Data Analyst, 50-200)
+Date: 2026-02-08
+Duration: 47 minutes
+Research Goal: Reduce average report generation time and eliminate top 3 export errors
+
+[00:00] Interviewer: How often do you need to export data or create reports?
+[00:30] Wei Zhang: Let me think about that. We switched from a competitor specifically because of the resource allocation view, nothing else had it We've gotten used to it at this point.
+[01:58] Interviewer: How did that affect your workflow?
+[02:02] Wei Zhang: I'll be blunt — I have no idea what half the icons in the toolbar mean
+[03:22] Interviewer: Can you tell me more about that?
+[03:25] Wei Zhang: Let me think about that. The mobile app is fine for checking things, but I'd never try to do real work on it We've gotten used to it at this point.
+[04:04] Interviewer: Are there reports you'd like to automate or schedule?
+[04:11] Wei Zhang: That's probably my biggest complaint. The print view is unusable, it cuts off text and doesn't paginate properly
+[05:37] Interviewer: Could you walk me through a specific example?
+[05:41] Wei Zhang: I have to say, What I appreciate most is that it doesn't try to do everything, it does its core job well
+[06:46] Interviewer: When did you first notice that?
+[06:49] Wei Zhang: Let me think about that. The time tracking built into the task cards is surprisingly accurate and doesn't add friction to the workflow It's not great, not terrible.
+[07:38] Interviewer: What would an ideal solution look like for you?
+[07:46] Wei Zhang: I'll be blunt — The color contrast is so low I can barely read the secondary text
+[09:07] Interviewer: When did you first notice that?
+[09:13] Wei Zhang: One thing I genuinely enjoy is — I had to watch a YouTube tutorial to understand the reporting feature, and that shouldn't be necessary
+[10:42] Interviewer: What happened next?
+[10:49] Wei Zhang: Let me think about that. The dark mode is really well done, it's not just inverted colors, someone actually designed it properly I mean, it works, but there's room for improvement.
+[11:55] Interviewer: How did that affect your workflow?
+[12:01] Wei Zhang: Well, in our case, The way it handles dependencies between tasks is really elegant, I haven't seen that done better anywhere Some team members feel differently, but that's my take.
+[13:11] Interviewer: What did you try to do about it?
+[13:15] Wei Zhang: This is something that really bothers me. I can't customize the columns in the table view, so I'm always scrolling sideways to find what I need
+[14:24] Interviewer: What information do you wish was easier to pull out of the system?
+[14:30] Wei Zhang: That's actually something I really appreciate. I remember thinking, why is this taking so many clicks?
+[15:29] Interviewer: How do you verify that an exported report is accurate?
+[15:34] Wei Zhang: That's a good question. The permission system is surprisingly granular, we can control exactly who sees what I think it depends a lot on your use case.
+[17:03] Interviewer: What happened next?
+[17:10] Wei Zhang: That's probably my biggest complaint. Every time I export a report, the formatting is completely off and I have to fix it in Excel
+[18:10] Interviewer: Did anyone on your team feel differently about that?
+[18:13] Wei Zhang: It depends on the situation, but generally The automations feature was a bit overwhelming at first but once I set up a few rules it saved hours every week Some team members feel differently, but that's my take.
+[19:33] Interviewer: When did you first notice that?
+[19:36] Wei Zhang: It depends on the situation, but generally The collaboration features are actually the main reason we chose this over the competitor I think it depends a lot on your use case.
+[20:40] Interviewer: How did that affect your workflow?
+[20:46] Wei Zhang: Oh for sure, I think the biggest strength is how customizable the views are, everyone sets it up differently
+[22:10] Interviewer: Could you walk me through a specific example?
+[22:14] Wei Zhang: So, We switched from a competitor specifically because of the resource allocation view, nothing else had it Some team members feel differently, but that's my take.
+[22:46] Interviewer: What would a one-click perfect report look like for you?
+[22:51] Wei Zhang: Yeah, absolutely — The API documentation is actually readable, which is rare, our developers integrated it in a day
+[23:31] Interviewer: Have you ever run into errors or unexpected results during export?
+[23:39] Wei Zhang: That's probably my biggest complaint. I can't set different notification preferences for different projects
+[24:45] Interviewer: Is that something you've experienced more than once?
+[24:48] Wei Zhang: That's actually something I really appreciate. I think the biggest strength is how customizable the views are, everyone sets it up differently
+[26:05] Interviewer: Do you modify the exported data before sharing it, and if so, how?
+[26:11] Wei Zhang: One thing I genuinely enjoy is — Once I got the hang of it, the workflow felt pretty natural
+[26:46] Interviewer: When did you first notice that?
+[26:52] Wei Zhang: That's probably my biggest complaint. The dark mode has contrast issues that make some status badges completely invisible
+[27:40] Interviewer: How does that compare to what you expected?
+[27:45] Wei Zhang: Oh for sure, We switched from a competitor specifically because of the resource allocation view, nothing else had it
+[29:08] Interviewer: Could you walk me through a specific example?
+[29:11] Wei Zhang: Let me think about that. I was pleasantly surprised by how fast the search results came back I mean, it works, but there's room for improvement.
+[30:25] Interviewer: What was your initial reaction?
+[30:28] Wei Zhang: That's a good question. It handles large projects with hundreds of tasks without slowing down, which not every tool can claim We've gotten used to it at this point.
+[31:20] Interviewer: What tools do you use to present or distribute the reports?
+[31:23] Wei Zhang: Well, in our case, The real-time collaboration is what sold our CEO, she could see everyone's updates live We've gotten used to it at this point.
+[32:41] Interviewer: Walk me through the last time you tried to generate a report.
+[32:47] Wei Zhang: I'll be blunt — I can't tell which items in my inbox need my action versus which are just informational
+[34:11] Interviewer: Who are the reports typically for, and what format do they expect?
+[34:17] Wei Zhang: That's actually something I really appreciate. I don't think the pricing page made it clear what I was actually getting
+[35:17] Interviewer: What did you try to do about it?
+[35:21] Wei Zhang: Yeah, so this is where it gets frustrating. The placeholder text in the search box vanishes too quickly before I can read what formats are supported
+[36:39] Interviewer: Have you ever had to apologize for a report error caused by the export process?
+[36:43] Wei Zhang: Yeah, so this is where it gets frustrating. There's no confirmation dialog before archiving a project, I've done it by accident twice
+[37:34] Interviewer: Did anyone on your team feel differently about that?
+[37:38] Wei Zhang: Let me think about that. What frustrates me is that the free tier is so limited you can't really evaluate the product properly Some team members feel differently, but that's my take.
+[38:33] Interviewer: What's the most time-consuming part of the reporting process?
+[38:36] Wei Zhang: It depends on the situation, but generally I showed it to our operations team and they immediately saw how it could replace three tools they were using Some team members feel differently, but that's my take.
+[39:42] Interviewer: What was your initial reaction?
+[39:49] Wei Zhang: Yeah, absolutely — I was skeptical about switching from spreadsheets but within a week I couldn't imagine going back
+
+[40:31] Interviewer: That's really helpful. Is there anything else you'd like to add before we wrap up?
+[40:36] Wei Zhang: I'd just emphasize that The batch operations saved me so much time during our annual project cleanup That's really the core of it for me.
+
+[END OF TRANSCRIPT]

@@ -1,0 +1,89 @@
+Interview Transcript — Pricing Page Conversion
+Participant: Omar Hassan (Product Owner, 200-500)
+Date: 2026-01-25
+Duration: 64 minutes
+Research Goal: Increase free-to-paid conversion rate from 3.1% to 5%
+
+[00:00] Interviewer: What was your understanding of the pricing tiers before you signed up?
+[00:41] Omar Hassan: Let me think about that. My biggest fear is that they'll change the interface in a major update and I'll have to relearn everything I mean, it works, but there's room for improvement.
+[02:00] Interviewer: How did that affect your workflow?
+[02:03] Omar Hassan: Honestly, that's been a pain point for us. The dependency arrows in the Gantt chart overlap so much they're completely unreadable
+[02:50] Interviewer: How does that compare to what you expected?
+[02:56] Omar Hassan: I'll be blunt — I accidentally deleted a project and there was no way to undo it
+[03:55] Interviewer: Did anyone on your team feel differently about that?
+[04:01] Omar Hassan: That's actually something I really appreciate. I appreciate that they don't spam me with upgrade prompts, the free tier is genuinely useful
+[05:30] Interviewer: Can you tell me more about that?
+[05:35] Omar Hassan: Oh for sure, It does what I need about eighty percent of the time, the other twenty percent I work around
+[06:20] Interviewer: How important is that to your day-to-day work?
+[06:24] Omar Hassan: This is something that really bothers me. I can't snooze a task notification for a specific time, it's either dismiss or nothing
+[07:25] Interviewer: Was there a trial period, and did it give you enough time to evaluate?
+[07:33] Omar Hassan: Honestly, that's been a pain point for us. I created a template but there's no way to share it with the rest of my organization
+[08:33] Interviewer: What made you choose the plan you're currently on?
+[08:40] Omar Hassan: This is something that really bothers me. The calendar view doesn't show tasks that span multiple days correctly, they just appear on the start date
+[09:37] Interviewer: What happened next?
+[09:45] Omar Hassan: Let me think about that. I appreciate that keyboard navigation works everywhere, I rarely need to touch my mouse I mean, it works, but there's room for improvement.
+[11:07] Interviewer: How important is that to your day-to-day work?
+[11:13] Omar Hassan: Honestly, that's been a pain point for us. The dashboard widgets rearrange themselves every time I log in, which is disorienting
+[12:16] Interviewer: What did you try to do about it?
+[12:24] Omar Hassan: Yeah, absolutely — What I appreciate most is that it doesn't try to do everything, it does its core job well
+[13:02] Interviewer: What feature would make you upgrade to the next tier immediately?
+[13:07] Omar Hassan: It depends on the situation, but generally The weekly digest email is the one notification I actually look forward to getting We've gotten used to it at this point.
+[13:46] Interviewer: Do you feel the value you get matches what you pay?
+[13:53] Omar Hassan: I'll be blunt — The tool shows me information I don't have permission to act on, which is confusing
+[14:23] Interviewer: How does our pricing compare to your expectations?
+[14:29] Omar Hassan: Well, in our case, I was skeptical about switching from spreadsheets but within a week I couldn't imagine going back It's not great, not terrible.
+[15:19] Interviewer: Did anyone on your team feel differently about that?
+[15:25] Omar Hassan: Oh for sure, I genuinely enjoy the weekly summary it generates, it's surprisingly insightful for an automated report
+[16:24] Interviewer: Is that something you've experienced more than once?
+[16:28] Omar Hassan: Yeah, so this is where it gets frustrating. The comment threading doesn't work properly, replies sometimes appear out of order
+[17:44] Interviewer: How do you justify the cost of this tool to your manager or finance team?
+[17:47] Omar Hassan: Oh for sure, I showed it to our operations team and they immediately saw how it could replace three tools they were using
+[18:53] Interviewer: How important is that to your day-to-day work?
+[19:00] Omar Hassan: Yeah, absolutely — The customer support has been phenomenal, they responded to my issue in under an hour
+[19:53] Interviewer: What would an ideal solution look like for you?
+[20:00] Omar Hassan: I have to say, I use it every single day, so even small annoyances add up over time
+[20:59] Interviewer: What would an ideal solution look like for you?
+[21:02] Omar Hassan: One thing I genuinely enjoy is — The search is actually intelligent, it finds tasks even when I can't remember the exact title
+[22:12] Interviewer: What would an ideal solution look like for you?
+[22:15] Omar Hassan: That's actually something I really appreciate. I think the mobile notifications could be smarter, right now I get alerts for things that don't need my attention
+[23:11] Interviewer: Was there anything confusing about how features are split across plans?
+[23:14] Omar Hassan: I have to say, The audit log is essential for our compliance requirements, it tracks every change automatically
+[23:49] Interviewer: What was your initial reaction?
+[23:52] Omar Hassan: That's probably my biggest complaint. The link previews don't work for internal pages, so shared links are just cryptic URLs
+[24:31] Interviewer: What was your initial reaction?
+[24:37] Omar Hassan: This is something that really bothers me. There's no keyboard shortcut for the one action I do fifty times a day
+[25:24] Interviewer: At what point did you decide the free plan wasn't enough?
+[25:30] Omar Hassan: Yeah, so this is where it gets frustrating. The tool sends email notifications for my own actions, which clutters my inbox
+[26:25] Interviewer: What happened next?
+[26:30] Omar Hassan: Oh for sure, What I appreciate most is that it doesn't try to do everything, it does its core job well
+[27:14] Interviewer: Did you evaluate other products' pricing before making a decision?
+[27:22] Omar Hassan: This is something that really bothers me. I keep getting logged out randomly in the middle of my work
+[28:41] Interviewer: What would a fair price for this product look like to you?
+[28:44] Omar Hassan: Yeah, absolutely — The notifications are just noise at this point, I ignore all of them
+[29:23] Interviewer: Did anyone on your team feel differently about that?
+[29:31] Omar Hassan: I'll be blunt — The tool shows me information I don't have permission to act on, which is confusing
+[30:39] Interviewer: What would happen if you had to switch to the free plan tomorrow?
+[30:43] Omar Hassan: Oh for sure, The way it handles dependencies between tasks is really elegant, I haven't seen that done better anywhere
+[31:26] Interviewer: What was your initial reaction?
+[31:30] Omar Hassan: Yeah, absolutely — I can create a complete project plan in about twenty minutes that would have taken me half a day before
+[32:53] Interviewer: What did you try to do about it?
+[32:58] Omar Hassan: Yeah, so this is where it gets frustrating. I accidentally deleted a project and there was no way to undo it
+[33:29] Interviewer: What happened next?
+[33:35] Omar Hassan: I have to say, I appreciate that keyboard navigation works everywhere, I rarely need to touch my mouse
+[34:16] Interviewer: Can you tell me more about that?
+[34:19] Omar Hassan: That's a good question. The API documentation is actually readable, which is rare, our developers integrated it in a day Some team members feel differently, but that's my take.
+[35:18] Interviewer: Did anyone on your team feel differently about that?
+[35:22] Omar Hassan: Honestly, that's been a pain point for us. The onboarding tutorial was so long I just skipped it, and then I was completely lost
+[36:38] Interviewer: How important is that to your day-to-day work?
+[36:45] Omar Hassan: I'll be blunt — The tool shows me information I don't have permission to act on, which is confusing
+[37:17] Interviewer: Did anyone on your team feel differently about that?
+[37:22] Omar Hassan: I have to say, I genuinely look forward to using the analytics view, it's the best-designed part of the product
+[38:31] Interviewer: What happened next?
+[38:38] Omar Hassan: Yeah, absolutely — I think the mobile notifications could be smarter, right now I get alerts for things that don't need my attention
+[39:12] Interviewer: When did you first notice that?
+[39:16] Omar Hassan: It depends on the situation, but generally The onboarding wizard actually taught me things about project management I didn't know before Some team members feel differently, but that's my take.
+
+[40:08] Interviewer: That's really helpful. Is there anything else you'd like to add before we wrap up?
+[40:15] Omar Hassan: No, I think that covers it. I appreciate you taking the time to ask about our experience.
+
+[END OF TRANSCRIPT]

@@ -1,0 +1,85 @@
+Interview Transcript — Search and Navigation Overhaul
+Participant: Priya Patel (UX Designer, 10-50)
+Date: 2026-01-30
+Duration: 49 minutes
+Research Goal: Reduce support tickets related to 'can't find feature' by 35%
+
+[00:00] Interviewer: How do you usually find what you need in the product?
+[00:36] Priya Patel: So, The way archived projects are handled is clean, they're out of the way but easy to find when you need them I mean, it works, but there's room for improvement.
+[01:23] Interviewer: How would you describe the navigation structure to a new colleague?
+[01:30] Priya Patel: Let me think about that. I was confused by the terminology, what you call a workspace I would call a project We've gotten used to it at this point.
+[02:46] Interviewer: How does that compare to what you expected?
+[02:54] Priya Patel: It depends on the situation, but generally I would absolutely recommend it to my team, with a few caveats Some team members feel differently, but that's my take.
+[04:08] Interviewer: Have you ever discovered a feature by accident? Tell me about that.
+[04:16] Priya Patel: Well, in our case, The milestone tracking keeps our stakeholders happy without requiring me to create separate presentations Some team members feel differently, but that's my take.
+[05:23] Interviewer: How important is that to your day-to-day work?
+[05:31] Priya Patel: Honestly, that's been a pain point for us. We had to create a separate shared document just to explain our internal conventions because the tool doesn't support naming rules
+[06:18] Interviewer: What happened next?
+[06:23] Priya Patel: Yeah, absolutely — The batch operations saved me so much time during our annual project cleanup
+[07:07] Interviewer: How important is that to your day-to-day work?
+[07:12] Priya Patel: So, I've used probably a dozen project management tools and this one has the best learning curve Some team members feel differently, but that's my take.
+[08:26] Interviewer: Do you use the search function or do you browse through menus?
+[08:34] Priya Patel: Let me think about that. The milestone tracking keeps our stakeholders happy without requiring me to create separate presentations It's not great, not terrible.
+[09:53] Interviewer: How did that affect your workflow?
+[10:01] Priya Patel: This is something that really bothers me. The onboarding tutorial was so long I just skipped it, and then I was completely lost
+[11:06] Interviewer: What would the ideal navigation look like for the way you work?
+[11:14] Priya Patel: That's a good question. I remember thinking, why is this taking so many clicks? I think it depends a lot on your use case.
+[12:38] Interviewer: What labels or terms feel confusing or unclear to you?
+[12:46] Priya Patel: That's probably my biggest complaint. The error messages are completely useless, they just say something went wrong with no detail
+[13:18] Interviewer: When you get lost in the product, how do you find your way back?
+[13:25] Priya Patel: I'll be blunt — I can never remember where the billing page is buried
+[14:27] Interviewer: What's the most common thing you search for?
+[14:34] Priya Patel: So, My biggest fear is that they'll change the interface in a major update and I'll have to relearn everything Some team members feel differently, but that's my take.
+[15:58] Interviewer: Can you show me a time when you searched for something and it didn't work?
+[16:05] Priya Patel: Yeah, absolutely — I think the mobile notifications could be smarter, right now I get alerts for things that don't need my attention
+[17:28] Interviewer: Is that something you've experienced more than once?
+[17:33] Priya Patel: Yeah, so this is where it gets frustrating. The file upload limit is way too small for the kind of documents we work with
+[18:57] Interviewer: What do you do when you can't find a feature you know exists?
+[19:02] Priya Patel: It depends on the situation, but generally My biggest fear is that they'll change the interface in a major update and I'll have to relearn everything I mean, it works, but there's room for improvement.
+[20:05] Interviewer: Is that something you've experienced more than once?
+[20:10] Priya Patel: I have to say, I wish more tools had this level of thought put into the empty states, it's clear what you need to do
+[21:31] Interviewer: How do you feel about the depth of the navigation, the number of clicks to get somewhere?
+[21:38] Priya Patel: That's probably my biggest complaint. I tried to merge two duplicate tasks and lost all the comments from one of them
+[22:43] Interviewer: Are there shortcuts or quick actions you wish existed?
+[22:48] Priya Patel: I have to say, I think the biggest improvement they could make is better exporting, the current PDF export is basic
+[24:04] Interviewer: How did that affect your workflow?
+[24:09] Priya Patel: Well, in our case, The audit log is essential for our compliance requirements, it tracks every change automatically I mean, it works, but there's room for improvement.
+[25:30] Interviewer: Did anyone on your team feel differently about that?
+[25:35] Priya Patel: So, The search is actually intelligent, it finds tasks even when I can't remember the exact title I mean, it works, but there's room for improvement.
+[26:24] Interviewer: What would an ideal solution look like for you?
+[26:27] Priya Patel: I have to say, I keep a sticky note on my monitor with the steps to do the export because it's not intuitive at all
+[27:40] Interviewer: Is that something you've experienced more than once?
+[27:45] Priya Patel: One thing I genuinely enjoy is — I've never had a tool that actually made meetings shorter, but the shared boards did exactly that
+[28:31] Interviewer: Can you tell me more about that?
+[28:34] Priya Patel: That's actually something I really appreciate. What I didn't expect was how much the reporting features improved our client communication
+[29:45] Interviewer: Can you tell me more about that?
+[29:53] Priya Patel: Yeah, so this is where it gets frustrating. Every time there's an update, my custom workflow automations break and I have to rebuild them
+[30:57] Interviewer: Did anyone on your team feel differently about that?
+[31:01] Priya Patel: I have to say, I was confused by the terminology, what you call a workspace I would call a project
+[32:01] Interviewer: Could you walk me through a specific example?
+[32:07] Priya Patel: That's actually something I really appreciate. What makes it work for us is that it's flexible enough for both our engineering and marketing teams
+[32:40] Interviewer: Could you walk me through a specific example?
+[32:48] Priya Patel: One thing I genuinely enjoy is — What makes it work for us is that it's flexible enough for both our engineering and marketing teams
+[33:20] Interviewer: Could you walk me through a specific example?
+[33:28] Priya Patel: Yeah, absolutely — The drag-and-drop interface is really satisfying when it works, but sometimes items just snap to the wrong place
+[34:02] Interviewer: What would an ideal solution look like for you?
+[34:08] Priya Patel: That's probably my biggest complaint. I can't drag tasks between different project boards, so I end up duplicating them manually
+[34:53] Interviewer: What did you try to do about it?
+[34:59] Priya Patel: Yeah, absolutely — I keep a sticky note on my monitor with the steps to do the export because it's not intuitive at all
+[35:31] Interviewer: Is that something you've experienced more than once?
+[35:37] Priya Patel: That's probably my biggest complaint. The mobile app crashes at least once a day when I try to upload photos
+[36:15] Interviewer: Did anyone on your team feel differently about that?
+[36:20] Priya Patel: That's a good question. I had to watch a YouTube tutorial to understand the reporting feature, and that shouldn't be necessary It's not great, not terrible.
+[37:19] Interviewer: How did that affect your workflow?
+[37:22] Priya Patel: So, It's rare that a tool actually makes me more productive rather than just feeling like more overhead I think it depends a lot on your use case.
+[38:28] Interviewer: What happened next?
+[38:31] Priya Patel: I have to say, I think the biggest strength is how customizable the views are, everyone sets it up differently
+[39:32] Interviewer: Could you walk me through a specific example?
+[39:35] Priya Patel: That's actually something I really appreciate. I don't think the pricing page made it clear what I was actually getting
+[40:23] Interviewer: Could you walk me through a specific example?
+[40:30] Priya Patel: It depends on the situation, but generally The milestone tracking keeps our stakeholders happy without requiring me to create separate presentations We've gotten used to it at this point.
+
+[41:15] Interviewer: That's really helpful. Is there anything else you'd like to add before we wrap up?
+[41:21] Priya Patel: I think I've covered the main things. Thanks for listening — it's good to know someone's paying attention to this stuff.
+
+[END OF TRANSCRIPT]
