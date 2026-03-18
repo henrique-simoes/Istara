@@ -90,6 +90,10 @@ def create_skill(
             if not content and not skill_input.user_context:
                 return SkillOutput(success=False, summary="No input provided.", errors=["Provide files or context."])
 
+            # Build source attribution from actual file names
+            file_sources = [Path(f).name for f in skill_input.files] if skill_input.files else []
+            source_label = ", ".join(file_sources[:3]) if file_sources else self.name
+
             ctx = "\n".join(filter(None, [skill_input.company_context, skill_input.project_context, skill_input.user_context]))
             full_prompt = execute_prompt.format(context=ctx or "N/A", content=content or skill_input.user_context or "N/A")
             full_prompt += f"\n\nRespond in JSON:\n{output_schema}"
@@ -97,7 +101,8 @@ def create_skill(
             resp = await ollama.chat(messages=[{"role": "user", "content": full_prompt}], temperature=0.3)
             data = _parse_json_response(resp.get("message", {}).get("content", ""))
 
-            nuggets = [{"text": n.get("text", ""), "source": self.name, "tags": n.get("tags", [])}
+            # Use source from LLM if provided, fall back to file name(s), then skill name
+            nuggets = [{"text": n.get("text", ""), "source": n.get("source", source_label), "tags": n.get("tags", [])}
                        for n in data.get("nuggets", [])]
             facts = [{"text": f.get("text", "")} for f in data.get("facts", [])]
             insights = [{"text": i.get("text", ""), "confidence": i.get("confidence", "medium")}

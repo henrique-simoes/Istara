@@ -1,21 +1,26 @@
 {
   "name": "thematic-analysis",
   "display_name": "Thematic Analysis",
-  "description": "Rigorous coding (open → axial → selective), codebook management, inter-rater reliability.",
+  "description": "Rigorous qualitative coding following Braun & Clarke's 6-phase reflexive thematic analysis. Phrase-level coding (open, axial, selective), codebook management, theme development with prevalence data.",
   "phase": "define",
   "skill_type": "qualitative",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "enabled": true,
-  "plan_prompt": "Plan a thematic analysis. Context: {context}\nInclude: Braun & Clarke 6-phase approach, coding strategy, codebook structure,\nreliability measures, reflexivity considerations. Markdown.",
-  "execute_prompt": "Perform thematic analysis on this qualitative data. Context: {context}\nData: {content}\nFollow Braun & Clarke phases: familiarization, initial coding, theme searching,\ntheme reviewing, theme defining, report production.\nGenerate initial codes, then organize into themes and sub-themes.",
-  "output_schema": "{{\"codebook\": [{{\"code\": \"...\", \"definition\": \"...\", \"example\": \"...\", \"frequency\": 0}}],\n\"themes\": [{{\"name\": \"...\", \"definition\": \"...\", \"codes\": [\"...\"],\n\"sub_themes\": [{{\"name\": \"...\", \"codes\": [\"...\"]}}],\n\"prevalence\": \"dominant|common|minor\"}}],\n\"theme_map\": \"...\",\n\"nuggets\": [{{\"text\": \"...\", \"tags\": [\"...\"]}}],\n\"facts\": [{{\"text\": \"...\"}}],\n\"insights\": [{{\"text\": \"...\", \"confidence\": \"high|medium|low\"}}],\n\"summary\": \"...\"}}",
+  "plan_prompt": "Plan a thematic analysis following Braun & Clarke (2006) reflexive thematic analysis.\nContext: {context}\n\nInclude all 6 phases:\n1. **Familiarization**: How to immerse in the data (reading, re-reading, noting initial ideas)\n2. **Initial coding**: Strategy for generating codes (inductive/deductive/hybrid). Codes should capture PHRASES and meaningful segments, not single words.\n3. **Theme searching**: How to collate codes into candidate themes\n4. **Theme reviewing**: Checking themes against coded data and full dataset\n5. **Theme defining**: Refining theme names, definitions, scope, and narrative\n6. **Report production**: Final analysis write-up structure\n\nAlso address:\n- Codebook structure (code name, definition, inclusion/exclusion criteria, example)\n- Reflexivity considerations (researcher positionality)\n- Data saturation indicators\n- Whether to use inductive (data-driven) or deductive (theory-driven) coding\n\nFormat as Markdown.",
+  "execute_prompt": "Perform thematic analysis on this qualitative data following Braun & Clarke's (2006) 6-phase approach.\nContext: {context}\nData: {content}\n\nIMPORTANT CODING RULES:\n- Code MEANINGFUL PHRASES and segments (3-30 words), never single words\n- Each code should capture the essence of a data segment\n- Include the verbatim phrase in the nugget text field\n- Tag each nugget with its code(s)\n\nFollow these phases:\n\n**Phase 1 - Familiarization**: Read the data thoroughly, note initial observations.\n\n**Phase 2 - Initial Coding (Open Coding)**: Generate initial codes systematically across the dataset.\nFor each code provide: name, clear definition, inclusion/exclusion criteria, and example phrase from the data.\nCodes should be descriptive and close to the data.\n\n**Phase 3 - Theme Searching**: Collate codes into candidate themes. Show how codes cluster.\n\n**Phase 4 - Theme Reviewing**: Check each theme has sufficient supporting data. Merge, split, or discard themes as needed.\n\n**Phase 5 - Theme Defining**: Write a clear name and definition for each theme. Identify sub-themes.\n\n**Phase 6 - Report**: Provide a narrative for each theme with evidence.\n\nFor each nugget, include the source file name if identifiable from the data.",
+  "output_schema": "{{\"codebook\": [{{\"code\": \"...\", \"definition\": \"...\", \"inclusion_criteria\": \"...\", \"exclusion_criteria\": \"...\", \"example\": \"verbatim phrase from data\", \"frequency\": 0}}],\n\"themes\": [{{\"name\": \"...\", \"definition\": \"...\", \"scope\": \"what this theme covers and does not cover\", \"codes\": [\"...\"],\n\"sub_themes\": [{{\"name\": \"...\", \"codes\": [\"...\"]}}],\n\"prevalence\": \"dominant|common|minor\", \"narrative\": \"analytical story of this theme with evidence\"}}],\n\"theme_map\": \"textual description of how themes relate to each other\",\n\"nuggets\": [{{\"text\": \"verbatim phrase from data (3-30 words)\", \"source\": \"filename or context\", \"tags\": [\"code1\", \"code2\"]}}],\n\"facts\": [{{\"text\": \"verified pattern supported by multiple data points\"}}],\n\"insights\": [{{\"text\": \"interpretive conclusion from theme analysis\", \"confidence\": \"high|medium|low\"}}],\n\"reflexivity_notes\": \"researcher positionality and potential biases\",\n\"saturation_assessment\": \"whether data saturation was reached and evidence\",\n\"summary\": \"executive summary of the thematic analysis\"}}",
   "created_at": "2026-03-14T00:00:00Z",
-  "updated_at": "2026-03-14T00:00:00Z",
+  "updated_at": "2026-03-17T00:00:00Z",
   "metadata": {
     "author": "ReClaw",
     "tags": [
       "define",
       "qualitative"
+    ],
+    "references": [
+      "Braun, V. & Clarke, V. (2006). Using thematic analysis in psychology.",
+      "Braun, V. & Clarke, V. (2019). Reflecting on reflexive thematic analysis.",
+      "Saldana, J. (2021). The Coding Manual for Qualitative Researchers."
     ]
   },
   "changelog": [
@@ -23,6 +28,11 @@
       "version": "1.0.0",
       "date": "2026-03-14T00:00:00Z",
       "changes": "Initial creation from skill library"
+    },
+    {
+      "version": "2.0.0",
+      "date": "2026-03-17T00:00:00Z",
+      "changes": "Comprehensive rewrite: phrase-level coding, full Braun & Clarke 6-phase compliance, codebook with inclusion/exclusion criteria, reflexivity notes, saturation assessment"
     }
   ]
 }
