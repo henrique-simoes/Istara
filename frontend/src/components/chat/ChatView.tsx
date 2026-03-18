@@ -331,7 +331,7 @@ function ChatToolbar({
 export default function ChatView() {
   const { messages, streaming, streamingContent, error, sendMessage, fetchHistory, cancelStreaming } = useChatStore();
   const { activeProjectId } = useProjectStore();
-  const { activeSessionId, ensureDefault, updateSession, pendingPrefill, setPendingPrefill } = useSessionStore();
+  const { activeSessionId, ensureDefault, updateSession, pendingPrefill, setPendingPrefill, fetchSessions } = useSessionStore();
   const { agents, fetchAgents } = useAgentStore();
   const activeSession = useSessionStore((s) => s.activeSession());
   const [input, setInput] = useState("");
@@ -340,19 +340,20 @@ export default function ChatView() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Initialize sessions: fetch list first (restores localStorage session), then ensure a default exists
+  useEffect(() => {
+    if (activeProjectId) {
+      fetchSessions(activeProjectId).then(() => ensureDefault(activeProjectId));
+      fetchAgents();
+    }
+  }, [activeProjectId, fetchSessions, ensureDefault, fetchAgents]);
+
   useEffect(() => {
     if (activeProjectId) {
       setLoadingHistory(true);
       fetchHistory(activeProjectId, activeSessionId || undefined).finally(() => setLoadingHistory(false));
     }
   }, [activeProjectId, activeSessionId, fetchHistory]);
-
-  useEffect(() => {
-    if (activeProjectId) {
-      ensureDefault(activeProjectId);
-      fetchAgents();
-    }
-  }, [activeProjectId, ensureDefault, fetchAgents]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });

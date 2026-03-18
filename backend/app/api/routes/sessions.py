@@ -162,7 +162,7 @@ async def ensure_default_session(project_id: str, db: AsyncSession = Depends(get
     result = await db.execute(
         select(ChatSession)
         .where(ChatSession.project_id == project_id, ChatSession.archived == False)
-        .order_by(ChatSession.created_at.asc())
+        .order_by(ChatSession.last_message_at.desc().nullslast(), ChatSession.created_at.desc())
         .limit(1)
     )
     session = result.scalar_one_or_none()
