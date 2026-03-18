@@ -18,7 +18,7 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
-from sqlalchemy import select
+from sqlalchemy import case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
@@ -112,7 +112,7 @@ class AgentOrchestrator:
         can_start, reason = governor.can_start_agent("task-executor")
         if not can_start:
             logger.info(f"Agent paused: {reason}")
-            await broadcast_agent_status("paused", reason)
+            await broadcast_agent_status("paused", f"Hardware throttle: {reason}")
             return False
 
         # Apply throttle if system is under pressure
@@ -135,15 +135,41 @@ class AgentOrchestrator:
             await self._execute_task(db, task, project)
             self._current_task_id = None
 
+            # 4. Check queue depth and adapt loop interval
+            count_result = await db.execute(
+                select(func.count(Task.id)).where(
+                    Task.status.in_([TaskStatus.BACKLOG, TaskStatus.IN_PROGRESS])
+                )
+            )
+            pending = count_result.scalar() or 0
+            if pending > 0:
+                self._loop_interval = 5  # Process queue quickly
+                await broadcast_agent_status(
+                    "working", f"Task complete. {pending} remaining in queue."
+                )
+            else:
+                self._loop_interval = 30  # Back to normal
+                await broadcast_agent_status("idle", "All tasks processed.")
+
             return True
 
     async def _pick_next_task(self, db: AsyncSession) -> Task | None:
         """Pick the highest priority task that's ready for work.
 
         Priority order:
-        1. Tasks explicitly assigned to this agent (agent_id = 'reclaw-main')
-        2. Unassigned tasks (agent_id IS NULL) — FIFO by position
+        1. Tasks explicitly assigned to this agent — by priority then position
+        2. Unassigned tasks — by priority then position
+
+        Priority mapping: critical > high > medium > low
         """
+        priority_order = case(
+            (Task.priority == "critical", 0),
+            (Task.priority == "high", 1),
+            (Task.priority == "medium", 2),
+            (Task.priority == "low", 3),
+            else_=4,
+        )
+
         # First: check for tasks explicitly assigned to the main agent
         result = await db.execute(
             select(Task)
@@ -151,7 +177,7 @@ class AgentOrchestrator:
                 Task.status.in_([TaskStatus.BACKLOG, TaskStatus.IN_PROGRESS]),
                 Task.agent_id == "reclaw-main",
             )
-            .order_by(Task.position.asc(), Task.created_at.asc())
+            .order_by(priority_order, Task.position.asc(), Task.created_at.asc())
             .limit(1)
         )
         task = result.scalar_one_or_none()
@@ -165,7 +191,7 @@ class AgentOrchestrator:
                 Task.status.in_([TaskStatus.BACKLOG, TaskStatus.IN_PROGRESS]),
                 Task.agent_id.is_(None),
             )
-            .order_by(Task.position.asc(), Task.created_at.asc())
+            .order_by(priority_order, Task.position.asc(), Task.created_at.asc())
             .limit(1)
         )
         return result.scalar_one_or_none()
@@ -250,8 +276,26 @@ class AgentOrchestrator:
                 await self._persist_agent_state(AgentState.IDLE)
                 await broadcast_agent_status("warning", f"Needs attention: {task.title} — {verify_reason}")
 
-            # Record skill usage
+            # Record skill usage and check health for self-evolution
             skill_manager.record_execution(skill.name, output.success, 0.8 if output.success else 0.2)
+            try:
+                health = skill_manager.get_skill_health(skill.name)
+                if health.get("executions", 0) >= 3 and health.get("avg_quality", 1.0) < 0.5:
+                    skill_def = skill_manager.get(skill.name)
+                    skill_manager.propose_improvement(
+                        skill_name=skill.name,
+                        field="execute_prompt",
+                        current_value=(skill_def or {}).get("execute_prompt", "")[:200] if isinstance(skill_def, dict) else "",
+                        proposed_value="",
+                        reason=f"Low quality ({health['avg_quality']:.0%}) after {health['executions']} runs",
+                        confidence=0.6,
+                    )
+                    await broadcast_suggestion(
+                        f"Skill '{skill.display_name}' may need tuning (quality: {health['avg_quality']:.0%}). Check pending proposals.",
+                        project.id,
+                    )
+            except Exception:
+                pass  # Don't fail task on self-evolution check
 
             # Generate suggestions
             if output.suggestions:

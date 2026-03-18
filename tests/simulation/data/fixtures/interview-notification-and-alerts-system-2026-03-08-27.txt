@@ -1,0 +1,39 @@
+Interview Transcript — Notification and Alerts System
+Participant: Lisa Johansson (Scrum Master, 500-2000)
+Date: 2026-03-08
+Duration: 37 minutes
+Research Goal: Decrease notification opt-out rate from 68% to under 40%
+
+[00:00] Interviewer: How do you feel about the number of notifications you receive?
+[00:49] Lisa Johansson: Let me think about that. I ended up asking a coworker to walk me through it because the help docs didn't make sense We've gotten used to it at this point.
+[02:15] Interviewer: What would the ideal notification system look like for you?
+[02:22] Lisa Johansson: Well, in our case, I think the biggest issue is just consistency, some parts feel modern and others feel like they haven't been updated in years I think it depends a lot on your use case.
+[03:05] Interviewer: Did anyone on your team feel differently about that?
+[03:09] Lisa Johansson: This is something that really bothers me. The date picker doesn't let me type a date manually, I have to click through months one by one
+[03:48] Interviewer: What was your initial reaction?
+[03:56] Lisa Johansson: Oh for sure, The collaboration features are actually the main reason we chose this over the competitor
+[04:34] Interviewer: Did anyone on your team feel differently about that?
+[04:42] Lisa Johansson: Yeah, absolutely — I was confused by the terminology, what you call a workspace I would call a project
+[06:03] Interviewer: Which notifications are actually useful to you?
+[06:11] Lisa Johansson: Well, in our case, Setting up the integration was a breeze, probably the smoothest part of the whole experience I think it depends a lot on your use case.
+[06:49] Interviewer: Can you tell me more about that?
+[06:54] Lisa Johansson: This is something that really bothers me. The permissions system is so confusing that we just give everyone admin access
+[08:16] Interviewer: How do you manage notifications across all the tools you use?
+[08:19] Lisa Johansson: That's a good question. The mobile app is fine for checking things, but I'd never try to do real work on it I mean, it works, but there's room for improvement.
+[09:07] Interviewer: Did anyone on your team feel differently about that?
+[09:12] Lisa Johansson: That's probably my biggest complaint. The search bar basically never returns what I'm actually looking for
+[09:52] Interviewer: When did you first notice that?
+[09:55] Lisa Johansson: That's probably my biggest complaint. Every time I export a report, the formatting is completely off and I have to fix it in Excel
+[10:39] Interviewer: Can you tell me more about that?
+[10:43] Lisa Johansson: Yeah, absolutely — I use it every single day, so even small annoyances add up over time
+[11:41] Interviewer: Have you ever missed something important because you turned notifications off?
+[11:48] Lisa Johansson: I'll be blunt — The help docs are always out of date and show screenshots from an older version
+[13:01] Interviewer: What would an ideal solution look like for you?
+[13:06] Lisa Johansson: I have to say, I keep a sticky note on my monitor with the steps to do the export because it's not intuitive at all
+[14:02] Interviewer: What did you try to do about it?
+[14:10] Lisa Johansson: Let me think about that. Honestly, I almost gave up during the sign-up process Some team members feel differently, but that's my take.
+
+[15:17] Interviewer: That's really helpful. Is there anything else you'd like to add before we wrap up?
+[15:23] Lisa Johansson: Just that I really hope these changes happen soon. The team is getting impatient.
+
+[END OF TRANSCRIPT]

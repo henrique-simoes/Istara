@@ -1,0 +1,29 @@
+Interview Transcript — Pricing Page Conversion
+Participant: David Okonkwo (VP of Product, 500-2000)
+Date: 2026-02-17
+Duration: 35 minutes
+Research Goal: Increase free-to-paid conversion rate from 3.1% to 5%
+
+[00:00] Interviewer: What was your understanding of the pricing tiers before you signed up?
+[00:31] David Okonkwo: That's a good question. I would absolutely recommend it to my team, with a few caveats I think it depends a lot on your use case.
+[02:01] Interviewer: When did you first notice that?
+[02:08] David Okonkwo: One thing I genuinely enjoy is — My manager asked me to pull a report and it took me forty-five minutes to figure out how
+[03:14] Interviewer: What was your initial reaction?
+[03:19] David Okonkwo: I'll be blunt — The date picker doesn't let me type a date manually, I have to click through months one by one
+[04:30] Interviewer: What happened next?
+[04:38] David Okonkwo: Well, in our case, I genuinely look forward to using the analytics view, it's the best-designed part of the product I mean, it works, but there's room for improvement.
+[06:01] Interviewer: Did anyone on your team feel differently about that?
+[06:08] David Okonkwo: That's a good question. I think the biggest issue is just consistency, some parts feel modern and others feel like they haven't been updated in years We've gotten used to it at this point.
+[07:17] Interviewer: When did you first notice that?
+[07:23] David Okonkwo: Let me think about that. It took me way too long to figure out how to invite my team It's not great, not terrible.
+[08:52] Interviewer: How did that affect your workflow?
+[08:56] David Okonkwo: It depends on the situation, but generally I remember thinking, why is this taking so many clicks? Some team members feel differently, but that's my take.
+[10:02] Interviewer: Can you tell me more about that?
+[10:08] David Okonkwo: It depends on the situation, but generally The notifications are just noise at this point, I ignore all of them It's not great, not terrible.
+[11:18] Interviewer: How did that affect your workflow?
+[11:25] David Okonkwo: I have to say, I'm not sure who decided the default view should show everything, it's completely overwhelming
+
+[12:39] Interviewer: That's really helpful. Is there anything else you'd like to add before we wrap up?
+[12:45] David Okonkwo: Just that I really hope these changes happen soon. The team is getting impatient.
+
+[END OF TRANSCRIPT]

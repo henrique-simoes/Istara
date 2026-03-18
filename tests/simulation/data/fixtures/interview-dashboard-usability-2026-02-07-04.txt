@@ -1,0 +1,27 @@
+Interview Transcript — Dashboard Usability
+Participant: Omar Hassan (Product Owner, 200-500)
+Date: 2026-02-07
+Duration: 43 minutes
+Research Goal: Improve time-to-insight from average 4.2 minutes to under 2 minutes
+
+[00:00] Interviewer: Walk me through how you typically start your day with the dashboard.
+[00:31] Omar Hassan: Let me think about that. The onboarding emails were genuinely helpful, they came at the right pace I mean, it works, but there's room for improvement.
+[01:40] Interviewer: If you could rearrange the dashboard, what would you change?
+[01:48] Omar Hassan: That's a good question. Once I got the hang of it, the workflow felt pretty natural I mean, it works, but there's room for improvement.
+[03:14] Interviewer: How easy is it to find the metrics that matter most to you?
+[03:22] Omar Hassan: Honestly, that's been a pain point for us. I tried to set up the integration with Slack three times and it failed silently each time
+[04:42] Interviewer: What did you try to do about it?
+[04:50] Omar Hassan: Honestly, that's been a pain point for us. Every time I export a report, the formatting is completely off and I have to fix it in Excel
+[06:05] Interviewer: Can you tell me more about that?
+[06:08] Omar Hassan: Well, in our case, When I saw the new design, my first reaction was, where did everything go? I mean, it works, but there's room for improvement.
+[07:09] Interviewer: What information do you look for first?
+[07:15] Omar Hassan: That's actually something I really appreciate. I keep a sticky note on my monitor with the steps to do the export because it's not intuitive at all
+[07:46] Interviewer: Have you ever missed something important because it was hard to find?
+[07:53] Omar Hassan: I'll be blunt — I accidentally sent an incomplete report to a client because the save and send buttons are right next to each other
+[08:28] Interviewer: When did you first notice that?
+[08:33] Omar Hassan: This is something that really bothers me. I accidentally deleted a project and there was no way to undo it
+
+[09:48] Interviewer: That's really helpful. Is there anything else you'd like to add before we wrap up?
+[09:57] Omar Hassan: Just that I really hope these changes happen soon. The team is getting impatient.
+
+[END OF TRANSCRIPT]

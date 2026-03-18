@@ -1,0 +1,33 @@
+Interview Transcript — Collaboration Features
+Participant: Fatima Al-Hassan (QA Engineer, 200-500)
+Date: 2026-03-10
+Duration: 36 minutes
+Research Goal: Increase team workspace adoption from 23% to 50% of active accounts
+
+[00:00] Interviewer: How does your team currently collaborate on projects?
+[00:52] Fatima Al-Hassan: So, I don't think the pricing page made it clear what I was actually getting I think it depends a lot on your use case.
+[02:07] Interviewer: Can you describe a situation where collaborating in the product went well?
+[02:15] Fatima Al-Hassan: That's a good question. I actually really liked how the dashboard shows everything at a glance I mean, it works, but there's room for improvement.
+[03:13] Interviewer: What would an ideal solution look like for you?
+[03:17] Fatima Al-Hassan: Let me think about that. I think the biggest issue is just consistency, some parts feel modern and others feel like they haven't been updated in years We've gotten used to it at this point.
+[04:44] Interviewer: Did anyone on your team feel differently about that?
+[04:49] Fatima Al-Hassan: This is something that really bothers me. Switching between projects is painfully slow, there's no quick switcher
+[06:02] Interviewer: What tools do you use alongside our product for team communication?
+[06:10] Fatima Al-Hassan: That's a good question. Honestly, I almost gave up during the sign-up process We've gotten used to it at this point.
+[06:43] Interviewer: What would make it easier to get your whole team on board?
+[06:47] Fatima Al-Hassan: I'll be blunt — It took me two weeks to realize there was a bulk edit feature hidden in a dropdown
+[08:17] Interviewer: What stops you from using the shared workspace features more often?
+[08:24] Fatima Al-Hassan: That's probably my biggest complaint. I can never remember where the billing page is buried
+[09:35] Interviewer: Can you tell me more about that?
+[09:38] Fatima Al-Hassan: So, Compared to what we used before, this is a huge improvement, but the bar was pretty low Some team members feel differently, but that's my take.
+[11:04] Interviewer: Can you tell me more about that?
+[11:11] Fatima Al-Hassan: That's a good question. It does what I need about eighty percent of the time, the other twenty percent I work around I mean, it works, but there's room for improvement.
+[11:58] Interviewer: What did you try to do about it?
+[12:03] Fatima Al-Hassan: That's actually something I really appreciate. The notifications are just noise at this point, I ignore all of them
+[12:43] Interviewer: How does that compare to what you expected?
+[12:48] Fatima Al-Hassan: This is something that really bothers me. I accidentally sent an incomplete report to a client because the save and send buttons are right next to each other
+
+[13:31] Interviewer: That's really helpful. Is there anything else you'd like to add before we wrap up?
+[13:41] Fatima Al-Hassan: Just that I really hope these changes happen soon. The team is getting impatient.
+
+[END OF TRANSCRIPT]

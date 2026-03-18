@@ -1,0 +1,37 @@
+Interview Transcript — Onboarding Redesign
+Participant: Derek Washington (CTO, 10-50)
+Date: 2026-03-15
+Duration: 25 minutes
+Research Goal: Reduce 45% drop-off at phone verification step
+
+[00:00] Interviewer: What was your first impression when you signed up?
+[00:44] Derek Washington: So, Compared to what we used before, this is a huge improvement, but the bar was pretty low It's not great, not terrible.
+[02:14] Interviewer: What would have made the sign-up faster for you?
+[02:21] Derek Washington: It depends on the situation, but generally Once I got the hang of it, the workflow felt pretty natural It's not great, not terrible.
+[03:02] Interviewer: How important is that to your day-to-day work?
+[03:09] Derek Washington: It depends on the situation, but generally When I saw the new design, my first reaction was, where did everything go? Some team members feel differently, but that's my take.
+[03:47] Interviewer: Where did you get stuck during the process?
+[03:50] Derek Washington: That's actually something I really appreciate. I was confused by the terminology, what you call a workspace I would call a project
+[05:20] Interviewer: At what point did you feel confident you could use the product?
+[05:24] Derek Washington: This is something that really bothers me. There's no keyboard shortcut for the one action I do fifty times a day
+[05:59] Interviewer: What was your initial reaction?
+[06:05] Derek Washington: That's a good question. I keep a sticky note on my monitor with the steps to do the export because it's not intuitive at all Some team members feel differently, but that's my take.
+[06:55] Interviewer: What was your initial reaction?
+[07:03] Derek Washington: Let me think about that. I actually really liked how the dashboard shows everything at a glance I mean, it works, but there's room for improvement.
+[08:04] Interviewer: What would an ideal solution look like for you?
+[08:11] Derek Washington: That's probably my biggest complaint. The loading time is really frustrating, especially when I'm trying to pull up something in a meeting
+[08:46] Interviewer: How did the verification step feel compared to other services?
+[08:53] Derek Washington: That's probably my biggest complaint. I accidentally sent an incomplete report to a client because the save and send buttons are right next to each other
+[10:21] Interviewer: What happened next?
+[10:26] Derek Washington: Yeah, so this is where it gets frustrating. When I share a link with my team, they always have to log in again even if they already have accounts
+[11:27] Interviewer: What happened next?
+[11:32] Derek Washington: This is something that really bothers me. The date picker doesn't let me type a date manually, I have to click through months one by one
+[12:33] Interviewer: Is that something you've experienced more than once?
+[12:40] Derek Washington: Yeah, so this is where it gets frustrating. The help docs are always out of date and show screenshots from an older version
+[14:09] Interviewer: Did anyone on your team feel differently about that?
+[14:14] Derek Washington: That's actually something I really appreciate. I think the biggest issue is just consistency, some parts feel modern and others feel like they haven't been updated in years
+
+[15:15] Interviewer: That's really helpful. Is there anything else you'd like to add before we wrap up?
+[15:25] Derek Washington: I think I've covered the main things. Thanks for listening — it's good to know someone's paying attention to this stuff.
+
+[END OF TRANSCRIPT]

@@ -3,7 +3,9 @@
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException
+from pathlib import Path
+
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -62,7 +64,7 @@ async def list_projects(db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/projects", response_model=ProjectResponse, status_code=201)
-async def create_project(data: ProjectCreate, db: AsyncSession = Depends(get_db)):
+async def create_project(data: ProjectCreate, request: Request, db: AsyncSession = Depends(get_db)):
     """Create a new project."""
     project_id = str(uuid.uuid4())
 
@@ -88,6 +90,13 @@ async def create_project(data: ProjectCreate, db: AsyncSession = Depends(get_db)
         "description": data.description,
         "phase": data.phase.value,
     }, message=f"Create project: {data.name}")
+
+    # Auto-register file watcher for the project's upload directory
+    upload_dir = str(Path(settings.upload_dir) / project_id)
+    Path(upload_dir).mkdir(parents=True, exist_ok=True)
+    file_watcher = getattr(request.app.state, "file_watcher", None)
+    if file_watcher:
+        file_watcher.add_watch(upload_dir, project_id)
 
     return project
 

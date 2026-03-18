@@ -1,0 +1,29 @@
+Interview Transcript — Pricing Page Conversion
+Participant: Sarah Chen (Product Manager, 50-200)
+Date: 2026-01-29
+Duration: 26 minutes
+Research Goal: Increase free-to-paid conversion rate from 3.1% to 5%
+
+[00:00] Interviewer: What was your understanding of the pricing tiers before you signed up?
+[00:48] Sarah Chen: Well, in our case, My manager asked me to pull a report and it took me forty-five minutes to figure out how It's not great, not terrible.
+[01:53] Interviewer: Could you walk me through a specific example?
+[02:00] Sarah Chen: Well, in our case, I was pleasantly surprised by how fast the search results came back Some team members feel differently, but that's my take.
+[02:48] Interviewer: At what point did you decide the free plan wasn't enough?
+[02:55] Sarah Chen: I'll be blunt — The file upload limit is way too small for the kind of documents we work with
+[03:32] Interviewer: Is that something you've experienced more than once?
+[03:39] Sarah Chen: So, It took me way too long to figure out how to invite my team Some team members feel differently, but that's my take.
+[04:59] Interviewer: Could you walk me through a specific example?
+[05:03] Sarah Chen: Let me think about that. I was pleasantly surprised by how fast the search results came back I think it depends a lot on your use case.
+[06:23] Interviewer: Was there anything confusing about how features are split across plans?
+[06:29] Sarah Chen: Well, in our case, I would absolutely recommend it to my team, with a few caveats I think it depends a lot on your use case.
+[07:56] Interviewer: How does our pricing compare to your expectations?
+[08:04] Sarah Chen: This is something that really bothers me. There's no keyboard shortcut for the one action I do fifty times a day
+[09:32] Interviewer: What was your initial reaction?
+[09:40] Sarah Chen: That's actually something I really appreciate. When I saw the new design, my first reaction was, where did everything go?
+[11:04] Interviewer: Is that something you've experienced more than once?
+[11:11] Sarah Chen: One thing I genuinely enjoy is — It took me way too long to figure out how to invite my team
+
+[11:45] Interviewer: That's really helpful. Is there anything else you'd like to add before we wrap up?
+[11:52] Sarah Chen: I'd just emphasize that I had to watch a YouTube tutorial to understand the reporting feature, and that shouldn't be necessary That's really the core of it for me.
+
+[END OF TRANSCRIPT]

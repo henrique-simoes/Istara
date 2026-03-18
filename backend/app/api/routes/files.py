@@ -5,7 +5,7 @@ import uuid
 from pathlib import Path
 
 import aiofiles
-from fastapi import APIRouter, Depends, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -203,6 +203,29 @@ async def get_file_content(project_id: str, filename: str):
         }
 
     return {"filename": filename, "type": suffix, "content": None, "size": 0}
+
+
+@router.post("/files/{project_id}/scan")
+async def scan_project_files(project_id: str, request: Request):
+    """Trigger a file watcher scan for the project's upload directory.
+
+    Used by the seeder script and for manual re-scans that also create
+    research tasks based on file classification.
+    """
+    upload_dir = str(Path(settings.upload_dir) / project_id)
+    if not Path(upload_dir).exists():
+        return {"status": "no files", "scanned": 0}
+
+    file_watcher = getattr(request.app.state, "file_watcher", None)
+    if not file_watcher:
+        raise HTTPException(status_code=503, detail="File watcher not available")
+
+    results = await file_watcher.scan_directory(upload_dir, project_id)
+    return {
+        "status": "complete",
+        "scanned": len(results),
+        "results": results,
+    }
 
 
 @router.get("/files/{project_id}/serve/{filename}")

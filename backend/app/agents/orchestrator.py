@@ -204,6 +204,52 @@ class MetaOrchestrator:
                 agent.state = AgentState.PAUSED
                 self._log_action(agent.id, "paused", f"Too many errors ({agent.error_count})")
 
+        # Distribute unassigned tasks
+        await self._distribute_pending_tasks()
+
+    async def _distribute_pending_tasks(self) -> None:
+        """Auto-assign unassigned BACKLOG tasks to the task executor agent."""
+        try:
+            from app.models.database import async_session
+            from app.models.task import Task, TaskStatus
+            from sqlalchemy import select
+
+            async with async_session() as db:
+                result = await db.execute(
+                    select(Task)
+                    .where(
+                        Task.status == TaskStatus.BACKLOG,
+                        Task.agent_id.is_(None),
+                    )
+                    .order_by(Task.created_at.asc())
+                    .limit(10)
+                )
+                tasks = result.scalars().all()
+
+                if not tasks:
+                    return
+
+                for task in tasks:
+                    task.agent_id = "reclaw-main"
+                    self._log_action(
+                        "reclaw-task_executor",
+                        "task_assigned",
+                        f"Auto-assigned: {task.title}",
+                    )
+
+                await db.commit()
+
+                logger.info(f"Distributed {len(tasks)} unassigned tasks to reclaw-main")
+
+                # Wake the task executor
+                try:
+                    from app.core.agent import agent as agent_orchestrator
+                    agent_orchestrator.wake()
+                except Exception:
+                    pass
+        except Exception as e:
+            logger.error(f"Task distribution error: {e}")
+
     def _log_action(self, agent_id: str, action: str, details: str) -> None:
         """Log an orchestrator action for audit trail."""
         entry = {

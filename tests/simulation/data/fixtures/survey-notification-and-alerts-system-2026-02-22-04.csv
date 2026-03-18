@@ -1,0 +1,51 @@
+respondent_id,age,role,company_size,signup_ease,onboarding_satisfaction,feature_usefulness,time_to_first_task_min,would_recommend,open_feedback
+P26,33,Scrum Master,500-2000,4,2,3,22,5,The mobile app crashes at least once a day when I try to upload photos
+P20,29,Product Designer,50-200,5,3,4,10,7,"Setting up the integration was a breeze, probably the smoothest part of the whole experience"
+P12,27,Frontend Developer,50-200,4,4,5,8,7,My manager asked me to pull a report and it took me forty-five minutes to figure out how
+P29,50,Head of Training,2000+,1,5,1,29,6,I keep getting logged out randomly in the middle of my work
+P21,42,Engineering Manager,200-500,4,1,1,3,3,I accidentally deleted a project and there was no way to undo it
+P30,35,Product Owner,200-500,5,2,3,18,8,"I had to watch a YouTube tutorial to understand the reporting feature, and that shouldn't be necessary"
+P01,32,Product Manager,50-200,2,2,1,22,5,"The onboarding tutorial was so long I just skipped it, and then I was completely lost That said, the notifications are just noise at this point, i ignore all of them"
+P17,25,Support Specialist,50-200,4,3,2,23,7,"I use it every single day, so even small annoyances add up over time"
+P18,44,Design Director,2000+,3,5,2,30,5,I ended up asking a coworker to walk me through it because the help docs didn't make sense
+P07,34,Customer Success Lead,200-500,5,1,5,5,7,"I was confused by the terminology, what you call a workspace I would call a project Though I'd add: there's no keyboard shortcut for the one action i do fifty times a day"
+P28,28,Mobile Developer,10-50,2,4,4,7,8,"I can't customize the columns in the table view, so I'm always scrolling sideways to find what I need"
+P10,31,Marketing Manager,10-50,4,5,2,3,8,"I remember thinking, why is this taking so many clicks? Though I'd add: the mobile app crashes at least once a day when i try to upload photos"
+P03,28,UX Designer,10-50,2,3,5,20,6,The mobile app crashes at least once a day when I try to upload photos
+P06,41,Operations Manager,500-2000,2,2,1,22,0,The permissions system is so confusing that we just give everyone admin access
+P14,33,Research Lead,500-2000,4,5,3,9,9,"The onboarding emails were genuinely helpful, they came at the right pace"
+P27,31,Business Analyst,2000+,3,4,5,14,10,"I was confused by the terminology, what you call a workspace I would call a project"
+P23,46,Account Executive,500-2000,4,3,4,17,10,"Compared to what we used before, this is a huge improvement, but the bar was pretty low"
+P04,38,Sales Lead,200-500,2,1,5,8,8,"The loading time is really frustrating, especially when I'm trying to pull up something in a meeting"
+P13,39,Project Manager,200-500,3,1,4,26,8,"The onboarding emails were genuinely helpful, they came at the right pace"
+P22,35,Content Strategist,10-50,3,5,3,27,8,I keep a sticky note on my monitor with the steps to do the export because it's not intuitive at all
+P02,45,Engineering Director,500-2000,2,3,2,20,0,The color contrast is so low I can barely read the secondary text
+P19,37,Solutions Architect,500-2000,4,4,4,4,10,"I had to watch a YouTube tutorial to understand the reporting feature, and that shouldn't be necessary"
+P09,36,IT Administrator,2000+,5,4,4,13,10,"The onboarding emails were genuinely helpful, they came at the right pace"
+P24,24,UX Researcher,50-200,4,3,5,3,9,"It feels like it was designed by engineers for engineers, not for someone like me"
+P08,29,Data Analyst,50-200,2,2,2,30,1,"The file upload limit is way too small for the kind of documents we work with That said, i keep a sticky note on my monitor with the steps to do the export because it's not intuitive at all"
+P25,40,DevOps Lead,200-500,4,3,3,21,8,It took me two weeks to realize there was a bulk edit feature hidden in a dropdown
+P11,48,VP of Product,500-2000,3,1,3,22,6,"The search bar basically never returns what I'm actually looking for That said, i remember thinking, why is this taking so many clicks?"
+P16,30,QA Engineer,200-500,2,5,4,1,10,The collaboration features are actually the main reason we chose this over the competitor
+P05,26,Junior Developer,50-200,2,4,4,11,7,"I love the keyboard shortcuts, they save me so much time"
+P15,52,CTO,10-50,1,1,4,15,3,"Every time I export a report, the formatting is completely off and I have to fix it in Excel"
+P12-30,35,Frontend Developer,50-200,4,2,3,16,7,It took me way too long to figure out how to invite my team
+P04-31,37,Sales Lead,200-500,2,1,4,19,3,"I can't customize the columns in the table view, so I'm always scrolling sideways to find what I need That said, i actually really liked how the dashboard shows everything at a glance"
+P05-32,27,Junior Developer,50-200,5,5,3,6,9,"I love the keyboard shortcuts, they save me so much time"
+P08-33,34,Data Analyst,50-200,5,1,4,4,7,It sends me way too many email notifications and I can't figure out how to turn them off individually
+P04-34,56,Sales Lead,200-500,3,2,5,7,8,"The dashboard widgets rearrange themselves every time I log in, which is disorienting"
+P30-35,37,Product Owner,200-500,4,2,4,13,7,The search bar basically never returns what I'm actually looking for
+P27-36,51,Business Analyst,2000+,5,2,3,18,6,I keep a sticky note on my monitor with the steps to do the export because it's not intuitive at all
+P09-37,55,IT Administrator,2000+,1,1,5,27,6,"The help docs are always out of date and show screenshots from an older version That said, compared to what we used before, this is a huge improvement, but the bar was pretty low"
+P09-38,56,IT Administrator,2000+,5,3,3,7,8,"I'm not sure who decided the default view should show everything, it's completely overwhelming"
+P07-39,43,Customer Success Lead,200-500,4,5,4,20,9,I was pleasantly surprised by how fast the search results came back
+P27-40,25,Business Analyst,2000+,4,2,1,7,6,"It sends me way too many email notifications and I can't figure out how to turn them off individually That said, the fact that i can't undo a bulk action makes me nervous every time i use it"
+P06-41,55,Operations Manager,500-2000,3,2,3,20,8,"The onboarding emails were genuinely helpful, they came at the right pace"
+P26-42,29,Scrum Master,500-2000,5,4,5,15,10,I actually really liked how the dashboard shows everything at a glance
+P17-43,37,Support Specialist,50-200,4,3,5,2,8,"I was confused by the terminology, what you call a workspace I would call a project"
+P29-44,40,Head of Training,2000+,2,3,1,16,0,I tried to set up the integration with Slack three times and it failed silently each time
+P13-45,24,Project Manager,200-500,4,2,4,17,5,"I love the keyboard shortcuts, they save me so much time"
+P10-46,55,Marketing Manager,10-50,1,3,1,15,4,"Every time I export a report, the formatting is completely off and I have to fix it in Excel"
+P10-47,25,Marketing Manager,10-50,4,4,1,8,7,"The mobile app is fine for checking things, but I'd never try to do real work on it"
+P15-48,22,CTO,10-50,3,4,5,18,7,"I love the keyboard shortcuts, they save me so much time Though I'd add: the permissions system is so confusing that we just give everyone admin access"
+P15-49,23,CTO,10-50,1,3,3,30,1,The help docs are always out of date and show screenshots from an older version

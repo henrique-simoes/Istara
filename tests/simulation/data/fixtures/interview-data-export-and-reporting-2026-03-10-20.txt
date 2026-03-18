@@ -1,0 +1,29 @@
+Interview Transcript — Data Export and Reporting
+Participant: Sarah Chen (Product Manager, 50-200)
+Date: 2026-03-10
+Duration: 38 minutes
+Research Goal: Reduce average report generation time and eliminate top 3 export errors
+
+[00:00] Interviewer: How often do you need to export data or create reports?
+[00:36] Sarah Chen: Well, in our case, The notifications are just noise at this point, I ignore all of them Some team members feel differently, but that's my take.
+[01:31] Interviewer: Walk me through the last time you tried to generate a report.
+[01:37] Sarah Chen: Yeah, so this is where it gets frustrating. I accidentally sent an incomplete report to a client because the save and send buttons are right next to each other
+[03:04] Interviewer: Who are the reports typically for, and what format do they expect?
+[03:08] Sarah Chen: Yeah, absolutely — The drag-and-drop interface is really satisfying when it works, but sometimes items just snap to the wrong place
+[04:36] Interviewer: What information do you wish was easier to pull out of the system?
+[04:44] Sarah Chen: Well, in our case, I think the biggest issue is just consistency, some parts feel modern and others feel like they haven't been updated in years I think it depends a lot on your use case.
+[05:48] Interviewer: What happened next?
+[05:52] Sarah Chen: That's actually something I really appreciate. I genuinely look forward to using the analytics view, it's the best-designed part of the product
+[06:42] Interviewer: Have you ever run into errors or unexpected results during export?
+[06:48] Sarah Chen: Oh for sure, I actually really liked how the dashboard shows everything at a glance
+[07:44] Interviewer: Could you walk me through a specific example?
+[07:51] Sarah Chen: That's probably my biggest complaint. It took me two weeks to realize there was a bulk edit feature hidden in a dropdown
+[08:23] Interviewer: What happened next?
+[08:29] Sarah Chen: Yeah, so this is where it gets frustrating. Switching between projects is painfully slow, there's no quick switcher
+[09:27] Interviewer: How does that compare to what you expected?
+[09:33] Sarah Chen: It depends on the situation, but generally The drag-and-drop interface is really satisfying when it works, but sometimes items just snap to the wrong place It's not great, not terrible.
+
+[10:14] Interviewer: That's really helpful. Is there anything else you'd like to add before we wrap up?
+[10:22] Sarah Chen: Just that I really hope these changes happen soon. The team is getting impatient.
+
+[END OF TRANSCRIPT]

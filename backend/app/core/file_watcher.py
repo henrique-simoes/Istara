@@ -3,6 +3,7 @@
 import asyncio
 import json
 import logging
+import uuid
 from pathlib import Path
 
 from watchfiles import awatch, Change
@@ -10,7 +11,7 @@ from watchfiles import awatch, Change
 from app.core.embeddings import embed_chunks
 from app.core.file_processor import get_supported_extensions, process_file
 from app.core.rag import VectorStore
-from app.api.websocket import broadcast_file_processed
+from app.api.websocket import broadcast_file_processed, broadcast_suggestion
 
 logger = logging.getLogger(__name__)
 
@@ -63,6 +64,140 @@ class FileWatcher:
     def get_watches(self) -> dict[str, str]:
         """Get all watched directories."""
         return dict(self._watched_dirs)
+
+    # ── File classification for auto-task creation ──────────────────────
+
+    def _classify_file(self, file_path: Path) -> list[tuple[str, str, str]]:
+        """Classify a file and return applicable (skill_name, task_title, priority) tuples."""
+        filename = file_path.name.lower()
+        ext = file_path.suffix.lower()
+        stem = file_path.stem
+
+        # Read first 500 chars for content-based heuristics
+        try:
+            preview = file_path.read_text(errors="replace")[:500].lower()
+        except Exception:
+            preview = ""
+
+        tasks: list[tuple[str, str, str]] = []
+
+        # Interview transcripts
+        if "interview" in filename or "transcript" in filename or \
+           ("[00:" in preview and "interviewer:" in preview):
+            tasks.append(("user-interviews", f"Analyze interview: {stem}", "high"))
+            tasks.append(("thematic-analysis", f"Thematic analysis: {stem}", "medium"))
+
+        # Survey data
+        elif ext == ".csv" and ("survey" in filename or "respondent" in preview):
+            tasks.append(("survey-design", f"Analyze survey: {stem}", "high"))
+            if "would_recommend" in preview or "nps" in preview:
+                tasks.append(("nps-analysis", f"NPS analysis: {stem}", "medium"))
+            if "sus" in filename or "usability" in preview:
+                tasks.append(("sus-umux-scoring", f"SUS/UMUX scoring: {stem}", "medium"))
+
+        # Usability test reports
+        elif "usability" in filename or ("completion rate" in preview and "sus score" in preview):
+            tasks.append(("usability-testing", f"Review usability test: {stem}", "high"))
+            tasks.append(("heuristic-evaluation", f"Heuristic review: {stem}", "low"))
+
+        # Field/research notes
+        elif "field-notes" in filename or "field notes" in preview:
+            tasks.append(("field-studies", f"Analyze field notes: {stem}", "high"))
+            tasks.append(("empathy-mapping", f"Empathy map from: {stem}", "medium"))
+
+        # Diary studies
+        elif "diary" in filename or ("day " in preview and "mood" in preview):
+            tasks.append(("diary-studies", f"Analyze diary study: {stem}", "high"))
+            tasks.append(("longitudinal-tracking", f"Longitudinal tracking: {stem}", "medium"))
+
+        # Competitive analysis
+        elif "competitor" in filename or "competitive" in filename:
+            tasks.append(("competitive-analysis", f"Competitive analysis: {stem}", "high"))
+
+        # Analytics data
+        elif ext == ".csv" and ("sessions" in preview or "bounce_rate" in preview or "conversions" in preview):
+            tasks.append(("analytics-review", f"Analytics review: {stem}", "high"))
+            if "variant" in preview or "a/b" in preview or "ab-test" in filename:
+                tasks.append(("ab-test-analysis", f"A/B test analysis: {stem}", "high"))
+
+        # Fallback: unclassified research document
+        elif ext in {".txt", ".md", ".pdf", ".docx"}:
+            tasks.append(("research-synthesis", f"Synthesize: {stem}", "low"))
+
+        return tasks
+
+    async def _create_research_tasks(self, file_path: Path, project_id: str) -> int:
+        """Create research tasks for a processed file based on its classification.
+
+        Returns:
+            Number of tasks created.
+        """
+        skill_tasks = self._classify_file(file_path)
+        if not skill_tasks:
+            return 0
+
+        from app.models.database import async_session
+        from app.models.task import Task, TaskStatus
+        from sqlalchemy import select, func
+
+        created = 0
+        async with async_session() as db:
+            for skill_name, task_title, priority in skill_tasks:
+                # Deduplication: skip if task already exists for this file + skill
+                existing = await db.execute(
+                    select(func.count(Task.id)).where(
+                        Task.project_id == project_id,
+                        Task.skill_name == skill_name,
+                        Task.description.contains(file_path.name),
+                        Task.status.in_([TaskStatus.BACKLOG, TaskStatus.IN_PROGRESS]),
+                    )
+                )
+                if (existing.scalar() or 0) > 0:
+                    continue
+
+                # Get max position
+                result = await db.execute(
+                    select(func.max(Task.position)).where(Task.project_id == project_id)
+                )
+                max_pos = result.scalar() or 0
+
+                task = Task(
+                    id=str(uuid.uuid4()),
+                    project_id=project_id,
+                    title=task_title,
+                    description=f"Auto-created from file: {file_path.name}",
+                    skill_name=skill_name,
+                    agent_id="reclaw-main",
+                    priority=priority,
+                    position=max_pos + 1,
+                )
+                db.add(task)
+                created += 1
+
+            if created > 0:
+                await db.commit()
+
+        # Notify user and wake agent
+        if created > 0:
+            try:
+                await broadcast_suggestion(
+                    f"New research file: {file_path.name} — created {created} analysis task(s).",
+                    project_id,
+                )
+            except Exception:
+                pass
+
+            try:
+                from app.core.agent import agent as agent_orchestrator
+                agent_orchestrator.wake()
+            except Exception:
+                pass
+
+            logger.info(f"Created {created} tasks for {file_path.name} in project {project_id}")
+
+        return created
+
+    # ── File processing ─────────────────────────────────────────────────
 
     async def _process_file(self, file_path: Path, project_id: str) -> dict | None:
         """Process a single file and ingest into the vector store.
@@ -120,6 +255,12 @@ class FileWatcher:
             await broadcast_file_processed(file_path.name, count, project_id)
         except Exception:
             pass  # Don't fail file processing if broadcast fails
+
+        # Auto-create research tasks based on file classification
+        try:
+            await self._create_research_tasks(file_path, project_id)
+        except Exception as e:
+            logger.warning(f"Failed to create research tasks for {file_path}: {e}")
 
         return summary
 
