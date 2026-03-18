@@ -251,7 +251,7 @@ export default function SkillsView() {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto p-6 max-w-4xl mx-auto space-y-5">
+    <div className="flex-1 overflow-y-auto p-6 max-w-4xl mx-auto space-y-5" tabIndex={0} role="region" aria-label="Skills catalog">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -364,75 +364,74 @@ export default function SkillsView() {
                   className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden"
                 >
                   {/* Skill row */}
-                  <div
-                    onClick={() =>
-                      setExpandedSkill(expanded ? null : skill.name)
-                    }
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setExpandedSkill(expanded ? null : skill.name); } }}
-                    aria-expanded={expanded}
-                    aria-label={`${skill.display_name} — ${skill.description}`}
-                    className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer"
-                  >
-                    {expanded ? (
-                      <ChevronDown size={14} className="text-slate-400 shrink-0" />
-                    ) : (
-                      <ChevronRight size={14} className="text-slate-400 shrink-0" />
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-sm text-slate-900 dark:text-white truncate">
-                          {skill.display_name}
-                        </span>
-                        <span
-                          className={cn(
-                            "text-[10px] px-1.5 py-0.5 rounded-full font-medium capitalize",
-                            PHASE_COLORS[skill.phase] || ""
-                          )}
-                        >
-                          {skill.phase}
-                        </span>
-                        <span className="text-[10px] text-slate-400 font-mono">
-                          v{skill.version}
-                        </span>
-                      </div>
-                      <p className="text-xs text-slate-500 truncate mt-0.5">
-                        {skill.description}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-3 shrink-0">
-                      {health && (
-                        <div className="flex items-center gap-1.5">
-                          <Activity size={12} className="text-slate-400" />
-                          <HealthBadge score={health.health_score} />
+                  <div className="w-full flex items-center gap-0">
+                    <div
+                      onClick={() =>
+                        setExpandedSkill(expanded ? null : skill.name)
+                      }
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setExpandedSkill(expanded ? null : skill.name); } }}
+                      aria-expanded={expanded}
+                      aria-label={`${skill.display_name} — ${skill.description}`}
+                      className="flex-1 flex items-center gap-3 px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer min-w-0"
+                    >
+                      {expanded ? (
+                        <ChevronDown size={14} className="text-slate-400 shrink-0" />
+                      ) : (
+                        <ChevronRight size={14} className="text-slate-400 shrink-0" />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-sm text-slate-900 dark:text-white truncate">
+                            {skill.display_name}
+                          </span>
+                          <span
+                            className={cn(
+                              "text-[10px] px-1.5 py-0.5 rounded-full font-medium capitalize",
+                              PHASE_COLORS[skill.phase] || ""
+                            )}
+                          >
+                            {skill.phase}
+                          </span>
+                          <span className="text-[10px] text-slate-400 font-mono">
+                            v{skill.version}
+                          </span>
                         </div>
-                      )}
-                      {health?.executions > 0 && (
-                        <span className="text-[10px] text-slate-400">
-                          {health.executions} runs
-                        </span>
-                      )}
-                      <span
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleToggle(skill.name, skill.enabled);
-                        }}
-                        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); handleToggle(skill.name, skill.enabled); } }}
-                        role="switch"
-                        tabIndex={0}
-                        aria-checked={skill.enabled}
-                        aria-label={skill.enabled ? `Disable ${skill.display_name}` : `Enable ${skill.display_name}`}
-                        title={skill.enabled ? "Disable" : "Enable"}
-                        className="text-slate-400 hover:text-slate-600 cursor-pointer"
-                      >
-                        {skill.enabled ? (
-                          <ToggleRight size={20} className="text-green-500" />
-                        ) : (
-                          <ToggleLeft size={20} />
+                        <p className="text-xs text-slate-500 truncate mt-0.5">
+                          {skill.description}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3 shrink-0">
+                        {health && (
+                          <div className="flex items-center gap-1.5">
+                            <Activity size={12} className="text-slate-400" />
+                            <HealthBadge score={health.health_score} />
+                          </div>
                         )}
-                      </span>
+                        {health?.executions > 0 && (
+                          <span className="text-[10px] text-slate-400">
+                            {health.executions} runs
+                          </span>
+                        )}
+                      </div>
                     </div>
+                    <span
+                      onClick={() => handleToggle(skill.name, skill.enabled)}
+                      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleToggle(skill.name, skill.enabled); } }}
+                      role="switch"
+                      tabIndex={0}
+                      aria-checked={skill.enabled}
+                      aria-label={skill.enabled ? `Disable ${skill.display_name}` : `Enable ${skill.display_name}`}
+                      title={skill.enabled ? "Disable" : "Enable"}
+                      className="text-slate-400 hover:text-slate-600 cursor-pointer shrink-0 px-4 py-3"
+                    >
+                      {skill.enabled ? (
+                        <ToggleRight size={20} className="text-green-500" />
+                      ) : (
+                        <ToggleLeft size={20} />
+                      )}
+                    </span>
                   </div>
 
                   {/* Expanded detail */}

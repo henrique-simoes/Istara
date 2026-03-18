@@ -185,7 +185,7 @@ export default function Sidebar({ activeView, onViewChange, onSearchOpen }: Side
 
       {/* Projects */}
       {!collapsed && (
-        <div className="flex-1 overflow-y-auto p-2 border-t border-slate-200 dark:border-slate-800 mt-1">
+        <div className="flex-1 overflow-y-auto p-2 border-t border-slate-200 dark:border-slate-800 mt-1" tabIndex={0} role="region" aria-label="Projects list">
           <div className="flex items-center justify-between px-3 py-2">
             <span className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">
               Projects
