@@ -33,6 +33,7 @@ from app.models.database import async_session
 from app.models.project import Project
 from app.models.task import Task, TaskStatus
 from app.models.finding import Nugget, Fact, Insight, Recommendation
+from app.models.agent import Agent, AgentState
 from app.api.websocket import (
     broadcast_agent_status,
     broadcast_task_progress,
@@ -85,6 +86,25 @@ class AgentOrchestrator:
     def stop(self) -> None:
         self._running = False
         logger.info("Agent Orchestrator stopped.")
+
+    async def _persist_agent_state(
+        self, state: AgentState, current_task: str = ""
+    ) -> None:
+        """Persist the agent state to the database so the frontend can read it."""
+        try:
+            async with async_session() as db:
+                result = await db.execute(
+                    select(Agent).where(Agent.id == "reclaw-main")
+                )
+                agent_row = result.scalar_one_or_none()
+                if agent_row:
+                    agent_row.state = state
+                    agent_row.current_task = current_task
+                    if state == AgentState.WORKING:
+                        agent_row.last_heartbeat_at = datetime.now(timezone.utc)
+                    await db.commit()
+        except Exception as e:
+            logger.error(f"Failed to persist agent state: {e}")
 
     async def _work_cycle(self) -> bool:
         """Run one work cycle. Returns True if a task was executed."""
@@ -158,10 +178,11 @@ class AgentOrchestrator:
         """Execute a task using the appropriate skill."""
         logger.info(f"Executing task: {task.title} (skill: {task.skill_name or 'auto'})")
 
-        # Move to in_progress
+        # Move to in_progress and persist agent state
         task.status = TaskStatus.IN_PROGRESS
         task.progress = 0.1
         await db.commit()
+        await self._persist_agent_state(AgentState.WORKING, task.title)
         await broadcast_agent_status("working", f"Working on: {task.title}")
         await broadcast_task_progress(task.id, 0.1, "Starting task...")
 
@@ -216,6 +237,7 @@ class AgentOrchestrator:
                 await db.commit()
 
                 await broadcast_task_progress(task.id, 1.0, "Complete — ready for review.")
+                await self._persist_agent_state(AgentState.IDLE)
                 await broadcast_agent_status("idle", f"Completed: {task.title}")
             else:
                 # Verification failed — keep in progress for retry/attention
@@ -225,6 +247,7 @@ class AgentOrchestrator:
                 await db.commit()
 
                 await broadcast_task_progress(task.id, 0.5, f"Verification failed: {verify_reason}")
+                await self._persist_agent_state(AgentState.IDLE)
                 await broadcast_agent_status("warning", f"Needs attention: {task.title} — {verify_reason}")
 
             # Record skill usage
@@ -242,6 +265,7 @@ class AgentOrchestrator:
             task.agent_notes = f"Error: {str(e)}"
             task.status = TaskStatus.BACKLOG  # Return to backlog on failure
             await db.commit()
+            await self._persist_agent_state(AgentState.ERROR, str(e))
             await broadcast_agent_status("error", f"Failed: {task.title} — {e}")
 
     def _select_skill(self, task: Task):
@@ -331,8 +355,10 @@ class AgentOrchestrator:
             system_prompt += f"\n\n## Relevant Documents\n{context.context_text}"
 
         response = await ollama.chat(
-            messages=[{"role": "user", "content": f"Task: {task.title}\n\nDetails: {task.description}\n\nAdditional context: {task.user_context}"}],
-            system=system_prompt,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": f"Task: {task.title}\n\nDetails: {task.description}\n\nAdditional context: {task.user_context}"},
+            ],
         )
 
         result = response.get("message", {}).get("content", "")
@@ -357,6 +383,7 @@ class AgentOrchestrator:
             await db.commit()
 
             await broadcast_task_progress(task.id, 0.5, f"Verification failed: {reason}")
+            await self._persist_agent_state(AgentState.IDLE)
             await broadcast_agent_status("warning", f"Needs attention: {task.title} — {reason}")
         else:
             task.status = TaskStatus.IN_REVIEW
@@ -365,6 +392,7 @@ class AgentOrchestrator:
             await db.commit()
 
             await broadcast_task_progress(task.id, 1.0, "Complete — ready for review.")
+            await self._persist_agent_state(AgentState.IDLE)
             await broadcast_agent_status("idle", f"Completed: {task.title}")
 
     async def _store_findings(
@@ -378,12 +406,16 @@ class AgentOrchestrator:
         all nuggets feed into all facts, all facts feed into all insights, etc.
         This ensures every finding has traceable evidence.
         """
-        phase = "discover"  # Default — could be inferred from skill
-
-        # Determine phase from skill
+        # Determine base phase from skill (Double Diamond)
         skill = registry.get(task.skill_name) if task.skill_name else None
-        if skill:
-            phase = skill.phase.value
+        skill_phase = skill.phase.value if skill else None
+
+        # Each finding type has a natural phase in the Atomic Research hierarchy.
+        # If the skill specifies a phase, use it; otherwise use the type's default.
+        nugget_phase = skill_phase or "discover"
+        fact_phase = skill_phase or "define"
+        insight_phase = skill_phase or "define"
+        rec_phase = skill_phase or "deliver"
 
         # Track created IDs for auto-linking
         created_nugget_ids: list[str] = []
@@ -400,7 +432,7 @@ class AgentOrchestrator:
                 source=nugget_data.get("source", task.title),
                 source_location=nugget_data.get("source_location", ""),
                 tags=json.dumps(nugget_data.get("tags", [])),
-                phase=phase,
+                phase=nugget_phase,
             )
             db.add(nugget)
             created_nugget_ids.append(nid)
@@ -415,7 +447,7 @@ class AgentOrchestrator:
                 project_id=project_id,
                 text=fact_data.get("text", ""),
                 nugget_ids=json.dumps(linked_nuggets),
-                phase=phase,
+                phase=fact_phase,
             )
             db.add(fact)
             created_fact_ids.append(fid)
@@ -430,7 +462,7 @@ class AgentOrchestrator:
                 project_id=project_id,
                 text=insight_data.get("text", ""),
                 fact_ids=json.dumps(linked_facts),
-                phase=phase,
+                phase=insight_phase,
                 impact=insight_data.get("impact", "medium"),
             )
             db.add(insight)
@@ -445,7 +477,7 @@ class AgentOrchestrator:
                 project_id=project_id,
                 text=rec_data.get("text", ""),
                 insight_ids=json.dumps(linked_insights),
-                phase=phase,
+                phase=rec_phase,
                 priority=rec_data.get("priority", "medium"),
                 effort=rec_data.get("effort", "medium"),
             )

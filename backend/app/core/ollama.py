@@ -15,6 +15,32 @@ class OllamaClient:
         self.base_url = (base_url or settings.ollama_host).rstrip("/")
         self._client: httpx.AsyncClient | None = None
 
+    @staticmethod
+    def _sanitize_messages(messages: list[dict]) -> list[dict]:
+        """Sanitize messages for the Ollama/LM Studio API.
+
+        Filters invalid messages, merges consecutive system messages,
+        and ensures all fields are properly formatted.
+        """
+        sanitized = []
+        for msg in messages:
+            role = msg.get("role", "")
+            content = msg.get("content")
+            if role not in ("system", "user", "assistant"):
+                continue
+            if content is None or (isinstance(content, str) and not content.strip()):
+                continue
+            sanitized.append({"role": role, "content": str(content)})
+
+        # Merge consecutive system messages to avoid duplicates
+        merged: list[dict] = []
+        for msg in sanitized:
+            if merged and msg["role"] == "system" and merged[-1]["role"] == "system":
+                merged[-1]["content"] += "\n\n" + msg["content"]
+            else:
+                merged.append(msg)
+        return merged
+
     async def _get_client(self) -> httpx.AsyncClient:
         if self._client is None or self._client.is_closed:
             self._client = httpx.AsyncClient(base_url=self.base_url, timeout=300.0)
@@ -63,14 +89,17 @@ class OllamaClient:
         temperature: float = 0.7,
     ) -> dict:
         """Non-streaming chat completion."""
+        msgs = list(messages)
+        if system:
+            msgs = [{"role": "system", "content": system}, *msgs]
+        msgs = self._sanitize_messages(msgs)
+
         payload: dict = {
             "model": model or settings.ollama_model,
-            "messages": messages,
+            "messages": msgs,
             "stream": False,
             "options": {"temperature": temperature},
         }
-        if system:
-            payload["messages"] = [{"role": "system", "content": system}, *messages]
 
         client = await self._get_client()
         resp = await client.post("/api/chat", json=payload)
@@ -85,14 +114,17 @@ class OllamaClient:
         temperature: float = 0.7,
     ) -> AsyncGenerator[str, None]:
         """Streaming chat completion — yields content chunks."""
+        msgs = list(messages)
+        if system:
+            msgs = [{"role": "system", "content": system}, *msgs]
+        msgs = self._sanitize_messages(msgs)
+
         payload: dict = {
             "model": model or settings.ollama_model,
-            "messages": messages,
+            "messages": msgs,
             "stream": True,
             "options": {"temperature": temperature},
         }
-        if system:
-            payload["messages"] = [{"role": "system", "content": system}, *messages]
 
         client = await self._get_client()
         async with client.stream("POST", "/api/chat", json=payload, timeout=None) as resp:
