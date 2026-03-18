@@ -74,7 +74,7 @@ function CustomLLMPanel({
     <div className="absolute top-full left-0 mt-1 z-50 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl p-4 min-w-[320px]">
       <div className="flex items-center justify-between mb-3">
         <h4 className="text-sm font-semibold text-slate-900 dark:text-white">Custom LLM Settings</h4>
-        <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-0.5">
+        <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-0.5" aria-label="Close custom LLM settings">
           <X size={14} />
         </button>
       </div>
@@ -452,7 +452,7 @@ export default function ChatView() {
         )}
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div className="flex-1 overflow-y-auto p-4 space-y-4" tabIndex={0} role="log" aria-label="Chat messages">
           {messages.length === 0 && !streaming && (
             <div className="flex items-center justify-center h-full text-slate-400">
               <div className="text-center max-w-md">
@@ -582,6 +582,7 @@ export default function ChatView() {
               onClick={() => fileInputRef.current?.click()}
               className="p-2.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
               title="Upload file"
+              aria-label="Upload file"
             >
               <Paperclip size={20} />
             </button>
