@@ -136,6 +136,7 @@ export default function ChatSessionsSidebar({ projectId }: ChatSessionsSidebarPr
               setMenuOpenId(menuOpenId === session.id ? null : session.id);
             }}
             className="p-0.5 rounded hover:bg-slate-200 dark:hover:bg-slate-700"
+            aria-label={`Options for ${session.title}`}
           >
             <MoreHorizontal size={12} className="text-slate-400" />
           </button>
@@ -192,13 +193,14 @@ export default function ChatSessionsSidebar({ projectId }: ChatSessionsSidebarPr
           onClick={handleNew}
           className="p-1 rounded-md hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
           title="New chat"
+          aria-label="New chat"
         >
           <Plus size={14} />
         </button>
       </div>
 
       {/* Sessions list */}
-      <div className="flex-1 overflow-y-auto p-1.5 space-y-0.5">
+      <div className="flex-1 overflow-y-auto p-1.5 space-y-0.5" tabIndex={0} role="region" aria-label="Chat sessions">
         {loading && sessions.length === 0 ? (
           <p className="text-xs text-slate-400 text-center py-4">Loading...</p>
         ) : (

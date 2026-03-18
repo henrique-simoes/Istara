@@ -204,7 +204,7 @@ export default function RightPanel({ activeView, collapsed, onToggle }: RightPan
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-3">
+      <div className="flex-1 overflow-y-auto p-3" tabIndex={0} role="region" aria-label="Context panel">
         {!activeProjectId ? (
           <EmptyState text="Select a project to see context." />
         ) : (

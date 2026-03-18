@@ -42,22 +42,37 @@ export async function run(ctx) {
 
   // Message 1: Ask about research data
   const sendBtn = page.locator('button[aria-label="Send message"]').first();
+  const msg1 = "What are the main pain points mentioned in the interview transcripts?";
 
-  // Type into textarea and wait for React state to update before clicking send.
-  // Use page.type() instead of fill() for more realistic keystroke events,
-  // then wait for the send button to become enabled (not cursor-not-allowed).
-  await chatInput.fill("What are the main pain points mentioned in the interview transcripts?");
-  await page.waitForTimeout(500);
+  // Use type() for realistic keystroke events that trigger React onChange.
+  // fill() sometimes doesn't fire React synthetic events properly.
+  await chatInput.click();
+  await chatInput.fill("");
+  await page.waitForTimeout(100);
+  await chatInput.type(msg1, { delay: 5 });
+  await page.waitForTimeout(300);
 
-  // Retry: if send button is still disabled, click the textarea and re-type
+  // If send button is still disabled, dispatch input event manually as fallback
   const sendEnabled = await sendBtn.evaluate((btn) => !btn.disabled);
   if (!sendEnabled) {
-    await chatInput.click();
-    await chatInput.fill("");
-    await page.waitForTimeout(200);
-    await chatInput.type("What are the main pain points mentioned in the interview transcripts?");
+    await chatInput.evaluate((el, text) => {
+      const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+        window.HTMLTextAreaElement.prototype, "value"
+      )?.set;
+      nativeInputValueSetter?.call(el, text);
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+      el.dispatchEvent(new Event("change", { bubbles: true }));
+    }, msg1);
     await page.waitForTimeout(500);
   }
+
+  // Wait for send button to become enabled (max 3s)
+  try {
+    await page.waitForFunction(
+      () => !document.querySelector('button[aria-label="Send message"]')?.disabled,
+      { timeout: 3000 }
+    );
+  } catch { /* proceed anyway */ }
 
   await sendBtn.click();
 
@@ -80,16 +95,33 @@ export async function run(ctx) {
   await screenshot("05-chat-response");
 
   // Message 2: Trigger a skill
-  await chatInput.fill("Run a thematic analysis on the interview data");
-  await page.waitForTimeout(500);
+  const msg2 = "Run a thematic analysis on the interview data";
+  await chatInput.click();
+  await chatInput.fill("");
+  await page.waitForTimeout(100);
+  await chatInput.type(msg2, { delay: 5 });
+  await page.waitForTimeout(300);
+
   const send2Enabled = await sendBtn.evaluate((btn) => !btn.disabled);
   if (!send2Enabled) {
-    await chatInput.click();
-    await chatInput.fill("");
-    await page.waitForTimeout(200);
-    await chatInput.type("Run a thematic analysis on the interview data");
+    await chatInput.evaluate((el, text) => {
+      const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+        window.HTMLTextAreaElement.prototype, "value"
+      )?.set;
+      nativeInputValueSetter?.call(el, text);
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+      el.dispatchEvent(new Event("change", { bubbles: true }));
+    }, msg2);
     await page.waitForTimeout(500);
   }
+
+  try {
+    await page.waitForFunction(
+      () => !document.querySelector('button[aria-label="Send message"]')?.disabled,
+      { timeout: 3000 }
+    );
+  } catch { /* proceed anyway */ }
+
   await sendBtn.click();
   try {
     await page.waitForTimeout(3000);
