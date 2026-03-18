@@ -54,18 +54,18 @@ function CustomLLMPanel({
   onUpdate: (data: Record<string, unknown>) => void;
   onClose: () => void;
 }) {
-  const custom = session.custom_llm_settings || {};
-  const [temperature, setTemperature] = useState(custom.temperature ?? 0.7);
-  const [maxTokens, setMaxTokens] = useState(custom.max_tokens ?? 2048);
-  const [topP, setTopP] = useState(custom.top_p ?? 0.9);
-  const [reasoning, setReasoning] = useState(custom.reasoning ?? "balanced");
+  const [temperature, setTemperature] = useState(session.custom_temperature ?? 0.7);
+  const [maxTokens, setMaxTokens] = useState(session.custom_max_tokens ?? 2048);
+  const [topP, setTopP] = useState(0.9);
+  const [reasoning, setReasoning] = useState("balanced");
 
   const isHighResource = maxTokens > 4096 || (reasoning === "deep" && temperature < 0.3);
 
   const save = () => {
     onUpdate({
       inference_preset: "custom",
-      custom_llm_settings: { temperature, max_tokens: maxTokens, top_p: topP, reasoning },
+      custom_temperature: temperature,
+      custom_max_tokens: maxTokens,
     });
     onClose();
   };
