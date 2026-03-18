@@ -1,0 +1,27 @@
+Interview Transcript — Notification and Alerts System
+Participant: Sarah Chen (Product Manager, 50-200)
+Date: 2026-01-25
+Duration: 27 minutes
+Research Goal: Decrease notification opt-out rate from 68% to under 40%
+
+[00:00] Interviewer: How do you feel about the number of notifications you receive?
+[00:47] Sarah Chen: That's a good question. I love the keyboard shortcuts, they save me so much time I think it depends a lot on your use case.
+[01:58] Interviewer: Have you ever missed something important because you turned notifications off?
+[02:05] Sarah Chen: So, When I saw the new design, my first reaction was, where did everything go? Some team members feel differently, but that's my take.
+[03:03] Interviewer: What was your initial reaction?
+[03:11] Sarah Chen: Yeah, so this is where it gets frustrating. I tried to set up the integration with Slack three times and it failed silently each time
+[04:32] Interviewer: What would the ideal notification system look like for you?
+[04:36] Sarah Chen: I have to say, Once I got the hang of it, the workflow felt pretty natural
+[05:43] Interviewer: What was your initial reaction?
+[05:50] Sarah Chen: That's actually something I really appreciate. I would absolutely recommend it to my team, with a few caveats
+[06:39] Interviewer: How do you manage notifications across all the tools you use?
+[06:47] Sarah Chen: That's actually something I really appreciate. I remember thinking, why is this taking so many clicks?
+[07:42] Interviewer: Can you tell me more about that?
+[07:48] Sarah Chen: That's probably my biggest complaint. The loading time is really frustrating, especially when I'm trying to pull up something in a meeting
+[09:01] Interviewer: Which notifications are actually useful to you?
+[09:06] Sarah Chen: Honestly, that's been a pain point for us. I can't customize the columns in the table view, so I'm always scrolling sideways to find what I need
+
+[10:24] Interviewer: That's really helpful. Is there anything else you'd like to add before we wrap up?
+[10:31] Sarah Chen: I think I've covered the main things. Thanks for listening — it's good to know someone's paying attention to this stuff.
+
+[END OF TRANSCRIPT]

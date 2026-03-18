@@ -1,0 +1,41 @@
+Interview Transcript — Onboarding Redesign
+Participant: Raj Krishnamurthy (Engineering Manager, 200-500)
+Date: 2026-03-12
+Duration: 45 minutes
+Research Goal: Reduce 45% drop-off at phone verification step
+
+[00:00] Interviewer: What was your first impression when you signed up?
+[00:40] Raj Krishnamurthy: So, I actually really liked how the dashboard shows everything at a glance Some team members feel differently, but that's my take.
+[01:43] Interviewer: Can you tell me more about that?
+[01:46] Raj Krishnamurthy: One thing I genuinely enjoy is — The mobile app is fine for checking things, but I'd never try to do real work on it
+[02:41] Interviewer: How did the verification step feel compared to other services?
+[02:47] Raj Krishnamurthy: Yeah, so this is where it gets frustrating. I keep getting logged out randomly in the middle of my work
+[04:14] Interviewer: At what point did you feel confident you could use the product?
+[04:19] Raj Krishnamurthy: One thing I genuinely enjoy is — I'm not sure who decided the default view should show everything, it's completely overwhelming
+[05:39] Interviewer: Is that something you've experienced more than once?
+[05:47] Raj Krishnamurthy: Oh for sure, I don't think the pricing page made it clear what I was actually getting
+[06:17] Interviewer: Could you walk me through a specific example?
+[06:25] Raj Krishnamurthy: I'll be blunt — I can never remember where the billing page is buried
+[07:28] Interviewer: When did you first notice that?
+[07:31] Raj Krishnamurthy: Honestly, that's been a pain point for us. The date picker doesn't let me type a date manually, I have to click through months one by one
+[08:14] Interviewer: What was your initial reaction?
+[08:18] Raj Krishnamurthy: That's actually something I really appreciate. I would absolutely recommend it to my team, with a few caveats
+[09:34] Interviewer: Where did you get stuck during the process?
+[09:37] Raj Krishnamurthy: I have to say, I use it every single day, so even small annoyances add up over time
+[10:24] Interviewer: What would have made the sign-up faster for you?
+[10:31] Raj Krishnamurthy: Honestly, that's been a pain point for us. The mobile app crashes at least once a day when I try to upload photos
+[11:17] Interviewer: What happened next?
+[11:22] Raj Krishnamurthy: It depends on the situation, but generally I don't think the pricing page made it clear what I was actually getting We've gotten used to it at this point.
+[12:03] Interviewer: How does that compare to what you expected?
+[12:10] Raj Krishnamurthy: Yeah, so this is where it gets frustrating. I keep getting logged out randomly in the middle of my work
+[13:31] Interviewer: When did you first notice that?
+[13:37] Raj Krishnamurthy: Honestly, that's been a pain point for us. The color contrast is so low I can barely read the secondary text
+[14:17] Interviewer: Could you walk me through a specific example?
+[14:22] Raj Krishnamurthy: Let me think about that. The fact that I can't undo a bulk action makes me nervous every time I use it We've gotten used to it at this point.
+[15:01] Interviewer: What was your initial reaction?
+[15:07] Raj Krishnamurthy: Let me think about that. I use it every single day, so even small annoyances add up over time I mean, it works, but there's room for improvement.
+
+[16:31] Interviewer: That's really helpful. Is there anything else you'd like to add before we wrap up?
+[16:36] Raj Krishnamurthy: One last thing — It took me two weeks to realize there was a bulk edit feature hidden in a dropdown But otherwise, I think we hit everything.
+
+[END OF TRANSCRIPT]

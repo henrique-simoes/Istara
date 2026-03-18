@@ -1,0 +1,27 @@
+Interview Transcript — Pricing Page Conversion
+Participant: Raj Krishnamurthy (Engineering Manager, 200-500)
+Date: 2026-02-27
+Duration: 40 minutes
+Research Goal: Increase free-to-paid conversion rate from 3.1% to 5%
+
+[00:00] Interviewer: What was your understanding of the pricing tiers before you signed up?
+[01:00] Raj Krishnamurthy: So, I ended up asking a coworker to walk me through it because the help docs didn't make sense It's not great, not terrible.
+[01:40] Interviewer: What would an ideal solution look like for you?
+[01:48] Raj Krishnamurthy: Yeah, absolutely — My manager asked me to pull a report and it took me forty-five minutes to figure out how
+[02:59] Interviewer: Was there anything confusing about how features are split across plans?
+[03:07] Raj Krishnamurthy: Yeah, absolutely — The fact that I can't undo a bulk action makes me nervous every time I use it
+[04:10] Interviewer: At what point did you decide the free plan wasn't enough?
+[04:15] Raj Krishnamurthy: It depends on the situation, but generally I use it every single day, so even small annoyances add up over time It's not great, not terrible.
+[05:15] Interviewer: When did you first notice that?
+[05:21] Raj Krishnamurthy: That's probably my biggest complaint. I can never remember where the billing page is buried
+[06:26] Interviewer: How does our pricing compare to your expectations?
+[06:33] Raj Krishnamurthy: That's a good question. I had to watch a YouTube tutorial to understand the reporting feature, and that shouldn't be necessary Some team members feel differently, but that's my take.
+[07:56] Interviewer: What made you choose the plan you're currently on?
+[08:01] Raj Krishnamurthy: I'll be blunt — The help docs are always out of date and show screenshots from an older version
+[08:59] Interviewer: Did anyone on your team feel differently about that?
+[09:05] Raj Krishnamurthy: I'll be blunt — Every time I export a report, the formatting is completely off and I have to fix it in Excel
+
+[10:10] Interviewer: That's really helpful. Is there anything else you'd like to add before we wrap up?
+[10:16] Raj Krishnamurthy: No, I think that covers it. I appreciate you taking the time to ask about our experience.
+
+[END OF TRANSCRIPT]

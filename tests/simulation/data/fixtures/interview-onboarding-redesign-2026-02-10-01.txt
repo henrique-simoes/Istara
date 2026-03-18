@@ -1,0 +1,39 @@
+Interview Transcript — Onboarding Redesign
+Participant: Michael Torres (Account Executive, 500-2000)
+Date: 2026-02-10
+Duration: 42 minutes
+Research Goal: Reduce 45% drop-off at phone verification step
+
+[00:00] Interviewer: What was your first impression when you signed up?
+[00:53] Michael Torres: Well, in our case, It's one of those tools where you know the feature exists, you just can't find it I think it depends a lot on your use case.
+[01:54] Interviewer: Where did you get stuck during the process?
+[02:00] Michael Torres: Honestly, that's been a pain point for us. The error messages are completely useless, they just say something went wrong with no detail
+[03:25] Interviewer: What did you try to do about it?
+[03:33] Michael Torres: Yeah, so this is where it gets frustrating. The mobile app crashes at least once a day when I try to upload photos
+[04:46] Interviewer: How important is that to your day-to-day work?
+[04:54] Michael Torres: Honestly, that's been a pain point for us. I tried to set up the integration with Slack three times and it failed silently each time
+[06:19] Interviewer: How did the verification step feel compared to other services?
+[06:27] Michael Torres: That's probably my biggest complaint. I can never remember where the billing page is buried
+[07:55] Interviewer: How does that compare to what you expected?
+[08:02] Michael Torres: Yeah, so this is where it gets frustrating. The mobile app crashes at least once a day when I try to upload photos
+[08:38] Interviewer: How does that compare to what you expected?
+[08:45] Michael Torres: Oh for sure, The notifications are just noise at this point, I ignore all of them
+[09:45] Interviewer: What happened next?
+[09:52] Michael Torres: That's a good question. My manager asked me to pull a report and it took me forty-five minutes to figure out how Some team members feel differently, but that's my take.
+[10:37] Interviewer: What would have made the sign-up faster for you?
+[10:40] Michael Torres: That's actually something I really appreciate. When I saw the new design, my first reaction was, where did everything go?
+[11:15] Interviewer: Can you tell me more about that?
+[11:19] Michael Torres: Oh for sure, Compared to what we used before, this is a huge improvement, but the bar was pretty low
+[11:54] Interviewer: What was your initial reaction?
+[12:00] Michael Torres: Well, in our case, My manager asked me to pull a report and it took me forty-five minutes to figure out how It's not great, not terrible.
+[13:12] Interviewer: At what point did you feel confident you could use the product?
+[13:20] Michael Torres: Honestly, that's been a pain point for us. The date picker doesn't let me type a date manually, I have to click through months one by one
+[14:19] Interviewer: What was your initial reaction?
+[14:27] Michael Torres: This is something that really bothers me. I can't customize the columns in the table view, so I'm always scrolling sideways to find what I need
+[15:13] Interviewer: Can you tell me more about that?
+[15:16] Michael Torres: Honestly, that's been a pain point for us. The search bar basically never returns what I'm actually looking for
+
+[16:39] Interviewer: That's really helpful. Is there anything else you'd like to add before we wrap up?
+[16:48] Michael Torres: I think I've covered the main things. Thanks for listening — it's good to know someone's paying attention to this stuff.
+
+[END OF TRANSCRIPT]
