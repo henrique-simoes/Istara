@@ -1,0 +1,69 @@
+Interview Transcript — Notification and Alerts System
+Participant: James O'Brien (Sales Lead, 200-500)
+Date: 2026-03-06
+Duration: 47 minutes
+Research Goal: Decrease notification opt-out rate from 68% to under 40%
+
+[00:00] Interviewer: How do you feel about the number of notifications you receive?
+[00:58] James O'Brien: So, The template library saved us weeks of setup time when we started a new client project Some team members feel differently, but that's my take.
+[01:50] Interviewer: Do you ever batch-check notifications at specific times or do you react to them immediately?
+[01:56] James O'Brien: I'll be blunt — The calendar view doesn't show tasks that span multiple days correctly, they just appear on the start date
+[02:58] Interviewer: How did that affect your workflow?
+[03:03] James O'Brien: Yeah, absolutely — The weekly digest email is the one notification I actually look forward to getting
+[04:14] Interviewer: How important is that to your day-to-day work?
+[04:21] James O'Brien: So, I've been using it for two years and I'm still discovering features I didn't know existed We've gotten used to it at this point.
+[05:41] Interviewer: Have you ever missed something important because you turned notifications off?
+[05:47] James O'Brien: It depends on the situation, but generally I spent an entire afternoon trying to figure out why my filter wasn't saving, turns out it was a known bug It's not great, not terrible.
+[07:12] Interviewer: How do you manage notifications across all the tools you use?
+[07:20] James O'Brien: Well, in our case, The customer support has been phenomenal, they responded to my issue in under an hour It's not great, not terrible.
+[07:55] Interviewer: When did you first notice that?
+[08:01] James O'Brien: Yeah, so this is where it gets frustrating. The comment threading doesn't work properly, replies sometimes appear out of order
+[09:07] Interviewer: How did that affect your workflow?
+[09:14] James O'Brien: Yeah, so this is where it gets frustrating. The placeholder text in the search box vanishes too quickly before I can read what formats are supported
+[09:47] Interviewer: When did you first notice that?
+[09:54] James O'Brien: So, The way it handles dependencies between tasks is really elegant, I haven't seen that done better anywhere It's not great, not terrible.
+[11:22] Interviewer: How did that affect your workflow?
+[11:30] James O'Brien: Honestly, that's been a pain point for us. I tried to set up the integration with Slack three times and it failed silently each time
+[12:52] Interviewer: What information should a notification contain to be actionable?
+[12:59] James O'Brien: Honestly, that's been a pain point for us. I can't drag tasks between different project boards, so I end up duplicating them manually
+[13:29] Interviewer: Could you walk me through a specific example?
+[13:33] James O'Brien: That's a good question. I remember thinking, why is this taking so many clicks? It's not great, not terrible.
+[14:14] Interviewer: Do you differentiate between urgent and non-urgent alerts? How?
+[14:19] James O'Brien: Well, in our case, The offline mode is crucial for me because I travel a lot and can't always count on good internet I think it depends a lot on your use case.
+[15:45] Interviewer: How does that compare to what you expected?
+[15:53] James O'Brien: That's actually something I really appreciate. I recommended it to three other companies and two of them switched within a month
+[16:35] Interviewer: Which notifications are actually useful to you?
+[16:41] James O'Brien: Let me think about that. I've never had a tool that actually made meetings shorter, but the shared boards did exactly that Some team members feel differently, but that's my take.
+[17:54] Interviewer: Did anyone on your team feel differently about that?
+[18:00] James O'Brien: That's probably my biggest complaint. The comment threading doesn't work properly, replies sometimes appear out of order
+[18:35] Interviewer: What would the ideal notification system look like for you?
+[18:43] James O'Brien: Yeah, so this is where it gets frustrating. I can't snooze a task notification for a specific time, it's either dismiss or nothing
+[19:31] Interviewer: What notification from any product do you think is done really well?
+[19:35] James O'Brien: Let me think about that. I've been using it for two years and I'm still discovering features I didn't know existed Some team members feel differently, but that's my take.
+[20:42] Interviewer: Have you ever been annoyed enough by a notification to consider leaving the product?
+[20:50] James O'Brien: Yeah, so this is where it gets frustrating. The tool marks tasks as overdue at midnight but our team works across multiple time zones
+[21:47] Interviewer: Can you tell me more about that?
+[21:51] James O'Brien: It depends on the situation, but generally I keep a sticky note on my monitor with the steps to do the export because it's not intuitive at all We've gotten used to it at this point.
+[22:29] Interviewer: Can you tell me more about that?
+[22:35] James O'Brien: This is something that really bothers me. The permissions system is so confusing that we just give everyone admin access
+[23:36] Interviewer: How does that compare to what you expected?
+[23:40] James O'Brien: Honestly, that's been a pain point for us. The tooltips appear too slowly and disappear too quickly to actually read them
+[24:44] Interviewer: What happened next?
+[24:48] James O'Brien: One thing I genuinely enjoy is — The audit log is essential for our compliance requirements, it tracks every change automatically
+[26:05] Interviewer: How do you decide which notification channels to enable, email, push, in-app?
+[26:09] James O'Brien: Let me think about that. The dark mode is really well done, it's not just inverted colors, someone actually designed it properly It's not great, not terrible.
+[26:41] Interviewer: How would you want to be notified about changes made by your teammates?
+[26:47] James O'Brien: Honestly, that's been a pain point for us. Our team can't agree on the taxonomy because the tool doesn't enforce consistent labeling
+[28:06] Interviewer: Can you tell me more about that?
+[28:09] James O'Brien: So, It took maybe fifteen minutes for the whole team to understand the basic concepts, which is impressive It's not great, not terrible.
+[29:36] Interviewer: Could you walk me through a specific example?
+[29:41] James O'Brien: Yeah, absolutely — It's the first tool where I actually trust the automated suggestions because they're contextually relevant
+[30:13] Interviewer: Can you tell me more about that?
+[30:20] James O'Brien: Honestly, that's been a pain point for us. The help docs are always out of date and show screenshots from an older version
+[31:04] Interviewer: Did anyone on your team feel differently about that?
+[31:09] James O'Brien: That's probably my biggest complaint. The maximum tag length is too short to be descriptive, so all our tags are cryptic abbreviations
+
+[32:36] Interviewer: That's really helpful. Is there anything else you'd like to add before we wrap up?
+[32:43] James O'Brien: Just that I really hope these changes happen soon. The team is getting impatient.
+
+[END OF TRANSCRIPT]

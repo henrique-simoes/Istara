@@ -7,7 +7,14 @@
       "Where did you get stuck during the process?",
       "How did the verification step feel compared to other services?",
       "What would have made the sign-up faster for you?",
-      "At what point did you feel confident you could use the product?"
+      "At what point did you feel confident you could use the product?",
+      "Did you try to sign up before and abandon it? What brought you back?",
+      "How did you hear about us and what were your expectations going in?",
+      "Was there a moment during onboarding where you considered switching to a competitor?",
+      "What information did you wish you had before starting the sign-up?",
+      "How does our onboarding compare to the last new product you adopted?",
+      "Did you complete the onboarding in one sitting or come back to it later?",
+      "What would you tell a friend about the sign-up process?"
     ]
   },
   {
@@ -18,7 +25,14 @@
       "What information do you look for first?",
       "How easy is it to find the metrics that matter most to you?",
       "Have you ever missed something important because it was hard to find?",
-      "If you could rearrange the dashboard, what would you change?"
+      "If you could rearrange the dashboard, what would you change?",
+      "How do you decide which widgets or sections to look at?",
+      "What do you do when the dashboard shows something unexpected or alarming?",
+      "Do you ever share your dashboard view with others? How does that go?",
+      "What data do you still pull from other tools because the dashboard doesn't show it?",
+      "How has your use of the dashboard changed since you first started?",
+      "What's the most frustrating thing about the current dashboard layout?",
+      "If you could add one thing to the dashboard, what would it be?"
     ]
   },
   {
@@ -29,7 +43,14 @@
       "What tasks do you try to complete on mobile?",
       "What feels harder to do on your phone compared to your computer?",
       "Are there features you avoid using on mobile entirely?",
-      "How does the mobile app fit into your workflow throughout the day?"
+      "How does the mobile app fit into your workflow throughout the day?",
+      "Have you ever given up on a task on mobile and waited until you were at your desk?",
+      "What was the last thing that really frustrated you on the mobile app?",
+      "How does our mobile experience compare to other work apps you use on your phone?",
+      "Do you use the mobile app in specific contexts, like commuting or in meetings?",
+      "What notifications do you find useful on mobile versus distracting?",
+      "If you could only keep three features on the mobile version, which would they be?",
+      "How often do you switch between mobile and desktop for the same task?"
     ]
   },
   {
@@ -40,7 +61,14 @@
       "Can you show me a time when you searched for something and it didn't work?",
       "What do you do when you can't find a feature you know exists?",
       "How would you describe the navigation structure to a new colleague?",
-      "What labels or terms feel confusing or unclear to you?"
+      "What labels or terms feel confusing or unclear to you?",
+      "Do you use the search function or do you browse through menus?",
+      "Have you ever discovered a feature by accident? Tell me about that.",
+      "What's the most common thing you search for?",
+      "How do you feel about the depth of the navigation, the number of clicks to get somewhere?",
+      "Are there shortcuts or quick actions you wish existed?",
+      "When you get lost in the product, how do you find your way back?",
+      "What would the ideal navigation look like for the way you work?"
     ]
   },
   {
@@ -51,7 +79,14 @@
       "What tools do you use alongside our product for team communication?",
       "What stops you from using the shared workspace features more often?",
       "Can you describe a situation where collaborating in the product went well?",
-      "What would make it easier to get your whole team on board?"
+      "What would make it easier to get your whole team on board?",
+      "How do you handle handoffs between team members right now?",
+      "What's the biggest friction point when multiple people work on the same project?",
+      "Do you have team conventions or workarounds that the product should support natively?",
+      "How do you keep everyone aligned on priorities and progress?",
+      "What visibility do you have into what your teammates are working on?",
+      "Have you tried the real-time collaboration features? What was your experience?",
+      "What would change about your team's workflow if collaboration worked perfectly?"
     ]
   },
   {
@@ -62,7 +97,14 @@
       "What made you choose the plan you're currently on?",
       "Was there anything confusing about how features are split across plans?",
       "At what point did you decide the free plan wasn't enough?",
-      "How does our pricing compare to your expectations?"
+      "How does our pricing compare to your expectations?",
+      "Did you evaluate other products' pricing before making a decision?",
+      "What feature would make you upgrade to the next tier immediately?",
+      "How do you justify the cost of this tool to your manager or finance team?",
+      "Was there a trial period, and did it give you enough time to evaluate?",
+      "What would a fair price for this product look like to you?",
+      "Do you feel the value you get matches what you pay?",
+      "What would happen if you had to switch to the free plan tomorrow?"
     ]
   },
   {
@@ -73,7 +115,14 @@
       "Which notifications are actually useful to you?",
       "Have you ever missed something important because you turned notifications off?",
       "How do you manage notifications across all the tools you use?",
-      "What would the ideal notification system look like for you?"
+      "What would the ideal notification system look like for you?",
+      "Do you differentiate between urgent and non-urgent alerts? How?",
+      "How do you decide which notification channels to enable, email, push, in-app?",
+      "Have you ever been annoyed enough by a notification to consider leaving the product?",
+      "What notification from any product do you think is done really well?",
+      "How would you want to be notified about changes made by your teammates?",
+      "Do you ever batch-check notifications at specific times or do you react to them immediately?",
+      "What information should a notification contain to be actionable?"
     ]
   },
   {
@@ -84,7 +133,14 @@
       "Who are the reports typically for, and what format do they expect?",
       "Walk me through the last time you tried to generate a report.",
       "Have you ever run into errors or unexpected results during export?",
-      "What information do you wish was easier to pull out of the system?"
+      "What information do you wish was easier to pull out of the system?",
+      "Do you modify the exported data before sharing it, and if so, how?",
+      "What's the most time-consuming part of the reporting process?",
+      "Are there reports you'd like to automate or schedule?",
+      "How do you verify that an exported report is accurate?",
+      "What tools do you use to present or distribute the reports?",
+      "Have you ever had to apologize for a report error caused by the export process?",
+      "What would a one-click perfect report look like for you?"
     ]
   }
 ]

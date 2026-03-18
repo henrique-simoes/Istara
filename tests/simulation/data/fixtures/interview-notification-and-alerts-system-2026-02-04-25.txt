@@ -1,0 +1,89 @@
+Interview Transcript — Notification and Alerts System
+Participant: Derek Washington (CTO, 10-50)
+Date: 2026-02-04
+Duration: 63 minutes
+Research Goal: Decrease notification opt-out rate from 68% to under 40%
+
+[00:00] Interviewer: How do you feel about the number of notifications you receive?
+[00:46] Derek Washington: That's a good question. I love the keyboard shortcuts, they save me so much time It's not great, not terrible.
+[02:02] Interviewer: How do you decide which notification channels to enable, email, push, in-app?
+[02:08] Derek Washington: I'll be blunt — It took me two weeks to realize there was a bulk edit feature hidden in a dropdown
+[02:58] Interviewer: Have you ever been annoyed enough by a notification to consider leaving the product?
+[03:01] Derek Washington: One thing I genuinely enjoy is — The permission system is surprisingly granular, we can control exactly who sees what
+[04:08] Interviewer: Which notifications are actually useful to you?
+[04:11] Derek Washington: Let me think about that. I think the biggest issue is just consistency, some parts feel modern and others feel like they haven't been updated in years We've gotten used to it at this point.
+[05:38] Interviewer: Do you differentiate between urgent and non-urgent alerts? How?
+[05:41] Derek Washington: Oh for sure, I think the mobile notifications could be smarter, right now I get alerts for things that don't need my attention
+[07:11] Interviewer: How did that affect your workflow?
+[07:17] Derek Washington: Well, in our case, I was confused by the terminology, what you call a workspace I would call a project I think it depends a lot on your use case.
+[08:08] Interviewer: Could you walk me through a specific example?
+[08:14] Derek Washington: Yeah, so this is where it gets frustrating. There's a loading spinner that appears for every tiny interaction and it makes the tool feel sluggish
+[09:20] Interviewer: How important is that to your day-to-day work?
+[09:24] Derek Washington: That's a good question. The automations feature was a bit overwhelming at first but once I set up a few rules it saved hours every week We've gotten used to it at this point.
+[10:31] Interviewer: How do you manage notifications across all the tools you use?
+[10:35] Derek Washington: That's actually something I really appreciate. We switched from a competitor specifically because of the resource allocation view, nothing else had it
+[12:01] Interviewer: What notification from any product do you think is done really well?
+[12:06] Derek Washington: This is something that really bothers me. There's no way to see a chronological history of changes to a single task
+[13:16] Interviewer: Do you ever batch-check notifications at specific times or do you react to them immediately?
+[13:22] Derek Washington: Yeah, absolutely — I appreciate that they don't spam me with upgrade prompts, the free tier is genuinely useful
+[14:35] Interviewer: When did you first notice that?
+[14:39] Derek Washington: I'll be blunt — Our team can't agree on the taxonomy because the tool doesn't enforce consistent labeling
+[16:01] Interviewer: What would the ideal notification system look like for you?
+[16:04] Derek Washington: Honestly, that's been a pain point for us. I can't filter by two criteria at the same time without using some advanced syntax I don't understand
+[16:49] Interviewer: How would you want to be notified about changes made by your teammates?
+[16:56] Derek Washington: So, The customer support has been phenomenal, they responded to my issue in under an hour I mean, it works, but there's room for improvement.
+[17:47] Interviewer: What information should a notification contain to be actionable?
+[17:51] Derek Washington: Yeah, absolutely — The customer support has been phenomenal, they responded to my issue in under an hour
+[18:39] Interviewer: Have you ever missed something important because you turned notifications off?
+[18:46] Derek Washington: I'll be blunt — It took me two weeks to realize there was a bulk edit feature hidden in a dropdown
+[19:34] Interviewer: What happened next?
+[19:37] Derek Washington: Yeah, so this is where it gets frustrating. The comment threading doesn't work properly, replies sometimes appear out of order
+[20:24] Interviewer: What happened next?
+[20:28] Derek Washington: Yeah, absolutely — The integration with our CI/CD pipeline means developers never have to leave the tool to update task status
+[21:21] Interviewer: Did anyone on your team feel differently about that?
+[21:28] Derek Washington: I'll be blunt — I accidentally sent an incomplete report to a client because the save and send buttons are right next to each other
+[22:50] Interviewer: What did you try to do about it?
+[22:57] Derek Washington: One thing I genuinely enjoy is — What I appreciate most is that it doesn't try to do everything, it does its core job well
+[23:54] Interviewer: How does that compare to what you expected?
+[24:00] Derek Washington: Oh for sure, I was confused by the terminology, what you call a workspace I would call a project
+[24:41] Interviewer: Did anyone on your team feel differently about that?
+[24:46] Derek Washington: This is something that really bothers me. I can't drag tasks between different project boards, so I end up duplicating them manually
+[25:59] Interviewer: Can you tell me more about that?
+[26:03] Derek Washington: That's actually something I really appreciate. I was confused by the terminology, what you call a workspace I would call a project
+[26:34] Interviewer: How important is that to your day-to-day work?
+[26:38] Derek Washington: One thing I genuinely enjoy is — I had to watch a YouTube tutorial to understand the reporting feature, and that shouldn't be necessary
+[27:33] Interviewer: What did you try to do about it?
+[27:36] Derek Washington: I'll be blunt — It sends me way too many email notifications and I can't figure out how to turn them off individually
+[28:27] Interviewer: What was your initial reaction?
+[28:35] Derek Washington: That's actually something I really appreciate. The audit log is essential for our compliance requirements, it tracks every change automatically
+[29:51] Interviewer: How did that affect your workflow?
+[29:54] Derek Washington: It depends on the situation, but generally I think the mobile notifications could be smarter, right now I get alerts for things that don't need my attention I think it depends a lot on your use case.
+[31:11] Interviewer: How important is that to your day-to-day work?
+[31:18] Derek Washington: That's actually something I really appreciate. The way it handles recurring tasks is finally how I always thought it should work in other tools
+[31:53] Interviewer: How did that affect your workflow?
+[32:00] Derek Washington: I'll be blunt — There's no keyboard shortcut for the one action I do fifty times a day
+[32:37] Interviewer: What did you try to do about it?
+[32:40] Derek Washington: This is something that really bothers me. I can't drag tasks between different project boards, so I end up duplicating them manually
+[33:30] Interviewer: What did you try to do about it?
+[33:37] Derek Washington: That's actually something I really appreciate. We switched from a competitor specifically because of the resource allocation view, nothing else had it
+[34:26] Interviewer: What did you try to do about it?
+[34:33] Derek Washington: One thing I genuinely enjoy is — The way archived projects are handled is clean, they're out of the way but easy to find when you need them
+[35:24] Interviewer: Can you tell me more about that?
+[35:27] Derek Washington: It depends on the situation, but generally The fact that I can't undo a bulk action makes me nervous every time I use it Some team members feel differently, but that's my take.
+[36:46] Interviewer: When did you first notice that?
+[36:52] Derek Washington: It depends on the situation, but generally The tag system is incredibly flexible, we use it for priority, department, client, and sprint all at once I mean, it works, but there's room for improvement.
+[37:44] Interviewer: What was your initial reaction?
+[37:48] Derek Washington: Well, in our case, The commenting system on tasks is way better than email chains, nothing gets lost It's not great, not terrible.
+[38:35] Interviewer: What did you try to do about it?
+[38:41] Derek Washington: Honestly, that's been a pain point for us. The session timeout is too short, I step away for ten minutes and have to log in again
+[40:00] Interviewer: What was your initial reaction?
+[40:03] Derek Washington: Let me think about that. The time tracking built into the task cards is surprisingly accurate and doesn't add friction to the workflow We've gotten used to it at this point.
+[41:12] Interviewer: How does that compare to what you expected?
+[41:18] Derek Washington: This is something that really bothers me. The recurring task feature creates duplicates instead of resetting the original task
+[42:01] Interviewer: What happened next?
+[42:07] Derek Washington: Well, in our case, It took maybe fifteen minutes for the whole team to understand the basic concepts, which is impressive Some team members feel differently, but that's my take.
+
+[42:50] Interviewer: That's really helpful. Is there anything else you'd like to add before we wrap up?
+[43:00] Derek Washington: I'd just emphasize that It took maybe fifteen minutes for the whole team to understand the basic concepts, which is impressive That's really the core of it for me.
+
+[END OF TRANSCRIPT]

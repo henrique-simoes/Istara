@@ -127,7 +127,7 @@ export function generateTranscript(participantCount = 1) {
   const participants = pickN(names, participantCount);
   const company = pick(companies);
   const date = recentDate();
-  const duration = randInt(25, 45);
+  const duration = randInt(45, 65);
 
   const lines = [];
 
@@ -148,7 +148,7 @@ export function generateTranscript(participantCount = 1) {
       lines.push("");
     }
 
-    const exchangeCount = randInt(8, 15);
+    const exchangeCount = randInt(25, 40);
     let elapsed = 0;
 
     // Opening question from the topic

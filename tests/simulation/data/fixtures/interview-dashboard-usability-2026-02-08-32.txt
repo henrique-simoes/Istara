@@ -1,0 +1,73 @@
+Interview Transcript — Dashboard Usability
+Participant: Michael Torres (Account Executive, 500-2000)
+Date: 2026-02-08
+Duration: 61 minutes
+Research Goal: Improve time-to-insight from average 4.2 minutes to under 2 minutes
+
+[00:00] Interviewer: Walk me through how you typically start your day with the dashboard.
+[00:56] Michael Torres: Let me think about that. The batch operations saved me so much time during our annual project cleanup I think it depends a lot on your use case.
+[01:44] Interviewer: Have you ever missed something important because it was hard to find?
+[01:52] Michael Torres: That's actually something I really appreciate. Honestly, I almost gave up during the sign-up process
+[03:10] Interviewer: What data do you still pull from other tools because the dashboard doesn't show it?
+[03:13] Michael Torres: Oh for sure, It handles large projects with hundreds of tasks without slowing down, which not every tool can claim
+[04:33] Interviewer: How do you decide which widgets or sections to look at?
+[04:37] Michael Torres: That's a good question. The timeline view changed how our whole team plans sprints, it's been a game changer It's not great, not terrible.
+[05:09] Interviewer: Can you tell me more about that?
+[05:12] Michael Torres: One thing I genuinely enjoy is — Our team velocity actually improved twenty percent in the first quarter after adopting it
+[06:07] Interviewer: When did you first notice that?
+[06:15] Michael Torres: That's actually something I really appreciate. I've used probably a dozen project management tools and this one has the best learning curve
+[06:55] Interviewer: How easy is it to find the metrics that matter most to you?
+[07:01] Michael Torres: I have to say, I used to spend my Monday mornings organizing my week, now the tool basically does it for me
+[08:27] Interviewer: What happened next?
+[08:31] Michael Torres: That's a good question. I was confused by the terminology, what you call a workspace I would call a project Some team members feel differently, but that's my take.
+[09:19] Interviewer: What information do you look for first?
+[09:27] Michael Torres: This is something that really bothers me. The tooltips appear too slowly and disappear too quickly to actually read them
+[10:51] Interviewer: Could you walk me through a specific example?
+[10:57] Michael Torres: Let me think about that. I showed it to our operations team and they immediately saw how it could replace three tools they were using I think it depends a lot on your use case.
+[11:34] Interviewer: How did that affect your workflow?
+[11:38] Michael Torres: It depends on the situation, but generally The guest access feature is perfect for when we need to loop in contractors or clients temporarily We've gotten used to it at this point.
+[12:17] Interviewer: What's the most frustrating thing about the current dashboard layout?
+[12:20] Michael Torres: This is something that really bothers me. I accidentally sent an incomplete report to a client because the save and send buttons are right next to each other
+[13:00] Interviewer: Do you ever share your dashboard view with others? How does that go?
+[13:03] Michael Torres: Well, in our case, The time tracking built into the task cards is surprisingly accurate and doesn't add friction to the workflow I mean, it works, but there's room for improvement.
+[14:28] Interviewer: If you could add one thing to the dashboard, what would it be?
+[14:36] Michael Torres: This is something that really bothers me. The contrast between read and unread items is so subtle I can't tell them apart
+[15:29] Interviewer: What happened next?
+[15:32] Michael Torres: Let me think about that. I showed it to our operations team and they immediately saw how it could replace three tools they were using We've gotten used to it at this point.
+[16:35] Interviewer: What would an ideal solution look like for you?
+[16:40] Michael Torres: Well, in our case, The batch operations saved me so much time during our annual project cleanup It's not great, not terrible.
+[17:26] Interviewer: Is that something you've experienced more than once?
+[17:31] Michael Torres: Oh for sure, I can tell the team that built this actually uses their own product, the little details show it
+[18:36] Interviewer: How has your use of the dashboard changed since you first started?
+[18:43] Michael Torres: One thing I genuinely enjoy is — I used to spend my Monday mornings organizing my week, now the tool basically does it for me
+[19:43] Interviewer: What do you do when the dashboard shows something unexpected or alarming?
+[19:49] Michael Torres: Oh for sure, The time tracking built into the task cards is surprisingly accurate and doesn't add friction to the workflow
+[20:50] Interviewer: Did anyone on your team feel differently about that?
+[20:54] Michael Torres: So, I genuinely enjoy the weekly summary it generates, it's surprisingly insightful for an automated report I think it depends a lot on your use case.
+[21:48] Interviewer: What would an ideal solution look like for you?
+[21:53] Michael Torres: I'll be blunt — I can't attach more than one file at a time, so uploading ten documents takes forever
+[22:41] Interviewer: If you could rearrange the dashboard, what would you change?
+[22:44] Michael Torres: Let me think about that. The time tracking built into the task cards is surprisingly accurate and doesn't add friction to the workflow I mean, it works, but there's room for improvement.
+[23:33] Interviewer: How does that compare to what you expected?
+[23:41] Michael Torres: One thing I genuinely enjoy is — I appreciate that keyboard navigation works everywhere, I rarely need to touch my mouse
+[25:10] Interviewer: What would an ideal solution look like for you?
+[25:16] Michael Torres: This is something that really bothers me. It takes six clicks to do something that should be a right-click context menu action
+[26:20] Interviewer: Is that something you've experienced more than once?
+[26:24] Michael Torres: Honestly, that's been a pain point for us. The auto-save never seems to work when I need it most, I've lost entire paragraphs of notes
+[27:49] Interviewer: How does that compare to what you expected?
+[27:52] Michael Torres: One thing I genuinely enjoy is — I wish more tools had this level of thought put into the empty states, it's clear what you need to do
+[29:11] Interviewer: How important is that to your day-to-day work?
+[29:18] Michael Torres: That's actually something I really appreciate. I keep a sticky note on my monitor with the steps to do the export because it's not intuitive at all
+[30:19] Interviewer: What did you try to do about it?
+[30:26] Michael Torres: I have to say, I can create a complete project plan in about twenty minutes that would have taken me half a day before
+[31:00] Interviewer: Is that something you've experienced more than once?
+[31:05] Michael Torres: Let me think about that. I genuinely look forward to using the analytics view, it's the best-designed part of the product I mean, it works, but there's room for improvement.
+[31:41] Interviewer: Can you tell me more about that?
+[31:47] Michael Torres: That's probably my biggest complaint. The tooltips appear too slowly and disappear too quickly to actually read them
+[33:14] Interviewer: What did you try to do about it?
+[33:19] Michael Torres: Oh for sure, It's rare that a tool actually makes me more productive rather than just feeling like more overhead
+
+[34:19] Interviewer: That's really helpful. Is there anything else you'd like to add before we wrap up?
+[34:26] Michael Torres: One last thing — The dashboard widgets rearrange themselves every time I log in, which is disorienting But otherwise, I think we hit everything.
+
+[END OF TRANSCRIPT]

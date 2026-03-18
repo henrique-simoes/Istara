@@ -1,0 +1,83 @@
+Interview Transcript — Mobile Experience Audit
+Participant: Derek Washington (CTO, 10-50)
+Date: 2026-02-06
+Duration: 63 minutes
+Research Goal: Understand why mobile session duration is 60% shorter than desktop
+
+[00:00] Interviewer: When do you typically use the mobile app versus the desktop version?
+[00:38] Derek Washington: So, I've used probably a dozen project management tools and this one has the best learning curve Some team members feel differently, but that's my take.
+[01:40] Interviewer: Have you ever given up on a task on mobile and waited until you were at your desk?
+[01:43] Derek Washington: That's a good question. I genuinely look forward to using the analytics view, it's the best-designed part of the product We've gotten used to it at this point.
+[03:09] Interviewer: If you could only keep three features on the mobile version, which would they be?
+[03:15] Derek Washington: That's actually something I really appreciate. I think the biggest issue is just consistency, some parts feel modern and others feel like they haven't been updated in years
+[03:49] Interviewer: How does the mobile app fit into your workflow throughout the day?
+[03:52] Derek Washington: This is something that really bothers me. The dropdown menus close if my cursor drifts even slightly outside the boundary
+[05:00] Interviewer: Are there features you avoid using on mobile entirely?
+[05:05] Derek Washington: That's a good question. The API documentation is actually readable, which is rare, our developers integrated it in a day Some team members feel differently, but that's my take.
+[05:55] Interviewer: What was your initial reaction?
+[06:00] Derek Washington: So, I use it every single day, so even small annoyances add up over time It's not great, not terrible.
+[07:09] Interviewer: How often do you switch between mobile and desktop for the same task?
+[07:16] Derek Washington: One thing I genuinely enjoy is — My biggest fear is that they'll change the interface in a major update and I'll have to relearn everything
+[08:10] Interviewer: Do you use the mobile app in specific contexts, like commuting or in meetings?
+[08:16] Derek Washington: That's actually something I really appreciate. I spent an entire afternoon trying to figure out why my filter wasn't saving, turns out it was a known bug
+[09:41] Interviewer: What notifications do you find useful on mobile versus distracting?
+[09:48] Derek Washington: So, I've used probably a dozen project management tools and this one has the best learning curve We've gotten used to it at this point.
+[10:31] Interviewer: Can you tell me more about that?
+[10:38] Derek Washington: One thing I genuinely enjoy is — I tried to set it up for my personal projects and it felt like overkill, it's really built for teams
+[11:48] Interviewer: How important is that to your day-to-day work?
+[11:52] Derek Washington: That's a good question. Our team adopted it in about two days, which is really fast compared to other tools we've tried Some team members feel differently, but that's my take.
+[12:56] Interviewer: What did you try to do about it?
+[12:59] Derek Washington: So, I appreciate that they don't spam me with upgrade prompts, the free tier is genuinely useful I think it depends a lot on your use case.
+[14:11] Interviewer: What was your initial reaction?
+[14:14] Derek Washington: So, What I didn't expect was how much the reporting features improved our client communication Some team members feel differently, but that's my take.
+[14:57] Interviewer: How important is that to your day-to-day work?
+[15:03] Derek Washington: It depends on the situation, but generally I appreciate that keyboard navigation works everywhere, I rarely need to touch my mouse Some team members feel differently, but that's my take.
+[16:33] Interviewer: What feels harder to do on your phone compared to your computer?
+[16:37] Derek Washington: Oh for sure, Once I got the hang of it, the workflow felt pretty natural
+[17:48] Interviewer: What was the last thing that really frustrated you on the mobile app?
+[17:51] Derek Washington: Well, in our case, The search is actually intelligent, it finds tasks even when I can't remember the exact title Some team members feel differently, but that's my take.
+[19:04] Interviewer: When did you first notice that?
+[19:10] Derek Washington: I'll be blunt — There's a three-second delay every time I switch tabs that breaks my concentration
+[20:03] Interviewer: What tasks do you try to complete on mobile?
+[20:07] Derek Washington: This is something that really bothers me. I can't filter by two criteria at the same time without using some advanced syntax I don't understand
+[21:17] Interviewer: Is that something you've experienced more than once?
+[21:23] Derek Washington: Well, in our case, What frustrates me is that the free tier is so limited you can't really evaluate the product properly I mean, it works, but there's room for improvement.
+[22:40] Interviewer: Could you walk me through a specific example?
+[22:44] Derek Washington: So, The commenting system on tasks is way better than email chains, nothing gets lost We've gotten used to it at this point.
+[24:05] Interviewer: When did you first notice that?
+[24:08] Derek Washington: So, I love the keyboard shortcuts, they save me so much time Some team members feel differently, but that's my take.
+[25:36] Interviewer: How does our mobile experience compare to other work apps you use on your phone?
+[25:44] Derek Washington: That's a good question. It does what I need about eighty percent of the time, the other twenty percent I work around I mean, it works, but there's room for improvement.
+[26:58] Interviewer: How did that affect your workflow?
+[27:02] Derek Washington: One thing I genuinely enjoy is — Honestly, I almost gave up during the sign-up process
+[28:05] Interviewer: Did anyone on your team feel differently about that?
+[28:09] Derek Washington: Honestly, that's been a pain point for us. I can't attach more than one file at a time, so uploading ten documents takes forever
+[28:42] Interviewer: What happened next?
+[28:50] Derek Washington: That's a good question. I can tell the team that built this actually uses their own product, the little details show it We've gotten used to it at this point.
+[29:44] Interviewer: Is that something you've experienced more than once?
+[29:48] Derek Washington: It depends on the situation, but generally The drag-and-drop interface is really satisfying when it works, but sometimes items just snap to the wrong place I think it depends a lot on your use case.
+[31:09] Interviewer: What would an ideal solution look like for you?
+[31:15] Derek Washington: Let me think about that. I ended up asking a coworker to walk me through it because the help docs didn't make sense We've gotten used to it at this point.
+[31:58] Interviewer: What did you try to do about it?
+[32:01] Derek Washington: I'll be blunt — I created a template but there's no way to share it with the rest of my organization
+[33:12] Interviewer: How does that compare to what you expected?
+[33:16] Derek Washington: That's actually something I really appreciate. I recommended it to three other companies and two of them switched within a month
+[33:48] Interviewer: Can you tell me more about that?
+[33:56] Derek Washington: Well, in our case, The way it handles recurring tasks is finally how I always thought it should work in other tools We've gotten used to it at this point.
+[34:59] Interviewer: Did anyone on your team feel differently about that?
+[35:04] Derek Washington: Yeah, absolutely — When I saw the new design, my first reaction was, where did everything go?
+[35:57] Interviewer: What happened next?
+[36:05] Derek Washington: That's a good question. The tag system is incredibly flexible, we use it for priority, department, client, and sprint all at once I mean, it works, but there's room for improvement.
+[37:25] Interviewer: Did anyone on your team feel differently about that?
+[37:29] Derek Washington: Yeah, absolutely — I like that I can switch between Kanban and list view depending on what I'm working on that day
+[38:20] Interviewer: Is that something you've experienced more than once?
+[38:28] Derek Washington: It depends on the situation, but generally I think the mobile notifications could be smarter, right now I get alerts for things that don't need my attention Some team members feel differently, but that's my take.
+[39:13] Interviewer: Can you tell me more about that?
+[39:17] Derek Washington: This is something that really bothers me. I can't customize the columns in the table view, so I'm always scrolling sideways to find what I need
+[40:36] Interviewer: How important is that to your day-to-day work?
+[40:43] Derek Washington: Well, in our case, The batch operations saved me so much time during our annual project cleanup I mean, it works, but there's room for improvement.
+
+[41:16] Interviewer: That's really helpful. Is there anything else you'd like to add before we wrap up?
+[41:22] Derek Washington: I'd just emphasize that It's the first tool where I actually trust the automated suggestions because they're contextually relevant That's really the core of it for me.
+
+[END OF TRANSCRIPT]

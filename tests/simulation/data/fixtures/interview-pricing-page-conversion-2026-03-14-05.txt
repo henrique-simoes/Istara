@@ -1,0 +1,79 @@
+Interview Transcript — Pricing Page Conversion
+Participant: Oluwaseun Adeyemi (IT Administrator, 2000+)
+Date: 2026-03-14
+Duration: 48 minutes
+Research Goal: Increase free-to-paid conversion rate from 3.1% to 5%
+
+[00:00] Interviewer: What was your understanding of the pricing tiers before you signed up?
+[00:54] Oluwaseun Adeyemi: So, The weekly digest email is the one notification I actually look forward to getting I mean, it works, but there's room for improvement.
+[01:57] Interviewer: Do you feel the value you get matches what you pay?
+[02:04] Oluwaseun Adeyemi: This is something that really bothers me. I tried to merge two duplicate tasks and lost all the comments from one of them
+[03:21] Interviewer: What did you try to do about it?
+[03:25] Oluwaseun Adeyemi: One thing I genuinely enjoy is — It feels like it was designed by engineers for engineers, not for someone like me
+[04:53] Interviewer: How important is that to your day-to-day work?
+[05:00] Oluwaseun Adeyemi: That's probably my biggest complaint. Every time I try to copy-paste from the tool into an email, the formatting gets completely mangled
+[05:31] Interviewer: What did you try to do about it?
+[05:39] Oluwaseun Adeyemi: I have to say, When I saw the new design, my first reaction was, where did everything go?
+[06:26] Interviewer: What feature would make you upgrade to the next tier immediately?
+[06:33] Oluwaseun Adeyemi: One thing I genuinely enjoy is — I can create a complete project plan in about twenty minutes that would have taken me half a day before
+[07:50] Interviewer: How do you justify the cost of this tool to your manager or finance team?
+[07:53] Oluwaseun Adeyemi: Let me think about that. The batch operations saved me so much time during our annual project cleanup It's not great, not terrible.
+[08:54] Interviewer: What made you choose the plan you're currently on?
+[09:01] Oluwaseun Adeyemi: Well, in our case, The way it handles dependencies between tasks is really elegant, I haven't seen that done better anywhere It's not great, not terrible.
+[10:13] Interviewer: How does our pricing compare to your expectations?
+[10:17] Oluwaseun Adeyemi: One thing I genuinely enjoy is — The notifications are just noise at this point, I ignore all of them
+[10:52] Interviewer: Is that something you've experienced more than once?
+[10:56] Oluwaseun Adeyemi: That's probably my biggest complaint. I have no idea what half the icons in the toolbar mean
+[11:54] Interviewer: What would an ideal solution look like for you?
+[12:01] Oluwaseun Adeyemi: One thing I genuinely enjoy is — I recommended it to three other companies and two of them switched within a month
+[13:24] Interviewer: Can you tell me more about that?
+[13:28] Oluwaseun Adeyemi: Well, in our case, The collaboration features are actually the main reason we chose this over the competitor It's not great, not terrible.
+[14:36] Interviewer: At what point did you decide the free plan wasn't enough?
+[14:44] Oluwaseun Adeyemi: This is something that really bothers me. I can never remember where the billing page is buried
+[15:56] Interviewer: Was there a trial period, and did it give you enough time to evaluate?
+[16:04] Oluwaseun Adeyemi: That's a good question. The onboarding wizard actually taught me things about project management I didn't know before We've gotten used to it at this point.
+[17:13] Interviewer: Did you evaluate other products' pricing before making a decision?
+[17:21] Oluwaseun Adeyemi: Oh for sure, It's one of those tools where you know the feature exists, you just can't find it
+[17:55] Interviewer: Is that something you've experienced more than once?
+[18:03] Oluwaseun Adeyemi: That's actually something I really appreciate. The search is actually intelligent, it finds tasks even when I can't remember the exact title
+[19:20] Interviewer: Could you walk me through a specific example?
+[19:27] Oluwaseun Adeyemi: Honestly, that's been a pain point for us. It sends me way too many email notifications and I can't figure out how to turn them off individually
+[20:07] Interviewer: What happened next?
+[20:12] Oluwaseun Adeyemi: This is something that really bothers me. The tool doesn't warn me before I navigate away from an unsaved form
+[21:13] Interviewer: How does that compare to what you expected?
+[21:18] Oluwaseun Adeyemi: So, It took maybe fifteen minutes for the whole team to understand the basic concepts, which is impressive I think it depends a lot on your use case.
+[22:48] Interviewer: Is that something you've experienced more than once?
+[22:52] Oluwaseun Adeyemi: Let me think about that. I ended up asking a coworker to walk me through it because the help docs didn't make sense It's not great, not terrible.
+[24:14] Interviewer: What would a fair price for this product look like to you?
+[24:22] Oluwaseun Adeyemi: It depends on the situation, but generally I had to watch a YouTube tutorial to understand the reporting feature, and that shouldn't be necessary It's not great, not terrible.
+[25:21] Interviewer: What did you try to do about it?
+[25:24] Oluwaseun Adeyemi: Let me think about that. The permission system is surprisingly granular, we can control exactly who sees what Some team members feel differently, but that's my take.
+[25:59] Interviewer: Did anyone on your team feel differently about that?
+[26:02] Oluwaseun Adeyemi: That's a good question. I've used probably a dozen project management tools and this one has the best learning curve We've gotten used to it at this point.
+[26:49] Interviewer: Can you tell me more about that?
+[26:57] Oluwaseun Adeyemi: Yeah, so this is where it gets frustrating. I needed to train five new team members and there's no way to share my custom views with them
+[27:54] Interviewer: What would happen if you had to switch to the free plan tomorrow?
+[27:58] Oluwaseun Adeyemi: One thing I genuinely enjoy is — I don't think the pricing page made it clear what I was actually getting
+[29:24] Interviewer: How important is that to your day-to-day work?
+[29:29] Oluwaseun Adeyemi: So, The template library saved us weeks of setup time when we started a new client project Some team members feel differently, but that's my take.
+[30:08] Interviewer: When did you first notice that?
+[30:12] Oluwaseun Adeyemi: I'll be blunt — The session timeout is too short, I step away for ten minutes and have to log in again
+[31:16] Interviewer: How important is that to your day-to-day work?
+[31:21] Oluwaseun Adeyemi: Well, in our case, I like that I can switch between Kanban and list view depending on what I'm working on that day I think it depends a lot on your use case.
+[31:52] Interviewer: What was your initial reaction?
+[31:59] Oluwaseun Adeyemi: Honestly, that's been a pain point for us. The loading time is really frustrating, especially when I'm trying to pull up something in a meeting
+[32:34] Interviewer: What was your initial reaction?
+[32:38] Oluwaseun Adeyemi: Yeah, so this is where it gets frustrating. The tool shows me information I don't have permission to act on, which is confusing
+[33:51] Interviewer: What was your initial reaction?
+[33:56] Oluwaseun Adeyemi: That's a good question. The notifications are just noise at this point, I ignore all of them It's not great, not terrible.
+[34:42] Interviewer: What was your initial reaction?
+[34:47] Oluwaseun Adeyemi: Oh for sure, I actually really liked how the dashboard shows everything at a glance
+[35:35] Interviewer: Was there anything confusing about how features are split across plans?
+[35:43] Oluwaseun Adeyemi: This is something that really bothers me. Every time I export a report, the formatting is completely off and I have to fix it in Excel
+[36:50] Interviewer: How does that compare to what you expected?
+[36:55] Oluwaseun Adeyemi: That's actually something I really appreciate. I appreciate that keyboard navigation works everywhere, I rarely need to touch my mouse
+
+[38:00] Interviewer: That's really helpful. Is there anything else you'd like to add before we wrap up?
+[38:08] Oluwaseun Adeyemi: No, I think that covers it. I appreciate you taking the time to ask about our experience.
+
+[END OF TRANSCRIPT]

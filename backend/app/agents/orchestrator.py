@@ -171,11 +171,19 @@ class MetaOrchestrator:
         budget = governor.compute_budget()
 
         if budget.paused:
-            # Pause all agents
+            # Pause all agents and notify user
             for agent in self._agents.values():
                 if agent.state == AgentState.WORKING:
                     agent.state = AgentState.PAUSED
                     self._log_action(agent.id, "paused", "Resource pressure — system paused")
+            try:
+                from app.api.websocket import broadcast_resource_throttle
+                await broadcast_resource_throttle(
+                    "System resources under pressure — agents paused",
+                    budget.__dict__ if hasattr(budget, "__dict__") else {},
+                )
+            except Exception:
+                pass
             return
 
         # Resume paused agents if resources allow
@@ -184,11 +192,13 @@ class MetaOrchestrator:
                 agent.state = AgentState.IDLE
                 self._log_action(agent.id, "resumed", "Resources available")
 
+        # Sync sub-agent states from their actual running instances
+        await self._sync_sub_agent_states()
+
         # Check for conflicts — no two agents should work on the same data
         active_tasks = {a.current_task for a in self._agents.values() if a.current_task}
         if len(active_tasks) != len([a for a in self._agents.values() if a.current_task]):
             logger.warning("Conflict detected: multiple agents on same task!")
-            # Resolve by keeping only the first agent on each task
             seen: set[str] = set()
             for agent in self._agents.values():
                 if agent.current_task in seen:
@@ -206,6 +216,56 @@ class MetaOrchestrator:
 
         # Distribute unassigned tasks
         await self._distribute_pending_tasks()
+
+    async def _sync_sub_agent_states(self) -> None:
+        """Sync managed agent states from actual running sub-agent instances."""
+        try:
+            from app.agents.devops_agent import devops_agent
+            from app.agents.ui_audit_agent import ui_audit_agent
+            from app.agents.ux_eval_agent import ux_eval_agent
+            from app.agents.user_sim_agent import user_sim_agent
+
+            agent_map = {
+                "reclaw-devops_audit": devops_agent,
+                "reclaw-ui_audit": ui_audit_agent,
+                "reclaw-ux_evaluation": ux_eval_agent,
+                "reclaw-user_simulation": user_sim_agent,
+            }
+
+            for agent_id, real_agent in agent_map.items():
+                managed = self._agents.get(agent_id)
+                if not managed:
+                    continue
+
+                # Update running state
+                if hasattr(real_agent, "_running") and real_agent._running:
+                    if managed.state == AgentState.STOPPED:
+                        managed.state = AgentState.IDLE
+
+                    # Check for reports to track executions
+                    reports = []
+                    if hasattr(real_agent, "_reports"):
+                        reports = real_agent._reports
+                    elif hasattr(real_agent, "_audit_log"):
+                        reports = real_agent._audit_log
+
+                    new_count = len(reports)
+                    if new_count > managed.executions:
+                        managed.executions = new_count
+                        managed.last_active = datetime.now(timezone.utc)
+
+                        # Get latest report summary
+                        if reports:
+                            latest = reports[-1]
+                            if isinstance(latest, dict):
+                                managed.last_output = str(latest.get("summary", latest.get("status", "")))[:200]
+                            else:
+                                managed.last_output = str(getattr(latest, "overall_score", ""))[:200]
+                else:
+                    managed.state = AgentState.STOPPED
+
+        except Exception as e:
+            logger.error(f"Sub-agent state sync error: {e}")
 
     async def _distribute_pending_tasks(self) -> None:
         """Auto-assign unassigned BACKLOG tasks to the task executor agent."""

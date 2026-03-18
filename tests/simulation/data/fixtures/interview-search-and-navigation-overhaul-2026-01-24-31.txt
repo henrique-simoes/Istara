@@ -1,0 +1,67 @@
+Interview Transcript — Search and Navigation Overhaul
+Participant: Rachel Kim (Marketing Manager, 10-50)
+Date: 2026-01-24
+Duration: 59 minutes
+Research Goal: Reduce support tickets related to 'can't find feature' by 35%
+
+[00:00] Interviewer: How do you usually find what you need in the product?
+[00:33] Rachel Kim: It depends on the situation, but generally The workload balancing view finally made it obvious when someone was overloaded I think it depends a lot on your use case.
+[01:48] Interviewer: Are there shortcuts or quick actions you wish existed?
+[01:51] Rachel Kim: I'll be blunt — Every time there's an update, my custom workflow automations break and I have to rebuild them
+[03:21] Interviewer: How do you feel about the depth of the navigation, the number of clicks to get somewhere?
+[03:29] Rachel Kim: This is something that really bothers me. The recurring task feature creates duplicates instead of resetting the original task
+[04:17] Interviewer: What labels or terms feel confusing or unclear to you?
+[04:23] Rachel Kim: This is something that really bothers me. The placeholder text in the search box vanishes too quickly before I can read what formats are supported
+[05:16] Interviewer: When you get lost in the product, how do you find your way back?
+[05:19] Rachel Kim: Oh for sure, The batch operations saved me so much time during our annual project cleanup
+[06:01] Interviewer: What do you do when you can't find a feature you know exists?
+[06:07] Rachel Kim: Let me think about that. I think the mobile notifications could be smarter, right now I get alerts for things that don't need my attention Some team members feel differently, but that's my take.
+[07:09] Interviewer: When did you first notice that?
+[07:15] Rachel Kim: That's a good question. The search is actually intelligent, it finds tasks even when I can't remember the exact title I think it depends a lot on your use case.
+[08:14] Interviewer: Is that something you've experienced more than once?
+[08:17] Rachel Kim: So, The API documentation is actually readable, which is rare, our developers integrated it in a day It's not great, not terrible.
+[09:18] Interviewer: What would the ideal navigation look like for the way you work?
+[09:25] Rachel Kim: That's actually something I really appreciate. I appreciate that they don't spam me with upgrade prompts, the free tier is genuinely useful
+[10:55] Interviewer: What's the most common thing you search for?
+[11:02] Rachel Kim: Oh for sure, The batch operations saved me so much time during our annual project cleanup
+[11:46] Interviewer: Can you show me a time when you searched for something and it didn't work?
+[11:54] Rachel Kim: I'll be blunt — I can never remember where the billing page is buried
+[12:37] Interviewer: What did you try to do about it?
+[12:41] Rachel Kim: This is something that really bothers me. There's a bug where if you scroll too fast the page goes blank and you have to reload
+[13:49] Interviewer: Do you use the search function or do you browse through menus?
+[13:57] Rachel Kim: Honestly, that's been a pain point for us. There's no way to see a chronological history of changes to a single task
+[15:15] Interviewer: Have you ever discovered a feature by accident? Tell me about that.
+[15:21] Rachel Kim: Honestly, that's been a pain point for us. I keep getting logged out randomly in the middle of my work
+[16:30] Interviewer: How would you describe the navigation structure to a new colleague?
+[16:35] Rachel Kim: So, I use it every single day, so even small annoyances add up over time Some team members feel differently, but that's my take.
+[17:55] Interviewer: Did anyone on your team feel differently about that?
+[18:03] Rachel Kim: Well, in our case, It took me way too long to figure out how to invite my team I think it depends a lot on your use case.
+[19:22] Interviewer: Did anyone on your team feel differently about that?
+[19:25] Rachel Kim: I have to say, Once I got the hang of it, the workflow felt pretty natural
+[19:57] Interviewer: Is that something you've experienced more than once?
+[20:01] Rachel Kim: This is something that really bothers me. The dashboard widgets rearrange themselves every time I log in, which is disorienting
+[21:13] Interviewer: Can you tell me more about that?
+[21:18] Rachel Kim: Yeah, absolutely — I've used probably a dozen project management tools and this one has the best learning curve
+[22:04] Interviewer: How important is that to your day-to-day work?
+[22:12] Rachel Kim: So, I tried to set it up for my personal projects and it felt like overkill, it's really built for teams We've gotten used to it at this point.
+[23:31] Interviewer: What did you try to do about it?
+[23:34] Rachel Kim: So, I think the biggest issue is just consistency, some parts feel modern and others feel like they haven't been updated in years I think it depends a lot on your use case.
+[25:00] Interviewer: How did that affect your workflow?
+[25:08] Rachel Kim: Oh for sure, Setting up the integration was a breeze, probably the smoothest part of the whole experience
+[25:46] Interviewer: How did that affect your workflow?
+[25:52] Rachel Kim: That's actually something I really appreciate. I can create a complete project plan in about twenty minutes that would have taken me half a day before
+[26:57] Interviewer: How important is that to your day-to-day work?
+[27:00] Rachel Kim: I have to say, I wish more tools had this level of thought put into the empty states, it's clear what you need to do
+[27:46] Interviewer: What was your initial reaction?
+[27:51] Rachel Kim: It depends on the situation, but generally The way it handles dependencies between tasks is really elegant, I haven't seen that done better anywhere I mean, it works, but there's room for improvement.
+[28:29] Interviewer: Can you tell me more about that?
+[28:35] Rachel Kim: This is something that really bothers me. When I share a link with my team, they always have to log in again even if they already have accounts
+[29:56] Interviewer: What happened next?
+[29:59] Rachel Kim: Oh for sure, I keep a sticky note on my monitor with the steps to do the export because it's not intuitive at all
+[31:29] Interviewer: What did you try to do about it?
+[31:35] Rachel Kim: This is something that really bothers me. I tried to set up the integration with Slack three times and it failed silently each time
+
+[32:42] Interviewer: That's really helpful. Is there anything else you'd like to add before we wrap up?
+[32:48] Rachel Kim: I think I've covered the main things. Thanks for listening — it's good to know someone's paying attention to this stuff.
+
+[END OF TRANSCRIPT]

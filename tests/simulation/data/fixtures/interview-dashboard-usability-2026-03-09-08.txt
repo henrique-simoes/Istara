@@ -1,0 +1,83 @@
+Interview Transcript — Dashboard Usability
+Participant: Marcus Johnson (Engineering Director, 500-2000)
+Date: 2026-03-09
+Duration: 47 minutes
+Research Goal: Improve time-to-insight from average 4.2 minutes to under 2 minutes
+
+[00:00] Interviewer: Walk me through how you typically start your day with the dashboard.
+[00:37] Marcus Johnson: Well, in our case, I love the keyboard shortcuts, they save me so much time We've gotten used to it at this point.
+[01:49] Interviewer: When did you first notice that?
+[01:56] Marcus Johnson: This is something that really bothers me. The mobile app crashes at least once a day when I try to upload photos
+[02:54] Interviewer: Do you ever share your dashboard view with others? How does that go?
+[02:57] Marcus Johnson: Well, in our case, The weekly digest email is the one notification I actually look forward to getting Some team members feel differently, but that's my take.
+[03:57] Interviewer: How has your use of the dashboard changed since you first started?
+[04:02] Marcus Johnson: One thing I genuinely enjoy is — I actually really liked how the dashboard shows everything at a glance
+[04:41] Interviewer: If you could rearrange the dashboard, what would you change?
+[04:45] Marcus Johnson: That's probably my biggest complaint. The table sort only works on one column at a time and doesn't remember my preference
+[05:44] Interviewer: How do you decide which widgets or sections to look at?
+[05:52] Marcus Johnson: Honestly, that's been a pain point for us. I accidentally deleted a project and there was no way to undo it
+[06:41] Interviewer: How did that affect your workflow?
+[06:49] Marcus Johnson: Yeah, so this is where it gets frustrating. The date picker doesn't let me type a date manually, I have to click through months one by one
+[08:10] Interviewer: What do you do when the dashboard shows something unexpected or alarming?
+[08:17] Marcus Johnson: That's probably my biggest complaint. The auto-save never seems to work when I need it most, I've lost entire paragraphs of notes
+[09:15] Interviewer: Did anyone on your team feel differently about that?
+[09:23] Marcus Johnson: Honestly, that's been a pain point for us. I can't filter by two criteria at the same time without using some advanced syntax I don't understand
+[10:53] Interviewer: How important is that to your day-to-day work?
+[11:00] Marcus Johnson: I'll be blunt — The help docs are always out of date and show screenshots from an older version
+[12:16] Interviewer: How important is that to your day-to-day work?
+[12:20] Marcus Johnson: So, I wish more tools had this level of thought put into the empty states, it's clear what you need to do It's not great, not terrible.
+[13:39] Interviewer: Have you ever missed something important because it was hard to find?
+[13:46] Marcus Johnson: It depends on the situation, but generally I've used probably a dozen project management tools and this one has the best learning curve I think it depends a lot on your use case.
+[14:43] Interviewer: Could you walk me through a specific example?
+[14:46] Marcus Johnson: Let me think about that. I genuinely enjoy the weekly summary it generates, it's surprisingly insightful for an automated report We've gotten used to it at this point.
+[15:40] Interviewer: What data do you still pull from other tools because the dashboard doesn't show it?
+[15:45] Marcus Johnson: That's probably my biggest complaint. There's a bug where if you scroll too fast the page goes blank and you have to reload
+[16:36] Interviewer: Could you walk me through a specific example?
+[16:40] Marcus Johnson: That's actually something I really appreciate. The time tracking built into the task cards is surprisingly accurate and doesn't add friction to the workflow
+[17:56] Interviewer: What information do you look for first?
+[18:00] Marcus Johnson: Yeah, absolutely — I can create a complete project plan in about twenty minutes that would have taken me half a day before
+[19:26] Interviewer: If you could add one thing to the dashboard, what would it be?
+[19:29] Marcus Johnson: Well, in our case, Our team adopted it in about two days, which is really fast compared to other tools we've tried I think it depends a lot on your use case.
+[20:59] Interviewer: Did anyone on your team feel differently about that?
+[21:03] Marcus Johnson: This is something that really bothers me. The dependency arrows in the Gantt chart overlap so much they're completely unreadable
+[21:42] Interviewer: When did you first notice that?
+[21:47] Marcus Johnson: That's probably my biggest complaint. There's no confirmation dialog before archiving a project, I've done it by accident twice
+[22:29] Interviewer: How important is that to your day-to-day work?
+[22:32] Marcus Johnson: Let me think about that. The batch operations saved me so much time during our annual project cleanup I mean, it works, but there's room for improvement.
+[23:28] Interviewer: Can you tell me more about that?
+[23:31] Marcus Johnson: Oh for sure, The collaboration features are actually the main reason we chose this over the competitor
+[24:44] Interviewer: How does that compare to what you expected?
+[24:47] Marcus Johnson: So, What I didn't expect was how much the reporting features improved our client communication I mean, it works, but there's room for improvement.
+[25:28] Interviewer: What would an ideal solution look like for you?
+[25:34] Marcus Johnson: I have to say, Once I got the hang of it, the workflow felt pretty natural
+[26:50] Interviewer: How important is that to your day-to-day work?
+[26:56] Marcus Johnson: This is something that really bothers me. I can't snooze a task notification for a specific time, it's either dismiss or nothing
+[27:53] Interviewer: Can you tell me more about that?
+[27:58] Marcus Johnson: That's a good question. The activity feed gives me a clear picture of what happened while I was away without reading every message I mean, it works, but there's room for improvement.
+[28:45] Interviewer: How important is that to your day-to-day work?
+[28:49] Marcus Johnson: That's actually something I really appreciate. The way it handles dependencies between tasks is really elegant, I haven't seen that done better anywhere
+[29:55] Interviewer: Could you walk me through a specific example?
+[29:59] Marcus Johnson: One thing I genuinely enjoy is — The calendar integration was the tipping point for us, we were already using it but that made it indispensable
+[30:49] Interviewer: What's the most frustrating thing about the current dashboard layout?
+[30:52] Marcus Johnson: Well, in our case, The drag-and-drop interface is really satisfying when it works, but sometimes items just snap to the wrong place We've gotten used to it at this point.
+[31:57] Interviewer: How easy is it to find the metrics that matter most to you?
+[32:01] Marcus Johnson: Oh for sure, The milestone tracking keeps our stakeholders happy without requiring me to create separate presentations
+[33:19] Interviewer: What was your initial reaction?
+[33:23] Marcus Johnson: Oh for sure, My biggest fear is that they'll change the interface in a major update and I'll have to relearn everything
+[34:16] Interviewer: When did you first notice that?
+[34:20] Marcus Johnson: I have to say, I would absolutely recommend it to my team, with a few caveats
+[34:54] Interviewer: What did you try to do about it?
+[34:59] Marcus Johnson: I have to say, My biggest fear is that they'll change the interface in a major update and I'll have to relearn everything
+[36:16] Interviewer: How does that compare to what you expected?
+[36:24] Marcus Johnson: Well, in our case, I tried to set it up for my personal projects and it felt like overkill, it's really built for teams We've gotten used to it at this point.
+[37:52] Interviewer: Could you walk me through a specific example?
+[37:57] Marcus Johnson: Let me think about that. The search is actually intelligent, it finds tasks even when I can't remember the exact title I think it depends a lot on your use case.
+[38:27] Interviewer: What would an ideal solution look like for you?
+[38:30] Marcus Johnson: I have to say, The milestone tracking keeps our stakeholders happy without requiring me to create separate presentations
+[39:32] Interviewer: Did anyone on your team feel differently about that?
+[39:37] Marcus Johnson: I have to say, The audit log is essential for our compliance requirements, it tracks every change automatically
+
+[41:04] Interviewer: That's really helpful. Is there anything else you'd like to add before we wrap up?
+[41:13] Marcus Johnson: Just that I really hope these changes happen soon. The team is getting impatient.
+
+[END OF TRANSCRIPT]

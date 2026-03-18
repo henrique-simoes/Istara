@@ -1,0 +1,91 @@
+Interview Transcript — Pricing Page Conversion
+Participant: Yuki Sato (Mobile Developer, 10-50)
+Date: 2026-03-16
+Duration: 46 minutes
+Research Goal: Increase free-to-paid conversion rate from 3.1% to 5%
+
+[00:00] Interviewer: What was your understanding of the pricing tiers before you signed up?
+[00:51] Yuki Sato: Let me think about that. I showed it to our operations team and they immediately saw how it could replace three tools they were using We've gotten used to it at this point.
+[01:53] Interviewer: When did you first notice that?
+[01:57] Yuki Sato: Yeah, absolutely — We switched from a competitor specifically because of the resource allocation view, nothing else had it
+[02:37] Interviewer: Is that something you've experienced more than once?
+[02:44] Yuki Sato: Well, in our case, I love the keyboard shortcuts, they save me so much time Some team members feel differently, but that's my take.
+[03:22] Interviewer: How does that compare to what you expected?
+[03:28] Yuki Sato: Honestly, that's been a pain point for us. I keep getting logged out randomly in the middle of my work
+[04:31] Interviewer: Was there anything confusing about how features are split across plans?
+[04:34] Yuki Sato: That's probably my biggest complaint. I have no idea what half the icons in the toolbar mean
+[05:14] Interviewer: Is that something you've experienced more than once?
+[05:20] Yuki Sato: Honestly, that's been a pain point for us. The tooltips appear too slowly and disappear too quickly to actually read them
+[06:30] Interviewer: Is that something you've experienced more than once?
+[06:38] Yuki Sato: Yeah, so this is where it gets frustrating. The loading time is really frustrating, especially when I'm trying to pull up something in a meeting
+[07:45] Interviewer: Did anyone on your team feel differently about that?
+[07:51] Yuki Sato: That's actually something I really appreciate. The search is actually intelligent, it finds tasks even when I can't remember the exact title
+[08:41] Interviewer: Is that something you've experienced more than once?
+[08:49] Yuki Sato: This is something that really bothers me. The analytics dashboard doesn't update in real-time, I have to manually refresh to see today's numbers
+[10:15] Interviewer: Was there a trial period, and did it give you enough time to evaluate?
+[10:21] Yuki Sato: That's actually something I really appreciate. I think the biggest strength is how customizable the views are, everyone sets it up differently
+[11:34] Interviewer: What was your initial reaction?
+[11:42] Yuki Sato: Honestly, that's been a pain point for us. Our team can't agree on the taxonomy because the tool doesn't enforce consistent labeling
+[12:13] Interviewer: What was your initial reaction?
+[12:17] Yuki Sato: One thing I genuinely enjoy is — I recommended it to three other companies and two of them switched within a month
+[13:08] Interviewer: What would a fair price for this product look like to you?
+[13:11] Yuki Sato: Honestly, that's been a pain point for us. The dashboard widgets rearrange themselves every time I log in, which is disorienting
+[13:56] Interviewer: What made you choose the plan you're currently on?
+[14:04] Yuki Sato: That's probably my biggest complaint. There's no keyboard shortcut for the one action I do fifty times a day
+[14:59] Interviewer: What would happen if you had to switch to the free plan tomorrow?
+[15:03] Yuki Sato: It depends on the situation, but generally The calendar integration was the tipping point for us, we were already using it but that made it indispensable It's not great, not terrible.
+[16:05] Interviewer: What would an ideal solution look like for you?
+[16:09] Yuki Sato: This is something that really bothers me. The search bar basically never returns what I'm actually looking for
+[16:58] Interviewer: Did you evaluate other products' pricing before making a decision?
+[17:03] Yuki Sato: This is something that really bothers me. The tool sends email notifications for my own actions, which clutters my inbox
+[17:45] Interviewer: How did that affect your workflow?
+[17:51] Yuki Sato: This is something that really bothers me. The error messages are completely useless, they just say something went wrong with no detail
+[18:30] Interviewer: Can you tell me more about that?
+[18:34] Yuki Sato: Yeah, absolutely — The template library saved us weeks of setup time when we started a new client project
+[19:36] Interviewer: How did that affect your workflow?
+[19:41] Yuki Sato: I have to say, I tried to set it up for my personal projects and it felt like overkill, it's really built for teams
+[21:02] Interviewer: How did that affect your workflow?
+[21:07] Yuki Sato: Oh for sure, I like that I can switch between Kanban and list view depending on what I'm working on that day
+[22:04] Interviewer: How did that affect your workflow?
+[22:10] Yuki Sato: I'll be blunt — We had to create a separate shared document just to explain our internal conventions because the tool doesn't support naming rules
+[22:43] Interviewer: What was your initial reaction?
+[22:51] Yuki Sato: Yeah, so this is where it gets frustrating. The dashboard widgets rearrange themselves every time I log in, which is disorienting
+[23:21] Interviewer: How does our pricing compare to your expectations?
+[23:28] Yuki Sato: Let me think about that. When I saw the new design, my first reaction was, where did everything go? We've gotten used to it at this point.
+[24:53] Interviewer: What feature would make you upgrade to the next tier immediately?
+[24:58] Yuki Sato: That's probably my biggest complaint. There's a loading spinner that appears for every tiny interaction and it makes the tool feel sluggish
+[25:49] Interviewer: How did that affect your workflow?
+[25:53] Yuki Sato: Well, in our case, It does what I need about eighty percent of the time, the other twenty percent I work around It's not great, not terrible.
+[26:54] Interviewer: Do you feel the value you get matches what you pay?
+[27:00] Yuki Sato: This is something that really bothers me. I created a template but there's no way to share it with the rest of my organization
+[27:51] Interviewer: What did you try to do about it?
+[27:57] Yuki Sato: Well, in our case, I keep a sticky note on my monitor with the steps to do the export because it's not intuitive at all I mean, it works, but there's room for improvement.
+[28:52] Interviewer: At what point did you decide the free plan wasn't enough?
+[28:57] Yuki Sato: Honestly, that's been a pain point for us. There's a three-second delay every time I switch tabs that breaks my concentration
+[29:42] Interviewer: How do you justify the cost of this tool to your manager or finance team?
+[29:46] Yuki Sato: This is something that really bothers me. The color contrast is so low I can barely read the secondary text
+[31:14] Interviewer: How does that compare to what you expected?
+[31:22] Yuki Sato: I'll be blunt — The tool doesn't warn me before I navigate away from an unsaved form
+[32:09] Interviewer: Could you walk me through a specific example?
+[32:17] Yuki Sato: I have to say, What frustrates me is that the free tier is so limited you can't really evaluate the product properly
+[33:38] Interviewer: How important is that to your day-to-day work?
+[33:41] Yuki Sato: Honestly, that's been a pain point for us. I accidentally deleted a project and there was no way to undo it
+[34:50] Interviewer: How does that compare to what you expected?
+[34:56] Yuki Sato: That's a good question. The commenting system on tasks is way better than email chains, nothing gets lost I think it depends a lot on your use case.
+[36:21] Interviewer: Is that something you've experienced more than once?
+[36:27] Yuki Sato: Well, in our case, I tried to set it up for my personal projects and it felt like overkill, it's really built for teams I mean, it works, but there's room for improvement.
+[37:47] Interviewer: What happened next?
+[37:54] Yuki Sato: Yeah, absolutely — The collaboration features are actually the main reason we chose this over the competitor
+[39:15] Interviewer: Is that something you've experienced more than once?
+[39:21] Yuki Sato: Honestly, that's been a pain point for us. The permissions system is so confusing that we just give everyone admin access
+[40:50] Interviewer: What did you try to do about it?
+[40:54] Yuki Sato: I have to say, I like that I can switch between Kanban and list view depending on what I'm working on that day
+[41:48] Interviewer: What would an ideal solution look like for you?
+[41:51] Yuki Sato: That's a good question. It's one of those tools where you know the feature exists, you just can't find it I mean, it works, but there's room for improvement.
+[43:12] Interviewer: How does that compare to what you expected?
+[43:15] Yuki Sato: Oh for sure, The onboarding wizard actually taught me things about project management I didn't know before
+
+[43:53] Interviewer: That's really helpful. Is there anything else you'd like to add before we wrap up?
+[43:59] Yuki Sato: No, I think that covers it. I appreciate you taking the time to ask about our experience.
+
+[END OF TRANSCRIPT]

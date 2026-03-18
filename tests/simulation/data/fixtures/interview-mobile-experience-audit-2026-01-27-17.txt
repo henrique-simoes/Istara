@@ -1,0 +1,71 @@
+Interview Transcript — Mobile Experience Audit
+Participant: Jessica Nguyen (Product Designer, 50-200)
+Date: 2026-01-27
+Duration: 52 minutes
+Research Goal: Understand why mobile session duration is 60% shorter than desktop
+
+[00:00] Interviewer: When do you typically use the mobile app versus the desktop version?
+[00:46] Jessica Nguyen: So, The calendar integration was the tipping point for us, we were already using it but that made it indispensable Some team members feel differently, but that's my take.
+[01:36] Interviewer: Are there features you avoid using on mobile entirely?
+[01:43] Jessica Nguyen: Oh for sure, The commenting system on tasks is way better than email chains, nothing gets lost
+[02:47] Interviewer: How does our mobile experience compare to other work apps you use on your phone?
+[02:50] Jessica Nguyen: I'll be blunt — Our team can't agree on the taxonomy because the tool doesn't enforce consistent labeling
+[03:40] Interviewer: How does that compare to what you expected?
+[03:47] Jessica Nguyen: That's actually something I really appreciate. It's rare that a tool actually makes me more productive rather than just feeling like more overhead
+[04:23] Interviewer: How often do you switch between mobile and desktop for the same task?
+[04:31] Jessica Nguyen: Yeah, so this is where it gets frustrating. The tooltips appear too slowly and disappear too quickly to actually read them
+[05:33] Interviewer: What would an ideal solution look like for you?
+[05:37] Jessica Nguyen: That's a good question. The mobile app is fine for checking things, but I'd never try to do real work on it We've gotten used to it at this point.
+[06:26] Interviewer: Could you walk me through a specific example?
+[06:31] Jessica Nguyen: Yeah, absolutely — I actually really liked how the dashboard shows everything at a glance
+[07:37] Interviewer: What happened next?
+[07:42] Jessica Nguyen: That's probably my biggest complaint. There's a loading spinner that appears for every tiny interaction and it makes the tool feel sluggish
+[09:03] Interviewer: What notifications do you find useful on mobile versus distracting?
+[09:10] Jessica Nguyen: Honestly, that's been a pain point for us. I can't snooze a task notification for a specific time, it's either dismiss or nothing
+[09:44] Interviewer: Did anyone on your team feel differently about that?
+[09:49] Jessica Nguyen: So, The calendar integration was the tipping point for us, we were already using it but that made it indispensable We've gotten used to it at this point.
+[10:43] Interviewer: Did anyone on your team feel differently about that?
+[10:47] Jessica Nguyen: Honestly, that's been a pain point for us. Every time I try to copy-paste from the tool into an email, the formatting gets completely mangled
+[12:02] Interviewer: What tasks do you try to complete on mobile?
+[12:09] Jessica Nguyen: Yeah, absolutely — The commenting system on tasks is way better than email chains, nothing gets lost
+[13:31] Interviewer: Could you walk me through a specific example?
+[13:38] Jessica Nguyen: That's a good question. The weekly digest email is the one notification I actually look forward to getting It's not great, not terrible.
+[15:03] Interviewer: How did that affect your workflow?
+[15:08] Jessica Nguyen: That's actually something I really appreciate. I can tell the team that built this actually uses their own product, the little details show it
+[16:22] Interviewer: When did you first notice that?
+[16:26] Jessica Nguyen: This is something that really bothers me. I can't set different notification preferences for different projects
+[17:34] Interviewer: What would an ideal solution look like for you?
+[17:41] Jessica Nguyen: This is something that really bothers me. There's no confirmation dialog before archiving a project, I've done it by accident twice
+[18:29] Interviewer: How important is that to your day-to-day work?
+[18:35] Jessica Nguyen: Yeah, so this is where it gets frustrating. The link previews don't work for internal pages, so shared links are just cryptic URLs
+[19:37] Interviewer: What would an ideal solution look like for you?
+[19:43] Jessica Nguyen: I'll be blunt — The calendar view doesn't show tasks that span multiple days correctly, they just appear on the start date
+[20:18] Interviewer: What would an ideal solution look like for you?
+[20:21] Jessica Nguyen: Honestly, that's been a pain point for us. The tool sends email notifications for my own actions, which clutters my inbox
+[21:49] Interviewer: Did anyone on your team feel differently about that?
+[21:57] Jessica Nguyen: So, It took maybe fifteen minutes for the whole team to understand the basic concepts, which is impressive We've gotten used to it at this point.
+[22:37] Interviewer: When did you first notice that?
+[22:45] Jessica Nguyen: Honestly, that's been a pain point for us. The link previews don't work for internal pages, so shared links are just cryptic URLs
+[23:36] Interviewer: What would an ideal solution look like for you?
+[23:43] Jessica Nguyen: Yeah, so this is where it gets frustrating. The autocomplete in the search field suggests results from archived projects that aren't relevant anymore
+[24:59] Interviewer: Is that something you've experienced more than once?
+[25:04] Jessica Nguyen: So, The workload balancing view finally made it obvious when someone was overloaded I think it depends a lot on your use case.
+[25:36] Interviewer: Can you tell me more about that?
+[25:44] Jessica Nguyen: That's a good question. I don't think the pricing page made it clear what I was actually getting It's not great, not terrible.
+[26:14] Interviewer: What feels harder to do on your phone compared to your computer?
+[26:19] Jessica Nguyen: Oh for sure, I appreciate that they don't spam me with upgrade prompts, the free tier is genuinely useful
+[27:09] Interviewer: What was the last thing that really frustrated you on the mobile app?
+[27:16] Jessica Nguyen: It depends on the situation, but generally I keep a sticky note on my monitor with the steps to do the export because it's not intuitive at all I mean, it works, but there's room for improvement.
+[28:38] Interviewer: If you could only keep three features on the mobile version, which would they be?
+[28:46] Jessica Nguyen: It depends on the situation, but generally It took me way too long to figure out how to invite my team I mean, it works, but there's room for improvement.
+[29:54] Interviewer: Have you ever given up on a task on mobile and waited until you were at your desk?
+[29:59] Jessica Nguyen: That's a good question. What frustrates me is that the free tier is so limited you can't really evaluate the product properly Some team members feel differently, but that's my take.
+[31:25] Interviewer: How important is that to your day-to-day work?
+[31:28] Jessica Nguyen: One thing I genuinely enjoy is — I keep a sticky note on my monitor with the steps to do the export because it's not intuitive at all
+[32:03] Interviewer: Can you tell me more about that?
+[32:11] Jessica Nguyen: This is something that really bothers me. I keep getting logged out randomly in the middle of my work
+
+[33:18] Interviewer: That's really helpful. Is there anything else you'd like to add before we wrap up?
+[33:27] Jessica Nguyen: One last thing — The analytics dashboard doesn't update in real-time, I have to manually refresh to see today's numbers But otherwise, I think we hit everything.
+
+[END OF TRANSCRIPT]

@@ -1,0 +1,65 @@
+Interview Transcript — Onboarding Redesign
+Participant: Lisa Johansson (Scrum Master, 500-2000)
+Date: 2026-01-29
+Duration: 56 minutes
+Research Goal: Reduce 45% drop-off at phone verification step
+
+[00:00] Interviewer: What was your first impression when you signed up?
+[00:51] Lisa Johansson: Let me think about that. What I appreciate most is that it doesn't try to do everything, it does its core job well We've gotten used to it at this point.
+[01:37] Interviewer: How does that compare to what you expected?
+[01:42] Lisa Johansson: Let me think about that. I would absolutely recommend it to my team, with a few caveats I mean, it works, but there's room for improvement.
+[02:34] Interviewer: Is that something you've experienced more than once?
+[02:39] Lisa Johansson: I'll be blunt — There's a three-second delay every time I switch tabs that breaks my concentration
+[03:48] Interviewer: How does that compare to what you expected?
+[03:53] Lisa Johansson: This is something that really bothers me. When I collapse a section, it re-expands every time I come back to the page
+[05:13] Interviewer: How important is that to your day-to-day work?
+[05:16] Lisa Johansson: Yeah, so this is where it gets frustrating. The comment threading doesn't work properly, replies sometimes appear out of order
+[06:31] Interviewer: What information did you wish you had before starting the sign-up?
+[06:37] Lisa Johansson: Oh for sure, The milestone tracking keeps our stakeholders happy without requiring me to create separate presentations
+[07:07] Interviewer: How did you hear about us and what were your expectations going in?
+[07:13] Lisa Johansson: One thing I genuinely enjoy is — The permission system is surprisingly granular, we can control exactly who sees what
+[08:32] Interviewer: Is that something you've experienced more than once?
+[08:36] Lisa Johansson: Yeah, absolutely — I like that I can switch between Kanban and list view depending on what I'm working on that day
+[09:49] Interviewer: Is that something you've experienced more than once?
+[09:57] Lisa Johansson: Oh for sure, We switched from a competitor specifically because of the resource allocation view, nothing else had it
+[10:52] Interviewer: When did you first notice that?
+[10:55] Lisa Johansson: Yeah, absolutely — Setting up the integration was a breeze, probably the smoothest part of the whole experience
+[11:49] Interviewer: Is that something you've experienced more than once?
+[11:54] Lisa Johansson: I'll be blunt — I keep getting logged out randomly in the middle of my work
+[12:52] Interviewer: Was there a moment during onboarding where you considered switching to a competitor?
+[12:56] Lisa Johansson: Oh for sure, I've been using it for two years and I'm still discovering features I didn't know existed
+[14:21] Interviewer: How did the verification step feel compared to other services?
+[14:26] Lisa Johansson: Oh for sure, It handles large projects with hundreds of tasks without slowing down, which not every tool can claim
+[15:39] Interviewer: At what point did you feel confident you could use the product?
+[15:47] Lisa Johansson: Let me think about that. The onboarding emails were genuinely helpful, they came at the right pace I think it depends a lot on your use case.
+[16:35] Interviewer: What happened next?
+[16:43] Lisa Johansson: That's probably my biggest complaint. We had to create a separate shared document just to explain our internal conventions because the tool doesn't support naming rules
+[17:41] Interviewer: Did anyone on your team feel differently about that?
+[17:49] Lisa Johansson: That's a good question. I was confused by the terminology, what you call a workspace I would call a project I think it depends a lot on your use case.
+[18:56] Interviewer: What happened next?
+[19:00] Lisa Johansson: Well, in our case, I think the biggest strength is how customizable the views are, everyone sets it up differently I mean, it works, but there's room for improvement.
+[20:06] Interviewer: What happened next?
+[20:11] Lisa Johansson: That's actually something I really appreciate. I remember thinking, why is this taking so many clicks?
+[21:07] Interviewer: What was your initial reaction?
+[21:10] Lisa Johansson: It depends on the situation, but generally I spent an entire afternoon trying to figure out why my filter wasn't saving, turns out it was a known bug It's not great, not terrible.
+[22:37] Interviewer: What would an ideal solution look like for you?
+[22:41] Lisa Johansson: Yeah, absolutely — I love the keyboard shortcuts, they save me so much time
+[23:40] Interviewer: Could you walk me through a specific example?
+[23:43] Lisa Johansson: Yeah, absolutely — The way it handles dependencies between tasks is really elegant, I haven't seen that done better anywhere
+[25:06] Interviewer: How does our onboarding compare to the last new product you adopted?
+[25:09] Lisa Johansson: Honestly, that's been a pain point for us. The recurring task feature creates duplicates instead of resetting the original task
+[26:34] Interviewer: Did you complete the onboarding in one sitting or come back to it later?
+[26:42] Lisa Johansson: One thing I genuinely enjoy is — The notifications are just noise at this point, I ignore all of them
+[28:04] Interviewer: How important is that to your day-to-day work?
+[28:09] Lisa Johansson: One thing I genuinely enjoy is — The mobile app is fine for checking things, but I'd never try to do real work on it
+[29:15] Interviewer: What would have made the sign-up faster for you?
+[29:20] Lisa Johansson: I'll be blunt — The dashboard widgets rearrange themselves every time I log in, which is disorienting
+[30:23] Interviewer: Could you walk me through a specific example?
+[30:26] Lisa Johansson: It depends on the situation, but generally The tag system is incredibly flexible, we use it for priority, department, client, and sprint all at once I think it depends a lot on your use case.
+[31:37] Interviewer: Did you try to sign up before and abandon it? What brought you back?
+[31:43] Lisa Johansson: That's probably my biggest complaint. I couldn't find where to change my settings, I ended up Googling it
+
+[32:21] Interviewer: That's really helpful. Is there anything else you'd like to add before we wrap up?
+[32:27] Lisa Johansson: One last thing — Every time I try to copy-paste from the tool into an email, the formatting gets completely mangled But otherwise, I think we hit everything.
+
+[END OF TRANSCRIPT]

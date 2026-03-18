@@ -1,0 +1,61 @@
+Interview Transcript — Data Export and Reporting
+Participant: Priya Patel (UX Designer, 10-50)
+Date: 2026-01-28
+Duration: 61 minutes
+Research Goal: Reduce average report generation time and eliminate top 3 export errors
+
+[00:00] Interviewer: How often do you need to export data or create reports?
+[00:50] Priya Patel: That's a good question. I can tell the team that built this actually uses their own product, the little details show it I mean, it works, but there's room for improvement.
+[01:42] Interviewer: Have you ever run into errors or unexpected results during export?
+[01:46] Priya Patel: That's probably my biggest complaint. There's a loading spinner that appears for every tiny interaction and it makes the tool feel sluggish
+[02:40] Interviewer: What was your initial reaction?
+[02:48] Priya Patel: Well, in our case, Our design team loves the file attachment previews, they can see mockups right in the task without opening another tool It's not great, not terrible.
+[03:35] Interviewer: What did you try to do about it?
+[03:43] Priya Patel: It depends on the situation, but generally Setting up the integration was a breeze, probably the smoothest part of the whole experience We've gotten used to it at this point.
+[05:00] Interviewer: How did that affect your workflow?
+[05:03] Priya Patel: That's a good question. Honestly, I almost gave up during the sign-up process We've gotten used to it at this point.
+[06:24] Interviewer: How did that affect your workflow?
+[06:31] Priya Patel: Yeah, absolutely — The customer support has been phenomenal, they responded to my issue in under an hour
+[07:17] Interviewer: Did anyone on your team feel differently about that?
+[07:20] Priya Patel: Yeah, so this is where it gets frustrating. When I paste a URL it doesn't auto-detect and create a clickable link
+[08:28] Interviewer: When did you first notice that?
+[08:34] Priya Patel: That's a good question. I tried to set it up for my personal projects and it felt like overkill, it's really built for teams I mean, it works, but there's room for improvement.
+[09:20] Interviewer: What was your initial reaction?
+[09:27] Priya Patel: So, The fact that I can't undo a bulk action makes me nervous every time I use it I mean, it works, but there's room for improvement.
+[10:47] Interviewer: When did you first notice that?
+[10:53] Priya Patel: So, When I saw the new design, my first reaction was, where did everything go? We've gotten used to it at this point.
+[12:16] Interviewer: How does that compare to what you expected?
+[12:22] Priya Patel: I'll be blunt — When I share a link with my team, they always have to log in again even if they already have accounts
+[13:47] Interviewer: How did that affect your workflow?
+[13:51] Priya Patel: That's actually something I really appreciate. The time tracking built into the task cards is surprisingly accurate and doesn't add friction to the workflow
+[14:30] Interviewer: When did you first notice that?
+[14:36] Priya Patel: I'll be blunt — The mobile app crashes at least once a day when I try to upload photos
+[15:06] Interviewer: What tools do you use to present or distribute the reports?
+[15:12] Priya Patel: So, Our team adopted it in about two days, which is really fast compared to other tools we've tried It's not great, not terrible.
+[15:56] Interviewer: How do you verify that an exported report is accurate?
+[15:59] Priya Patel: Yeah, so this is where it gets frustrating. It takes six clicks to do something that should be a right-click context menu action
+[16:55] Interviewer: Are there reports you'd like to automate or schedule?
+[17:00] Priya Patel: That's actually something I really appreciate. I think the biggest improvement they could make is better exporting, the current PDF export is basic
+[18:29] Interviewer: When did you first notice that?
+[18:37] Priya Patel: This is something that really bothers me. The tool marks tasks as overdue at midnight but our team works across multiple time zones
+[19:55] Interviewer: How did that affect your workflow?
+[20:02] Priya Patel: It depends on the situation, but generally The commenting system on tasks is way better than email chains, nothing gets lost I think it depends a lot on your use case.
+[21:21] Interviewer: Could you walk me through a specific example?
+[21:29] Priya Patel: Let me think about that. I had to watch a YouTube tutorial to understand the reporting feature, and that shouldn't be necessary I mean, it works, but there's room for improvement.
+[22:06] Interviewer: Could you walk me through a specific example?
+[22:13] Priya Patel: That's actually something I really appreciate. It's rare that a tool actually makes me more productive rather than just feeling like more overhead
+[22:43] Interviewer: What would an ideal solution look like for you?
+[22:51] Priya Patel: I'll be blunt — When I share a link with my team, they always have to log in again even if they already have accounts
+[23:35] Interviewer: What information do you wish was easier to pull out of the system?
+[23:39] Priya Patel: I have to say, I was pleasantly surprised by how fast the search results came back
+[24:35] Interviewer: Can you tell me more about that?
+[24:38] Priya Patel: So, The commenting system on tasks is way better than email chains, nothing gets lost I think it depends a lot on your use case.
+[25:08] Interviewer: What would a one-click perfect report look like for you?
+[25:12] Priya Patel: Yeah, so this is where it gets frustrating. I can't tell which items in my inbox need my action versus which are just informational
+[26:41] Interviewer: Walk me through the last time you tried to generate a report.
+[26:46] Priya Patel: This is something that really bothers me. Every time I try to copy-paste from the tool into an email, the formatting gets completely mangled
+
+[28:09] Interviewer: That's really helpful. Is there anything else you'd like to add before we wrap up?
+[28:19] Priya Patel: Just that I really hope these changes happen soon. The team is getting impatient.
+
+[END OF TRANSCRIPT]

@@ -1,0 +1,63 @@
+Interview Transcript — Dashboard Usability
+Participant: Lisa Johansson (Scrum Master, 500-2000)
+Date: 2026-02-06
+Duration: 57 minutes
+Research Goal: Improve time-to-insight from average 4.2 minutes to under 2 minutes
+
+[00:00] Interviewer: Walk me through how you typically start your day with the dashboard.
+[00:52] Lisa Johansson: That's a good question. I like that I can switch between Kanban and list view depending on what I'm working on that day Some team members feel differently, but that's my take.
+[02:13] Interviewer: What do you do when the dashboard shows something unexpected or alarming?
+[02:21] Lisa Johansson: That's actually something I really appreciate. It's one of those tools where you know the feature exists, you just can't find it
+[03:25] Interviewer: How easy is it to find the metrics that matter most to you?
+[03:32] Lisa Johansson: Yeah, absolutely — I would absolutely recommend it to my team, with a few caveats
+[04:34] Interviewer: What would an ideal solution look like for you?
+[04:38] Lisa Johansson: It depends on the situation, but generally Our team adopted it in about two days, which is really fast compared to other tools we've tried Some team members feel differently, but that's my take.
+[06:04] Interviewer: Is that something you've experienced more than once?
+[06:10] Lisa Johansson: Honestly, that's been a pain point for us. There's no keyboard shortcut for the one action I do fifty times a day
+[07:26] Interviewer: What data do you still pull from other tools because the dashboard doesn't show it?
+[07:29] Lisa Johansson: Well, in our case, The tag system is incredibly flexible, we use it for priority, department, client, and sprint all at once I think it depends a lot on your use case.
+[08:15] Interviewer: How important is that to your day-to-day work?
+[08:19] Lisa Johansson: That's actually something I really appreciate. My biggest fear is that they'll change the interface in a major update and I'll have to relearn everything
+[09:11] Interviewer: What's the most frustrating thing about the current dashboard layout?
+[09:17] Lisa Johansson: That's a good question. The integration with our CI/CD pipeline means developers never have to leave the tool to update task status It's not great, not terrible.
+[09:52] Interviewer: What would an ideal solution look like for you?
+[09:55] Lisa Johansson: That's probably my biggest complaint. The loading time is really frustrating, especially when I'm trying to pull up something in a meeting
+[10:27] Interviewer: Is that something you've experienced more than once?
+[10:31] Lisa Johansson: So, The tag system is incredibly flexible, we use it for priority, department, client, and sprint all at once I think it depends a lot on your use case.
+[11:26] Interviewer: How has your use of the dashboard changed since you first started?
+[11:31] Lisa Johansson: That's a good question. My biggest fear is that they'll change the interface in a major update and I'll have to relearn everything I think it depends a lot on your use case.
+[12:53] Interviewer: How did that affect your workflow?
+[12:59] Lisa Johansson: That's actually something I really appreciate. I think the biggest strength is how customizable the views are, everyone sets it up differently
+[14:25] Interviewer: Can you tell me more about that?
+[14:32] Lisa Johansson: So, My biggest fear is that they'll change the interface in a major update and I'll have to relearn everything I mean, it works, but there's room for improvement.
+[15:39] Interviewer: If you could rearrange the dashboard, what would you change?
+[15:43] Lisa Johansson: One thing I genuinely enjoy is — My team actually enjoys doing status updates now because the interface makes it quick and painless
+[16:34] Interviewer: What information do you look for first?
+[16:37] Lisa Johansson: It depends on the situation, but generally The customer support has been phenomenal, they responded to my issue in under an hour Some team members feel differently, but that's my take.
+[17:56] Interviewer: Could you walk me through a specific example?
+[18:03] Lisa Johansson: I have to say, I was confused by the terminology, what you call a workspace I would call a project
+[19:28] Interviewer: Have you ever missed something important because it was hard to find?
+[19:35] Lisa Johansson: So, The onboarding wizard actually taught me things about project management I didn't know before I think it depends a lot on your use case.
+[20:13] Interviewer: Could you walk me through a specific example?
+[20:18] Lisa Johansson: That's probably my biggest complaint. The placeholder text in the search box vanishes too quickly before I can read what formats are supported
+[21:41] Interviewer: What was your initial reaction?
+[21:44] Lisa Johansson: I'll be blunt — When I paste a URL it doesn't auto-detect and create a clickable link
+[22:20] Interviewer: Do you ever share your dashboard view with others? How does that go?
+[22:25] Lisa Johansson: It depends on the situation, but generally The activity feed gives me a clear picture of what happened while I was away without reading every message It's not great, not terrible.
+[23:10] Interviewer: If you could add one thing to the dashboard, what would it be?
+[23:14] Lisa Johansson: One thing I genuinely enjoy is — I had to watch a YouTube tutorial to understand the reporting feature, and that shouldn't be necessary
+[24:24] Interviewer: How do you decide which widgets or sections to look at?
+[24:32] Lisa Johansson: One thing I genuinely enjoy is — I ended up asking a coworker to walk me through it because the help docs didn't make sense
+[25:46] Interviewer: Is that something you've experienced more than once?
+[25:54] Lisa Johansson: Let me think about that. I had to watch a YouTube tutorial to understand the reporting feature, and that shouldn't be necessary I mean, it works, but there's room for improvement.
+[27:22] Interviewer: Can you tell me more about that?
+[27:28] Lisa Johansson: Oh for sure, I was confused by the terminology, what you call a workspace I would call a project
+[28:54] Interviewer: What would an ideal solution look like for you?
+[28:59] Lisa Johansson: That's probably my biggest complaint. The analytics dashboard doesn't update in real-time, I have to manually refresh to see today's numbers
+[29:38] Interviewer: How did that affect your workflow?
+[29:42] Lisa Johansson: That's actually something I really appreciate. The way archived projects are handled is clean, they're out of the way but easy to find when you need them
+
+[30:43] Interviewer: That's really helpful. Is there anything else you'd like to add before we wrap up?
+[30:53] Lisa Johansson: I'd just emphasize that It's rare that a tool actually makes me more productive rather than just feeling like more overhead That's really the core of it for me.
+
+[END OF TRANSCRIPT]

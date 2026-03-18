@@ -1,0 +1,79 @@
+Interview Transcript — Onboarding Redesign
+Participant: David Okonkwo (VP of Product, 500-2000)
+Date: 2026-01-28
+Duration: 46 minutes
+Research Goal: Reduce 45% drop-off at phone verification step
+
+[00:00] Interviewer: What was your first impression when you signed up?
+[00:55] David Okonkwo: Well, in our case, What frustrates me is that the free tier is so limited you can't really evaluate the product properly Some team members feel differently, but that's my take.
+[01:51] Interviewer: How did you hear about us and what were your expectations going in?
+[01:59] David Okonkwo: Yeah, absolutely — The way it handles recurring tasks is finally how I always thought it should work in other tools
+[03:18] Interviewer: Where did you get stuck during the process?
+[03:21] David Okonkwo: This is something that really bothers me. The table sort only works on one column at a time and doesn't remember my preference
+[04:35] Interviewer: Could you walk me through a specific example?
+[04:43] David Okonkwo: I have to say, The timeline view changed how our whole team plans sprints, it's been a game changer
+[05:35] Interviewer: What was your initial reaction?
+[05:41] David Okonkwo: That's actually something I really appreciate. When I saw the new design, my first reaction was, where did everything go?
+[07:07] Interviewer: Was there a moment during onboarding where you considered switching to a competitor?
+[07:14] David Okonkwo: That's actually something I really appreciate. The audit log is essential for our compliance requirements, it tracks every change automatically
+[07:58] Interviewer: How did that affect your workflow?
+[08:05] David Okonkwo: Oh for sure, The customer support has been phenomenal, they responded to my issue in under an hour
+[08:36] Interviewer: Did you complete the onboarding in one sitting or come back to it later?
+[08:44] David Okonkwo: Yeah, absolutely — What frustrates me is that the free tier is so limited you can't really evaluate the product properly
+[10:03] Interviewer: How does our onboarding compare to the last new product you adopted?
+[10:10] David Okonkwo: That's a good question. The API documentation is actually readable, which is rare, our developers integrated it in a day We've gotten used to it at this point.
+[10:56] Interviewer: At what point did you feel confident you could use the product?
+[11:04] David Okonkwo: Yeah, so this is where it gets frustrating. The maximum tag length is too short to be descriptive, so all our tags are cryptic abbreviations
+[11:48] Interviewer: Can you tell me more about that?
+[11:56] David Okonkwo: I have to say, I was skeptical about switching from spreadsheets but within a week I couldn't imagine going back
+[13:23] Interviewer: How important is that to your day-to-day work?
+[13:28] David Okonkwo: Honestly, that's been a pain point for us. The autocomplete in the search field suggests results from archived projects that aren't relevant anymore
+[14:34] Interviewer: Could you walk me through a specific example?
+[14:41] David Okonkwo: Well, in our case, I genuinely enjoy the weekly summary it generates, it's surprisingly insightful for an automated report We've gotten used to it at this point.
+[15:42] Interviewer: What would an ideal solution look like for you?
+[15:49] David Okonkwo: I'll be blunt — Our team can't agree on the taxonomy because the tool doesn't enforce consistent labeling
+[17:17] Interviewer: How did the verification step feel compared to other services?
+[17:24] David Okonkwo: So, I think the biggest issue is just consistency, some parts feel modern and others feel like they haven't been updated in years We've gotten used to it at this point.
+[17:58] Interviewer: What would have made the sign-up faster for you?
+[18:02] David Okonkwo: Let me think about that. The calendar integration was the tipping point for us, we were already using it but that made it indispensable We've gotten used to it at this point.
+[18:35] Interviewer: When did you first notice that?
+[18:41] David Okonkwo: That's a good question. The timeline view changed how our whole team plans sprints, it's been a game changer It's not great, not terrible.
+[19:41] Interviewer: Did you try to sign up before and abandon it? What brought you back?
+[19:46] David Okonkwo: This is something that really bothers me. There's no way to see a chronological history of changes to a single task
+[20:21] Interviewer: What would an ideal solution look like for you?
+[20:25] David Okonkwo: Oh for sure, The calendar integration was the tipping point for us, we were already using it but that made it indispensable
+[21:38] Interviewer: How does that compare to what you expected?
+[21:44] David Okonkwo: Honestly, that's been a pain point for us. I can never remember where the billing page is buried
+[22:21] Interviewer: What happened next?
+[22:28] David Okonkwo: Well, in our case, I genuinely look forward to using the analytics view, it's the best-designed part of the product I mean, it works, but there's room for improvement.
+[23:15] Interviewer: What would you tell a friend about the sign-up process?
+[23:23] David Okonkwo: One thing I genuinely enjoy is — I spent an entire afternoon trying to figure out why my filter wasn't saving, turns out it was a known bug
+[24:06] Interviewer: What information did you wish you had before starting the sign-up?
+[24:14] David Okonkwo: Yeah, so this is where it gets frustrating. I can't filter by two criteria at the same time without using some advanced syntax I don't understand
+[24:45] Interviewer: What would an ideal solution look like for you?
+[24:50] David Okonkwo: This is something that really bothers me. I can't filter by two criteria at the same time without using some advanced syntax I don't understand
+[25:42] Interviewer: How did that affect your workflow?
+[25:46] David Okonkwo: Yeah, so this is where it gets frustrating. I can't set different notification preferences for different projects
+[26:54] Interviewer: Can you tell me more about that?
+[27:02] David Okonkwo: This is something that really bothers me. I couldn't find where to change my settings, I ended up Googling it
+[27:50] Interviewer: Did anyone on your team feel differently about that?
+[27:55] David Okonkwo: Yeah, absolutely — The audit log is essential for our compliance requirements, it tracks every change automatically
+[28:40] Interviewer: What was your initial reaction?
+[28:46] David Okonkwo: That's a good question. I can tell the team that built this actually uses their own product, the little details show it We've gotten used to it at this point.
+[29:24] Interviewer: Is that something you've experienced more than once?
+[29:29] David Okonkwo: That's actually something I really appreciate. We switched from a competitor specifically because of the resource allocation view, nothing else had it
+[30:09] Interviewer: What did you try to do about it?
+[30:14] David Okonkwo: Oh for sure, The onboarding wizard actually taught me things about project management I didn't know before
+[31:15] Interviewer: What would an ideal solution look like for you?
+[31:21] David Okonkwo: That's a good question. The way archived projects are handled is clean, they're out of the way but easy to find when you need them I mean, it works, but there's room for improvement.
+[32:27] Interviewer: When did you first notice that?
+[32:34] David Okonkwo: It depends on the situation, but generally I remember thinking, why is this taking so many clicks? It's not great, not terrible.
+[33:24] Interviewer: Can you tell me more about that?
+[33:27] David Okonkwo: Honestly, that's been a pain point for us. I can't drag tasks between different project boards, so I end up duplicating them manually
+[34:09] Interviewer: How does that compare to what you expected?
+[34:14] David Okonkwo: So, I've been using it for two years and I'm still discovering features I didn't know existed I think it depends a lot on your use case.
+
+[35:17] Interviewer: That's really helpful. Is there anything else you'd like to add before we wrap up?
+[35:23] David Okonkwo: One last thing — It took me two weeks to realize there was a bulk edit feature hidden in a dropdown But otherwise, I think we hit everything.
+
+[END OF TRANSCRIPT]

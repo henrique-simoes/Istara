@@ -1,0 +1,69 @@
+Interview Transcript — Pricing Page Conversion
+Participant: Emily Watson (Customer Success Lead, 200-500)
+Date: 2026-02-11
+Duration: 63 minutes
+Research Goal: Increase free-to-paid conversion rate from 3.1% to 5%
+
+[00:00] Interviewer: What was your understanding of the pricing tiers before you signed up?
+[00:30] Emily Watson: That's a good question. It does what I need about eighty percent of the time, the other twenty percent I work around I mean, it works, but there's room for improvement.
+[01:44] Interviewer: What was your initial reaction?
+[01:49] Emily Watson: This is something that really bothers me. When I paste a URL it doesn't auto-detect and create a clickable link
+[02:48] Interviewer: What would happen if you had to switch to the free plan tomorrow?
+[02:55] Emily Watson: Let me think about that. It feels like it was designed by engineers for engineers, not for someone like me Some team members feel differently, but that's my take.
+[04:12] Interviewer: How does our pricing compare to your expectations?
+[04:17] Emily Watson: I have to say, I was skeptical about switching from spreadsheets but within a week I couldn't imagine going back
+[05:25] Interviewer: Did you evaluate other products' pricing before making a decision?
+[05:28] Emily Watson: One thing I genuinely enjoy is — I showed it to our operations team and they immediately saw how it could replace three tools they were using
+[06:27] Interviewer: Could you walk me through a specific example?
+[06:30] Emily Watson: Yeah, so this is where it gets frustrating. We had to create a separate shared document just to explain our internal conventions because the tool doesn't support naming rules
+[07:43] Interviewer: Is that something you've experienced more than once?
+[07:46] Emily Watson: Yeah, so this is where it gets frustrating. It takes six clicks to do something that should be a right-click context menu action
+[08:56] Interviewer: Can you tell me more about that?
+[09:02] Emily Watson: Yeah, so this is where it gets frustrating. The recurring task feature creates duplicates instead of resetting the original task
+[10:20] Interviewer: What would an ideal solution look like for you?
+[10:25] Emily Watson: I have to say, Our team velocity actually improved twenty percent in the first quarter after adopting it
+[10:58] Interviewer: What did you try to do about it?
+[11:05] Emily Watson: Honestly, that's been a pain point for us. The tool shows me information I don't have permission to act on, which is confusing
+[12:24] Interviewer: What would an ideal solution look like for you?
+[12:28] Emily Watson: So, It handles large projects with hundreds of tasks without slowing down, which not every tool can claim I mean, it works, but there's room for improvement.
+[13:16] Interviewer: Was there anything confusing about how features are split across plans?
+[13:24] Emily Watson: So, The dark mode is really well done, it's not just inverted colors, someone actually designed it properly I mean, it works, but there's room for improvement.
+[14:08] Interviewer: What happened next?
+[14:14] Emily Watson: It depends on the situation, but generally The real-time collaboration is what sold our CEO, she could see everyone's updates live I mean, it works, but there's room for improvement.
+[15:17] Interviewer: What did you try to do about it?
+[15:25] Emily Watson: Oh for sure, The milestone tracking keeps our stakeholders happy without requiring me to create separate presentations
+[16:07] Interviewer: Can you tell me more about that?
+[16:11] Emily Watson: That's a good question. I appreciate that keyboard navigation works everywhere, I rarely need to touch my mouse It's not great, not terrible.
+[16:56] Interviewer: When did you first notice that?
+[17:04] Emily Watson: I have to say, The weekly digest email is the one notification I actually look forward to getting
+[18:16] Interviewer: What was your initial reaction?
+[18:19] Emily Watson: It depends on the situation, but generally The weekly digest email is the one notification I actually look forward to getting It's not great, not terrible.
+[18:50] Interviewer: How did that affect your workflow?
+[18:53] Emily Watson: Well, in our case, The permission system is surprisingly granular, we can control exactly who sees what We've gotten used to it at this point.
+[20:22] Interviewer: Can you tell me more about that?
+[20:25] Emily Watson: Yeah, absolutely — I was skeptical about switching from spreadsheets but within a week I couldn't imagine going back
+[21:45] Interviewer: Was there a trial period, and did it give you enough time to evaluate?
+[21:53] Emily Watson: Yeah, absolutely — The search is actually intelligent, it finds tasks even when I can't remember the exact title
+[23:01] Interviewer: Can you tell me more about that?
+[23:06] Emily Watson: I'll be blunt — The auto-save never seems to work when I need it most, I've lost entire paragraphs of notes
+[23:56] Interviewer: What would an ideal solution look like for you?
+[23:59] Emily Watson: It depends on the situation, but generally The onboarding wizard actually taught me things about project management I didn't know before It's not great, not terrible.
+[24:56] Interviewer: Do you feel the value you get matches what you pay?
+[25:03] Emily Watson: That's a good question. The automations feature was a bit overwhelming at first but once I set up a few rules it saved hours every week It's not great, not terrible.
+[25:48] Interviewer: Can you tell me more about that?
+[25:52] Emily Watson: Well, in our case, I was pleasantly surprised by how fast the search results came back We've gotten used to it at this point.
+[27:04] Interviewer: What happened next?
+[27:07] Emily Watson: So, The search is actually intelligent, it finds tasks even when I can't remember the exact title It's not great, not terrible.
+[28:13] Interviewer: At what point did you decide the free plan wasn't enough?
+[28:17] Emily Watson: I have to say, It's one of those tools where you know the feature exists, you just can't find it
+[28:49] Interviewer: What happened next?
+[28:53] Emily Watson: I have to say, Our team adopted it in about two days, which is really fast compared to other tools we've tried
+[30:12] Interviewer: What would an ideal solution look like for you?
+[30:18] Emily Watson: Yeah, so this is where it gets frustrating. The tooltips appear too slowly and disappear too quickly to actually read them
+[30:57] Interviewer: What made you choose the plan you're currently on?
+[31:03] Emily Watson: That's actually something I really appreciate. The permission system is surprisingly granular, we can control exactly who sees what
+
+[31:45] Interviewer: That's really helpful. Is there anything else you'd like to add before we wrap up?
+[31:50] Emily Watson: I'd just emphasize that The API documentation is actually readable, which is rare, our developers integrated it in a day That's really the core of it for me.
+
+[END OF TRANSCRIPT]

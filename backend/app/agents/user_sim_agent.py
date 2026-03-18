@@ -10,11 +10,13 @@ import logging
 import uuid
 from datetime import datetime, timezone
 
+import os
+
 import httpx
 
-logger = logging.getLogger(__name__)
+from app.api.websocket import broadcast_agent_status
 
-import os
+logger = logging.getLogger(__name__)
 API_BASE = os.getenv("RECLAW_API_BASE", "http://localhost:8000")
 
 
@@ -41,12 +43,30 @@ class UserSimAgent:
 
         while self._running:
             try:
+                await broadcast_agent_status(
+                    "working", "User Simulation: testing API endpoints..."
+                )
                 report = await self.run_simulation()
                 self._reports.append(report)
                 if len(self._reports) > 10:
                     self._reports = self._reports[-10:]
+
+                failed = report.get("failed", 0)
+                total = report.get("tests_run", 0)
+                if failed > 0:
+                    await broadcast_agent_status(
+                        "warning",
+                        f"User Simulation: {failed}/{total} tests failed",
+                    )
+                else:
+                    await broadcast_agent_status(
+                        "idle",
+                        f"User Simulation: all {total} tests passed",
+                    )
+
             except Exception as e:
                 logger.error(f"User simulation error: {e}")
+                await broadcast_agent_status("error", f"User Simulation error: {e}")
 
             await asyncio.sleep(self._sim_interval)
 
