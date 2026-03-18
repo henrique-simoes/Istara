@@ -23,6 +23,7 @@ from app.config import settings
 from app.core.ollama import ollama
 from app.core.self_check import check_findings, Confidence
 from app.core.rag import VectorStore
+from app.api.websocket import broadcast_agent_status
 from app.models.database import async_session
 from app.models.project import Project
 from app.models.task import Task, TaskStatus
@@ -47,6 +48,9 @@ class DevOpsAuditAgent:
 
         while self._running:
             try:
+                await broadcast_agent_status(
+                    "working", "DevOps Audit: running integrity checks..."
+                )
                 report = await self.run_audit_cycle()
                 self._audit_log.append(report)
 
@@ -55,12 +59,24 @@ class DevOpsAuditAgent:
                     self._audit_log = self._audit_log[-100:]
 
                 if report.get("issues"):
+                    severity_counts: dict[str, int] = {}
+                    for issue in report["issues"]:
+                        sev = issue.get("severity", "low")
+                        severity_counts[sev] = severity_counts.get(sev, 0) + 1
+                    summary = ", ".join(f"{c} {s}" for s, c in severity_counts.items())
+                    await broadcast_agent_status(
+                        "warning", f"DevOps Audit: {len(report['issues'])} issues ({summary})"
+                    )
                     logger.warning(f"Audit found {len(report['issues'])} issues.")
                 else:
+                    await broadcast_agent_status(
+                        "idle", f"DevOps Audit: all {len(report.get('checks_passed', []))} checks passed"
+                    )
                     logger.info("Audit cycle clean.")
 
             except Exception as e:
                 logger.error(f"Audit cycle error: {e}")
+                await broadcast_agent_status("error", f"DevOps Audit error: {e}")
 
             await asyncio.sleep(self._audit_interval)
 

@@ -1,0 +1,85 @@
+Interview Transcript — Pricing Page Conversion
+Participant: Tomás García (Project Manager, 200-500)
+Date: 2026-01-20
+Duration: 65 minutes
+Research Goal: Increase free-to-paid conversion rate from 3.1% to 5%
+
+[00:00] Interviewer: What was your understanding of the pricing tiers before you signed up?
+[00:30] Tomás García: That's a good question. Honestly, I almost gave up during the sign-up process I mean, it works, but there's room for improvement.
+[01:32] Interviewer: Could you walk me through a specific example?
+[01:37] Tomás García: Let me think about that. Our team adopted it in about two days, which is really fast compared to other tools we've tried I think it depends a lot on your use case.
+[02:24] Interviewer: At what point did you decide the free plan wasn't enough?
+[02:27] Tomás García: It depends on the situation, but generally The offline mode is crucial for me because I travel a lot and can't always count on good internet Some team members feel differently, but that's my take.
+[03:57] Interviewer: How do you justify the cost of this tool to your manager or finance team?
+[04:00] Tomás García: That's actually something I really appreciate. My manager asked me to pull a report and it took me forty-five minutes to figure out how
+[05:00] Interviewer: What would happen if you had to switch to the free plan tomorrow?
+[05:03] Tomás García: Well, in our case, When I saw the new design, my first reaction was, where did everything go? We've gotten used to it at this point.
+[06:22] Interviewer: What made you choose the plan you're currently on?
+[06:27] Tomás García: That's probably my biggest complaint. Every time I export a report, the formatting is completely off and I have to fix it in Excel
+[07:24] Interviewer: What was your initial reaction?
+[07:27] Tomás García: Honestly, that's been a pain point for us. There's no confirmation dialog before archiving a project, I've done it by accident twice
+[08:07] Interviewer: When did you first notice that?
+[08:12] Tomás García: Yeah, absolutely — The notifications are just noise at this point, I ignore all of them
+[08:49] Interviewer: What feature would make you upgrade to the next tier immediately?
+[08:57] Tomás García: It depends on the situation, but generally I think the biggest issue is just consistency, some parts feel modern and others feel like they haven't been updated in years I mean, it works, but there's room for improvement.
+[09:33] Interviewer: How did that affect your workflow?
+[09:39] Tomás García: This is something that really bothers me. It took me two weeks to realize there was a bulk edit feature hidden in a dropdown
+[10:41] Interviewer: Did you evaluate other products' pricing before making a decision?
+[10:47] Tomás García: Honestly, that's been a pain point for us. The tool shows me information I don't have permission to act on, which is confusing
+[11:38] Interviewer: How important is that to your day-to-day work?
+[11:41] Tomás García: Honestly, that's been a pain point for us. The contrast between read and unread items is so subtle I can't tell them apart
+[12:42] Interviewer: What would a fair price for this product look like to you?
+[12:50] Tomás García: So, The notifications are just noise at this point, I ignore all of them We've gotten used to it at this point.
+[13:56] Interviewer: Do you feel the value you get matches what you pay?
+[14:01] Tomás García: That's actually something I really appreciate. Our design team loves the file attachment previews, they can see mockups right in the task without opening another tool
+[14:52] Interviewer: Can you tell me more about that?
+[14:55] Tomás García: That's probably my biggest complaint. We had to create a separate shared document just to explain our internal conventions because the tool doesn't support naming rules
+[16:12] Interviewer: Did anyone on your team feel differently about that?
+[16:20] Tomás García: Honestly, that's been a pain point for us. The maximum tag length is too short to be descriptive, so all our tags are cryptic abbreviations
+[17:40] Interviewer: Was there a trial period, and did it give you enough time to evaluate?
+[17:45] Tomás García: Well, in our case, The way it handles dependencies between tasks is really elegant, I haven't seen that done better anywhere We've gotten used to it at this point.
+[18:29] Interviewer: Did anyone on your team feel differently about that?
+[18:34] Tomás García: This is something that really bothers me. It takes six clicks to do something that should be a right-click context menu action
+[19:55] Interviewer: How does our pricing compare to your expectations?
+[19:59] Tomás García: Let me think about that. I like that I can switch between Kanban and list view depending on what I'm working on that day It's not great, not terrible.
+[20:44] Interviewer: Was there anything confusing about how features are split across plans?
+[20:49] Tomás García: Yeah, absolutely — I showed it to our operations team and they immediately saw how it could replace three tools they were using
+[21:55] Interviewer: What was your initial reaction?
+[22:03] Tomás García: I have to say, What makes it work for us is that it's flexible enough for both our engineering and marketing teams
+[23:07] Interviewer: What was your initial reaction?
+[23:15] Tomás García: Well, in our case, Our design team loves the file attachment previews, they can see mockups right in the task without opening another tool We've gotten used to it at this point.
+[24:17] Interviewer: Could you walk me through a specific example?
+[24:20] Tomás García: Let me think about that. The batch operations saved me so much time during our annual project cleanup I think it depends a lot on your use case.
+[25:20] Interviewer: What did you try to do about it?
+[25:25] Tomás García: I have to say, It's rare that a tool actually makes me more productive rather than just feeling like more overhead
+[26:47] Interviewer: How did that affect your workflow?
+[26:52] Tomás García: It depends on the situation, but generally The fact that I can't undo a bulk action makes me nervous every time I use it I mean, it works, but there's room for improvement.
+[28:07] Interviewer: How does that compare to what you expected?
+[28:14] Tomás García: Yeah, so this is where it gets frustrating. The dark mode has contrast issues that make some status badges completely invisible
+[29:09] Interviewer: Can you tell me more about that?
+[29:17] Tomás García: That's probably my biggest complaint. The table sort only works on one column at a time and doesn't remember my preference
+[30:45] Interviewer: When did you first notice that?
+[30:51] Tomás García: I'll be blunt — The color contrast is so low I can barely read the secondary text
+[31:53] Interviewer: What did you try to do about it?
+[31:59] Tomás García: It depends on the situation, but generally Once I got the hang of it, the workflow felt pretty natural It's not great, not terrible.
+[32:55] Interviewer: What was your initial reaction?
+[33:01] Tomás García: Yeah, so this is where it gets frustrating. The maximum tag length is too short to be descriptive, so all our tags are cryptic abbreviations
+[33:46] Interviewer: Did anyone on your team feel differently about that?
+[33:53] Tomás García: Oh for sure, I can create a complete project plan in about twenty minutes that would have taken me half a day before
+[35:07] Interviewer: When did you first notice that?
+[35:12] Tomás García: I'll be blunt — There's a three-second delay every time I switch tabs that breaks my concentration
+[36:38] Interviewer: What happened next?
+[36:46] Tomás García: Let me think about that. The search is actually intelligent, it finds tasks even when I can't remember the exact title I mean, it works, but there's room for improvement.
+[37:26] Interviewer: How does that compare to what you expected?
+[37:29] Tomás García: That's actually something I really appreciate. The calendar integration was the tipping point for us, we were already using it but that made it indispensable
+[38:22] Interviewer: Did anyone on your team feel differently about that?
+[38:29] Tomás García: That's actually something I really appreciate. I genuinely look forward to using the analytics view, it's the best-designed part of the product
+[39:04] Interviewer: Is that something you've experienced more than once?
+[39:11] Tomás García: This is something that really bothers me. The notification badge shows a number but when I click it, there's nothing new to see
+[40:12] Interviewer: Could you walk me through a specific example?
+[40:18] Tomás García: I have to say, Our team velocity actually improved twenty percent in the first quarter after adopting it
+
+[41:04] Interviewer: That's really helpful. Is there anything else you'd like to add before we wrap up?
+[41:11] Tomás García: Just that I really hope these changes happen soon. The team is getting impatient.
+
+[END OF TRANSCRIPT]

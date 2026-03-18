@@ -1,25 +1,33 @@
 """UI Audit Agent — continuous UI quality, accessibility, and heuristics checking.
 
-This agent validates the ReClaw UI itself:
-1. Heuristic evaluation (Nielsen's 10)
-2. Accessibility compliance (WCAG 2.2)
-3. Navigation path validation
-4. Component consistency
-5. Responsive behavior
-6. Performance metrics
+This agent validates the ReClaw UI by:
+1. Fetching real frontend pages via HTTP and analyzing HTML structure
+2. Checking API responses for consistency
+3. Evaluating against Nielsen's 10 heuristics (using LLM + real data)
+4. Accessibility compliance checks (WCAG 2.2)
+5. Navigation path validation
+6. Component consistency
 7. Error state coverage
 """
 
 import asyncio
 import json
 import logging
+import os
+import re
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
 
+import httpx
+
+from app.api.websocket import broadcast_agent_status
 from app.core.ollama import ollama
 
 logger = logging.getLogger(__name__)
+
+FRONTEND_BASE = os.getenv("RECLAW_FRONTEND_BASE", "http://localhost:3000")
+API_BASE = os.getenv("RECLAW_API_BASE", "http://localhost:8000")
 
 
 class Severity(str, Enum):
@@ -50,6 +58,8 @@ class UIAuditReport:
     issues: list[UIIssue] = field(default_factory=list)
     scores: dict = field(default_factory=dict)
     passed_checks: list[str] = field(default_factory=list)
+    pages_fetched: int = 0
+    api_endpoints_checked: int = 0
 
     @property
     def critical_count(self) -> int:
@@ -69,62 +79,27 @@ class UIAuditAgent:
         self._running = False
         self._audit_interval = 600  # 10 minutes
         self._reports: list[UIAuditReport] = []
+        self._client: httpx.AsyncClient | None = None
+        self._last_html: str = ""
 
-        # UI component registry — what we know about the UI
-        self._components = {
-            "sidebar": {
-                "path": "/",
-                "elements": ["project_list", "navigation", "new_project_button", "collapse_toggle"],
-                "states": ["expanded", "collapsed"],
-            },
-            "chat_view": {
-                "path": "/",
-                "elements": ["message_list", "input_field", "send_button", "file_upload", "streaming_indicator"],
-                "states": ["empty", "with_messages", "streaming", "error"],
-            },
-            "kanban_board": {
-                "path": "/tasks",
-                "elements": ["columns", "task_cards", "add_task", "drag_handles"],
-                "states": ["empty", "with_tasks", "dragging"],
-            },
-            "findings_view": {
-                "path": "/findings",
-                "elements": ["phase_tabs", "stats_cards", "sections", "drill_down"],
-                "states": ["empty", "with_data", "expanded_section"],
-            },
-            "settings_view": {
-                "path": "/settings",
-                "elements": ["hardware_info", "model_status", "model_list"],
-                "states": ["loading", "loaded", "error"],
-            },
-            "status_bar": {
-                "path": "/",
-                "elements": ["connection_indicator", "agent_status", "version"],
-                "states": ["connected", "disconnected"],
-            },
-        }
-
-        # Nielsen's 10 heuristics checklist
-        self._heuristics = {
-            "visibility": "Visibility of system status — user always knows what's happening",
-            "match": "Match between system and real world — familiar language and concepts",
-            "control": "User control and freedom — undo, redo, escape hatches",
-            "consistency": "Consistency and standards — same actions produce same results",
-            "error_prevention": "Error prevention — design prevents errors before they occur",
-            "recognition": "Recognition rather than recall — minimize memory load",
-            "flexibility": "Flexibility and efficiency — accelerators for experts",
-            "aesthetics": "Aesthetic and minimalist design — no irrelevant information",
-            "error_recovery": "Help users recognize, diagnose, and recover from errors",
-            "help": "Help and documentation — accessible when needed",
-        }
+    async def _get_client(self) -> httpx.AsyncClient:
+        if self._client is None or self._client.is_closed:
+            self._client = httpx.AsyncClient(timeout=15.0)
+        return self._client
 
     async def start(self) -> None:
         """Start the continuous UI audit loop."""
         self._running = True
         logger.info("UI Audit Agent started.")
 
+        # Wait for frontend to be ready
+        await asyncio.sleep(30)
+
         while self._running:
             try:
+                await broadcast_agent_status(
+                    "working", "UI Audit Agent: running quality checks..."
+                )
                 report = await self.run_audit()
                 self._reports.append(report)
 
@@ -132,10 +107,20 @@ class UIAuditAgent:
                     self._reports = self._reports[-50:]
 
                 if report.critical_count > 0:
+                    await broadcast_agent_status(
+                        "warning",
+                        f"UI Audit: {report.critical_count} critical issues! Score: {report.overall_score:.0f}/100",
+                    )
                     logger.warning(f"UI Audit: {report.critical_count} critical issues found!")
+                else:
+                    await broadcast_agent_status(
+                        "idle",
+                        f"UI Audit complete. Score: {report.overall_score:.0f}/100",
+                    )
 
             except Exception as e:
                 logger.error(f"UI Audit error: {e}")
+                await broadcast_agent_status("error", f"UI Audit error: {e}")
 
             await asyncio.sleep(self._audit_interval)
 
@@ -145,118 +130,233 @@ class UIAuditAgent:
     async def run_audit(self) -> UIAuditReport:
         """Run a complete UI audit cycle."""
         report = UIAuditReport(timestamp=datetime.now(timezone.utc).isoformat())
+        client = await self._get_client()
 
-        # 1. Heuristic evaluation
-        heuristic_issues = await self._evaluate_heuristics()
-        report.issues.extend(heuristic_issues)
+        # 1. Fetch frontend page and analyze HTML
+        html_issues, pages = await self._analyze_frontend_html(client)
+        report.issues.extend(html_issues)
+        report.pages_fetched = pages
+        if not html_issues:
+            report.passed_checks.append("frontend_html")
 
-        # 2. Accessibility check
-        a11y_issues = self._check_accessibility()
+        # 2. Check API response consistency
+        api_issues, endpoints = await self._check_api_consistency(client)
+        report.issues.extend(api_issues)
+        report.api_endpoints_checked = endpoints
+        if not api_issues:
+            report.passed_checks.append("api_consistency")
+
+        # 3. Accessibility check (from HTML analysis)
+        a11y_issues = self._check_accessibility_from_html(self._last_html)
         report.issues.extend(a11y_issues)
+        if not a11y_issues:
+            report.passed_checks.append("accessibility")
 
-        # 3. Navigation path validation
+        # 4. Navigation path validation
         nav_issues = self._check_navigation()
         report.issues.extend(nav_issues)
+        if not nav_issues:
+            report.passed_checks.append("navigation")
 
-        # 4. Component consistency
+        # 5. Component consistency
         consistency_issues = self._check_consistency()
         report.issues.extend(consistency_issues)
+        if not consistency_issues:
+            report.passed_checks.append("consistency")
 
-        # 5. Error state coverage
-        error_issues = self._check_error_states()
+        # 6. Error state coverage (tests real API error responses)
+        error_issues = await self._check_error_states(client)
         report.issues.extend(error_issues)
+        if not error_issues:
+            report.passed_checks.append("error_states")
+
+        # 7. Heuristic evaluation (LLM-assisted with real data)
+        heuristic_issues = await self._evaluate_heuristics_with_data(report)
+        report.issues.extend(heuristic_issues)
+        if not heuristic_issues:
+            report.passed_checks.append("heuristics")
 
         # Calculate scores
         report.scores = self._calculate_scores(report)
 
         return report
 
-    async def _evaluate_heuristics(self) -> list[UIIssue]:
-        """Evaluate UI against Nielsen's 10 heuristics using LLM analysis."""
+    async def _analyze_frontend_html(self, client: httpx.AsyncClient) -> tuple[list[UIIssue], int]:
+        """Fetch the frontend page and analyze HTML structure."""
         issues = []
-
-        # Use the LLM to evaluate the UI structure against heuristics
-        ui_description = json.dumps(self._components, indent=2)
-
-        prompt = f"""You are a UX expert performing a heuristic evaluation of a web application called ReClaw.
-
-Here is the UI component structure:
-{ui_description}
-
-Nielsen's 10 heuristics:
-{json.dumps(self._heuristics, indent=2)}
-
-The app is a UX Research assistant with: chat view, kanban board, findings view with Double Diamond phases,
-settings page, collapsible sidebar, and status bar.
-
-Evaluate each component against each heuristic. Report ONLY actual issues you can identify
-from the component structure. Don't report speculative issues.
-
-Respond in JSON:
-{{"issues": [{{"component": "...", "heuristic": "...", "severity": "critical|major|minor|cosmetic",
-"description": "...", "recommendation": "..."}}]}}"""
+        pages_fetched = 0
 
         try:
-            resp = await ollama.chat(messages=[{"role": "user", "content": prompt}], temperature=0.3)
-            text = resp.get("message", {}).get("content", "")
-            start = text.find("{")
-            end = text.rfind("}") + 1
-            if start >= 0 and end > start:
-                data = json.loads(text[start:end])
-                for issue_data in data.get("issues", []):
+            resp = await client.get(FRONTEND_BASE)
+            if resp.status_code == 200:
+                pages_fetched = 1
+                html = resp.text
+                self._last_html = html
+
+                # Check for essential meta tags
+                if "viewport" not in html.lower():
                     issues.append(UIIssue(
-                        category="heuristic",
-                        severity=Severity(issue_data.get("severity", "minor")),
-                        location=issue_data.get("component", "unknown"),
-                        description=issue_data.get("description", ""),
-                        heuristic=issue_data.get("heuristic", ""),
-                        recommendation=issue_data.get("recommendation", ""),
+                        category="accessibility",
+                        severity=Severity.MAJOR,
+                        location="index.html",
+                        description="Missing viewport meta tag — mobile experience may be broken.",
+                        heuristic="WCAG 1.4.10 Reflow",
+                        recommendation="Add <meta name='viewport' content='width=device-width, initial-scale=1'>",
                     ))
-        except Exception as e:
-            logger.error(f"Heuristic evaluation error: {e}")
 
-        return issues
+                # Check for lang attribute
+                if not re.search(r'<html[^>]*lang=', html):
+                    issues.append(UIIssue(
+                        category="accessibility",
+                        severity=Severity.MAJOR,
+                        location="index.html",
+                        description="Missing lang attribute on <html> element.",
+                        heuristic="WCAG 3.1.1 Language of Page",
+                        recommendation="Add lang='en' to the <html> tag.",
+                    ))
 
-    def _check_accessibility(self) -> list[UIIssue]:
-        """Check for common accessibility issues in the UI structure."""
-        issues = []
-
-        # Check for missing aria labels / roles in component definitions
-        for comp_name, comp_data in self._components.items():
-            # Check if interactive elements have proper labeling
-            interactive = {"button", "input", "toggle", "drag"}
-            for elem in comp_data.get("elements", []):
-                has_interactive = any(i in elem.lower() for i in interactive)
-                if has_interactive:
-                    # Flag for review — can't verify without actual DOM
+                # Check for title
+                if "<title>" not in html.lower() or "<title></title>" in html.lower():
                     issues.append(UIIssue(
                         category="accessibility",
                         severity=Severity.MINOR,
-                        location=f"{comp_name}/{elem}",
-                        description=f"Interactive element '{elem}' — verify aria-label and keyboard accessibility.",
-                        heuristic="WCAG 4.1.2 Name, Role, Value",
-                        recommendation=f"Ensure '{elem}' has proper aria-label, role, and keyboard event handlers.",
+                        location="index.html",
+                        description="Missing or empty page title.",
+                        heuristic="WCAG 2.4.2 Page Titled",
+                        recommendation="Set a descriptive page title.",
                     ))
 
-        # Check color contrast concerns
-        issues.append(UIIssue(
-            category="accessibility",
-            severity=Severity.MINOR,
-            location="global/colors",
-            description="Verify color contrast ratios meet WCAG AA (4.5:1 for text, 3:1 for large text).",
-            heuristic="WCAG 1.4.3 Contrast",
-            recommendation="Run automated contrast checker on all text/background combinations.",
-        ))
+                # Check JS bundle size (rough estimate from script tags)
+                script_count = html.lower().count("<script")
+                if script_count > 15:
+                    issues.append(UIIssue(
+                        category="performance",
+                        severity=Severity.MINOR,
+                        location="index.html",
+                        description=f"Found {script_count} script tags — may impact initial load time.",
+                        recommendation="Consider code splitting and lazy loading.",
+                    ))
 
-        # Check for keyboard navigation
-        issues.append(UIIssue(
-            category="accessibility",
-            severity=Severity.MAJOR,
-            location="kanban_board/drag_handles",
-            description="Drag-and-drop must have keyboard alternative for accessibility.",
-            heuristic="WCAG 2.1.1 Keyboard",
-            recommendation="Add keyboard-operated move buttons (arrow keys or menu) as alternative to drag-and-drop.",
-        ))
+            else:
+                issues.append(UIIssue(
+                    category="availability",
+                    severity=Severity.CRITICAL,
+                    location="frontend",
+                    description=f"Frontend returned HTTP {resp.status_code}",
+                    recommendation="Ensure frontend dev server is running on port 3000.",
+                ))
+
+        except httpx.ConnectError:
+            issues.append(UIIssue(
+                category="availability",
+                severity=Severity.CRITICAL,
+                location="frontend",
+                description="Cannot connect to frontend at " + FRONTEND_BASE,
+                recommendation="Start the frontend dev server: npm --prefix frontend run dev",
+            ))
+        except Exception as e:
+            logger.error(f"Frontend HTML fetch error: {e}")
+
+        return issues, pages_fetched
+
+    async def _check_api_consistency(self, client: httpx.AsyncClient) -> tuple[list[UIIssue], int]:
+        """Check API endpoints return consistent, well-structured responses."""
+        issues = []
+        endpoints_checked = 0
+
+        api_checks = [
+            ("/api/health", "health"),
+            ("/api/settings/status", "status"),
+            ("/api/projects", "projects"),
+            ("/api/skills", "skills"),
+        ]
+
+        for path, name in api_checks:
+            try:
+                resp = await client.get(f"{API_BASE}{path}")
+                endpoints_checked += 1
+
+                if resp.status_code != 200:
+                    issues.append(UIIssue(
+                        category="api_consistency",
+                        severity=Severity.MAJOR,
+                        location=path,
+                        description=f"API endpoint {path} returned {resp.status_code}",
+                        recommendation=f"Fix {name} endpoint to return 200.",
+                    ))
+                elif not resp.headers.get("content-type", "").startswith("application/json"):
+                    issues.append(UIIssue(
+                        category="api_consistency",
+                        severity=Severity.MINOR,
+                        location=path,
+                        description=f"API endpoint {path} doesn't return application/json content-type",
+                        recommendation="Set Content-Type: application/json header.",
+                    ))
+                else:
+                    # Check response time
+                    if hasattr(resp, "elapsed") and resp.elapsed.total_seconds() > 3:
+                        issues.append(UIIssue(
+                            category="performance",
+                            severity=Severity.MINOR,
+                            location=path,
+                            description=f"API response time > 3s ({resp.elapsed.total_seconds():.1f}s)",
+                            recommendation="Optimize query or add caching.",
+                        ))
+
+            except Exception as e:
+                issues.append(UIIssue(
+                    category="api_consistency",
+                    severity=Severity.MAJOR,
+                    location=path,
+                    description=f"Failed to reach API endpoint {path}: {e}",
+                    recommendation="Ensure backend is running on port 8000.",
+                ))
+
+        return issues, endpoints_checked
+
+    def _check_accessibility_from_html(self, html: str) -> list[UIIssue]:
+        """Analyze fetched HTML for accessibility issues."""
+        issues = []
+        if not html:
+            return issues
+
+        # Check for images without alt text
+        imgs_without_alt = len(re.findall(r'<img(?![^>]*alt=)', html))
+        if imgs_without_alt > 0:
+            issues.append(UIIssue(
+                category="accessibility",
+                severity=Severity.MAJOR,
+                location="global",
+                description=f"Found {imgs_without_alt} images without alt attributes.",
+                heuristic="WCAG 1.1.1 Non-text Content",
+                recommendation="Add descriptive alt text to all images.",
+            ))
+
+        # Check for buttons without accessible names
+        buttons_without_text = len(re.findall(r'<button[^>]*>\s*</button>', html))
+        if buttons_without_text > 0:
+            issues.append(UIIssue(
+                category="accessibility",
+                severity=Severity.MAJOR,
+                location="global",
+                description=f"Found {buttons_without_text} empty buttons without text or aria-label.",
+                heuristic="WCAG 4.1.2 Name, Role, Value",
+                recommendation="Add text content or aria-label to all buttons.",
+            ))
+
+        # Check for form inputs without labels
+        inputs = len(re.findall(r'<input[^>]*>', html))
+        labels = len(re.findall(r'<label', html))
+        aria_labels_on_inputs = len(re.findall(r'<input[^>]*aria-label', html))
+        if inputs > 0 and (labels + aria_labels_on_inputs) < inputs:
+            issues.append(UIIssue(
+                category="accessibility",
+                severity=Severity.MINOR,
+                location="global",
+                description=f"Found {inputs} inputs but only {labels + aria_labels_on_inputs} labels/aria-labels.",
+                heuristic="WCAG 1.3.1 Info and Relationships",
+                recommendation="Ensure every input has an associated label or aria-label.",
+            ))
 
         return issues
 
@@ -264,28 +364,19 @@ Respond in JSON:
         """Validate navigation paths and state management."""
         issues = []
 
-        # Check that all views are reachable
-        required_views = {"chat", "tasks", "findings", "settings"}
-        nav_elements = self._components.get("sidebar", {}).get("elements", [])
-
-        if "navigation" not in nav_elements:
-            issues.append(UIIssue(
-                category="navigation",
-                severity=Severity.CRITICAL,
-                location="sidebar",
-                description="No navigation element found in sidebar.",
-                recommendation="Ensure sidebar has clear navigation links to all views.",
-            ))
-
-        # Check for back navigation / breadcrumbs in nested views
-        issues.append(UIIssue(
-            category="navigation",
-            severity=Severity.MINOR,
-            location="findings_view/drill_down",
-            description="Drill-down view should have breadcrumb navigation for context.",
-            heuristic="Recognition rather than recall",
-            recommendation="Add breadcrumb trail: Project > Phase > Finding Type > Specific Finding.",
-        ))
+        # Check if nav items are present in the fetched HTML
+        required_nav_items = ["chat", "tasks", "findings", "settings"]
+        if self._last_html:
+            html_lower = self._last_html.lower()
+            missing = [item for item in required_nav_items if item not in html_lower]
+            if missing:
+                issues.append(UIIssue(
+                    category="navigation",
+                    severity=Severity.MINOR,
+                    location="frontend",
+                    description=f"Navigation items not found in initial HTML: {', '.join(missing)} (may be client-rendered)",
+                    recommendation="Verify all navigation items render client-side.",
+                ))
 
         return issues
 
@@ -293,10 +384,17 @@ Respond in JSON:
         """Check for consistency across components."""
         issues = []
 
-        # Check that all components have proper state handling
-        for comp_name, comp_data in self._components.items():
+        # Expected component states
+        components = {
+            "chat_view": {"states": ["empty", "with_messages", "streaming", "error"]},
+            "kanban_board": {"states": ["empty", "with_tasks", "dragging"]},
+            "findings_view": {"states": ["empty", "with_data", "expanded_section"]},
+            "settings_view": {"states": ["loading", "loaded", "error"]},
+        }
+
+        for comp_name, comp_data in components.items():
             states = comp_data.get("states", [])
-            if "error" not in states and comp_name not in {"status_bar", "sidebar"}:
+            if "error" not in states:
                 issues.append(UIIssue(
                     category="consistency",
                     severity=Severity.MINOR,
@@ -304,8 +402,7 @@ Respond in JSON:
                     description=f"Component '{comp_name}' has no explicit error state defined.",
                     recommendation="Add error state handling with clear error message and retry action.",
                 ))
-
-            if "loading" not in states and comp_name not in {"status_bar", "sidebar"}:
+            if "loading" not in states and "empty" not in states:
                 issues.append(UIIssue(
                     category="consistency",
                     severity=Severity.COSMETIC,
@@ -316,26 +413,91 @@ Respond in JSON:
 
         return issues
 
-    def _check_error_states(self) -> list[UIIssue]:
-        """Check for proper error state coverage."""
+    async def _check_error_states(self, client: httpx.AsyncClient) -> list[UIIssue]:
+        """Test error states by sending bad requests to the API."""
         issues = []
 
-        error_scenarios = [
-            ("chat_view", "Ollama offline — chat should show clear error, not just fail silently"),
-            ("chat_view", "Network disconnect during streaming — handle gracefully"),
-            ("kanban_board", "Failed task move — should rollback optimistic update"),
-            ("findings_view", "Empty project — should show helpful onboarding message"),
-            ("settings_view", "Hardware detection failure — show fallback information"),
-        ]
+        # Test invalid project ID
+        try:
+            resp = await client.get(f"{API_BASE}/api/projects/nonexistent-id-12345")
+            if resp.status_code == 500:
+                issues.append(UIIssue(
+                    category="error_handling",
+                    severity=Severity.MAJOR,
+                    location="/api/projects/:id",
+                    description="Invalid project ID returns 500 instead of 404.",
+                    recommendation="Return 404 with clear error message for missing resources.",
+                ))
+        except Exception:
+            pass
 
-        for component, scenario in error_scenarios:
-            issues.append(UIIssue(
-                category="error_handling",
-                severity=Severity.MINOR,
-                location=component,
-                description=f"Error scenario to verify: {scenario}",
-                recommendation="Test this scenario and ensure graceful degradation.",
-            ))
+        # Test invalid task creation
+        try:
+            resp = await client.post(
+                f"{API_BASE}/api/tasks",
+                json={"title": ""},  # Missing required fields
+            )
+            if resp.status_code == 500:
+                issues.append(UIIssue(
+                    category="error_handling",
+                    severity=Severity.MAJOR,
+                    location="/api/tasks",
+                    description="Invalid task creation returns 500 instead of 422.",
+                    recommendation="Return 422 with validation error details.",
+                ))
+        except Exception:
+            pass
+
+        return issues
+
+    async def _evaluate_heuristics_with_data(self, report: UIAuditReport) -> list[UIIssue]:
+        """Use LLM to evaluate heuristics with real audit data as context."""
+        issues = []
+
+        existing_issues_summary = "\n".join(
+            f"- [{i.severity.value}] {i.location}: {i.description}"
+            for i in report.issues[:20]
+        )
+
+        prompt = f"""You are a UX expert evaluating a web application called ReClaw (a UX Research assistant).
+
+Real audit data from this cycle:
+- Frontend pages fetched: {report.pages_fetched}
+- API endpoints checked: {report.api_endpoints_checked}
+- Issues found so far: {len(report.issues)}
+- Checks passed: {', '.join(report.passed_checks) or 'none yet'}
+
+Existing issues found by automated checks:
+{existing_issues_summary or 'None found by automated checks.'}
+
+Based on the REAL data above, identify 3-5 additional heuristic issues that are
+NOT already covered by the existing issues. Focus on actionable, specific issues.
+
+Respond in JSON:
+{{"issues": [{{"heuristic": "...", "severity": "minor|major", "location": "...",
+"description": "...", "recommendation": "..."}}]}}"""
+
+        try:
+            resp = await ollama.chat(messages=[{"role": "user", "content": prompt}], temperature=0.3)
+            text = resp.get("message", {}).get("content", "")
+            start = text.find("{")
+            end = text.rfind("}") + 1
+            if start >= 0 and end > start:
+                data = json.loads(text[start:end])
+                for issue_data in data.get("issues", [])[:5]:
+                    sev = issue_data.get("severity", "minor")
+                    if sev not in ("critical", "major", "minor", "cosmetic"):
+                        sev = "minor"
+                    issues.append(UIIssue(
+                        category="heuristic",
+                        severity=Severity(sev),
+                        location=issue_data.get("location", "unknown"),
+                        description=issue_data.get("description", ""),
+                        heuristic=issue_data.get("heuristic", ""),
+                        recommendation=issue_data.get("recommendation", ""),
+                    ))
+        except Exception as e:
+            logger.error(f"Heuristic evaluation error: {e}")
 
         return issues
 
@@ -346,7 +508,6 @@ Respond in JSON:
 
         for cat in categories:
             cat_issues = [i for i in report.issues if i.category == cat]
-            # Score: 100 - (critical*25 + major*15 + minor*5 + cosmetic*1)
             penalty = sum(
                 25 if i.severity == Severity.CRITICAL else
                 15 if i.severity == Severity.MAJOR else
@@ -354,6 +515,11 @@ Respond in JSON:
                 for i in cat_issues
             )
             scores[cat] = max(0, 100 - penalty)
+
+        # Add perfect scores for categories with no issues
+        for check in report.passed_checks:
+            if check not in scores:
+                scores[check] = 100
 
         return scores
 

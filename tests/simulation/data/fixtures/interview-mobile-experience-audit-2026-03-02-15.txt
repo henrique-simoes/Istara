@@ -1,0 +1,61 @@
+Interview Transcript — Mobile Experience Audit
+Participant: Kwame Asante (Business Analyst, 2000+)
+Date: 2026-03-02
+Duration: 65 minutes
+Research Goal: Understand why mobile session duration is 60% shorter than desktop
+
+[00:00] Interviewer: When do you typically use the mobile app versus the desktop version?
+[00:51] Kwame Asante: Well, in our case, Honestly, I almost gave up during the sign-up process We've gotten used to it at this point.
+[01:38] Interviewer: Have you ever given up on a task on mobile and waited until you were at your desk?
+[01:42] Kwame Asante: That's actually something I really appreciate. I would absolutely recommend it to my team, with a few caveats
+[02:18] Interviewer: What tasks do you try to complete on mobile?
+[02:22] Kwame Asante: That's actually something I really appreciate. I don't think the pricing page made it clear what I was actually getting
+[03:31] Interviewer: What was the last thing that really frustrated you on the mobile app?
+[03:39] Kwame Asante: That's actually something I really appreciate. I don't think the pricing page made it clear what I was actually getting
+[04:20] Interviewer: Do you use the mobile app in specific contexts, like commuting or in meetings?
+[04:27] Kwame Asante: That's probably my biggest complaint. The notification badge shows a number but when I click it, there's nothing new to see
+[05:11] Interviewer: What did you try to do about it?
+[05:19] Kwame Asante: Honestly, that's been a pain point for us. The tool doesn't warn me before I navigate away from an unsaved form
+[06:21] Interviewer: If you could only keep three features on the mobile version, which would they be?
+[06:29] Kwame Asante: That's actually something I really appreciate. The offline mode is crucial for me because I travel a lot and can't always count on good internet
+[07:10] Interviewer: How did that affect your workflow?
+[07:16] Kwame Asante: This is something that really bothers me. The placeholder text in the search box vanishes too quickly before I can read what formats are supported
+[08:37] Interviewer: What happened next?
+[08:41] Kwame Asante: That's actually something I really appreciate. The automations feature was a bit overwhelming at first but once I set up a few rules it saved hours every week
+[09:30] Interviewer: How does our mobile experience compare to other work apps you use on your phone?
+[09:34] Kwame Asante: That's probably my biggest complaint. The dark mode has contrast issues that make some status badges completely invisible
+[10:07] Interviewer: What notifications do you find useful on mobile versus distracting?
+[10:13] Kwame Asante: Yeah, absolutely — The workload balancing view finally made it obvious when someone was overloaded
+[11:12] Interviewer: Can you tell me more about that?
+[11:18] Kwame Asante: One thing I genuinely enjoy is — The onboarding emails were genuinely helpful, they came at the right pace
+[12:30] Interviewer: What feels harder to do on your phone compared to your computer?
+[12:35] Kwame Asante: One thing I genuinely enjoy is — It's one of those tools where you know the feature exists, you just can't find it
+[13:17] Interviewer: How does the mobile app fit into your workflow throughout the day?
+[13:25] Kwame Asante: One thing I genuinely enjoy is — I was pleasantly surprised by how fast the search results came back
+[14:40] Interviewer: What happened next?
+[14:48] Kwame Asante: This is something that really bothers me. The dark mode has contrast issues that make some status badges completely invisible
+[15:37] Interviewer: How often do you switch between mobile and desktop for the same task?
+[15:44] Kwame Asante: Yeah, so this is where it gets frustrating. I can't customize the columns in the table view, so I'm always scrolling sideways to find what I need
+[16:52] Interviewer: When did you first notice that?
+[17:00] Kwame Asante: It depends on the situation, but generally I genuinely look forward to using the analytics view, it's the best-designed part of the product It's not great, not terrible.
+[18:07] Interviewer: Did anyone on your team feel differently about that?
+[18:10] Kwame Asante: I'll be blunt — It took me two weeks to realize there was a bulk edit feature hidden in a dropdown
+[18:46] Interviewer: Are there features you avoid using on mobile entirely?
+[18:54] Kwame Asante: One thing I genuinely enjoy is — Honestly, I almost gave up during the sign-up process
+[19:31] Interviewer: What was your initial reaction?
+[19:35] Kwame Asante: So, I tried to set it up for my personal projects and it felt like overkill, it's really built for teams It's not great, not terrible.
+[20:21] Interviewer: What happened next?
+[20:26] Kwame Asante: Yeah, so this is where it gets frustrating. The tool shows me information I don't have permission to act on, which is confusing
+[20:57] Interviewer: Did anyone on your team feel differently about that?
+[21:03] Kwame Asante: So, I had to watch a YouTube tutorial to understand the reporting feature, and that shouldn't be necessary Some team members feel differently, but that's my take.
+[21:49] Interviewer: Could you walk me through a specific example?
+[21:54] Kwame Asante: This is something that really bothers me. Our team can't agree on the taxonomy because the tool doesn't enforce consistent labeling
+[22:43] Interviewer: How important is that to your day-to-day work?
+[22:49] Kwame Asante: Yeah, absolutely — It does what I need about eighty percent of the time, the other twenty percent I work around
+[23:35] Interviewer: What did you try to do about it?
+[23:43] Kwame Asante: This is something that really bothers me. The search bar basically never returns what I'm actually looking for
+
+[24:24] Interviewer: That's really helpful. Is there anything else you'd like to add before we wrap up?
+[24:30] Kwame Asante: No, I think that covers it. I appreciate you taking the time to ask about our experience.
+
+[END OF TRANSCRIPT]

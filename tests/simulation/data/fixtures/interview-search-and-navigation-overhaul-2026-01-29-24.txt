@@ -1,0 +1,75 @@
+Interview Transcript — Search and Navigation Overhaul
+Participant: Priya Patel (UX Designer, 10-50)
+Date: 2026-01-29
+Duration: 65 minutes
+Research Goal: Reduce support tickets related to 'can't find feature' by 35%
+
+[00:00] Interviewer: How do you usually find what you need in the product?
+[00:47] Priya Patel: So, I wish more tools had this level of thought put into the empty states, it's clear what you need to do It's not great, not terrible.
+[01:30] Interviewer: What would the ideal navigation look like for the way you work?
+[01:34] Priya Patel: Well, in our case, I'm not sure who decided the default view should show everything, it's completely overwhelming We've gotten used to it at this point.
+[02:53] Interviewer: Can you tell me more about that?
+[02:59] Priya Patel: That's a good question. I think the mobile notifications could be smarter, right now I get alerts for things that don't need my attention I think it depends a lot on your use case.
+[03:30] Interviewer: What would an ideal solution look like for you?
+[03:38] Priya Patel: One thing I genuinely enjoy is — I don't think the pricing page made it clear what I was actually getting
+[04:41] Interviewer: What do you do when you can't find a feature you know exists?
+[04:49] Priya Patel: This is something that really bothers me. There's no keyboard shortcut for the one action I do fifty times a day
+[05:32] Interviewer: When you get lost in the product, how do you find your way back?
+[05:35] Priya Patel: This is something that really bothers me. There's no keyboard shortcut for the one action I do fifty times a day
+[06:35] Interviewer: What did you try to do about it?
+[06:38] Priya Patel: I'll be blunt — I needed to train five new team members and there's no way to share my custom views with them
+[07:51] Interviewer: Could you walk me through a specific example?
+[07:56] Priya Patel: That's actually something I really appreciate. It's rare that a tool actually makes me more productive rather than just feeling like more overhead
+[09:11] Interviewer: What labels or terms feel confusing or unclear to you?
+[09:17] Priya Patel: I'll be blunt — I accidentally deleted a project and there was no way to undo it
+[10:06] Interviewer: Do you use the search function or do you browse through menus?
+[10:11] Priya Patel: That's actually something I really appreciate. I remember thinking, why is this taking so many clicks?
+[10:59] Interviewer: Have you ever discovered a feature by accident? Tell me about that.
+[11:02] Priya Patel: Honestly, that's been a pain point for us. The date picker doesn't let me type a date manually, I have to click through months one by one
+[12:20] Interviewer: When did you first notice that?
+[12:28] Priya Patel: Well, in our case, The workload balancing view finally made it obvious when someone was overloaded Some team members feel differently, but that's my take.
+[13:05] Interviewer: What's the most common thing you search for?
+[13:13] Priya Patel: So, The way it handles recurring tasks is finally how I always thought it should work in other tools It's not great, not terrible.
+[14:37] Interviewer: How do you feel about the depth of the navigation, the number of clicks to get somewhere?
+[14:40] Priya Patel: This is something that really bothers me. When I paste a URL it doesn't auto-detect and create a clickable link
+[15:54] Interviewer: Can you show me a time when you searched for something and it didn't work?
+[15:58] Priya Patel: One thing I genuinely enjoy is — I've been using it for two years and I'm still discovering features I didn't know existed
+[17:18] Interviewer: Could you walk me through a specific example?
+[17:26] Priya Patel: Well, in our case, The way it handles dependencies between tasks is really elegant, I haven't seen that done better anywhere I mean, it works, but there's room for improvement.
+[18:44] Interviewer: Are there shortcuts or quick actions you wish existed?
+[18:50] Priya Patel: Honestly, that's been a pain point for us. When I paste a URL it doesn't auto-detect and create a clickable link
+[19:25] Interviewer: Is that something you've experienced more than once?
+[19:33] Priya Patel: This is something that really bothers me. The dashboard widgets rearrange themselves every time I log in, which is disorienting
+[20:59] Interviewer: How would you describe the navigation structure to a new colleague?
+[21:02] Priya Patel: Yeah, absolutely — I'm not sure who decided the default view should show everything, it's completely overwhelming
+[22:29] Interviewer: When did you first notice that?
+[22:32] Priya Patel: That's probably my biggest complaint. The tool sends email notifications for my own actions, which clutters my inbox
+[23:25] Interviewer: What was your initial reaction?
+[23:31] Priya Patel: Oh for sure, I genuinely look forward to using the analytics view, it's the best-designed part of the product
+[24:33] Interviewer: Could you walk me through a specific example?
+[24:41] Priya Patel: I have to say, Compared to what we used before, this is a huge improvement, but the bar was pretty low
+[25:42] Interviewer: Did anyone on your team feel differently about that?
+[25:48] Priya Patel: That's actually something I really appreciate. The time tracking built into the task cards is surprisingly accurate and doesn't add friction to the workflow
+[27:12] Interviewer: What did you try to do about it?
+[27:18] Priya Patel: That's probably my biggest complaint. I have no idea what half the icons in the toolbar mean
+[28:37] Interviewer: How important is that to your day-to-day work?
+[28:45] Priya Patel: It depends on the situation, but generally My biggest fear is that they'll change the interface in a major update and I'll have to relearn everything We've gotten used to it at this point.
+[30:05] Interviewer: Can you tell me more about that?
+[30:09] Priya Patel: I'll be blunt — The tooltips appear too slowly and disappear too quickly to actually read them
+[31:05] Interviewer: Is that something you've experienced more than once?
+[31:09] Priya Patel: I'll be blunt — There's no keyboard shortcut for the one action I do fifty times a day
+[31:59] Interviewer: How does that compare to what you expected?
+[32:05] Priya Patel: I have to say, I don't think the pricing page made it clear what I was actually getting
+[33:08] Interviewer: What happened next?
+[33:12] Priya Patel: One thing I genuinely enjoy is — The customer support has been phenomenal, they responded to my issue in under an hour
+[34:11] Interviewer: What did you try to do about it?
+[34:15] Priya Patel: Oh for sure, I actually really liked how the dashboard shows everything at a glance
+[35:40] Interviewer: When did you first notice that?
+[35:46] Priya Patel: That's actually something I really appreciate. It's one of those tools where you know the feature exists, you just can't find it
+[36:42] Interviewer: How does that compare to what you expected?
+[36:45] Priya Patel: So, I was pleasantly surprised by how fast the search results came back We've gotten used to it at this point.
+
+[38:09] Interviewer: That's really helpful. Is there anything else you'd like to add before we wrap up?
+[38:17] Priya Patel: No, I think that covers it. I appreciate you taking the time to ask about our experience.
+
+[END OF TRANSCRIPT]

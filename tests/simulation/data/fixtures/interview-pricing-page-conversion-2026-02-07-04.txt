@@ -1,0 +1,85 @@
+Interview Transcript — Pricing Page Conversion
+Participant: Pavel Volkov (DevOps Lead, 200-500)
+Date: 2026-02-07
+Duration: 52 minutes
+Research Goal: Increase free-to-paid conversion rate from 3.1% to 5%
+
+[00:00] Interviewer: What was your understanding of the pricing tiers before you signed up?
+[00:34] Pavel Volkov: That's a good question. I don't think the pricing page made it clear what I was actually getting I think it depends a lot on your use case.
+[01:53] Interviewer: What happened next?
+[02:00] Pavel Volkov: That's probably my biggest complaint. The mobile app crashes at least once a day when I try to upload photos
+[03:08] Interviewer: Can you tell me more about that?
+[03:14] Pavel Volkov: Yeah, absolutely — The drag-and-drop interface is really satisfying when it works, but sometimes items just snap to the wrong place
+[04:16] Interviewer: How important is that to your day-to-day work?
+[04:20] Pavel Volkov: That's probably my biggest complaint. I can't snooze a task notification for a specific time, it's either dismiss or nothing
+[05:06] Interviewer: What made you choose the plan you're currently on?
+[05:12] Pavel Volkov: Let me think about that. It feels like it was designed by engineers for engineers, not for someone like me I mean, it works, but there's room for improvement.
+[06:20] Interviewer: What was your initial reaction?
+[06:26] Pavel Volkov: Yeah, absolutely — It's rare that a tool actually makes me more productive rather than just feeling like more overhead
+[07:27] Interviewer: How do you justify the cost of this tool to your manager or finance team?
+[07:31] Pavel Volkov: That's probably my biggest complaint. The dependency arrows in the Gantt chart overlap so much they're completely unreadable
+[08:55] Interviewer: Do you feel the value you get matches what you pay?
+[09:01] Pavel Volkov: So, I was confused by the terminology, what you call a workspace I would call a project I think it depends a lot on your use case.
+[10:05] Interviewer: When did you first notice that?
+[10:12] Pavel Volkov: Let me think about that. I've never had a tool that actually made meetings shorter, but the shared boards did exactly that We've gotten used to it at this point.
+[10:57] Interviewer: Was there anything confusing about how features are split across plans?
+[11:04] Pavel Volkov: That's probably my biggest complaint. I can't set different notification preferences for different projects
+[12:19] Interviewer: What would an ideal solution look like for you?
+[12:27] Pavel Volkov: So, I spent an entire afternoon trying to figure out why my filter wasn't saving, turns out it was a known bug We've gotten used to it at this point.
+[13:55] Interviewer: How does our pricing compare to your expectations?
+[14:01] Pavel Volkov: That's a good question. The permission system is surprisingly granular, we can control exactly who sees what I mean, it works, but there's room for improvement.
+[14:47] Interviewer: What was your initial reaction?
+[14:51] Pavel Volkov: Honestly, that's been a pain point for us. Our team can't agree on the taxonomy because the tool doesn't enforce consistent labeling
+[16:12] Interviewer: What feature would make you upgrade to the next tier immediately?
+[16:20] Pavel Volkov: Oh for sure, The search is actually intelligent, it finds tasks even when I can't remember the exact title
+[17:23] Interviewer: At what point did you decide the free plan wasn't enough?
+[17:26] Pavel Volkov: Honestly, that's been a pain point for us. When I share a link with my team, they always have to log in again even if they already have accounts
+[18:56] Interviewer: How does that compare to what you expected?
+[19:04] Pavel Volkov: I'll be blunt — I can't export just the current filtered view, it always exports everything
+[19:50] Interviewer: What would happen if you had to switch to the free plan tomorrow?
+[19:53] Pavel Volkov: Honestly, that's been a pain point for us. There's no way to see a chronological history of changes to a single task
+[20:27] Interviewer: Was there a trial period, and did it give you enough time to evaluate?
+[20:33] Pavel Volkov: That's probably my biggest complaint. I can't filter by two criteria at the same time without using some advanced syntax I don't understand
+[21:46] Interviewer: Is that something you've experienced more than once?
+[21:53] Pavel Volkov: Oh for sure, I've used probably a dozen project management tools and this one has the best learning curve
+[23:12] Interviewer: Did you evaluate other products' pricing before making a decision?
+[23:20] Pavel Volkov: That's actually something I really appreciate. Our team adopted it in about two days, which is really fast compared to other tools we've tried
+[24:01] Interviewer: When did you first notice that?
+[24:09] Pavel Volkov: That's actually something I really appreciate. I don't think the pricing page made it clear what I was actually getting
+[25:00] Interviewer: What would a fair price for this product look like to you?
+[25:04] Pavel Volkov: Yeah, so this is where it gets frustrating. The chart visualization is misleading because the Y-axis doesn't start at zero and you can't change it
+[25:57] Interviewer: What happened next?
+[26:04] Pavel Volkov: Yeah, absolutely — Our team adopted it in about two days, which is really fast compared to other tools we've tried
+[27:23] Interviewer: How did that affect your workflow?
+[27:31] Pavel Volkov: Honestly, that's been a pain point for us. I can never remember where the billing page is buried
+[28:41] Interviewer: Can you tell me more about that?
+[28:44] Pavel Volkov: I'll be blunt — The comment threading doesn't work properly, replies sometimes appear out of order
+[29:53] Interviewer: What was your initial reaction?
+[29:59] Pavel Volkov: I'll be blunt — The tool doesn't warn me before I navigate away from an unsaved form
+[31:18] Interviewer: What would an ideal solution look like for you?
+[31:24] Pavel Volkov: This is something that really bothers me. Every time I try to copy-paste from the tool into an email, the formatting gets completely mangled
+[32:38] Interviewer: Can you tell me more about that?
+[32:41] Pavel Volkov: I'll be blunt — We had to create a separate shared document just to explain our internal conventions because the tool doesn't support naming rules
+[33:44] Interviewer: How does that compare to what you expected?
+[33:52] Pavel Volkov: That's probably my biggest complaint. There's a three-second delay every time I switch tabs that breaks my concentration
+[35:14] Interviewer: Is that something you've experienced more than once?
+[35:19] Pavel Volkov: Well, in our case, The notifications are just noise at this point, I ignore all of them We've gotten used to it at this point.
+[36:16] Interviewer: How does that compare to what you expected?
+[36:22] Pavel Volkov: Oh for sure, Our team adopted it in about two days, which is really fast compared to other tools we've tried
+[36:54] Interviewer: How does that compare to what you expected?
+[36:59] Pavel Volkov: That's a good question. The timeline view changed how our whole team plans sprints, it's been a game changer I think it depends a lot on your use case.
+[38:19] Interviewer: What did you try to do about it?
+[38:24] Pavel Volkov: One thing I genuinely enjoy is — I can tell the team that built this actually uses their own product, the little details show it
+[39:16] Interviewer: Can you tell me more about that?
+[39:23] Pavel Volkov: This is something that really bothers me. We had to create a separate shared document just to explain our internal conventions because the tool doesn't support naming rules
+[40:38] Interviewer: Did anyone on your team feel differently about that?
+[40:45] Pavel Volkov: Oh for sure, Setting up the integration was a breeze, probably the smoothest part of the whole experience
+[41:18] Interviewer: Could you walk me through a specific example?
+[41:22] Pavel Volkov: It depends on the situation, but generally I had to watch a YouTube tutorial to understand the reporting feature, and that shouldn't be necessary Some team members feel differently, but that's my take.
+[42:49] Interviewer: What was your initial reaction?
+[42:56] Pavel Volkov: I have to say, It handles large projects with hundreds of tasks without slowing down, which not every tool can claim
+
+[43:30] Interviewer: That's really helpful. Is there anything else you'd like to add before we wrap up?
+[43:39] Pavel Volkov: One last thing — The loading time is really frustrating, especially when I'm trying to pull up something in a meeting But otherwise, I think we hit everything.
+
+[END OF TRANSCRIPT]

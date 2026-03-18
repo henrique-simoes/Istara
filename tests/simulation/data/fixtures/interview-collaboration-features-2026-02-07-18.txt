@@ -1,0 +1,65 @@
+Interview Transcript — Collaboration Features
+Participant: Liam Murphy (Support Specialist, 50-200)
+Date: 2026-02-07
+Duration: 45 minutes
+Research Goal: Increase team workspace adoption from 23% to 50% of active accounts
+
+[00:00] Interviewer: How does your team currently collaborate on projects?
+[00:38] Liam Murphy: It depends on the situation, but generally I love the keyboard shortcuts, they save me so much time I mean, it works, but there's room for improvement.
+[01:32] Interviewer: Can you describe a situation where collaborating in the product went well?
+[01:38] Liam Murphy: That's actually something I really appreciate. The automations feature was a bit overwhelming at first but once I set up a few rules it saved hours every week
+[03:05] Interviewer: Do you have team conventions or workarounds that the product should support natively?
+[03:11] Liam Murphy: Honestly, that's been a pain point for us. The tool doesn't warn me before I navigate away from an unsaved form
+[04:37] Interviewer: When did you first notice that?
+[04:45] Liam Murphy: Yeah, so this is where it gets frustrating. It took me two weeks to realize there was a bulk edit feature hidden in a dropdown
+[05:50] Interviewer: Did anyone on your team feel differently about that?
+[05:58] Liam Murphy: It depends on the situation, but generally I've never had a tool that actually made meetings shorter, but the shared boards did exactly that I mean, it works, but there's room for improvement.
+[06:42] Interviewer: Have you tried the real-time collaboration features? What was your experience?
+[06:50] Liam Murphy: Yeah, so this is where it gets frustrating. I couldn't find where to change my settings, I ended up Googling it
+[08:11] Interviewer: What visibility do you have into what your teammates are working on?
+[08:15] Liam Murphy: I have to say, The integration with our CI/CD pipeline means developers never have to leave the tool to update task status
+[08:58] Interviewer: What stops you from using the shared workspace features more often?
+[09:02] Liam Murphy: This is something that really bothers me. The tool shows me information I don't have permission to act on, which is confusing
+[10:04] Interviewer: What would change about your team's workflow if collaboration worked perfectly?
+[10:08] Liam Murphy: That's probably my biggest complaint. The file upload limit is way too small for the kind of documents we work with
+[11:36] Interviewer: What happened next?
+[11:44] Liam Murphy: It depends on the situation, but generally I spent an entire afternoon trying to figure out why my filter wasn't saving, turns out it was a known bug We've gotten used to it at this point.
+[12:14] Interviewer: What would an ideal solution look like for you?
+[12:20] Liam Murphy: Oh for sure, The collaboration features are actually the main reason we chose this over the competitor
+[13:07] Interviewer: When did you first notice that?
+[13:15] Liam Murphy: This is something that really bothers me. I can't export just the current filtered view, it always exports everything
+[14:38] Interviewer: How do you handle handoffs between team members right now?
+[14:43] Liam Murphy: Let me think about that. The mobile app is fine for checking things, but I'd never try to do real work on it It's not great, not terrible.
+[15:16] Interviewer: How important is that to your day-to-day work?
+[15:21] Liam Murphy: That's probably my biggest complaint. I created a template but there's no way to share it with the rest of my organization
+[16:22] Interviewer: What's the biggest friction point when multiple people work on the same project?
+[16:25] Liam Murphy: Yeah, absolutely — Our team adopted it in about two days, which is really fast compared to other tools we've tried
+[17:17] Interviewer: What would make it easier to get your whole team on board?
+[17:25] Liam Murphy: So, I can create a complete project plan in about twenty minutes that would have taken me half a day before I think it depends a lot on your use case.
+[18:16] Interviewer: Is that something you've experienced more than once?
+[18:24] Liam Murphy: One thing I genuinely enjoy is — I actually really liked how the dashboard shows everything at a glance
+[19:38] Interviewer: How do you keep everyone aligned on priorities and progress?
+[19:42] Liam Murphy: That's actually something I really appreciate. I think the biggest strength is how customizable the views are, everyone sets it up differently
+[21:02] Interviewer: What was your initial reaction?
+[21:06] Liam Murphy: Let me think about that. The real-time collaboration is what sold our CEO, she could see everyone's updates live I think it depends a lot on your use case.
+[22:30] Interviewer: What tools do you use alongside our product for team communication?
+[22:36] Liam Murphy: Let me think about that. Setting up the integration was a breeze, probably the smoothest part of the whole experience I think it depends a lot on your use case.
+[23:56] Interviewer: What was your initial reaction?
+[23:59] Liam Murphy: One thing I genuinely enjoy is — I would absolutely recommend it to my team, with a few caveats
+[24:47] Interviewer: How important is that to your day-to-day work?
+[24:52] Liam Murphy: That's probably my biggest complaint. The permissions system is so confusing that we just give everyone admin access
+[26:11] Interviewer: When did you first notice that?
+[26:19] Liam Murphy: Honestly, that's been a pain point for us. I can't set different notification preferences for different projects
+[27:42] Interviewer: How does that compare to what you expected?
+[27:49] Liam Murphy: Let me think about that. The onboarding emails were genuinely helpful, they came at the right pace I mean, it works, but there's room for improvement.
+[29:16] Interviewer: Is that something you've experienced more than once?
+[29:20] Liam Murphy: That's actually something I really appreciate. What I appreciate most is that it doesn't try to do everything, it does its core job well
+[30:36] Interviewer: Is that something you've experienced more than once?
+[30:39] Liam Murphy: Let me think about that. I can create a complete project plan in about twenty minutes that would have taken me half a day before I think it depends a lot on your use case.
+[31:47] Interviewer: How does that compare to what you expected?
+[31:53] Liam Murphy: Oh for sure, Setting up the integration was a breeze, probably the smoothest part of the whole experience
+
+[32:51] Interviewer: That's really helpful. Is there anything else you'd like to add before we wrap up?
+[32:56] Liam Murphy: I'd just emphasize that The template library saved us weeks of setup time when we started a new client project That's really the core of it for me.
+
+[END OF TRANSCRIPT]

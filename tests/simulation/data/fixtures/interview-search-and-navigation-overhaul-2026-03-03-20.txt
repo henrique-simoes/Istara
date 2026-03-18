@@ -1,0 +1,77 @@
+Interview Transcript — Search and Navigation Overhaul
+Participant: Pavel Volkov (DevOps Lead, 200-500)
+Date: 2026-03-03
+Duration: 54 minutes
+Research Goal: Reduce support tickets related to 'can't find feature' by 35%
+
+[00:00] Interviewer: How do you usually find what you need in the product?
+[00:51] Pavel Volkov: It depends on the situation, but generally I wish more tools had this level of thought put into the empty states, it's clear what you need to do Some team members feel differently, but that's my take.
+[02:19] Interviewer: What's the most common thing you search for?
+[02:23] Pavel Volkov: That's a good question. The automations feature was a bit overwhelming at first but once I set up a few rules it saved hours every week Some team members feel differently, but that's my take.
+[03:39] Interviewer: Can you tell me more about that?
+[03:42] Pavel Volkov: One thing I genuinely enjoy is — We switched from a competitor specifically because of the resource allocation view, nothing else had it
+[04:20] Interviewer: Could you walk me through a specific example?
+[04:23] Pavel Volkov: Let me think about that. The commenting system on tasks is way better than email chains, nothing gets lost It's not great, not terrible.
+[05:28] Interviewer: What do you do when you can't find a feature you know exists?
+[05:35] Pavel Volkov: This is something that really bothers me. Every time I export a report, the formatting is completely off and I have to fix it in Excel
+[06:25] Interviewer: Can you show me a time when you searched for something and it didn't work?
+[06:32] Pavel Volkov: That's probably my biggest complaint. Our team can't agree on the taxonomy because the tool doesn't enforce consistent labeling
+[07:18] Interviewer: Did anyone on your team feel differently about that?
+[07:23] Pavel Volkov: I'll be blunt — The file upload limit is way too small for the kind of documents we work with
+[08:46] Interviewer: Do you use the search function or do you browse through menus?
+[08:50] Pavel Volkov: That's actually something I really appreciate. The notifications are just noise at this point, I ignore all of them
+[09:51] Interviewer: Are there shortcuts or quick actions you wish existed?
+[09:56] Pavel Volkov: Honestly, that's been a pain point for us. The help docs are always out of date and show screenshots from an older version
+[10:30] Interviewer: How would you describe the navigation structure to a new colleague?
+[10:34] Pavel Volkov: That's actually something I really appreciate. The integration with our CI/CD pipeline means developers never have to leave the tool to update task status
+[11:24] Interviewer: What was your initial reaction?
+[11:29] Pavel Volkov: Yeah, absolutely — I genuinely look forward to using the analytics view, it's the best-designed part of the product
+[12:50] Interviewer: Can you tell me more about that?
+[12:54] Pavel Volkov: I have to say, The onboarding wizard actually taught me things about project management I didn't know before
+[14:10] Interviewer: Have you ever discovered a feature by accident? Tell me about that.
+[14:18] Pavel Volkov: Let me think about that. My biggest fear is that they'll change the interface in a major update and I'll have to relearn everything I think it depends a lot on your use case.
+[15:41] Interviewer: When did you first notice that?
+[15:49] Pavel Volkov: Honestly, that's been a pain point for us. I have no idea what half the icons in the toolbar mean
+[16:53] Interviewer: When did you first notice that?
+[17:00] Pavel Volkov: That's probably my biggest complaint. The analytics dashboard doesn't update in real-time, I have to manually refresh to see today's numbers
+[18:07] Interviewer: What labels or terms feel confusing or unclear to you?
+[18:10] Pavel Volkov: I'll be blunt — The calendar view doesn't show tasks that span multiple days correctly, they just appear on the start date
+[19:40] Interviewer: What would the ideal navigation look like for the way you work?
+[19:44] Pavel Volkov: That's probably my biggest complaint. The loading time is really frustrating, especially when I'm trying to pull up something in a meeting
+[20:43] Interviewer: When you get lost in the product, how do you find your way back?
+[20:48] Pavel Volkov: It depends on the situation, but generally Our team adopted it in about two days, which is really fast compared to other tools we've tried We've gotten used to it at this point.
+[21:27] Interviewer: How important is that to your day-to-day work?
+[21:32] Pavel Volkov: It depends on the situation, but generally Setting up the integration was a breeze, probably the smoothest part of the whole experience It's not great, not terrible.
+[22:49] Interviewer: How do you feel about the depth of the navigation, the number of clicks to get somewhere?
+[22:55] Pavel Volkov: I'll be blunt — I created a template but there's no way to share it with the rest of my organization
+[24:03] Interviewer: What was your initial reaction?
+[24:10] Pavel Volkov: Let me think about that. The milestone tracking keeps our stakeholders happy without requiring me to create separate presentations I think it depends a lot on your use case.
+[24:43] Interviewer: How did that affect your workflow?
+[24:48] Pavel Volkov: That's probably my biggest complaint. I can't set different notification preferences for different projects
+[25:51] Interviewer: Did anyone on your team feel differently about that?
+[25:57] Pavel Volkov: I have to say, Our team velocity actually improved twenty percent in the first quarter after adopting it
+[27:13] Interviewer: How important is that to your day-to-day work?
+[27:17] Pavel Volkov: Well, in our case, Compared to what we used before, this is a huge improvement, but the bar was pretty low I mean, it works, but there's room for improvement.
+[28:14] Interviewer: What did you try to do about it?
+[28:22] Pavel Volkov: I have to say, I tried to set it up for my personal projects and it felt like overkill, it's really built for teams
+[29:08] Interviewer: How does that compare to what you expected?
+[29:16] Pavel Volkov: This is something that really bothers me. The file upload limit is way too small for the kind of documents we work with
+[30:07] Interviewer: When did you first notice that?
+[30:14] Pavel Volkov: Oh for sure, The calendar integration was the tipping point for us, we were already using it but that made it indispensable
+[31:17] Interviewer: How does that compare to what you expected?
+[31:21] Pavel Volkov: Yeah, so this is where it gets frustrating. The tool doesn't warn me before I navigate away from an unsaved form
+[32:47] Interviewer: What did you try to do about it?
+[32:52] Pavel Volkov: It depends on the situation, but generally The API documentation is actually readable, which is rare, our developers integrated it in a day Some team members feel differently, but that's my take.
+[33:22] Interviewer: What happened next?
+[33:28] Pavel Volkov: I have to say, I keep a sticky note on my monitor with the steps to do the export because it's not intuitive at all
+[34:44] Interviewer: When did you first notice that?
+[34:51] Pavel Volkov: That's probably my biggest complaint. The dropdown menus close if my cursor drifts even slightly outside the boundary
+[35:51] Interviewer: Did anyone on your team feel differently about that?
+[35:59] Pavel Volkov: That's actually something I really appreciate. I was skeptical about switching from spreadsheets but within a week I couldn't imagine going back
+[36:57] Interviewer: How does that compare to what you expected?
+[37:01] Pavel Volkov: Let me think about that. It's one of those tools where you know the feature exists, you just can't find it Some team members feel differently, but that's my take.
+
+[37:52] Interviewer: That's really helpful. Is there anything else you'd like to add before we wrap up?
+[37:59] Pavel Volkov: Just that I really hope these changes happen soon. The team is getting impatient.
+
+[END OF TRANSCRIPT]
