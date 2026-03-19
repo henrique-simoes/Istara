@@ -1,8 +1,16 @@
-"""Chat API route — streaming LLM responses with RAG augmentation."""
+"""Chat API route — streaming LLM responses with RAG augmentation.
+
+Now with full agent identity integration: when a session has an assigned
+agent, the agent's persona (CORE.md, SKILLS.md, PROTOCOLS.md, MEMORY.md)
+is loaded and injected into the system prompt, giving each agent a distinct
+personality, expertise, and behavioral patterns.
+"""
 
 import json
+import logging
 import uuid
 from datetime import datetime, timezone
+from pathlib import Path
 
 import re
 
@@ -14,15 +22,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.core.agent import agent
+from app.core.agent_identity import load_agent_identity, get_agent_display_name
 from app.core.context_summarizer import context_summarizer
 from app.core.ollama import ollama
 from app.core.rag import build_augmented_prompt, retrieve_context
 from app.core.token_counter import context_guard
 from app.models.database import get_db, async_session
+from app.models.agent import Agent
 from app.models.message import Message
 from app.models.project import Project
 from app.models.session import ChatSession, INFERENCE_PRESETS
 from app.skills.registry import registry
+
+_chat_log = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -206,6 +218,8 @@ async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db)):
     llm_temperature = 0.7
     llm_max_tokens: int | None = None
     llm_model: str | None = None
+    session_agent_id: str | None = None
+    agent_identity_prompt: str = ""
 
     if request.session_id:
         sess_result = await db.execute(
@@ -226,21 +240,63 @@ async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db)):
             if session.model_override:
                 llm_model = session.model_override
 
+            # Load agent identity for this session
+            session_agent_id = session.agent_id
+            if session_agent_id:
+                agent_identity_prompt = load_agent_identity(session_agent_id)
+                if agent_identity_prompt:
+                    _chat_log.info(
+                        f"Loaded agent identity for {session_agent_id} "
+                        f"({len(agent_identity_prompt)} chars)"
+                    )
+                else:
+                    # Fallback: load system_prompt from DB agent record
+                    agent_result = await db.execute(
+                        select(Agent).where(Agent.id == session_agent_id)
+                    )
+                    db_agent = agent_result.scalar_one_or_none()
+                    if db_agent and db_agent.system_prompt:
+                        agent_identity_prompt = db_agent.system_prompt
+
             # Update session message count and last_message_at
             session.message_count = (session.message_count or 0) + 1
             session.last_message_at = user_msg.created_at
             await db.commit()
 
+    # If no agent identity loaded yet, default to reclaw-main
+    if not agent_identity_prompt:
+        agent_identity_prompt = load_agent_identity("reclaw-main")
+
     # Retrieve context via RAG
     rag_context = await retrieve_context(request.project_id, request.message)
 
-    # Build system prompt with context layers
+    # Build system prompt with context layers + agent identity
     system_prompt = build_augmented_prompt(
         query=request.message,
         rag_context=rag_context,
         project_context=project.project_context or None,
         company_context=project.company_context or None,
     )
+
+    # Inject agent identity at the top of the system prompt
+    if agent_identity_prompt:
+        system_prompt = agent_identity_prompt + "\n\n---\n\n" + system_prompt
+
+    # Inject project folder file awareness
+    upload_dir = Path(settings.upload_dir) / request.project_id
+    if upload_dir.exists():
+        project_files = [
+            f.name for f in upload_dir.iterdir()
+            if f.is_file() and not f.name.startswith(".")
+        ]
+        if project_files:
+            files_context = (
+                f"\n\n## Project Files Available\n"
+                f"The following files are in this project's scope and can be "
+                f"referenced without the user needing to upload them again:\n"
+                + "\n".join(f"- {name}" for name in project_files[:50])
+            )
+            system_prompt += files_context
 
     # Build message history (scoped to session if provided)
     messages = []

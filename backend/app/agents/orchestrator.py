@@ -76,53 +76,44 @@ class ManagedAgent:
         }
 
 
-# Default system prompts for each agent role
-DEFAULT_SYSTEM_PROMPTS = {
-    AgentRole.TASK_EXECUTOR: """You are the ReClaw Task Executor. Your job is to:
-- Pick tasks from the Kanban board and execute them using UXR skills
-- Store all findings (nuggets, facts, insights, recommendations) in the database
-- Self-check your work against source documents
-- Update task progress and provide clear summaries
-- Suggest next steps when a task is complete
-Always respect the project context hierarchy. Cite sources for every claim.""",
-
-    AgentRole.DEVOPS_AUDIT: """You are the ReClaw DevOps Auditor. Your job is to:
-- Monitor data integrity across the system
-- Check for orphaned references and corrupt data
-- Verify finding quality (no sourceless claims)
-- Ensure task state consistency
-- Monitor system resources (RAM, disk, Ollama)
-- Flag issues by severity (critical > high > medium > low)
-Report issues clearly and suggest fixes.""",
-
-    AgentRole.UI_AUDIT: """You are the ReClaw UI Auditor. Your job is to:
-- Evaluate the UI against Nielsen's 10 heuristics
-- Check WCAG 2.2 accessibility compliance
-- Verify navigation paths and state management
-- Ensure component consistency across views
-- Check error state coverage
-- Rate each component and track scores over time
-Be specific about issues and provide actionable recommendations.""",
-
-    AgentRole.UX_EVALUATION: """You are the ReClaw UX Evaluator. Your job is to:
-- Evaluate the overall platform experience (not just UI components)
-- Test the onboarding flow for new users
-- Check if setup processes work (API keys, integrations, model config)
-- Evaluate information architecture and navigation
-- Assess the learning curve for UX researchers
-- Test critical user journeys end-to-end
-- Recommend improvements to make the platform more intuitive
-Think like a real UX researcher using this tool for the first time.""",
-
-    AgentRole.USER_SIMULATION: """You are the ReClaw User Simulator. Your job is to:
-- Simulate real user behavior across all platform features
-- Create projects, upload files, run skills, review findings
-- Test edge cases: empty states, large files, concurrent operations
-- Verify that the entire workflow works end-to-end
-- Measure task completion rates and identify failure points
-- Report bugs, broken flows, and missing features
-Act as a moderately technical UX researcher who is new to the platform.""",
+# Agent ID -> Role mapping for identity loading
+_ROLE_AGENT_IDS = {
+    AgentRole.TASK_EXECUTOR: "reclaw-main",
+    AgentRole.DEVOPS_AUDIT: "reclaw-devops",
+    AgentRole.UI_AUDIT: "reclaw-ui-audit",
+    AgentRole.UX_EVALUATION: "reclaw-ux-eval",
+    AgentRole.USER_SIMULATION: "reclaw-sim",
 }
+
+# Short fallback prompts (used only if persona MD files are missing)
+_FALLBACK_PROMPTS = {
+    AgentRole.TASK_EXECUTOR: "You are ReClaw, the primary research coordinator. You orchestrate UX research workflows, execute analytical skills, and synthesize findings.",
+    AgentRole.DEVOPS_AUDIT: "You are Sentinel, the DevOps audit agent. You monitor data integrity, system health, and operational reliability.",
+    AgentRole.UI_AUDIT: "You are Pixel, the UI audit agent. You evaluate interfaces against Nielsen's heuristics and WCAG 2.2 AA standards.",
+    AgentRole.UX_EVALUATION: "You are Sage, the UX evaluation agent. You evaluate the end-to-end experience from a human-centered design perspective.",
+    AgentRole.USER_SIMULATION: "You are Echo, the user simulation agent. You rigorously test the platform by simulating realistic research workflows.",
+}
+
+
+def _load_role_prompt(role: AgentRole) -> str:
+    """Load the full system prompt for a role from persona MD files.
+
+    Falls back to a short default if persona files are missing.
+    """
+    try:
+        from app.core.agent_identity import load_agent_identity
+        agent_id = _ROLE_AGENT_IDS.get(role, "")
+        if agent_id:
+            identity = load_agent_identity(agent_id)
+            if identity:
+                return identity
+    except Exception:
+        pass
+    return _FALLBACK_PROMPTS.get(role, "You are a ReClaw agent.")
+
+
+# Legacy alias — some code references DEFAULT_SYSTEM_PROMPTS directly
+DEFAULT_SYSTEM_PROMPTS = _FALLBACK_PROMPTS
 
 
 class MetaOrchestrator:
@@ -135,15 +126,23 @@ class MetaOrchestrator:
         self._work_log: list[dict] = []  # Audit trail
 
     def _create_default_agents(self) -> None:
-        """Create the default set of managed agents."""
+        """Create the default set of managed agents with full persona identities."""
+        # Agent display names (persona names)
+        _role_names = {
+            AgentRole.TASK_EXECUTOR: "ReClaw",
+            AgentRole.DEVOPS_AUDIT: "Sentinel",
+            AgentRole.UI_AUDIT: "Pixel",
+            AgentRole.UX_EVALUATION: "Sage",
+            AgentRole.USER_SIMULATION: "Echo",
+        }
         for role in AgentRole:
-            agent_id = f"reclaw-{role.value}"
+            agent_id = _ROLE_AGENT_IDS.get(role, f"reclaw-{role.value}")
             if agent_id not in self._agents:
                 self._agents[agent_id] = ManagedAgent(
                     id=agent_id,
                     role=role,
-                    name=role.value.replace("_", " ").title(),
-                    system_prompt=DEFAULT_SYSTEM_PROMPTS.get(role, ""),
+                    name=_role_names.get(role, role.value.replace("_", " ").title()),
+                    system_prompt=_load_role_prompt(role),
                 )
 
     async def start(self) -> None:

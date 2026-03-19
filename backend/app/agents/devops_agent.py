@@ -77,8 +77,23 @@ class DevOpsAuditAgent:
                     logger.info("Audit cycle clean.")
 
             except Exception as e:
-                logger.error(f"Audit cycle error: {e}")
-                await broadcast_agent_status("error", f"DevOps Audit error: {e}")
+                error_msg = str(e)
+                logger.error(f"Audit cycle error: {error_msg}")
+                await broadcast_agent_status(
+                    "warning",
+                    f"DevOps Audit: recovered from error ({error_msg[:80]}), "
+                    f"will retry next cycle"
+                )
+                # Record error learning for future reference
+                try:
+                    from app.core.agent_learning import agent_learning
+                    await agent_learning.record_error_learning(
+                        agent_id="reclaw-devops",
+                        error_message=error_msg,
+                        resolution="Caught in audit loop, will retry next cycle",
+                    )
+                except Exception:
+                    pass  # Learning system failure should never crash the audit
 
             await asyncio.sleep(self._audit_interval)
 
