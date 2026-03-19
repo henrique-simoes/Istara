@@ -204,6 +204,69 @@ async def get_avatar(agent_id: str, db: AsyncSession = Depends(get_db)):
     return FileResponse(path)
 
 
+# ───── Agent Identity (Persona MD Files) ─────
+
+
+@router.get("/agents/{agent_id}/identity")
+async def get_identity(agent_id: str):
+    """Get an agent's full identity from its persona MD files."""
+    from app.core.agent_identity import (
+        load_agent_identity,
+        get_agent_display_name,
+        list_agent_personas,
+        PERSONAS_DIR,
+        IDENTITY_FILES,
+    )
+
+    display_name = get_agent_display_name(agent_id)
+    identity = load_agent_identity(agent_id)
+
+    # Load individual files for display
+    files = {}
+    for filename in IDENTITY_FILES:
+        filepath = PERSONAS_DIR / agent_id / filename
+        if filepath.exists():
+            files[filename] = filepath.read_text(encoding="utf-8")
+
+    return {
+        "agent_id": agent_id,
+        "display_name": display_name,
+        "has_persona": bool(identity),
+        "identity_length": len(identity),
+        "files": files,
+    }
+
+
+@router.get("/agents/personas/list")
+async def list_personas():
+    """List all agents that have persona directories."""
+    from app.core.agent_identity import list_agent_personas, get_agent_display_name
+    personas = list_agent_personas()
+    return {
+        "personas": [
+            {"agent_id": p, "display_name": get_agent_display_name(p) or p}
+            for p in personas
+        ]
+    }
+
+
+# ───── Agent Learnings ─────
+
+
+@router.get("/agents/{agent_id}/learnings")
+async def get_learnings(
+    agent_id: str,
+    category: str | None = None,
+    limit: int = 20,
+):
+    """Get an agent's structured learnings."""
+    from app.core.agent_learning import agent_learning
+    learnings = await agent_learning.get_relevant_learnings(
+        agent_id, category=category, limit=limit
+    )
+    return {"agent_id": agent_id, "learnings": learnings}
+
+
 # ───── Agent Memory ─────
 
 

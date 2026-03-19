@@ -67,9 +67,23 @@ class AgentOrchestrator:
                 executed = await self._work_cycle()
                 interval = self._loop_interval if executed else self._idle_interval
             except Exception as e:
-                logger.error(f"Agent work cycle error: {e}")
-                await broadcast_agent_status("error", str(e))
+                error_msg = str(e)
+                logger.error(f"Agent work cycle error: {error_msg}")
+                await broadcast_agent_status(
+                    "warning",
+                    f"Agent recovered from error: {error_msg[:100]}. Retrying..."
+                )
                 interval = self._idle_interval
+                # Record the error for learning
+                try:
+                    from app.core.agent_learning import agent_learning
+                    await agent_learning.record_error_learning(
+                        agent_id="reclaw-main",
+                        error_message=error_msg,
+                        resolution="Caught in work loop, retrying next cycle",
+                    )
+                except Exception:
+                    pass
 
             # Wait for interval OR immediate wake signal
             try:
@@ -332,12 +346,38 @@ class AgentOrchestrator:
             logger.info(f"Task {'completed' if verified else 'needs review'}: {task.title} — {output.summary}")
 
         except Exception as e:
-            logger.error(f"Skill execution failed for task {task.id}: {e}")
-            task.agent_notes = f"Error: {str(e)}"
+            error_msg = str(e)
+            logger.error(f"Skill execution failed for task {task.id}: {error_msg}")
+
+            # Check if we have a known resolution for this error type
+            resolution_hint = ""
+            try:
+                from app.core.agent_learning import agent_learning
+                resolution = await agent_learning.get_error_resolution(
+                    "reclaw-main", error_msg
+                )
+                if resolution:
+                    resolution_hint = f"\n\nKnown resolution: {resolution}"
+                    logger.info(f"Found known resolution for error: {resolution}")
+                else:
+                    # Record this as a new error pattern
+                    await agent_learning.record_error_learning(
+                        agent_id="reclaw-main",
+                        error_message=error_msg,
+                        resolution="Returned task to backlog for retry",
+                        project_id=task.project_id,
+                    )
+            except Exception:
+                pass
+
+            task.agent_notes = f"Error: {error_msg}{resolution_hint}"
             task.status = TaskStatus.BACKLOG  # Return to backlog on failure
             await db.commit()
-            await self._persist_agent_state(AgentState.ERROR, str(e))
-            await broadcast_agent_status("error", f"Failed: {task.title} — {e}")
+            await self._persist_agent_state(AgentState.ERROR, error_msg)
+            await broadcast_agent_status(
+                "warning",
+                f"Task returned to backlog: {task.title} — {error_msg[:80]}"
+            )
 
     def _select_skill(self, task: Task):
         """Select the best skill for a task."""

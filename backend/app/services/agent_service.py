@@ -19,45 +19,76 @@ from app.core.hardware import detect_hardware
 
 logger = logging.getLogger(__name__)
 
-# Default system agents that get seeded on first run
+# Default system agents that get seeded on first run.
+# Each agent has a persona directory at agents/personas/{agent_id}/ with
+# CORE.md, SKILLS.md, PROTOCOLS.md, MEMORY.md files that define its full
+# identity.  The system_prompt below is a short fallback summary used only
+# if persona files are missing.
 SYSTEM_AGENTS = [
     {
         "id": "reclaw-main",
         "name": "ReClaw",
         "role": AgentRole.TASK_EXECUTOR,
-        "system_prompt": "You are the main ReClaw agent. You coordinate UX research tasks, execute skills, and manage findings.",
+        "system_prompt": (
+            "You are ReClaw, the primary Research Coordinator. You orchestrate "
+            "research workflows, execute analytical skills, synthesize findings, "
+            "and provide expert UX research guidance at every stage of the Double "
+            "Diamond. You are evidence-driven, structured, proactive, and honest "
+            "about limitations. Cite sources explicitly and flag uncertainty clearly."
+        ),
         "capabilities": ALL_CAPABILITIES,
         "is_system": True,
     },
     {
         "id": "reclaw-devops",
-        "name": "DevOps Auditor",
+        "name": "Sentinel",
         "role": AgentRole.DEVOPS_AUDIT,
-        "system_prompt": "You audit data integrity, code quality, and system health.",
+        "system_prompt": (
+            "You are Sentinel, the DevOps Audit Agent. You continuously monitor "
+            "data integrity, system health, and operational reliability. You are "
+            "precise, alert but not alarmist, and proactive about detecting drift. "
+            "You report issues with severity levels and actionable recommendations."
+        ),
         "capabilities": ["skill_execution", "findings_write", "a2a_messaging"],
         "is_system": True,
     },
     {
         "id": "reclaw-ui-audit",
-        "name": "UI Auditor",
+        "name": "Pixel",
         "role": AgentRole.UI_AUDIT,
-        "system_prompt": "You evaluate UI heuristics, accessibility, and visual consistency.",
+        "system_prompt": (
+            "You are Pixel, the UI Audit Agent. You evaluate interfaces against "
+            "Nielsen's 10 Heuristics and WCAG 2.2 AA. You are detail-oriented, "
+            "standards-referenced, and constructive — every issue comes with a "
+            "specific, actionable fix. You think in visual hierarchy, accessibility, "
+            "and design system consistency."
+        ),
         "capabilities": ["skill_execution", "findings_write", "a2a_messaging"],
         "is_system": True,
     },
     {
         "id": "reclaw-ux-eval",
-        "name": "UX Evaluator",
+        "name": "Sage",
         "role": AgentRole.UX_EVALUATION,
-        "system_prompt": "You evaluate platform usability, onboarding, and user flows.",
+        "system_prompt": (
+            "You are Sage, the UX Evaluation Agent. You evaluate the end-to-end "
+            "experience from a human-centered design perspective: information "
+            "architecture, user journeys, cognitive load, and learnability. You "
+            "think from the user's perspective and present findings as scenarios."
+        ),
         "capabilities": ["skill_execution", "findings_write", "a2a_messaging"],
         "is_system": True,
     },
     {
         "id": "reclaw-sim",
-        "name": "User Simulator",
+        "name": "Echo",
         "role": AgentRole.USER_SIMULATION,
-        "system_prompt": "You simulate end-to-end user workflows for testing.",
+        "system_prompt": (
+            "You are Echo, the User Simulation Agent. You rigorously test the "
+            "platform by simulating realistic research workflows end-to-end. You "
+            "approach testing with QA rigor, explore edge cases, document findings "
+            "thoroughly, and simulate different user skill levels."
+        ),
         "capabilities": ["skill_execution", "findings_write", "a2a_messaging"],
         "is_system": True,
     },
@@ -65,13 +96,21 @@ SYSTEM_AGENTS = [
 
 
 async def seed_system_agents(db: AsyncSession) -> None:
-    """Create default system agents if they don't exist."""
+    """Create or update default system agents.
+
+    On first run, creates all system agents.  On subsequent runs,
+    updates the name and system_prompt of existing system agents
+    to reflect any persona changes (e.g., new names like Sentinel,
+    Pixel, Sage, Echo).
+    """
     for agent_def in SYSTEM_AGENTS:
         result = await db.execute(
             select(Agent).where(Agent.id == agent_def["id"])
         )
-        if result.scalar_one_or_none() is None:
-            agent = Agent(
+        existing = result.scalar_one_or_none()
+
+        if existing is None:
+            new_agent = Agent(
                 id=agent_def["id"],
                 name=agent_def["name"],
                 role=agent_def["role"],
@@ -81,8 +120,21 @@ async def seed_system_agents(db: AsyncSession) -> None:
                 state=AgentState.IDLE,
                 heartbeat_status=HeartbeatStatus.STOPPED,
             )
-            db.add(agent)
+            db.add(new_agent)
             logger.info(f"Seeded system agent: {agent_def['name']}")
+        else:
+            # Update existing system agent's name and prompt if changed
+            updated = False
+            if existing.name != agent_def["name"]:
+                existing.name = agent_def["name"]
+                updated = True
+            if existing.system_prompt != agent_def["system_prompt"]:
+                existing.system_prompt = agent_def["system_prompt"]
+                updated = True
+            if updated:
+                logger.info(
+                    f"Updated system agent: {agent_def['name']} ({agent_def['id']})"
+                )
     await db.commit()
 
 
