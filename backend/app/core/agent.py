@@ -127,7 +127,9 @@ class AgentOrchestrator:
             # 2. Get the project context
             project = await self._get_project(db, task.project_id)
             if not project:
-                logger.error(f"Project not found for task {task.id}")
+                logger.warning(f"Project not found for task {task.id} — marking as done (orphaned)")
+                task.status = TaskStatus.DONE
+                await db.commit()
                 return False
 
             # 3. Execute the task

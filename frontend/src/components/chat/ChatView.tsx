@@ -502,7 +502,7 @@ export default function ChatView() {
                           key={i}
                           className="inline-block text-xs bg-slate-200 dark:bg-slate-700 rounded px-1.5 py-0.5 mr-1 mb-1"
                         >
-                          {src.source.split("/").pop()} ({Math.round(src.score * 100)}%)
+                          {(src.source ?? "unknown").split("/").pop()} ({Math.round((src.score ?? 0) * 100)}%)
                         </span>
                       ))}
                     </div>

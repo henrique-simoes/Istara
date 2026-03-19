@@ -243,7 +243,7 @@ export default function FindingsView() {
                         )}
                         {item.source && (
                           <span className="text-xs text-slate-400">
-                            📄 {item.source.split("/").pop()}
+                            📄 {(item.source ?? "").split("/").pop() ?? item.source}
                           </span>
                         )}
                         {item.tags && item.tags.length > 0 && (

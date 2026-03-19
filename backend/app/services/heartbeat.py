@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 
 from sqlalchemy import select
 
+from app.core.datetime_utils import ensure_utc
 from app.models.agent import Agent, AgentState, HeartbeatStatus
 from app.models.database import async_session
 
@@ -61,7 +62,7 @@ class HeartbeatManager:
                 elif agent.state in (AgentState.IDLE, AgentState.WORKING):
                     # Check if agent has been responsive within its heartbeat window
                     if agent.last_heartbeat_at:
-                        elapsed = (now - agent.last_heartbeat_at).total_seconds()
+                        elapsed = (now - ensure_utc(agent.last_heartbeat_at)).total_seconds()
                         if elapsed > agent.heartbeat_interval_seconds * 3:
                             new_status = HeartbeatStatus.ERROR
                         elif elapsed > agent.heartbeat_interval_seconds * 1.5:
