@@ -150,6 +150,7 @@ async function loadScenarios() {
     "22-architecture-evaluation",
     "23-memory-view",
     "24-context-dag",
+    "25-systemic-robustness",
   ];
 
   const scenarios = [];

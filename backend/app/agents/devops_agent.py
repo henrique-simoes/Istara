@@ -19,6 +19,8 @@ from pathlib import Path
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.datetime_utils import ensure_utc
+
 from app.config import settings
 from app.core.ollama import ollama
 from app.core.self_check import check_findings, Confidence
@@ -165,7 +167,7 @@ class DevOpsAuditAgent:
             tasks = task_count.scalar() or 0
 
             if msgs == 0 and nugs == 0 and tasks == 0:
-                age_hours = (datetime.now(timezone.utc) - project.created_at).total_seconds() / 3600
+                age_hours = (datetime.now(timezone.utc) - ensure_utc(project.created_at)).total_seconds() / 3600
                 if age_hours > 24:
                     issues.append({
                         "type": "stale_project",
@@ -263,7 +265,7 @@ class DevOpsAuditAgent:
             select(Task).where(Task.status == TaskStatus.IN_PROGRESS)
         )
         for task in result.scalars().all():
-            hours_stale = (datetime.now(timezone.utc) - task.updated_at).total_seconds() / 3600
+            hours_stale = (datetime.now(timezone.utc) - ensure_utc(task.updated_at)).total_seconds() / 3600
             if hours_stale > 24:
                 issues.append({
                     "type": "stale_task",
