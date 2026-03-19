@@ -7,7 +7,7 @@ from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
@@ -151,6 +151,25 @@ async def delete_project(project_id: str, db: AsyncSession = Depends(get_db)):
     project = result.scalar_one_or_none()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
+
+    # Clean up entities that lack FK cascade (no ForeignKey constraint)
+    from app.core.scheduler import ScheduledTask
+    from app.models.context_dag import ContextDAGNode
+    from app.models.session import ChatSession
+
+    # Delete orphaned scheduled tasks for this project
+    await db.execute(
+        delete(ScheduledTask).where(ScheduledTask.project_id == project_id)
+    )
+    # Delete orphaned DAG nodes for sessions belonging to this project
+    session_ids_result = await db.execute(
+        select(ChatSession.id).where(ChatSession.project_id == project_id)
+    )
+    session_ids = [row[0] for row in session_ids_result.fetchall()]
+    if session_ids:
+        await db.execute(
+            delete(ContextDAGNode).where(ContextDAGNode.session_id.in_(session_ids))
+        )
 
     await db.delete(project)
     await db.commit()

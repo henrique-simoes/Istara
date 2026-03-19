@@ -7,10 +7,11 @@ import asyncio
 import logging
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import Boolean, DateTime, String, Text, select
+from sqlalchemy import Boolean, DateTime, String, Text, delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped, mapped_column
 
+from app.core.datetime_utils import ensure_utc
 from app.models.database import Base, async_session
 
 logger = logging.getLogger(__name__)
@@ -151,13 +152,18 @@ class Scheduler:
         now = datetime.now(timezone.utc)
 
         async with async_session() as db:
+            # Fetch all enabled tasks then filter in Python to avoid
+            # SQLite naive-vs-aware datetime comparison crashes.
             result = await db.execute(
                 select(ScheduledTask).where(
                     ScheduledTask.enabled.is_(True),
-                    ScheduledTask.next_run <= now,
                 )
             )
-            due_tasks = result.scalars().all()
+            all_enabled = result.scalars().all()
+            due_tasks = [
+                t for t in all_enabled
+                if t.next_run and ensure_utc(t.next_run) <= now
+            ]
 
             for task in due_tasks:
                 try:
