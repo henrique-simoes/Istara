@@ -152,6 +152,7 @@ async function loadScenarios() {
     "24-context-dag",
     "25-systemic-robustness",
     "26-model-session-persistence",
+    "27-agent-identity-system",
   ];
 
   const scenarios = [];
