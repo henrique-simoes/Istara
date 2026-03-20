@@ -152,6 +152,16 @@ export default function ToastNotification() {
           }
           break;
         }
+        case "document_created": {
+          const docTitle = (event.data.title as string) || "New document";
+          addToast("file", "📄 Document Created", docTitle, 4000, "documents");
+          break;
+        }
+        case "document_updated": {
+          const updatedTitle = (event.data.title as string) || "Document updated";
+          addToast("file", "📝 Document Updated", updatedTitle, 3000, "documents");
+          break;
+        }
       }
     },
     [addToast]

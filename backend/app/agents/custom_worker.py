@@ -78,8 +78,13 @@ class CustomAgentWorker:
             if not task:
                 return False
 
-            # Execute the task
-            await self._execute_task(db, task, agent)
+            # Execute the task (register with governor for concurrent limits)
+            agent_key = f"custom-{self.agent_id}"
+            governor.register_agent(agent_key)
+            try:
+                await self._execute_task(db, task, agent)
+            finally:
+                governor.unregister_agent(agent_key)
             return True
 
     async def _pick_task(self, db: AsyncSession) -> Task | None:

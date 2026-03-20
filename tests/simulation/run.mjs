@@ -155,6 +155,8 @@ async function loadScenarios() {
     "27-agent-identity-system",
     "28-self-evolution-prompt-compression",
     "29-documents-system",
+    "30-event-wiring-audit",
+    "31-task-documents-tools",
   ];
 
   const scenarios = [];

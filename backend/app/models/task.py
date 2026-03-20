@@ -1,6 +1,7 @@
 """Task database model."""
 
 import enum
+import json
 from datetime import datetime, timezone
 
 from sqlalchemy import DateTime, Enum, Float, ForeignKey, String, Text
@@ -35,6 +36,10 @@ class Task(Base):
     progress: Mapped[float] = mapped_column(Float, default=0.0)
     position: Mapped[int] = mapped_column(default=0)
     priority: Mapped[str] = mapped_column(String(20), default="medium")
+    input_document_ids: Mapped[str] = mapped_column(Text, default="[]")  # JSON list of document IDs
+    output_document_ids: Mapped[str] = mapped_column(Text, default="[]")  # JSON list of document IDs
+    urls: Mapped[str] = mapped_column(Text, default="[]")  # JSON list of URLs to fetch
+    instructions: Mapped[str] = mapped_column(Text, default="")  # Specific instructions from user
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
@@ -46,3 +51,32 @@ class Task(Base):
 
     # Relationships
     project = relationship("Project", back_populates="tasks")
+
+    # --- JSON helpers ---
+
+    def get_input_document_ids(self) -> list[str]:
+        try:
+            return json.loads(self.input_document_ids or "[]")
+        except (json.JSONDecodeError, TypeError):
+            return []
+
+    def set_input_document_ids(self, ids: list[str]):
+        self.input_document_ids = json.dumps(ids)
+
+    def get_output_document_ids(self) -> list[str]:
+        try:
+            return json.loads(self.output_document_ids or "[]")
+        except (json.JSONDecodeError, TypeError):
+            return []
+
+    def set_output_document_ids(self, ids: list[str]):
+        self.output_document_ids = json.dumps(ids)
+
+    def get_urls(self) -> list[str]:
+        try:
+            return json.loads(self.urls or "[]")
+        except (json.JSONDecodeError, TypeError):
+            return []
+
+    def set_urls(self, urls: list[str]):
+        self.urls = json.dumps(urls)

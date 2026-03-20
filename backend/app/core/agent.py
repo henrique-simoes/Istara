@@ -38,6 +38,8 @@ from app.api.websocket import (
     broadcast_agent_status,
     broadcast_task_progress,
     broadcast_suggestion,
+    broadcast_task_queue_update,
+    broadcast_finding_created,
 )
 from app.skills.registry import registry
 from app.skills.base import SkillInput, SkillOutput
@@ -146,22 +148,45 @@ class AgentOrchestrator:
                 await db.commit()
                 return False
 
-            # 3. Execute the task
+            # 3. Execute the task (register with governor for concurrent limits)
+            governor.register_agent("task-executor")
             self._current_task_id = task.id
-            await self._execute_task(db, task, project)
-            self._current_task_id = None
+            try:
+                await self._execute_task(db, task, project)
+            finally:
+                self._current_task_id = None
+                governor.unregister_agent("task-executor")
 
             # 4. Check queue depth and adapt loop interval
-            count_result = await db.execute(
+            pending_result = await db.execute(
                 select(func.count(Task.id)).where(
-                    Task.status.in_([TaskStatus.BACKLOG, TaskStatus.IN_PROGRESS])
+                    Task.status == TaskStatus.BACKLOG
                 )
             )
-            pending = count_result.scalar() or 0
-            if pending > 0:
+            in_progress_result = await db.execute(
+                select(func.count(Task.id)).where(
+                    Task.status == TaskStatus.IN_PROGRESS
+                )
+            )
+            done_result = await db.execute(
+                select(func.count(Task.id)).where(
+                    Task.status == TaskStatus.DONE,
+                    Task.project_id == task.project_id,
+                )
+            )
+            pending = pending_result.scalar() or 0
+            in_progress = in_progress_result.scalar() or 0
+            completed = done_result.scalar() or 0
+
+            # Broadcast queue update to frontend
+            await broadcast_task_queue_update(
+                task.project_id, pending, in_progress, completed
+            )
+
+            if (pending + in_progress) > 0:
                 self._loop_interval = 5  # Process queue quickly
                 await broadcast_agent_status(
-                    "working", f"Task complete. {pending} remaining in queue."
+                    "working", f"Task complete. {pending + in_progress} remaining in queue."
                 )
             else:
                 self._loop_interval = 30  # Back to normal
@@ -620,6 +645,20 @@ class AgentOrchestrator:
             db.add(rec)
 
         await db.commit()
+
+        # Broadcast finding_created events so the frontend updates in real-time
+        total_findings = (
+            len(output.nuggets) + len(output.facts)
+            + len(output.insights) + len(output.recommendations)
+        )
+        if total_findings > 0:
+            # Send one consolidated event per finding type that has results
+            if output.nuggets:
+                await broadcast_finding_created("nugget", len(output.nuggets), project_id, task.title)
+            if output.insights:
+                await broadcast_finding_created("insight", len(output.insights), project_id, task.title)
+            if output.recommendations:
+                await broadcast_finding_created("recommendation", len(output.recommendations), project_id, task.title)
 
         # Also ingest any text artifacts into the vector store for RAG
         for filename, content in output.artifacts.items():
