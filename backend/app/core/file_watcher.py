@@ -197,6 +197,75 @@ class FileWatcher:
 
         return created
 
+    # ── Document registration ──────────────────────────────────────────
+
+    async def _register_document(self, file_path: Path, project_id: str) -> None:
+        """Register a processed file as a Document in the database.
+
+        Ensures every file in the project folder appears in the Documents UI.
+        Skips if a document for this file already exists.
+        """
+        from app.models.database import async_session
+        from app.models.document import Document, DocumentSource, DocumentStatus
+        from sqlalchemy import select
+
+        async with async_session() as db:
+            # Check if already registered
+            existing = await db.execute(
+                select(Document.id).where(
+                    Document.project_id == project_id,
+                    Document.file_name == file_path.name,
+                )
+            )
+            if existing.scalar_one_or_none():
+                return  # Already tracked
+
+            stat = file_path.stat()
+            suffix = file_path.suffix.lower()
+
+            # Read preview for text-based files
+            content_preview = ""
+            content_text = ""
+            if suffix in {".txt", ".md", ".csv", ".json"}:
+                try:
+                    text = file_path.read_text(errors="replace")
+                    content_preview = text[:2000]
+                    content_text = text
+                except Exception:
+                    pass
+
+            title = file_path.stem.replace("-", " ").replace("_", " ").title()
+
+            doc = Document(
+                id=str(uuid.uuid4()),
+                project_id=project_id,
+                title=title,
+                description=f"File detected in project folder: {file_path.name}",
+                file_path=str(file_path),
+                file_name=file_path.name,
+                file_type=suffix,
+                file_size=stat.st_size,
+                status=DocumentStatus.READY,
+                source=DocumentSource.PROJECT_FILE,
+                content_preview=content_preview,
+                content_text=content_text,
+            )
+            doc.set_tags([])
+
+            db.add(doc)
+            await db.commit()
+
+            # Notify via WebSocket
+            try:
+                from app.api.websocket import broadcast_document_event
+                await broadcast_document_event(
+                    "document_created", doc.id, title, project_id
+                )
+            except Exception:
+                pass
+
+            logger.info(f"Registered document: {file_path.name} for project {project_id}")
+
     # ── File processing ─────────────────────────────────────────────────
 
     async def _process_file(self, file_path: Path, project_id: str) -> dict | None:
@@ -261,6 +330,12 @@ class FileWatcher:
             await self._create_research_tasks(file_path, project_id)
         except Exception as e:
             logger.warning(f"Failed to create research tasks for {file_path}: {e}")
+
+        # Register as a Document in the Documents system
+        try:
+            await self._register_document(file_path, project_id)
+        except Exception as e:
+            logger.warning(f"Failed to register document for {file_path}: {e}")
 
         return summary
 

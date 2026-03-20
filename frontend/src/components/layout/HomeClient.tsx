@@ -15,6 +15,7 @@ import SettingsView from "@/components/common/SettingsView";
 import SkillsView from "@/components/skills/SkillsView";
 import AgentsView from "@/components/agents/AgentsView";
 import MemoryView from "@/components/memory/MemoryView";
+import DocumentsView from "@/components/documents/DocumentsView";
 import SearchModal from "@/components/common/SearchModal";
 import ToastNotification from "@/components/common/ToastNotification";
 import ErrorBoundary from "@/components/common/ErrorBoundary";
@@ -92,7 +93,7 @@ export default function HomeClient() {
 
   // Global Cmd+K for search
   useEffect(() => {
-    const viewKeys: Record<string, string> = { "1": "chat", "2": "findings", "3": "tasks", "4": "interviews", "5": "context", "6": "skills", "7": "agents", "8": "memory" };
+    const viewKeys: Record<string, string> = { "1": "chat", "2": "findings", "3": "tasks", "4": "interviews", "5": "documents", "6": "context", "7": "skills", "8": "agents", "9": "memory" };
 
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
@@ -134,6 +135,7 @@ export default function HomeClient() {
       case "tasks": return <KanbanBoard />;
       case "findings": return <FindingsView />;
       case "interviews": return <InterviewView />;
+      case "documents": return <DocumentsView />;
       case "metrics": return <MetricsView />;
       case "context": return <ContextEditor />;
       case "skills": return <SkillsView />;

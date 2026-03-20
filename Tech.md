@@ -41,7 +41,7 @@ ReClaw runs a **meta-orchestrator** coordinating five specialized agents — a t
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                     FRONTEND (Next.js)                      │
-│  Chat · Kanban · Findings · Skills · Memory · Agents · DAG  │
+│  Chat · Kanban · Findings · Documents · Skills · Agents     │
 └────────────────────────┬────────────────────────────────────┘
                          │ REST + WebSocket
 ┌────────────────────────▼────────────────────────────────────┐
@@ -383,6 +383,60 @@ The **SkillManager** (`skills/skill_manager.py`) tracks execution quality:
 
 ---
 
+## Document System — Source of Truth
+
+Every file a user uploads, every output an agent produces, and every task completion that generates an artifact becomes a **Document**. Documents are ReClaw's source of truth — the final, findable output of everything.
+
+### Document Lifecycle
+
+```
+User uploads file → File Watcher detects → Document registered → Indexed in memory
+User asks for survey → Agent picks task → Skill executes → Output saved as Document
+Agent self-initiates → Atomic path tracked → Document appears in UI with lineage
+```
+
+### Key Properties
+
+| Property | Purpose |
+|----------|---------|
+| **Atomic Path** | JSON lineage: step-by-step trace of how the document was created |
+| **Agent IDs** | Which agents were involved in producing this document |
+| **Skill Names** | Which research skills were executed |
+| **Task Link** | Related Kanban task (if any) |
+| **Tags** | User and auto-generated tags for filtering |
+| **Phase** | Double Diamond phase (discover/define/develop/deliver) |
+| **Source** | How it originated: `user_upload`, `agent_output`, `task_output`, `project_file`, `external` |
+| **Content Index** | Full text indexed for search across titles, content, tags, and filenames |
+
+### Search & Filtering
+
+Documents support multi-dimensional discovery:
+
+- **Full-text search**: Titles, descriptions, content, tags, and filenames
+- **Phase filter**: Filter by Double Diamond phase
+- **Tag filter**: Browse by project-wide unique tags
+- **Source filter**: See only agent outputs, user uploads, task outputs, etc.
+- **Pagination**: Large document sets handled efficiently
+
+### Auto-Registration
+
+Files placed in the project's upload directory are **automatically registered** as documents by the File Watcher. The sync endpoint (`POST /api/documents/sync/{project_id}`) ensures every file in the folder appears in the Documents UI instantly.
+
+### Preview System
+
+Document preview follows the same pattern as the Interviews view:
+- Text files render with syntax highlighting
+- Images display inline
+- Audio/video play with native controls
+- PDF/DOCX content extracted and shown as text
+- Right panel shows metadata: origin description, agents, skills, tags, atomic path
+
+### Backup Integration
+
+Documents are included in project exports alongside findings, tasks, messages, sessions, and codebooks. The export format stores full document metadata (tags, atomic paths, agent links) for portable re-import.
+
+---
+
 ## RAG Pipeline
 
 ### Hybrid Search
@@ -586,7 +640,7 @@ ReClaw trades compression ratio for **zero dependencies** and **instant speed** 
 
 ### Simulation Framework
 
-ReClaw includes a comprehensive **Playwright + Node.js simulation agent** at `tests/simulation/` that runs 29 scenarios covering:
+ReClaw includes a comprehensive **Playwright + Node.js simulation agent** at `tests/simulation/` that runs 30 scenarios covering:
 
 | Category | Scenarios | Checks |
 |----------|----------|--------|
@@ -596,6 +650,7 @@ ReClaw includes a comprehensive **Playwright + Node.js simulation agent** at `te
 | Data integrity | Vector DB, findings chains, task consistency | 30+ |
 | Advanced | Full pipeline, self-verification, DAG, robustness | 50+ |
 | **Self-evolution & compression** | Evolution scan, Prompt RAG, budget compliance, domain preservation | **35** |
+| **Documents system** | CRUD, search, filtering, sync, backup, UI navigation, keyboard shortcuts | **25** |
 
 ### Evaluators
 
@@ -727,6 +782,7 @@ ReClaw-main/
 │   │   │   ├── project.py             # Projects with Double Diamond phases
 │   │   │   ├── task.py                # Kanban tasks with priority
 │   │   │   ├── finding.py             # Nugget, Fact, Insight, Recommendation
+│   │   │   ├── document.py            # Documents (source of truth for outputs)
 │   │   │   ├── message.py             # Chat messages
 │   │   │   ├── session.py             # Chat sessions + inference presets
 │   │   │   ├── agent.py               # Agent records + A2A messages
@@ -743,6 +799,7 @@ ReClaw-main/
 │   │   ├── app/                       # Next.js app router
 │   │   ├── components/
 │   │   │   ├── layout/                # Sidebar, StatusBar, MobileNav
+│   │   │   ├── documents/             # Documents view (list, preview, search)
 │   │   │   ├── views/                 # Chat, Kanban, Findings, Skills, Memory, Agents
 │   │   │   └── common/                # ErrorBoundary, Toast, Search, Settings
 │   │   ├── stores/                    # Zustand state management
@@ -751,8 +808,8 @@ ReClaw-main/
 │   └── package.json
 ├── tests/
 │   ├── simulation/
-│   │   ├── run.mjs                    # Simulation orchestrator (29 scenarios)
-│   │   ├── scenarios/                 # Test scenarios (01-28)
+│   │   ├── run.mjs                    # Simulation orchestrator (30 scenarios)
+│   │   ├── scenarios/                 # Test scenarios (01-29)
 │   │   └── evaluators/                # Accessibility, Heuristics, Performance
 │   └── e2e_test.py                    # Backend integration tests
 ├── docker-compose.yml                 # Standard deployment
