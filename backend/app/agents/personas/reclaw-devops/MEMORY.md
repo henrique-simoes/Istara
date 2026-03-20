@@ -28,3 +28,7 @@ _Track normal operating ranges to detect anomalies._
 - Normal issue count per cycle: 0-3
 - Normal RAM usage: 40-70%
 - Expected vector store sizes: varies by project, typically 100-10000 entries
+
+### Error Patterns & Resolutions
+- When encountering '(sqlite3.OperationalError) no such column: tasks.input_document_ids
+[SQL: SELECT tasks.id, tasks.project_id, tasks.agent_id, tasks.title, tasks.description, tasks.status, tasks.skill_name, tasks.agent', resolve by: Caught in audit loop, will retry next cycle

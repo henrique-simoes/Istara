@@ -1,18 +1,23 @@
-"""Chat API route — streaming LLM responses with RAG augmentation.
+"""Chat API route — streaming LLM responses with tool-use augmentation.
 
-Now with full agent identity integration: when a session has an assigned
-agent, the agent's persona (CORE.md, SKILLS.md, PROTOCOLS.md, MEMORY.md)
-is loaded and injected into the system prompt, giving each agent a distinct
-personality, expertise, and behavioral patterns.
+Architecture:
+1. Agent identity loaded via Prompt RAG (query-aware persona sections)
+2. System action tools injected into the system prompt (13 tools)
+3. LLM decides which tools to call based on conversation context
+4. Tool calls are parsed from LLM output, executed, and results injected
+5. ReAct loop: LLM → tool call → execute → result → LLM (max 3 iterations)
+6. RAG context and project files provide grounding for all responses
+
+This replaces the old hardcoded intent detection with LLM-native tool
+selection, following patterns from OpenClaw, Anthropic tool use, and ReAct.
 """
 
 import json
 import logging
+import re
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-
-import re
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
@@ -34,103 +39,50 @@ from app.models.message import Message
 from app.models.project import Project
 from app.models.session import ChatSession, INFERENCE_PRESETS
 from app.skills.registry import registry
+from app.skills.system_actions import build_tools_prompt, execute_tool, SYSTEM_TOOLS
 
 _chat_log = logging.getLogger(__name__)
 
 router = APIRouter()
 
+# Maximum tool-call iterations per message (prevents infinite loops)
+MAX_TOOL_ITERATIONS = 3
 
-def _detect_skill_intent(message: str) -> str | None:
-    """Detect if the user wants to run a specific skill from their message.
+# Regex to extract tool call JSON from LLM output
+_TOOL_CALL_RE = re.compile(
+    r'```(?:json)?\s*(\{\s*"tool"\s*:.+?\})\s*```',
+    re.DOTALL,
+)
+_TOOL_CALL_INLINE_RE = re.compile(
+    r'(\{\s*"tool"\s*:\s*"[a-z_]+".*?\})',
+    re.DOTALL,
+)
 
-    Returns skill name if detected, None otherwise.
+
+def _extract_tool_call(text: str) -> tuple[dict | None, str, str]:
+    """Extract a tool call from LLM output.
+
+    Returns (tool_call_dict, text_before_call, text_after_call).
+    Returns (None, full_text, "") if no tool call found.
     """
-    msg = message.lower()
+    # Try fenced code block first (preferred format)
+    match = _TOOL_CALL_RE.search(text)
+    if not match:
+        # Try inline JSON
+        match = _TOOL_CALL_INLINE_RE.search(text)
 
-    # Explicit triggers: "run X", "execute X", "analyze with X", "use X skill"
-    explicit = re.search(
-        r"(?:run|execute|use|start|do|perform|conduct)\s+(?:the\s+)?(?:a\s+)?(.+?)(?:\s+skill|\s+analysis|\s+on|\s+for|$)",
-        msg,
-    )
+    if not match:
+        return None, text, ""
 
-    # Map common phrases to skill names
-    intent_map = {
-        "interview": "user-interviews",
-        "transcript": "user-interviews",
-        "analyze interview": "user-interviews",
-        "analyze transcript": "user-interviews",
-        "competitive analysis": "competitive-analysis",
-        "competitor": "competitive-analysis",
-        "survey design": "survey-design",
-        "create survey": "survey-generator",
-        "generate survey": "survey-generator",
-        "generate interview": "interview-question-generator",
-        "create interview guide": "interview-question-generator",
-        "affinity map": "affinity-mapping",
-        "cluster": "affinity-mapping",
-        "persona": "persona-creation",
-        "create persona": "persona-creation",
-        "journey map": "journey-mapping",
-        "empathy map": "empathy-mapping",
-        "jobs to be done": "jtbd-analysis",
-        "jtbd": "jtbd-analysis",
-        "how might we": "hmw-statements",
-        "hmw": "hmw-statements",
-        "user flow": "user-flow-mapping",
-        "thematic analysis": "thematic-analysis",
-        "code the data": "thematic-analysis",
-        "synthesize": "research-synthesis",
-        "synthesis report": "research-synthesis",
-        "prioritize": "prioritization-matrix",
-        "prioritization": "prioritization-matrix",
-        "usability test": "usability-testing",
-        "heuristic eval": "heuristic-evaluation",
-        "heuristic review": "heuristic-evaluation",
-        "a/b test": "ab-test-analysis",
-        "card sort": "card-sorting",
-        "tree test": "tree-testing",
-        "concept test": "concept-testing",
-        "cognitive walkthrough": "cognitive-walkthrough",
-        "design critique": "design-critique",
-        "expert review": "design-critique",
-        "prototype feedback": "prototype-feedback",
-        "workshop": "workshop-facilitation",
-        "sus score": "sus-umux-scoring",
-        "umux": "sus-umux-scoring",
-        "nps": "nps-analysis",
-        "task analysis": "task-analysis-quant",
-        "impact analysis": "regression-impact",
-        "design system audit": "design-system-audit",
-        "handoff": "handoff-documentation",
-        "presentation": "stakeholder-presentation",
-        "retro": "research-retro",
-        "retrospective": "research-retro",
-        "longitudinal": "longitudinal-tracking",
-        "taxonomy": "taxonomy-generator",
-        "kappa": "kappa-thematic-analysis",
-        "intercoder": "kappa-thematic-analysis",
-        "detect ai": "survey-ai-detection",
-        "bot detection": "survey-ai-detection",
-        "ai response": "survey-ai-detection",
-        "diary stud": "diary-studies",
-        "field stud": "field-studies",
-        "ethnograph": "field-studies",
-        "accessibility audit": "accessibility-audit",
-        "wcag": "accessibility-audit",
-        "desk research": "desk-research",
-        "literature review": "desk-research",
-        "stakeholder interview": "stakeholder-interviews",
-        "analytics review": "analytics-review",
-        "repository curation": "repository-curation",
-    }
-
-    for phrase, skill_name in intent_map.items():
-        if phrase in msg:
-            # Verify skill exists in registry
-            if registry.get(skill_name):
-                return skill_name
-
-    return None
+    try:
+        call = json.loads(match.group(1) if _TOOL_CALL_RE.search(text) else match.group(1))
+        if "tool" not in call:
+            return None, text, ""
+        before = text[: match.start()].strip()
+        after = text[match.end() :].strip()
+        return call, before, after
+    except (json.JSONDecodeError, IndexError):
+        return None, text, ""
 
 
 class ChatRequest(BaseModel):
@@ -174,46 +126,6 @@ async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db)):
     )
     db.add(user_msg)
     await db.commit()
-
-    # Check if the user is asking to run a specific skill
-    skill_intent = _detect_skill_intent(request.message)
-    if skill_intent:
-        # Execute the skill and return results as a chat message
-        output = await agent.execute_skill(
-            skill_name=skill_intent,
-            project_id=request.project_id,
-            user_context=request.message,
-        )
-        skill_response = (
-            f"🧩 **Ran {skill_intent}**\n\n"
-            f"{output.summary}\n\n"
-            f"📊 Results: {len(output.nuggets)} nuggets, {len(output.facts)} facts, "
-            f"{len(output.insights)} insights, {len(output.recommendations)} recommendations"
-        )
-        if output.suggestions:
-            skill_response += "\n\n💡 Suggestions:\n" + "\n".join(f"- {s}" for s in output.suggestions[:3])
-        if output.errors:
-            skill_response += "\n\n⚠️ Issues:\n" + "\n".join(f"- {e}" for e in output.errors)
-
-        # Save as assistant message
-        assistant_msg = Message(
-            id=str(uuid.uuid4()),
-            project_id=request.project_id,
-            session_id=request.session_id,
-            role="assistant",
-            content=skill_response,
-        )
-        db.add(assistant_msg)
-        await db.commit()
-
-        async def skill_stream():
-            event_data = json.dumps({"type": "chunk", "content": skill_response})
-            yield f"data: {event_data}\n\n"
-            done_data = json.dumps({"type": "done", "message_id": assistant_msg.id, "sources": []})
-            yield f"data: {done_data}\n\n"
-
-        return StreamingResponse(skill_stream(), media_type="text/event-stream",
-                                  headers={"Cache-Control": "no-cache", "Connection": "keep-alive"})
 
     # --- Resolve session-specific inference settings ---
     llm_temperature = 0.7
@@ -301,6 +213,10 @@ async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db)):
     if agent_identity_prompt:
         system_prompt = agent_identity_prompt + "\n\n---\n\n" + system_prompt
 
+    # Inject system action tools so the LLM can perform actions
+    tools_prompt = build_tools_prompt()
+    system_prompt += "\n\n" + tools_prompt
+
     # Inject project folder file awareness
     upload_dir = Path(settings.upload_dir) / request.project_id
     if upload_dir.exists():
@@ -366,26 +282,94 @@ async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db)):
     messages = [{"role": "system", "content": system_prompt}, *messages]
 
     async def generate():
-        """Stream the LLM response as SSE events.
+        """Stream the LLM response with ReAct tool-use loop.
 
-        Uses its own DB session to avoid leak when client disconnects mid-stream.
+        Flow:
+        1. Get LLM response (non-streaming for tool detection)
+        2. Check for tool call JSON in the response
+        3. If found: execute tool, inject result, get follow-up response
+        4. Repeat up to MAX_TOOL_ITERATIONS times
+        5. Stream the final text response to the client
+
+        Uses its own DB session to avoid leak when client disconnects.
         """
-        full_response = []
+        conversation = list(messages)  # Local copy for the tool loop
+        all_text_parts = []  # Accumulate text for the full response
+        tool_results = []  # Track executed tools for the response
 
         try:
-            async for chunk in ollama.chat_stream(
-                messages=messages,
-                model=llm_model,
-                temperature=llm_temperature,
-                max_tokens=llm_max_tokens,
-            ):
-                full_response.append(chunk)
-                event_data = json.dumps({"type": "chunk", "content": chunk})
-                yield f"data: {event_data}\n\n"
+            for iteration in range(MAX_TOOL_ITERATIONS + 1):
+                # Get LLM response (collect fully to detect tool calls)
+                full_text = []
+                async for chunk in ollama.chat_stream(
+                    messages=conversation,
+                    model=llm_model,
+                    temperature=llm_temperature,
+                    max_tokens=llm_max_tokens,
+                ):
+                    full_text.append(chunk)
 
-            # Save assistant response in a fresh session (avoids leak)
+                response_text = "".join(full_text)
+
+                # Check for tool call in the response
+                tool_call, text_before, text_after = _extract_tool_call(response_text)
+
+                if tool_call and iteration < MAX_TOOL_ITERATIONS:
+                    tool_name = tool_call.get("tool", "")
+                    tool_params = tool_call.get("params", {})
+
+                    _chat_log.info(f"Tool call detected: {tool_name}({json.dumps(tool_params)[:200]})")
+
+                    # Stream the pre-tool text to the client
+                    if text_before:
+                        all_text_parts.append(text_before)
+                        event_data = json.dumps({"type": "chunk", "content": text_before + "\n\n"})
+                        yield f"data: {event_data}\n\n"
+
+                    # Notify client about tool execution
+                    tool_event = json.dumps({
+                        "type": "tool_call",
+                        "tool": tool_name,
+                        "params": tool_params,
+                    })
+                    yield f"data: {tool_event}\n\n"
+
+                    # Execute the tool
+                    result = await execute_tool(
+                        tool_name, tool_params, request.project_id,
+                        agent_id=session_agent_id or "reclaw-main",
+                    )
+
+                    result_text = result.get("result", result.get("error", "Unknown result"))
+                    tool_results.append({"tool": tool_name, "result": result_text})
+
+                    # Stream tool result notification
+                    result_display = f"🔧 **{tool_name}**: {result_text}\n\n"
+                    all_text_parts.append(result_display)
+                    result_event = json.dumps({"type": "chunk", "content": result_display})
+                    yield f"data: {result_event}\n\n"
+
+                    # Add the assistant's partial response and tool result to conversation
+                    assistant_turn = text_before + f"\n\n[Tool: {tool_name}]" if text_before else f"[Tool: {tool_name}]"
+                    conversation.append({"role": "assistant", "content": assistant_turn})
+                    conversation.append({
+                        "role": "user",
+                        "content": f"[Tool result for {tool_name}]:\n{result_text}\n\nNow respond to the user based on this result. Do not call another tool unless necessary.",
+                    })
+
+                    # Continue the loop to get the follow-up response
+                    continue
+
+                else:
+                    # No tool call — this is the final response. Stream it.
+                    all_text_parts.append(response_text)
+                    event_data = json.dumps({"type": "chunk", "content": response_text})
+                    yield f"data: {event_data}\n\n"
+                    break
+
+            # Save the full assistant response
             async with async_session() as save_db:
-                assistant_content = "".join(full_response)
+                assistant_content = "".join(all_text_parts)
                 assistant_msg = Message(
                     id=str(uuid.uuid4()),
                     project_id=request.project_id,
@@ -413,12 +397,13 @@ async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db)):
                     "type": "done",
                     "message_id": assistant_msg.id,
                     "sources": sources,
+                    "tools_used": [t["tool"] for t in tool_results] if tool_results else [],
                 })
                 yield f"data: {done_data}\n\n"
 
         except GeneratorExit:
             # Client disconnected mid-stream — save what we have
-            if full_response:
+            if all_text_parts:
                 try:
                     async with async_session() as save_db:
                         msg = Message(
@@ -426,7 +411,7 @@ async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db)):
                             project_id=request.project_id,
                             session_id=request.session_id,
                             role="assistant",
-                            content="".join(full_response) + "\n\n[Response interrupted]",
+                            content="".join(all_text_parts) + "\n\n[Response interrupted]",
                         )
                         save_db.add(msg)
                         await save_db.commit()

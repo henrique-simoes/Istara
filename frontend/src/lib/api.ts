@@ -55,14 +55,29 @@ export const tasks = {
     if (status) params.set("status", status);
     return request<any[]>(`/api/tasks?${params}`);
   },
-  create: (data: { project_id: string; title: string; description?: string }) =>
-    request<any>("/api/tasks", { method: "POST", body: JSON.stringify(data) }),
+  create: (data: {
+    project_id: string;
+    title: string;
+    description?: string;
+    skill_name?: string;
+    instructions?: string;
+    priority?: string;
+    input_document_ids?: string[];
+    output_document_ids?: string[];
+    urls?: string[];
+    user_context?: string;
+    agent_id?: string;
+  }) => request<any>("/api/tasks", { method: "POST", body: JSON.stringify(data) }),
   update: (id: string, data: Record<string, unknown>) =>
     request<any>(`/api/tasks/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   move: (id: string, status: string) =>
     request<any>(`/api/tasks/${id}/move?status=${status}`, { method: "POST" }),
   delete: (id: string) =>
     fetch(`${API_BASE}/api/tasks/${id}`, { method: "DELETE" }),
+  attach: (taskId: string, documentId: string, direction: "input" | "output" = "input") =>
+    post<{ attached: boolean }>(`/api/tasks/${taskId}/attach?document_id=${documentId}&direction=${direction}`, {}),
+  detach: (taskId: string, documentId: string, direction: "input" | "output" = "input") =>
+    post<{ detached: boolean }>(`/api/tasks/${taskId}/detach?document_id=${documentId}&direction=${direction}`, {}),
 };
 
 // --- Chat ---

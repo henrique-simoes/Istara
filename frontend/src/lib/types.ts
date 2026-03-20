@@ -28,6 +28,10 @@ export interface Task {
   progress: number;
   position: number;
   priority: string;
+  input_document_ids: string[];
+  output_document_ids: string[];
+  urls: string[];
+  instructions: string;
   created_at: string;
   updated_at: string;
 }

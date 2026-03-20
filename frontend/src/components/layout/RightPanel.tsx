@@ -95,13 +95,20 @@ export default function RightPanel({ activeView, collapsed, onToggle }: RightPan
         </Section>
       )}
 
-      {/* Quick skill suggestions */}
-      <Section title="⚡ Quick Actions">
-        <div className="space-y-1 text-xs">
-          <p className="text-slate-400">Type in chat:</p>
-          <p className="text-reclaw-600">"analyze interviews"</p>
-          <p className="text-reclaw-600">"create personas"</p>
-          <p className="text-reclaw-600">"run thematic analysis"</p>
+      {/* Quick action suggestions — agents understand natural language */}
+      <Section title="⚡ Chat Actions">
+        <div className="space-y-2 text-xs">
+          <p className="text-slate-400">Agents understand what you need. Try:</p>
+          <div className="space-y-1">
+            <p className="text-reclaw-600">"Create a task to analyze interviews"</p>
+            <p className="text-reclaw-600">"Find documents about onboarding"</p>
+            <p className="text-reclaw-600">"What insights do we have so far?"</p>
+            <p className="text-reclaw-600">"Attach report.pdf to the usability task"</p>
+            <p className="text-reclaw-600">"Fetch https://competitor.com for analysis"</p>
+          </div>
+          <p className="text-[10px] text-slate-400 mt-1">
+            Agents use 13 system tools to perform actions, search documents, manage tasks, and query findings directly from chat.
+          </p>
         </div>
       </Section>
     </div>
