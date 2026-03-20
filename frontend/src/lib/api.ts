@@ -1,6 +1,6 @@
 /** API client for ReClaw backend. */
 
-import type { ChatSession, ChatMessage, InferencePresetConfig, DAGNode, DAGHealth, DAGExpandResult, DAGGrepResult } from "@/lib/types";
+import type { ChatSession, ChatMessage, InferencePresetConfig, DAGNode, DAGHealth, DAGExpandResult, DAGGrepResult, ReclawDocument, DocumentContent, DocumentTag, DocumentStats } from "@/lib/types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -335,6 +335,69 @@ export const settings = {
     request<any>(`/api/settings/model?model_name=${model}`, { method: "POST" }),
   switchProvider: (provider: "ollama" | "lmstudio") =>
     request<any>(`/api/settings/provider?provider=${provider}`, { method: "POST" }),
+};
+
+// --- Documents ---
+
+export const documents = {
+  list: (params: {
+    project_id?: string;
+    phase?: string;
+    tag?: string;
+    source?: string;
+    status?: string;
+    search?: string;
+    page?: number;
+    page_size?: number;
+  } = {}) => {
+    const query = new URLSearchParams();
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== "") query.set(k, String(v));
+    });
+    return get<{
+      documents: ReclawDocument[];
+      total: number;
+      page: number;
+      page_size: number;
+      total_pages: number;
+    }>(`/api/documents?${query}`);
+  },
+  get: (id: string) => get<ReclawDocument & { content_text: string }>(`/api/documents/${id}`),
+  create: (data: {
+    project_id: string;
+    title: string;
+    description?: string;
+    file_path?: string;
+    file_name?: string;
+    file_type?: string;
+    source?: string;
+    task_id?: string;
+    agent_ids?: string[];
+    skill_names?: string[];
+    tags?: string[];
+    phase?: string;
+    atomic_path?: Record<string, unknown>;
+    content_preview?: string;
+    content_text?: string;
+  }) => post<ReclawDocument>("/api/documents", data),
+  update: (id: string, data: Record<string, unknown>) =>
+    patch<ReclawDocument>(`/api/documents/${id}`, data),
+  delete: (id: string) => del(`/api/documents/${id}`),
+  content: (id: string) => get<DocumentContent>(`/api/documents/${id}/content`),
+  search: (projectId: string, q: string, phase?: string, tag?: string, limit = 20) => {
+    const params = new URLSearchParams({ project_id: projectId, q, limit: String(limit) });
+    if (phase) params.set("phase", phase);
+    if (tag) params.set("tag", tag);
+    return get<{ query: string; results: ReclawDocument[]; total: number }>(
+      `/api/documents/search/full?${params}`
+    );
+  },
+  tags: (projectId: string) =>
+    get<{ tags: DocumentTag[] }>(`/api/documents/tags/${projectId}`),
+  sync: (projectId: string) =>
+    post<{ synced: number; total: number }>(`/api/documents/sync/${projectId}`, {}),
+  stats: (projectId: string) =>
+    get<DocumentStats>(`/api/documents/stats/${projectId}`),
 };
 
 // --- Context DAG ---

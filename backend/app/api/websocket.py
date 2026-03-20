@@ -156,3 +156,19 @@ async def broadcast_task_queue_update(
         "in_progress": in_progress,
         "completed": completed,
     })
+
+
+async def broadcast_document_event(event: str, document_id: str, title: str, project_id: str) -> None:
+    """Broadcast document created/updated/deleted event."""
+    await manager.broadcast(event, {
+        "document_id": document_id,
+        "title": title,
+        "project_id": project_id,
+    })
+
+
+async def broadcast(event: dict) -> None:
+    """Broadcast a raw event dict (type + data)."""
+    event_type = event.get("type", "unknown")
+    data = event.get("data", {})
+    await manager.broadcast(event_type, data)

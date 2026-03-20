@@ -43,7 +43,7 @@ export async function run(ctx) {
   }
 
   // Test keyboard shortcuts — Cmd+1 to Cmd+7
-  const viewKeys = { "1": "Chat", "2": "Findings", "3": "Tasks", "4": "Interviews", "5": "Context", "6": "Skills", "7": "Agents" };
+  const viewKeys = { "1": "Chat", "2": "Findings", "3": "Tasks", "4": "Interviews", "5": "Documents", "6": "Context", "7": "Skills", "8": "Agents" };
   for (const [key, expectedView] of Object.entries(viewKeys)) {
     await page.keyboard.press(`Meta+${key}`);
     await page.waitForTimeout(500);

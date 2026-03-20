@@ -1,0 +1,757 @@
+"use client";
+
+import { useEffect, useState, useCallback, useMemo } from "react";
+import {
+  FileText,
+  Search,
+  Filter,
+  X,
+  ChevronDown,
+  RefreshCw,
+  Tag,
+  Clock,
+  Bot,
+  Wand2,
+  LayoutDashboard,
+  Eye,
+  Trash2,
+  Diamond,
+  ArrowLeft,
+  FileImage,
+  FileAudio,
+  FileVideo,
+  File,
+  FolderInput,
+  CheckCircle,
+  AlertCircle,
+  Loader2,
+  ChevronRight,
+} from "lucide-react";
+import { useProjectStore } from "@/stores/projectStore";
+import { useDocumentStore } from "@/stores/documentStore";
+import { documents as documentsApi } from "@/lib/api";
+import { cn, phaseLabel } from "@/lib/utils";
+import type { ReclawDocument, DocumentContent } from "@/lib/types";
+
+const PHASES = [
+  { id: "", label: "All Phases" },
+  { id: "discover", label: "Discover" },
+  { id: "define", label: "Define" },
+  { id: "develop", label: "Develop" },
+  { id: "deliver", label: "Deliver" },
+];
+
+const SOURCES = [
+  { id: "", label: "All Sources" },
+  { id: "user_upload", label: "User Upload" },
+  { id: "agent_output", label: "Agent Output" },
+  { id: "task_output", label: "Task Output" },
+  { id: "project_file", label: "Project File" },
+  { id: "external", label: "External" },
+];
+
+const STATUS_COLORS: Record<string, string> = {
+  ready: "text-green-600 bg-green-50 dark:bg-green-900/20",
+  processing: "text-blue-600 bg-blue-50 dark:bg-blue-900/20",
+  pending: "text-yellow-600 bg-yellow-50 dark:bg-yellow-900/20",
+  error: "text-red-600 bg-red-50 dark:bg-red-900/20",
+};
+
+const SOURCE_LABELS: Record<string, string> = {
+  user_upload: "User Upload",
+  agent_output: "Agent Output",
+  task_output: "Task Output",
+  project_file: "Project File",
+  external: "External",
+};
+
+function fileIcon(type: string) {
+  if ([".jpg", ".jpeg", ".png", ".gif", ".webp"].includes(type)) return FileImage;
+  if ([".mp3", ".wav", ".m4a", ".ogg"].includes(type)) return FileAudio;
+  if ([".mp4", ".webm", ".mov"].includes(type)) return FileVideo;
+  if ([".pdf", ".docx", ".txt", ".md", ".csv"].includes(type)) return FileText;
+  return File;
+}
+
+function formatSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function timeAgo(dateStr: string): string {
+  const d = new Date(dateStr);
+  const now = new Date();
+  const diff = Math.floor((now.getTime() - d.getTime()) / 1000);
+  if (diff < 60) return "just now";
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  if (diff < 604800) return `${Math.floor(diff / 86400)}d ago`;
+  return d.toLocaleDateString();
+}
+
+export default function DocumentsView() {
+  const { activeProjectId } = useProjectStore();
+  const {
+    documents,
+    tags,
+    stats,
+    loading,
+    total,
+    page,
+    totalPages,
+    searchQuery,
+    filterPhase,
+    filterTag,
+    filterSource,
+    selectedDocId,
+    fetchDocuments,
+    fetchTags,
+    fetchStats,
+    syncDocuments,
+    setSearchQuery,
+    setFilterPhase,
+    setFilterTag,
+    setFilterSource,
+    selectDocument,
+    deleteDocument,
+  } = useDocumentStore();
+
+  const [showFilters, setShowFilters] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [previewDoc, setPreviewDoc] = useState<ReclawDocument | null>(null);
+  const [previewContent, setPreviewContent] = useState<DocumentContent | null>(null);
+  const [loadingPreview, setLoadingPreview] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+
+  // Fetch documents on project change
+  useEffect(() => {
+    if (activeProjectId) {
+      fetchDocuments(activeProjectId);
+      fetchTags(activeProjectId);
+      fetchStats(activeProjectId);
+      // Auto-sync on load to pick up new project files
+      syncDocuments(activeProjectId);
+    }
+  }, [activeProjectId, fetchDocuments, fetchTags, fetchStats, syncDocuments]);
+
+  // Refetch when filters change
+  useEffect(() => {
+    if (activeProjectId) {
+      fetchDocuments(activeProjectId);
+    }
+  }, [searchQuery, filterPhase, filterTag, filterSource, activeProjectId, fetchDocuments]);
+
+  const handleSync = async () => {
+    if (!activeProjectId) return;
+    setSyncing(true);
+    await syncDocuments(activeProjectId);
+    await fetchDocuments(activeProjectId);
+    await fetchTags(activeProjectId);
+    await fetchStats(activeProjectId);
+    setSyncing(false);
+  };
+
+  const handleOpenPreview = async (doc: ReclawDocument) => {
+    setPreviewDoc(doc);
+    selectDocument(doc.id);
+    setLoadingPreview(true);
+    try {
+      const content = await documentsApi.content(doc.id);
+      setPreviewContent(content);
+    } catch {
+      setPreviewContent(null);
+    }
+    setLoadingPreview(false);
+  };
+
+  const handleClosePreview = () => {
+    setPreviewDoc(null);
+    setPreviewContent(null);
+    selectDocument(null);
+  };
+
+  const handleDelete = async (id: string) => {
+    await deleteDocument(id);
+    setConfirmDelete(null);
+    if (previewDoc?.id === id) handleClosePreview();
+  };
+
+  const handleSearchKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === "Escape") {
+        setSearchQuery("");
+        (e.target as HTMLInputElement).blur();
+      }
+    },
+    [setSearchQuery]
+  );
+
+  // Preview mode
+  if (previewDoc) {
+    return (
+      <DocumentPreview
+        doc={previewDoc}
+        content={previewContent}
+        loading={loadingPreview}
+        onClose={handleClosePreview}
+      />
+    );
+  }
+
+  return (
+    <div className="flex flex-col h-full bg-white dark:bg-slate-950">
+      {/* Header */}
+      <div className="border-b border-slate-200 dark:border-slate-800 p-4">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <FileText size={20} className="text-reclaw-600" />
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white">Documents</h2>
+            {stats && (
+              <span className="text-xs bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded-full text-slate-500">
+                {stats.total}
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className={cn(
+                "flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm transition-colors",
+                showFilters
+                  ? "bg-reclaw-100 text-reclaw-700 dark:bg-reclaw-900/30 dark:text-reclaw-400"
+                  : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+              )}
+              aria-label="Toggle filters"
+              aria-expanded={showFilters}
+            >
+              <Filter size={14} />
+              Filters
+            </button>
+            <button
+              onClick={handleSync}
+              disabled={syncing}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors disabled:opacity-50"
+              aria-label="Sync project files"
+              title="Scan project folder for new files"
+            >
+              <RefreshCw size={14} className={syncing ? "animate-spin" : ""} />
+              Sync
+            </button>
+          </div>
+        </div>
+
+        {/* Search bar */}
+        <div className="relative">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            type="text"
+            placeholder="Search documents by title, content, tags..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={handleSearchKeyDown}
+            className="w-full pl-9 pr-8 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+            aria-label="Search documents"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-700"
+              aria-label="Clear search"
+            >
+              <X size={12} className="text-slate-400" />
+            </button>
+          )}
+        </div>
+
+        {/* Filters panel */}
+        {showFilters && (
+          <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label="Document filters">
+            {/* Phase filter */}
+            <select
+              value={filterPhase}
+              onChange={(e) => setFilterPhase(e.target.value)}
+              className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+              aria-label="Filter by phase"
+            >
+              {PHASES.map((p) => (
+                <option key={p.id} value={p.id}>{p.label}</option>
+              ))}
+            </select>
+
+            {/* Source filter */}
+            <select
+              value={filterSource}
+              onChange={(e) => setFilterSource(e.target.value)}
+              className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+              aria-label="Filter by source"
+            >
+              {SOURCES.map((s) => (
+                <option key={s.id} value={s.id}>{s.label}</option>
+              ))}
+            </select>
+
+            {/* Tag filter */}
+            {tags.length > 0 && (
+              <select
+                value={filterTag}
+                onChange={(e) => setFilterTag(e.target.value)}
+                className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+                aria-label="Filter by tag"
+              >
+                <option value="">All Tags</option>
+                {tags.map((t) => (
+                  <option key={t.name} value={t.name}>
+                    {t.name} ({t.count})
+                  </option>
+                ))}
+              </select>
+            )}
+
+            {/* Clear filters */}
+            {(filterPhase || filterSource || filterTag) && (
+              <button
+                onClick={() => {
+                  setFilterPhase("");
+                  setFilterSource("");
+                  setFilterTag("");
+                }}
+                className="px-3 py-1.5 rounded-lg text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                aria-label="Clear all filters"
+              >
+                Clear Filters
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Document List */}
+      <div className="flex-1 overflow-y-auto p-4" role="list" aria-label="Documents list">
+        {loading && documents.length === 0 ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 size={20} className="animate-spin text-reclaw-600" />
+            <span className="ml-2 text-sm text-slate-500">Loading documents...</span>
+          </div>
+        ) : documents.length === 0 ? (
+          <div className="text-center py-12">
+            <FileText size={40} className="mx-auto text-slate-300 dark:text-slate-600 mb-3" />
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">
+              {searchQuery || filterPhase || filterTag || filterSource
+                ? "No documents match your filters."
+                : "No documents yet."}
+            </p>
+            <p className="text-xs text-slate-400">
+              Upload files, run skills, or complete tasks to generate documents.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {documents.map((doc) => (
+              <DocumentCard
+                key={doc.id}
+                doc={doc}
+                onOpen={() => handleOpenPreview(doc)}
+                onDelete={() => setConfirmDelete(doc.id)}
+                isSelected={selectedDocId === doc.id}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-center gap-2 mt-4 pt-4 border-t border-slate-200 dark:border-slate-800">
+            <button
+              onClick={() => activeProjectId && fetchDocuments(activeProjectId, page - 1)}
+              disabled={page <= 1}
+              className="px-3 py-1 rounded text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30"
+              aria-label="Previous page"
+            >
+              Previous
+            </button>
+            <span className="text-xs text-slate-500">
+              Page {page} of {totalPages}
+            </span>
+            <button
+              onClick={() => activeProjectId && fetchDocuments(activeProjectId, page + 1)}
+              disabled={page >= totalPages}
+              className="px-3 py-1 rounded text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30"
+              aria-label="Next page"
+            >
+              Next
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Delete confirmation */}
+      {confirmDelete && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
+          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl max-w-sm w-full p-5">
+            <h3 className="font-semibold text-slate-900 dark:text-white mb-2">Delete Document?</h3>
+            <p className="text-sm text-slate-500 mb-4">This action cannot be undone.</p>
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => setConfirmDelete(null)}
+                className="px-3 py-1.5 rounded-lg text-sm text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleDelete(confirmDelete)}
+                className="px-3 py-1.5 rounded-lg text-sm bg-red-600 text-white hover:bg-red-700"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// --- Document Card ---
+
+function DocumentCard({
+  doc,
+  onOpen,
+  onDelete,
+  isSelected,
+}: {
+  doc: ReclawDocument;
+  onOpen: () => void;
+  onDelete: () => void;
+  isSelected: boolean;
+}) {
+  const Icon = fileIcon(doc.file_type);
+  const tags = doc.tags || [];
+
+  return (
+    <div
+      role="listitem"
+      className={cn(
+        "group p-3 rounded-lg border transition-all cursor-pointer",
+        isSelected
+          ? "border-reclaw-500 bg-reclaw-50/50 dark:bg-reclaw-900/10"
+          : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-reclaw-300 hover:shadow-sm dark:hover:border-reclaw-700"
+      )}
+      onClick={onOpen}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen(); } }}
+      tabIndex={0}
+      aria-label={`Document: ${doc.title}`}
+    >
+      <div className="flex items-start gap-3">
+        {/* File icon */}
+        <div className="mt-0.5 p-2 rounded-lg bg-slate-100 dark:bg-slate-700 shrink-0">
+          <Icon size={18} className="text-slate-500 dark:text-slate-400" />
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <h4 className="text-sm font-medium text-slate-900 dark:text-white truncate">
+              {doc.title}
+            </h4>
+            <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full font-medium", STATUS_COLORS[doc.status] || STATUS_COLORS.ready)}>
+              {doc.status}
+            </span>
+          </div>
+
+          {/* Description */}
+          {doc.description && (
+            <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 mb-1.5">
+              {doc.description}
+            </p>
+          )}
+
+          {/* Meta row */}
+          <div className="flex flex-wrap items-center gap-2 text-[10px] text-slate-400">
+            {/* Source */}
+            <span className="flex items-center gap-0.5">
+              <FolderInput size={10} />
+              {SOURCE_LABELS[doc.source] || doc.source}
+            </span>
+
+            {/* Phase */}
+            <span className="flex items-center gap-0.5">
+              <Diamond size={10} />
+              {doc.phase}
+            </span>
+
+            {/* File size */}
+            {doc.file_size > 0 && (
+              <span>{formatSize(doc.file_size)}</span>
+            )}
+
+            {/* Time */}
+            <span className="flex items-center gap-0.5">
+              <Clock size={10} />
+              {timeAgo(doc.updated_at || doc.created_at)}
+            </span>
+
+            {/* Agents */}
+            {doc.agent_ids.length > 0 && (
+              <span className="flex items-center gap-0.5">
+                <Bot size={10} />
+                {doc.agent_ids.length} agent{doc.agent_ids.length > 1 ? "s" : ""}
+              </span>
+            )}
+
+            {/* Skills */}
+            {doc.skill_names.length > 0 && (
+              <span className="flex items-center gap-0.5">
+                <Wand2 size={10} />
+                {doc.skill_names.length} skill{doc.skill_names.length > 1 ? "s" : ""}
+              </span>
+            )}
+
+            {/* Task */}
+            {doc.task_id && (
+              <span className="flex items-center gap-0.5">
+                <LayoutDashboard size={10} />
+                Task linked
+              </span>
+            )}
+          </div>
+
+          {/* Tags */}
+          {tags.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-1.5">
+              {tags.slice(0, 5).map((tag) => (
+                <span
+                  key={tag}
+                  className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] bg-reclaw-50 text-reclaw-700 dark:bg-reclaw-900/30 dark:text-reclaw-400"
+                >
+                  <Tag size={8} />
+                  {tag}
+                </span>
+              ))}
+              {tags.length > 5 && (
+                <span className="text-[10px] text-slate-400">+{tags.length - 5}</span>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Actions */}
+        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+          <button
+            onClick={(e) => { e.stopPropagation(); onOpen(); }}
+            className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400"
+            aria-label="Preview document"
+            title="Preview"
+          >
+            <Eye size={14} />
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); onDelete(); }}
+            className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-slate-400 hover:text-red-600"
+            aria-label="Delete document"
+            title="Delete"
+          >
+            <Trash2 size={14} />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --- Document Preview ---
+
+function DocumentPreview({
+  doc,
+  content,
+  loading,
+  onClose,
+}: {
+  doc: ReclawDocument;
+  content: DocumentContent | null;
+  loading: boolean;
+  onClose: () => void;
+}) {
+  const atomicPath = doc.atomic_path || {};
+  const hasAtomicPath = Object.keys(atomicPath).length > 0;
+
+  return (
+    <div className="flex flex-col h-full bg-white dark:bg-slate-950">
+      {/* Header */}
+      <div className="border-b border-slate-200 dark:border-slate-800 p-4">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500"
+            aria-label="Back to documents list"
+          >
+            <ArrowLeft size={18} />
+          </button>
+          <div className="flex-1 min-w-0">
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white truncate">
+              {doc.title}
+            </h2>
+            <p className="text-xs text-slate-500">
+              {doc.file_name} {doc.file_size > 0 && `(${formatSize(doc.file_size)})`}
+            </p>
+          </div>
+          <span className={cn("text-xs px-2 py-0.5 rounded-full font-medium", STATUS_COLORS[doc.status])}>
+            {doc.status}
+          </span>
+        </div>
+      </div>
+
+      <div className="flex-1 flex overflow-hidden">
+        {/* Main content area */}
+        <div className="flex-1 overflow-y-auto p-4">
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 size={20} className="animate-spin text-reclaw-600" />
+              <span className="ml-2 text-sm text-slate-500">Loading content...</span>
+            </div>
+          ) : content?.content ? (
+            <pre className="whitespace-pre-wrap text-sm text-slate-800 dark:text-slate-200 font-mono leading-relaxed bg-slate-50 dark:bg-slate-900 rounded-lg p-4 border border-slate-200 dark:border-slate-700">
+              {content.content}
+            </pre>
+          ) : content?.media_url ? (
+            <div className="flex items-center justify-center py-8">
+              {content.type && [".jpg", ".jpeg", ".png", ".gif"].includes(content.type) ? (
+                <img src={`http://localhost:8000${content.media_url}`} alt={doc.title} className="max-h-96 rounded-lg" />
+              ) : content.type && [".mp3", ".wav", ".m4a", ".ogg"].includes(content.type) ? (
+                <audio controls src={`http://localhost:8000${content.media_url}`} className="w-full max-w-lg" />
+              ) : content.type && [".mp4", ".webm", ".mov"].includes(content.type) ? (
+                <video controls src={`http://localhost:8000${content.media_url}`} className="max-h-96 rounded-lg" />
+              ) : (
+                <p className="text-sm text-slate-500">Preview not available for this file type.</p>
+              )}
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <FileText size={40} className="mx-auto text-slate-300 dark:text-slate-600 mb-3" />
+              <p className="text-sm text-slate-500">No preview available.</p>
+            </div>
+          )}
+        </div>
+
+        {/* Right panel — metadata */}
+        <div className="w-72 border-l border-slate-200 dark:border-slate-800 overflow-y-auto p-4 hidden xl:block" role="region" aria-label="Document details">
+          {/* Description / Origin */}
+          <MetaSection title="Origin">
+            <p className="text-xs text-slate-600 dark:text-slate-400">
+              {doc.description || "No description available."}
+            </p>
+          </MetaSection>
+
+          {/* Source & Phase */}
+          <MetaSection title="Details">
+            <div className="space-y-1.5 text-xs">
+              <MetaRow label="Source" value={SOURCE_LABELS[doc.source] || doc.source} />
+              <MetaRow label="Phase" value={phaseLabel(doc.phase)} />
+              <MetaRow label="Version" value={`v${doc.version}`} />
+              <MetaRow label="Created" value={doc.created_at ? new Date(doc.created_at).toLocaleString() : "—"} />
+              {doc.updated_at && doc.updated_at !== doc.created_at && (
+                <MetaRow label="Updated" value={new Date(doc.updated_at).toLocaleString()} />
+              )}
+            </div>
+          </MetaSection>
+
+          {/* Agents involved */}
+          {doc.agent_ids.length > 0 && (
+            <MetaSection title="Agents Involved">
+              <div className="space-y-1">
+                {doc.agent_ids.map((id) => (
+                  <div key={id} className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400">
+                    <Bot size={12} className="text-reclaw-600" />
+                    <span className="truncate">{id}</span>
+                  </div>
+                ))}
+              </div>
+            </MetaSection>
+          )}
+
+          {/* Skills involved */}
+          {doc.skill_names.length > 0 && (
+            <MetaSection title="Skills Used">
+              <div className="flex flex-wrap gap-1">
+                {doc.skill_names.map((s) => (
+                  <span key={s} className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+                    <Wand2 size={8} />
+                    {s}
+                  </span>
+                ))}
+              </div>
+            </MetaSection>
+          )}
+
+          {/* Task link */}
+          {doc.task_id && (
+            <MetaSection title="Related Task">
+              <div className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400">
+                <LayoutDashboard size={12} className="text-blue-600" />
+                <span className="truncate">{doc.task_id}</span>
+              </div>
+            </MetaSection>
+          )}
+
+          {/* Tags */}
+          {doc.tags.length > 0 && (
+            <MetaSection title="Tags">
+              <div className="flex flex-wrap gap-1">
+                {doc.tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] bg-reclaw-50 text-reclaw-700 dark:bg-reclaw-900/30 dark:text-reclaw-400"
+                  >
+                    <Tag size={8} />
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            </MetaSection>
+          )}
+
+          {/* Atomic Research Path */}
+          {hasAtomicPath && (
+            <MetaSection title="Atomic Research Path">
+              <div className="space-y-2 text-xs">
+                {Object.entries(atomicPath).map(([key, value]) => (
+                  <div key={key} className="flex items-start gap-2">
+                    <ChevronRight size={10} className="mt-0.5 text-reclaw-500 shrink-0" />
+                    <div>
+                      <span className="font-medium text-slate-700 dark:text-slate-300 capitalize">
+                        {key.replace(/_/g, " ")}
+                      </span>
+                      <p className="text-slate-500 dark:text-slate-400">
+                        {typeof value === "string" ? value : JSON.stringify(value)}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </MetaSection>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --- Helper Sub-components ---
+
+function MetaSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="mb-4">
+      <h4 className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">{title}</h4>
+      {children}
+    </div>
+  );
+}
+
+function MetaRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between">
+      <span className="text-slate-500">{label}</span>
+      <span className="text-slate-700 dark:text-slate-300 font-medium">{value}</span>
+    </div>
+  );
+}
