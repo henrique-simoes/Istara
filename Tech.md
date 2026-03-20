@@ -880,8 +880,8 @@ ReClaw-main/
 │   └── package.json
 ├── tests/
 │   ├── simulation/
-│   │   ├── run.mjs                    # Simulation orchestrator (30 scenarios)
-│   │   ├── scenarios/                 # Test scenarios (01-29)
+│   │   ├── run.mjs                    # Simulation orchestrator (32 scenarios)
+│   │   ├── scenarios/                 # Test scenarios (01-31)
 │   │   └── evaluators/                # Accessibility, Heuristics, Performance
 │   └── e2e_test.py                    # Backend integration tests
 ├── docker-compose.yml                 # Standard deployment
