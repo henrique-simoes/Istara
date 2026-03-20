@@ -70,9 +70,12 @@ async def websocket_endpoint(websocket: WebSocket):
     - agent_status: Agent activity updates (working, idle, etc.)
     - task_progress: Task progress updates (task_id, progress, notes)
     - file_processed: A file was processed and indexed
-    - finding_created: A new finding was created
+    - finding_created: New research findings stored (nuggets, insights, recommendations)
     - suggestion: Agent has a suggestion for the user
-    - error: An error occurred
+    - resource_throttle: Agent paused due to hardware constraints
+    - task_queue_update: Task queue depth changed (pending, in_progress, completed)
+    - document_created: New document registered
+    - document_updated: Existing document modified
     """
     await manager.connect(websocket)
 
@@ -135,6 +138,18 @@ async def broadcast_suggestion(message: str, project_id: str, action: str = "") 
         "message": message,
         "project_id": project_id,
         "action": action,
+    })
+
+
+async def broadcast_finding_created(
+    finding_type: str, count: int, project_id: str, task_title: str = ""
+) -> None:
+    """Broadcast when new findings are stored after skill execution."""
+    await manager.broadcast("finding_created", {
+        "message": f"{count} {finding_type}(s) from: {task_title}" if task_title else f"{count} new {finding_type}(s) created",
+        "finding_type": finding_type,
+        "count": count,
+        "project_id": project_id,
     })
 
 

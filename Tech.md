@@ -83,7 +83,7 @@ ReClaw runs a **meta-orchestrator** coordinating five specialized agents — a t
 | Database | SQLite + aiosqlite | Zero-config, local-first, ACID-compliant |
 | Vector Store | LanceDB | Embedded, no server process, columnar storage |
 | LLM | LM Studio / Ollama | Local inference, OpenAI-compatible APIs |
-| Real-time | WebSocket (FastAPI) | Agent status, task progress, live findings |
+| Real-time | WebSocket (FastAPI) | 9 event types: agent status, task progress, findings, documents, queue, throttle |
 | Testing | Playwright + Node.js simulation | E2E, accessibility (WCAG), Nielsen's heuristics |
 
 ---
@@ -147,6 +147,68 @@ Agents communicate through a database-backed messaging system (`services/a2a.py`
 - **Broadcast**: WebSocket notifications for real-time UI updates
 - **Audit trail**: All messages logged for traceability
 - **A2A Protocol compatibility**: The backend exposes `/.well-known/agent.json` for standard discovery
+
+### Real-Time Event System
+
+All agent activity, task progress, and document changes are broadcast to the frontend via WebSocket (`/ws`). Every broadcast function on the backend has a corresponding handler in the frontend's `ToastNotification` component. This is enforced by the **Event Wiring Audit** (Scenario 30) which verifies both sides are connected.
+
+| Event Type | Backend Source | Frontend Action |
+|------------|---------------|-----------------|
+| `agent_status` | Agent work loop, custom workers, specialized agents | Toast: working/error/idle status |
+| `task_progress` | Skill execution stages (0.1 → 0.3 → 0.7 → 1.0) | Toast: task completion |
+| `file_processed` | File watcher after ingestion | Toast: file indexed with chunk count |
+| `finding_created` | `_store_findings()` after skill execution | Toast: new findings with type + count |
+| `suggestion` | File watcher, skill health, agent recommendations | Sticky toast with action buttons |
+| `resource_throttle` | MetaOrchestrator when CPU/RAM critical | Warning toast: agent paused |
+| `task_queue_update` | Agent work cycle after task completion | Info toast: queue depth |
+| `document_created` | File watcher, document API | Toast: navigate to Documents |
+| `document_updated` | Document API PATCH | Toast: navigate to Documents |
+
+**Resource Governor Lifecycle**: Agent workers register with the governor before task execution and unregister after, enforcing concurrent agent limits. The governor monitors CPU/RAM and pauses all agents when resources are critical (>90% RAM), broadcasting `resource_throttle` events.
+
+### Task-Document Linking
+
+Tasks support bidirectional document linking, allowing users and agents to attach source materials (inputs) and track produced artifacts (outputs).
+
+| Field | Type | Purpose |
+|-------|------|---------|
+| `input_document_ids` | JSON array | Source materials the agent should use for this task |
+| `output_document_ids` | JSON array | Artifacts the agent produces during task execution |
+| `urls` | JSON array | URLs the agent should fetch and analyze |
+| `instructions` | Text | User-provided per-task guidance for the agent |
+
+**API Endpoints**:
+- `POST /api/tasks/{id}/attach?document_id=X&direction=input|output` — Attach a document
+- `POST /api/tasks/{id}/detach?document_id=X&direction=input|output` — Detach a document
+- Standard `POST /api/tasks` and `PATCH /api/tasks/{id}` support all new fields
+
+**Frontend Integration**: The Kanban board shows document count badges (purple) and URL count badges (blue) on task cards. The Task Editor modal provides instructions editing, URL management (add/remove), and a read-only attached documents summary.
+
+### System Action Tools (LLM-Native Tool Selection)
+
+Instead of hardcoded intent detection with regex/dictionaries, ReClaw uses **structured tool schemas** injected into the LLM's system prompt. The LLM itself decides which tool to call based on the user's natural language request.
+
+**13 System Tools** (`backend/app/skills/system_actions.py`):
+
+| Tool | What It Does |
+|------|-------------|
+| `create_task` | Create a new Kanban task with all fields |
+| `search_documents` | Full-text search across project documents |
+| `list_tasks` | List tasks filtered by status/project |
+| `move_task` | Move a task between Kanban columns |
+| `attach_document` | Link a document to a task (input/output) |
+| `search_findings` | Query nuggets, facts, insights, recommendations |
+| `list_project_files` | List files in a project's upload directory |
+| `assign_agent` | Assign an agent to a specific task |
+| `send_agent_message` | Send A2A message between agents |
+| `get_document_content` | Retrieve full document content |
+| `search_memory` | Search agent memory and learnings |
+| `update_task` | Update task fields (title, status, URLs, etc.) |
+| `sync_project_documents` | Scan project folder for new/changed files |
+
+**Tool Schema Format**: Each tool is defined with `name`, `description`, and `parameters` (JSON Schema). The `build_tools_prompt()` function generates a compact system prompt section listing all available tools with their schemas.
+
+**ReAct Execution Pattern**: When the LLM responds with a tool call (`{"tool": "create_task", "args": {...}}`), the backend extracts it, executes the tool, injects the result back into the conversation, and re-sends to the LLM for the next reasoning step. Maximum 3 tool iterations per message.
 
 ---
 
@@ -566,27 +628,35 @@ ReClaw trades compression ratio for **zero dependencies** and **instant speed** 
 
 ## Data Flow: End-to-End Examples
 
-### Chat Message Flow
+### Chat Message Flow (ReAct Tool-Use Loop)
 
 ```
-1. User types "How should I analyze these interview transcripts?"
+1. User types "Create a task to analyze interview transcripts and attach report.pdf"
 2. Frontend sends POST /api/chat with message + project_id + session_id
 3. Backend:
-   a. Detects skill intent: "interview" → user-interviews skill (optional)
-   b. Loads session → gets assigned agent (e.g., reclaw-main)
-   c. Prompt RAG: composes query-aware agent identity
+   a. Loads session → gets assigned agent (e.g., reclaw-main)
+   b. Prompt RAG: composes query-aware agent identity
       - Identity anchor (559 tokens) always included
       - Retrieves 8 relevant sections (interview skills, methodology protocols)
       - Skips UI audit skills, error handling — not relevant to query
+   c. System Action Tools injected into system prompt (13 tools, structured schemas)
    d. Context Hierarchy: merges platform + company + project contexts
    e. RAG: retrieves relevant document chunks from vector store
    f. Token Counter: verifies total fits within max_context_tokens
    g. If over budget: LLMLingua compressor trims system prompt
    h. DAG Summarizer: compresses older messages, keeps fresh tail
-   i. Sends to LLM (LM Studio / Ollama) via streaming chat
-4. Response streamed back via SSE events
+   i. Sends to LLM via non-streaming chat (tool detection requires full response)
+   j. ReAct Loop (max 3 iterations):
+      - Extracts tool call from LLM response (JSON with "tool" + "args")
+      - Executes tool via system_actions.execute_tool()
+      - Injects tool result into conversation as system message
+      - Re-sends to LLM for next reasoning step
+      - Repeats until no more tool calls or iteration limit reached
+4. Final text response streamed back via SSE events
+   - Includes tool_call events for each tool executed
+   - done event includes tools_used list
 5. Saved to DB, DAG compaction triggered asynchronously
-6. WebSocket broadcasts message completion with RAG sources
+6. WebSocket broadcasts relevant events (task_queue_update, document_created, etc.)
 ```
 
 ### Skill Execution Flow
@@ -640,7 +710,7 @@ ReClaw trades compression ratio for **zero dependencies** and **instant speed** 
 
 ### Simulation Framework
 
-ReClaw includes a comprehensive **Playwright + Node.js simulation agent** at `tests/simulation/` that runs 30 scenarios covering:
+ReClaw includes a comprehensive **Playwright + Node.js simulation agent** at `tests/simulation/` that runs 32 scenarios covering:
 
 | Category | Scenarios | Checks |
 |----------|----------|--------|
@@ -651,6 +721,8 @@ ReClaw includes a comprehensive **Playwright + Node.js simulation agent** at `te
 | Advanced | Full pipeline, self-verification, DAG, robustness | 50+ |
 | **Self-evolution & compression** | Evolution scan, Prompt RAG, budget compliance, domain preservation | **35** |
 | **Documents system** | CRUD, search, filtering, sync, backup, UI navigation, keyboard shortcuts | **25** |
+| **Event wiring audit** | WebSocket event coverage, broadcast↔handler pairing, governor lifecycle, scheduler | **15** |
+| **Task-document linking & tools** | Task CRUD with new fields, document attach/detach, URL updates, system tools, frontend JS verification | **15** |
 
 ### Evaluators
 
