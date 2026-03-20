@@ -273,6 +273,43 @@ async def export_project(project_id: str, export_path: str | None = None, db: As
     ]
     (export_dir / "messages.json").write_text(json.dumps(msgs_data, indent=2))
 
+    # Export documents
+    from app.models.document import Document
+    res = await db.execute(select(Document).where(Document.project_id == project_id))
+    documents = res.scalars().all()
+    docs_data = [d.to_dict() for d in documents]
+    (export_dir / "documents.json").write_text(json.dumps(docs_data, indent=2))
+
+    # Export sessions
+    from app.models.session import ChatSession
+    res = await db.execute(select(ChatSession).where(ChatSession.project_id == project_id))
+    chat_sessions = res.scalars().all()
+    sessions_data = []
+    for s in chat_sessions:
+        d = {c.name: getattr(s, c.name) for c in s.__table__.columns}
+        for k, v in d.items():
+            if hasattr(v, "isoformat"):
+                d[k] = v.isoformat()
+            elif hasattr(v, "value"):
+                d[k] = v.value
+        sessions_data.append(d)
+    (export_dir / "sessions.json").write_text(json.dumps(sessions_data, indent=2))
+
+    # Export codebooks
+    from app.models.codebook import Codebook, Code
+    res = await db.execute(select(Codebook).where(Codebook.project_id == project_id))
+    codebooks = res.scalars().all()
+    codebooks_data = []
+    for cb in codebooks:
+        d = {c.name: getattr(cb, c.name) for c in cb.__table__.columns}
+        for k, v in d.items():
+            if hasattr(v, "isoformat"):
+                d[k] = v.isoformat()
+            elif hasattr(v, "value"):
+                d[k] = v.value
+        codebooks_data.append(d)
+    (export_dir / "codebooks.json").write_text(json.dumps(codebooks_data, indent=2))
+
     # Copy uploaded files
     uploads_src = Path(settings.upload_dir) / project_id
     if uploads_src.exists():
@@ -289,8 +326,11 @@ Exported from ReClaw on {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC
 ## Contents
 - `project.json` — Project metadata and context
 - `findings/` — Research findings (nuggets, facts, insights, recommendations)
+- `documents.json` — All project documents with metadata, tags, and atomic paths
 - `tasks.json` — Kanban tasks
 - `messages.json` — Chat history
+- `sessions.json` — Chat sessions and inference presets
+- `codebooks.json` — Qualitative codebooks
 - `files/` — Uploaded research files
 
 ## Re-importing

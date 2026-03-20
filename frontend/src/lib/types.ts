@@ -255,3 +255,54 @@ export interface DAGGrepResult {
     dag_node_id: string | null;
   }>;
 }
+
+// --- Documents ---
+
+export type DocumentStatus = "pending" | "processing" | "ready" | "error";
+export type DocumentSource = "user_upload" | "agent_output" | "task_output" | "external" | "project_file";
+
+export interface ReclawDocument {
+  id: string;
+  project_id: string;
+  title: string;
+  description: string;
+  file_path: string;
+  file_name: string;
+  file_type: string;
+  file_size: number;
+  status: DocumentStatus;
+  source: DocumentSource;
+  task_id: string | null;
+  agent_ids: string[];
+  skill_names: string[];
+  tags: string[];
+  phase: string;
+  atomic_path: Record<string, unknown>;
+  content_preview: string;
+  content_text?: string;
+  version: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DocumentContent {
+  id: string;
+  file_name: string;
+  type: string;
+  content: string | null;
+  media_url?: string;
+  pages?: number;
+  size: number;
+}
+
+export interface DocumentTag {
+  name: string;
+  count: number;
+}
+
+export interface DocumentStats {
+  total: number;
+  by_source: Record<string, number>;
+  by_phase: Record<string, number>;
+  by_status: Record<string, number>;
+}

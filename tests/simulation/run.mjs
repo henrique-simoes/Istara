@@ -154,6 +154,7 @@ async function loadScenarios() {
     "26-model-session-persistence",
     "27-agent-identity-system",
     "28-self-evolution-prompt-compression",
+    "29-documents-system",
   ];
 
   const scenarios = [];

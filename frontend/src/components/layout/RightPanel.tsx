@@ -181,11 +181,37 @@ export default function RightPanel({ activeView, collapsed, onToggle }: RightPan
     </div>
   );
 
+  const renderDocumentsContext = () => (
+    <div className="space-y-4">
+      <Section title="📄 Documents">
+        <p className="text-xs text-slate-500">
+          Every task output, file upload, and agent-produced artifact appears here as a document.
+        </p>
+      </Section>
+
+      <Section title="🔍 How to Search">
+        <div className="space-y-2 text-xs text-slate-500">
+          <p>Search by title, content, tags, or file name using the search bar.</p>
+          <p>Filter by Double Diamond phase, source type, or tags.</p>
+          <p>Click any document to preview its contents and see the atomic research path.</p>
+        </div>
+      </Section>
+
+      <Section title="🔗 Atomic Path">
+        <p className="text-xs text-slate-500">
+          Each document shows which agents, skills, and tasks created it,
+          forming a traceable path from user request to output.
+        </p>
+      </Section>
+    </div>
+  );
+
   const contextMap: Record<string, () => JSX.Element> = {
     chat: renderChatContext,
     findings: renderFindingsContext,
     tasks: renderTasksContext,
     context: renderContextContext,
+    documents: renderDocumentsContext,
     settings: renderChatContext,
   };
 
