@@ -978,6 +978,19 @@ A provider-agnostic routing layer that supports Ollama, LM Studio, and any OpenA
 
 **Files**: `backend/app/core/llm_router.py`, `backend/app/models/llm_server.py`, `backend/app/api/routes/llm_servers.py`
 
+### Network LLM Server Discovery
+
+Automatic discovery of LLM servers (LM Studio, Ollama, OpenAI-compatible) on the local network:
+
+- **Subnet scanning**: Detects the local /24 subnet and probes all 254 hosts on ports 1234 (LM Studio), 11434 (Ollama), and 8080 (OpenAI-compat).
+- **Model-aware routing**: Each discovered server's available models are captured. The router picks the correct model per server — if the configured model isn't available on a remote server, it uses whatever model is loaded there.
+- **Startup integration**: Discovery runs at startup before `auto_detect_provider`, so network servers are available immediately when the local LLM is down.
+- **Persistence**: Discovered servers are saved to the DB and registered with the LLM Router. Duplicates (by host URL) are skipped.
+- **On-demand rescan**: `POST /api/llm-servers/discover` triggers a new network scan at any time.
+- **No hardcoded IPs**: Works on any subnet — detects the local network automatically via `socket.getaddrinfo` and UDP connect trick.
+
+**Files**: `backend/app/core/network_discovery.py`, `backend/app/main.py` (startup integration)
+
 ### ReClaw Relay Daemon
 
 A Node.js daemon that allows team members to donate LLM compute:
