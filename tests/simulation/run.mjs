@@ -157,6 +157,12 @@ async function loadScenarios() {
     "29-documents-system",
     "30-event-wiring-audit",
     "31-task-documents-tools",
+    "32-auth-flow",
+    "33-task-locking",
+    "34-compute-pool",
+    "35-ensemble-validation",
+    "36-llm-servers",
+    "37-ensemble-health-view",
   ];
 
   const scenarios = [];
@@ -400,23 +406,27 @@ async function main() {
   const scenarios = await loadScenarios();
   const evaluators = skipEval ? [] : await loadEvaluators();
 
-  // Save current model and switch to fast model for simulation tests
-  const SIM_MODEL = process.env.SIM_MODEL || "gemma-3-1b-it-qat";
-  let originalModel = null;
+  // Pause all ReClaw agent/LLM operations so the model is free for testing.
+  // Tests use the user's currently configured model — no model switching needed.
+  // This prevents LM Studio from loading two models on limited RAM.
+  let maintenancePaused = false;
   try {
+    const pauseRes = await fetch(`${API_BASE}/api/settings/maintenance/pause?reason=simulation-tests`, { method: "POST" });
+    if (pauseRes.ok) {
+      const pauseData = await pauseRes.json();
+      maintenancePaused = true;
+      console.log(`  ReClaw operations paused for testing (${pauseData.paused_agents?.length || 0} agents halted)`);
+    } else {
+      console.log(`  Maintenance pause failed (${pauseRes.status}), tests may compete with agents for model`);
+    }
+    // Log which model tests will use
     const modelsRes = await fetch(`${API_BASE}/api/settings/models`);
     if (modelsRes.ok) {
       const modelsData = await modelsRes.json();
-      originalModel = modelsData.active_model;
-    }
-    const switchRes = await fetch(`${API_BASE}/api/settings/model?model_name=${encodeURIComponent(SIM_MODEL)}`, { method: "POST" });
-    if (switchRes.ok) {
-      console.log(`  Model switched to ${SIM_MODEL} for simulation (was: ${originalModel || "unknown"})`);
-    } else {
-      console.log(`  Model switch to ${SIM_MODEL} failed (${switchRes.status}), using current model`);
+      console.log(`  Using model: ${modelsData.active_model || "unknown"} (user-configured)`);
     }
   } catch (e) {
-    console.log(`  Model switch skipped: ${e.message}`);
+    console.log(`  Maintenance pause skipped: ${e.message}`);
   }
 
   // Context shared across scenarios
@@ -493,22 +503,43 @@ async function main() {
     console.log();
   }
 
-  // Restore original model after simulation
-  if (originalModel && originalModel !== SIM_MODEL) {
+  // Resume ReClaw operations after simulation tests complete
+  if (maintenancePaused) {
     try {
-      const restoreRes = await fetch(`${API_BASE}/api/settings/model?model_name=${encodeURIComponent(originalModel)}`, { method: "POST" });
-      if (restoreRes.ok) {
-        console.log(`  Model restored to ${originalModel}`);
+      const resumeRes = await fetch(`${API_BASE}/api/settings/maintenance/resume`, { method: "POST" });
+      if (resumeRes.ok) {
+        const resumeData = await resumeRes.json();
+        console.log(`  ReClaw operations resumed (${resumeData.resumed_agents?.length || 0} agents reactivated)`);
       }
     } catch {
-      console.log(`  Could not restore model to ${originalModel}`);
+      console.log(`  Could not resume ReClaw operations — restart the server if agents remain paused`);
     }
   }
 
   process.exit(totalFailed > 0 ? 1 : 0);
 }
 
-main().catch((e) => {
+// Safety: resume ReClaw operations on crash or interrupt
+async function emergencyResume() {
+  try {
+    await fetch(`${API_BASE}/api/settings/maintenance/resume`, { method: "POST" });
+    console.log("  ReClaw operations resumed (emergency cleanup)");
+  } catch { /* server may be down */ }
+}
+
+process.on("SIGINT", async () => {
+  console.log("\n  Interrupted — resuming ReClaw operations...");
+  await emergencyResume();
+  process.exit(130);
+});
+
+process.on("SIGTERM", async () => {
+  await emergencyResume();
+  process.exit(143);
+});
+
+main().catch(async (e) => {
   console.error("Fatal error:", e);
+  await emergencyResume();
   process.exit(1);
 });

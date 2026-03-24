@@ -8,7 +8,8 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.api.routes import agents, audit, channels, chat, codebooks, context_dag as context_dag_routes, documents, files, findings, memory, metrics, projects, scheduler as scheduler_routes, sessions, settings, skills, tasks
+from app.api.routes import agents, audit, auth, channels, chat, codebooks, context_dag as context_dag_routes, documents, files, findings, llm_servers, memory, metrics, projects, scheduler as scheduler_routes, sessions, settings, skills, tasks
+from app.api.routes import compute as compute_routes
 from app.api.websocket import router as ws_router
 from app.channels.base import channel_router
 from app.channels.slack import SlackAdapter
@@ -241,6 +242,7 @@ app.add_middleware(
 )
 
 # API routes
+app.include_router(auth.router, prefix="/api", tags=["Auth"])
 app.include_router(chat.router, prefix="/api", tags=["Chat"])
 app.include_router(projects.router, prefix="/api", tags=["Projects"])
 app.include_router(tasks.router, prefix="/api", tags=["Tasks"])
@@ -258,6 +260,8 @@ app.include_router(sessions.router, prefix="/api", tags=["Sessions"])
 app.include_router(memory.router, prefix="/api", tags=["Memory"])
 app.include_router(documents.router, prefix="/api", tags=["Documents"])
 app.include_router(context_dag_routes.router, prefix="/api", tags=["Context DAG"])
+app.include_router(llm_servers.router, prefix="/api", tags=["LLM Servers"])
+app.include_router(compute_routes.router, prefix="/api", tags=["Compute"])
 app.include_router(ws_router)
 
 

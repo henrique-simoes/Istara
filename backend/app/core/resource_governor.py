@@ -52,6 +52,8 @@ class ResourceGovernor:
         self._last_check: float = 0
         self._cached_resources: SystemResources | None = None
         self._check_interval = 10  # seconds between resource checks
+        self._maintenance_mode: bool = False  # External pause (e.g. test mode)
+        self._maintenance_reason: str = ""
 
     def get_resources(self) -> SystemResources:
         """Get current system resources (cached for performance)."""
@@ -85,8 +87,37 @@ class ResourceGovernor:
         self._last_check = now
         return self._cached_resources
 
+    def enter_maintenance(self, reason: str = "maintenance") -> None:
+        """Enter maintenance mode — halts all agent work and LLM operations.
+
+        Used by the test runner to ensure exclusive model access during simulation.
+        """
+        self._maintenance_mode = True
+        self._maintenance_reason = reason
+        logger.info(f"Resource Governor: MAINTENANCE MODE ON — {reason}")
+
+    def exit_maintenance(self) -> None:
+        """Exit maintenance mode — resume normal agent operations."""
+        self._maintenance_mode = False
+        self._maintenance_reason = ""
+        logger.info("Resource Governor: MAINTENANCE MODE OFF — normal operations resumed")
+
+    @property
+    def maintenance_mode(self) -> bool:
+        return self._maintenance_mode
+
     def compute_budget(self) -> ResourceBudget:
         """Compute current resource budget based on system state."""
+        # Maintenance mode overrides everything — force full pause
+        if self._maintenance_mode:
+            return ResourceBudget(
+                max_concurrent_agents=0,
+                max_tasks_per_project=0,
+                max_queued_llm_requests=0,
+                throttle_delay_ms=60000,  # 60s — effectively blocks any LLM call
+                paused=True,
+            )
+
         res = self.get_resources()
 
         # Determine pressure level
@@ -122,7 +153,7 @@ class ResourceGovernor:
                 paused=False,
             )
 
-        # Comfortable resources — scale by available RAM
+        # Comfortable resources — scale by available RAM + remote compute
         available_gb = res.ram_available_gb - settings.resource_reserve_ram_gb
         if available_gb >= 12:
             max_agents = 4
@@ -132,6 +163,15 @@ class ResourceGovernor:
             max_agents = 2
         else:
             max_agents = 1
+
+        # Boost capacity if relay nodes are available
+        try:
+            from app.core.compute_pool import compute_pool
+            remote_nodes = compute_pool.total_capacity()
+            if remote_nodes > 0:
+                max_agents = min(max_agents + remote_nodes, 10)
+        except Exception:
+            pass
 
         return ResourceBudget(
             max_concurrent_agents=max_agents,
@@ -199,6 +239,8 @@ class ResourceGovernor:
                 "throttle_delay_ms": budget.throttle_delay_ms,
                 "paused": budget.paused,
             },
+            "maintenance_mode": self._maintenance_mode,
+            "maintenance_reason": self._maintenance_reason,
             "active_agents": len(self._active_agents),
             "active_agent_ids": list(self._active_agents),
         }

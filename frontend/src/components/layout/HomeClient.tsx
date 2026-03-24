@@ -12,6 +12,8 @@ import MetricsView from "@/components/metrics/MetricsView";
 import ContextEditor from "@/components/projects/ContextEditor";
 import VersionHistory from "@/components/common/VersionHistory";
 import SettingsView from "@/components/common/SettingsView";
+import ComputePoolView from "@/components/common/ComputePoolView";
+import EnsembleHealthView from "@/components/common/EnsembleHealthView";
 import SkillsView from "@/components/skills/SkillsView";
 import AgentsView from "@/components/agents/AgentsView";
 import MemoryView from "@/components/memory/MemoryView";
@@ -142,6 +144,8 @@ export default function HomeClient() {
       case "agents": return <AgentsView />;
       case "memory": return <MemoryView />;
       case "history": return <VersionHistory />;
+      case "compute": return <ComputePoolView />;
+      case "ensemble": return <EnsembleHealthView />;
       case "settings": return <SettingsView />;
       default: return <ChatView />;
     }

@@ -240,9 +240,41 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 - [ ] URL-based routing and deep linking
 - [ ] Audio playback with transcript sync
 - [ ] Full Slack / Telegram integration
-- [ ] Team features (auth, shared knowledge, access control)
+- [x] Team features (auth, shared knowledge, access control)
+- [x] Multi-model consensus validation (Fleiss' Kappa + cosine similarity)
+- [x] Distributed compute via relay nodes
+- [x] External LLM server support (Ollama, LM Studio, OpenAI-compatible)
+- [x] Adaptive validation method learning
+- [x] Dynamic swarm orchestration
 - [ ] Native installers (dmg, exe, AppImage)
 - [ ] Skill marketplace
+
+---
+
+## Academic Foundations
+
+ReClaw's multi-model validation and distributed computing are grounded in peer-reviewed research:
+
+| Feature | Reference | Venue |
+|---------|-----------|-------|
+| **Mixture-of-Agents** ensemble consensus | Wang et al. *Together AI* (2025) | ICLR 2025 |
+| **Self-MoA** temperature variation validation | Li et al. (2025) | arXiv 2025 |
+| **LLM-Blender** response aggregation | Jiang et al. (2023) | ACL 2023 |
+| **Multi-Agent Debate** iterative refinement | Du et al. (2024) | ICML 2024 |
+| **LLM-as-Judge** evaluation framework | Zheng et al. (2023) | NeurIPS 2023 |
+| **Petals** distributed LLM inference | Borzunov et al. (2023) | ACL + NeurIPS 2023 |
+| **Hive** volunteer computing for ML | - | SoftwareX 2025 |
+| **BOINC** distributed computing model | Anderson (2020) | - |
+| **Multi-LLM Thematic Analysis** | Jain et al. (2025) | arXiv 2025 |
+| **Fleiss' Kappa** inter-rater reliability | Fleiss (1971) | Psychological Bulletin |
+| **Atomic Research** methodology | Pidcock (2018) | - |
+
+### How ReClaw Uses These
+
+- **Consensus Engine**: Implements Fleiss' Kappa for categorical agreement and cosine similarity for semantic agreement across multiple model responses. Tiered confidence thresholds by finding type (nuggets κ≥0.70, facts κ≥0.65, insights κ≥0.55, recommendations κ≥0.50).
+- **Validation Patterns**: Five strategies — dual-run, adversarial review, full ensemble, Self-MoA (temperature variation), and debate rounds.
+- **Adaptive Learning**: Tracks which validation method works best per project/skill/agent using weighted scoring with exponential decay recency bias (30-day half-life).
+- **Distributed Compute**: Relay daemon enables team members to donate LLM compute via outbound WebSocket connections (NAT-friendly, no inbound ports). Priority queue ensures user interactions take precedence over background work.
 
 ---
 

@@ -2,7 +2,7 @@
 
 import json
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, model_validator
@@ -12,6 +12,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.database import get_db
 from app.models.task import Task, TaskStatus
 from app.core.agent import agent as agent_orchestrator
+
+LOCK_EXPIRY_MINUTES = 30
 
 router = APIRouter()
 
@@ -70,6 +72,12 @@ class TaskResponse(BaseModel):
     output_document_ids: list[str] = []
     urls: list[str] = []
     instructions: str = ""
+    locked_by: str | None = None
+    locked_at: datetime | None = None
+    lock_expires_at: datetime | None = None
+    validation_method: str | None = None
+    validation_result: str | None = None
+    consensus_score: float | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -295,6 +303,65 @@ async def detach_document(
 
     await db.commit()
     return {"task_id": task_id, "document_id": document_id, "direction": direction, "detached": True}
+
+
+@router.post("/tasks/{task_id}/lock")
+async def lock_task(
+    task_id: str,
+    user_id: str = "local",
+    db: AsyncSession = Depends(get_db),
+):
+    """Lock a task for exclusive editing by a user or agent."""
+    result = await db.execute(select(Task).where(Task.id == task_id))
+    task = result.scalar_one_or_none()
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    now = datetime.now(timezone.utc)
+
+    # Check if already locked by someone else (and not expired)
+    if task.locked_by and task.locked_by != user_id:
+        if task.lock_expires_at and task.lock_expires_at > now:
+            raise HTTPException(
+                status_code=409,
+                detail=f"Task locked by {task.locked_by} until {task.lock_expires_at.isoformat()}",
+            )
+
+    task.locked_by = user_id
+    task.locked_at = now
+    task.lock_expires_at = now + timedelta(minutes=LOCK_EXPIRY_MINUTES)
+    await db.commit()
+
+    return {
+        "task_id": task_id,
+        "locked_by": user_id,
+        "locked_at": task.locked_at.isoformat(),
+        "lock_expires_at": task.lock_expires_at.isoformat(),
+    }
+
+
+@router.post("/tasks/{task_id}/unlock")
+async def unlock_task(
+    task_id: str,
+    user_id: str = "local",
+    force: bool = False,
+    db: AsyncSession = Depends(get_db),
+):
+    """Unlock a task. Only the lock owner or force=True (admin) can unlock."""
+    result = await db.execute(select(Task).where(Task.id == task_id))
+    task = result.scalar_one_or_none()
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    if task.locked_by and task.locked_by != user_id and not force:
+        raise HTTPException(status_code=403, detail="Only the lock owner or an admin can unlock.")
+
+    task.locked_by = None
+    task.locked_at = None
+    task.lock_expires_at = None
+    await db.commit()
+
+    return {"task_id": task_id, "unlocked": True}
 
 
 @router.delete("/tasks/{task_id}", status_code=204)

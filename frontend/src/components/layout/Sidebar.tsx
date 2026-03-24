@@ -20,9 +20,12 @@ import {
   MoreHorizontal,
   Wand2,
   Users,
+  Server,
+  Activity,
 } from "lucide-react";
 import { useProjectStore } from "@/stores/projectStore";
 import DarkModeToggle from "@/components/common/DarkModeToggle";
+import UserMenu from "@/components/common/UserMenu";
 import { cn, phaseLabel } from "@/lib/utils";
 
 interface SidebarProps {
@@ -70,6 +73,8 @@ export default function Sidebar({ activeView, onViewChange, onSearchOpen }: Side
 
   // Secondary nav: accessible via "More" or header icons
   const secondaryNav = [
+    { id: "compute", icon: Server, label: "Compute Pool" },
+    { id: "ensemble", icon: Activity, label: "Ensemble Health" },
     { id: "metrics", icon: BarChart3, label: "Metrics" },
     { id: "history", icon: History, label: "History" },
     { id: "settings", icon: Settings, label: "Settings" },
@@ -248,6 +253,9 @@ export default function Sidebar({ activeView, onViewChange, onSearchOpen }: Side
           )}
         </div>
       )}
+
+      {/* User Menu */}
+      <UserMenu collapsed={collapsed} />
     </aside>
   );
 }

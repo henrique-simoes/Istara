@@ -202,6 +202,78 @@ async def switch_provider(provider: str):
     }
 
 
+@router.post("/settings/maintenance/pause")
+async def maintenance_pause(reason: str = "testing"):
+    """Enter maintenance mode — halts ALL agent work and LLM operations.
+
+    Used by the simulation test runner to ensure exclusive model access.
+    While paused, no agents will start, no tasks will be picked, and no
+    LLM calls will be made by the backend, freeing the model entirely
+    for the test runner.
+    """
+    from app.core.resource_governor import governor
+    from app.agents.orchestrator import meta_orchestrator
+
+    governor.enter_maintenance(reason)
+
+    # Force-pause all managed agents via the orchestrator
+    paused_agents = []
+    for agent in meta_orchestrator.list_agents():
+        if agent.state.value in ("working", "idle"):
+            meta_orchestrator.pause_agent(agent.id)
+            paused_agents.append(agent.id)
+
+    logger.info(f"Maintenance pause: {len(paused_agents)} agents paused, reason={reason}")
+
+    return {
+        "status": "paused",
+        "maintenance_mode": True,
+        "reason": reason,
+        "paused_agents": paused_agents,
+        "message": f"All agent operations halted ({reason}). Model is free for exclusive use.",
+    }
+
+
+@router.post("/settings/maintenance/resume")
+async def maintenance_resume():
+    """Exit maintenance mode — resume all agent operations.
+
+    Agents that were paused by the maintenance call will be set back to IDLE.
+    The ResourceGovernor will allow new agent starts and LLM calls again.
+    """
+    from app.core.resource_governor import governor
+    from app.agents.orchestrator import meta_orchestrator
+
+    governor.exit_maintenance()
+
+    # Resume all paused agents
+    resumed_agents = []
+    for agent in meta_orchestrator.list_agents():
+        if agent.state.value == "paused":
+            meta_orchestrator.resume_agent(agent.id)
+            resumed_agents.append(agent.id)
+
+    logger.info(f"Maintenance resume: {len(resumed_agents)} agents resumed")
+
+    return {
+        "status": "resumed",
+        "maintenance_mode": False,
+        "resumed_agents": resumed_agents,
+        "message": "Normal operations resumed. Agents are active again.",
+    }
+
+
+@router.get("/settings/maintenance")
+async def maintenance_status():
+    """Check current maintenance mode status."""
+    from app.core.resource_governor import governor
+
+    return {
+        "maintenance_mode": governor.maintenance_mode,
+        "maintenance_reason": governor._maintenance_reason,
+    }
+
+
 @router.get("/settings/vector-health")
 async def vector_health():
     """Check embedding dimension consistency across vector stores."""

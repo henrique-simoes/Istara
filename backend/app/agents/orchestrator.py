@@ -165,6 +165,25 @@ class MetaOrchestrator:
             agent.state = AgentState.STOPPED
         logger.info("Meta-Orchestrator stopped.")
 
+    def _compute_swarm_tier(self) -> str:
+        """Determine swarm tier based on local resources + compute pool."""
+        try:
+            from app.core.compute_pool import compute_pool
+            pool_nodes = compute_pool.total_capacity()
+        except Exception:
+            pool_nodes = 0
+
+        total = 1 + pool_nodes  # 1 for local
+        if total >= 8:
+            return "full_swarm"
+        elif total >= 4:
+            return "standard"
+        elif total >= 2:
+            return "conservative"
+        elif total >= 1:
+            return "minimal"
+        return "paused"
+
     async def _orchestration_cycle(self) -> None:
         """Run one orchestration cycle."""
         budget = governor.compute_budget()
@@ -190,6 +209,10 @@ class MetaOrchestrator:
             if agent.state == AgentState.PAUSED:
                 agent.state = AgentState.IDLE
                 self._log_action(agent.id, "resumed", "Resources available")
+
+        # Dynamic swarm orchestration — adjust based on compute pool
+        swarm_tier = self._compute_swarm_tier()
+        self._log_action("orchestrator", "swarm_tier", f"Current tier: {swarm_tier}")
 
         # Sync sub-agent states from their actual running instances
         await self._sync_sub_agent_states()
