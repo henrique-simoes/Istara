@@ -561,6 +561,26 @@ class ResourceBudget:
 - If LLM provider is down: `critical` severity, all inference blocked
 - Configurable reserves: 4GB RAM, 30% CPU kept for OS/apps
 
+#### Maintenance Mode (Test Isolation)
+
+The Resource Governor supports an external **maintenance mode** that completely halts all agent work and LLM operations — independent of resource pressure. This is critical for machines with limited RAM (e.g. 8GB) where loading two models simultaneously would freeze the system.
+
+**API:**
+```
+POST /api/settings/maintenance/pause?reason=simulation-tests   → halts all agents + LLM
+POST /api/settings/maintenance/resume                           → resumes normal operations
+GET  /api/settings/maintenance                                  → check current status
+```
+
+**How it works:**
+1. `governor.enter_maintenance(reason)` sets `_maintenance_mode = True`
+2. `compute_budget()` detects maintenance mode and returns a fully paused budget (0 agents, 0 LLM requests, 60s throttle)
+3. All agent work loops (`can_start_agent()`) immediately return `False`
+4. The MetaOrchestrator force-pauses all WORKING/IDLE agents to PAUSED state
+5. On resume, agents return to IDLE and the governor resumes normal resource-based scheduling
+
+**Used by the simulation test runner** (`tests/simulation/run.mjs`) to ensure the user's configured model is exclusively available for test LLM calls — no model switching, no dual-model loading.
+
 ### Model Recommendations
 
 Hardware detection (`core/hardware.py`) auto-recommends models:
@@ -746,6 +766,17 @@ The self-evolution and prompt compression scenario includes **35 checks** specif
 - Custom agents get full Prompt RAG support
 - Relevance scoring: query-matched sections score higher than unrelated ones
 
+### Test Isolation (Single-Model Guarantee)
+
+On machines with limited RAM (8GB), LM Studio can only load one model at a time without severe performance degradation. The simulation test runner uses the **Maintenance Mode** system to guarantee exclusive model access:
+
+1. **Before tests start:** `POST /api/settings/maintenance/pause` — halts all ReClaw agent work and LLM calls
+2. **During tests:** Tests use the user's currently configured model (no model switching). Only test LLM calls hit the model.
+3. **After tests complete:** `POST /api/settings/maintenance/resume` — agents resume normal operation
+4. **Crash safety:** Signal handlers (`SIGINT`, `SIGTERM`) and the `.catch()` handler call `emergencyResume()` to ensure the backend never stays permanently paused after a test crash
+
+This replaces the previous approach of switching to a separate `gemma-3-1b-it-qat` test model, which caused LM Studio to load both models simultaneously and freeze the system.
+
 ---
 
 ## Configuration Reference
@@ -906,6 +937,135 @@ ReClaw-main/
 6. **Async everything.** All database access, LLM calls, file operations, and agent work loops are async. The UI never freezes waiting for a model to respond.
 
 7. **Fail gracefully, learn from failures.** Every error is caught, logged, and turned into a learning opportunity. Agents record error patterns and apply known resolutions automatically.
+
+---
+
+---
+
+## Distributed Platform Architecture
+
+### Multi-User Team Mode
+
+ReClaw supports both local (single-user, no auth) and team modes:
+
+- **Local mode** (default): No authentication, single implicit "local" user with admin privileges.
+- **Team mode** (`TEAM_MODE=true`): JWT-based authentication with role-based access control (admin, researcher, viewer). First registered user becomes admin.
+- **User model**: `users` table with username, email, PBKDF2-hashed password, role, and JSON preferences (theme, UI density, shortcuts).
+- **Auth middleware**: `get_current_user()` FastAPI dependency — returns local user in local mode, verifies JWT in team mode.
+- **Preferences**: Stored per-user as JSON, covering theme, keyboard shortcuts, and UI customization.
+
+**Files**: `backend/app/models/user.py`, `backend/app/core/auth.py`, `backend/app/api/routes/auth.py`, `backend/app/api/middleware/auth.py`
+
+### Task Locking
+
+Pessimistic locking prevents multiple users/agents from working on the same task:
+
+- **Lock columns**: `locked_by`, `locked_at`, `lock_expires_at` on the Task model.
+- **Auto-expiry**: Locks expire after 30 minutes (configurable).
+- **Lock owner**: Only the lock holder can unlock; admins can force-unlock.
+- **Agent awareness**: `_pick_next_task()` skips locked tasks.
+- **Endpoints**: `POST /tasks/{id}/lock`, `POST /tasks/{id}/unlock`.
+
+### LLM Router
+
+A provider-agnostic routing layer that supports Ollama, LM Studio, and any OpenAI-compatible endpoint:
+
+- **LLMRouter**: Same interface as `OllamaClient` (`health()`, `chat()`, `chat_stream()`, `embed()`) — drop-in replacement.
+- **Priority-based routing**: Requests go to the highest-priority healthy server with automatic failover.
+- **Background health checks**: Every 60 seconds across all registered servers.
+- **CRUD API**: `GET/POST/PATCH/DELETE /llm-servers` for managing external endpoints.
+- **LLMServer model**: Stored in DB with provider_type, host, API key, priority, health status, and latency.
+
+**Files**: `backend/app/core/llm_router.py`, `backend/app/models/llm_server.py`, `backend/app/api/routes/llm_servers.py`
+
+### ReClaw Relay Daemon
+
+A Node.js daemon that allows team members to donate LLM compute:
+
+- **Outbound WebSocket**: Connects from the relay machine to the server — no inbound ports needed (NAT-friendly).
+- **State machine**: CONNECTING → IDLE → DONATING → USER_ACTIVE → DISCONNECTED.
+- **Heartbeat**: System stats (RAM, CPU, GPU, loaded models) sent every 30 seconds.
+- **LLM proxy**: Receives requests from the server, forwards to local Ollama/LM Studio, returns results.
+- **Priority queue**: P0 (user chat) > P1 (user tasks) > P2 (agent work) > P3 (background validation).
+- **Auto-reconnect**: Exponential backoff with max 60-second delay.
+
+**Files**: `relay/` directory — `index.mjs`, `lib/connection.mjs`, `lib/state-machine.mjs`, `lib/heartbeat.mjs`, `lib/llm-proxy.mjs`
+
+### Compute Pool
+
+Server-side registry of connected relay nodes:
+
+- **Node scoring**: `score = (model_capability * 0.4) + (1 - load) * 0.3 + (1/latency) * 0.2 + (ram) * 0.1`
+- **Capacity tracking**: Total RAM, CPU cores, available models across the pool.
+- **Best-node selection**: For any given model request, selects the node with the highest score.
+- **WebSocket endpoint**: `/ws/relay` for relay node connections.
+
+**Files**: `backend/app/core/compute_pool.py`, `backend/app/api/routes/compute.py`
+
+### Consensus Engine
+
+Academic-grade inter-rater reliability for multi-model validation:
+
+- **Fleiss' Kappa**: Categorical agreement among multiple raters — measures whether models agree on themes and labels.
+- **Cosine similarity**: Semantic agreement via embedding comparison — measures whether responses mean the same thing.
+- **Composite scoring**: Weighted combination (40% Kappa + 60% cosine similarity).
+- **Tiered thresholds by finding type**: Nuggets (κ≥0.70), Facts (κ≥0.65), Insights (κ≥0.55), Recommendations (κ≥0.50).
+- **No extra LLM cost**: Uses existing embedding infrastructure for semantic comparison.
+
+**Files**: `backend/app/core/consensus.py`
+
+### Validation Patterns
+
+Five validation strategies, each grounded in academic research:
+
+1. **Dual-run**: Two models, same prompt — basic inter-rater reliability.
+2. **Adversarial review**: One model critiques another's output (Du et al., ICML 2024).
+3. **Full ensemble**: 3+ models with Fleiss' Kappa scoring (Wang et al., ICLR 2025).
+4. **Self-MoA**: Same model, temperature variation (0.3, 0.7, 1.0) — Li et al. (2025).
+5. **Debate rounds**: Iterative refinement between models (Du et al., ICML 2024).
+
+**Files**: `backend/app/core/validation.py`
+
+### Adaptive Method Learning
+
+The system learns which validation method works best per context:
+
+- **Method metrics**: Tracks success rate, consensus score, and recency for each (project, skill, agent, method) combination.
+- **Recency-weighted scoring**: Exponential decay with 30-day half-life — recent results matter more.
+- **Automatic selection**: `AdaptiveSelector.select_method()` picks the best method based on historical performance.
+- **Default fallback**: `self_moa` for new/unknown combinations (zero extra infrastructure needed).
+
+**Files**: `backend/app/models/method_metric.py`, `backend/app/core/adaptive_validation.py`
+
+### Dynamic Swarm Orchestration
+
+The MetaOrchestrator scales agent count based on available compute:
+
+- **Swarm tiers**: full_swarm (8+ nodes) → standard (4-7) → conservative (2-3) → minimal (1) → paused (0).
+- **Compute-aware budgeting**: `ResourceGovernor.compute_budget()` adds remote node capacity to local resources.
+- **Orchestration cycle**: Every 60 seconds, syncs agent states, checks for conflicts, distributes pending tasks.
+
+### Docker & Infrastructure
+
+- **PostgreSQL**: Added as a service with `team` profile — only started when `TEAM_MODE=true`.
+- **Relay service**: Added with `relay` profile for compute donation.
+- **GPU override**: `docker-compose.gpu.yml` for NVIDIA GPU passthrough.
+- **NAT-friendly**: Backend exposes single port (8000) for both HTTP and WebSocket. Relay uses outbound connections only.
+- **LM Studio access**: `host.docker.internal` mapping for accessing host machine's LM Studio from containers.
+
+### Academic References
+
+| Method | Paper | Venue |
+|--------|-------|-------|
+| Mixture-of-Agents | Wang et al. (2025) | ICLR 2025 |
+| Self-MoA | Li et al. (2025) | arXiv 2025 |
+| LLM-Blender | Jiang et al. (2023) | ACL 2023 |
+| Multi-Agent Debate | Du et al. (2024) | ICML 2024 |
+| LLM-as-Judge | Zheng et al. (2023) | NeurIPS 2023 |
+| Petals (distributed inference) | Borzunov et al. (2023) | ACL + NeurIPS 2023 |
+| Hive (volunteer computing) | - | SoftwareX 2025 |
+| BOINC (distributed compute) | Anderson (2020) | - |
+| Multi-LLM Thematic Analysis | Jain et al. (2025) | arXiv 2025 |
 
 ---
 

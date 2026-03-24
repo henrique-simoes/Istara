@@ -14,15 +14,16 @@ class Base(DeclarativeBase):
     pass
 
 
-# Ensure the data directory exists
-db_path = settings.database_url.replace("sqlite+aiosqlite:///", "")
-Path(db_path).parent.mkdir(parents=True, exist_ok=True)
+# Build engine kwargs — SQLite needs check_same_thread, PostgreSQL does not
+_is_sqlite = settings.database_url.startswith("sqlite")
+_engine_kwargs: dict = {"echo": False}
 
-engine = create_async_engine(
-    settings.database_url,
-    echo=False,
-    connect_args={"check_same_thread": False},
-)
+if _is_sqlite:
+    db_path = settings.database_url.replace("sqlite+aiosqlite:///", "")
+    Path(db_path).parent.mkdir(parents=True, exist_ok=True)
+    _engine_kwargs["connect_args"] = {"check_same_thread": False}
+
+engine = create_async_engine(settings.database_url, **_engine_kwargs)
 
 async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
@@ -40,6 +41,8 @@ async def init_db() -> None:
     """Create all database tables."""
     # Import all models so they're registered with Base
     from app.models import agent, codebook, document, finding, message, project, session, task  # noqa: F401
+    from app.models import user  # noqa: F401
+    from app.models import llm_server, method_metric  # noqa: F401
     from app.core.context_hierarchy import ContextDocument  # noqa: F401
     from app.core.scheduler import ScheduledTask  # noqa: F401
     from app.models.context_dag import ContextDAGNode  # noqa: F401

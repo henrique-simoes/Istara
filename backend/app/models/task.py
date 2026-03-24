@@ -40,6 +40,17 @@ class Task(Base):
     output_document_ids: Mapped[str] = mapped_column(Text, default="[]")  # JSON list of document IDs
     urls: Mapped[str] = mapped_column(Text, default="[]")  # JSON list of URLs to fetch
     instructions: Mapped[str] = mapped_column(Text, default="")  # Specific instructions from user
+
+    # Task locking (multi-user)
+    locked_by: Mapped[str | None] = mapped_column(String(36), nullable=True, default=None)
+    locked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, default=None)
+    lock_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, default=None)
+
+    # Validation / consensus
+    validation_method: Mapped[str | None] = mapped_column(String(50), nullable=True, default=None)
+    validation_result: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)  # JSON
+    consensus_score: Mapped[float | None] = mapped_column(Float, nullable=True, default=None)
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
