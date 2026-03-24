@@ -40,6 +40,7 @@ class LLMServerEntry:
         self.is_local = is_local
         self.is_healthy = False
         self.last_latency_ms: float = 0
+        self.available_models: list[str] = []
         self._client: httpx.AsyncClient | None = None
 
     async def _get_client(self) -> httpx.AsyncClient:
@@ -57,7 +58,7 @@ class LLMServerEntry:
             await self._client.aclose()
 
     async def check_health(self) -> bool:
-        """Probe the server health endpoint."""
+        """Probe the server health endpoint and discover available models."""
         try:
             client = await self._get_client()
             start = time.time()
@@ -67,10 +68,54 @@ class LLMServerEntry:
                 resp = await client.get("/v1/models", timeout=10.0)
             self.last_latency_ms = (time.time() - start) * 1000
             self.is_healthy = resp.status_code == 200
+            # Extract available models
+            if self.is_healthy:
+                try:
+                    data = resp.json()
+                    if self.provider_type == "ollama":
+                        self.available_models = [m.get("name", "") for m in data.get("models", [])]
+                    else:
+                        self.available_models = [m.get("id", "") for m in data.get("data", [])]
+                except Exception:
+                    pass
         except Exception:
             self.is_healthy = False
             self.last_latency_ms = 9999
         return self.is_healthy
+
+    def _resolve_model(self, model: str | None) -> str:
+        """Resolve the model name — use what's available on this server."""
+        if model and model != "default":
+            # Check if the requested model is available on this server
+            if self.available_models and model not in self.available_models:
+                # Model not available — pick the best available non-embedding model
+                non_embed = [m for m in self.available_models if "embed" not in m.lower()]
+                if non_embed:
+                    return non_embed[0]
+            return model
+        # No model specified — use the first available non-embedding model
+        if self.available_models:
+            non_embed = [m for m in self.available_models if "embed" not in m.lower()]
+            if non_embed:
+                return non_embed[0]
+        # Fallback to configured settings
+        if self.provider_type == "ollama":
+            return settings.ollama_model
+        return settings.lmstudio_model
+
+    def _resolve_embed_model(self, model: str | None) -> str:
+        """Resolve embedding model — prefer embedding-specific models."""
+        if model and model != "default":
+            return model
+        # Look for an embedding model in available models
+        if self.available_models:
+            embed_models = [m for m in self.available_models if "embed" in m.lower()]
+            if embed_models:
+                return embed_models[0]
+        # Fallback to configured settings
+        if self.provider_type == "ollama":
+            return settings.ollama_embed_model
+        return settings.lmstudio_embed_model
 
     async def chat(self, messages: list[dict], model: str | None = None,
                    temperature: float = 0.7, max_tokens: int | None = None) -> dict:
@@ -82,7 +127,7 @@ class LLMServerEntry:
             if max_tokens:
                 options["num_predict"] = max_tokens
             payload = {
-                "model": model or settings.ollama_model,
+                "model": self._resolve_model(model),
                 "messages": messages,
                 "stream": False,
                 "options": options,
@@ -93,7 +138,7 @@ class LLMServerEntry:
         else:
             # OpenAI-compatible (LM Studio, external)
             payload = {
-                "model": model or settings.lmstudio_model,
+                "model": self._resolve_model(model),
                 "messages": messages,
                 "temperature": temperature,
                 "stream": False,
@@ -133,7 +178,7 @@ class LLMServerEntry:
                             return
         else:
             payload = {
-                "model": model or settings.lmstudio_model,
+                "model": self._resolve_model(model),
                 "messages": messages,
                 "temperature": temperature,
                 "stream": True,
@@ -165,14 +210,14 @@ class LLMServerEntry:
         if self.provider_type == "ollama":
             resp = await client.post(
                 "/api/embed",
-                json={"model": model or settings.ollama_embed_model, "input": text},
+                json={"model": self._resolve_embed_model(model), "input": text},
             )
             resp.raise_for_status()
             data = resp.json()
             embeddings = data.get("embeddings", [])
             return embeddings[0] if embeddings else []
         else:
-            embed_model = model or settings.lmstudio_embed_model
+            embed_model = self._resolve_embed_model(model)
             resp = await client.post(
                 "/v1/embeddings",
                 json={"model": embed_model, "input": text},
@@ -189,14 +234,14 @@ class LLMServerEntry:
         if self.provider_type == "ollama":
             resp = await client.post(
                 "/api/embed",
-                json={"model": model or settings.ollama_embed_model, "input": texts},
+                json={"model": self._resolve_embed_model(model), "input": texts},
             )
             resp.raise_for_status()
             return resp.json().get("embeddings", [])
         else:
             resp = await client.post(
                 "/v1/embeddings",
-                json={"model": model or settings.lmstudio_embed_model, "input": texts},
+                json={"model": self._resolve_embed_model(model), "input": texts},
             )
             resp.raise_for_status()
             return [item.get("embedding", []) for item in resp.json().get("data", [])]

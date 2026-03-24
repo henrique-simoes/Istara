@@ -274,8 +274,10 @@ async def load_persisted_servers_async():
         async with async_session() as db:
             result = await db.execute(select(LLMServer).order_by(LLMServer.priority))
             servers = result.scalars().all()
+            # Collect existing hosts to avoid duplicates
+            existing_hosts = {e.host for e in llm_router._servers.values()}
             for s in servers:
-                if s.id not in llm_router._servers:
+                if s.id not in llm_router._servers and s.host not in existing_hosts:
                     entry = LLMServerEntry(
                         server_id=s.id,
                         name=s.name,
@@ -286,48 +288,60 @@ async def load_persisted_servers_async():
                         is_local=s.is_local,
                     )
                     llm_router.register_server(entry)
+                    existing_hosts.add(s.host)
     except Exception:
         pass  # DB may not be initialized yet
 
 
 async def auto_detect_provider() -> None:
-    """Auto-detect and switch to whichever LLM provider is reachable.
+    """Auto-detect LLM provider availability.
 
-    Tries the configured provider first, then falls back to the other.
-    Updates settings.llm_provider and recreates the global client singleton.
+    Checks health of all registered servers in the LLM Router.
+    The router handles failover automatically — if local is down,
+    it routes to network-discovered or manually-added servers.
     """
-    import app.core.ollama as self_module
+    from app.core.llm_router import llm_router
+
+    # Run health checks on all registered servers
+    await llm_router.check_all_health()
+
+    # Check if any server is healthy
+    healthy_servers = [s for s in llm_router._servers.values() if s.is_healthy]
+    if healthy_servers:
+        best = healthy_servers[0]
+        print(f"LLM provider available: {best.name} ({best.host})")
+        return
+
+    # Try local providers directly as last resort
     from app.core.lmstudio import LMStudioClient
-
-    # Try configured provider first
-    if await self_module.ollama.health():
-        return  # Already working
-
-    # Try the other provider
-    if settings.llm_provider == "lmstudio":
-        fallback = OllamaClient()
-        fallback_name = "ollama"
-    else:
-        fallback = LMStudioClient()
-        fallback_name = "lmstudio"
-
-    if await fallback.health():
-        settings.llm_provider = fallback_name
-        self_module.ollama = fallback
-        # Persist the auto-detected provider so it survives restarts
+    for name, client_cls, host in [
+        ("lmstudio", LMStudioClient, settings.lmstudio_host),
+        ("ollama", OllamaClient, settings.ollama_host),
+    ]:
         try:
-            from app.api.routes.settings import _persist_env
-            _persist_env("LLM_PROVIDER", fallback_name)
+            client = client_cls()
+            if await client.health():
+                settings.llm_provider = name
+                print(f"Auto-detected LLM provider: {name}")
+                try:
+                    from app.api.routes.settings import _persist_env
+                    _persist_env("LLM_PROVIDER", name)
+                except Exception:
+                    pass
+                await client.close()
+                return
+            await client.close()
         except Exception:
             pass
-        print(f"Auto-detected LLM provider: {fallback_name}")
-    else:
-        await fallback.close()
+
+    print("LLM provider (lmstudio) is not reachable.")
 
 
-# Singleton instance — provider chosen by LLM_PROVIDER env var
-# The LLM Router wraps this and adds multi-server routing
-ollama = _create_llm_client()
-
-# Initialize the router (registers local server entries)
+# Create the raw client and initialize the router
+_raw_client = _create_llm_client()
 _init_llm_router()
+
+# Singleton instance — delegates to LLM Router for multi-server failover.
+# All code that imports `from app.core.ollama import ollama` automatically
+# gets router-based fallback to network-discovered and external LLM servers.
+from app.core.llm_router import llm_router as ollama  # noqa: E402

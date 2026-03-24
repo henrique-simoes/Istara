@@ -4,8 +4,25 @@ export const name = "Ensemble Validation";
 export const id = "35-ensemble-validation";
 
 export async function run(ctx) {
-  const { api, projectId } = ctx;
+  const { api } = ctx;
   const checks = [];
+
+  // Ensure we have a project
+  let projectId = ctx.projectId;
+  if (!projectId) {
+    try {
+      const projects = await api.get("/api/projects");
+      if (projects.length > 0) {
+        projectId = projects[0].id;
+      } else {
+        const p = await api.post("/api/projects", { name: "Validation Test Project" });
+        projectId = p.id;
+      }
+    } catch {
+      const p = await api.post("/api/projects", { name: "Validation Test Project" });
+      projectId = p.id;
+    }
+  }
 
   // 1. LLM servers list endpoint
   try {
