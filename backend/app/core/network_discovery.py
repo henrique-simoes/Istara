@@ -193,6 +193,8 @@ async def discover_and_register() -> list[dict]:
             priority=10,  # Higher priority than fallback (5) but lower than local (1)
             is_local=False,
         )
+        # Populate available models from discovery data
+        entry.available_models = server_info.get("models", [])
         entry.is_healthy = True  # Already confirmed reachable
 
         llm_router.register_server(entry)
