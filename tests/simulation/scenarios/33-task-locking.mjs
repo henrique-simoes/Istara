@@ -4,8 +4,25 @@ export const name = "Task Locking";
 export const id = "33-task-locking";
 
 export async function run(ctx) {
-  const { api, projectId } = ctx;
+  const { api } = ctx;
   const checks = [];
+
+  // Ensure we have a project
+  let projectId = ctx.projectId;
+  if (!projectId) {
+    try {
+      const projects = await api.get("/api/projects");
+      if (projects.length > 0) {
+        projectId = projects[0].id;
+      } else {
+        const p = await api.post("/api/projects", { name: "Lock Test Project" });
+        projectId = p.id;
+      }
+    } catch {
+      const p = await api.post("/api/projects", { name: "Lock Test Project" });
+      projectId = p.id;
+    }
+  }
 
   // 1. Create a test task
   let taskId;

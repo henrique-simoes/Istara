@@ -168,6 +168,24 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     except Exception:
         pass  # Don't block startup if provider check fails
 
+    # Network discovery: find LLM servers on local network
+    try:
+        from app.core.network_discovery import discover_and_register
+        discovered = await discover_and_register()
+        if discovered:
+            _log.info(f"Auto-discovered {len(discovered)} LLM servers on the network")
+        else:
+            _log.info("Network discovery: no additional LLM servers found on local network")
+    except Exception as e:
+        _log.warning(f"Network discovery skipped: {e}")
+
+    # Load persisted LLM servers from database
+    try:
+        from app.core.ollama import load_persisted_servers_async
+        await load_persisted_servers_async()
+    except Exception as e:
+        _log.warning(f"Failed to load persisted LLM servers: {e}")
+
     # Vector store dimension health check
     try:
         from app.core.vector_health import check_embedding_dimensions

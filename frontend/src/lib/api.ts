@@ -382,6 +382,7 @@ export const llmServers = {
   update: (serverId: string, data: Record<string, unknown>) =>
     patch<any>(`/api/llm-servers/${serverId}`, data),
   delete: (serverId: string) => del(`/api/llm-servers/${serverId}`),
+  discover: () => post<any>("/api/llm-servers/discover", {}),
 };
 
 // --- Compute Pool ---
