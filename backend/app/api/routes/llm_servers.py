@@ -122,7 +122,14 @@ async def health_check_server(server_id: str, db: AsyncSession = Depends(get_db)
         raise HTTPException(status_code=404, detail="Server not found")
 
     from app.core.llm_router import llm_router
+    # Look up by ID first, then by host URL (discovered servers use different IDs)
     router_server = llm_router._servers.get(server_id)
+    if not router_server:
+        for entry in llm_router._servers.values():
+            if entry.host == server.host:
+                router_server = entry
+                break
+
     if router_server:
         healthy = await router_server.check_health()
         server.is_healthy = healthy

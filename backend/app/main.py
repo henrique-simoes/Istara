@@ -108,9 +108,37 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     channel_router.register(SlackAdapter())
     channel_router.register(TelegramAdapter())
 
-    # Auto-detect LLM provider: try configured first, fall back to the other
     import logging
     _log = logging.getLogger(__name__)
+
+    # Network discovery: find LLM servers on local network FIRST
+    try:
+        from app.core.network_discovery import discover_and_register
+        discovered = await discover_and_register()
+        if discovered:
+            _log.info(f"Auto-discovered {len(discovered)} LLM servers on the network")
+        else:
+            _log.info("Network discovery: no additional LLM servers found on local network")
+    except Exception as e:
+        _log.warning(f"Network discovery skipped: {e}")
+
+    # Load persisted LLM servers from database
+    try:
+        from app.core.ollama import load_persisted_servers_async
+        await load_persisted_servers_async()
+    except Exception as e:
+        _log.warning(f"Failed to load persisted LLM servers: {e}")
+
+    # Run health checks on all servers (populates available_models for each)
+    try:
+        from app.core.llm_router import llm_router
+        await llm_router.check_all_health()
+        healthy = [s for s in llm_router._servers.values() if s.is_healthy]
+        _log.info(f"LLM Router: {len(healthy)}/{len(llm_router._servers)} servers healthy")
+    except Exception as e:
+        _log.warning(f"Health check failed: {e}")
+
+    # Auto-detect LLM provider: try configured first, fall back to the other
     from app.core.ollama import ollama, auto_detect_provider
     try:
         await auto_detect_provider()
@@ -167,24 +195,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             _log.warning(f"LLM provider ({app_settings.llm_provider}) is not reachable.")
     except Exception:
         pass  # Don't block startup if provider check fails
-
-    # Network discovery: find LLM servers on local network
-    try:
-        from app.core.network_discovery import discover_and_register
-        discovered = await discover_and_register()
-        if discovered:
-            _log.info(f"Auto-discovered {len(discovered)} LLM servers on the network")
-        else:
-            _log.info("Network discovery: no additional LLM servers found on local network")
-    except Exception as e:
-        _log.warning(f"Network discovery skipped: {e}")
-
-    # Load persisted LLM servers from database
-    try:
-        from app.core.ollama import load_persisted_servers_async
-        await load_persisted_servers_async()
-    except Exception as e:
-        _log.warning(f"Failed to load persisted LLM servers: {e}")
 
     # Vector store dimension health check
     try:
