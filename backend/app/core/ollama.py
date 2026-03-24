@@ -203,6 +203,93 @@ def _create_llm_client():
     return OllamaClient()
 
 
+def _init_llm_router():
+    """Initialize the LLM router with the local provider as default server."""
+    from app.core.llm_router import llm_router, LLMServerEntry
+
+    # Register the local provider
+    if settings.llm_provider == "lmstudio":
+        entry = LLMServerEntry(
+            server_id="local-lmstudio",
+            name="Local LM Studio",
+            provider_type="lmstudio",
+            host=settings.lmstudio_host,
+            priority=1,
+            is_local=True,
+        )
+    else:
+        entry = LLMServerEntry(
+            server_id="local-ollama",
+            name="Local Ollama",
+            provider_type="ollama",
+            host=settings.ollama_host,
+            priority=1,
+            is_local=True,
+        )
+    entry.is_healthy = True  # Assume healthy at startup; health loop will verify
+    llm_router.register_server(entry)
+
+    # Also register the other local provider as fallback
+    if settings.llm_provider == "lmstudio":
+        fallback = LLMServerEntry(
+            server_id="local-ollama",
+            name="Local Ollama (fallback)",
+            provider_type="ollama",
+            host=settings.ollama_host,
+            priority=5,
+            is_local=True,
+        )
+    else:
+        fallback = LLMServerEntry(
+            server_id="local-lmstudio",
+            name="Local LM Studio (fallback)",
+            provider_type="lmstudio",
+            host=settings.lmstudio_host,
+            priority=5,
+            is_local=True,
+        )
+    llm_router.register_server(fallback)
+
+    # Load any persisted external servers from DB (best-effort at import time)
+    _load_persisted_servers()
+
+    return llm_router
+
+
+def _load_persisted_servers():
+    """Load external LLM servers from DB into the router (sync context)."""
+    # This runs at import time — DB may not be ready yet.
+    # The lifespan handler in main.py will also call this.
+    pass
+
+
+async def load_persisted_servers_async():
+    """Load persisted LLM servers from DB into the live router."""
+    try:
+        from app.models.database import async_session
+        from app.models.llm_server import LLMServer
+        from app.core.llm_router import llm_router, LLMServerEntry
+        from sqlalchemy import select
+
+        async with async_session() as db:
+            result = await db.execute(select(LLMServer).order_by(LLMServer.priority))
+            servers = result.scalars().all()
+            for s in servers:
+                if s.id not in llm_router._servers:
+                    entry = LLMServerEntry(
+                        server_id=s.id,
+                        name=s.name,
+                        provider_type=s.provider_type,
+                        host=s.host,
+                        api_key=s.api_key,
+                        priority=s.priority,
+                        is_local=s.is_local,
+                    )
+                    llm_router.register_server(entry)
+    except Exception:
+        pass  # DB may not be initialized yet
+
+
 async def auto_detect_provider() -> None:
     """Auto-detect and switch to whichever LLM provider is reachable.
 
@@ -239,4 +326,8 @@ async def auto_detect_provider() -> None:
 
 
 # Singleton instance — provider chosen by LLM_PROVIDER env var
+# The LLM Router wraps this and adds multi-server routing
 ollama = _create_llm_client()
+
+# Initialize the router (registers local server entries)
+_init_llm_router()

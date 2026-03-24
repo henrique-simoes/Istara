@@ -4,9 +4,18 @@ import type { ChatSession, ChatMessage, InferencePresetConfig, DAGNode, DAGHealt
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
+function _getAuthHeaders(): Record<string, string> {
+  if (typeof window === "undefined") return {};
+  const token = localStorage.getItem("reclaw_token");
+  if (token && token !== "local-mode") {
+    return { Authorization: `Bearer ${token}` };
+  }
+  return {};
+}
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
-    headers: { "Content-Type": "application/json", ...options?.headers },
+    headers: { "Content-Type": "application/json", ..._getAuthHeaders(), ...options?.headers },
     ...options,
   });
   if (!res.ok) {
@@ -350,6 +359,36 @@ export const settings = {
     request<any>(`/api/settings/model?model_name=${model}`, { method: "POST" }),
   switchProvider: (provider: "ollama" | "lmstudio") =>
     request<any>(`/api/settings/provider?provider=${provider}`, { method: "POST" }),
+  maintenance: () => request<any>("/api/settings/maintenance"),
+};
+
+// --- Task Locking ---
+
+export const taskLocking = {
+  lock: (taskId: string, userId: string = "local") =>
+    post<any>(`/api/tasks/${taskId}/lock?user_id=${userId}`, {}),
+  unlock: (taskId: string, userId: string = "local", force: boolean = false) =>
+    post<any>(`/api/tasks/${taskId}/unlock?user_id=${userId}&force=${force}`, {}),
+};
+
+// --- LLM Servers ---
+
+export const llmServers = {
+  list: () => request<any>("/api/llm-servers"),
+  add: (data: { name: string; provider_type: string; host: string; api_key?: string; priority?: number }) =>
+    post<any>("/api/llm-servers", data),
+  healthCheck: (serverId: string) =>
+    post<any>(`/api/llm-servers/${serverId}/health-check`, {}),
+  update: (serverId: string, data: Record<string, unknown>) =>
+    patch<any>(`/api/llm-servers/${serverId}`, data),
+  delete: (serverId: string) => del(`/api/llm-servers/${serverId}`),
+};
+
+// --- Compute Pool ---
+
+export const compute = {
+  nodes: () => request<any>("/api/compute/nodes"),
+  stats: () => request<any>("/api/compute/stats"),
 };
 
 // --- Documents ---

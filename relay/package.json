@@ -1,0 +1,21 @@
+{
+  "name": "reclaw-relay",
+  "version": "0.1.0",
+  "description": "ReClaw Relay — donate LLM compute to the ReClaw network",
+  "type": "module",
+  "main": "index.mjs",
+  "bin": {
+    "reclaw-relay": "./index.mjs"
+  },
+  "scripts": {
+    "start": "node index.mjs",
+    "dev": "node index.mjs --server ws://localhost:8000/ws/relay"
+  },
+  "dependencies": {
+    "ws": "^8.16.0",
+    "commander": "^12.0.0"
+  },
+  "optionalDependencies": {
+    "systeminformation": "^5.22.0"
+  }
+}

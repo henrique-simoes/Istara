@@ -70,3 +70,6 @@ backend/app/skills/definitions/_deleted/
 
 # Exported projects
 ReClaw-Projects/
+
+# Database volumes
+postgres_data/

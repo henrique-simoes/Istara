@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Cpu, HardDrive, Monitor, Wifi, WifiOff, RefreshCw } from "lucide-react";
-import { settings as settingsApi } from "@/lib/api";
+import { Cpu, HardDrive, Monitor, Wifi, WifiOff, RefreshCw, Plus, Server, Trash2, Users } from "lucide-react";
+import { settings as settingsApi, llmServers } from "@/lib/api";
 import type { HardwareInfo, ModelRecommendation } from "@/lib/types";
 
 export default function SettingsView() {
@@ -241,6 +241,24 @@ export default function SettingsView() {
         </div>
       </div>
 
+      {/* LLM Servers */}
+      <LLMServersSection />
+
+      {/* Team Mode */}
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+        <h3 className="font-medium text-slate-900 dark:text-white mb-3 flex items-center gap-2">
+          <Users size={18} />
+          Team Mode
+        </h3>
+        <p className="text-sm text-slate-500 mb-3">
+          Enable team mode to allow multiple users to connect, authenticate, and collaborate on research projects.
+          Set <code className="bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded text-xs">TEAM_MODE=true</code> in your <code className="bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded text-xs">.env</code> file to activate.
+        </p>
+        <div className="text-xs text-slate-400">
+          Requires server restart. First registered user becomes admin.
+        </div>
+      </div>
+
       <button
         onClick={fetchAll}
         className="flex items-center gap-2 text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
@@ -248,6 +266,146 @@ export default function SettingsView() {
         <RefreshCw size={14} />
         Refresh
       </button>
+    </div>
+  );
+}
+
+function LLMServersSection() {
+  const [servers, setServers] = useState<any[]>([]);
+  const [showAdd, setShowAdd] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newHost, setNewHost] = useState("");
+  const [newType, setNewType] = useState("openai_compat");
+
+  const fetchServers = async () => {
+    try {
+      const data = await llmServers.list();
+      setServers(data.servers || []);
+    } catch {}
+  };
+
+  useEffect(() => {
+    fetchServers();
+  }, []);
+
+  const handleAdd = async () => {
+    if (!newName.trim() || !newHost.trim()) return;
+    try {
+      await llmServers.add({
+        name: newName.trim(),
+        provider_type: newType,
+        host: newHost.trim(),
+      });
+      setNewName("");
+      setNewHost("");
+      setShowAdd(false);
+      await fetchServers();
+    } catch (err) {
+      console.error("Failed to add server:", err);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      await llmServers.delete(id);
+      await fetchServers();
+    } catch {}
+  };
+
+  const handleHealthCheck = async (id: string) => {
+    try {
+      await llmServers.healthCheck(id);
+      await fetchServers();
+    } catch {}
+  };
+
+  return (
+    <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="font-medium text-slate-900 dark:text-white flex items-center gap-2">
+          <Server size={18} />
+          LLM Servers
+        </h3>
+        <button
+          onClick={() => setShowAdd(!showAdd)}
+          className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500"
+          aria-label="Add LLM server"
+        >
+          <Plus size={16} />
+        </button>
+      </div>
+
+      <p className="text-xs text-slate-500 mb-3">
+        Connect to any Ollama, LM Studio, or OpenAI-compatible LLM server.
+      </p>
+
+      {showAdd && (
+        <div className="mb-3 p-3 bg-slate-50 dark:bg-slate-900 rounded-lg space-y-2">
+          <input
+            type="text"
+            placeholder="Server name"
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            className="w-full px-2 py-1.5 text-sm rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+          />
+          <input
+            type="text"
+            placeholder="Host URL (e.g. http://192.168.1.100:1234)"
+            value={newHost}
+            onChange={(e) => setNewHost(e.target.value)}
+            className="w-full px-2 py-1.5 text-sm rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+          />
+          <select
+            value={newType}
+            onChange={(e) => setNewType(e.target.value)}
+            className="w-full px-2 py-1.5 text-sm rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+            aria-label="Provider type"
+          >
+            <option value="openai_compat">OpenAI Compatible</option>
+            <option value="lmstudio">LM Studio</option>
+            <option value="ollama">Ollama</option>
+          </select>
+          <button
+            onClick={handleAdd}
+            className="w-full py-1.5 bg-reclaw-600 hover:bg-reclaw-700 text-white text-sm font-medium rounded"
+          >
+            Add Server
+          </button>
+        </div>
+      )}
+
+      {servers.length > 0 ? (
+        <div className="space-y-2">
+          {servers.map((s) => (
+            <div key={s.id} className="flex items-center gap-2 p-2 rounded border border-slate-100 dark:border-slate-700">
+              <div className={`w-2 h-2 rounded-full ${s.is_healthy ? "bg-green-500" : "bg-red-500"}`} />
+              <div className="flex-1">
+                <div className="text-sm font-medium text-slate-800 dark:text-slate-200">{s.name}</div>
+                <div className="text-xs text-slate-400">{s.host} ({s.provider_type})</div>
+              </div>
+              <button
+                onClick={() => handleHealthCheck(s.id)}
+                className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400"
+                aria-label="Check health"
+                title="Health check"
+              >
+                <RefreshCw size={12} />
+              </button>
+              <button
+                onClick={() => handleDelete(s.id)}
+                className="p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-slate-400 hover:text-red-500"
+                aria-label="Remove server"
+              >
+                <Trash2 size={12} />
+              </button>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="text-sm text-slate-400">
+          No external servers. Local Ollama/LM Studio detected automatically.
+        </p>
+      )}
     </div>
   );
 }

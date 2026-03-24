@@ -30,6 +30,11 @@ class Settings(BaseSettings):
     projects_dir: str = "./data/projects"
     agent_avatars_dir: str = "./data/agent_avatars"
 
+    # Team mode (multi-user)
+    team_mode: bool = False
+    jwt_secret: str = "reclaw-dev-secret-change-in-production"
+    jwt_expire_minutes: int = 1440  # 24 hours
+
     # Hardware resource budget
     resource_reserve_ram_gb: float = 4.0
     resource_reserve_cpu_percent: int = 30
