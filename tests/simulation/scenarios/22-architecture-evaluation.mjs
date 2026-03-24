@@ -24,23 +24,12 @@ export async function run(ctx) {
   // SECTION 1: OpenClaw / NemoClaw Architectural Pattern Compliance
   // ═══════════════════════════════════════════════════════════════════
 
-  // Ensure a project exists for architecture testing
+  // Use the persistent simulation project for architecture testing
   let evalProjectId = ctx.projectId;
-  if (!evalProjectId) {
-    try {
-      const proj = await api.post("/api/projects", { name: "[SIM-22] Architecture Eval", description: "Project for architecture evaluation" });
-      evalProjectId = proj.id;
-    } catch {}
-  }
 
   // Pattern 1: Atomic Research Hierarchy (Nuggets → Facts → Insights → Recommendations)
   await safeCheck("[OpenClaw] Atomic Research — findings chain API exists", async () => {
     let projectId = evalProjectId;
-    if (!projectId) {
-      const proj = await api.post("/api/projects", { name: "[SIM-22] Arch Eval" });
-      projectId = proj.id;
-      evalProjectId = projectId;
-    }
 
     // Create a full evidence chain
     const nugget = await api.post("/api/findings/nuggets", {
@@ -533,13 +522,13 @@ export async function run(ctx) {
 
   await safeCheck("[Data] Project — full CRUD lifecycle", async () => {
     const created = await api.post("/api/projects", {
-      name: "[SIM-22] CRUD Test Project",
-      description: "Testing CRUD lifecycle",
+      name: "[SIM-TEMP] CRUD Lifecycle Test",
+      description: "Temporary — deleted after CRUD test",
     });
     const read = await api.get(`/api/projects/${created.id}`);
-    const updated = await api.patch(`/api/projects/${created.id}`, { name: "[SIM-22] Updated CRUD" });
+    const updated = await api.patch(`/api/projects/${created.id}`, { name: "[SIM-TEMP] Updated CRUD" });
 
-    const crudOk = created.id && read.id === created.id && updated.name === "[SIM-22] Updated CRUD";
+    const crudOk = created.id && read.id === created.id && updated.name === "[SIM-TEMP] Updated CRUD";
 
     // Cleanup
     try { await api.delete(`/api/projects/${created.id}`); } catch {}
@@ -547,16 +536,12 @@ export async function run(ctx) {
     return {
       name: "[Data] Project — full CRUD lifecycle",
       passed: crudOk,
-      detail: `create=${!!created.id}, read=${read.id === created.id}, update=${updated.name === "[SIM-22] Updated CRUD"}`,
+      detail: `create=${!!created.id}, read=${read.id === created.id}, update=${updated.name === "[SIM-TEMP] Updated CRUD"}`,
     };
   });
 
   await safeCheck("[Data] Task — status transitions (backlog → in_progress → done)", async () => {
     let projId = ctx.projectId;
-    if (!projId) {
-      const p = await api.post("/api/projects", { name: "[SIM-22] Task Status Test" });
-      projId = p.id;
-    }
 
     const task = await api.post("/api/tasks", {
       project_id: projId,

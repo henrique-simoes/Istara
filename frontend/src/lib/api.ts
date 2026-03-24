@@ -156,6 +156,8 @@ export const findings = {
     request<any>(`/api/findings/${findingType}/${findingId}/evidence-chain`),
   createNugget: (projectId: string, data: { text: string; source: string; source_location?: string; tags?: string[] }) =>
     post<any>("/api/findings/nuggets", { project_id: projectId, ...data }),
+  linkEvidence: (findingType: string, findingId: string, linkId: string, linkType: string) =>
+    patch<any>(`/api/findings/${findingType}/${findingId}/link`, { link_id: linkId, link_type: linkType }),
   delete: (type: "nugget" | "fact" | "insight" | "recommendation", id: string) => {
     const plural: Record<string, string> = {
       nugget: "nuggets",

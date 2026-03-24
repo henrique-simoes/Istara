@@ -10,20 +10,23 @@ export default function SettingsView() {
   const [recommendation, setRecommendation] = useState<ModelRecommendation | null>(null);
   const [systemStatus, setSystemStatus] = useState<any>(null);
   const [models, setModels] = useState<any>(null);
+  const [servers, setServers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchAll = async () => {
     setLoading(true);
     try {
-      const [hw, status, mdl] = await Promise.all([
+      const [hw, status, mdl, srv] = await Promise.all([
         settingsApi.hardware(),
         settingsApi.status(),
         settingsApi.models(),
+        llmServers.list().catch(() => ({ servers: [] })),
       ]);
       setHardware(hw.hardware);
       setRecommendation(hw.recommendation);
       setSystemStatus(status);
       setModels(mdl);
+      setServers(srv.servers || []);
     } catch (e) {
       console.error("Failed to load settings:", e);
     }
@@ -169,42 +172,63 @@ export default function SettingsView() {
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
           <h3 className="font-medium text-slate-900 dark:text-white mb-3">Available Models</h3>
           <div className="space-y-2">
-            {models.models.map((model: any) => (
-              <div
-                key={model.name}
-                className="flex items-center justify-between py-2 px-3 rounded-lg bg-slate-50 dark:bg-slate-900"
-              >
-                <div>
-                  <p className="text-sm font-mono font-medium text-slate-900 dark:text-white">
-                    {model.name}
-                  </p>
-                  {model.size && (
-                    <p className="text-xs text-slate-400">
-                      {(model.size / 1e9).toFixed(1)} GB
+            {models.models.map((model: any) => {
+              const providerLabel =
+                model.provider_type === "ollama"
+                  ? "Ollama"
+                  : model.provider_type === "lmstudio"
+                  ? "LM Studio"
+                  : model.provider_type === "openai_compat"
+                  ? "OpenAI Compatible"
+                  : model.provider_type || "Unknown";
+              return (
+                <div
+                  key={`${model.name}-${model.server_name || ""}`}
+                  className="flex items-center justify-between py-2 px-3 rounded-lg bg-slate-50 dark:bg-slate-900"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-mono font-medium text-slate-900 dark:text-white">
+                      {model.name}
                     </p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      {model.size && (
+                        <span className="text-xs text-slate-400">
+                          {(model.size / 1e9).toFixed(1)} GB
+                        </span>
+                      )}
+                      {model.server_name && (
+                        <span className="inline-flex items-center gap-1 text-xs bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded px-1.5 py-0.5">
+                          <Server size={10} />
+                          {model.server_name}
+                        </span>
+                      )}
+                      <span className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded px-1.5 py-0.5">
+                        {providerLabel}
+                      </span>
+                    </div>
+                  </div>
+                  {model.name === models.active_model ? (
+                    <span className="text-xs bg-reclaw-100 dark:bg-reclaw-900/30 text-reclaw-700 dark:text-reclaw-400 rounded-full px-2 py-0.5 ml-2 shrink-0">
+                      Active
+                    </span>
+                  ) : (
+                    <button
+                      onClick={async () => {
+                        try {
+                          await settingsApi.switchModel(model.name);
+                          await fetchAll();
+                        } catch (e) {
+                          console.error("Failed to switch model:", e);
+                        }
+                      }}
+                      className="text-xs px-3 py-1 rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-reclaw-100 hover:text-reclaw-700 transition-colors ml-2 shrink-0"
+                    >
+                      Switch
+                    </button>
                   )}
                 </div>
-                {model.name === models.active_model ? (
-                  <span className="text-xs bg-reclaw-100 dark:bg-reclaw-900/30 text-reclaw-700 dark:text-reclaw-400 rounded-full px-2 py-0.5">
-                    Active
-                  </span>
-                ) : (
-                  <button
-                    onClick={async () => {
-                      try {
-                        await settingsApi.switchModel(model.name);
-                        await fetchAll();
-                      } catch (e) {
-                        console.error("Failed to switch model:", e);
-                      }
-                    }}
-                    className="text-xs px-3 py-1 rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-reclaw-100 hover:text-reclaw-700 transition-colors"
-                  >
-                    Switch
-                  </button>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

@@ -7,20 +7,22 @@ export async function run(ctx) {
   const { api } = ctx;
   const checks = [];
 
-  // ── 1. Create a project with task, session, scheduled task ──
+  // ── 1. Create a TEMPORARY project for cascade deletion testing ──
+  // NOTE: This scenario intentionally creates and deletes its own project
+  // to test cascade deletion. It does NOT use the persistent simulation project.
   let projectId = null;
   let sessionId = null;
   let taskId = null;
 
   try {
     const project = await api.post("/api/projects", {
-      name: "[SIM] Cascade Test",
-      description: "Test project for cascade deletion",
+      name: "[SIM-TEMP] Cascade Deletion Test",
+      description: "Temporary project — will be deleted to test cascade behavior",
     });
     projectId = project.id;
-    checks.push({ name: "Create test project", passed: !!projectId, detail: `id=${projectId}` });
+    checks.push({ name: "Create temporary cascade test project", passed: !!projectId, detail: `id=${projectId}` });
   } catch (e) {
-    checks.push({ name: "Create test project", passed: false, detail: e.message });
+    checks.push({ name: "Create temporary cascade test project", passed: false, detail: e.message });
     return { checks, passed: 0, failed: checks.length };
   }
 

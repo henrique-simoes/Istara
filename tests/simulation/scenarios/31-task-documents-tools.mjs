@@ -21,21 +21,10 @@ export async function run(ctx) {
     checks.push({ id, label, passed, detail });
   }
 
-  // ── Setup ───────────────────────────────────────────────────
-  let projectId;
-  try {
-    const projects = await api.get("/api/projects");
-    if (projects.length > 0) {
-      projectId = projects[0].id;
-    } else {
-      const p = await api.post("/api/projects", {
-        name: "Tools Test Project",
-        description: "Testing task-document linking and system tools",
-      });
-      projectId = p.id;
-    }
-  } catch (e) {
-    check(1, "Project setup", false, e.message);
+  // ── Setup: use persistent simulation project ───────────────────────────
+  let projectId = ctx.projectId;
+  if (!projectId) {
+    check(1, "Project setup", false, "No persistent project available from runner");
     return { checks, passed: 0, failed: 1, total: 1 };
   }
 

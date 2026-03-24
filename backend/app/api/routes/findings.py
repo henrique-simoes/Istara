@@ -498,6 +498,91 @@ async def get_evidence_chain(
     }
 
 
+class LinkEvidenceRequest(BaseModel):
+    link_id: str
+    link_type: str  # "fact" | "nugget" | "insight"
+
+
+@router.patch("/findings/{finding_type}/{finding_id}/link")
+async def link_evidence(
+    finding_type: str,
+    finding_id: str,
+    data: LinkEvidenceRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Add an evidence link to a finding's _ids array.
+
+    Valid combinations:
+    - insight  + link_type=fact    -> adds to insight.fact_ids
+    - fact     + link_type=nugget  -> adds to fact.nugget_ids
+    - recommendation + link_type=insight -> adds to recommendation.insight_ids
+    """
+    type_map = {
+        "nugget": Nugget, "fact": Fact, "insight": Insight, "recommendation": Recommendation,
+    }
+
+    # Validate the finding being modified
+    model = type_map.get(finding_type)
+    if not model:
+        raise HTTPException(status_code=400, detail=f"Invalid finding type: {finding_type}")
+
+    result = await db.execute(select(model).where(model.id == finding_id))
+    finding = result.scalar_one_or_none()
+    if not finding:
+        raise HTTPException(status_code=404, detail="Finding not found")
+
+    # Validate the target being linked exists
+    link_model = type_map.get(data.link_type)
+    if not link_model:
+        raise HTTPException(status_code=400, detail=f"Invalid link type: {data.link_type}")
+
+    link_result = await db.execute(select(link_model).where(link_model.id == data.link_id))
+    link_target = link_result.scalar_one_or_none()
+    if not link_target:
+        raise HTTPException(status_code=404, detail=f"Target {data.link_type} not found")
+
+    # Determine which _ids field to update based on finding type and link type
+    field_map = {
+        ("insight", "fact"): "fact_ids",
+        ("fact", "nugget"): "nugget_ids",
+        ("recommendation", "insight"): "insight_ids",
+    }
+
+    ids_field = field_map.get((finding_type, data.link_type))
+    if not ids_field:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot link {data.link_type} to {finding_type}. "
+                   f"Valid: insight+fact, fact+nugget, recommendation+insight.",
+        )
+
+    # Parse existing ids, add new one, and save
+    raw = getattr(finding, ids_field, None)
+    existing_ids: list[str] = []
+    if raw:
+        try:
+            existing_ids = json.loads(raw)
+        except (json.JSONDecodeError, TypeError):
+            existing_ids = []
+
+    if data.link_id in existing_ids:
+        return {"status": "already_linked", "finding_id": finding_id, "link_id": data.link_id}
+
+    existing_ids.append(data.link_id)
+    setattr(finding, ids_field, json.dumps(existing_ids))
+    await db.commit()
+    await db.refresh(finding)
+
+    return {
+        "status": "linked",
+        "finding_type": finding_type,
+        "finding_id": finding_id,
+        "link_type": data.link_type,
+        "link_id": data.link_id,
+        ids_field: existing_ids,
+    }
+
+
 @router.get("/findings/summary/{project_id}")
 async def get_findings_summary(project_id: str, db: AsyncSession = Depends(get_db)):
     """Get a summary of all findings for a project, organized by phase."""

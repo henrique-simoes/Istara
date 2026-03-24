@@ -423,24 +423,12 @@ export async function run(ctx) {
     }
   }
 
-  // ── Step 1: ALWAYS create own project (self-contained, no ctx dependency) ──
-  let projectId = null;
-  await safeCheck("Create test project for skills", async () => {
-    const proj = await api.post("/api/projects", {
-      name: "[SIM-20] Skills Comprehensive Test",
-      description: "Project for testing all 45 skills with mock data",
-      company_context: "TechStart Inc — B2B SaaS mobile banking platform. Users: consumers, small businesses, financial advisors. NPS: 32, target 45. Competitors: Chase, Venmo, Zelle.",
-    });
-    projectId = proj.id;
-    return {
-      name: "Create test project for skills",
-      passed: !!projectId,
-      detail: `project_id=${projectId}`,
-    };
-  });
-
-  if (!projectId) {
-    checks.push({ name: "Project required", passed: false, detail: "Cannot run skills test without a project" });
+  // ── Step 1: Use the persistent simulation project ──
+  let projectId = ctx.projectId;
+  if (projectId) {
+    checks.push({ name: "Using persistent simulation project", passed: true, detail: `project_id=${projectId}` });
+  } else {
+    checks.push({ name: "Project required", passed: false, detail: "No persistent project available from runner" });
     return { checks, passed: 0, failed: 1, summary: "No project available" };
   }
 

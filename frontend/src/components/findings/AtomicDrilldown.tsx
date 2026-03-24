@@ -9,6 +9,10 @@ import {
   Sparkles,
   ChevronRight,
   ExternalLink,
+  Link2,
+  Search,
+  Plus,
+  X,
 } from "lucide-react";
 import { findings as findingsApi } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -36,12 +40,26 @@ interface ChainData {
 
 const EMPTY_CHAIN: ChainData = { recommendation: [], insight: [], fact: [], nugget: [] };
 
+/** Map finding types to what can be linked TO them */
+const LINKABLE_TYPES: Record<FindingType, { linkType: FindingType; label: string } | null> = {
+  recommendation: { linkType: "insight", label: "Insights" },
+  insight: { linkType: "fact", label: "Facts" },
+  fact: { linkType: "nugget", label: "Nuggets" },
+  nugget: null, // nuggets are the base — nothing links below them
+};
+
 export default function AtomicDrilldown({ projectId, finding: initialFinding, onClose }: AtomicDrilldownProps) {
   const [activeFinding, setActiveFinding] = useState(initialFinding);
   const [chain, setChain] = useState<ChainData>(EMPTY_CHAIN);
   const [loading, setLoading] = useState(true);
   // Navigation history for breadcrumb traversal
   const [history, setHistory] = useState<Array<{ id: string; type: FindingType; text: string }>>([initialFinding]);
+  // Link evidence state
+  const [showLinkPanel, setShowLinkPanel] = useState(false);
+  const [linkSearch, setLinkSearch] = useState("");
+  const [linkCandidates, setLinkCandidates] = useState<Array<{ id: string; text: string; type: FindingType }>>([]);
+  const [linkLoading, setLinkLoading] = useState(false);
+  const [linkingId, setLinkingId] = useState<string | null>(null);
 
   const loadChain = useCallback(async (type: string, id: string) => {
     setLoading(true);
@@ -68,6 +86,60 @@ export default function AtomicDrilldown({ projectId, finding: initialFinding, on
   useEffect(() => {
     loadChain(activeFinding.type, activeFinding.id);
   }, [activeFinding, loadChain]);
+
+  // Load linkable candidates when link panel opens
+  const loadLinkCandidates = useCallback(async () => {
+    const linkInfo = LINKABLE_TYPES[activeFinding.type];
+    if (!linkInfo) return;
+
+    setLinkLoading(true);
+    try {
+      const fetchMap: Record<string, () => Promise<any[]>> = {
+        nugget: () => findingsApi.nuggets(projectId),
+        fact: () => findingsApi.facts(projectId),
+        insight: () => findingsApi.insights(projectId),
+        recommendation: () => findingsApi.recommendations(projectId),
+      };
+      const items = await fetchMap[linkInfo.linkType]();
+      // Exclude items already in the chain
+      const existingIds = new Set(chain[linkInfo.linkType].map((c: any) => c.id));
+      setLinkCandidates(
+        items
+          .filter((item: any) => !existingIds.has(item.id))
+          .map((item: any) => ({ id: item.id, text: item.text, type: linkInfo.linkType }))
+      );
+    } catch {
+      setLinkCandidates([]);
+    }
+    setLinkLoading(false);
+  }, [activeFinding.type, projectId, chain]);
+
+  useEffect(() => {
+    if (showLinkPanel) {
+      loadLinkCandidates();
+    }
+  }, [showLinkPanel, loadLinkCandidates]);
+
+  const handleLink = async (linkId: string) => {
+    const linkInfo = LINKABLE_TYPES[activeFinding.type];
+    if (!linkInfo) return;
+
+    setLinkingId(linkId);
+    try {
+      await findingsApi.linkEvidence(activeFinding.type, activeFinding.id, linkId, linkInfo.linkType);
+      // Refresh the chain to show the new link
+      await loadChain(activeFinding.type, activeFinding.id);
+      // Remove the linked item from candidates
+      setLinkCandidates((prev) => prev.filter((c) => c.id !== linkId));
+    } catch (err) {
+      console.error("Failed to link evidence:", err);
+    }
+    setLinkingId(null);
+  };
+
+  const filteredCandidates = linkCandidates.filter(
+    (c) => !linkSearch || c.text.toLowerCase().includes(linkSearch.toLowerCase())
+  );
 
   // Navigate to a different finding in the chain
   const drillTo = (type: FindingType, item: { id: string; text: string }) => {
@@ -165,9 +237,72 @@ export default function AtomicDrilldown({ projectId, finding: initialFinding, on
                     <p className="text-sm text-slate-900 dark:text-white font-medium">
                       {activeFinding.text}
                     </p>
+                    {LINKABLE_TYPES[activeFinding.type] && (
+                      <button
+                        onClick={() => setShowLinkPanel(!showLinkPanel)}
+                        className={cn(
+                          "mt-2 inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-md transition-colors",
+                          showLinkPanel
+                            ? "bg-reclaw-600 text-white"
+                            : "bg-white dark:bg-slate-800 text-reclaw-600 border border-reclaw-300 dark:border-reclaw-700 hover:bg-reclaw-50 dark:hover:bg-reclaw-900/30"
+                        )}
+                      >
+                        {showLinkPanel ? <X size={12} /> : <Link2 size={12} />}
+                        {showLinkPanel ? "Close" : `Link ${LINKABLE_TYPES[activeFinding.type]!.label}`}
+                      </button>
+                    )}
                   </div>
                 </ChainLevel>
               </div>
+
+              {/* Link Evidence Panel */}
+              {showLinkPanel && LINKABLE_TYPES[activeFinding.type] && (
+                <div className="mb-6 ml-8 border border-reclaw-200 dark:border-reclaw-800 rounded-lg bg-reclaw-50/50 dark:bg-reclaw-900/10 p-3">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Search size={14} className="text-slate-400" />
+                    <input
+                      type="text"
+                      placeholder={`Search ${LINKABLE_TYPES[activeFinding.type]!.label.toLowerCase()} to link...`}
+                      value={linkSearch}
+                      onChange={(e) => setLinkSearch(e.target.value)}
+                      className="flex-1 text-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-reclaw-400"
+                    />
+                  </div>
+                  <div className="max-h-48 overflow-y-auto space-y-1.5">
+                    {linkLoading ? (
+                      <p className="text-xs text-slate-400 text-center py-3">Loading candidates...</p>
+                    ) : filteredCandidates.length === 0 ? (
+                      <p className="text-xs text-slate-400 text-center py-3">
+                        {linkSearch ? "No matching items found." : `No unlinked ${LINKABLE_TYPES[activeFinding.type]!.label.toLowerCase()} available.`}
+                      </p>
+                    ) : (
+                      filteredCandidates.map((candidate) => (
+                        <div
+                          key={candidate.id}
+                          className="flex items-start gap-2 p-2 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
+                        >
+                          <p className="flex-1 text-xs text-slate-700 dark:text-slate-300 line-clamp-2">
+                            {candidate.text}
+                          </p>
+                          <button
+                            onClick={() => handleLink(candidate.id)}
+                            disabled={linkingId === candidate.id}
+                            className="shrink-0 inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded bg-reclaw-600 text-white hover:bg-reclaw-700 disabled:opacity-50 transition-colors"
+                          >
+                            {linkingId === candidate.id ? (
+                              "Linking..."
+                            ) : (
+                              <>
+                                <Plus size={10} /> Link
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* Supporting evidence — show levels OTHER than the active one */}
               {activeFinding.type !== "recommendation" && chain.recommendation.length > 0 && (
@@ -247,11 +382,54 @@ export default function AtomicDrilldown({ projectId, finding: initialFinding, on
                 chain.fact.length === 0 &&
                 chain.nugget.length === 0 &&
                 chain.recommendation.length === 0 && (
-                  <div className="text-center py-8 text-slate-400">
-                    <p className="text-sm">No linked evidence found yet.</p>
-                    <p className="text-xs mt-1">
-                      As you run more skills, findings will be linked automatically.
+                  <div className="text-center py-8">
+                    <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">
+                      No linked evidence chain yet.
                     </p>
+                    <p className="text-xs text-slate-400 mt-1">
+                      Link this {activeFinding.type} to supporting evidence to build the atomic research path.
+                    </p>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      The research chain tracks how information flows: Nuggets → Facts → Insights → Recommendations
+                    </p>
+
+                    {/* Atomic research chain diagram */}
+                    <div className="mt-5 inline-flex flex-col items-center gap-0">
+                      {[
+                        { label: "Recommendation", desc: "Actionable next step", color: "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800", icon: "🎯" },
+                        { label: "Insight", desc: "Pattern or theme identified", color: "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800", icon: "💡" },
+                        { label: "Fact", desc: "Verified claim from evidence", color: "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800", icon: "📄" },
+                        { label: "Nugget", desc: "Raw quote or observation", color: "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-800", icon: "✨" },
+                      ].map((level, idx) => (
+                        <div key={level.label} className="flex flex-col items-center">
+                          {idx > 0 && (
+                            <div className="w-px h-3 bg-slate-300 dark:bg-slate-600" />
+                          )}
+                          <div
+                            className={cn(
+                              "flex items-center gap-2 px-4 py-2 rounded-lg border text-xs font-medium",
+                              level.color,
+                              activeFinding.type === level.label.toLowerCase() && "ring-2 ring-reclaw-400 ring-offset-1"
+                            )}
+                          >
+                            <span>{level.icon}</span>
+                            <span>{level.label}</span>
+                            <span className="font-normal opacity-70">— {level.desc}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Link Evidence CTA */}
+                    {LINKABLE_TYPES[activeFinding.type] && (
+                      <button
+                        onClick={() => setShowLinkPanel(true)}
+                        className="mt-5 inline-flex items-center gap-1.5 text-sm px-4 py-2 rounded-lg bg-reclaw-600 text-white hover:bg-reclaw-700 transition-colors"
+                      >
+                        <Link2 size={14} />
+                        Link {LINKABLE_TYPES[activeFinding.type]!.label}
+                      </button>
+                    )}
                   </div>
                 )}
             </>

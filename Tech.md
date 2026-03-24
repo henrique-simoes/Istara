@@ -1066,6 +1066,24 @@ The MetaOrchestrator scales agent count based on available compute:
 - **NAT-friendly**: Backend exposes single port (8000) for both HTTP and WebSocket. Relay uses outbound connections only.
 - **LM Studio access**: `host.docker.internal` mapping for accessing host machine's LM Studio from containers.
 
+### UX Bug Fixes & WCAG Compliance (March 2026)
+
+Major UX overhaul addressing WCAG compliance, Nielsen's heuristics violations, and usability issues:
+
+- **Notification Center**: Full notification center (like GitHub/LinkedIn) with bell icon, unread badge, notification history (max 50), mark-all-as-read, clear-all. All notification backgrounds use solid opacity (≥80%) for WCAG contrast compliance. Every notification navigates to its relevant page on click.
+- **Chat Agent Identity**: Chat bubbles now show the actual agent name (not hardcoded "ReClaw") during both message history and streaming responses. Agent names are resolved from the session's agent_id against the agent store.
+- **Settings Model/Server Display**: Each model now shows its provider server name and type (Ollama, LM Studio, OpenAI Compatible) as inline badges. Backend enriches model data with server metadata from the LLM Router.
+- **Ensemble Health Explanations**: Added expandable explanations for Fleiss' Kappa, per-method methodology descriptions (accordion pattern), metric tooltips on hover, and a color legend for confidence score interpretation. All on-demand to avoid overcrowding.
+- **Agent Status Polling**: Agent store now polls every 10 seconds + listens for WebSocket `agent_status` events in real-time. Agents correctly show WORKING/IDLE/PAUSED states instead of always "idle".
+- **Agent Memory Synchronization**: AgentsView Memory tab now shows BOTH the agent's state memory (JSON dict) AND the RAG-stored notes (same data as Memory menu), fixing the inconsistency between the two menus.
+- **Self-Evolution Skills UI**: Current/Proposed fields are now full-width stacked (not cramped side-by-side), with readable font sizes (14px content, 12px labels), 256px max-height, and minimum height for empty fields. Backend no longer truncates values to 200 characters.
+- **Interviews Layout**: Right panel narrowed from 320px to 256px. File tabs switched to compact horizontal wrap. Added collapsible toggle for the tags/nuggets panel so users can maximize content reading space.
+- **Documents Layout**: Metadata panel narrowed from 288px to 256px. Removed XL-only breakpoint (always visible). Added collapsible toggle for metadata panel. More compact document list cards.
+- **Atomic Research Path Tracking**: Empty state in AtomicDrilldown now explains the atomic research chain (Nuggets → Facts → Insights → Recommendations) with a visual pyramid. Added "Link Evidence" buttons for manual evidence linking. New `PATCH /api/findings/{type}/{id}/link` endpoint for adding evidence links. FindingsView shows link count badges on each finding.
+- **Auth Store Fix**: Fixed pre-existing TypeScript error in `getAuthHeaders()` return type.
+
+**Files**: All frontend components in `components/`, stores in `stores/`, backend routes in `api/routes/`, `skill_manager.py`
+
 ### Academic References
 
 | Method | Paper | Venue |
