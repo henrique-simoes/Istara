@@ -321,7 +321,10 @@ async def lock_task(
 
     # Check if already locked by someone else (and not expired)
     if task.locked_by and task.locked_by != user_id:
-        if task.lock_expires_at and task.lock_expires_at > now:
+        expires = task.lock_expires_at
+        if expires and expires.tzinfo is None:
+            expires = expires.replace(tzinfo=timezone.utc)
+        if expires and expires > now:
             raise HTTPException(
                 status_code=409,
                 detail=f"Task locked by {task.locked_by} until {task.lock_expires_at.isoformat()}",

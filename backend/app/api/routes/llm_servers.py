@@ -167,3 +167,14 @@ async def delete_llm_server(server_id: str, db: AsyncSession = Depends(get_db)):
     await db.commit()
 
     return {"id": server_id, "deleted": True}
+
+
+@router.post("/llm-servers/discover")
+async def discover_network_llm_servers():
+    """Scan local network for LLM servers (LM Studio, Ollama, OpenAI-compatible)."""
+    from app.core.network_discovery import discover_and_register
+    discovered = await discover_and_register()
+    return {
+        "discovered": len(discovered),
+        "servers": discovered,
+    }
