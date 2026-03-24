@@ -516,11 +516,15 @@ export default function ChatView() {
           ))}
 
           {/* Streaming response */}
-          {streaming && streamingContent && (
+          {streaming && streamingContent && (() => {
+            const agentId = activeSession?.agent_id;
+            const streamAgent = agentId ? agents.find((a) => a.id === agentId) : undefined;
+            const streamAgentName = streamAgent?.name || "ReClaw";
+            return (
             <div className="mr-auto max-w-3xl flex gap-2.5 message-enter">
-              <div className="mt-1"><AgentAvatar /></div>
+              <div className="mt-1"><AgentAvatar name={streamAgentName} /></div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs text-slate-500 dark:text-slate-400 mb-1 px-1 font-medium">ReClaw</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-1 px-1 font-medium">{streamAgentName}</p>
                 <div className="rounded-2xl rounded-bl-md px-4 py-3 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100">
                   <div className="whitespace-pre-wrap text-sm streaming-cursor">
                     {streamingContent}
@@ -528,11 +532,16 @@ export default function ChatView() {
                 </div>
               </div>
             </div>
-          )}
+            );
+          })()}
 
-          {streaming && !streamingContent && (
+          {streaming && !streamingContent && (() => {
+            const agentId = activeSession?.agent_id;
+            const thinkAgent = agentId ? agents.find((a) => a.id === agentId) : undefined;
+            const thinkAgentName = thinkAgent?.name || "ReClaw";
+            return (
             <div className="mr-auto flex items-center gap-2.5 text-slate-400 px-4">
-              <div className="mt-0"><AgentAvatar /></div>
+              <div className="mt-0"><AgentAvatar name={thinkAgentName} /></div>
               <Loader2 size={16} className="animate-spin" />
               <span className="text-sm">Thinking...</span>
               <button
@@ -543,7 +552,8 @@ export default function ChatView() {
                 <StopCircle size={12} /> Cancel
               </button>
             </div>
-          )}
+            );
+          })()}
 
           {streaming && streamingContent && (
             <div className="flex justify-center">

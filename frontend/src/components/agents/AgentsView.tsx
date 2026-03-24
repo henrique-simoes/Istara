@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
   Users,
   Plus,
@@ -22,9 +22,13 @@ import {
   Cpu,
   HardDrive,
   ArrowRight,
+  RefreshCw,
+  Database,
 } from "lucide-react";
 import { useAgentStore } from "@/stores/agentStore";
-import { agents as agentsApi } from "@/lib/api";
+import { agents as agentsApi, memory as memoryApi } from "@/lib/api";
+import { useProjectStore } from "@/stores/projectStore";
+import { useWebSocket } from "@/hooks/useWebSocket";
 import { cn } from "@/lib/utils";
 import type {
   Agent,
@@ -403,9 +407,37 @@ function CreateAgentWizard({ onDone }: { onDone: () => void }) {
 
 // ─── Agent Detail ───
 
+interface AgentRAGNote {
+  text: string;
+  source: string;
+}
+
 function AgentDetail({ agent }: { agent: Agent }) {
   const { updateAgent, pauseAgent, resumeAgent, deleteAgent } = useAgentStore();
+  const { activeProjectId } = useProjectStore();
   const [tab, setTab] = useState<"overview" | "memory" | "permissions">("overview");
+  const [ragNotes, setRagNotes] = useState<AgentRAGNote[]>([]);
+  const [ragLoading, setRagLoading] = useState(false);
+  const [ragFetched, setRagFetched] = useState(false);
+
+  // Fetch RAG-stored agent notes when the memory tab is opened
+  useEffect(() => {
+    if (tab !== "memory" || ragFetched || !activeProjectId) return;
+    setRagLoading(true);
+    memoryApi
+      .agentNotes(activeProjectId, agent.id)
+      .then((data) => {
+        setRagNotes(data.notes || []);
+      })
+      .catch((e) => {
+        console.error("Failed to fetch RAG notes for agent:", e);
+        setRagNotes([]);
+      })
+      .finally(() => {
+        setRagLoading(false);
+        setRagFetched(true);
+      });
+  }, [tab, ragFetched, activeProjectId, agent.id]);
 
   return (
     <div className="border-t border-slate-100 dark:border-slate-700 px-4 py-4 space-y-4">
@@ -506,19 +538,54 @@ function AgentDetail({ agent }: { agent: Agent }) {
       )}
 
       {tab === "memory" && (
-        <div className="space-y-2">
-          {Object.keys(agent.memory || {}).length === 0 ? (
-            <p className="text-xs text-slate-400">No memories stored yet. This agent will build memory as it works.</p>
-          ) : (
-            Object.entries(agent.memory).map(([key, value]) => (
-              <div key={key} className="p-2 rounded bg-slate-50 dark:bg-slate-800/50">
-                <p className="text-xs font-medium text-slate-600 dark:text-slate-400">{key}</p>
-                <p className="text-xs text-slate-700 dark:text-slate-300 mt-0.5">
-                  {typeof value === "string" ? value : JSON.stringify(value)}
-                </p>
+        <div className="space-y-4">
+          {/* DB-stored agent memory (JSON dict on Agent model) */}
+          <div>
+            <h4 className="text-xs font-semibold uppercase text-slate-500 mb-2">Agent State Memory</h4>
+            {Object.keys(agent.memory || {}).length === 0 ? (
+              <p className="text-xs text-slate-400">No state memories stored yet. This agent will build memory as it works.</p>
+            ) : (
+              <div className="space-y-2">
+                {Object.entries(agent.memory).map(([key, value]) => (
+                  <div key={key} className="p-2 rounded bg-slate-50 dark:bg-slate-800/50">
+                    <p className="text-xs font-medium text-slate-600 dark:text-slate-400">{key}</p>
+                    <p className="text-xs text-slate-700 dark:text-slate-300 mt-0.5">
+                      {typeof value === "string" ? value : JSON.stringify(value)}
+                    </p>
+                  </div>
+                ))}
               </div>
-            ))
-          )}
+            )}
+          </div>
+
+          {/* RAG-stored agent notes (same data shown in Memory menu) */}
+          <div>
+            <h4 className="text-xs font-semibold uppercase text-slate-500 mb-2 flex items-center gap-2">
+              <Database size={12} />
+              RAG Notes
+              {ragNotes.length > 0 && (
+                <span className="text-[10px] font-normal text-slate-400">({ragNotes.length})</span>
+              )}
+            </h4>
+            {ragLoading ? (
+              <p className="text-xs text-slate-400 flex items-center gap-1">
+                <RefreshCw size={10} className="animate-spin" /> Loading notes...
+              </p>
+            ) : !activeProjectId ? (
+              <p className="text-xs text-slate-400">Select a project to view RAG notes.</p>
+            ) : ragNotes.length === 0 ? (
+              <p className="text-xs text-slate-400">No RAG notes stored by this agent yet.</p>
+            ) : (
+              <div className="space-y-2">
+                {ragNotes.map((note, i) => (
+                  <div key={i} className="p-2 rounded bg-slate-50 dark:bg-slate-800/50">
+                    <p className="text-xs text-slate-700 dark:text-slate-300 whitespace-pre-wrap">{note.text}</p>
+                    <p className="text-[10px] text-slate-400 mt-1">{note.source}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -601,6 +668,9 @@ export default function AgentsView() {
   const {
     agents,
     fetchAgents,
+    startPolling,
+    stopPolling,
+    updateAgentStatus,
     fetchA2ALog,
     a2aMessages,
     loading,
@@ -608,9 +678,30 @@ export default function AgentsView() {
   const [activeTab, setActiveTab] = useState<"agents" | "a2a" | "create">("agents");
   const [expandedAgent, setExpandedAgent] = useState<string | null>(null);
 
+  // Initial fetch + start polling every 10s to keep agent statuses current
   useEffect(() => {
     fetchAgents();
-  }, [fetchAgents]);
+    startPolling();
+    return () => {
+      stopPolling();
+    };
+  }, [fetchAgents, startPolling, stopPolling]);
+
+  // Subscribe to WebSocket agent_status events for real-time updates
+  const handleWSEvent = useCallback(
+    (event: { type: string; data: Record<string, unknown> }) => {
+      if (event.type === "agent_status") {
+        const agentId = event.data.agent_id as string;
+        const state = (event.data.state || event.data.status || "idle") as string;
+        const currentTask = event.data.current_task as string | undefined;
+        if (agentId) {
+          updateAgentStatus(agentId, state, currentTask);
+        }
+      }
+    },
+    [updateAgentStatus]
+  );
+  useWebSocket(handleWSEvent);
 
   useEffect(() => {
     if (activeTab === "a2a") fetchA2ALog();

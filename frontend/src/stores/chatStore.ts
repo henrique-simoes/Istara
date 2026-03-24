@@ -3,6 +3,8 @@
 import { create } from "zustand";
 import type { ChatMessage } from "@/lib/types";
 import { chat as chatApi, sessions as sessionsApi } from "@/lib/api";
+import { useAgentStore } from "@/stores/agentStore";
+import { useSessionStore } from "@/stores/sessionStore";
 
 interface ChatStore {
   messages: ChatMessage[];
@@ -35,6 +37,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
           content: m.content,
           created_at: m.created_at,
           agent_id: m.agent_id,
+          agent_name: m.agent_name,
         }));
         set({ messages: msgs, error: null });
       } else {
@@ -80,6 +83,13 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         }
       }
 
+      // Resolve agent name from the active session's agent_id
+      const activeSession = useSessionStore.getState().activeSession();
+      const agentId = activeSession?.agent_id;
+      const agentName = agentId
+        ? useAgentStore.getState().agents.find((a) => a.id === agentId)?.name
+        : undefined;
+
       // Add completed assistant message
       const assistantMsg: ChatMessage = {
         id: messageId || `msg-${Date.now()}`,
@@ -87,6 +97,8 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         content: fullContent,
         created_at: new Date().toISOString(),
         sources,
+        agent_id: agentId ?? undefined,
+        agent_name: agentName,
       };
 
       set((s) => ({

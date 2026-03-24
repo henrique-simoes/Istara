@@ -110,11 +110,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
-  getAuthHeaders: () => {
+  getAuthHeaders: (): Record<string, string> => {
     const { token } = get();
     if (token && token !== "local-mode") {
       return { Authorization: `Bearer ${token}` };
     }
-    return {};
+    return {} as Record<string, string>;
   },
 }));

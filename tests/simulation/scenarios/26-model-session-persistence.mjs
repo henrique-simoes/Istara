@@ -104,17 +104,11 @@ export async function run(ctx) {
   }
 
   // ── 8. Session CRUD with persistence ──
-  let projectId = null;
+  let projectId = ctx.projectId;
   let sessionId = null;
 
-  try {
-    const project = await api.post("/api/projects", {
-      name: "[SIM] Session Persistence Test",
-      description: "Testing session persistence",
-    });
-    projectId = project.id;
-  } catch (e) {
-    checks.push({ name: "Create test project for sessions", passed: false, detail: e.message });
+  if (!projectId) {
+    checks.push({ name: "Project for session tests", passed: false, detail: "No persistent project available" });
   }
 
   if (projectId) {

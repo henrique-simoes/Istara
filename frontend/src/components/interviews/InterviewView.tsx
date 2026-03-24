@@ -24,6 +24,8 @@ import {
   Plus,
   Highlighter,
   BarChart3,
+  PanelRightClose,
+  PanelRight,
 } from "lucide-react";
 import { useProjectStore } from "@/stores/projectStore";
 import { useAgentStore } from "@/stores/agentStore";
@@ -382,6 +384,9 @@ export default function InterviewView() {
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Right panel collapse state
+  const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
+
   // Tag creation state
   const [tagCreatePopover, setTagCreatePopover] = useState<{
     text: string;
@@ -676,16 +681,16 @@ export default function InterviewView() {
                 <Wand2 size={10} /> Organize Files
               </button>
             </div>
-            <div className="grid grid-cols-2 gap-1.5">
+            <div className="flex flex-wrap gap-1">
               {projectFiles.map((f) => {
                 const shortName = (() => {
                   const name = f.name || "";
                   const parts = name.split("/");
                   const filename = parts[parts.length - 1];
                   const stripped = filename.replace(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}[-_]/i, "");
-                  if (stripped.length <= 24) return stripped;
+                  if (stripped.length <= 20) return stripped;
                   const ext = stripped.lastIndexOf(".") > 0 ? stripped.slice(stripped.lastIndexOf(".")) : "";
-                  return stripped.slice(0, 20) + "..." + ext;
+                  return stripped.slice(0, 16) + "..." + ext;
                 })();
                 const Icon = fileIcon(f.type || "");
                 // Show indicator if this file has matching nuggets for the active tag
@@ -696,8 +701,9 @@ export default function InterviewView() {
                   <button
                     key={f.name}
                     onClick={() => handleFileSelect(f.name, f.type || "")}
+                    title={`${f.name} (${(f.size_bytes / 1024).toFixed(0)} KB)`}
                     className={cn(
-                      "flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-colors text-left",
+                      "flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] transition-colors text-left",
                       selectedFile === f.name
                         ? "bg-reclaw-100 dark:bg-reclaw-900/30 text-reclaw-700"
                         : hasTagNuggets
@@ -705,13 +711,10 @@ export default function InterviewView() {
                         : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200"
                     )}
                   >
-                    <Icon size={12} className="shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="truncate font-medium">{shortName}</p>
-                      <p className="text-[10px] text-slate-400">{(f.size_bytes / 1024).toFixed(0)} KB</p>
-                    </div>
+                    <Icon size={11} className="shrink-0" />
+                    <span className="truncate font-medium max-w-[120px]">{shortName}</span>
                     {hasTagNuggets && (
-                      <div className="w-2 h-2 rounded-full bg-purple-500 shrink-0" />
+                      <div className="w-1.5 h-1.5 rounded-full bg-purple-500 shrink-0" />
                     )}
                   </button>
                 );
@@ -791,8 +794,21 @@ export default function InterviewView() {
         </div>
       </div>
 
+      {/* Right panel collapse toggle */}
+      <div className="flex flex-col items-center justify-start py-2 border-l border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900">
+        <button
+          onClick={() => setRightPanelCollapsed(!rightPanelCollapsed)}
+          className="p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+          aria-label={rightPanelCollapsed ? "Expand tags and nuggets panel" : "Collapse tags and nuggets panel"}
+          title={rightPanelCollapsed ? "Expand panel" : "Collapse panel"}
+        >
+          {rightPanelCollapsed ? <PanelRight size={16} /> : <PanelRightClose size={16} />}
+        </button>
+      </div>
+
       {/* Right: Tags & Nuggets */}
-      <div className="w-80 flex flex-col bg-slate-50 dark:bg-slate-900">
+      {!rightPanelCollapsed && (
+      <div className="w-64 flex flex-col bg-slate-50 dark:bg-slate-900">
         {/* Tags */}
         <div className="p-3 border-b border-slate-200 dark:border-slate-800">
           <h3 className="text-xs font-semibold text-slate-500 uppercase mb-2 flex items-center gap-1">
@@ -922,6 +938,7 @@ export default function InterviewView() {
           </div>
         </div>
       </div>
+      )}
     </div>
   );
 }

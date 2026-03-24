@@ -57,23 +57,9 @@ export async function run(ctx) {
   }
 
   // ── 3. Verify finding_created broadcast exists ──────────────
-  // Create a project and finding to test the chain
-  let projectId;
-  try {
-    const projects = await api.get("/api/projects");
-    if (projects.length > 0) {
-      projectId = projects[0].id;
-    } else {
-      const p = await api.post("/api/projects", {
-        name: "Wiring Audit Project",
-        description: "Testing event wiring",
-      });
-      projectId = p.id;
-    }
-    check(3, "Project available for wiring tests", !!projectId, projectId);
-  } catch (e) {
-    check(3, "Project available for wiring tests", false, e.message);
-  }
+  // Use persistent simulation project for wiring tests
+  let projectId = ctx.projectId;
+  check(3, "Project available for wiring tests", !!projectId, projectId || "No persistent project");
 
   // ── 4. Verify finding creation triggers API (proxy for broadcast wiring)
   if (projectId) {

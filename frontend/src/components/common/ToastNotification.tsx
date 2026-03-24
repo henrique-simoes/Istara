@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import {
   CheckCircle,
   AlertTriangle,
@@ -9,6 +9,10 @@ import {
   FileText,
   Lightbulb,
   Cpu,
+  Bell,
+  Clock,
+  CheckCheck,
+  Trash2,
 } from "lucide-react";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { cn } from "@/lib/utils";
@@ -25,6 +29,18 @@ interface Toast {
   navigateTo?: string; // view name to navigate to on click
 }
 
+interface NotificationHistoryItem {
+  id: string;
+  type: Toast["type"];
+  title: string;
+  message: string;
+  timestamp: number;
+  navigateTo?: string;
+  read: boolean;
+}
+
+const MAX_HISTORY = 50;
+
 const ICONS = {
   success: CheckCircle,
   warning: AlertTriangle,
@@ -35,12 +51,12 @@ const ICONS = {
 };
 
 const COLORS = {
-  success: "border-green-500 bg-green-50 dark:bg-green-900/20",
-  warning: "border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20",
-  info: "border-blue-500 bg-blue-50 dark:bg-blue-900/20",
-  agent: "border-reclaw-500 bg-reclaw-50 dark:bg-reclaw-900/20",
-  file: "border-purple-500 bg-purple-50 dark:bg-purple-900/20",
-  suggestion: "border-amber-500 bg-amber-50 dark:bg-amber-900/20",
+  success: "border-green-500 bg-green-50 dark:bg-green-900/80",
+  warning: "border-yellow-500 bg-yellow-50 dark:bg-yellow-900/80",
+  info: "border-blue-500 bg-blue-50 dark:bg-blue-900/80",
+  agent: "border-reclaw-500 bg-reclaw-50 dark:bg-reclaw-900/80",
+  file: "border-purple-500 bg-purple-50 dark:bg-purple-900/80",
+  suggestion: "border-amber-500 bg-amber-50 dark:bg-amber-900/80",
 };
 
 const ICON_COLORS = {
@@ -56,6 +72,25 @@ let nextId = 0;
 
 export default function ToastNotification() {
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const [history, setHistory] = useState<NotificationHistoryItem[]>([]);
+  const [centerOpen, setCenterOpen] = useState(false);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const bellRef = useRef<HTMLButtonElement>(null);
+
+  const unreadCount = history.filter((n) => !n.read).length;
+
+  const addToHistory = useCallback((toast: Toast) => {
+    const item: NotificationHistoryItem = {
+      id: toast.id,
+      type: toast.type,
+      title: toast.title,
+      message: toast.message,
+      timestamp: toast.timestamp,
+      navigateTo: toast.navigateTo,
+      read: false,
+    };
+    setHistory((prev) => [item, ...prev].slice(0, MAX_HISTORY));
+  }, []);
 
   const addToast = useCallback(
     (type: Toast["type"], title: string, message: string, duration = 5000, navigateTo?: string) => {
@@ -69,13 +104,58 @@ export default function ToastNotification() {
         navigateTo,
       };
       setToasts((prev) => [...prev.slice(-4), toast]); // Max 5 visible
+      addToHistory(toast);
     },
-    []
+    [addToHistory]
   );
 
   const removeToast = useCallback((id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
+
+  const markAllRead = useCallback(() => {
+    setHistory((prev) => prev.map((n) => ({ ...n, read: true })));
+  }, []);
+
+  const clearAll = useCallback(() => {
+    setHistory([]);
+  }, []);
+
+  const markAsRead = useCallback((id: string) => {
+    setHistory((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, read: true } : n))
+    );
+  }, []);
+
+  // Close notification center on outside click
+  useEffect(() => {
+    if (!centerOpen) return;
+    const handleClick = (e: MouseEvent) => {
+      if (
+        panelRef.current &&
+        !panelRef.current.contains(e.target as Node) &&
+        bellRef.current &&
+        !bellRef.current.contains(e.target as Node)
+      ) {
+        setCenterOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [centerOpen]);
+
+  // Close notification center on Escape key
+  useEffect(() => {
+    if (!centerOpen) return;
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setCenterOpen(false);
+        bellRef.current?.focus();
+      }
+    };
+    document.addEventListener("keydown", handleKey);
+    return () => document.removeEventListener("keydown", handleKey);
+  }, [centerOpen]);
 
   // Auto-dismiss toasts
   useEffect(() => {
@@ -132,6 +212,7 @@ export default function ToastNotification() {
             ],
           };
           setToasts((prev) => [...prev.slice(-4), toast]);
+          addToHistory(toast);
           break;
         }
         case "finding_created": {
@@ -164,70 +245,277 @@ export default function ToastNotification() {
         }
       }
     },
-    [addToast]
+    [addToast, addToHistory]
   );
 
   useWebSocket(handleEvent);
 
-  if (toasts.length === 0) return null;
+  const formatTimestamp = (ts: number) => {
+    const diff = Date.now() - ts;
+    if (diff < 60_000) return "Just now";
+    if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`;
+    if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`;
+    return new Date(ts).toLocaleDateString();
+  };
 
   return (
-    <div className="fixed bottom-16 right-4 z-50 space-y-2 max-w-sm">
-      {toasts.map((toast) => {
-        const Icon = ICONS[toast.type];
-        return (
-          <div
-            key={toast.id}
-            onClick={() => {
-              if (toast.navigateTo) {
-                window.dispatchEvent(new CustomEvent("reclaw:navigate", { detail: { view: toast.navigateTo } }));
-              }
-              removeToast(toast.id);
-            }}
-            className={cn(
-              "animate-fade-in border-l-4 rounded-lg shadow-lg p-3 cursor-pointer",
-              COLORS[toast.type]
-            )}
-          >
-            <div className="flex items-start gap-3">
-              <Icon size={18} className={cn("shrink-0 mt-0.5", ICON_COLORS[toast.type])} />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-slate-900 dark:text-white">
-                  {toast.title}
-                </p>
-                <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
-                  {toast.message}
-                </p>
-              </div>
+    <>
+      {/* Bell icon button — notification center trigger */}
+      <div className="fixed bottom-16 right-[calc(1rem+24rem+0.5rem)] z-50 sm:right-[calc(1rem+24rem+0.5rem)]">
+        <button
+          ref={bellRef}
+          onClick={() => setCenterOpen((o) => !o)}
+          aria-label={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ""}`}
+          aria-expanded={centerOpen}
+          aria-haspopup="dialog"
+          className={cn(
+            "relative p-2 rounded-full shadow-lg transition-colors",
+            "bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700",
+            "hover:bg-slate-100 dark:hover:bg-slate-700",
+            "focus:outline-none focus:ring-2 focus:ring-reclaw-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900"
+          )}
+        >
+          <Bell size={20} className="text-slate-600 dark:text-slate-300" />
+          {unreadCount > 0 && (
+            <span
+              className="absolute -top-1 -right-1 flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold text-white bg-red-600 rounded-full"
+              aria-hidden="true"
+            >
+              {unreadCount > 99 ? "99+" : unreadCount}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {/* Notification Center Panel */}
+      {centerOpen && (
+        <div
+          ref={panelRef}
+          role="dialog"
+          aria-label="Notification center"
+          aria-modal="false"
+          className={cn(
+            "fixed bottom-28 right-4 z-50 w-96 max-h-[70vh] flex flex-col",
+            "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700",
+            "rounded-xl shadow-2xl overflow-hidden"
+          )}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
+            <h2 className="text-sm font-semibold text-slate-900 dark:text-white">
+              Notifications
+              {unreadCount > 0 && (
+                <span className="ml-2 text-xs font-medium text-reclaw-600 dark:text-reclaw-400">
+                  {unreadCount} unread
+                </span>
+              )}
+            </h2>
+            <div className="flex items-center gap-1">
               <button
-                onClick={(e) => { e.stopPropagation(); removeToast(toast.id); }}
-                className="p-0.5 rounded hover:bg-black/5 dark:hover:bg-white/5"
-                aria-label="Dismiss notification"
+                onClick={markAllRead}
+                aria-label="Mark all notifications as read"
+                className={cn(
+                  "p-1.5 rounded-md text-xs text-slate-500 dark:text-slate-400",
+                  "hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-700 dark:hover:text-slate-200",
+                  "focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+                )}
+                title="Mark all as read"
               >
-                <X size={14} className="text-slate-400" />
+                <CheckCheck size={16} />
+              </button>
+              <button
+                onClick={clearAll}
+                aria-label="Clear all notifications"
+                className={cn(
+                  "p-1.5 rounded-md text-xs text-slate-500 dark:text-slate-400",
+                  "hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-700 dark:hover:text-slate-200",
+                  "focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+                )}
+                title="Clear all"
+              >
+                <Trash2 size={16} />
+              </button>
+              <button
+                onClick={() => setCenterOpen(false)}
+                aria-label="Close notification center"
+                className={cn(
+                  "p-1.5 rounded-md text-xs text-slate-500 dark:text-slate-400",
+                  "hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-700 dark:hover:text-slate-200",
+                  "focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+                )}
+              >
+                <X size={16} />
               </button>
             </div>
-            {toast.actions && toast.actions.length > 0 && (
-              <div className="flex gap-2 mt-2 pl-8">
-                {toast.actions.map((action, i) => (
-                  <button
-                    key={i}
-                    onClick={(e) => { e.stopPropagation(); action.onClick(); removeToast(toast.id); }}
-                    className={cn(
-                      "text-xs px-2 py-1 rounded",
-                      i === 0
-                        ? "bg-reclaw-600 text-white hover:bg-reclaw-700"
-                        : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-300"
-                    )}
-                  >
-                    {action.label}
-                  </button>
-                ))}
+          </div>
+
+          {/* Notification list */}
+          <div className="flex-1 overflow-y-auto" role="list" aria-label="Notification history">
+            {history.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-slate-400 dark:text-slate-500">
+                <Bell size={32} className="mb-2 opacity-50" />
+                <p className="text-sm">No notifications yet</p>
               </div>
+            ) : (
+              history.map((item) => {
+                const Icon = ICONS[item.type];
+                return (
+                  <div
+                    key={item.id}
+                    role="listitem"
+                    tabIndex={0}
+                    onClick={() => {
+                      markAsRead(item.id);
+                      if (item.navigateTo) {
+                        window.dispatchEvent(
+                          new CustomEvent("reclaw:navigate", {
+                            detail: { view: item.navigateTo },
+                          })
+                        );
+                      }
+                      setCenterOpen(false);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        markAsRead(item.id);
+                        if (item.navigateTo) {
+                          window.dispatchEvent(
+                            new CustomEvent("reclaw:navigate", {
+                              detail: { view: item.navigateTo },
+                            })
+                          );
+                        }
+                        setCenterOpen(false);
+                      }
+                    }}
+                    className={cn(
+                      "flex items-start gap-3 px-4 py-3 cursor-pointer border-b border-slate-100 dark:border-slate-800 transition-colors",
+                      "hover:bg-slate-50 dark:hover:bg-slate-800",
+                      "focus:outline-none focus:bg-slate-100 dark:focus:bg-slate-800 focus:ring-2 focus:ring-inset focus:ring-reclaw-500",
+                      !item.read && "bg-blue-50/60 dark:bg-blue-900/30"
+                    )}
+                    aria-label={`${item.read ? "" : "Unread: "}${item.title} — ${item.message}`}
+                  >
+                    <Icon
+                      size={16}
+                      className={cn("shrink-0 mt-0.5", ICON_COLORS[item.type])}
+                      aria-hidden="true"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className={cn(
+                          "text-sm truncate text-slate-900 dark:text-white",
+                          !item.read && "font-semibold"
+                        )}>
+                          {item.title}
+                        </p>
+                        {!item.read && (
+                          <span className="shrink-0 w-2 h-2 rounded-full bg-reclaw-500" aria-hidden="true" />
+                        )}
+                      </div>
+                      <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5 line-clamp-2">
+                        {item.message}
+                      </p>
+                      <div className="flex items-center gap-1 mt-1 text-[10px] text-slate-400 dark:text-slate-500">
+                        <Clock size={10} aria-hidden="true" />
+                        <time dateTime={new Date(item.timestamp).toISOString()}>
+                          {formatTimestamp(item.timestamp)}
+                        </time>
+                        {item.navigateTo && (
+                          <span className="ml-1 text-reclaw-500 dark:text-reclaw-400">
+                            → {item.navigateTo}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
             )}
           </div>
-        );
-      })}
-    </div>
+
+          {/* Footer */}
+          {history.length > 0 && (
+            <div className="px-4 py-2 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-center">
+              <p className="text-[10px] text-slate-400 dark:text-slate-500">
+                Showing {history.length} of {MAX_HISTORY} max notifications
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Toast notifications */}
+      {toasts.length > 0 && (
+        <div
+          className="fixed bottom-16 right-4 z-50 space-y-2 max-w-sm"
+          role="status"
+          aria-live="polite"
+          aria-label="Toast notifications"
+        >
+          {toasts.map((toast) => {
+            const Icon = ICONS[toast.type];
+            return (
+              <div
+                key={toast.id}
+                onClick={() => {
+                  if (toast.navigateTo) {
+                    window.dispatchEvent(new CustomEvent("reclaw:navigate", { detail: { view: toast.navigateTo } }));
+                  }
+                  removeToast(toast.id);
+                }}
+                className={cn(
+                  "animate-fade-in border-l-4 rounded-lg shadow-lg p-3 cursor-pointer",
+                  COLORS[toast.type]
+                )}
+                role="alert"
+              >
+                <div className="flex items-start gap-3">
+                  <Icon size={18} className={cn("shrink-0 mt-0.5", ICON_COLORS[toast.type])} aria-hidden="true" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-slate-900 dark:text-white">
+                      {toast.title}
+                    </p>
+                    <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">
+                      {toast.message}
+                    </p>
+                  </div>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); removeToast(toast.id); }}
+                    className={cn(
+                      "p-0.5 rounded hover:bg-black/10 dark:hover:bg-white/10",
+                      "focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+                    )}
+                    aria-label="Dismiss notification"
+                  >
+                    <X size={14} className="text-slate-400" />
+                  </button>
+                </div>
+                {toast.actions && toast.actions.length > 0 && (
+                  <div className="flex gap-2 mt-2 pl-8">
+                    {toast.actions.map((action, i) => (
+                      <button
+                        key={i}
+                        onClick={(e) => { e.stopPropagation(); action.onClick(); removeToast(toast.id); }}
+                        className={cn(
+                          "text-xs px-2 py-1 rounded",
+                          "focus:outline-none focus:ring-2 focus:ring-reclaw-500",
+                          i === 0
+                            ? "bg-reclaw-600 text-white hover:bg-reclaw-700"
+                            : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-300"
+                        )}
+                      >
+                        {action.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </>
   );
 }
