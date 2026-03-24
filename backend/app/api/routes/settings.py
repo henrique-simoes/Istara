@@ -123,9 +123,27 @@ async def get_models():
                 except Exception:
                     pass
 
+    # Enrich each model with provider info from the router.
+    # The LLMRouter.list_models() already attaches _server / _server_id;
+    # we promote those to public fields and add provider_type.
+    from app.core.llm_router import llm_router
+    server_map = {s.server_id: s for s in llm_router._servers.values()}
+    enriched = []
+    for m in models:
+        server_id = m.pop("_server_id", None)
+        server_name = m.pop("_server", None)
+        provider_type = ""
+        if server_id and server_id in server_map:
+            entry = server_map[server_id]
+            server_name = entry.name
+            provider_type = entry.provider_type
+        m["server_name"] = server_name or settings.llm_provider
+        m["provider_type"] = provider_type or settings.llm_provider
+        enriched.append(m)
+
     return {
         "status": "online",
-        "models": models,
+        "models": enriched,
         "active_model": active,
         "embed_model": _embed_model(),
     }

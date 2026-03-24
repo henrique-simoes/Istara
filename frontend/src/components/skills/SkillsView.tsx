@@ -620,20 +620,20 @@ export default function SkillsView() {
                   <p className="text-xs text-slate-600 dark:text-slate-400">
                     {p.reason}
                   </p>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-3">
                     <div>
-                      <p className="text-[10px] text-slate-400 mb-1">
+                      <p className="text-xs text-slate-400 mb-1">
                         Current
                       </p>
-                      <pre className="text-[11px] bg-red-50 dark:bg-red-900/10 rounded p-2 max-h-20 overflow-y-auto whitespace-pre-wrap">
+                      <pre className="text-sm bg-red-50 dark:bg-red-900/30 rounded p-2 min-h-[80px] max-h-64 overflow-y-auto whitespace-pre-wrap">
                         {p.current_value}
                       </pre>
                     </div>
                     <div>
-                      <p className="text-[10px] text-slate-400 mb-1">
+                      <p className="text-xs text-slate-400 mb-1">
                         Proposed
                       </p>
-                      <pre className="text-[11px] bg-green-50 dark:bg-green-900/10 rounded p-2 max-h-20 overflow-y-auto whitespace-pre-wrap">
+                      <pre className="text-sm bg-green-50 dark:bg-green-900/30 rounded p-2 min-h-[80px] max-h-64 overflow-y-auto whitespace-pre-wrap">
                         {p.proposed_value}
                       </pre>
                     </div>

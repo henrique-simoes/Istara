@@ -75,15 +75,8 @@ export async function run(ctx) {
   // ── Step 3: Create project and tasks for agent processing ──
 
   let projectId = ctx.projectId;
-  if (!projectId) {
-    await safeCheck("Create test project", async () => {
-      const proj = await api.post("/api/projects", {
-        name: "[SIM-21] Agent Work Test",
-        description: "Project for testing multi-agent task processing",
-      });
-      projectId = proj.id;
-      return { name: "Create test project", passed: !!projectId, detail: `project_id=${projectId}` };
-    });
+  if (projectId) {
+    checks.push({ name: "Using persistent simulation project", passed: true, detail: `project_id=${projectId}` });
   }
 
   if (!projectId) {

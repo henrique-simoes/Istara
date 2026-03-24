@@ -26,6 +26,8 @@ import {
   AlertCircle,
   Loader2,
   ChevronRight,
+  PanelRightClose,
+  PanelRight,
 } from "lucide-react";
 import { useProjectStore } from "@/stores/projectStore";
 import { useDocumentStore } from "@/stores/documentStore";
@@ -346,7 +348,7 @@ export default function DocumentsView() {
             </p>
           </div>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             {documents.map((doc) => (
               <DocumentCard
                 key={doc.id}
@@ -432,7 +434,7 @@ function DocumentCard({
     <div
       role="listitem"
       className={cn(
-        "group p-3 rounded-lg border transition-all cursor-pointer",
+        "group p-2.5 rounded-lg border transition-all cursor-pointer",
         isSelected
           ? "border-reclaw-500 bg-reclaw-50/50 dark:bg-reclaw-900/10"
           : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-reclaw-300 hover:shadow-sm dark:hover:border-reclaw-700"
@@ -574,6 +576,7 @@ function DocumentPreview({
 }) {
   const atomicPath = doc.atomic_path || {};
   const hasAtomicPath = Object.keys(atomicPath).length > 0;
+  const [metaPanelCollapsed, setMetaPanelCollapsed] = useState(false);
 
   return (
     <div className="flex flex-col h-full bg-white dark:bg-slate-950">
@@ -633,8 +636,21 @@ function DocumentPreview({
           )}
         </div>
 
+        {/* Right panel collapse toggle */}
+        <div className="flex flex-col items-center justify-start py-2 border-l border-slate-200 dark:border-slate-800">
+          <button
+            onClick={() => setMetaPanelCollapsed(!metaPanelCollapsed)}
+            className="p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+            aria-label={metaPanelCollapsed ? "Expand metadata panel" : "Collapse metadata panel"}
+            title={metaPanelCollapsed ? "Expand details" : "Collapse details"}
+          >
+            {metaPanelCollapsed ? <PanelRight size={16} /> : <PanelRightClose size={16} />}
+          </button>
+        </div>
+
         {/* Right panel — metadata */}
-        <div className="w-72 border-l border-slate-200 dark:border-slate-800 overflow-y-auto p-4 hidden xl:block" role="region" aria-label="Document details">
+        {!metaPanelCollapsed && (
+        <div className="w-64 border-l border-slate-200 dark:border-slate-800 overflow-y-auto p-4" role="region" aria-label="Document details">
           {/* Description / Origin */}
           <MetaSection title="Origin">
             <p className="text-xs text-slate-600 dark:text-slate-400">
@@ -731,6 +747,7 @@ function DocumentPreview({
             </MetaSection>
           )}
         </div>
+        )}
       </div>
     </div>
   );

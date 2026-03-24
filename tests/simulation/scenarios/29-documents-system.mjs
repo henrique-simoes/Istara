@@ -18,22 +18,13 @@ export async function run(ctx) {
     checks.push({ id, label, passed, detail });
   }
 
-  // ── Setup: ensure a project exists ─────────────────────────────────
-  try {
-    const projects = await api.get("/api/projects");
-    if (projects.length > 0) {
-      projectId = projects[0].id;
-    } else {
-      const created = await api.post("/api/projects", {
-        name: "Doc Test Project",
-        description: "Testing documents system",
-      });
-      projectId = created.id;
-    }
-  } catch (e) {
-    check(1, "Project setup", false, e.message);
+  // ── Setup: use persistent simulation project ─────────────────────────────────
+  projectId = ctx.projectId;
+  if (!projectId) {
+    check(1, "Project setup", false, "No persistent project available from runner");
     return { checks, passed: 0, failed: checks.length };
   }
+  check(1, "Project setup", true, `Using persistent project: ${projectId}`);
 
   // ──────────────────────────────────────────────────────────────────
   // 1. Documents API endpoint exists

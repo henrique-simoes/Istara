@@ -9,6 +9,7 @@ import {
   Lightbulb,
   Target,
   Sparkles,
+  Link2,
 } from "lucide-react";
 import { useProjectStore } from "@/stores/projectStore";
 import { findings as findingsApi } from "@/lib/api";
@@ -61,6 +62,25 @@ export default function FindingsView() {
   const phaseInsights = insights.filter((i) => i.phase === activePhase);
   const phaseRecs = recommendations.filter((r) => r.phase === activePhase);
   const phaseStats = summary?.by_phase[activePhase];
+
+  /** Count evidence links for a finding based on its type */
+  const getEvidenceLinkCount = (item: any, sectionId: string): number => {
+    const parseIds = (raw: string | string[] | undefined | null): string[] => {
+      if (!raw) return [];
+      if (Array.isArray(raw)) return raw;
+      try { return JSON.parse(raw); } catch { return []; }
+    };
+    switch (sectionId) {
+      case "insights":
+        return parseIds(item.fact_ids).length;
+      case "facts":
+        return parseIds(item.nugget_ids).length;
+      case "recommendations":
+        return parseIds(item.insight_ids).length;
+      default:
+        return 0; // nuggets are leaf nodes
+    }
+  };
 
   const sections = [
     {
@@ -213,54 +233,77 @@ export default function FindingsView() {
                     No {section.label.toLowerCase()} yet for this phase.
                   </p>
                 ) : (
-                  section.items.map((item: any) => (
-                    <div
-                      key={item.id}
-                      onClick={() =>
-                        setDrilldownFinding({
-                          id: item.id,
-                          type: section.id as any,
-                          text: item.text,
-                        })
-                      }
-                      className="p-3 hover:bg-slate-50 dark:hover:bg-slate-800/30 cursor-pointer">
-                      <p className="text-sm text-slate-900 dark:text-white">{item.text}</p>
-                      <div className="flex items-center gap-3 mt-2">
-                        {item.confidence !== undefined && (
-                          <span className={cn("text-xs", confidenceColor(item.confidence))}>
-                            Confidence: {Math.round(item.confidence * 100)}%
-                          </span>
-                        )}
-                        {item.impact && (
-                          <span className="text-xs text-slate-500">
-                            Impact: {item.impact}
-                          </span>
-                        )}
-                        {item.priority && (
-                          <span className="text-xs text-slate-500">
-                            Priority: {item.priority}
-                          </span>
-                        )}
-                        {item.source && (
-                          <span className="text-xs text-slate-400">
-                            📄 {(item.source ?? "").split("/").pop() ?? item.source}
-                          </span>
-                        )}
-                        {item.tags && item.tags.length > 0 && (
-                          <div className="flex gap-1">
-                            {item.tags.map((tag: string, i: number) => (
-                              <span
-                                key={i}
-                                className="text-xs bg-slate-200 dark:bg-slate-700 rounded px-1 py-0.5"
-                              >
-                                {tag}
-                              </span>
-                            ))}
-                          </div>
-                        )}
+                  section.items.map((item: any) => {
+                    const linkCount = getEvidenceLinkCount(item, section.id);
+                    return (
+                      <div
+                        key={item.id}
+                        onClick={() =>
+                          setDrilldownFinding({
+                            id: item.id,
+                            type: section.id as any,
+                            text: item.text,
+                          })
+                        }
+                        className="p-3 hover:bg-slate-50 dark:hover:bg-slate-800/30 cursor-pointer">
+                        <div className="flex items-start gap-2">
+                          <p className="flex-1 text-sm text-slate-900 dark:text-white">{item.text}</p>
+                          {linkCount > 0 && (
+                            <span
+                              className="shrink-0 inline-flex items-center gap-0.5 text-[10px] font-medium text-reclaw-600 dark:text-reclaw-400 bg-reclaw-50 dark:bg-reclaw-900/20 rounded-full px-1.5 py-0.5"
+                              title={`${linkCount} linked evidence item${linkCount !== 1 ? "s" : ""}`}
+                            >
+                              <Link2 size={10} />
+                              {linkCount}
+                            </span>
+                          )}
+                          {linkCount === 0 && section.id !== "nuggets" && (
+                            <span
+                              className="shrink-0 inline-flex items-center gap-0.5 text-[10px] text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800 rounded-full px-1.5 py-0.5"
+                              title="No linked evidence"
+                            >
+                              <Link2 size={10} />
+                              0
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-3 mt-2">
+                          {item.confidence !== undefined && (
+                            <span className={cn("text-xs", confidenceColor(item.confidence))}>
+                              Confidence: {Math.round(item.confidence * 100)}%
+                            </span>
+                          )}
+                          {item.impact && (
+                            <span className="text-xs text-slate-500">
+                              Impact: {item.impact}
+                            </span>
+                          )}
+                          {item.priority && (
+                            <span className="text-xs text-slate-500">
+                              Priority: {item.priority}
+                            </span>
+                          )}
+                          {item.source && (
+                            <span className="text-xs text-slate-400">
+                              📄 {(item.source ?? "").split("/").pop() ?? item.source}
+                            </span>
+                          )}
+                          {item.tags && item.tags.length > 0 && (
+                            <div className="flex gap-1">
+                              {item.tags.map((tag: string, i: number) => (
+                                <span
+                                  key={i}
+                                  className="text-xs bg-slate-200 dark:bg-slate-700 rounded px-1 py-0.5"
+                                >
+                                  {tag}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
             )}

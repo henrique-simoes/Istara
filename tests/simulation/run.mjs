@@ -438,13 +438,62 @@ async function main() {
     console.log(`  Maintenance pause skipped: ${e.message}`);
   }
 
+  // ── Persistent Simulation Project ─────────────────────────
+  // All scenarios share ONE project. This prevents dozens of orphan projects
+  // from accumulating on every test run.
+  const SIM_PROJECT_NAME = "[SIM] ReClaw Simulation Project";
+  let simProjectId = null;
+
+  console.log("\nSetting up persistent simulation project...");
+  try {
+    // Clean up old SIM projects (any with [SIM] or [SIM- prefix)
+    const allProjects = await apiClient.get("/api/projects");
+    const simProjects = allProjects.filter(
+      (p) => p.name?.startsWith("[SIM]") || p.name?.startsWith("[SIM-")
+    );
+
+    if (simProjects.length > 1) {
+      // Multiple SIM projects exist — keep only the canonical one, delete rest
+      const canonical = simProjects.find((p) => p.name === SIM_PROJECT_NAME);
+      for (const p of simProjects) {
+        if (canonical && p.id === canonical.id) continue;
+        try { await apiClient.delete(`/api/projects/${p.id}`); } catch {}
+      }
+      if (canonical) {
+        simProjectId = canonical.id;
+        console.log(`  Reusing existing project: ${simProjectId}`);
+      }
+    } else if (simProjects.length === 1) {
+      if (simProjects[0].name === SIM_PROJECT_NAME) {
+        simProjectId = simProjects[0].id;
+        console.log(`  Reusing existing project: ${simProjectId}`);
+      } else {
+        // Wrong name — delete and recreate
+        try { await apiClient.delete(`/api/projects/${simProjects[0].id}`); } catch {}
+      }
+    }
+
+    // Create the canonical project if it doesn't exist
+    if (!simProjectId) {
+      const created = await apiClient.post("/api/projects", {
+        name: SIM_PROJECT_NAME,
+        description: "Persistent simulation project — all automated tests run against this single project.",
+        company_context: "TechStart Inc — B2B SaaS project management platform. Target: mid-market teams (50-500 employees). Culture: data-driven, move fast, user-centric.",
+      });
+      simProjectId = created.id;
+      console.log(`  Created new project: ${simProjectId}`);
+    }
+  } catch (e) {
+    console.log(`  Project setup failed: ${e.message} — scenarios will create as needed`);
+  }
+
   // Context shared across scenarios
   const ctx = {
     api: apiClient,
     page,
     screenshot: screenshotFn,
     generators,
-    projectId: null,
+    projectId: simProjectId,
     llmConnected: false,
   };
 
@@ -483,6 +532,16 @@ async function main() {
       }
     }
   }
+
+  // Clean up temporary projects created by cascade deletion tests
+  try {
+    const remaining = await apiClient.get("/api/projects");
+    for (const p of remaining) {
+      if (p.name?.startsWith("[SIM-TEMP]")) {
+        try { await apiClient.delete(`/api/projects/${p.id}`); } catch {}
+      }
+    }
+  } catch {}
 
   // Generate report
   const duration = Date.now() - startTime;

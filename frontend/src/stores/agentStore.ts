@@ -4,6 +4,8 @@ import { create } from "zustand";
 import type { Agent, A2AMessage, AgentCapacityCheck, HeartbeatStatus } from "@/lib/types";
 import { agents as agentsApi } from "@/lib/api";
 
+const POLL_INTERVAL_MS = 10_000;
+
 interface AgentStore {
   agents: Agent[];
   selectedAgentId: string | null;
@@ -11,8 +13,12 @@ interface AgentStore {
   error: string | null;
   a2aMessages: A2AMessage[];
   capacity: AgentCapacityCheck | null;
+  _pollTimer: ReturnType<typeof setInterval> | null;
 
   fetchAgents: () => Promise<void>;
+  startPolling: () => void;
+  stopPolling: () => void;
+  updateAgentStatus: (agentId: string, state: string, currentTask?: string) => void;
   selectAgent: (id: string | null) => void;
   createAgent: (data: {
     name: string;
@@ -39,6 +45,7 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
   error: null,
   a2aMessages: [],
   capacity: null,
+  _pollTimer: null,
 
   fetchAgents: async () => {
     set({ loading: true, error: null });
@@ -48,6 +55,33 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
     } catch (e: any) {
       set({ error: e.message, loading: false });
     }
+  },
+
+  startPolling: () => {
+    const { _pollTimer, fetchAgents } = get();
+    if (_pollTimer) return; // already polling
+    const timer = setInterval(() => {
+      fetchAgents();
+    }, POLL_INTERVAL_MS);
+    set({ _pollTimer: timer });
+  },
+
+  stopPolling: () => {
+    const { _pollTimer } = get();
+    if (_pollTimer) {
+      clearInterval(_pollTimer);
+      set({ _pollTimer: null });
+    }
+  },
+
+  updateAgentStatus: (agentId, state, currentTask) => {
+    set((s) => ({
+      agents: s.agents.map((a) =>
+        a.id === agentId
+          ? { ...a, state: state as Agent["state"], ...(currentTask !== undefined ? { current_task: currentTask } : {}) }
+          : a
+      ),
+    }));
   },
 
   selectAgent: (id) => set({ selectedAgentId: id }),
