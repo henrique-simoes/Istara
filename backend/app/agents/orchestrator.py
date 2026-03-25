@@ -16,6 +16,8 @@ Agents under management:
 - Task Executor Agent: the main worker (picks Kanban tasks, runs skills)
 """
 
+from __future__ import annotations
+
 import asyncio
 import logging
 import uuid
@@ -290,10 +292,12 @@ class MetaOrchestrator:
             logger.error(f"Sub-agent state sync error: {e}")
 
     async def _distribute_pending_tasks(self) -> None:
-        """Auto-assign unassigned BACKLOG tasks to the task executor agent."""
+        """Route unassigned tasks to the best agent based on specialties."""
         try:
             from app.models.database import async_session
             from app.models.task import Task, TaskStatus
+            from app.core.task_router import route_task
+            from app.services.a2a import send_message
             from sqlalchemy import select
 
             async with async_session() as db:
@@ -312,23 +316,52 @@ class MetaOrchestrator:
                     return
 
                 for task in tasks:
-                    task.agent_id = "reclaw-main"
-                    self._log_action(
-                        "reclaw-task_executor",
-                        "task_assigned",
-                        f"Auto-assigned: {task.title}",
+                    # Route using the intelligent task router
+                    routing = await route_task(
+                        db,
+                        task.title,
+                        task.description or "",
+                        task.skill_name,
                     )
 
+                    task.agent_id = routing["primary_agent_id"]
+                    self._log_action(
+                        routing["primary_agent_id"],
+                        "task_assigned",
+                        f"Auto-routed: {task.title} ({routing['routing_reason']})",
+                    )
+
+                    # Send A2A collaboration requests for multi-specialty tasks
+                    for collab_id in routing.get("collaborators", []):
+                        try:
+                            await send_message(
+                                db=db,
+                                from_agent_id=routing["primary_agent_id"],
+                                to_agent_id=collab_id,
+                                message_type="collaboration_request",
+                                content=f"Task '{task.title}' needs your expertise. Specialties: {', '.join(routing['specialties_needed'])}. Please review when complete and provide feedback.",
+                                metadata={
+                                    "task_id": task.id,
+                                    "task_title": task.title,
+                                    "specialties_needed": routing["specialties_needed"],
+                                },
+                            )
+                        except Exception as e:
+                            logger.warning(f"A2A collab request failed: {e}")
+
                 await db.commit()
+                assigned_agents = set(t.agent_id for t in tasks)
+                logger.info(f"Distributed {len(tasks)} tasks to agents: {assigned_agents}")
 
-                logger.info(f"Distributed {len(tasks)} unassigned tasks to reclaw-main")
-
-                # Wake the task executor
-                try:
-                    from app.core.agent import agent as agent_orchestrator
-                    agent_orchestrator.wake()
-                except Exception:
-                    pass
+                # Wake the appropriate agent orchestrators
+                for agent_id in assigned_agents:
+                    try:
+                        if agent_id == "reclaw-main":
+                            from app.core.agent import agent as agent_orchestrator
+                            agent_orchestrator.wake()
+                        # Sub-agents are woken via their own check cycles
+                    except Exception:
+                        pass
         except Exception as e:
             logger.error(f"Task distribution error: {e}")
 

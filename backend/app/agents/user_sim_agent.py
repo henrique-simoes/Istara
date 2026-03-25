@@ -28,6 +28,9 @@ class UserSimAgent:
         self._sim_interval = 1800  # 30 minutes
         self._reports: list[dict] = []
         self._client: httpx.AsyncClient | None = None
+        # Task execution worker
+        from app.core.sub_agent_worker import SubAgentWorker
+        self._worker = SubAgentWorker("reclaw-sim", check_interval=30)
 
     async def _get_client(self) -> httpx.AsyncClient:
         if self._client is None or self._client.is_closed:
@@ -37,6 +40,9 @@ class UserSimAgent:
     async def start(self) -> None:
         self._running = True
         logger.info("User Simulation Agent started.")
+
+        # Start task worker alongside simulation cycle
+        asyncio.create_task(self._worker.start_task_loop())
 
         # Wait for backend to be ready
         await asyncio.sleep(30)
@@ -72,6 +78,7 @@ class UserSimAgent:
 
     def stop(self) -> None:
         self._running = False
+        self._worker.stop_task_loop()
 
     async def run_simulation(self) -> dict:
         """Run a full user simulation cycle."""

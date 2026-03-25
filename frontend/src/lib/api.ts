@@ -273,6 +273,23 @@ export const agents = {
   a2aLog: (limit = 100) => request<any>(`/api/agents/a2a/log?limit=${limit}`),
   heartbeat: () => request<any>("/api/agents/heartbeat/status"),
   capacity: () => request<any>("/api/agents/capacity"),
+  getIdentity: (id: string) =>
+    request<{
+      agent_id: string;
+      display_name: string;
+      has_persona: boolean;
+      identity_length: number;
+      files: Record<string, string>;
+    }>(`/api/agents/${id}/identity`),
+  updateIdentity: (id: string, files: Record<string, string>) =>
+    request<any>(`/api/agents/${id}/identity`, {
+      method: "PUT",
+      body: JSON.stringify({ files }),
+    }),
+  listPersonas: () =>
+    request<{ personas: { agent_id: string; display_name: string }[] }>(
+      "/api/agents/personas/list"
+    ),
 };
 
 // --- Sessions ---
@@ -362,6 +379,18 @@ export const settings = {
   switchProvider: (provider: "ollama" | "lmstudio") =>
     request<any>(`/api/settings/provider?provider=${provider}`, { method: "POST" }),
   maintenance: () => request<any>("/api/settings/maintenance"),
+};
+
+// --- Data Management ---
+
+export const dataManagement = {
+  checkIntegrity: () => request<any>("/api/settings/data-integrity"),
+  exportDatabase: () => request<any>("/api/settings/export-database", { method: "POST" }),
+  importDatabase: (data: any) =>
+    request<any>("/api/settings/import-database", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
 };
 
 // --- Task Locking ---

@@ -81,6 +81,9 @@ class UIAuditAgent:
         self._reports: list[UIAuditReport] = []
         self._client: httpx.AsyncClient | None = None
         self._last_html: str = ""
+        # Task execution worker
+        from app.core.sub_agent_worker import SubAgentWorker
+        self._worker = SubAgentWorker("reclaw-ui-audit", check_interval=30)
 
     async def _get_client(self) -> httpx.AsyncClient:
         if self._client is None or self._client.is_closed:
@@ -91,6 +94,9 @@ class UIAuditAgent:
         """Start the continuous UI audit loop."""
         self._running = True
         logger.info("UI Audit Agent started.")
+
+        # Start task worker alongside audit cycle
+        asyncio.create_task(self._worker.start_task_loop())
 
         # Wait for frontend to be ready
         await asyncio.sleep(30)
@@ -126,6 +132,7 @@ class UIAuditAgent:
 
     def stop(self) -> None:
         self._running = False
+        self._worker.stop_task_loop()
 
     async def run_audit(self) -> UIAuditReport:
         """Run a complete UI audit cycle."""

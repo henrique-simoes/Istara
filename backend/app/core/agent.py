@@ -18,7 +18,7 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
-from sqlalchemy import case, func, select
+from sqlalchemy import case, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
@@ -51,8 +51,9 @@ logger = logging.getLogger(__name__)
 class AgentOrchestrator:
     """Autonomous agent that picks tasks and runs skills."""
 
-    def __init__(self) -> None:
+    def __init__(self, agent_id: str = "reclaw-main") -> None:
         self._running = False
+        self._agent_id = agent_id
         self._current_task_id: str | None = None
         self._loop_interval = 30  # seconds between task checks
         self._idle_interval = 60  # seconds when no tasks available
@@ -80,7 +81,7 @@ class AgentOrchestrator:
                 try:
                     from app.core.agent_learning import agent_learning
                     await agent_learning.record_error_learning(
-                        agent_id="reclaw-main",
+                        agent_id=self._agent_id,
                         error_message=error_msg,
                         resolution="Caught in work loop, retrying next cycle",
                     )
@@ -110,7 +111,7 @@ class AgentOrchestrator:
         try:
             async with async_session() as db:
                 result = await db.execute(
-                    select(Agent).where(Agent.id == "reclaw-main")
+                    select(Agent).where(Agent.id == self._agent_id)
                 )
                 agent_row = result.scalar_one_or_none()
                 if agent_row:
@@ -195,11 +196,11 @@ class AgentOrchestrator:
             return True
 
     async def _pick_next_task(self, db: AsyncSession) -> Task | None:
-        """Pick the highest priority task that's ready for work.
+        """Pick the highest priority task assigned to THIS agent.
 
         Priority order:
         1. Tasks explicitly assigned to this agent — by priority then position
-        2. Unassigned tasks — by priority then position
+        2. Unassigned tasks (only for reclaw-main as fallback)
 
         Priority mapping: critical > high > medium > low
         """
@@ -211,12 +212,18 @@ class AgentOrchestrator:
             else_=4,
         )
 
-        # First: check for tasks explicitly assigned to the main agent
+        # First: tasks assigned to THIS agent
         result = await db.execute(
             select(Task)
             .where(
                 Task.status.in_([TaskStatus.BACKLOG, TaskStatus.IN_PROGRESS]),
-                Task.agent_id == "reclaw-main",
+                Task.agent_id == self._agent_id,
+                # Skip locked tasks (locked by someone else)
+                or_(
+                    Task.locked_by.is_(None),
+                    Task.locked_by == self._agent_id,
+                    Task.lock_expires_at < datetime.now(timezone.utc),
+                ),
             )
             .order_by(priority_order, Task.position.asc(), Task.created_at.asc())
             .limit(1)
@@ -225,17 +232,20 @@ class AgentOrchestrator:
         if task:
             return task
 
-        # Then: pick unassigned tasks
-        result = await db.execute(
-            select(Task)
-            .where(
-                Task.status.in_([TaskStatus.BACKLOG, TaskStatus.IN_PROGRESS]),
-                Task.agent_id.is_(None),
+        # Fallback: pick unassigned tasks (main agent only to avoid contention)
+        if self._agent_id == "reclaw-main":
+            result = await db.execute(
+                select(Task)
+                .where(
+                    Task.status.in_([TaskStatus.BACKLOG, TaskStatus.IN_PROGRESS]),
+                    Task.agent_id.is_(None),
+                )
+                .order_by(priority_order, Task.position.asc(), Task.created_at.asc())
+                .limit(1)
             )
-            .order_by(priority_order, Task.position.asc(), Task.created_at.asc())
-            .limit(1)
-        )
-        return result.scalar_one_or_none()
+            return result.scalar_one_or_none()
+
+        return None
 
     async def _get_project(self, db: AsyncSession, project_id: str) -> Project | None:
         result = await db.execute(select(Project).where(Project.id == project_id))
@@ -379,7 +389,7 @@ class AgentOrchestrator:
             try:
                 from app.core.agent_learning import agent_learning
                 resolution = await agent_learning.get_error_resolution(
-                    "reclaw-main", error_msg
+                    self._agent_id, error_msg
                 )
                 if resolution:
                     resolution_hint = f"\n\nKnown resolution: {resolution}"
@@ -387,7 +397,7 @@ class AgentOrchestrator:
                 else:
                     # Record this as a new error pattern
                     await agent_learning.record_error_learning(
-                        agent_id="reclaw-main",
+                        agent_id=self._agent_id,
                         error_message=error_msg,
                         resolution="Returned task to backlog for retry",
                         project_id=task.project_id,

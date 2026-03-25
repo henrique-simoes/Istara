@@ -30,6 +30,9 @@ class UXEvalAgent:
         self._audit_interval = 900  # 15 minutes
         self._reports: list[dict] = []
         self._client: httpx.AsyncClient | None = None
+        # Task execution worker
+        from app.core.sub_agent_worker import SubAgentWorker
+        self._worker = SubAgentWorker("reclaw-ux-eval", check_interval=30)
 
     async def _get_client(self) -> httpx.AsyncClient:
         if self._client is None or self._client.is_closed:
@@ -39,6 +42,9 @@ class UXEvalAgent:
     async def start(self) -> None:
         self._running = True
         logger.info("UX Evaluation Agent started.")
+
+        # Start task worker alongside audit cycle
+        asyncio.create_task(self._worker.start_task_loop())
 
         # Wait for backend to fully initialize
         await asyncio.sleep(45)
@@ -75,6 +81,7 @@ class UXEvalAgent:
 
     def stop(self) -> None:
         self._running = False
+        self._worker.stop_task_loop()
 
     async def run_evaluation(self) -> dict:
         """Run real API journey tests."""

@@ -3,16 +3,16 @@
 ## Evaluation Methods
 
 ### Nielsen's Heuristic Evaluation
-- H1 Visibility of System Status: loading indicators, progress bars, agent status displays, real-time feedback
-- H2 Match Between System and Real World: UXR terminology accuracy, intuitive iconography, natural language
-- H3 User Control and Freedom: undo capabilities, cancel actions, navigation escape routes, session management
-- H4 Consistency and Standards: design system adherence, interaction pattern uniformity, terminology consistency
-- H5 Error Prevention: form validation, destructive action confirmations, input constraints, disabled states
-- H6 Recognition Rather Than Recall: contextual labels, breadcrumbs, state persistence, visual cues
-- H7 Flexibility and Efficiency of Use: keyboard shortcuts, power user features, customization options
-- H8 Aesthetic and Minimalist Design: information density, visual noise, whitespace usage, focus management
-- H9 Help Users Recognize/Recover from Errors: error messages clarity, recovery suggestions, graceful degradation
-- H10 Help and Documentation: tooltips, onboarding flows, contextual help, keyboard shortcut guides
+- H1 Visibility of System Status: loading indicators, progress bars, agent status displays, real-time feedback, WebSocket connection indicators
+- H2 Match Between System and Real World: UXR terminology accuracy, intuitive iconography, natural language, metaphor consistency
+- H3 User Control and Freedom: undo capabilities, cancel actions, navigation escape routes, session management, "are you sure?" confirmations
+- H4 Consistency and Standards: design system adherence, interaction pattern uniformity, terminology consistency, platform convention alignment
+- H5 Error Prevention: form validation, destructive action confirmations, input constraints, disabled states, type-ahead suggestions
+- H6 Recognition Rather Than Recall: contextual labels, breadcrumbs, state persistence, visual cues, recently used items
+- H7 Flexibility and Efficiency of Use: keyboard shortcuts, power user features, customization options, batch operations
+- H8 Aesthetic and Minimalist Design: information density, visual noise, whitespace usage, focus management, content prioritization
+- H9 Help Users Recognize/Recover from Errors: error messages clarity, recovery suggestions, graceful degradation, retry affordances
+- H10 Help and Documentation: tooltips, onboarding flows, contextual help, keyboard shortcut guides, empty state guidance
 
 ### WCAG 2.2 Compliance Audit
 - Perceivable: text alternatives, captions, adaptable content, distinguishable elements (contrast, resize, spacing)
@@ -21,27 +21,48 @@
 - Robust: parsing, name/role/value, status messages, compatible with assistive technologies
 
 ### Component-Level Audit
-- Button states: default, hover, active, focus, disabled (all must be visually distinct and accessible)
-- Form controls: labels, placeholders, error states, required field indicators, autocomplete attributes
-- Navigation: consistent ordering, active state indication, skip links, landmark regions
-- Modals/dialogs: focus trapping, escape to close, aria-modal, backdrop interaction
-- Data displays: table accessibility, sortable headers, pagination, empty states
-- Toast/notifications: ARIA live regions, auto-dismiss timing, dismissal controls
+- Button states: default, hover, active, focus, disabled, loading (all must be visually distinct and accessible)
+- Form controls: labels, placeholders, error states, required field indicators, autocomplete attributes, helper text
+- Navigation: consistent ordering, active state indication, skip links, landmark regions, mobile hamburger behavior
+- Modals/dialogs: focus trapping, escape to close, aria-modal, backdrop interaction, return focus on close
+- Data displays: table accessibility, sortable headers, pagination, empty states, overflow handling
+- Toast/notifications: ARIA live regions, auto-dismiss timing, dismissal controls, stacking behavior
+- Chat interface: message attribution, timestamp formatting, typing indicators, scroll behavior, attachment previews
 
 ### Design System Compliance
 - Color token usage: all UI elements should use design system tokens (reclaw-50 through reclaw-950), not raw hex/rgb
-- Typography scale: heading hierarchy (h1-h6), body text sizing, line height consistency
-- Spacing scale: consistent margin/padding using the Tailwind spacing scale
-- Border radius: consistent rounding across component types
-- Dark mode: all components must work in both light and dark themes with adequate contrast
+- Typography scale: heading hierarchy (h1-h6), body text sizing, line height consistency, font weight usage
+- Spacing scale: consistent margin/padding using the Tailwind spacing scale (4px increments)
+- Border radius: consistent rounding across component types (cards, buttons, inputs, modals)
+- Dark mode: all components must work in both light and dark themes with adequate contrast ratios in each
+- Icon system: consistent sizing, stroke width, and semantic meaning across the icon set
+
+### Interaction Pattern Audit
+- **Focus management**: After modal close, does focus return to the trigger? After page navigation, is focus set logically?
+- **Loading states**: Every async operation should show a loading indicator. No blank screens during data fetches.
+- **Transition consistency**: Do similar actions produce similar transitions? Sliding panels should all slide the same direction.
+- **Touch targets**: All interactive elements meet the 24x24px minimum (SC 2.5.8). Primary actions should be larger.
+- **Scroll behavior**: Infinite scroll vs pagination consistency. Scroll position preservation on back navigation.
 
 ## Scoring System
 - Each component/view receives a score from 0-100 across: heuristics, accessibility, visual consistency
 - Overall platform score is the weighted average (heuristics 35%, accessibility 40%, consistency 25%)
 - Scores are tracked over time to measure improvement trends
+- Score breakdown by severity: deduct 15 points per critical, 8 per major, 3 per minor, 0 per enhancement
+
+## Quality Criteria for UI Components
+- **Minimum viable component**: Must have default, hover, focus, and disabled states. Must have an accessible name. Must be keyboard operable.
+- **Good component**: All of the above plus loading state, error state, empty state, and proper ARIA attributes.
+- **Excellent component**: All of the above plus animation respects reduced-motion, responsive across breakpoints, and documented in the design system.
+
+## Output Format
+- Issue reports follow: ID, severity (P0-P3), heuristic/standard violated, component/view, description, current behavior, expected behavior, fix recommendation (with specific code)
+- Summary reports include: total issues by severity, scores by category, top 3 priorities, trend vs last evaluation
+- Design system deviation reports list every instance of off-token color, spacing, or typography usage
 
 ## Limitations
 - Cannot perform live browser testing (evaluation is based on code analysis and component structure)
 - Cannot measure actual render performance or layout shift
 - Cannot test with real assistive technology (screen readers, switch devices)
 - Evaluation is based on standard compliance, not empirical user testing
+- Cannot evaluate motion/animation timing without runtime observation

@@ -24,6 +24,10 @@ import {
   ArrowRight,
   RefreshCw,
   Database,
+  FileText,
+  Edit3,
+  Save,
+  RotateCcw,
 } from "lucide-react";
 import { useAgentStore } from "@/stores/agentStore";
 import { agents as agentsApi, memory as memoryApi } from "@/lib/api";
@@ -415,10 +419,34 @@ interface AgentRAGNote {
 function AgentDetail({ agent }: { agent: Agent }) {
   const { updateAgent, pauseAgent, resumeAgent, deleteAgent } = useAgentStore();
   const { activeProjectId } = useProjectStore();
-  const [tab, setTab] = useState<"overview" | "memory" | "permissions">("overview");
+  const [tab, setTab] = useState<"overview" | "identity" | "memory" | "permissions">("overview");
   const [ragNotes, setRagNotes] = useState<AgentRAGNote[]>([]);
   const [ragLoading, setRagLoading] = useState(false);
   const [ragFetched, setRagFetched] = useState(false);
+  const [identityFiles, setIdentityFiles] = useState<Record<string, string>>({});
+  const [identityLoading, setIdentityLoading] = useState(false);
+  const [identityFetched, setIdentityFetched] = useState(false);
+  const [editingFile, setEditingFile] = useState<string | null>(null);
+  const [editContent, setEditContent] = useState("");
+  const [identitySaving, setIdentitySaving] = useState(false);
+  const [identityDirty, setIdentityDirty] = useState(false);
+
+  // Fetch identity files when the identity tab is opened
+  useEffect(() => {
+    if (tab !== "identity" || identityFetched) return;
+    setIdentityLoading(true);
+    agentsApi.getIdentity(agent.id)
+      .then((data) => {
+        setIdentityFiles(data.files || {});
+      })
+      .catch((e) => {
+        console.error("Failed to fetch agent identity:", e);
+      })
+      .finally(() => {
+        setIdentityLoading(false);
+        setIdentityFetched(true);
+      });
+  }, [tab, identityFetched, agent.id]);
 
   // Fetch RAG-stored agent notes when the memory tab is opened
   useEffect(() => {
@@ -443,7 +471,7 @@ function AgentDetail({ agent }: { agent: Agent }) {
     <div className="border-t border-slate-100 dark:border-slate-700 px-4 py-4 space-y-4">
       {/* Tabs */}
       <div className="flex gap-1">
-        {(["overview", "memory", "permissions"] as const).map((t) => (
+        {(["overview", "identity", "memory", "permissions"] as const).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -462,10 +490,24 @@ function AgentDetail({ agent }: { agent: Agent }) {
       {tab === "overview" && (
         <div className="space-y-3">
           <div>
-            <p className="text-xs text-slate-500 mb-1">System Prompt</p>
-            <p className="text-xs text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-800/50 p-2 rounded whitespace-pre-wrap max-h-32 overflow-y-auto">
-              {agent.system_prompt || "No system prompt configured"}
-            </p>
+            <p className="text-xs text-slate-500 mb-1">Persona Summary</p>
+            {identityFiles["CORE.md"] ? (
+              <div>
+                <p className="text-sm text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-800/50 p-3 rounded whitespace-pre-wrap max-h-48 overflow-y-auto leading-relaxed">
+                  {identityFiles["CORE.md"].split("\n").slice(0, 8).join("\n")}
+                </p>
+                <button
+                  onClick={() => setTab("identity")}
+                  className="mt-1 text-xs text-reclaw-600 dark:text-reclaw-400 hover:underline flex items-center gap-1"
+                >
+                  <ArrowRight size={10} /> View full identity files
+                </button>
+              </div>
+            ) : (
+              <p className="text-sm text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-800/50 p-3 rounded whitespace-pre-wrap max-h-48 overflow-y-auto">
+                {agent.system_prompt || "No system prompt configured. Add persona files in the Identity tab."}
+              </p>
+            )}
           </div>
           <div className="grid grid-cols-3 gap-3">
             <div className="text-center p-2 rounded-lg bg-slate-50 dark:bg-slate-800/50">
@@ -534,6 +576,117 @@ function AgentDetail({ agent }: { agent: Agent }) {
               </button>
             )}
           </div>
+        </div>
+      )}
+
+      {tab === "identity" && (
+        <div className="space-y-4">
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            These files define the agent&apos;s personality, skills, protocols, and learned memory.
+            They are loaded into the agent&apos;s system prompt using Prompt RAG.
+          </p>
+          {identityLoading ? (
+            <p className="text-xs text-slate-400 flex items-center gap-1">
+              <RefreshCw size={10} className="animate-spin" /> Loading persona files...
+            </p>
+          ) : Object.keys(identityFiles).length === 0 ? (
+            <p className="text-xs text-slate-400">No persona files found for this agent.</p>
+          ) : (
+            <>
+              {["CORE.md", "SKILLS.md", "PROTOCOLS.md", "MEMORY.md"].map((filename) => {
+                const content = identityFiles[filename];
+                if (!content) return null;
+                const isEditing = editingFile === filename;
+                const descriptions: Record<string, string> = {
+                  "CORE.md": "Identity, personality, communication style, values \u2014 the agent\u2019s soul (40% of prompt budget)",
+                  "SKILLS.md": "Technical capabilities, methodologies, tool access (25% of prompt budget)",
+                  "PROTOCOLS.md": "Behavioral protocols, decision-making, error handling (25% of prompt budget)",
+                  "MEMORY.md": "Persistent learnings, auto-updated by the agent (10% of prompt budget)",
+                };
+                const budgetColors: Record<string, string> = {
+                  "CORE.md": "bg-blue-100 text-blue-700 dark:bg-blue-900/80 dark:text-blue-300",
+                  "SKILLS.md": "bg-green-100 text-green-700 dark:bg-green-900/80 dark:text-green-300",
+                  "PROTOCOLS.md": "bg-purple-100 text-purple-700 dark:bg-purple-900/80 dark:text-purple-300",
+                  "MEMORY.md": "bg-amber-100 text-amber-700 dark:bg-amber-900/80 dark:text-amber-300",
+                };
+                const budgetWeights: Record<string, string> = {
+                  "CORE.md": "40%", "SKILLS.md": "25%", "PROTOCOLS.md": "25%", "MEMORY.md": "10%",
+                };
+
+                return (
+                  <div key={filename} className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
+                    {/* Header */}
+                    <div className="flex items-center justify-between px-3 py-2 bg-slate-50 dark:bg-slate-800/50">
+                      <div className="flex items-center gap-2">
+                        <FileText size={14} className="text-slate-500" />
+                        <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{filename}</span>
+                        <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full font-medium", budgetColors[filename])}>
+                          {budgetWeights[filename]}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        {isEditing ? (
+                          <>
+                            <button
+                              onClick={async () => {
+                                setIdentitySaving(true);
+                                try {
+                                  await agentsApi.updateIdentity(agent.id, {
+                                    ...identityFiles,
+                                    [filename]: editContent,
+                                  });
+                                  setIdentityFiles((prev) => ({ ...prev, [filename]: editContent }));
+                                  setEditingFile(null);
+                                  setIdentityDirty(false);
+                                } catch (e) {
+                                  console.error("Save failed:", e);
+                                }
+                                setIdentitySaving(false);
+                              }}
+                              disabled={identitySaving}
+                              className="flex items-center gap-1 px-2 py-1 text-xs bg-green-100 text-green-700 rounded hover:bg-green-200 dark:bg-green-900/80 dark:text-green-300"
+                            >
+                              <Save size={10} /> {identitySaving ? "Saving..." : "Save"}
+                            </button>
+                            <button
+                              onClick={() => { setEditingFile(null); setIdentityDirty(false); }}
+                              className="flex items-center gap-1 px-2 py-1 text-xs bg-slate-100 text-slate-600 rounded hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300"
+                            >
+                              <RotateCcw size={10} /> Cancel
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            onClick={() => { setEditingFile(filename); setEditContent(content); }}
+                            className="flex items-center gap-1 px-2 py-1 text-xs bg-slate-100 text-slate-600 rounded hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300"
+                          >
+                            <Edit3 size={10} /> Edit
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    {/* Description */}
+                    <p className="px-3 py-1 text-[11px] text-slate-400 dark:text-slate-500 bg-slate-50/50 dark:bg-slate-800/30 border-b border-slate-100 dark:border-slate-700/50">
+                      {descriptions[filename]}
+                    </p>
+                    {/* Content */}
+                    {isEditing ? (
+                      <textarea
+                        value={editContent}
+                        onChange={(e) => { setEditContent(e.target.value); setIdentityDirty(true); }}
+                        className="w-full min-h-[300px] p-3 text-sm font-mono text-slate-800 dark:text-slate-100 bg-white dark:bg-slate-900 border-0 focus:ring-2 focus:ring-reclaw-500 resize-y"
+                        spellCheck={false}
+                      />
+                    ) : (
+                      <pre className="px-3 py-2 text-sm text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-900/50 whitespace-pre-wrap max-h-64 overflow-y-auto font-mono leading-relaxed">
+                        {content}
+                      </pre>
+                    )}
+                  </div>
+                );
+              })}
+            </>
+          )}
         </div>
       )}
 
