@@ -1084,6 +1084,79 @@ Major UX overhaul addressing WCAG compliance, Nielsen's heuristics violations, a
 
 **Files**: All frontend components in `components/`, stores in `stores/`, backend routes in `api/routes/`, `skill_manager.py`
 
+### Multi-Agent Task Routing & Architecture (March 2026)
+
+ReClaw is now a **true multi-agent system** where tasks are automatically routed to the best-matching agent based on specialty domains. Previously, all tasks went to the main ReClaw agent — now the intelligent task router analyzes each task's keywords, skill requirements, and description to determine which agent(s) should handle it.
+
+**Task Router** (`backend/app/core/task_router.py`):
+- **Specialty-based routing**: Each agent has defined specialties (research, devops, ui, ux, simulation). The router matches task keywords against specialty domains.
+- **Multi-specialty detection**: Tasks that require multiple domains (e.g., "accessibility audit of user journey") are assigned a primary agent and collaboration requests are sent to secondary agents via A2A.
+- **User-created agent support**: Custom agents define their specialties in the `specialties` JSON column on the Agent model. The router considers all active agents — system and user-created.
+- **Explicit assignment respected**: If a task is manually assigned to an agent, the router respects that assignment.
+- **Graceful fallback**: If the target agent is inactive, tasks fall back to reclaw-main.
+
+**Sub-Agent Task Execution** (`backend/app/core/sub_agent_worker.py`):
+- All 4 sub-agents (Sentinel, Pixel, Sage, Echo) now have dual duties: their original monitoring/audit cycles PLUS task execution for their specialty domain.
+- `SubAgentWorker` provides a shared work loop: check for assigned tasks → execute using the main skill pipeline → store findings → report results.
+- Each sub-agent checks for tasks every 30 seconds between their audit cycles.
+
+**A2A Collaboration Protocol** (`backend/app/services/a2a.py`):
+- New `send_task_request()` function creates tasks assigned to target agents with A2A notification.
+- `collaboration_request` message type for multi-specialty task coordination.
+- Sub-agents check their A2A inbox for collaboration requests as part of their work cycle.
+
+**Agent Specialties** (`backend/app/models/agent.py`):
+- New `specialties` JSON column on the Agent model.
+- System agents seeded with domain specialties: reclaw-main=research, reclaw-devops=devops, reclaw-ui-audit=ui, reclaw-ux-eval=ux, reclaw-sim=simulation.
+- User-created agents can set specialties at creation or via memory.
+
+### Agent Identity UI & Persona System (March 2026)
+
+Agent persona files (CORE.md, SKILLS.md, PROTOCOLS.md, MEMORY.md) are now fully visible and editable in the frontend.
+
+**Backend**:
+- `PUT /api/agents/{id}/identity` — Save updated persona MD files with validation (only allowed filenames accepted)
+- `scaffold_persona()` in `agent_identity.py` — Auto-generates skeleton persona files when new agents are created
+- Cache invalidation: Identity cache is cleared immediately on save so changes take effect without restart
+
+**Frontend** (`AgentsView.tsx`):
+- New **Identity tab** in agent detail showing all 4 persona files
+- Each file displayed with: filename header, budget weight badge (40%/25%/25%/10%), description, full content
+- **Read/Edit toggle**: Markdown preview mode by default, click Edit for a large textarea (min-height 300px, proper fonts and contrast)
+- **Save/Cancel** with immediate persistence
+- WCAG compliant: dark mode backgrounds at 80%+ opacity, proper text contrast, keyboard accessible
+
+**Enriched Persona Files**:
+- All 5 system agents now have deeply detailed persona files (80-120 lines in CORE.md vs ~33 before)
+- CORE.md covers: identity, personality, communication style, values, domain expertise, collaboration patterns, edge case handling
+- SKILLS.md covers: capability categories, tool access, skill chains, quality criteria
+- PROTOCOLS.md covers: decision frameworks, error handling, communication patterns, A2A collaboration
+
+### Database Migration & Data Integrity (March 2026)
+
+Switching between SQLite (local mode) and PostgreSQL (team mode) no longer risks data loss.
+
+**Data Migration** (`backend/app/core/data_migration.py`):
+- `export_full_database()` — Dumps all tables to portable JSON structure with metadata and filesystem reference catalog
+- `import_full_database()` — Imports JSON dump into any target database, handles foreign key ordering
+- API endpoints: `POST /api/settings/export-database`, `POST /api/settings/import-database`
+
+**Data Integrity Checks** (`backend/app/core/data_integrity.py`):
+- Runs automatically on startup (lightweight, <2s)
+- Checks: LanceDB dirs ↔ DB projects, keyword indexes ↔ DB projects, upload dirs ↔ documents, persona dirs ↔ agents
+- Logs warnings for orphaned data (does NOT delete — user decides)
+- API endpoint: `GET /api/settings/data-integrity`
+- Startup warning if orphaned LanceDB data detected after database switch
+
+**Data Storage Architecture** (reference):
+| Data | Storage | Survives DB Switch? |
+|------|---------|-------------------|
+| Projects, Tasks, Messages, Findings | SQLite/PostgreSQL | Requires export/import |
+| Vector Embeddings | LanceDB (filesystem) | Yes (needs project refs) |
+| Keyword Indexes | Separate SQLite files | Yes (needs project refs) |
+| Uploaded Files | Filesystem | Yes (needs document refs) |
+| Agent Personas | MD files on filesystem | Yes |
+
 ### Academic References
 
 | Method | Paper | Venue |

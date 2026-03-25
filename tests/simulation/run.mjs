@@ -172,6 +172,9 @@ async function loadScenarios() {
     "35-ensemble-validation",
     "36-llm-servers",
     "37-ensemble-health-view",
+    "38-task-routing",
+    "39-data-migration",
+    "40-agent-identity-editing",
   ];
 
   const scenarios = [];

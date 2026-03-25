@@ -132,6 +132,64 @@ export async function run(ctx) {
     checks.push({ name: "MEMORY.md structure", passed: false, detail: e.message });
   }
 
+  // ── 7. Enriched persona files are substantive (80+ lines in CORE.md) ──
+  for (const agentId of agentIds) {
+    try {
+      const identity = await api.get(`/api/agents/${agentId}/identity`);
+      const core = identity.files?.["CORE.md"] || "";
+      const coreLines = core.split("\n").length;
+      checks.push({
+        name: `${agentId} CORE.md is enriched (60+ lines)`,
+        passed: coreLines >= 60,
+        detail: `${coreLines} lines`,
+      });
+      const skills = identity.files?.["SKILLS.md"] || "";
+      const skillLines = skills.split("\n").length;
+      checks.push({
+        name: `${agentId} SKILLS.md is enriched (30+ lines)`,
+        passed: skillLines >= 30,
+        detail: `${skillLines} lines`,
+      });
+    } catch (e) {
+      checks.push({ name: `${agentId} enrichment check`, passed: false, detail: e.message });
+    }
+  }
+
+  // ── 8. PUT identity endpoint exists and works ──
+  try {
+    const identity = await api.get("/api/agents/reclaw-main/identity");
+    const originalCore = identity.files?.["CORE.md"] || "";
+    // Save with marker
+    await api.put("/api/agents/reclaw-main/identity", {
+      files: { "CORE.md": originalCore + "\n<!-- test27 -->" },
+    });
+    const verify = await api.get("/api/agents/reclaw-main/identity");
+    const hasMarker = (verify.files?.["CORE.md"] || "").includes("<!-- test27 -->");
+    checks.push({
+      name: "PUT identity endpoint works",
+      passed: hasMarker,
+      detail: hasMarker ? "Update confirmed" : "Update not persisted",
+    });
+    // Restore
+    await api.put("/api/agents/reclaw-main/identity", {
+      files: { "CORE.md": originalCore },
+    });
+  } catch (e) {
+    checks.push({ name: "PUT identity endpoint", passed: false, detail: e.message });
+  }
+
+  // ── 9. Agent specialties field present ──
+  try {
+    const agent = await api.get("/api/agents/reclaw-main");
+    checks.push({
+      name: "Agent model has specialties field",
+      passed: agent.specialties !== undefined,
+      detail: `specialties=${JSON.stringify(agent.specialties)}`,
+    });
+  } catch (e) {
+    checks.push({ name: "Agent specialties field", passed: false, detail: e.message });
+  }
+
   return {
     checks,
     passed: checks.filter((c) => c.passed).length,

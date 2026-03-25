@@ -207,6 +207,23 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     except Exception as e:
         _log.warning(f"Dimension check skipped: {e}")
 
+    # ── Data integrity check ──
+    try:
+        from app.core.data_integrity import run_integrity_check
+        async with async_session() as _check_db:
+            integrity = await run_integrity_check(_check_db)
+            if integrity["warnings"]:
+                for w in integrity["warnings"]:
+                    _log.warning(f"Data integrity: {w}")
+                _log.warning(
+                    "Run POST /api/settings/data-integrity for full report. "
+                    "If you recently switched databases, use /api/settings/import-database to restore data."
+                )
+            else:
+                _log.info("Data integrity check passed — no orphaned data.")
+    except Exception as e:
+        _log.debug(f"Data integrity check skipped: {e}")
+
     # Start file watcher
     watcher = FileWatcher()
     watcher_task = asyncio.create_task(watcher.start())

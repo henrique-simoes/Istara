@@ -3,11 +3,13 @@
 import logging
 from pathlib import Path
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.core.hardware import detect_hardware, recommend_model
 from app.core.ollama import ollama
+from app.models.database import get_db
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -297,6 +299,36 @@ async def vector_health():
     """Check embedding dimension consistency across vector stores."""
     from app.core.vector_health import check_embedding_dimensions
     return await check_embedding_dimensions()
+
+
+# ───── Data Management & Migration ─────
+
+
+@router.get("/settings/data-integrity")
+async def check_data_integrity(db: AsyncSession = Depends(get_db)):
+    """Run a data integrity check and return health report."""
+    from app.core.data_integrity import run_integrity_check
+    report = await run_integrity_check(db)
+    return report
+
+
+@router.post("/settings/export-database")
+async def export_database(db: AsyncSession = Depends(get_db)):
+    """Export the entire database to a portable JSON structure."""
+    from app.core.data_migration import export_full_database
+    data = await export_full_database(db)
+    return data
+
+
+@router.post("/settings/import-database")
+async def import_database(
+    data: dict,
+    db: AsyncSession = Depends(get_db),
+):
+    """Import a previously exported database dump."""
+    from app.core.data_migration import import_full_database
+    summary = await import_full_database(db, data)
+    return summary
 
 
 @router.get("/settings/status")

@@ -123,7 +123,9 @@ async def list_tasks(
 
 @router.post("/tasks", response_model=TaskResponse, status_code=201)
 async def create_task(data: TaskCreate, db: AsyncSession = Depends(get_db)):
-    """Create a new task."""
+    """Create a new task with intelligent agent routing."""
+    import logging as _log
+
     # Get max position for ordering
     result = await db.execute(
         select(Task.position)
@@ -132,6 +134,25 @@ async def create_task(data: TaskCreate, db: AsyncSession = Depends(get_db)):
         .limit(1)
     )
     max_pos = result.scalar() or 0
+
+    # Route task to best agent if no explicit assignment
+    agent_id = data.agent_id
+    if not agent_id:
+        try:
+            from app.core.task_router import route_task
+            routing = await route_task(
+                db,
+                data.title,
+                data.description or "",
+                data.skill_name or None,
+            )
+            agent_id = routing["primary_agent_id"]
+            _log.getLogger(__name__).info(
+                f"Auto-routed task '{data.title}' → {agent_id} ({routing['routing_reason']})"
+            )
+        except Exception as e:
+            _log.getLogger(__name__).warning(f"Task routing failed, defaulting to reclaw-main: {e}")
+            agent_id = "reclaw-main"
 
     task = Task(
         id=str(uuid.uuid4()),
@@ -142,7 +163,7 @@ async def create_task(data: TaskCreate, db: AsyncSession = Depends(get_db)):
         user_context=data.user_context,
         instructions=data.instructions,
         priority=data.priority,
-        agent_id=data.agent_id,
+        agent_id=agent_id,
         position=max_pos + 1,
         input_document_ids=json.dumps(data.input_document_ids),
         output_document_ids=json.dumps(data.output_document_ids),
