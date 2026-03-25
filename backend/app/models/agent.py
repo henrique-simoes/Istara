@@ -68,6 +68,7 @@ class Agent(Base):
     system_prompt: Mapped[str] = mapped_column(Text, default="")
     capabilities: Mapped[str] = mapped_column(Text, default="[]")  # JSON list
     memory: Mapped[str] = mapped_column(Text, default="{}")  # JSON dict
+    specialties: Mapped[str] = mapped_column(Text, default="[]")  # JSON list of specialty domains
     heartbeat_interval_seconds: Mapped[int] = mapped_column(Integer, default=60)
     heartbeat_status: Mapped[HeartbeatStatus] = mapped_column(
         Enum(HeartbeatStatus), default=HeartbeatStatus.STOPPED
@@ -102,6 +103,7 @@ class Agent(Base):
             "system_prompt": self.system_prompt,
             "capabilities": json.loads(self.capabilities) if self.capabilities else [],
             "memory": json.loads(self.memory) if self.memory else {},
+            "specialties": json.loads(self.specialties) if self.specialties else [],
             "heartbeat_interval_seconds": self.heartbeat_interval_seconds,
             "heartbeat_status": self.heartbeat_status.value if self.heartbeat_status else "stopped",
             "last_heartbeat_at": self.last_heartbeat_at.isoformat() if self.last_heartbeat_at else None,

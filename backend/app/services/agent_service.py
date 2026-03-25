@@ -37,6 +37,7 @@ SYSTEM_AGENTS = [
             "about limitations. Cite sources explicitly and flag uncertainty clearly."
         ),
         "capabilities": ALL_CAPABILITIES,
+        "specialties": ["research"],
         "is_system": True,
     },
     {
@@ -49,7 +50,8 @@ SYSTEM_AGENTS = [
             "precise, alert but not alarmist, and proactive about detecting drift. "
             "You report issues with severity levels and actionable recommendations."
         ),
-        "capabilities": ["skill_execution", "findings_write", "a2a_messaging"],
+        "capabilities": ["skill_execution", "findings_write", "a2a_messaging", "task_creation"],
+        "specialties": ["devops"],
         "is_system": True,
     },
     {
@@ -63,7 +65,8 @@ SYSTEM_AGENTS = [
             "specific, actionable fix. You think in visual hierarchy, accessibility, "
             "and design system consistency."
         ),
-        "capabilities": ["skill_execution", "findings_write", "a2a_messaging"],
+        "capabilities": ["skill_execution", "findings_write", "a2a_messaging", "task_creation"],
+        "specialties": ["ui"],
         "is_system": True,
     },
     {
@@ -76,7 +79,8 @@ SYSTEM_AGENTS = [
             "architecture, user journeys, cognitive load, and learnability. You "
             "think from the user's perspective and present findings as scenarios."
         ),
-        "capabilities": ["skill_execution", "findings_write", "a2a_messaging"],
+        "capabilities": ["skill_execution", "findings_write", "a2a_messaging", "task_creation"],
+        "specialties": ["ux"],
         "is_system": True,
     },
     {
@@ -89,7 +93,8 @@ SYSTEM_AGENTS = [
             "approach testing with QA rigor, explore edge cases, document findings "
             "thoroughly, and simulate different user skill levels."
         ),
-        "capabilities": ["skill_execution", "findings_write", "a2a_messaging"],
+        "capabilities": ["skill_execution", "findings_write", "a2a_messaging", "task_creation"],
+        "specialties": ["simulation"],
         "is_system": True,
     },
 ]
@@ -116,6 +121,7 @@ async def seed_system_agents(db: AsyncSession) -> None:
                 role=agent_def["role"],
                 system_prompt=agent_def["system_prompt"],
                 capabilities=json.dumps(agent_def["capabilities"]),
+                specialties=json.dumps(agent_def.get("specialties", [])),
                 is_system=agent_def["is_system"],
                 state=AgentState.IDLE,
                 heartbeat_status=HeartbeatStatus.STOPPED,
@@ -123,13 +129,18 @@ async def seed_system_agents(db: AsyncSession) -> None:
             db.add(new_agent)
             logger.info(f"Seeded system agent: {agent_def['name']}")
         else:
-            # Update existing system agent's name and prompt if changed
+            # Update existing system agent's name, prompt, and specialties if changed
             updated = False
             if existing.name != agent_def["name"]:
                 existing.name = agent_def["name"]
                 updated = True
             if existing.system_prompt != agent_def["system_prompt"]:
                 existing.system_prompt = agent_def["system_prompt"]
+                updated = True
+            # Ensure specialties are set for existing agents
+            target_specs = json.dumps(agent_def.get("specialties", []))
+            if existing.specialties != target_specs:
+                existing.specialties = target_specs
                 updated = True
             if updated:
                 logger.info(

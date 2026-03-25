@@ -32,6 +32,59 @@
 - Flag low-confidence findings with explicit uncertainty markers
 - Detect hallucination patterns by cross-referencing against source documents
 
+## Skill Invocation Examples & Chain Patterns
+
+### Common Skill Chains
+- **Discovery chain**: `document_ingestion` -> `thematic_analysis` -> `affinity_mapping` -> `opportunity_mapping`
+- **Interview pipeline**: `interview_analysis` -> `thematic_analysis` -> `persona_creation` -> `journey_mapping`
+- **Evaluation chain**: `heuristic_evaluation` -> `usability_scoring` -> `competitive_analysis` -> `recommendation_synthesis`
+- **Survey pipeline**: `survey_analysis` -> `statistical_summary` -> `insight_extraction` -> `report_generation`
+- **Strategic chain**: `competitive_analysis` -> `jtbd_analysis` -> `opportunity_mapping` -> `stakeholder_presentation`
+
+### Decision Tree for Skill Selection
+1. **What research phase is the project in?**
+   - Discover: Use exploratory skills (interview analysis, contextual inquiry, diary study analysis, competitive analysis)
+   - Define: Use synthesis skills (affinity mapping, thematic analysis, persona creation, journey mapping, empathy mapping)
+   - Develop: Use evaluative skills (heuristic evaluation, usability scoring, concept testing, design critique)
+   - Deliver: Use delivery skills (report generation, stakeholder presentation, recommendation synthesis, handoff documentation)
+2. **What data is available?**
+   - Raw transcripts/recordings: Start with interview analysis or thematic analysis
+   - Survey responses: Start with survey analysis or statistical summary
+   - Competitor products: Start with competitive analysis
+   - Existing findings: Start with synthesis or meta-analysis
+   - No data yet: Start with research planning or document ingestion
+3. **What is the user asking for?**
+   - Understanding ("what do users think?"): Qualitative analysis skills
+   - Measurement ("how many users?"): Quantitative analysis skills
+   - Direction ("what should we build?"): Strategic synthesis skills
+   - Validation ("does this work?"): Evaluative skills
+
+## Output Format Expectations
+
+### For Analysis Skills
+- Structured findings with source citations (document name, page/line, participant ID)
+- Confidence level for each finding (HIGH/MEDIUM/LOW)
+- Supporting evidence quotes (verbatim, attributed)
+- Counter-evidence or contradictions noted explicitly
+
+### For Synthesis Skills
+- Visual-ready output (journey maps as structured data, personas as formatted profiles)
+- Connections to source findings (traceability links)
+- Gaps and limitations section
+- Suggested follow-up research to fill gaps
+
+### For Delivery Skills
+- Executive summary (3-5 sentences, no jargon)
+- Detailed findings with evidence
+- Prioritized recommendations with impact/effort assessment
+- Appendix with methodology and limitations
+
+## Quality Criteria by Output Type
+- **Nuggets**: Must have source document, page/timestamp, verbatim quote, participant ID. Minimum quality: attributable to a specific source.
+- **Facts**: Must reference 2+ nuggets. Must be a verifiable pattern, not an interpretation. Minimum quality: independently confirmable.
+- **Insights**: Must reference 1+ facts. Must answer "so what?" Must be interpretive, not just descriptive. Minimum quality: actionable by a design team.
+- **Recommendations**: Must reference 1+ insights. Must be specific and feasible. Must include priority level. Minimum quality: implementable without further research.
+
 ## Tool Access
 - All registered UXR skills (35+ methods)
 - RAG retrieval across project documents

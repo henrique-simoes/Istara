@@ -49,6 +49,52 @@ async def send_message(
     return result
 
 
+async def send_task_request(
+    db: AsyncSession,
+    from_agent_id: str,
+    to_agent_id: str,
+    task_title: str,
+    task_description: str,
+    project_id: str,
+    skill_name: str | None = None,
+    priority: str = "medium",
+) -> dict:
+    """Send a task request via A2A — creates a task assigned to the target agent."""
+    from app.models.task import Task, TaskStatus
+    import uuid as _uuid
+
+    # Create the task assigned to the target agent
+    task = Task(
+        id=str(_uuid.uuid4()),
+        project_id=project_id,
+        title=task_title,
+        description=task_description,
+        skill_name=skill_name,
+        agent_id=to_agent_id,
+        priority=priority,
+        status=TaskStatus.BACKLOG,
+    )
+    db.add(task)
+
+    # Send the A2A notification
+    msg_result = await send_message(
+        db=db,
+        from_agent_id=from_agent_id,
+        to_agent_id=to_agent_id,
+        message_type="task_request",
+        content=f"New task assigned: {task_title}",
+        metadata={
+            "task_id": task.id,
+            "project_id": project_id,
+            "skill_name": skill_name,
+        },
+    )
+
+    await db.commit()
+    logger.info(f"Task request: {from_agent_id} -> {to_agent_id}: {task_title}")
+    return {"task_id": task.id, "message": msg_result}
+
+
 async def get_messages(
     db: AsyncSession,
     agent_id: str,

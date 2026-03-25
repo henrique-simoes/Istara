@@ -42,11 +42,17 @@ class DevOpsAuditAgent:
         self._running = False
         self._audit_interval = 300  # 5 minutes between audit cycles
         self._audit_log: list[dict] = []
+        # Task execution worker
+        from app.core.sub_agent_worker import SubAgentWorker
+        self._worker = SubAgentWorker("reclaw-devops", check_interval=30)
 
     async def start(self) -> None:
         """Start the continuous audit loop."""
         self._running = True
         logger.info("DevOps Audit Agent started.")
+
+        # Start task worker alongside audit cycle
+        asyncio.create_task(self._worker.start_task_loop())
 
         while self._running:
             try:
@@ -99,6 +105,7 @@ class DevOpsAuditAgent:
 
     def stop(self) -> None:
         self._running = False
+        self._worker.stop_task_loop()
         logger.info("DevOps Audit Agent stopped.")
 
     async def run_audit_cycle(self) -> dict:

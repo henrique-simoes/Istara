@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import shutil
 from pathlib import Path
 
@@ -18,6 +19,8 @@ from app.core.resource_governor import governor
 from app.core.context_hierarchy import context_hierarchy, ContextDocument
 from app.models.database import get_db
 from app.services import agent_service, a2a
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -112,6 +115,19 @@ async def create_agent(data: CreateAgentRequest, db: AsyncSession = Depends(get_
         )
     except Exception:
         pass  # Non-critical — agent still works via DB system_prompt
+
+    # Auto-scaffold persona files for the new agent
+    try:
+        from app.core.agent_identity import scaffold_persona
+        scaffold_persona(
+            agent_id=agent["id"],
+            name=data.name,
+            role=data.role or "custom",
+            system_prompt=data.system_prompt or "",
+            capabilities=data.capabilities or [],
+        )
+    except Exception as e:
+        logger.warning(f"Persona scaffold failed: {e}")
 
     try:
         from app.api.websocket import manager as ws_manager
@@ -245,6 +261,57 @@ async def get_identity(agent_id: str):
         "has_persona": bool(identity),
         "identity_length": len(identity),
         "files": files,
+    }
+
+
+@router.put("/agents/{agent_id}/identity")
+async def update_identity(agent_id: str, data: dict):
+    """Update an agent's persona MD files."""
+    from app.core.agent_identity import (
+        PERSONAS_DIR,
+        IDENTITY_FILES,
+        load_agent_identity,
+    )
+
+    files = data.get("files", {})
+    if not files:
+        raise HTTPException(status_code=400, detail="No files provided")
+
+    # Validate file names
+    for filename in files:
+        if filename not in IDENTITY_FILES:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid file: {filename}. Allowed: {IDENTITY_FILES}",
+            )
+
+    # Write files
+    persona_dir = PERSONAS_DIR / agent_id
+    persona_dir.mkdir(parents=True, exist_ok=True)
+
+    for filename, content in files.items():
+        filepath = persona_dir / filename
+        filepath.write_text(content, encoding="utf-8")
+
+    # Clear cache so changes take effect immediately
+    try:
+        load_agent_identity.cache_clear()
+    except Exception:
+        pass
+
+    # Reload and return updated identity
+    identity = load_agent_identity(agent_id)
+    updated_files = {}
+    for filename in IDENTITY_FILES:
+        filepath = persona_dir / filename
+        if filepath.exists():
+            updated_files[filename] = filepath.read_text(encoding="utf-8")
+
+    return {
+        "agent_id": agent_id,
+        "has_persona": bool(identity),
+        "identity_length": len(identity),
+        "files": updated_files,
     }
 
 
