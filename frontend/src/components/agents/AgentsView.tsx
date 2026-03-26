@@ -828,8 +828,16 @@ export default function AgentsView() {
     a2aMessages,
     loading,
   } = useAgentStore();
-  const [activeTab, setActiveTab] = useState<"agents" | "a2a" | "create">("agents");
+  const [activeTab, setActiveTab] = useState<"agents" | "a2a" | "proposals" | "create">("agents");
   const [expandedAgent, setExpandedAgent] = useState<string | null>(null);
+  const [agentProposals, setAgentProposals] = useState<any[]>([]);
+
+  const fetchAgentProposals = async () => {
+    try {
+      const res = await agentsApi.creationProposals.all();
+      setAgentProposals(res.proposals || []);
+    } catch { /* endpoint may not exist yet */ }
+  };
 
   // Initial fetch + start polling every 10s to keep agent statuses current
   useEffect(() => {
@@ -858,6 +866,7 @@ export default function AgentsView() {
 
   useEffect(() => {
     if (activeTab === "a2a") fetchA2ALog();
+    if (activeTab === "proposals") fetchAgentProposals();
   }, [activeTab, fetchA2ALog]);
 
   const systemAgents = agents.filter((a) => a.is_system);
@@ -878,7 +887,7 @@ export default function AgentsView() {
 
       {/* Tabs */}
       <div className="flex items-center gap-1 px-4 pt-3">
-        {(["agents", "a2a", "create"] as const).map((tab) => (
+        {(["agents", "a2a", "proposals", "create"] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -889,7 +898,7 @@ export default function AgentsView() {
                 : "text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
             )}
           >
-            {tab === "agents" ? "Agents" : tab === "a2a" ? "A2A Messages" : "Create Agent"}
+            {tab === "agents" ? "Agents" : tab === "a2a" ? "A2A Messages" : tab === "proposals" ? "Proposals" : "Create Agent"}
           </button>
         ))}
       </div>
@@ -1062,6 +1071,110 @@ export default function AgentsView() {
                   </div>
                 );
               })
+            )}
+          </div>
+        )}
+
+        {activeTab === "proposals" && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Brain size={16} className="text-purple-500" />
+              <h3 className="font-medium text-slate-900 dark:text-white">
+                Agent Creation Proposals
+              </h3>
+              <span className="text-xs text-slate-400">
+                The system proposes new agents when capability gaps are detected
+              </span>
+            </div>
+
+            {agentProposals.length === 0 && (
+              <div className="text-center py-12 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                <Brain size={32} className="mx-auto mb-3 text-slate-300" />
+                <p className="text-slate-500 text-sm">No agent creation proposals yet.</p>
+                <p className="text-slate-400 text-xs mt-1">
+                  When tasks require capabilities no existing agent covers, the system will propose new specialized agents.
+                </p>
+              </div>
+            )}
+
+            {agentProposals.filter((p: any) => p.status === "pending").map((p: any) => (
+              <div
+                key={p.id}
+                className="bg-purple-50 dark:bg-purple-900/10 rounded-xl border border-purple-200 dark:border-purple-800 p-4 space-y-3"
+              >
+                <div className="flex items-start justify-between">
+                  <div>
+                    <span className="font-medium text-sm text-slate-900 dark:text-white">
+                      {p.proposed_name}
+                    </span>
+                    <span className="text-xs text-slate-400 ml-2">{p.proposed_role}</span>
+                  </div>
+                  <span className="text-xs text-purple-600 font-medium">
+                    {p.confidence}% confidence
+                  </span>
+                </div>
+                <p className="text-xs text-slate-600 dark:text-slate-400">{p.reason}</p>
+                {p.proposed_specialties && (
+                  <div className="flex flex-wrap gap-1">
+                    {p.proposed_specialties.map((s: string) => (
+                      <span key={s} className="px-2 py-0.5 rounded-full text-xs bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
+                        {s}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {p.proposed_core_md && (
+                  <details className="text-xs">
+                    <summary className="text-slate-400 cursor-pointer hover:text-slate-600">Preview CORE.md</summary>
+                    <pre className="mt-1 p-2 bg-slate-50 dark:bg-slate-800 rounded text-xs whitespace-pre-wrap max-h-40 overflow-y-auto">
+                      {p.proposed_core_md}
+                    </pre>
+                  </details>
+                )}
+                <div className="flex gap-2 pt-1">
+                  <button
+                    onClick={async () => {
+                      try {
+                        await agentsApi.creationProposals.approve(p.id);
+                        await Promise.all([fetchAgents(), fetchAgentProposals()]);
+                      } catch (e) { console.error("Approve failed:", e); }
+                    }}
+                    className="flex items-center gap-1 px-3 py-1 rounded-lg bg-purple-600 text-white text-xs font-medium hover:bg-purple-700"
+                  >
+                    <CheckCircle2 size={12} /> Approve & Create
+                  </button>
+                  <button
+                    onClick={async () => {
+                      try {
+                        await agentsApi.creationProposals.reject(p.id);
+                        await fetchAgentProposals();
+                      } catch (e) { console.error("Reject failed:", e); }
+                    }}
+                    className="flex items-center gap-1 px-3 py-1 rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs font-medium hover:bg-slate-300"
+                  >
+                    <XCircle size={12} /> Reject
+                  </button>
+                </div>
+              </div>
+            ))}
+
+            {agentProposals.filter((p: any) => p.status !== "pending").length > 0 && (
+              <div className="space-y-2 mt-4">
+                <h4 className="text-xs font-semibold uppercase text-slate-400">History</h4>
+                {agentProposals.filter((p: any) => p.status !== "pending").reverse().slice(0, 10).map((p: any) => (
+                  <div key={p.id} className="flex items-center gap-3 px-4 py-2 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+                    {p.status === "approved" ? (
+                      <CheckCircle2 size={14} className="text-green-500 shrink-0" />
+                    ) : (
+                      <XCircle size={14} className="text-red-400 shrink-0" />
+                    )}
+                    <span className="text-sm font-medium text-slate-700 dark:text-slate-300 flex-1">{p.proposed_name}</span>
+                    <span className="text-xs text-slate-400">
+                      {p.reviewed_at ? new Date(p.reviewed_at).toLocaleDateString() : ""}
+                    </span>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         )}

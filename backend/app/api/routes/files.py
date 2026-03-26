@@ -82,7 +82,7 @@ async def upload_file(
     # Ingest chunks into vector store
     chunks_indexed = await ingest_chunks(project_id, result.chunks)
 
-    return {
+    response = {
         "status": "processed",
         "file_id": file_id,
         "filename": file.filename,
@@ -90,7 +90,11 @@ async def upload_file(
         "total_chars": result.total_chars,
         "pages": result.pages,
         "chunks_indexed": chunks_indexed,
+        "threat_level": result.threat_level,
     }
+    if result.threats:
+        response["threats"] = result.threats
+    return response
 
 
 @router.get("/files/{project_id}")

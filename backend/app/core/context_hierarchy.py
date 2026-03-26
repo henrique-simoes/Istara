@@ -24,7 +24,10 @@ from sqlalchemy import select, String, Text, Integer, DateTime, Boolean
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped, mapped_column
 
+from app.core.content_guard import ContentGuard
 from app.models.database import Base, async_session
+
+_guard = ContentGuard()
 
 logger = logging.getLogger(__name__)
 
@@ -121,7 +124,13 @@ class ContextHierarchy:
             level_docs = by_level[level]
             level_name = level_names.get(level, f"Level {level}")
             for doc in level_docs:
-                layers.append(f"## {level_name} Context: {doc.name}\n{doc.content}")
+                # Wrap user-provided contexts (levels 1-4) in untrusted
+                # delimiters; platform (0) and agent (5) contexts are trusted.
+                if 1 <= level <= 4:
+                    content = _guard.wrap_untrusted(doc.content, source=doc.name)
+                else:
+                    content = doc.content
+                layers.append(f"## {level_name} Context: {doc.name}\n{content}")
 
         # Add inline task context (from Kanban card)
         if task_context:

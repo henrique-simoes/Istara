@@ -1,5 +1,7 @@
 """Skills management API — CRUD, versioning, self-improvement, execution, health monitoring."""
 
+from __future__ import annotations
+
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
@@ -87,6 +89,52 @@ async def get_all_proposals(limit: int = 50):
     return {
         "proposals": [p.to_dict() for p in skill_manager.get_all_proposals(limit)],
     }
+
+
+# --- Skill Creation Proposals ---
+
+@router.get("/skills/creation-proposals/pending")
+async def get_pending_creation_proposals():
+    """Get all pending skill creation proposals."""
+    proposals = skill_manager.get_pending_creation_proposals()
+    return {
+        "proposals": [p.to_dict() for p in proposals],
+        "count": len(proposals),
+    }
+
+
+@router.get("/skills/creation-proposals/all")
+async def get_all_creation_proposals(limit: int = 20):
+    """Get all skill creation proposals (pending, approved, rejected)."""
+    proposals = skill_manager.get_all_creation_proposals(limit)
+    return {
+        "proposals": [p.to_dict() for p in proposals],
+    }
+
+
+@router.post("/skills/creation-proposals/{proposal_id}/approve")
+async def approve_creation_proposal(proposal_id: str):
+    """Approve a skill creation proposal — writes definition file and registers skill."""
+    result = skill_manager.approve_creation_proposal(proposal_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Creation proposal not found or not pending")
+
+    # Register the new skill in the runtime registry
+    try:
+        registry.register_from_definition(result["name"])
+    except Exception as e:
+        # Skill file was written but runtime registration failed — not fatal
+        pass
+
+    return {"status": "approved", "proposal_id": proposal_id, "skill_name": result["name"]}
+
+
+@router.post("/skills/creation-proposals/{proposal_id}/reject")
+async def reject_creation_proposal(proposal_id: str, reason: str = ""):
+    """Reject a skill creation proposal."""
+    if not skill_manager.reject_creation_proposal(proposal_id, reason):
+        raise HTTPException(status_code=404, detail="Creation proposal not found or not pending")
+    return {"status": "rejected", "proposal_id": proposal_id}
 
 
 # --- Parameterized routes ---

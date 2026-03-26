@@ -175,6 +175,10 @@ async function loadScenarios() {
     "38-task-routing",
     "39-data-migration",
     "40-agent-identity-editing",
+    "41-skill-creation",
+    "42-content-guard",
+    "43-process-hardening",
+    "44-agent-factory",
   ];
 
   const scenarios = [];

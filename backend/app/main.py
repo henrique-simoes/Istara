@@ -1,5 +1,7 @@
 """ReClaw — Local-first AI agent for UX Research."""
 
+from __future__ import annotations
+
 import asyncio
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
@@ -43,9 +45,14 @@ def _persist_env_startup(key: str, value: str, logger=None) -> None:
             logger.warning(f"Could not persist {key} to .env: {e}")
 
 
+# Global shutdown flag for graceful termination
+_shutting_down = False
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Application startup and shutdown lifecycle."""
+    global _shutting_down
     # Startup
     app_settings.ensure_dirs()
     await init_db()
@@ -56,8 +63,27 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         await seed_system_agents(db)
     skill_manager.load_all()
 
-    # Startup cleanup: remove orphaned sessions/messages whose project no longer exists
+    # Recover incomplete tasks from previous crash
     import logging as _startup_log
+    _recovery_log = _startup_log.getLogger("startup.recovery")
+    try:
+        from app.core.checkpoint import recover_incomplete
+        async with async_session() as db:
+            recovered = await recover_incomplete(db)
+            if recovered:
+                _recovery_log.warning(
+                    f"Recovered {len(recovered)} incomplete task(s) from last session:"
+                )
+                for r in recovered:
+                    _recovery_log.warning(
+                        f"  task={r['task_id']} phase={r['phase']} agent={r['agent_id']}"
+                    )
+            else:
+                _recovery_log.info("No incomplete tasks to recover.")
+    except Exception as e:
+        _recovery_log.warning(f"Checkpoint recovery skipped: {e}")
+
+    # Startup cleanup: remove orphaned sessions/messages whose project no longer exists
     _cleanup_log = _startup_log.getLogger("startup.cleanup")
     try:
         from sqlalchemy import delete as sa_delete, select as sa_select
@@ -247,6 +273,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     yield
 
     # Shutdown
+    import logging as _shutdown_log
+    _sd_log = _shutdown_log.getLogger("shutdown")
+    _sd_log.info("Initiating graceful shutdown...")
+    _shutting_down = True
+
     await channel_router.stop_all()
     watcher.stop()
     devops_agent.stop()
@@ -263,12 +294,25 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     for worker_id in list(get_active_workers().keys()):
         await stop_custom_worker(worker_id)
 
+    # Wait up to 30s for agents to finish in-flight tasks
+    _sd_log.info("Waiting up to 30s for agents to finish in-flight tasks...")
+    for _wait_i in range(30):
+        if agent_orchestrator._current_task_id is None:
+            break
+        await asyncio.sleep(1)
+    else:
+        _sd_log.warning(
+            f"Shutdown timeout: agent still working on task {agent_orchestrator._current_task_id}"
+        )
+
     for task in [watcher_task, *bg_tasks]:
         task.cancel()
         try:
             await task
         except asyncio.CancelledError:
             pass
+
+    _sd_log.info("Shutdown complete.")
 
 
 app = FastAPI(

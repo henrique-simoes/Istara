@@ -3,6 +3,8 @@
 Fills audit gap #5: user-configurable cron scheduling for agents and skills.
 """
 
+from __future__ import annotations
+
 import asyncio
 import logging
 from datetime import datetime, timedelta, timezone
@@ -33,6 +35,7 @@ class ScheduledTask(Base):
     skill_name: Mapped[str] = mapped_column(String(100), default="")
     project_id: Mapped[str] = mapped_column(String(36), nullable=False)
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    is_running: Mapped[bool] = mapped_column(Boolean, default=False)
     last_run: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     next_run: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
@@ -154,9 +157,11 @@ class Scheduler:
         async with async_session() as db:
             # Fetch all enabled tasks then filter in Python to avoid
             # SQLite naive-vs-aware datetime comparison crashes.
+            # Also skip tasks that are currently running.
             result = await db.execute(
                 select(ScheduledTask).where(
                     ScheduledTask.enabled.is_(True),
+                    ScheduledTask.is_running.is_(False),
                 )
             )
             all_enabled = result.scalars().all()
@@ -166,10 +171,17 @@ class Scheduler:
             ]
 
             for task in due_tasks:
+                # Mark as running before execution
+                task.is_running = True
+                await db.commit()
+
                 try:
                     await self._execute(task, db)
                 except Exception:
                     logger.exception(f"Failed to execute scheduled task {task.id} ({task.name})")
+                finally:
+                    # Always clear the running flag
+                    task.is_running = False
 
                 # Update timestamps regardless of success
                 task.last_run = now
