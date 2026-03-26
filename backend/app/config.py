@@ -63,6 +63,13 @@ class Settings(BaseSettings):
     dag_rollup_threshold: int = 4
     dag_summary_max_tokens: int = 300
 
+    # Design integrations
+    stitch_api_key: str = ""
+    stitch_api_host: str = "https://generativelanguage.googleapis.com"
+    figma_api_token: str = ""
+    figma_api_host: str = "https://api.figma.com"
+    design_screens_dir: str = "./data/design_screens"
+
     # Agent Identity & Evolution
     prompt_compression_strategy: str = "llmlingua"  # "llmlingua", "prompt_rag", "truncate"
     prompt_rag_use_embeddings: bool = True  # Use embedding similarity for Prompt RAG
@@ -76,6 +83,7 @@ class Settings(BaseSettings):
         """Create required directories if they don't exist."""
         for dir_path in [self.upload_dir, self.projects_dir, self.lance_db_path, self.agent_avatars_dir]:
             Path(dir_path).mkdir(parents=True, exist_ok=True)
+        Path(self.design_screens_dir).mkdir(parents=True, exist_ok=True)
 
 
 settings = Settings()

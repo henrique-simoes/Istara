@@ -47,6 +47,7 @@ async def init_db() -> None:
     from app.core.context_hierarchy import ContextDocument  # noqa: F401
     from app.core.scheduler import ScheduledTask  # noqa: F401
     from app.models.context_dag import ContextDAGNode  # noqa: F401
+    from app.models.design_screen import DesignScreen, DesignBrief, DesignDecision  # noqa: F401
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

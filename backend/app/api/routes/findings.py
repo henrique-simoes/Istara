@@ -1,4 +1,6 @@
-"""Findings CRUD API routes — Nuggets, Facts, Insights, Recommendations."""
+"""Findings CRUD API routes — Nuggets, Facts, Insights, Recommendations, DesignDecisions."""
+
+from __future__ import annotations
 
 import json
 import uuid
@@ -10,6 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.database import get_db
+from app.models.design_screen import DesignDecision, DesignScreen
 from app.models.finding import Fact, Insight, Nugget, Recommendation
 
 router = APIRouter()
@@ -615,4 +618,179 @@ async def get_findings_summary(project_id: str, db: AsyncSession = Depends(get_d
             "recommendations": len(rec_list),
         },
         "by_phase": phases,
+    }
+
+
+# --- Design Decision Schemas ---
+
+
+class DesignDecisionCreate(BaseModel):
+    project_id: str
+    text: str
+    recommendation_ids: list[str] = []
+    screen_ids: list[str] = []
+    rationale: str = ""
+    phase: str = "develop"
+    agent_id: str | None = None
+
+
+class DesignDecisionResponse(BaseModel):
+    id: str
+    project_id: str
+    agent_id: str | None
+    text: str
+    recommendation_ids: list[str]
+    screen_ids: list[str]
+    rationale: str
+    phase: str
+    confidence: float
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+    @classmethod
+    def from_orm_with_ids(cls, dd: DesignDecision) -> "DesignDecisionResponse":
+        rec_ids = json.loads(dd.recommendation_ids) if dd.recommendation_ids else []
+        scr_ids = json.loads(dd.screen_ids) if dd.screen_ids else []
+        return cls(
+            id=dd.id,
+            project_id=dd.project_id,
+            agent_id=dd.agent_id,
+            text=dd.text,
+            recommendation_ids=rec_ids,
+            screen_ids=scr_ids,
+            rationale=dd.rationale,
+            phase=dd.phase,
+            confidence=dd.confidence,
+            created_at=dd.created_at,
+        )
+
+
+# --- Design Decision Routes ---
+
+
+@router.get("/findings/design-decisions", response_model=list[DesignDecisionResponse])
+async def list_design_decisions(
+    project_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
+    """List design decisions, optionally filtered by project."""
+    query = select(DesignDecision).order_by(DesignDecision.created_at.desc())
+    if project_id:
+        query = query.where(DesignDecision.project_id == project_id)
+    result = await db.execute(query)
+    return [DesignDecisionResponse.from_orm_with_ids(dd) for dd in result.scalars().all()]
+
+
+@router.post("/findings/design-decisions", response_model=DesignDecisionResponse, status_code=201)
+async def create_design_decision(
+    data: DesignDecisionCreate,
+    db: AsyncSession = Depends(get_db),
+):
+    """Create a new design decision linking recommendations to screens."""
+    dd = DesignDecision(
+        id=str(uuid.uuid4()),
+        project_id=data.project_id,
+        agent_id=data.agent_id,
+        text=data.text,
+        recommendation_ids=json.dumps(data.recommendation_ids),
+        screen_ids=json.dumps(data.screen_ids),
+        rationale=data.rationale,
+        phase=data.phase,
+    )
+    db.add(dd)
+    await db.commit()
+    await db.refresh(dd)
+    return DesignDecisionResponse.from_orm_with_ids(dd)
+
+
+@router.delete("/findings/design-decisions/{dd_id}", status_code=204)
+async def delete_design_decision(dd_id: str, db: AsyncSession = Depends(get_db)):
+    """Delete a design decision."""
+    result = await db.execute(select(DesignDecision).where(DesignDecision.id == dd_id))
+    dd = result.scalar_one_or_none()
+    if not dd:
+        raise HTTPException(status_code=404, detail="Design decision not found")
+    await db.delete(dd)
+    await db.commit()
+
+
+# --- Extended Evidence Chain (with DesignDecision -> DesignScreen) ---
+
+
+@router.get("/findings/{finding_type}/{finding_id}/evidence-chain-extended")
+async def get_evidence_chain_extended(
+    finding_type: str,
+    finding_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """Get the full evidence chain including DesignDecision and DesignScreen nodes.
+
+    Extends the standard evidence-chain to traverse:
+    Nugget -> Fact -> Insight -> Recommendation -> DesignDecision -> DesignScreen
+    """
+    type_map = {
+        "nugget": Nugget, "fact": Fact, "insight": Insight,
+        "recommendation": Recommendation, "design_decision": DesignDecision,
+    }
+    model = type_map.get(finding_type)
+    if not model:
+        raise HTTPException(status_code=400, detail=f"Invalid finding type: {finding_type}")
+
+    result = await db.execute(select(model).where(model.id == finding_id))
+    finding = result.scalar_one_or_none()
+    if not finding:
+        raise HTTPException(status_code=404, detail="Finding not found")
+
+    chain: dict[str, list] = {
+        "recommendation": [], "insight": [], "fact": [], "nugget": [],
+        "design_decision": [], "design_screen": [],
+    }
+
+    def parse_ids(raw: str | None) -> list[str]:
+        if not raw:
+            return []
+        try:
+            return json.loads(raw)
+        except (json.JSONDecodeError, TypeError):
+            return []
+
+    project_id = finding.project_id
+
+    # For recommendations: also find DesignDecisions that reference them
+    if finding_type == "recommendation":
+        chain["recommendation"] = [RecommendationResponse.from_orm_with_ids(finding)]
+        # Find design decisions that link this recommendation
+        dd_rows = await db.execute(
+            select(DesignDecision).where(DesignDecision.project_id == project_id)
+        )
+        for dd in dd_rows.scalars().all():
+            if finding_id in parse_ids(dd.recommendation_ids):
+                chain["design_decision"].append(dd.to_dict())
+                # Follow to screens
+                for sid in parse_ids(dd.screen_ids):
+                    sr = await db.execute(select(DesignScreen).where(DesignScreen.id == sid))
+                    scr = sr.scalar_one_or_none()
+                    if scr:
+                        chain["design_screen"].append(scr.to_dict())
+
+    elif finding_type == "design_decision":
+        chain["design_decision"] = [finding.to_dict()]
+        # Down: screens
+        for sid in parse_ids(finding.screen_ids):
+            sr = await db.execute(select(DesignScreen).where(DesignScreen.id == sid))
+            scr = sr.scalar_one_or_none()
+            if scr:
+                chain["design_screen"].append(scr.to_dict())
+        # Up: recommendations
+        for rid in parse_ids(finding.recommendation_ids):
+            rr = await db.execute(select(Recommendation).where(Recommendation.id == rid))
+            rec = rr.scalar_one_or_none()
+            if rec:
+                chain["recommendation"].append(RecommendationResponse.from_orm_with_ids(rec))
+
+    return {
+        "finding_type": finding_type,
+        "finding_id": finding_id,
+        "chain": chain,
     }
