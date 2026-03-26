@@ -179,6 +179,9 @@ async function loadScenarios() {
     "42-content-guard",
     "43-process-hardening",
     "44-agent-factory",
+    "45-interfaces-menu",
+    "46-stitch-figma-integration",
+    "47-atomic-research-design",
   ];
 
   const scenarios = [];

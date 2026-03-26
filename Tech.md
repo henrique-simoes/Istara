@@ -1196,6 +1196,51 @@ Switching between SQLite (local mode) and PostgreSQL (team mode) no longer risks
 - Scheduler deduplication: `is_running` flag prevents concurrent execution
 - Graceful shutdown: 30s drain period for in-flight tasks
 
+### Interfaces Menu & Research→Design Bridge
+
+The Interfaces menu creates a bridge between UX Research and Product Design within ReClaw. It provides:
+
+- **Design Chat**: An AI design assistant (Design Lead agent) with automatic research context injection via RAG. Uses the same SSE streaming and ReAct tool loop as the main Chat, with design-specific tools (generate_screen, edit_screen, create_variant, search_findings_for_design, create_design_brief, import_from_figma, list_screens).
+
+- **Screen Generation**: Text-to-UI generation via Google Stitch SDK integration. Supports device types (Mobile/Desktop/Tablet/Agnostic) and AI model selection. Screens can be seeded from research findings for evidence-grounded design.
+
+- **Figma Integration**: REST API proxy for Figma v1 API. Import designs from Figma URLs, export generated screens, and extract design systems (components + styles).
+
+- **Design Handoff**: Automated design brief generation from project Insights and Recommendations. Dev spec generation from generated screen HTML.
+
+- **First-Time Onboarding**: Setup modal guides users through Stitch/Figma API key configuration with privacy warnings about external data sharing.
+
+### Atomic Research Extension — DesignDecision
+
+The Atomic Research evidence chain extends into design:
+```
+Nugget → Fact → Insight → Recommendation → DesignDecision → DesignScreen
+```
+
+DesignDecision is a new finding type that links Recommendations to design screens, maintaining full evidence traceability from raw research data to generated UI.
+
+### Google Stitch Integration (Apache 2.0)
+
+ReClaw integrates with Google Stitch via a Python httpx wrapper (backend/app/services/stitch_service.py). The SDK is TypeScript-only, so the backend calls Stitch's REST API directly. All generated HTML is scanned through ContentGuard for prompt injection protection.
+
+Four Stitch Skills are imported as ReClaw skill definitions (Apache 2.0 license):
+- stitch-design: Prompt enhancement + screen generation
+- stitch-enhance-prompt: Design prompt refinement
+- stitch-react-components: HTML→React conversion
+- stitch-design-system: Design system synthesis
+
+### Figma MCP Integration
+
+ReClaw proxies Figma's REST API v1 (api.figma.com) via backend/app/services/figma_service.py. Supports: file retrieval, node inspection, image export, component listing, style extraction, and design system synthesis.
+
+### Privacy & Local-First Considerations
+
+Both Stitch and Figma integrations break ReClaw's local-first approach by sending data to external services. The system provides:
+- First-time onboarding with explicit privacy warnings
+- Per-session privacy acknowledgment banners before external API calls
+- Clear visual indicators when data leaves the local environment
+- All API keys stored in .env, never in database
+
 ### Academic References
 
 | Method | Paper | Venue |

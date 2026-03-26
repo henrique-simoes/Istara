@@ -1,6 +1,6 @@
 /** API client for ReClaw backend. */
 
-import type { ChatSession, ChatMessage, InferencePresetConfig, DAGNode, DAGHealth, DAGExpandResult, DAGGrepResult, ReclawDocument, DocumentContent, DocumentTag, DocumentStats } from "@/lib/types";
+import type { ChatSession, ChatMessage, InferencePresetConfig, DAGNode, DAGHealth, DAGExpandResult, DAGGrepResult, ReclawDocument, DocumentContent, DocumentTag, DocumentStats, InterfacesStatus } from "@/lib/types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -500,6 +500,76 @@ export const documents = {
     post<{ synced: number; total: number }>(`/api/documents/sync/${projectId}`, {}),
   stats: (projectId: string) =>
     get<DocumentStats>(`/api/documents/stats/${projectId}`),
+};
+
+// --- Interfaces ---
+
+export const interfaces = {
+  status: () => get<InterfacesStatus>("/api/interfaces/status"),
+
+  screens: {
+    list: (projectId: string) => get<any[]>(`/api/interfaces/screens?project_id=${projectId}`),
+    get: (screenId: string) => get<any>(`/api/interfaces/screens/${screenId}`),
+    delete: (screenId: string) => del(`/api/interfaces/screens/${screenId}`),
+  },
+
+  generate: (data: { project_id: string; prompt: string; device_type?: string; model?: string; seed_finding_ids?: string[] }) =>
+    post<any>("/api/interfaces/screens/generate", data),
+  generateVariants: (data: { screen_id: string; variant_type: string; count?: number }) =>
+    post<any>("/api/interfaces/screens/variant", data),
+  editScreen: (data: { screen_id: string; instructions: string }) =>
+    post<any>("/api/interfaces/screens/edit", data),
+
+  figma: {
+    import: (data: { project_id: string; figma_url: string }) =>
+      post<any>("/api/interfaces/figma/import", data),
+    export: (data: { screen_id: string; figma_file_key: string }) =>
+      post<any>("/api/interfaces/figma/export", data),
+    designSystem: (fileKey: string) => get<any>(`/api/interfaces/figma/design-system/${fileKey}`),
+    components: (fileKey: string) => get<any>(`/api/interfaces/figma/components/${fileKey}`),
+  },
+
+  handoff: {
+    generateBrief: (data: { project_id: string }) =>
+      post<any>("/api/interfaces/handoff/brief", data),
+    generateDevSpec: (data: { screen_id: string }) =>
+      post<any>("/api/interfaces/handoff/dev-spec", data),
+    listBriefs: (projectId: string) => get<{ briefs: any[] }>(`/api/interfaces/handoff/briefs?project_id=${projectId}`),
+  },
+
+  configure: {
+    stitch: (data: { api_key: string }) => post<any>("/api/interfaces/configure/stitch", data),
+    figma: (data: { api_token: string }) => post<any>("/api/interfaces/configure/figma", data),
+  },
+
+  designChat: {
+    send: async function* (projectId: string, message: string, sessionId?: string) {
+      const payload: Record<string, unknown> = { message, project_id: projectId };
+      if (sessionId) payload.session_id = sessionId;
+      const res = await fetch(`${API_BASE}/api/interfaces/design-chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ..._getAuthHeaders() },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error(`Design chat error: ${res.status}`);
+      if (!res.body) throw new Error("No response body");
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+        for (const line of lines) {
+          if (line.startsWith("data: ")) {
+            try { yield JSON.parse(line.slice(6)); } catch { /* skip */ }
+          }
+        }
+      }
+    },
+  },
 };
 
 // --- Context DAG ---

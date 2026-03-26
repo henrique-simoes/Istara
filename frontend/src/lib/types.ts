@@ -310,3 +310,63 @@ export interface DocumentStats {
   by_phase: Record<string, number>;
   by_status: Record<string, number>;
 }
+
+// --- Interfaces / Design ---
+
+export type DesignScreenStatus = "generating" | "ready" | "error";
+export type DeviceType = "MOBILE" | "DESKTOP" | "TABLET" | "AGNOSTIC";
+
+export interface DesignScreen {
+  id: string;
+  project_id: string;
+  title: string;
+  description: string;
+  prompt: string;
+  device_type: DeviceType;
+  model_used: string;
+  html_content: string;
+  screenshot_path: string;
+  stitch_project_id: string | null;
+  stitch_screen_id: string | null;
+  parent_screen_id: string | null;
+  variant_type: string | null;
+  figma_file_key: string | null;
+  figma_node_id: string | null;
+  status: DesignScreenStatus;
+  source_findings: string[];
+  metadata_json: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DesignBrief {
+  id: string;
+  project_id: string;
+  title: string;
+  content: string;
+  source_insight_ids: string[];
+  source_recommendation_ids: string[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DesignDecision {
+  id: string;
+  project_id: string;
+  agent_id: string | null;
+  text: string;
+  recommendation_ids: string[];
+  screen_ids: string[];
+  rationale: string;
+  phase: string;
+  confidence: number;
+  created_at: string;
+}
+
+export interface InterfacesStatus {
+  stitch_configured: boolean;
+  figma_configured: boolean;
+  onboarding_needed: boolean;
+  screens_count: number;
+  briefs_count: number;
+}

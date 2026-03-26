@@ -32,6 +32,7 @@ class ChatSession(Base):
     custom_temperature: Mapped[float | None] = mapped_column(nullable=True)
     custom_max_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
     custom_context_window: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    session_type: Mapped[str] = mapped_column(String(20), default="chat")
     starred: Mapped[bool] = mapped_column(Boolean, default=False)
     archived: Mapped[bool] = mapped_column(Boolean, default=False)
     message_count: Mapped[int] = mapped_column(Integer, default=0)
@@ -56,6 +57,7 @@ class ChatSession(Base):
             "title": self.title,
             "agent_id": self.agent_id,
             "model_override": self.model_override,
+            "session_type": self.session_type,
             "inference_preset": self.inference_preset.value if self.inference_preset else "medium",
             "custom_temperature": self.custom_temperature,
             "custom_max_tokens": self.custom_max_tokens,
