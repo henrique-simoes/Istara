@@ -1,10 +1,16 @@
-"""Python wrapper for Google Stitch REST API."""
+"""Google Stitch integration via MCP (Model Context Protocol).
+
+Stitch only exposes an MCP server at https://stitch.googleapis.com/mcp.
+This service wraps the MCP client to provide async Python methods for
+project management, screen generation, editing, variants, and HTML retrieval.
+"""
 
 from __future__ import annotations
 
+import json
 import logging
-
-import httpx
+from pathlib import Path
+from typing import Any
 
 from app.config import settings
 from app.core.content_guard import ContentGuard
@@ -12,46 +18,82 @@ from app.core.content_guard import ContentGuard
 logger = logging.getLogger(__name__)
 _guard = ContentGuard()
 
+MCP_URL = "https://stitch.googleapis.com/mcp"
+
 
 class StitchService:
-    """Python wrapper for Google Stitch REST API."""
+    """Python wrapper for Google Stitch via MCP protocol."""
 
-    def __init__(self) -> None:
-        self._base_url = ""
-        self._api_key = ""
+    # ------------------------------------------------------------------
+    # Connection helpers
+    # ------------------------------------------------------------------
 
     def _ensure_configured(self) -> None:
-        self._api_key = settings.stitch_api_key
-        self._base_url = settings.stitch_api_host
-        if not self._api_key:
-            raise ValueError("Stitch API key not configured. Set STITCH_API_KEY in settings.")
+        if not settings.stitch_api_key:
+            raise ValueError(
+                "Stitch API key not configured. Set STITCH_API_KEY in settings."
+            )
 
-    def _headers(self) -> dict[str, str]:
-        return {"Authorization": f"Bearer {self._api_key}", "Content-Type": "application/json"}
+    async def _call_tool(self, tool_name: str, arguments: dict[str, Any]) -> Any:
+        """Open a short-lived MCP session and call a single tool."""
+        self._ensure_configured()
+
+        from mcp.client.streamable_http import streamablehttp_client
+        from mcp import ClientSession
+
+        headers = {"X-Goog-Api-Key": settings.stitch_api_key}
+        async with streamablehttp_client(MCP_URL, headers=headers) as (read, write, _):
+            async with ClientSession(read, write) as session:
+                await session.initialize()
+                result = await session.call_tool(tool_name, arguments)
+
+                # Parse first text content block as JSON if possible
+                for content in result.content:
+                    if hasattr(content, "text") and content.text:
+                        try:
+                            return json.loads(content.text)
+                        except (json.JSONDecodeError, ValueError):
+                            return {"text": content.text}
+                    if hasattr(content, "data") and content.data:
+                        return {"image_data": content.data, "mime_type": getattr(content, "mimeType", "image/png")}
+                return {}
+
+    # ------------------------------------------------------------------
+    # Health
+    # ------------------------------------------------------------------
 
     async def health_check(self) -> bool:
-        """Check whether the Stitch API is reachable."""
+        """Check whether the Stitch MCP server is reachable."""
         try:
             self._ensure_configured()
-            async with httpx.AsyncClient(timeout=10) as client:
-                resp = await client.get(
-                    f"{self._base_url}/v1/projects", headers=self._headers()
-                )
-                return resp.status_code < 500
-        except Exception:
+            result = await self._call_tool("list_projects", {})
+            return isinstance(result, dict)
+        except Exception as exc:
+            logger.debug("Stitch health check failed: %s", exc)
             return False
 
-    async def create_project(self, name: str) -> dict:
-        """Create a new Stitch project."""
-        self._ensure_configured()
-        async with httpx.AsyncClient(timeout=30) as client:
-            resp = await client.post(
-                f"{self._base_url}/v1/projects",
-                headers=self._headers(),
-                json={"title": name},
-            )
-            resp.raise_for_status()
-            return resp.json()
+    # ------------------------------------------------------------------
+    # Projects
+    # ------------------------------------------------------------------
+
+    async def create_project(self, title: str) -> dict:
+        """Create a new Stitch project. Returns {name, title, ...}."""
+        data = await self._call_tool("create_project", {"title": title})
+        return data
+
+    async def list_projects(self) -> list[dict]:
+        """List all accessible Stitch projects."""
+        data = await self._call_tool("list_projects", {})
+        return data.get("projects", []) if isinstance(data, dict) else []
+
+    @staticmethod
+    def extract_project_id(project_name: str) -> str:
+        """Extract numeric ID from 'projects/12345' format."""
+        return project_name.split("/")[-1] if "/" in project_name else project_name
+
+    # ------------------------------------------------------------------
+    # Screens
+    # ------------------------------------------------------------------
 
     async def generate_screen(
         self,
@@ -60,77 +102,186 @@ class StitchService:
         device_type: str = "DESKTOP",
         model: str = "GEMINI_3_FLASH",
     ) -> dict:
-        """Generate a UI screen from a text prompt."""
-        self._ensure_configured()
-        async with httpx.AsyncClient(timeout=120) as client:
-            resp = await client.post(
-                f"{self._base_url}/v1/projects/{project_id}/screens:generate",
-                headers=self._headers(),
-                json={"prompt": prompt, "deviceType": device_type, "modelId": model},
-            )
-            resp.raise_for_status()
-            data = resp.json()
-            # Scan generated HTML for injection
-            if "html" in data:
-                scan = _guard.scan_text(data["html"])
-                if not scan.clean:
-                    logger.warning(f"Stitch HTML flagged: {scan.threats}")
-                    data["html"] = scan.cleaned_text
-            return data
+        """Generate a UI screen from a text prompt.
+
+        Returns the raw Stitch response with outputComponents, sessionId, etc.
+        """
+        args: dict[str, Any] = {
+            "projectId": project_id,
+            "prompt": prompt,
+            "deviceType": device_type,
+        }
+        if model and model != "MODEL_ID_UNSPECIFIED":
+            args["modelId"] = model
+
+        data = await self._call_tool("generate_screen_from_text", args)
+        return data
+
+    async def list_screens(self, project_id: str) -> list[dict]:
+        """List all screens in a project."""
+        data = await self._call_tool("list_screens", {"projectId": project_id})
+        return data.get("screens", []) if isinstance(data, dict) else []
+
+    async def get_screen(self, project_id: str, screen_id: str) -> dict:
+        """Get screen details. Use full resource name format."""
+        name = f"projects/{project_id}/screens/{screen_id}"
+        data = await self._call_tool("get_screen", {
+            "name": name,
+            "projectId": project_id,
+            "screenId": screen_id,
+        })
+        return data
+
+    async def get_screen_html(self, project_id: str, screen_id: str) -> str:
+        """Get the HTML content of a screen.
+
+        Fetches screen details, finds the HTML download URL, downloads it,
+        scans with ContentGuard, and returns the HTML string.
+        """
+        screen_data = await self.get_screen(project_id, screen_id)
+        html_url = screen_data.get("htmlUrl") or screen_data.get("html_url", "")
+
+        if html_url:
+            import httpx
+            async with httpx.AsyncClient(timeout=30) as client:
+                resp = await client.get(html_url)
+                resp.raise_for_status()
+                html = resp.text
+        else:
+            # Some responses embed HTML inline
+            html = screen_data.get("html", screen_data.get("htmlContent", ""))
+
+        # Security: scan for injection
+        if html:
+            scan = _guard.scan_text(html)
+            if not scan.clean:
+                logger.warning("Stitch HTML flagged: %s", scan.threats)
+                html = scan.cleaned_text
+
+        return html
+
+    async def get_screen_image(self, project_id: str, screen_id: str) -> bytes | None:
+        """Get screenshot image as bytes. Returns None if unavailable."""
+        name = f"projects/{project_id}/screens/{screen_id}"
+        try:
+            data = await self._call_tool("get_screen", {
+                "name": name,
+                "projectId": project_id,
+                "screenId": screen_id,
+            })
+            image_url = data.get("imageUrl") or data.get("image_url", "")
+            if image_url:
+                import httpx
+                async with httpx.AsyncClient(timeout=30) as client:
+                    resp = await client.get(image_url)
+                    resp.raise_for_status()
+                    return resp.content
+            # Check for inline base64 image
+            if data.get("image_data"):
+                import base64
+                return base64.b64decode(data["image_data"])
+        except Exception as exc:
+            logger.warning("Failed to get screen image: %s", exc)
+        return None
+
+    async def save_screen_image(
+        self, project_id: str, screen_id: str, dest_dir: str | None = None
+    ) -> str | None:
+        """Download and save screenshot to design_screens_dir. Returns path."""
+        image_bytes = await self.get_screen_image(project_id, screen_id)
+        if not image_bytes:
+            return None
+
+        save_dir = Path(dest_dir or settings.design_screens_dir)
+        save_dir.mkdir(parents=True, exist_ok=True)
+        path = save_dir / f"{screen_id}.png"
+        path.write_bytes(image_bytes)
+        return str(path)
+
+    # ------------------------------------------------------------------
+    # Edit & Variants (incremental — not regenerate from scratch)
+    # ------------------------------------------------------------------
 
     async def edit_screen(
-        self, screen_id: str, project_id: str, instructions: str
+        self,
+        project_id: str,
+        screen_ids: list[str],
+        instructions: str,
+        device_type: str | None = None,
+        model: str | None = None,
     ) -> dict:
-        """Edit an existing screen with natural-language instructions."""
-        self._ensure_configured()
-        async with httpx.AsyncClient(timeout=120) as client:
-            resp = await client.post(
-                f"{self._base_url}/v1/projects/{project_id}/screens/{screen_id}:edit",
-                headers=self._headers(),
-                json={"prompt": instructions},
-            )
-            resp.raise_for_status()
-            data = resp.json()
-            if "html" in data:
-                scan = _guard.scan_text(data["html"])
-                if not scan.clean:
-                    data["html"] = scan.cleaned_text
-            return data
+        """Edit existing screens with natural-language instructions.
+
+        This is an INCREMENTAL edit — Stitch modifies the existing screens
+        rather than generating from scratch.
+        """
+        args: dict[str, Any] = {
+            "projectId": project_id,
+            "screenIds": screen_ids,
+            "prompt": instructions,
+        }
+        if device_type:
+            args["deviceType"] = device_type
+        if model:
+            args["modelId"] = model
+
+        data = await self._call_tool("edit_screens", args)
+        return data
 
     async def generate_variants(
         self,
-        screen_id: str,
         project_id: str,
-        variant_type: str = "EXPLORE",
-        count: int = 3,
-    ) -> list:
-        """Generate design variants of an existing screen."""
-        self._ensure_configured()
-        async with httpx.AsyncClient(timeout=180) as client:
-            resp = await client.post(
-                f"{self._base_url}/v1/projects/{project_id}/screens/{screen_id}:variants",
-                headers=self._headers(),
-                json={"creativeRange": variant_type, "variantCount": count},
-            )
-            resp.raise_for_status()
-            variants = resp.json().get("variants", [])
-            for v in variants:
-                if "html" in v:
-                    scan = _guard.scan_text(v["html"])
-                    if not scan.clean:
-                        v["html"] = scan.cleaned_text
-            return variants
+        screen_ids: list[str],
+        prompt: str,
+        variant_count: int = 3,
+        creative_range: str = "EXPLORE",
+        aspects: list[str] | None = None,
+    ) -> dict:
+        """Generate design variants of existing screens.
 
-    async def get_screen(self, project_id: str, screen_id: str) -> dict:
-        """Retrieve a single screen by ID."""
-        self._ensure_configured()
-        async with httpx.AsyncClient(timeout=30) as client:
-            resp = await client.get(
-                f"{self._base_url}/v1/projects/{project_id}/screens/{screen_id}",
-                headers=self._headers(),
-            )
-            resp.raise_for_status()
-            return resp.json()
+        creative_range: REFINE | EXPLORE | REIMAGINE
+        aspects: COLOR_SCHEME, LAYOUT, IMAGES, TEXT_FONT, TEXT_CONTENT
+        """
+        args: dict[str, Any] = {
+            "projectId": project_id,
+            "screenIds": screen_ids,
+            "prompt": prompt,
+            "options": {
+                "variantCount": min(max(variant_count, 1), 5),
+                "creativeRange": creative_range,
+            },
+        }
+        if aspects:
+            args["options"]["aspects"] = aspects
+
+        data = await self._call_tool("generate_variants", args)
+        return data
+
+    # ------------------------------------------------------------------
+    # Design Systems
+    # ------------------------------------------------------------------
+
+    async def create_design_system(self, project_id: str, name: str, theme: dict | None = None) -> dict:
+        """Create a design system for a project."""
+        args: dict[str, Any] = {"projectId": project_id, "displayName": name}
+        if theme:
+            args["theme"] = theme
+        return await self._call_tool("create_design_system", args)
+
+    async def list_design_systems(self, project_id: str) -> list[dict]:
+        """List design systems for a project."""
+        data = await self._call_tool("list_design_systems", {"projectId": project_id})
+        return data.get("designSystems", []) if isinstance(data, dict) else []
+
+    async def apply_design_system(
+        self, project_id: str, design_system_name: str, screen_ids: list[str]
+    ) -> dict:
+        """Apply a design system to screens."""
+        return await self._call_tool("apply_design_system", {
+            "projectId": project_id,
+            "designSystemName": design_system_name,
+            "screenIds": screen_ids,
+        })
 
 
 stitch_service = StitchService()

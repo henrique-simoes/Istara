@@ -182,6 +182,7 @@ async function loadScenarios() {
     "45-interfaces-menu",
     "46-stitch-figma-integration",
     "47-atomic-research-design",
+    "48-real-user-simulation",
   ];
 
   const scenarios = [];
