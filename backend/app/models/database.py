@@ -48,6 +48,9 @@ async def init_db() -> None:
     from app.core.scheduler import ScheduledTask  # noqa: F401
     from app.models.context_dag import ContextDAGNode  # noqa: F401
     from app.models.design_screen import DesignScreen, DesignBrief, DesignDecision  # noqa: F401
+    from app.models.loop_execution import LoopExecution  # noqa: F401
+    from app.models.agent_loop_config import AgentLoopConfig  # noqa: F401
+    from app.models.notification import Notification, NotificationPreference  # noqa: F401
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

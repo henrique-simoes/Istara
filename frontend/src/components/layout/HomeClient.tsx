@@ -18,6 +18,8 @@ import SkillsView from "@/components/skills/SkillsView";
 import AgentsView from "@/components/agents/AgentsView";
 import MemoryView from "@/components/memory/MemoryView";
 import InterfacesView from "@/components/interfaces/InterfacesView";
+import LoopsView from "@/components/loops/LoopsView";
+import NotificationsView from "@/components/notifications/NotificationsView";
 import DocumentsView from "@/components/documents/DocumentsView";
 import SearchModal from "@/components/common/SearchModal";
 import ToastNotification from "@/components/common/ToastNotification";
@@ -145,6 +147,8 @@ export default function HomeClient() {
       case "agents": return <AgentsView />;
       case "memory": return <MemoryView />;
       case "interfaces": return <InterfacesView />;
+      case "loops": return <LoopsView />;
+      case "notifications": return <NotificationsView />;
       case "history": return <VersionHistory />;
       case "compute": return <ComputePoolView />;
       case "ensemble": return <EnsembleHealthView />;

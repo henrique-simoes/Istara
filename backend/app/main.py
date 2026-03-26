@@ -12,6 +12,7 @@ from fastapi.responses import JSONResponse
 
 from app.api.routes import agents, audit, auth, channels, chat, codebooks, context_dag as context_dag_routes, documents, files, findings, interfaces, llm_servers, memory, metrics, projects, scheduler as scheduler_routes, sessions, settings, skills, tasks
 from app.api.routes import compute as compute_routes
+from app.api.routes import loops as loops_routes, notifications as notification_routes
 from app.api.websocket import router as ws_router
 from app.channels.base import channel_router
 from app.channels.slack import SlackAdapter
@@ -352,6 +353,8 @@ app.include_router(context_dag_routes.router, prefix="/api", tags=["Context DAG"
 app.include_router(llm_servers.router, prefix="/api", tags=["LLM Servers"])
 app.include_router(compute_routes.router, prefix="/api", tags=["Compute"])
 app.include_router(interfaces.router, prefix="/api", tags=["Interfaces"])
+app.include_router(loops_routes.router, prefix="/api", tags=["Loops"])
+app.include_router(notification_routes.router, prefix="/api", tags=["Notifications"])
 app.include_router(ws_router)
 
 
