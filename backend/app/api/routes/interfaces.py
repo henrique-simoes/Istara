@@ -681,3 +681,321 @@ async def configure_figma(data: ConfigureFigmaRequest):
         "figma_configured": bool(data.api_token),
         "persisted": persisted,
     }
+
+
+# -- Mock Mode Endpoints (for integration testing without API keys) ----------
+
+MOCK_HTML_DASHBOARD = """\
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>Mock Generated Screen</title></head>
+<body>
+  <header style="background:#1a1a2e;color:white;padding:20px;">
+    <h1>Dashboard</h1>
+    <nav><a href="#">Home</a> <a href="#">Settings</a></nav>
+  </header>
+  <main style="padding:20px;">
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;">
+      <div style="background:#f0f0f0;padding:16px;border-radius:8px;">
+        <h3>Active Users</h3><p style="font-size:2em;">1,234</p>
+      </div>
+      <div style="background:#f0f0f0;padding:16px;border-radius:8px;">
+        <h3>Completion Rate</h3><p style="font-size:2em;">87%</p>
+      </div>
+      <div style="background:#f0f0f0;padding:16px;border-radius:8px;">
+        <h3>Satisfaction</h3><p style="font-size:2em;">4.2/5</p>
+      </div>
+    </div>
+  </main>
+</body>
+</html>"""
+
+MOCK_HTML_EDITED = """\
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>Mock Edited Screen</title></head>
+<body>
+  <header style="background:#2563eb;color:white;padding:20px;">
+    <h1>Dashboard (Edited)</h1>
+    <nav><a href="#">Home</a> <a href="#">Settings</a> <a href="#">Profile</a></nav>
+  </header>
+  <main style="padding:20px;">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+      <div style="background:#e0e7ff;padding:16px;border-radius:8px;">
+        <h3>Active Users</h3><p style="font-size:2em;">1,234</p>
+      </div>
+      <div style="background:#e0e7ff;padding:16px;border-radius:8px;">
+        <h3>Completion Rate</h3><p style="font-size:2em;">87%</p>
+      </div>
+    </div>
+  </main>
+</body>
+</html>"""
+
+MOCK_VARIANT_TEMPLATES = [
+    {
+        "suffix": "Dark Theme",
+        "html": """\
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>Mock Variant — Dark Theme</title></head>
+<body style="background:#111827;color:#f9fafb;">
+  <header style="background:#1f2937;padding:20px;">
+    <h1>Dashboard</h1>
+  </header>
+  <main style="padding:20px;">
+    <div style="background:#374151;padding:16px;border-radius:8px;">
+      <h3>Active Users</h3><p style="font-size:2em;">1,234</p>
+    </div>
+  </main>
+</body>
+</html>""",
+    },
+    {
+        "suffix": "Compact",
+        "html": """\
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>Mock Variant — Compact</title></head>
+<body>
+  <header style="background:#1a1a2e;color:white;padding:10px;">
+    <h1 style="font-size:1em;">Dashboard</h1>
+  </header>
+  <main style="padding:8px;">
+    <div style="display:flex;gap:8px;">
+      <div style="background:#f0f0f0;padding:8px;border-radius:4px;flex:1;">
+        <small>Users</small><b>1,234</b>
+      </div>
+      <div style="background:#f0f0f0;padding:8px;border-radius:4px;flex:1;">
+        <small>Rate</small><b>87%</b>
+      </div>
+    </div>
+  </main>
+</body>
+</html>""",
+    },
+    {
+        "suffix": "Cards",
+        "html": """\
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>Mock Variant — Cards</title></head>
+<body>
+  <header style="background:#1a1a2e;color:white;padding:20px;">
+    <h1>Dashboard</h1>
+  </header>
+  <main style="padding:20px;">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;">
+      <div style="background:white;box-shadow:0 2px 8px rgba(0,0,0,0.1);padding:24px;border-radius:12px;">
+        <h3>Active Users</h3><p style="font-size:2.5em;color:#2563eb;">1,234</p>
+      </div>
+      <div style="background:white;box-shadow:0 2px 8px rgba(0,0,0,0.1);padding:24px;border-radius:12px;">
+        <h3>Satisfaction</h3><p style="font-size:2.5em;color:#059669;">4.2/5</p>
+      </div>
+    </div>
+  </main>
+</body>
+</html>""",
+    },
+]
+
+
+class MockGenerateRequest(BaseModel):
+    project_id: str
+    prompt: str = "Mock dashboard screen"
+    device_type: str = "DESKTOP"
+    seed_finding_ids: list[str] = []
+
+
+class MockEditRequest(BaseModel):
+    screen_id: str
+    instructions: str = "Make it blue and add a profile link"
+
+
+class MockVariantRequest(BaseModel):
+    screen_id: str
+    variant_type: str = "EXPLORE"
+    count: int = 3
+
+
+class MockFigmaImportRequest(BaseModel):
+    project_id: str
+    figma_url: str = "https://www.figma.com/file/abc123XYZ/MockDesignSystem"
+
+
+@router.post("/interfaces/mock/generate")
+async def mock_generate_screen(data: MockGenerateRequest, db: AsyncSession = Depends(get_db)):
+    """Generate a mock screen WITHOUT calling Stitch API.
+
+    Creates a real DesignScreen record in the database with realistic HTML content.
+    Also creates a DesignDecision if seed_finding_ids are provided.
+    Only available when Stitch is NOT configured (safety guard for tests).
+    """
+    # Mock endpoints always available for integration testing
+
+    # Verify project exists
+    result = await db.execute(select(Project).where(Project.id == data.project_id))
+    project = result.scalar_one_or_none()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    screen_id = str(uuid.uuid4())
+    screen = DesignScreen(
+        id=screen_id,
+        project_id=data.project_id,
+        title=data.prompt[:100],
+        description=data.prompt,
+        prompt=data.prompt,
+        device_type=data.device_type,
+        model_used="MOCK",
+        html_content=MOCK_HTML_DASHBOARD,
+        screenshot_path="",
+        status="ready",
+        source_findings=json.dumps(data.seed_finding_ids),
+    )
+    db.add(screen)
+
+    decision_id = None
+    if data.seed_finding_ids:
+        decision_id = str(uuid.uuid4())
+        dd = DesignDecision(
+            id=decision_id,
+            project_id=data.project_id,
+            agent_id="mock-test",
+            text=f"Design decision: {data.prompt[:200]}",
+            recommendation_ids=json.dumps(data.seed_finding_ids),
+            screen_ids=json.dumps([screen_id]),
+            rationale="Generated from mock endpoint for integration testing",
+        )
+        db.add(dd)
+
+    await db.commit()
+    await db.refresh(screen)
+
+    resp = screen.to_dict()
+    resp["design_decision_id"] = decision_id
+    return resp
+
+
+@router.post("/interfaces/mock/edit")
+async def mock_edit_screen(data: MockEditRequest, db: AsyncSession = Depends(get_db)):
+    """Edit a screen WITHOUT calling Stitch API.
+
+    Creates a child DesignScreen with modified mock HTML linked to the parent.
+    Only available when Stitch is NOT configured.
+    """
+    # Mock endpoints always available for integration testing
+
+    parent_result = await db.execute(
+        select(DesignScreen).where(DesignScreen.id == data.screen_id)
+    )
+    parent = parent_result.scalar_one_or_none()
+    if not parent:
+        raise HTTPException(status_code=404, detail="Screen not found")
+
+    new_id = str(uuid.uuid4())
+    edited = DesignScreen(
+        id=new_id,
+        project_id=parent.project_id,
+        title=f"Edit: {data.instructions[:80]}",
+        description=data.instructions,
+        prompt=data.instructions,
+        device_type=parent.device_type,
+        model_used="MOCK",
+        html_content=MOCK_HTML_EDITED,
+        screenshot_path="",
+        parent_screen_id=data.screen_id,
+        status="ready",
+        source_findings=parent.source_findings,
+    )
+    db.add(edited)
+    await db.commit()
+    await db.refresh(edited)
+    return edited.to_dict()
+
+
+@router.post("/interfaces/mock/variants")
+async def mock_generate_variants(data: MockVariantRequest, db: AsyncSession = Depends(get_db)):
+    """Generate mock variant screens WITHOUT calling Stitch API.
+
+    Creates 2-3 child DesignScreen records with different mock HTML variants.
+    Only available when Stitch is NOT configured.
+    """
+    # Mock endpoints always available for integration testing
+
+    parent_result = await db.execute(
+        select(DesignScreen).where(DesignScreen.id == data.screen_id)
+    )
+    parent = parent_result.scalar_one_or_none()
+    if not parent:
+        raise HTTPException(status_code=404, detail="Screen not found")
+
+    count = min(max(data.count, 1), len(MOCK_VARIANT_TEMPLATES))
+    variants = []
+    for i in range(count):
+        tmpl = MOCK_VARIANT_TEMPLATES[i % len(MOCK_VARIANT_TEMPLATES)]
+        vid = str(uuid.uuid4())
+        vs = DesignScreen(
+            id=vid,
+            project_id=parent.project_id,
+            title=f"Variant {i + 1} ({data.variant_type}) — {tmpl['suffix']}",
+            description=f"{data.variant_type} variant of {data.screen_id}",
+            prompt=parent.prompt,
+            device_type=parent.device_type,
+            model_used="MOCK",
+            html_content=tmpl["html"],
+            parent_screen_id=data.screen_id,
+            variant_type=data.variant_type.lower(),
+            status="ready",
+            source_findings=parent.source_findings,
+        )
+        db.add(vs)
+        variants.append(vs)
+
+    await db.commit()
+    for v in variants:
+        await db.refresh(v)
+
+    return {"variants": [v.to_dict() for v in variants], "count": len(variants)}
+
+
+@router.post("/interfaces/mock/figma-import")
+async def mock_figma_import(data: MockFigmaImportRequest, db: AsyncSession = Depends(get_db)):
+    """Import mock Figma design context WITHOUT calling Figma API.
+
+    Returns realistic mock design context (components, styles, layout data).
+    Only available when Figma is NOT configured.
+    """
+    # Mock endpoints always available for integration testing
+
+    from app.services.figma_service import figma_service
+
+    parsed = figma_service.parse_figma_url(data.figma_url)
+    file_key = parsed.get("file_key") or "mockFileKey123"
+    node_id = parsed.get("node_id")
+
+    return {
+        "success": True,
+        "file_key": file_key,
+        "node_id": node_id,
+        "name": "Mock Design System",
+        "components": [
+            {"name": "Button/Primary", "key": "comp_001", "description": "Primary action button"},
+            {"name": "Button/Secondary", "key": "comp_002", "description": "Secondary action button"},
+            {"name": "Input/Text", "key": "comp_003", "description": "Standard text input field"},
+            {"name": "Card/Default", "key": "comp_004", "description": "Content card container"},
+            {"name": "NavBar/Top", "key": "comp_005", "description": "Top navigation bar"},
+        ],
+        "styles": [
+            {"name": "Primary/500", "key": "style_001", "style_type": "FILL", "description": "#2563eb"},
+            {"name": "Neutral/100", "key": "style_002", "style_type": "FILL", "description": "#f3f4f6"},
+            {"name": "Text/Body", "key": "style_003", "style_type": "TEXT", "description": "16px Inter Regular"},
+            {"name": "Text/Heading", "key": "style_004", "style_type": "TEXT", "description": "24px Inter Bold"},
+            {"name": "Shadow/Card", "key": "style_005", "style_type": "EFFECT", "description": "0 2px 8px rgba(0,0,0,0.1)"},
+        ],
+        "layout": {
+            "grid": "12-column",
+            "breakpoints": {"mobile": 375, "tablet": 768, "desktop": 1280},
+            "spacing_unit": 8,
+        },
+    }
