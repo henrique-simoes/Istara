@@ -331,6 +331,58 @@ class MetaOrchestrator:
                         f"Auto-routed: {task.title} ({routing['routing_reason']})",
                     )
 
+                    # Detect capability gaps when routing falls back to reclaw-main
+                    if (
+                        routing["primary_agent_id"] == "reclaw-main"
+                        and "fallback" in routing.get("routing_reason", "").lower()
+                    ):
+                        try:
+                            from app.core.agent_factory import AgentFactory
+                            from app.core.task_router import get_available_agents
+
+                            factory = AgentFactory()
+                            available_agents = await get_available_agents(db)
+                            agents_list = [
+                                a.to_dict()
+                                for a in available_agents
+                                if a.is_active
+                            ]
+                            gap = factory.detect_capability_gap(
+                                routing.get("specialties_needed", []),
+                                agents_list,
+                            )
+                            if gap:
+                                proposal = factory.propose_agent_creation(
+                                    gap,
+                                    task.title,
+                                    task.description or "",
+                                    task.id,
+                                    routing.get("specialties_needed", []),
+                                )
+                                logger.info(
+                                    f"Agent creation proposed: {proposal.proposed_name}"
+                                )
+                                self._log_action(
+                                    "orchestrator",
+                                    "agent_proposal",
+                                    f"Proposed new agent: {proposal.proposed_name} — {gap}",
+                                )
+                                try:
+                                    from app.api.websocket import manager as ws_manager
+
+                                    await ws_manager.broadcast(
+                                        "agent_creation_proposed",
+                                        {
+                                            "proposal_id": proposal.id,
+                                            "proposed_name": proposal.proposed_name,
+                                            "reason": gap,
+                                        },
+                                    )
+                                except Exception:
+                                    pass
+                        except Exception as e:
+                            logger.debug(f"Agent gap detection skipped: {e}")
+
                     # Send A2A collaboration requests for multi-specialty tasks
                     for collab_id in routing.get("collaborators", []):
                         try:

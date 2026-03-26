@@ -17,7 +17,7 @@ import json
 import logging
 from datetime import datetime, timezone
 
-from sqlalchemy import select, String, Text, Integer, DateTime, Boolean
+from sqlalchemy import select, String, Text, Integer, Float, DateTime, Boolean
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -54,6 +54,7 @@ class AgentLearning(Base):
     project_id: Mapped[str] = mapped_column(
         String(36), default=""
     )  # Empty = global learning
+    utility_score: Mapped[float] = mapped_column(Float, default=0.5)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
@@ -107,6 +108,10 @@ class AgentLearningManager:
                     ) + 1
                     existing_record.confidence = min(
                         100, (existing_record.confidence or 50) + 5
+                    )
+                    # Update utility on successful resolution
+                    existing_record.utility_score = (
+                        (existing_record.utility_score or 0.5) * 0.9 + 0.1
                     )
                     existing_record.updated_at = datetime.now(timezone.utc)
                     await db.commit()
@@ -187,6 +192,70 @@ class AgentLearningManager:
                 append_learning(agent_id, "User Preferences", feedback[:500])
         except Exception as e:
             logger.warning(f"Failed to record user feedback: {e}")
+
+    async def update_utility(
+        self,
+        learning_id: int,
+        success: bool,
+    ) -> None:
+        """Update utility score for a learning based on application outcome.
+
+        success: utility = utility * 0.9 + 0.1  (trends toward 1.0)
+        failure: utility = utility * 0.9          (trends toward 0.0)
+        """
+        try:
+            async with async_session() as db:
+                result = await db.execute(
+                    select(AgentLearning).where(AgentLearning.id == learning_id)
+                )
+                record = result.scalar_one_or_none()
+                if not record:
+                    return
+                current = record.utility_score or 0.5
+                if success:
+                    record.utility_score = current * 0.9 + 0.1
+                else:
+                    record.utility_score = current * 0.9
+                record.times_applied = (record.times_applied or 0) + 1
+                if success:
+                    record.times_successful = (record.times_successful or 0) + 1
+                record.updated_at = datetime.now(timezone.utc)
+                await db.commit()
+        except Exception as e:
+            logger.warning(f"Failed to update utility for learning {learning_id}: {e}")
+
+    async def archive_low_utility(self, agent_id: str) -> int:
+        """Archive learnings with low utility that have been applied enough times.
+
+        Criteria: utility_score < 0.2 AND times_applied >= 5.
+        Sets active = False (archive, don't delete).
+
+        Returns the number of archived learnings.
+        """
+        archived = 0
+        try:
+            async with async_session() as db:
+                result = await db.execute(
+                    select(AgentLearning).where(
+                        AgentLearning.agent_id == agent_id,
+                        AgentLearning.active == True,
+                        AgentLearning.utility_score < 0.2,
+                        AgentLearning.times_applied >= 5,
+                    )
+                )
+                low_utility = result.scalars().all()
+                for record in low_utility:
+                    record.active = False
+                    record.updated_at = datetime.now(timezone.utc)
+                    archived += 1
+                if archived:
+                    await db.commit()
+                    logger.info(
+                        f"Archived {archived} low-utility learnings for {agent_id}"
+                    )
+        except Exception as e:
+            logger.warning(f"Failed to archive low-utility learnings: {e}")
+        return archived
 
     async def get_relevant_learnings(
         self,

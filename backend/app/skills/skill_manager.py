@@ -7,16 +7,21 @@ Handles:
 4. User approval workflow for skill updates
 5. Skill creation, editing, enabling/disabling
 6. Skill health monitoring and quality scoring
+7. Autonomous skill creation proposals
 """
+
+from __future__ import annotations
 
 import json
 import logging
 import shutil
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 from app.config import settings
+from app.core.checkpoint import atomic_write
 
 logger = logging.getLogger(__name__)
 
@@ -93,14 +98,46 @@ class SkillUpdateProposal:
         }
 
 
+@dataclass
+class SkillCreationProposal:
+    """A proposed new skill definition, pending user approval."""
+
+    id: str
+    proposed_definition: dict  # full JSON skill definition
+    source_task_id: str
+    source_agent_id: str
+    reason: str
+    confidence: int  # 0-100
+    status: str = "pending"  # pending|approved|rejected
+    created_at: str = ""
+    reviewed_at: str | None = None
+    reject_reason: str | None = None
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "proposed_definition": self.proposed_definition,
+            "source_task_id": self.source_task_id,
+            "source_agent_id": self.source_agent_id,
+            "reason": self.reason,
+            "confidence": self.confidence,
+            "status": self.status,
+            "created_at": self.created_at,
+            "reviewed_at": self.reviewed_at,
+            "reject_reason": self.reject_reason,
+        }
+
+
 class SkillManager:
     """Manages the skill lifecycle — loading, versioning, improving, and monitoring."""
 
     def __init__(self) -> None:
         self._definitions: dict[str, SkillDefinition] = {}
         self._proposals: list[SkillUpdateProposal] = []
+        self._creation_proposals: list[SkillCreationProposal] = []
         self._usage_stats: dict[str, dict] = {}  # skill_name → {executions, successes, failures, avg_quality}
         self._proposals_file = SKILLS_DIR / "_proposals.json"
+        self._creation_proposals_file = SKILLS_DIR / "_creation_proposals.json"
         self._stats_file = SKILLS_DIR / "_usage_stats.json"
 
     def ensure_definitions_dir(self) -> None:
@@ -145,6 +182,28 @@ class SkillManager:
             except Exception:
                 self._proposals = []
 
+        # Load creation proposals
+        if self._creation_proposals_file.exists():
+            try:
+                data = json.loads(self._creation_proposals_file.read_text())
+                self._creation_proposals = []
+                for p in data:
+                    cp = SkillCreationProposal(
+                        id=p["id"],
+                        proposed_definition=p["proposed_definition"],
+                        source_task_id=p["source_task_id"],
+                        source_agent_id=p["source_agent_id"],
+                        reason=p["reason"],
+                        confidence=p["confidence"],
+                        status=p.get("status", "pending"),
+                        created_at=p.get("created_at", ""),
+                        reviewed_at=p.get("reviewed_at"),
+                        reject_reason=p.get("reject_reason"),
+                    )
+                    self._creation_proposals.append(cp)
+            except Exception:
+                self._creation_proposals = []
+
         logger.info(f"Loaded {len(self._definitions)} skill definitions.")
         return self._definitions
 
@@ -170,7 +229,7 @@ class SkillManager:
         data.setdefault("changelog", [{"version": "1.0.0", "date": data["created_at"], "changes": "Initial creation"}])
 
         path = SKILLS_DIR / f"{name}.json"
-        path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+        atomic_write(path, json.dumps(data, indent=2, ensure_ascii=False))
 
         defn = SkillDefinition(path)
         self._definitions[name] = defn
@@ -202,7 +261,7 @@ class SkillManager:
         })
 
         # Write back
-        defn.path.write_text(json.dumps(defn.data, indent=2, ensure_ascii=False), encoding="utf-8")
+        atomic_write(defn.path, json.dumps(defn.data, indent=2, ensure_ascii=False))
         logger.info(f"Updated skill: {name} → v{new_version}")
         return defn
 
@@ -229,10 +288,10 @@ class SkillManager:
     # --- Usage Tracking ---
 
     def record_execution(self, skill_name: str, success: bool, quality_score: float = 0.0) -> None:
-        """Record a skill execution for usage tracking."""
+        """Record a skill execution for usage tracking (includes utility score)."""
         stats = self._usage_stats.setdefault(skill_name, {
             "executions": 0, "successes": 0, "failures": 0,
-            "total_quality": 0.0, "last_used": None,
+            "total_quality": 0.0, "utility_score": 0.5, "last_used": None,
         })
         stats["executions"] += 1
         if success:
@@ -242,21 +301,50 @@ class SkillManager:
         stats["total_quality"] += quality_score
         stats["last_used"] = datetime.now(timezone.utc).isoformat()
 
+        # Update utility score: EMA toward 1.0 on success, toward 0.0 on failure
+        current_utility = stats.get("utility_score", 0.5)
+        if success:
+            stats["utility_score"] = current_utility * 0.9 + 0.1
+        else:
+            stats["utility_score"] = current_utility * 0.9
+
         self._save_stats()
 
+        # Flag low-utility skills after enough executions
+        if stats["executions"] >= 10 and stats["utility_score"] < 0.3:
+            try:
+                import asyncio
+                from app.api.websocket import broadcast_suggestion
+
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    asyncio.ensure_future(
+                        broadcast_suggestion(
+                            f"Skill '{skill_name}' has low utility "
+                            f"({stats['utility_score']:.0%} after "
+                            f"{stats['executions']} runs). Consider reviewing "
+                            f"or replacing it.",
+                            "",
+                        )
+                    )
+            except Exception:
+                pass  # Non-critical broadcast
+
     def get_usage_stats(self, skill_name: str | None = None) -> dict:
-        """Get usage statistics for one or all skills."""
+        """Get usage statistics for one or all skills (includes utility_score)."""
         if skill_name:
             stats = self._usage_stats.get(skill_name, {})
-            if stats and stats["executions"] > 0:
+            if stats and stats.get("executions", 0) > 0:
                 stats["avg_quality"] = stats["total_quality"] / stats["executions"]
                 stats["success_rate"] = stats["successes"] / stats["executions"]
+            # Ensure utility_score is always present
+            stats.setdefault("utility_score", 0.5)
             return stats
         return self._usage_stats
 
     def _save_stats(self) -> None:
         self.ensure_definitions_dir()
-        self._stats_file.write_text(json.dumps(self._usage_stats, indent=2))
+        atomic_write(self._stats_file, json.dumps(self._usage_stats, indent=2))
 
     # --- Self-Improvement ---
 
@@ -318,8 +406,9 @@ class SkillManager:
 
     def _save_proposals(self) -> None:
         self.ensure_definitions_dir()
-        self._proposals_file.write_text(
-            json.dumps([p.to_dict() for p in self._proposals], indent=2)
+        atomic_write(
+            self._proposals_file,
+            json.dumps([p.to_dict() for p in self._proposals], indent=2),
         )
 
     # --- Skill Health ---
@@ -362,6 +451,121 @@ class SkillManager:
     def get_all_health(self) -> list[dict]:
         """Get health scores for all skills."""
         return [self.get_skill_health(name) for name in self._definitions]
+
+    # --- Autonomous Skill Creation ---
+
+    def propose_skill_creation(
+        self,
+        definition: dict,
+        source_task_id: str,
+        agent_id: str,
+        reason: str,
+        confidence: int,
+    ) -> SkillCreationProposal:
+        """Create a proposal for a brand-new skill definition.
+
+        Validates the definition, scans prompts for injection, and persists
+        the proposal for human review.
+        """
+        # Validate required fields
+        required = [
+            "name", "display_name", "description", "phase", "skill_type",
+            "plan_prompt", "execute_prompt", "output_schema",
+        ]
+        missing = [f for f in required if f not in definition]
+        if missing:
+            raise ValueError(f"Proposed definition missing required fields: {missing}")
+
+        # Scan prompts with ContentGuard for injection
+        from app.core.content_guard import ContentGuard
+        guard = ContentGuard()
+        for prompt_field in ("plan_prompt", "execute_prompt"):
+            scan = guard.scan_text(definition[prompt_field])
+            if not scan.clean and scan.threat_level in ("high", "medium"):
+                raise ValueError(
+                    f"ContentGuard flagged {prompt_field}: {scan.threats}"
+                )
+
+        # Check no existing skill with same name
+        if self._definitions.get(definition["name"]):
+            raise ValueError(f"Skill already exists: {definition['name']}")
+
+        proposal = SkillCreationProposal(
+            id=f"create_{definition['name']}_{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}",
+            proposed_definition=definition,
+            source_task_id=source_task_id,
+            source_agent_id=agent_id,
+            reason=reason,
+            confidence=confidence,
+            created_at=datetime.now(timezone.utc).isoformat(),
+        )
+        self._creation_proposals.append(proposal)
+        self._save_creation_proposals()
+        logger.info(f"Proposed new skill creation: {definition['name']} (confidence={confidence})")
+        return proposal
+
+    def get_pending_creation_proposals(self) -> list[SkillCreationProposal]:
+        """Return creation proposals with status == 'pending'."""
+        return [p for p in self._creation_proposals if p.status == "pending"]
+
+    def get_all_creation_proposals(self, limit: int = 20) -> list[SkillCreationProposal]:
+        """Return the last N creation proposals."""
+        return self._creation_proposals[-limit:]
+
+    def approve_creation_proposal(self, proposal_id: str) -> dict | None:
+        """Approve a creation proposal — writes the skill JSON and marks approved.
+
+        Returns the definition dict for registry loading, or None if not found.
+        """
+        for proposal in self._creation_proposals:
+            if proposal.id == proposal_id and proposal.status == "pending":
+                defn = proposal.proposed_definition
+                defn.setdefault("version", "1.0.0")
+                defn.setdefault("enabled", True)
+                defn["created_at"] = datetime.now(timezone.utc).isoformat()
+                defn.setdefault("changelog", [{
+                    "version": "1.0.0",
+                    "date": defn["created_at"],
+                    "changes": "Initial creation via autonomous proposal",
+                }])
+
+                # Write to definitions/
+                self.ensure_definitions_dir()
+                path = SKILLS_DIR / f"{defn['name']}.json"
+                atomic_write(path, json.dumps(defn, indent=2, ensure_ascii=False))
+
+                # Load into manager
+                try:
+                    loaded = SkillDefinition(path)
+                    self._definitions[loaded.name] = loaded
+                except Exception as e:
+                    logger.error(f"Failed to load approved skill {defn['name']}: {e}")
+
+                proposal.status = "approved"
+                proposal.reviewed_at = datetime.now(timezone.utc).isoformat()
+                self._save_creation_proposals()
+                logger.info(f"Approved skill creation: {defn['name']}")
+                return defn
+        return None
+
+    def reject_creation_proposal(self, proposal_id: str, reason: str = "") -> bool:
+        """Reject a creation proposal with an optional reason."""
+        for proposal in self._creation_proposals:
+            if proposal.id == proposal_id and proposal.status == "pending":
+                proposal.status = "rejected"
+                proposal.reviewed_at = datetime.now(timezone.utc).isoformat()
+                proposal.reject_reason = reason or None
+                self._save_creation_proposals()
+                logger.info(f"Rejected skill creation: {proposal_id} — {reason}")
+                return True
+        return False
+
+    def _save_creation_proposals(self) -> None:
+        self.ensure_definitions_dir()
+        atomic_write(
+            self._creation_proposals_file,
+            json.dumps([p.to_dict() for p in self._creation_proposals], indent=2),
+        )
 
 
 # Singleton

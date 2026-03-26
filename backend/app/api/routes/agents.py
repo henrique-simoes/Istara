@@ -395,6 +395,130 @@ async def scan_all_evolution():
     }
 
 
+# ───── Agent Creation Proposals (Memento-Skills) ─────
+
+
+class RejectProposalRequest(BaseModel):
+    reason: str = ""
+
+
+@router.get("/agents/creation-proposals/pending")
+async def get_pending_proposals():
+    """Get all pending agent creation proposals."""
+    from app.core.agent_factory import AgentFactory
+
+    factory = AgentFactory()
+    proposals = factory.get_pending_proposals()
+    return {"proposals": proposals, "count": len(proposals)}
+
+
+@router.get("/agents/creation-proposals/all")
+async def get_all_proposals(limit: int = 20):
+    """Get all agent creation proposals (any status)."""
+    from app.core.agent_factory import AgentFactory
+
+    factory = AgentFactory()
+    proposals = factory.get_all_proposals(limit)
+    return {"proposals": proposals, "count": len(proposals)}
+
+
+@router.post("/agents/creation-proposals/{proposal_id}/approve")
+async def approve_proposal(proposal_id: str, db: AsyncSession = Depends(get_db)):
+    """Approve a proposal — creates the agent in DB, scaffolds persona, starts worker."""
+    from app.core.agent_factory import AgentFactory
+
+    factory = AgentFactory()
+    proposal = factory.approve_proposal(proposal_id)
+    if not proposal:
+        raise HTTPException(status_code=404, detail="Proposal not found or not pending")
+
+    # Create the agent in the database
+    agent = await agent_service.create_agent(
+        db,
+        name=proposal["proposed_name"],
+        role="custom",
+        system_prompt=proposal["proposed_system_prompt"],
+        capabilities=None,
+        heartbeat_interval=60,
+    )
+
+    # Set specialties on the newly created agent
+    try:
+        import json as _json
+
+        await agent_service.update_agent(
+            db,
+            agent["id"],
+            {"specialties": _json.dumps(proposal["proposed_specialties"])},
+        )
+    except Exception:
+        pass
+
+    # Scaffold persona MD files from the proposal's CORE.md
+    try:
+        from app.core.self_evolution import self_evolution
+
+        await self_evolution.create_persona_for_custom_agent(
+            agent["id"],
+            proposal["proposed_name"],
+            proposal["proposed_system_prompt"],
+        )
+    except Exception:
+        pass
+
+    try:
+        from app.core.agent_identity import scaffold_persona
+
+        scaffold_persona(
+            agent_id=agent["id"],
+            name=proposal["proposed_name"],
+            role="custom",
+            system_prompt=proposal["proposed_system_prompt"],
+            capabilities=[],
+        )
+    except Exception as e:
+        logger.warning(f"Persona scaffold failed for proposal {proposal_id}: {e}")
+
+    # Start the custom agent's work loop
+    try:
+        from app.agents.custom_worker import start_custom_agent
+
+        await start_custom_agent(agent["id"], agent["name"])
+    except Exception:
+        pass
+
+    # Broadcast
+    try:
+        from app.api.websocket import manager as ws_manager
+
+        await ws_manager.broadcast(
+            "agent_created_from_proposal",
+            {"proposal_id": proposal_id, "agent": agent},
+        )
+    except Exception:
+        pass
+
+    return {
+        "status": "approved",
+        "proposal": proposal,
+        "agent": agent,
+    }
+
+
+@router.post("/agents/creation-proposals/{proposal_id}/reject")
+async def reject_proposal(proposal_id: str, data: RejectProposalRequest | None = None):
+    """Reject a pending agent creation proposal."""
+    from app.core.agent_factory import AgentFactory
+
+    factory = AgentFactory()
+    reason = data.reason if data else ""
+    proposal = factory.reject_proposal(proposal_id, reason)
+    if not proposal:
+        raise HTTPException(status_code=404, detail="Proposal not found or not pending")
+
+    return {"status": "rejected", "proposal": proposal}
+
+
 # ───── Prompt Compression ─────
 
 

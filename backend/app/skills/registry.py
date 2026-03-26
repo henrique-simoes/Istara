@@ -1,9 +1,11 @@
 """Skill registry — load, register, and retrieve skills."""
 
+from __future__ import annotations
+
 import logging
 from typing import Type
 
-from app.skills.base import BaseSkill, SkillPhase
+from app.skills.base import BaseSkill, SkillPhase, SkillType
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +48,36 @@ class SkillRegistry:
                 for phase in SkillPhase
             },
         }
+
+    def register_from_definition(self, name: str) -> bool:
+        """Load a single skill JSON from definitions/ and register at runtime."""
+        from app.skills.skill_factory import create_skill
+        from app.skills.skill_manager import SkillDefinition, SKILLS_DIR
+
+        path = SKILLS_DIR / f"{name}.json"
+        if not path.exists():
+            logger.warning(f"Skill definition not found: {path}")
+            return False
+
+        try:
+            defn = SkillDefinition(path)
+        except Exception as e:
+            logger.error(f"Failed to load skill definition {name}: {e}")
+            return False
+
+        skill_class = create_skill(
+            skill_name=defn.data["name"],
+            display=defn.data["display_name"],
+            desc=defn.data["description"],
+            phase=SkillPhase(defn.data["phase"]),
+            skill_type=SkillType(defn.data["skill_type"]),
+            plan_prompt=defn.data["plan_prompt"],
+            execute_prompt=defn.data["execute_prompt"],
+            output_schema=defn.data["output_schema"],
+        )
+        self.register(skill_class)
+        logger.info(f"Registered skill from definition: {name}")
+        return True
 
 
 # Global registry instance

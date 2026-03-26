@@ -4,12 +4,17 @@ from __future__ import annotations
 
 import csv
 import io
+import logging
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from app.config import settings
+from app.core.content_guard import ContentGuard
 from app.core.embeddings import TextChunk
+
+logger = logging.getLogger(__name__)
+_guard = ContentGuard()
 
 
 @dataclass
@@ -21,6 +26,8 @@ class ProcessedFile:
     total_chars: int = 0
     pages: int = 0
     error: str | None = None
+    threat_level: str = "none"
+    threats: list[str] = field(default_factory=list)
 
 
 def chunk_text(
@@ -330,7 +337,23 @@ def process_file(file_path: Path) -> ProcessedFile:
             error=f"Unsupported file type: {suffix}. Supported: {', '.join(PROCESSORS.keys())}",
         )
 
-    return processor(file_path)
+    result = processor(file_path)
+
+    # --- Content Guard: scan extracted text for prompt injection ---
+    if result.chunks and not result.error:
+        full_text = "\n".join(chunk.text for chunk in result.chunks)
+        scan = _guard.scan_text(full_text)
+        result.threat_level = scan.threat_level
+        result.threats = scan.threats
+        if scan.threat_level in ("medium", "high"):
+            logger.warning(
+                "Content guard flagged %s: %s - %s",
+                file_path,
+                scan.threat_level,
+                scan.threats,
+            )
+
+    return result
 
 
 def get_supported_extensions() -> list[str]:

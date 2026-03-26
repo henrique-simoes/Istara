@@ -226,6 +226,14 @@ export const skills = {
     reject: (id: string, reason = "") =>
       request<any>(`/api/skills/proposals/${id}/reject?reason=${encodeURIComponent(reason)}`, { method: "POST" }),
   },
+  creationProposals: {
+    pending: () => request<any>("/api/skills/creation-proposals/pending"),
+    all: (limit = 20) => request<any>(`/api/skills/creation-proposals/all?limit=${limit}`),
+    approve: (id: string) =>
+      request<any>(`/api/skills/creation-proposals/${id}/approve`, { method: "POST" }),
+    reject: (id: string, reason = "") =>
+      request<any>(`/api/skills/creation-proposals/${id}/reject?reason=${encodeURIComponent(reason)}`, { method: "POST" }),
+  },
 };
 
 // --- Agents ---
@@ -290,6 +298,14 @@ export const agents = {
     request<{ personas: { agent_id: string; display_name: string }[] }>(
       "/api/agents/personas/list"
     ),
+  creationProposals: {
+    pending: () => request<any>("/api/agents/creation-proposals/pending"),
+    all: (limit = 20) => request<any>(`/api/agents/creation-proposals/all?limit=${limit}`),
+    approve: (id: string) =>
+      request<any>(`/api/agents/creation-proposals/${id}/approve`, { method: "POST" }),
+    reject: (id: string, reason = "") =>
+      request<any>(`/api/agents/creation-proposals/${id}/reject?reason=${encodeURIComponent(reason)}`, { method: "POST" }),
+  },
 };
 
 // --- Sessions ---

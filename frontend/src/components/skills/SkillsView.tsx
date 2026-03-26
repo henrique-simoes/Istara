@@ -152,6 +152,7 @@ export default function SkillsView() {
   useEffect(() => {
     fetchSkills();
     fetchProposals();
+    fetchCreationProposals();
   }, []);
 
   const filtered = allSkills.filter((s) => {
@@ -168,6 +169,31 @@ export default function SkillsView() {
   });
 
   const pendingProposals = proposals.filter((p) => p.status === "pending");
+
+  // Skill creation proposals (autonomous)
+  const [creationProposals, setCreationProposals] = useState<any[]>([]);
+  const pendingCreations = creationProposals.filter((p: any) => p.status === "pending");
+
+  const fetchCreationProposals = async () => {
+    try {
+      const res = await skillsApi.creationProposals.all();
+      setCreationProposals(res.proposals || []);
+    } catch { /* endpoint may not exist yet */ }
+  };
+
+  const handleApproveCreation = async (id: string) => {
+    try {
+      await skillsApi.creationProposals.approve(id);
+      await Promise.all([fetchSkills(), fetchCreationProposals()]);
+    } catch (e) { console.error("Approve creation failed:", e); }
+  };
+
+  const handleRejectCreation = async (id: string) => {
+    try {
+      await skillsApi.creationProposals.reject(id);
+      await fetchCreationProposals();
+    } catch (e) { console.error("Reject creation failed:", e); }
+  };
 
   const handleToggle = async (name: string, enabled: boolean) => {
     try {
@@ -694,6 +720,110 @@ export default function SkillsView() {
                 ))}
             </div>
           )}
+
+          {/* ===== SKILL CREATION PROPOSALS (Autonomous) ===== */}
+          <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
+            <div className="flex items-center gap-2 mb-3">
+              <Wand2 size={16} className="text-purple-500" />
+              <h3 className="font-medium text-slate-900 dark:text-white">
+                Skill Creation Proposals
+              </h3>
+              <span className="text-xs text-slate-400">
+                Agents propose new skills based on successful task patterns
+              </span>
+            </div>
+
+            {pendingCreations.length === 0 && creationProposals.length === 0 && (
+              <div className="text-center py-8 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                <Wand2 size={28} className="mx-auto mb-2 text-slate-300" />
+                <p className="text-slate-500 text-sm">No creation proposals yet.</p>
+                <p className="text-slate-400 text-xs mt-1">
+                  When agents complete high-quality tasks, they may propose new reusable skills.
+                </p>
+              </div>
+            )}
+
+            {pendingCreations.length > 0 && (
+              <div className="space-y-3">
+                <h4 className="text-xs font-semibold uppercase text-purple-600">
+                  Pending Review ({pendingCreations.length})
+                </h4>
+                {pendingCreations.map((p: any) => (
+                  <div
+                    key={p.id}
+                    className="bg-purple-50 dark:bg-purple-900/10 rounded-xl border border-purple-200 dark:border-purple-800 p-4 space-y-3"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <span className="font-medium text-sm text-slate-900 dark:text-white">
+                          {p.proposed_definition?.display_name || p.proposed_definition?.name || "New Skill"}
+                        </span>
+                        {p.proposed_definition?.phase && (
+                          <span className={cn("ml-2 px-2 py-0.5 rounded-full text-xs", PHASE_COLORS[p.proposed_definition.phase] || "bg-slate-100 text-slate-600")}>
+                            {p.proposed_definition.phase}
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-xs text-purple-600 font-medium">
+                        {p.confidence}% confidence
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-600 dark:text-slate-400">
+                      {p.proposed_definition?.description || p.reason}
+                    </p>
+                    <div className="flex items-center gap-3 text-xs text-slate-400">
+                      <span>Source: {p.source_agent_id || "agent"}</span>
+                      <span>Task: {p.source_task_id?.slice(0, 8) || "—"}</span>
+                    </div>
+                    <div className="flex gap-2 pt-1">
+                      <button
+                        onClick={() => handleApproveCreation(p.id)}
+                        className="flex items-center gap-1 px-3 py-1 rounded-lg bg-purple-600 text-white text-xs font-medium hover:bg-purple-700"
+                      >
+                        <CheckCircle2 size={12} /> Approve & Register
+                      </button>
+                      <button
+                        onClick={() => handleRejectCreation(p.id)}
+                        className="flex items-center gap-1 px-3 py-1 rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs font-medium hover:bg-slate-300"
+                      >
+                        <XCircle size={12} /> Reject
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {creationProposals.filter((p: any) => p.status !== "pending").length > 0 && (
+              <div className="space-y-2 mt-3">
+                <h4 className="text-xs font-semibold uppercase text-slate-400">
+                  Creation History
+                </h4>
+                {creationProposals
+                  .filter((p: any) => p.status !== "pending")
+                  .reverse()
+                  .slice(0, 10)
+                  .map((p: any) => (
+                    <div
+                      key={p.id}
+                      className="flex items-center gap-3 px-4 py-2 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700"
+                    >
+                      {p.status === "approved" ? (
+                        <CheckCircle2 size={14} className="text-green-500 shrink-0" />
+                      ) : (
+                        <XCircle size={14} className="text-red-400 shrink-0" />
+                      )}
+                      <span className="text-sm font-medium text-slate-700 dark:text-slate-300 flex-1">
+                        {p.proposed_definition?.display_name || p.proposed_definition?.name || "Skill"}
+                      </span>
+                      <span className="text-xs text-slate-400">
+                        {p.reviewed_at ? new Date(p.reviewed_at).toLocaleDateString() : ""}
+                      </span>
+                    </div>
+                  ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
