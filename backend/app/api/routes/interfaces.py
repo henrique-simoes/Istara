@@ -454,59 +454,417 @@ async def get_screen(screen_id: str, db: AsyncSession = Depends(get_db)):
 
 @router.post("/interfaces/screens/generate")
 async def generate_screen(data: GenerateRequest, db: AsyncSession = Depends(get_db)):
-    """Generate a new screen via design tools."""
-    result = await execute_design_tool(
-        "generate_screen",
-        {
-            "prompt": data.prompt,
-            "device_type": data.device_type,
-            "model": data.model,
-            "seed_finding_ids": data.seed_finding_ids,
-        },
-        data.project_id,
-    )
-    return result
+    """Generate a new screen via Stitch or design tools.
+
+    When Stitch is configured, calls the real MCP API and parses the response
+    to extract screens with HTML and screenshots. Returns the DesignScreen record(s).
+    """
+    import httpx
+    from app.services.stitch_service import stitch_service
+    from app.core.content_guard import ContentGuard
+
+    # Verify project exists
+    result = await db.execute(select(Project).where(Project.id == data.project_id))
+    project = result.scalar_one_or_none()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    # If Stitch is not configured, fall back to the design tool executor
+    if not settings.stitch_api_key:
+        tool_result = await execute_design_tool(
+            "generate_screen",
+            {
+                "prompt": data.prompt,
+                "device_type": data.device_type,
+                "model": data.model,
+                "seed_finding_ids": data.seed_finding_ids,
+            },
+            data.project_id,
+        )
+        return tool_result
+
+    guard = ContentGuard()
+    seed_ids = data.seed_finding_ids or []
+
+    # Enrich prompt with findings if seeded
+    enriched_prompt = data.prompt
+    if seed_ids:
+        from app.models.finding import Insight, Recommendation
+
+        texts: list[str] = []
+        for fid in seed_ids[:5]:
+            for Model in [Insight, Recommendation]:
+                r = await db.execute(select(Model).where(Model.id == fid))
+                finding = r.scalar_one_or_none()
+                if finding:
+                    texts.append(f"- {finding.text}")
+        if texts:
+            enriched_prompt = (
+                "Based on these research findings:\n"
+                + "\n".join(texts)
+                + f"\n\nDesign: {data.prompt}"
+            )
+
+    # Create or reuse a Stitch project
+    stitch_project_id = "default"
+    try:
+        stitch_proj = await stitch_service.create_project(f"ReClaw-{data.project_id[:8]}")
+        raw_name = stitch_proj.get("name", "")
+        stitch_project_id = stitch_service.extract_project_id(raw_name) if raw_name else "default"
+    except Exception:
+        pass
+
+    # Call Stitch MCP API
+    try:
+        stitch_data = await stitch_service.generate_screen(
+            stitch_project_id, enriched_prompt, data.device_type, data.model
+        )
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Stitch API error: {e}")
+
+    # Parse response: screens nested in outputComponents[0].design.screens[]
+    output_components = stitch_data.get("outputComponents", [{}])
+    screens_data = []
+    if output_components:
+        design_block = output_components[0].get("design", {})
+        screens_data = design_block.get("screens", [])
+    if not screens_data and stitch_data.get("screens"):
+        screens_data = stitch_data["screens"]
+
+    stitch_session_id = stitch_data.get("sessionId", "")
+    created_screens: list[DesignScreen] = []
+
+    async with httpx.AsyncClient(timeout=60) as http:
+        for i, s_data in enumerate(screens_data):
+            screen_id = str(uuid.uuid4())
+            stitch_screen_id = s_data.get("id", "")
+            screen_title = s_data.get("title") or s_data.get("name") or data.prompt[:100]
+
+            # Download HTML from downloadUrl
+            html_content = ""
+            html_code = s_data.get("htmlCode", {})
+            html_url = html_code.get("downloadUrl", "") if isinstance(html_code, dict) else ""
+            if html_url:
+                try:
+                    resp = await http.get(html_url)
+                    resp.raise_for_status()
+                    html_content = resp.text
+                except Exception:
+                    pass
+            if not html_content:
+                html_content = s_data.get("html", s_data.get("htmlContent", ""))
+
+            # Security scan HTML
+            if html_content:
+                scan = guard.scan_text(html_content)
+                if not scan.clean:
+                    _log.warning("Stitch HTML flagged: %s", scan.threats)
+                    html_content = scan.cleaned_text
+
+            # Download screenshot
+            screenshot_path = ""
+            screenshot_info = s_data.get("screenshot", {})
+            screenshot_url = screenshot_info.get("downloadUrl", "") if isinstance(screenshot_info, dict) else ""
+            if screenshot_url:
+                try:
+                    resp = await http.get(screenshot_url)
+                    resp.raise_for_status()
+                    save_dir = Path(settings.design_screens_dir)
+                    save_dir.mkdir(parents=True, exist_ok=True)
+                    img_path = save_dir / f"{screen_id}.png"
+                    img_path.write_bytes(resp.content)
+                    screenshot_path = str(img_path)
+                except Exception:
+                    pass
+
+            screen = DesignScreen(
+                id=screen_id,
+                project_id=data.project_id,
+                title=screen_title,
+                description=data.prompt,
+                prompt=enriched_prompt,
+                device_type=data.device_type,
+                model_used=data.model,
+                html_content=html_content,
+                screenshot_path=screenshot_path,
+                stitch_project_id=stitch_project_id,
+                stitch_screen_id=stitch_screen_id,
+                status="ready",
+                source_findings=json.dumps(seed_ids),
+                metadata_json=json.dumps({
+                    "stitch_session_id": stitch_session_id,
+                    "stitch_width": s_data.get("width"),
+                    "stitch_height": s_data.get("height"),
+                }),
+            )
+            db.add(screen)
+            created_screens.append(screen)
+
+    # Create DesignDecision if seeded from findings
+    decision_id = None
+    if seed_ids and created_screens:
+        decision_id = str(uuid.uuid4())
+        dd = DesignDecision(
+            id=decision_id,
+            project_id=data.project_id,
+            agent_id="design-lead",
+            text=f"Design decision: {data.prompt[:200]}",
+            recommendation_ids=json.dumps(seed_ids),
+            screen_ids=json.dumps([s.id for s in created_screens]),
+            rationale=f"Generated from research findings via Stitch ({data.model})",
+        )
+        db.add(dd)
+
+    await db.commit()
+    for s in created_screens:
+        await db.refresh(s)
+
+    # Return the first screen (most common case) with decision_id
+    if created_screens:
+        resp = created_screens[0].to_dict()
+        resp["design_decision_id"] = decision_id
+        if len(created_screens) > 1:
+            resp["additional_screens"] = [s.to_dict() for s in created_screens[1:]]
+        return resp
+
+    # Fallback: no screens parsed from Stitch response
+    raise HTTPException(status_code=502, detail="Stitch returned no screens")
 
 
 @router.post("/interfaces/screens/edit")
 async def edit_screen(data: EditRequest, db: AsyncSession = Depends(get_db)):
-    """Edit an existing screen with instructions."""
-    # Resolve project_id from the screen
+    """Edit an existing screen with instructions via Stitch.
+
+    Creates a child DesignScreen with the edited HTML, linked via parent_screen_id.
+    """
+    import httpx
+    from app.services.stitch_service import stitch_service
+
+    # Resolve parent screen
     screen_result = await db.execute(
         select(DesignScreen).where(DesignScreen.id == data.screen_id)
     )
-    screen = screen_result.scalar_one_or_none()
-    if not screen:
+    parent = screen_result.scalar_one_or_none()
+    if not parent:
         raise HTTPException(status_code=404, detail="Screen not found")
 
-    result = await execute_design_tool(
-        "edit_screen",
-        {"screen_id": data.screen_id, "instructions": data.instructions},
-        screen.project_id,
+    # If Stitch is not configured, fall back to design tool executor
+    if not settings.stitch_api_key:
+        result = await execute_design_tool(
+            "edit_screen",
+            {"screen_id": data.screen_id, "instructions": data.instructions},
+            parent.project_id,
+        )
+        return result
+
+    stitch_proj_id = parent.stitch_project_id or "default"
+    stitch_screen_ids = [parent.stitch_screen_id] if parent.stitch_screen_id else []
+
+    if not stitch_screen_ids:
+        raise HTTPException(
+            status_code=422,
+            detail="Screen has no Stitch screen ID -- cannot edit via Stitch",
+        )
+
+    try:
+        stitch_data = await stitch_service.edit_screen(
+            stitch_proj_id, stitch_screen_ids, data.instructions
+        )
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Stitch edit error: {e}")
+
+    # Parse response
+    output_components = stitch_data.get("outputComponents", [{}])
+    screens_data = []
+    if output_components:
+        design_block = output_components[0].get("design", {})
+        screens_data = design_block.get("screens", [])
+    if not screens_data and stitch_data.get("screens"):
+        screens_data = stitch_data["screens"]
+
+    new_id = str(uuid.uuid4())
+    html_content = ""
+    screenshot_path = ""
+    stitch_screen_id_new = ""
+
+    async with httpx.AsyncClient(timeout=60) as http:
+        if screens_data:
+            s_data = screens_data[0]
+            stitch_screen_id_new = s_data.get("id", "")
+
+            # Download HTML
+            html_code = s_data.get("htmlCode", {})
+            html_url = html_code.get("downloadUrl", "") if isinstance(html_code, dict) else ""
+            if html_url:
+                try:
+                    resp = await http.get(html_url)
+                    resp.raise_for_status()
+                    html_content = resp.text
+                except Exception:
+                    pass
+            if not html_content:
+                html_content = s_data.get("html", s_data.get("htmlContent", ""))
+
+            # Download screenshot
+            screenshot_info = s_data.get("screenshot", {})
+            screenshot_url = screenshot_info.get("downloadUrl", "") if isinstance(screenshot_info, dict) else ""
+            if screenshot_url:
+                try:
+                    resp = await http.get(screenshot_url)
+                    resp.raise_for_status()
+                    save_dir = Path(settings.design_screens_dir)
+                    save_dir.mkdir(parents=True, exist_ok=True)
+                    img_path = save_dir / f"{new_id}.png"
+                    img_path.write_bytes(resp.content)
+                    screenshot_path = str(img_path)
+                except Exception:
+                    pass
+        else:
+            html_content = stitch_data.get("html", stitch_data.get("text", ""))
+
+    edited = DesignScreen(
+        id=new_id,
+        project_id=parent.project_id,
+        title=f"Edit: {data.instructions[:80]}",
+        description=data.instructions,
+        prompt=data.instructions,
+        device_type=parent.device_type,
+        model_used=parent.model_used,
+        html_content=html_content,
+        screenshot_path=screenshot_path,
+        parent_screen_id=data.screen_id,
+        stitch_project_id=stitch_proj_id,
+        stitch_screen_id=stitch_screen_id_new,
+        status="ready",
+        source_findings=parent.source_findings,
     )
-    return result
+    db.add(edited)
+    await db.commit()
+    await db.refresh(edited)
+
+    return edited.to_dict()
 
 
 @router.post("/interfaces/screens/variant")
 async def create_variant(data: VariantRequest, db: AsyncSession = Depends(get_db)):
-    """Create variants of an existing screen."""
+    """Create design variants of an existing screen via Stitch.
+
+    Returns a list of variant DesignScreen records, each linked to the parent.
+    """
+    import httpx
+    from app.services.stitch_service import stitch_service
+
     screen_result = await db.execute(
         select(DesignScreen).where(DesignScreen.id == data.screen_id)
     )
-    screen = screen_result.scalar_one_or_none()
-    if not screen:
+    parent = screen_result.scalar_one_or_none()
+    if not parent:
         raise HTTPException(status_code=404, detail="Screen not found")
 
-    result = await execute_design_tool(
-        "create_variant",
-        {
-            "screen_id": data.screen_id,
-            "variant_type": data.variant_type,
-            "count": data.count,
-        },
-        screen.project_id,
-    )
-    return result
+    # If Stitch is not configured, fall back to design tool executor
+    if not settings.stitch_api_key:
+        result = await execute_design_tool(
+            "create_variant",
+            {
+                "screen_id": data.screen_id,
+                "variant_type": data.variant_type,
+                "count": data.count,
+            },
+            parent.project_id,
+        )
+        return result
+
+    stitch_proj_id = parent.stitch_project_id or "default"
+    stitch_screen_ids = [parent.stitch_screen_id] if parent.stitch_screen_id else []
+
+    if not stitch_screen_ids:
+        raise HTTPException(
+            status_code=422,
+            detail="Screen has no Stitch screen ID -- cannot generate variants via Stitch",
+        )
+
+    try:
+        stitch_data = await stitch_service.generate_variants(
+            stitch_proj_id,
+            stitch_screen_ids,
+            parent.prompt or f"Create {data.variant_type} variants",
+            variant_count=data.count,
+            creative_range=data.variant_type,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Stitch variant error: {e}")
+
+    # Parse response
+    output_components = stitch_data.get("outputComponents", [{}])
+    screens_data = []
+    if output_components:
+        design_block = output_components[0].get("design", {})
+        screens_data = design_block.get("screens", [])
+    if not screens_data and stitch_data.get("screens"):
+        screens_data = stitch_data["screens"]
+
+    created_variants: list[DesignScreen] = []
+
+    async with httpx.AsyncClient(timeout=60) as http:
+        for i, s_data in enumerate(screens_data):
+            vid = str(uuid.uuid4())
+            stitch_vid = s_data.get("id", "")
+
+            # Download HTML
+            html_content = ""
+            html_code = s_data.get("htmlCode", {})
+            html_url = html_code.get("downloadUrl", "") if isinstance(html_code, dict) else ""
+            if html_url:
+                try:
+                    resp = await http.get(html_url)
+                    resp.raise_for_status()
+                    html_content = resp.text
+                except Exception:
+                    pass
+            if not html_content:
+                html_content = s_data.get("html", s_data.get("htmlContent", ""))
+
+            # Download screenshot
+            screenshot_path = ""
+            screenshot_info = s_data.get("screenshot", {})
+            screenshot_url = screenshot_info.get("downloadUrl", "") if isinstance(screenshot_info, dict) else ""
+            if screenshot_url:
+                try:
+                    resp = await http.get(screenshot_url)
+                    resp.raise_for_status()
+                    save_dir = Path(settings.design_screens_dir)
+                    save_dir.mkdir(parents=True, exist_ok=True)
+                    img_path = save_dir / f"{vid}.png"
+                    img_path.write_bytes(resp.content)
+                    screenshot_path = str(img_path)
+                except Exception:
+                    pass
+
+            vs = DesignScreen(
+                id=vid,
+                project_id=parent.project_id,
+                title=s_data.get("title") or f"Variant {i + 1} ({data.variant_type})",
+                description=f"{data.variant_type} variant of {data.screen_id}",
+                prompt=parent.prompt,
+                device_type=parent.device_type,
+                model_used=parent.model_used,
+                html_content=html_content,
+                screenshot_path=screenshot_path,
+                parent_screen_id=data.screen_id,
+                variant_type=data.variant_type.lower(),
+                stitch_project_id=stitch_proj_id,
+                stitch_screen_id=stitch_vid,
+                status="ready",
+                source_findings=parent.source_findings,
+            )
+            db.add(vs)
+            created_variants.append(vs)
+
+    await db.commit()
+    for v in created_variants:
+        await db.refresh(v)
+
+    return {"variants": [v.to_dict() for v in created_variants], "count": len(created_variants)}
 
 
 @router.delete("/interfaces/screens/{screen_id}", status_code=204)
@@ -525,13 +883,90 @@ async def delete_screen(screen_id: str, db: AsyncSession = Depends(get_db)):
 
 @router.post("/interfaces/figma/import")
 async def figma_import(data: FigmaImportRequest, db: AsyncSession = Depends(get_db)):
-    """Import design context from a Figma URL."""
-    result = await execute_design_tool(
-        "import_from_figma",
-        {"figma_url": data.figma_url},
-        data.project_id,
-    )
-    return result
+    """Import design context from a Figma URL.
+
+    When Figma is configured, calls the real Figma REST API to fetch file data,
+    components, and styles. Returns a structured design context.
+    """
+    from app.services.figma_service import figma_service
+
+    # Verify project exists
+    result = await db.execute(select(Project).where(Project.id == data.project_id))
+    project = result.scalar_one_or_none()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    # Parse the Figma URL
+    parsed = figma_service.parse_figma_url(data.figma_url)
+    file_key = parsed.get("file_key", "")
+    node_id = parsed.get("node_id")
+
+    if not file_key:
+        raise HTTPException(status_code=422, detail="Could not extract file key from Figma URL")
+
+    # If Figma is not configured, fall back to the design tool executor
+    if not settings.figma_api_token:
+        tool_result = await execute_design_tool(
+            "import_from_figma",
+            {"figma_url": data.figma_url},
+            data.project_id,
+        )
+        return tool_result
+
+    try:
+        # Fetch file metadata
+        file_data = await figma_service.get_file(file_key)
+        file_name = file_data.get("name", "Untitled")
+
+        # Fetch node data if a specific node was referenced
+        node_data = None
+        if node_id:
+            try:
+                node_data = await figma_service.get_file_nodes(file_key, [node_id])
+            except Exception:
+                pass
+
+        # Fetch components and styles
+        components_data = {}
+        styles_data = {}
+        try:
+            components_data = await figma_service.get_components(file_key)
+        except Exception:
+            pass
+        try:
+            styles_data = await figma_service.get_styles(file_key)
+        except Exception:
+            pass
+
+        components = components_data.get("meta", {}).get("components", [])
+        styles = styles_data.get("meta", {}).get("styles", [])
+
+        return {
+            "success": True,
+            "file_key": file_key,
+            "node_id": node_id,
+            "name": file_name,
+            "components": [
+                {
+                    "name": c.get("name", ""),
+                    "key": c.get("key", ""),
+                    "description": c.get("description", ""),
+                }
+                for c in components[:50]
+            ],
+            "styles": [
+                {
+                    "name": s.get("name", ""),
+                    "key": s.get("key", ""),
+                    "style_type": s.get("style_type", ""),
+                    "description": s.get("description", ""),
+                }
+                for s in styles[:50]
+            ],
+            "node_data": node_data.get("nodes", {}) if node_data else None,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Figma API error: {e}")
 
 
 @router.post("/interfaces/figma/export")
@@ -554,6 +989,33 @@ async def figma_export(data: FigmaExportRequest, db: AsyncSession = Depends(get_
         "figma_file_key": data.figma_file_key,
         "message": f"Screen '{screen.title}' linked to Figma file {data.figma_file_key}",
     }
+
+
+@router.get("/interfaces/figma/design-system/{file_key}")
+async def figma_design_system(file_key: str, db: AsyncSession = Depends(get_db)):
+    """Extract a design system summary from a Figma file.
+
+    Returns components and styles organized as a design system.
+    Requires Figma API token to be configured.
+    """
+    from app.services.figma_service import figma_service
+
+    if not settings.figma_api_token:
+        raise HTTPException(
+            status_code=422,
+            detail="Figma API token not configured. Set FIGMA_API_TOKEN in settings.",
+        )
+
+    try:
+        design_system = await figma_service.extract_design_system(file_key)
+        return {
+            "success": True,
+            "file_key": design_system["file_key"],
+            "components": design_system["components"],
+            "styles": design_system["styles"],
+        }
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Figma API error: {e}")
 
 
 # -- Handoff -----------------------------------------------------------------
