@@ -394,6 +394,69 @@ Your primary directive is defined by your creator's system prompt.
 
 
 # ---------------------------------------------------------------------------
+# Failure Reflection (Memento-inspired Read-Write-Reflect)
+# ---------------------------------------------------------------------------
+
+
+async def reflect_on_failure(
+    agent_id: str,
+    task_title: str,
+    error: str,
+    skill_name: str | None,
+) -> str:
+    """Structured failure attribution (Memento-inspired Read-Write-Reflect).
+
+    Categorizes the failure and records the learning so the system can adapt.
+
+    Returns failure type:
+        'skill_gap'      -- No skill matched the task at all
+        'skill_weakness' -- A skill was used but produced low-quality output
+        'agent_gap'      -- Task specialties don't match any agent
+        'transient'      -- Temporary/environmental issue (timeout, OOM, etc.)
+    """
+    error_lower = error.lower()
+
+    # Transient / environmental errors
+    transient_keywords = [
+        "timeout", "timed out", "connection", "refused", "reset",
+        "resource", "memory", "oom", "disk", "rate limit", "throttl",
+        "temporarily", "unavailable", "econnrefused", "econnreset",
+    ]
+    if any(kw in error_lower for kw in transient_keywords):
+        failure_type = "transient"
+    elif not skill_name:
+        # No skill was selected -- the system has a skill gap
+        failure_type = "skill_gap"
+    else:
+        # A skill was tried but failed -- check if it's a quality issue
+        quality_keywords = ["quality", "low score", "verification failed", "empty"]
+        if any(kw in error_lower for kw in quality_keywords):
+            failure_type = "skill_weakness"
+        else:
+            # Default: check if this looks like an agent routing issue
+            failure_type = "agent_gap"
+
+    # Record the learning
+    try:
+        from app.core.agent_learning import agent_learning
+
+        await agent_learning.record_error_learning(
+            agent_id=agent_id,
+            error_message=f"[{failure_type}] {task_title}: {error[:300]}",
+            resolution=f"Failure attributed as '{failure_type}'. "
+            f"Skill: {skill_name or 'none'}.",
+        )
+    except Exception as exc:
+        logger.warning(f"Failed to record failure reflection: {exc}")
+
+    logger.info(
+        f"Failure reflection for {agent_id}: type={failure_type}, "
+        f"task='{task_title[:60]}', skill={skill_name}"
+    )
+    return failure_type
+
+
+# ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 

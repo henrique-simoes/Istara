@@ -1,10 +1,12 @@
 """Task database model."""
 
+from __future__ import annotations
+
 import enum
 import json
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, Enum, Float, ForeignKey, String, Text
+from sqlalchemy import DateTime, Enum, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.database import Base
@@ -50,6 +52,11 @@ class Task(Base):
     validation_method: Mapped[str | None] = mapped_column(String(50), nullable=True, default=None)
     validation_result: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)  # JSON
     consensus_score: Mapped[float | None] = mapped_column(Float, nullable=True, default=None)
+
+    # Retry / process hardening
+    retry_count: Mapped[int] = mapped_column(Integer, default=0)
+    max_retries: Mapped[int] = mapped_column(Integer, default=3)
+    last_retry_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, default=None)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)

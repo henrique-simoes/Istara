@@ -28,12 +28,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.core.agent import agent
 from app.core.agent_identity import load_agent_identity, get_agent_display_name
+from app.core.content_guard import ContentGuard
 from app.core.prompt_rag import compose_dynamic_prompt, compose_keyword_prompt
 from app.core.context_summarizer import context_summarizer
 from app.core.ollama import ollama
 from app.core.rag import build_augmented_prompt, retrieve_context
 from app.core.token_counter import context_guard
 from app.models.database import get_db, async_session
+
+_guard = ContentGuard()
 from app.models.agent import Agent
 from app.models.message import Message
 from app.models.project import Project
@@ -126,6 +129,15 @@ async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db)):
     )
     db.add(user_msg)
     await db.commit()
+
+    # --- Content Guard: scan user message for injection attempts ---
+    user_scan = _guard.scan_text(request.message)
+    if user_scan.threat_level in ("medium", "high"):
+        _chat_log.warning(
+            "Content guard flagged user message: %s - %s",
+            user_scan.threat_level,
+            user_scan.threats,
+        )
 
     # --- Resolve session-specific inference settings ---
     llm_temperature = 0.7

@@ -45,6 +45,16 @@ class SubAgentWorker:
     def stop_task_loop(self) -> None:
         self._running = False
 
+    @staticmethod
+    def _is_in_backoff(task: Task) -> bool:
+        """Check if a task is still within its retry backoff window."""
+        if task.last_retry_at and (task.retry_count or 0) > 0:
+            backoff = min(5 * (3 ** (task.retry_count - 1)), 120)
+            elapsed = (datetime.now(timezone.utc) - task.last_retry_at).total_seconds()
+            if elapsed < backoff:
+                return True
+        return False
+
     async def _check_and_execute(self) -> None:
         """Check for tasks assigned to this agent and execute them."""
         async with async_session() as db:
@@ -67,9 +77,13 @@ class SubAgentWorker:
                     ),
                 )
                 .order_by(priority_order, Task.position.asc())
-                .limit(1)
+                .limit(10)
             )
-            task = result.scalar_one_or_none()
+            task = None
+            for candidate in result.scalars().all():
+                if not self._is_in_backoff(candidate):
+                    task = candidate
+                    break
             if not task:
                 return
 
@@ -96,8 +110,14 @@ class SubAgentWorker:
             await executor._execute_task(db, task, project)
         except Exception as e:
             logger.error(f"SubAgent {self._agent_id} task execution failed: {e}")
-            task.status = TaskStatus.BACKLOG
+            task.retry_count = (task.retry_count or 0) + 1
+            task.last_retry_at = datetime.now(timezone.utc)
             task.agent_notes = f"Execution failed: {str(e)[:200]}"
+
+            if task.retry_count < (task.max_retries or 3):
+                task.status = TaskStatus.BACKLOG
+            else:
+                task.status = TaskStatus.DONE  # Exhausted retries
             await db.commit()
 
     async def check_collaboration_requests(self) -> list[dict]:

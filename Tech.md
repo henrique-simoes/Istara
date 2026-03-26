@@ -1157,6 +1157,45 @@ Switching between SQLite (local mode) and PostgreSQL (team mode) no longer risks
 | Uploaded Files | Filesystem | Yes (needs document refs) |
 | Agent Personas | MD files on filesystem | Yes |
 
+### Content Guard & Prompt Injection Protection
+
+- 5 threat pattern categories: instruction overrides, role impersonation, invisible unicode, credential exfiltration, hidden markup
+- `ScanResult` dataclass with `clean` / `threat_level` / `threats` / `cleaned_text`
+- 6 pipeline integration points: file_processor, rag, context_hierarchy, agent_memory, chat, files
+- Untrusted content wrapping with XML delimiters
+
+### Automatic Agent Creation (Memento-inspired)
+
+- `AgentFactory` class with `detect_capability_gap()` and `propose_agent_creation()`
+- Capability gap detection: if best agent coverage < 60% of needed specialties
+- `AgentCreationProposal` with approve/reject workflow
+- Triggered in `MetaOrchestrator` during task distribution
+- Reference: Zhou et al. (2026). "Memento-Skills: Let Agents Design Agents." arXiv:2603.18743
+
+### Autonomous Skill Creation
+
+- `SkillCreationProposal` class parallel to existing `SkillUpdateProposal`
+- Trigger: quality_score >= 0.8, >= 3 findings, agent maturity >= 5 tasks
+- ContentGuard validation of proposed prompts
+- Approval workflow with runtime registry registration
+- Inspired by Hermes Agent skill creation and Memento-Skills reflective learning
+
+### Read-Write Reflective Learning
+
+- Utility scoring on `AgentLearning` model (0.0-1.0, exponential moving average)
+- Structured failure attribution via `reflect_on_failure()` — 4 categories: skill_gap, skill_weakness, agent_gap, transient
+- Auto-archive low-utility learnings (< 0.2 after 5+ applications)
+- Semantic skill routing fallback using embedding similarity
+
+### Process Hardening
+
+- `TaskCheckpoint` model for crash recovery (5 phases: started -> skill_selected -> executing -> findings_stored -> verified)
+- Startup recovery: `recover_incomplete()` returns orphaned tasks to BACKLOG
+- Exponential backoff retry: 5s, 15s, 45s, 120s (max 3 retries)
+- Atomic file writes: write-tmp-then-rename pattern for all JSON persistence
+- Scheduler deduplication: `is_running` flag prevents concurrent execution
+- Graceful shutdown: 30s drain period for in-flight tasks
+
 ### Academic References
 
 | Method | Paper | Venue |

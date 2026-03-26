@@ -11,8 +11,11 @@ import lancedb
 import pyarrow as pa
 
 from app.config import settings
+from app.core.content_guard import ContentGuard
 from app.core.embeddings import EmbeddedChunk, TextChunk, embed_chunks, embed_text
 from app.core.keyword_index import KeywordIndex, KeywordResult
+
+_guard = ContentGuard()
 
 logger = logging.getLogger(__name__)
 
@@ -339,14 +342,15 @@ async def retrieve_context(
     query_vector = await embed_text(query)
     results = await hybrid_search(project_id, query, query_vector, top_k=top_k)
 
-    # Format context for the LLM
+    # Format context for the LLM — wrap each chunk in untrusted delimiters
     context_parts = []
     for i, r in enumerate(results, 1):
         source_info = f"[Source: {r.source}"
         if r.page:
             source_info += f", page {r.page}"
         source_info += f", relevance: {r.score:.2f}]"
-        context_parts.append(f"--- Document {i} {source_info} ---\n{r.text}")
+        wrapped = _guard.wrap_untrusted(r.text, source=r.source)
+        context_parts.append(f"--- Document {i} {source_info} ---\n{wrapped}")
 
     context_text = "\n\n".join(context_parts) if context_parts else ""
 
@@ -382,10 +386,12 @@ def build_augmented_prompt(
     ]
 
     if company_context:
-        parts.append(f"\n## Company Context\n{company_context}")
+        wrapped_company = _guard.wrap_untrusted(company_context, source="company_context")
+        parts.append(f"\n## Company Context\n{wrapped_company}")
 
     if project_context:
-        parts.append(f"\n## Project Context\n{project_context}")
+        wrapped_project = _guard.wrap_untrusted(project_context, source="project_context")
+        parts.append(f"\n## Project Context\n{wrapped_project}")
 
     if rag_context.has_context:
         parts.append(

@@ -9,11 +9,16 @@ This is the brain of ReClaw. It:
 6. Self-checks findings against sources
 7. Generates suggestions for the user
 8. Loops continuously, respecting resource limits
+9. Checkpoints progress for crash recovery
+10. Proposes new skills when patterns emerge
 """
+
+from __future__ import annotations
 
 import asyncio
 import json
 import logging
+import math
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -41,6 +46,7 @@ from app.api.websocket import (
     broadcast_task_queue_update,
     broadcast_finding_created,
 )
+from app.core.checkpoint import create_checkpoint, update_checkpoint, complete_checkpoint
 from app.skills.registry import registry
 from app.skills.base import SkillInput, SkillOutput
 from app.skills.skill_manager import skill_manager
@@ -195,6 +201,16 @@ class AgentOrchestrator:
 
             return True
 
+    def _is_in_backoff(self, task: Task) -> bool:
+        """Check if a task is still within its retry backoff window."""
+        if task.last_retry_at and (task.retry_count or 0) > 0:
+            # Backoff delays: [5, 15, 45, 120] seconds (capped at 120)
+            backoff = min(5 * (3 ** (task.retry_count - 1)), 120)
+            elapsed = (datetime.now(timezone.utc) - task.last_retry_at).total_seconds()
+            if elapsed < backoff:
+                return True
+        return False
+
     async def _pick_next_task(self, db: AsyncSession) -> Task | None:
         """Pick the highest priority task assigned to THIS agent.
 
@@ -203,6 +219,7 @@ class AgentOrchestrator:
         2. Unassigned tasks (only for reclaw-main as fallback)
 
         Priority mapping: critical > high > medium > low
+        Skips tasks in backoff period after retries.
         """
         priority_order = case(
             (Task.priority == "critical", 0),
@@ -226,11 +243,11 @@ class AgentOrchestrator:
                 ),
             )
             .order_by(priority_order, Task.position.asc(), Task.created_at.asc())
-            .limit(1)
+            .limit(10)
         )
-        task = result.scalar_one_or_none()
-        if task:
-            return task
+        for task in result.scalars().all():
+            if not self._is_in_backoff(task):
+                return task
 
         # Fallback: pick unassigned tasks (main agent only to avoid contention)
         if self._agent_id == "reclaw-main":
@@ -241,9 +258,11 @@ class AgentOrchestrator:
                     Task.agent_id.is_(None),
                 )
                 .order_by(priority_order, Task.position.asc(), Task.created_at.asc())
-                .limit(1)
+                .limit(10)
             )
-            return result.scalar_one_or_none()
+            for task in result.scalars().all():
+                if not self._is_in_backoff(task):
+                    return task
 
         return None
 
@@ -254,6 +273,9 @@ class AgentOrchestrator:
     async def _execute_task(self, db: AsyncSession, task: Task, project: Project) -> None:
         """Execute a task using the appropriate skill."""
         logger.info(f"Executing task: {task.title} (skill: {task.skill_name or 'auto'})")
+
+        # Checkpoint: started
+        await create_checkpoint(db, task.id, self._agent_id, "started")
 
         # Move to in_progress and persist agent state
         task.status = TaskStatus.IN_PROGRESS
@@ -268,7 +290,11 @@ class AgentOrchestrator:
         if not skill:
             # No specific skill — use general chat to work on the task
             await self._execute_general_task(db, task, project)
+            await complete_checkpoint(db, task.id)
             return
+
+        # Checkpoint: skill_selected
+        await update_checkpoint(db, task.id, "skill_selected", {"skill": skill.name})
 
         # Check per-agent skill ACL
         if not await self._check_agent_skill_acl(task.agent_id, skill.name):
@@ -276,6 +302,7 @@ class AgentOrchestrator:
             task.agent_notes = f"Skill '{skill.name}' not allowed for this agent."
             task.status = TaskStatus.BACKLOG
             await db.commit()
+            await complete_checkpoint(db, task.id)
             await broadcast_agent_status("warning", f"Skill blocked: {skill.name} not in agent ACL")
             return
 
@@ -300,12 +327,18 @@ class AgentOrchestrator:
         await broadcast_task_progress(task.id, 0.3, f"Running {skill.display_name}...")
 
         try:
+            # Checkpoint: executing
+            await update_checkpoint(db, task.id, "executing")
+
             # Execute the skill
             output = await skill.execute(skill_input)
 
             # Store findings in the database
             await self._store_findings(db, project.id, output, task)
             await broadcast_task_progress(task.id, 0.7, "Storing findings...")
+
+            # Checkpoint: findings_stored
+            await update_checkpoint(db, task.id, "findings_stored")
 
             # Store key insights in agent memory
             try:
@@ -330,6 +363,7 @@ class AgentOrchestrator:
 
             # Self-verify output quality
             verified, verify_reason = self._self_verify_output(output)
+            quality_score = 0.8 if output.success else 0.2
 
             if verified:
                 # Update task — passed verification
@@ -353,7 +387,7 @@ class AgentOrchestrator:
                 await broadcast_agent_status("warning", f"Needs attention: {task.title} — {verify_reason}")
 
             # Record skill usage and check health for self-evolution
-            skill_manager.record_execution(skill.name, output.success, 0.8 if output.success else 0.2)
+            skill_manager.record_execution(skill.name, output.success, quality_score)
             try:
                 health = skill_manager.get_skill_health(skill.name)
                 if health.get("executions", 0) >= 3 and health.get("avg_quality", 1.0) < 0.5:
@@ -373,10 +407,21 @@ class AgentOrchestrator:
             except Exception:
                 pass  # Don't fail task on self-evolution check
 
+            # Autonomous skill creation check
+            total_findings = len(output.nuggets) + len(output.facts) + len(output.insights)
+            if output.success and quality_score >= 0.8 and total_findings >= 3:
+                try:
+                    await self._maybe_propose_skill(db, task, skill, output, total_findings)
+                except Exception:
+                    pass  # Don't fail task on skill creation check
+
             # Generate suggestions
             if output.suggestions:
                 for suggestion in output.suggestions[:3]:
                     await broadcast_suggestion(suggestion, project.id)
+
+            # Checkpoint: complete (remove checkpoint)
+            await complete_checkpoint(db, task.id)
 
             logger.info(f"Task {'completed' if verified else 'needs review'}: {task.title} — {output.summary}")
 
@@ -405,14 +450,80 @@ class AgentOrchestrator:
             except Exception:
                 pass
 
+            # Retry logic with backoff
+            task.retry_count = (task.retry_count or 0) + 1
+            task.last_retry_at = datetime.now(timezone.utc)
             task.agent_notes = f"Error: {error_msg}{resolution_hint}"
-            task.status = TaskStatus.BACKLOG  # Return to backlog on failure
-            await db.commit()
-            await self._persist_agent_state(AgentState.ERROR, error_msg)
-            await broadcast_agent_status(
-                "warning",
-                f"Task returned to backlog: {task.title} — {error_msg[:80]}"
+
+            if task.retry_count < (task.max_retries or 3):
+                task.status = TaskStatus.BACKLOG  # Return to backlog for retry
+                await db.commit()
+                await self._persist_agent_state(AgentState.ERROR, error_msg)
+                await broadcast_agent_status(
+                    "warning",
+                    f"Task retry {task.retry_count}/{task.max_retries or 3}: {task.title} — {error_msg[:80]}"
+                )
+            else:
+                task.status = TaskStatus.DONE
+                await db.commit()
+                await self._persist_agent_state(AgentState.ERROR, error_msg)
+                await broadcast_agent_status(
+                    "error",
+                    f"Task failed after {task.retry_count} retries: {task.title} — {error_msg[:80]}"
+                )
+
+            # Leave checkpoint in place for crash recovery awareness
+
+    async def _maybe_propose_skill(
+        self,
+        db: AsyncSession,
+        task: Task,
+        skill,
+        output: SkillOutput,
+        total_findings: int,
+    ) -> None:
+        """Check if the agent should propose creating a new skill based on this task."""
+        # Maturity gate: agent must have executed 5+ tasks
+        usage = skill_manager.get_usage_stats()
+        total_executions = sum(s.get("executions", 0) for s in usage.values())
+        if total_executions < 5:
+            return
+
+        # Check no existing skill matches closely (by task title keywords)
+        task_keywords = set(task.title.lower().split())
+        for existing_skill in registry.list_all():
+            existing_words = set(existing_skill.name.replace("-", " ").split())
+            overlap = task_keywords & existing_words
+            if len(overlap) >= 2:
+                return  # Close match exists
+
+        # Build a proposal from the task context
+        proposed_name = f"auto-{task.skill_name or 'general'}-{task.id[:8]}"
+        proposed_definition = {
+            "name": proposed_name,
+            "display_name": f"Auto: {task.title[:50]}",
+            "description": f"Autonomously proposed skill based on task: {task.title}",
+            "phase": skill.phase.value if skill else "discover",
+            "skill_type": "mixed",
+            "plan_prompt": f"Create a research plan for: {{context}}",
+            "execute_prompt": f"Analyze the following data for patterns and insights.\nContext: {{context}}\n\nData:\n{{content}}",
+            "output_schema": output.summary[:500] if output.summary else "Standard findings output",
+        }
+
+        try:
+            proposal = skill_manager.propose_skill_creation(
+                definition=proposed_definition,
+                source_task_id=task.id,
+                agent_id=self._agent_id,
+                reason=f"High-quality output ({total_findings} findings) from task: {task.title}",
+                confidence=min(70, 50 + total_findings * 5),
             )
+            await broadcast_suggestion(
+                f"New skill proposed: '{proposed_definition['display_name']}' — review in Skill Creation Proposals.",
+                task.project_id,
+            )
+        except ValueError as e:
+            logger.debug(f"Skill creation proposal skipped: {e}")
 
     def _select_skill(self, task: Task):
         """Select the best skill for a task."""
@@ -483,6 +594,92 @@ class AgentOrchestrator:
                 skill = registry.get(skill_name)
                 if skill:
                     return skill
+
+        # Semantic matching fallback: embed task text and compare against skills
+        try:
+            match = self._semantic_skill_match(task)
+            if match:
+                return match
+        except Exception as e:
+            logger.debug(f"Semantic skill match skipped: {e}")
+
+        # No match — flag as skill creation candidate
+        return None
+
+    # --- Semantic Skill Matching ---
+
+    _skill_desc_cache: dict[str, list[float]] = {}
+
+    def _semantic_skill_match(self, task: Task):
+        """Try embedding-based semantic matching when keywords fail.
+
+        Compares task title+description embeddings against cached skill
+        description embeddings.  Returns the best match above a 0.6
+        cosine similarity threshold, or None.
+        """
+        import math
+
+        all_skills = registry.list_all()
+        if not all_skills:
+            return None
+
+        task_text = f"{task.title} {task.description or ''}"
+        if len(task_text.strip()) < 5:
+            return None
+
+        # Build / refresh description embedding cache
+        try:
+            import asyncio
+            from app.core.embeddings import embed_text
+
+            loop = asyncio.get_event_loop()
+
+            async def _get_task_vec() -> list[float]:
+                return await embed_text(task_text[:512])
+
+            task_vec = loop.run_until_complete(_get_task_vec())
+            if not task_vec:
+                return None
+
+            # Embed skill descriptions (cached in-memory)
+            for skill in all_skills:
+                if skill.name not in self._skill_desc_cache:
+                    desc = f"{skill.display_name} {skill.description}"
+
+                    async def _embed_desc(d: str = desc) -> list[float]:
+                        return await embed_text(d[:512])
+
+                    vec = loop.run_until_complete(_embed_desc())
+                    if vec:
+                        self._skill_desc_cache[skill.name] = vec
+        except RuntimeError:
+            # Event loop already running — fall through gracefully
+            return None
+
+        # Cosine similarity
+        def _cosine(a: list[float], b: list[float]) -> float:
+            dot = sum(x * y for x, y in zip(a, b))
+            na = math.sqrt(sum(x * x for x in a))
+            nb = math.sqrt(sum(x * x for x in b))
+            return dot / (na * nb) if na and nb else 0.0
+
+        best_score = 0.0
+        best_skill = None
+        for skill in all_skills:
+            skill_vec = self._skill_desc_cache.get(skill.name)
+            if not skill_vec:
+                continue
+            score = _cosine(task_vec, skill_vec)
+            if score > best_score:
+                best_score = score
+                best_skill = skill
+
+        if best_skill and best_score >= 0.6:
+            logger.info(
+                f"Semantic skill match: {best_skill.name} "
+                f"(similarity={best_score:.2f}) for task '{task.title[:60]}'"
+            )
+            return best_skill
 
         return None
 

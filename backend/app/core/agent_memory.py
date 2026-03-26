@@ -8,8 +8,10 @@ from dataclasses import dataclass
 from typing import Optional
 
 from app.config import settings
+from app.core.content_guard import ContentGuard
 
 logger = logging.getLogger(__name__)
+_guard = ContentGuard()
 
 
 @dataclass
@@ -31,6 +33,13 @@ class AgentMemoryManager:
         """Agent writes a private note to its memory."""
         from app.core.rag import ingest_chunks
         from app.core.embeddings import TextChunk
+
+        # Content Guard: scan note before storage
+        scan = _guard.scan_text(note)
+        if scan.threat_level == "high":
+            logger.warning("Agent %s note blocked: %s", agent_id, scan.threats)
+            return  # reject high-threat notes
+        note = scan.cleaned_text  # use sanitized version
 
         chunk = TextChunk(
             text=note,

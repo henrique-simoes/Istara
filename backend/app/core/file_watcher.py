@@ -1,5 +1,7 @@
 """Watch directories for new/modified files and auto-ingest them."""
 
+from __future__ import annotations
+
 import asyncio
 import json
 import logging
@@ -37,16 +39,19 @@ class FileWatcher:
                 pass
 
     def _save_state(self) -> None:
-        """Save processed file state to disk."""
+        """Save processed file state to disk (atomic write)."""
+        from app.core.checkpoint import atomic_write
+
         self._state_file.parent.mkdir(parents=True, exist_ok=True)
-        self._state_file.write_text(
+        atomic_write(
+            self._state_file,
             json.dumps(
                 {
                     "processed_files": self._processed_files,
                     "watched_dirs": self._watched_dirs,
                 },
                 indent=2,
-            )
+            ),
         )
 
     def add_watch(self, directory: str, project_id: str) -> None:
