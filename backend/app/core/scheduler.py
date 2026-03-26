@@ -9,7 +9,7 @@ import asyncio
 import logging
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import Boolean, DateTime, String, Text, delete, select
+from sqlalchemy import Boolean, DateTime, Integer, String, Text, delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -38,9 +38,36 @@ class ScheduledTask(Base):
     is_running: Mapped[bool] = mapped_column(Boolean, default=False)
     last_run: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     next_run: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    agent_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    loop_type: Mapped[str] = mapped_column(String(50), default="cron")  # cron | interval | custom
+    interval_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    execution_count: Mapped[int] = mapped_column(Integer, default=0)
+    last_status: Mapped[str] = mapped_column(String(20), default="")
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
+
+    def to_dict(self) -> dict:
+        """Serialize to API-ready dict."""
+        return {
+            "id": self.id,
+            "name": self.name,
+            "description": self.description,
+            "cron_expression": self.cron_expression,
+            "skill_name": self.skill_name,
+            "project_id": self.project_id,
+            "enabled": self.enabled,
+            "is_running": self.is_running,
+            "last_run": self.last_run.isoformat() if self.last_run else None,
+            "next_run": self.next_run.isoformat() if self.next_run else None,
+            "agent_id": self.agent_id,
+            "loop_type": self.loop_type,
+            "interval_seconds": self.interval_seconds,
+            "execution_count": self.execution_count,
+            "last_status": self.last_status,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
 
 
 # ---------------------------------------------------------------------------
@@ -175,13 +202,37 @@ class Scheduler:
                 task.is_running = True
                 await db.commit()
 
+                exec_started = datetime.now(timezone.utc)
+                exec_status = "success"
+                exec_error = ""
+
                 try:
                     await self._execute(task, db)
-                except Exception:
+                except Exception as exc:
+                    exec_status = "failure"
+                    exec_error = str(exc)
                     logger.exception(f"Failed to execute scheduled task {task.id} ({task.name})")
                 finally:
                     # Always clear the running flag
                     task.is_running = False
+                    exec_finished = datetime.now(timezone.utc)
+
+                    # Record execution
+                    task.execution_count = (task.execution_count or 0) + 1
+                    task.last_status = exec_status
+                    try:
+                        from app.services.loop_execution_service import record_execution
+                        await record_execution(
+                            source_type="scheduled_task",
+                            source_id=task.id,
+                            source_name=task.name,
+                            status=exec_status,
+                            started_at=exec_started,
+                            finished_at=exec_finished,
+                            error_message=exec_error,
+                        )
+                    except Exception:
+                        logger.debug("Failed to record loop execution", exc_info=True)
 
                 # Update timestamps regardless of success
                 task.last_run = now

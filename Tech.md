@@ -1241,6 +1241,38 @@ Both Stitch and Figma integrations break ReClaw's local-first approach by sendin
 - Clear visual indicators when data leaves the local environment
 - All API keys stored in .env, never in database
 
+### Loops & Schedule
+
+The Loops & Schedule menu provides centralized monitoring and control for all automated processes in ReClaw:
+
+- **Loop Overview Dashboard**: Real-time health monitoring of all background processes (agent loops, orchestrator, meta-orchestrator, heartbeat, scheduler). Status indicators show active/paused/behind-schedule/stopped states with interval and last-run timestamps. The `/api/loops/overview` endpoint returns agents, schedules, and a consolidated `health_summary` with per-status counts.
+
+- **Cron Scheduler**: Full CRUD for cron-scheduled tasks with visual cron builder. Supports 5-field cron expressions with preset buttons and next-5-runs preview. Schedules can target specific skills and projects. The `/api/schedules` endpoints provide create, list, get, update (PATCH), and delete operations.
+
+- **Agent Loop Configuration**: Per-agent runtime control of loop intervals, pause/resume toggles, and skill assignments. Changes apply immediately to running agent singletons without restart. The `/api/loops/agents/{id}/config` endpoint supports GET and PATCH, while `/api/loops/agents/{id}/pause` and `/resume` toggle agent state.
+
+- **Custom Loops**: User-created loops combining skills + projects + intervals. Extends the scheduler with `loop_type=custom` for flexible automation. The `POST /api/loops/custom` endpoint accepts an interval in seconds or a cron expression and creates a `ScheduledTask` record.
+
+- **Execution History**: Unified timeline of all loop/schedule executions with status, duration, findings count, and error messages. Paginated with filters by source type (agent/schedule), status, and source ID. The `/api/loops/executions` and `/api/loops/executions/stats` endpoints provide history and aggregated statistics.
+
+- **Health Dashboard**: The `/api/loops/health` endpoint returns per-source health items including `source_type`, `source_id`, `status`, `interval_seconds`, `last_execution_at`, `next_expected_at`, and `behind_by_seconds` for identifying stale or failing processes.
+
+### Notifications
+
+The Notifications menu replaces the ephemeral toast-based notification system with a persistent, filterable notification center:
+
+- **Persistent Storage**: Every WebSocket broadcast event is automatically persisted to the `notifications` table via a non-blocking hook in `ConnectionManager.broadcast()`. Events like `heartbeat_batch` are excluded to avoid noise. Each notification stores `type`, `title`, `message`, `category`, `severity`, `agent_id`, `project_id`, `action_type`, `action_target`, and `metadata_json`.
+
+- **Filtering & Search**: Notifications can be filtered by `category` (agent_status, task_progress, finding_created, etc.), `severity` (info/warning/error/success), `agent_id`, `project_id`, `date_from`, `date_to`, `read` state, and full-text `search` across title and message fields. The `GET /api/notifications` endpoint supports all filters with pagination.
+
+- **Read/Unread State**: Mark individual notifications as read via `POST /api/notifications/{id}/read` or mark all via `POST /api/notifications/read-all` (optionally scoped to a project). The `GET /api/notifications/unread-count` endpoint returns the current unread badge count.
+
+- **Notification Preferences**: Per-category toggles for Show Toast (`show_toast`), Show in Notification Center (`show_center`), and Email Forward (`email_forward`). The `GET /api/notifications/preferences` and `PUT /api/notifications/preferences` endpoints allow users to customize which events they see where.
+
+- **Action Notifications**: Some notifications carry actions (e.g., suggestions with "Navigate to chat" action, task completions with "View findings"). The `action_type` and `action_target` fields are preserved and rendered as clickable buttons in the notification center UI.
+
+- **Lifecycle Management**: Individual notifications can be deleted via `DELETE /api/notifications/{id}` (returns 204). The `NotificationPreference` model supports per-agent scoping for fine-grained control over notification routing.
+
 ### Academic References
 
 | Method | Paper | Venue |

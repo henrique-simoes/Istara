@@ -592,3 +592,36 @@ export const contextDag = {
   compact: (sessionId: string) =>
     post<{ compacted: boolean }>(`/api/context-dag/${sessionId}/compact`, {}),
 };
+
+// --- Loops & Schedule ---
+export const loops = {
+  overview: () => get<any>("/api/loops/overview"),
+  agents: () => get<any>("/api/loops/agents"),
+  agentConfig: (agentId: string) => get<any>(`/api/loops/agents/${agentId}/config`),
+  updateAgentConfig: (agentId: string, data: Record<string, unknown>) =>
+    patch<any>(`/api/loops/agents/${agentId}/config`, data),
+  pauseAgent: (agentId: string) => post<any>(`/api/loops/agents/${agentId}/pause`, {}),
+  resumeAgent: (agentId: string) => post<any>(`/api/loops/agents/${agentId}/resume`, {}),
+  executions: (params?: Record<string, string | number>) => {
+    const query = params ? "?" + new URLSearchParams(Object.entries(params).map(([k, v]) => [k, String(v)])).toString() : "";
+    return get<any>(`/api/loops/executions${query}`);
+  },
+  executionStats: (sourceId?: string) => get<any>(`/api/loops/executions/stats${sourceId ? `?source_id=${sourceId}` : ""}`),
+  health: () => get<any>("/api/loops/health"),
+  createCustom: (data: { name: string; skill_name: string; project_id: string; cron_expression?: string; interval_seconds?: number; description?: string }) =>
+    post<any>("/api/loops/custom", data),
+};
+
+// --- Notifications ---
+export const notificationsApi = {
+  list: (params?: Record<string, string | number | boolean>) => {
+    const query = params ? "?" + new URLSearchParams(Object.entries(params).filter(([,v]) => v !== undefined && v !== "").map(([k, v]) => [k, String(v)])).toString() : "";
+    return get<any>(`/api/notifications${query}`);
+  },
+  unreadCount: () => get<{ count: number }>("/api/notifications/unread-count"),
+  markRead: (id: string) => post<any>(`/api/notifications/${id}/read`, {}),
+  markAllRead: (projectId?: string) => post<any>("/api/notifications/read-all", projectId ? { project_id: projectId } : {}),
+  delete: (id: string) => del(`/api/notifications/${id}`),
+  preferences: () => get<any>("/api/notifications/preferences"),
+  updatePreferences: (prefs: any[]) => request<any>("/api/notifications/preferences", { method: "PUT", body: JSON.stringify(prefs) }),
+};
