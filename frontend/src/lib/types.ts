@@ -370,3 +370,44 @@ export interface InterfacesStatus {
   screens_count: number;
   briefs_count: number;
 }
+
+// --- Loops & Schedule ---
+export type LoopStatus = "active" | "paused" | "behind_schedule" | "stopped" | "error";
+export type ExecutionStatus = "success" | "failure" | "running" | "skipped";
+
+export interface LoopExecution {
+  id: string; source_type: string; source_id: string; source_name: string;
+  status: ExecutionStatus; started_at: string; finished_at: string | null;
+  duration_ms: number | null; error_message: string; findings_count: number;
+  metadata: Record<string, unknown>; created_at: string;
+}
+
+export interface AgentLoopConfig {
+  id: string; agent_id: string; loop_interval_seconds: number; paused: boolean;
+  skills_to_run: string[]; project_filter: string; last_cycle_at: string | null;
+  cycle_count: number;
+}
+
+export interface LoopHealthItem {
+  source_type: string; source_id: string; source_name: string;
+  status: LoopStatus; interval_seconds: number;
+  last_execution_at: string | null; next_expected_at: string | null;
+  behind_by_seconds: number;
+}
+
+// --- Notifications ---
+export type NotificationCategory = "agent_status" | "task_progress" | "finding_created" | "file_processed" | "suggestion" | "resource_throttle" | "scheduled_reminder" | "document" | "loop_execution" | "system";
+export type NotificationSeverity = "info" | "warning" | "error" | "success";
+
+export interface AppNotification {
+  id: string; type: string; title: string; message: string;
+  category: NotificationCategory; agent_id: string | null;
+  project_id: string | null; severity: NotificationSeverity;
+  read: boolean; action_type: string; action_target: string;
+  metadata: Record<string, unknown>; created_at: string;
+}
+
+export interface NotificationPreference {
+  id: string; category: string; agent_id: string | null;
+  show_toast: boolean; show_center: boolean; email_forward: boolean;
+}

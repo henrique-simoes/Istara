@@ -48,6 +48,17 @@ class ConnectionManager:
         for conn in disconnected:
             self.disconnect(conn)
 
+        # Persist notification asynchronously — never block broadcasts
+        asyncio.create_task(self._persist_notification(event_type, data))
+
+    async def _persist_notification(self, event_type: str, data: dict) -> None:
+        """Persist a notification record from a broadcast event."""
+        try:
+            from app.services.notification_service import persist_notification
+            await persist_notification(event_type, data)
+        except Exception:
+            pass  # Never block broadcasts
+
     async def send_to(self, websocket: WebSocket, event_type: str, data: dict) -> None:
         """Send an event to a specific client."""
         message = json.dumps({
