@@ -294,6 +294,15 @@ async def maintenance_status():
     }
 
 
+@router.get("/settings/integrations-status")
+async def integrations_status():
+    """Check configuration status of design integrations (Stitch, Figma)."""
+    return {
+        "stitch_configured": bool(settings.stitch_api_key),
+        "figma_configured": bool(settings.figma_api_token),
+    }
+
+
 @router.get("/settings/vector-health")
 async def vector_health():
     """Check embedding dimension consistency across vector stores."""

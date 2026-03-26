@@ -22,6 +22,7 @@ import {
   Users,
   Server,
   Activity,
+  Palette,
 } from "lucide-react";
 import { useProjectStore } from "@/stores/projectStore";
 import DarkModeToggle from "@/components/common/DarkModeToggle";
@@ -69,6 +70,7 @@ export default function Sidebar({ activeView, onViewChange, onSearchOpen }: Side
     { id: "skills", icon: Wand2, label: "Skills" },
     { id: "agents", icon: Users, label: "Agents" },
     { id: "memory", icon: Brain, label: "Memory" },
+    { id: "interfaces", icon: Palette, label: "Interfaces" },
   ];
 
   // Secondary nav: accessible via "More" or header icons

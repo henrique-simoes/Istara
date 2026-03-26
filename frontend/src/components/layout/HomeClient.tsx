@@ -17,6 +17,7 @@ import EnsembleHealthView from "@/components/common/EnsembleHealthView";
 import SkillsView from "@/components/skills/SkillsView";
 import AgentsView from "@/components/agents/AgentsView";
 import MemoryView from "@/components/memory/MemoryView";
+import InterfacesView from "@/components/interfaces/InterfacesView";
 import DocumentsView from "@/components/documents/DocumentsView";
 import SearchModal from "@/components/common/SearchModal";
 import ToastNotification from "@/components/common/ToastNotification";
@@ -95,7 +96,7 @@ export default function HomeClient() {
 
   // Global Cmd+K for search
   useEffect(() => {
-    const viewKeys: Record<string, string> = { "1": "chat", "2": "findings", "3": "tasks", "4": "interviews", "5": "documents", "6": "context", "7": "skills", "8": "agents", "9": "memory" };
+    const viewKeys: Record<string, string> = { "1": "chat", "2": "findings", "3": "tasks", "4": "interviews", "5": "documents", "6": "context", "7": "skills", "8": "agents", "9": "memory", "0": "interfaces" };
 
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
@@ -143,6 +144,7 @@ export default function HomeClient() {
       case "skills": return <SkillsView />;
       case "agents": return <AgentsView />;
       case "memory": return <MemoryView />;
+      case "interfaces": return <InterfacesView />;
       case "history": return <VersionHistory />;
       case "compute": return <ComputePoolView />;
       case "ensemble": return <EnsembleHealthView />;
