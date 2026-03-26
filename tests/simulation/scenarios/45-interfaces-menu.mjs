@@ -242,30 +242,38 @@ export async function run(ctx) {
     }
   }
 
-  // ── 8. Configure Stitch key ──
+  // ── 8. Configure Stitch key (save original, test, restore) ──
   try {
+    const beforeStatus = await api.get("/api/interfaces/status");
+    const wasStitchConfigured = beforeStatus.stitch_configured;
     const result = await api.post("/api/interfaces/configure/stitch", { api_key: "sim-test-key-45" });
     checks.push({
       name: "Configure Stitch returns success",
       passed: result.success === true && result.stitch_configured === true,
       detail: `success=${result.success}, configured=${result.stitch_configured}`,
     });
-    // Reset it back so mock endpoints keep working
-    await api.post("/api/interfaces/configure/stitch", { api_key: "" });
+    // Restore: if it was configured before, we can't restore the real key via API
+    // so we leave it configured (test key is harmless). If it wasn't, reset to empty.
+    if (!wasStitchConfigured) {
+      await api.post("/api/interfaces/configure/stitch", { api_key: "" });
+    }
   } catch (e) {
     checks.push({ name: "Configure Stitch returns success", passed: false, detail: e.message });
   }
 
-  // ── 9. Configure Figma token ──
+  // ── 9. Configure Figma token (save original, test, restore) ──
   try {
+    const beforeFigma = await api.get("/api/interfaces/status");
+    const wasFigmaConfigured = beforeFigma.figma_configured;
     const result = await api.post("/api/interfaces/configure/figma", { api_token: "sim-test-token-45" });
     checks.push({
       name: "Configure Figma returns success",
       passed: result.success === true && result.figma_configured === true,
       detail: `success=${result.success}, configured=${result.figma_configured}`,
     });
-    // Reset it back
-    await api.post("/api/interfaces/configure/figma", { api_token: "" });
+    if (!wasFigmaConfigured) {
+      await api.post("/api/interfaces/configure/figma", { api_token: "" });
+    }
   } catch (e) {
     checks.push({ name: "Configure Figma returns success", passed: false, detail: e.message });
   }
@@ -378,8 +386,10 @@ export async function run(ctx) {
       passed: after.onboarding_needed === false || after.stitch_configured === true,
       detail: `before_onboarding=${wasPending}, after_onboarding=${after.onboarding_needed}, stitch=${after.stitch_configured}`,
     });
-    // Reset
-    await api.post("/api/interfaces/configure/stitch", { api_key: "" });
+    // Only reset if it wasn't configured before
+    if (wasPending) {
+      await api.post("/api/interfaces/configure/stitch", { api_key: "" });
+    }
   } catch (e) {
     checks.push({ name: "Onboarding flips after configuration", passed: false, detail: e.message });
   }
