@@ -13,12 +13,14 @@ from fastapi.responses import JSONResponse
 from app.api.routes import agents, audit, auth, channels, chat, codebooks, context_dag as context_dag_routes, documents, files, findings, interfaces, llm_servers, memory, metrics, projects, scheduler as scheduler_routes, sessions, settings, skills, tasks
 from app.api.routes import backup as backup_routes
 from app.api.routes import compute as compute_routes
+from app.api.routes import deployments as deployment_routes
 from app.api.routes import loops as loops_routes, notifications as notification_routes
+from app.api.routes import surveys as survey_routes
+from app.api.routes import mcp as mcp_routes
 from app.api.routes import meta_hyperagent as meta_hyperagent_routes
+from app.api.routes import webhooks as webhook_routes
 from app.api.websocket import router as ws_router
 from app.channels.base import channel_router
-from app.channels.slack import SlackAdapter
-from app.channels.telegram import TelegramAdapter
 from app.agents.devops_agent import devops_agent
 from app.agents.ui_audit_agent import ui_audit_agent
 from app.agents.ux_eval_agent import ux_eval_agent
@@ -134,12 +136,17 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     except Exception as e:
         _cleanup_log.warning(f"Startup cleanup skipped: {e}")
 
-    # Register channel adapters (opt-in — not auto-started)
-    channel_router.register(SlackAdapter())
-    channel_router.register(TelegramAdapter())
-
     import logging
     _log = logging.getLogger(__name__)
+
+    # Load active channel instances from database
+    try:
+        from app.services.channel_service import load_active_instances
+        async with async_session() as db:
+            loaded = await load_active_instances(db)
+        _log.info(f"Loaded {loaded} active channel instance(s)")
+    except Exception as e:
+        _log.warning(f"Channel instance loading skipped: {e}")
 
     # Network discovery: find LLM servers on local network FIRST
     try:
@@ -379,6 +386,10 @@ app.include_router(loops_routes.router, prefix="/api", tags=["Loops"])
 app.include_router(notification_routes.router, prefix="/api", tags=["Notifications"])
 app.include_router(backup_routes.router, prefix="/api", tags=["Backup"])
 app.include_router(meta_hyperagent_routes.router, prefix="/api", tags=["Meta-Hyperagent"])
+app.include_router(deployment_routes.router, prefix="/api", tags=["Deployments"])
+app.include_router(survey_routes.router, prefix="/api", tags=["Surveys"])
+app.include_router(mcp_routes.router, prefix="/api", tags=["MCP"])
+app.include_router(webhook_routes.router, tags=["Webhooks"])
 app.include_router(ws_router)
 
 

@@ -87,6 +87,9 @@ async def websocket_endpoint(websocket: WebSocket):
     - task_queue_update: Task queue depth changed (pending, in_progress, completed)
     - document_created: New document registered
     - document_updated: Existing document modified
+    - deployment_response: Participant responded to a deployment question
+    - deployment_finding: New finding extracted from a deployment response
+    - deployment_progress: Deployment analytics/progress update
     """
     await manager.connect(websocket)
 
@@ -212,8 +215,57 @@ async def broadcast_meta_proposal(
     })
 
 
+async def broadcast_deployment_response(
+    deployment_id: str, conversation_id: str, message_data: dict
+) -> None:
+    """Broadcast when a participant responds to a deployment question."""
+    await manager.broadcast("deployment_response", {
+        "deployment_id": deployment_id,
+        "conversation_id": conversation_id,
+        **message_data,
+    })
+
+
+async def broadcast_deployment_finding(
+    deployment_id: str, finding_type: str, finding_data: dict
+) -> None:
+    """Broadcast when a new finding is extracted from a deployment response."""
+    await manager.broadcast("deployment_finding", {
+        "deployment_id": deployment_id,
+        "finding_type": finding_type,
+        **finding_data,
+    })
+
+
+async def broadcast_deployment_progress(
+    deployment_id: str, stats: dict
+) -> None:
+    """Broadcast deployment progress/analytics update."""
+    await manager.broadcast("deployment_progress", {
+        "deployment_id": deployment_id,
+        **stats,
+    })
+
+
 async def broadcast(event: dict) -> None:
     """Broadcast a raw event dict (type + data)."""
     event_type = event.get("type", "unknown")
     data = event.get("data", {})
     await manager.broadcast(event_type, data)
+
+
+async def broadcast_channel_status(instance_id: str, status: str, detail: str = "") -> None:
+    """Broadcast a channel instance status change (started, stopped, healthy, unhealthy)."""
+    await manager.broadcast("channel_status", {
+        "instance_id": instance_id,
+        "status": status,
+        "detail": detail,
+    })
+
+
+async def broadcast_channel_message(instance_id: str, message_data: dict) -> None:
+    """Broadcast a channel message event (inbound or outbound)."""
+    await manager.broadcast("channel_message", {
+        "instance_id": instance_id,
+        **message_data,
+    })

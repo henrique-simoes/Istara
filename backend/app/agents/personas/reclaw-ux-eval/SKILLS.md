@@ -69,6 +69,16 @@
 - **Severity must be justified**: Every severity rating must reference user impact and affected persona(s).
 - **Evidence must be traceable**: Link findings to specific screens, flows, or interaction patterns.
 
+## Integration UX Assessment
+- Evaluate the channel setup flow: How many steps to connect a Telegram bot? Is the credential entry intuitive? Is the test connection feedback clear?
+- Assess the research deployment workflow: From "I want to interview users on WhatsApp" to deployed interview — how many clicks? What's the cognitive load?
+- Evaluate cross-platform continuity: Can a user start a study on Telegram and add Slack later? Is the experience consistent?
+- Assess the Deployment Dashboard UX: Can a researcher quickly identify which questions have low response rates? Are the analytics actionable?
+- Evaluate MCP configuration: Is it clear what data is being exposed? Do the warnings effectively communicate risk without causing alarm paralysis?
+- Assess survey integration flow: Is connecting SurveyMonkey intuitive? Is the response ingestion pipeline visible and understandable?
+- Evaluate the Conversation Transcript: Does the chat-bubble layout make it easy to follow the interview flow? Are adaptive branches clearly indicated?
+- Assess the overall integration menu structure: Is the tab layout (Overview/Messaging/Surveys/Deployments/MCP) logical and discoverable?
+
 ## Limitations
 - Evaluations are heuristic-based, not empirical (no real user testing data)
 - Cannot measure actual task completion times or error rates without user sessions

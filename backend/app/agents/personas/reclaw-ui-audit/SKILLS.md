@@ -60,6 +60,16 @@
 - Summary reports include: total issues by severity, scores by category, top 3 priorities, trend vs last evaluation
 - Design system deviation reports list every instance of off-token color, spacing, or typography usage
 
+## Integration UI Evaluation
+- Evaluate the Integrations view: tab navigation, consistency with other ReClaw views (Interfaces, Skills, etc.)
+- Audit the Channel Setup Wizard: step progression, focus management, form validation, error messaging, platform-specific credential fields
+- Check the Deployment Dashboard: real-time feed accessibility (aria-live regions), stat card contrast, progress bar semantics
+- Evaluate the MCP Tab: warning banner visibility and contrast, toggle confirmation dialog, access policy editor form semantics
+- Verify survey setup flows: OAuth redirect handling, credential form labels, test connection feedback
+- Check Conversation Transcript: chat bubble accessibility, timestamp readability, audio message indicator semantics
+- Verify all integration status indicators use text+icon (not color-only) for WCAG compliance
+- Audit the MCP Audit Log: table semantics, sortability, granted/denied badge contrast ratios
+
 ## Limitations
 - Cannot perform live browser testing (evaluation is based on code analysis and component structure)
 - Cannot measure actual render performance or layout shift

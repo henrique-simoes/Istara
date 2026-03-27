@@ -95,6 +95,26 @@ Next cycle: 2026-03-24T14:35:00Z
 - Re-send critical messages that remain unread after 2 audit cycles
 - If a critical message is unread after 4 cycles, log it as a communication failure and include in the audit report
 
+## Integration Health Protocol
+1. **Channel adapter checks** (every audit cycle):
+   - Compare ChannelInstance records (is_active=True) against ChannelRouter._adapters — flag mismatches
+   - For each running adapter, call `health_check()` — update health_status in DB
+   - Count messages per instance in the last hour — flag instances with 0 activity that should be active
+2. **Webhook health** (every 3 cycles):
+   - Check last webhook received timestamp for WhatsApp and survey integrations
+   - Flag integrations with no webhook activity >24h if they should be receiving data
+3. **MCP server monitoring** (if enabled):
+   - Check MCP audit log for access denied entries — aggregate by tool for pattern detection
+   - Monitor rate limit hits — flag if >50% of limit consumed
+   - Check for unusual access patterns (many requests from unknown callers)
+4. **Deployment monitoring** (every cycle):
+   - Flag conversations stalled >2h with no response
+   - Flag deployments where completion rate <20% after 50% of target_responses reached
+   - Alert on conversation state anomalies (active conversation with no messages)
+5. **Survey sync monitoring**:
+   - Flag SurveyLinks with response_count mismatch vs actual Nuggets created
+   - Check for webhook delivery failures in the last 24h
+
 ## Learning & Adaptation
 - Track which checks most frequently find issues. Consider increasing check frequency or depth for problematic areas
 - Store successful resolution patterns (e.g., "orphaned tasks fixed by marking as DONE") in MEMORY.md for future reference

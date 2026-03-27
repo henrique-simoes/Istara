@@ -18,6 +18,7 @@ import SkillsView from "@/components/skills/SkillsView";
 import AgentsView from "@/components/agents/AgentsView";
 import MemoryView from "@/components/memory/MemoryView";
 import InterfacesView from "@/components/interfaces/InterfacesView";
+import IntegrationsView from "@/components/integrations/IntegrationsView";
 import LoopsView from "@/components/loops/LoopsView";
 import NotificationsView from "@/components/notifications/NotificationsView";
 import BackupView from "@/components/backup/BackupView";
@@ -149,6 +150,7 @@ export default function HomeClient() {
       case "agents": return <AgentsView />;
       case "memory": return <MemoryView />;
       case "interfaces": return <InterfacesView />;
+      case "integrations": return <IntegrationsView />;
       case "loops": return <LoopsView />;
       case "notifications": return <NotificationsView />;
       case "backup": return <BackupView />;

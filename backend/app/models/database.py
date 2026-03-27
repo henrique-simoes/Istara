@@ -52,6 +52,14 @@ async def init_db() -> None:
     from app.models.agent_loop_config import AgentLoopConfig  # noqa: F401
     from app.models.notification import Notification, NotificationPreference  # noqa: F401
     from app.models.backup import BackupRecord  # noqa: F401
+    from app.models.channel_instance import ChannelInstance  # noqa: F401
+    from app.models.channel_message import ChannelMessage  # noqa: F401
+    from app.models.channel_conversation import ChannelConversation  # noqa: F401
+    from app.models.research_deployment import ResearchDeployment  # noqa: F401
+    from app.models.survey_integration import SurveyIntegration, SurveyLink  # noqa: F401
+    from app.models.mcp_server_config import MCPServerConfig  # noqa: F401
+    from app.models.mcp_access_policy import MCPAccessPolicy  # noqa: F401
+    from app.models.mcp_audit_log import MCPAuditEntry  # noqa: F401
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

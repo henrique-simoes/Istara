@@ -27,6 +27,7 @@ import {
   Bell,
   Archive,
   Sparkles,
+  MessageSquare,
 } from "lucide-react";
 import { useProjectStore } from "@/stores/projectStore";
 import DarkModeToggle from "@/components/common/DarkModeToggle";
@@ -75,6 +76,7 @@ export default function Sidebar({ activeView, onViewChange, onSearchOpen }: Side
     { id: "agents", icon: Users, label: "Agents" },
     { id: "memory", icon: Brain, label: "Memory" },
     { id: "interfaces", icon: Palette, label: "Interfaces" },
+    { id: "integrations", icon: MessageSquare, label: "Integrations" },
     { id: "loops", icon: RefreshCw, label: "Loops" },
     { id: "notifications", icon: Bell, label: "Notifications" },
   ];

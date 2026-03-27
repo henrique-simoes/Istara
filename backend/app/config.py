@@ -89,6 +89,10 @@ class Settings(BaseSettings):
     meta_hyperagent_observation_interval_hours: int = 6
     meta_hyperagent_variant_observation_hours: int = 72
 
+    # MCP Server (exposes ReClaw to external agents — OFF by default for security)
+    mcp_server_enabled: bool = False
+    mcp_server_port: int = 8001
+
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 
     def ensure_dirs(self) -> None:
