@@ -1273,6 +1273,40 @@ The Notifications menu replaces the ephemeral toast-based notification system wi
 
 - **Lifecycle Management**: Individual notifications can be deleted via `DELETE /api/notifications/{id}` (returns 204). The `NotificationPreference` model supports per-agent scoping for fine-grained control over notification routing.
 
+### Automated Backup System
+
+ReClaw includes a comprehensive backup system that protects all user data with minimal configuration:
+
+- **10-Component Coverage**: Every backup captures all data components — SQLite database, agent personas, skill definitions, project files, vector store, configuration, logs, documents, memory indices, and meta-overrides. Each component is tracked in the backup manifest with individual checksums.
+
+- **Full + Incremental Strategy**: Full backups capture the complete system state. Incremental backups record only changes since the last full backup, reducing storage and time. The `backup_type` field on each `BackupRecord` distinguishes the two modes. A configurable `backup_full_interval_days` controls how frequently full backups occur.
+
+- **SQLite Safe Copy**: The database is copied using `VACUUM INTO` to produce a consistent snapshot without locking the live database. This avoids WAL-mode corruption risks that plague naive file copies.
+
+- **Scheduled Automatic Backups**: When `backup_enabled` is true, the system automatically creates backups at the interval specified by `backup_interval_hours`. A retention policy (`backup_retention_count`) automatically prunes older backups beyond the configured limit.
+
+- **One-Click Restore**: Any backup can be restored via `POST /api/backups/{id}/restore`. The restore process verifies the backup checksum before applying, and creates a pre-restore snapshot so the user can roll back if needed.
+
+- **Verification & Checksums**: `POST /api/backups/{id}/verify` recomputes the manifest checksum against the stored backup and confirms integrity. Verified backups are marked with `status="verified"` and a `verified_at` timestamp.
+
+- **BackupRecord Tracking**: Every backup is tracked in the database with fields for `id`, `filename`, `backup_type`, `parent_id` (for incremental chains), `size_bytes`, `file_count`, `status`, `error_message`, `components`, `checksum`, `created_at`, and `verified_at`.
+
+### Meta-Hyperagent (Experimental)
+
+The Meta-Hyperagent is an experimental self-improvement layer inspired by the Hyperagents paper (DGM-H) on metacognitive self-modification. It observes ReClaw's own subsystems and proposes parameter optimizations:
+
+- **5 Observed Subsystems**: The meta-hyperagent monitors routing (task-to-agent matching accuracy), evolution (prompt promotion rate and quality), skill selection (skill-task match rate), quality evaluation (verification pass rate), and agent capabilities (capability utilization and error rates).
+
+- **Evidence-Based Proposals**: Each `MetaProposal` includes the `target_system`, `parameter_path`, `current_value`, `proposed_value`, a human-readable `reason`, an `evidence` array of supporting data points, a `confidence` score (0-1), and an `expected_impact` description.
+
+- **User Approval Required**: No parameter change is auto-applied. All proposals enter a `pending` state and require explicit user approval via `POST /api/meta-hyperagent/proposals/{id}/approve`. This ensures the human operator retains full control over system behavior.
+
+- **MetaVariant Tracking**: When a proposal is approved, a `MetaVariant` is created that records `old_value`, `new_value`, `applied_at`, `metrics_before`, and begins an observation window (`observation_window_hours`). During this window, `metrics_after` is populated. Variants can be reverted with one click (`POST /api/meta-hyperagent/variants/{id}/revert`) or confirmed (`POST /api/meta-hyperagent/variants/{id}/confirm`).
+
+- **Confirmed Overrides**: When a variant is confirmed, the parameter override is persisted to `_meta_overrides.json` and loaded at startup, making the optimization permanent until manually removed.
+
+- **Safety Mechanisms**: Value bounds prevent parameters from being set outside safe ranges. Rate limiting caps active variants at 3 simultaneously to prevent cascading instability. A full audit trail logs every proposal, approval, rejection, application, revert, and confirmation with timestamps.
+
 ### Academic References
 
 | Method | Paper | Venue |

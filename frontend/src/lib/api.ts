@@ -1,6 +1,6 @@
 /** API client for ReClaw backend. */
 
-import type { ChatSession, ChatMessage, InferencePresetConfig, DAGNode, DAGHealth, DAGExpandResult, DAGGrepResult, ReclawDocument, DocumentContent, DocumentTag, DocumentStats, InterfacesStatus } from "@/lib/types";
+import type { ChatSession, ChatMessage, InferencePresetConfig, DAGNode, DAGHealth, DAGExpandResult, DAGGrepResult, ReclawDocument, DocumentContent, DocumentTag, DocumentStats, InterfacesStatus, BackupRecord, BackupConfig, MetaProposal, MetaVariant, MetaHyperagentStatus } from "@/lib/types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -624,4 +624,41 @@ export const notificationsApi = {
   delete: (id: string) => del(`/api/notifications/${id}`),
   preferences: () => get<any>("/api/notifications/preferences"),
   updatePreferences: (prefs: any[]) => request<any>("/api/notifications/preferences", { method: "PUT", body: JSON.stringify(prefs) }),
+};
+
+// --- Backups ---
+
+export const backups = {
+  list: () => request<BackupRecord[]>("/api/backups"),
+  create: (type: "full" | "incremental" = "full") =>
+    request<BackupRecord>("/api/backups/create", { method: "POST", body: JSON.stringify({ backup_type: type }) }),
+  restore: (id: string) =>
+    request<any>(`/api/backups/${id}/restore`, { method: "POST" }),
+  verify: (id: string) =>
+    request<any>(`/api/backups/${id}/verify`, { method: "POST" }),
+  remove: (id: string) =>
+    fetch(`${API_BASE}/api/backups/${id}`, { method: "DELETE" }),
+  config: () => request<BackupConfig>("/api/backups/config"),
+  updateConfig: (data: Partial<BackupConfig>) =>
+    request<any>("/api/backups/config", { method: "POST", body: JSON.stringify(data) }),
+  estimate: () => request<any>("/api/backups/estimate"),
+};
+
+// --- Meta-Hyperagent ---
+
+export const metaHyperagent = {
+  status: () => request<MetaHyperagentStatus>("/api/meta-hyperagent/status"),
+  proposals: () => request<MetaProposal[]>("/api/meta-hyperagent/proposals"),
+  approveProposal: (id: string) =>
+    request<any>(`/api/meta-hyperagent/proposals/${id}/approve`, { method: "POST" }),
+  rejectProposal: (id: string) =>
+    request<any>(`/api/meta-hyperagent/proposals/${id}/reject`, { method: "POST" }),
+  variants: () => request<MetaVariant[]>("/api/meta-hyperagent/variants"),
+  revertVariant: (id: string) =>
+    request<any>(`/api/meta-hyperagent/variants/${id}/revert`, { method: "POST" }),
+  confirmVariant: (id: string) =>
+    request<any>(`/api/meta-hyperagent/variants/${id}/confirm`, { method: "POST" }),
+  observations: () => request<any>("/api/meta-hyperagent/observations"),
+  toggle: (enabled: boolean) =>
+    request<any>("/api/meta-hyperagent/toggle", { method: "POST", body: JSON.stringify({ enabled }) }),
 };

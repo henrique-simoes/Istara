@@ -70,12 +70,24 @@ class Settings(BaseSettings):
     figma_api_host: str = "https://api.figma.com"
     design_screens_dir: str = "./data/design_screens"
 
+    # Backup
+    backup_dir: str = "./data/backups"
+    backup_enabled: bool = True
+    backup_interval_hours: int = 24
+    backup_retention_count: int = 7
+    backup_full_interval_days: int = 7
+
     # Agent Identity & Evolution
     prompt_compression_strategy: str = "llmlingua"  # "llmlingua", "prompt_rag", "truncate"
     prompt_rag_use_embeddings: bool = True  # Use embedding similarity for Prompt RAG
     prompt_rag_top_k: int = 8  # Number of dynamic sections to retrieve
     self_evolution_enabled: bool = True  # Enable auto self-evolution scan
     self_evolution_auto_promote: bool = False  # Auto-promote (vs user approval)
+
+    # Meta-Hyperagent (optional layer that tunes subsystem parameters)
+    meta_hyperagent_enabled: bool = False
+    meta_hyperagent_observation_interval_hours: int = 6
+    meta_hyperagent_variant_observation_hours: int = 72
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 
@@ -84,6 +96,7 @@ class Settings(BaseSettings):
         for dir_path in [self.upload_dir, self.projects_dir, self.lance_db_path, self.agent_avatars_dir]:
             Path(dir_path).mkdir(parents=True, exist_ok=True)
         Path(self.design_screens_dir).mkdir(parents=True, exist_ok=True)
+        Path(self.backup_dir).mkdir(parents=True, exist_ok=True)
 
 
 settings = Settings()

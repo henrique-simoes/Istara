@@ -11,8 +11,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.api.routes import agents, audit, auth, channels, chat, codebooks, context_dag as context_dag_routes, documents, files, findings, interfaces, llm_servers, memory, metrics, projects, scheduler as scheduler_routes, sessions, settings, skills, tasks
+from app.api.routes import backup as backup_routes
 from app.api.routes import compute as compute_routes
 from app.api.routes import loops as loops_routes, notifications as notification_routes
+from app.api.routes import meta_hyperagent as meta_hyperagent_routes
 from app.api.websocket import router as ws_router
 from app.channels.base import channel_router
 from app.channels.slack import SlackAdapter
@@ -25,6 +27,7 @@ from app.agents.orchestrator import meta_orchestrator
 from app.agents.custom_worker import load_custom_agents_from_db, stop_custom_agent as stop_custom_worker
 from app.config import settings as app_settings
 from app.core.agent import agent as agent_orchestrator
+from app.core.backup_manager import backup_manager
 from app.core.file_watcher import FileWatcher
 from app.core.scheduler import scheduler
 from app.models.database import async_session, init_db
@@ -271,6 +274,19 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Start custom agent workers from DB
     await load_custom_agents_from_db()
 
+    # Start backup scheduler
+    asyncio.create_task(backup_manager.start_scheduled())
+
+    # Meta-Hyperagent: always load confirmed overrides; conditionally start loop
+    try:
+        from app.core.meta_hyperagent import meta_hyperagent as mh
+        mh.load_confirmed_overrides()
+        if app_settings.meta_hyperagent_enabled:
+            asyncio.create_task(mh.start_observation_loop())
+            _log.info("Meta-hyperagent observation loop started.")
+    except Exception as e:
+        _log.debug(f"Meta-hyperagent startup skipped: {e}")
+
     yield
 
     # Shutdown
@@ -281,6 +297,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     await channel_router.stop_all()
     watcher.stop()
+    backup_manager.stop()
+    try:
+        from app.core.meta_hyperagent import meta_hyperagent as mh
+        mh.stop()
+    except Exception:
+        pass
     devops_agent.stop()
     ui_audit_agent.stop()
     ux_eval_agent.stop()
@@ -355,6 +377,8 @@ app.include_router(compute_routes.router, prefix="/api", tags=["Compute"])
 app.include_router(interfaces.router, prefix="/api", tags=["Interfaces"])
 app.include_router(loops_routes.router, prefix="/api", tags=["Loops"])
 app.include_router(notification_routes.router, prefix="/api", tags=["Notifications"])
+app.include_router(backup_routes.router, prefix="/api", tags=["Backup"])
+app.include_router(meta_hyperagent_routes.router, prefix="/api", tags=["Meta-Hyperagent"])
 app.include_router(ws_router)
 
 
