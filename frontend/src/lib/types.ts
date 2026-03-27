@@ -477,3 +477,149 @@ export interface MetaHyperagentStatus {
   active_variants: number;
   observation_interval_hours: number;
 }
+
+// --- Integrations: Messaging Channels ---
+
+export type ChannelPlatform = "telegram" | "slack" | "whatsapp" | "google_chat";
+export type ChannelHealthStatus = "healthy" | "unhealthy" | "unknown";
+
+export interface ChannelInstance {
+  id: string;
+  platform: ChannelPlatform;
+  name: string;
+  project_id: string | null;
+  is_active: boolean;
+  health_status: ChannelHealthStatus;
+  last_health_at: string | null;
+  message_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ChannelMessage {
+  id: string;
+  channel_instance_id: string;
+  project_id: string | null;
+  direction: "inbound" | "outbound";
+  sender_id: string;
+  sender_name: string;
+  content: string;
+  content_type: "text" | "audio" | "image" | "file";
+  thread_id: string | null;
+  created_at: string;
+}
+
+export interface ChannelConversation {
+  id: string;
+  channel_instance_id: string;
+  project_id: string | null;
+  participant_id: string;
+  participant_name: string;
+  deployment_id: string | null;
+  state: "active" | "completed" | "paused" | "expired";
+  current_question_index: number;
+  started_at: string;
+  last_message_at: string | null;
+  completed_at: string | null;
+}
+
+// --- Integrations: Research Deployments ---
+
+export interface ResearchDeployment {
+  id: string;
+  project_id: string;
+  name: string;
+  deployment_type: "interview" | "survey" | "diary_study";
+  skill_name: string;
+  questions: Array<{ text: string; type?: string }>;
+  config: Record<string, any>;
+  channel_instance_ids: string[];
+  state: "draft" | "active" | "paused" | "completed";
+  target_responses: number;
+  current_responses: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DeploymentAnalytics {
+  deployment_id: string;
+  deployment_name: string;
+  deployment_type: string;
+  state: string;
+  target_responses: number;
+  current_responses: number;
+  response_rate: number;
+  completion_rate: number;
+  active_conversations: number;
+  completed_conversations: number;
+  failed_conversations: number;
+  total_messages: number;
+  per_question_stats: Array<{
+    index: number;
+    text: string;
+    response_count: number;
+    skip_count: number;
+  }>;
+  most_answered_questions: Array<any>;
+  least_answered_questions: Array<any>;
+}
+
+// --- Integrations: Survey Platforms ---
+
+export interface SurveyIntegration {
+  id: string;
+  platform: "surveymonkey" | "google_forms" | "typeform";
+  name: string;
+  project_id: string | null;
+  is_active: boolean;
+  last_sync_at: string | null;
+  created_at: string;
+}
+
+export interface SurveyLink {
+  id: string;
+  integration_id: string;
+  project_id: string;
+  external_survey_id: string;
+  external_survey_name: string;
+  response_count: number;
+  last_response_at: string | null;
+  created_at: string;
+}
+
+// --- Integrations: MCP ---
+
+export interface MCPServerConfig {
+  id: string;
+  name: string;
+  url: string;
+  transport: "http" | "stdio" | "websocket";
+  is_active: boolean;
+  tools: Array<{ name: string; description: string; input_schema: any }>;
+  last_discovery_at: string | null;
+  health_status: string;
+  created_at: string;
+}
+
+export interface MCPAccessPolicy {
+  id: string;
+  name: string;
+  description: string;
+  tools: Record<string, { allowed: boolean; risk: "low" | "sensitive" | "high" }>;
+  resources: Record<string, { allowed: boolean; risk: "low" | "sensitive" | "high" }>;
+  limits: {
+    allowed_project_ids: string[];
+    max_findings_per_request: number;
+    max_skill_executions_per_hour: number;
+  };
+}
+
+export interface MCPAuditEntry {
+  id: string;
+  timestamp: string;
+  tool_name: string;
+  caller_info: string;
+  access_granted: boolean;
+  result_summary: string;
+  duration_ms: number;
+}

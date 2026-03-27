@@ -1,6 +1,6 @@
 /** API client for ReClaw backend. */
 
-import type { ChatSession, ChatMessage, InferencePresetConfig, DAGNode, DAGHealth, DAGExpandResult, DAGGrepResult, ReclawDocument, DocumentContent, DocumentTag, DocumentStats, InterfacesStatus, BackupRecord, BackupConfig, MetaProposal, MetaVariant, MetaHyperagentStatus } from "@/lib/types";
+import type { ChatSession, ChatMessage, InferencePresetConfig, DAGNode, DAGHealth, DAGExpandResult, DAGGrepResult, ReclawDocument, DocumentContent, DocumentTag, DocumentStats, InterfacesStatus, BackupRecord, BackupConfig, MetaProposal, MetaVariant, MetaHyperagentStatus, ChannelInstance, ChannelMessage, ChannelConversation, ResearchDeployment, DeploymentAnalytics, SurveyIntegration, SurveyLink, MCPServerConfig, MCPAccessPolicy, MCPAuditEntry } from "@/lib/types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -661,4 +661,89 @@ export const metaHyperagent = {
   observations: () => request<any>("/api/meta-hyperagent/observations"),
   toggle: (enabled: boolean) =>
     request<any>("/api/meta-hyperagent/toggle", { method: "POST", body: JSON.stringify({ enabled }) }),
+};
+
+// --- Channels ---
+
+export const channels = {
+  list: (platform?: string) => {
+    const params = platform ? `?platform=${platform}` : "";
+    return get<ChannelInstance[]>(`/api/channels${params}`);
+  },
+  get: (id: string) => get<ChannelInstance>(`/api/channels/${id}`),
+  create: (data: { platform: string; name: string; config: Record<string, any>; project_id?: string }) =>
+    post<ChannelInstance>("/api/channels", data),
+  update: (id: string, data: Record<string, any>) => patch<ChannelInstance>(`/api/channels/${id}`, data),
+  delete: (id: string) => del(`/api/channels/${id}`),
+  start: (id: string) => post<any>(`/api/channels/${id}/start`, {}),
+  stop: (id: string) => post<any>(`/api/channels/${id}/stop`, {}),
+  health: (id: string) => get<any>(`/api/channels/${id}/health`),
+  messages: (id: string, limit = 50, offset = 0) =>
+    get<ChannelMessage[]>(`/api/channels/${id}/messages?limit=${limit}&offset=${offset}`),
+  conversations: (id: string) => get<ChannelConversation[]>(`/api/channels/${id}/conversations`),
+  send: (id: string, data: { channel_id: string; text: string; metadata?: any }) =>
+    post<any>(`/api/channels/${id}/send`, data),
+};
+
+// --- Deployments ---
+
+export const deployments = {
+  list: (projectId?: string) => {
+    const params = projectId ? `?project_id=${projectId}` : "";
+    return get<ResearchDeployment[]>(`/api/deployments${params}`);
+  },
+  get: (id: string) => get<ResearchDeployment>(`/api/deployments/${id}`),
+  create: (data: any) => post<ResearchDeployment>("/api/deployments", data),
+  activate: (id: string) => post<any>(`/api/deployments/${id}/activate`, {}),
+  pause: (id: string) => post<any>(`/api/deployments/${id}/pause`, {}),
+  complete: (id: string) => post<any>(`/api/deployments/${id}/complete`, {}),
+  analytics: (id: string) => get<DeploymentAnalytics>(`/api/deployments/${id}/analytics`),
+  overview: (projectId: string) => get<any>(`/api/deployments/overview?project_id=${projectId}`),
+  conversations: (id: string) => get<ChannelConversation[]>(`/api/deployments/${id}/conversations`),
+  transcript: (deploymentId: string, conversationId: string) =>
+    get<any>(`/api/deployments/${deploymentId}/conversations/${conversationId}/transcript`),
+};
+
+// --- Surveys ---
+
+export const surveys = {
+  integrations: {
+    list: () => get<SurveyIntegration[]>("/api/surveys/integrations"),
+    create: (data: { platform: string; name: string; config: Record<string, any> }) =>
+      post<SurveyIntegration>("/api/surveys/integrations", data),
+    delete: (id: string) => del(`/api/surveys/integrations/${id}`),
+    surveys: (id: string) => get<any[]>(`/api/surveys/integrations/${id}/surveys`),
+    createSurvey: (id: string, data: any) => post<any>(`/api/surveys/integrations/${id}/create`, data),
+  },
+  links: {
+    list: (projectId?: string) => get<SurveyLink[]>(`/api/surveys/links${projectId ? `?project_id=${projectId}` : ""}`),
+    create: (data: any) => post<SurveyLink>("/api/surveys/links", data),
+    sync: (id: string) => post<any>(`/api/surveys/links/${id}/sync`, {}),
+    responses: (id: string) => get<any[]>(`/api/surveys/links/${id}/responses`),
+  },
+};
+
+// --- MCP ---
+
+export const mcp = {
+  server: {
+    status: () => get<any>("/api/mcp/server/status"),
+    toggle: (enabled: boolean) => post<any>("/api/mcp/server/toggle", { enabled }),
+    policy: () => get<MCPAccessPolicy>("/api/mcp/server/policy"),
+    updatePolicy: (data: Record<string, any>) => patch<MCPAccessPolicy>("/api/mcp/server/policy", data),
+    audit: (limit = 50, offset = 0) => get<MCPAuditEntry[]>(`/api/mcp/server/audit?limit=${limit}&offset=${offset}`),
+    exposure: () => get<any>("/api/mcp/server/exposure"),
+  },
+  clients: {
+    list: () => get<MCPServerConfig[]>("/api/mcp/clients"),
+    create: (data: { name: string; url: string; transport?: string; headers?: any }) =>
+      post<MCPServerConfig>("/api/mcp/clients", data),
+    delete: (id: string) => del(`/api/mcp/clients/${id}`),
+    discover: (id: string) => post<any>(`/api/mcp/clients/${id}/discover`, {}),
+    tools: (id: string) => get<any[]>(`/api/mcp/clients/${id}/tools`),
+    call: (id: string, toolName: string, args: any) =>
+      post<any>(`/api/mcp/clients/${id}/call`, { tool_name: toolName, arguments: args }),
+    health: (id: string) => get<any>(`/api/mcp/clients/${id}/health`),
+    allTools: () => get<any[]>("/api/mcp/clients/tools"),
+  },
 };

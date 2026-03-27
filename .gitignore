@@ -73,3 +73,7 @@ ReClaw-Projects/
 
 # Database volumes
 postgres_data/
+
+# Channel data (audio downloads, MCP cache)
+data/channel_audio/
+data/mcp_cache/

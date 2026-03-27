@@ -187,6 +187,12 @@ async function loadScenarios() {
     "50-notifications",
     "51-backup-system",
     "52-meta-hyperagent",
+    "53-channel-lifecycle",
+    "55-survey-integration",
+    "56-mcp-server-security",
+    "57-mcp-client-registry",
+    "58-research-deployment",
+    "59-agent-integration-knowledge",
   ];
 
   const scenarios = [];

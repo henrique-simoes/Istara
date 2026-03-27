@@ -67,6 +67,16 @@
 - All test users: use simulation-specific identifiers, never real user IDs
 - Cleanup verification: after every run, verify zero SIM-prefixed records remain in the database
 
+## Integration Testing Scenarios
+- **Channel lifecycle**: Create instance → start → health check → send message → fetch history → stop → delete. Verify WebSocket events fired at each transition.
+- **Multi-instance**: Create two Telegram bots, verify both operate independently, messages route to correct instance
+- **Deployment simulation**: Create deployment → link channels → activate → simulate incoming responses → verify adaptive follow-ups → check conversation state transitions → verify findings created
+- **Survey webhook ingestion**: Simulate SurveyMonkey/Typeform webhook POST → verify signature validation → verify Nuggets created → verify response count incremented
+- **MCP server security**: Verify MCP disabled by default → enable → test default policy denies SENSITIVE tools → enable specific tools → verify access control → verify audit logging → disable
+- **MCP client registry**: Register external server → discover tools → cache tools → call tool → health check → unregister
+- **Cross-system integration**: Deploy interview via Telegram → responses create Nuggets → Nuggets available in RAG → chat can discuss interview results
+- **Error scenarios**: Invalid channel credentials → graceful error. Webhook from unknown source → rejected. MCP request for denied tool → audit logged as denied.
+
 ## Limitations
 - Cannot test actual browser rendering (tests are API-level, not visual)
 - Cannot simulate real user mouse movements or visual scanning patterns

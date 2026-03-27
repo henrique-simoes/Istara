@@ -1323,4 +1323,127 @@ The Meta-Hyperagent is an experimental self-improvement layer inspired by the Hy
 
 ---
 
+## Messaging Integration System
+
+### Multi-Instance Channel Architecture
+
+ReClaw supports multiple messaging channel instances per platform (e.g., two Telegram bots for different studies).
+
+| Platform | Transport | Auth | Features |
+|----------|-----------|------|----------|
+| Telegram | Long polling | Bot token | Text, voice, photos, docs, inline keyboards |
+| Slack | Socket Mode | Bot token + signing secret | Text, files, Block Kit, threads |
+| WhatsApp | Webhooks | Phone number ID + access token | Text, audio, images, templates, 24h window |
+| Google Chat | Webhooks | Service account / webhook URL | Text, Cards v2 |
+
+**Architecture**: `ChannelInstance` (DB) ↔ `ChannelAdapter` (in-memory) ↔ Platform API. The `ChannelRouter` manages all adapters keyed by `instance_id` (UUID).
+
+**API**: Full CRUD at `/api/channels/*` — create, start, stop, health, messages, conversations, send.
+
+### Webhook Router
+
+Dedicated `/webhooks/*` router for inbound platform events (separate from `/api/` for different security policies):
+- `POST /webhooks/whatsapp/{instance_id}` — WhatsApp message events
+- `POST /webhooks/google-chat/{instance_id}` — Google Chat events
+- `POST /webhooks/survey/{integration_id}` — Survey response events
+
+---
+
+## Survey Platform Integration
+
+### Supported Platforms
+
+| Platform | Auth | Webhooks | Create Surveys |
+|----------|------|----------|----------------|
+| SurveyMonkey | OAuth 2.0 | response_completed | Yes (POST /v3/surveys) |
+| Google Forms | Service account | No (polling via Loops) | Yes (POST /v1/forms) |
+| Typeform | API token | HMAC-SHA256 | Yes (POST /forms) |
+| Microsoft Forms | N/A | N/A | Not supported (no API) |
+
+### Response Ingestion Pipeline
+
+Survey responses flow into the Atomic Research chain: Response → Parse Q&A → Create Nuggets (source = survey name) → Optionally trigger analysis skills → Update response counts.
+
+**API**: `/api/surveys/integrations/*` for platform connections, `/api/surveys/links/*` for survey-project linkage.
+
+---
+
+## Research Deployment System
+
+### Deployment via Messaging
+
+Deploy interviews, surveys, and diary studies through messaging channels with adaptive questioning.
+
+**Deployment Types**: Interview (structured/semi-structured), Survey (questionnaire via chat), Diary Study (longitudinal).
+
+**Lifecycle**: Draft → Active → [Paused] → Completed → Analysis triggered.
+
+### Adaptive Interview Engine (AURA-Style)
+
+- Conversation state machine per participant: intro → questions → probing → wrap-up
+- LLM-driven follow-up generation based on conversation history + research goals
+- Configurable branching rules, rate limiting, completion criteria
+- Audio message support with transcription
+- All responses automatically create Nuggets in real-time
+
+### Analytics Dashboard
+
+- Per-question stats: response count, skip count, avg response time
+- Participant tracker: status, current question, stall detection
+- Findings pipeline: real-time Nuggets → Facts → Insights visualization
+- Channel performance comparison across platforms
+- Timeline with projected vs actual completion
+
+**API**: Full CRUD + analytics at `/api/deployments/*`.
+
+---
+
+## MCP Integration (Model Context Protocol)
+
+### SECURITY: Local-First Boundary
+
+MCP is the only ReClaw subsystem that allows external access to local data. It is:
+- **OFF by default** — requires explicit user activation
+- **Gated by MCPAccessPolicy** — granular per-tool, per-resource, per-project permissions
+- **Fully audited** — every request logged with caller info
+
+### MCP Server (ReClaw as Provider)
+
+Exposes ReClaw capabilities via FastMCP at `/mcp` when enabled.
+
+| Tool | Risk | Default |
+|------|------|---------|
+| list_skills | LOW | ON |
+| list_projects | LOW | ON |
+| get_deployment_status | LOW | ON |
+| get_findings | SENSITIVE | OFF |
+| search_memory | SENSITIVE | OFF |
+| execute_skill | HIGH | OFF |
+| create_project | HIGH | OFF |
+| deploy_research | HIGH | OFF |
+
+### MCP Client Registry
+
+Connect external MCP servers to augment ReClaw's capabilities. Discover tools, cache them, invoke on demand.
+
+**API**: `/api/mcp/server/*` for server management, `/api/mcp/clients/*` for client registry.
+
+---
+
+## System Documentation Layer
+
+### AGENT.md — Universal Agent-Readable Spec
+
+Root-level file any AI agent can discover and parse. Contains system identity, architecture, capabilities catalog (auto-generated), agent interaction guide, security boundaries.
+
+### Auto-Update Script
+
+`scripts/update_agent_md.py` regenerates the Capabilities Catalog by scanning API routes, skills, agents, menus, models, and MCP tools. Run after every feature addition.
+
+### Feature Documentation
+
+`docs/features/` contains detailed guides for messaging-integrations, survey-integrations, mcp-integration, research-deployments, and system-overview.
+
+---
+
 *ReClaw is open-source and built for researchers who believe AI should work for them — on their machine, on their terms.*
