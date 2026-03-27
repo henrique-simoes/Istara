@@ -193,6 +193,25 @@ async def broadcast_document_event(event: str, document_id: str, title: str, pro
     })
 
 
+async def broadcast_backup_event(event: str, backup_id: str, details: Optional[dict] = None) -> None:
+    """Broadcast a backup lifecycle event (started, completed, failed, etc.)."""
+    await manager.broadcast(event, {
+        "backup_id": backup_id,
+        **(details or {}),
+    })
+
+
+async def broadcast_meta_proposal(
+    proposal_id: str, target_system: str, reason: str
+) -> None:
+    """Broadcast a meta-hyperagent proposal notification."""
+    await manager.broadcast("meta_proposal", {
+        "proposal_id": proposal_id,
+        "target_system": target_system,
+        "reason": reason,
+    })
+
+
 async def broadcast(event: dict) -> None:
     """Broadcast a raw event dict (type + data)."""
     event_type = event.get("type", "unknown")

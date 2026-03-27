@@ -411,3 +411,69 @@ export interface NotificationPreference {
   id: string; category: string; agent_id: string | null;
   show_toast: boolean; show_center: boolean; email_forward: boolean;
 }
+
+// --- Backup System ---
+
+export interface BackupRecord {
+  id: string;
+  filename: string;
+  backup_type: "full" | "incremental";
+  parent_id: string | null;
+  size_bytes: number;
+  file_count: number;
+  status: "completed" | "failed" | "in_progress" | "verified";
+  error_message: string;
+  components: Record<string, any>;
+  checksum: string;
+  created_at: string;
+  verified_at: string | null;
+}
+
+export interface BackupConfig {
+  backup_enabled: boolean;
+  backup_interval_hours: number;
+  backup_retention_count: number;
+  backup_full_interval_days: number;
+}
+
+// --- Meta-Hyperagent ---
+
+export interface MetaProposal {
+  id: string;
+  target_system: string;
+  parameter_path: string;
+  current_value: any;
+  proposed_value: any;
+  reason: string;
+  evidence: Record<string, any>[];
+  confidence: number;
+  expected_impact: string;
+  status: string;
+  variant_id: string | null;
+  created_at: string;
+  reviewed_at: string | null;
+  applied_at: string | null;
+}
+
+export interface MetaVariant {
+  id: string;
+  proposal_id: string;
+  target_system: string;
+  parameter_path: string;
+  old_value: any;
+  new_value: any;
+  applied_at: string;
+  reverted_at: string | null;
+  metrics_before: Record<string, any>;
+  metrics_after: Record<string, any> | null;
+  observation_window_hours: number;
+  status: "active" | "reverted" | "confirmed";
+}
+
+export interface MetaHyperagentStatus {
+  enabled: boolean;
+  experimental: boolean;
+  pending_proposals: number;
+  active_variants: number;
+  observation_interval_hours: number;
+}

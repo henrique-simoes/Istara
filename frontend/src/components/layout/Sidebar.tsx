@@ -25,6 +25,8 @@ import {
   Palette,
   RefreshCw,
   Bell,
+  Archive,
+  Sparkles,
 } from "lucide-react";
 import { useProjectStore } from "@/stores/projectStore";
 import DarkModeToggle from "@/components/common/DarkModeToggle";
@@ -79,6 +81,8 @@ export default function Sidebar({ activeView, onViewChange, onSearchOpen }: Side
 
   // Secondary nav: accessible via "More" or header icons
   const secondaryNav = [
+    { id: "backup", icon: Archive, label: "Backup" },
+    { id: "meta-hyperagent", icon: Sparkles, label: "Meta-Agent" },
     { id: "compute", icon: Server, label: "Compute Pool" },
     { id: "ensemble", icon: Activity, label: "Ensemble Health" },
     { id: "metrics", icon: BarChart3, label: "Metrics" },
