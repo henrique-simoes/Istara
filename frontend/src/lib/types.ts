@@ -623,3 +623,46 @@ export interface MCPAuditEntry {
   result_summary: string;
   duration_ms: number;
 }
+
+// --- Autoresearch (Karpathy-inspired) ---
+
+export type AutoresearchLoopType = "skill_prompt" | "model_temp" | "rag_params" | "persona" | "question_bank" | "ui_sim";
+
+export interface AutoresearchExperiment {
+  id: string;
+  loop_type: AutoresearchLoopType;
+  target_name: string;
+  hypothesis: string;
+  mutation_description: string;
+  baseline_score: number;
+  experiment_score: number | null;
+  delta: number;
+  kept: boolean;
+  status: "running" | "completed" | "failed" | "reverted";
+  error_message: string;
+  project_id: string;
+  started_at: string;
+  completed_at: string | null;
+}
+
+export interface AutoresearchConfig {
+  enabled: boolean;
+  max_experiments_per_run: number;
+  max_daily_experiments: number;
+}
+
+export interface AutoresearchStatus {
+  running: boolean;
+  enabled: boolean;
+  current_experiment: AutoresearchExperiment | null;
+}
+
+export interface ModelSkillLeaderboard {
+  skill_name: string;
+  model_name: string;
+  temperature: number;
+  best_quality: number;
+  quality_ema: number;
+  executions: number;
+  avg_quality: number;
+}

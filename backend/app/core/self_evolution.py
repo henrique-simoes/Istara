@@ -99,11 +99,13 @@ class SelfEvolutionEngine:
 
             async with async_session() as db:
                 # Get all active, non-promoted learnings for this agent
+                # Exclude autoresearch-tagged learnings (defensive layer)
                 result = await db.execute(
                     select(AgentLearning).where(
                         AgentLearning.agent_id == agent_id,
                         AgentLearning.active == True,
                         AgentLearning.updated_at >= cutoff,
+                        ~AgentLearning.trigger.like("[autoresearch]%"),
                     )
                 )
                 learnings = result.scalars().all()
@@ -184,7 +186,12 @@ class SelfEvolutionEngine:
         """Promote a specific learning into the agent's persona file.
 
         Returns a dict with promotion result details.
+        Blocked if persona is locked (e.g. during autoresearch Loop 5).
         """
+        from app.core.agent_identity import is_persona_locked
+        if is_persona_locked(agent_id):
+            return {"success": False, "error": f"Persona locked for {agent_id} (autoresearch in progress)"}
+
         try:
             from app.core.agent_learning import AgentLearning
 

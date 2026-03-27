@@ -28,6 +28,7 @@ import {
   Archive,
   Sparkles,
   MessageSquare,
+  FlaskConical,
 } from "lucide-react";
 import { useProjectStore } from "@/stores/projectStore";
 import DarkModeToggle from "@/components/common/DarkModeToggle";
@@ -83,6 +84,7 @@ export default function Sidebar({ activeView, onViewChange, onSearchOpen }: Side
 
   // Secondary nav: accessible via "More" or header icons
   const secondaryNav = [
+    { id: "autoresearch", icon: FlaskConical, label: "Autoresearch" },
     { id: "backup", icon: Archive, label: "Backup" },
     { id: "meta-hyperagent", icon: Sparkles, label: "Meta-Agent" },
     { id: "compute", icon: Server, label: "Compute Pool" },

@@ -60,6 +60,8 @@ async def init_db() -> None:
     from app.models.mcp_server_config import MCPServerConfig  # noqa: F401
     from app.models.mcp_access_policy import MCPAccessPolicy  # noqa: F401
     from app.models.mcp_audit_log import MCPAuditEntry  # noqa: F401
+    from app.models.model_skill_stats import ModelSkillStats  # noqa: F401
+    from app.models.autoresearch_experiment import AutoresearchExperiment  # noqa: F401
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

@@ -23,6 +23,7 @@ import LoopsView from "@/components/loops/LoopsView";
 import NotificationsView from "@/components/notifications/NotificationsView";
 import BackupView from "@/components/backup/BackupView";
 import MetaHyperagentView from "@/components/meta/MetaHyperagentView";
+import AutoresearchView from "@/components/autoresearch/AutoresearchView";
 import DocumentsView from "@/components/documents/DocumentsView";
 import SearchModal from "@/components/common/SearchModal";
 import ToastNotification from "@/components/common/ToastNotification";
@@ -155,6 +156,7 @@ export default function HomeClient() {
       case "notifications": return <NotificationsView />;
       case "backup": return <BackupView />;
       case "meta-hyperagent": return <MetaHyperagentView />;
+      case "autoresearch": return <AutoresearchView />;
       case "history": return <VersionHistory />;
       case "compute": return <ComputePoolView />;
       case "ensemble": return <EnsembleHealthView />;
