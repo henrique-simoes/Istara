@@ -51,6 +51,7 @@ async def init_db() -> None:
     from app.models.loop_execution import LoopExecution  # noqa: F401
     from app.models.agent_loop_config import AgentLoopConfig  # noqa: F401
     from app.models.notification import Notification, NotificationPreference  # noqa: F401
+    from app.models.backup import BackupRecord  # noqa: F401
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

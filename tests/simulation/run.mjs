@@ -185,6 +185,8 @@ async function loadScenarios() {
     "48-real-user-simulation",
     "49-loops-schedule",
     "50-notifications",
+    "51-backup-system",
+    "52-meta-hyperagent",
   ];
 
   const scenarios = [];
