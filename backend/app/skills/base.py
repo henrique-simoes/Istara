@@ -34,6 +34,8 @@ class SkillInput:
     user_context: str = ""
     project_context: str = ""
     company_context: str = ""
+    model: str | None = None  # Override LLM model for this execution
+    temperature: float | None = None  # Override temperature for this execution
 
 
 @dataclass

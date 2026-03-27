@@ -1,6 +1,6 @@
 /** API client for ReClaw backend. */
 
-import type { ChatSession, ChatMessage, InferencePresetConfig, DAGNode, DAGHealth, DAGExpandResult, DAGGrepResult, ReclawDocument, DocumentContent, DocumentTag, DocumentStats, InterfacesStatus, BackupRecord, BackupConfig, MetaProposal, MetaVariant, MetaHyperagentStatus, ChannelInstance, ChannelMessage, ChannelConversation, ResearchDeployment, DeploymentAnalytics, SurveyIntegration, SurveyLink, MCPServerConfig, MCPAccessPolicy, MCPAuditEntry } from "@/lib/types";
+import type { ChatSession, ChatMessage, InferencePresetConfig, DAGNode, DAGHealth, DAGExpandResult, DAGGrepResult, ReclawDocument, DocumentContent, DocumentTag, DocumentStats, InterfacesStatus, BackupRecord, BackupConfig, MetaProposal, MetaVariant, MetaHyperagentStatus, ChannelInstance, ChannelMessage, ChannelConversation, ResearchDeployment, DeploymentAnalytics, SurveyIntegration, SurveyLink, MCPServerConfig, MCPAccessPolicy, MCPAuditEntry, AutoresearchStatus, AutoresearchExperiment, AutoresearchConfig, ModelSkillLeaderboard } from "@/lib/types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -746,4 +746,26 @@ export const mcp = {
     health: (id: string) => get<any>(`/api/mcp/clients/${id}/health`),
     allTools: () => get<any[]>("/api/mcp/clients/tools"),
   },
+};
+
+// --- Autoresearch ---
+
+export const autoresearch = {
+  status: () => get<AutoresearchStatus>("/api/autoresearch/status"),
+  experiments: (params?: { loop_type?: string; kept?: boolean; limit?: number; offset?: number }) => {
+    const p = new URLSearchParams();
+    if (params?.loop_type) p.set("loop_type", params.loop_type);
+    if (params?.kept !== undefined) p.set("kept", String(params.kept));
+    if (params?.limit) p.set("limit", String(params.limit));
+    if (params?.offset) p.set("offset", String(params.offset));
+    return get<AutoresearchExperiment[]>(`/api/autoresearch/experiments?${p}`);
+  },
+  experiment: (id: string) => get<AutoresearchExperiment>(`/api/autoresearch/experiments/${id}`),
+  start: (data: { loop_type: string; target: string; max_iterations?: number; project_id?: string }) =>
+    post<any>("/api/autoresearch/start", data),
+  stop: () => post<any>("/api/autoresearch/stop", {}),
+  config: () => get<AutoresearchConfig>("/api/autoresearch/config"),
+  updateConfig: (data: Record<string, any>) => patch<AutoresearchConfig>("/api/autoresearch/config", data),
+  leaderboard: () => get<ModelSkillLeaderboard[]>("/api/autoresearch/leaderboard"),
+  toggle: (enabled: boolean) => post<any>("/api/autoresearch/toggle", { enabled }),
 };

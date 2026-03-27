@@ -288,7 +288,14 @@ class SkillManager:
     # --- Usage Tracking ---
 
     def record_execution(self, skill_name: str, success: bool, quality_score: float = 0.0) -> None:
-        """Record a skill execution for usage tracking (includes utility score)."""
+        """Record a skill execution for usage tracking (includes utility score).
+
+        Skipped during autoresearch experiments — autoresearch tracks its own
+        metrics in the model_skill_stats table.
+        """
+        from app.core.autoresearch_isolation import is_autoresearch_active
+        if is_autoresearch_active():
+            return
         stats = self._usage_stats.setdefault(skill_name, {
             "executions": 0, "successes": 0, "failures": 0,
             "total_quality": 0.0, "utility_score": 0.5, "last_used": None,

@@ -193,6 +193,7 @@ async function loadScenarios() {
     "57-mcp-client-registry",
     "58-research-deployment",
     "59-agent-integration-knowledge",
+    "61-autoresearch-isolation",
   ];
 
   const scenarios = [];

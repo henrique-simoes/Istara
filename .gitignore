@@ -77,3 +77,7 @@ postgres_data/
 # Channel data (audio downloads, MCP cache)
 data/channel_audio/
 data/mcp_cache/
+
+# Autoresearch data
+data/autoresearch/
+data/_skill_model_config.json
