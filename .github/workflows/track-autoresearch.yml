@@ -1,0 +1,47 @@
+name: Track Autoresearch Upstream
+
+on:
+  schedule:
+    - cron: '17 9 * * 1'  # Weekly Monday 9:17am UTC
+  workflow_dispatch:
+
+jobs:
+  check-upstream:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check for new commits
+        id: check
+        run: |
+          # Get latest commit from Karpathy's autoresearch
+          LATEST=$(curl -s https://api.github.com/repos/karpathy/autoresearch/commits/master | jq -r '.sha')
+          echo "latest_sha=$LATEST" >> $GITHUB_OUTPUT
+
+          # Compare with our tracked SHA
+          TRACKED=""
+          if [ -f .github/autoresearch-upstream-sha ]; then
+            TRACKED=$(cat .github/autoresearch-upstream-sha)
+          fi
+
+          if [ "$LATEST" != "$TRACKED" ] && [ -n "$LATEST" ] && [ "$LATEST" != "null" ]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+            COMMIT_MSG=$(curl -s https://api.github.com/repos/karpathy/autoresearch/commits/master | jq -r '.commit.message' | head -1)
+            echo "commit_msg=$COMMIT_MSG" >> $GITHUB_OUTPUT
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create issue if changed
+        if: steps.check.outputs.changed == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `[Upstream] Karpathy autoresearch updated`,
+              body: `New commit detected on [karpathy/autoresearch](https://github.com/karpathy/autoresearch).\n\nLatest SHA: \`${process.env.LATEST_SHA}\`\nMessage: ${process.env.COMMIT_MSG}\n\nReview for relevant changes to incorporate into ReClaw's autoresearch integration.\n\n_This issue was auto-created by the upstream tracker._`,
+              labels: ['upstream', 'autoresearch']
+            });
+        env:
+          LATEST_SHA: ${{ steps.check.outputs.latest_sha }}
+          COMMIT_MSG: ${{ steps.check.outputs.commit_msg }}

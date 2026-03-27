@@ -1446,4 +1446,61 @@ Root-level file any AI agent can discover and parse. Contains system identity, a
 
 ---
 
+## Autoresearch System (Karpathy Pattern)
+
+Inspired by [Karpathy's autoresearch](https://github.com/karpathy/autoresearch) (MIT license). Implements a greedy hill-climbing optimization loop adapted for 6 UX research domains.
+
+### Architecture
+
+```
+AutoresearchEngine (core loop)
+    |
+    +-- BaseLoopRunner (interface)
+    |       |
+    |       +-- ModelTempRunner (Loop 6: grid search models × temperatures)
+    |       +-- RAGParamsRunner (Loop 4: chunk size, overlap, hybrid weights)
+    |       +-- SkillPromptRunner (Loop 1: skill prompt mutation + eval)
+    |       +-- PersonaRunner (Loop 5: agent persona optimization)
+    |       +-- QuestionBankRunner (Loop 3: interview question refinement)
+    |       +-- UISimRunner (Loop 2: accessibility + usability via simulation)
+    |
+    +-- Isolation Layer (contextvars — prevents experiment pollution)
+    +-- Rate Limiter (daily/per-skill experiment caps)
+    +-- Persona Lock (prevents concurrent persona file modifications)
+```
+
+### The Loop (per iteration)
+
+1. Check rate limits and mutual exclusion with Meta-Hyperagent
+2. Runner generates hypothesis (LLM-powered for Loops 1, 3, 5; grid-based for Loop 6)
+3. Runner applies mutation (code edit, config change, or parameter swap)
+4. Runner measures score (quality metric specific to loop type)
+5. If score > best: **KEEP** (new baseline). Else: **REVERT** (undo mutation)
+6. Log experiment to `autoresearch_experiments` table
+7. Broadcast progress via WebSocket
+
+### Conflict Isolation
+
+| Existing System | Isolation Mechanism |
+|---|---|
+| Self-Evolution | Guard clauses skip learning records; trigger prefix filter in promotion scan |
+| Agent Learning | `is_autoresearch_active()` returns early in all record methods |
+| Meta-Hyperagent | Stats filtered in observe cycle; mutual exclusion before experiments |
+| Skill Manager | Guard in record_execution; autoresearch uses own ModelSkillStats |
+| Prompt RAG | Cache invalidated after persona mutations |
+
+### Model/Temperature Leaderboard
+
+The `model_skill_stats` table tracks quality per (skill, model, temperature). Loop 6 grid-searches all available models × temperatures [0.1, 0.3, 0.5, 0.7, 0.9]. The leaderboard shows the best configuration per skill.
+
+### Academic References
+
+| Method | Paper | Venue |
+|--------|-------|-------|
+| Autoresearch | Karpathy (2026) | github.com/karpathy/autoresearch (MIT) |
+| AURA Adaptive Questioning | arXiv 2510.27126 | 2025 |
+| Prompt Mutation Operators | Kosuri (2026) | Medium |
+
+---
+
 *ReClaw is open-source and built for researchers who believe AI should work for them — on their machine, on their terms.*

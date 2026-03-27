@@ -76,6 +76,13 @@
 - Alert on integration degradation: channel health transitions (healthy → unhealthy), MCP audit anomalies, survey sync failures
 - Validate channel instance database records match actual adapter states in the ChannelRouter
 
+## Autoresearch Health Monitoring
+- Monitor autoresearch experiment rate: daily experiment count, kept/discarded ratio, failure rate
+- Track isolation integrity: verify no autoresearch-tagged learnings leak into production learning table
+- Monitor rate limiter: alert if limits are consistently hit (may need adjustment)
+- Track model_skill_stats growth: ensure table doesn't grow unbounded
+- Verify persona locks are properly released after Loop 5 experiments
+
 ## Limitations
 - Read-only access to user data (cannot modify findings, projects, or user settings)
 - Cannot restart or reconfigure LLM services (report only)

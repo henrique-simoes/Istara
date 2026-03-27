@@ -53,6 +53,35 @@ FILE_BUDGET_WEIGHTS = {
 # - truncate: Legacy fallback — proportional file truncation
 DEFAULT_COMPRESSION_STRATEGY = "llmlingua"
 
+# Persona freeze locks — prevents self-evolution from modifying persona files
+# while autoresearch loops are running experiments on them
+_persona_locks: dict[str, str] = {}  # agent_id -> lock_owner
+
+
+def acquire_persona_lock(agent_id: str, owner: str) -> bool:
+    """Acquire a persona lock for an agent. Returns False if already locked by another owner."""
+    current = _persona_locks.get(agent_id)
+    if current is not None and current != owner:
+        return False
+    _persona_locks[agent_id] = owner
+    logger.info("Persona lock acquired for %s by %s", agent_id, owner)
+    return True
+
+
+def release_persona_lock(agent_id: str, owner: str) -> bool:
+    """Release a persona lock. Returns False if not locked by this owner."""
+    current = _persona_locks.get(agent_id)
+    if current != owner:
+        return False
+    del _persona_locks[agent_id]
+    logger.info("Persona lock released for %s by %s", agent_id, owner)
+    return True
+
+
+def is_persona_locked(agent_id: str) -> bool:
+    """Check if an agent's persona files are locked."""
+    return agent_id in _persona_locks
+
 
 def _load_persona_file(agent_id: str, filename: str) -> str | None:
     """Load a single persona MD file for an agent."""

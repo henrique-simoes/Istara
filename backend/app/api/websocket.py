@@ -269,3 +269,13 @@ async def broadcast_channel_message(instance_id: str, message_data: dict) -> Non
         "instance_id": instance_id,
         **message_data,
     })
+
+
+async def broadcast_autoresearch_progress(experiment_data: dict) -> None:
+    """Broadcast autoresearch experiment progress."""
+    await manager.broadcast("autoresearch_progress", experiment_data)
+
+
+async def broadcast_autoresearch_complete(loop_type: str, summary: dict) -> None:
+    """Broadcast autoresearch loop completion."""
+    await manager.broadcast("autoresearch_complete", {"loop_type": loop_type, **summary})

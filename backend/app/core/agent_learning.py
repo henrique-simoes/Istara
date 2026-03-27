@@ -78,9 +78,14 @@ class AgentLearningManager:
     ) -> None:
         """Record a learning from an error encounter and resolution.
 
+        Skipped during autoresearch experiments to prevent pollution.
         This is called when an agent encounters an error, tries to resolve it,
         and succeeds.  The pattern is stored for future reference.
         """
+        from app.core.autoresearch_isolation import is_autoresearch_active
+        if is_autoresearch_active():
+            return
+
         learning_text = (
             f"When encountering '{error_message[:200]}', "
             f"resolve by: {resolution[:500]}"
@@ -151,6 +156,9 @@ class AgentLearningManager:
         project_id: str = "",
     ) -> None:
         """Record a workflow pattern observation."""
+        from app.core.autoresearch_isolation import is_autoresearch_active
+        if is_autoresearch_active():
+            return
         try:
             async with async_session() as db:
                 record = AgentLearning(
@@ -176,6 +184,9 @@ class AgentLearningManager:
         project_id: str = "",
     ) -> None:
         """Record a user preference or feedback learning."""
+        from app.core.autoresearch_isolation import is_autoresearch_active
+        if is_autoresearch_active():
+            return
         try:
             async with async_session() as db:
                 record = AgentLearning(

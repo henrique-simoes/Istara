@@ -93,6 +93,11 @@ class Settings(BaseSettings):
     mcp_server_enabled: bool = False
     mcp_server_port: int = 8001
 
+    # Autoresearch (Karpathy-inspired optimization loops — OFF by default)
+    autoresearch_enabled: bool = False
+    autoresearch_max_experiments_per_run: int = 20
+    autoresearch_max_daily_experiments: int = 200
+
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 
     def ensure_dirs(self) -> None:

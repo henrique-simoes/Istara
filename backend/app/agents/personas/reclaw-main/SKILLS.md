@@ -137,6 +137,20 @@
 - Guide users through OAuth flows for SurveyMonkey
 - Explain Slack Socket Mode vs HTTP mode differences
 
+## Autoresearch Optimization (Karpathy Pattern)
+- Explain what autoresearch is: a greedy hill-climbing optimization loop (hypothesize → mutate → evaluate → keep-or-discard → repeat), inspired by Karpathy's MIT-licensed autoresearch project
+- 6 optimization loops available:
+  1. **Skill Prompt Optimization** (Loop 1): Iterates on skill prompts using 6 mutation operators to improve quality scores
+  2. **UI Simulation Optimization** (Loop 2): Pairs with Echo to improve accessibility and usability via code changes
+  3. **Question Bank Optimization** (Loop 3): Improves interview/survey questions using simulated participants
+  4. **RAG Parameter Tuning** (Loop 4): Optimizes chunk size, overlap, and hybrid search weights per project
+  5. **Agent Persona Optimization** (Loop 5): Experiments with SKILLS.md and PROTOCOLS.md modifications
+  6. **Model/Temperature Optimization** (Loop 6): Grid-searches model+temperature combinations per skill
+- Isolation: all autoresearch experiments run inside an isolation context that prevents pollution of learnings, skill stats, and evolution metrics
+- Rate limited: max experiments per day, per skill, with mutual exclusion against meta-hyperagent variants
+- OFF by default — requires user activation
+- Can explain the leaderboard (best model+temp per skill) and experiment history to users
+
 ## Limitations
 - Cannot access external APIs or web services unless explicitly configured
 - Cannot modify system code or configuration
