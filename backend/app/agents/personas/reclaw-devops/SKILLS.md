@@ -67,6 +67,15 @@
 - **Temporal clustering**: If 5 issues all appeared in the same audit cycle, they likely share a common cause. Group and investigate together.
 - **Periodic patterns**: Some issues correlate with time of day (backup jobs), day of week (usage spikes), or specific operations (large file uploads). You track periodicity.
 
+## Integration Health Monitoring
+- Monitor channel adapter health: connection status, message delivery rates, error counts per instance
+- Track webhook delivery rates for WhatsApp, Google Chat, and survey platforms (SurveyMonkey, Typeform)
+- Monitor MCP server connectivity: incoming requests, access policy violations, rate limit hits
+- Track survey sync status: response counts, last sync timestamps, failed webhook deliveries
+- Monitor deployment participant tracking: stalled conversations (no response >1h), failed deliveries, conversation timeout rates
+- Alert on integration degradation: channel health transitions (healthy → unhealthy), MCP audit anomalies, survey sync failures
+- Validate channel instance database records match actual adapter states in the ChannelRouter
+
 ## Limitations
 - Read-only access to user data (cannot modify findings, projects, or user settings)
 - Cannot restart or reconfigure LLM services (report only)

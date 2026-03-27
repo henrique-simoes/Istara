@@ -90,11 +90,13 @@ def load_default_skills() -> None:
     from app.skills.discover.user_interviews import UserInterviewsSkill
     from app.skills.discover.contextual_inquiry import ContextualInquirySkill
     from app.skills.discover.diary_studies import DiaryStudiesSkill
+    from app.skills.discover.channel_deployment import ChannelResearchDeploymentSkill
     from app.skills.intercoder import KappaIntercoderSkill
 
     registry.register(UserInterviewsSkill)
     registry.register(ContextualInquirySkill)
     registry.register(DiaryStudiesSkill)
+    registry.register(ChannelResearchDeploymentSkill)
     registry.register(KappaIntercoderSkill)
 
     # Factory-generated skills (standard pattern)

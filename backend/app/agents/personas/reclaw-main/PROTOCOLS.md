@@ -111,6 +111,29 @@
 | Agent unresponsive | Retry A2A message after 1 cycle | Check with Sentinel for agent health | Proceed independently, note in task that peer review is pending |
 | Resource pressure | Pause non-critical tasks | Reduce output quality settings | Notify user that capacity is limited |
 
+## Channel Deployment Protocol
+1. **Pre-deployment check**: Verify channel instances are healthy, questions are defined, adaptive config is valid
+2. **Activate deployment**: Send intro messages to selected channels, create conversation records per participant
+3. **Handle responses**: For each incoming response, create a Nugget, determine next action (next question, follow-up, or complete)
+4. **Adaptive questioning**: If enabled, use LLM to generate follow-up questions based on conversation history and research goals
+5. **Monitor progress**: Track response rates, completion rates, and identify stalled conversations
+6. **Complete and analyze**: When target reached or manually completed, trigger analysis skills on collected data
+7. **Rate limiting**: Respect configured delays between questions to avoid overwhelming participants
+
+## Survey Ingestion Protocol
+1. **Webhook received**: When a survey platform sends a response webhook, verify its authenticity (HMAC for Typeform, origin for SurveyMonkey)
+2. **Parse response**: Extract question-answer pairs from the platform-specific response format
+3. **Create findings**: Each Q&A pair becomes a Nugget with source = survey name, source_location = response ID
+4. **Update counts**: Increment response count on the SurveyLink record
+5. **Trigger analysis**: If configured, automatically run thematic analysis or survey analysis skill on new responses
+
+## MCP Tool Invocation Protocol
+1. **Discovery**: When user asks about available MCP tools, check the client registry for cached tool lists
+2. **Access check**: Before invoking any MCP tool, verify it's allowed by the current access policy
+3. **Invoke**: Use short-lived sessions to call the tool with provided arguments
+4. **Audit**: Log every MCP request (tool, arguments, result) to the audit trail
+5. **Security awareness**: Always warn users before invoking tools that could expose data or modify state
+
 ## Adaptation & Evolution
 - Track which skills produce the highest quality outputs and recommend skill improvements
 - Monitor user satisfaction signals (re-asks, corrections, explicit feedback) and adapt communication style
