@@ -130,6 +130,34 @@ async def _generate_native_tools(
         if tool_calls_payload and iteration < MAX_TOOL_ITERATIONS:
             raw_tool_calls = tool_calls_payload["tool_calls"]
 
+            # Filter out hallucinated tool calls (model calls non-existent tools)
+            valid_tool_names = {t["function"]["name"] for t in OPENAI_TOOLS}
+            real_tool_calls = []
+            for tc in raw_tool_calls:
+                fn_name = tc.get("function", {}).get("name", "")
+                if fn_name in valid_tool_names:
+                    real_tool_calls.append(tc)
+                else:
+                    # Hallucinated tool — extract text from arguments as response
+                    _chat_log.info("Hallucinated tool call '%s' — extracting text from arguments", fn_name)
+                    try:
+                        args = json.loads(tc.get("function", {}).get("arguments", "{}"))
+                        # Common patterns: {"text": "..."}, {"content": "..."}, {"response": "..."}
+                        extracted = args.get("text", args.get("content", args.get("response", "")))
+                        if extracted:
+                            response_text += str(extracted)
+                    except (json.JSONDecodeError, TypeError):
+                        pass
+
+            if not real_tool_calls:
+                # All tool calls were hallucinated — treat as final text response
+                all_text_parts.append(response_text)
+                event_data = json.dumps({"type": "chunk", "content": response_text})
+                yield f"data: {event_data}\n\n"
+                break
+
+            raw_tool_calls = real_tool_calls
+
             # Stream any text the model produced before the tool calls
             if response_text.strip():
                 all_text_parts.append(response_text)
@@ -537,12 +565,23 @@ async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db)):
                             native_err,
                         )
                         use_native_tools = False
-                        # Reset accumulators
                         all_text_parts.clear()
                         tool_results.clear()
                         conversation = list(messages)
                     else:
                         raise
+
+                # If native tools produced no text at all, the model may be
+                # too small to handle tools+system prompt. Fall back.
+                full_text = "".join(all_text_parts).strip()
+                if use_native_tools and not full_text and not tool_results:
+                    _chat_log.warning(
+                        "Native tool calling produced empty response — "
+                        "model may be too small. Falling back to text-based."
+                    )
+                    use_native_tools = False
+                    all_text_parts.clear()
+                    conversation = list(messages)
 
             # ── Fallback: text-based tool parsing ────────────────────
             if not use_native_tools:
