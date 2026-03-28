@@ -16,7 +16,12 @@ export function useWebSocket(onEvent?: (event: WSEvent) => void) {
   const connect = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) return;
 
-    const ws = new WebSocket(WS_URL);
+    // Append JWT token as query parameter for authentication
+    const token = typeof window !== "undefined" ? localStorage.getItem("reclaw_token") : null;
+    const wsUrl = token
+      ? `${WS_URL}?token=${encodeURIComponent(token)}`
+      : WS_URL;
+    const ws = new WebSocket(wsUrl);
 
     ws.onopen = () => {
       setConnected(true);

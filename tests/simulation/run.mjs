@@ -31,15 +31,60 @@ const FRONTEND = "http://localhost:3000";
 // ── API Client ──────────────────────────────────────────────
 
 const apiClient = {
+  _token: null,
+
+  async authenticate() {
+    // Try to login with admin credentials from env or .env file
+    const username = process.env.ADMIN_USERNAME || "admin";
+    let password = process.env.ADMIN_PASSWORD || "";
+
+    // Read password from .env file if not set in environment
+    if (!password) {
+      try {
+        const envContent = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "../../backend/.env"), "utf-8");
+        const match = envContent.match(/ADMIN_PASSWORD=(.+)/);
+        if (match) password = match[1].trim();
+      } catch {}
+    }
+
+    if (!password) {
+      console.warn("  \u26A0 No ADMIN_PASSWORD found \u2014 tests may fail auth");
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        this._token = data.token || data.access_token;
+        console.log("  \u2705 Authenticated as admin");
+      } else {
+        console.warn(`  \u26A0 Auth failed: ${res.status}`);
+      }
+    } catch (e) {
+      console.warn(`  \u26A0 Auth error: ${e.message}`);
+    }
+  },
+
+  _headers() {
+    const h = { "Content-Type": "application/json" };
+    if (this._token) h["Authorization"] = `Bearer ${this._token}`;
+    return h;
+  },
+
   async get(path) {
-    const res = await fetch(`${API_BASE}${path}`);
+    const res = await fetch(`${API_BASE}${path}`, { headers: this._headers() });
     if (!res.ok) throw new Error(`GET ${path}: ${res.status}`);
     return res.json();
   },
   async post(path, body) {
     const res = await fetch(`${API_BASE}${path}`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: this._headers(),
       body: JSON.stringify(body),
     });
     if (!res.ok) throw new Error(`POST ${path}: ${res.status}`);
@@ -48,7 +93,7 @@ const apiClient = {
   async patch(path, body) {
     const res = await fetch(`${API_BASE}${path}`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
+      headers: this._headers(),
       body: JSON.stringify(body),
     });
     if (!res.ok) throw new Error(`PATCH ${path}: ${res.status}`);
@@ -57,14 +102,17 @@ const apiClient = {
   async put(path, body) {
     const res = await fetch(`${API_BASE}${path}`, {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
+      headers: this._headers(),
       body: JSON.stringify(body),
     });
     if (!res.ok) throw new Error(`PUT ${path}: ${res.status}`);
     return res.json();
   },
   async delete(path) {
-    const res = await fetch(`${API_BASE}${path}`, { method: "DELETE" });
+    const res = await fetch(`${API_BASE}${path}`, {
+      method: "DELETE",
+      headers: this._headers(),
+    });
     return res;
   },
   async uploadFile(projectId, filePath, fileName) {
@@ -72,8 +120,11 @@ const apiClient = {
     const fileData = readFileSync(filePath);
     const formData = new FormData();
     formData.append("file", new Blob([fileData]), fileName);
+    const headers = {};
+    if (this._token) headers["Authorization"] = `Bearer ${this._token}`;
     const res = await fetch(`${API_BASE}/api/files/upload/${projectId}`, {
       method: "POST",
+      headers,
       body: formData,
     });
     if (!res.ok) throw new Error(`Upload ${fileName}: ${res.status}`);
@@ -82,8 +133,11 @@ const apiClient = {
   async uploadContent(projectId, content, fileName) {
     const formData = new FormData();
     formData.append("file", new Blob([content], { type: "text/plain" }), fileName);
+    const headers = {};
+    if (this._token) headers["Authorization"] = `Bearer ${this._token}`;
     const res = await fetch(`${API_BASE}/api/files/upload/${projectId}`, {
       method: "POST",
+      headers,
       body: formData,
     });
     if (!res.ok) throw new Error(`Upload ${fileName}: ${res.status}`);
@@ -197,6 +251,7 @@ async function loadScenarios() {
     "64-docker-security",
     "65-laws-of-ux",
     "66-featured-mcp-servers",
+    "67-auth-enforcement",
   ];
 
   const scenarios = [];
@@ -418,6 +473,9 @@ async function main() {
     process.exit(1);
   }
 
+  // Authenticate the API client — all endpoints now require JWT
+  await apiClient.authenticate();
+
   // Launch browser
   const browser = await chromium.launch({
     headless,
@@ -445,7 +503,10 @@ async function main() {
   // This prevents LM Studio from loading two models on limited RAM.
   let maintenancePaused = false;
   try {
-    const pauseRes = await fetch(`${API_BASE}/api/settings/maintenance/pause?reason=simulation-tests`, { method: "POST" });
+    const pauseRes = await fetch(`${API_BASE}/api/settings/maintenance/pause?reason=simulation-tests`, {
+      method: "POST",
+      headers: apiClient._headers(),
+    });
     if (pauseRes.ok) {
       const pauseData = await pauseRes.json();
       maintenancePaused = true;
@@ -454,7 +515,7 @@ async function main() {
       console.log(`  Maintenance pause failed (${pauseRes.status}), tests may compete with agents for model`);
     }
     // Log which model tests will use
-    const modelsRes = await fetch(`${API_BASE}/api/settings/models`);
+    const modelsRes = await fetch(`${API_BASE}/api/settings/models`, { headers: apiClient._headers() });
     if (modelsRes.ok) {
       const modelsData = await modelsRes.json();
       console.log(`  Using model: ${modelsData.active_model || "unknown"} (user-configured)`);
@@ -599,7 +660,10 @@ async function main() {
   // Resume ReClaw operations after simulation tests complete
   if (maintenancePaused) {
     try {
-      const resumeRes = await fetch(`${API_BASE}/api/settings/maintenance/resume`, { method: "POST" });
+      const resumeRes = await fetch(`${API_BASE}/api/settings/maintenance/resume`, {
+        method: "POST",
+        headers: apiClient._headers(),
+      });
       if (resumeRes.ok) {
         const resumeData = await resumeRes.json();
         console.log(`  ReClaw operations resumed (${resumeData.resumed_agents?.length || 0} agents reactivated)`);
@@ -615,7 +679,10 @@ async function main() {
 // Safety: resume ReClaw operations on crash or interrupt
 async function emergencyResume() {
   try {
-    await fetch(`${API_BASE}/api/settings/maintenance/resume`, { method: "POST" });
+    await fetch(`${API_BASE}/api/settings/maintenance/resume`, {
+      method: "POST",
+      headers: apiClient._headers(),
+    });
     console.log("  ReClaw operations resumed (emergency cleanup)");
   } catch { /* server may be down */ }
 }

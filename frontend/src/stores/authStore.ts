@@ -78,6 +78,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   logout: () => {
     localStorage.removeItem("reclaw_token");
     set({ user: null, token: null });
+    if (typeof window !== "undefined") {
+      window.location.reload();
+    }
   },
 
   checkTeamStatus: async () => {
@@ -112,9 +115,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   getAuthHeaders: (): Record<string, string> => {
     const { token } = get();
-    if (token && token !== "local-mode") {
+    if (token) {
       return { Authorization: `Bearer ${token}` };
     }
-    return {} as Record<string, string>;
+    return {};
   },
 }));

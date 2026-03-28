@@ -11,6 +11,7 @@ from pydantic import BaseModel
 
 from app.config import settings
 from app.core.backup_manager import backup_manager
+from app.core.security_middleware import require_admin_from_request
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -44,7 +45,8 @@ async def list_backups():
 
 @router.post("/backups/create")
 async def create_backup(backup_type: str = "full", request: Request = None):
-    """Create a new backup (full or incremental)."""
+    """Create a new backup (full or incremental). Admin only."""
+    require_admin_from_request(request)
     # Accept backup_type from query param or JSON body
     if request:
         try:
@@ -65,8 +67,9 @@ async def create_backup(backup_type: str = "full", request: Request = None):
 
 
 @router.post("/backups/{backup_id}/restore")
-async def restore_from_backup(backup_id: str):
-    """Restore from a specific backup archive."""
+async def restore_from_backup(backup_id: str, request: Request):
+    """Restore from a specific backup archive. Admin only."""
+    require_admin_from_request(request)
     try:
         result = await backup_manager.restore_from_backup(backup_id)
         return result
@@ -95,8 +98,9 @@ async def verify_backup(backup_id: str):
 
 
 @router.delete("/backups/{backup_id}")
-async def delete_backup(backup_id: str):
-    """Delete a single backup record and its archive file."""
+async def delete_backup(backup_id: str, request: Request):
+    """Delete a single backup record and its archive file. Admin only."""
+    require_admin_from_request(request)
     deleted = await backup_manager.delete_backup(backup_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Backup not found")
@@ -116,8 +120,9 @@ async def get_backup_config():
 
 
 @router.post("/backups/config")
-async def update_backup_config(data: BackupConfigUpdate):
-    """Update backup configuration and persist to .env."""
+async def update_backup_config(data: BackupConfigUpdate, request: Request):
+    """Update backup configuration and persist to .env. Admin only."""
+    require_admin_from_request(request)
     from app.api.routes.settings import _persist_env
 
     updated: dict[str, object] = {}
@@ -152,8 +157,9 @@ async def get_backup_estimate():
 
 
 @router.get("/backups/{backup_id}/download")
-async def download_backup(backup_id: str):
-    """Stream the backup tar.gz archive as a download."""
+async def download_backup(backup_id: str, request: Request):
+    """Stream the backup tar.gz archive as a download. Admin only."""
+    require_admin_from_request(request)
     archive_path = await backup_manager.get_archive_path(backup_id)
     if not archive_path:
         raise HTTPException(status_code=404, detail="Backup archive not found")

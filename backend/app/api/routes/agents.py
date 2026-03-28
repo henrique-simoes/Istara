@@ -6,7 +6,7 @@ import logging
 import shutil
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -165,8 +165,10 @@ async def update_agent(agent_id: str, data: UpdateAgentRequest, db: AsyncSession
 
 
 @router.delete("/agents/{agent_id}", status_code=204)
-async def delete_agent(agent_id: str, db: AsyncSession = Depends(get_db)):
-    """Soft-delete an agent."""
+async def delete_agent(agent_id: str, request: Request, db: AsyncSession = Depends(get_db)):
+    """Soft-delete an agent. Admin only."""
+    from app.core.security_middleware import require_admin_from_request
+    require_admin_from_request(request)
     # Stop custom agent worker if running
     try:
         from app.agents.custom_worker import stop_custom_agent

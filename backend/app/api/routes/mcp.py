@@ -6,11 +6,12 @@ MCP Client endpoints manage connections TO external MCP servers.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
+from app.core.security_middleware import require_admin_from_request
 from app.models.database import get_db
 
 router = APIRouter()
@@ -88,12 +89,13 @@ async def get_server_status(db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/mcp/server/toggle")
-async def toggle_server(data: ServerToggleRequest, db: AsyncSession = Depends(get_db)):
-    """Enable or disable the MCP server.
+async def toggle_server(data: ServerToggleRequest, request: Request, db: AsyncSession = Depends(get_db)):
+    """Enable or disable the MCP server. Admin only.
 
     NOTE: This updates the in-memory setting. A full restart may be
     required for the transport layer to actually start/stop listening.
     """
+    require_admin_from_request(request)
     from app.mcp.server import MCP_AVAILABLE
     from app.services.mcp_security import ensure_default_policy
 
@@ -134,12 +136,13 @@ async def get_policy(db: AsyncSession = Depends(get_db)):
 
 
 @router.patch("/mcp/server/policy")
-async def update_policy(data: PolicyUpdateRequest, db: AsyncSession = Depends(get_db)):
-    """Update the MCP access policy.
+async def update_policy(data: PolicyUpdateRequest, request: Request, db: AsyncSession = Depends(get_db)):
+    """Update the MCP access policy. Admin only.
 
     Only provided fields are changed. SENSITIVE and HIGH-risk changes
     include warning messages in the response.
     """
+    require_admin_from_request(request)
     import json
 
     from app.services.mcp_security import TOOL_RISK_LEVELS, ensure_default_policy
@@ -263,8 +266,9 @@ async def list_all_client_tools(db: AsyncSession = Depends(get_db)):
 
 
 @router.delete("/mcp/clients/{server_id}", status_code=204)
-async def unregister_client(server_id: str, db: AsyncSession = Depends(get_db)):
-    """Remove an external MCP server from the registry."""
+async def unregister_client(server_id: str, request: Request, db: AsyncSession = Depends(get_db)):
+    """Remove an external MCP server from the registry. Admin only."""
+    require_admin_from_request(request)
     from app.services.mcp_client_manager import unregister_server
 
     removed = await unregister_server(db, server_id)

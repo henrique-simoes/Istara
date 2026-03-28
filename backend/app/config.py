@@ -38,6 +38,18 @@ class Settings(BaseSettings):
     # CORS (comma-separated origins)
     cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
 
+    # Admin bootstrap (auto-created on first startup if no users exist)
+    admin_username: str = "admin"
+    admin_password: str = ""  # Auto-generated if empty
+
+    # Network security — access token for non-localhost connections
+    # When set, any request from outside localhost must provide this token
+    # via X-Access-Token header or ?token= query parameter.
+    # Empty = disabled (backward-compatible, localhost-only setups).
+    network_access_token: str = ""
+    # Bind host: "127.0.0.1" = localhost only, "0.0.0.0" = network accessible
+    bind_host: str = "0.0.0.0"
+
     # Rate limiting
     rate_limit_enabled: bool = True
     rate_limit_default: str = "200/minute"

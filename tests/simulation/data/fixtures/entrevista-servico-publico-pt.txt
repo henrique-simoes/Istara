@@ -1,0 +1,242 @@
+================================================================================
+TRANSCRICAO DE ENTREVISTA — PESQUISA DE USABILIDADE
+Servico Digital do Governo: Portal de Agendamento de Servicos Publicos
+================================================================================
+
+Projeto: Avaliacao de UX do Portal Gov.br Agendamento
+Participante: Ana Paula Rodrigues (P07)
+Idade: 34 anos
+Profissao: Professora do ensino fundamental
+Cidade: Belo Horizonte, MG
+Data: 12 de fevereiro de 2026
+Duracao: 42 minutos
+Entrevistador: Rafael Costa, Pesquisador de UX
+Modalidade: Remota (Google Meet com gravacao)
+Consentimento: TCLE assinado digitalmente em 10/02/2026
+
+--------------------------------------------------------------------------------
+
+[00:00] Rafael:
+  Bom dia, Ana Paula. Obrigado por participar da nossa pesquisa. Como
+  combinamos, vamos conversar sobre sua experiencia com o portal de
+  agendamento de servicos publicos. Pode ficar tranquila, nao existe
+  resposta certa ou errada. Queremos entender sua experiencia real.
+  Podemos comecar?
+
+[00:25] Ana Paula:
+  Bom dia, Rafael! Claro, pode comecar. Estou feliz em ajudar.
+
+[00:32] Rafael:
+  Otimo. Para comecar, pode me contar um pouco sobre voce e como voce
+  costuma resolver questoes com servicos publicos? Por exemplo, quando
+  precisa renovar um documento ou agendar um atendimento.
+
+[00:48] Ana Paula:
+  Entao, eu sou professora e moro em Belo Horizonte. Tenho 34 anos e
+  uso bastante a internet no dia a dia, tanto para trabalho quanto para
+  coisas pessoais. Quando preciso resolver algo com o governo, minha
+  primeira opcao e sempre tentar fazer online. Ja usei o site da Receita
+  Federal para declaracao de imposto de renda, o Meu INSS para consultar
+  contribuicoes, e o Detran-MG para renovar a carteira de motorista.
+  Antes de ter esses servicos online, eu perdia um dia inteiro em fila.
+  Entao qualquer coisa que posso resolver pelo celular ou computador,
+  eu prefiro.
+
+[01:38] Rafael:
+  E como foi sua experiencia mais recente com o portal de agendamento?
+  Pode me contar o que voce precisava resolver e como foi o processo?
+
+[01:52] Ana Paula:
+  Sim. Entao, no mes passado eu precisei agendar um atendimento no
+  INSS para resolver uma questao sobre tempo de contribuicao. Fui no
+  portal Gov.br, fiz login com minha conta — que alias ja tinha criado
+  ha uns dois anos quando precisei do auxilio emergencial. Ate ai tudo
+  bem. Mas quando fui procurar a opcao de agendamento do INSS,
+  complicou. O site tem muitas opcoes e eu nao sabia exatamente onde
+  clicar. Primeiro fui em "Servicos" e apareceu uma lista enorme.
+  Tentei usar a busca e digitei "agendar INSS" mas os resultados nao
+  foram muito claros.
+
+[02:45] Rafael:
+  Voce lembra o que apareceu nos resultados da busca?
+
+[02:50] Ana Paula:
+  Apareceram varios itens com nomes tecnicos que eu nao entendi direito.
+  Coisas como "Requerimento de Beneficio Previdenciario" e "Atualizacao
+  de Dados Cadastrais do CNIS". Eu so queria agendar um horario para ir
+  ao INSS pessoalmente, mas nao ficou claro qual opcao era essa. Acabei
+  clicando em "Requerimento de Beneficio" achando que era isso, mas na
+  verdade era para pedir beneficio novo, nao para agendar atendimento.
+  Voltei para a pagina anterior e tentei de novo.
+
+[03:28] Rafael:
+  E quanto tempo levou ate voce encontrar a opcao correta?
+
+[03:33] Ana Paula:
+  Uns dez minutos, mais ou menos. Fiquei indo e voltando entre as
+  paginas. No final, encontrei a opcao "Agendar atendimento presencial"
+  dentro de uma subcategoria que se chamava "Atendimento e Pericia".
+  Nao era intuitivo. Acho que deveria ter um botao grande e claro logo
+  na pagina inicial dizendo "Agendar atendimento" porque isso e uma
+  das coisas que mais gente procura, ne?
+
+[04:05] Rafael:
+  Faz sentido. E depois que voce encontrou a opcao correta, como foi
+  o processo de agendamento em si?
+
+[04:15] Ana Paula:
+  Entao, o formulario de agendamento em si nao era complicado. Tinha
+  que selecionar o tipo de servico, a cidade, e a unidade do INSS mais
+  proxima. Mas ai teve outro problema: quando selecionei Belo Horizonte,
+  apareceram cinco unidades, mas nao tinha mapa nem endereco completo,
+  so o nome da agencia. Por exemplo, "INSS Agencia Centro" e "INSS
+  Agencia Barreiro". Eu moro na regiao da Pampulha, mas nao tinha
+  certeza qual era a unidade mais proxima so pelo nome. Tive que abrir
+  o Google Maps em outra aba para verificar os enderecos.
+
+[05:02] Rafael:
+  Entendo. E em relacao a escolha de data e horario?
+
+[05:08] Ana Paula:
+  A parte de escolher data e horario foi a pior experiencia. O
+  calendario so mostrava datas disponiveis para os proximos 30 dias,
+  mas quase tudo estava lotado. As poucas opcoes disponiveis eram
+  horarios bem cedo, tipo 7h30 da manha, o que e complicado para
+  mim porque dou aula de manha. Nao tinha opcao de entrar em lista
+  de espera nem de receber notificacao quando surgissem novos horarios.
+  Eu tive que voltar ao site todos os dias durante uma semana ate
+  conseguir um horario que funcionasse para mim, que foi uma quarta-
+  feira as 14h.
+
+[05:55] Rafael:
+  Isso deve ter sido bem frustrante. Como voce se sentiu durante
+  esse processo?
+
+[06:03] Ana Paula:
+  Muito frustrada. E olha que eu sou uma pessoa que se vira bem com
+  tecnologia. Imagina minha mae, que tem 62 anos e mal sabe usar o
+  WhatsApp. Ela jamais conseguiria fazer isso sozinha. Na verdade,
+  quando ela precisou agendar atendimento no INSS no ano passado,
+  eu tive que fazer para ela. E mesmo assim demorou porque o site
+  estava com problemas naquele dia — ficava dando erro 500.
+
+[06:32] Rafael:
+  Voce mencionou que usa o celular bastante. Voce tentou fazer o
+  agendamento pelo celular ou pelo computador?
+
+[06:40] Ana Paula:
+  Tentei primeiro pelo celular porque estava no intervalo da escola.
+  Foi horrivel. A pagina nao adaptava bem para a tela do celular.
+  Os botoes ficavam muito pequenos e dificeis de clicar. O calendario
+  entao, era praticamente impossivel de usar — os numeros ficavam
+  minusculos e eu clicava na data errada toda hora. O menu lateral
+  do site cobria metade da tela e nao tinha como fechar facilmente.
+  Desisti e tentei de novo em casa no notebook, onde foi um pouco
+  melhor, mas ainda assim nao e uma experiencia boa.
+
+[07:20] Rafael:
+  Se voce pudesse mudar uma coisa no portal de agendamento, o que
+  seria?
+
+[07:28] Ana Paula:
+  Uma coisa? Hmm, seria tornar a busca muito mais inteligente.
+  Tipo, se eu digitar "quero agendar no INSS", o sistema deveria
+  entender e me levar direto para a pagina certa, sem eu ter que
+  navegar por menus confusos. Algo como os assistentes virtuais
+  fazem, sabe? Voce fala o que precisa e ele te direciona. Porque
+  o maior problema nao e o formulario em si, e encontrar o formulario
+  certo. Ah, e tambem seria otimo se tivesse um aplicativo proprio
+  para agendamento, em vez de depender do site que nao funciona bem
+  no celular.
+
+[08:15] Rafael:
+  E em relacao a acessibilidade? Voce notou alguma dificuldade
+  para pessoas com deficiencia ou idosos?
+
+[08:25] Ana Paula:
+  Olha, eu nao tenho deficiencia visual, mas percebi que o
+  contraste de cores em algumas partes do site e muito fraco. O
+  texto cinza claro sobre fundo branco e dificil de ler ate para
+  mim. Para uma pessoa com baixa visao, deve ser impossivel. Tambem
+  nao vi opcao de aumentar a fonte no site — so aquela funcao do
+  navegador que aumenta tudo, mas ai fica tudo desconfigurado.
+  E para minha mae, que usa oculos de leitura e tem dificuldade
+  com textos pequenos, isso e um problema serio. O governo deveria
+  ter mais cuidado com isso, ne? Sao servicos que todo mundo precisa
+  usar, independente da idade ou capacidade.
+
+[09:12] Rafael:
+  Com certeza. Voce teve alguma experiencia positiva com o portal
+  que gostaria de compartilhar?
+
+[09:20] Ana Paula:
+  Sim, tem coisas boas. O login pelo Gov.br com reconhecimento
+  facial funciona muito bem no celular. E rapido e seguro, nao
+  preciso ficar digitando senha. Tambem gostei que depois de
+  confirmar o agendamento, recebi um email com todos os detalhes
+  e um lembrete dois dias antes. Isso foi muito util. E o
+  comprovante de agendamento em PDF ficou bem organizado, com
+  todas as informacoes que eu precisava — data, horario, endereco
+  completo da unidade, e a lista de documentos que eu precisava
+  levar. Isso evitou que eu fosse sem algum documento importante.
+
+[10:05] Rafael:
+  Otimo. E sobre confianca e seguranca — voce se sente segura
+  usando o portal para lidar com seus dados pessoais?
+
+[10:15] Ana Paula:
+  Em geral, sim. O fato de ser um site do governo (gov.br) me
+  passa mais confianca do que se fosse um site qualquer. O login
+  com verificacao em duas etapas tambem ajuda. Mas confesso que
+  fico um pouco preocupada quando o site pede muitas informacoes
+  pessoais de uma vez. Por exemplo, para completar o agendamento
+  tive que informar CPF, data de nascimento, nome da mae, e
+  numero do PIS. Sei que essas informacoes sao necessarias, mas
+  seria bom ter uma explicacao do por que cada dado e pedido e
+  como vai ser usado. Transparencia gera confianca.
+
+[11:02] Rafael:
+  Essa e uma observacao muito pertinente. Para finalizar, em uma
+  escala de 1 a 10, como voce avaliaria sua experiencia geral
+  com o portal de agendamento?
+
+[11:15] Ana Paula:
+  Eu daria um 5. O servico em si e valioso — poder agendar sem
+  ir pessoalmente e fantastico. Mas a experiencia de uso precisa
+  melhorar muito. A navegacao e confusa, o celular nao funciona
+  direito, e encontrar o que voce precisa e um desafio. Se
+  melhorarem essas coisas, facilmente seria um 8 ou 9. O
+  potencial esta la, so falta polir a experiencia.
+
+[11:42] Rafael:
+  Ana Paula, muito obrigado pela sua participacao. Suas
+  observacoes sao extremamente valiosas para melhorar o servico.
+  Tem mais alguma coisa que voce gostaria de acrescentar?
+
+[11:55] Ana Paula:
+  So queria dizer que acho muito importante esse tipo de pesquisa.
+  A gente que usa o servico no dia a dia e quem mais sabe o que
+  funciona e o que nao funciona. Espero que o feedback chegue ate
+  quem pode fazer as mudancas. E se precisarem de mais participantes,
+  posso indicar colegas da escola que tambem tem experiencias para
+  compartilhar. Obrigada pela oportunidade!
+
+[12:20] Rafael:
+  Agradecemos muito. Vou encerrar a gravacao agora.
+
+================================================================================
+FIM DA ENTREVISTA — P07
+================================================================================
+
+NOTAS DO PESQUISADOR:
+- Participante demonstrou boa articulacao e capacidade critica
+- Problemas de navegacao confirmam achados de participantes anteriores
+- Experiencia mobile e um problema recorrente (7 de 12 participantes relataram)
+- Sugestao de busca inteligente alinha com tendencia de design conversacional
+- Mencionou dificuldades de familiares idosos — potencial para estudo geracional
+- Nivel de letramento digital: alto (usa multiplos servicos digitais)
+- Dispositivo principal: Samsung Galaxy A54 (Android 14)
+- Navegador: Chrome Mobile
+- Conexao: Wi-Fi residencial (fibra otica 200 Mbps)
+
+TAGS: #agendamento #navegacao #mobile #busca #acessibilidade #INSS #idosos
