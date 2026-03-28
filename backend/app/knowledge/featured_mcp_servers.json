@@ -104,6 +104,42 @@
         "Cross-reference environmental monitoring UX with INPE deforestation/fire data",
         "Study public procurement portal usability using PNCP contract data"
       ]
+    },
+    {
+      "id": "playwright-mcp",
+      "name": "Playwright Browser",
+      "description": "Control a real browser from ReClaw agents. Navigate websites, click elements, fill forms, take screenshots, and extract accessibility trees. Essential for UX research: competitor analysis, usability testing, design evaluation, and web content extraction.",
+      "package": "@playwright/mcp",
+      "repository": "https://github.com/microsoft/playwright-mcp",
+      "license": "Apache-2.0",
+      "transport": "http",
+      "command": "npx",
+      "args": ["@playwright/mcp@latest", "--port", "3100"],
+      "http_command": "npx @playwright/mcp@latest --port 3100",
+      "http_url": "http://localhost:3100/mcp",
+      "tool_count": 21,
+      "resource_count": 0,
+      "prompt_count": 0,
+      "categories": ["browser", "automation", "testing", "accessibility", "screenshots"],
+      "env_vars": [],
+      "features": [
+        {"name": "Navigate & Browse", "description": "Go to URLs, navigate back, manage tabs"},
+        {"name": "Accessibility Snapshot", "description": "Get full accessibility tree of any page (2-5KB text, works with any model)"},
+        {"name": "Screenshots", "description": "Capture full page or element screenshots"},
+        {"name": "Interact", "description": "Click, type, fill forms, select options, hover, drag"},
+        {"name": "Network & Console", "description": "Monitor network requests and console output"},
+        {"name": "Evaluate JavaScript", "description": "Run custom JS on any page"},
+        {"name": "PDF Generation", "description": "Save pages as PDF (with --caps=pdf)"}
+      ],
+      "ux_research_applications": [
+        "Evaluate competitor website usability by navigating and analyzing accessibility trees",
+        "Automated heuristic evaluation of web interfaces using accessibility snapshots",
+        "Screenshot competitor UIs for design critique and comparison",
+        "Test form usability by filling and submitting forms programmatically",
+        "Monitor page performance and network requests for Doherty Threshold compliance",
+        "Extract structured content from research-relevant websites",
+        "Accessibility audit via real browser accessibility tree analysis"
+      ]
     }
   ]
 }

@@ -39,3 +39,8 @@ slack-bolt[async]>=1.20.0
 
 # MCP (Model Context Protocol)
 fastmcp>=2.0.0
+
+# Browser automation (optional — for browse_website tool)
+# pip install browser-use langchain-openai
+# browser-use>=0.3.0
+# langchain-openai>=0.3.0

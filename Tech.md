@@ -1528,7 +1528,11 @@ Optional Caddy service (profile: `production`) provides automatic TLS via Let's 
 
 ReClaw uses native OpenAI-compatible function calling via the `tools` API parameter. LM Studio and Ollama both support this format. Tools are defined in `OPENAI_TOOLS` (system_actions.py) with JSON Schema parameters.
 
-**14 system tools**: create_task, search_documents, list_tasks, move_task, attach_document, search_findings, list_project_files, assign_agent, send_agent_message, get_document_content, search_memory, update_task, sync_project_documents, **web_fetch**.
+**15 system tools**: create_task, search_documents, list_tasks, move_task, attach_document, search_findings, list_project_files, assign_agent, send_agent_message, get_document_content, search_memory, update_task, sync_project_documents, **web_fetch**, **browse_website**.
+
+**browse_website**: AI-powered browser agent (via browser-use library) that can navigate websites, click elements, fill forms, and extract content. Uses LM Studio/Ollama as the LLM provider. For competitor analysis, usability testing, form evaluation. Optional dependency.
+
+**Playwright MCP**: Available as a featured MCP server (21 browser control tools). Uses accessibility trees (2-5KB text) for page analysis — works with any text model, no vision required. For precise browser automation and accessibility auditing.
 
 **web_fetch**: Agents can fetch any public URL, convert HTML to readable text (via html2text), and analyze the content. Private/internal IPs are blocked for security.
 
