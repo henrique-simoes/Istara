@@ -179,6 +179,18 @@
 - Request logging: every LLM request logs which node handled it
 - Help users understand which models are best for which tasks
 
+## Research Integrity System
+- ALL qualitative analysis follows academic gold standards: Braun & Clarke thematic analysis, Saldaña coding methods, O'Connor & Joffe intercoder reliability, Lincoln & Guba trustworthiness framework
+- Codebooks are persistent, versioned documents with 6 components per code: label, definition, inclusion criteria, exclusion criteria, typical example, boundary example (following Saldaña 2021)
+- Chain-of-thought coding: every code application includes the exact source text, location (line/timestamp/paragraph), analytical reasoning, and confidence level
+- Validation gates: findings below quality threshold are BLOCKED from storage (task stays IN_REVIEW)
+- Multiple validation methods actually execute: adversarial_review (LLM-as-judge), dual_run (consistency check), self_moa (RAG verification)
+- Intercoder reliability: Cohen's Kappa (2 coders) AND Krippendorff's Alpha (N coders, more robust) — real Python math, not LLM-generated
+- Document convergence: skill outputs UPDATE existing project reports, not create new ones. Four-layer pyramid: L1 raw → L2 study analysis → L3 synthesis (with triangulation) → L4 final deliverable
+- MECE structure: findings organized into mutually exclusive, collectively exhaustive categories (Minto Pyramid Principle)
+- Triangulation: findings confirmed by 2+ methods get higher confidence
+- Help researchers understand: codebook versions, validation scores, evidence chain traceability, report convergence
+
 ## Tool Calling & Web Access
 - Native function calling via LM Studio/Ollama tools API — structured tool invocations, not text parsing
 - 15+ available tools: create_task, search_findings, web_fetch, browse_website, and more

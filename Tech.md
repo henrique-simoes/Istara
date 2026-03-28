@@ -1548,6 +1548,22 @@ Optional Caddy service (profile: `production`) provides automatic TLS via Let's 
 
 **Browser compute donation**: Users with LM Studio/Ollama can donate compute by logging in — the `useLocalLLM` hook detects localhost:1234/11434 and offers a "Donate AI compute" toggle. Works through NAT/corporate firewalls (outbound WebSocket only).
 
+### Research Integrity System
+
+Qualitative research pipeline following academic gold standards:
+
+**Codebook System** (Saldaña 2021): Persistent versioned codebooks, 6 components per code. `CodebookVersion` model.
+
+**Code Application Audit Trail** (O'Connor & Joffe 2020): Every code → source text + location + coder + reasoning + review status. `CodeApplication` model.
+
+**Validation Executor**: Runs adversarial_review, dual_run, self_moa, debate_rounds. Gates finding storage.
+
+**Document Convergence** (Minto Pyramid + Weick Sensemaking): L1 raw → L2 analysis (per method) → L3 synthesis (triangulation) → L4 final (MECE). `ReportManager` routes skill outputs to reports.
+
+**Triangulation** (Denzin 1978): Findings from 2+ methods → higher confidence. Auto-synthesis trigger.
+
+**ICR**: Cohen's Kappa + Krippendorff's Alpha. Real math, not LLM-generated.
+
 ### Native Tool Calling
 
 ReClaw uses native OpenAI-compatible function calling via the `tools` API parameter. LM Studio and Ollama both support this format. Tools are defined in `OPENAI_TOOLS` (system_actions.py) with JSON Schema parameters.
