@@ -730,3 +730,14 @@ export interface RadarChartData {
   category_scores: number[];
   detailed_axes: Array<{ axis: string; value: number }>;
 }
+
+// --- User Management ---
+
+export interface ReclawUser {
+  id: string;
+  username: string;
+  email: string;
+  role: "admin" | "researcher" | "viewer";
+  display_name: string;
+  created_at: string;
+}

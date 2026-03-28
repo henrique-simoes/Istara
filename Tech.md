@@ -1564,11 +1564,17 @@ Encrypted fields use `ENC:` prefix for gradual migration — existing unencrypte
 
 ### Admin User Management
 
-Users are created exclusively through the authenticated API:
+Users are managed exclusively through the UI (Settings → Team Members) or authenticated API. No direct database manipulation.
+
+**UI**: "Invite Member" form with display name, username, email, temporary password, and role selector. Success shows copyable credentials. Non-admins see read-only user list.
+
+**API**:
 - `GET /api/auth/users` — list all users (admin only)
 - `POST /api/auth/users` — create user (admin only, works regardless of TEAM_MODE)
 - `DELETE /api/auth/users/{id}` — delete user (admin only, cannot delete self)
 - `PATCH /api/auth/users/{id}/role` — change role (admin only)
+
+**Roles**: Admin (full access), Researcher (create/edit projects), Viewer (read-only)
 
 ### Container Health Checks
 
