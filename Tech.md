@@ -1524,22 +1524,25 @@ The `featured_mcp_servers.json` knowledge file stores pre-configured server defi
 
 Optional Caddy service (profile: `production`) provides automatic TLS via Let's Encrypt. Routes `/api/*`, `/webhooks/*`, `/mcp/*`, `/ws/*` to backend; everything else to frontend. Enables webhook accessibility for WhatsApp, Google Chat, and survey platforms.
 
-### Unified Compute Pool
+### ComputeRegistry — Single Source of Truth
 
-The Compute Pool displays ALL LLM sources in a single view:
-- **Local**: LM Studio/Ollama on the server machine (auto-registered at startup)
-- **Network**: Discovered via subnet scanning (ports 1234, 11434, 8080)
-- **Relay**: Team members donating compute via WebSocket relay nodes
+`compute_registry.py` (1010 lines) replaces both `LLMRouter` and `ComputePool` as the single authority for all LLM compute. If a node isn't in the registry, it doesn't exist to ReClaw.
 
-Each model has detected capabilities (via `model_capabilities.py`):
-- Parameter count (parsed from name: "qwen3.5-4b" → 4B)
-- Context length (2K-131K, from API or heuristic)
-- Tool support (native function calling — requires 4B+ for most families)
-- Vision support (multimodal image input)
+**Node sources**:
+- **Local**: Server machine's LM Studio/Ollama (auto-registered at startup, priority=1)
+- **Network**: Discovered via subnet scanning (ports 1234, 11434, 8080, priority=10)
+- **Relay**: Team members running the relay daemon (WebSocket, priority=20)
+- **Browser**: Users donating compute via login (browser-based WebSocket relay)
 
-**Capability-aware routing**: When tools are needed, the router automatically prefers servers with tool-capable models. Small models (1-2B) without tool support are deprioritized.
+**Routing algorithm**: capability filter → score (health, active requests, latency, priority, RAM) → retry 3x → cooldown 60s → failover to next node.
 
-**Model warnings**: `/api/compute/model-warnings` flags models that lack tool support, have small context windows, or are too small for research tasks.
+**Capability-aware**: When tools are needed, registry filters for nodes with 4B+ tool-capable models. Small models (1-2B) without tool support are deprioritized automatically.
+
+**Backward compatible**: `from app.core.ollama import ollama`, `from app.core.llm_router import llm_router`, and `from app.core.compute_pool import compute_pool` all return the same `compute_registry` singleton. No existing code changes needed.
+
+**Model warnings**: `/api/compute/model-warnings` flags capability limitations.
+
+**Browser compute donation**: Users with LM Studio/Ollama can donate compute by logging in — the `useLocalLLM` hook detects localhost:1234/11434 and offers a "Donate AI compute" toggle. Works through NAT/corporate firewalls (outbound WebSocket only).
 
 ### Native Tool Calling
 

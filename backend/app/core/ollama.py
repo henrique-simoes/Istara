@@ -341,7 +341,8 @@ async def auto_detect_provider() -> None:
 _raw_client = _create_llm_client()
 _init_llm_router()
 
-# Singleton instance — delegates to LLM Router for multi-server failover.
-# All code that imports `from app.core.ollama import ollama` automatically
-# gets router-based fallback to network-discovered and external LLM servers.
-from app.core.llm_router import llm_router as ollama  # noqa: E402
+# Singleton instance — delegates to unified ComputeRegistry for multi-server
+# failover. All code that imports `from app.core.ollama import ollama`
+# automatically gets router-based fallback to network-discovered and
+# external LLM servers.
+from app.core.compute_registry import compute_registry as ollama  # noqa: E402
