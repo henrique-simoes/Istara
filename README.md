@@ -4,7 +4,7 @@
 
 ReClaw is an open-source research assistant that runs entirely on your machine. It helps UX researchers organize, analyze, and synthesize research findings using local LLMs — no data ever leaves your computer.
 
-> Think **OpenClaw meets Google NotebookLM meets Dovetail** — but running on your hardware, your models, your data.
+> Think **OpenClaw meets Google NotebookLM meets commercial UXR platforms** — but running on your hardware, your models, your data.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 

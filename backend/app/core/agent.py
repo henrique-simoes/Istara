@@ -286,7 +286,7 @@ class AgentOrchestrator:
         await broadcast_task_progress(task.id, 0.1, "Starting task...")
 
         # Determine which skill to use
-        skill = self._select_skill(task)
+        skill = await self._select_skill(task)
         if not skill:
             # No specific skill — use general chat to work on the task
             await self._execute_general_task(db, task, project)
@@ -525,7 +525,7 @@ class AgentOrchestrator:
         except ValueError as e:
             logger.debug(f"Skill creation proposal skipped: {e}")
 
-    def _select_skill(self, task: Task):
+    async def _select_skill(self, task: Task):
         """Select the best skill for a task."""
         # If task has an explicit skill_name, use it
         if task.skill_name:
@@ -597,7 +597,7 @@ class AgentOrchestrator:
 
         # Semantic matching fallback: embed task text and compare against skills
         try:
-            match = self._semantic_skill_match(task)
+            match = await self._semantic_skill_match(task)
             if match:
                 return match
         except Exception as e:
@@ -610,7 +610,7 @@ class AgentOrchestrator:
 
     _skill_desc_cache: dict[str, list[float]] = {}
 
-    def _semantic_skill_match(self, task: Task):
+    async def _semantic_skill_match(self, task: Task):
         """Try embedding-based semantic matching when keywords fail.
 
         Compares task title+description embeddings against cached skill
@@ -628,33 +628,19 @@ class AgentOrchestrator:
             return None
 
         # Build / refresh description embedding cache
-        try:
-            import asyncio
-            from app.core.embeddings import embed_text
+        from app.core.embeddings import embed_text
 
-            loop = asyncio.get_event_loop()
-
-            async def _get_task_vec() -> list[float]:
-                return await embed_text(task_text[:512])
-
-            task_vec = loop.run_until_complete(_get_task_vec())
-            if not task_vec:
-                return None
-
-            # Embed skill descriptions (cached in-memory)
-            for skill in all_skills:
-                if skill.name not in self._skill_desc_cache:
-                    desc = f"{skill.display_name} {skill.description}"
-
-                    async def _embed_desc(d: str = desc) -> list[float]:
-                        return await embed_text(d[:512])
-
-                    vec = loop.run_until_complete(_embed_desc())
-                    if vec:
-                        self._skill_desc_cache[skill.name] = vec
-        except RuntimeError:
-            # Event loop already running — fall through gracefully
+        task_vec = await embed_text(task_text[:512])
+        if not task_vec:
             return None
+
+        # Embed skill descriptions (cached in-memory)
+        for skill in all_skills:
+            if skill.name not in self._skill_desc_cache:
+                desc = f"{skill.display_name} {skill.description}"
+                vec = await embed_text(desc[:512])
+                if vec:
+                    self._skill_desc_cache[skill.name] = vec
 
         # Cosine similarity
         def _cosine(a: list[float], b: list[float]) -> float:
@@ -822,8 +808,9 @@ class AgentOrchestrator:
         # Store facts — link to nuggets
         for fact_data in output.facts:
             fid = str(uuid.uuid4())
-            # Use explicit nugget_ids from skill output if provided, else link to all nuggets
-            linked_nuggets = fact_data.get("nugget_ids", created_nugget_ids)
+            # Use explicit nugget_ids from skill output if provided, else link to
+            # the most recent nuggets (capped at 5 to avoid meaningless N-to-N mapping)
+            linked_nuggets = fact_data.get("nugget_ids") or created_nugget_ids[-5:]
             fact = Fact(
                 id=fid,
                 project_id=project_id,
@@ -837,8 +824,9 @@ class AgentOrchestrator:
         # Store insights — link to facts
         for insight_data in output.insights:
             iid = str(uuid.uuid4())
-            # Use explicit fact_ids from skill output if provided, else link to all facts
-            linked_facts = insight_data.get("fact_ids", created_fact_ids)
+            # Use explicit fact_ids from skill output if provided, else link to
+            # the most recent facts (capped at 3 to avoid meaningless N-to-N mapping)
+            linked_facts = insight_data.get("fact_ids") or created_fact_ids[-3:]
             insight = Insight(
                 id=iid,
                 project_id=project_id,
@@ -852,8 +840,9 @@ class AgentOrchestrator:
 
         # Store recommendations — link to insights
         for rec_data in output.recommendations:
-            # Use explicit insight_ids from skill output if provided, else link to all insights
-            linked_insights = rec_data.get("insight_ids", created_insight_ids)
+            # Use explicit insight_ids from skill output if provided, else link to
+            # the most recent insights (capped at 2 to avoid meaningless N-to-N mapping)
+            linked_insights = rec_data.get("insight_ids") or created_insight_ids[-2:]
             rec = Recommendation(
                 id=str(uuid.uuid4()),
                 project_id=project_id,

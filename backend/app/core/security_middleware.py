@@ -77,7 +77,13 @@ class SecurityAuthMiddleware(BaseHTTPMiddleware):
         if _is_exempt(path):
             return await call_next(request)
 
-        # Skip WebSocket upgrade requests (handled separately in WS endpoints)
+        # Skip WebSocket upgrade requests — intentional bypass.
+        # WebSocket connections cannot be authenticated via HTTP middleware because
+        # the protocol upgrade happens before headers are fully available. Each
+        # WebSocket endpoint MUST authenticate independently:
+        #   - /ws: validates JWT from ?token= query param BEFORE accepting
+        #   - /ws/relay: validates network token + JWT BEFORE accepting
+        # If you add a new WebSocket endpoint, you MUST add auth in that handler.
         if request.headers.get("upgrade", "").lower() == "websocket":
             return await call_next(request)
 

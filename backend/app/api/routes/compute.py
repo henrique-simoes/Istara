@@ -45,27 +45,23 @@ async def relay_websocket(ws: WebSocket):
     - Server sends: {"type": "llm_request", "request_id": "...", ...}
     - Client sends: {"type": "llm_response", "request_id": "...", ...}
 
-    Authentication:
-    - If NETWORK_ACCESS_TOKEN is set: non-localhost connections must provide it
-    - If TEAM_MODE is true: JWT required regardless of origin
-    - Localhost without token: allowed (backward-compatible)
+    Authentication (always enforced):
+    - If NETWORK_ACCESS_TOKEN is set and valid: connection allowed
+    - Otherwise: JWT required via Authorization header or ?token= query param
+    - No unauthenticated relay connections permitted
     """
-    # Network security check (access token for non-localhost)
+    # Always authenticate relay connections — regardless of team_mode.
+    # First check the network access token (covers non-localhost clients).
     from app.core.network_security import check_websocket_network_token
     if not check_websocket_network_token(ws):
-        await ws.close(code=4001, reason="Network access token required")
-        return
-
-    # Team mode: also require JWT
-    from app.config import settings as app_settings
-    if app_settings.team_mode:
+        # No valid network token — fall back to JWT authentication
         from app.core.auth import verify_token
         auth_header = ws.headers.get("authorization", "")
         token = auth_header.removeprefix("Bearer ").strip()
         if not token:
             token = ws.query_params.get("token", "")
         if not token or verify_token(token) is None:
-            await ws.close(code=4001, reason="JWT authentication required")
+            await ws.close(code=4001, reason="Authentication required for relay connections")
             return
 
     await ws.accept()

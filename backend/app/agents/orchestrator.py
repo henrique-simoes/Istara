@@ -250,10 +250,10 @@ class MetaOrchestrator:
             from app.agents.user_sim_agent import user_sim_agent
 
             agent_map = {
-                "reclaw-devops_audit": devops_agent,
-                "reclaw-ui_audit": ui_audit_agent,
-                "reclaw-ux_evaluation": ux_eval_agent,
-                "reclaw-user_simulation": user_sim_agent,
+                "reclaw-devops": devops_agent,
+                "reclaw-ui-audit": ui_audit_agent,
+                "reclaw-ux-eval": ux_eval_agent,
+                "reclaw-sim": user_sim_agent,
             }
 
             for agent_id, real_agent in agent_map.items():
