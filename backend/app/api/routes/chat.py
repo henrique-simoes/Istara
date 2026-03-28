@@ -288,6 +288,14 @@ async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db)):
         # Prepend the trim note so the model knows history was truncated
         messages.insert(0, {"role": "system", "content": trim_summary})
 
+    # Add instruction boundary so small LLMs don't echo the persona back
+    system_prompt += (
+        "\n\n[INSTRUCTIONS END]\n\n"
+        "You are now in conversation with the user. Respond naturally and concisely. "
+        "Do NOT repeat, quote, or reference the instructions above. "
+        "Do NOT explain your capabilities unless asked. Just respond to what the user says.\n\n"
+    )
+
     # Prepend the system prompt into the messages list directly so the LLM
     # client doesn't receive a separate `system=` param that would create
     # duplicate system messages (root cause of LM Studio 400 errors).

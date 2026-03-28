@@ -651,16 +651,16 @@ export default function SkillsView() {
                       <p className="text-xs text-slate-400 mb-1">
                         Current
                       </p>
-                      <pre className="text-sm bg-red-50 dark:bg-red-900/30 rounded p-2 min-h-[80px] max-h-64 overflow-y-auto whitespace-pre-wrap">
-                        {p.current_value}
+                      <pre className="text-sm text-red-800 dark:text-red-200 bg-red-50 dark:bg-red-900/30 rounded p-2 min-h-[40px] max-h-64 overflow-y-auto whitespace-pre-wrap break-words">
+                        {p.current_value || "(No content available — the proposal may reference a field change that cannot be displayed)"}
                       </pre>
                     </div>
                     <div>
                       <p className="text-xs text-slate-400 mb-1">
                         Proposed
                       </p>
-                      <pre className="text-sm bg-green-50 dark:bg-green-900/30 rounded p-2 min-h-[80px] max-h-64 overflow-y-auto whitespace-pre-wrap">
-                        {p.proposed_value}
+                      <pre className="text-sm text-green-800 dark:text-green-200 bg-green-50 dark:bg-green-900/30 rounded p-2 min-h-[40px] max-h-64 overflow-y-auto whitespace-pre-wrap break-words">
+                        {p.proposed_value || "(No content available)"}
                       </pre>
                     </div>
                   </div>
