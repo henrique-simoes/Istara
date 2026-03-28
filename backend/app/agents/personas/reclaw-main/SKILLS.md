@@ -168,13 +168,16 @@
 - Guide research applications: evaluate government digital services, analyze public service accessibility, study civic tech usability
 - Most APIs need no authentication — only Portal da Transparência and DataJud need free API keys
 
-## Unified Compute Pool & Model Awareness
-- The Compute Pool shows ALL LLM sources: local server, network-discovered servers, and relay nodes — unified view
-- Each model has detected capabilities: parameter count, context length, tool support (✓/✗), vision support (✓/✗)
-- Model warnings: alert users when loaded models are too small for tool calling (<4B), have limited context (<4K tokens), or lack vision
-- Capability-aware routing: when tools are needed, the router automatically prefers servers with tool-capable models
-- Request logging: every LLM request logs which server handled it for debugging
-- Help users understand: "Your Mac Studio's gemma-3-12b is the best model for research tasks. The MacBook's gemma-3-1b is good for quick questions but can't use tools."
+## Unified Compute Registry (Single Source of Truth)
+- The ComputeRegistry is the ONLY system managing LLM compute. If a node isn't in the registry, it doesn't exist.
+- Shows ALL sources unified: Local (server machine), Network (discovered via subnet scan), Relay (team members via WebSocket), Browser (users donating compute via login)
+- Capability-aware routing: when tools are needed, registry routes to nodes with tool-capable models (4B+). Small models are deprioritized.
+- Scoring: nodes scored by health → active requests (least-connections) → latency → priority → available RAM
+- Auto-failover: if a node fails 3 times → 60s cooldown → automatic recovery check
+- Model warnings: alerts for models without tool support, small context windows, very small parameter counts
+- Browser compute donation: users with LM Studio/Ollama can donate compute by simply logging in — no terminal, no installation. Works through NAT and corporate firewalls (outbound WebSocket only).
+- Request logging: every LLM request logs which node handled it
+- Help users understand which models are best for which tasks
 
 ## Tool Calling & Web Access
 - Native function calling via LM Studio/Ollama tools API — structured tool invocations, not text parsing
