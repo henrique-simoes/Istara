@@ -228,7 +228,10 @@ export default function MCPTab() {
         )}
       </section>
 
-      {/* Section 3: Connection Guide */}
+      {/* Section 3: Featured MCP Servers */}
+      <FeaturedServersSection onConnect={async () => { await fetchMCPClients(); }} />
+
+      {/* Section 4: Connection Guide */}
       <section>
         <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-3">Connection Guide</h2>
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5">
@@ -255,6 +258,159 @@ export default function MCPTab() {
         </div>
       </section>
     </div>
+  );
+}
+
+// --- Featured Servers Section ---
+
+function FeaturedServersSection({ onConnect }: { onConnect: () => Promise<void> }) {
+  const [featured, setFeatured] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [connecting, setConnecting] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState<string | null>(null);
+  const [connectResult, setConnectResult] = useState<{ id: string; message: string } | null>(null);
+
+  useEffect(() => {
+    mcpApi.featured.list().then((list) => { setFeatured(list); setLoading(false); }).catch(() => setLoading(false));
+  }, []);
+
+  const handleConnect = async (serverId: string) => {
+    setConnecting(serverId);
+    try {
+      const result = await mcpApi.featured.connect(serverId);
+      setConnectResult({ id: serverId, message: result.message || "Connected!" });
+      await onConnect();
+    } catch (e: any) {
+      setConnectResult({ id: serverId, message: `Setup needed: ${e.message}` });
+    } finally {
+      setConnecting(null);
+    }
+  };
+
+  if (loading) return null;
+  if (featured.length === 0) return null;
+
+  return (
+    <section>
+      <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-1">Featured MCP Servers</h2>
+      <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
+        Pre-configured servers you can connect with one click.
+      </p>
+      <div className="space-y-3">
+        {featured.map((server) => (
+          <div
+            key={server.id}
+            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden"
+          >
+            <div className="p-4">
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-lg">🇧🇷</span>
+                    <h3 className="font-semibold text-slate-900 dark:text-white">{server.name}</h3>
+                    <span className="px-2 py-0.5 text-xs bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 rounded-full">
+                      {server.tool_count} tools
+                    </span>
+                    <span className="px-2 py-0.5 text-xs bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 rounded-full">
+                      MIT
+                    </span>
+                  </div>
+                  <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">{server.description}</p>
+                  <div className="flex flex-wrap gap-1 mb-2">
+                    {(server.categories || []).slice(0, 6).map((cat: string) => (
+                      <span key={cat} className="px-1.5 py-0.5 text-[10px] bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400 rounded">
+                        {cat}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 ml-4">
+                  <button
+                    onClick={() => setExpanded(expanded === server.id ? null : server.id)}
+                    className="px-3 py-1.5 text-xs text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                  >
+                    {expanded === server.id ? "Less" : "Details"}
+                  </button>
+                  <button
+                    onClick={() => handleConnect(server.id)}
+                    disabled={connecting === server.id}
+                    className={cn(
+                      "px-4 py-1.5 text-xs font-medium rounded-lg transition-colors",
+                      connecting === server.id
+                        ? "bg-slate-200 text-slate-500 dark:bg-slate-700 dark:text-slate-400"
+                        : "bg-reclaw-600 text-white hover:bg-reclaw-700"
+                    )}
+                  >
+                    {connecting === server.id ? "Connecting..." : "Connect"}
+                  </button>
+                </div>
+              </div>
+
+              {connectResult && connectResult.id === server.id && (
+                <div className={cn(
+                  "mt-2 px-3 py-2 rounded-lg text-xs",
+                  connectResult.message.includes("Setup") || connectResult.message.includes("error")
+                    ? "bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-300"
+                    : "bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-300"
+                )}>
+                  {connectResult.message}
+                  {server.http_command && connectResult.message.includes("Setup") && (
+                    <div className="mt-1 font-mono text-[10px] bg-slate-100 dark:bg-slate-800 p-1.5 rounded">
+                      pip install {server.package} && {server.http_command}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {expanded === server.id && (
+              <div className="border-t border-slate-200 dark:border-slate-800 p-4 space-y-3 bg-slate-50 dark:bg-slate-800/50">
+                <div>
+                  <h4 className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1 uppercase tracking-wider">Data Sources ({server.features?.length || 0})</h4>
+                  <div className="grid grid-cols-2 gap-1">
+                    {(server.features || []).map((f: any) => (
+                      <div key={f.name} className="text-xs text-slate-600 dark:text-slate-400">
+                        <span className="font-medium text-slate-800 dark:text-slate-200">{f.name}</span> — {f.description}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                {server.ux_research_applications && (
+                  <div>
+                    <h4 className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1 uppercase tracking-wider">UX Research Applications</h4>
+                    <ul className="space-y-1">
+                      {server.ux_research_applications.map((app: string, i: number) => (
+                        <li key={i} className="text-xs text-slate-600 dark:text-slate-400 flex items-start gap-1.5">
+                          <span className="text-reclaw-500 mt-0.5 shrink-0">+</span>
+                          {app}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {server.env_vars && server.env_vars.length > 0 && (
+                  <div>
+                    <h4 className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1 uppercase tracking-wider">Optional API Keys</h4>
+                    {server.env_vars.map((v: any) => (
+                      <div key={v.name} className="text-xs text-slate-600 dark:text-slate-400">
+                        <code className="text-[10px] bg-slate-200 dark:bg-slate-700 px-1 py-0.5 rounded">{v.name}</code> — {v.description}
+                        {!v.required && <span className="text-slate-400 ml-1">(optional)</span>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div className="flex items-center gap-3 pt-1">
+                  <a href={server.repository} target="_blank" rel="noopener noreferrer" className="text-xs text-reclaw-600 hover:text-reclaw-700 dark:text-reclaw-400 underline">
+                    GitHub Repository
+                  </a>
+                  <span className="text-xs text-slate-400">Install: pip install {server.package}</span>
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 

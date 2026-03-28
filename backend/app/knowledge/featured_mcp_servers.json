@@ -1,0 +1,109 @@
+{
+  "version": "1.0.0",
+  "description": "Pre-configured MCP servers available for one-click connection in ReClaw.",
+  "servers": [
+    {
+      "id": "mcp-brasil",
+      "name": "MCP Brasil",
+      "description": "Access 28 Brazilian government APIs (213 tools) covering economics, legislation, judiciary, elections, environment, health, and public procurement. Ideal for UX research involving Brazilian public data, government service evaluation, and civic tech analysis.",
+      "package": "mcp-brasil",
+      "repository": "https://github.com/jxnxts/mcp-brasil",
+      "license": "MIT",
+      "transport": "stdio",
+      "command": "uvx",
+      "args": ["--from", "mcp-brasil", "python", "-m", "mcp_brasil.server"],
+      "http_command": "fastmcp run mcp_brasil.server:mcp --transport http --port 8100",
+      "http_url": "http://localhost:8100",
+      "tool_count": 213,
+      "resource_count": 55,
+      "prompt_count": 45,
+      "categories": [
+        "economics",
+        "legislation",
+        "transparency",
+        "judiciary",
+        "elections",
+        "environment",
+        "health",
+        "public-procurement"
+      ],
+      "env_vars": [
+        {
+          "name": "TRANSPARENCIA_API_KEY",
+          "description": "Portal da Transparencia API key (free registration at portaldatransparencia.gov.br)",
+          "required": false
+        },
+        {
+          "name": "DATAJUD_API_KEY",
+          "description": "DataJud/CNJ API key (free registration at datajud.cnj.jus.br)",
+          "required": false
+        },
+        {
+          "name": "MCP_BRASIL_TOOL_SEARCH",
+          "description": "Tool search mode: bm25 (default), code_mode, or none",
+          "required": false,
+          "default": "bm25"
+        }
+      ],
+      "features": [
+        {
+          "name": "Banco Central (BCB)",
+          "description": "Selic rate, IPCA inflation, 190+ economic series, currency exchange"
+        },
+        {
+          "name": "IBGE",
+          "description": "Census data, demographic statistics, economic indicators"
+        },
+        {
+          "name": "Câmara dos Deputados",
+          "description": "Deputies, bills, votes, expenses, commissions"
+        },
+        {
+          "name": "Senado Federal",
+          "description": "Senators, legislation, votes, commissions"
+        },
+        {
+          "name": "Portal da Transparência",
+          "description": "Federal contracts, sanctions, accountability (requires API key)"
+        },
+        {
+          "name": "DataJud (CNJ)",
+          "description": "Court processes, rulings from STF, STJ, TST (requires API key)"
+        },
+        {
+          "name": "TSE (Elections)",
+          "description": "Election results, candidates, campaign financing"
+        },
+        {
+          "name": "INPE",
+          "description": "Deforestation monitoring, fire alerts"
+        },
+        {
+          "name": "DataSUS/CNES",
+          "description": "Healthcare facilities, professionals, hospital beds"
+        },
+        {
+          "name": "BrasilAPI",
+          "description": "CEP (zip codes), CNPJ (company lookup), banks"
+        },
+        {
+          "name": "PNCP",
+          "description": "Government procurement contracts"
+        },
+        {
+          "name": "Diário Oficial",
+          "description": "Official government gazettes"
+        }
+      ],
+      "ux_research_applications": [
+        "Evaluate government digital services by cross-referencing official data with user experience findings",
+        "Research public service accessibility by analyzing healthcare facility distribution (DataSUS)",
+        "Investigate civic tech usability by correlating user behavior with legislative data (Câmara/Senado)",
+        "Benchmark government portal performance against Doherty Threshold using transparency data",
+        "Analyze election information accessibility across regions using TSE data",
+        "Cross-reference environmental monitoring UX with INPE deforestation/fire data",
+        "Study public procurement portal usability using PNCP contract data"
+      ]
+    }
+  ]
+}

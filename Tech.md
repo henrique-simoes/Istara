@@ -1492,6 +1492,23 @@ The UX Law Compliance Audit skill evaluates interfaces against all 30 laws (foll
 
 ---
 
+## Featured MCP Servers
+
+### MCP Brasil (mcp-brasil)
+
+Pre-configured MCP server available for one-click connection in the MCP tab.
+
+- **Source**: [github.com/jxnxts/mcp-brasil](https://github.com/jxnxts/mcp-brasil) (MIT)
+- **Tools**: 213 across 28 Brazilian government APIs
+- **Categories**: Economics (BCB, IBGE), Legislation (Câmara, Senado), Transparency (Portal, TCU), Judiciary (DataJud), Elections (TSE), Environment (INPE, ANA), Health (DataSUS/CNES), Public Procurement (PNCP)
+- **Auth**: 26 of 28 APIs need no authentication. Only Portal da Transparência and DataJud need free API keys.
+- **Install**: `pip install mcp-brasil`
+- **Connection**: Featured Servers section in MCP tab → one-click Connect
+
+The `featured_mcp_servers.json` knowledge file stores pre-configured server definitions. New featured servers can be added by extending this file — the API auto-discovers them.
+
+---
+
 ## Docker & Security Infrastructure
 
 ### Deployment Modes

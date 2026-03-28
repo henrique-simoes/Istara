@@ -707,6 +707,24 @@ export interface ComplianceProfile {
   }>;
 }
 
+// --- Featured MCP Servers ---
+
+export interface FeaturedMCPServer {
+  id: string;
+  name: string;
+  description: string;
+  package: string;
+  repository: string;
+  license: string;
+  transport: string;
+  tool_count: number;
+  resource_count: number;
+  categories: string[];
+  env_vars: Array<{ name: string; description: string; required: boolean; default?: string }>;
+  features: Array<{ name: string; description: string }>;
+  ux_research_applications: string[];
+}
+
 export interface RadarChartData {
   categories: string[];
   category_scores: number[];
