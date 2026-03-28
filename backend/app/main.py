@@ -214,21 +214,23 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # Register configured local LLM server FIRST (before discovery)
     try:
-        from app.core.llm_router import llm_router, LLMServerEntry
+        from app.core.compute_registry import compute_registry, ComputeNode
         local_host = app_settings.lmstudio_host if app_settings.llm_provider == "lmstudio" else app_settings.ollama_host
         local_type = app_settings.llm_provider
-        # Check if already registered
-        existing_hosts = {e.host for e in llm_router._servers.values()}
+        # Check if already registered (ollama.py _init_llm_router may have done this)
+        existing_hosts = {n.host for n in compute_registry._nodes.values()}
         if local_host not in existing_hosts:
-            local_entry = LLMServerEntry(
-                server_id=f"local-{local_type}",
+            local_node = ComputeNode(
+                node_id=f"local-{local_type}",
                 name=f"Local {local_type.title()}",
-                provider_type=local_type,
                 host=local_host,
-                priority=100,  # Highest priority for local
+                source="local",
+                provider_type=local_type,
+                priority=1,
                 is_local=True,
+                is_healthy=True,  # Assume healthy; health loop will verify
             )
-            llm_router.register_server(local_entry)
+            compute_registry.register_node(local_node)
             _log.info(f"Registered local LLM server: {local_host}")
     except Exception as e:
         _log.warning(f"Local LLM registration failed: {e}")
@@ -251,12 +253,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     except Exception as e:
         _log.warning(f"Failed to load persisted LLM servers: {e}")
 
-    # Run health checks on all servers (populates available_models for each)
+    # Run health checks on all nodes (populates available_models for each)
     try:
-        from app.core.llm_router import llm_router
-        await llm_router.check_all_health()
-        healthy = [s for s in llm_router._servers.values() if s.is_healthy]
-        _log.info(f"LLM Router: {len(healthy)}/{len(llm_router._servers)} servers healthy")
+        from app.core.compute_registry import compute_registry
+        await compute_registry.check_all_health()
+        healthy = [n for n in compute_registry._nodes.values() if n.is_healthy]
+        _log.info(f"ComputeRegistry: {len(healthy)}/{len(compute_registry._nodes)} nodes healthy")
     except Exception as e:
         _log.warning(f"Health check failed: {e}")
 
