@@ -1,6 +1,6 @@
 /** API client for ReClaw backend. */
 
-import type { ChatSession, ChatMessage, InferencePresetConfig, DAGNode, DAGHealth, DAGExpandResult, DAGGrepResult, ReclawDocument, DocumentContent, DocumentTag, DocumentStats, InterfacesStatus, BackupRecord, BackupConfig, MetaProposal, MetaVariant, MetaHyperagentStatus, ChannelInstance, ChannelMessage, ChannelConversation, ResearchDeployment, DeploymentAnalytics, SurveyIntegration, SurveyLink, MCPServerConfig, MCPAccessPolicy, MCPAuditEntry, AutoresearchStatus, AutoresearchExperiment, AutoresearchConfig, ModelSkillLeaderboard } from "@/lib/types";
+import type { ChatSession, ChatMessage, InferencePresetConfig, DAGNode, DAGHealth, DAGExpandResult, DAGGrepResult, ReclawDocument, DocumentContent, DocumentTag, DocumentStats, InterfacesStatus, BackupRecord, BackupConfig, MetaProposal, MetaVariant, MetaHyperagentStatus, ChannelInstance, ChannelMessage, ChannelConversation, ResearchDeployment, DeploymentAnalytics, SurveyIntegration, SurveyLink, MCPServerConfig, MCPAccessPolicy, MCPAuditEntry, AutoresearchStatus, AutoresearchExperiment, AutoresearchConfig, ModelSkillLeaderboard, UXLaw, LawMatch, ComplianceProfile, RadarChartData } from "@/lib/types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -768,4 +768,19 @@ export const autoresearch = {
   updateConfig: (data: Record<string, any>) => patch<AutoresearchConfig>("/api/autoresearch/config", data),
   leaderboard: () => get<ModelSkillLeaderboard[]>("/api/autoresearch/leaderboard"),
   toggle: (enabled: boolean) => post<any>("/api/autoresearch/toggle", { enabled }),
+};
+
+// --- Laws of UX ---
+
+export const laws = {
+  list: (category?: string) => {
+    const params = category ? `?category=${category}` : "";
+    return get<UXLaw[]>(`/api/laws${params}`);
+  },
+  get: (lawId: string) => get<UXLaw>(`/api/laws/${lawId}`),
+  byHeuristic: (heuristicId: string) => get<UXLaw[]>(`/api/laws/by-heuristic/${heuristicId}`),
+  match: (query: string, topK?: number) =>
+    get<LawMatch[]>(`/api/laws/match?query=${encodeURIComponent(query)}&top_k=${topK || 5}`),
+  compliance: (projectId: string) => get<ComplianceProfile>(`/api/laws/compliance/${projectId}`),
+  radar: (projectId: string) => get<RadarChartData>(`/api/laws/compliance/${projectId}/radar`),
 };

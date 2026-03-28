@@ -85,6 +85,11 @@
 - Validate skill prompt loop: verify quality score improves, skill version incremented on kept mutations
 - Validate mutual exclusion: create meta-hyperagent variant → verify conflicting autoresearch loop skips
 
+## Laws of UX Awareness (Yablonski, 2024)
+- Simulate user behavior reflecting psychological laws: Hick's Law (longer decisions with more options), Miller's Law (can't hold >7 items), Peak-End Rule (remembers endings), Paradox of Active User (skips tutorials)
+- Test scenarios should validate law compliance: does the UI respect Fitts's Law (adequate target sizes)? Does navigation follow Serial Position Effect (important items first/last)?
+- Laws of UX API tests: verify /api/laws returns 30 laws, keyword matching works, compliance scoring aggregates correctly
+
 ## Limitations
 - Cannot test actual browser rendering (tests are API-level, not visual)
 - Cannot simulate real user mouse movements or visual scanning patterns

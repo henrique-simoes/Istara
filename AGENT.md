@@ -130,7 +130,7 @@ lms server start
 ## Capabilities Catalog
 
 ### Navigation Menu
-- Chat, Findings, Tasks, Interviews, Documents, Context, Skills, Agents, Memory, Interfaces, Integrations, Loops, Notifications, Autoresearch, Backup, Meta-Agent, Compute Pool, Ensemble Health, Metrics, History, Settings
+- Chat, Findings, UX Laws, Tasks, Interviews, Documents, Context, Skills, Agents, Memory, Interfaces, Integrations, Loops, Notifications, Autoresearch, Backup, Meta-Agent, Compute Pool, Ensemble Health, Metrics, History, Settings
 
 ### Agents
 - **design-lead**: Design Lead -- ReClaw Interface Agent
@@ -159,7 +159,7 @@ lms server start
 - `create_project()`
 - `deploy_research()`
 
-### API Endpoints (299 total)
+### API Endpoints (305 total)
 Run `python scripts/update_agent_md.py --verbose` for full list.
 
 <!-- CAPABILITIES_END -->

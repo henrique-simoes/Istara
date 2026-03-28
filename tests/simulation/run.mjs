@@ -195,6 +195,7 @@ async function loadScenarios() {
     "59-agent-integration-knowledge",
     "61-autoresearch-isolation",
     "64-docker-security",
+    "65-laws-of-ux",
   ];
 
   const scenarios = [];

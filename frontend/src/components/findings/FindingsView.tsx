@@ -16,6 +16,7 @@ import { findings as findingsApi } from "@/lib/api";
 import type { FindingsSummary, Nugget, Fact, Insight, Recommendation, ProjectPhase } from "@/lib/types";
 import { cn, confidenceColor, phaseLabel } from "@/lib/utils";
 import AtomicDrilldown from "./AtomicDrilldown";
+import LawBadge from "@/components/laws/LawBadge";
 
 const PHASE_TABS: { id: ProjectPhase; label: string; icon: typeof Diamond }[] = [
   { id: "discover", label: "Discover", icon: Diamond },
@@ -289,8 +290,15 @@ export default function FindingsView() {
                             </span>
                           )}
                           {item.tags && item.tags.length > 0 && (
-                            <div className="flex gap-1">
-                              {item.tags.map((tag: string, i: number) => (
+                            <div className="flex flex-wrap gap-1">
+                              {item.tags.filter((t: string) => t.startsWith("ux-law:")).map((tag: string) => (
+                                <LawBadge
+                                  key={tag}
+                                  lawId={tag.replace("ux-law:", "")}
+                                  lawName={tag.replace("ux-law:", "").replace(/-/g, " ")}
+                                />
+                              ))}
+                              {item.tags.filter((t: string) => !t.startsWith("ux-law:")).map((tag: string, i: number) => (
                                 <span
                                   key={i}
                                   className="text-xs bg-slate-200 dark:bg-slate-700 rounded px-1 py-0.5"

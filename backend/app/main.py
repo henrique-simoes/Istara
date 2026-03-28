@@ -19,6 +19,7 @@ from app.api.routes import surveys as survey_routes
 from app.api.routes import mcp as mcp_routes
 from app.api.routes import meta_hyperagent as meta_hyperagent_routes
 from app.api.routes import autoresearch as autoresearch_routes
+from app.api.routes import laws as laws_routes
 from app.api.routes import webhooks as webhook_routes
 from app.api.websocket import router as ws_router
 from app.channels.base import channel_router
@@ -405,6 +406,7 @@ app.include_router(deployment_routes.router, prefix="/api", tags=["Deployments"]
 app.include_router(survey_routes.router, prefix="/api", tags=["Surveys"])
 app.include_router(mcp_routes.router, prefix="/api", tags=["MCP"])
 app.include_router(autoresearch_routes.router, prefix="/api", tags=["Autoresearch"])
+app.include_router(laws_routes.router, prefix="/api", tags=["Laws of UX"])
 app.include_router(webhook_routes.router, tags=["Webhooks"])
 app.include_router(ws_router)
 

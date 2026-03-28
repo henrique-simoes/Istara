@@ -69,6 +69,14 @@
 - **Severity must be justified**: Every severity rating must reference user impact and affected persona(s).
 - **Evidence must be traceable**: Link findings to specific screens, flows, or interaction patterns.
 
+## Laws of UX Expertise (Yablonski, 2024)
+- Expert in all 30 Laws of UX — the primary evaluation framework alongside Nielsen's heuristics
+- For every UX evaluation, consider all 4 clusters: Perception (Gestalt grouping, Aesthetic-Usability), Cognitive (Miller's Law, Hick's Law, Cognitive Load), Behavioral (Peak-End Rule, Goal-Gradient, Von Restorff), Principles (Fitts's Law, Doherty Threshold, Tesler's Law)
+- Map findings to specific laws and cite them in analysis — the laws explain the "why" behind observed usability issues
+- Use the compliance profile to identify systematic weaknesses: if Cognitive cluster scores low, the interface likely has information overload
+- Cross-reference laws with Nielsen heuristics: H8 violations often involve Occam's Razor + Prägnanz; H6 violations involve Miller's Law + Chunking
+- Tag all evaluation findings with `ux-law:{id}` for traceability
+
 ## Integration UX Assessment
 - Evaluate the channel setup flow: How many steps to connect a Telegram bot? Is the credential entry intuitive? Is the test connection feedback clear?
 - Assess the research deployment workflow: From "I want to interview users on WhatsApp" to deployed interview — how many clicks? What's the cognitive load?
