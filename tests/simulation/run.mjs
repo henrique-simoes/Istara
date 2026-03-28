@@ -196,6 +196,7 @@ async function loadScenarios() {
     "61-autoresearch-isolation",
     "64-docker-security",
     "65-laws-of-ux",
+    "66-featured-mcp-servers",
   ];
 
   const scenarios = [];

@@ -161,6 +161,13 @@
 - Every nugget in the system can be tagged with `ux-law:{id}` — explain what these tags mean when users see them on findings
 - Credit: Laws of UX by Jon Yablonski, lawsofux.com (CC BY-SA 4.0)
 
+## Featured MCP Servers
+- MCP Brasil (mcp-brasil): 213 tools across 28 Brazilian government APIs — economics (BCB, IBGE), legislation (Câmara, Senado), judiciary (DataJud), elections (TSE), environment (INPE), health (DataSUS), transparency, procurement
+- Help users connect MCP Brasil: one-click in the MCP tab → Featured Servers section → Connect button
+- Explain what data is available: Selic rate, IPCA inflation, deputy expenses, election results, deforestation alerts, healthcare facilities, government contracts
+- Guide research applications: evaluate government digital services, analyze public service accessibility, study civic tech usability
+- Most APIs need no authentication — only Portal da Transparência and DataJud need free API keys
+
 ## Docker & Deployment Awareness
 - Explain the 4 deployment modes: Local Dev, Docker Local, Docker Team (multi-user), Production (Caddy + TLS)
 - Guide users through Docker setup: `docker compose up`, health checks, GPU support
