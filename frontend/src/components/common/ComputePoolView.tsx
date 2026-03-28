@@ -76,6 +76,7 @@ interface ModelWarning {
 export default function ComputePoolView() {
   const { stats, loading, fetchStats } = useComputeStore();
   const [warnings, setWarnings] = useState<ModelWarning[]>([]);
+  const [showWarnings, setShowWarnings] = useState(false);
 
   useEffect(() => {
     fetchStats();
@@ -106,14 +107,29 @@ export default function ComputePoolView() {
         </p>
       </div>
 
-      {/* Model Warnings */}
+      {/* Model Warnings — collapsed summary */}
       {warnings.length > 0 && (
-        <div className="space-y-2" role="alert" aria-label="Model warnings">
+        <div role="alert" aria-label="Model warnings">
+          <button
+            onClick={() => setShowWarnings(!showWarnings)}
+            className="w-full flex items-center justify-between p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 text-sm hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors"
+          >
+            <div className="flex items-center gap-2">
+              <AlertTriangle size={14} />
+              <span className="font-medium">{warnings.length} model warning{warnings.length !== 1 ? "s" : ""}</span>
+              <span className="text-amber-500 dark:text-amber-400">
+                — {warnings.filter(w => w.severity === "high").length} high, {warnings.filter(w => w.severity === "medium").length} medium
+              </span>
+            </div>
+            <span className="text-xs">{showWarnings ? "Hide" : "Show details"}</span>
+          </button>
+          {showWarnings && (
+          <div className="mt-2 space-y-1.5">
           {warnings.map((w, i) => (
             <div
               key={i}
               className={cn(
-                "flex items-start gap-2 p-3 rounded-lg text-sm",
+                "flex items-start gap-2 p-2 rounded-lg text-xs",
                 w.severity === "high"
                   ? "bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300"
                   : w.severity === "medium"
@@ -121,12 +137,14 @@ export default function ComputePoolView() {
                     : "bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300"
               )}
             >
-              <AlertTriangle size={14} className="shrink-0 mt-0.5" aria-hidden="true" />
+              <AlertTriangle size={12} className="shrink-0 mt-0.5" aria-hidden="true" />
               <div>
                 <span className="font-medium">{w.model}</span> on {w.server}: {w.warning}
               </div>
             </div>
           ))}
+        </div>
+          )}
         </div>
       )}
 
