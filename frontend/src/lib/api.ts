@@ -1,6 +1,6 @@
 /** API client for ReClaw backend. */
 
-import type { ChatSession, ChatMessage, InferencePresetConfig, DAGNode, DAGHealth, DAGExpandResult, DAGGrepResult, ReclawDocument, DocumentContent, DocumentTag, DocumentStats, InterfacesStatus, BackupRecord, BackupConfig, MetaProposal, MetaVariant, MetaHyperagentStatus, ChannelInstance, ChannelMessage, ChannelConversation, ResearchDeployment, DeploymentAnalytics, SurveyIntegration, SurveyLink, MCPServerConfig, MCPAccessPolicy, MCPAuditEntry, AutoresearchStatus, AutoresearchExperiment, AutoresearchConfig, ModelSkillLeaderboard, UXLaw, LawMatch, ComplianceProfile, RadarChartData, FeaturedMCPServer } from "@/lib/types";
+import type { ChatSession, ChatMessage, InferencePresetConfig, DAGNode, DAGHealth, DAGExpandResult, DAGGrepResult, ReclawDocument, DocumentContent, DocumentTag, DocumentStats, InterfacesStatus, BackupRecord, BackupConfig, MetaProposal, MetaVariant, MetaHyperagentStatus, ChannelInstance, ChannelMessage, ChannelConversation, ResearchDeployment, DeploymentAnalytics, SurveyIntegration, SurveyLink, MCPServerConfig, MCPAccessPolicy, MCPAuditEntry, AutoresearchStatus, AutoresearchExperiment, AutoresearchConfig, ModelSkillLeaderboard, UXLaw, LawMatch, ComplianceProfile, RadarChartData, FeaturedMCPServer, ReclawUser } from "@/lib/types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -798,4 +798,15 @@ export const laws = {
     get<LawMatch[]>(`/api/laws/match?query=${encodeURIComponent(query)}&top_k=${topK || 5}`),
   compliance: (projectId: string) => get<ComplianceProfile>(`/api/laws/compliance/${projectId}`),
   radar: (projectId: string) => get<RadarChartData>(`/api/laws/compliance/${projectId}/radar`),
+};
+
+// --- Users ---
+
+export const users = {
+  list: () => get<ReclawUser[]>("/api/auth/users"),
+  create: (data: { username: string; email: string; password: string; display_name?: string }) =>
+    post<ReclawUser>("/api/auth/users", data),
+  delete: (id: string) => del(`/api/auth/users/${id}`),
+  changeRole: (id: string, role: string) =>
+    patch<ReclawUser>(`/api/auth/users/${id}/role`, { role }),
 };

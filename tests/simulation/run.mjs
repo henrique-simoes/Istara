@@ -253,6 +253,7 @@ async function loadScenarios() {
     "66-featured-mcp-servers",
     "67-auth-enforcement",
     "68-data-security",
+    "69-user-management-ui",
   ];
 
   const scenarios = [];
