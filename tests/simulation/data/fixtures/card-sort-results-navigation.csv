@@ -1,0 +1,601 @@
+participant_id,card_name,category_assigned,expected_category,match,time_seconds,confidence
+CS-001,Dashboard,Overview,Overview,true,8.6,5
+CS-001,Activity Feed,Account,Overview,false,5.1,1
+CS-001,Notifications,Overview,Overview,true,9.3,4
+CS-001,Quick Stats,Overview,Overview,true,7.3,4
+CS-001,Create Project,Team,Projects,false,6.4,3
+CS-001,Project List,Projects,Projects,true,10.9,2
+CS-001,Project Templates,Projects,Projects,true,6.1,5
+CS-001,Archive Project,Settings,Projects,false,7.7,2
+CS-001,Team Members,Team,Team,true,8.9,2
+CS-001,Invite Users,Team,Team,true,11.7,4
+CS-001,Roles & Permissions,Team,Team,true,10.5,3
+CS-001,Team Activity,Team,Team,true,6.5,4
+CS-001,My Profile,Account,Account,true,8.0,3
+CS-001,Billing,Account,Account,true,13.3,3
+CS-001,Security Settings,Other,Account,false,11.1,5
+CS-001,Preferences,Account,Account,true,9.0,5
+CS-001,Usage Analytics,Account,Reports,false,5.4,3
+CS-001,Export Data,Developer,Reports,false,9.0,4
+CS-001,Custom Reports,Reports,Reports,true,7.0,2
+CS-001,Scheduled Reports,Reports,Reports,true,3.4,5
+CS-001,API Keys,Other,Developer,false,8.7,3
+CS-001,Webhooks,Support,Developer,false,5.2,4
+CS-001,Documentation,Projects,Developer,false,2.0,2
+CS-001,Changelog,Developer,Developer,true,8.4,5
+CS-001,Help Center,Account,Support,false,8.3,4
+CS-001,Contact Support,Support,Support,true,8.3,5
+CS-001,Community Forum,Projects,Support,false,13.8,3
+CS-001,Video Tutorials,Support,Support,true,7.4,3
+CS-001,Integrations,Settings,Settings,true,8.1,4
+CS-001,Data Retention,Other,Settings,false,11.3,3
+CS-002,Dashboard,Overview,Overview,true,9.4,3
+CS-002,Activity Feed,Overview,Overview,true,5.4,5
+CS-002,Notifications,Overview,Overview,true,5.0,4
+CS-002,Quick Stats,Developer,Overview,false,9.8,1
+CS-002,Create Project,Projects,Projects,true,3.2,5
+CS-002,Project List,Other,Projects,false,7.6,3
+CS-002,Project Templates,Projects,Projects,true,11.9,4
+CS-002,Archive Project,Projects,Projects,true,8.5,4
+CS-002,Team Members,Projects,Team,false,2.0,3
+CS-002,Invite Users,Team,Team,true,8.2,1
+CS-002,Roles & Permissions,Team,Team,true,9.0,3
+CS-002,Team Activity,Team,Team,true,10.6,5
+CS-002,My Profile,Account,Account,true,3.4,4
+CS-002,Billing,Account,Account,true,4.5,3
+CS-002,Security Settings,Account,Account,true,13.5,4
+CS-002,Preferences,Other,Account,false,6.6,5
+CS-002,Usage Analytics,Account,Reports,false,7.0,4
+CS-002,Export Data,Reports,Reports,true,12.9,3
+CS-002,Custom Reports,Reports,Reports,true,10.5,5
+CS-002,Scheduled Reports,Reports,Reports,true,9.8,3
+CS-002,API Keys,Developer,Developer,true,14.1,3
+CS-002,Webhooks,Developer,Developer,true,8.7,5
+CS-002,Documentation,Overview,Developer,false,9.0,2
+CS-002,Changelog,Developer,Developer,true,5.4,4
+CS-002,Help Center,Support,Support,true,13.3,5
+CS-002,Contact Support,Reports,Support,false,7.8,5
+CS-002,Community Forum,Projects,Support,false,6.1,4
+CS-002,Video Tutorials,Support,Support,true,2.0,5
+CS-002,Integrations,Settings,Settings,true,11.2,5
+CS-002,Data Retention,Overview,Settings,false,10.5,4
+CS-003,Dashboard,Overview,Overview,true,9.3,3
+CS-003,Activity Feed,Overview,Overview,true,6.7,4
+CS-003,Notifications,Account,Overview,false,3.1,4
+CS-003,Quick Stats,Overview,Overview,true,11.8,4
+CS-003,Create Project,Projects,Projects,true,12.4,5
+CS-003,Project List,Projects,Projects,true,9.0,4
+CS-003,Project Templates,Projects,Projects,true,5.4,3
+CS-003,Archive Project,Support,Projects,false,6.5,5
+CS-003,Team Members,Team,Team,true,6.4,5
+CS-003,Invite Users,Team,Team,true,2.0,5
+CS-003,Roles & Permissions,Support,Team,false,10.9,5
+CS-003,Team Activity,Team,Team,true,8.6,4
+CS-003,My Profile,Account,Account,true,3.3,3
+CS-003,Billing,Account,Account,true,8.4,3
+CS-003,Security Settings,Account,Account,true,4.8,5
+CS-003,Preferences,Account,Account,true,2.0,5
+CS-003,Usage Analytics,Developer,Reports,false,4.3,4
+CS-003,Export Data,Developer,Reports,false,7.5,3
+CS-003,Custom Reports,Team,Reports,false,5.4,4
+CS-003,Scheduled Reports,Reports,Reports,true,9.0,5
+CS-003,API Keys,Developer,Developer,true,11.6,4
+CS-003,Webhooks,Settings,Developer,false,9.0,2
+CS-003,Documentation,Developer,Developer,true,2.0,3
+CS-003,Changelog,Developer,Developer,true,10.6,4
+CS-003,Help Center,Support,Support,true,5.5,4
+CS-003,Contact Support,Support,Support,true,5.7,1
+CS-003,Community Forum,Reports,Support,false,11.6,3
+CS-003,Video Tutorials,Settings,Support,false,9.4,2
+CS-003,Integrations,Settings,Settings,true,7.9,4
+CS-003,Data Retention,Settings,Settings,true,12.2,2
+CS-004,Dashboard,Overview,Overview,true,7.7,5
+CS-004,Activity Feed,Reports,Overview,false,4.7,3
+CS-004,Notifications,Overview,Overview,true,9.0,4
+CS-004,Quick Stats,Overview,Overview,true,3.4,4
+CS-004,Create Project,Projects,Projects,true,6.1,5
+CS-004,Project List,Projects,Projects,true,11.5,2
+CS-004,Project Templates,Projects,Projects,true,8.6,2
+CS-004,Archive Project,Other,Projects,false,6.9,3
+CS-004,Team Members,Team,Team,true,6.6,4
+CS-004,Invite Users,Developer,Team,false,5.3,4
+CS-004,Roles & Permissions,Team,Team,true,12.6,5
+CS-004,Team Activity,Team,Team,true,7.9,4
+CS-004,My Profile,Account,Account,true,4.5,4
+CS-004,Billing,Projects,Account,false,7.9,4
+CS-004,Security Settings,Account,Account,true,9.7,4
+CS-004,Preferences,Projects,Account,false,8.4,4
+CS-004,Usage Analytics,Reports,Reports,true,10.8,1
+CS-004,Export Data,Reports,Reports,true,10.7,3
+CS-004,Custom Reports,Developer,Reports,false,7.8,2
+CS-004,Scheduled Reports,Settings,Reports,false,8.7,1
+CS-004,API Keys,Reports,Developer,false,9.2,4
+CS-004,Webhooks,Developer,Developer,true,13.4,3
+CS-004,Documentation,Settings,Developer,false,5.4,4
+CS-004,Changelog,Developer,Developer,true,8.3,3
+CS-004,Help Center,Team,Support,false,8.3,4
+CS-004,Contact Support,Support,Support,true,4.5,4
+CS-004,Community Forum,Developer,Support,false,11.6,4
+CS-004,Video Tutorials,Support,Support,true,10.2,5
+CS-004,Integrations,Settings,Settings,true,12.3,4
+CS-004,Data Retention,Settings,Settings,true,9.3,2
+CS-005,Dashboard,Overview,Overview,true,8.6,5
+CS-005,Activity Feed,Overview,Overview,true,5.4,2
+CS-005,Notifications,Projects,Overview,false,4.6,5
+CS-005,Quick Stats,Overview,Overview,true,8.0,1
+CS-005,Create Project,Projects,Projects,true,4.5,4
+CS-005,Project List,Developer,Projects,false,8.5,4
+CS-005,Project Templates,Other,Projects,false,5.8,2
+CS-005,Archive Project,Projects,Projects,true,6.3,4
+CS-005,Team Members,Support,Team,false,11.6,4
+CS-005,Invite Users,Team,Team,true,9.7,3
+CS-005,Roles & Permissions,Team,Team,true,6.0,2
+CS-005,Team Activity,Team,Team,true,9.4,2
+CS-005,My Profile,Account,Account,true,9.8,4
+CS-005,Billing,Account,Account,true,6.0,1
+CS-005,Security Settings,Account,Account,true,6.2,3
+CS-005,Preferences,Account,Account,true,5.7,3
+CS-005,Usage Analytics,Projects,Reports,false,9.4,2
+CS-005,Export Data,Reports,Reports,true,6.2,4
+CS-005,Custom Reports,Reports,Reports,true,6.7,5
+CS-005,Scheduled Reports,Reports,Reports,true,6.4,2
+CS-005,API Keys,Developer,Developer,true,11.5,4
+CS-005,Webhooks,Overview,Developer,false,7.1,4
+CS-005,Documentation,Developer,Developer,true,15.7,4
+CS-005,Changelog,Reports,Developer,false,5.0,5
+CS-005,Help Center,Support,Support,true,6.6,5
+CS-005,Contact Support,Support,Support,true,6.2,3
+CS-005,Community Forum,Other,Support,false,7.5,1
+CS-005,Video Tutorials,Reports,Support,false,7.0,2
+CS-005,Integrations,Reports,Settings,false,6.5,4
+CS-005,Data Retention,Support,Settings,false,13.8,3
+CS-006,Dashboard,Developer,Overview,false,12.7,4
+CS-006,Activity Feed,Overview,Overview,true,9.4,3
+CS-006,Notifications,Overview,Overview,true,10.4,3
+CS-006,Quick Stats,Overview,Overview,true,10.9,4
+CS-006,Create Project,Support,Projects,false,13.4,4
+CS-006,Project List,Other,Projects,false,3.2,3
+CS-006,Project Templates,Projects,Projects,true,7.1,5
+CS-006,Archive Project,Projects,Projects,true,9.9,5
+CS-006,Team Members,Team,Team,true,11.6,1
+CS-006,Invite Users,Team,Team,true,6.1,3
+CS-006,Roles & Permissions,Team,Team,true,6.9,3
+CS-006,Team Activity,Team,Team,true,4.7,5
+CS-006,My Profile,Account,Account,true,2.0,5
+CS-006,Billing,Account,Account,true,6.5,2
+CS-006,Security Settings,Settings,Account,false,9.3,3
+CS-006,Preferences,Overview,Account,false,5.5,2
+CS-006,Usage Analytics,Reports,Reports,true,8.1,4
+CS-006,Export Data,Support,Reports,false,8.4,3
+CS-006,Custom Reports,Developer,Reports,false,8.8,5
+CS-006,Scheduled Reports,Overview,Reports,false,6.0,3
+CS-006,API Keys,Account,Developer,false,16.6,4
+CS-006,Webhooks,Developer,Developer,true,8.4,3
+CS-006,Documentation,Developer,Developer,true,8.9,4
+CS-006,Changelog,Developer,Developer,true,9.7,4
+CS-006,Help Center,Support,Support,true,3.8,2
+CS-006,Contact Support,Account,Support,false,5.4,5
+CS-006,Community Forum,Reports,Support,false,9.6,5
+CS-006,Video Tutorials,Support,Support,true,12.2,4
+CS-006,Integrations,Settings,Settings,true,4.9,5
+CS-006,Data Retention,Settings,Settings,true,6.8,5
+CS-007,Dashboard,Overview,Overview,true,10.3,5
+CS-007,Activity Feed,Overview,Overview,true,6.6,3
+CS-007,Notifications,Overview,Overview,true,5.0,5
+CS-007,Quick Stats,Overview,Overview,true,7.5,4
+CS-007,Create Project,Projects,Projects,true,11.1,3
+CS-007,Project List,Projects,Projects,true,7.4,4
+CS-007,Project Templates,Settings,Projects,false,7.7,5
+CS-007,Archive Project,Projects,Projects,true,8.9,2
+CS-007,Team Members,Team,Team,true,10.5,1
+CS-007,Invite Users,Team,Team,true,13.3,5
+CS-007,Roles & Permissions,Team,Team,true,8.8,3
+CS-007,Team Activity,Team,Team,true,13.5,5
+CS-007,My Profile,Account,Account,true,6.5,3
+CS-007,Billing,Account,Account,true,5.4,2
+CS-007,Security Settings,Account,Account,true,6.1,2
+CS-007,Preferences,Overview,Account,false,3.5,4
+CS-007,Usage Analytics,Reports,Reports,true,12.4,2
+CS-007,Export Data,Reports,Reports,true,11.9,4
+CS-007,Custom Reports,Reports,Reports,true,9.4,2
+CS-007,Scheduled Reports,Reports,Reports,true,9.8,4
+CS-007,API Keys,Developer,Developer,true,5.5,5
+CS-007,Webhooks,Developer,Developer,true,5.7,4
+CS-007,Documentation,Developer,Developer,true,5.7,4
+CS-007,Changelog,Developer,Developer,true,5.4,1
+CS-007,Help Center,Support,Support,true,4.3,4
+CS-007,Contact Support,Support,Support,true,12.7,4
+CS-007,Community Forum,Support,Support,true,8.4,5
+CS-007,Video Tutorials,Support,Support,true,5.2,4
+CS-007,Integrations,Settings,Settings,true,7.8,3
+CS-007,Data Retention,Settings,Settings,true,9.5,4
+CS-008,Dashboard,Overview,Overview,true,6.4,4
+CS-008,Activity Feed,Overview,Overview,true,5.7,2
+CS-008,Notifications,Overview,Overview,true,6.0,5
+CS-008,Quick Stats,Overview,Overview,true,6.5,4
+CS-008,Create Project,Projects,Projects,true,8.4,4
+CS-008,Project List,Projects,Projects,true,13.5,3
+CS-008,Project Templates,Reports,Projects,false,8.6,4
+CS-008,Archive Project,Projects,Projects,true,5.3,5
+CS-008,Team Members,Team,Team,true,6.1,5
+CS-008,Invite Users,Team,Team,true,11.4,4
+CS-008,Roles & Permissions,Team,Team,true,2.9,1
+CS-008,Team Activity,Team,Team,true,9.5,1
+CS-008,My Profile,Account,Account,true,8.5,3
+CS-008,Billing,Support,Account,false,12.2,5
+CS-008,Security Settings,Account,Account,true,3.5,1
+CS-008,Preferences,Account,Account,true,11.3,3
+CS-008,Usage Analytics,Reports,Reports,true,10.0,4
+CS-008,Export Data,Support,Reports,false,10.5,1
+CS-008,Custom Reports,Reports,Reports,true,8.6,5
+CS-008,Scheduled Reports,Reports,Reports,true,9.8,3
+CS-008,API Keys,Developer,Developer,true,8.3,5
+CS-008,Webhooks,Overview,Developer,false,8.6,5
+CS-008,Documentation,Developer,Developer,true,4.5,3
+CS-008,Changelog,Developer,Developer,true,2.8,4
+CS-008,Help Center,Support,Support,true,6.7,4
+CS-008,Contact Support,Settings,Support,false,9.3,5
+CS-008,Community Forum,Support,Support,true,12.2,5
+CS-008,Video Tutorials,Support,Support,true,13.4,3
+CS-008,Integrations,Settings,Settings,true,2.0,3
+CS-008,Data Retention,Settings,Settings,true,3.2,4
+CS-009,Dashboard,Support,Overview,false,11.4,3
+CS-009,Activity Feed,Overview,Overview,true,7.7,4
+CS-009,Notifications,Overview,Overview,true,9.5,4
+CS-009,Quick Stats,Overview,Overview,true,9.1,4
+CS-009,Create Project,Projects,Projects,true,2.8,3
+CS-009,Project List,Support,Projects,false,4.6,3
+CS-009,Project Templates,Projects,Projects,true,8.0,4
+CS-009,Archive Project,Projects,Projects,true,5.6,4
+CS-009,Team Members,Overview,Team,false,8.1,3
+CS-009,Invite Users,Other,Team,false,10.0,3
+CS-009,Roles & Permissions,Account,Team,false,5.7,5
+CS-009,Team Activity,Team,Team,true,6.5,2
+CS-009,My Profile,Account,Account,true,7.5,3
+CS-009,Billing,Account,Account,true,3.9,4
+CS-009,Security Settings,Account,Account,true,8.9,4
+CS-009,Preferences,Support,Account,false,7.9,4
+CS-009,Usage Analytics,Reports,Reports,true,8.7,2
+CS-009,Export Data,Developer,Reports,false,10.0,4
+CS-009,Custom Reports,Account,Reports,false,5.0,2
+CS-009,Scheduled Reports,Reports,Reports,true,9.9,3
+CS-009,API Keys,Developer,Developer,true,8.5,3
+CS-009,Webhooks,Reports,Developer,false,9.5,2
+CS-009,Documentation,Reports,Developer,false,11.8,1
+CS-009,Changelog,Developer,Developer,true,10.3,4
+CS-009,Help Center,Support,Support,true,3.3,4
+CS-009,Contact Support,Support,Support,true,4.5,5
+CS-009,Community Forum,Support,Support,true,8.6,3
+CS-009,Video Tutorials,Support,Support,true,8.0,4
+CS-009,Integrations,Other,Settings,false,4.6,4
+CS-009,Data Retention,Settings,Settings,true,8.7,3
+CS-010,Dashboard,Settings,Overview,false,8.8,4
+CS-010,Activity Feed,Overview,Overview,true,11.2,4
+CS-010,Notifications,Overview,Overview,true,8.4,5
+CS-010,Quick Stats,Support,Overview,false,7.9,3
+CS-010,Create Project,Projects,Projects,true,8.1,4
+CS-010,Project List,Projects,Projects,true,2.9,4
+CS-010,Project Templates,Projects,Projects,true,9.6,5
+CS-010,Archive Project,Settings,Projects,false,8.3,5
+CS-010,Team Members,Team,Team,true,5.1,3
+CS-010,Invite Users,Team,Team,true,10.4,4
+CS-010,Roles & Permissions,Team,Team,true,9.0,2
+CS-010,Team Activity,Team,Team,true,7.2,1
+CS-010,My Profile,Other,Account,false,10.0,5
+CS-010,Billing,Account,Account,true,8.3,3
+CS-010,Security Settings,Account,Account,true,4.7,3
+CS-010,Preferences,Account,Account,true,7.5,3
+CS-010,Usage Analytics,Settings,Reports,false,8.8,4
+CS-010,Export Data,Reports,Reports,true,9.2,2
+CS-010,Custom Reports,Account,Reports,false,9.4,4
+CS-010,Scheduled Reports,Other,Reports,false,9.5,3
+CS-010,API Keys,Reports,Developer,false,5.0,4
+CS-010,Webhooks,Developer,Developer,true,6.1,1
+CS-010,Documentation,Developer,Developer,true,10.8,5
+CS-010,Changelog,Developer,Developer,true,9.2,5
+CS-010,Help Center,Other,Support,false,7.2,2
+CS-010,Contact Support,Other,Support,false,8.2,3
+CS-010,Community Forum,Reports,Support,false,3.7,5
+CS-010,Video Tutorials,Support,Support,true,11.5,3
+CS-010,Integrations,Support,Settings,false,2.0,3
+CS-010,Data Retention,Settings,Settings,true,9.7,3
+CS-011,Dashboard,Developer,Overview,false,7.3,5
+CS-011,Activity Feed,Overview,Overview,true,7.4,4
+CS-011,Notifications,Other,Overview,false,7.0,4
+CS-011,Quick Stats,Overview,Overview,true,10.1,5
+CS-011,Create Project,Projects,Projects,true,10.0,5
+CS-011,Project List,Projects,Projects,true,9.0,1
+CS-011,Project Templates,Projects,Projects,true,9.8,4
+CS-011,Archive Project,Projects,Projects,true,5.3,3
+CS-011,Team Members,Team,Team,true,8.7,1
+CS-011,Invite Users,Team,Team,true,7.6,4
+CS-011,Roles & Permissions,Team,Team,true,6.4,4
+CS-011,Team Activity,Team,Team,true,5.4,4
+CS-011,My Profile,Account,Account,true,4.0,3
+CS-011,Billing,Account,Account,true,10.2,3
+CS-011,Security Settings,Account,Account,true,4.5,4
+CS-011,Preferences,Account,Account,true,7.8,3
+CS-011,Usage Analytics,Reports,Reports,true,7.6,3
+CS-011,Export Data,Reports,Reports,true,10.9,4
+CS-011,Custom Reports,Reports,Reports,true,5.7,4
+CS-011,Scheduled Reports,Reports,Reports,true,5.7,2
+CS-011,API Keys,Developer,Developer,true,4.2,4
+CS-011,Webhooks,Developer,Developer,true,10.8,3
+CS-011,Documentation,Developer,Developer,true,8.9,5
+CS-011,Changelog,Developer,Developer,true,8.7,1
+CS-011,Help Center,Projects,Support,false,8.1,3
+CS-011,Contact Support,Team,Support,false,7.9,4
+CS-011,Community Forum,Developer,Support,false,7.1,4
+CS-011,Video Tutorials,Support,Support,true,9.0,5
+CS-011,Integrations,Settings,Settings,true,11.6,3
+CS-011,Data Retention,Settings,Settings,true,9.4,3
+CS-012,Dashboard,Overview,Overview,true,6.9,5
+CS-012,Activity Feed,Overview,Overview,true,8.3,3
+CS-012,Notifications,Overview,Overview,true,8.5,4
+CS-012,Quick Stats,Team,Overview,false,10.5,4
+CS-012,Create Project,Projects,Projects,true,11.4,3
+CS-012,Project List,Projects,Projects,true,6.2,3
+CS-012,Project Templates,Projects,Projects,true,2.8,5
+CS-012,Archive Project,Projects,Projects,true,12.4,3
+CS-012,Team Members,Team,Team,true,4.8,4
+CS-012,Invite Users,Team,Team,true,2.0,1
+CS-012,Roles & Permissions,Other,Team,false,4.8,3
+CS-012,Team Activity,Team,Team,true,10.9,5
+CS-012,My Profile,Account,Account,true,3.2,3
+CS-012,Billing,Account,Account,true,3.7,5
+CS-012,Security Settings,Account,Account,true,10.7,3
+CS-012,Preferences,Account,Account,true,9.1,3
+CS-012,Usage Analytics,Reports,Reports,true,11.6,5
+CS-012,Export Data,Reports,Reports,true,6.1,3
+CS-012,Custom Reports,Reports,Reports,true,4.9,4
+CS-012,Scheduled Reports,Developer,Reports,false,4.0,5
+CS-012,API Keys,Developer,Developer,true,7.7,3
+CS-012,Webhooks,Developer,Developer,true,5.3,5
+CS-012,Documentation,Account,Developer,false,5.7,3
+CS-012,Changelog,Developer,Developer,true,6.2,1
+CS-012,Help Center,Projects,Support,false,8.9,5
+CS-012,Contact Support,Team,Support,false,7.7,2
+CS-012,Community Forum,Support,Support,true,11.4,3
+CS-012,Video Tutorials,Support,Support,true,2.0,4
+CS-012,Integrations,Settings,Settings,true,7.6,3
+CS-012,Data Retention,Settings,Settings,true,5.8,3
+CS-013,Dashboard,Overview,Overview,true,9.4,5
+CS-013,Activity Feed,Overview,Overview,true,11.0,3
+CS-013,Notifications,Overview,Overview,true,7.5,4
+CS-013,Quick Stats,Account,Overview,false,10.3,1
+CS-013,Create Project,Projects,Projects,true,3.2,5
+CS-013,Project List,Developer,Projects,false,6.6,4
+CS-013,Project Templates,Projects,Projects,true,7.0,4
+CS-013,Archive Project,Projects,Projects,true,5.1,2
+CS-013,Team Members,Team,Team,true,10.9,4
+CS-013,Invite Users,Team,Team,true,8.2,4
+CS-013,Roles & Permissions,Other,Team,false,8.4,4
+CS-013,Team Activity,Team,Team,true,4.1,3
+CS-013,My Profile,Account,Account,true,11.0,5
+CS-013,Billing,Account,Account,true,15.0,2
+CS-013,Security Settings,Team,Account,false,2.0,3
+CS-013,Preferences,Account,Account,true,7.8,4
+CS-013,Usage Analytics,Other,Reports,false,14.6,4
+CS-013,Export Data,Reports,Reports,true,10.8,4
+CS-013,Custom Reports,Reports,Reports,true,9.0,4
+CS-013,Scheduled Reports,Support,Reports,false,4.9,4
+CS-013,API Keys,Reports,Developer,false,4.7,4
+CS-013,Webhooks,Team,Developer,false,7.9,5
+CS-013,Documentation,Overview,Developer,false,12.1,2
+CS-013,Changelog,Developer,Developer,true,7.3,4
+CS-013,Help Center,Projects,Support,false,5.1,4
+CS-013,Contact Support,Support,Support,true,3.0,3
+CS-013,Community Forum,Support,Support,true,10.6,5
+CS-013,Video Tutorials,Settings,Support,false,3.8,5
+CS-013,Integrations,Projects,Settings,false,5.5,2
+CS-013,Data Retention,Developer,Settings,false,8.9,3
+CS-014,Dashboard,Developer,Overview,false,9.8,4
+CS-014,Activity Feed,Overview,Overview,true,8.1,5
+CS-014,Notifications,Overview,Overview,true,5.9,4
+CS-014,Quick Stats,Overview,Overview,true,9.2,3
+CS-014,Create Project,Projects,Projects,true,4.5,2
+CS-014,Project List,Projects,Projects,true,8.3,3
+CS-014,Project Templates,Projects,Projects,true,8.0,3
+CS-014,Archive Project,Settings,Projects,false,2.5,4
+CS-014,Team Members,Projects,Team,false,9.2,3
+CS-014,Invite Users,Team,Team,true,6.7,3
+CS-014,Roles & Permissions,Team,Team,true,5.1,4
+CS-014,Team Activity,Team,Team,true,6.2,2
+CS-014,My Profile,Overview,Account,false,5.3,1
+CS-014,Billing,Account,Account,true,3.4,5
+CS-014,Security Settings,Account,Account,true,2.0,3
+CS-014,Preferences,Account,Account,true,7.0,5
+CS-014,Usage Analytics,Support,Reports,false,3.7,5
+CS-014,Export Data,Support,Reports,false,12.6,4
+CS-014,Custom Reports,Reports,Reports,true,10.6,3
+CS-014,Scheduled Reports,Reports,Reports,true,9.0,4
+CS-014,API Keys,Team,Developer,false,9.5,4
+CS-014,Webhooks,Account,Developer,false,8.2,3
+CS-014,Documentation,Other,Developer,false,3.6,1
+CS-014,Changelog,Support,Developer,false,7.6,1
+CS-014,Help Center,Support,Support,true,13.2,3
+CS-014,Contact Support,Support,Support,true,9.5,4
+CS-014,Community Forum,Support,Support,true,7.1,4
+CS-014,Video Tutorials,Other,Support,false,7.2,5
+CS-014,Integrations,Projects,Settings,false,7.8,3
+CS-014,Data Retention,Settings,Settings,true,5.5,4
+CS-015,Dashboard,Account,Overview,false,5.4,4
+CS-015,Activity Feed,Overview,Overview,true,13.0,5
+CS-015,Notifications,Other,Overview,false,2.0,5
+CS-015,Quick Stats,Reports,Overview,false,8.1,5
+CS-015,Create Project,Team,Projects,false,9.8,4
+CS-015,Project List,Account,Projects,false,10.4,3
+CS-015,Project Templates,Projects,Projects,true,6.8,4
+CS-015,Archive Project,Team,Projects,false,4.6,4
+CS-015,Team Members,Support,Team,false,2.1,5
+CS-015,Invite Users,Projects,Team,false,6.2,4
+CS-015,Roles & Permissions,Settings,Team,false,5.7,4
+CS-015,Team Activity,Settings,Team,false,8.8,2
+CS-015,My Profile,Account,Account,true,6.0,2
+CS-015,Billing,Reports,Account,false,7.9,3
+CS-015,Security Settings,Settings,Account,false,6.5,4
+CS-015,Preferences,Account,Account,true,11.4,5
+CS-015,Usage Analytics,Support,Reports,false,9.4,5
+CS-015,Export Data,Team,Reports,false,4.0,3
+CS-015,Custom Reports,Reports,Reports,true,7.5,4
+CS-015,Scheduled Reports,Team,Reports,false,9.0,3
+CS-015,API Keys,Team,Developer,false,5.7,4
+CS-015,Webhooks,Developer,Developer,true,5.3,4
+CS-015,Documentation,Reports,Developer,false,3.4,4
+CS-015,Changelog,Reports,Developer,false,12.7,4
+CS-015,Help Center,Other,Support,false,7.9,3
+CS-015,Contact Support,Overview,Support,false,10.7,5
+CS-015,Community Forum,Support,Support,true,7.7,4
+CS-015,Video Tutorials,Overview,Support,false,12.6,5
+CS-015,Integrations,Reports,Settings,false,5.6,5
+CS-015,Data Retention,Team,Settings,false,11.8,3
+CS-016,Dashboard,Overview,Overview,true,13.0,3
+CS-016,Activity Feed,Overview,Overview,true,7.7,3
+CS-016,Notifications,Reports,Overview,false,6.9,2
+CS-016,Quick Stats,Overview,Overview,true,4.4,5
+CS-016,Create Project,Overview,Projects,false,10.8,4
+CS-016,Project List,Projects,Projects,true,4.2,2
+CS-016,Project Templates,Developer,Projects,false,9.6,5
+CS-016,Archive Project,Projects,Projects,true,6.8,4
+CS-016,Team Members,Team,Team,true,8.9,5
+CS-016,Invite Users,Settings,Team,false,6.9,5
+CS-016,Roles & Permissions,Team,Team,true,11.7,2
+CS-016,Team Activity,Account,Team,false,2.3,5
+CS-016,My Profile,Account,Account,true,5.3,4
+CS-016,Billing,Account,Account,true,7.7,4
+CS-016,Security Settings,Account,Account,true,10.2,3
+CS-016,Preferences,Account,Account,true,10.0,3
+CS-016,Usage Analytics,Projects,Reports,false,9.0,4
+CS-016,Export Data,Reports,Reports,true,2.1,4
+CS-016,Custom Reports,Reports,Reports,true,8.9,4
+CS-016,Scheduled Reports,Reports,Reports,true,8.9,4
+CS-016,API Keys,Developer,Developer,true,4.5,3
+CS-016,Webhooks,Team,Developer,false,6.3,3
+CS-016,Documentation,Settings,Developer,false,7.5,3
+CS-016,Changelog,Team,Developer,false,9.5,4
+CS-016,Help Center,Settings,Support,false,4.5,5
+CS-016,Contact Support,Support,Support,true,6.7,4
+CS-016,Community Forum,Support,Support,true,6.8,2
+CS-016,Video Tutorials,Projects,Support,false,2.8,3
+CS-016,Integrations,Settings,Settings,true,9.6,5
+CS-016,Data Retention,Settings,Settings,true,11.5,2
+CS-017,Dashboard,Overview,Overview,true,9.7,5
+CS-017,Activity Feed,Overview,Overview,true,11.5,3
+CS-017,Notifications,Overview,Overview,true,7.6,4
+CS-017,Quick Stats,Projects,Overview,false,8.0,5
+CS-017,Create Project,Developer,Projects,false,8.9,4
+CS-017,Project List,Projects,Projects,true,3.9,4
+CS-017,Project Templates,Support,Projects,false,5.8,4
+CS-017,Archive Project,Projects,Projects,true,6.3,1
+CS-017,Team Members,Team,Team,true,3.9,2
+CS-017,Invite Users,Reports,Team,false,11.9,3
+CS-017,Roles & Permissions,Team,Team,true,6.9,2
+CS-017,Team Activity,Team,Team,true,10.1,3
+CS-017,My Profile,Settings,Account,false,9.0,4
+CS-017,Billing,Settings,Account,false,9.6,3
+CS-017,Security Settings,Account,Account,true,7.4,3
+CS-017,Preferences,Account,Account,true,5.1,4
+CS-017,Usage Analytics,Reports,Reports,true,4.2,4
+CS-017,Export Data,Reports,Reports,true,9.1,5
+CS-017,Custom Reports,Reports,Reports,true,5.6,5
+CS-017,Scheduled Reports,Reports,Reports,true,7.5,4
+CS-017,API Keys,Developer,Developer,true,11.7,3
+CS-017,Webhooks,Developer,Developer,true,12.4,2
+CS-017,Documentation,Reports,Developer,false,5.2,1
+CS-017,Changelog,Developer,Developer,true,10.9,2
+CS-017,Help Center,Team,Support,false,7.4,4
+CS-017,Contact Support,Other,Support,false,10.3,4
+CS-017,Community Forum,Support,Support,true,9.6,3
+CS-017,Video Tutorials,Support,Support,true,10.5,5
+CS-017,Integrations,Settings,Settings,true,8.8,5
+CS-017,Data Retention,Settings,Settings,true,8.9,5
+CS-018,Dashboard,Overview,Overview,true,6.1,4
+CS-018,Activity Feed,Account,Overview,false,6.7,2
+CS-018,Notifications,Developer,Overview,false,12.6,5
+CS-018,Quick Stats,Reports,Overview,false,9.6,4
+CS-018,Create Project,Projects,Projects,true,4.9,3
+CS-018,Project List,Projects,Projects,true,8.8,3
+CS-018,Project Templates,Reports,Projects,false,6.0,5
+CS-018,Archive Project,Projects,Projects,true,13.6,3
+CS-018,Team Members,Team,Team,true,12.3,5
+CS-018,Invite Users,Team,Team,true,10.3,2
+CS-018,Roles & Permissions,Other,Team,false,8.2,5
+CS-018,Team Activity,Account,Team,false,7.6,4
+CS-018,My Profile,Account,Account,true,14.3,4
+CS-018,Billing,Account,Account,true,7.9,4
+CS-018,Security Settings,Overview,Account,false,7.0,4
+CS-018,Preferences,Account,Account,true,3.4,4
+CS-018,Usage Analytics,Overview,Reports,false,2.0,4
+CS-018,Export Data,Account,Reports,false,3.2,3
+CS-018,Custom Reports,Reports,Reports,true,9.9,2
+CS-018,Scheduled Reports,Reports,Reports,true,10.1,3
+CS-018,API Keys,Support,Developer,false,10.0,4
+CS-018,Webhooks,Projects,Developer,false,6.8,3
+CS-018,Documentation,Developer,Developer,true,8.0,4
+CS-018,Changelog,Developer,Developer,true,8.2,5
+CS-018,Help Center,Overview,Support,false,13.8,5
+CS-018,Contact Support,Support,Support,true,5.5,1
+CS-018,Community Forum,Support,Support,true,7.6,3
+CS-018,Video Tutorials,Settings,Support,false,9.4,3
+CS-018,Integrations,Settings,Settings,true,6.7,4
+CS-018,Data Retention,Settings,Settings,true,8.1,2
+CS-019,Dashboard,Reports,Overview,false,8.1,4
+CS-019,Activity Feed,Overview,Overview,true,3.8,4
+CS-019,Notifications,Overview,Overview,true,12.8,5
+CS-019,Quick Stats,Other,Overview,false,9.5,4
+CS-019,Create Project,Projects,Projects,true,10.4,5
+CS-019,Project List,Projects,Projects,true,8.3,3
+CS-019,Project Templates,Overview,Projects,false,8.8,3
+CS-019,Archive Project,Projects,Projects,true,3.6,3
+CS-019,Team Members,Team,Team,true,8.6,4
+CS-019,Invite Users,Account,Team,false,5.7,5
+CS-019,Roles & Permissions,Team,Team,true,12.5,5
+CS-019,Team Activity,Settings,Team,false,13.1,5
+CS-019,My Profile,Account,Account,true,13.5,3
+CS-019,Billing,Account,Account,true,7.6,5
+CS-019,Security Settings,Account,Account,true,7.1,4
+CS-019,Preferences,Account,Account,true,5.6,2
+CS-019,Usage Analytics,Reports,Reports,true,8.3,4
+CS-019,Export Data,Team,Reports,false,8.0,5
+CS-019,Custom Reports,Account,Reports,false,13.1,4
+CS-019,Scheduled Reports,Reports,Reports,true,2.8,2
+CS-019,API Keys,Team,Developer,false,8.9,3
+CS-019,Webhooks,Team,Developer,false,8.2,1
+CS-019,Documentation,Team,Developer,false,9.6,4
+CS-019,Changelog,Projects,Developer,false,9.9,4
+CS-019,Help Center,Account,Support,false,5.8,3
+CS-019,Contact Support,Support,Support,true,10.9,2
+CS-019,Community Forum,Support,Support,true,9.2,3
+CS-019,Video Tutorials,Settings,Support,false,8.1,3
+CS-019,Integrations,Settings,Settings,true,14.4,4
+CS-019,Data Retention,Settings,Settings,true,7.5,4
+CS-020,Dashboard,Overview,Overview,true,8.0,3
+CS-020,Activity Feed,Overview,Overview,true,11.5,4
+CS-020,Notifications,Overview,Overview,true,8.2,3
+CS-020,Quick Stats,Overview,Overview,true,6.4,4
+CS-020,Create Project,Projects,Projects,true,6.2,3
+CS-020,Project List,Projects,Projects,true,6.6,2
+CS-020,Project Templates,Projects,Projects,true,5.2,1
+CS-020,Archive Project,Reports,Projects,false,5.0,3
+CS-020,Team Members,Team,Team,true,13.8,4
+CS-020,Invite Users,Team,Team,true,12.2,4
+CS-020,Roles & Permissions,Team,Team,true,6.3,2
+CS-020,Team Activity,Team,Team,true,7.6,4
+CS-020,My Profile,Support,Account,false,10.6,4
+CS-020,Billing,Projects,Account,false,6.0,4
+CS-020,Security Settings,Account,Account,true,13.1,3
+CS-020,Preferences,Account,Account,true,6.4,5
+CS-020,Usage Analytics,Reports,Reports,true,9.0,5
+CS-020,Export Data,Reports,Reports,true,7.7,5
+CS-020,Custom Reports,Reports,Reports,true,4.5,2
+CS-020,Scheduled Reports,Reports,Reports,true,7.3,4
+CS-020,API Keys,Developer,Developer,true,4.8,3
+CS-020,Webhooks,Developer,Developer,true,10.6,4
+CS-020,Documentation,Developer,Developer,true,14.9,4
+CS-020,Changelog,Developer,Developer,true,8.4,4
+CS-020,Help Center,Support,Support,true,9.5,3
+CS-020,Contact Support,Support,Support,true,6.0,3
+CS-020,Community Forum,Support,Support,true,6.9,5
+CS-020,Video Tutorials,Support,Support,true,12.1,2
+CS-020,Integrations,Overview,Settings,false,6.6,5
+CS-020,Data Retention,Settings,Settings,true,6.2,1

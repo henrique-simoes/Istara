@@ -1,0 +1,251 @@
+participant_id,task,expected_path,actual_path,success,time_seconds,backtrack_count
+TT-001,Find your recent lab results,Health Records > Test Results > Laboratory,Health Records > Test Results > Laboratory,indirect,32.9,3
+TT-001,Schedule an appointment with Dr. Smith,Appointments > Schedule New > Find Provider,Home > Dashboard > Overview,fail,53.2,2
+TT-001,Update your insurance information,Account > Profile > Insurance,Settings > Insurance,indirect,49.2,3
+TT-001,Send a message to your doctor,Messages > Compose New,Contact > Message Doctor,indirect,31.9,1
+TT-001,View your medication list,Medications > Current Medications,Home > Dashboard > Overview,fail,39.9,7
+TT-001,Pay an outstanding bill,Billing > Outstanding Balance > Pay Now,Help > FAQ > Search,fail,52.2,4
+TT-001,Download your vaccination records,Health Records > Immunizations > Download,Account > Profile > Personal Info,fail,27.5,3
+TT-001,Change your notification preferences,Settings > Notifications > Preferences,Settings > Notifications > Preferences,indirect,41.3,4
+TT-001,Request a medication refill,Medications > Refill Request,Medications > Refill Request,direct,17.1,0
+TT-001,Find the phone number for your clinic,Locations > My Clinic > Contact Info,Help > Contact Us,indirect,33.5,2
+TT-002,Find your recent lab results,Health Records > Test Results > Laboratory,Health Records > Test Results > Laboratory,direct,19.5,0
+TT-002,Schedule an appointment with Dr. Smith,Appointments > Schedule New > Find Provider,Appointments > Schedule New > Find Provider,indirect,37.0,4
+TT-002,Update your insurance information,Account > Profile > Insurance,Health Records > Summary > Overview,fail,53.5,3
+TT-002,Send a message to your doctor,Messages > Compose New,Account > Profile > Personal Info,fail,32.1,5
+TT-002,View your medication list,Medications > Current Medications,Medications > Current Medications,direct,7.5,0
+TT-002,Pay an outstanding bill,Billing > Outstanding Balance > Pay Now,Settings > Account > General,fail,58.7,4
+TT-002,Download your vaccination records,Health Records > Immunizations > Download,Health Records > Immunizations > Download,direct,14.4,0
+TT-002,Change your notification preferences,Settings > Notifications > Preferences,Home > Dashboard > Overview,fail,52.8,7
+TT-002,Request a medication refill,Medications > Refill Request,Medications > Refill Request,direct,21.5,0
+TT-002,Find the phone number for your clinic,Locations > My Clinic > Contact Info,Account > Profile > Personal Info,fail,40.9,3
+TT-003,Find your recent lab results,Health Records > Test Results > Laboratory,Health Records > Test Results > Laboratory,direct,14.0,0
+TT-003,Schedule an appointment with Dr. Smith,Appointments > Schedule New > Find Provider,Appointments > Schedule New > Find Provider,direct,12.8,0
+TT-003,Update your insurance information,Account > Profile > Insurance,Account > Profile > Personal Info,fail,67.8,3
+TT-003,Send a message to your doctor,Messages > Compose New,Messages > Compose New,direct,11.5,0
+TT-003,View your medication list,Medications > Current Medications,Medications > Current Medications,direct,21.7,0
+TT-003,Pay an outstanding bill,Billing > Outstanding Balance > Pay Now,Settings > Account > General,fail,59.2,5
+TT-003,Download your vaccination records,Health Records > Immunizations > Download,Health Records > Immunizations > Download,direct,19.5,0
+TT-003,Change your notification preferences,Settings > Notifications > Preferences,Settings > Account > General,fail,90.8,4
+TT-003,Request a medication refill,Medications > Refill Request,Health Records > Summary > Overview,fail,64.7,3
+TT-003,Find the phone number for your clinic,Locations > My Clinic > Contact Info,Help > Contact Us,indirect,45.4,4
+TT-004,Find your recent lab results,Health Records > Test Results > Laboratory,Health Records > Test Results > Laboratory,direct,10.8,0
+TT-004,Schedule an appointment with Dr. Smith,Appointments > Schedule New > Find Provider,Appointments > Schedule New > Find Provider,direct,11.3,0
+TT-004,Update your insurance information,Account > Profile > Insurance,Settings > Account > General,fail,28.7,2
+TT-004,Send a message to your doctor,Messages > Compose New,Help > FAQ > Search,fail,50.7,4
+TT-004,View your medication list,Medications > Current Medications,Medications > Current Medications,direct,17.9,0
+TT-004,Pay an outstanding bill,Billing > Outstanding Balance > Pay Now,Account > Profile > Personal Info,fail,46.9,7
+TT-004,Download your vaccination records,Health Records > Immunizations > Download,Health Records > Immunizations > Download,direct,23.7,0
+TT-004,Change your notification preferences,Settings > Notifications > Preferences,Settings > Notifications > Preferences,direct,17.9,0
+TT-004,Request a medication refill,Medications > Refill Request,Medications > Refill Request,direct,10.2,0
+TT-004,Find the phone number for your clinic,Locations > My Clinic > Contact Info,Help > FAQ > Search,fail,83.0,5
+TT-005,Find your recent lab results,Health Records > Test Results > Laboratory,My Health > Lab Results,indirect,23.2,2
+TT-005,Schedule an appointment with Dr. Smith,Appointments > Schedule New > Find Provider,Find a Doctor > Schedule,indirect,32.4,2
+TT-005,Update your insurance information,Account > Profile > Insurance,Account > Profile > Insurance,direct,15.9,0
+TT-005,Send a message to your doctor,Messages > Compose New,Help > FAQ > Search,fail,70.5,2
+TT-005,View your medication list,Medications > Current Medications,Help > FAQ > Search,fail,21.9,4
+TT-005,Pay an outstanding bill,Billing > Outstanding Balance > Pay Now,Account > Profile > Personal Info,fail,58.1,3
+TT-005,Download your vaccination records,Health Records > Immunizations > Download,Settings > Account > General,fail,50.0,7
+TT-005,Change your notification preferences,Settings > Notifications > Preferences,Settings > Notifications > Preferences,direct,19.7,0
+TT-005,Request a medication refill,Medications > Refill Request,Health Records > Summary > Overview,fail,31.1,2
+TT-005,Find the phone number for your clinic,Locations > My Clinic > Contact Info,Locations > My Clinic > Contact Info,direct,16.7,0
+TT-006,Find your recent lab results,Health Records > Test Results > Laboratory,Health Records > Test Results > Laboratory,direct,15.7,0
+TT-006,Schedule an appointment with Dr. Smith,Appointments > Schedule New > Find Provider,Appointments > Schedule New > Find Provider,indirect,21.5,3
+TT-006,Update your insurance information,Account > Profile > Insurance,Settings > Insurance,indirect,22.2,1
+TT-006,Send a message to your doctor,Messages > Compose New,Messages > Compose New,direct,23.6,0
+TT-006,View your medication list,Medications > Current Medications,Medications > Current Medications,direct,9.1,0
+TT-006,Pay an outstanding bill,Billing > Outstanding Balance > Pay Now,Billing > Outstanding Balance > Pay Now,direct,8.4,0
+TT-006,Download your vaccination records,Health Records > Immunizations > Download,Health Records > Summary > Overview,fail,43.7,6
+TT-006,Change your notification preferences,Settings > Notifications > Preferences,Settings > Notifications > Preferences,direct,26.5,0
+TT-006,Request a medication refill,Medications > Refill Request,Medications > Refill Request,direct,17.7,0
+TT-006,Find the phone number for your clinic,Locations > My Clinic > Contact Info,Settings > Account > General,fail,36.8,3
+TT-007,Find your recent lab results,Health Records > Test Results > Laboratory,Health Records > Summary > Overview,fail,63.2,2
+TT-007,Schedule an appointment with Dr. Smith,Appointments > Schedule New > Find Provider,Find a Doctor > Schedule,indirect,38.4,4
+TT-007,Update your insurance information,Account > Profile > Insurance,Account > Profile > Personal Info,fail,53.9,3
+TT-007,Send a message to your doctor,Messages > Compose New,Messages > New Message,indirect,35.5,1
+TT-007,View your medication list,Medications > Current Medications,Medications > Current Medications,direct,15.2,0
+TT-007,Pay an outstanding bill,Billing > Outstanding Balance > Pay Now,Help > FAQ > Search,fail,67.4,6
+TT-007,Download your vaccination records,Health Records > Immunizations > Download,Health Records > Immunizations > Download,direct,20.6,0
+TT-007,Change your notification preferences,Settings > Notifications > Preferences,Settings > Notifications > Preferences,direct,20.7,0
+TT-007,Request a medication refill,Medications > Refill Request,Medications > Refill Request,direct,18.6,0
+TT-007,Find the phone number for your clinic,Locations > My Clinic > Contact Info,Home > Dashboard > Overview,fail,39.4,5
+TT-008,Find your recent lab results,Health Records > Test Results > Laboratory,My Health > Lab Results,indirect,40.0,1
+TT-008,Schedule an appointment with Dr. Smith,Appointments > Schedule New > Find Provider,Appointments > Schedule New > Find Provider,direct,11.4,0
+TT-008,Update your insurance information,Account > Profile > Insurance,Account > Insurance,indirect,32.4,4
+TT-008,Send a message to your doctor,Messages > Compose New,Messages > Compose New,indirect,27.0,4
+TT-008,View your medication list,Medications > Current Medications,Medications > Current Medications,direct,6.2,0
+TT-008,Pay an outstanding bill,Billing > Outstanding Balance > Pay Now,Billing > Outstanding Balance > Pay Now,direct,22.4,0
+TT-008,Download your vaccination records,Health Records > Immunizations > Download,Health Records > Immunizations > Download,direct,5,0
+TT-008,Change your notification preferences,Settings > Notifications > Preferences,Settings > Email Preferences,indirect,34.2,3
+TT-008,Request a medication refill,Medications > Refill Request,Pharmacy > Refill,indirect,42.3,4
+TT-008,Find the phone number for your clinic,Locations > My Clinic > Contact Info,Locations > My Clinic > Contact Info,direct,7.6,0
+TT-009,Find your recent lab results,Health Records > Test Results > Laboratory,Health Records > Test Results > Laboratory,indirect,36.7,4
+TT-009,Schedule an appointment with Dr. Smith,Appointments > Schedule New > Find Provider,Home > Dashboard > Overview,fail,76.7,6
+TT-009,Update your insurance information,Account > Profile > Insurance,Account > Profile > Personal Info,fail,44.5,2
+TT-009,Send a message to your doctor,Messages > Compose New,Messages > Compose New,direct,21.0,0
+TT-009,View your medication list,Medications > Current Medications,Medications > Current Medications,direct,22.1,0
+TT-009,Pay an outstanding bill,Billing > Outstanding Balance > Pay Now,Billing > Pay Bill,indirect,36.1,3
+TT-009,Download your vaccination records,Health Records > Immunizations > Download,Settings > Account > General,fail,37.9,6
+TT-009,Change your notification preferences,Settings > Notifications > Preferences,Settings > Notifications > Preferences,direct,9.2,0
+TT-009,Request a medication refill,Medications > Refill Request,Account > Profile > Personal Info,fail,29.9,4
+TT-009,Find the phone number for your clinic,Locations > My Clinic > Contact Info,Locations > My Clinic > Contact Info,direct,19.5,0
+TT-010,Find your recent lab results,Health Records > Test Results > Laboratory,Health Records > Test Results > Laboratory,direct,5,0
+TT-010,Schedule an appointment with Dr. Smith,Appointments > Schedule New > Find Provider,Appointments > Schedule New > Find Provider,direct,14.8,0
+TT-010,Update your insurance information,Account > Profile > Insurance,Help > FAQ > Search,fail,33.1,2
+TT-010,Send a message to your doctor,Messages > Compose New,Messages > Compose New,direct,19.2,0
+TT-010,View your medication list,Medications > Current Medications,Medications > Current Medications,direct,18.6,0
+TT-010,Pay an outstanding bill,Billing > Outstanding Balance > Pay Now,Billing > Outstanding Balance > Pay Now,direct,16.5,0
+TT-010,Download your vaccination records,Health Records > Immunizations > Download,Settings > Account > General,fail,56.7,5
+TT-010,Change your notification preferences,Settings > Notifications > Preferences,Home > Dashboard > Overview,fail,70.3,4
+TT-010,Request a medication refill,Medications > Refill Request,Account > Profile > Personal Info,fail,57.4,2
+TT-010,Find the phone number for your clinic,Locations > My Clinic > Contact Info,Locations > My Clinic > Contact Info,direct,15.7,0
+TT-011,Find your recent lab results,Health Records > Test Results > Laboratory,Health Records > Test Results > Laboratory,indirect,55.2,4
+TT-011,Schedule an appointment with Dr. Smith,Appointments > Schedule New > Find Provider,Account > Profile > Personal Info,fail,89.2,3
+TT-011,Update your insurance information,Account > Profile > Insurance,Account > Profile > Personal Info,fail,54.9,4
+TT-011,Send a message to your doctor,Messages > Compose New,Messages > Compose New,direct,14.7,0
+TT-011,View your medication list,Medications > Current Medications,Account > Profile > Personal Info,fail,28.5,5
+TT-011,Pay an outstanding bill,Billing > Outstanding Balance > Pay Now,Billing > Outstanding Balance > Pay Now,indirect,45.0,1
+TT-011,Download your vaccination records,Health Records > Immunizations > Download,Home > Dashboard > Overview,fail,68.6,3
+TT-011,Change your notification preferences,Settings > Notifications > Preferences,Settings > Email Preferences,indirect,47.6,2
+TT-011,Request a medication refill,Medications > Refill Request,Health Records > Summary > Overview,fail,65.2,5
+TT-011,Find the phone number for your clinic,Locations > My Clinic > Contact Info,Help > FAQ > Search,fail,51.0,2
+TT-012,Find your recent lab results,Health Records > Test Results > Laboratory,Health Records > Test Results > Laboratory,direct,7.0,0
+TT-012,Schedule an appointment with Dr. Smith,Appointments > Schedule New > Find Provider,Settings > Account > General,fail,29.0,3
+TT-012,Update your insurance information,Account > Profile > Insurance,Home > Dashboard > Overview,fail,46.4,2
+TT-012,Send a message to your doctor,Messages > Compose New,Settings > Account > General,fail,42.5,5
+TT-012,View your medication list,Medications > Current Medications,Health Records > Summary > Overview,fail,35.1,2
+TT-012,Pay an outstanding bill,Billing > Outstanding Balance > Pay Now,Billing > Outstanding Balance > Pay Now,direct,11.8,0
+TT-012,Download your vaccination records,Health Records > Immunizations > Download,Help > FAQ > Search,fail,30.9,4
+TT-012,Change your notification preferences,Settings > Notifications > Preferences,Settings > Notifications > Preferences,direct,22.0,0
+TT-012,Request a medication refill,Medications > Refill Request,Home > Dashboard > Overview,fail,67.5,4
+TT-012,Find the phone number for your clinic,Locations > My Clinic > Contact Info,Help > Contact Us,indirect,21.3,4
+TT-013,Find your recent lab results,Health Records > Test Results > Laboratory,Account > Profile > Personal Info,fail,71.1,6
+TT-013,Schedule an appointment with Dr. Smith,Appointments > Schedule New > Find Provider,Account > Profile > Personal Info,fail,39.0,5
+TT-013,Update your insurance information,Account > Profile > Insurance,Account > Profile > Insurance,direct,11.2,0
+TT-013,Send a message to your doctor,Messages > Compose New,Account > Profile > Personal Info,fail,49.8,7
+TT-013,View your medication list,Medications > Current Medications,Settings > Account > General,fail,57.9,2
+TT-013,Pay an outstanding bill,Billing > Outstanding Balance > Pay Now,Health Records > Summary > Overview,fail,78.8,5
+TT-013,Download your vaccination records,Health Records > Immunizations > Download,Health Records > Summary > Overview,fail,40.8,2
+TT-013,Change your notification preferences,Settings > Notifications > Preferences,Home > Dashboard > Overview,fail,62.4,5
+TT-013,Request a medication refill,Medications > Refill Request,Medications > Refill Request,indirect,53.2,2
+TT-013,Find the phone number for your clinic,Locations > My Clinic > Contact Info,Contact > Clinic Directory,indirect,49.5,4
+TT-014,Find your recent lab results,Health Records > Test Results > Laboratory,Help > FAQ > Search,fail,81.0,6
+TT-014,Schedule an appointment with Dr. Smith,Appointments > Schedule New > Find Provider,Appointments > Schedule New > Find Provider,direct,12.3,0
+TT-014,Update your insurance information,Account > Profile > Insurance,Help > FAQ > Search,fail,37.1,2
+TT-014,Send a message to your doctor,Messages > Compose New,Help > FAQ > Search,fail,56.6,4
+TT-014,View your medication list,Medications > Current Medications,Home > Dashboard > Overview,fail,51.5,4
+TT-014,Pay an outstanding bill,Billing > Outstanding Balance > Pay Now,Billing > Outstanding Balance > Pay Now,direct,12.7,0
+TT-014,Download your vaccination records,Health Records > Immunizations > Download,Account > Profile > Personal Info,fail,70.7,2
+TT-014,Change your notification preferences,Settings > Notifications > Preferences,Account > Profile > Personal Info,fail,50.6,7
+TT-014,Request a medication refill,Medications > Refill Request,Medications > Refill Request,direct,11.6,0
+TT-014,Find the phone number for your clinic,Locations > My Clinic > Contact Info,Help > Contact Us,indirect,47.6,1
+TT-015,Find your recent lab results,Health Records > Test Results > Laboratory,Home > Dashboard > Overview,fail,63.6,6
+TT-015,Schedule an appointment with Dr. Smith,Appointments > Schedule New > Find Provider,Appointments > Schedule New > Find Provider,direct,15.8,0
+TT-015,Update your insurance information,Account > Profile > Insurance,Help > FAQ > Search,fail,38.4,2
+TT-015,Send a message to your doctor,Messages > Compose New,Health Records > Summary > Overview,fail,83.9,5
+TT-015,View your medication list,Medications > Current Medications,Home > Dashboard > Overview,fail,57.5,3
+TT-015,Pay an outstanding bill,Billing > Outstanding Balance > Pay Now,Billing > Outstanding Balance > Pay Now,direct,11.3,0
+TT-015,Download your vaccination records,Health Records > Immunizations > Download,Account > Profile > Personal Info,fail,47.2,4
+TT-015,Change your notification preferences,Settings > Notifications > Preferences,Settings > Account > General,fail,91.0,7
+TT-015,Request a medication refill,Medications > Refill Request,Medications > Refill Request,direct,17.3,0
+TT-015,Find the phone number for your clinic,Locations > My Clinic > Contact Info,Locations > My Clinic > Contact Info,direct,14.8,0
+TT-016,Find your recent lab results,Health Records > Test Results > Laboratory,Health Records > Test Results > Laboratory,direct,5.9,0
+TT-016,Schedule an appointment with Dr. Smith,Appointments > Schedule New > Find Provider,Appointments > Schedule New > Find Provider,direct,20.3,0
+TT-016,Update your insurance information,Account > Profile > Insurance,Account > Profile > Insurance,indirect,36.4,4
+TT-016,Send a message to your doctor,Messages > Compose New,Messages > Compose New,indirect,59.2,2
+TT-016,View your medication list,Medications > Current Medications,Medications > Current Medications,direct,10.8,0
+TT-016,Pay an outstanding bill,Billing > Outstanding Balance > Pay Now,Billing > Pay Bill,indirect,30.3,3
+TT-016,Download your vaccination records,Health Records > Immunizations > Download,Health Records > Immunizations > Download,indirect,25.1,3
+TT-016,Change your notification preferences,Settings > Notifications > Preferences,Settings > Account > General,fail,59.1,6
+TT-016,Request a medication refill,Medications > Refill Request,Medications > Refill Request,indirect,54.7,2
+TT-016,Find the phone number for your clinic,Locations > My Clinic > Contact Info,Locations > My Clinic > Contact Info,direct,16.6,0
+TT-017,Find your recent lab results,Health Records > Test Results > Laboratory,Health Records > Test Results > Laboratory,direct,15.7,0
+TT-017,Schedule an appointment with Dr. Smith,Appointments > Schedule New > Find Provider,Home > Dashboard > Overview,fail,54.4,5
+TT-017,Update your insurance information,Account > Profile > Insurance,Account > Insurance,indirect,35.0,2
+TT-017,Send a message to your doctor,Messages > Compose New,Home > Dashboard > Overview,fail,80.5,5
+TT-017,View your medication list,Medications > Current Medications,Medications > Current Medications,indirect,48.3,2
+TT-017,Pay an outstanding bill,Billing > Outstanding Balance > Pay Now,Account > Profile > Personal Info,fail,54.4,6
+TT-017,Download your vaccination records,Health Records > Immunizations > Download,Health Records > Summary > Overview,fail,34.0,5
+TT-017,Change your notification preferences,Settings > Notifications > Preferences,Settings > Notifications > Preferences,direct,13.8,0
+TT-017,Request a medication refill,Medications > Refill Request,Medications > Refill Request,direct,20.8,0
+TT-017,Find the phone number for your clinic,Locations > My Clinic > Contact Info,Contact > Clinic Directory,indirect,30.2,3
+TT-018,Find your recent lab results,Health Records > Test Results > Laboratory,Help > FAQ > Search,fail,60.0,2
+TT-018,Schedule an appointment with Dr. Smith,Appointments > Schedule New > Find Provider,Appointments > Schedule New > Find Provider,direct,17.0,0
+TT-018,Update your insurance information,Account > Profile > Insurance,Account > Profile > Insurance,direct,15.5,0
+TT-018,Send a message to your doctor,Messages > Compose New,Home > Dashboard > Overview,fail,77.7,3
+TT-018,View your medication list,Medications > Current Medications,Health Records > Medications,indirect,45.7,2
+TT-018,Pay an outstanding bill,Billing > Outstanding Balance > Pay Now,Billing > Outstanding Balance > Pay Now,direct,21.7,0
+TT-018,Download your vaccination records,Health Records > Immunizations > Download,Account > Profile > Personal Info,fail,49.5,7
+TT-018,Change your notification preferences,Settings > Notifications > Preferences,Help > FAQ > Search,fail,69.4,2
+TT-018,Request a medication refill,Medications > Refill Request,Account > Profile > Personal Info,fail,55.5,2
+TT-018,Find the phone number for your clinic,Locations > My Clinic > Contact Info,Locations > My Clinic > Contact Info,direct,18.9,0
+TT-019,Find your recent lab results,Health Records > Test Results > Laboratory,Health Records > Test Results > Laboratory,direct,8.9,0
+TT-019,Schedule an appointment with Dr. Smith,Appointments > Schedule New > Find Provider,Account > Profile > Personal Info,fail,86.9,4
+TT-019,Update your insurance information,Account > Profile > Insurance,Account > Profile > Insurance,direct,9.0,0
+TT-019,Send a message to your doctor,Messages > Compose New,Messages > Compose New,indirect,12.8,1
+TT-019,View your medication list,Medications > Current Medications,Medications > My Medications,indirect,30.5,3
+TT-019,Pay an outstanding bill,Billing > Outstanding Balance > Pay Now,Billing > Outstanding Balance > Pay Now,direct,15.9,0
+TT-019,Download your vaccination records,Health Records > Immunizations > Download,Health Records > Immunizations > Download,direct,10.7,0
+TT-019,Change your notification preferences,Settings > Notifications > Preferences,Settings > Email Preferences,indirect,50.6,1
+TT-019,Request a medication refill,Medications > Refill Request,Medications > Refill Request,direct,16.5,0
+TT-019,Find the phone number for your clinic,Locations > My Clinic > Contact Info,Locations > My Clinic > Contact Info,direct,24.9,0
+TT-020,Find your recent lab results,Health Records > Test Results > Laboratory,Home > Dashboard > Overview,fail,62.6,6
+TT-020,Schedule an appointment with Dr. Smith,Appointments > Schedule New > Find Provider,Home > Dashboard > Overview,fail,40.4,2
+TT-020,Update your insurance information,Account > Profile > Insurance,Account > Profile > Insurance,direct,14.4,0
+TT-020,Send a message to your doctor,Messages > Compose New,Messages > New Message,indirect,20.7,2
+TT-020,View your medication list,Medications > Current Medications,Home > Dashboard > Overview,fail,50.4,3
+TT-020,Pay an outstanding bill,Billing > Outstanding Balance > Pay Now,Account > Profile > Personal Info,fail,24.7,7
+TT-020,Download your vaccination records,Health Records > Immunizations > Download,My Health > Immunizations,indirect,45.2,4
+TT-020,Change your notification preferences,Settings > Notifications > Preferences,Account > Profile > Personal Info,fail,52.7,3
+TT-020,Request a medication refill,Medications > Refill Request,Medications > Refill Request,direct,7.2,0
+TT-020,Find the phone number for your clinic,Locations > My Clinic > Contact Info,Locations > My Clinic > Contact Info,direct,11.8,0
+TT-021,Find your recent lab results,Health Records > Test Results > Laboratory,Settings > Account > General,fail,57.7,5
+TT-021,Schedule an appointment with Dr. Smith,Appointments > Schedule New > Find Provider,Appointments > Schedule New > Find Provider,direct,16.3,0
+TT-021,Update your insurance information,Account > Profile > Insurance,Account > Profile > Insurance,direct,16.7,0
+TT-021,Send a message to your doctor,Messages > Compose New,Messages > New Message,indirect,30.5,3
+TT-021,View your medication list,Medications > Current Medications,Settings > Account > General,fail,58.3,3
+TT-021,Pay an outstanding bill,Billing > Outstanding Balance > Pay Now,Health Records > Summary > Overview,fail,60.3,6
+TT-021,Download your vaccination records,Health Records > Immunizations > Download,Health Records > Immunizations > Download,direct,8.3,0
+TT-021,Change your notification preferences,Settings > Notifications > Preferences,Health Records > Summary > Overview,fail,71.0,7
+TT-021,Request a medication refill,Medications > Refill Request,Medications > Refill Request,direct,15.7,0
+TT-021,Find the phone number for your clinic,Locations > My Clinic > Contact Info,Contact > Clinic Directory,indirect,20.4,1
+TT-022,Find your recent lab results,Health Records > Test Results > Laboratory,Health Records > Test Results > Laboratory,direct,19.3,0
+TT-022,Schedule an appointment with Dr. Smith,Appointments > Schedule New > Find Provider,Appointments > Schedule New > Find Provider,direct,19.9,0
+TT-022,Update your insurance information,Account > Profile > Insurance,Account > Insurance,indirect,46.2,1
+TT-022,Send a message to your doctor,Messages > Compose New,Messages > Compose New,direct,22.7,0
+TT-022,View your medication list,Medications > Current Medications,Medications > Current Medications,direct,17.9,0
+TT-022,Pay an outstanding bill,Billing > Outstanding Balance > Pay Now,Billing > Outstanding Balance > Pay Now,direct,11.2,0
+TT-022,Download your vaccination records,Health Records > Immunizations > Download,Health Records > Immunizations > Download,direct,16.2,0
+TT-022,Change your notification preferences,Settings > Notifications > Preferences,Settings > Notifications > Preferences,direct,22.0,0
+TT-022,Request a medication refill,Medications > Refill Request,Medications > Request Refill,indirect,49.8,2
+TT-022,Find the phone number for your clinic,Locations > My Clinic > Contact Info,Account > Profile > Personal Info,fail,37.6,2
+TT-023,Find your recent lab results,Health Records > Test Results > Laboratory,Health Records > Lab Results,indirect,38.9,2
+TT-023,Schedule an appointment with Dr. Smith,Appointments > Schedule New > Find Provider,Find a Doctor > Schedule,indirect,34.5,3
+TT-023,Update your insurance information,Account > Profile > Insurance,Settings > Insurance,indirect,33.4,4
+TT-023,Send a message to your doctor,Messages > Compose New,Help > FAQ > Search,fail,50.5,4
+TT-023,View your medication list,Medications > Current Medications,Medications > Current Medications,direct,5,0
+TT-023,Pay an outstanding bill,Billing > Outstanding Balance > Pay Now,Billing > Pay Bill,indirect,67.2,3
+TT-023,Download your vaccination records,Health Records > Immunizations > Download,Help > FAQ > Search,fail,55.2,7
+TT-023,Change your notification preferences,Settings > Notifications > Preferences,Settings > Notifications > Preferences,direct,14.8,0
+TT-023,Request a medication refill,Medications > Refill Request,Account > Profile > Personal Info,fail,58.2,2
+TT-023,Find the phone number for your clinic,Locations > My Clinic > Contact Info,Home > Dashboard > Overview,fail,44.2,3
+TT-024,Find your recent lab results,Health Records > Test Results > Laboratory,Health Records > Test Results > Laboratory,direct,17.4,0
+TT-024,Schedule an appointment with Dr. Smith,Appointments > Schedule New > Find Provider,Health Records > Summary > Overview,fail,63.6,4
+TT-024,Update your insurance information,Account > Profile > Insurance,Home > Dashboard > Overview,fail,74.9,4
+TT-024,Send a message to your doctor,Messages > Compose New,Health Records > Summary > Overview,fail,35.4,5
+TT-024,View your medication list,Medications > Current Medications,Medications > Current Medications,direct,7.6,0
+TT-024,Pay an outstanding bill,Billing > Outstanding Balance > Pay Now,Billing > Outstanding Balance > Pay Now,direct,13.7,0
+TT-024,Download your vaccination records,Health Records > Immunizations > Download,Help > FAQ > Search,fail,71.4,6
+TT-024,Change your notification preferences,Settings > Notifications > Preferences,Settings > Account > General,fail,52.2,3
+TT-024,Request a medication refill,Medications > Refill Request,Home > Dashboard > Overview,fail,61.0,7
+TT-024,Find the phone number for your clinic,Locations > My Clinic > Contact Info,Health Records > Summary > Overview,fail,43.4,3
+TT-025,Find your recent lab results,Health Records > Test Results > Laboratory,Account > Profile > Personal Info,fail,15,6
+TT-025,Schedule an appointment with Dr. Smith,Appointments > Schedule New > Find Provider,Appointments > Schedule New > Find Provider,direct,20.9,0
+TT-025,Update your insurance information,Account > Profile > Insurance,Account > Profile > Insurance,direct,10.9,0
+TT-025,Send a message to your doctor,Messages > Compose New,Messages > New Message,indirect,36.2,3
+TT-025,View your medication list,Medications > Current Medications,Help > FAQ > Search,fail,45.8,5
+TT-025,Pay an outstanding bill,Billing > Outstanding Balance > Pay Now,Account > Billing > Pay,indirect,31.7,2
+TT-025,Download your vaccination records,Health Records > Immunizations > Download,Settings > Account > General,fail,69.2,5
+TT-025,Change your notification preferences,Settings > Notifications > Preferences,Settings > Notifications > Preferences,indirect,30.6,4
+TT-025,Request a medication refill,Medications > Refill Request,Settings > Account > General,fail,54.8,2
+TT-025,Find the phone number for your clinic,Locations > My Clinic > Contact Info,Locations > My Clinic > Contact Info,direct,19.7,0

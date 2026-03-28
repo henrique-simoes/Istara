@@ -1,0 +1,63 @@
+{
+  "type": "MESSAGE",
+  "eventTime": "2026-03-15T14:32:18.247Z",
+  "space": {
+    "name": "spaces/AAAA-BBBB-CCCC",
+    "displayName": "UX Research Team",
+    "type": "ROOM",
+    "spaceType": "SPACE",
+    "singleUserBotDm": false,
+    "threaded": true,
+    "spaceThreadingState": "THREADED_MESSAGES"
+  },
+  "message": {
+    "name": "spaces/AAAA-BBBB-CCCC/messages/012345678901.012345678901",
+    "sender": {
+      "name": "users/109284756382910",
+      "displayName": "Ana Oliveira",
+      "avatarUrl": "https://lh3.googleusercontent.com/a/default-user=s128",
+      "email": "ana.oliveira@healthbridge.com",
+      "type": "HUMAN",
+      "domainId": "healthbridge.com"
+    },
+    "createTime": "2026-03-15T14:32:18.247Z",
+    "text": "Team, I just finished the usability testing session with Participant 08. Key findings:\n\n1. Navigation confusion on the medication refill flow (3 errors)\n2. Positive feedback on the new lab results visualization\n3. SUS score: 62.5 (below our target of 70)\n\nI'll upload the full session recording and notes to the shared drive by EOD. @Research Lead can we schedule a debrief for tomorrow?",
+    "thread": {
+      "name": "spaces/AAAA-BBBB-CCCC/threads/a1b2c3d4e5f6",
+      "retentionSettings": {
+        "state": "PERMANENT"
+      }
+    },
+    "space": {
+      "name": "spaces/AAAA-BBBB-CCCC",
+      "type": "ROOM"
+    },
+    "argumentText": "Team, I just finished the usability testing session with Participant 08. Key findings:\n\n1. Navigation confusion on the medication refill flow (3 errors)\n2. Positive feedback on the new lab results visualization\n3. SUS score: 62.5 (below our target of 70)\n\nI'll upload the full session recording and notes to the shared drive by EOD. @Research Lead can we schedule a debrief for tomorrow?",
+    "annotations": [
+      {
+        "type": "USER_MENTION",
+        "startIndex": 329,
+        "length": 16,
+        "userMention": {
+          "user": {
+            "name": "users/109384756382911",
+            "displayName": "Research Lead",
+            "type": "HUMAN"
+          },
+          "type": "MENTION"
+        }
+      }
+    ],
+    "attachment": [],
+    "formattedText": "Team, I just finished the usability testing session with Participant 08..."
+  },
+  "user": {
+    "name": "users/109284756382910",
+    "displayName": "Ana Oliveira",
+    "avatarUrl": "https://lh3.googleusercontent.com/a/default-user=s128",
+    "email": "ana.oliveira@healthbridge.com",
+    "type": "HUMAN",
+    "domainId": "healthbridge.com"
+  },
+  "configCompleteRedirectUrl": "https://chat.google.com"
+}

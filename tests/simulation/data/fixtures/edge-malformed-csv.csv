@@ -1,0 +1,22 @@
+respondent_id,name,score,comment
+1,Alice Smith,5,Great product
+2,Bob "Bobby" Jones,4,Pretty good overall
+3,Carol Williams,3,"This comment has
+an embedded newline that breaks many parsers"
+4,Dave,missing_header_below
+5,Eve Martinez,,"Empty score field here"
+,Missing ID,4,No respondent ID provided
+7,Frank O'Brien,5,"Uses apostrophe's everywhere"
+8,Grace Lee,4,Has extra fields,unexpected_column,another_extra
+9
+10,Ivy Chen,2,Normal row after malformed one
+11,Jack "The Expert" Davis,5,"Nested ""quotes"" inside quoted field"
+12,Kate,3,Score: 3/5 (with special chars: <>&)
+13,Leo Muller,4,German umlaut: u with umlaut
+14,,5,Both name and id are problematic
+15,Nancy Park,0,"Score is zero, edge case"
+16,Oscar Ruiz,6,Score exceeds expected 1-5 range
+17,Pat Quinn,-1,Negative score
+18,Quinn Reed,4,   Leading and trailing whitespace
+19,Rosa Santos,3,Contains	a	tab	character
+20,Sam Taylor,4,"Final row, properly formatted"

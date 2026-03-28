@@ -1,0 +1,177 @@
+{
+  "name": "response_completed",
+  "filter_type": "survey",
+  "filter_id": "384729156",
+  "event_type": "response_completed",
+  "event_id": "evt_82947361520",
+  "event_datetime": "2026-03-14T16:45:32.000Z",
+  "object_type": "response",
+  "object_id": "12847395021",
+  "resources": {
+    "respondent_id": "12847395021",
+    "survey_id": "384729156",
+    "collector_id": "298471530",
+    "user_id": "91847362",
+    "survey_name": "HealthBridge Portal — Post-Interaction Feedback Q1 2026",
+    "response_web_link": "https://www.surveymonkey.com/r/XYZABC?resp=12847395021"
+  },
+  "response": {
+    "id": "12847395021",
+    "survey_id": "384729156",
+    "collector_id": "298471530",
+    "recipient_id": "",
+    "total_time": 342,
+    "custom_value": "",
+    "edit_url": "https://www.surveymonkey.com/r/XYZABC?resp=12847395021&edit=true",
+    "analyze_url": "https://www.surveymonkey.com/analyze/browse/a1B2c3D4?respondent_id=12847395021",
+    "ip_address": "192.168.1.xxx",
+    "custom_variables": {
+      "user_segment": "returning_patient",
+      "portal_version": "3.2.1",
+      "referral_source": "in_app_prompt"
+    },
+    "response_status": "completed",
+    "collection_mode": "default",
+    "date_created": "2026-03-14T16:39:50.000Z",
+    "date_modified": "2026-03-14T16:45:32.000Z",
+    "pages": [
+      {
+        "id": "pg_01_demographics",
+        "questions": [
+          {
+            "id": "q_01_age",
+            "variable_id": "age_range",
+            "family": "single_choice",
+            "subtype": "vertical",
+            "heading": "What is your age group?",
+            "answers": [
+              {
+                "choice_id": "ch_age_45_54",
+                "text": "45-54"
+              }
+            ]
+          },
+          {
+            "id": "q_02_frequency",
+            "variable_id": "usage_frequency",
+            "family": "single_choice",
+            "subtype": "vertical",
+            "heading": "How often do you use the HealthBridge Patient Portal?",
+            "answers": [
+              {
+                "choice_id": "ch_freq_weekly",
+                "text": "Weekly"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "pg_02_satisfaction",
+        "questions": [
+          {
+            "id": "q_03_overall_sat",
+            "variable_id": "overall_satisfaction",
+            "family": "matrix",
+            "subtype": "rating",
+            "heading": "Please rate your satisfaction with the following aspects of the portal:",
+            "answers": [
+              {
+                "row_id": "row_navigation",
+                "choice_id": "col_4",
+                "text": "Navigation ease",
+                "rating": 4
+              },
+              {
+                "row_id": "row_speed",
+                "choice_id": "col_3",
+                "text": "Page load speed",
+                "rating": 3
+              },
+              {
+                "row_id": "row_design",
+                "choice_id": "col_4",
+                "text": "Visual design",
+                "rating": 4
+              },
+              {
+                "row_id": "row_mobile",
+                "choice_id": "col_2",
+                "text": "Mobile experience",
+                "rating": 2
+              },
+              {
+                "row_id": "row_accessibility",
+                "choice_id": "col_3",
+                "text": "Accessibility",
+                "rating": 3
+              }
+            ]
+          },
+          {
+            "id": "q_04_nps",
+            "variable_id": "nps_score",
+            "family": "single_choice",
+            "subtype": "vertical",
+            "heading": "On a scale of 0-10, how likely are you to recommend the HealthBridge Patient Portal to others?",
+            "answers": [
+              {
+                "choice_id": "ch_nps_6",
+                "text": "6"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "pg_03_open_ended",
+        "questions": [
+          {
+            "id": "q_05_positive",
+            "variable_id": "positive_feedback",
+            "family": "open_ended",
+            "subtype": "essay",
+            "heading": "What do you like most about the portal?",
+            "answers": [
+              {
+                "text": "The secure messaging feature is excellent. I can communicate with my doctor without having to call the office and wait on hold. The response time is usually within a few hours, which is much better than I expected. I also appreciate being able to see my lab results before my follow-up appointment so I can prepare questions."
+              }
+            ]
+          },
+          {
+            "id": "q_06_negative",
+            "variable_id": "negative_feedback",
+            "family": "open_ended",
+            "subtype": "essay",
+            "heading": "What frustrates you the most about the portal?",
+            "answers": [
+              {
+                "text": "The appointment scheduling is terrible. I can never find available slots that work for me, and when I do find one, the system sometimes loses my selection when I go to confirm. Last month I thought I had booked an appointment but it never showed up on my calendar. Also, the mobile version of the site is nearly unusable — buttons are too small, text overlaps, and the calendar widget doesn't work properly on my phone."
+              }
+            ]
+          },
+          {
+            "id": "q_07_suggestion",
+            "variable_id": "improvement_suggestion",
+            "family": "open_ended",
+            "subtype": "essay",
+            "heading": "If you could change one thing about the portal, what would it be?",
+            "answers": [
+              {
+                "text": "Add a proper mobile app instead of just a mobile website. An app could send push notifications for appointment reminders, new lab results, and message replies. It would also be much faster and more reliable than the current mobile web experience."
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "metadata": {
+      "respondent": {
+        "email": "",
+        "first_name": "",
+        "last_name": ""
+      },
+      "contact": {}
+    }
+  }
+}

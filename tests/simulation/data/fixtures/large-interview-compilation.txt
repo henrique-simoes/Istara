@@ -1,0 +1,2478 @@
+==============================================================================
+     INTERVIEW COMPILATION — UX RESEARCH STUDY 2026-Q1
+     HealthBridge Patient Portal & Productivity Tools
+     15 Participant Interviews | Collected Jan-Mar 2026
+==============================================================================
+
+TABLE OF CONTENTS
+----------------------------------------
+  Interview #01: Sarah Chen (P01) — Product Designer
+  Interview #02: Marcus Williams (P02) — Engineering Manager
+  Interview #03: Elena Rodriguez (P03) — UX Researcher
+  Interview #04: James Okafor (P04) — VP of Operations
+  Interview #05: Aisha Patel (P05) — Junior Developer
+  Interview #06: Robert Kim (P06) — Retired Teacher
+  Interview #07: Lisa Fernandez (P07) — Marketing Director
+  Interview #08: David Thompson (P08) — Freelance Consultant
+  Interview #09: Fatima Al-Hassan (P09) — Data Scientist
+  Interview #10: Thomas Mueller (P10) — CFO
+  Interview #11: Priya Sharma (P11) — Content Strategist
+  Interview #12: Carlos Mendes (P12) — Small Business Owner
+  Interview #13: Jennifer O'Brien (P13) — Nurse Practitioner
+  Interview #14: Kwame Asante (P14) — Product Manager
+  Interview #15: Marina Volkov (P15) — HR Director
+----------------------------------------
+
+==============================================================================
+INTERVIEW TRANSCRIPT #01
+Participant: Sarah Chen (P01)
+Role: Product Designer at TechFlow
+Date: 2026-02-13
+Duration: 42 minutes
+Interviewer: Research Team
+Context: mobile app redesign project
+==============================================================================
+
+[12:15] Interviewer:
+  Thank you for joining us today. Could you start by telling me a bit about your role and how you typically use mobile app redesign project in your daily work?
+
+[12:16] Sarah Chen:
+    Sure, thanks for having me. I'm a Product Designer at TechFlow and I've
+  been in this role for about 8 years now. My daily work involves coordinating
+  between design and engineering teams. I typically spend about 2 hours a day
+  using the tool, mostly for communicating with clients and documenting
+  decisions. It's become pretty central to how our team operates.
+
+[12:18] Interviewer:
+  Can you walk me through a typical task you perform with the tool? What does the process look like from start to finish?
+
+[12:21] Sarah Chen:
+    Let me walk you through my most common task. I start by logging in — which
+  by the way takes longer than it should because of the that particular
+  aspect. Once I'm in, I go to dashboard and look for messages. Then I need to
+  assign tasks to team members and set due dates. The tricky part is when I
+  need to archive the completed items and move to the next batch because the
+  interface doesn't make it obvious how to do that. I usually end up going
+  back and forth between two or three screens.
+
+[12:22] Interviewer:
+  When you say that, what does that look like in practice?
+
+[12:24] Sarah Chen:
+    Yeah, so for example last Tuesday I needed to generate a report for our
+  weekly standup. Normally this takes about five minutes, but the filters
+  weren't working correctly and I spent almost twenty minutes getting the
+  right data set. I ended up just exporting everything and filtering in a
+  spreadsheet.
+
+[12:27] Interviewer:
+  When you mentioned the error messages, can you tell me more about that experience? What exactly happens and how does it make you feel?
+
+[12:30] Sarah Chen:
+    Yeah, that's a real pain point for me. So what happens is the search
+  function returns results that don't match my query at all. This typically
+  occurs about several times a week. When it happens, I feel frustrated
+  because other people depend on my work being accurate and timely. I've tried
+  refreshing the page and starting over to get around it, but it's not ideal.
+  I know other people on my team feel the same way because we've discussed it
+  in our retrospectives.
+
+[12:35] Interviewer:
+  How does this compare to other tools you've used for similar purposes? What stands out as different?
+
+[12:36] Sarah Chen:
+    Before this, we were using ClickUp which was {comp1_assessment}. We
+  switched because that particular aspect. The biggest improvement has been
+  that particular aspect. But I do miss that particular aspect from Notion. I
+  also briefly tried Figma but found it {comp2_assessment}. What really sets
+  this tool apart is that particular aspect.
+
+[12:37] Interviewer:
+  Did anyone else on your team experience the same thing?
+
+[12:38] Sarah Chen:
+    It definitely slowed things down. Our team has a target of completing
+  these tasks within two hours, and on days when the tool is acting up, we can
+  barely finish within four. That has a cascading effect on everything else we
+  need to do that day.
+
+[12:41] Interviewer:
+  If you could change one thing about the tool, what would it be and why?
+
+[12:44] Sarah Chen:
+    Hmm, just one thing? That's tough. I think the most impactful change would
+  be that particular aspect. The reason is that I've already reported this and
+  nothing has changed. Currently I have to that particular aspect which is
+  tedious and error-prone. If this were improved, it would benefit not just me
+  but our entire team of 4 people who all deal with the same issue.
+
+[12:45] Interviewer:
+  That's interesting. Can you give me a specific example?
+
+[12:47] Sarah Chen:
+    Actually yes. I brought it up in our last team meeting and three other
+  people said they had the exact same issue. One person had even created a
+  detailed bug report with screenshots. So it's not just me being picky — it's
+  a widespread problem that affects our whole department.
+
+[12:50] Interviewer:
+  Tell me about a time when the tool really helped you accomplish something important. What happened?
+
+[12:53] Sarah Chen:
+    Yes, actually. During our that particular aspect, I needed to that
+  particular aspect. The template functionality made it possible to that
+  particular aspect. Without the tool, I would have had to that particular
+  aspect, which would have been much slower. It was one of those experiences
+  that justified the investment in the tool.
+
+[12:54] Interviewer:
+  Could you elaborate on that a bit more?
+
+[12:55] Sarah Chen:
+    It definitely slowed things down. Our team has a target of completing
+  these tasks within two hours, and on days when the tool is acting up, we can
+  barely finish within four. That has a cascading effect on everything else we
+  need to do that day.
+
+[13:00] Interviewer:
+  How do you typically get help when you're stuck? What resources do you turn to?
+
+[13:01] Sarah Chen:
+    I have a few go-to strategies. First, I try the search function within the
+  tool to see if there's a relevant help article. The results are hit-or-miss
+  — sometimes I find exactly what I need, other times the search returns
+  completely irrelevant content. Then I'll check the knowledge base or watch a
+  YouTube tutorial. Our team also has a shared document where we document
+  common issues and solutions, which has been really valuable. Support is my
+  last resort because that particular aspect.
+
+[13:02] Interviewer:
+  Did anyone else on your team experience the same thing?
+
+[13:03] Sarah Chen:
+    It definitely slowed things down. Our team has a target of completing
+  these tasks within two hours, and on days when the tool is acting up, we can
+  barely finish within four. That has a cascading effect on everything else we
+  need to do that day.
+
+[13:07] Interviewer:
+  What's your experience with the mobile version of the tool, if you've used it?
+
+[13:08] Sarah Chen:
+    The mobile experience is actually one of the stronger aspects. I use it a
+  few, mainly for checking notifications and quick updates. The responsive
+  design works well for the notification system and quick actions. My main
+  complaint is complex features are hidden or unavailable. Also, the
+  notifications from the app can be that particular aspect. But overall it's
+  usable and I appreciate having the option when I'm away from my desk.
+
+[13:09] Interviewer:
+  When you say that, what does that look like in practice?
+
+[13:11] Sarah Chen:
+    Yeah, so for example last Tuesday I needed to generate a report for our
+  weekly standup. Normally this takes about five minutes, but the filters
+  weren't working correctly and I spent almost twenty minutes getting the
+  right data set. I ended up just exporting everything and filtering in a
+  spreadsheet.
+
+[13:15] Interviewer:
+  How has using this tool affected your team's collaboration and communication?
+
+[13:18] Sarah Chen:
+    Honestly, it's been transformative for certain workflows and neutral for
+  others. The {feature1} feature has completely changed how we {process1} — it
+  used to take us that particular aspect and now it takes that particular
+  aspect. But the {feature2} feature hasn't lived up to expectations. Our team
+  tried using it for that particular aspect but found it too that particular
+  aspect and went back to using that particular aspect.
+
+[13:21] Interviewer:
+  Looking ahead, what features or improvements would make the biggest difference for you over the next six months?
+
+[13:24] Sarah Chen:
+    Better automated reporting with scheduled delivery is critical. We're
+  losing 15 hours per week because of the current limitations. After that, I'd
+  want advanced analytics with predictive capabilities — especially with that
+  particular aspect, this is becoming table stakes. And a mobile app that
+  matches the desktop experience would be the cherry on top. I've actually
+  submitted all three as feature requests on the feedback portal, so hopefully
+  the product team is listening.
+
+[13:25] Interviewer:
+  That's interesting. Can you give me a specific example?
+
+[13:27] Sarah Chen:
+    Yeah, so for example last Tuesday I needed to generate a report for our
+  weekly standup. Normally this takes about five minutes, but the filters
+  weren't working correctly and I spent almost twenty minutes getting the
+  right data set. I ended up just exporting everything and filtering in a
+  spreadsheet.
+
+[13:30] Interviewer:
+  Is there anything else you'd like to share that we haven't covered?
+
+[13:32] Sarah Chen:
+    Just one more thing — I want to emphasize that despite my criticisms, I do
+  think the tool is one of the better options available. The team behind it
+  seems transparent about their roadmap and the last few updates have shown
+  they're listening to user feedback. I'm optimistic about where it's heading.
+  Thank you for taking the time to hear my perspective.
+
+[END OF INTERVIEW — P01]
+
+
+==============================================================================
+INTERVIEW TRANSCRIPT #02
+Participant: Marcus Williams (P02)
+Role: Engineering Manager at DataSync Corp
+Date: 2026-02-04
+Duration: 37 minutes
+Interviewer: Research Team
+Context: team collaboration tools
+==============================================================================
+
+[14:15] Interviewer:
+  Thank you for joining us today. Could you start by telling me a bit about your role and how you typically use team collaboration tools in your daily work?
+
+[14:18] Marcus Williams:
+    Of course. As a Engineering Manager, my main responsibilities include
+  overseeing the design system and conducting user research. I started using
+  the tool about 3 months ago when the team outgrew our spreadsheet-based
+  system. Now it's become an essential part of my workflow, especially for
+  analyzing data trends and creating visualizations.
+
+[14:19] Interviewer:
+  How did that affect your overall workflow?
+
+[14:21] Marcus Williams:
+    It definitely slowed things down. Our team has a target of completing
+  these tasks within two hours, and on days when the tool is acting up, we can
+  barely finish within four. That has a cascading effect on everything else we
+  need to do that day.
+
+[14:26] Interviewer:
+  Can you walk me through a typical task you perform with the tool? What does the process look like from start to finish?
+
+[14:28] Marcus Williams:
+    Let me walk you through my most common task. I start by logging in — which
+  by the way takes longer than it should because of the that particular
+  aspect. Once I'm in, I go to reports and look for updates. Then I need to
+  review the pending items and update their status. The tricky part is when I
+  need to share it with the relevant team members for review because the
+  interface doesn't make it obvious how to do that. I usually end up going
+  back and forth between two or three screens.
+
+[14:33] Interviewer:
+  When you mentioned the error messages, can you tell me more about that experience? What exactly happens and how does it make you feel?
+
+[14:34] Marcus Williams:
+    Sure. So the issue is that the search function returns results that don't
+  match my query at all. It's been like this since that particular aspect. The
+  thing that really bothers me is that particular aspect. I've reported it to
+  support twice and both times they said it was a known issue and would be
+  fixed in the next release, but it's still there. I've developed a workaround
+  where I refreshing the page and starting over, but it adds about 10 minutes
+  to the task.
+
+[14:38] Interviewer:
+  How does this compare to other tools you've used for similar purposes? What stands out as different?
+
+[14:39] Marcus Williams:
+    I've tried a few alternatives. Basecamp was too {comp1_issue} for our
+  needs. Linear was good but {comp2_issue}. This tool hits a sweet spot in
+  terms of that particular aspect, although I think it could learn from
+  Basecamp's approach to reporting. The pricing is also more reasonable than
+  the alternatives, which matters for us as a that particular aspect company.
+
+[14:40] Interviewer:
+  Could you elaborate on that a bit more?
+
+[14:42] Marcus Williams:
+    It definitely slowed things down. Our team has a target of completing
+  these tasks within two hours, and on days when the tool is acting up, we can
+  barely finish within four. That has a cascading effect on everything else we
+  need to do that day.
+
+[14:46] Interviewer:
+  If you could change one thing about the tool, what would it be and why?
+
+[14:47] Marcus Williams:
+    I would add automation. It's something I've been requesting for months.
+  The current workaround is exporting the data and working in a spreadsheet
+  but it's clunky and unreliable. Having native support for this would be
+  transformative because that particular aspect. I actually checked the
+  feature request board and it's the second most voted request, so clearly I'm
+  not alone in wanting this.
+
+[14:50] Interviewer:
+  Tell me about a time when the tool really helped you accomplish something important. What happened?
+
+[14:52] Marcus Williams:
+    Last month we had a that particular aspect and I needed to that particular
+  aspect quickly. The tool's reporting feature was absolutely crucial. I was
+  able to that particular aspect in under 10 minutes, which normally would
+  have taken that particular aspect. It was a real 'this is why we pay for
+  this tool' moment. The team was really grateful.
+
+[14:55] Interviewer:
+  How do you typically get help when you're stuck? What resources do you turn to?
+
+[14:57] Marcus Williams:
+    I have a few go-to strategies. First, I try the search function within the
+  tool to see if there's a relevant help article. The results are hit-or-miss
+  — sometimes I find exactly what I need, other times the search returns
+  completely irrelevant content. Then I'll check YouTube tutorials or watch a
+  YouTube tutorial. Our team also has a shared document where we document
+  common issues and solutions, which has been really valuable. Support is my
+  last resort because that particular aspect.
+
+[14:58] Interviewer:
+  When you say that, what does that look like in practice?
+
+[14:59] Marcus Williams:
+    In practice, it means I've developed a whole set of habits around avoiding
+  the problematic parts of the interface. I know which buttons to avoid, which
+  workflows to use instead, and which features are reliable. It shouldn't be
+  this way, but after using the tool for months you learn to navigate around
+  the rough edges.
+
+[15:01] Interviewer:
+  What's your experience with the mobile version of the tool, if you've used it?
+
+[15:04] Marcus Williams:
+    I tried the mobile app when it first launched but stopped using it after
+  that particular aspect because I've already reported this and nothing has
+  changed. The layout was that particular aspect and I couldn't that
+  particular aspect. I've heard they've updated it since then, but I haven't
+  given it another chance. For now, if I need to access the tool on the go, I
+  just use the mobile browser which is that particular aspect.
+
+[15:07] Interviewer:
+  How has using this tool affected your team's collaboration and communication?
+
+[15:10] Marcus Williams:
+    The collaboration features are adequate but not exceptional. We use the
+  template for day-to-day coordination, which works fine. But when we need to
+  do that particular aspect, we still fall back to that particular aspect
+  because the tool's version of that functionality is that particular aspect.
+  I think if they invested more in the real-time collaboration aspects, it
+  could replace at least two other tools we currently use.
+
+[15:14] Interviewer:
+  Looking ahead, what features or improvements would make the biggest difference for you over the next six months?
+
+[15:17] Marcus Williams:
+    For me, the number one priority would be automated reporting with
+  scheduled delivery. We're planning to that particular aspect and without
+  this feature, we'll likely need to that particular aspect. Beyond that, I'd
+  love to see advanced analytics with predictive capabilities and keyboard
+  shortcuts for power users. The competitive landscape is changing fast and
+  tools like that particular aspect are already offering that particular
+  aspect, so there's pressure to keep up.
+
+[15:19] Interviewer:
+  Is there anything else you'd like to share that we haven't covered?
+
+[15:20] Marcus Williams:
+    One thing I forgot to mention — the accessibility of the tool needs
+  significant improvement for screen reader users. Also, the pricing model
+  could use some rethinking. Currently we pay per that particular aspect which
+  means that particular aspect. A more flexible pricing model would help
+  organizations like ours that that particular aspect. Other than that, I
+  think this was a thorough conversation. Thanks for including me.
+
+[END OF INTERVIEW — P02]
+
+
+==============================================================================
+INTERVIEW TRANSCRIPT #03
+Participant: Elena Rodriguez (P03)
+Role: UX Researcher at HealthFirst
+Date: 2026-03-24
+Duration: 41 minutes
+Interviewer: Research Team
+Context: patient portal usability
+==============================================================================
+
+[11:45] Interviewer:
+  Thank you for joining us today. Could you start by telling me a bit about your role and how you typically use patient portal usability in your daily work?
+
+[11:47] Elena Rodriguez:
+    Happy to be here. I work as a UX Researcher at HealthFirst. My typical day
+  starts with checking the task board and then I move into communicating with
+  clients and documenting decisions. I'd say the tool is moderately integrated
+  into my workflow — there are some things I love about it and some things
+  that still frustrate me.
+
+[11:51] Interviewer:
+  Can you walk me through a typical task you perform with the tool? What does the process look like from start to finish?
+
+[11:52] Elena Rodriguez:
+    A typical task for me involves create a new entry and fill in the required
+  fields. I do this maybe 2-3 times a day. The process starts at the main
+  projects page where I can see an overview. Then I drill down into the
+  details by clicking on specific tasks. From there I archive the completed
+  items and move to the next batch. What I find frustrating is that there's no
+  way to that particular aspect, so I end up doing a lot of manual work that
+  could probably be automated.
+
+[11:53] Interviewer:
+  Could you elaborate on that a bit more?
+
+[11:55] Elena Rodriguez:
+    In practice, it means I've developed a whole set of habits around avoiding
+  the problematic parts of the interface. I know which buttons to avoid, which
+  workflows to use instead, and which features are reliable. It shouldn't be
+  this way, but after using the tool for months you learn to navigate around
+  the rough edges.
+
+[11:59] Interviewer:
+  When you mentioned the mobile experience, can you tell me more about that experience? What exactly happens and how does it make you feel?
+
+[12:02] Elena Rodriguez:
+    Right, so that happens when we evaluated several options and this scored
+  highest. The system the search function returns results that don't match my
+  query at all. It's not just annoying — it actually impacts my productivity
+  because I have to that particular aspect. I'd estimate I lose about 45
+  minutes per day dealing with this. My colleague suggested using a different
+  browser but it only works some of the time.
+
+[12:07] Interviewer:
+  How does this compare to other tools you've used for similar purposes? What stands out as different?
+
+[12:09] Elena Rodriguez:
+    I've used Monday.com and Linear before switching to this tool. Compared to
+  Jira, this is definitely {comparison1}. The thing Monday.com did better was
+  {strength1}, but this tool wins on {strength2}. Compared to Linear, it's a
+  mixed bag — the interface is cleaner here but Figma had better reporting.
+  Overall I'd say this is the best option available right now, but there's
+  room for improvement.
+
+[12:12] Interviewer:
+  If you could change one thing about the tool, what would it be and why?
+
+[12:14] Elena Rodriguez:
+    Hmm, just one thing? That's tough. I think the most impactful change would
+  be that particular aspect. The reason is that I've already reported this and
+  nothing has changed. Currently I have to that particular aspect which is
+  tedious and error-prone. If this were improved, it would benefit not just me
+  but our entire team of 6 people who all deal with the same issue.
+
+[12:19] Interviewer:
+  Tell me about a time when the tool really helped you accomplish something important. What happened?
+
+[12:20] Elena Rodriguez:
+    Last month we had a that particular aspect and I needed to that particular
+  aspect quickly. The tool's reporting feature was absolutely crucial. I was
+  able to that particular aspect in under 15 minutes, which normally would
+  have taken that particular aspect. It was a real 'this is why we pay for
+  this tool' moment. The team was really grateful.
+
+[12:22] Interviewer:
+  How do you typically get help when you're stuck? What resources do you turn to?
+
+[12:25] Elena Rodriguez:
+    First I'll try to figure it out myself by that particular aspect. If that
+  doesn't work, I check the the knowledge base. The documentation is quite
+  good — that particular aspect. If I'm still stuck, I'll ask a colleague or
+  post in our team's that particular aspect. As a last resort, I contact
+  support, which usually takes a few hours to get a response. I wish the
+  in-app help was better because right now it's basically that particular
+  aspect.
+
+[12:30] Interviewer:
+  What's your experience with the mobile version of the tool, if you've used it?
+
+[12:31] Elena Rodriguez:
+    I tried the mobile app when it first launched but stopped using it after
+  that particular aspect because I'm on a deadline and can't afford to lose
+  time to tool issues. The layout was that particular aspect and I couldn't
+  that particular aspect. I've heard they've updated it since then, but I
+  haven't given it another chance. For now, if I need to access the tool on
+  the go, I just use the mobile browser which is that particular aspect.
+
+[12:35] Interviewer:
+  How has using this tool affected your team's collaboration and communication?
+
+[12:38] Elena Rodriguez:
+    It's had a mixed impact on our collaboration. Before we adopted the tool,
+  we were relying on tribal knowledge that wasn't documented anywhere. Now we
+  can that particular aspect. The biggest improvement has been in that
+  particular aspect. However, there are still some gaps — for example, that
+  particular aspect. I'd say our team communication has improved by about 60%
+  since we started using it, though some of that improvement came from other
+  changes we made around the same time.
+
+[12:39] Interviewer:
+  That's interesting. Can you give me a specific example?
+
+[12:40] Elena Rodriguez:
+    It definitely slowed things down. Our team has a target of completing
+  these tasks within two hours, and on days when the tool is acting up, we can
+  barely finish within four. That has a cascading effect on everything else we
+  need to do that day.
+
+[12:42] Interviewer:
+  Looking ahead, what features or improvements would make the biggest difference for you over the next six months?
+
+[12:43] Elena Rodriguez:
+    For me, the number one priority would be customizable dashboards with
+  drag-and-drop widgets. We're planning to that particular aspect and without
+  this feature, we'll likely need to that particular aspect. Beyond that, I'd
+  love to see native integration with our existing tools and keyboard
+  shortcuts for power users. The competitive landscape is changing fast and
+  tools like that particular aspect are already offering that particular
+  aspect, so there's pressure to keep up.
+
+[12:44] Interviewer:
+  How did that affect your overall workflow?
+
+[12:45] Elena Rodriguez:
+    It definitely slowed things down. Our team has a target of completing
+  these tasks within two hours, and on days when the tool is acting up, we can
+  barely finish within four. That has a cascading effect on everything else we
+  need to do that day.
+
+[12:48] Interviewer:
+  Is there anything else you'd like to share that we haven't covered?
+
+[12:49] Elena Rodriguez:
+    Just one more thing — I want to emphasize that despite my criticisms, I do
+  think the tool is heading in the right direction. The team behind it seems
+  responsive to feedback and the last few updates have shown they're listening
+  to user feedback. I'm optimistic about where it's heading. Thank you for
+  taking the time to hear my perspective.
+
+[END OF INTERVIEW — P03]
+
+
+==============================================================================
+INTERVIEW TRANSCRIPT #04
+Participant: James Okafor (P04)
+Role: VP of Operations at LogiRoute
+Date: 2026-01-18
+Duration: 46 minutes
+Interviewer: Research Team
+Context: supply chain dashboard
+==============================================================================
+
+[12:15] Interviewer:
+  Thank you for joining us today. Could you start by telling me a bit about your role and how you typically use supply chain dashboard in your daily work?
+
+[12:18] James Okafor:
+    Happy to be here. I work as a VP of Operations at LogiRoute. My typical
+  day starts with checking notifications and then I move into tracking project
+  progress and assigning tasks. I'd say the tool is moderately integrated into
+  my workflow — there are some things I love about it and some things that
+  still frustrate me.
+
+[12:21] Interviewer:
+  Can you walk me through a typical task you perform with the tool? What does the process look like from start to finish?
+
+[12:22] James Okafor:
+    A typical task for me involves export the results and format them for the
+  stakeholder presentation. I do this maybe 2-3 times a day. The process
+  starts at the main projects page where I can see an overview. Then I drill
+  down into the details by clicking on specific alerts. From there I
+  cross-reference it with data from another system. What I find frustrating is
+  that there's no way to that particular aspect, so I end up doing a lot of
+  manual work that could probably be automated.
+
+[12:25] Interviewer:
+  When you mentioned the mobile experience, can you tell me more about that experience? What exactly happens and how does it make you feel?
+
+[12:28] James Okafor:
+    Right, so that happens when the team outgrew our spreadsheet-based system.
+  The system the page freezes for about 10 seconds whenever I try to filter a
+  large dataset. It's not just annoying — it actually impacts my productivity
+  because I have to that particular aspect. I'd estimate I lose about 15
+  minutes per day dealing with this. My colleague suggested exporting the data
+  and working in a spreadsheet but it only works some of the time.
+
+[12:33] Interviewer:
+  How does this compare to other tools you've used for similar purposes? What stands out as different?
+
+[12:34] James Okafor:
+    Before this, we were using Asana which was {comp1_assessment}. We switched
+  because that particular aspect. The biggest improvement has been that
+  particular aspect. But I do miss that particular aspect from Basecamp. I
+  also briefly tried Trello but found it {comp2_assessment}. What really sets
+  this tool apart is that particular aspect.
+
+[12:35] Interviewer:
+  Did anyone else on your team experience the same thing?
+
+[12:36] James Okafor:
+    Yeah, so for example last Tuesday I needed to generate a report for our
+  weekly standup. Normally this takes about five minutes, but the filters
+  weren't working correctly and I spent almost twenty minutes getting the
+  right data set. I ended up just exporting everything and filtering in a
+  spreadsheet.
+
+[12:41] Interviewer:
+  If you could change one thing about the tool, what would it be and why?
+
+[12:44] James Okafor:
+    That's easy — I would completely redesign the integration experience.
+  Right now it requires that particular aspect steps and involves that
+  particular aspect. If I could wave a magic wand, I'd make it so you can that
+  particular aspect. This would save me at least 3 hours per week and I think
+  it would make the biggest difference for most users.
+
+[12:46] Interviewer:
+  Tell me about a time when the tool really helped you accomplish something important. What happened?
+
+[12:47] James Okafor:
+    There was this one time when we discovered a critical data issue right
+  before a presentation. We were under a tight deadline and needed to that
+  particular aspect. I was able to use the automation to that particular
+  aspect. It probably saved us 8 hours compared to doing it manually. My
+  manager was impressed and it actually became a template that our whole
+  department now uses. That's when I really started to appreciate the tool.
+
+[12:49] Interviewer:
+  How do you typically get help when you're stuck? What resources do you turn to?
+
+[12:52] James Okafor:
+    I have a few go-to strategies. First, I try the search function within the
+  tool to see if there's a relevant help article. The results are hit-or-miss
+  — sometimes I find exactly what I need, other times the search returns
+  completely irrelevant content. Then I'll check the knowledge base or watch a
+  YouTube tutorial. Our team also has a shared document where we document
+  common issues and solutions, which has been really valuable. Support is my
+  last resort because that particular aspect.
+
+[12:55] Interviewer:
+  What's your experience with the mobile version of the tool, if you've used it?
+
+[12:56] James Okafor:
+    I use the mobile version daily. It's improving but not great. The main
+  things I do on mobile are reviewing dashboards on the go. What works well is
+  the notification system and quick actions. What doesn't work well is the
+  navigation menu is hard to reach one-handed. I've had the app crash that
+  particular aspect, which is that particular aspect. If I had to rate the
+  mobile experience compared to desktop, I'd give it a 8 out of 10.
+
+[12:58] Interviewer:
+  How has using this tool affected your team's collaboration and communication?
+
+[12:59] James Okafor:
+    Honestly, it's been transformative for certain workflows and neutral for
+  others. The {feature1} feature has completely changed how we {process1} — it
+  used to take us that particular aspect and now it takes that particular
+  aspect. But the {feature2} feature hasn't lived up to expectations. Our team
+  tried using it for that particular aspect but found it too that particular
+  aspect and went back to using that particular aspect.
+
+[13:00] Interviewer:
+  When you say that, what does that look like in practice?
+
+[13:02] James Okafor:
+    In practice, it means I've developed a whole set of habits around avoiding
+  the problematic parts of the interface. I know which buttons to avoid, which
+  workflows to use instead, and which features are reliable. It shouldn't be
+  this way, but after using the tool for months you learn to navigate around
+  the rough edges.
+
+[13:04] Interviewer:
+  Looking ahead, what features or improvements would make the biggest difference for you over the next six months?
+
+[13:06] James Okafor:
+    For me, the number one priority would be customizable dashboards with
+  drag-and-drop widgets. We're planning to that particular aspect and without
+  this feature, we'll likely need to that particular aspect. Beyond that, I'd
+  love to see native integration with our existing tools and dark mode across
+  the entire interface. The competitive landscape is changing fast and tools
+  like that particular aspect are already offering that particular aspect, so
+  there's pressure to keep up.
+
+[13:08] Interviewer:
+  Is there anything else you'd like to share that we haven't covered?
+
+[13:10] James Okafor:
+    One thing I forgot to mention — the performance during peak hours really
+  needs attention. Also, the pricing model could use some rethinking.
+  Currently we pay per that particular aspect which means that particular
+  aspect. A more flexible pricing model would help organizations like ours
+  that that particular aspect. Other than that, I think this was a thorough
+  conversation. Thanks for including me.
+
+[END OF INTERVIEW — P04]
+
+
+==============================================================================
+INTERVIEW TRANSCRIPT #05
+Participant: Aisha Patel (P05)
+Role: Junior Developer at StartupLabs
+Date: 2026-01-17
+Duration: 41 minutes
+Interviewer: Research Team
+Context: developer onboarding experience
+==============================================================================
+
+[15:00] Interviewer:
+  Thank you for joining us today. Could you start by telling me a bit about your role and how you typically use developer onboarding experience in your daily work?
+
+[15:01] Aisha Patel:
+    Happy to be here. I work as a Junior Developer at StartupLabs. My typical
+  day starts with checking the dashboard and then I move into managing team
+  workloads and deadlines. I'd say the tool is moderately integrated into my
+  workflow — there are some things I love about it and some things that still
+  frustrate me.
+
+[15:03] Interviewer:
+  Can you walk me through a typical task you perform with the tool? What does the process look like from start to finish?
+
+[15:05] Aisha Patel:
+    So the typical workflow would be: first I open the dashboard and check for
+  any new notifications. Then I navigate to the dashboard section to review
+  what needs my attention. From there, I usually need to filter the data by
+  date range and department, which involves clicking through about 7 screens.
+  Then I share it with the relevant team members for review. The whole process
+  takes roughly 5 minutes on a good day, but it can stretch to 20 minutes when
+  the system is slow or I hit an unexpected issue.
+
+[15:09] Interviewer:
+  When you mentioned the search problems, can you tell me more about that experience? What exactly happens and how does it make you feel?
+
+[15:12] Aisha Patel:
+    Sure. So the issue is that the page freezes for about 10 seconds whenever
+  I try to filter a large dataset. It's been like this since that particular
+  aspect. The thing that really bothers me is that particular aspect. I've
+  reported it to support twice and both times they said it was a known issue
+  and would be fixed in the next release, but it's still there. I've developed
+  a workaround where I refreshing the page and starting over, but it adds
+  about 10 minutes to the task.
+
+[15:17] Interviewer:
+  How does this compare to other tools you've used for similar purposes? What stands out as different?
+
+[15:18] Aisha Patel:
+    I've used ClickUp and Figma before switching to this tool. Compared to
+  Asana, this is definitely {comparison1}. The thing Monday.com did better was
+  {strength1}, but this tool wins on {strength2}. Compared to Linear, it's a
+  mixed bag — the interface is cleaner here but Figma had better integration.
+  Overall I'd say this is the best option available right now, but there's
+  room for improvement.
+
+[15:19] Interviewer:
+  Did anyone else on your team experience the same thing?
+
+[15:20] Aisha Patel:
+    Yeah, so for example last Tuesday I needed to generate a report for our
+  weekly standup. Normally this takes about five minutes, but the filters
+  weren't working correctly and I spent almost twenty minutes getting the
+  right data set. I ended up just exporting everything and filtering in a
+  spreadsheet.
+
+[15:25] Interviewer:
+  If you could change one thing about the tool, what would it be and why?
+
+[15:26] Aisha Patel:
+    I would add reporting. It's something I've been requesting for months. The
+  current workaround is refreshing the page and starting over but it's clunky
+  and unreliable. Having native support for this would be transformative
+  because that particular aspect. I actually checked the feature request board
+  and it's the second most voted request, so clearly I'm not alone in wanting
+  this.
+
+[15:29] Interviewer:
+  Tell me about a time when the tool really helped you accomplish something important. What happened?
+
+[15:30] Aisha Patel:
+    Last month we had a that particular aspect and I needed to that particular
+  aspect quickly. The tool's template feature was absolutely crucial. I was
+  able to that particular aspect in under 20 minutes, which normally would
+  have taken that particular aspect. It was a real 'this is why we pay for
+  this tool' moment. The team was really grateful.
+
+[15:31] Interviewer:
+  When you say that, what does that look like in practice?
+
+[15:32] Aisha Patel:
+    Actually yes. I brought it up in our last team meeting and three other
+  people said they had the exact same issue. One person had even created a
+  detailed bug report with screenshots. So it's not just me being picky — it's
+  a widespread problem that affects our whole department.
+
+[15:34] Interviewer:
+  How do you typically get help when you're stuck? What resources do you turn to?
+
+[15:35] Aisha Patel:
+    First I'll try to figure it out myself by that particular aspect. If that
+  doesn't work, I check the the community forum. The documentation is outdated
+  — that particular aspect. If I'm still stuck, I'll ask a colleague or post
+  in our team's that particular aspect. As a last resort, I contact support,
+  which usually takes up to a week to get a response. I wish the in-app help
+  was better because right now it's basically that particular aspect.
+
+[15:37] Interviewer:
+  What's your experience with the mobile version of the tool, if you've used it?
+
+[15:38] Aisha Patel:
+    I tried the mobile app when it first launched but stopped using it after
+  that particular aspect because I've already reported this and nothing has
+  changed. The layout was that particular aspect and I couldn't that
+  particular aspect. I've heard they've updated it since then, but I haven't
+  given it another chance. For now, if I need to access the tool on the go, I
+  just use the mobile browser which is that particular aspect.
+
+[15:42] Interviewer:
+  How has using this tool affected your team's collaboration and communication?
+
+[15:44] Aisha Patel:
+    It's had a significant positive impact on our collaboration. Before we
+  adopted the tool, we were passing spreadsheets back and forth via email. Now
+  we can that particular aspect. The biggest improvement has been in that
+  particular aspect. However, there are still some gaps — for example, that
+  particular aspect. I'd say our team communication has improved by about 20%
+  since we started using it, though some of that improvement came from other
+  changes we made around the same time.
+
+[15:48] Interviewer:
+  Looking ahead, what features or improvements would make the biggest difference for you over the next six months?
+
+[15:49] Aisha Patel:
+    There are three things on my wish list. First, automated reporting with
+  scheduled delivery — this would address the biggest daily frustration.
+  Second, real-time collaboration on documents — this would help us scale
+  better as our team grows. Third, a mobile app that matches the desktop
+  experience — this is more of a nice-to-have but it would really streamline
+  our workflow. If I had to prioritize, a proper API for custom integrations
+  is by far the most important because I've already reported this and nothing
+  has changed.
+
+[15:53] Interviewer:
+  Is there anything else you'd like to share that we haven't covered?
+
+[15:54] Aisha Patel:
+    One thing I forgot to mention — data privacy controls should be more
+  prominent given current regulations. Also, the pricing model could use some
+  rethinking. Currently we pay per that particular aspect which means that
+  particular aspect. A more flexible pricing model would help organizations
+  like ours that that particular aspect. Other than that, I think this was a
+  thorough conversation. Thanks for including me.
+
+[END OF INTERVIEW — P05]
+
+
+==============================================================================
+INTERVIEW TRANSCRIPT #06
+Participant: Robert Kim (P06)
+Role: Retired Teacher at N/A
+Date: 2026-02-05
+Duration: 41 minutes
+Interviewer: Research Team
+Context: educational platform usability
+==============================================================================
+
+[13:30] Interviewer:
+  Thank you for joining us today. Could you start by telling me a bit about your role and how you typically use educational platform usability in your daily work?
+
+[13:32] Robert Kim:
+    Sure, thanks for having me. I'm a Retired Teacher at N/A and I've been in
+  this role for about 2 years now. My daily work involves analyzing user data
+  and creating reports. I typically spend about 4 hours a day using the tool,
+  mostly for generating reports and sharing insights with stakeholders. It's
+  become pretty central to how our team operates.
+
+[13:37] Interviewer:
+  Can you walk me through a typical task you perform with the tool? What does the process look like from start to finish?
+
+[13:38] Robert Kim:
+    Let me walk you through my most common task. I start by logging in — which
+  by the way takes longer than it should because of the that particular
+  aspect. Once I'm in, I go to analytics and look for messages. Then I need to
+  review the pending items and update their status. The tricky part is when I
+  need to archive the completed items and move to the next batch because the
+  interface doesn't make it obvious how to do that. I usually end up going
+  back and forth between two or three screens.
+
+[13:39] Interviewer:
+  Could you elaborate on that a bit more?
+
+[13:40] Robert Kim:
+    Sure. So basically what happened was that I was trying to complete a task
+  and the system kept giving me errors. After the third attempt, I decided to
+  try a completely different approach, which actually ended up being faster.
+  But it shouldn't require that level of workaround for a basic operation.
+
+[13:43] Interviewer:
+  When you mentioned the search problems, can you tell me more about that experience? What exactly happens and how does it make you feel?
+
+[13:44] Robert Kim:
+    Sure. So the issue is that the page freezes for about 10 seconds whenever
+  I try to filter a large dataset. It's been like this since that particular
+  aspect. The thing that really bothers me is that particular aspect. I've
+  reported it to support twice and both times they said it was a known issue
+  and would be fixed in the next release, but it's still there. I've developed
+  a workaround where I refreshing the page and starting over, but it adds
+  about 15 minutes to the task.
+
+[13:49] Interviewer:
+  How does this compare to other tools you've used for similar purposes? What stands out as different?
+
+[13:50] Robert Kim:
+    I've tried a few alternatives. Basecamp was too {comp1_issue} for our
+  needs. Figma was good but {comp2_issue}. This tool hits a sweet spot in
+  terms of that particular aspect, although I think it could learn from
+  Monday.com's approach to reporting. The pricing is also more reasonable than
+  the alternatives, which matters for us as a that particular aspect company.
+
+[13:55] Interviewer:
+  If you could change one thing about the tool, what would it be and why?
+
+[13:58] Robert Kim:
+    I would add automation. It's something I've been requesting for months.
+  The current workaround is exporting the data and working in a spreadsheet
+  but it's clunky and unreliable. Having native support for this would be
+  transformative because that particular aspect. I actually checked the
+  feature request board and it's the second most voted request, so clearly I'm
+  not alone in wanting this.
+
+[14:00] Interviewer:
+  Tell me about a time when the tool really helped you accomplish something important. What happened?
+
+[14:02] Robert Kim:
+    Yes, actually. During our that particular aspect, I needed to that
+  particular aspect. The template functionality made it possible to that
+  particular aspect. Without the tool, I would have had to that particular
+  aspect, which would have been much slower. It was one of those experiences
+  that justified the investment in the tool.
+
+[14:03] Interviewer:
+  Could you elaborate on that a bit more?
+
+[14:04] Robert Kim:
+    In practice, it means I've developed a whole set of habits around avoiding
+  the problematic parts of the interface. I know which buttons to avoid, which
+  workflows to use instead, and which features are reliable. It shouldn't be
+  this way, but after using the tool for months you learn to navigate around
+  the rough edges.
+
+[14:08] Interviewer:
+  How do you typically get help when you're stuck? What resources do you turn to?
+
+[14:11] Robert Kim:
+    First I'll try to figure it out myself by that particular aspect. If that
+  doesn't work, I check the Stack Overflow. The documentation is okay but
+  incomplete — that particular aspect. If I'm still stuck, I'll ask a
+  colleague or post in our team's that particular aspect. As a last resort, I
+  contact support, which usually takes about a day to get a response. I wish
+  the in-app help was better because right now it's basically that particular
+  aspect.
+
+[14:12] Interviewer:
+  How did that affect your overall workflow?
+
+[14:13] Robert Kim:
+    Actually yes. I brought it up in our last team meeting and three other
+  people said they had the exact same issue. One person had even created a
+  detailed bug report with screenshots. So it's not just me being picky — it's
+  a widespread problem that affects our whole department.
+
+[14:17] Interviewer:
+  What's your experience with the mobile version of the tool, if you've used it?
+
+[14:18] Robert Kim:
+    I tried the mobile app when it first launched but stopped using it after
+  that particular aspect because I'm on a deadline and can't afford to lose
+  time to tool issues. The layout was that particular aspect and I couldn't
+  that particular aspect. I've heard they've updated it since then, but I
+  haven't given it another chance. For now, if I need to access the tool on
+  the go, I just use the mobile browser which is that particular aspect.
+
+[14:22] Interviewer:
+  How has using this tool affected your team's collaboration and communication?
+
+[14:24] Robert Kim:
+    The collaboration features are adequate but not exceptional. We use the
+  reporting for day-to-day coordination, which works fine. But when we need to
+  do that particular aspect, we still fall back to that particular aspect
+  because the tool's version of that functionality is that particular aspect.
+  I think if they invested more in the real-time collaboration aspects, it
+  could replace at least two other tools we currently use.
+
+[14:28] Interviewer:
+  Looking ahead, what features or improvements would make the biggest difference for you over the next six months?
+
+[14:31] Robert Kim:
+    There are three things on my wish list. First, customizable dashboards
+  with drag-and-drop widgets — this would address the biggest daily
+  frustration. Second, real-time collaboration on documents — this would help
+  us scale better as our team grows. Third, AI-powered suggestions for task
+  assignment — this is more of a nice-to-have but it would really streamline
+  our workflow. If I had to prioritize, better search with natural language
+  support is by far the most important because other people depend on my work
+  being accurate and timely.
+
+[14:33] Interviewer:
+  Is there anything else you'd like to share that we haven't covered?
+
+[14:36] Robert Kim:
+    I think we covered most of it. I'd just add that the performance during
+  peak hours really needs attention. And I appreciate you doing this research
+  — it makes me feel like the company actually cares about the user
+  experience, which hasn't always been the case with other tools I've used. I
+  hope my feedback is useful.
+
+[END OF INTERVIEW — P06]
+
+
+==============================================================================
+INTERVIEW TRANSCRIPT #07
+Participant: Lisa Fernandez (P07)
+Role: Marketing Director at BrandForge
+Date: 2026-03-03
+Duration: 53 minutes
+Interviewer: Research Team
+Context: analytics dashboard redesign
+==============================================================================
+
+[09:00] Interviewer:
+  Thank you for joining us today. Could you start by telling me a bit about your role and how you typically use analytics dashboard redesign in your daily work?
+
+[09:01] Lisa Fernandez:
+    Happy to be here. I work as a Marketing Director at BrandForge. My typical
+  day starts with checking the task board and then I move into generating
+  reports and sharing insights with stakeholders. I'd say the tool is
+  moderately integrated into my workflow — there are some things I love about
+  it and some things that still frustrate me.
+
+[09:02] Interviewer:
+  Did anyone else on your team experience the same thing?
+
+[09:03] Lisa Fernandez:
+    Sure. So basically what happened was that I was trying to complete a task
+  and the system kept giving me errors. After the third attempt, I decided to
+  try a completely different approach, which actually ended up being faster.
+  But it shouldn't require that level of workaround for a basic operation.
+
+[09:05] Interviewer:
+  Can you walk me through a typical task you perform with the tool? What does the process look like from start to finish?
+
+[09:07] Lisa Fernandez:
+    So the typical workflow would be: first I open the dashboard and check for
+  any new messages. Then I navigate to the projects section to review what
+  needs my attention. From there, I usually need to filter the data by date
+  range and department, which involves clicking through about 4 screens. Then
+  I cross-reference it with data from another system. The whole process takes
+  roughly 20 minutes on a good day, but it can stretch to 15 minutes when the
+  system is slow or I hit an unexpected issue.
+
+[09:11] Interviewer:
+  When you mentioned the search problems, can you tell me more about that experience? What exactly happens and how does it make you feel?
+
+[09:14] Lisa Fernandez:
+    Sure. So the issue is that the search function returns results that don't
+  match my query at all. It's been like this since that particular aspect. The
+  thing that really bothers me is that particular aspect. I've reported it to
+  support twice and both times they said it was a known issue and would be
+  fixed in the next release, but it's still there. I've developed a workaround
+  where I using a different browser, but it adds about 5 minutes to the task.
+
+[09:19] Interviewer:
+  How does this compare to other tools you've used for similar purposes? What stands out as different?
+
+[09:22] Lisa Fernandez:
+    I've used Notion and Slack before switching to this tool. Compared to
+  Monday.com, this is definitely {comparison1}. The thing ClickUp did better
+  was {strength1}, but this tool wins on {strength2}. Compared to Slack, it's
+  a mixed bag — the interface is cleaner here but Airtable had better
+  template. Overall I'd say this is the best option available right now, but
+  there's room for improvement.
+
+[09:24] Interviewer:
+  If you could change one thing about the tool, what would it be and why?
+
+[09:25] Lisa Fernandez:
+    I would add batch processing. It's something I've been requesting for
+  months. The current workaround is breaking the task into smaller pieces but
+  it's clunky and unreliable. Having native support for this would be
+  transformative because that particular aspect. I actually checked the
+  feature request board and it's the second most voted request, so clearly I'm
+  not alone in wanting this.
+
+[09:26] Interviewer:
+  How did that affect your overall workflow?
+
+[09:27] Lisa Fernandez:
+    In practice, it means I've developed a whole set of habits around avoiding
+  the problematic parts of the interface. I know which buttons to avoid, which
+  workflows to use instead, and which features are reliable. It shouldn't be
+  this way, but after using the tool for months you learn to navigate around
+  the rough edges.
+
+[09:32] Interviewer:
+  Tell me about a time when the tool really helped you accomplish something important. What happened?
+
+[09:33] Lisa Fernandez:
+    Yes, actually. During our that particular aspect, I needed to that
+  particular aspect. The automation functionality made it possible to that
+  particular aspect. Without the tool, I would have had to that particular
+  aspect, which would have been much slower. It was one of those experiences
+  that justified the investment in the tool.
+
+[09:37] Interviewer:
+  How do you typically get help when you're stuck? What resources do you turn to?
+
+[09:40] Lisa Fernandez:
+    I have a few go-to strategies. First, I try the search function within the
+  tool to see if there's a relevant help article. The results are hit-or-miss
+  — sometimes I find exactly what I need, other times the search returns
+  completely irrelevant content. Then I'll check the community forum or watch
+  a YouTube tutorial. Our team also has a shared document where we document
+  common issues and solutions, which has been really valuable. Support is my
+  last resort because that particular aspect.
+
+[09:43] Interviewer:
+  What's your experience with the mobile version of the tool, if you've used it?
+
+[09:44] Lisa Fernandez:
+    I tried the mobile app when it first launched but stopped using it after
+  that particular aspect because other people depend on my work being accurate
+  and timely. The layout was that particular aspect and I couldn't that
+  particular aspect. I've heard they've updated it since then, but I haven't
+  given it another chance. For now, if I need to access the tool on the go, I
+  just use the mobile browser which is that particular aspect.
+
+[09:45] Interviewer:
+  Did anyone else on your team experience the same thing?
+
+[09:46] Lisa Fernandez:
+    Actually yes. I brought it up in our last team meeting and three other
+  people said they had the exact same issue. One person had even created a
+  detailed bug report with screenshots. So it's not just me being picky — it's
+  a widespread problem that affects our whole department.
+
+[09:50] Interviewer:
+  How has using this tool affected your team's collaboration and communication?
+
+[09:53] Lisa Fernandez:
+    The collaboration features are adequate but not exceptional. We use the
+  batch processing for day-to-day coordination, which works fine. But when we
+  need to do that particular aspect, we still fall back to that particular
+  aspect because the tool's version of that functionality is that particular
+  aspect. I think if they invested more in the real-time collaboration
+  aspects, it could replace at least two other tools we currently use.
+
+[09:54] Interviewer:
+  How did that affect your overall workflow?
+
+[09:55] Lisa Fernandez:
+    Actually yes. I brought it up in our last team meeting and three other
+  people said they had the exact same issue. One person had even created a
+  detailed bug report with screenshots. So it's not just me being picky — it's
+  a widespread problem that affects our whole department.
+
+[09:57] Interviewer:
+  Looking ahead, what features or improvements would make the biggest difference for you over the next six months?
+
+[09:59] Lisa Fernandez:
+    Better offline mode that syncs when back online is critical. We're losing
+  20 hours per week because of the current limitations. After that, I'd want
+  role-based access control with more granularity — especially with that
+  particular aspect, this is becoming table stakes. And a mobile app that
+  matches the desktop experience would be the cherry on top. I've actually
+  submitted all three as feature requests on the feedback portal, so hopefully
+  the product team is listening.
+
+[10:04] Interviewer:
+  Is there anything else you'd like to share that we haven't covered?
+
+[10:06] Lisa Fernandez:
+    Just one more thing — I want to emphasize that despite my criticisms, I do
+  think the tool is a solid product with good potential. The team behind it
+  seems responsive to feedback and the last few updates have shown they're
+  listening to user feedback. I'm cautiously optimistic about where it's
+  heading. Thank you for taking the time to hear my perspective.
+
+[END OF INTERVIEW — P07]
+
+
+==============================================================================
+INTERVIEW TRANSCRIPT #08
+Participant: David Thompson (P08)
+Role: Freelance Consultant at Self-employed
+Date: 2026-01-10
+Duration: 39 minutes
+Interviewer: Research Team
+Context: project management tools
+==============================================================================
+
+[12:00] Interviewer:
+  Thank you for joining us today. Could you start by telling me a bit about your role and how you typically use project management tools in your daily work?
+
+[12:03] David Thompson:
+    Of course. As a Freelance Consultant, my main responsibilities include
+  leading the engineering team and reviewing technical architecture. I started
+  using the tool about 18 months ago when we evaluated several options and
+  this scored highest. Now it's become an essential part of my workflow,
+  especially for managing team workloads and deadlines.
+
+[12:06] Interviewer:
+  Can you walk me through a typical task you perform with the tool? What does the process look like from start to finish?
+
+[12:07] David Thompson:
+    A typical task for me involves review the pending items and update their
+  status. I do this maybe 2-3 times a day. The process starts at the main
+  analytics page where I can see an overview. Then I drill down into the
+  details by clicking on specific updates. From there I add comments and tag
+  specific people for follow-up. What I find frustrating is that there's no
+  way to that particular aspect, so I end up doing a lot of manual work that
+  could probably be automated.
+
+[12:09] Interviewer:
+  When you mentioned the error messages, can you tell me more about that experience? What exactly happens and how does it make you feel?
+
+[12:12] David Thompson:
+    Sure. So the issue is that the notification system sends alerts for things
+  I've explicitly turned off. It's been like this since that particular
+  aspect. The thing that really bothers me is that particular aspect. I've
+  reported it to support twice and both times they said it was a known issue
+  and would be fixed in the next release, but it's still there. I've developed
+  a workaround where I breaking the task into smaller pieces, but it adds
+  about 20 minutes to the task.
+
+[12:16] Interviewer:
+  How does this compare to other tools you've used for similar purposes? What stands out as different?
+
+[12:17] David Thompson:
+    I've used Basecamp and Miro before switching to this tool. Compared to
+  Monday.com, this is definitely {comparison1}. The thing Basecamp did better
+  was {strength1}, but this tool wins on {strength2}. Compared to Airtable,
+  it's a mixed bag — the interface is cleaner here but Linear had better
+  template. Overall I'd say this is the best option available right now, but
+  there's room for improvement.
+
+[12:22] Interviewer:
+  If you could change one thing about the tool, what would it be and why?
+
+[12:25] David Thompson:
+    Hmm, just one thing? That's tough. I think the most impactful change would
+  be that particular aspect. The reason is that other people depend on my work
+  being accurate and timely. Currently I have to that particular aspect which
+  is tedious and error-prone. If this were improved, it would benefit not just
+  me but our entire team of 6 people who all deal with the same issue.
+
+[12:28] Interviewer:
+  Tell me about a time when the tool really helped you accomplish something important. What happened?
+
+[12:31] David Thompson:
+    Yes, actually. During our that particular aspect, I needed to that
+  particular aspect. The integration functionality made it possible to that
+  particular aspect. Without the tool, I would have had to that particular
+  aspect, which would have been much slower. It was one of those experiences
+  that justified the investment in the tool.
+
+[12:33] Interviewer:
+  How do you typically get help when you're stuck? What resources do you turn to?
+
+[12:36] David Thompson:
+    Honestly, I usually ask that particular aspect on my team because they've
+  been using the tool longer than I have. The official documentation is okay
+  but incomplete and that particular aspect. I've tried the chatbot help
+  feature a few times but it just directs me to generic FAQ articles that
+  don't address my specific issue. What I'd really love is contextual help —
+  like when I'm on a specific screen and I'm confused, I should be able to get
+  help about that exact feature.
+
+[12:37] Interviewer:
+  How did that affect your overall workflow?
+
+[12:38] David Thompson:
+    Sure. So basically what happened was that I was trying to complete a task
+  and the system kept giving me errors. After the third attempt, I decided to
+  try a completely different approach, which actually ended up being faster.
+  But it shouldn't require that level of workaround for a basic operation.
+
+[12:42] Interviewer:
+  What's your experience with the mobile version of the tool, if you've used it?
+
+[12:45] David Thompson:
+    The mobile experience is actually one of the stronger aspects. I use it
+  daily, mainly for reviewing dashboards on the go. The responsive design
+  works well for the notification system and quick actions. My main complaint
+  is complex features are hidden or unavailable. Also, the notifications from
+  the app can be that particular aspect. But overall it's usable and I
+  appreciate having the option when I'm away from my desk.
+
+[12:47] Interviewer:
+  How has using this tool affected your team's collaboration and communication?
+
+[12:50] David Thompson:
+    The collaboration features are adequate but not exceptional. We use the
+  automation for day-to-day coordination, which works fine. But when we need
+  to do that particular aspect, we still fall back to that particular aspect
+  because the tool's version of that functionality is that particular aspect.
+  I think if they invested more in the real-time collaboration aspects, it
+  could replace at least two other tools we currently use.
+
+[12:51] Interviewer:
+  When you say that, what does that look like in practice?
+
+[12:53] David Thompson:
+    Yeah, so for example last Tuesday I needed to generate a report for our
+  weekly standup. Normally this takes about five minutes, but the filters
+  weren't working correctly and I spent almost twenty minutes getting the
+  right data set. I ended up just exporting everything and filtering in a
+  spreadsheet.
+
+[12:56] Interviewer:
+  Looking ahead, what features or improvements would make the biggest difference for you over the next six months?
+
+[12:57] David Thompson:
+    There are three things on my wish list. First, offline mode that syncs
+  when back online — this would address the biggest daily frustration. Second,
+  advanced analytics with predictive capabilities — this would help us scale
+  better as our team grows. Third, AI-powered suggestions for task assignment
+  — this is more of a nice-to-have but it would really streamline our
+  workflow. If I had to prioritize, offline mode that syncs when back online
+  is by far the most important because I'm on a deadline and can't afford to
+  lose time to tool issues.
+
+[13:02] Interviewer:
+  Is there anything else you'd like to share that we haven't covered?
+
+[13:04] David Thompson:
+    Just one more thing — I want to emphasize that despite my criticisms, I do
+  think the tool is one of the better options available. The team behind it
+  seems committed to improvement and the last few updates have shown they're
+  listening to user feedback. I'm cautiously optimistic about where it's
+  heading. Thank you for taking the time to hear my perspective.
+
+[END OF INTERVIEW — P08]
+
+
+==============================================================================
+INTERVIEW TRANSCRIPT #09
+Participant: Fatima Al-Hassan (P09)
+Role: Data Scientist at InsightAI
+Date: 2026-01-12
+Duration: 53 minutes
+Interviewer: Research Team
+Context: data visualization tools
+==============================================================================
+
+[15:30] Interviewer:
+  Thank you for joining us today. Could you start by telling me a bit about your role and how you typically use data visualization tools in your daily work?
+
+[15:31] Fatima Al-Hassan:
+    Happy to be here. I work as a Data Scientist at InsightAI. My typical day
+  starts with checking team updates and then I move into tracking project
+  progress and assigning tasks. I'd say the tool is moderately integrated into
+  my workflow — there are some things I love about it and some things that
+  still frustrate me.
+
+[15:35] Interviewer:
+  Can you walk me through a typical task you perform with the tool? What does the process look like from start to finish?
+
+[15:37] Fatima Al-Hassan:
+    Let me walk you through my most common task. I start by logging in — which
+  by the way takes longer than it should because of the that particular
+  aspect. Once I'm in, I go to dashboard and look for notifications. Then I
+  need to review the pending items and update their status. The tricky part is
+  when I need to add comments and tag specific people for follow-up because
+  the interface doesn't make it obvious how to do that. I usually end up going
+  back and forth between two or three screens.
+
+[15:39] Interviewer:
+  When you mentioned the mobile experience, can you tell me more about that experience? What exactly happens and how does it make you feel?
+
+[15:42] Fatima Al-Hassan:
+    Right, so that happens when we needed better reporting capabilities. The
+  system the auto-save feature sometimes fails silently and I lose my changes.
+  It's not just annoying — it actually impacts my productivity because I have
+  to that particular aspect. I'd estimate I lose about 20 minutes per day
+  dealing with this. My colleague suggested asking a colleague to do it from
+  their account but it only works some of the time.
+
+[15:45] Interviewer:
+  How does this compare to other tools you've used for similar purposes? What stands out as different?
+
+[15:47] Fatima Al-Hassan:
+    Before this, we were using Jira which was {comp1_assessment}. We switched
+  because that particular aspect. The biggest improvement has been that
+  particular aspect. But I do miss that particular aspect from Basecamp. I
+  also briefly tried Figma but found it {comp2_assessment}. What really sets
+  this tool apart is that particular aspect.
+
+[15:48] Interviewer:
+  When you say that, what does that look like in practice?
+
+[15:49] Fatima Al-Hassan:
+    It definitely slowed things down. Our team has a target of completing
+  these tasks within two hours, and on days when the tool is acting up, we can
+  barely finish within four. That has a cascading effect on everything else we
+  need to do that day.
+
+[15:52] Interviewer:
+  If you could change one thing about the tool, what would it be and why?
+
+[15:54] Fatima Al-Hassan:
+    I would add reporting. It's something I've been requesting for months. The
+  current workaround is refreshing the page and starting over but it's clunky
+  and unreliable. Having native support for this would be transformative
+  because that particular aspect. I actually checked the feature request board
+  and it's the second most voted request, so clearly I'm not alone in wanting
+  this.
+
+[15:57] Interviewer:
+  Tell me about a time when the tool really helped you accomplish something important. What happened?
+
+[16:00] Fatima Al-Hassan:
+    There was this one time when the team needed to onboard 15 new people in
+  one week. We were under a tight deadline and needed to that particular
+  aspect. I was able to use the batch processing to that particular aspect. It
+  probably saved us 3 hours compared to doing it manually. My manager was
+  impressed and it actually became a template that our whole department now
+  uses. That's when I really started to appreciate the tool.
+
+[16:03] Interviewer:
+  How do you typically get help when you're stuck? What resources do you turn to?
+
+[16:06] Fatima Al-Hassan:
+    I have a few go-to strategies. First, I try the search function within the
+  tool to see if there's a relevant help article. The results are hit-or-miss
+  — sometimes I find exactly what I need, other times the search returns
+  completely irrelevant content. Then I'll check the knowledge base or watch a
+  YouTube tutorial. Our team also has a shared document where we document
+  common issues and solutions, which has been really valuable. Support is my
+  last resort because that particular aspect.
+
+[16:07] Interviewer:
+  That's interesting. Can you give me a specific example?
+
+[16:08] Fatima Al-Hassan:
+    It definitely slowed things down. Our team has a target of completing
+  these tasks within two hours, and on days when the tool is acting up, we can
+  barely finish within four. That has a cascading effect on everything else we
+  need to do that day.
+
+[16:11] Interviewer:
+  What's your experience with the mobile version of the tool, if you've used it?
+
+[16:14] Fatima Al-Hassan:
+    The mobile experience is actually one of the stronger aspects. I use it a
+  few, mainly for reviewing dashboards on the go. The responsive design works
+  well for the offline caching of recent data. My main complaint is complex
+  features are hidden or unavailable. Also, the notifications from the app can
+  be that particular aspect. But overall it's usable and I appreciate having
+  the option when I'm away from my desk.
+
+[16:15] Interviewer:
+  Could you elaborate on that a bit more?
+
+[16:16] Fatima Al-Hassan:
+    Yeah, so for example last Tuesday I needed to generate a report for our
+  weekly standup. Normally this takes about five minutes, but the filters
+  weren't working correctly and I spent almost twenty minutes getting the
+  right data set. I ended up just exporting everything and filtering in a
+  spreadsheet.
+
+[16:21] Interviewer:
+  How has using this tool affected your team's collaboration and communication?
+
+[16:22] Fatima Al-Hassan:
+    It's had a noticeable impact on our collaboration. Before we adopted the
+  tool, we were using three different tools that didn't integrate well. Now we
+  can that particular aspect. The biggest improvement has been in that
+  particular aspect. However, there are still some gaps — for example, that
+  particular aspect. I'd say our team communication has improved by about 60%
+  since we started using it, though some of that improvement came from other
+  changes we made around the same time.
+
+[16:24] Interviewer:
+  Looking ahead, what features or improvements would make the biggest difference for you over the next six months?
+
+[16:27] Fatima Al-Hassan:
+    There are three things on my wish list. First, better search with natural
+  language support — this would address the biggest daily frustration. Second,
+  native integration with our existing tools — this would help us scale better
+  as our team grows. Third, AI-powered suggestions for task assignment — this
+  is more of a nice-to-have but it would really streamline our workflow. If I
+  had to prioritize, better search with natural language support is by far the
+  most important because I've already reported this and nothing has changed.
+
+[16:32] Interviewer:
+  Is there anything else you'd like to share that we haven't covered?
+
+[16:33] Fatima Al-Hassan:
+    I think we covered most of it. I'd just add that data privacy controls
+  should be more prominent given current regulations. And I appreciate you
+  doing this research — it makes me feel like the company actually cares about
+  the user experience, which hasn't always been the case with other tools I've
+  used. I hope my feedback is useful.
+
+[END OF INTERVIEW — P09]
+
+
+==============================================================================
+INTERVIEW TRANSCRIPT #10
+Participant: Thomas Mueller (P10)
+Role: CFO at FinanceFirst GmbH
+Date: 2026-03-02
+Duration: 52 minutes
+Interviewer: Research Team
+Context: financial reporting platform
+==============================================================================
+
+[14:30] Interviewer:
+  Thank you for joining us today. Could you start by telling me a bit about your role and how you typically use financial reporting platform in your daily work?
+
+[14:31] Thomas Mueller:
+    Happy to be here. I work as a CFO at FinanceFirst GmbH. My typical day
+  starts with checking my inbox and then I move into communicating with
+  clients and documenting decisions. I'd say the tool is moderately integrated
+  into my workflow — there are some things I love about it and some things
+  that still frustrate me.
+
+[14:32] Interviewer:
+  When you say that, what does that look like in practice?
+
+[14:34] Thomas Mueller:
+    Sure. So basically what happened was that I was trying to complete a task
+  and the system kept giving me errors. After the third attempt, I decided to
+  try a completely different approach, which actually ended up being faster.
+  But it shouldn't require that level of workaround for a basic operation.
+
+[14:39] Interviewer:
+  Can you walk me through a typical task you perform with the tool? What does the process look like from start to finish?
+
+[14:42] Thomas Mueller:
+    Let me walk you through my most common task. I start by logging in — which
+  by the way takes longer than it should because of the that particular
+  aspect. Once I'm in, I go to settings and look for tasks. Then I need to
+  assign tasks to team members and set due dates. The tricky part is when I
+  need to add comments and tag specific people for follow-up because the
+  interface doesn't make it obvious how to do that. I usually end up going
+  back and forth between two or three screens.
+
+[14:45] Interviewer:
+  When you mentioned the loading issue, can you tell me more about that experience? What exactly happens and how does it make you feel?
+
+[14:48] Thomas Mueller:
+    Sure. So the issue is that the auto-save feature sometimes fails silently
+  and I lose my changes. It's been like this since that particular aspect. The
+  thing that really bothers me is that particular aspect. I've reported it to
+  support twice and both times they said it was a known issue and would be
+  fixed in the next release, but it's still there. I've developed a workaround
+  where I refreshing the page and starting over, but it adds about 10 minutes
+  to the task.
+
+[14:49] Interviewer:
+  That's interesting. Can you give me a specific example?
+
+[14:51] Thomas Mueller:
+    In practice, it means I've developed a whole set of habits around avoiding
+  the problematic parts of the interface. I know which buttons to avoid, which
+  workflows to use instead, and which features are reliable. It shouldn't be
+  this way, but after using the tool for months you learn to navigate around
+  the rough edges.
+
+[14:55] Interviewer:
+  How does this compare to other tools you've used for similar purposes? What stands out as different?
+
+[14:57] Thomas Mueller:
+    Before this, we were using Jira which was {comp1_assessment}. We switched
+  because that particular aspect. The biggest improvement has been that
+  particular aspect. But I do miss that particular aspect from Asana. I also
+  briefly tried Slack but found it {comp2_assessment}. What really sets this
+  tool apart is that particular aspect.
+
+[15:00] Interviewer:
+  If you could change one thing about the tool, what would it be and why?
+
+[15:01] Thomas Mueller:
+    That's easy — I would completely redesign the reporting experience. Right
+  now it requires that particular aspect steps and involves that particular
+  aspect. If I could wave a magic wand, I'd make it so you can that particular
+  aspect. This would save me at least a full day per week and I think it would
+  make the biggest difference for most users.
+
+[15:06] Interviewer:
+  Tell me about a time when the tool really helped you accomplish something important. What happened?
+
+[15:09] Thomas Mueller:
+    Last month we had a that particular aspect and I needed to that particular
+  aspect quickly. The tool's template feature was absolutely crucial. I was
+  able to that particular aspect in under 20 minutes, which normally would
+  have taken that particular aspect. It was a real 'this is why we pay for
+  this tool' moment. The team was really grateful.
+
+[15:12] Interviewer:
+  How do you typically get help when you're stuck? What resources do you turn to?
+
+[15:15] Thomas Mueller:
+    Honestly, I usually ask that particular aspect on my team because they've
+  been using the tool longer than I have. The official documentation is decent
+  and that particular aspect. I've tried the chatbot help feature a few times
+  but it just directs me to generic FAQ articles that don't address my
+  specific issue. What I'd really love is contextual help — like when I'm on a
+  specific screen and I'm confused, I should be able to get help about that
+  exact feature.
+
+[15:18] Interviewer:
+  What's your experience with the mobile version of the tool, if you've used it?
+
+[15:20] Thomas Mueller:
+    I use the mobile version several. It's surprisingly good. The main things
+  I do on mobile are reviewing dashboards on the go. What works well is the
+  responsive layout on most screens. What doesn't work well is complex
+  features are hidden or unavailable. I've had the app crash that particular
+  aspect, which is that particular aspect. If I had to rate the mobile
+  experience compared to desktop, I'd give it a 4 out of 10.
+
+[15:23] Interviewer:
+  How has using this tool affected your team's collaboration and communication?
+
+[15:26] Thomas Mueller:
+    It's had a moderately positive impact on our collaboration. Before we
+  adopted the tool, we were having long meetings to sync on project status.
+  Now we can that particular aspect. The biggest improvement has been in that
+  particular aspect. However, there are still some gaps — for example, that
+  particular aspect. I'd say our team communication has improved by about 20%
+  since we started using it, though some of that improvement came from other
+  changes we made around the same time.
+
+[15:31] Interviewer:
+  Looking ahead, what features or improvements would make the biggest difference for you over the next six months?
+
+[15:32] Thomas Mueller:
+    There are three things on my wish list. First, automated reporting with
+  scheduled delivery — this would address the biggest daily frustration.
+  Second, role-based access control with more granularity — this would help us
+  scale better as our team grows. Third, dark mode across the entire interface
+  — this is more of a nice-to-have but it would really streamline our
+  workflow. If I had to prioritize, a proper API for custom integrations is by
+  far the most important because it disrupts my flow and takes me out of deep
+  work.
+
+[15:33] Interviewer:
+  Could you elaborate on that a bit more?
+
+[15:34] Thomas Mueller:
+    It definitely slowed things down. Our team has a target of completing
+  these tasks within two hours, and on days when the tool is acting up, we can
+  barely finish within four. That has a cascading effect on everything else we
+  need to do that day.
+
+[15:39] Interviewer:
+  Is there anything else you'd like to share that we haven't covered?
+
+[15:40] Thomas Mueller:
+    One thing I forgot to mention — data privacy controls should be more
+  prominent given current regulations. Also, the pricing model could use some
+  rethinking. Currently we pay per that particular aspect which means that
+  particular aspect. A more flexible pricing model would help organizations
+  like ours that that particular aspect. Other than that, I think this was a
+  thorough conversation. Thanks for including me.
+
+[END OF INTERVIEW — P10]
+
+
+==============================================================================
+INTERVIEW TRANSCRIPT #11
+Participant: Priya Sharma (P11)
+Role: Content Strategist at MediaPulse
+Date: 2026-01-21
+Duration: 45 minutes
+Interviewer: Research Team
+Context: CMS usability evaluation
+==============================================================================
+
+[15:45] Interviewer:
+  Thank you for joining us today. Could you start by telling me a bit about your role and how you typically use CMS usability evaluation in your daily work?
+
+[15:47] Priya Sharma:
+    Happy to be here. I work as a Content Strategist at MediaPulse. My typical
+  day starts with checking team updates and then I move into generating
+  reports and sharing insights with stakeholders. I'd say the tool is
+  moderately integrated into my workflow — there are some things I love about
+  it and some things that still frustrate me.
+
+[15:52] Interviewer:
+  Can you walk me through a typical task you perform with the tool? What does the process look like from start to finish?
+
+[15:55] Priya Sharma:
+    Let me walk you through my most common task. I start by logging in — which
+  by the way takes longer than it should because of the that particular
+  aspect. Once I'm in, I go to settings and look for notifications. Then I
+  need to export the results and format them for the stakeholder presentation.
+  The tricky part is when I need to generate a summary report and send it to
+  leadership because the interface doesn't make it obvious how to do that. I
+  usually end up going back and forth between two or three screens.
+
+[16:00] Interviewer:
+  When you mentioned the performance issues, can you tell me more about that experience? What exactly happens and how does it make you feel?
+
+[16:03] Priya Sharma:
+    Sure. So the issue is that the notification system sends alerts for things
+  I've explicitly turned off. It's been like this since that particular
+  aspect. The thing that really bothers me is that particular aspect. I've
+  reported it to support twice and both times they said it was a known issue
+  and would be fixed in the next release, but it's still there. I've developed
+  a workaround where I asking a colleague to do it from their account, but it
+  adds about 15 minutes to the task.
+
+[16:05] Interviewer:
+  How does this compare to other tools you've used for similar purposes? What stands out as different?
+
+[16:07] Priya Sharma:
+    I've used Basecamp and Trello before switching to this tool. Compared to
+  Jira, this is definitely {comparison1}. The thing Asana did better was
+  {strength1}, but this tool wins on {strength2}. Compared to Slack, it's a
+  mixed bag — the interface is cleaner here but Figma had better batch
+  processing. Overall I'd say this is the best option available right now, but
+  there's room for improvement.
+
+[16:11] Interviewer:
+  If you could change one thing about the tool, what would it be and why?
+
+[16:12] Priya Sharma:
+    I would add template. It's something I've been requesting for months. The
+  current workaround is using a different browser but it's clunky and
+  unreliable. Having native support for this would be transformative because
+  that particular aspect. I actually checked the feature request board and
+  it's the second most voted request, so clearly I'm not alone in wanting
+  this.
+
+[16:14] Interviewer:
+  Tell me about a time when the tool really helped you accomplish something important. What happened?
+
+[16:17] Priya Sharma:
+    Last month we had a that particular aspect and I needed to that particular
+  aspect quickly. The tool's batch processing feature was absolutely crucial.
+  I was able to that particular aspect in under 15 minutes, which normally
+  would have taken that particular aspect. It was a real 'this is why we pay
+  for this tool' moment. The team was really grateful.
+
+[16:18] Interviewer:
+  Did anyone else on your team experience the same thing?
+
+[16:19] Priya Sharma:
+    Yeah, so for example last Tuesday I needed to generate a report for our
+  weekly standup. Normally this takes about five minutes, but the filters
+  weren't working correctly and I spent almost twenty minutes getting the
+  right data set. I ended up just exporting everything and filtering in a
+  spreadsheet.
+
+[16:22] Interviewer:
+  How do you typically get help when you're stuck? What resources do you turn to?
+
+[16:24] Priya Sharma:
+    First I'll try to figure it out myself by that particular aspect. If that
+  doesn't work, I check the the knowledge base. The documentation is okay but
+  incomplete — that particular aspect. If I'm still stuck, I'll ask a
+  colleague or post in our team's that particular aspect. As a last resort, I
+  contact support, which usually takes a few hours to get a response. I wish
+  the in-app help was better because right now it's basically that particular
+  aspect.
+
+[16:26] Interviewer:
+  What's your experience with the mobile version of the tool, if you've used it?
+
+[16:27] Priya Sharma:
+    I use the mobile version several. It's adequate for basic tasks. The main
+  things I do on mobile are approving requests and responding to messages.
+  What works well is the notification system and quick actions. What doesn't
+  work well is the data entry experience on small screens. I've had the app
+  crash that particular aspect, which is that particular aspect. If I had to
+  rate the mobile experience compared to desktop, I'd give it a 5 out of 10.
+
+[16:32] Interviewer:
+  How has using this tool affected your team's collaboration and communication?
+
+[16:34] Priya Sharma:
+    Honestly, it's been transformative for certain workflows and neutral for
+  others. The {feature1} feature has completely changed how we {process1} — it
+  used to take us that particular aspect and now it takes that particular
+  aspect. But the {feature2} feature hasn't lived up to expectations. Our team
+  tried using it for that particular aspect but found it too that particular
+  aspect and went back to using that particular aspect.
+
+[16:38] Interviewer:
+  Looking ahead, what features or improvements would make the biggest difference for you over the next six months?
+
+[16:39] Priya Sharma:
+    For me, the number one priority would be better search with natural
+  language support. We're planning to that particular aspect and without this
+  feature, we'll likely need to that particular aspect. Beyond that, I'd love
+  to see advanced analytics with predictive capabilities and a mobile app that
+  matches the desktop experience. The competitive landscape is changing fast
+  and tools like that particular aspect are already offering that particular
+  aspect, so there's pressure to keep up.
+
+[16:40] Interviewer:
+  Could you elaborate on that a bit more?
+
+[16:41] Priya Sharma:
+    It definitely slowed things down. Our team has a target of completing
+  these tasks within two hours, and on days when the tool is acting up, we can
+  barely finish within four. That has a cascading effect on everything else we
+  need to do that day.
+
+[16:45] Interviewer:
+  Is there anything else you'd like to share that we haven't covered?
+
+[16:47] Priya Sharma:
+    I think we covered most of it. I'd just add that the accessibility of the
+  tool needs significant improvement for screen reader users. And I appreciate
+  you doing this research — it makes me feel like the company actually cares
+  about the user experience, which hasn't always been the case with other
+  tools I've used. I hope my feedback is useful.
+
+[END OF INTERVIEW — P11]
+
+
+==============================================================================
+INTERVIEW TRANSCRIPT #12
+Participant: Carlos Mendes (P12)
+Role: Small Business Owner at Mendes Bakery
+Date: 2026-02-21
+Duration: 55 minutes
+Interviewer: Research Team
+Context: POS and inventory system
+==============================================================================
+
+[13:45] Interviewer:
+  Thank you for joining us today. Could you start by telling me a bit about your role and how you typically use POS and inventory system in your daily work?
+
+[13:47] Carlos Mendes:
+    Sure, thanks for having me. I'm a Small Business Owner at Mendes Bakery
+  and I've been in this role for about 5 years now. My daily work involves
+  coordinating between design and engineering teams. I typically spend about 2
+  hours a day using the tool, mostly for analyzing data trends and creating
+  visualizations. It's become pretty central to how our team operates.
+
+[13:51] Interviewer:
+  Can you walk me through a typical task you perform with the tool? What does the process look like from start to finish?
+
+[13:52] Carlos Mendes:
+    So the typical workflow would be: first I open the dashboard and check for
+  any new requests. Then I navigate to the settings section to review what
+  needs my attention. From there, I usually need to create a new entry and
+  fill in the required fields, which involves clicking through about 6
+  screens. Then I cross-reference it with data from another system. The whole
+  process takes roughly 20 minutes on a good day, but it can stretch to 25
+  minutes when the system is slow or I hit an unexpected issue.
+
+[13:56] Interviewer:
+  When you mentioned the mobile experience, can you tell me more about that experience? What exactly happens and how does it make you feel?
+
+[13:58] Carlos Mendes:
+    Right, so that happens when the team outgrew our spreadsheet-based system.
+  The system the search function returns results that don't match my query at
+  all. It's not just annoying — it actually impacts my productivity because I
+  have to that particular aspect. I'd estimate I lose about 20 minutes per day
+  dealing with this. My colleague suggested asking a colleague to do it from
+  their account but it only works some of the time.
+
+[13:59] Interviewer:
+  That's interesting. Can you give me a specific example?
+
+[14:01] Carlos Mendes:
+    Actually yes. I brought it up in our last team meeting and three other
+  people said they had the exact same issue. One person had even created a
+  detailed bug report with screenshots. So it's not just me being picky — it's
+  a widespread problem that affects our whole department.
+
+[14:03] Interviewer:
+  How does this compare to other tools you've used for similar purposes? What stands out as different?
+
+[14:04] Carlos Mendes:
+    I've tried a few alternatives. Jira was too {comp1_issue} for our needs.
+  Trello was good but {comp2_issue}. This tool hits a sweet spot in terms of
+  that particular aspect, although I think it could learn from Notion's
+  approach to template. The pricing is also more reasonable than the
+  alternatives, which matters for us as a that particular aspect company.
+
+[14:05] Interviewer:
+  How did that affect your overall workflow?
+
+[14:07] Carlos Mendes:
+    Yeah, so for example last Tuesday I needed to generate a report for our
+  weekly standup. Normally this takes about five minutes, but the filters
+  weren't working correctly and I spent almost twenty minutes getting the
+  right data set. I ended up just exporting everything and filtering in a
+  spreadsheet.
+
+[14:10] Interviewer:
+  If you could change one thing about the tool, what would it be and why?
+
+[14:11] Carlos Mendes:
+    That's easy — I would completely redesign the automation experience. Right
+  now it requires that particular aspect steps and involves that particular
+  aspect. If I could wave a magic wand, I'd make it so you can that particular
+  aspect. This would save me at least a full day per week and I think it would
+  make the biggest difference for most users.
+
+[14:16] Interviewer:
+  Tell me about a time when the tool really helped you accomplish something important. What happened?
+
+[14:17] Carlos Mendes:
+    Yes, actually. During our that particular aspect, I needed to that
+  particular aspect. The batch processing functionality made it possible to
+  that particular aspect. Without the tool, I would have had to that
+  particular aspect, which would have been much slower. It was one of those
+  experiences that justified the investment in the tool.
+
+[14:21] Interviewer:
+  How do you typically get help when you're stuck? What resources do you turn to?
+
+[14:22] Carlos Mendes:
+    I have a few go-to strategies. First, I try the search function within the
+  tool to see if there's a relevant help article. The results are hit-or-miss
+  — sometimes I find exactly what I need, other times the search returns
+  completely irrelevant content. Then I'll check Stack Overflow or watch a
+  YouTube tutorial. Our team also has a shared document where we document
+  common issues and solutions, which has been really valuable. Support is my
+  last resort because that particular aspect.
+
+[14:25] Interviewer:
+  What's your experience with the mobile version of the tool, if you've used it?
+
+[14:26] Carlos Mendes:
+    The mobile experience is actually one of the stronger aspects. I use it
+  several, mainly for approving requests and responding to messages. The
+  responsive design works well for the notification system and quick actions.
+  My main complaint is complex features are hidden or unavailable. Also, the
+  notifications from the app can be that particular aspect. But overall it's
+  usable and I appreciate having the option when I'm away from my desk.
+
+[14:27] Interviewer:
+  Could you elaborate on that a bit more?
+
+[14:29] Carlos Mendes:
+    In practice, it means I've developed a whole set of habits around avoiding
+  the problematic parts of the interface. I know which buttons to avoid, which
+  workflows to use instead, and which features are reliable. It shouldn't be
+  this way, but after using the tool for months you learn to navigate around
+  the rough edges.
+
+[14:34] Interviewer:
+  How has using this tool affected your team's collaboration and communication?
+
+[14:35] Carlos Mendes:
+    It's had a mixed impact on our collaboration. Before we adopted the tool,
+  we were using three different tools that didn't integrate well. Now we can
+  that particular aspect. The biggest improvement has been in that particular
+  aspect. However, there are still some gaps — for example, that particular
+  aspect. I'd say our team communication has improved by about 30% since we
+  started using it, though some of that improvement came from other changes we
+  made around the same time.
+
+[14:38] Interviewer:
+  Looking ahead, what features or improvements would make the biggest difference for you over the next six months?
+
+[14:40] Carlos Mendes:
+    There are three things on my wish list. First, automated reporting with
+  scheduled delivery — this would address the biggest daily frustration.
+  Second, advanced analytics with predictive capabilities — this would help us
+  scale better as our team grows. Third, a mobile app that matches the desktop
+  experience — this is more of a nice-to-have but it would really streamline
+  our workflow. If I had to prioritize, a proper API for custom integrations
+  is by far the most important because I'm on a deadline and can't afford to
+  lose time to tool issues.
+
+[14:42] Interviewer:
+  Is there anything else you'd like to share that we haven't covered?
+
+[14:45] Carlos Mendes:
+    Just one more thing — I want to emphasize that despite my criticisms, I do
+  think the tool is a solid product with good potential. The team behind it
+  seems transparent about their roadmap and the last few updates have shown
+  they're listening to user feedback. I'm hopeful about where it's heading.
+  Thank you for taking the time to hear my perspective.
+
+[END OF INTERVIEW — P12]
+
+
+==============================================================================
+INTERVIEW TRANSCRIPT #13
+Participant: Jennifer O'Brien (P13)
+Role: Nurse Practitioner at City Medical Center
+Date: 2026-02-13
+Duration: 54 minutes
+Interviewer: Research Team
+Context: electronic health records
+==============================================================================
+
+[14:15] Interviewer:
+  Thank you for joining us today. Could you start by telling me a bit about your role and how you typically use electronic health records in your daily work?
+
+[14:16] Jennifer O'Brien:
+    Sure, thanks for having me. I'm a Nurse Practitioner at City Medical
+  Center and I've been in this role for about 5 years now. My daily work
+  involves reviewing customer feedback and prioritizing features. I typically
+  spend about 6 hours a day using the tool, mostly for managing team workloads
+  and deadlines. It's become pretty central to how our team operates.
+
+[14:19] Interviewer:
+  Can you walk me through a typical task you perform with the tool? What does the process look like from start to finish?
+
+[14:21] Jennifer O'Brien:
+    So the typical workflow would be: first I open the dashboard and check for
+  any new notifications. Then I navigate to the settings section to review
+  what needs my attention. From there, I usually need to filter the data by
+  date range and department, which involves clicking through about 5 screens.
+  Then I generate a summary report and send it to leadership. The whole
+  process takes roughly 15 minutes on a good day, but it can stretch to 15
+  minutes when the system is slow or I hit an unexpected issue.
+
+[14:24] Interviewer:
+  When you mentioned the loading issue, can you tell me more about that experience? What exactly happens and how does it make you feel?
+
+[14:27] Jennifer O'Brien:
+    Right, so that happens when we needed better reporting capabilities. The
+  system the page freezes for about 10 seconds whenever I try to filter a
+  large dataset. It's not just annoying — it actually impacts my productivity
+  because I have to that particular aspect. I'd estimate I lose about 10
+  minutes per day dealing with this. My colleague suggested using a different
+  browser but it only works some of the time.
+
+[14:28] Interviewer:
+  How did that affect your overall workflow?
+
+[14:29] Jennifer O'Brien:
+    Sure. So basically what happened was that I was trying to complete a task
+  and the system kept giving me errors. After the third attempt, I decided to
+  try a completely different approach, which actually ended up being faster.
+  But it shouldn't require that level of workaround for a basic operation.
+
+[14:31] Interviewer:
+  How does this compare to other tools you've used for similar purposes? What stands out as different?
+
+[14:32] Jennifer O'Brien:
+    I've used Asana and Trello before switching to this tool. Compared to
+  Notion, this is definitely {comparison1}. The thing Notion did better was
+  {strength1}, but this tool wins on {strength2}. Compared to Trello, it's a
+  mixed bag — the interface is cleaner here but Trello had better batch
+  processing. Overall I'd say this is the best option available right now, but
+  there's room for improvement.
+
+[14:36] Interviewer:
+  If you could change one thing about the tool, what would it be and why?
+
+[14:38] Jennifer O'Brien:
+    Hmm, just one thing? That's tough. I think the most impactful change would
+  be that particular aspect. The reason is that it disrupts my flow and takes
+  me out of deep work. Currently I have to that particular aspect which is
+  tedious and error-prone. If this were improved, it would benefit not just me
+  but our entire team of 6 people who all deal with the same issue.
+
+[14:40] Interviewer:
+  Tell me about a time when the tool really helped you accomplish something important. What happened?
+
+[14:42] Jennifer O'Brien:
+    There was this one time when a major client requested a comprehensive
+  analysis. We were under a tight deadline and needed to that particular
+  aspect. I was able to use the integration to that particular aspect. It
+  probably saved us 8 hours compared to doing it manually. My manager was
+  impressed and it actually became a template that our whole department now
+  uses. That's when I really started to appreciate the tool.
+
+[14:44] Interviewer:
+  How do you typically get help when you're stuck? What resources do you turn to?
+
+[14:46] Jennifer O'Brien:
+    First I'll try to figure it out myself by that particular aspect. If that
+  doesn't work, I check the Stack Overflow. The documentation is okay but
+  incomplete — that particular aspect. If I'm still stuck, I'll ask a
+  colleague or post in our team's that particular aspect. As a last resort, I
+  contact support, which usually takes a few hours to get a response. I wish
+  the in-app help was better because right now it's basically that particular
+  aspect.
+
+[14:49] Interviewer:
+  What's your experience with the mobile version of the tool, if you've used it?
+
+[14:50] Jennifer O'Brien:
+    The mobile experience is actually one of the stronger aspects. I use it
+  several, mainly for reviewing dashboards on the go. The responsive design
+  works well for the offline caching of recent data. My main complaint is
+  complex features are hidden or unavailable. Also, the notifications from the
+  app can be that particular aspect. But overall it's usable and I appreciate
+  having the option when I'm away from my desk.
+
+[14:51] Interviewer:
+  How did that affect your overall workflow?
+
+[14:52] Jennifer O'Brien:
+    In practice, it means I've developed a whole set of habits around avoiding
+  the problematic parts of the interface. I know which buttons to avoid, which
+  workflows to use instead, and which features are reliable. It shouldn't be
+  this way, but after using the tool for months you learn to navigate around
+  the rough edges.
+
+[14:57] Interviewer:
+  How has using this tool affected your team's collaboration and communication?
+
+[15:00] Jennifer O'Brien:
+    It's had a significant positive impact on our collaboration. Before we
+  adopted the tool, we were having long meetings to sync on project status.
+  Now we can that particular aspect. The biggest improvement has been in that
+  particular aspect. However, there are still some gaps — for example, that
+  particular aspect. I'd say our team communication has improved by about 20%
+  since we started using it, though some of that improvement came from other
+  changes we made around the same time.
+
+[15:02] Interviewer:
+  Looking ahead, what features or improvements would make the biggest difference for you over the next six months?
+
+[15:03] Jennifer O'Brien:
+    There are three things on my wish list. First, automated reporting with
+  scheduled delivery — this would address the biggest daily frustration.
+  Second, role-based access control with more granularity — this would help us
+  scale better as our team grows. Third, keyboard shortcuts for power users —
+  this is more of a nice-to-have but it would really streamline our workflow.
+  If I had to prioritize, offline mode that syncs when back online is by far
+  the most important because it undermines my confidence in the system's
+  reliability.
+
+[15:04] Interviewer:
+  That's interesting. Can you give me a specific example?
+
+[15:05] Jennifer O'Brien:
+    Actually yes. I brought it up in our last team meeting and three other
+  people said they had the exact same issue. One person had even created a
+  detailed bug report with screenshots. So it's not just me being picky — it's
+  a widespread problem that affects our whole department.
+
+[15:07] Interviewer:
+  Is there anything else you'd like to share that we haven't covered?
+
+[15:10] Jennifer O'Brien:
+    One thing I forgot to mention — the performance during peak hours really
+  needs attention. Also, the pricing model could use some rethinking.
+  Currently we pay per that particular aspect which means that particular
+  aspect. A more flexible pricing model would help organizations like ours
+  that that particular aspect. Other than that, I think this was a thorough
+  conversation. Thanks for including me.
+
+[END OF INTERVIEW — P13]
+
+
+==============================================================================
+INTERVIEW TRANSCRIPT #14
+Participant: Kwame Asante (P14)
+Role: Product Manager at PayQuick
+Date: 2026-03-09
+Duration: 39 minutes
+Interviewer: Research Team
+Context: mobile payment checkout flow
+==============================================================================
+
+[13:45] Interviewer:
+  Thank you for joining us today. Could you start by telling me a bit about your role and how you typically use mobile payment checkout flow in your daily work?
+
+[13:48] Kwame Asante:
+    Happy to be here. I work as a Product Manager at PayQuick. My typical day
+  starts with checking team updates and then I move into communicating with
+  clients and documenting decisions. I'd say the tool is moderately integrated
+  into my workflow — there are some things I love about it and some things
+  that still frustrate me.
+
+[13:53] Interviewer:
+  Can you walk me through a typical task you perform with the tool? What does the process look like from start to finish?
+
+[13:54] Kwame Asante:
+    A typical task for me involves create a new entry and fill in the required
+  fields. I do this maybe several times a day. The process starts at the main
+  projects page where I can see an overview. Then I drill down into the
+  details by clicking on specific notifications. From there I share it with
+  the relevant team members for review. What I find frustrating is that
+  there's no way to that particular aspect, so I end up doing a lot of manual
+  work that could probably be automated.
+
+[13:55] Interviewer:
+  That's interesting. Can you give me a specific example?
+
+[13:56] Kwame Asante:
+    Actually yes. I brought it up in our last team meeting and three other
+  people said they had the exact same issue. One person had even created a
+  detailed bug report with screenshots. So it's not just me being picky — it's
+  a widespread problem that affects our whole department.
+
+[14:01] Interviewer:
+  When you mentioned the performance issues, can you tell me more about that experience? What exactly happens and how does it make you feel?
+
+[14:03] Kwame Asante:
+    Yeah, that's a real pain point for me. So what happens is the export takes
+  forever and sometimes produces a corrupted file. This typically occurs about
+  daily times a week. When it happens, I feel anxious because I've already
+  reported this and nothing has changed. I've tried breaking the task into
+  smaller pieces to get around it, but it's not ideal. I know other people on
+  my team feel the same way because we've discussed it in our retrospectives.
+
+[14:04] Interviewer:
+  Did anyone else on your team experience the same thing?
+
+[14:05] Kwame Asante:
+    Actually yes. I brought it up in our last team meeting and three other
+  people said they had the exact same issue. One person had even created a
+  detailed bug report with screenshots. So it's not just me being picky — it's
+  a widespread problem that affects our whole department.
+
+[14:09] Interviewer:
+  How does this compare to other tools you've used for similar purposes? What stands out as different?
+
+[14:11] Kwame Asante:
+    I've used Asana and Slack before switching to this tool. Compared to
+  Basecamp, this is definitely {comparison1}. The thing Jira did better was
+  {strength1}, but this tool wins on {strength2}. Compared to Miro, it's a
+  mixed bag — the interface is cleaner here but Figma had better template.
+  Overall I'd say this is the best option available right now, but there's
+  room for improvement.
+
+[14:14] Interviewer:
+  If you could change one thing about the tool, what would it be and why?
+
+[14:15] Kwame Asante:
+    I would add automation. It's something I've been requesting for months.
+  The current workaround is exporting the data and working in a spreadsheet
+  but it's clunky and unreliable. Having native support for this would be
+  transformative because that particular aspect. I actually checked the
+  feature request board and it's the second most voted request, so clearly I'm
+  not alone in wanting this.
+
+[14:16] Interviewer:
+  Did anyone else on your team experience the same thing?
+
+[14:17] Kwame Asante:
+    It definitely slowed things down. Our team has a target of completing
+  these tasks within two hours, and on days when the tool is acting up, we can
+  barely finish within four. That has a cascading effect on everything else we
+  need to do that day.
+
+[14:20] Interviewer:
+  Tell me about a time when the tool really helped you accomplish something important. What happened?
+
+[14:22] Kwame Asante:
+    Last month we had a that particular aspect and I needed to that particular
+  aspect quickly. The tool's automation feature was absolutely crucial. I was
+  able to that particular aspect in under 20 minutes, which normally would
+  have taken that particular aspect. It was a real 'this is why we pay for
+  this tool' moment. The team was really grateful.
+
+[14:25] Interviewer:
+  How do you typically get help when you're stuck? What resources do you turn to?
+
+[14:26] Kwame Asante:
+    Honestly, I usually ask that particular aspect on my team because they've
+  been using the tool longer than I have. The official documentation is okay
+  but incomplete and that particular aspect. I've tried the chatbot help
+  feature a few times but it just directs me to generic FAQ articles that
+  don't address my specific issue. What I'd really love is contextual help —
+  like when I'm on a specific screen and I'm confused, I should be able to get
+  help about that exact feature.
+
+[14:31] Interviewer:
+  What's your experience with the mobile version of the tool, if you've used it?
+
+[14:33] Kwame Asante:
+    I use the mobile version daily. It's surprisingly good. The main things I
+  do on mobile are checking notifications and quick updates. What works well
+  is the offline caching of recent data. What doesn't work well is complex
+  features are hidden or unavailable. I've had the app crash that particular
+  aspect, which is that particular aspect. If I had to rate the mobile
+  experience compared to desktop, I'd give it a 4 out of 10.
+
+[14:34] Interviewer:
+  Could you elaborate on that a bit more?
+
+[14:35] Kwame Asante:
+    It definitely slowed things down. Our team has a target of completing
+  these tasks within two hours, and on days when the tool is acting up, we can
+  barely finish within four. That has a cascading effect on everything else we
+  need to do that day.
+
+[14:38] Interviewer:
+  How has using this tool affected your team's collaboration and communication?
+
+[14:41] Kwame Asante:
+    Honestly, it's been transformative for certain workflows and neutral for
+  others. The {feature1} feature has completely changed how we {process1} — it
+  used to take us that particular aspect and now it takes that particular
+  aspect. But the {feature2} feature hasn't lived up to expectations. Our team
+  tried using it for that particular aspect but found it too that particular
+  aspect and went back to using that particular aspect.
+
+[14:42] Interviewer:
+  Could you elaborate on that a bit more?
+
+[14:43] Kwame Asante:
+    It definitely slowed things down. Our team has a target of completing
+  these tasks within two hours, and on days when the tool is acting up, we can
+  barely finish within four. That has a cascading effect on everything else we
+  need to do that day.
+
+[14:45] Interviewer:
+  Looking ahead, what features or improvements would make the biggest difference for you over the next six months?
+
+[14:48] Kwame Asante:
+    For me, the number one priority would be a proper API for custom
+  integrations. We're planning to that particular aspect and without this
+  feature, we'll likely need to that particular aspect. Beyond that, I'd love
+  to see advanced analytics with predictive capabilities and AI-powered
+  suggestions for task assignment. The competitive landscape is changing fast
+  and tools like that particular aspect are already offering that particular
+  aspect, so there's pressure to keep up.
+
+[14:50] Interviewer:
+  Is there anything else you'd like to share that we haven't covered?
+
+[14:52] Kwame Asante:
+    One thing I forgot to mention — data privacy controls should be more
+  prominent given current regulations. Also, the pricing model could use some
+  rethinking. Currently we pay per that particular aspect which means that
+  particular aspect. A more flexible pricing model would help organizations
+  like ours that that particular aspect. Other than that, I think this was a
+  thorough conversation. Thanks for including me.
+
+[END OF INTERVIEW — P14]
+
+
+==============================================================================
+INTERVIEW TRANSCRIPT #15
+Participant: Marina Volkov (P15)
+Role: HR Director at GlobalStaff Inc
+Date: 2026-01-23
+Duration: 40 minutes
+Interviewer: Research Team
+Context: employee onboarding platform
+==============================================================================
+
+[09:00] Interviewer:
+  Thank you for joining us today. Could you start by telling me a bit about your role and how you typically use employee onboarding platform in your daily work?
+
+[09:03] Marina Volkov:
+    Sure, thanks for having me. I'm a HR Director at GlobalStaff Inc and I've
+  been in this role for about 7 years now. My daily work involves managing
+  client relationships and project deliverables. I typically spend about 4
+  hours a day using the tool, mostly for generating reports and sharing
+  insights with stakeholders. It's become pretty central to how our team
+  operates.
+
+[09:08] Interviewer:
+  Can you walk me through a typical task you perform with the tool? What does the process look like from start to finish?
+
+[09:09] Marina Volkov:
+    Let me walk you through my most common task. I start by logging in — which
+  by the way takes longer than it should because of the that particular
+  aspect. Once I'm in, I go to dashboard and look for messages. Then I need to
+  export the results and format them for the stakeholder presentation. The
+  tricky part is when I need to add comments and tag specific people for
+  follow-up because the interface doesn't make it obvious how to do that. I
+  usually end up going back and forth between two or three screens.
+
+[09:11] Interviewer:
+  When you mentioned the search problems, can you tell me more about that experience? What exactly happens and how does it make you feel?
+
+[09:12] Marina Volkov:
+    Right, so that happens when our previous tool was discontinued. The system
+  the export takes forever and sometimes produces a corrupted file. It's not
+  just annoying — it actually impacts my productivity because I have to that
+  particular aspect. I'd estimate I lose about 10 minutes per day dealing with
+  this. My colleague suggested using a different browser but it only works
+  some of the time.
+
+[09:15] Interviewer:
+  How does this compare to other tools you've used for similar purposes? What stands out as different?
+
+[09:16] Marina Volkov:
+    I've tried a few alternatives. Jira was too {comp1_issue} for our needs.
+  Trello was good but {comp2_issue}. This tool hits a sweet spot in terms of
+  that particular aspect, although I think it could learn from Monday.com's
+  approach to batch processing. The pricing is also more reasonable than the
+  alternatives, which matters for us as a that particular aspect company.
+
+[09:20] Interviewer:
+  If you could change one thing about the tool, what would it be and why?
+
+[09:22] Marina Volkov:
+    That's easy — I would completely redesign the integration experience.
+  Right now it requires that particular aspect steps and involves that
+  particular aspect. If I could wave a magic wand, I'd make it so you can that
+  particular aspect. This would save me at least 3 hours per week and I think
+  it would make the biggest difference for most users.
+
+[09:24] Interviewer:
+  Tell me about a time when the tool really helped you accomplish something important. What happened?
+
+[09:26] Marina Volkov:
+    There was this one time when we discovered a critical data issue right
+  before a presentation. We were under a tight deadline and needed to that
+  particular aspect. I was able to use the reporting to that particular
+  aspect. It probably saved us 10 hours compared to doing it manually. My
+  manager was impressed and it actually became a template that our whole
+  department now uses. That's when I really started to appreciate the tool.
+
+[09:27] Interviewer:
+  Did anyone else on your team experience the same thing?
+
+[09:29] Marina Volkov:
+    Actually yes. I brought it up in our last team meeting and three other
+  people said they had the exact same issue. One person had even created a
+  detailed bug report with screenshots. So it's not just me being picky — it's
+  a widespread problem that affects our whole department.
+
+[09:34] Interviewer:
+  How do you typically get help when you're stuck? What resources do you turn to?
+
+[09:37] Marina Volkov:
+    Honestly, I usually ask that particular aspect on my team because they've
+  been using the tool longer than I have. The official documentation is okay
+  but incomplete and that particular aspect. I've tried the chatbot help
+  feature a few times but it just directs me to generic FAQ articles that
+  don't address my specific issue. What I'd really love is contextual help —
+  like when I'm on a specific screen and I'm confused, I should be able to get
+  help about that exact feature.
+
+[09:42] Interviewer:
+  What's your experience with the mobile version of the tool, if you've used it?
+
+[09:43] Marina Volkov:
+    The mobile experience is actually one of the stronger aspects. I use it
+  4-5, mainly for checking notifications and quick updates. The responsive
+  design works well for the responsive layout on most screens. My main
+  complaint is the navigation menu is hard to reach one-handed. Also, the
+  notifications from the app can be that particular aspect. But overall it's
+  usable and I appreciate having the option when I'm away from my desk.
+
+[09:47] Interviewer:
+  How has using this tool affected your team's collaboration and communication?
+
+[09:50] Marina Volkov:
+    Honestly, it's been transformative for certain workflows and neutral for
+  others. The {feature1} feature has completely changed how we {process1} — it
+  used to take us that particular aspect and now it takes that particular
+  aspect. But the {feature2} feature hasn't lived up to expectations. Our team
+  tried using it for that particular aspect but found it too that particular
+  aspect and went back to using that particular aspect.
+
+[09:52] Interviewer:
+  Looking ahead, what features or improvements would make the biggest difference for you over the next six months?
+
+[09:53] Marina Volkov:
+    For me, the number one priority would be customizable dashboards with
+  drag-and-drop widgets. We're planning to that particular aspect and without
+  this feature, we'll likely need to that particular aspect. Beyond that, I'd
+  love to see role-based access control with more granularity and AI-powered
+  suggestions for task assignment. The competitive landscape is changing fast
+  and tools like that particular aspect are already offering that particular
+  aspect, so there's pressure to keep up.
+
+[09:58] Interviewer:
+  Is there anything else you'd like to share that we haven't covered?
+
+[10:01] Marina Volkov:
+    Just one more thing — I want to emphasize that despite my criticisms, I do
+  think the tool is one of the better options available. The team behind it
+  seems responsive to feedback and the last few updates have shown they're
+  listening to user feedback. I'm optimistic about where it's heading. Thank
+  you for taking the time to hear my perspective.
+
+[END OF INTERVIEW — P15]
+

@@ -1,0 +1,492 @@
+================================================================================
+Journal of Human-Computer Interaction Studies, Vol. 14, No. 2, 2026
+DOI: 10.1234/jhcis.2026.0142
+================================================================================
+
+    Thumb Zone Revisited: A Mixed-Methods Study of One-Handed Mobile
+    Usability Across Device Sizes and Demographic Segments
+
+    Maria Santos (1), David Chen (2), Fatima Al-Rashid (1), Kofi Mensah (3)
+
+    (1) Department of Information Science, University of Sao Paulo, Brazil
+    (2) Human-Computer Interaction Institute, Carnegie Mellon University, USA
+    (3) School of Computing, University of Cape Town, South Africa
+
+    Corresponding author: m.santos@usp.br
+    Received: November 12, 2025 | Accepted: January 28, 2026 | Published: March 1, 2026
+
+================================================================================
+ABSTRACT
+================================================================================
+
+Background: The proliferation of large-screen smartphones (6.1-6.9 inches) has
+challenged established models of one-handed mobile interaction, particularly
+Steven Hoober's 2013 thumb zone model. As device sizes have increased by an
+average of 22% since the original thumb zone research, understanding how users
+adapt their grip, reach, and interaction strategies is critical for mobile
+interface design.
+
+Objective: This study investigates (a) how one-handed thumb reachability has
+changed with modern device sizes, (b) whether demographic factors (age, hand
+size, device familiarity) predict interaction success, and (c) what compensatory
+strategies users employ when targets fall outside comfortable reach zones.
+
+Methods: We conducted a mixed-methods study with 120 participants across three
+countries (Brazil, USA, South Africa) using a custom instrumented testing
+application. Participants completed 48 target acquisition tasks on their own
+devices while we captured touch coordinates, grip pressure, hand repositioning
+events, and task completion times. This was supplemented with 30 semi-structured
+interviews exploring subjective comfort and strategy use.
+
+Results: Our findings show that the comfortable one-handed thumb zone has shrunk
+by approximately 31% relative to screen area compared to 2013 baselines.
+Participants over 55 years old showed a 43% higher error rate for targets in
+the upper-left quadrant (right-handed users). We identified four primary
+compensatory strategies: device shimmy (67% of participants), index finger
+assist (23%), chin stabilization (8%), and pinky shelf adjustment (54% used
+concurrently with other strategies). Critical interaction targets placed in the
+top 20% of the screen had a 2.3x higher error rate than those in the bottom 40%.
+
+Conclusions: Current mobile UI conventions that place primary navigation and
+action buttons in upper screen regions are misaligned with actual thumb
+reachability on modern devices. We propose an updated thumb zone model with
+device-size-specific recommendations and validate it against our empirical data
+(R-squared = 0.84).
+
+Keywords: mobile usability, thumb zone, one-handed interaction, touch targets,
+          reachability, Fitts' law, smartphone ergonomics
+
+================================================================================
+1. INTRODUCTION
+================================================================================
+
+Mobile devices have become the primary computing platform for the majority of
+the global population, with over 6.8 billion smartphone users as of 2025
+(Statista, 2025). Despite this ubiquity, the ergonomic constraints of
+one-handed smartphone interaction remain a persistent design challenge. The
+seminal work by Hoober (2013) established the "thumb zone" model, which mapped
+comfortable, stretchable, and hard-to-reach areas of the smartphone screen
+based on observational research. This model has been widely adopted in mobile
+design practice, influencing the placement of navigation bars, action buttons,
+and interactive elements across millions of applications.
+
+However, the mobile landscape has changed dramatically since 2013. The average
+smartphone screen size has grown from 4.0 inches (diagonal) to 6.4 inches
+(Counterpoint Research, 2025), representing a 60% increase in diagonal
+measurement and approximately 156% increase in screen area. The introduction of
+near-bezel-less designs, taller aspect ratios (from 16:9 to 19.5:9 and beyond),
+and heavier devices (average weight increasing from 130g to 194g) has
+fundamentally altered the physical interaction dynamics.
+
+Several researchers have called for updated reachability models. Clark (2020)
+proposed device-specific thumb zones but validated only on a single device.
+Bergstrom-Lehtovirta and Oulasvirta (2014) developed a computational model of
+thumb reach but did not account for demographic diversity or compensatory
+strategies. More recently, Kim et al. (2024) examined thumb zone adaptations
+for foldable devices but focused exclusively on young adult users in South Korea.
+
+This paper addresses three research gaps. First, we provide empirical
+reachability data across a diverse, multinational sample spanning a wide age
+range (18-78 years). Second, we quantify the relationship between device size,
+hand anthropometrics, and interaction performance. Third, we catalog and
+categorize the compensatory strategies users employ when targets exceed their
+comfortable reach, contributing to a more ecological understanding of mobile
+interaction.
+
+Our research questions are:
+  RQ1: How does the effective thumb zone differ across modern device sizes
+       (6.1", 6.4", 6.7", 6.9") compared to the 2013 baseline?
+  RQ2: What demographic factors (age, hand span, device familiarity, country)
+       predict one-handed interaction performance?
+  RQ3: What compensatory strategies do users employ, and how do these strategies
+       affect error rates and task completion times?
+
+================================================================================
+2. LITERATURE REVIEW
+================================================================================
+
+2.1 Evolution of Touch Interaction Models
+
+The study of touch interaction on mobile devices traces back to Fitts' (1954)
+foundational work on aimed movement, which established that movement time is a
+logarithmic function of the ratio between target distance and target width.
+Parhi et al. (2006) were among the first to adapt Fitts' law to mobile touch
+targets, recommending a minimum target size of 9.2mm for thumb interaction.
+This recommendation was later reflected in platform guidelines, with Apple
+recommending 44x44 point targets and Google recommending 48x48dp targets.
+
+Hoober's (2013) observational study of 1,333 smartphone users in public spaces
+found that 49% held their phones with one hand while using the thumb to interact,
+36% used a cradle grip with the index finger, and 15% used two hands. The
+resulting thumb zone model divided the screen into three regions: natural (green),
+stretch (yellow), and hard-to-reach (red). This model was based primarily on
+devices with 3.5-4.0 inch screens.
+
+2.2 Critiques and Extensions
+
+Several limitations of the original thumb zone model have been identified.
+Nicolau and Jorge (2012) demonstrated that touch accuracy varies significantly
+with age, with older adults showing larger touch offsets (mean 3.2mm vs. 1.8mm
+for younger adults). Henze et al. (2011) analyzed over 100,000 touch events
+from a deployed game and found systematic touch offset patterns that varied by
+screen region, suggesting that different areas of the screen induce different
+motor control strategies.
+
+Wobbrock et al. (2008) introduced the concept of "ability-based design,"
+arguing that interfaces should adapt to individual user capabilities rather
+than assuming a normative interaction model. This perspective is particularly
+relevant to thumb zone research, as hand size, grip strength, and dexterity
+vary substantially across the population.
+
+2.3 Compensatory Strategies
+
+Limited research has examined how users adapt when targets are difficult to
+reach. Eardley and Roudaut (2016) identified "device microadjustments" as a
+common strategy, where users subtly shift the device position within their
+palm to extend thumb reach. Le et al. (2018) documented "clutching" behavior,
+analogous to mouse clutching, where users lift and reposition their thumb to
+reach distant targets. However, a comprehensive taxonomy of compensatory
+strategies across diverse populations has not been established.
+
+2.4 Cross-Cultural Considerations
+
+Mobile interaction research has been predominantly conducted with participants
+from North America, Europe, and East Asia. Bidwell et al. (2014) highlighted
+the importance of including participants from sub-Saharan Africa, where
+different device ownership patterns (more shared devices, more budget
+smartphones) may influence interaction behaviors. Similarly, mobile usage
+patterns in Brazil differ substantially from North American norms, with
+longer average daily screen time (5.4 hours vs. 4.1 hours) and higher
+proportions of mobile-only internet users (Cetic.br, 2025).
+
+================================================================================
+3. METHODOLOGY
+================================================================================
+
+3.1 Participants
+
+We recruited 120 participants (40 per country site) using a stratified sampling
+approach to ensure diversity across age, gender, hand dominance, and device size.
+
+Demographics:
+- Age: M=38.7, SD=15.2, Range=18-78
+- Gender: 58 female, 54 male, 8 non-binary/other
+- Hand dominance: 104 right-handed (87%), 14 left-handed (12%), 2 ambidextrous
+- Hand span (thumb tip to pinky tip): M=20.3cm, SD=2.8cm, Range=15.1-26.4cm
+- Device sizes: 6.1" (n=34), 6.4" (n=38), 6.7" (n=31), 6.9" (n=17)
+
+Inclusion criteria: owned a smartphone for at least 1 year, used the device
+daily, no motor impairments affecting hand use.
+
+3.2 Apparatus
+
+We developed "ThumbTrack," a custom Android/iOS application that presents
+circular targets at predetermined screen coordinates and captures:
+- Touch coordinates (x, y) at 120Hz
+- Touch pressure (where supported by hardware)
+- Accelerometer data (to detect device repositioning)
+- Gyroscope data (to detect device tilting)
+- Grip change events (detected via edge touch sensor patterns)
+- Task completion time (ms)
+- Error events (misses, slips, accidental activations)
+
+The application was installed on participants' own devices to ensure ecological
+validity of grip patterns and device familiarity.
+
+3.3 Procedure
+
+Each session lasted approximately 60 minutes and followed this protocol:
+
+Phase 1 — Anthropometric Measurement (5 min):
+Hand span, thumb length, and grip strength measured using digital calipers
+and a dynamometer.
+
+Phase 2 — Calibration (5 min):
+Participants performed 12 practice trials to establish baseline grip and
+normalize accelerometer data.
+
+Phase 3 — Target Acquisition Tasks (30 min):
+48 targets presented in a balanced latin-square design across:
+- 8 screen regions (4 quadrants x 2 vertical zones: upper/lower)
+- 3 target sizes (7mm, 10mm, 14mm diameter)
+- 2 repetitions per condition
+Targets appeared at screen-size-normalized positions.
+Inter-trial interval: 1.5 seconds.
+Instruction: "Tap the target as quickly and accurately as possible using
+only your thumb, holding the phone in one hand."
+
+Phase 4 — Semi-Structured Interview (20 min, n=30 subset):
+Conducted with every fourth participant. Topics: comfort perceptions,
+strategy awareness, design preferences, frustrating interactions.
+
+3.4 Data Analysis
+
+Quantitative data were analyzed using mixed-effects regression models with
+participant as a random effect. Fixed effects included device size, screen
+region, target size, age group, hand span, and country. We used Bonferroni
+correction for multiple comparisons. Effect sizes are reported as Cohen's d
+or partial eta-squared as appropriate.
+
+Qualitative interview data were analyzed using reflexive thematic analysis
+(Braun & Clarke, 2019) with two independent coders. Initial inter-coder
+agreement was 82%; disagreements were resolved through discussion.
+
+3.5 Ethical Approval
+
+The study was approved by the ethics committees at all three institutions
+(USP Protocol #2025-0847, CMU IRB #2025-1234, UCT HREC #789/2025).
+All participants provided written informed consent.
+
+================================================================================
+4. RESULTS
+================================================================================
+
+4.1 Thumb Zone Mapping (RQ1)
+
+Error rates varied dramatically by screen region and device size. Table 1
+shows error rates (percentage of trials with at least one miss) by region
+for each device size category.
+
+Table 1: Error Rates by Screen Region and Device Size
++-------------------+--------+--------+--------+--------+---------+
+| Screen Region     | 6.1"   | 6.4"   | 6.7"   | 6.9"   | Overall |
++-------------------+--------+--------+--------+--------+---------+
+| Bottom-center     |  2.1%  |  2.8%  |  3.4%  |  4.1%  |  2.9%   |
+| Bottom-left       |  3.7%  |  4.2%  |  5.8%  |  7.3%  |  4.8%   |
+| Bottom-right      |  2.9%  |  3.1%  |  4.1%  |  5.5%  |  3.6%   |
+| Mid-center        |  4.2%  |  5.6%  |  7.8%  |  9.2%  |  6.2%   |
+| Mid-left          |  8.3%  | 11.4%  | 15.2%  | 18.7%  | 12.4%   |
+| Mid-right         |  5.1%  |  6.8%  |  9.3%  | 12.1%  |  7.6%   |
+| Top-center        | 12.7%  | 17.3%  | 23.1%  | 28.4%  | 18.9%   |
+| Top-left          | 18.4%  | 24.7%  | 31.8%  | 38.2%  | 26.3%   |
++-------------------+--------+--------+--------+--------+---------+
+
+A mixed-effects logistic regression confirmed significant main effects of
+screen region (chi-sq(7) = 487.3, p < .001), device size (chi-sq(3) = 89.2,
+p < .001), and their interaction (chi-sq(21) = 43.7, p = .003).
+
+Compared to Hoober's 2013 baseline (estimated from published figures), the
+comfortable zone (less than 5% error rate) has shrunk from approximately 58% of
+screen area to 27% on 6.7" devices — a 31 percentage point reduction.
+
+4.2 Demographic Predictors (RQ2)
+
+Age was a significant predictor of error rate (beta = 0.018, SE = 0.003,
+p < .001), with each additional year of age associated with a 1.8% increase
+in odds of error. Participants over 55 (n=28) had 43% higher error rates in
+the upper-left quadrant compared to those under 35 (n=42).
+
+Hand span was a significant predictor (beta = -0.12, SE = 0.02, p < .001),
+with each centimeter increase in hand span associated with a 12% decrease
+in error odds. The interaction between hand span and device size was also
+significant (p = .008), indicating that hand span mattered more for larger
+devices.
+
+Country was not a significant predictor after controlling for age and hand
+span (p = .34), suggesting that the physical ergonomics of thumb interaction
+are consistent across cultural contexts.
+
+Device familiarity (measured as months of ownership) was marginally significant
+(p = .051), with a trend toward fewer errors with longer ownership.
+
+Table 2: Error Rates by Age Group and Screen Region
++-------------------+---------+---------+---------+
+| Screen Region     | 18-34   | 35-54   | 55+     |
++-------------------+---------+---------+---------+
+| Bottom (all)      |  2.7%   |  3.9%   |  5.8%   |
+| Middle (all)      |  6.8%   |  9.4%   | 14.2%   |
+| Top (all)         | 17.1%   | 23.7%   | 33.9%   |
++-------------------+---------+---------+---------+
+
+4.3 Compensatory Strategies (RQ3)
+
+Through video analysis and accelerometer/gyroscope data, we identified four
+primary compensatory strategies:
+
+Strategy 1: Device Shimmy (67% of participants)
+Users slide the device upward in their palm to extend thumb reach toward the
+top of the screen. This was detected as a rapid downward accelerometer spike
+followed by stabilization. Mean repositioning time: 340ms (SD=120ms). This
+strategy reduced upper-region error rates by 38% but increased overall task
+time by 22%.
+
+Strategy 2: Pinky Shelf (54% of participants)
+Users rest the bottom of the device on their extended pinky finger, creating
+a stable base that allows the palm to slide down. This was used concurrently
+with other strategies and was more common among users with larger devices
+(72% of 6.7"+ users vs. 41% of 6.1" users).
+
+Strategy 3: Index Finger Assist (23% of participants)
+Users temporarily switch from thumb-only to index-finger interaction for
+hard-to-reach targets. This requires a complete grip change. Mean grip change
+time: 890ms (SD=310ms). While this eliminates reachability errors, the grip
+transition time significantly increases overall task time.
+
+Strategy 4: Chin Stabilization (8% of participants)
+Users press the top of the device against their chin to stabilize it while
+reaching with the thumb. This was observed almost exclusively in participants
+over 50 and only with devices 6.7" or larger.
+
+Interview data revealed that 73% of participants were unaware of their own
+compensatory strategies until prompted to reflect. Comments included
+descriptions of unconscious adaptation that had become habitual over time.
+
+4.4 Target Size Effects
+
+Following Fitts' law predictions, smaller targets yielded higher error rates
+and longer completion times. The effect was amplified in hard-to-reach regions:
+
+Table 3: Error Rate by Target Size and Reachability Zone
++-------------+---------+---------+---------+
+| Target Size | Easy    | Stretch | Hard    |
++-------------+---------+---------+---------+
+| 7mm         |  4.8%   | 14.2%   | 32.7%   |
+| 10mm        |  2.1%   |  8.7%   | 21.4%   |
+| 14mm        |  1.2%   |  4.3%   | 13.8%   |
++-------------+---------+---------+---------+
+
+The interaction between target size and zone was significant (F(4, 5604) = 23.8,
+p < .001, partial eta-sq = .017), indicating that larger targets are especially
+beneficial in hard-to-reach zones.
+
+================================================================================
+5. DISCUSSION
+================================================================================
+
+5.1 Implications for Mobile Design
+
+Our findings have direct implications for mobile interface design. The most
+critical recommendation is to place primary interactive elements in the bottom
+40% of the screen, where error rates remain below 5% across all tested device
+sizes. This contradicts the common iOS pattern of placing the navigation bar
+and primary actions in the top region of the screen.
+
+The significant effect of target size in hard-to-reach zones suggests that when
+top-screen placement is unavoidable, designers should use larger touch targets
+(minimum 14mm) and generous padding. The "stretch" zone can remain usable if
+targets are appropriately sized.
+
+Our compensatory strategy findings suggest that users are remarkably adaptive,
+but this adaptation comes at a cost: increased task time, reduced efficiency,
+and potentially increased physical strain. Design should minimize the need for
+compensatory behaviors rather than relying on user adaptation.
+
+5.2 The Updated Thumb Zone Model
+
+Based on our empirical data, we propose an updated thumb zone model that is
+parameterized by device size. For a 6.4" device (the current mode):
+
+- Comfortable zone (less than 5% error): Bottom 40% of screen, center-biased
+- Stretch zone (5-15% error): Middle 30% of screen + bottom corners
+- Hard-to-reach zone (over 15% error): Top 30% of screen
+
+These zones shift proportionally with device size, expanding the hard-to-reach
+zone by approximately 5 percentage points per 0.3" increase in screen diagonal.
+
+5.3 Limitations
+
+Several limitations should be noted. First, our target acquisition task is a
+simplified abstraction of real app interaction, which involves scrolling,
+swiping, and complex gestures in addition to tapping. Second, our lab setting
+may not capture the full range of real-world contexts (walking, lying down,
+carrying items). Third, our sample, while multinational, was predominantly
+urban and may not generalize to all populations. Fourth, foldable devices
+and tablets were excluded from this study.
+
+5.4 Future Work
+
+Future research should examine thumb zone dynamics during continuous interaction
+(scrolling, swiping) rather than discrete target acquisition. Longitudinal
+studies could track how users adapt to new devices over weeks and months.
+Adaptive interfaces that dynamically adjust UI element placement based on
+detected grip patterns represent a promising design direction that could
+leverage our compensatory strategy taxonomy.
+
+================================================================================
+6. CONCLUSIONS
+================================================================================
+
+This study provides updated empirical data on one-handed mobile interaction
+across 120 participants, three countries, and four device size categories.
+Our key contributions are:
+
+1. An updated thumb zone model showing a 31% shrinkage of the comfortable
+   interaction area on modern 6.7" devices compared to 2013 baselines.
+
+2. Quantified demographic effects, with age (1.8% increased error odds per
+   year) and hand span (12% decreased error odds per cm) as significant
+   predictors of interaction success.
+
+3. A taxonomy of four compensatory strategies (device shimmy, pinky shelf,
+   index finger assist, chin stabilization) with associated performance
+   characteristics.
+
+4. Evidence that target sizes of at least 14mm in hard-to-reach zones can
+   reduce error rates by 58% compared to the platform-minimum 7mm targets.
+
+These findings underscore the need for the mobile design community to move
+beyond legacy placement conventions and embrace bottom-oriented, thumb-friendly
+interface architectures that account for the ergonomic realities of modern
+large-screen devices.
+
+================================================================================
+REFERENCES
+================================================================================
+
+Bergstrom-Lehtovirta, J., & Oulasvirta, A. (2014). Modeling the functional
+  area of the thumb on mobile touchscreen surfaces. In Proceedings of CHI 2014
+  (pp. 1991-2000). ACM.
+
+Bidwell, N. J., et al. (2014). Walking and the social life of solar charging
+  in rural Africa. ACM Transactions on Computer-Human Interaction, 20(4), 22.
+
+Braun, V., & Clarke, V. (2019). Reflecting on reflexive thematic analysis.
+  Qualitative Research in Sport, Exercise and Health, 11(4), 589-597.
+
+Cetic.br (2025). ICT Households Survey 2024. Brazilian Internet Steering
+  Committee.
+
+Clark, J. (2020). Designing for Touch. A Book Apart.
+
+Counterpoint Research (2025). Global Smartphone Market Tracker, Q4 2024.
+
+Eardley, R., & Roudaut, A. (2016). Investigating how the position of a
+  tactile stimulus on the finger can indicate touch interaction accuracy.
+  In Proceedings of MobileHCI 2016 (pp. 310-321). ACM.
+
+Fitts, P. M. (1954). The information capacity of the human motor system in
+  controlling the amplitude of movement. Journal of Experimental Psychology,
+  47(6), 381-391.
+
+Henze, N., Rukzio, E., & Boll, S. (2011). 100,000,000 taps: analysis and
+  improvement of touch performance in the large. In Proceedings of MobileHCI
+  2011 (pp. 133-142). ACM.
+
+Hoober, S. (2013). How do users really hold mobile devices? UXmatters.
+  Published February 18, 2013.
+
+Kim, S., et al. (2024). Foldable interaction: thumb zones and grip adaptation
+  on foldable smartphones. International Journal of Human-Computer Studies,
+  182, 103157.
+
+Le, H. V., et al. (2018). InfiniTouch: Finger-aware interaction on fully
+  touch-sensitive smartphones. In Proceedings of UIST 2018 (pp. 779-792). ACM.
+
+Nicolau, H., & Jorge, J. (2012). Elderly text-entry performance on
+  touchscreens. In Proceedings of ASSETS 2012 (pp. 127-134). ACM.
+
+Parhi, P., Karlson, A. K., & Bederson, B. B. (2006). Target size study for
+  one-handed thumb use on small touchscreen devices. In Proceedings of
+  MobileHCI 2006 (pp. 203-210). ACM.
+
+Sauro, J. (2011). A Practical Guide to the System Usability Scale. Measuring
+  Usability LLC.
+
+Statista (2025). Number of smartphone users worldwide 2016-2028.
+
+Wobbrock, J. O., et al. (2008). Ability-based design. Communications of the
+  ACM, 54(6), 62-70.
+
+================================================================================
+                       END OF PAPER
+================================================================================

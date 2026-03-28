@@ -1,0 +1,201 @@
+respondent_id,date,score,segment,verbatim_comment,product_area
+NPS-0001,2025-01-26,8,passive,Decent platform. A few rough edges but nothing major.,Onboarding
+NPS-0002,2025-01-24,5,detractor,Pricing increased 40 percent with no new features to justify it.,Onboarding
+NPS-0003,2025-01-08,9,promoter,Best tool we have used for project management. Highly recommend.,Search
+NPS-0004,2025-01-22,7,passive,Price is a bit high for what you get. Would like to see more features.,Search
+NPS-0005,2025-01-12,10,promoter,Incredible value for the price. We tried three competitors before this.,Billing
+NPS-0006,2025-02-24,5,detractor,The search is broken half the time. Very frustrating experience.,Reports
+NPS-0007,2025-02-17,6,detractor,Performance has degraded significantly over the past two quarters.,Dashboard
+NPS-0008,2025-03-28,9,promoter,Best tool we have used for project management. Highly recommend.,Notifications
+NPS-0009,2025-02-14,7,passive,Generally reliable but the occasional slowdown is frustrating.,Reports
+NPS-0010,2025-02-09,9,promoter,The mobile app improvements are fantastic. Much more responsive now.,Mobile App
+NPS-0011,2025-02-28,5,detractor,Onboarding documentation is outdated and misleading.,Billing
+NPS-0012,2025-03-29,4,detractor,The UI redesign made everything harder to find. Poor change management.,Billing
+NPS-0013,2025-01-25,10,promoter,Love how intuitive the dashboard is. Makes my daily workflow so much smoother.,Onboarding
+NPS-0014,2025-01-17,9,promoter,The billing dashboard is transparent and easy to understand.,Reports
+NPS-0015,2025-01-16,7,passive,Generally reliable but the occasional slowdown is frustrating.,Search
+NPS-0016,2025-02-02,5,detractor,Integration with our existing tools is painful and poorly documented.,Mobile App
+NPS-0017,2025-03-26,9,promoter,Love how intuitive the dashboard is. Makes my daily workflow so much smoother.,Notifications
+NPS-0018,2025-02-23,7,passive,The learning curve was steeper than expected but manageable.,Onboarding
+NPS-0019,2025-03-31,9,promoter,The mobile app improvements are fantastic. Much more responsive now.,Billing
+NPS-0020,2025-01-13,4,detractor,Integration with our existing tools is painful and poorly documented.,Settings
+NPS-0021,2025-02-23,3,detractor,Integration with our existing tools is painful and poorly documented.,Dashboard
+NPS-0022,2025-01-15,5,detractor,Integration with our existing tools is painful and poorly documented.,Dashboard
+NPS-0023,2025-02-03,6,detractor,Onboarding documentation is outdated and misleading.,Settings
+NPS-0024,2025-02-07,10,promoter,Love the new notification settings. Finally have control over what I see.,Mobile App
+NPS-0025,2025-03-30,4,detractor,The search is broken half the time. Very frustrating experience.,Dashboard
+NPS-0026,2025-01-12,6,detractor,The UI redesign made everything harder to find. Poor change management.,Dashboard
+NPS-0027,2025-01-12,2,detractor,Too many bugs in the latest release. Quality has gone downhill.,Mobile App
+NPS-0028,2025-03-24,9,promoter,The mobile app improvements are fantastic. Much more responsive now.,Reports
+NPS-0029,2025-01-13,6,detractor,The mobile app crashes constantly on Android. Nearly unusable.,Billing
+NPS-0030,2025-03-28,7,passive,Works well for basic needs but missing some advanced features we need.,Search
+NPS-0031,2025-04-06,9,promoter,Incredible value for the price. We tried three competitors before this.,Notifications
+NPS-0032,2025-05-13,8,passive,Good for small teams. Starts to show limitations at scale.,Onboarding
+NPS-0033,2025-04-12,8,passive,Decent platform. A few rough edges but nothing major.,Dashboard
+NPS-0034,2025-05-22,4,detractor,Lost data twice due to sync issues. Considering switching providers.,Notifications
+NPS-0035,2025-06-01,5,detractor,Pricing increased 40 percent with no new features to justify it.,Dashboard
+NPS-0036,2025-06-29,6,detractor,Pricing increased 40 percent with no new features to justify it.,Dashboard
+NPS-0037,2025-06-15,8,passive,Decent platform. A few rough edges but nothing major.,Notifications
+NPS-0038,2025-05-16,7,passive,Price is a bit high for what you get. Would like to see more features.,Mobile App
+NPS-0039,2025-04-15,5,detractor,Too many bugs in the latest release. Quality has gone downhill.,Onboarding
+NPS-0040,2025-05-11,10,promoter,The keyboard shortcuts make power users very happy.,Reports
+NPS-0041,2025-06-12,9,promoter,This product has transformed how our team collaborates. Five stars.,Reports
+NPS-0042,2025-06-29,8,passive,The mobile experience could be better. Desktop is much more polished.,Reports
+NPS-0043,2025-06-24,5,detractor,Performance has degraded significantly over the past two quarters.,Search
+NPS-0044,2025-06-18,9,promoter,This product has transformed how our team collaborates. Five stars.,Search
+NPS-0045,2025-06-03,2,detractor,The UI redesign made everything harder to find. Poor change management.,Onboarding
+NPS-0046,2025-05-13,2,detractor,Customer support takes days to respond. Unacceptable for a paid product.,Reports
+NPS-0047,2025-05-19,7,passive,Works well for basic needs but missing some advanced features we need.,Reports
+NPS-0048,2025-06-13,8,passive,Price is a bit high for what you get. Would like to see more features.,Onboarding
+NPS-0049,2025-06-03,0,detractor,Lost data twice due to sync issues. Considering switching providers.,Billing
+NPS-0050,2025-06-11,7,passive,Good for small teams. Starts to show limitations at scale.,Mobile App
+NPS-0051,2025-06-21,7,passive,Price is a bit high for what you get. Would like to see more features.,Mobile App
+NPS-0052,2025-05-17,6,detractor,The UI redesign made everything harder to find. Poor change management.,Onboarding
+NPS-0053,2025-06-19,8,passive,Price is a bit high for what you get. Would like to see more features.,Dashboard
+NPS-0054,2025-06-24,9,promoter,Onboarding was seamless. Our whole team was up and running in a day.,Search
+NPS-0055,2025-05-08,8,passive,Works well for basic needs but missing some advanced features we need.,Dashboard
+NPS-0056,2025-04-22,8,passive,Works well for basic needs but missing some advanced features we need.,Onboarding
+NPS-0057,2025-04-26,10,promoter,Best tool we have used for project management. Highly recommend.,Reports
+NPS-0058,2025-04-25,3,detractor,Lost data twice due to sync issues. Considering switching providers.,Dashboard
+NPS-0059,2025-06-21,5,detractor,The UI redesign made everything harder to find. Poor change management.,Reports
+NPS-0060,2025-06-15,3,detractor,The UI redesign made everything harder to find. Poor change management.,Dashboard
+NPS-0061,2025-04-07,8,passive,Good for small teams. Starts to show limitations at scale.,Reports
+NPS-0062,2025-06-05,6,detractor,Integration with our existing tools is painful and poorly documented.,Dashboard
+NPS-0063,2025-07-17,10,promoter,The billing dashboard is transparent and easy to understand.,Search
+NPS-0064,2025-09-03,5,detractor,Integration with our existing tools is painful and poorly documented.,Mobile App
+NPS-0065,2025-08-01,9,promoter,The mobile app improvements are fantastic. Much more responsive now.,Reports
+NPS-0066,2025-07-18,10,promoter,The keyboard shortcuts make power users very happy.,Search
+NPS-0067,2025-09-04,8,passive,The learning curve was steeper than expected but manageable.,Notifications
+NPS-0068,2025-07-26,9,promoter,Incredible value for the price. We tried three competitors before this.,Onboarding
+NPS-0069,2025-09-25,9,promoter,This product has transformed how our team collaborates. Five stars.,Reports
+NPS-0070,2025-09-20,7,passive,Some features feel outdated compared to newer competitors.,Reports
+NPS-0071,2025-09-13,8,passive,The learning curve was steeper than expected but manageable.,Onboarding
+NPS-0072,2025-08-24,5,detractor,The search is broken half the time. Very frustrating experience.,Billing
+NPS-0073,2025-07-07,7,passive,It does what it says but nothing exceptional. Average experience.,Search
+NPS-0074,2025-07-21,6,detractor,Pricing increased 40 percent with no new features to justify it.,Search
+NPS-0075,2025-09-27,4,detractor,Performance has degraded significantly over the past two quarters.,Dashboard
+NPS-0076,2025-08-27,10,promoter,Best tool we have used for project management. Highly recommend.,Settings
+NPS-0077,2025-09-10,8,passive,Good product overall but the reports could be more customizable.,Mobile App
+NPS-0078,2025-08-19,8,passive,The learning curve was steeper than expected but manageable.,Dashboard
+NPS-0079,2025-08-02,10,promoter,Best tool we have used for project management. Highly recommend.,Mobile App
+NPS-0080,2025-09-29,5,detractor,Integration with our existing tools is painful and poorly documented.,Reports
+NPS-0081,2025-09-16,9,promoter,The mobile app improvements are fantastic. Much more responsive now.,Billing
+NPS-0082,2025-09-26,9,promoter,The keyboard shortcuts make power users very happy.,Reports
+NPS-0083,2025-08-18,9,promoter,This product has transformed how our team collaborates. Five stars.,Onboarding
+NPS-0084,2025-07-21,8,passive,Good product overall but the reports could be more customizable.,Onboarding
+NPS-0085,2025-09-29,1,detractor,Onboarding documentation is outdated and misleading.,Reports
+NPS-0086,2025-09-19,8,passive,Price is a bit high for what you get. Would like to see more features.,Search
+NPS-0087,2025-09-09,8,passive,The learning curve was steeper than expected but manageable.,Onboarding
+NPS-0088,2025-07-24,7,passive,Generally reliable but the occasional slowdown is frustrating.,Reports
+NPS-0089,2025-08-21,9,promoter,Best tool we have used for project management. Highly recommend.,Notifications
+NPS-0090,2025-08-12,7,passive,Good for small teams. Starts to show limitations at scale.,Reports
+NPS-0091,2025-09-10,6,detractor,The search is broken half the time. Very frustrating experience.,Dashboard
+NPS-0092,2025-08-14,7,passive,Good product overall but the reports could be more customizable.,Notifications
+NPS-0093,2025-08-11,7,passive,Generally reliable but the occasional slowdown is frustrating.,Onboarding
+NPS-0094,2025-08-06,10,promoter,Onboarding was seamless. Our whole team was up and running in a day.,Reports
+NPS-0095,2025-09-04,7,passive,It does what it says but nothing exceptional. Average experience.,Search
+NPS-0096,2025-07-25,7,passive,Works well for basic needs but missing some advanced features we need.,Dashboard
+NPS-0097,2025-09-07,7,passive,The mobile experience could be better. Desktop is much more polished.,Notifications
+NPS-0098,2025-10-28,5,detractor,Too many bugs in the latest release. Quality has gone downhill.,Onboarding
+NPS-0099,2025-12-29,6,detractor,Lost data twice due to sync issues. Considering switching providers.,Notifications
+NPS-0100,2025-10-10,3,detractor,The UI redesign made everything harder to find. Poor change management.,Settings
+NPS-0101,2025-10-05,9,promoter,Customer support was incredibly helpful when I had an issue last week.,Search
+NPS-0102,2025-12-11,9,promoter,The mobile app improvements are fantastic. Much more responsive now.,Billing
+NPS-0103,2025-11-27,8,passive,Some features feel outdated compared to newer competitors.,Dashboard
+NPS-0104,2025-12-26,9,promoter,Incredible value for the price. We tried three competitors before this.,Settings
+NPS-0105,2025-10-09,5,detractor,Too many bugs in the latest release. Quality has gone downhill.,Billing
+NPS-0106,2025-12-04,9,promoter,The billing dashboard is transparent and easy to understand.,Dashboard
+NPS-0107,2025-11-26,7,passive,Price is a bit high for what you get. Would like to see more features.,Dashboard
+NPS-0108,2025-10-29,10,promoter,This product has transformed how our team collaborates. Five stars.,Onboarding
+NPS-0109,2025-12-21,9,promoter,Love how intuitive the dashboard is. Makes my daily workflow so much smoother.,Reports
+NPS-0110,2025-12-11,9,promoter,Love how intuitive the dashboard is. Makes my daily workflow so much smoother.,Reports
+NPS-0111,2025-11-20,7,passive,It does what it says but nothing exceptional. Average experience.,Onboarding
+NPS-0112,2025-11-14,10,promoter,Customer support was incredibly helpful when I had an issue last week.,Dashboard
+NPS-0113,2025-10-29,8,passive,The mobile experience could be better. Desktop is much more polished.,Dashboard
+NPS-0114,2025-12-25,6,detractor,Performance has degraded significantly over the past two quarters.,Reports
+NPS-0115,2025-12-10,9,promoter,The mobile app improvements are fantastic. Much more responsive now.,Dashboard
+NPS-0116,2025-12-14,8,passive,Some features feel outdated compared to newer competitors.,Dashboard
+NPS-0117,2025-12-23,9,promoter,The billing dashboard is transparent and easy to understand.,Dashboard
+NPS-0118,2025-10-25,8,passive,Some features feel outdated compared to newer competitors.,Notifications
+NPS-0119,2025-11-09,7,passive,Good for small teams. Starts to show limitations at scale.,Reports
+NPS-0120,2025-11-10,3,detractor,Onboarding documentation is outdated and misleading.,Onboarding
+NPS-0121,2025-10-29,8,passive,It does what it says but nothing exceptional. Average experience.,Search
+NPS-0122,2025-10-18,8,passive,Price is a bit high for what you get. Would like to see more features.,Reports
+NPS-0123,2025-11-15,5,detractor,Too many bugs in the latest release. Quality has gone downhill.,Dashboard
+NPS-0124,2025-12-17,9,promoter,Customer support was incredibly helpful when I had an issue last week.,Search
+NPS-0125,2025-10-26,9,promoter,The keyboard shortcuts make power users very happy.,Dashboard
+NPS-0126,2025-10-03,5,detractor,Integration with our existing tools is painful and poorly documented.,Reports
+NPS-0127,2025-12-15,9,promoter,This product has transformed how our team collaborates. Five stars.,Onboarding
+NPS-0128,2025-12-09,7,passive,Some features feel outdated compared to newer competitors.,Billing
+NPS-0129,2025-12-15,4,detractor,The UI redesign made everything harder to find. Poor change management.,Reports
+NPS-0130,2025-10-12,7,passive,The mobile experience could be better. Desktop is much more polished.,Search
+NPS-0131,2026-03-20,7,passive,Price is a bit high for what you get. Would like to see more features.,Dashboard
+NPS-0132,2026-03-14,6,detractor,Pricing increased 40 percent with no new features to justify it.,Settings
+NPS-0133,2026-03-03,1,detractor,The UI redesign made everything harder to find. Poor change management.,Onboarding
+NPS-0134,2026-02-03,7,passive,The mobile experience could be better. Desktop is much more polished.,Reports
+NPS-0135,2026-02-16,8,passive,Good product overall but the reports could be more customizable.,Dashboard
+NPS-0136,2026-03-25,8,passive,It does what it says but nothing exceptional. Average experience.,Reports
+NPS-0137,2026-03-14,10,promoter,Onboarding was seamless. Our whole team was up and running in a day.,Reports
+NPS-0138,2026-01-10,8,passive,The mobile experience could be better. Desktop is much more polished.,Reports
+NPS-0139,2026-02-15,4,detractor,The UI redesign made everything harder to find. Poor change management.,Search
+NPS-0140,2026-01-01,7,passive,Price is a bit high for what you get. Would like to see more features.,Dashboard
+NPS-0141,2026-01-10,8,passive,The mobile experience could be better. Desktop is much more polished.,Dashboard
+NPS-0142,2026-01-21,7,passive,The mobile experience could be better. Desktop is much more polished.,Billing
+NPS-0143,2026-02-12,5,detractor,The UI redesign made everything harder to find. Poor change management.,Reports
+NPS-0144,2026-03-17,10,promoter,Love how intuitive the dashboard is. Makes my daily workflow so much smoother.,Onboarding
+NPS-0145,2026-01-17,7,passive,Decent platform. A few rough edges but nothing major.,Notifications
+NPS-0146,2026-01-06,3,detractor,Pricing increased 40 percent with no new features to justify it.,Onboarding
+NPS-0147,2026-01-24,8,passive,Good for small teams. Starts to show limitations at scale.,Mobile App
+NPS-0148,2026-03-23,9,promoter,The recent updates to the search functionality have been a game changer.,Onboarding
+NPS-0149,2026-03-19,6,detractor,Pricing increased 40 percent with no new features to justify it.,Onboarding
+NPS-0150,2026-02-22,7,passive,Good for small teams. Starts to show limitations at scale.,Notifications
+NPS-0151,2026-02-03,9,promoter,Love the new notification settings. Finally have control over what I see.,Reports
+NPS-0152,2026-01-09,10,promoter,Customer support was incredibly helpful when I had an issue last week.,Dashboard
+NPS-0153,2026-01-26,8,passive,Decent platform. A few rough edges but nothing major.,Notifications
+NPS-0154,2026-01-23,7,passive,The learning curve was steeper than expected but manageable.,Reports
+NPS-0155,2026-01-16,9,promoter,The billing dashboard is transparent and easy to understand.,Reports
+NPS-0156,2026-01-01,6,detractor,Lost data twice due to sync issues. Considering switching providers.,Reports
+NPS-0157,2026-02-17,6,detractor,Lost data twice due to sync issues. Considering switching providers.,Onboarding
+NPS-0158,2026-03-03,5,detractor,Integration with our existing tools is painful and poorly documented.,Search
+NPS-0159,2026-03-31,8,passive,Decent platform. A few rough edges but nothing major.,Onboarding
+NPS-0160,2026-01-30,2,detractor,Integration with our existing tools is painful and poorly documented.,Search
+NPS-0161,2026-02-22,9,promoter,The keyboard shortcuts make power users very happy.,Settings
+NPS-0162,2026-01-01,7,passive,The learning curve was steeper than expected but manageable.,Dashboard
+NPS-0163,2026-03-25,9,promoter,Reports feature saves me hours every week. Very well designed.,Billing
+NPS-0164,2026-01-20,8,passive,It does what it says but nothing exceptional. Average experience.,Search
+NPS-0165,2026-02-24,8,passive,Generally reliable but the occasional slowdown is frustrating.,Search
+NPS-0166,2026-02-22,8,passive,Decent platform. A few rough edges but nothing major.,Billing
+NPS-0167,2026-06-11,8,passive,Good for small teams. Starts to show limitations at scale.,Onboarding
+NPS-0168,2026-06-30,7,passive,Works well for basic needs but missing some advanced features we need.,Settings
+NPS-0169,2026-05-28,6,detractor,Too many bugs in the latest release. Quality has gone downhill.,Onboarding
+NPS-0170,2026-05-22,6,detractor,Integration with our existing tools is painful and poorly documented.,Notifications
+NPS-0171,2026-06-30,10,promoter,Incredible value for the price. We tried three competitors before this.,Dashboard
+NPS-0172,2026-04-12,5,detractor,Integration with our existing tools is painful and poorly documented.,Billing
+NPS-0173,2026-04-09,9,promoter,The recent updates to the search functionality have been a game changer.,Notifications
+NPS-0174,2026-05-20,5,detractor,Performance has degraded significantly over the past two quarters.,Onboarding
+NPS-0175,2026-06-16,9,promoter,Incredible value for the price. We tried three competitors before this.,Reports
+NPS-0176,2026-04-02,10,promoter,The mobile app improvements are fantastic. Much more responsive now.,Dashboard
+NPS-0177,2026-06-16,7,passive,Good for small teams. Starts to show limitations at scale.,Dashboard
+NPS-0178,2026-04-05,7,passive,Decent platform. A few rough edges but nothing major.,Dashboard
+NPS-0179,2026-05-06,5,detractor,Lost data twice due to sync issues. Considering switching providers.,Billing
+NPS-0180,2026-04-26,7,passive,Works well for basic needs but missing some advanced features we need.,Reports
+NPS-0181,2026-06-11,4,detractor,The mobile app crashes constantly on Android. Nearly unusable.,Onboarding
+NPS-0182,2026-04-25,8,passive,Good for small teams. Starts to show limitations at scale.,Dashboard
+NPS-0183,2026-04-23,7,passive,The learning curve was steeper than expected but manageable.,Dashboard
+NPS-0184,2026-05-08,9,promoter,This product has transformed how our team collaborates. Five stars.,Mobile App
+NPS-0185,2026-06-08,5,detractor,The UI redesign made everything harder to find. Poor change management.,Mobile App
+NPS-0186,2026-06-12,7,passive,Some features feel outdated compared to newer competitors.,Mobile App
+NPS-0187,2026-05-29,7,passive,Price is a bit high for what you get. Would like to see more features.,Dashboard
+NPS-0188,2026-04-09,7,passive,The mobile experience could be better. Desktop is much more polished.,Search
+NPS-0189,2026-05-23,5,detractor,The search is broken half the time. Very frustrating experience.,Settings
+NPS-0190,2026-05-04,9,promoter,Reports feature saves me hours every week. Very well designed.,Notifications
+NPS-0191,2026-05-14,9,promoter,Love the new notification settings. Finally have control over what I see.,Onboarding
+NPS-0192,2026-04-28,4,detractor,Customer support takes days to respond. Unacceptable for a paid product.,Reports
+NPS-0193,2026-04-26,9,promoter,The mobile app improvements are fantastic. Much more responsive now.,Onboarding
+NPS-0194,2026-04-26,6,detractor,Onboarding documentation is outdated and misleading.,Dashboard
+NPS-0195,2026-04-14,9,promoter,Incredible value for the price. We tried three competitors before this.,Mobile App
+NPS-0196,2026-06-03,7,passive,Price is a bit high for what you get. Would like to see more features.,Billing
+NPS-0197,2026-05-11,8,passive,Price is a bit high for what you get. Would like to see more features.,Dashboard
+NPS-0198,2026-06-05,9,promoter,The billing dashboard is transparent and easy to understand.,Dashboard
+NPS-0199,2026-06-07,5,detractor,Performance has degraded significantly over the past two quarters.,Dashboard
+NPS-0200,2026-05-15,7,passive,Price is a bit high for what you get. Would like to see more features.,Mobile App
