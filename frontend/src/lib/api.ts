@@ -7,7 +7,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 function _getAuthHeaders(): Record<string, string> {
   if (typeof window === "undefined") return {};
   const token = localStorage.getItem("reclaw_token");
-  if (token && token !== "local-mode") {
+  if (token) {
     return { Authorization: `Bearer ${token}` };
   }
   return {};
@@ -18,6 +18,13 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     headers: { "Content-Type": "application/json", ..._getAuthHeaders(), ...options?.headers },
     ...options,
   });
+  if (res.status === 401) {
+    localStorage.removeItem("reclaw_token");
+    if (typeof window !== "undefined") {
+      window.location.reload();
+    }
+    throw new Error("Authentication required");
+  }
   if (!res.ok) {
     const error = await res.json().catch(() => ({ detail: res.statusText }));
     throw new Error(error.detail || `API error: ${res.status}`);
@@ -38,7 +45,7 @@ function patch<T>(path: string, data: unknown): Promise<T> {
 }
 
 function del(path: string): Promise<Response> {
-  return fetch(`${API_BASE}${path}`, { method: "DELETE" });
+  return fetch(`${API_BASE}${path}`, { method: "DELETE", headers: { ..._getAuthHeaders() } });
 }
 
 // --- Projects ---
@@ -51,7 +58,7 @@ export const projects = {
   update: (id: string, data: Record<string, unknown>) =>
     request<any>(`/api/projects/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   delete: (id: string) =>
-    fetch(`${API_BASE}/api/projects/${id}`, { method: "DELETE" }),
+    fetch(`${API_BASE}/api/projects/${id}`, { method: "DELETE", headers: { ..._getAuthHeaders() } }),
   versions: (id: string) => request<any[]>(`/api/projects/${id}/versions`),
 };
 
@@ -82,7 +89,7 @@ export const tasks = {
   move: (id: string, status: string) =>
     request<any>(`/api/tasks/${id}/move?status=${status}`, { method: "POST" }),
   delete: (id: string) =>
-    fetch(`${API_BASE}/api/tasks/${id}`, { method: "DELETE" }),
+    fetch(`${API_BASE}/api/tasks/${id}`, { method: "DELETE", headers: { ..._getAuthHeaders() } }),
   attach: (taskId: string, documentId: string, direction: "input" | "output" = "input") =>
     post<{ attached: boolean }>(`/api/tasks/${taskId}/attach?document_id=${documentId}&direction=${direction}`, {}),
   detach: (taskId: string, documentId: string, direction: "input" | "output" = "input") =>
@@ -97,7 +104,7 @@ export const chat = {
     if (sessionId) payload.session_id = sessionId;
     const res = await fetch(`${API_BASE}/api/chat`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ..._getAuthHeaders() },
       body: JSON.stringify(payload),
     });
 
@@ -165,7 +172,7 @@ export const findings = {
       insight: "insights",
       recommendation: "recommendations",
     };
-    return fetch(`${API_BASE}/api/findings/${plural[type]}/${id}`, { method: "DELETE" });
+    return fetch(`${API_BASE}/api/findings/${plural[type]}/${id}`, { method: "DELETE", headers: { ..._getAuthHeaders() } });
   },
 };
 
@@ -177,6 +184,7 @@ export const files = {
     formData.append("file", file);
     const res = await fetch(`${API_BASE}/api/files/upload/${projectId}`, {
       method: "POST",
+      headers: { ..._getAuthHeaders() },
       body: formData,
     });
     if (!res.ok) throw new Error(`Upload error: ${res.status}`);
@@ -211,7 +219,7 @@ export const skills = {
   update: (name: string, data: Record<string, unknown>) =>
     request<any>(`/api/skills/${name}`, { method: "PATCH", body: JSON.stringify(data) }),
   delete: (name: string) =>
-    fetch(`${API_BASE}/api/skills/${name}`, { method: "DELETE" }),
+    fetch(`${API_BASE}/api/skills/${name}`, { method: "DELETE", headers: { ..._getAuthHeaders() } }),
   toggle: (name: string, enabled: boolean) =>
     request<any>(`/api/skills/${name}/toggle?enabled=${enabled}`, { method: "POST" }),
   execute: (name: string, data: { project_id: string; user_context?: string }) =>
@@ -252,7 +260,7 @@ export const agents = {
   update: (id: string, data: Record<string, unknown>) =>
     request<any>(`/api/agents/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   delete: (id: string) =>
-    fetch(`${API_BASE}/api/agents/${id}`, { method: "DELETE" }),
+    fetch(`${API_BASE}/api/agents/${id}`, { method: "DELETE", headers: { ..._getAuthHeaders() } }),
   pause: (id: string) =>
     request<any>(`/api/agents/${id}/pause`, { method: "POST" }),
   resume: (id: string) =>
@@ -262,6 +270,7 @@ export const agents = {
     formData.append("file", file);
     const res = await fetch(`${API_BASE}/api/agents/${id}/avatar`, {
       method: "POST",
+      headers: { ..._getAuthHeaders() },
       body: formData,
     });
     if (!res.ok) throw new Error(`Upload error: ${res.status}`);
@@ -637,7 +646,7 @@ export const backups = {
   verify: (id: string) =>
     request<any>(`/api/backups/${id}/verify`, { method: "POST" }),
   remove: (id: string) =>
-    fetch(`${API_BASE}/api/backups/${id}`, { method: "DELETE" }),
+    fetch(`${API_BASE}/api/backups/${id}`, { method: "DELETE", headers: { ..._getAuthHeaders() } }),
   config: () => request<BackupConfig>("/api/backups/config"),
   updateConfig: (data: Partial<BackupConfig>) =>
     request<any>("/api/backups/config", { method: "POST", body: JSON.stringify(data) }),

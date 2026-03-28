@@ -32,7 +32,7 @@ import ErrorBoundary from "@/components/common/ErrorBoundary";
 import KeyboardShortcuts from "@/components/common/KeyboardShortcuts";
 import MobileNav from "@/components/layout/MobileNav";
 import OnboardingWizard from "@/components/onboarding/OnboardingWizard";
-import OllamaCheck from "@/components/common/OllamaCheck";
+import LoginScreen from "@/components/auth/LoginScreen";
 import { useProjectStore } from "@/stores/projectStore";
 import { useSessionStore } from "@/stores/sessionStore";
 import { useAgentStore } from "@/stores/agentStore";
@@ -43,17 +43,28 @@ export default function HomeClient() {
   const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
-  const [llmOk, setLlmOk] = useState<boolean | null>(null);
+  const [authenticated, setAuthenticated] = useState<boolean | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const { projects, fetchProjects } = useProjectStore();
 
-  // Check LLM provider on mount
+  // Check authentication on mount
   useEffect(() => {
+    const token = localStorage.getItem("reclaw_token");
+    if (!token || token === "local-mode") {
+      setAuthenticated(false);
+      return;
+    }
+    // Verify token is still valid by hitting a protected endpoint
     settingsApi.status()
-      .then((s) => {
-        setLlmOk(s.services?.llm === "connected");
-      })
-      .catch(() => setLlmOk(false));
+      .then(() => setAuthenticated(true))
+      .catch((e) => {
+        if (e.message?.includes("401") || e.message?.includes("Authentication")) {
+          localStorage.removeItem("reclaw_token");
+          setAuthenticated(false);
+        } else {
+          setAuthenticated(true); // Network error, not auth error
+        }
+      });
   }, []);
 
   // Check if first-run (no projects)
@@ -129,14 +140,10 @@ export default function HomeClient() {
     return () => window.removeEventListener("keydown", handler);
   }, []);
 
-  // Show LLM check if not connected
-  if (llmOk === false) {
-    return <OllamaCheck onRetry={() => {
-      setLlmOk(null);
-      settingsApi.status()
-        .then((s) => setLlmOk(s.services?.llm === "connected"))
-        .catch(() => setLlmOk(false));
-    }} />;
+  // Show login screen if not authenticated
+  if (authenticated === null) return null; // Loading state
+  if (authenticated === false) {
+    return <LoginScreen onLogin={() => setAuthenticated(true)} />;
   }
 
   const renderView = () => {

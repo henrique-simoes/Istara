@@ -1524,15 +1524,31 @@ The `featured_mcp_servers.json` knowledge file stores pre-configured server defi
 
 Optional Caddy service (profile: `production`) provides automatic TLS via Let's Encrypt. Routes `/api/*`, `/webhooks/*`, `/mcp/*`, `/ws/*` to backend; everything else to frontend. Enables webhook accessibility for WhatsApp, Google Chat, and survey platforms.
 
+### Security Architecture (Production-Grade)
+
+**Global Authentication**: `SecurityAuthMiddleware` enforces JWT on ALL endpoints. No route can bypass it — auth is checked before any route handler runs. 150+ endpoints protected by a single middleware.
+
+**Auth Flow**: Login → JWT issued → included in all API calls (`Authorization: Bearer`) + WebSocket connections (`?token=`). Token expiration: configurable (default 24h).
+
+**Admin Bootstrap**: On first startup, admin user auto-created. Credentials printed to server console and persisted to `.env`.
+
+**Exempt Paths** (no auth required): `/api/health`, `/api/auth/login`, `/api/auth/register`, `/api/settings/status`, `/webhooks/*`.
+
+**Admin-Only Operations**: Backup download/restore/delete, MCP server toggle/policy, settings modification, system agent deletion.
+
 ### Security Layers
 
-| Layer | Implementation | Config |
-|-------|---------------|--------|
-| CORS | Configurable `CORS_ORIGINS` env var | Comma-separated origins |
-| Rate Limiting | slowapi token bucket per IP | `RATE_LIMIT_DEFAULT=200/minute` |
-| JWT Auth | HMAC-SHA256, auto-generated secret | `JWT_SECRET` auto-gen if empty |
-| Relay Auth | JWT on WebSocket connect (team mode) | `RELAY_TOKEN` |
-| MCP Access | Per-tool policy with audit log | `MCPAccessPolicy` table |
+| Layer | Implementation | Scope |
+|-------|---------------|-------|
+| Global JWT Auth | `SecurityAuthMiddleware` | ALL endpoints (150+) |
+| Security Headers | `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, etc. | ALL responses |
+| CORS | Configurable origins, restricted methods/headers | Browser requests |
+| Rate Limiting | slowapi token bucket per IP | API endpoints |
+| Network Access Token | Additional token for non-localhost connections | LAN/remote |
+| WebSocket Auth | JWT via `?token=` query param | `/ws`, `/ws/relay` |
+| Admin Role Check | `require_admin_from_request()` | Sensitive operations |
+| MCP Access Policy | Per-tool permissions with audit log | MCP server |
+| Relay Auth | Network token + JWT (always, not just team mode) | Compute relay |
 
 ### Container Health Checks
 

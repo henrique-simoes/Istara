@@ -76,6 +76,14 @@
 - Alert on integration degradation: channel health transitions (healthy → unhealthy), MCP audit anomalies, survey sync failures
 - Validate channel instance database records match actual adapter states in the ChannelRouter
 
+## Security Monitoring
+- Monitor authentication: failed login attempts (brute force detection), expired tokens, unauthorized access attempts
+- Verify global auth middleware is active: ALL non-exempt endpoints must return 401 without JWT
+- Track admin operations: backup downloads, MCP toggles, settings changes — audit trail
+- Verify security headers present on all responses (X-Content-Type-Options, X-Frame-Options)
+- Monitor WebSocket authentication: reject unauthenticated connections
+- Alert on: repeated 401s from same IP, backup downloads, MCP policy changes
+
 ## Docker & Container Health Monitoring
 - Monitor container health: backend (/api/health), frontend (fetch), Ollama (ollama list)
 - Track resource usage relative to Docker limits (4GB backend, 512MB frontend)
