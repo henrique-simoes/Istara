@@ -4,6 +4,13 @@ import { create } from "zustand";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
+interface ModelCapability {
+  supports_tools: boolean;
+  supports_vision: boolean;
+  parameter_count: string | null;
+  context_length: number | null;
+}
+
 interface ComputeNode {
   node_id: string;
   hostname: string;
@@ -14,6 +21,9 @@ interface ComputeNode {
   score: number;
   latency_ms: number;
   alive: boolean;
+  source?: "local" | "network" | "relay";
+  host?: string;
+  model_capabilities?: Record<string, ModelCapability>;
 }
 
 interface ComputeStats {

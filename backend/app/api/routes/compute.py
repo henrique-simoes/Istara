@@ -12,26 +12,132 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
+def _build_unified_nodes() -> tuple[list[dict], dict]:
+    """Build a unified node list from relay pool and LLM Router servers.
+
+    Returns ``(all_nodes, pool_stats)`` where *pool_stats* is the raw
+    relay-pool stats dict (used for RAM/CPU aggregation).
+    """
+    from app.core.llm_router import llm_router
+
+    pool_stats = compute_pool.get_stats()
+
+    all_nodes: list[dict] = []
+    seen_hosts: set[str] = set()
+
+    # Add relay pool nodes first
+    for node in pool_stats.get("nodes", []):
+        host = node.get("provider_host", "")
+        if host:
+            seen_hosts.add(host)
+        node["source"] = "relay"
+        all_nodes.append(node)
+
+    # Add LLM Router servers (skip if already present as a relay node)
+    for server in llm_router._servers.values():
+        if server.host in seen_hosts:
+            continue
+        seen_hosts.add(server.host)
+        all_nodes.append({
+            "node_id": server.server_id,
+            "hostname": server.name,
+            "host": server.host,
+            "source": "local" if server.is_local else "network",
+            "state": "healthy" if server.is_healthy else "unhealthy",
+            "loaded_models": server.available_models or [],
+            "is_local": server.is_local,
+            "priority": server.priority,
+            "latency_ms": server.last_latency_ms or 0,
+            "alive": server.is_healthy,
+            "ram_total_gb": 0,
+            "ram_available_gb": 0,
+            "cpu_cores": 0,
+            "cpu_load_pct": 0,
+            "model_capabilities": server.model_capabilities or {},
+        })
+
+    return all_nodes, pool_stats
+
+
 @router.get("/compute/nodes")
 async def list_compute_nodes():
-    """List all compute pool nodes and their status."""
-    return compute_pool.get_stats()
+    """List all compute nodes — relay pool + LLM Router servers."""
+    all_nodes, pool_stats = _build_unified_nodes()
+    return {
+        "total_nodes": len(all_nodes),
+        "alive_nodes": sum(1 for n in all_nodes if n.get("alive", True)),
+        "nodes": all_nodes,
+    }
 
 
 @router.get("/compute/stats")
 async def compute_stats():
-    """Get aggregate compute pool statistics."""
-    stats = compute_pool.get_stats()
+    """Unified compute stats — includes both LLM Router servers and relay nodes."""
+    all_nodes, pool_stats = _build_unified_nodes()
+
+    # Aggregate models from all sources
+    total_models: set[str] = set()
+    for n in all_nodes:
+        total_models.update(n.get("loaded_models", []))
+
+    alive_count = sum(1 for n in all_nodes if n.get("alive", True))
+
     return {
-        "total_nodes": stats["total_nodes"],
-        "alive_nodes": stats["alive_nodes"],
-        "total_ram_gb": stats["total_ram_gb"],
-        "available_ram_gb": stats["available_ram_gb"],
-        "total_cpu_cores": stats["total_cpu_cores"],
-        "available_models": stats["available_models"],
-        "swarm_tier": _compute_swarm_tier(stats["alive_nodes"]),
-        "nodes": stats.get("nodes", []),
+        "total_nodes": len(all_nodes),
+        "alive_nodes": alive_count,
+        "total_ram_gb": pool_stats.get("total_ram_gb", 0),
+        "available_ram_gb": pool_stats.get("available_ram_gb", 0),
+        "total_cpu_cores": pool_stats.get("total_cpu_cores", 0),
+        "available_models": sorted(total_models),
+        "swarm_tier": _compute_swarm_tier(alive_count),
+        "nodes": all_nodes,
     }
+
+
+@router.get("/compute/model-warnings")
+async def model_warnings():
+    """Check loaded models for capability limitations relevant to ReClaw."""
+    from app.core.llm_router import llm_router
+
+    warnings: list[dict] = []
+    for server in llm_router._servers.values():
+        for model_name, caps in server.model_capabilities.items():
+            if "embed" in model_name.lower():
+                continue  # Skip embedding models
+            if not caps.get("supports_tools", False):
+                warnings.append({
+                    "model": model_name,
+                    "server": server.name,
+                    "warning": (
+                        f"{model_name} does not support native tool calling. "
+                        "Chat will use text-based tools (less reliable)."
+                    ),
+                    "severity": "medium",
+                })
+            if caps.get("context_length", 4096) < 4096:
+                warnings.append({
+                    "model": model_name,
+                    "server": server.name,
+                    "warning": (
+                        f"{model_name} has a small context window "
+                        f"({caps.get('context_length')} tokens). "
+                        "Complex conversations may be truncated."
+                    ),
+                    "severity": "high",
+                })
+            param = caps.get("parameter_count", "")
+            small_params = {"0.5B", "0.8B", "1B", "1.5B", "2B"}
+            if param and param in small_params:
+                warnings.append({
+                    "model": model_name,
+                    "server": server.name,
+                    "warning": (
+                        f"{model_name} ({param}) is very small for research tasks. "
+                        "Consider using a 4B+ model for better quality."
+                    ),
+                    "severity": "low",
+                })
+    return {"warnings": warnings}
 
 
 def _compute_swarm_tier(alive_count: int) -> str:

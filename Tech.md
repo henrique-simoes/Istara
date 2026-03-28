@@ -1524,6 +1524,23 @@ The `featured_mcp_servers.json` knowledge file stores pre-configured server defi
 
 Optional Caddy service (profile: `production`) provides automatic TLS via Let's Encrypt. Routes `/api/*`, `/webhooks/*`, `/mcp/*`, `/ws/*` to backend; everything else to frontend. Enables webhook accessibility for WhatsApp, Google Chat, and survey platforms.
 
+### Unified Compute Pool
+
+The Compute Pool displays ALL LLM sources in a single view:
+- **Local**: LM Studio/Ollama on the server machine (auto-registered at startup)
+- **Network**: Discovered via subnet scanning (ports 1234, 11434, 8080)
+- **Relay**: Team members donating compute via WebSocket relay nodes
+
+Each model has detected capabilities (via `model_capabilities.py`):
+- Parameter count (parsed from name: "qwen3.5-4b" → 4B)
+- Context length (2K-131K, from API or heuristic)
+- Tool support (native function calling — requires 4B+ for most families)
+- Vision support (multimodal image input)
+
+**Capability-aware routing**: When tools are needed, the router automatically prefers servers with tool-capable models. Small models (1-2B) without tool support are deprioritized.
+
+**Model warnings**: `/api/compute/model-warnings` flags models that lack tool support, have small context windows, or are too small for research tasks.
+
 ### Native Tool Calling
 
 ReClaw uses native OpenAI-compatible function calling via the `tools` API parameter. LM Studio and Ollama both support this format. Tools are defined in `OPENAI_TOOLS` (system_actions.py) with JSON Schema parameters.
