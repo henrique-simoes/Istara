@@ -104,7 +104,10 @@ export default function EnsembleHealthView() {
     if (!projectId) return;
     setLoading(true);
     // Fetch adaptive learning stats
-    fetch(`${API_BASE}/api/compute/stats`)
+    const _token = localStorage.getItem("reclaw_token");
+    const _headers: Record<string, string> = {};
+    if (_token) _headers["Authorization"] = `Bearer ${_token}`;
+    fetch(`${API_BASE}/api/compute/stats`, { headers: _headers })
       .then((r) => r.json())
       .then((data) => {
         // For now, show compute stats + method overview

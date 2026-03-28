@@ -23,7 +23,10 @@ export default function ContextPreview() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${API_BASE}/api/contexts/composed/${activeProjectId}`);
+      const _tk = localStorage.getItem("reclaw_token");
+      const _hd: Record<string, string> = {};
+      if (_tk) _hd["Authorization"] = `Bearer ${_tk}`;
+      const res = await fetch(`${API_BASE}/api/contexts/composed/${activeProjectId}`, { headers: _hd });
       if (!res.ok) throw new Error("Failed to load");
       const data = await res.json();
       setComposedContext(data.composed_context || "No context configured yet.");
