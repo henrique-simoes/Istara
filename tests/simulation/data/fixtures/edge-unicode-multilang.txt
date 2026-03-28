@@ -1,0 +1,117 @@
+================================================================================
+MULTILINGUAL UX RESEARCH DATA — UNICODE EDGE CASE TEST
+================================================================================
+
+--- English (Latin) ---
+Interview Participant: Sarah Johnson
+Role: UX Designer at TechFlow Inc.
+"The onboarding experience was intuitive, but I struggled with the data export
+feature. The CSV formatting was inconsistent with special characters like
+ampersands (&), angle brackets (<>), and quotation marks ("nested quotes")."
+
+--- Portuguese / Brasileiro ---
+Participante: Ana Carolina da Silva
+Cargo: Pesquisadora de UX na Empresa Digital Brasil
+"A experiencia de integracao foi muito boa. A navegacao e clara e as funcoes
+principais sao faceis de encontrar. Porem, tive dificuldade com a exportacao
+de relatorios em portugues — os caracteres especiais como acentos (a, e, i, o, u),
+cedilha (c), e til (a, o) ficaram corrompidos no arquivo CSV exportado.
+Isso e um problema serio para usuarios brasileiros."
+
+Notas adicionais:
+- Satisfacao geral: 4/5
+- Facilidade de uso: 3/5
+- Recomendaria para colegas: Sim, com ressalvas
+- Observacoes sobre acessibilidade: O contraste de cores precisa melhorar
+- Sugestao: Adicionar suporte completo a UTF-8 em todas as exportacoes
+
+--- Spanish / Espanol ---
+Participante: Diego Rodriguez Martinez
+Rol: Gerente de Producto en SolucionesWeb S.A.
+"La plataforma tiene un diseno limpio y moderno. Me gusto especialmente la
+funcion de analisis de datos. Sin embargo, encontre varios problemas:
+1. Los informes no muestran correctamente los caracteres especiales (n, u, i)
+2. La traduccion al espanol tiene errores gramaticales
+3. El formato de fecha usa MM/DD/YYYY en lugar de DD/MM/YYYY
+4. Los numeros decimales usan punto (.) en vez de coma (,)"
+
+Calificacion: 3.5/5
+Recomendacion: "Necesitan mejorar la localizacion antes de lanzar en America Latina"
+
+--- Japanese ---
+Participant: Tanaka Yuki
+Tanaka Yuki
+Role: UI Designer at Sakura Digital K.K.
+
+Feedback:
+"The user interface needs significant improvements for Japanese localization.
+The font rendering for kanji characters is poor at small sizes. Text layout
+needs to support vertical writing mode (tategaki) for certain content areas."
+
+Specific issues noted:
+1. Character encoding: UTF-8 is properly supported
+2. Input methods: IME compatibility is functional
+3. Date format: Needs support for Japanese calendar era system (Reiwa)
+4. Number formatting: Should use 10,000 style grouping (man)
+
+Rating: 3/5
+"Interface design needs more work to feel natural for Japanese users."
+
+--- Arabic (Right-to-Left) ---
+Participant: Fatima Al-Hassan
+
+"The application does not properly support right-to-left text direction.
+Navigation menus, form layouts, and data tables all need RTL mirroring.
+The current left-to-right only layout feels unnatural and difficult to use."
+
+Key findings for RTL support:
+1. Text alignment needs to be reversed
+2. Navigation icons should be mirrored
+3. Scrollbar position should switch to left side
+4. Number input fields need BiDi support
+5. Date picker calendar should open right-to-left
+
+Rating: 2/5
+
+--- Mixed Content Edge Cases ---
+
+Special characters test:
+- Curly quotes: "Hello" and 'World'
+- Em dash: Research — Design — Development
+- En dash: pages 12-45
+- Ellipsis: Loading...
+- Bullets: Item 1, Item 2, Item 3
+- Arrows: Previous and Next
+- Check marks: Completed, Pending
+- Emoji (if supported): Star, Warning, Check
+- Mathematical: x is greater than or equal to 5, sum of values, plus or minus 2
+- Currency: $19.99, EUR 15.50, GBP 12.00, JPY 1500, BRL R$89.90
+- Fractions: one half, one quarter, three quarters
+- Accented Latin: cafe, naive, resume, facade, cliche, uber
+- Nordic: AE ligature, O with stroke, A with ring
+- Eastern European: L with stroke, Z with dot, S with caron, C with caron
+
+--- Zero-Width Characters ---
+This line contains zero-width spaces between some words for testing.
+This line contains a zero-width joiner character.
+This line has a byte order mark at the start.
+
+--- Long Unbroken Unicode String ---
+aaaaaaaaaaaabbbbbbbbbbbbccccccccccccddddddddddddeeeeeeeeeeeeffffffffffffgggggggggggghhhhhhhhhhhhiiiiiiiiiiiijjjjjjjjjjjj
+
+--- Combining Characters ---
+Letters with combining diacritical marks:
+a with combining acute accent
+o with combining tilde
+n with combining tilde
+u with combining diaeresis
+e with combining grave accent
+
+--- Normalization Test ---
+These should be equivalent under NFC normalization:
+Precomposed: a with acute (single character)
+Decomposed: a + combining acute (two characters)
+
+================================================================================
+END OF MULTILINGUAL TEST DATA
+================================================================================

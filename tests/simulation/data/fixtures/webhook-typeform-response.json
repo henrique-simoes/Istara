@@ -1,0 +1,216 @@
+{
+  "event_id": "ev-01HQRT5V7K2BXN3CGHJ4M9P8WZ",
+  "event_type": "form_response",
+  "form_response": {
+    "form_id": "aB3cD4eF",
+    "token": "resp_01HQRT5V7K2BXN3CGHJ4M9P8WZ",
+    "landed_at": "2026-03-14T09:15:22Z",
+    "submitted_at": "2026-03-14T09:23:47Z",
+    "calculated": {
+      "score": 42
+    },
+    "variables": [
+      {
+        "key": "respondent_segment",
+        "type": "text",
+        "text": "power_user"
+      },
+      {
+        "key": "completion_time_seconds",
+        "type": "number",
+        "number": 505
+      }
+    ],
+    "hidden": {
+      "user_id": "usr_847291",
+      "source": "email_campaign_q1_2026",
+      "cohort": "beta_testers"
+    },
+    "definition": {
+      "id": "aB3cD4eF",
+      "title": "HealthBridge Patient Portal — Q1 2026 User Satisfaction Survey",
+      "fields": [
+        {
+          "id": "fld_overall_satisfaction",
+          "ref": "overall_satisfaction",
+          "type": "rating",
+          "title": "How satisfied are you with the HealthBridge Patient Portal overall?",
+          "properties": {
+            "steps": 5
+          }
+        },
+        {
+          "id": "fld_ease_of_use",
+          "ref": "ease_of_use",
+          "type": "opinion_scale",
+          "title": "On a scale of 1-10, how easy is the portal to use?",
+          "properties": {
+            "start_at_one": true,
+            "steps": 10
+          }
+        },
+        {
+          "id": "fld_most_used_feature",
+          "ref": "most_used_feature",
+          "type": "multiple_choice",
+          "title": "Which feature do you use most frequently?",
+          "properties": {
+            "allow_multiple_selection": false
+          },
+          "choices": [
+            {"id": "ch_01", "label": "Appointment Scheduling"},
+            {"id": "ch_02", "label": "Medication Refills"},
+            {"id": "ch_03", "label": "Lab Results"},
+            {"id": "ch_04", "label": "Secure Messaging"},
+            {"id": "ch_05", "label": "Insurance Management"},
+            {"id": "ch_06", "label": "Bill Payment"}
+          ]
+        },
+        {
+          "id": "fld_improvement_areas",
+          "ref": "improvement_areas",
+          "type": "multiple_choice",
+          "title": "Which areas need the most improvement? (Select all that apply)",
+          "properties": {
+            "allow_multiple_selection": true
+          },
+          "choices": [
+            {"id": "ch_11", "label": "Navigation & findability"},
+            {"id": "ch_12", "label": "Mobile experience"},
+            {"id": "ch_13", "label": "Page load speed"},
+            {"id": "ch_14", "label": "Visual design"},
+            {"id": "ch_15", "label": "Accessibility"},
+            {"id": "ch_16", "label": "Error messages & help text"}
+          ]
+        },
+        {
+          "id": "fld_nps",
+          "ref": "nps_score",
+          "type": "nps",
+          "title": "How likely are you to recommend the HealthBridge Patient Portal to a friend or colleague?"
+        },
+        {
+          "id": "fld_open_feedback",
+          "ref": "open_feedback",
+          "type": "long_text",
+          "title": "Please share any additional feedback about your experience with the portal."
+        },
+        {
+          "id": "fld_age_range",
+          "ref": "age_range",
+          "type": "multiple_choice",
+          "title": "What is your age range?",
+          "choices": [
+            {"id": "ch_21", "label": "18-24"},
+            {"id": "ch_22", "label": "25-34"},
+            {"id": "ch_23", "label": "35-44"},
+            {"id": "ch_24", "label": "45-54"},
+            {"id": "ch_25", "label": "55-64"},
+            {"id": "ch_26", "label": "65+"}
+          ]
+        },
+        {
+          "id": "fld_device",
+          "ref": "primary_device",
+          "type": "multiple_choice",
+          "title": "What device do you primarily use to access the portal?",
+          "choices": [
+            {"id": "ch_31", "label": "Desktop/Laptop"},
+            {"id": "ch_32", "label": "Smartphone"},
+            {"id": "ch_33", "label": "Tablet"}
+          ]
+        }
+      ]
+    },
+    "answers": [
+      {
+        "type": "number",
+        "number": 4,
+        "field": {
+          "id": "fld_overall_satisfaction",
+          "ref": "overall_satisfaction",
+          "type": "rating"
+        }
+      },
+      {
+        "type": "number",
+        "number": 7,
+        "field": {
+          "id": "fld_ease_of_use",
+          "ref": "ease_of_use",
+          "type": "opinion_scale"
+        }
+      },
+      {
+        "type": "choice",
+        "choice": {
+          "id": "ch_03",
+          "label": "Lab Results"
+        },
+        "field": {
+          "id": "fld_most_used_feature",
+          "ref": "most_used_feature",
+          "type": "multiple_choice"
+        }
+      },
+      {
+        "type": "choices",
+        "choices": {
+          "ids": ["ch_11", "ch_12", "ch_16"],
+          "labels": [
+            "Navigation & findability",
+            "Mobile experience",
+            "Error messages & help text"
+          ]
+        },
+        "field": {
+          "id": "fld_improvement_areas",
+          "ref": "improvement_areas",
+          "type": "multiple_choice"
+        }
+      },
+      {
+        "type": "number",
+        "number": 7,
+        "field": {
+          "id": "fld_nps",
+          "ref": "nps_score",
+          "type": "nps"
+        }
+      },
+      {
+        "type": "text",
+        "text": "Overall I find the portal useful for checking lab results, but the appointment scheduling workflow is confusing. I had to call the office twice because I wasn't sure my appointment was actually booked. The confirmation screen disappears too quickly and there is no email confirmation. Also, the mobile layout breaks on my Samsung Galaxy — buttons overlap and some text gets cut off. Would really appreciate a proper mobile-responsive design. On the positive side, the secure messaging feature works well and my doctor responds within 24 hours.",
+        "field": {
+          "id": "fld_open_feedback",
+          "ref": "open_feedback",
+          "type": "long_text"
+        }
+      },
+      {
+        "type": "choice",
+        "choice": {
+          "id": "ch_23",
+          "label": "35-44"
+        },
+        "field": {
+          "id": "fld_age_range",
+          "ref": "age_range",
+          "type": "multiple_choice"
+        }
+      },
+      {
+        "type": "choice",
+        "choice": {
+          "id": "ch_32",
+          "label": "Smartphone"
+        },
+        "field": {
+          "id": "fld_device",
+          "ref": "primary_device",
+          "type": "multiple_choice"
+        }
+      }
+    ]
+  }
+}
