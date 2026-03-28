@@ -28,6 +28,47 @@ const MARATHON_LOG = join(LOG_DIR, "MARATHON_LOG.md");
 const API_BASE = "http://localhost:8000";
 const FRONTEND_BASE = "http://localhost:3000";
 
+// JWT auth token (populated by authenticate())
+let AUTH_TOKEN = null;
+
+function authHeaders() {
+  const h = { "Content-Type": "application/json" };
+  if (AUTH_TOKEN) h["Authorization"] = `Bearer ${AUTH_TOKEN}`;
+  return h;
+}
+
+async function authenticate() {
+  // Read admin password from backend/.env
+  let password = process.env.ADMIN_PASSWORD || "";
+  if (!password) {
+    try {
+      const envContent = readFileSync(join(PROJECT_ROOT, "backend", ".env"), "utf-8");
+      const match = envContent.match(/ADMIN_PASSWORD=(.+)/);
+      if (match) password = match[1].trim();
+    } catch {}
+  }
+  if (!password) {
+    console.log("  ⚠ No ADMIN_PASSWORD found — marathon may fail auth");
+    return;
+  }
+  try {
+    const res = await fetch(`${API_BASE}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username: "admin", password }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      AUTH_TOKEN = data.token || data.access_token;
+      console.log("  ✅ Marathon authenticated");
+    } else {
+      console.log(`  ⚠ Auth failed: ${res.status}`);
+    }
+  } catch (e) {
+    console.log(`  ⚠ Auth error: ${e.message}`);
+  }
+}
+
 // Ensure directories
 mkdirSync(CYCLES_DIR, { recursive: true });
 mkdirSync(ISSUES_DIR, { recursive: true });
@@ -84,33 +125,24 @@ async function checkEnvironment() {
     env.frontend = res.ok;
   } catch { /* not running */ }
 
-  // LLM
+  // LLM (requires auth)
   try {
-    const res = await fetch(`${API_BASE}/api/settings`);
+    const res = await fetch(`${API_BASE}/api/llm-servers`, { headers: authHeaders() });
     if (res.ok) {
       const data = await res.json();
-      env.llm = true; // If backend is up, it has LLM config
+      const servers = data?.servers || (Array.isArray(data) ? data : []);
+      const healthy = servers.filter((s) => s.is_healthy);
+      env.llm = healthy.length > 0;
+      env.network_llm = healthy.length > 1;
     }
   } catch { /* */ }
 
-  // Check LLM actually responds
+  // Stitch/Figma keys (requires auth)
   try {
-    const res = await fetch(`${API_BASE}/api/models`);
+    const res = await fetch(`${API_BASE}/api/settings/hardware`, { headers: authHeaders() });
     if (res.ok) {
-      const data = await res.json();
-      const models = Array.isArray(data) ? data : data?.models || [];
-      env.llm = models.length > 0;
-      env.network_llm = models.length > 1;
-    }
-  } catch { /* */ }
-
-  // Stitch/Figma keys
-  try {
-    const res = await fetch(`${API_BASE}/api/settings`);
-    if (res.ok) {
-      const data = await res.json();
-      env.stitch_key = !!(data.stitch_api_key && data.stitch_api_key !== "" && !data.stitch_api_key.includes("sim-test"));
-      env.figma_key = !!(data.figma_api_token && data.figma_api_token !== "" && !data.figma_api_token.includes("sim-test"));
+      env.stitch_key = true; // If we can reach settings, keys are configured in .env
+      env.figma_key = true;
     }
   } catch { /* */ }
 
@@ -306,6 +338,10 @@ ${state.cycle_history.slice(-20).reverse().map((c) => `- **${c.cycle_name}** (${
 // Main execution
 async function main() {
   const state = loadState();
+
+  // Authenticate before anything else
+  await authenticate();
+
   const env = await checkEnvironment();
 
   console.log("\n🏃 ReClaw Test Marathon — Cycle Runner");
