@@ -205,31 +205,55 @@ Autoresearch loops (6 types, overnight)
 
 ---
 
-## Browser UI Automation — Future Path
+## Browser UI Automation (Implemented)
 
-### Phase 1: Playwright MCP (Recommended First Step)
-- Microsoft's official `@playwright/mcp` server
-- Uses accessibility tree (2-5KB text) instead of screenshots (100KB+)
-- Works with ANY text model — no vision required
-- ReClaw already has Playwright and MCP client infrastructure
-- Connect via existing MCP Client Registry
+### Playwright MCP — Precise Browser Control
+- Microsoft's official `@playwright/mcp` server — available as featured MCP server in ReClaw
+- 21 tools: navigate, click, type, screenshot, accessibility tree, network, console, JS eval
+- Uses accessibility trees (2-5KB text) — works with any text model, no vision required
+- Install: `npx @playwright/mcp@latest --port 3100` → connect in MCP tab
+- Use case: precise automation, accessibility auditing, form testing
 
-### Phase 2: Vision Model for Screenshots
-- Add Qwen2.5-VL-7B or Qwen3-VL-8B to LM Studio
-- Agents take screenshots via Playwright, analyze with vision model
-- Enables: design critique, competitor UI analysis, accessibility visual audit
+### browser-use — Autonomous Browsing
+- AI-powered browser agent via `browse_website` system action tool
+- Agent navigates, clicks, fills forms, extracts content autonomously
+- Compatible with LM Studio AND Ollama via OpenAI-compatible API
+- Optional dep: `pip install browser-use langchain-openai`
+- Use case: competitor analysis, content extraction, usability evaluation
 
-### Phase 3: Full Browser-Use Integration
-- browser-use library (MIT, 78K+ stars, uses Playwright)
-- Supports local LLMs via Ollama
-- Full interaction: navigate, click, scroll, fill forms, extract content
-- Use case: automated usability testing on competitor products
+### Vision — Screenshot Analysis
+- Qwen 3.5 models on LM Studio accept vision input
+- browser-use can send screenshots to the model for visual analysis
+- Enables: design critique, visual accessibility audit, layout evaluation
+
+---
+
+## Benchmark vs Reference Platforms
+
+| Capability | ReClaw | OpenClaw | Hermes | Claude Code |
+|---|---|---|---|---|
+| Native Tool Calling | ✅ Full (OpenAI format) | ✅ Full | ✅ Full | ✅ Full |
+| Multi-Step Reasoning | ✅ 8-iter ReAct | ✅ Full | ✅ Full | ✅ Full |
+| Web Browsing | ✅ browser-use + Playwright MCP | ✅ Full | ⚠️ Partial | ✅ Full |
+| Autonomous Work | ⚠️ Skill execution only | ✅ Heartbeat daemon | ⚠️ Reactive | ❌ User-initiated |
+| Inter-Agent Comms | ⚠️ DB messages (unread) | ✅ Hierarchical | ❌ Single agent | ⚠️ Sub-agent reports |
+| Persona System | ✅ Best in class | ⚠️ Config dirs | ⚠️ 2 MD files | ⚠️ CLAUDE.md |
+| Self-Evolution | ⚠️ Proposals + learning DB | ✅ Self-extending | ✅ Skill evolution | ❌ None |
+| Atomic Research | ✅ Unique | ❌ None | ❌ None | ❌ None |
+| Laws of UX | ✅ Unique (30 laws) | ❌ None | ❌ None | ❌ None |
+| Resource Governance | ✅ Hardware-aware | ⚠️ Partial | ❌ None | ❌ None |
+
+### Remaining Gaps
+| Gap | Priority | Status |
+|-----|----------|--------|
+| A2A messages unread by agents | P1 | Planned |
+| Autonomous task decomposition | P1 | Planned |
+| LLM-based task routing | P2 | Planned |
 
 ### Reference Tools
 | Tool | Stars | Approach | Local LLM Support |
 |------|-------|----------|-------------------|
-| browser-use | 78K+ | Playwright + vision | Yes (Ollama) |
+| browser-use | 78K+ | Playwright + vision | Yes (LM Studio + Ollama) |
 | Playwright MCP | Official | Accessibility tree | Yes (any text model) |
 | Stagehand v3 | 15K+ | CDP-native | Partial |
-| Vercel Agent Browser | New | Rust CLI, minimal context | Yes |
 | OpenClaw | 90K+ | Playwright/CDP + AI Snapshot | Yes |
