@@ -54,21 +54,18 @@ export default function HomeClient() {
       setAuthenticated(false);
       return;
     }
-    // Verify token is still valid by hitting a protected endpoint
-    settingsApi.status()
-      .then(() => setAuthenticated(true))
-      .catch((e) => {
-        if (e.message?.includes("401") || e.message?.includes("Authentication")) {
-          localStorage.removeItem("reclaw_token");
-          setAuthenticated(false);
-        } else {
-          setAuthenticated(true); // Network error, not auth error
-        }
-      });
+    // Token exists — assume valid (middleware will reject if expired)
+    setAuthenticated(true);
+
+    // Listen for token expiry events from API client
+    const handleExpiry = () => setAuthenticated(false);
+    window.addEventListener("reclaw:auth-expired", handleExpiry);
+    return () => window.removeEventListener("reclaw:auth-expired", handleExpiry);
   }, []);
 
-  // Check if first-run (no projects)
+  // Check if first-run (no projects) — only after authenticated
   useEffect(() => {
+    if (!authenticated) return;
     fetchProjects().then(() => {
       const store = useProjectStore.getState();
       if (store.projects.length === 0) {

@@ -19,9 +19,12 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     ...options,
   });
   if (res.status === 401) {
+    // Only clear token and signal re-auth — do NOT reload (causes infinite loop)
+    const hadToken = !!localStorage.getItem("reclaw_token");
     localStorage.removeItem("reclaw_token");
-    if (typeof window !== "undefined") {
-      window.location.reload();
+    if (hadToken && typeof window !== "undefined") {
+      // Token was present but expired/invalid — dispatch event for auth gate
+      window.dispatchEvent(new Event("reclaw:auth-expired"));
     }
     throw new Error("Authentication required");
   }
