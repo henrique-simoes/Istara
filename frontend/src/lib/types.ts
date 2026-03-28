@@ -666,3 +666,49 @@ export interface ModelSkillLeaderboard {
   executions: number;
   avg_quality: number;
 }
+
+// --- Laws of UX ---
+
+export type LawCategory = "perception" | "cognitive" | "behavioral" | "principles";
+
+export interface UXLaw {
+  id: string;
+  name: string;
+  category: LawCategory;
+  cluster: string;
+  description: string;
+  origin: { author: string; year: number; publication: string };
+  key_takeaways: string[];
+  related_nielsen_heuristics: string[];
+  measurement_methods: string[];
+  design_implications: string[];
+  severity_indicators: Record<string, string>;
+  examples: string[];
+  academic_references: string[];
+  detection_keywords: string[];
+}
+
+export interface LawMatch {
+  law_id: string;
+  score: number;
+  law: UXLaw;
+}
+
+export interface ComplianceProfile {
+  overall_score: number;
+  by_category: Record<string, { score: number; laws_evaluated: number; violations: number }>;
+  by_law: Array<{
+    law_id: string;
+    law_name: string;
+    category: string;
+    score: number;
+    violation_count: number;
+    finding_ids: string[];
+  }>;
+}
+
+export interface RadarChartData {
+  categories: string[];
+  category_scores: number[];
+  detailed_axes: Array<{ axis: string; value: number }>;
+}

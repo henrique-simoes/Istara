@@ -29,6 +29,7 @@ import {
   Sparkles,
   MessageSquare,
   FlaskConical,
+  BookOpen,
 } from "lucide-react";
 import { useProjectStore } from "@/stores/projectStore";
 import DarkModeToggle from "@/components/common/DarkModeToggle";
@@ -69,6 +70,7 @@ export default function Sidebar({ activeView, onViewChange, onSearchOpen }: Side
   const primaryNav = [
     { id: "chat", icon: Bot, label: "Chat" },
     { id: "findings", icon: Diamond, label: "Findings" },
+    { id: "laws", icon: BookOpen, label: "UX Laws" },
     { id: "tasks", icon: LayoutDashboard, label: "Tasks" },
     { id: "interviews", icon: Mic, label: "Interviews" },
     { id: "documents", icon: FileStack, label: "Documents" },

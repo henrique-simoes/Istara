@@ -1,0 +1,1484 @@
+{
+  "version": "1.0.0",
+  "attribution": {
+    "source": "lawsofux.com",
+    "author": "Jon Yablonski",
+    "license": "Creative Commons CC BY-SA 4.0",
+    "book": "Laws of UX: Using Psychology to Design Better Products & Services, 2nd Edition. O'Reilly Media, 2024."
+  },
+  "laws": [
+    {
+      "id": "proximity",
+      "name": "Law of Proximity",
+      "category": "perception",
+      "cluster": "gestalt",
+      "description": "Objects that are near each other tend to be perceived as a group. Spatial proximity overrides other grouping cues such as color or shape when elements are positioned closely together.",
+      "origin": {
+        "author": "Max Wertheimer",
+        "year": 1923,
+        "publication": "Laws of Organization in Perceptual Forms"
+      },
+      "key_takeaways": [
+        "Place related elements close together and separate unrelated elements to create clear visual groupings",
+        "Whitespace is as important as content; it defines boundaries between conceptual groups",
+        "Proximity-based grouping reduces cognitive effort because users do not need labels to understand relationships"
+      ],
+      "related_nielsen_heuristics": ["H4", "H6", "H8"],
+      "measurement_methods": [
+        "Measure inter-element spacing ratios (within-group vs. between-group) and verify a minimum 2:1 ratio",
+        "Conduct card-sorting or tree-testing to confirm perceived groupings match intended information architecture",
+        "Run eye-tracking studies to see if gaze paths follow intended group boundaries"
+      ],
+      "design_implications": [
+        "Use consistent spacing tokens (e.g., 4px, 8px, 16px, 24px) to establish a clear spatial hierarchy",
+        "Ensure form labels are closer to their input fields than to adjacent fields",
+        "Group related actions (e.g., Save/Cancel) together and separate them from destructive actions (e.g., Delete)",
+        "In navigation menus, cluster related links and use dividers or extra spacing between sections"
+      ],
+      "severity_indicators": {
+        "critical": "Form labels are equidistant between two fields, causing users to enter data in the wrong input",
+        "high": "Related actions (e.g., Confirm and Cancel) are spread far apart while unrelated elements sit between them",
+        "medium": "Navigation items lack clear spatial grouping, forcing users to read every label to find sections",
+        "low": "Spacing between groups is present but inconsistent, creating minor visual noise"
+      },
+      "examples": [
+        "A checkout form where shipping address fields are grouped tightly and separated from billing address fields by generous whitespace",
+        "A toolbar where formatting buttons (bold, italic, underline) are clustered together, separated from alignment buttons by a visible gap",
+        "A dashboard with card groups where metrics in the same category sit in a tight grid, with larger margins between category sections"
+      ],
+      "academic_references": [
+        "Wertheimer, M. (1923). Untersuchungen zur Lehre von der Gestalt II. Psychologische Forschung, 4(1), 301-350.",
+        "Palmer, S. E. (1999). Vision Science: Photons to Phenomenology. MIT Press."
+      ],
+      "detection_keywords": [
+        "spacing", "whitespace", "grouping", "proximity", "gap", "near", "adjacent", "related items",
+        "layout", "distance between", "too close", "too far apart", "margins", "padding", "clustered",
+        "separated", "spread out", "label alignment", "form field spacing", "visual group"
+      ]
+    },
+    {
+      "id": "similarity",
+      "name": "Law of Similarity",
+      "category": "perception",
+      "cluster": "gestalt",
+      "description": "Elements that share visual characteristics such as color, shape, size, or orientation are perceived as belonging to the same group. Similarity is one of the strongest Gestalt grouping principles.",
+      "origin": {
+        "author": "Max Wertheimer",
+        "year": 1923,
+        "publication": "Laws of Organization in Perceptual Forms"
+      },
+      "key_takeaways": [
+        "Use consistent visual styling (color, shape, typography) to signal that elements share the same function or category",
+        "Breaking similarity intentionally (e.g., a different-colored button) draws attention and signals a different function",
+        "Inconsistent styling for same-function elements creates confusion about whether they behave differently"
+      ],
+      "related_nielsen_heuristics": ["H4"],
+      "measurement_methods": [
+        "Audit the style guide for consistent use of color, shape, and typography across functionally equivalent components",
+        "Conduct A/B testing to measure whether users correctly identify related elements when similarity cues are present vs. absent",
+        "Use heatmaps to determine if users click dissimilar-looking elements expecting the same behavior"
+      ],
+      "design_implications": [
+        "All primary action buttons should share the same color, size, and shape throughout the application",
+        "Use consistent iconography styles (filled vs. outlined, rounded vs. sharp) within the same context",
+        "Differentiate destructive actions (e.g., Delete) from constructive actions (e.g., Save) using distinct color families",
+        "Ensure links are styled uniformly so users can identify clickable text at a glance"
+      ],
+      "severity_indicators": {
+        "critical": "Interactive and non-interactive elements look identical, causing users to miss critical actions or click non-functional elements",
+        "high": "Primary and secondary action buttons are styled the same, making it unclear which action is the default",
+        "medium": "Navigation links use inconsistent text styles (some underlined, some bold, some colored), confusing users about what is clickable",
+        "low": "Icon styles vary slightly between sections (e.g., rounded in one area, sharp in another) without functional distinction"
+      },
+      "examples": [
+        "An e-commerce site where all 'Add to Cart' buttons share the same green pill shape, while 'Wishlist' icons are consistently outlined hearts",
+        "A data table where sortable column headers share a common underline and arrow indicator, distinguishing them from static headers",
+        "A settings page where all toggle switches share the same track and thumb design, signaling uniform interaction behavior"
+      ],
+      "academic_references": [
+        "Wertheimer, M. (1923). Untersuchungen zur Lehre von der Gestalt II. Psychologische Forschung, 4(1), 301-350.",
+        "Quinlan, P. T., & Wilton, R. N. (1998). Grouping by proximity or similarity? Competition between the Gestalt principles in vision. Perception, 27(4), 417-430."
+      ],
+      "detection_keywords": [
+        "consistent", "similar", "alike", "same style", "matching", "uniform", "pattern",
+        "visual consistency", "looks different", "inconsistent", "mismatched", "style mismatch",
+        "color coding", "shape", "typography", "visual language", "design token", "theme"
+      ]
+    },
+    {
+      "id": "common-region",
+      "name": "Law of Common Region",
+      "category": "perception",
+      "cluster": "gestalt",
+      "description": "Elements located within the same bounded area are perceived as belonging to the same group. Enclosing elements in a shared container such as a card, panel, or bordered section creates a strong grouping cue.",
+      "origin": {
+        "author": "Stephen Palmer",
+        "year": 1992,
+        "publication": "Cognitive Psychology"
+      },
+      "key_takeaways": [
+        "Cards, panels, and bordered sections create strong visual groupings that override proximity and similarity cues",
+        "Background color changes or subtle borders are sufficient to define a region; heavy outlines are unnecessary",
+        "Nesting regions (containers within containers) can create hierarchy but too many levels become visually noisy"
+      ],
+      "related_nielsen_heuristics": ["H4", "H8"],
+      "measurement_methods": [
+        "Count the number of distinct visual containers per screen and assess whether each maps to a meaningful content group",
+        "User testing with think-aloud protocol to verify that perceived groupings match intended groupings",
+        "Measure task completion time on forms with and without region boundaries to assess clarity gains"
+      ],
+      "design_implications": [
+        "Use cards to group related content items (e.g., a product image, title, price, and action button in one card)",
+        "Apply subtle background shading or borders to separate form sections (e.g., personal info vs. payment info)",
+        "Avoid excessive nesting of containers which creates visual clutter and reduces readability",
+        "Ensure that container boundaries align with the information architecture rather than arbitrary visual decoration"
+      ],
+      "severity_indicators": {
+        "critical": "Related form fields are split across different containers, causing users to miss required inputs",
+        "high": "Unrelated content shares the same container, leading users to believe items are functionally connected",
+        "medium": "Containers lack sufficient visual distinction (e.g., no border, no background change) making grouping ambiguous",
+        "low": "Container styling is slightly inconsistent (e.g., different border radii) but grouping is still perceivable"
+      },
+      "examples": [
+        "A pricing page where each plan tier is enclosed in its own card with a distinct border, making it easy to compare plans",
+        "A dashboard where each widget (chart, metric, table) sits in its own elevated card with a subtle shadow",
+        "A multi-step form where each section (Contact Info, Shipping, Payment) is enclosed in a labeled panel"
+      ],
+      "academic_references": [
+        "Palmer, S. E. (1992). Common region: A new principle of perceptual grouping. Cognitive Psychology, 24(3), 436-447.",
+        "Palmer, S. E., & Rock, I. (1994). Rethinking perceptual organization: The role of uniform connectedness. Psychonomic Bulletin & Review, 1(1), 29-55."
+      ],
+      "detection_keywords": [
+        "boundary", "border", "container", "card", "panel", "section", "enclosed", "box",
+        "region", "frame", "wrapper", "background", "shading", "grouped in", "contained",
+        "bounding box", "outlined area", "well", "inset", "elevation", "shadow"
+      ]
+    },
+    {
+      "id": "uniform-connectedness",
+      "name": "Law of Uniform Connectedness",
+      "category": "perception",
+      "cluster": "gestalt",
+      "description": "Elements that are visually connected by lines, arrows, or other linking elements are perceived as more related than elements without such connections. Connectedness is one of the most powerful grouping principles.",
+      "origin": {
+        "author": "Stephen Palmer & Irvin Rock",
+        "year": 1994,
+        "publication": "Rethinking Perceptual Organization: The Role of Uniform Connectedness"
+      },
+      "key_takeaways": [
+        "Lines and connectors create the strongest grouping cue, often overriding proximity, similarity, and common region",
+        "Use connecting lines to show relationships, flows, or dependencies between discrete elements",
+        "Breadcrumbs, progress steppers, and flowcharts all rely on uniform connectedness to communicate sequence"
+      ],
+      "related_nielsen_heuristics": ["H4", "H6"],
+      "measurement_methods": [
+        "Trace user eye movement along connected paths to confirm they follow the intended flow",
+        "A/B test connected vs. disconnected step indicators to measure task completion accuracy",
+        "Evaluate whether users correctly identify parent-child or sequential relationships when connectors are present"
+      ],
+      "design_implications": [
+        "Use progress bars or connected step indicators in multi-step workflows to show sequence and current position",
+        "In org charts and decision trees, use clear lines to show hierarchical relationships",
+        "Breadcrumb trails should use separators (arrows or slashes) to indicate navigation hierarchy",
+        "Timeline components should use a continuous line to connect events chronologically"
+      ],
+      "severity_indicators": {
+        "critical": "A multi-step process lacks any visual connectors between steps, causing users to complete steps out of order",
+        "high": "Flowchart or decision tree arrows are missing or ambiguous, leading to incorrect path selection",
+        "medium": "Breadcrumb separators are missing, making it unclear how navigation levels relate",
+        "low": "Connection lines are present but their styling (thickness, color) is inconsistent with the overall design"
+      },
+      "examples": [
+        "A checkout flow with a horizontal stepper where numbered circles are connected by a line that fills as the user progresses",
+        "A family tree diagram where lines connect parents to children, showing generational relationships",
+        "A Kanban board where drag handles and drop zones use animated connection lines to show where a card will land"
+      ],
+      "academic_references": [
+        "Palmer, S. E., & Rock, I. (1994). Rethinking perceptual organization: The role of uniform connectedness. Psychonomic Bulletin & Review, 1(1), 29-55.",
+        "Han, S., Humphreys, G. W., & Chen, L. (1999). Uniform connectedness and classical Gestalt principles of perceptual grouping. Perception & Psychophysics, 61(4), 661-674."
+      ],
+      "detection_keywords": [
+        "connected", "linked", "line", "arrow", "flow", "relationship", "path", "wire",
+        "connector", "stepper", "progress bar", "breadcrumb", "timeline", "flowchart",
+        "sequence", "chain", "pipeline", "linked elements", "visual connection"
+      ]
+    },
+    {
+      "id": "pragnanz",
+      "name": "Law of Pragnanz",
+      "category": "perception",
+      "cluster": "gestalt",
+      "description": "People tend to interpret ambiguous or complex images in the simplest form possible. The human eye prefers to find order, symmetry, and simplicity in visual stimuli, reducing cognitive effort.",
+      "origin": {
+        "author": "Kurt Koffka",
+        "year": 1935,
+        "publication": "Principles of Gestalt Psychology"
+      },
+      "key_takeaways": [
+        "Users will gravitate toward the simplest interpretation of your interface; design so the simplest reading is the correct one",
+        "Reduce visual complexity by removing unnecessary decorative elements, redundant labels, and extraneous borders",
+        "When layouts are complex, users may misinterpret element relationships based on the simplest perceived pattern"
+      ],
+      "related_nielsen_heuristics": ["H8"],
+      "measurement_methods": [
+        "Count the number of distinct visual elements per screen (icons, borders, colors, text styles) and benchmark against industry standards",
+        "Run five-second tests to see if users can accurately describe the page purpose after a brief glance",
+        "Measure time-to-first-action as a proxy for whether the interface is immediately understandable"
+      ],
+      "design_implications": [
+        "Favor clean, geometric shapes (circles, rectangles) over irregular or ambiguous forms for UI elements",
+        "Remove decorative elements that do not serve an informational or functional purpose",
+        "Use consistent, predictable layouts (grid systems) so users can quickly build a mental model of the page structure",
+        "Simplify data visualizations by removing chart junk (unnecessary gridlines, 3D effects, decorative axes)"
+      ],
+      "severity_indicators": {
+        "critical": "The interface is so visually complex that users cannot identify the primary action or navigate the page at all",
+        "high": "Multiple competing visual patterns create ambiguity about page structure, causing frequent misclicks",
+        "medium": "Decorative elements compete with functional elements for attention, slowing task completion",
+        "low": "Minor visual clutter exists (e.g., extra borders, shadows) but does not significantly impede usability"
+      },
+      "examples": [
+        "A landing page with a single hero image, headline, and call-to-action button stripped of all unnecessary chrome",
+        "A mobile app that uses simple geometric icons and ample whitespace instead of photorealistic skeuomorphic elements",
+        "A data dashboard that presents key metrics in clean cards with sparklines, avoiding 3D pie charts and gradient fills"
+      ],
+      "academic_references": [
+        "Koffka, K. (1935). Principles of Gestalt Psychology. Harcourt, Brace and Company.",
+        "Todorovic, D. (2008). Gestalt principles. Scholarpedia, 3(12), 5345."
+      ],
+      "detection_keywords": [
+        "simple", "minimal", "clean", "straightforward", "complex", "overwhelming", "cluttered",
+        "busy", "noisy", "visual clutter", "too much going on", "confusing layout", "messy",
+        "overloaded", "crowded", "dense", "simplify", "streamline", "reduce", "clarity"
+      ]
+    },
+    {
+      "id": "aesthetic-usability",
+      "name": "Aesthetic-Usability Effect",
+      "category": "perception",
+      "cluster": "psychology",
+      "description": "Users perceive aesthetically pleasing designs as more usable than less attractive ones, even when objective usability is the same. Attractive interfaces build trust and increase tolerance for minor usability issues.",
+      "origin": {
+        "author": "Masaaki Kurosu & Kaede Kashimura",
+        "year": 1995,
+        "publication": "Apparent Usability vs. Inherent Usability, CHI '95"
+      },
+      "key_takeaways": [
+        "Visually appealing design creates a positive first impression that biases users toward perceiving the product as easier to use",
+        "Aesthetic quality does not replace usability but can mask minor friction and increase user patience",
+        "An ugly interface erodes trust and makes users less forgiving of errors, even if functionality is sound"
+      ],
+      "related_nielsen_heuristics": ["H8"],
+      "measurement_methods": [
+        "Administer the AttrakDiff or User Experience Questionnaire (UEQ) to measure hedonic and pragmatic quality",
+        "Compare subjective satisfaction scores (SUS, CSAT) against objective task success rates to detect aesthetic bias",
+        "A/B test identical functionality with different visual treatments and compare error tolerance and satisfaction"
+      ],
+      "design_implications": [
+        "Invest in visual polish (typography, color harmony, consistent spacing) as it directly impacts perceived usability",
+        "Ensure empty states, error pages, and loading screens are well-designed; these low-traffic states shape overall impression",
+        "Do not rely solely on aesthetics; beautiful but confusing interfaces still fail at critical tasks",
+        "Refresh visual design periodically to avoid a dated appearance that erodes perceived quality"
+      ],
+      "severity_indicators": {
+        "critical": "The interface appears so unpolished or broken that users do not trust it with sensitive information (e.g., payment)",
+        "high": "Outdated or inconsistent visual design causes users to perceive the product as unreliable or abandoned",
+        "medium": "Minor aesthetic inconsistencies (misaligned elements, inconsistent colors) reduce overall confidence",
+        "low": "Design is functional but utilitarian; users complete tasks but express lower satisfaction scores"
+      },
+      "examples": [
+        "Apple's product pages combine minimal layout with high-quality imagery, making even complex specs feel approachable",
+        "A banking app with polished animations and consistent design language builds trust for financial transactions",
+        "A government form redesigned with modern typography and clear spacing sees increased completion rates despite identical questions"
+      ],
+      "academic_references": [
+        "Kurosu, M., & Kashimura, K. (1995). Apparent usability vs. inherent usability: Experimental analysis on the determinants of the apparent usability. Conference Companion on Human Factors in Computing Systems (CHI '95), 292-293.",
+        "Tractinsky, N., Katz, A. S., & Ikar, D. (2000). What is beautiful is usable. Interacting with Computers, 13(2), 127-145."
+      ],
+      "detection_keywords": [
+        "beautiful", "attractive", "pleasing", "polished", "ugly", "dated", "visual appeal",
+        "look and feel", "aesthetics", "professional", "modern", "sleek", "clean design",
+        "trust", "credibility", "first impression", "visual quality", "design quality", "outdated"
+      ]
+    },
+    {
+      "id": "millers-law",
+      "name": "Miller's Law",
+      "category": "cognitive",
+      "cluster": "memory",
+      "description": "The average person can hold approximately 7 (plus or minus 2) items in working memory at once. This capacity limit means interfaces should minimize the number of items users must simultaneously process.",
+      "origin": {
+        "author": "George A. Miller",
+        "year": 1956,
+        "publication": "The Magical Number Seven, Plus or Minus Two: Some Limits on Our Capacity for Processing Information"
+      },
+      "key_takeaways": [
+        "Limit the number of items users must hold in working memory to around 5-9 items at once",
+        "Organize content into chunks or categories so each chunk counts as a single item in working memory",
+        "This law describes short-term memory capacity, not a magic number for menu items or options"
+      ],
+      "related_nielsen_heuristics": ["H6"],
+      "measurement_methods": [
+        "Count the number of distinct items (menu links, form fields, data points) visible at once per screen section",
+        "Measure recall accuracy by asking users to remember items they just saw on screen",
+        "Track error rates on tasks that require users to compare or remember multiple pieces of information simultaneously"
+      ],
+      "design_implications": [
+        "Break long forms into logical sections or steps, each presenting a manageable number of fields",
+        "Limit top-level navigation to 5-7 primary categories, with sub-navigation for deeper content",
+        "Use progressive disclosure to reveal information as needed rather than displaying everything at once",
+        "Provide visual aids (labels, icons, color coding) to reduce memory burden when comparing items"
+      ],
+      "severity_indicators": {
+        "critical": "Users must remember more than 9 discrete items across screens to complete a core task, with no reference available",
+        "high": "A single view presents 15+ unorganized options with no grouping, causing frequent selection errors",
+        "medium": "Navigation has 10-12 top-level items without clear categorization, slowing wayfinding",
+        "low": "Content is slightly over the 7-item guideline but compensated with clear visual grouping"
+      },
+      "examples": [
+        "Phone numbers formatted as (555) 123-4567 chunk 10 digits into 3 manageable groups",
+        "A project management app that limits Kanban columns to 5-7 per board, with an option to scroll for more",
+        "An e-commerce category page with 6 top-level departments, each expandable to reveal sub-categories"
+      ],
+      "academic_references": [
+        "Miller, G. A. (1956). The magical number seven, plus or minus two: Some limits on our capacity for processing information. Psychological Review, 63(2), 81-97.",
+        "Cowan, N. (2001). The magical number 4 in short-term memory: A reconsideration of mental storage capacity. Behavioral and Brain Sciences, 24(1), 87-114."
+      ],
+      "detection_keywords": [
+        "seven", "too many", "remember", "recall", "items", "options", "categories", "groups",
+        "memory", "overwhelming", "overload", "limit", "capacity", "count", "number of items",
+        "working memory", "short-term memory", "cognitive limit", "magic number"
+      ]
+    },
+    {
+      "id": "cognitive-load",
+      "name": "Cognitive Load",
+      "category": "cognitive",
+      "cluster": "attention",
+      "description": "Every interface element, instruction, and visual detail adds to the total cognitive demand on the user. When cognitive load exceeds capacity, comprehension drops and errors increase dramatically.",
+      "origin": {
+        "author": "John Sweller",
+        "year": 1988,
+        "publication": "Cognitive Load During Problem Solving: Effects on Learning"
+      },
+      "key_takeaways": [
+        "Intrinsic load (task complexity) is fixed, but extraneous load (poor design) can and should be minimized",
+        "Germane load (learning) is desirable; design should redirect freed capacity toward understanding, not decoration",
+        "Every added element, animation, color, or label contributes to total load; audit relentlessly"
+      ],
+      "related_nielsen_heuristics": ["H8", "H5"],
+      "measurement_methods": [
+        "Use the NASA-TLX (Task Load Index) questionnaire to measure perceived workload across six dimensions",
+        "Track secondary task performance (e.g., reaction time to an unrelated prompt) as a proxy for spare cognitive capacity",
+        "Measure task abandonment rates and time-on-task to detect when cognitive load is causing failure"
+      ],
+      "design_implications": [
+        "Remove all interface elements that do not directly support the user's current task",
+        "Use smart defaults, auto-fill, and inline validation to reduce the number of decisions users must make",
+        "Break complex tasks into smaller, focused steps with clear progress indicators",
+        "Avoid requiring users to translate between formats (e.g., show dates as 'March 27' not '2026-03-27' in consumer UIs)"
+      ],
+      "severity_indicators": {
+        "critical": "Users cannot complete core tasks because the interface demands simultaneous attention to too many elements, instructions, or modes",
+        "high": "Task abandonment exceeds 40% due to interface complexity that is unrelated to inherent task difficulty",
+        "medium": "Users frequently pause, re-read instructions, or seek help for tasks that should be straightforward",
+        "low": "Minor extraneous elements exist (decorative icons, redundant labels) but do not measurably impact task success"
+      },
+      "examples": [
+        "A tax filing app that asks one question per screen with contextual help, rather than presenting the entire form at once",
+        "A code editor that collapses unrelated panels and highlights only the active file to reduce visual noise",
+        "A medical portal that replaces jargon-heavy lab results with plain-language summaries and color-coded status indicators"
+      ],
+      "academic_references": [
+        "Sweller, J. (1988). Cognitive load during problem solving: Effects on learning. Cognitive Science, 12(2), 257-285.",
+        "Paas, F., Renkl, A., & Sweller, J. (2003). Cognitive load theory and instructional design: Recent developments. Educational Psychologist, 38(1), 1-4."
+      ],
+      "detection_keywords": [
+        "complex", "confusing", "too much", "overwhelm", "mental effort", "difficult",
+        "hard to understand", "information overload", "cluttered", "busy", "noisy",
+        "cognitive burden", "mental strain", "think too hard", "extraneous", "unnecessary complexity",
+        "brain overload", "fatigue", "exhausting"
+      ]
+    },
+    {
+      "id": "working-memory",
+      "name": "Working Memory",
+      "category": "cognitive",
+      "cluster": "memory",
+      "description": "Working memory is the limited-capacity system that temporarily holds and manipulates information during cognitive tasks. It constrains how much users can process at once, typically around 3-5 items without rehearsal.",
+      "origin": {
+        "author": "Alan Baddeley & Graham Hitch",
+        "year": 1974,
+        "publication": "Working Memory, The Psychology of Learning and Motivation"
+      },
+      "key_takeaways": [
+        "Working memory decays rapidly without rehearsal; critical information must remain visible, not hidden behind interactions",
+        "The phonological loop and visuospatial sketchpad process different types of information; leverage both channels",
+        "Interruptions (pop-ups, page transitions) flush working memory, forcing users to rebuild context"
+      ],
+      "related_nielsen_heuristics": ["H6"],
+      "measurement_methods": [
+        "Measure error rates when users must carry information across screens or tabs (cross-reference tasks)",
+        "Track time-to-resume after interruptions (e.g., modal dismissal) to quantify working memory disruption",
+        "Use think-aloud protocols to identify moments when users say they forgot what they were doing"
+      ],
+      "design_implications": [
+        "Keep all information needed for a decision visible on the same screen; do not require users to memorize across views",
+        "Show comparison tables side-by-side rather than requiring users to navigate between product pages",
+        "Persist user input and selections across page navigations; never clear form data on back-button presses",
+        "Minimize interruptive elements (modals, toasts, tooltips) during focused tasks"
+      ],
+      "severity_indicators": {
+        "critical": "Users must memorize a code, ID, or selection from one screen and re-enter it on another with no way to copy or reference it",
+        "high": "Multi-step workflows clear previously entered data on navigation, forcing users to re-enter information",
+        "medium": "Users need to compare items but must navigate between separate pages, losing context of what they already reviewed",
+        "low": "Occasionally requires referring back to a previous step, but a summary or breadcrumb is available"
+      },
+      "examples": [
+        "A shopping site that shows a persistent mini-cart so users do not need to remember what they added",
+        "An IDE that displays function signatures in a tooltip while the user types arguments, reducing the need to memorize parameter order",
+        "A comparison tool that lets users pin selected items in a sidebar while browsing additional options"
+      ],
+      "academic_references": [
+        "Baddeley, A. D., & Hitch, G. (1974). Working memory. In G. H. Bower (Ed.), The Psychology of Learning and Motivation (Vol. 8, pp. 47-89). Academic Press.",
+        "Cowan, N. (2010). The magical mystery four: How is working memory capacity limited, and why? Current Directions in Psychological Science, 19(1), 51-57."
+      ],
+      "detection_keywords": [
+        "forget", "remember", "retain", "temporary", "short-term", "hold in mind", "juggle",
+        "mental capacity", "context lost", "back button clears", "navigate away", "lost my place",
+        "carry information", "cross-reference", "side by side", "compare", "persistent", "visible"
+      ]
+    },
+    {
+      "id": "chunking",
+      "name": "Chunking",
+      "category": "cognitive",
+      "cluster": "memory",
+      "description": "Chunking is the process of grouping individual pieces of information into larger, meaningful units (chunks) to overcome working memory limitations. Effective chunking can dramatically increase the amount of information users can process.",
+      "origin": {
+        "author": "George A. Miller",
+        "year": 1956,
+        "publication": "The Magical Number Seven, Plus or Minus Two"
+      },
+      "key_takeaways": [
+        "Breaking large datasets into meaningful groups makes them easier to scan, comprehend, and recall",
+        "Chunk boundaries should align with meaningful semantic categories, not arbitrary visual divisions",
+        "Familiar patterns (phone numbers, dates, card numbers) already have established chunking conventions that should be preserved"
+      ],
+      "related_nielsen_heuristics": ["H6", "H8"],
+      "measurement_methods": [
+        "Measure recall accuracy of chunked vs. unchunked information displays",
+        "Evaluate scan time on long lists with and without section headers or visual grouping",
+        "Track input error rates on formatted fields (e.g., phone, credit card) with and without chunking aids"
+      ],
+      "design_implications": [
+        "Format long numbers with spaces or dashes (credit cards: 4242 4242 4242 4242, not 4242424242424242)",
+        "Organize long lists with section headers, alphabetical grouping, or categorical labels",
+        "Break lengthy articles into sections with descriptive headings and a table of contents",
+        "Use tabbed interfaces or accordions to chunk large amounts of content into digestible sections"
+      ],
+      "severity_indicators": {
+        "critical": "A 16-digit input field displays as a continuous string with no formatting, causing frequent entry errors in critical flows like payments",
+        "high": "A settings page presents 30+ options in a flat, unsorted list with no grouping or search",
+        "medium": "Long-form content lacks section headings, making it difficult to scan or find specific information",
+        "low": "Data is chunked but chunk sizes are inconsistent or labels are unclear"
+      },
+      "examples": [
+        "Credit card input fields that automatically insert spaces every 4 digits: 4242 4242 4242 4242",
+        "A contacts app that groups entries alphabetically with letter dividers (A, B, C...)",
+        "A restaurant menu organized by course (Appetizers, Mains, Desserts) rather than a flat list of items"
+      ],
+      "academic_references": [
+        "Miller, G. A. (1956). The magical number seven, plus or minus two: Some limits on our capacity for processing information. Psychological Review, 63(2), 81-97.",
+        "Gobet, F., Lane, P. C. R., Croker, S., Cheng, P. C. H., Jones, G., Oliver, I., & Pine, J. M. (2001). Chunking mechanisms in human learning. Trends in Cognitive Sciences, 5(6), 236-243."
+      ],
+      "detection_keywords": [
+        "group", "chunk", "organize", "break down", "section", "segment", "categorize",
+        "cluster", "batch", "divide", "partition", "format", "structure", "heading",
+        "separator", "divider", "alphabetical", "sorted", "labeled groups", "sectioned"
+      ]
+    },
+    {
+      "id": "hicks-law",
+      "name": "Hick's Law",
+      "category": "cognitive",
+      "cluster": "attention",
+      "description": "The time it takes to make a decision increases logarithmically with the number and complexity of choices. More options mean longer decision times and higher likelihood of decision avoidance.",
+      "origin": {
+        "author": "William Edmund Hick",
+        "year": 1952,
+        "publication": "On the Rate of Gain of Information"
+      },
+      "key_takeaways": [
+        "Reduce the number of choices presented at any single decision point to speed up user decisions",
+        "When many options are unavoidable, use categorization, search, and filtering to narrow the visible set",
+        "Hick's Law applies to equally probable choices; if some options are far more likely, highlight those to short-circuit the decision"
+      ],
+      "related_nielsen_heuristics": ["H8", "H7"],
+      "measurement_methods": [
+        "Measure decision time (time from options appearing to user selection) across varying option counts",
+        "Track selection abandonment rate as option count increases",
+        "A/B test reduced vs. full option sets and compare conversion rates and user satisfaction"
+      ],
+      "design_implications": [
+        "Limit navigation menus to essential items; move secondary options to submenus or a 'More' overflow",
+        "Present recommended or popular options first, with an option to see all alternatives",
+        "Use progressive disclosure: show basic options first, reveal advanced settings on demand",
+        "Implement type-ahead search for lists with more than 15-20 items"
+      ],
+      "severity_indicators": {
+        "critical": "A critical decision point (e.g., plan selection, shipping method) presents 20+ options with no filtering, recommendation, or comparison aid",
+        "high": "Primary navigation contains 12+ items at the same level with no grouping, causing users to scan the entire list repeatedly",
+        "medium": "Dropdown menus contain 15-20 unsorted items without search or categorization",
+        "low": "Slightly more options than ideal are shown but clear labels and ordering mitigate decision difficulty"
+      },
+      "examples": [
+        "A streaming service that shows 'Top Picks for You' (5 titles) above the full catalog to reduce choice paralysis",
+        "A restaurant ordering kiosk with 5-6 combo meals on the home screen and a 'Build Your Own' option for customizers",
+        "A SaaS pricing page with 3 tiers (Starter, Pro, Enterprise) instead of an la carte feature configurator"
+      ],
+      "academic_references": [
+        "Hick, W. E. (1952). On the rate of gain of information. Quarterly Journal of Experimental Psychology, 4(1), 11-26.",
+        "Hyman, R. (1953). Stimulus information as a determinant of reaction time. Journal of Experimental Psychology, 45(3), 188-196."
+      ],
+      "detection_keywords": [
+        "choices", "options", "decision", "select", "pick", "menu", "dropdown", "list",
+        "alternatives", "slow to choose", "too many", "decision paralysis", "overwhelmed by options",
+        "which one", "hard to decide", "filter", "narrow down", "recommend", "simplify choices"
+      ]
+    },
+    {
+      "id": "selective-attention",
+      "name": "Selective Attention",
+      "category": "cognitive",
+      "cluster": "attention",
+      "description": "Users focus on specific stimuli while filtering out irrelevant information. This filtering means elements outside the user's current focus are likely to be missed entirely, even if prominently displayed.",
+      "origin": {
+        "author": "Donald Broadbent",
+        "year": 1958,
+        "publication": "Perception and Communication"
+      },
+      "key_takeaways": [
+        "Users develop tunnel vision during focused tasks; peripheral information (banners, sidebar notices) will be ignored",
+        "Banner blindness is a real phenomenon; users learn to ignore areas associated with ads or promotions",
+        "Critical information must be placed within the user's expected attention path, not in ignored zones"
+      ],
+      "related_nielsen_heuristics": ["H8", "H1"],
+      "measurement_methods": [
+        "Use eye-tracking to identify fixation patterns and dead zones where users never look",
+        "Test banner or notification recall rates after task completion to quantify selective blindness",
+        "Measure miss rates for important alerts or status changes placed outside primary content areas"
+      ],
+      "design_implications": [
+        "Place critical alerts and status messages inline with the content the user is currently interacting with, not in banners or sidebars",
+        "Use motion, color contrast, or sound sparingly to break through selective attention for truly important notifications",
+        "Avoid placing essential information in locations users have learned to ignore (e.g., right sidebar ad zones, cookie banner areas)",
+        "During focused tasks (e.g., form filling), suppress non-critical notifications that will be ignored anyway"
+      ],
+      "severity_indicators": {
+        "critical": "A critical error or safety warning is displayed in a location users consistently ignore (e.g., a top banner during checkout), leading to unnoticed failures",
+        "high": "Important system status changes appear only in a peripheral area, causing users to act on stale information",
+        "medium": "Helpful but non-critical information (tips, suggestions) is placed in a sidebar that eye-tracking shows is rarely viewed",
+        "low": "Promotional banners in ignored zones fail to drive engagement but do not impact core task completion"
+      },
+      "examples": [
+        "Gmail places email send errors as inline alerts at the top of the compose window, directly in the user's focus area",
+        "A banking app shows insufficient funds warnings directly on the transfer amount input field, not in a separate notification area",
+        "E-commerce sites place urgency cues ('Only 2 left') next to the Add to Cart button, within the purchase decision flow"
+      ],
+      "academic_references": [
+        "Broadbent, D. E. (1958). Perception and Communication. Pergamon Press.",
+        "Simons, D. J., & Chabris, C. F. (1999). Gorillas in our midst: Sustained inattentional blindness for dynamic events. Perception, 28(9), 1059-1074."
+      ],
+      "detection_keywords": [
+        "focus", "distraction", "attention", "notice", "miss", "overlook", "ignore",
+        "banner blindness", "noise", "inattentional blindness", "tunnel vision", "peripheral",
+        "unnoticed", "hidden in plain sight", "lost in the page", "did not see", "missed alert"
+      ]
+    },
+    {
+      "id": "mental-model",
+      "name": "Mental Model",
+      "category": "cognitive",
+      "cluster": "psychology",
+      "description": "Users build internal representations of how a system works based on past experiences, expectations, and analogies. When an interface matches the user's mental model, it feels intuitive; when it conflicts, confusion and errors result.",
+      "origin": {
+        "author": "Kenneth Craik",
+        "year": 1943,
+        "publication": "The Nature of Explanation"
+      },
+      "key_takeaways": [
+        "Design interfaces that align with how users already think about the task, not how the system is technically structured",
+        "Users carry mental models from other products; violating widespread conventions creates unnecessary friction",
+        "When introducing novel interactions, provide scaffolding (metaphors, tutorials, progressive disclosure) to help users build accurate mental models"
+      ],
+      "related_nielsen_heuristics": ["H2", "H4"],
+      "measurement_methods": [
+        "Conduct user interviews or card sorts to understand users' existing mental models before designing",
+        "Measure first-use task success rate to detect mental model mismatches between user expectations and actual behavior",
+        "Analyze support ticket themes to identify recurring confusion patterns caused by mental model violations"
+      ],
+      "design_implications": [
+        "Use real-world metaphors and familiar terminology (e.g., 'shopping cart', 'folder', 'desktop') that align with user expectations",
+        "Follow platform conventions (iOS, Android, Web) for common interactions like navigation, swiping, and back-button behavior",
+        "Provide clear feedback when system behavior differs from common expectations (e.g., auto-save vs. manual save)",
+        "When designing novel features, use onboarding flows that explicitly bridge from the user's existing model to the new interaction"
+      ],
+      "severity_indicators": {
+        "critical": "Core navigation or data model is structured in a way that fundamentally conflicts with how users think about the domain, making the product unusable without training",
+        "high": "A common interaction behaves opposite to convention (e.g., swipe right deletes instead of archiving), causing frequent data loss or errors",
+        "medium": "Terminology or labels use internal jargon instead of user-familiar language, requiring users to guess meaning",
+        "low": "Minor deviations from convention exist but are quickly learnable and do not cause errors"
+      },
+      "examples": [
+        "File managers use folder hierarchies because users understand the physical filing cabinet metaphor",
+        "E-commerce sites place the cart icon in the top-right corner because users expect it there based on years of convention",
+        "A medical app that uses plain language ('blood sugar') instead of clinical terms ('glycemia') matches patient mental models"
+      ],
+      "academic_references": [
+        "Craik, K. J. W. (1943). The Nature of Explanation. Cambridge University Press.",
+        "Norman, D. A. (1988). The Design of Everyday Things. Basic Books."
+      ],
+      "detection_keywords": [
+        "expect", "assume", "think", "understand", "confused", "unexpected", "intuitive",
+        "familiar", "convention", "mental model", "how it works", "I thought", "surprised",
+        "not what I expected", "counterintuitive", "unfamiliar", "jargon", "technical term",
+        "user expectation", "real world match"
+      ]
+    },
+    {
+      "id": "goal-gradient",
+      "name": "Goal-Gradient Effect",
+      "category": "behavioral",
+      "cluster": "motivation",
+      "description": "The tendency to increase effort as one approaches a goal. Users accelerate their actions and become more motivated as they perceive themselves getting closer to completing a task or achieving a reward.",
+      "origin": {
+        "author": "Clark Hull",
+        "year": 1932,
+        "publication": "The Goal-Gradient Hypothesis and Maze Learning"
+      },
+      "key_takeaways": [
+        "Show progress indicators to leverage the goal-gradient effect and keep users motivated through multi-step tasks",
+        "Giving users a head start (e.g., a loyalty card with 2 of 12 stamps pre-filled) increases completion rates",
+        "Users are most likely to abandon tasks at the beginning; front-loading progress cues reduces early dropout"
+      ],
+      "related_nielsen_heuristics": ["H1"],
+      "measurement_methods": [
+        "Track step-over-step completion rates in multi-step flows to identify where drop-off occurs",
+        "Measure completion rates with and without progress indicators",
+        "A/B test endowed progress (pre-filled progress bars) against zero-start progress bars"
+      ],
+      "design_implications": [
+        "Display progress bars, step counters, or percentage completion indicators in multi-step workflows",
+        "Consider 'endowed progress' by showing initial steps as already completed (e.g., 'Step 1 of 5: Account Created')",
+        "Break long processes into visible milestones to create multiple 'approaching the goal' moments",
+        "In gamification systems, make the next reward visibly close to encourage continued engagement"
+      ],
+      "severity_indicators": {
+        "critical": "A multi-step process (e.g., application, onboarding) provides no progress indication, causing high abandonment because users cannot gauge remaining effort",
+        "high": "Progress indicators are present but inaccurate (e.g., stuck at 90% for several minutes), eroding trust and motivation",
+        "medium": "Progress is shown but only as a fraction (3/8) without visual weight, failing to trigger the motivational acceleration effect",
+        "low": "Progress indicator exists and is accurate but lacks visual polish (e.g., plain text instead of a bar)"
+      },
+      "examples": [
+        "LinkedIn's profile completion meter ('Your profile is 70% complete') motivates users to add missing sections",
+        "A loyalty program app that shows 8 of 10 stamps collected, with the next reward visually close",
+        "A file upload dialog with a progress bar that accelerates visually near completion to maintain momentum"
+      ],
+      "academic_references": [
+        "Hull, C. L. (1932). The goal-gradient hypothesis and maze learning. Psychological Review, 39(1), 25-43.",
+        "Kivetz, R., Urminsky, O., & Zheng, Y. (2006). The goal-gradient hypothesis resurrected: Purchase acceleration, illusionary goal progress, and customer retention. Journal of Marketing Research, 43(1), 39-58."
+      ],
+      "detection_keywords": [
+        "progress", "completion", "almost done", "close", "finish", "milestone", "step",
+        "remaining", "percentage", "progress bar", "steps left", "how far", "nearly there",
+        "keep going", "getting closer", "motivation", "abandon", "drop-off", "endowed progress"
+      ]
+    },
+    {
+      "id": "zeigarnik",
+      "name": "Zeigarnik Effect",
+      "category": "behavioral",
+      "cluster": "motivation",
+      "description": "People remember uncompleted or interrupted tasks better than completed ones. The cognitive tension of an unfinished task creates a persistent mental reminder that motivates return and completion.",
+      "origin": {
+        "author": "Bluma Zeigarnik",
+        "year": 1927,
+        "publication": "On Finished and Unfinished Tasks"
+      },
+      "key_takeaways": [
+        "Incomplete tasks create psychological tension that motivates users to return and finish",
+        "Showing users what they have not yet completed (empty profile fields, unfinished steps) leverages this tension",
+        "Allow users to save partial progress so the Zeigarnik tension draws them back rather than frustrating them"
+      ],
+      "related_nielsen_heuristics": ["H1"],
+      "measurement_methods": [
+        "Measure return rates for users who abandoned a multi-step process vs. those who never started",
+        "Track completion rates for tasks with visible 'incomplete' indicators vs. those without",
+        "Analyze notification effectiveness by comparing re-engagement rates for 'continue where you left off' prompts"
+      ],
+      "design_implications": [
+        "Show incomplete profile fields, unfinished courses, or pending tasks prominently to draw users back",
+        "Implement auto-save and 'Continue where you left off' functionality for long workflows",
+        "Use checklists with visible incomplete items to create productive tension",
+        "Send reminder emails or push notifications for abandoned carts or incomplete onboarding"
+      ],
+      "severity_indicators": {
+        "critical": "Users lose all progress when they leave a multi-step flow, destroying both the task state and the Zeigarnik motivation to return",
+        "high": "No 'continue' or 'resume' path exists for partially completed tasks, wasting prior effort and frustrating users",
+        "medium": "Incomplete tasks are not visually distinguished from not-yet-started tasks, weakening the return motivation",
+        "low": "Resume functionality exists but is not prominently surfaced (e.g., buried in a menu rather than on the home screen)"
+      },
+      "examples": [
+        "Duolingo shows streaks and incomplete lessons on the home screen, motivating users to maintain their progress",
+        "An e-commerce site emails users about abandoned carts with a direct link to resume checkout",
+        "A to-do app that sorts incomplete items to the top and marks them with a prominent empty checkbox"
+      ],
+      "academic_references": [
+        "Zeigarnik, B. (1927). Uber das Behalten von erledigten und unerledigten Handlungen. Psychologische Forschung, 9, 1-85.",
+        "Masicampo, E. J., & Baumeister, R. F. (2011). Consider it done! Plan making can eliminate the cognitive effects of unfulfilled goals. Journal of Personality and Social Psychology, 101(4), 667-683."
+      ],
+      "detection_keywords": [
+        "incomplete", "unfinished", "pending", "return", "resume", "continue", "reminder",
+        "abandoned", "come back", "left off", "save progress", "draft", "partial",
+        "unresolved", "open task", "not done", "pick up where", "re-engage"
+      ]
+    },
+    {
+      "id": "peak-end-rule",
+      "name": "Peak-End Rule",
+      "category": "behavioral",
+      "cluster": "experience",
+      "description": "People judge an experience based primarily on how they felt at its most intense point (the peak) and at its end, rather than on the sum or average of every moment. The ending disproportionately shapes overall memory of the experience.",
+      "origin": {
+        "author": "Daniel Kahneman",
+        "year": 1993,
+        "publication": "When More Pain Is Preferred to Less: Adding a Better End"
+      },
+      "key_takeaways": [
+        "Invest heavily in the final moments of any user flow; a strong finish creates a positive lasting impression",
+        "Identify and smooth the most painful peak moments (longest waits, hardest steps, most confusing screens)",
+        "A delightful surprise at the end can redeem an otherwise mediocre experience"
+      ],
+      "related_nielsen_heuristics": ["H1", "H9"],
+      "measurement_methods": [
+        "Survey users immediately after flow completion and again 24-48 hours later; compare to identify which moments shaped the memory",
+        "Map emotional valence per step using in-flow micro-surveys or facial coding to identify peaks and troughs",
+        "Analyze NPS or CSAT scores correlated with specific steps to detect which moments drive overall satisfaction"
+      ],
+      "design_implications": [
+        "Design confirmation and success screens with care: celebratory animations, clear summaries, and next-step suggestions",
+        "Eliminate or reduce the worst moment in the flow (e.g., a confusing address form, a long loading screen)",
+        "If a process must include a painful step, do not place it last; follow it with easier, more pleasant steps",
+        "Add a moment of delight at the end (thank-you message, reward animation, personalized summary)"
+      ],
+      "severity_indicators": {
+        "critical": "The final step of a key flow is the most confusing or frustrating (e.g., a cryptic error at payment confirmation), poisoning the entire experience memory",
+        "high": "The peak negative moment is extreme (e.g., data loss, long unacknowledged loading) with no recovery, tainting overall satisfaction",
+        "medium": "The experience ends abruptly without confirmation or closure, leaving users uncertain whether their action succeeded",
+        "low": "The ending is functional but unremarkable; there is no delight moment but also no negative impression"
+      },
+      "examples": [
+        "Mailchimp's 'High Five' animation after sending a campaign turns a stressful moment into a memorable positive ending",
+        "A hotel check-out that offers a warm goodbye message and a personalized receipt leaves a better lasting impression than the check-in",
+        "A donation flow that ends with an impact story ('Your donation provides meals for 10 families') creates a positive peak at the end"
+      ],
+      "academic_references": [
+        "Kahneman, D., Fredrickson, B. L., Schreiber, C. A., & Redelmeier, D. A. (1993). When more pain is preferred to less: Adding a better end. Psychological Science, 4(6), 401-405.",
+        "Redelmeier, D. A., & Kahneman, D. (1996). Patients' memories of painful medical treatments: Real-time and retrospective evaluations of two minimally invasive procedures. Pain, 66(1), 3-8."
+      ],
+      "detection_keywords": [
+        "experience", "remember", "impression", "ending", "highlight", "worst moment",
+        "best moment", "last step", "final", "peak", "finish", "conclusion", "confirmation",
+        "success screen", "completion", "memorable", "lasting impression", "how it ended"
+      ]
+    },
+    {
+      "id": "flow",
+      "name": "Flow",
+      "category": "behavioral",
+      "cluster": "experience",
+      "description": "Flow is a state of complete immersion and focused concentration where a person is fully absorbed in an activity. It occurs when skill level matches challenge level and there are clear goals, immediate feedback, and no disruptive interruptions.",
+      "origin": {
+        "author": "Mihaly Csikszentmihalyi",
+        "year": 1975,
+        "publication": "Beyond Boredom and Anxiety: Experiencing Flow in Work and Play"
+      },
+      "key_takeaways": [
+        "Flow requires a balance between user skill and task challenge; too easy causes boredom, too hard causes anxiety",
+        "Interruptions (modals, unrelated notifications, forced actions) destroy flow state and require significant recovery time",
+        "Immediate, relevant feedback keeps users engaged and aware of their progress without forcing them to break focus"
+      ],
+      "related_nielsen_heuristics": ["H7"],
+      "measurement_methods": [
+        "Measure uninterrupted session duration as a proxy for flow engagement",
+        "Track the number of involuntary interruptions (modals, notifications, redirects) per core task flow",
+        "Use the Flow Short Scale questionnaire to assess perceived flow during usability testing"
+      ],
+      "design_implications": [
+        "Minimize interruptions during focused tasks: defer non-critical notifications, avoid pop-ups during editing or creation",
+        "Provide immediate feedback for every action (hover states, click confirmations, progress indicators)",
+        "Support keyboard shortcuts and power-user paths that reduce friction for skilled users",
+        "Implement auto-save so users do not need to break flow to manually save their work"
+      ],
+      "severity_indicators": {
+        "critical": "The interface forces a disruptive interruption (e.g., mandatory modal, session timeout) during a focused creative or analytical task, causing significant work loss",
+        "high": "Frequent non-dismissable notifications or pop-ups break user concentration during core workflows multiple times per session",
+        "medium": "The interface lacks keyboard shortcuts or inline editing, requiring users to break flow to navigate menus for common actions",
+        "low": "Minor friction points exist (e.g., slow transitions, brief loading states) but do not cause full flow disruption"
+      },
+      "examples": [
+        "A writing app with a distraction-free mode that hides all UI except the text cursor and a subtle word count",
+        "A music production tool with keyboard shortcuts for every mixing action, allowing producers to stay in the creative zone",
+        "A code editor that provides inline error highlighting and auto-completion without opening separate dialogs"
+      ],
+      "academic_references": [
+        "Csikszentmihalyi, M. (1975). Beyond Boredom and Anxiety: Experiencing Flow in Work and Play. Jossey-Bass.",
+        "Csikszentmihalyi, M. (1990). Flow: The Psychology of Optimal Experience. Harper & Row."
+      ],
+      "detection_keywords": [
+        "immersed", "engaged", "focused", "interrupted", "distraction", "seamless", "smooth",
+        "friction", "disrupted", "flow state", "in the zone", "concentration", "absorbed",
+        "pop-up", "modal interruption", "notification spam", "broke my focus", "uninterrupted"
+      ]
+    },
+    {
+      "id": "paradox-active-user",
+      "name": "Paradox of the Active User",
+      "category": "behavioral",
+      "cluster": "psychology",
+      "description": "Users prefer to learn by doing rather than reading instructions. They typically skip tutorials, manuals, and onboarding flows in favor of immediately engaging with the interface, even when reading would save time.",
+      "origin": {
+        "author": "John Carroll & Mary Beth Rosson",
+        "year": 1987,
+        "publication": "The Paradox of the Active User"
+      },
+      "key_takeaways": [
+        "Do not depend on users reading documentation, tooltips, or onboarding tutorials before using the product",
+        "Design for immediate, exploratory use: interfaces should be self-explanatory without manuals",
+        "Provide just-in-time guidance at the moment of need rather than upfront training"
+      ],
+      "related_nielsen_heuristics": ["H10"],
+      "measurement_methods": [
+        "Track onboarding tutorial skip rates and completion rates to quantify the paradox",
+        "Measure first-use task success rate for users who skip vs. complete onboarding",
+        "Analyze help documentation page views relative to active user count (typically very low)"
+      ],
+      "design_implications": [
+        "Make interfaces self-explanatory through clear labels, sensible defaults, and visible affordances",
+        "Replace upfront tutorials with contextual tips that appear when a user first encounters a feature",
+        "Implement progressive onboarding that teaches features as users naturally encounter them",
+        "Ensure the interface is forgiving of exploration: make actions undoable and provide clear recovery paths"
+      ],
+      "severity_indicators": {
+        "critical": "The product is unusable without completing a mandatory multi-step tutorial that most users skip, resulting in immediate abandonment",
+        "high": "Core features are hidden behind non-obvious gestures or commands with no contextual hints, leaving skip-tutorial users stranded",
+        "medium": "Important settings or options require reading documentation to discover, reducing adoption of key features",
+        "low": "Optional advanced features require documentation knowledge, but core functionality is immediately accessible"
+      },
+      "examples": [
+        "Slack provides a bot that introduces features through actual messages in the chat, teaching by doing rather than showing slides",
+        "Figma shows brief tooltips on first hover over tools instead of a mandatory video tutorial",
+        "A photo editor with obvious tool icons and live preview lets users learn by experimenting rather than reading a manual"
+      ],
+      "academic_references": [
+        "Carroll, J. M., & Rosson, M. B. (1987). The paradox of the active user. In J. M. Carroll (Ed.), Interfacing Thought: Cognitive Aspects of Human-Computer Interaction (pp. 80-111). MIT Press.",
+        "Carroll, J. M. (1990). The Nurnberg Funnel: Designing Minimalist Instruction for Practical Computer Skill. MIT Press."
+      ],
+      "detection_keywords": [
+        "skip", "ignore", "manual", "instructions", "tutorial", "onboarding", "help",
+        "documentation", "learn by doing", "skip tutorial", "RTFM", "walkthrough",
+        "guided tour", "tooltip", "hint", "self-explanatory", "discoverable", "explore"
+      ]
+    },
+    {
+      "id": "pareto",
+      "name": "Pareto Principle",
+      "category": "behavioral",
+      "cluster": "design",
+      "description": "Roughly 80% of effects come from 20% of causes. In product design, a small fraction of features drives the majority of user value, and a small fraction of users often generates most activity or revenue.",
+      "origin": {
+        "author": "Vilfredo Pareto",
+        "year": 1896,
+        "publication": "Cours d'economie politique"
+      },
+      "key_takeaways": [
+        "Identify and optimize the 20% of features that serve 80% of user needs; these are your core workflows",
+        "Invest disproportionately in the most-used paths; minor improvements to high-traffic flows yield major overall impact",
+        "Avoid feature bloat by recognizing that most requested features serve a small minority of users"
+      ],
+      "related_nielsen_heuristics": ["H7"],
+      "measurement_methods": [
+        "Analyze usage analytics to identify the top 20% of features by frequency, session time, or revenue contribution",
+        "Map user journeys and measure which paths account for 80% of task completions",
+        "Survey users on feature importance and cross-reference with actual usage data to find perception-reality gaps"
+      ],
+      "design_implications": [
+        "Give the most-used features the most prominent placement, largest click targets, and smoothest interactions",
+        "Move rarely used features to secondary menus, advanced settings, or keyboard-only shortcuts",
+        "Prioritize bug fixes and performance improvements on the paths used by the majority of users",
+        "When redesigning, focus energy on the core 20% of screens that handle 80% of user tasks"
+      ],
+      "severity_indicators": {
+        "critical": "The primary user flow (used by 80%+ of users) has significant usability issues while niche features are polished, inverting resource allocation",
+        "high": "All features are given equal visual weight, burying the most important 20% among rarely used options",
+        "medium": "The interface does not surface frequently used actions (e.g., no 'recent' or 'favorites' shortcuts), treating all features equally",
+        "low": "Core features are prominent but could be further optimized (e.g., adding shortcuts or reducing clicks for the top 5 actions)"
+      },
+      "examples": [
+        "Microsoft Word's ribbon puts formatting, save, and undo (the most-used actions) in the most accessible positions",
+        "A project management tool that defaults to the board view (used by 80% of users) while list and calendar views are one click away",
+        "A mobile banking app with transfer, balance, and pay bills on the home screen; investment and loan features in a secondary menu"
+      ],
+      "academic_references": [
+        "Pareto, V. (1896). Cours d'economie politique. F. Rouge.",
+        "Juran, J. M. (1951). Quality Control Handbook. McGraw-Hill."
+      ],
+      "detection_keywords": [
+        "most used", "frequent", "common", "majority", "core features", "primary", "essential",
+        "80 percent", "key actions", "top features", "popular", "high traffic", "main workflow",
+        "power features", "80/20", "prioritize", "feature usage", "analytics"
+      ]
+    },
+    {
+      "id": "parkinsons-law",
+      "name": "Parkinson's Law",
+      "category": "behavioral",
+      "cluster": "psychology",
+      "description": "Work expands to fill the time available for its completion. Without constraints, tasks take longer than necessary. Applying reasonable limits to time, scope, or effort can increase efficiency and reduce procrastination.",
+      "origin": {
+        "author": "Cyril Northcote Parkinson",
+        "year": 1955,
+        "publication": "Parkinson's Law, The Economist"
+      },
+      "key_takeaways": [
+        "Open-ended tasks without deadlines or constraints tend to expand indefinitely; add structure to prevent this",
+        "Visible countdowns, character limits, and step limits create productive urgency",
+        "Constraints can improve creativity and quality by forcing users to focus on essentials"
+      ],
+      "related_nielsen_heuristics": ["H7"],
+      "measurement_methods": [
+        "Compare form completion times with and without visible time constraints or step limits",
+        "Measure task duration variance between constrained and unconstrained versions of the same workflow",
+        "Track procrastination indicators (sessions started but abandoned before any input) in open-ended vs. guided flows"
+      ],
+      "design_implications": [
+        "Add reasonable character limits to text inputs (e.g., 280 characters for social posts, 500 for reviews)",
+        "Show estimated time-to-completion on multi-step processes to set expectations and maintain pace",
+        "Use countdown timers for time-sensitive actions (but avoid false urgency dark patterns)",
+        "Structure open-ended tasks with templates, prompts, or wizard-style guided flows"
+      ],
+      "severity_indicators": {
+        "critical": "A critical workflow provides no constraints or guidance, causing users to spend excessive time on configuration that could be simplified with smart defaults",
+        "high": "An open-ended form (e.g., bio, description) has no character limit or guidance, resulting in wildly inconsistent and often excessive submissions",
+        "medium": "Multi-step processes do not show estimated completion time, causing user anxiety about how much effort remains",
+        "low": "Constraints are present but could be tighter (e.g., a 5000-character limit where 500 would be more appropriate)"
+      },
+      "examples": [
+        "Twitter's 280-character limit forces concise communication and reduces drafting time compared to unlimited text fields",
+        "A meeting scheduling tool that defaults to 25-minute meetings instead of 30, creating a slight constraint that improves punctuality",
+        "A project management app that shows 'Estimated: 2 hours remaining' on task progress to maintain productive urgency"
+      ],
+      "academic_references": [
+        "Parkinson, C. N. (1955). Parkinson's law. The Economist, 177(5856), 635-637.",
+        "Aronson, E., & Landy, D. (1967). Further steps beyond Parkinson's law: A replication and extension of the excess time effect. Journal of Experimental Social Psychology, 3(3), 274-285."
+      ],
+      "detection_keywords": [
+        "deadline", "time", "expand", "procrastinate", "constraint", "limit", "scope",
+        "budget", "inflate", "time limit", "character limit", "word count", "estimated time",
+        "countdown", "urgency", "open-ended", "unbounded", "no limit", "takes forever"
+      ]
+    },
+    {
+      "id": "von-restorff",
+      "name": "Von Restorff Effect",
+      "category": "behavioral",
+      "cluster": "memory",
+      "description": "An item that is visually distinct from its surroundings is more likely to be remembered. Also known as the Isolation Effect, it explains why unique or contrasting elements capture attention and stick in memory.",
+      "origin": {
+        "author": "Hedwig von Restorff",
+        "year": 1933,
+        "publication": "Uber die Wirkung von Bereichsbildungen im Spurenfeld"
+      },
+      "key_takeaways": [
+        "Make the most important element on each screen visually distinct from everything else to ensure it is noticed and remembered",
+        "If everything is emphasized, nothing is emphasized; use isolation sparingly for maximum impact",
+        "Color, size, shape, and animation can all create the isolation effect, but should be used intentionally"
+      ],
+      "related_nielsen_heuristics": ["H1", "H8"],
+      "measurement_methods": [
+        "Measure click-through rates on visually isolated elements vs. uniform elements in the same context",
+        "Run recall tests: after viewing a page, ask users what they remember; isolated elements should have higher recall",
+        "A/B test CTA button styles (isolated/prominent vs. blending with surroundings) and compare conversion rates"
+      ],
+      "design_implications": [
+        "Use a distinct color for primary call-to-action buttons that contrasts with the rest of the color palette",
+        "Highlight the recommended pricing tier with a different background, badge, or border",
+        "In data tables, use conditional formatting to make outlier values (errors, anomalies) visually pop",
+        "Limit the number of visually distinct elements per screen to 1-2 to preserve the isolation effect"
+      ],
+      "severity_indicators": {
+        "critical": "The primary call-to-action is visually identical to surrounding elements, causing the majority of users to miss it entirely",
+        "high": "Multiple elements compete for isolation (several bright colors, multiple animations), causing none to stand out",
+        "medium": "The important element is somewhat distinct but not enough to be consistently noticed in eye-tracking studies",
+        "low": "The distinction exists but could be stronger (e.g., slightly different shade rather than a clearly contrasting color)"
+      },
+      "examples": [
+        "A pricing page where the 'Pro' tier has a highlighted border and 'Most Popular' badge while other tiers are plain",
+        "An error notification that appears in red against a neutral interface to immediately capture attention",
+        "A 'Sign Up Free' button in a bold accent color on a page where all other elements are muted grayscale"
+      ],
+      "academic_references": [
+        "Von Restorff, H. (1933). Uber die Wirkung von Bereichsbildungen im Spurenfeld. Psychologische Forschung, 18(1), 299-342.",
+        "Hunt, R. R. (1995). The subtlety of distinctiveness: What von Restorff really did. Psychonomic Bulletin & Review, 2(1), 105-112."
+      ],
+      "detection_keywords": [
+        "stand out", "different", "unique", "highlight", "distinctive", "contrast", "emphasis",
+        "prominent", "call to action", "CTA", "accent", "isolation", "pop", "eye-catching",
+        "attention-grabbing", "focal point", "hero element", "badge", "featured", "spotlight"
+      ]
+    },
+    {
+      "id": "serial-position",
+      "name": "Serial Position Effect",
+      "category": "behavioral",
+      "cluster": "memory",
+      "description": "Users best remember the first items (primacy effect) and last items (recency effect) in a list. Items in the middle are most likely to be forgotten or overlooked.",
+      "origin": {
+        "author": "Hermann Ebbinghaus",
+        "year": 1885,
+        "publication": "Memory: A Contribution to Experimental Psychology"
+      },
+      "key_takeaways": [
+        "Place the most important navigation items, options, or content at the beginning and end of lists",
+        "Middle positions receive the least attention and recall; avoid placing critical actions there",
+        "This effect applies to menus, tab bars, search results, and any ordered sequence of items"
+      ],
+      "related_nielsen_heuristics": ["H6"],
+      "measurement_methods": [
+        "Track click-through rates by position in navigation menus, lists, or carousels to confirm primacy/recency patterns",
+        "Run recall tests asking users which menu items or list entries they remember after brief exposure",
+        "Analyze conversion rates of items by their position in a list (first, middle, last)"
+      ],
+      "design_implications": [
+        "Place the most important and most used navigation items at the beginning and end of the nav bar",
+        "In mobile tab bars, position the most critical actions at the far left and far right",
+        "When presenting search results or product lists, feature the best matches at the top",
+        "Consider placing key actions (Home, Profile) at the edges of bottom navigation bars"
+      ],
+      "severity_indicators": {
+        "critical": "The most important navigation item or action is buried in the middle of a long list with no visual distinction, causing most users to miss it",
+        "high": "A critical function is placed in the middle of a tab bar or menu where it receives the least attention",
+        "medium": "Content ordering does not consider primacy/recency, placing moderately important items first and key items in the middle",
+        "low": "List ordering is generally good but could be further optimized based on usage data"
+      },
+      "examples": [
+        "iOS tab bars place Home (most used) at the far left and Profile at the far right, with less critical items in the middle",
+        "Amazon places 'Best Sellers' and 'Deals' at the beginning and end of category navigation",
+        "A mobile banking app with Transfer (most used) as the first tab and More/Settings as the last tab"
+      ],
+      "academic_references": [
+        "Ebbinghaus, H. (1885). Memory: A Contribution to Experimental Psychology. (H. A. Ruger & C. E. Bussenius, Trans.). Teachers College, Columbia University.",
+        "Murdock, B. B. (1962). The serial position effect of free recall. Journal of Experimental Psychology, 64(5), 482-488."
+      ],
+      "detection_keywords": [
+        "first", "last", "beginning", "end", "middle", "order", "position", "list",
+        "navigation", "menu items", "primacy", "recency", "sequence", "ranking",
+        "top of list", "bottom of list", "tab order", "placement", "arrangement"
+      ]
+    },
+    {
+      "id": "jakobs-law",
+      "name": "Jakob's Law",
+      "category": "principles",
+      "cluster": "design",
+      "description": "Users spend most of their time on other sites and apps. They prefer your product to work the same way as the others they already know. Following established conventions reduces learning curves and increases usability.",
+      "origin": {
+        "author": "Jakob Nielsen",
+        "year": 2000,
+        "publication": "Jakob's Law of Internet User Experience"
+      },
+      "key_takeaways": [
+        "Users transfer expectations from other products to yours; deviating from widespread conventions creates friction",
+        "You can innovate on content and value proposition without innovating on interaction patterns",
+        "When you must deviate from convention, provide clear cues and guidance to help users adapt"
+      ],
+      "related_nielsen_heuristics": ["H2", "H4"],
+      "measurement_methods": [
+        "Benchmark your UI patterns against the top 5 competitors to identify convention adherence and deviations",
+        "Measure first-time user success rates on common tasks (navigation, search, checkout) vs. industry averages",
+        "Conduct comparative usability studies where participants use your product alongside competitors to identify expectation mismatches"
+      ],
+      "design_implications": [
+        "Use conventional placement for common elements: logo top-left, search top-center, cart top-right, footer links at bottom",
+        "Follow platform-native patterns (e.g., back swipe on iOS, Material Design patterns on Android)",
+        "When redesigning, change things gradually; drastic changes alienate existing users who have learned the current patterns",
+        "If your product serves a specific industry, follow that industry's established UX conventions"
+      ],
+      "severity_indicators": {
+        "critical": "Core interaction patterns (e.g., navigation structure, checkout flow) deviate fundamentally from all industry conventions, causing universal confusion",
+        "high": "Common elements are placed in unexpected locations (e.g., search in the footer, login behind a non-standard icon), increasing time to first action",
+        "medium": "Some patterns deviate from convention (e.g., swipe direction, menu behavior) causing occasional confusion for new users",
+        "low": "Minor deviations from convention exist but do not significantly impact task completion or require explanation"
+      },
+      "examples": [
+        "E-commerce sites that follow the standard cart/checkout flow (Cart icon top-right, Bag review, Shipping, Payment, Confirm) see higher conversion",
+        "A SaaS dashboard that uses a left sidebar for navigation, matching the convention set by Slack, Notion, and similar tools",
+        "A mobile app that uses the standard pull-to-refresh gesture instead of a custom refresh button"
+      ],
+      "academic_references": [
+        "Nielsen, J. (2000). End of web design. Nielsen Norman Group.",
+        "Nielsen, J. (1999). Designing Web Usability: The Practice of Simplicity. New Riders."
+      ],
+      "detection_keywords": [
+        "convention", "familiar", "expect", "standard", "pattern", "like other sites",
+        "consistent with", "industry norm", "best practice", "common pattern", "typical",
+        "usual placement", "normal behavior", "how most sites work", "established", "recognizable"
+      ]
+    },
+    {
+      "id": "fitts-law",
+      "name": "Fitts's Law",
+      "category": "principles",
+      "cluster": "design",
+      "description": "The time to reach a target is a function of the distance to the target and the size of the target. Larger targets that are closer to the user's current position are faster and easier to click or tap.",
+      "origin": {
+        "author": "Paul Fitts",
+        "year": 1954,
+        "publication": "The Information Capacity of the Human Motor System in Controlling the Amplitude of Movement"
+      },
+      "key_takeaways": [
+        "Make frequently used targets large and place them close to the expected cursor or thumb position",
+        "Small, distant targets increase interaction time and error rates, especially on mobile devices",
+        "Edge and corner targets on desktop are effectively infinite in size because the cursor stops at the screen boundary"
+      ],
+      "related_nielsen_heuristics": ["H7"],
+      "measurement_methods": [
+        "Measure click/tap accuracy rates on different target sizes across device types (desktop, tablet, mobile)",
+        "Track time-to-target for primary actions at various sizes and distances from common starting positions",
+        "Use Fitts's Law calculator (ID = log2(D/W + 1)) to predict difficulty for specific target configurations"
+      ],
+      "design_implications": [
+        "Ensure touch targets are at least 44x44 CSS pixels (Apple) or 48x48dp (Material Design) on mobile",
+        "Place primary action buttons within thumb reach zones on mobile devices",
+        "Make destructive actions (Delete) small and distant from constructive actions (Save) to prevent accidental clicks",
+        "On desktop, leverage screen edges and corners for frequently used controls (e.g., Start menu, scroll bars)"
+      ],
+      "severity_indicators": {
+        "critical": "Primary action buttons on mobile are smaller than 30x30px, causing frequent mis-taps and making the app unusable for users with motor impairments",
+        "high": "Key interactive elements are clustered so tightly that users regularly tap the wrong target, or targets are unreachably small on touch devices",
+        "medium": "Touch targets meet minimum standards but important actions are placed far from the thumb zone, requiring hand repositioning",
+        "low": "Target sizes are adequate but could be optimized for faster acquisition in high-frequency interactions"
+      },
+      "examples": [
+        "A floating action button (FAB) in the bottom-right corner of a mobile app provides a large, easy-to-reach target for the primary action",
+        "A confirmation dialog where 'Confirm' is a large primary button and 'Cancel' is a smaller text link, reducing accidental confirmations",
+        "Desktop OS dock/taskbar items at screen edges that leverage the infinite-width edge effect for fast mouse targeting"
+      ],
+      "academic_references": [
+        "Fitts, P. M. (1954). The information capacity of the human motor system in controlling the amplitude of movement. Journal of Experimental Psychology, 47(6), 381-391.",
+        "MacKenzie, I. S. (1992). Fitts' law as a research and design tool in human-computer interaction. Human-Computer Interaction, 7(1), 91-139."
+      ],
+      "detection_keywords": [
+        "target", "button size", "click area", "tap target", "small", "hard to click",
+        "distance", "reach", "touch", "mouse", "hit area", "clickable area", "finger",
+        "thumb zone", "mis-tap", "accidental click", "too small", "tiny button", "mobile friendly"
+      ]
+    },
+    {
+      "id": "doherty-threshold",
+      "name": "Doherty Threshold",
+      "category": "principles",
+      "cluster": "design",
+      "description": "Productivity soars when a computer and its users interact at a pace that ensures neither has to wait on the other. The threshold for maintaining user engagement is approximately 400 milliseconds of system response time.",
+      "origin": {
+        "author": "Walter Doherty & Ahrvind Thadani",
+        "year": 1982,
+        "publication": "The Economic Value of Rapid Response Time, IBM Systems Journal"
+      },
+      "key_takeaways": [
+        "System responses under 400ms feel instantaneous and keep users in a productive flow state",
+        "Responses between 400ms and 1 second are noticeable but tolerable; beyond 1 second, users lose focus",
+        "When operations genuinely take time, use progress indicators, skeleton screens, or optimistic UI to maintain perceived speed"
+      ],
+      "related_nielsen_heuristics": ["H1"],
+      "measurement_methods": [
+        "Measure server response times (TTFB), client-side rendering times, and total time-to-interactive for key user actions",
+        "Track Core Web Vitals (LCP, FID/INP, CLS) as standardized performance benchmarks",
+        "Conduct A/B tests with artificial delays to measure the impact of response time on task completion and satisfaction"
+      ],
+      "design_implications": [
+        "Optimize backend and frontend performance to keep interaction feedback under 400ms",
+        "Use skeleton screens and progressive loading to show structure before data arrives",
+        "Implement optimistic UI updates (show the result immediately, reconcile with server in background)",
+        "For operations that genuinely take time (uploads, API calls), display meaningful progress indicators instead of generic spinners"
+      ],
+      "severity_indicators": {
+        "critical": "Primary interactions (page navigation, form submission) take more than 4 seconds with no loading indication, causing users to retry or abandon",
+        "high": "Core actions take 1-4 seconds with only a generic spinner, disrupting user flow and causing uncertainty about whether the action registered",
+        "medium": "Response times average 400ms-1s for frequent actions, causing a perceptible lag that reduces productivity over extended sessions",
+        "low": "Occasional non-critical operations (report generation, file export) take longer than ideal but include adequate progress feedback"
+      },
+      "examples": [
+        "Google's search results appear in under 200ms, maintaining the illusion of instantaneous response",
+        "Facebook's news feed uses skeleton screens that show gray placeholder cards before real content loads",
+        "A chat application that displays sent messages immediately (optimistic UI) before server confirmation arrives"
+      ],
+      "academic_references": [
+        "Doherty, W. J., & Thadani, A. J. (1982). The economic value of rapid response time. IBM Systems Journal, 21(3), 298-310.",
+        "Nielsen, J. (1993). Response times: The 3 important limits. Nielsen Norman Group."
+      ],
+      "detection_keywords": [
+        "response time", "slow", "fast", "loading", "wait", "delay", "lag", "milliseconds",
+        "performance", "speed", "400ms", "spinner", "skeleton", "latency", "TTFB",
+        "time to interactive", "page load", "perceived speed", "instant", "snappy"
+      ]
+    },
+    {
+      "id": "teslers-law",
+      "name": "Tesler's Law",
+      "category": "principles",
+      "cluster": "design",
+      "description": "Every application has an inherent amount of complexity that cannot be removed or hidden. The question is whether the user or the system bears that complexity. Tesler's Law argues the system should absorb as much complexity as possible.",
+      "origin": {
+        "author": "Larry Tesler",
+        "year": 1984,
+        "publication": "The Smalltalk Environment"
+      },
+      "key_takeaways": [
+        "Some complexity is inherent to the task and cannot be eliminated; the design choice is who bears it",
+        "Shift complexity from the user to the system through smart defaults, automation, and intelligent inference",
+        "Over-simplification can hide necessary complexity, making power users less effective; find the right balance"
+      ],
+      "related_nielsen_heuristics": ["H8", "H3"],
+      "measurement_methods": [
+        "Map the number of decisions/steps users must make and identify which could be automated or defaulted",
+        "Compare the effort distribution between user actions and system processing for key workflows",
+        "Measure power-user satisfaction alongside novice usability to detect over-simplification"
+      ],
+      "design_implications": [
+        "Use smart defaults that work for the majority (80%) of users, with the option to customize for the rest",
+        "Auto-detect information the system can infer (location, timezone, language, device type) instead of asking users",
+        "Provide a simple default mode and an advanced mode for power users, rather than exposing all complexity upfront",
+        "Implement wizards or guided flows that make complex decisions sequential and contextualized"
+      ],
+      "severity_indicators": {
+        "critical": "Users must manually configure settings that the system could auto-detect, making onboarding impossible for non-technical users",
+        "high": "The interface exposes internal system complexity (database fields, API parameters) that users should never need to see",
+        "medium": "The system could pre-fill or auto-suggest common values but instead presents empty fields requiring manual input",
+        "low": "Most complexity is well-managed but a few advanced settings could benefit from smarter defaults"
+      },
+      "examples": [
+        "A shipping form that auto-fills city and state from the zip code instead of requiring the user to enter all three",
+        "A camera app that handles ISO, aperture, and shutter speed automatically in 'Auto' mode while offering manual controls for professionals",
+        "A calendar app that suggests meeting times based on participants' availability instead of requiring the organizer to check each calendar"
+      ],
+      "academic_references": [
+        "Tesler, L. (2007). A personal history of modeless text editing and cut/copy-paste. Interactions, 19(4), 70-75.",
+        "Norman, D. A. (2011). Living with Complexity. MIT Press."
+      ],
+      "detection_keywords": [
+        "complexity", "irreducible", "inherent", "simplify", "abstract", "hide", "automate",
+        "trade-off", "who bears the burden", "smart default", "auto-detect", "too complicated",
+        "over-simplified", "power user", "advanced settings", "configuration", "manual setup"
+      ]
+    },
+    {
+      "id": "occams-razor",
+      "name": "Occam's Razor",
+      "category": "principles",
+      "cluster": "design",
+      "description": "Among competing hypotheses or designs, the one with the fewest assumptions and unnecessary elements should be selected. In interface design, the simplest solution that adequately solves the problem is preferred.",
+      "origin": {
+        "author": "William of Ockham",
+        "year": 1320,
+        "publication": "Philosophical writings (c. 1287-1347)"
+      },
+      "key_takeaways": [
+        "Remove every element, feature, or step that does not directly contribute to the user's goal",
+        "Simplicity is not about dumbing down; it is about removing the unnecessary to focus on the essential",
+        "Each additional element increases cognitive load, maintenance cost, and potential for errors"
+      ],
+      "related_nielsen_heuristics": ["H8"],
+      "measurement_methods": [
+        "Conduct interface audits counting every element per screen and justifying each one's presence",
+        "A/B test simplified versions against full-featured versions, measuring task success rate and satisfaction",
+        "Track feature usage analytics to identify elements that are never used and can be removed"
+      ],
+      "design_implications": [
+        "Regularly audit interfaces for elements that can be removed without reducing functionality",
+        "Favor a single clear path to goal completion over multiple equivalent alternatives",
+        "Reduce form fields to the absolute minimum required; every removed field increases completion rates",
+        "Avoid adding features, options, or UI elements 'just in case'; require clear user need before adding"
+      ],
+      "severity_indicators": {
+        "critical": "The interface is so overloaded with unnecessary elements that users cannot identify or reach the primary function",
+        "high": "Multiple redundant paths to the same goal exist, confusing users about which to use and creating maintenance burden",
+        "medium": "Several UI elements (icons, labels, decorative graphics) add visual weight without functional value",
+        "low": "A few unnecessary elements exist but do not significantly impede usability"
+      },
+      "examples": [
+        "Google's homepage presents a single search bar and two buttons, embodying extreme simplicity",
+        "A checkout flow that removes the 'Gift Wrapping' and 'Promo Code' fields from the default view, showing them on demand",
+        "A mobile app that features 4 tab bar items instead of 6, with rarely used features accessible through a profile or settings screen"
+      ],
+      "academic_references": [
+        "Ockham, W. (c. 1320). Summa Logicae.",
+        "Maeda, J. (2006). The Laws of Simplicity. MIT Press."
+      ],
+      "detection_keywords": [
+        "simple", "simplest", "unnecessary", "remove", "eliminate", "essential", "minimal",
+        "less is more", "reduce", "declutter", "streamline", "pare down", "superfluous",
+        "redundant", "extraneous", "bloated", "feature creep", "cruft", "clean up"
+      ]
+    },
+    {
+      "id": "postels-law",
+      "name": "Postel's Law",
+      "category": "principles",
+      "cluster": "design",
+      "description": "Be liberal in what you accept, and conservative in what you send. In UX terms, accept a wide range of user inputs gracefully while producing clean, predictable, and well-formatted outputs.",
+      "origin": {
+        "author": "Jon Postel",
+        "year": 1980,
+        "publication": "RFC 761 - DoD Standard Transmission Control Protocol"
+      },
+      "key_takeaways": [
+        "Accept user input in multiple formats (with or without dashes, spaces, country codes) and normalize it internally",
+        "Provide clear, consistent, well-formatted output regardless of what the user inputted",
+        "Forgiving input handling reduces errors and friction, especially for international or diverse user bases"
+      ],
+      "related_nielsen_heuristics": ["H3", "H5", "H9"],
+      "measurement_methods": [
+        "Count the number of input validation errors triggered by formatting differences (dashes, spaces, capitalization)",
+        "Measure form completion rates with strict vs. lenient validation rules",
+        "Track support tickets related to 'invalid format' errors to identify over-strict validation"
+      ],
+      "design_implications": [
+        "Accept phone numbers with or without country codes, dashes, spaces, or parentheses and normalize internally",
+        "Accept dates in multiple formats (MM/DD/YYYY, DD-MM-YYYY, 'March 27, 2026') and parse intelligently",
+        "Use inline, real-time validation with helpful formatting hints rather than post-submission error messages",
+        "When displaying data back to users, always use a consistent, well-formatted output regardless of input format"
+      ],
+      "severity_indicators": {
+        "critical": "The system rejects valid data due to overly strict format requirements (e.g., rejecting phone numbers with spaces), blocking users from completing critical tasks",
+        "high": "Input validation provides unhelpful error messages ('Invalid format') without specifying what format is expected",
+        "medium": "The system accepts only one input format when the data logically has many valid representations",
+        "low": "Validation is somewhat lenient but a few edge cases (international formats, special characters) are unnecessarily rejected"
+      },
+      "examples": [
+        "A search bar that handles typos, synonyms, and partial matches rather than requiring exact keyword entry",
+        "A payment form that accepts credit card numbers with or without spaces (4242424242424242 or 4242 4242 4242 4242)",
+        "An address form that auto-corrects common abbreviations (St. to Street, Ave to Avenue) and handles international formats"
+      ],
+      "academic_references": [
+        "Postel, J. (1980). DoD standard Transmission Control Protocol (RFC 761). Information Sciences Institute.",
+        "Postel, J. (1981). Transmission Control Protocol (RFC 793). Information Sciences Institute."
+      ],
+      "detection_keywords": [
+        "flexible", "forgiving", "accept", "input", "format", "error", "validation", "lenient",
+        "tolerant", "strict output", "input format", "parse", "normalize", "reject valid input",
+        "invalid format", "format error", "too strict", "permissive", "graceful handling"
+      ]
+    },
+    {
+      "id": "choice-overload",
+      "name": "Choice Overload",
+      "category": "principles",
+      "cluster": "psychology",
+      "description": "When presented with too many options, people experience decision fatigue, anxiety, and dissatisfaction. Paradoxically, having fewer choices can lead to higher satisfaction and better decision quality.",
+      "origin": {
+        "author": "Sheena Iyengar & Mark Lepper",
+        "year": 2000,
+        "publication": "When Choice is Demotivating: Can One Desire Too Much of a Good Thing?"
+      },
+      "key_takeaways": [
+        "Offering too many choices can paralyze users and reduce conversion; curate options thoughtfully",
+        "When many options are necessary, use filters, categories, and recommendations to reduce perceived choice volume",
+        "Decision satisfaction decreases as the number of alternatives increases due to opportunity cost anxiety"
+      ],
+      "related_nielsen_heuristics": ["H8"],
+      "measurement_methods": [
+        "A/B test reduced vs. full option sets and measure conversion rate, time to decide, and post-decision satisfaction",
+        "Track decision abandonment rates (user views options but leaves without selecting) across different option counts",
+        "Survey users on decision confidence and satisfaction after choosing from small vs. large sets"
+      ],
+      "design_implications": [
+        "Limit visible options to 3-6 at a time; provide filtering and search for larger catalogs",
+        "Offer curated recommendations or 'Editor's Picks' to reduce the burden of evaluation",
+        "Use progressive filtering (facets, categories) to let users narrow choices themselves",
+        "Highlight a default or recommended option to give decision-averse users an easy path"
+      ],
+      "severity_indicators": {
+        "critical": "A critical decision point (e.g., subscription plan, product variant) presents 20+ options with no filtering, sorting, or recommendation, causing decision paralysis and abandonment",
+        "high": "A configuration screen presents all options simultaneously with no defaults, requiring users to evaluate every combination",
+        "medium": "A catalog page shows 50+ items per page without filtering or sorting tools, making browsing feel overwhelming",
+        "low": "Slightly more options than ideal are presented but filtering and sorting tools adequately mitigate the overload"
+      },
+      "examples": [
+        "Netflix curates its catalog into themed rows of 10-15 titles with a 'Top 10' list, rather than showing all 15,000 titles at once",
+        "A SaaS product offers 3 pricing tiers instead of a build-your-own configurator, reducing decision complexity",
+        "A restaurant with a focused seasonal menu of 20 items outperforms a competitor with a 200-item encyclopedia menu"
+      ],
+      "academic_references": [
+        "Iyengar, S. S., & Lepper, M. R. (2000). When choice is demotivating: Can one desire too much of a good thing? Journal of Personality and Social Psychology, 79(6), 995-1006.",
+        "Schwartz, B. (2004). The Paradox of Choice: Why More Is Less. Ecco."
+      ],
+      "detection_keywords": [
+        "too many options", "overwhelmed", "paralyzed", "decision fatigue", "fewer choices",
+        "simplify", "reduce options", "choice paralysis", "paradox of choice", "curate",
+        "filter", "narrow down", "recommend", "default option", "decision anxiety", "too much choice"
+      ]
+    },
+    {
+      "id": "cognitive-bias",
+      "name": "Cognitive Bias",
+      "category": "principles",
+      "cluster": "psychology",
+      "description": "Systematic patterns of deviation from rational judgment. Cognitive biases are mental shortcuts (heuristics) that influence user perception, decision-making, and behavior in predictable but potentially misleading ways.",
+      "origin": {
+        "author": "Amos Tversky & Daniel Kahneman",
+        "year": 1974,
+        "publication": "Judgment Under Uncertainty: Heuristics and Biases"
+      },
+      "key_takeaways": [
+        "Users make predictable irrational decisions; understanding biases helps design interfaces that support better choices",
+        "Default options, anchor values, and framing effects profoundly influence user decisions; use them ethically",
+        "The line between helpful nudges and dark patterns depends on whether the design serves the user's genuine interest"
+      ],
+      "related_nielsen_heuristics": ["H5", "H9"],
+      "measurement_methods": [
+        "A/B test different default values, anchor prices, or framing to measure their impact on user decisions",
+        "Conduct ethical audits of design patterns to identify potential dark patterns that exploit biases against user interests",
+        "Analyze decision outcomes (satisfaction, regret, support contacts) to detect bias-driven suboptimal choices"
+      ],
+      "design_implications": [
+        "Set defaults that align with the best outcome for the majority of users (opt-in to privacy, opt-out of marketing)",
+        "Use anchoring ethically: showing a reference price or comparison point helps users evaluate value",
+        "Frame information positively when encouraging beneficial behavior ('95% success rate' vs. '5% failure rate')",
+        "Audit for dark patterns: urgency timers, decoy options, confirmshaming, and hidden costs all exploit biases"
+      ],
+      "severity_indicators": {
+        "critical": "The interface uses dark patterns (hidden fees, trick questions, forced continuity) that exploit cognitive biases against user interests, potentially causing financial or privacy harm",
+        "high": "Default settings are configured to benefit the business at the user's expense (e.g., data sharing opted-in by default, auto-renewal hidden)",
+        "medium": "Framing and anchoring are used in ways that mildly mislead users without causing direct harm (e.g., misleading 'most popular' labels)",
+        "low": "Minor bias exploitation exists (e.g., strategic option ordering) that marginally influences decisions without harm"
+      },
+      "examples": [
+        "A pricing page that shows the annual price per month ('$8/mo billed annually') uses anchoring to make the annual plan seem cheaper",
+        "A cookie consent dialog with a large 'Accept All' button and a tiny 'Manage Preferences' link exploits the default bias",
+        "An ethical design that pre-checks 'Do not share my data' as the default, respecting user privacy"
+      ],
+      "academic_references": [
+        "Tversky, A., & Kahneman, D. (1974). Judgment under uncertainty: Heuristics and biases. Science, 185(4157), 1124-1131.",
+        "Thaler, R. H., & Sunstein, C. R. (2008). Nudge: Improving Decisions About Health, Wealth, and Happiness. Yale University Press."
+      ],
+      "detection_keywords": [
+        "bias", "assumption", "prejudice", "anchoring", "framing", "confirmation", "default",
+        "nudge", "dark pattern", "deceptive", "manipulative", "trick", "misleading",
+        "hidden cost", "forced continuity", "confirmshaming", "urgency", "scarcity",
+        "decoy", "loss aversion", "sunk cost"
+      ]
+    }
+  ]
+}

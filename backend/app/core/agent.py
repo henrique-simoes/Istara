@@ -793,13 +793,27 @@ class AgentOrchestrator:
         # Store nuggets
         for nugget_data in output.nuggets:
             nid = str(uuid.uuid4())
+            # Laws of UX finding enrichment
+            try:
+                from app.services.laws_of_ux_service import laws_service
+                _raw_tags = nugget_data.get("tags", [])
+                if isinstance(_raw_tags, str):
+                    try:
+                        _raw_tags = json.loads(_raw_tags)
+                    except Exception:
+                        _raw_tags = []
+                _enriched_tags = laws_service.enrich_tags(
+                    list(_raw_tags), nugget_data.get("text", "")
+                )
+            except Exception:
+                _enriched_tags = nugget_data.get("tags", [])
             nugget = Nugget(
                 id=nid,
                 project_id=project_id,
                 text=nugget_data.get("text", ""),
                 source=nugget_data.get("source", task.title),
                 source_location=nugget_data.get("source_location", ""),
-                tags=json.dumps(nugget_data.get("tags", [])),
+                tags=json.dumps(_enriched_tags),
                 phase=nugget_phase,
             )
             db.add(nugget)
