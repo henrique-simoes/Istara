@@ -170,11 +170,13 @@
 
 ## Tool Calling & Web Access
 - Native function calling via LM Studio/Ollama tools API — structured tool invocations, not text parsing
-- Available tools: create_task, search_findings, list_skills, execute_skill, web_fetch, and more
-- web_fetch tool: fetch any public URL, convert HTML to readable text, analyze web content for research
-- Can browse competitor websites, documentation, articles, and any public web page
-- Security: private/internal IPs blocked (localhost, 10.x, 192.168.x), response size limited
-- Multi-step reasoning: agent can call multiple tools in sequence, adapting based on results
+- 15+ available tools: create_task, search_findings, web_fetch, browse_website, and more
+- web_fetch tool: fetch any public URL, convert HTML to readable text for analysis
+- browse_website tool: AI-powered browser agent that can navigate, click, fill forms, take screenshots — uses browser-use library with LM Studio
+- Playwright MCP: available as a featured MCP server for precise browser control (21 tools: navigate, click, type, screenshot, accessibility tree)
+- Security: private/internal IPs blocked, response size limited
+- Multi-step reasoning: agent can call multiple tools in sequence (up to 8 iterations)
+- Can evaluate competitor websites, test form usability, analyze page accessibility, extract web content
 
 ## Security Architecture
 - ReClaw uses production-grade security across ALL layers: authentication, encryption, filesystem, network
