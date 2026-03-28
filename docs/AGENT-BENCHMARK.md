@@ -89,7 +89,7 @@ Tool-calling turns buffer the full response before processing. Only the final no
 
 | Priority | Gap | Impact | Fix |
 |----------|-----|--------|-----|
-| P0 | Text-based tool calling (regex parsing) | Unreliable invocation, wasted tokens | Switch to native `tools` API parameter |
+| P0 | ~~Text-based tool calling~~ **FIXED** | ~~Unreliable invocation~~ | Switched to native `tools` API parameter |
 | P0 | A2A messages decorative (unread by agents) | No real multi-agent coordination | Inject A2A context into work cycle |
 | P1 | Single-shot autonomous reasoning | Can't handle complex workflows | Add planning step + port ReAct loop |
 | P1 | Keyword-based task routing | Misroutes novel task descriptions | LLM-based routing |

@@ -4,17 +4,21 @@ These tools allow agents to perform any user-level operation through chat:
 creating tasks, searching documents, attaching files, moving tasks, querying
 findings, and delegating work to other agents via A2A.
 
-Architecture follows the state-of-the-art pattern from OpenClaw/Anthropic:
-tools are defined as structured schemas, injected into the system prompt,
-and the LLM decides which to call based on the conversation context.
+Architecture:
+- OPENAI_TOOLS: OpenAI-compatible tool definitions passed via the `tools` API
+  parameter for native function calling (LM Studio, OpenAI, etc.)
+- SYSTEM_TOOLS: Legacy custom format kept for backward compatibility
+- build_tools_prompt(): Text-based fallback for models without native tool support
 """
 
 import json
 import logging
+import re
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -30,7 +34,231 @@ from app.models.agent import Agent
 logger = logging.getLogger(__name__)
 
 
-# ── Tool Definitions ──────────────────────────────────────────────
+# ── OpenAI-Compatible Tool Definitions ───────────────────────────
+# These are passed via the `tools` parameter for native function calling.
+
+OPENAI_TOOLS: list[dict] = [
+    {
+        "type": "function",
+        "function": {
+            "name": "create_task",
+            "description": "Create a new research task on the Kanban board. Use when the user asks to start work, analyze something, or run a research skill.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "title": {"type": "string", "description": "Clear task title describing what to do"},
+                    "description": {"type": "string", "description": "Detailed description of the task"},
+                    "skill_name": {"type": "string", "description": "UXR skill to use (e.g., 'user-interviews', 'competitive-analysis'). Leave empty for auto-detect."},
+                    "priority": {"type": "string", "enum": ["urgent", "high", "medium", "low"], "description": "Task priority (default: medium)"},
+                    "instructions": {"type": "string", "description": "Specific instructions for the agent executing this task"},
+                    "input_document_ids": {"type": "array", "items": {"type": "string"}, "description": "List of document IDs to attach as inputs"},
+                    "urls": {"type": "array", "items": {"type": "string"}, "description": "List of URLs for the agent to fetch and analyze"},
+                    "user_context": {"type": "string", "description": "Additional context or constraints"},
+                },
+                "required": ["title"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "search_documents",
+            "description": "Search for documents in the current project by title, content, tags, or phase. Use when the user asks to find, locate, or look up a document or file.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "Search query (matches title, description, content, tags, file name)"},
+                    "phase": {"type": "string", "enum": ["discover", "define", "develop", "deliver"], "description": "Filter by Double Diamond phase"},
+                    "tag": {"type": "string", "description": "Filter by tag"},
+                    "source": {"type": "string", "enum": ["user_upload", "agent_output", "task_output", "project_file", "external"], "description": "Filter by source"},
+                },
+                "required": ["query"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_tasks",
+            "description": "List tasks in the current project, optionally filtered by status. Use when the user asks about task status, what's in progress, or the work queue.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "status": {"type": "string", "enum": ["backlog", "in_progress", "in_review", "done"], "description": "Filter by status"},
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "move_task",
+            "description": "Move a task to a different Kanban column. Use when the user asks to start, pause, complete, or change a task's status.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "task_id": {"type": "string", "description": "The task ID to move"},
+                    "status": {"type": "string", "enum": ["backlog", "in_progress", "in_review", "done"], "description": "New status"},
+                },
+                "required": ["task_id", "status"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "attach_document",
+            "description": "Attach a document to a task as input or output. Use when the user says to use a specific file for a task, or to link a result to a task.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "task_id": {"type": "string", "description": "The task ID"},
+                    "document_id": {"type": "string", "description": "The document ID to attach"},
+                    "direction": {"type": "string", "enum": ["input", "output"], "description": "Direction: 'input' (source material) or 'output' (produced result). Default: input"},
+                },
+                "required": ["task_id", "document_id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "search_findings",
+            "description": "Search research findings (nuggets, facts, insights, recommendations) in the project. Use when the user asks about research results, what was found, key insights, etc.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "Search text to match against finding content"},
+                    "finding_type": {"type": "string", "enum": ["nugget", "fact", "insight", "recommendation"], "description": "Filter by type"},
+                    "phase": {"type": "string", "enum": ["discover", "define", "develop", "deliver"], "description": "Filter by Double Diamond phase"},
+                },
+                "required": ["query"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_project_files",
+            "description": "List all files in the project folder. Use when the user asks what files are available, what's been uploaded, or references a file by partial name.",
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "assign_agent",
+            "description": "Assign an agent to a task. Use when the user asks to delegate work or assign a specific agent.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "task_id": {"type": "string", "description": "The task to assign"},
+                    "agent_id": {"type": "string", "description": "The agent ID to assign (e.g., 'reclaw-main')"},
+                },
+                "required": ["task_id", "agent_id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "send_agent_message",
+            "description": "Send a message to another agent via A2A protocol. Use for delegation, status updates, or inter-agent coordination.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "to_agent_id": {"type": "string", "description": "Target agent ID"},
+                    "message_type": {"type": "string", "enum": ["request", "report", "alert", "delegate"], "description": "Message type (default: request)"},
+                    "content": {"type": "string", "description": "Message content"},
+                },
+                "required": ["to_agent_id", "content"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_document_content",
+            "description": "Get the text content of a specific document. Use when the user asks to read, view, or get details from a document.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "document_id": {"type": "string", "description": "The document ID to read"},
+                },
+                "required": ["document_id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "search_memory",
+            "description": "Search the project's memory and knowledge base using RAG. Use when the user asks to recall something, find information from past conversations, or query the knowledge base.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "The search query"},
+                    "top_k": {"type": "integer", "description": "Number of results (default 5)"},
+                },
+                "required": ["query"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "update_task",
+            "description": "Update fields on an existing task. Use when the user wants to change a task's title, description, priority, instructions, or other properties.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "task_id": {"type": "string", "description": "The task ID to update"},
+                    "title": {"type": "string", "description": "New title"},
+                    "description": {"type": "string", "description": "New description"},
+                    "priority": {"type": "string", "enum": ["urgent", "high", "medium", "low"], "description": "New priority"},
+                    "instructions": {"type": "string", "description": "New specific instructions"},
+                    "skill_name": {"type": "string", "description": "Change the assigned skill"},
+                },
+                "required": ["task_id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "sync_project_documents",
+            "description": "Scan the project folder for new or untracked files and register them as documents. Use when the user mentions adding files to the folder, or when they want to refresh the document list.",
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "web_fetch",
+            "description": "Fetch a web page URL and return its content as readable text. Use this to access articles, documentation, competitor websites, or any public URL for research analysis.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "url": {"type": "string", "description": "The URL to fetch (must be http:// or https://)"},
+                    "max_chars": {"type": "integer", "description": "Maximum characters to return (default: 4000)"},
+                },
+                "required": ["url"],
+            },
+        },
+    },
+]
+
+
+# ── Legacy Tool Definitions (kept for text-based fallback) ────────
 
 SYSTEM_TOOLS = [
     {
@@ -144,11 +372,22 @@ SYSTEM_TOOLS = [
         "description": "Scan the project folder for new or untracked files and register them as documents. Use when the user mentions adding files to the folder, or when they want to refresh the document list.",
         "parameters": {},
     },
+    {
+        "name": "web_fetch",
+        "description": "Fetch a web page URL and return its content as readable text. Use this to access articles, documentation, competitor websites, or any public URL for research analysis.",
+        "parameters": {
+            "url": {"type": "string", "required": True, "description": "The URL to fetch (must be http:// or https://)"},
+            "max_chars": {"type": "integer", "required": False, "description": "Maximum characters to return (default: 4000)"},
+        },
+    },
 ]
 
 
 def build_tools_prompt() -> str:
     """Build the tools section for the system prompt.
+
+    This is a FALLBACK for models that don't support native function calling.
+    When native tools work (via OPENAI_TOOLS), this is not used.
 
     Uses a compact format to minimize token usage for local models:
     one-line description + parameter list per tool.
@@ -532,6 +771,78 @@ async def _exec_sync_project_documents(params: dict, project_id: str, agent_id: 
         return f"Synced project folder: {new_count} new document(s) registered, {len(files)} total files."
 
 
+async def _exec_web_fetch(params: dict, project_id: str, agent_id: str) -> str:
+    """Fetch a web page and convert to readable text."""
+    import httpx as _httpx
+
+    url = params.get("url", "")
+    max_chars = params.get("max_chars", 4000)
+
+    # Security: validate URL scheme
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https"):
+        return json.dumps({"error": "Only http:// and https:// URLs are supported"})
+
+    # Security: block private/internal IPs
+    hostname = parsed.hostname or ""
+    blocked_hosts = {"localhost", "127.0.0.1", "0.0.0.0", "::1", "169.254.169.254"}
+    if hostname in blocked_hosts:
+        return json.dumps({"error": "Cannot fetch internal/private network URLs for security"})
+    if hostname.startswith("10.") or hostname.startswith("192.168.") or hostname.startswith("172."):
+        # Block 172.16.0.0/12 range (172.16-31.x.x)
+        parts = hostname.split(".")
+        if hostname.startswith("172.") and len(parts) >= 2:
+            try:
+                second_octet = int(parts[1])
+                if 16 <= second_octet <= 31:
+                    return json.dumps({"error": "Cannot fetch internal/private network URLs for security"})
+            except ValueError:
+                pass
+        if hostname.startswith("10.") or hostname.startswith("192.168."):
+            return json.dumps({"error": "Cannot fetch internal/private network URLs for security"})
+
+    try:
+        async with _httpx.AsyncClient(timeout=15.0, follow_redirects=True) as client:
+            resp = await client.get(
+                url,
+                headers={"User-Agent": "ReClaw/1.0 (UX Research Agent)"},
+            )
+            resp.raise_for_status()
+
+            content_type = resp.headers.get("content-type", "")
+
+            if "text/html" in content_type:
+                # Convert HTML to readable text
+                try:
+                    from html2text import HTML2Text
+                    h = HTML2Text()
+                    h.ignore_links = False
+                    h.ignore_images = True
+                    h.body_width = 0
+                    text = h.handle(resp.text)
+                except ImportError:
+                    # Fallback: strip tags with regex
+                    text = re.sub(r'<[^>]+>', '', resp.text)
+                    text = re.sub(r'\s+', ' ', text).strip()
+            else:
+                text = resp.text
+
+            # Truncate to max_chars
+            if len(text) > max_chars:
+                text = text[:max_chars] + f"\n\n[Truncated -- showing first {max_chars} of {len(text)} characters]"
+
+            return json.dumps({
+                "url": str(resp.url),
+                "status": resp.status_code,
+                "content_length": len(text),
+                "content": text,
+            })
+    except _httpx.HTTPStatusError as e:
+        return json.dumps({"error": f"HTTP {e.response.status_code}: {e.response.reason_phrase}", "url": url})
+    except Exception as e:
+        return json.dumps({"error": str(e), "url": url})
+
+
 # ── Executor Registry ─────────────────────────────────────────────
 
 TOOL_EXECUTORS = {
@@ -548,4 +859,5 @@ TOOL_EXECUTORS = {
     "search_memory": _exec_search_memory,
     "update_task": _exec_update_task,
     "sync_project_documents": _exec_sync_project_documents,
+    "web_fetch": _exec_web_fetch,
 }

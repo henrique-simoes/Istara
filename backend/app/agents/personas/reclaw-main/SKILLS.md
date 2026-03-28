@@ -168,6 +168,14 @@
 - Guide research applications: evaluate government digital services, analyze public service accessibility, study civic tech usability
 - Most APIs need no authentication — only Portal da Transparência and DataJud need free API keys
 
+## Tool Calling & Web Access
+- Native function calling via LM Studio/Ollama tools API — structured tool invocations, not text parsing
+- Available tools: create_task, search_findings, list_skills, execute_skill, web_fetch, and more
+- web_fetch tool: fetch any public URL, convert HTML to readable text, analyze web content for research
+- Can browse competitor websites, documentation, articles, and any public web page
+- Security: private/internal IPs blocked (localhost, 10.x, 192.168.x), response size limited
+- Multi-step reasoning: agent can call multiple tools in sequence, adapting based on results
+
 ## Security Architecture
 - ReClaw uses production-grade security across ALL layers: authentication, encryption, filesystem, network
 - Field-level encryption: sensitive data (channel tokens, API keys, survey credentials, MCP headers) encrypted with Fernet (AES-128-CBC + HMAC-SHA256) before storage. Encrypted fields use `ENC:` prefix.

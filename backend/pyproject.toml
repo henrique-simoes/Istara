@@ -26,6 +26,7 @@ dependencies = [
     "python-docx>=1.1.0",
     "python-magic>=0.4.27",
     "pyyaml>=6.0.0",
+    "html2text>=2024.2.26",
     # System monitoring
     "psutil>=6.0.0",
     "watchfiles>=1.0.0",
