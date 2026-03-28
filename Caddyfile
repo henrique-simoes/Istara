@@ -1,0 +1,35 @@
+{$CADDY_DOMAIN:localhost} {
+    # Backend API
+    handle /api/* {
+        reverse_proxy backend:8000
+    }
+
+    # Webhook routes (WhatsApp, Google Chat, survey platforms)
+    handle /webhooks/* {
+        reverse_proxy backend:8000
+    }
+
+    # MCP endpoint (when enabled)
+    handle /mcp/* {
+        reverse_proxy backend:8000
+    }
+
+    # WebSocket endpoints
+    handle /ws/* {
+        reverse_proxy backend:8000
+    }
+
+    # A2A Protocol discovery
+    handle /a2a {
+        reverse_proxy backend:8000
+    }
+
+    handle /.well-known/* {
+        reverse_proxy backend:8000
+    }
+
+    # Frontend (catch-all)
+    handle {
+        reverse_proxy frontend:3000
+    }
+}

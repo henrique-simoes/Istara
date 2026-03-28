@@ -32,8 +32,15 @@ class Settings(BaseSettings):
 
     # Team mode (multi-user)
     team_mode: bool = False
-    jwt_secret: str = "reclaw-dev-secret-change-in-production"
+    jwt_secret: str = ""  # Auto-generated on first run if empty
     jwt_expire_minutes: int = 1440  # 24 hours
+
+    # CORS (comma-separated origins)
+    cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
+
+    # Rate limiting
+    rate_limit_enabled: bool = True
+    rate_limit_default: str = "200/minute"
 
     # Hardware resource budget
     resource_reserve_ram_gb: float = 4.0
@@ -106,6 +113,32 @@ class Settings(BaseSettings):
             Path(dir_path).mkdir(parents=True, exist_ok=True)
         Path(self.design_screens_dir).mkdir(parents=True, exist_ok=True)
         Path(self.backup_dir).mkdir(parents=True, exist_ok=True)
+
+    def ensure_secrets(self) -> None:
+        """Generate random JWT secret if not configured.
+
+        Persists the generated secret to .env so it survives container restarts.
+        """
+        import secrets as _secrets
+        insecure_defaults = {"", "reclaw-dev-secret-change-in-production"}
+        if self.jwt_secret in insecure_defaults:
+            self.jwt_secret = _secrets.token_urlsafe(32)
+            # Persist to .env
+            env_path = Path(__file__).parent.parent / ".env"
+            try:
+                lines = env_path.read_text().splitlines() if env_path.exists() else []
+                # Replace or append JWT_SECRET
+                found = False
+                for i, line in enumerate(lines):
+                    if line.startswith("JWT_SECRET="):
+                        lines[i] = f"JWT_SECRET={self.jwt_secret}"
+                        found = True
+                        break
+                if not found:
+                    lines.append(f"JWT_SECRET={self.jwt_secret}")
+                env_path.write_text("\n".join(lines) + "\n")
+            except Exception:
+                pass  # Non-fatal — secret still in memory for this session
 
 
 settings = Settings()

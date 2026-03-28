@@ -1,248 +1,143 @@
-# ReClaw — Setup Guide
-
-Step-by-step guide to get ReClaw running on your machine.
-
----
+# ReClaw Setup Guide
 
 ## Prerequisites
 
-| Requirement | Version | Check |
-|-------------|---------|-------|
-| Docker | 24.0+ | `docker --version` |
-| Docker Compose | v2+ | `docker compose version` |
-| Git | 2.30+ | `git --version` |
-| 8GB RAM minimum | — | — |
-
-**Don't have Docker?**
-- macOS / Windows: [Docker Desktop](https://docs.docker.com/desktop/)
-- Linux: [Docker Engine](https://docs.docker.com/engine/install/)
+- **Python 3.12+** (backend)
+- **Node.js 20+** (frontend)
+- **LM Studio** or **Ollama** (local LLM inference)
+- **Docker 24.0+** (optional, for containerized deployment)
 
 ---
 
-## Step 1: Clone the Repository
+## 1. Local Development (Bare Metal)
+
+The simplest way to run ReClaw for development.
+
+### Backend
+
+```bash
+cd backend
+python -m venv venv && source venv/bin/activate
+pip install -e ".[dev]"
+
+# Optional: install channel support
+pip install -e ".[channels]"
+
+# Optional: install MCP server
+pip install -e ".[mcp]"
+
+# Start the server
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+### Frontend
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+### LLM Provider
+
+**LM Studio** (recommended):
+```bash
+lms server start
+```
+
+**Ollama**:
+```bash
+ollama serve
+ollama pull qwen3:latest
+ollama pull nomic-embed-text
+```
+
+### Verify
+
+- Frontend: http://localhost:3000
+- Backend: http://localhost:8000/api/health
+
+---
+
+## 2. Docker (Local)
 
 ```bash
 git clone https://github.com/henrique-simoes/ReClaw.git
 cd ReClaw
-```
-
----
-
-## Step 2: Configure Environment
-
-```bash
 cp .env.example .env
-```
+mkdir -p data
+docker compose up -d
 
-Edit `.env` if you want to customize:
-- `OLLAMA_MODEL` — which LLM to use (default: `qwen3:latest`)
-- `RAG_CHUNK_SIZE` — text chunk size for RAG (default: `512`)
-- `RAG_TOP_K` — number of RAG results (default: `5`)
-
-Most defaults work great. No API keys needed — everything runs locally.
-
----
-
-## Step 3: Create Data Directories
-
-```bash
-mkdir -p data/watch data/uploads data/projects data/lance_db
-```
-
----
-
-## Step 4: Start ReClaw
-
-```bash
-docker compose up
-```
-
-This will:
-1. Pull the Ollama container (first run only, ~2GB)
-2. Build the backend (Python/FastAPI)
-3. Build the frontend (Next.js)
-4. Start all services
-
-**First run takes 3-5 minutes.** Subsequent starts are fast.
-
-### For NVIDIA GPU users:
-
-```bash
-docker compose -f docker-compose.yml -f docker-compose.gpu.yml up
-```
-
----
-
-## Step 5: Download a Model
-
-In a new terminal:
-
-```bash
-# Recommended for 8GB RAM machines:
+# Pull LLM model
 docker exec reclaw-ollama ollama pull qwen3:latest
-
-# Or for better quality on 16GB+ RAM:
-docker exec reclaw-ollama ollama pull qwen3:7b
+docker exec reclaw-ollama ollama pull nomic-embed-text
 ```
 
-ReClaw auto-detects your hardware and recommends the best model. Check Settings in the UI.
+### Health Checks
+
+```bash
+docker compose ps  # Shows healthy/unhealthy status
+```
+
+### GPU Support
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
+```
+
+### Team Mode
+
+```bash
+./scripts/generate-secrets.sh
+source .env.secrets
+# Set TEAM_MODE=true and DATABASE_URL in .env
+docker compose --profile team up -d
+```
 
 ---
 
-## Step 6: Open ReClaw
+## 3. Production (Docker + TLS)
 
-Open your browser to:
+For server deployment with automatic HTTPS via Caddy.
 
-### 🌐 http://localhost:3000
+```bash
+./scripts/generate-secrets.sh
+source .env.secrets
+```
 
-You'll see the onboarding wizard that guides you through:
-1. Welcome screen
-2. Creating your first project
-3. Setting company/research context
-4. Uploading your first research files
+Configure `.env`:
+```
+CADDY_DOMAIN=your-domain.com
+CORS_ORIGINS=https://your-domain.com
+NEXT_PUBLIC_API_URL=https://your-domain.com
+NEXT_PUBLIC_WS_URL=wss://your-domain.com/ws
+```
 
----
+```bash
+docker compose --profile production up -d
+```
 
-## Step 7: Start Researching!
+### Webhook URLs
 
-### Quick Start Workflow
+| Platform | URL |
+|----------|-----|
+| WhatsApp | `https://domain.com/webhooks/whatsapp/{instance_id}` |
+| Google Chat | `https://domain.com/webhooks/google-chat/{instance_id}` |
+| SurveyMonkey | `https://domain.com/webhooks/survey/surveymonkey/{id}` |
+| Typeform | `https://domain.com/webhooks/survey/typeform/{id}` |
 
-1. **Create a project** — Name it after your research study
-2. **Set context** — Tell ReClaw about your company and research goals
-3. **Upload files** — Drop interview transcripts, survey data, notes
-4. **Chat** — Ask ReClaw to analyze your data:
-   - "Analyze the interview transcripts"
-   - "Create a thematic analysis"
-   - "Generate personas from the research"
-   - "What are the main pain points?"
-5. **Review findings** — Check the Findings view for organized insights
-6. **Drill down** — Click any finding to see the full evidence chain
+Telegram and Slack work behind NAT (no public URL needed).
 
-### Key Commands in Chat
+### MCP Server
 
-| Command | What it does |
-|---------|-------------|
-| "Analyze interviews" | Runs User Interviews skill |
-| "Create personas" | Generates evidence-based personas |
-| "Run thematic analysis" | Codes data into themes |
-| "Create affinity map" | Clusters nuggets into groups |
-| "Generate survey" | Creates a survey from context |
-| "Run usability testing" | Analyzes usability test data |
-| "Calculate SUS scores" | Computes SUS from responses |
+Enable: `MCP_SERVER_ENABLED=true` in `.env`. External agents connect at `https://domain.com/mcp`.
 
 ---
 
 ## Troubleshooting
 
-### Ollama not connecting?
-
-```bash
-# Check if Ollama container is running
-docker ps | grep ollama
-
-# Check Ollama logs
-docker logs reclaw-ollama
-
-# Restart Ollama
-docker restart reclaw-ollama
-```
-
-### Models not downloading?
-
-```bash
-# Pull model directly
-docker exec -it reclaw-ollama ollama pull qwen3:latest
-
-# Check available models
-docker exec reclaw-ollama ollama list
-```
-
-### Frontend not loading?
-
-```bash
-# Check frontend logs
-docker logs reclaw-frontend
-
-# Rebuild
-docker compose up --build frontend
-```
-
-### Out of disk space?
-
-```bash
-# Clean Docker cache
-docker system prune -a
-
-# Check ReClaw data size
-du -sh data/
-```
-
-### Performance issues?
-
-- Close heavy apps (Figma, Chrome with many tabs)
-- Check Settings > Hardware to see your resource budget
-- Switch to a smaller model in Settings
-- ReClaw auto-throttles when resources are low
-
----
-
-## Stopping ReClaw
-
-```bash
-docker compose down
-```
-
-Your data persists in Docker volumes and the `data/` directory.
-
----
-
-## Updating ReClaw
-
-```bash
-git pull
-docker compose up --build
-```
-
----
-
-## Development Setup (Contributing)
-
-See [CONTRIBUTING.md](../CONTRIBUTING.md) for full dev setup instructions.
-
-```bash
-# Backend (Python 3.12+)
-cd backend
-python -m venv venv && source venv/bin/activate
-pip install -e ".[dev]"
-uvicorn app.main:app --reload --port 8000
-
-# Frontend (Node 20+)
-cd frontend
-npm install && npm run dev
-
-# Ollama (local, not Docker)
-ollama serve
-ollama pull qwen3:latest
-```
-
----
-
-## Architecture Quick Reference
-
-```
-localhost:3000 (Browser)
-    ↕
-Next.js Frontend → FastAPI Backend → Ollama (Local LLMs)
-                      ↕                   ↕
-              SQLite + LanceDB      Qwen 3.5 / etc.
-```
-
-- **Frontend:** React/Next.js + Tailwind + Zustand
-- **Backend:** FastAPI (async) + SQLAlchemy + LanceDB
-- **LLM:** Ollama (auto-selected model based on hardware)
-- **Vector Store:** LanceDB (embedded, no extra server)
-- **Database:** SQLite (projects, tasks, findings)
-
----
-
-*Need help? Open an issue on [GitHub](https://github.com/henrique-simoes/ReClaw/issues).*
+- **Backend won't start**: `docker compose logs backend` — check Ollama health
+- **Blank frontend**: Verify `NEXT_PUBLIC_API_URL` and `CORS_ORIGINS` match
+- **Webhooks not received**: Check domain DNS, Caddy logs, platform webhook settings
+- **Rate limiting**: Adjust `RATE_LIMIT_DEFAULT=500/minute` or disable with `RATE_LIMIT_ENABLED=false`
+- **JWT errors**: Secret auto-generates on first run. If `.env` lost, regenerate with `./scripts/generate-secrets.sh`

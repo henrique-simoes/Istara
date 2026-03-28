@@ -1446,6 +1446,41 @@ Root-level file any AI agent can discover and parse. Contains system identity, a
 
 ---
 
+## Docker & Security Infrastructure
+
+### Deployment Modes
+
+| Mode | Command | TLS | Auth | Use Case |
+|------|---------|-----|------|----------|
+| Local Dev | `uvicorn` + `npm run dev` | No | No | Development |
+| Docker Local | `docker compose up` | No | Optional | Single-user containers |
+| Docker Team | `--profile team` | No | JWT | Multi-user with PostgreSQL |
+| Production | `--profile production` | Auto (Caddy) | JWT | Server deployment |
+
+### Caddy Reverse Proxy
+
+Optional Caddy service (profile: `production`) provides automatic TLS via Let's Encrypt. Routes `/api/*`, `/webhooks/*`, `/mcp/*`, `/ws/*` to backend; everything else to frontend. Enables webhook accessibility for WhatsApp, Google Chat, and survey platforms.
+
+### Security Layers
+
+| Layer | Implementation | Config |
+|-------|---------------|--------|
+| CORS | Configurable `CORS_ORIGINS` env var | Comma-separated origins |
+| Rate Limiting | slowapi token bucket per IP | `RATE_LIMIT_DEFAULT=200/minute` |
+| JWT Auth | HMAC-SHA256, auto-generated secret | `JWT_SECRET` auto-gen if empty |
+| Relay Auth | JWT on WebSocket connect (team mode) | `RELAY_TOKEN` |
+| MCP Access | Per-tool policy with audit log | `MCPAccessPolicy` table |
+
+### Container Health Checks
+
+Backend: `curl -f http://localhost:8000/api/health` (30s). Frontend: Node.js fetch (30s). Compose uses `condition: service_healthy` for dependency ordering.
+
+### Multi-Stage Builds
+
+Backend: Builder (compile wheels) → Runtime (slim, non-root user). Frontend: Deps → Build → Runner (Next.js standalone, ~100MB).
+
+---
+
 ## Autoresearch System (Karpathy Pattern)
 
 Inspired by [Karpathy's autoresearch](https://github.com/karpathy/autoresearch) (MIT license). Implements a greedy hill-climbing optimization loop adapted for 6 UX research domains.

@@ -55,7 +55,21 @@ async def relay_websocket(ws: WebSocket):
     - Client sends: {"type": "heartbeat", "stats": {...}}
     - Server sends: {"type": "llm_request", "request_id": "...", ...}
     - Client sends: {"type": "llm_response", "request_id": "...", ...}
+
+    In team mode, relay connections require a valid JWT in the Authorization header.
     """
+    # Authenticate relay connections in team mode
+    from app.config import settings as app_settings
+    if app_settings.team_mode:
+        from app.core.auth import verify_token
+        auth_header = ws.headers.get("authorization", "")
+        token = auth_header.removeprefix("Bearer ").strip()
+        if not token:
+            token = ws.query_params.get("token", "")
+        if not token or verify_token(token) is None:
+            await ws.close(code=4001, reason="Authentication required")
+            return
+
     await ws.accept()
     node_id = str(uuid.uuid4())
     node: RelayNode | None = None
