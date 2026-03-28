@@ -252,6 +252,7 @@ async function loadScenarios() {
     "65-laws-of-ux",
     "66-featured-mcp-servers",
     "67-auth-enforcement",
+    "68-data-security",
   ];
 
   const scenarios = [];

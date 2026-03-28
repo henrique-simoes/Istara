@@ -27,6 +27,7 @@ dependencies = [
     "asyncpg>=0.30.0",
     "websockets>=13.0",
     "slowapi>=0.1.9",
+    "cryptography>=43.0.0",
 ]
 
 [project.optional-dependencies]

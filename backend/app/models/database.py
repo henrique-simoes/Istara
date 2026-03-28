@@ -22,6 +22,14 @@ if _is_sqlite:
     db_path = settings.database_url.replace("sqlite+aiosqlite:///", "")
     Path(db_path).parent.mkdir(parents=True, exist_ok=True)
     _engine_kwargs["connect_args"] = {"check_same_thread": False}
+else:
+    # PostgreSQL: prefer SSL for connections (does not break local dev)
+    import ssl as _ssl
+
+    _pg_ssl_ctx = _ssl.create_default_context()
+    _pg_ssl_ctx.check_hostname = False
+    _pg_ssl_ctx.verify_mode = _ssl.CERT_NONE  # "prefer" equivalent
+    _engine_kwargs.setdefault("connect_args", {})["ssl"] = _pg_ssl_ctx
 
 engine = create_async_engine(settings.database_url, **_engine_kwargs)
 

@@ -19,6 +19,7 @@ from app.channels.google_chat import GoogleChatAdapter
 from app.channels.slack import SlackAdapter
 from app.channels.telegram import TelegramAdapter
 from app.channels.whatsapp import WhatsAppAdapter
+from app.core.field_encryption import decrypt_field, encrypt_field
 from app.models.channel_conversation import ChannelConversation
 from app.models.channel_instance import ChannelInstance
 from app.models.channel_message import ChannelMessage
@@ -54,7 +55,7 @@ async def create_channel_instance(
         id=str(uuid.uuid4()),
         platform=platform,
         name=name,
-        config_json=json.dumps(config),
+        config_json=encrypt_field(json.dumps(config)),
         project_id=project_id,
     )
     db.add(instance)
@@ -82,7 +83,7 @@ async def update_channel_instance(
     if name is not None:
         instance.name = name
     if config is not None:
-        instance.config_json = json.dumps(config)
+        instance.config_json = encrypt_field(json.dumps(config))
     if project_id is not None:
         instance.project_id = project_id
 
@@ -144,7 +145,8 @@ def _instantiate_adapter(instance: ChannelInstance) -> ChannelAdapter:
     adapter_cls = PLATFORM_ADAPTERS.get(instance.platform)
     if adapter_cls is None:
         raise ValueError(f"No adapter class for platform '{instance.platform}'")
-    config = json.loads(instance.config_json) if instance.config_json else {}
+    raw = decrypt_field(instance.config_json) if instance.config_json else "{}"
+    config = json.loads(raw)
     return adapter_cls(instance_id=instance.id, config=config)
 
 

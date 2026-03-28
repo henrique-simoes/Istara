@@ -1549,6 +1549,26 @@ Optional Caddy service (profile: `production`) provides automatic TLS via Let's 
 | Admin Role Check | `require_admin_from_request()` | Sensitive operations |
 | MCP Access Policy | Per-tool permissions with audit log | MCP server |
 | Relay Auth | Network token + JWT (always, not just team mode) | Compute relay |
+| Field Encryption | Fernet (AES-128-CBC + HMAC-SHA256) | Channel creds, API keys, survey tokens |
+| Filesystem Hardening | Data dir 0700, DB files 0600, backups 0600 | All data files |
+| PostgreSQL SSL | `ssl=prefer` on asyncpg connections | Team mode |
+
+### Data Encryption
+
+Sensitive fields in the database are encrypted at rest using Fernet symmetric encryption (`cryptography` library):
+- `ChannelInstance.config_json` (Telegram tokens, Slack secrets, WhatsApp tokens)
+- `SurveyIntegration.config_json` (OAuth tokens, API keys)
+- `MCPServerConfig.headers_json` (authorization headers)
+
+Encrypted fields use `ENC:` prefix for gradual migration — existing unencrypted data works, new data gets encrypted. The encryption key (`DATA_ENCRYPTION_KEY`) is auto-generated on first startup and persisted to `.env`. If lost, encrypted data is unrecoverable — by design.
+
+### Admin User Management
+
+Users are created exclusively through the authenticated API:
+- `GET /api/auth/users` — list all users (admin only)
+- `POST /api/auth/users` — create user (admin only, works regardless of TEAM_MODE)
+- `DELETE /api/auth/users/{id}` — delete user (admin only, cannot delete self)
+- `PATCH /api/auth/users/{id}/role` — change role (admin only)
 
 ### Container Health Checks
 
