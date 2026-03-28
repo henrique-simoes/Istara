@@ -1,0 +1,42 @@
+{
+  "object": "whatsapp_business_account",
+  "entry": [
+    {
+      "id": "108294175430832",
+      "changes": [
+        {
+          "value": {
+            "messaging_product": "whatsapp",
+            "metadata": {
+              "display_phone_number": "5511999887766",
+              "phone_number_id": "112948573920184"
+            },
+            "contacts": [
+              {
+                "profile": {
+                  "name": "Carlos Ferreira"
+                },
+                "wa_id": "5511977665544"
+              }
+            ],
+            "messages": [
+              {
+                "from": "5511977665544",
+                "id": "wamid.HBgNNTUxMTk3NzY2NTU0NBUCABEYEjRBQ0M4RTJGNzFCNjM5MDNBA==",
+                "timestamp": "1711548912",
+                "type": "audio",
+                "audio": {
+                  "mime_type": "audio/ogg; codecs=opus",
+                  "sha256": "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2",
+                  "id": "820763439547812",
+                  "voice": true
+                }
+              }
+            ]
+          },
+          "field": "messages"
+        }
+      ]
+    }
+  ]
+}

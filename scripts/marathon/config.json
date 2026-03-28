@@ -1,0 +1,104 @@
+{
+  "version": "1.0.0",
+  "description": "ReClaw Pre-Release Test Marathon Configuration",
+  "cycles": [
+    {
+      "id": "A",
+      "name": "API Exhaustive",
+      "description": "All 300+ API endpoints with valid/invalid inputs, error codes, edge cases",
+      "requires": ["backend"],
+      "scenarios": ["01", "02", "03", "07", "08", "09", "12", "16", "18", "29", "32", "33", "39"],
+      "custom_checks": ["api_endpoint_sweep", "error_code_validation"]
+    },
+    {
+      "id": "B",
+      "name": "Browser UI + WCAG",
+      "description": "Playwright: navigate all views, screenshot, axe-core, keyboard shortcuts, dark mode",
+      "requires": ["backend", "frontend"],
+      "scenarios": ["02", "09", "19", "45"],
+      "evaluators": ["accessibility", "heuristics", "performance"]
+    },
+    {
+      "id": "C",
+      "name": "Agent & Skills",
+      "description": "Chat conversations, skill execution, verify output quality, agent understanding",
+      "requires": ["backend", "llm"],
+      "scenarios": ["05", "06", "10", "11", "13", "14", "20", "21", "59"]
+    },
+    {
+      "id": "D",
+      "name": "Findings & RAG",
+      "description": "Upload docs, verify chunking, retrieval precision, Laws of UX tagging, compliance",
+      "requires": ["backend", "llm"],
+      "scenarios": ["04", "07", "15", "17", "24", "47", "65"]
+    },
+    {
+      "id": "E",
+      "name": "Channels & Deployments",
+      "description": "Channel CRUD, webhook simulation, deployment lifecycle, analytics",
+      "requires": ["backend"],
+      "scenarios": ["53", "55", "58"]
+    },
+    {
+      "id": "F",
+      "name": "MCP & Security",
+      "description": "MCP server/client, access policy, audit, rate limiting, CORS, JWT, featured servers",
+      "requires": ["backend"],
+      "scenarios": ["56", "57", "64", "66"]
+    },
+    {
+      "id": "G",
+      "name": "Multi-Model & Network",
+      "description": "Network LLM discovery, relay node, compute pool, model switching",
+      "requires": ["backend", "llm", "network_llm"],
+      "scenarios": ["34", "35", "36", "37", "38"],
+      "custom_checks": ["network_discovery", "relay_simulation", "model_switch"]
+    },
+    {
+      "id": "H",
+      "name": "Stitch & Figma",
+      "description": "Design integration: Stitch MCP, Figma REST API, screen generation",
+      "requires": ["backend", "stitch_key", "figma_key"],
+      "scenarios": ["46"]
+    },
+    {
+      "id": "I",
+      "name": "Database Integrity",
+      "description": "Full DB audit: orphaned records, FK consistency, finding chains, vector store",
+      "requires": ["backend"],
+      "scenarios": ["25", "30"],
+      "custom_checks": ["db_integrity", "vector_health", "finding_chain_audit"]
+    },
+    {
+      "id": "J",
+      "name": "WebSocket Events",
+      "description": "Connect WS client, trigger events, verify broadcasts for all 15+ event types",
+      "requires": ["backend", "frontend"],
+      "scenarios": ["50"],
+      "custom_checks": ["websocket_full_audit"]
+    },
+    {
+      "id": "K",
+      "name": "Autoresearch & Meta",
+      "description": "Autoresearch config, experiments, leaderboard, meta-hyperagent observations",
+      "requires": ["backend"],
+      "scenarios": ["52", "61"]
+    },
+    {
+      "id": "L",
+      "name": "Full Pipeline E2E",
+      "description": "Complete research workflow: upload → analyze → findings → insights → recommendations",
+      "requires": ["backend", "llm"],
+      "scenarios": ["17", "48"],
+      "custom_checks": ["full_pipeline_validation"]
+    }
+  ],
+  "settings": {
+    "cycle_interval_minutes": 30,
+    "max_scenario_timeout_seconds": 300,
+    "log_dir": "data/test-marathon",
+    "screenshot_on_failure": true,
+    "skip_if_backend_down": true,
+    "skip_if_llm_down_for_llm_cycles": true
+  }
+}

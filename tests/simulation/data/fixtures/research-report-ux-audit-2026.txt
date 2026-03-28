@@ -1,0 +1,633 @@
+================================================================================
+                        UX AUDIT REPORT — Q1 2026
+                   HealthBridge Patient Portal (v3.2.1)
+================================================================================
+
+Document ID: UXA-2026-0147
+Date: March 15, 2026
+Prepared by: Clara Mendez, Senior UX Researcher
+Reviewed by: Dr. James Okwu, Head of Design Research
+Client: HealthBridge Technologies Inc.
+Confidentiality: Internal Use Only
+
+--------------------------------------------------------------------------------
+                           EXECUTIVE SUMMARY
+--------------------------------------------------------------------------------
+
+This report presents the findings of a comprehensive usability audit of the
+HealthBridge Patient Portal version 3.2.1, conducted between February 3 and
+March 8, 2026. The audit evaluated the portal against Nielsen's 10 usability
+heuristics, supplemented by WCAG 2.1 AA accessibility criteria and
+domain-specific healthcare UX guidelines (HIMSS Usability Principles).
+
+The evaluation involved three expert reviewers conducting independent heuristic
+evaluations, followed by a consolidation workshop. Additionally, 12 moderated
+usability test sessions were conducted with patients across three demographic
+segments: younger adults (18-34), middle-aged adults (35-54), and older adults
+(55+).
+
+KEY FINDINGS:
+- 47 usability issues identified (8 critical, 14 major, 18 minor, 7 cosmetic)
+- Overall System Usability Scale (SUS) score: 58.3 (below industry average of 68)
+- Task completion rate: 71% across all tasks (target: 85%)
+- Critical failures concentrated in appointment scheduling and medication refill
+- Accessibility compliance: 62% of WCAG 2.1 AA criteria met (target: 100%)
+- Net Promoter Score among test participants: -12 (detractor range)
+
+RECOMMENDATION PRIORITY:
+Immediate action required on appointment scheduling flow (H2, H7 violations),
+medication refill confirmation pattern (H1, H5 violations), and navigation
+restructuring (H3, H6 violations). Estimated effort: 340 development hours
+across two sprint cycles.
+
+--------------------------------------------------------------------------------
+                             METHODOLOGY
+--------------------------------------------------------------------------------
+
+1. EVALUATION APPROACH
+
+   1.1 Heuristic Evaluation
+       - Three independent expert reviewers (8+ years UX experience each)
+       - Each reviewer conducted two complete passes of the portal
+       - Findings consolidated using severity rating consensus method
+       - Inter-rater reliability: Cohen's kappa = 0.73 (substantial agreement)
+
+   1.2 Usability Testing
+       - 12 participants (4 per age segment)
+       - Recruitment criteria: active HealthBridge account holders, used portal
+         at least once in past 6 months
+       - Remote moderated sessions via Zoom (45-60 minutes each)
+       - Think-aloud protocol with retrospective probing
+       - Screen and audio recorded with participant consent
+
+   1.3 Task Scenarios
+       Task 1: Log in and locate upcoming appointment (expected: 2 min)
+       Task 2: Schedule a new appointment with a specific provider (expected: 4 min)
+       Task 3: Request a medication refill (expected: 3 min)
+       Task 4: View and download lab results (expected: 3 min)
+       Task 5: Update insurance information (expected: 5 min)
+       Task 6: Send a secure message to provider (expected: 3 min)
+
+   1.4 Metrics Collected
+       - Task completion rate (binary: success/failure)
+       - Time on task (seconds)
+       - Error count per task
+       - Post-task satisfaction (SEQ, 1-7 scale)
+       - Post-session SUS questionnaire
+       - Post-session NPS question
+
+2. TOOLS AND ENVIRONMENT
+   - Testing platform: Zoom with screen sharing
+   - Recording: Zoom cloud recording + Hotjar session replay
+   - Survey instrument: Qualtrics (pre-screening, post-task, post-session)
+   - Analysis: Dovetail for qualitative coding, SPSS for statistical analysis
+   - Participants used their own devices (5 desktop, 4 mobile, 3 tablet)
+
+--------------------------------------------------------------------------------
+                     FINDINGS BY HEURISTIC
+--------------------------------------------------------------------------------
+
+H1: VISIBILITY OF SYSTEM STATUS
+Severity: CRITICAL (4 issues found)
+
+F1.1 [Critical] Medication refill submission lacks confirmation
+     The system accepts refill requests without providing clear confirmation.
+     After clicking "Submit Refill," users see a brief flash of a green banner
+     that disappears within 1.5 seconds. 9 of 12 participants were uncertain
+     whether their request was actually submitted. Three participants submitted
+     duplicate requests as a result.
+     Impact: High (medication safety concern)
+     Frequency: Systematic (affects all refill submissions)
+     Location: /patient/medications/refill
+
+F1.2 [Major] No progress indicator for appointment search
+     When searching for available appointments, the system takes 4-8 seconds to
+     return results. During this time, there is no loading indicator, spinner, or
+     progress bar. Six participants clicked the search button multiple times,
+     generating duplicate API calls and further degrading performance.
+     Impact: High
+     Frequency: Systematic
+     Location: /patient/appointments/search
+
+F1.3 [Minor] Upload status for insurance documents unclear
+     The file upload component for insurance card images shows a generic "Processing"
+     message without indicating percentage complete or estimated time remaining.
+     Two participants navigated away before upload completed.
+     Impact: Medium
+     Frequency: Intermittent
+     Location: /patient/profile/insurance
+
+F1.4 [Cosmetic] Unread message count badge not real-time
+     The secure messaging badge showing unread message count only updates on
+     full page reload, not when new messages arrive. While the actual messages
+     load correctly, the badge count can be stale for up to 30 seconds.
+     Impact: Low
+     Frequency: Intermittent
+     Location: Global navigation bar
+
+H2: MATCH BETWEEN SYSTEM AND THE REAL WORLD
+Severity: CRITICAL (5 issues found)
+
+F2.1 [Critical] Medical terminology without plain-language alternatives
+     Lab results display uses clinical terminology (e.g., "Hemoglobin A1c,"
+     "Serum Creatinine," "eGFR") without plain-language explanations. 10 of 12
+     participants expressed confusion about at least one lab value. Older adult
+     participants were most affected, with all four expressing anxiety about
+     not understanding their results.
+     Impact: Very High (health literacy concern)
+     Frequency: Systematic
+     Location: /patient/results/lab
+
+F2.2 [Critical] Appointment type labels use internal codes
+     The appointment scheduling dropdown presents options like "EST-30-PCP,"
+     "FUP-15-SPEC," and "NEW-60-BH" instead of human-readable labels like
+     "30-minute Established Patient Visit," "15-minute Specialist Follow-up,"
+     or "60-minute New Behavioral Health Consultation." All 12 participants
+     struggled with this field.
+     Impact: Very High
+     Frequency: Systematic
+     Location: /patient/appointments/new
+
+F2.3 [Major] Date format inconsistency
+     The portal inconsistently uses MM/DD/YYYY, YYYY-MM-DD, and
+     "Month DD, YYYY" formats across different screens. The appointment
+     calendar uses one format while the confirmation screen uses another.
+     Impact: Medium
+     Frequency: Systematic
+     Location: Multiple pages
+
+F2.4 [Major] Provider search uses NPI numbers prominently
+     Search results for providers prominently display NPI (National Provider
+     Identifier) numbers, which are meaningless to patients. Provider specialty
+     and location are deprioritized in the visual hierarchy.
+     Impact: Medium
+     Frequency: Systematic
+     Location: /patient/providers/search
+
+F2.5 [Minor] Error messages use technical language
+     Error messages like "400 Bad Request: Invalid payload structure" and
+     "Session token expired. Re-authenticate." appear verbatim to patients.
+     Impact: Medium
+     Frequency: Intermittent
+     Location: Global error handling
+
+H3: USER CONTROL AND FREEDOM
+Severity: MAJOR (4 issues found)
+
+F3.1 [Major] No undo for appointment cancellation
+     Canceling an appointment is a one-click irreversible action. There is no
+     confirmation dialog, no undo option, and no grace period. Two participants
+     accidentally canceled appointments during testing.
+     Impact: High
+     Frequency: Systematic
+     Location: /patient/appointments
+
+F3.2 [Major] Cannot save partial insurance form
+     The insurance update form (8 fields, 3 file uploads) must be completed in a
+     single session. If the user navigates away, all progress is lost. The form
+     takes 5-12 minutes to complete.
+     Impact: High
+     Frequency: Systematic
+     Location: /patient/profile/insurance
+
+F3.3 [Minor] Browser back button breaks appointment flow
+     Using the browser back button during the multi-step appointment scheduling
+     flow returns the user to step 1, losing all selections from steps 2-4.
+     Impact: Medium
+     Frequency: Systematic
+     Location: /patient/appointments/new
+
+F3.4 [Minor] No clear way to exit secure messaging composition
+     When composing a secure message, there is no explicit "Cancel" or "Discard"
+     button. Users must use the browser back button, which does not prompt to
+     save the draft.
+     Impact: Low
+     Frequency: Systematic
+     Location: /patient/messages/compose
+
+H4: CONSISTENCY AND STANDARDS
+Severity: MAJOR (5 issues found)
+
+F4.1 [Major] Two different button styles for primary actions
+     The portal uses both filled blue buttons and outlined blue buttons for
+     primary actions, inconsistently. The appointment page uses filled buttons
+     while the messaging page uses outlined buttons for equivalent actions.
+     Impact: Medium
+     Frequency: Systematic
+     Location: Multiple pages
+
+F4.2 [Major] Inconsistent navigation patterns between mobile and desktop
+     The mobile version uses a hamburger menu with a completely different
+     information architecture than the desktop sidebar navigation. Items are
+     renamed and reordered, causing confusion for users who switch devices.
+     Impact: High
+     Frequency: Systematic
+     Location: Global navigation
+
+F4.3 [Minor] Mixed icon styles
+     The interface uses a combination of outlined icons (Lucide), filled icons
+     (custom), and emoji characters for similar purposes. The "calendar" concept
+     alone is represented by three different visual treatments.
+     Impact: Low
+     Frequency: Systematic
+     Location: Multiple pages
+
+F4.4 [Minor] Inconsistent empty states
+     Some sections show "No data found" text, others show illustrations with
+     helpful messages, and two sections show completely blank areas with no
+     indication that content could appear there.
+     Impact: Low
+     Frequency: Systematic
+     Location: Multiple pages
+
+F4.5 [Cosmetic] Color coding inconsistency for status indicators
+     Appointment statuses use green/yellow/red, but lab result statuses use
+     green/orange/red, and message statuses use blue/gray. There is no unified
+     status color system.
+     Impact: Low
+     Frequency: Systematic
+     Location: Multiple pages
+
+H5: ERROR PREVENTION
+Severity: CRITICAL (3 issues found)
+
+F5.1 [Critical] No validation on medication dosage input
+     The medication refill form includes a free-text "Dosage" field with no
+     validation, auto-complete, or confirmation. A patient could type "500mg"
+     when their prescribed dosage is "50mg" with no system warning.
+     Impact: Very High (patient safety risk)
+     Frequency: Systematic
+     Location: /patient/medications/refill
+
+F5.2 [Major] Double-booking appointments possible
+     The scheduling system does not check for existing appointments at the same
+     date and time. Two test participants successfully booked overlapping
+     appointments without any warning.
+     Impact: High
+     Frequency: Systematic
+     Location: /patient/appointments/new
+
+F5.3 [Minor] No character limit warning on secure messages
+     Secure messages have a 2000-character limit, but the counter only appears
+     after the user exceeds the limit. Long messages are silently truncated.
+     Impact: Medium
+     Frequency: Intermittent
+     Location: /patient/messages/compose
+
+H6: RECOGNITION RATHER THAN RECALL
+Severity: MAJOR (4 issues found)
+
+F6.1 [Major] Provider selection requires memorizing NPI
+     When scheduling appointments, the system requires patients to type their
+     provider's name exactly or enter their NPI number. There is no browsable
+     list, no recent providers, and no auto-suggest.
+     Impact: High
+     Frequency: Systematic
+     Location: /patient/appointments/new
+
+F6.2 [Major] No recent activity or quick-access shortcuts
+     The dashboard shows only a welcome message and a generic news feed. There
+     are no shortcuts to recent appointments, pending actions, or frequently
+     accessed features.
+     Impact: Medium
+     Frequency: Systematic
+     Location: /patient/dashboard
+
+F6.3 [Minor] Lab result history not sortable or filterable
+     Lab results are displayed in reverse chronological order with no ability to
+     filter by test type, date range, or result status. Patients with frequent
+     labs must scroll through dozens of entries.
+     Impact: Medium
+     Frequency: Systematic
+     Location: /patient/results
+
+F6.4 [Cosmetic] Breadcrumbs missing on deeper pages
+     Pages beyond two levels deep (e.g., /patient/appointments/new/step3) lack
+     breadcrumb navigation, forcing users to rely on memory for their location.
+     Impact: Low
+     Frequency: Systematic
+     Location: Multiple pages
+
+H7: FLEXIBILITY AND EFFICIENCY OF USE
+Severity: MAJOR (3 issues found)
+
+F7.1 [Critical] No keyboard shortcuts or accelerators
+     The entire portal lacks keyboard shortcuts. Power users (particularly
+     providers accessing the portal) cannot perform common actions without
+     mouse interaction. Tab order is also illogical on several forms.
+     Impact: High (also an accessibility issue)
+     Frequency: Systematic
+     Location: Global
+
+F7.2 [Major] Cannot set preferred pharmacy for refills
+     Each medication refill requires manually selecting a pharmacy from a list.
+     There is no saved preference or default pharmacy option, adding 3-4 clicks
+     to every refill request.
+     Impact: Medium
+     Frequency: Systematic
+     Location: /patient/medications/refill
+
+F7.3 [Minor] No bulk actions for messages
+     Patients with many messages cannot select multiple messages for bulk
+     archive, delete, or mark-as-read operations.
+     Impact: Low
+     Frequency: Intermittent
+     Location: /patient/messages
+
+H8: AESTHETIC AND MINIMALIST DESIGN
+Severity: MINOR (3 issues found)
+
+F8.1 [Minor] Information overload on lab results page
+     Lab result detail pages show 15+ data points simultaneously, including
+     reference ranges, historical values, provider notes, methodology, and
+     collection details. Critical information (the actual result and its
+     status) is not visually differentiated from secondary information.
+     Impact: Medium
+     Frequency: Systematic
+     Location: /patient/results/detail
+
+F8.2 [Minor] Redundant navigation elements
+     The footer duplicates the sidebar navigation entirely, and a "Quick Links"
+     section in the dashboard duplicates 80% of the main navigation items.
+     Impact: Low
+     Frequency: Systematic
+     Location: Global
+
+F8.3 [Cosmetic] Dense typography on mobile
+     Body text on mobile views uses 12px font size with 1.2 line height,
+     making extended reading uncomfortable. The healthcare context demands
+     higher readability standards.
+     Impact: Medium (accessibility adjacent)
+     Frequency: Systematic
+     Location: Mobile views
+
+H9: HELP USERS RECOGNIZE, DIAGNOSE, AND RECOVER FROM ERRORS
+Severity: MAJOR (4 issues found)
+
+F9.1 [Major] Generic error page with no recovery path
+     Server errors (500) display a white page with "Something went wrong" and
+     no actionable guidance. No "try again," "go home," or "contact support"
+     options are provided.
+     Impact: High
+     Frequency: Intermittent
+     Location: Global error handling
+
+F9.2 [Major] Form validation errors not associated with fields
+     When submitting the insurance form with errors, a single error banner
+     appears at the top of the page listing all errors. The individual fields
+     are not highlighted, and the page does not scroll to the first error.
+     Impact: High
+     Frequency: Systematic
+     Location: /patient/profile/insurance
+
+F9.3 [Minor] Session timeout with data loss
+     After 15 minutes of inactivity, the session expires without warning. Any
+     unsaved form data is lost. There is no countdown warning or option to
+     extend the session.
+     Impact: High
+     Frequency: Intermittent
+     Location: Global
+
+F9.4 [Cosmetic] Error messages disappear too quickly
+     Toast-style error notifications auto-dismiss after 3 seconds, which is
+     insufficient time for many users (especially older adults) to read and
+     understand the message.
+     Impact: Medium
+     Frequency: Systematic
+     Location: Global
+
+H10: HELP AND DOCUMENTATION
+Severity: MINOR (4 issues found)
+
+F10.1 [Major] No contextual help
+      The portal has no tooltips, info icons, or inline help text. The only
+      documentation is a static FAQ page that has not been updated since 2024.
+      Impact: Medium
+      Frequency: Systematic
+      Location: Global
+
+F10.2 [Minor] FAQ search is non-functional
+      The search bar on the FAQ page returns "No results found" for all queries.
+      Impact: Medium
+      Frequency: Systematic
+      Location: /help/faq
+
+F10.3 [Minor] No onboarding or guided tour
+      New patients are dropped directly into the dashboard with no orientation,
+      setup wizard, or feature introduction.
+      Impact: Medium
+      Frequency: Systematic
+      Location: /patient/dashboard (first visit)
+
+F10.4 [Cosmetic] Contact support link opens email client
+      The "Contact Support" link opens a mailto: link instead of an in-app
+      contact form or chat widget, breaking the user's context.
+      Impact: Low
+      Frequency: Systematic
+      Location: Global footer
+
+--------------------------------------------------------------------------------
+                     USABILITY TEST RESULTS SUMMARY
+--------------------------------------------------------------------------------
+
+TASK COMPLETION RATES:
++------+----------------------------------------+----------+----------+--------+
+| Task | Description                            | Success  | Avg Time | Avg SEQ|
++------+----------------------------------------+----------+----------+--------+
+|  1   | Locate upcoming appointment            |  92% (11)|   1:42   |  5.8   |
+|  2   | Schedule new appointment               |  42% (5) |   7:23   |  2.4   |
+|  3   | Request medication refill              |  67% (8) |   4:51   |  3.1   |
+|  4   | View and download lab results          |  83% (10)|   3:15   |  4.7   |
+|  5   | Update insurance information           |  58% (7) |   9:47   |  2.8   |
+|  6   | Send secure message to provider        |  83% (10)|   2:38   |  5.2   |
++------+----------------------------------------+----------+----------+--------+
+| ALL  | Overall                                |  71%     |   4:56   |  4.0   |
++------+----------------------------------------+----------+----------+--------+
+
+SUS SCORES BY SEGMENT:
+- Younger adults (18-34): 64.2 (n=4, SD=8.3)
+- Middle-aged adults (35-54): 59.5 (n=4, SD=11.7)
+- Older adults (55+): 51.3 (n=4, SD=14.2)
+- Overall: 58.3 (n=12, SD=12.4) — Grade: D, Adjective: "Poor"
+
+NPS DISTRIBUTION:
+- Promoters (9-10): 1 participant (8%)
+- Passives (7-8): 3 participants (25%)
+- Detractors (0-6): 8 participants (67%)
+- NPS Score: -59
+
+ERROR FREQUENCY BY TASK:
+- Task 1: 0.3 errors/participant
+- Task 2: 3.2 errors/participant (critical)
+- Task 3: 1.8 errors/participant
+- Task 4: 0.7 errors/participant
+- Task 5: 2.5 errors/participant
+- Task 6: 0.5 errors/participant
+
+--------------------------------------------------------------------------------
+                        SEVERITY RATING MATRIX
+--------------------------------------------------------------------------------
+
+                  | Cosmetic (1) | Minor (2) | Major (3) | Critical (4)
+------------------+--------------+-----------+-----------+-------------
+H1: Visibility    |      1       |     1     |     1     |      1
+H2: Real World    |      0       |     1     |     2     |      2
+H3: Control       |      0       |     2     |     2     |      0
+H4: Consistency   |      1       |     2     |     2     |      0
+H5: Prevention    |      0       |     1     |     1     |      1
+H6: Recognition   |      1       |     1     |     2     |      0
+H7: Flexibility   |      0       |     1     |     1     |      1
+H8: Aesthetic      |      1       |     2     |     0     |      0
+H9: Error Recovery|      1       |     1     |     2     |      0
+H10: Help         |      1       |     2     |     1     |      0
+------------------+--------------+-----------+-----------+-------------
+TOTAL             |      6       |    14     |    14     |      5
+
+Note: Some findings affect multiple heuristics. Unique issue count is 47;
+the matrix sums to 53 due to cross-heuristic mapping of 6 issues.
+
+--------------------------------------------------------------------------------
+                        RECOMMENDATIONS
+--------------------------------------------------------------------------------
+
+IMMEDIATE (Sprint 1 — estimated 180 hours):
+
+R1. Redesign medication refill confirmation [F1.1, F5.1]
+    - Add persistent confirmation screen with refill details
+    - Implement dosage validation against prescription records
+    - Add confirmation dialog before submission
+    Priority: P0 (patient safety)
+
+R2. Replace internal codes with human-readable labels [F2.2]
+    - Map all appointment type codes to plain-language labels
+    - Implement code-to-label translation layer in the presentation tier
+    Priority: P0 (core usability blocker)
+
+R3. Add confirmation dialog for destructive actions [F3.1]
+    - Implement confirmation pattern for appointment cancellation
+    - Add 30-second undo grace period
+    Priority: P0 (data loss prevention)
+
+R4. Add loading indicators to all async operations [F1.2]
+    - Implement skeleton screens for search results
+    - Add progress bars for file uploads [F1.3]
+    Priority: P1
+
+SHORT-TERM (Sprint 2 — estimated 160 hours):
+
+R5. Implement plain-language lab results [F2.1]
+    - Partner with clinical team to create patient-friendly descriptions
+    - Add expandable "What does this mean?" sections for each lab value
+    Priority: P1 (health literacy)
+
+R6. Add contextual help system [F10.1, F10.3]
+    - Implement tooltip system with info icons on complex fields
+    - Create first-time user onboarding flow (3-5 steps)
+    Priority: P1
+
+R7. Fix form validation and error handling [F9.1, F9.2, F9.3]
+    - Associate errors with specific form fields
+    - Implement session timeout warning (5-minute countdown)
+    - Create branded error page with recovery actions
+    Priority: P1
+
+R8. Unify design system [F4.1, F4.2, F4.3, F4.5]
+    - Audit and consolidate button styles
+    - Align mobile and desktop navigation IA
+    - Standardize icon library (recommend Lucide throughout)
+    - Create unified status color system
+    Priority: P2
+
+MEDIUM-TERM (Sprint 3-4):
+
+R9. Add keyboard accessibility [F7.1]
+    - Implement logical tab order on all forms
+    - Add keyboard shortcuts for common actions
+    - Ensure all interactive elements are keyboard-operable
+    Priority: P1 (accessibility compliance requirement)
+
+R10. Implement provider search improvements [F2.4, F6.1]
+     - Add auto-suggest with fuzzy matching
+     - Show recent/favorite providers
+     - Display provider cards with photo, specialty, location
+     Priority: P2
+
+R11. Add form auto-save and draft recovery [F3.2, F9.3]
+     - Implement auto-save for all multi-field forms
+     - Add draft recovery on session restore
+     Priority: P2
+
+R12. Optimize lab results browsing [F6.3, F8.1]
+     - Add filters: test type, date range, status
+     - Redesign result detail with progressive disclosure
+     - Highlight critical values prominently
+     Priority: P2
+
+--------------------------------------------------------------------------------
+                          APPENDIX
+--------------------------------------------------------------------------------
+
+A. PARTICIPANT DEMOGRAPHICS
+
++-----+--------+-----+------------+------------------+-------------------+
+| P#  | Gender | Age | Conditions | Portal Usage     | Device Used       |
++-----+--------+-----+------------+------------------+-------------------+
+| P01 | F      | 28  | None       | Monthly          | iPhone 15 Pro     |
+| P02 | M      | 31  | Asthma     | Weekly           | MacBook Pro       |
+| P03 | F      | 24  | None       | Quarterly        | Samsung Galaxy S24|
+| P04 | M      | 33  | Diabetes   | Weekly           | Windows Desktop   |
+| P05 | F      | 42  | Hypertension| Biweekly        | iPad Air          |
+| P06 | M      | 48  | None       | Monthly          | Windows Laptop    |
+| P07 | F      | 39  | Arthritis  | Weekly           | MacBook Air       |
+| P08 | M      | 51  | Diabetes   | Biweekly         | Android Tablet    |
+| P09 | F      | 61  | COPD       | Monthly          | Windows Desktop   |
+| P10 | M      | 58  | Cardiac    | Weekly           | iPad Pro          |
+| P11 | F      | 72  | Multiple   | Biweekly         | iPhone 14         |
+| P12 | M      | 67  | Diabetes   | Monthly          | Windows Laptop    |
++-----+--------+-----+------------+------------------+-------------------+
+
+B. RAW SUS SCORES
+
++-----+----+----+----+----+----+----+----+----+----+-----+-------+
+| P#  | Q1 | Q2 | Q3 | Q4 | Q5 | Q6 | Q7 | Q8 | Q9 | Q10 | Total |
++-----+----+----+----+----+----+----+----+----+----+-----+-------+
+| P01 |  3 |  3 |  4 |  2 |  3 |  3 |  4 |  2 |  3 |  3  | 65.0  |
+| P02 |  4 |  2 |  4 |  2 |  4 |  2 |  4 |  2 |  4 |  2  | 75.0  |
+| P03 |  3 |  3 |  3 |  3 |  3 |  3 |  3 |  3 |  3 |  3  | 50.0  |
+| P04 |  4 |  2 |  4 |  3 |  3 |  2 |  4 |  2 |  4 |  2  | 67.5  |
+| P05 |  3 |  3 |  3 |  2 |  3 |  3 |  4 |  3 |  3 |  3  | 55.0  |
+| P06 |  3 |  2 |  4 |  3 |  3 |  2 |  4 |  2 |  4 |  2  | 67.5  |
+| P07 |  3 |  3 |  4 |  2 |  4 |  2 |  4 |  2 |  3 |  3  | 65.0  |
+| P08 |  2 |  3 |  3 |  3 |  3 |  3 |  3 |  3 |  3 |  4  | 45.0  |
+| P09 |  2 |  4 |  3 |  3 |  2 |  3 |  3 |  3 |  3 |  4  | 40.0  |
+| P10 |  3 |  3 |  4 |  2 |  3 |  3 |  4 |  2 |  3 |  3  | 60.0  |
+| P11 |  2 |  4 |  3 |  3 |  2 |  4 |  3 |  4 |  2 |  4  | 37.5  |
+| P12 |  3 |  3 |  3 |  2 |  3 |  3 |  4 |  3 |  3 |  3  | 55.0  |
++-----+----+----+----+----+----+----+----+----+----+-----+-------+
+Mean: 58.3 | SD: 12.4 | Median: 57.5 | Min: 37.5 | Max: 75.0
+
+C. SESSION RECORDINGS INDEX
+All recordings stored on secure research drive: \\research\ux-audit-2026\recordings\
+- P01_20260203_session.mp4 (47:23)
+- P02_20260205_session.mp4 (52:18)
+- P03_20260206_session.mp4 (43:55)
+- P04_20260207_session.mp4 (58:02)
+- P05_20260210_session.mp4 (51:47)
+- P06_20260212_session.mp4 (45:33)
+- P07_20260217_session.mp4 (49:12)
+- P08_20260219_session.mp4 (55:38)
+- P09_20260224_session.mp4 (62:15)
+- P10_20260226_session.mp4 (48:44)
+- P11_20260303_session.mp4 (59:27)
+- P12_20260305_session.mp4 (53:09)
+
+D. TOOLS AND REFERENCES
+- Nielsen, J. (1994). "10 Usability Heuristics for User Interface Design"
+- Brooke, J. (1996). "SUS: A Quick and Dirty Usability Scale"
+- WCAG 2.1 (2018). Web Content Accessibility Guidelines. W3C Recommendation.
+- HIMSS (2024). "Electronic Health Record Usability: Interface Design Principles"
+- Sauro, J. & Lewis, J. (2016). "Quantifying the User Experience" 2nd Ed.
+
+================================================================================
+                         END OF REPORT
+================================================================================

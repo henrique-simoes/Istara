@@ -1,0 +1,39 @@
+{
+  "object": "whatsapp_business_account",
+  "entry": [
+    {
+      "id": "108294175430832",
+      "changes": [
+        {
+          "value": {
+            "messaging_product": "whatsapp",
+            "metadata": {
+              "display_phone_number": "5511999887766",
+              "phone_number_id": "112948573920184"
+            },
+            "contacts": [
+              {
+                "profile": {
+                  "name": "Maria Santos"
+                },
+                "wa_id": "5511988776655"
+              }
+            ],
+            "messages": [
+              {
+                "from": "5511988776655",
+                "id": "wamid.HBgNNTUxMTk4ODc3NjY1NRUCABEYEjNFQkFBNjVGNEI2QjI1OTRBA==",
+                "timestamp": "1711547823",
+                "text": {
+                  "body": "Ola! Gostaria de participar da pesquisa de satisfacao sobre o novo aplicativo. Tenho disponibilidade na proxima semana para a entrevista. Meu horario preferido e entre 14h e 16h. Obrigada!"
+                },
+                "type": "text"
+              }
+            ]
+          },
+          "field": "messages"
+        }
+      ]
+    }
+  ]
+}
