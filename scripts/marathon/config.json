@@ -1,6 +1,6 @@
 {
-  "version": "1.0.0",
-  "description": "ReClaw Pre-Release Test Marathon Configuration",
+  "version": "2.0.0",
+  "description": "ReClaw Pre-Release Test Marathon Configuration — includes security, encryption, user management",
   "cycles": [
     {
       "id": "A",
@@ -41,10 +41,10 @@
     },
     {
       "id": "F",
-      "name": "MCP & Security",
-      "description": "MCP server/client, access policy, audit, rate limiting, CORS, JWT, featured servers",
+      "name": "Security & Auth",
+      "description": "JWT enforcement on all 150+ endpoints, admin-only ops, field encryption, user management, security headers",
       "requires": ["backend"],
-      "scenarios": ["56", "57", "64", "66"]
+      "scenarios": ["56", "57", "64", "66", "67", "68", "69"]
     },
     {
       "id": "G",
@@ -64,7 +64,7 @@
     {
       "id": "I",
       "name": "Database Integrity",
-      "description": "Full DB audit: orphaned records, FK consistency, finding chains, vector store",
+      "description": "Full DB audit: orphaned records, FK consistency, finding chains, vector store, encryption",
       "requires": ["backend"],
       "scenarios": ["25", "30"],
       "custom_checks": ["db_integrity", "vector_health", "finding_chain_audit"]
