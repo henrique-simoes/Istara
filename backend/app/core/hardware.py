@@ -33,8 +33,17 @@ class HardwareProfile:
 
     @property
     def reclaw_ram_budget_gb(self) -> float:
-        """RAM available for ReClaw after reserving for OS/apps."""
-        return max(0, self.available_ram_gb - settings.resource_reserve_ram_gb)
+        """RAM available for ReClaw after reserving for OS/apps.
+
+        The reserve is proportional: on machines with <=8GB, we reserve
+        only 2GB instead of the default 4GB to avoid zero-budget situations.
+        """
+        reserve = settings.resource_reserve_ram_gb
+        if self.total_ram_gb <= 8:
+            reserve = min(reserve, 2.0)
+        elif self.total_ram_gb <= 16:
+            reserve = min(reserve, 3.0)
+        return max(0, self.available_ram_gb - reserve)
 
     @property
     def reclaw_cpu_budget_cores(self) -> int:
