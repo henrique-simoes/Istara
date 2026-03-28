@@ -255,6 +255,22 @@ OPENAI_TOOLS: list[dict] = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "browse_website",
+            "description": "Browse a website using an AI-powered browser agent. The agent can navigate, click, fill forms, and extract content. Use for: competitor analysis, usability evaluation, design critique, content extraction, form testing. Requires browser-use library.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "url": {"type": "string", "description": "The starting URL to navigate to"},
+                    "task": {"type": "string", "description": "What to do on the website (e.g., 'Extract the pricing page content', 'Fill out the contact form and check for errors', 'Take a screenshot of the homepage and describe the layout')"},
+                    "max_steps": {"type": "integer", "description": "Maximum browser actions to take (default: 10)"},
+                },
+                "required": ["url", "task"],
+            },
+        },
+    },
 ]
 
 
@@ -378,6 +394,15 @@ SYSTEM_TOOLS = [
         "parameters": {
             "url": {"type": "string", "required": True, "description": "The URL to fetch (must be http:// or https://)"},
             "max_chars": {"type": "integer", "required": False, "description": "Maximum characters to return (default: 4000)"},
+        },
+    },
+    {
+        "name": "browse_website",
+        "description": "Browse a website using an AI-powered browser agent. The agent can navigate, click, fill forms, and extract content. Use for: competitor analysis, usability evaluation, design critique, content extraction, form testing. Requires browser-use library.",
+        "parameters": {
+            "url": {"type": "string", "required": True, "description": "The starting URL to navigate to"},
+            "task": {"type": "string", "required": True, "description": "What to do on the website (e.g., 'Extract the pricing page content', 'Fill out the contact form and check for errors')"},
+            "max_steps": {"type": "integer", "required": False, "description": "Maximum browser actions to take (default: 10)"},
         },
     },
 ]
@@ -843,6 +868,25 @@ async def _exec_web_fetch(params: dict, project_id: str, agent_id: str) -> str:
         return json.dumps({"error": str(e), "url": url})
 
 
+async def _exec_browse_website(params: dict, project_id: str, agent_id: str) -> dict:
+    """Execute browse_website tool."""
+    from app.services.browser_service import browse_website, BROWSER_AVAILABLE
+
+    if not BROWSER_AVAILABLE:
+        return {"error": "browser-use not installed. Install: pip install browser-use langchain-openai"}
+
+    url = params.get("url", "")
+    task = params.get("task", "")
+    max_steps = params.get("max_steps", 10)
+
+    if not url:
+        return {"error": "url is required"}
+    if not task:
+        return {"error": "task is required"}
+
+    return await browse_website(url=url, task=task, max_steps=max_steps)
+
+
 # ── Executor Registry ─────────────────────────────────────────────
 
 TOOL_EXECUTORS = {
@@ -860,4 +904,5 @@ TOOL_EXECUTORS = {
     "update_task": _exec_update_task,
     "sync_project_documents": _exec_sync_project_documents,
     "web_fetch": _exec_web_fetch,
+    "browse_website": _exec_browse_website,
 }
