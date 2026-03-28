@@ -344,3 +344,105 @@ async def check_client_health(server_id: str, db: AsyncSession = Depends(get_db)
 
     result = await health_check(db, server_id)
     return result
+
+
+# ---------------------------------------------------------------------------
+# Featured MCP Servers — pre-configured servers for one-click connection
+# ---------------------------------------------------------------------------
+
+
+@router.get("/mcp/featured")
+async def list_featured_servers():
+    """List pre-configured MCP servers available for one-click connection."""
+    import json
+    from pathlib import Path
+
+    featured_file = Path(__file__).parent.parent.parent / "knowledge" / "featured_mcp_servers.json"
+    if not featured_file.exists():
+        return []
+    try:
+        data = json.loads(featured_file.read_text())
+        return data.get("servers", [])
+    except Exception:
+        return []
+
+
+@router.get("/mcp/featured/{server_id}")
+async def get_featured_server(server_id: str):
+    """Get details for a featured MCP server."""
+    import json
+    from pathlib import Path
+
+    featured_file = Path(__file__).parent.parent.parent / "knowledge" / "featured_mcp_servers.json"
+    if not featured_file.exists():
+        raise HTTPException(status_code=404, detail="Featured servers not found")
+    try:
+        data = json.loads(featured_file.read_text())
+        for server in data.get("servers", []):
+            if server["id"] == server_id:
+                return server
+        raise HTTPException(status_code=404, detail=f"Featured server '{server_id}' not found")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class ConnectFeaturedRequest(BaseModel):
+    env_vars: dict[str, str] = {}  # Optional API keys
+
+
+@router.post("/mcp/featured/{server_id}/connect", status_code=201)
+async def connect_featured_server(
+    server_id: str,
+    body: ConnectFeaturedRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Quick-connect a featured MCP server to ReClaw's client registry.
+
+    Creates a new MCP client config from the featured server's definition,
+    optionally setting environment variables (API keys).
+    """
+    import json
+    from pathlib import Path
+    from app.services.mcp_client_manager import register_server
+
+    featured_file = Path(__file__).parent.parent.parent / "knowledge" / "featured_mcp_servers.json"
+    if not featured_file.exists():
+        raise HTTPException(status_code=404, detail="Featured servers not found")
+
+    data = json.loads(featured_file.read_text())
+    featured = None
+    for s in data.get("servers", []):
+        if s["id"] == server_id:
+            featured = s
+            break
+    if not featured:
+        raise HTTPException(status_code=404, detail=f"Featured server '{server_id}' not found")
+
+    # Register using HTTP URL (preferred for ReClaw's client manager)
+    url = featured.get("http_url", "")
+    if not url:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Featured server '{server_id}' has no HTTP URL. "
+                   f"Install with: pip install {featured.get('package', server_id)} "
+                   f"and run: {featured.get('http_command', '')}"
+        )
+
+    config = await register_server(
+        db=db,
+        name=featured["name"],
+        url=url,
+        transport="http",
+        headers={"X-Featured-Server": server_id},
+    )
+    return {
+        "message": f"Connected to {featured['name']}",
+        "server": config.to_dict() if hasattr(config, "to_dict") else {"id": str(config.id), "name": config.name},
+        "setup_instructions": {
+            "install": f"pip install {featured.get('package', server_id)}",
+            "run": featured.get("http_command", ""),
+            "env_vars": featured.get("env_vars", []),
+        },
+    }
