@@ -42,6 +42,9 @@ class Settings(BaseSettings):
     admin_username: str = "admin"
     admin_password: str = ""  # Auto-generated if empty
 
+    # Data encryption key for sensitive DB fields (auto-generated on first run)
+    data_encryption_key: str = ""
+
     # Network security — access token for non-localhost connections
     # When set, any request from outside localhost must provide this token
     # via X-Access-Token header or ?token= query parameter.

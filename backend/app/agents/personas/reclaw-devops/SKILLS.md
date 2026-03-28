@@ -77,6 +77,10 @@
 - Validate channel instance database records match actual adapter states in the ChannelRouter
 
 ## Security Monitoring
+- Monitor data encryption: verify `DATA_ENCRYPTION_KEY` is set, verify `ENC:` prefixed fields can be decrypted
+- Monitor filesystem permissions: data directory should be 0700, DB files 0600, backup archives 0600
+- Alert if encryption key is missing or changed (encrypted fields become unreadable)
+- Track admin user operations: user creation, deletion, role changes via audit trail
 - Monitor authentication: failed login attempts (brute force detection), expired tokens, unauthorized access attempts
 - Verify global auth middleware is active: ALL non-exempt endpoints must return 401 without JWT
 - Track admin operations: backup downloads, MCP toggles, settings changes — audit trail

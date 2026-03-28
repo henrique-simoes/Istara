@@ -14,6 +14,7 @@ from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.field_encryption import decrypt_field, encrypt_field
 from app.models.mcp_server_config import MCPServerConfig
 
 logger = logging.getLogger(__name__)
@@ -60,7 +61,7 @@ async def register_server(
         name=name,
         url=url,
         transport=transport,
-        headers_json=json.dumps(headers or {}),
+        headers_json=encrypt_field(json.dumps(headers or {})),
     )
     db.add(config)
     await db.commit()
@@ -90,7 +91,8 @@ async def discover_tools(db: AsyncSession, server_id: str) -> list[dict]:
         await db.commit()
         return []
 
-    headers = json.loads(server.headers_json) if server.headers_json else {}
+    raw_headers = decrypt_field(server.headers_json) if server.headers_json else "{}"
+    headers = json.loads(raw_headers)
 
     try:
         async with streamablehttp_client(server.url, headers=headers) as (r, w, _):
@@ -146,7 +148,8 @@ async def call_tool(
     if not MCP_CLIENT_AVAILABLE:
         return {"error": "MCP client library not installed"}
 
-    headers = json.loads(server.headers_json) if server.headers_json else {}
+    raw_headers = decrypt_field(server.headers_json) if server.headers_json else "{}"
+    headers = json.loads(raw_headers)
 
     try:
         async with streamablehttp_client(server.url, headers=headers) as (r, w, _):
@@ -190,7 +193,8 @@ async def health_check(db: AsyncSession, server_id: str) -> dict:
     if not MCP_CLIENT_AVAILABLE:
         return {"healthy": False, "error": "MCP client library not installed"}
 
-    headers = json.loads(server.headers_json) if server.headers_json else {}
+    raw_headers = decrypt_field(server.headers_json) if server.headers_json else "{}"
+    headers = json.loads(raw_headers)
 
     try:
         async with streamablehttp_client(server.url, headers=headers) as (r, w, _):

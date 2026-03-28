@@ -4,12 +4,16 @@ import json
 import logging
 import uuid
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.core.auth import create_token, hash_password, verify_password
-from app.models.database import async_session
+from app.core.security_middleware import require_admin_from_request
+from app.models.database import async_session, get_db
+from app.models.user import User
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -157,4 +161,99 @@ async def team_status():
     return {
         "team_mode": settings.team_mode,
         "registration_enabled": settings.team_mode,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Admin User Management
+# ---------------------------------------------------------------------------
+
+
+@router.get("/auth/users")
+async def list_users(request: Request, db: AsyncSession = Depends(get_db)):
+    """List all users. Admin only."""
+    require_admin_from_request(request)
+    result = await db.execute(select(User).order_by(User.created_at.desc()))
+    users = result.scalars().all()
+    return [
+        {
+            "id": u.id,
+            "username": u.username,
+            "email": u.email,
+            "role": u.role.value if hasattr(u.role, "value") else u.role,
+            "display_name": u.display_name,
+            "created_at": u.created_at.isoformat() if u.created_at else None,
+        }
+        for u in users
+    ]
+
+
+@router.post("/auth/users")
+async def create_user(
+    request: Request,
+    body: RegisterRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Create a new user. Admin only. Works regardless of TEAM_MODE."""
+    require_admin_from_request(request)
+    # Check username uniqueness
+    existing = await db.execute(select(User).where(User.username == body.username))
+    if existing.scalar_one_or_none():
+        raise HTTPException(status_code=409, detail="Username already exists")
+    user = User(
+        id=str(uuid.uuid4()),
+        username=body.username,
+        email=body.email,
+        password_hash=hash_password(body.password),
+        role="researcher",
+        display_name=body.display_name or body.username,
+    )
+    db.add(user)
+    await db.commit()
+    logger.info("Admin created user: %s", user.username)
+    return {"id": user.id, "username": user.username, "role": "researcher"}
+
+
+@router.delete("/auth/users/{user_id}")
+async def delete_user(
+    user_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Delete a user. Admin only. Cannot delete yourself."""
+    require_admin_from_request(request)
+    current = getattr(request.state, "user", {})
+    if current.get("id") == user_id:
+        raise HTTPException(status_code=400, detail="Cannot delete yourself")
+    user = await db.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    await db.delete(user)
+    await db.commit()
+    logger.info("Admin deleted user: %s (id=%s)", user.username, user_id)
+    return {"deleted": True}
+
+
+@router.patch("/auth/users/{user_id}/role")
+async def change_role(
+    user_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Change a user's role. Admin only."""
+    require_admin_from_request(request)
+    body = await request.json()
+    new_role = body.get("role", "")
+    if new_role not in ("admin", "researcher", "viewer"):
+        raise HTTPException(status_code=400, detail="Invalid role")
+    user = await db.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    user.role = new_role
+    await db.commit()
+    logger.info("Admin changed role for %s to %s", user.username, new_role)
+    return {
+        "id": user.id,
+        "username": user.username,
+        "role": new_role,
     }
