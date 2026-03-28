@@ -619,11 +619,11 @@ function DocumentPreview({
           ) : content?.media_url ? (
             <div className="flex items-center justify-center py-8">
               {content.type && [".jpg", ".jpeg", ".png", ".gif"].includes(content.type) ? (
-                <img src={`http://localhost:8000${content.media_url}`} alt={doc.title} className="max-h-96 rounded-lg" />
+                <img src={`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}${content.media_url}`} alt={doc.title} className="max-h-96 rounded-lg" />
               ) : content.type && [".mp3", ".wav", ".m4a", ".ogg"].includes(content.type) ? (
-                <audio controls src={`http://localhost:8000${content.media_url}`} className="w-full max-w-lg" />
+                <audio controls src={`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}${content.media_url}`} className="w-full max-w-lg" />
               ) : content.type && [".mp4", ".webm", ".mov"].includes(content.type) ? (
-                <video controls src={`http://localhost:8000${content.media_url}`} className="max-h-96 rounded-lg" />
+                <video controls src={`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}${content.media_url}`} className="max-h-96 rounded-lg" />
               ) : (
                 <p className="text-sm text-slate-500">Preview not available for this file type.</p>
               )}

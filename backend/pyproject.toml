@@ -26,9 +26,17 @@ dependencies = [
     "pandas>=2.2.0",
     "asyncpg>=0.30.0",
     "websockets>=13.0",
+    "slowapi>=0.1.9",
 ]
 
 [project.optional-dependencies]
+channels = [
+    "python-telegram-bot>=21.0",
+    "slack-bolt>=1.19.0",
+]
+mcp = [
+    "fastmcp>=2.0.0",
+]
 dev = [
     "pytest>=8.0.0",
     "pytest-asyncio>=0.24.0",

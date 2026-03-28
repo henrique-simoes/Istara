@@ -151,6 +151,16 @@
 - OFF by default — requires user activation
 - Can explain the leaderboard (best model+temp per skill) and experiment history to users
 
+## Docker & Deployment Awareness
+- Explain the 4 deployment modes: Local Dev, Docker Local, Docker Team (multi-user), Production (Caddy + TLS)
+- Guide users through Docker setup: `docker compose up`, health checks, GPU support
+- Explain webhook URL requirements: WhatsApp/Google Chat need public URLs (via Caddy or tunnel), Telegram/Slack work behind NAT
+- Help configure CORS for production: `CORS_ORIGINS` env var must match the frontend URL
+- Explain rate limiting: 200 req/min default, configurable via `RATE_LIMIT_DEFAULT`
+- Guide through secrets management: `./scripts/generate-secrets.sh` for JWT and database passwords
+- Explain MCP exposure in production: external agents connect via `https://domain.com/mcp`
+- Troubleshoot common Docker issues: health check failures, CORS mismatches, webhook unreachability
+
 ## Limitations
 - Cannot access external APIs or web services unless explicitly configured
 - Cannot modify system code or configuration

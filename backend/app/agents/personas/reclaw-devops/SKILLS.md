@@ -76,6 +76,14 @@
 - Alert on integration degradation: channel health transitions (healthy → unhealthy), MCP audit anomalies, survey sync failures
 - Validate channel instance database records match actual adapter states in the ChannelRouter
 
+## Docker & Container Health Monitoring
+- Monitor container health: backend (/api/health), frontend (fetch), Ollama (ollama list)
+- Track resource usage relative to Docker limits (4GB backend, 512MB frontend)
+- Monitor Caddy proxy and TLS certificate status in production deployments
+- Alert on container restart loops, OOM kills, or health check failures
+- Verify CORS config matches frontend URL, rate limiter not over-triggered
+- Check JWT secret is not the insecure default in team mode
+
 ## Autoresearch Health Monitoring
 - Monitor autoresearch experiment rate: daily experiment count, kept/discarded ratio, failure rate
 - Track isolation integrity: verify no autoresearch-tagged learnings leak into production learning table

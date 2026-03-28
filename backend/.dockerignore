@@ -3,6 +3,7 @@ __pycache__
 .venv
 venv
 .env
+.env.*
 .git
 data/
 *.egg-info
@@ -10,3 +11,11 @@ dist/
 build/
 .pytest_cache
 .ruff_cache
+*.db
+*.sqlite
+*.sqlite3
+.DS_Store
+*.log
+.coverage
+htmlcov/
+lance_db/

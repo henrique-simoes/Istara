@@ -62,6 +62,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     global _shutting_down
     # Startup
     app_settings.ensure_dirs()
+    app_settings.ensure_secrets()
     await init_db()
     load_default_skills()
 
@@ -353,13 +354,26 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Configurable CORS — set CORS_ORIGINS env var for production/Docker
+_cors_origins = [o.strip() for o in app_settings.cors_origins.split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=_cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Rate limiting
+if app_settings.rate_limit_enabled:
+    try:
+        from app.core.rate_limiter import limiter
+        app.state.limiter = limiter
+        from slowapi.errors import RateLimitExceeded
+        from slowapi import _rate_limit_exceeded_handler
+        app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+    except ImportError:
+        pass  # slowapi not installed — rate limiting disabled
 
 # API routes
 app.include_router(auth.router, prefix="/api", tags=["Auth"])
