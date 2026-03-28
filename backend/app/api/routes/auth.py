@@ -84,46 +84,34 @@ async def register(req: RegisterRequest):
 
 
 @router.post("/auth/login")
-async def login(req: LoginRequest):
-    """Log in and receive a JWT token."""
-    if not settings.team_mode:
-        # In local mode, return a dummy token for compatibility
-        return {
-            "token": "local-mode",
-            "user": {
-                "id": "local",
-                "username": "local",
-                "email": "local@localhost",
-                "role": "admin",
-                "display_name": "Local User",
-                "preferences": {},
-            },
-        }
+async def login(req: LoginRequest, db: AsyncSession = Depends(get_db)):
+    """Log in and receive a JWT token.
 
+    Always issues a real JWT — even in local mode — because the
+    SecurityAuthMiddleware requires valid JWTs on all protected endpoints.
+    """
     from sqlalchemy import select
     from app.models.user import User
 
-    async with async_session() as db:
-        result = await db.execute(select(User).where(User.username == req.username))
-        user = result.scalars().first()
+    # Find user by username
+    result = await db.execute(select(User).where(User.username == req.username))
+    user = result.scalar_one_or_none()
 
-        if not user or not verify_password(req.password, user.password_hash):
-            raise HTTPException(status_code=401, detail="Invalid credentials.")
+    if not user or not verify_password(req.password, user.password_hash):
+        raise HTTPException(status_code=401, detail="Invalid username or password.")
 
-        token = create_token(user.id, user.username, user.role.value)
-
-        return {
-            "token": token,
-            "user": {
-                "id": user.id,
-                "username": user.username,
-                "email": user.email,
-                "role": user.role.value,
-                "display_name": user.display_name,
-                "preferences": json.loads(user.preferences),
-            },
-        }
-
+    token = create_token(user.id, user.username, user.role)
+    return {
+        "token": token,
+        "user": {
+            "id": user.id,
+            "username": user.username,
+            "email": user.email or "",
+            "role": user.role,
+            "display_name": user.display_name or user.username,
+            "preferences": json.loads(user.preferences) if user.preferences else {},
+        },
+    }
 
 @router.get("/auth/me")
 async def get_me(user: dict = None):
