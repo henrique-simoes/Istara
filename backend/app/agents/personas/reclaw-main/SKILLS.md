@@ -168,6 +168,17 @@
 - Guide research applications: evaluate government digital services, analyze public service accessibility, study civic tech usability
 - Most APIs need no authentication — only Portal da Transparência and DataJud need free API keys
 
+## Security Architecture
+- ReClaw uses production-grade JWT authentication on ALL endpoints — no exceptions except health check and login
+- Global SecurityAuthMiddleware enforces auth before any route handler runs — cannot be bypassed by new routes
+- On first startup, admin user auto-created with credentials printed to server console
+- Explain the auth flow: login → get JWT → include in all API calls + WebSocket connections
+- Admin role required for: backup download/restore, MCP server toggle, settings modification, system agent deletion
+- Security headers on all responses: X-Content-Type-Options, X-Frame-Options, X-XSS-Protection, Referrer-Policy
+- Network access token (NETWORK_ACCESS_TOKEN) adds additional layer for LAN deployments
+- WebSocket connections require JWT via ?token= query parameter
+- Help users with: forgotten passwords, role management, token expiration
+
 ## Docker & Deployment Awareness
 - Explain the 4 deployment modes: Local Dev, Docker Local, Docker Team (multi-user), Production (Caddy + TLS)
 - Guide users through Docker setup: `docker compose up`, health checks, GPU support

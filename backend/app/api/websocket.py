@@ -77,6 +77,10 @@ manager = ConnectionManager()
 async def websocket_endpoint(websocket: WebSocket):
     """WebSocket endpoint for real-time updates.
 
+    Authentication: JWT required via ?token= query parameter.
+    WebSocket connections from browsers cannot send custom headers,
+    so the token is passed as a query parameter.
+
     Events broadcast to clients:
     - agent_status: Agent activity updates (working, idle, etc.)
     - task_progress: Task progress updates (task_id, progress, notes)
@@ -92,6 +96,22 @@ async def websocket_endpoint(websocket: WebSocket):
     - deployment_progress: Deployment analytics/progress update
     """
     await manager.connect(websocket)
+
+    # Authenticate WebSocket connection
+    token = websocket.query_params.get("token", "")
+    if not token:
+        auth_header = websocket.headers.get("authorization", "")
+        if auth_header.startswith("Bearer "):
+            token = auth_header[7:]
+    if token:
+        from app.core.auth import verify_token
+        payload = verify_token(token)
+        if not payload:
+            await websocket.close(code=4001, reason="Invalid authentication token")
+            return
+    else:
+        await websocket.close(code=4001, reason="Authentication required. Pass ?token=<jwt>")
+        return
 
     try:
         # Send initial status

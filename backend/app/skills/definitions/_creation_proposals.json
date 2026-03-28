@@ -1,0 +1,23 @@
+[
+  {
+    "id": "create_auto-survey-design-7d8f7cf5_20260326220606",
+    "proposed_definition": {
+      "name": "auto-survey-design-7d8f7cf5",
+      "display_name": "Auto: Analyze survey: 4789f74e-dcab-49a5-a0b2-2e703195dc",
+      "description": "Autonomously proposed skill based on task: Analyze survey: 4789f74e-dcab-49a5-a0b2-2e703195dc73",
+      "phase": "discover",
+      "skill_type": "mixed",
+      "plan_prompt": "Create a research plan for: {context}",
+      "execute_prompt": "Analyze the following data for patterns and insights.\nContext: {context}\n\nData:\n{content}",
+      "output_schema": "The data indicates TaskFlow has strong engagement on core pages (Chat, Projects) but significant friction in Settings. NPS is below target with a notable detractor segment. Survey completion rates are low (75%), suggesting potential data quality issues that need addressing before scaling insights."
+    },
+    "source_task_id": "7d8f7cf5-bcd7-4ca5-a67d-61a7564e0077",
+    "source_agent_id": "reclaw-main",
+    "reason": "High-quality output (9 findings) from task: Analyze survey: 4789f74e-dcab-49a5-a0b2-2e703195dc73",
+    "confidence": 70,
+    "status": "pending",
+    "created_at": "2026-03-26T22:06:06.248260+00:00",
+    "reviewed_at": null,
+    "reject_reason": null
+  }
+]

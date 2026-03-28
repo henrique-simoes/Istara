@@ -3,12 +3,13 @@
 import logging
 from pathlib import Path
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.core.hardware import detect_hardware, recommend_model
 from app.core.ollama import ollama
+from app.core.security_middleware import require_admin_from_request
 from app.models.database import get_db
 
 router = APIRouter()
@@ -152,8 +153,9 @@ async def get_models():
 
 
 @router.post("/settings/model")
-async def switch_model(model_name: str):
-    """Switch the active model at runtime (pulls if using Ollama and not available)."""
+async def switch_model(model_name: str, request: Request):
+    """Switch the active model at runtime (pulls if using Ollama and not available). Admin only."""
+    require_admin_from_request(request)
     models = await ollama.list_models()
     model_names = [m.get("name", "") for m in models]
 
@@ -194,8 +196,9 @@ async def switch_model(model_name: str):
 
 
 @router.post("/settings/provider")
-async def switch_provider(provider: str):
-    """Switch the LLM provider at runtime (ollama or lmstudio)."""
+async def switch_provider(provider: str, request: Request):
+    """Switch the LLM provider at runtime (ollama or lmstudio). Admin only."""
+    require_admin_from_request(request)
     from fastapi import HTTPException
     if provider not in ("ollama", "lmstudio"):
         raise HTTPException(status_code=400, detail="Provider must be 'ollama' or 'lmstudio'")
@@ -223,14 +226,15 @@ async def switch_provider(provider: str):
 
 
 @router.post("/settings/maintenance/pause")
-async def maintenance_pause(reason: str = "testing"):
-    """Enter maintenance mode — halts ALL agent work and LLM operations.
+async def maintenance_pause(reason: str = "testing", request: Request = None):
+    """Enter maintenance mode — halts ALL agent work and LLM operations. Admin only.
 
     Used by the simulation test runner to ensure exclusive model access.
     While paused, no agents will start, no tasks will be picked, and no
     LLM calls will be made by the backend, freeing the model entirely
     for the test runner.
     """
+    require_admin_from_request(request)
     from app.core.resource_governor import governor
     from app.agents.orchestrator import meta_orchestrator
 
@@ -255,12 +259,13 @@ async def maintenance_pause(reason: str = "testing"):
 
 
 @router.post("/settings/maintenance/resume")
-async def maintenance_resume():
-    """Exit maintenance mode — resume all agent operations.
+async def maintenance_resume(request: Request):
+    """Exit maintenance mode — resume all agent operations. Admin only.
 
     Agents that were paused by the maintenance call will be set back to IDLE.
     The ResourceGovernor will allow new agent starts and LLM calls again.
     """
+    require_admin_from_request(request)
     from app.core.resource_governor import governor
     from app.agents.orchestrator import meta_orchestrator
 
@@ -322,8 +327,9 @@ async def check_data_integrity(db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/settings/export-database")
-async def export_database(db: AsyncSession = Depends(get_db)):
-    """Export the entire database to a portable JSON structure."""
+async def export_database(request: Request, db: AsyncSession = Depends(get_db)):
+    """Export the entire database to a portable JSON structure. Admin only."""
+    require_admin_from_request(request)
     from app.core.data_migration import export_full_database
     data = await export_full_database(db)
     return data
@@ -332,9 +338,11 @@ async def export_database(db: AsyncSession = Depends(get_db)):
 @router.post("/settings/import-database")
 async def import_database(
     data: dict,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
-    """Import a previously exported database dump."""
+    """Import a previously exported database dump. Admin only."""
+    require_admin_from_request(request)
     from app.core.data_migration import import_full_database
     summary = await import_full_database(db, data)
     return summary

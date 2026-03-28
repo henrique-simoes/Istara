@@ -64,6 +64,46 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Startup
     app_settings.ensure_dirs()
     app_settings.ensure_secrets()
+
+    # Bootstrap admin user if none exists
+    try:
+        from app.models.user import User
+        from app.core.auth import hash_password, create_token
+        from sqlalchemy import select, func
+        async with async_session() as db:
+            user_count = await db.execute(select(func.count(User.id)))
+            count = user_count.scalar() or 0
+            if count == 0:
+                import secrets as _s
+                admin_user = app_settings.admin_username or "admin"
+                admin_pass = app_settings.admin_password or _s.token_urlsafe(16)
+                user = User(
+                    id=str(__import__("uuid").uuid4()),
+                    username=admin_user,
+                    password_hash=hash_password(admin_pass),
+                    role="admin",
+                )
+                db.add(user)
+                await db.commit()
+                _log = __import__("logging").getLogger(__name__)
+                _log.info("=" * 60)
+                _log.info("  ADMIN USER CREATED (first startup)")
+                _log.info(f"  Username: {admin_user}")
+                _log.info(f"  Password: {admin_pass}")
+                _log.info("  Change this password after first login!")
+                _log.info("=" * 60)
+                # Persist to .env if auto-generated
+                if not app_settings.admin_password:
+                    try:
+                        from pathlib import Path
+                        env_path = Path(__file__).parent.parent / ".env"
+                        lines = env_path.read_text().splitlines() if env_path.exists() else []
+                        lines.append(f"ADMIN_PASSWORD={admin_pass}")
+                        env_path.write_text("\n".join(lines) + "\n")
+                    except Exception:
+                        pass
+    except Exception as e:
+        __import__("logging").getLogger(__name__).warning(f"Admin bootstrap skipped: {e}")
     await init_db()
     load_default_skills()
 
@@ -355,15 +395,47 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Global JWT authentication enforcement — ALL endpoints require auth
+from app.core.security_middleware import SecurityAuthMiddleware
+app.add_middleware(SecurityAuthMiddleware)
+
+
+# Security headers — prevent clickjacking, MIME sniffing, and XSS
+from starlette.middleware.base import BaseHTTPMiddleware
+
+
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    """Inject security-hardening HTTP headers into every response."""
+
+    async def dispatch(self, request, call_next):
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        return response
+
+
+app.add_middleware(SecurityHeadersMiddleware)
+
 # Configurable CORS — set CORS_ORIGINS env var for production/Docker
 _cors_origins = [o.strip() for o in app_settings.cors_origins.split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_cors_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "X-Access-Token"],
 )
+
+# Network security — access token for non-localhost connections
+if app_settings.network_access_token:
+    from app.core.network_security import NetworkSecurityMiddleware
+    app.add_middleware(NetworkSecurityMiddleware)
+    import logging
+    logging.getLogger(__name__).info(
+        "Network security enabled — non-localhost requests require access token"
+    )
 
 # Rate limiting
 if app_settings.rate_limit_enabled:
