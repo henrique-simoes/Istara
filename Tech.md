@@ -1446,6 +1446,52 @@ Root-level file any AI agent can discover and parse. Contains system identity, a
 
 ---
 
+## Laws of UX Knowledge Layer
+
+### 30 Laws in 4 Clusters
+
+Based on Jon Yablonski's *Laws of UX* (2nd Edition, O'Reilly, 2024) — lawsofux.com (CC BY-SA 4.0).
+
+| Cluster | Count | Key Laws |
+|---------|-------|----------|
+| **Perception** | 6 | Proximity, Similarity, Common Region, Uniform Connectedness, Pragnanz, Aesthetic-Usability |
+| **Cognitive** | 7 | Miller's Law, Cognitive Load, Working Memory, Chunking, Hick's Law, Selective Attention, Mental Model |
+| **Behavioral** | 9 | Goal-Gradient, Zeigarnik, Peak-End Rule, Flow, Paradox of Active User, Pareto, Parkinson's, Von Restorff, Serial Position |
+| **Principles** | 8 | Jakob's Law, Fitts's Law, Doherty Threshold, Tesler's Law, Occam's Razor, Postel's Law, Choice Overload, Cognitive Bias |
+
+### Architecture
+
+```
+laws_of_ux.json (knowledge base, 30 laws with detection_keywords)
+       |
+       v
+LawsOfUXService (pure Python, no LLM — keyword matching, scoring)
+       |
+       +-- Finding Enrichment (auto-tags nuggets with ux-law:{id})
+       +-- Compliance Scoring (aggregate per-law scores from tagged nuggets)
+       +-- API (/api/laws, /api/laws/compliance/{project_id})
+       +-- Skill Execution (laws embedded in skill prompts)
+       +-- Agent Knowledge (all 5 agents understand laws)
+```
+
+### Finding Enrichment
+
+Every nugget created by any skill is automatically checked against the 30 laws' `detection_keywords` using Jaccard-like overlap scoring. Matching laws are appended as `ux-law:{id}` tags. Zero LLM cost — pure string operations.
+
+### Compliance Profile
+
+Aggregates all `ux-law:*` tagged nuggets in a project into per-law scores (0-100). Laws with no violations score 100. Scores degrade proportionally to violation count. Produces radar chart data grouped by the 4 categories.
+
+### Nielsen Heuristic Cross-Reference
+
+Each law maps to related Nielsen heuristics (H1-H10). This enables the "why" layer: heuristic violations are connected to the psychological principles that explain them.
+
+### Skill Integration
+
+The UX Law Compliance Audit skill evaluates interfaces against all 30 laws (following the heuristic-evaluation pattern). Additionally, 6 existing skills reference relevant laws in their execute_prompts: heuristic-evaluation, design-critique, cognitive-walkthrough, usability-testing, survey-design, interview-question-generator.
+
+---
+
 ## Docker & Security Infrastructure
 
 ### Deployment Modes

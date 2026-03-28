@@ -24,6 +24,7 @@ import NotificationsView from "@/components/notifications/NotificationsView";
 import BackupView from "@/components/backup/BackupView";
 import MetaHyperagentView from "@/components/meta/MetaHyperagentView";
 import AutoresearchView from "@/components/autoresearch/AutoresearchView";
+import LawsView from "@/components/laws/LawsView";
 import DocumentsView from "@/components/documents/DocumentsView";
 import SearchModal from "@/components/common/SearchModal";
 import ToastNotification from "@/components/common/ToastNotification";
@@ -143,6 +144,7 @@ export default function HomeClient() {
       case "chat": return <ChatView />;
       case "tasks": return <KanbanBoard />;
       case "findings": return <FindingsView />;
+      case "laws": return <LawsView />;
       case "interviews": return <InterviewView />;
       case "documents": return <DocumentsView />;
       case "metrics": return <MetricsView />;

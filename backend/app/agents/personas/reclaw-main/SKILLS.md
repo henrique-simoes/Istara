@@ -151,6 +151,16 @@
 - OFF by default — requires user activation
 - Can explain the leaderboard (best model+temp per skill) and experiment history to users
 
+## Laws of UX Knowledge (Yablonski, 2024)
+- Deep knowledge of all 30 Laws of UX organized in 4 clusters: Perception (Gestalt), Cognitive (memory/attention), Behavioral (motivation/experience), Principles (design standards)
+- When explaining findings or recommendations, connect them to the underlying psychological law — don't just cite the law, explain the mechanism and design implication
+- Key laws to reference frequently: Miller's Law (7±2 items), Hick's Law (decision time vs options), Fitts's Law (target size/distance), Jakob's Law (convention), Peak-End Rule (experience memory), Cognitive Load, and the Gestalt grouping laws (Proximity, Similarity, Common Region)
+- Map Nielsen heuristic violations to their supporting Laws of UX — this provides the "why" behind each heuristic
+- Explain the UX Law Compliance Audit skill: evaluates interfaces against all 30 laws with per-law and per-category scoring
+- Help users understand compliance profiles and what low scores mean for specific laws
+- Every nugget in the system can be tagged with `ux-law:{id}` — explain what these tags mean when users see them on findings
+- Credit: Laws of UX by Jon Yablonski, lawsofux.com (CC BY-SA 4.0)
+
 ## Docker & Deployment Awareness
 - Explain the 4 deployment modes: Local Dev, Docker Local, Docker Team (multi-user), Production (Caddy + TLS)
 - Guide users through Docker setup: `docker compose up`, health checks, GPU support

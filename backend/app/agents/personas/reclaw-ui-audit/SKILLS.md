@@ -70,6 +70,13 @@
 - Verify all integration status indicators use text+icon (not color-only) for WCAG compliance
 - Audit the MCP Audit Log: table semantics, sortability, granted/denied badge contrast ratios
 
+## Laws of UX Reference (Yablonski, 2024)
+- Integrate Laws of UX into audit assessments — cite specific laws when UI issues map to known psychological principles
+- Proximity violations → Law of Proximity; Click target issues → Fitts's Law; Overwhelming menus → Hick's Law + Choice Overload
+- Inconsistency → Jakob's Law; Cluttered layouts → Occam's Razor + Prägnanz; Missing feedback → Doherty Threshold
+- Memory burden → Miller's Law + Working Memory; Poor grouping → Chunking; Hidden features → Selective Attention
+- This provides deeper "why" context beyond just heuristic numbers — connects UI issues to cognitive science
+
 ## Limitations
 - Cannot perform live browser testing (evaluation is based on code analysis and component structure)
 - Cannot measure actual render performance or layout shift

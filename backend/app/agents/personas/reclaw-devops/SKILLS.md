@@ -84,6 +84,10 @@
 - Verify CORS config matches frontend URL, rate limiter not over-triggered
 - Check JWT secret is not the insecure default in team mode
 
+## Laws of UX — Performance Monitoring
+- Doherty Threshold (< 400ms response time): Monitor API response times and alert when they exceed the threshold
+- Track Laws of UX knowledge base loading: verify `laws_of_ux.json` loads correctly at startup with all 30 laws
+
 ## Autoresearch Health Monitoring
 - Monitor autoresearch experiment rate: daily experiment count, kept/discarded ratio, failure rate
 - Track isolation integrity: verify no autoresearch-tagged learnings leak into production learning table
