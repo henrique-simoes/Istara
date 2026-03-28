@@ -1,13 +1,13 @@
 {
-  "version": "2.0.0",
-  "description": "ReClaw Pre-Release Test Marathon Configuration — includes security, encryption, user management",
+  "version": "3.0.0",
+  "description": "ReClaw Pre-Release Test Marathon — ALL 65 scenarios across 12 cycles",
   "cycles": [
     {
       "id": "A",
       "name": "API Exhaustive",
-      "description": "All 300+ API endpoints with valid/invalid inputs, error codes, edge cases",
+      "description": "Core API endpoints, project CRUD, task CRUD, file handling, data migration",
       "requires": ["backend"],
-      "scenarios": ["01", "02", "03", "07", "08", "09", "12", "16", "18", "29", "32", "33", "39"],
+      "scenarios": ["01", "02", "03", "07", "08", "09", "12", "16", "18", "29", "31", "32", "33", "39"],
       "custom_checks": ["api_endpoint_sweep", "error_code_validation"]
     },
     {
@@ -21,16 +21,16 @@
     {
       "id": "C",
       "name": "Agent & Skills",
-      "description": "Chat conversations, skill execution, verify output quality, agent understanding",
+      "description": "Chat, skill execution, agent identity, self-evolution, content guard, skill creation",
       "requires": ["backend", "llm"],
-      "scenarios": ["05", "06", "10", "11", "13", "14", "20", "21", "59"]
+      "scenarios": ["05", "06", "10", "11", "13", "14", "20", "21", "27", "28", "40", "41", "42", "59"]
     },
     {
       "id": "D",
       "name": "Findings & RAG",
-      "description": "Upload docs, verify chunking, retrieval precision, Laws of UX tagging, compliance",
+      "description": "Upload docs, chunking, retrieval precision, Laws of UX tagging, evidence chain",
       "requires": ["backend", "llm"],
-      "scenarios": ["04", "07", "15", "17", "24", "47", "65"]
+      "scenarios": ["04", "07", "15", "17", "22", "23", "24", "47", "65"]
     },
     {
       "id": "E",
@@ -42,16 +42,16 @@
     {
       "id": "F",
       "name": "Security & Auth",
-      "description": "JWT enforcement on all 150+ endpoints, admin-only ops, field encryption, user management, security headers",
+      "description": "JWT enforcement, admin-only ops, field encryption, user management, security headers",
       "requires": ["backend"],
-      "scenarios": ["56", "57", "64", "66", "67", "68", "69"]
+      "scenarios": ["43", "56", "57", "64", "66", "67", "68", "69"]
     },
     {
       "id": "G",
       "name": "Multi-Model & Network",
-      "description": "Network LLM discovery, relay node, compute pool, model switching",
+      "description": "Network LLM discovery, relay node, compute pool, model switching, session persistence",
       "requires": ["backend", "llm", "network_llm"],
-      "scenarios": ["34", "35", "36", "37", "38"],
+      "scenarios": ["26", "34", "35", "36", "37", "38"],
       "custom_checks": ["network_discovery", "relay_simulation", "model_switch"]
     },
     {
@@ -63,18 +63,18 @@
     },
     {
       "id": "I",
-      "name": "Database Integrity",
-      "description": "Full DB audit: orphaned records, FK consistency, finding chains, vector store, encryption",
+      "name": "Database & Infrastructure",
+      "description": "DB audit, vector health, finding chains, backup system, process hardening",
       "requires": ["backend"],
-      "scenarios": ["25", "30"],
+      "scenarios": ["25", "30", "44", "51"],
       "custom_checks": ["db_integrity", "vector_health", "finding_chain_audit"]
     },
     {
       "id": "J",
-      "name": "WebSocket Events",
-      "description": "Connect WS client, trigger events, verify broadcasts for all 15+ event types",
+      "name": "WebSocket & Loops",
+      "description": "WebSocket events, scheduled loops, notifications, history",
       "requires": ["backend", "frontend"],
-      "scenarios": ["50"],
+      "scenarios": ["49", "50"],
       "custom_checks": ["websocket_full_audit"]
     },
     {
