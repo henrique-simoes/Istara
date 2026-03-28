@@ -96,14 +96,32 @@ class LMStudioClient:
         """Sanitize messages for OpenAI-compatible API.
 
         Filters invalid messages, merges consecutive system messages,
-        and ensures all fields are properly formatted.
+        and ensures all fields are properly formatted.  Passes through
+        ``role: "tool"`` and ``role: "assistant"`` messages with
+        ``tool_calls`` intact for native function calling.
         """
         sanitized = []
         for msg in messages:
             role = msg.get("role", "")
-            content = msg.get("content")
+
+            # Pass through tool-result messages verbatim
+            if role == "tool":
+                entry = {"role": "tool", "content": str(msg.get("content", ""))}
+                if msg.get("tool_call_id"):
+                    entry["tool_call_id"] = msg["tool_call_id"]
+                sanitized.append(entry)
+                continue
+
+            # Pass through assistant messages that carry tool_calls
+            if role == "assistant" and msg.get("tool_calls"):
+                entry: dict = {"role": "assistant", "content": msg.get("content") or ""}
+                entry["tool_calls"] = msg["tool_calls"]
+                sanitized.append(entry)
+                continue
+
             if role not in ("system", "user", "assistant"):
                 continue
+            content = msg.get("content")
             if content is None or (isinstance(content, str) and not content.strip()):
                 continue
             sanitized.append({"role": role, "content": str(content)})
@@ -124,10 +142,13 @@ class LMStudioClient:
         system: str | None = None,
         temperature: float = 0.7,
         max_tokens: int | None = None,
+        tools: list[dict] | None = None,
     ) -> dict:
         """Non-streaming chat completion.
 
-        Returns Ollama-compatible format: {"message": {"content": "..."}}.
+        Returns Ollama-compatible format: ``{"message": {"content": "..."}}``.
+        When the model invokes native tools the response also contains
+        ``"tool_calls"`` and ``"finish_reason"``.
         """
         msgs = list(messages)
         if system:
@@ -142,15 +163,30 @@ class LMStudioClient:
         }
         if max_tokens:
             payload["max_tokens"] = max_tokens
+        if tools:
+            payload["tools"] = tools
 
         client = await self._get_client()
         resp = await client.post("/v1/chat/completions", json=payload)
         resp.raise_for_status()
         data = resp.json()
 
-        # Normalize OpenAI format → Ollama format
-        content = data["choices"][0]["message"]["content"]
-        return {"message": {"role": "assistant", "content": content}}
+        choice = data["choices"][0]
+        message = choice["message"]
+
+        result: dict = {
+            "message": {
+                "role": "assistant",
+                "content": message.get("content") or "",
+            }
+        }
+
+        # Include tool_calls if the model invoked native tools
+        if message.get("tool_calls"):
+            result["message"]["tool_calls"] = message["tool_calls"]
+            result["finish_reason"] = choice.get("finish_reason", "tool_calls")
+
+        return result
 
     async def chat_stream(
         self,
@@ -159,8 +195,15 @@ class LMStudioClient:
         system: str | None = None,
         temperature: float = 0.7,
         max_tokens: int | None = None,
-    ) -> AsyncGenerator[str, None]:
-        """Streaming chat completion — yields content chunks."""
+        tools: list[dict] | None = None,
+    ) -> AsyncGenerator[str | dict, None]:
+        """Streaming chat completion — yields content chunks (str).
+
+        When the model invokes native tools the stream yields a single
+        ``dict`` of the form ``{"tool_calls": [...], "finish_reason": "tool_calls"}``
+        instead of text content.  Callers must check the type of each
+        yielded value.
+        """
         msgs = list(messages)
         if system:
             msgs = [{"role": "system", "content": system}, *msgs]
@@ -174,8 +217,16 @@ class LMStudioClient:
         }
         if max_tokens:
             payload["max_tokens"] = max_tokens
+        if tools:
+            payload["tools"] = tools
 
         client = await self._get_client()
+
+        # Accumulate tool_calls across streamed deltas (LM Studio may
+        # stream tool calls in multiple chunks or as a single chunk).
+        accumulated_tool_calls: list[dict] = []
+        tool_call_mode = False
+
         async with client.stream("POST", "/v1/chat/completions", json=payload, timeout=None) as resp:
             resp.raise_for_status()
             async for line in resp.aiter_lines():
@@ -184,15 +235,53 @@ class LMStudioClient:
                     continue
                 data_str = line[6:]  # strip "data: " prefix
                 if data_str == "[DONE]":
-                    return
+                    break
                 try:
                     data = json.loads(data_str)
-                    delta = data.get("choices", [{}])[0].get("delta", {})
+                    choice = data.get("choices", [{}])[0]
+                    delta = choice.get("delta", {})
+                    finish = choice.get("finish_reason")
+
+                    # Handle tool call deltas
+                    if delta.get("tool_calls"):
+                        tool_call_mode = True
+                        for tc_delta in delta["tool_calls"]:
+                            idx = tc_delta.get("index", 0)
+                            # Grow the list to accommodate the index
+                            while len(accumulated_tool_calls) <= idx:
+                                accumulated_tool_calls.append({
+                                    "id": "",
+                                    "type": "function",
+                                    "function": {"name": "", "arguments": ""},
+                                })
+                            tc = accumulated_tool_calls[idx]
+                            if tc_delta.get("id"):
+                                tc["id"] = tc_delta["id"]
+                            fn = tc_delta.get("function", {})
+                            if fn.get("name"):
+                                tc["function"]["name"] = fn["name"]
+                            if fn.get("arguments"):
+                                tc["function"]["arguments"] += fn["arguments"]
+                        continue
+
+                    # Regular content delta
                     content = delta.get("content", "")
                     if content:
                         yield content
+
+                    # Check if we reached the end with tool calls
+                    if finish == "tool_calls" or (finish == "stop" and tool_call_mode):
+                        break
+
                 except (json.JSONDecodeError, IndexError, KeyError):
                     continue
+
+        # If we accumulated tool calls, yield them as a structured dict
+        if accumulated_tool_calls and any(tc["function"]["name"] for tc in accumulated_tool_calls):
+            yield {
+                "tool_calls": accumulated_tool_calls,
+                "finish_reason": "tool_calls",
+            }
 
     async def embed(self, text: str, model: str | None = None) -> list[float]:
         """Generate embedding for a single text."""

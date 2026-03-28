@@ -1524,6 +1524,18 @@ The `featured_mcp_servers.json` knowledge file stores pre-configured server defi
 
 Optional Caddy service (profile: `production`) provides automatic TLS via Let's Encrypt. Routes `/api/*`, `/webhooks/*`, `/mcp/*`, `/ws/*` to backend; everything else to frontend. Enables webhook accessibility for WhatsApp, Google Chat, and survey platforms.
 
+### Native Tool Calling
+
+ReClaw uses native OpenAI-compatible function calling via the `tools` API parameter. LM Studio and Ollama both support this format. Tools are defined in `OPENAI_TOOLS` (system_actions.py) with JSON Schema parameters.
+
+**14 system tools**: create_task, search_documents, list_tasks, move_task, attach_document, search_findings, list_project_files, assign_agent, send_agent_message, get_document_content, search_memory, update_task, sync_project_documents, **web_fetch**.
+
+**web_fetch**: Agents can fetch any public URL, convert HTML to readable text (via html2text), and analyze the content. Private/internal IPs are blocked for security.
+
+**Multi-step reasoning**: The chat ReAct loop supports up to 8 tool iterations per turn. The model decides when to stop calling tools.
+
+**Fallback**: If the LLM doesn't support native tools, falls back to text-based tool parsing (legacy).
+
 ### Security Architecture (Production-Grade)
 
 **Global Authentication**: `SecurityAuthMiddleware` enforces JWT on ALL endpoints. No route can bypass it — auth is checked before any route handler runs. 150+ endpoints protected by a single middleware.

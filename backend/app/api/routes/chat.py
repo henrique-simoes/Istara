@@ -1,15 +1,15 @@
-"""Chat API route — streaming LLM responses with tool-use augmentation.
+"""Chat API route — streaming LLM responses with native tool calling.
 
 Architecture:
 1. Agent identity loaded via Prompt RAG (query-aware persona sections)
-2. System action tools injected into the system prompt (13 tools)
-3. LLM decides which tools to call based on conversation context
-4. Tool calls are parsed from LLM output, executed, and results injected
-5. ReAct loop: LLM → tool call → execute → result → LLM (max 3 iterations)
+2. Tools passed via OpenAI-compatible `tools` API parameter (native calling)
+3. LLM decides which tools to call; structured tool_calls in the response
+4. Tool results sent back as `role: "tool"` messages (OpenAI multi-turn format)
+5. ReAct loop: LLM -> tool_calls -> execute -> tool results -> LLM (max 8 iter)
 6. RAG context and project files provide grounding for all responses
 
-This replaces the old hardcoded intent detection with LLM-native tool
-selection, following patterns from OpenClaw, Anthropic tool use, and ReAct.
+Falls back to text-based regex parsing when native tool calling is rejected
+by the provider (e.g. models without function-calling support).
 """
 
 import json
@@ -42,16 +42,22 @@ from app.models.message import Message
 from app.models.project import Project
 from app.models.session import ChatSession, INFERENCE_PRESETS
 from app.skills.registry import registry
-from app.skills.system_actions import build_tools_prompt, execute_tool, SYSTEM_TOOLS
+from app.skills.system_actions import (
+    build_tools_prompt,
+    execute_tool,
+    SYSTEM_TOOLS,
+    OPENAI_TOOLS,
+)
 
 _chat_log = logging.getLogger(__name__)
 
 router = APIRouter()
 
 # Maximum tool-call iterations per message (prevents infinite loops)
-MAX_TOOL_ITERATIONS = 3
+MAX_TOOL_ITERATIONS = 8
 
-# Regex to extract tool call JSON from LLM output
+# ── Text-based fallback (kept for models without native tool support) ──
+
 _TOOL_CALL_RE = re.compile(
     r'```(?:json)?\s*(\{\s*"tool"\s*:.+?\})\s*```',
     re.DOTALL,
@@ -63,15 +69,13 @@ _TOOL_CALL_INLINE_RE = re.compile(
 
 
 def _extract_tool_call(text: str) -> tuple[dict | None, str, str]:
-    """Extract a tool call from LLM output.
+    """Extract a tool call from LLM output text (regex fallback).
 
     Returns (tool_call_dict, text_before_call, text_after_call).
     Returns (None, full_text, "") if no tool call found.
     """
-    # Try fenced code block first (preferred format)
     match = _TOOL_CALL_RE.search(text)
     if not match:
-        # Try inline JSON
         match = _TOOL_CALL_INLINE_RE.search(text)
 
     if not match:
@@ -86,6 +90,198 @@ def _extract_tool_call(text: str) -> tuple[dict | None, str, str]:
         return call, before, after
     except (json.JSONDecodeError, IndexError):
         return None, text, ""
+
+
+async def _generate_native_tools(
+    conversation: list[dict],
+    all_text_parts: list[str],
+    tool_results: list[dict],
+    request,
+    session_agent_id: str | None,
+    llm_model: str | None,
+    llm_temperature: float,
+    llm_max_tokens: int | None,
+):
+    """Native tool-calling loop using the OpenAI `tools` parameter.
+
+    Yields SSE event strings.  Modifies *conversation*, *all_text_parts*,
+    and *tool_results* in place.
+    """
+    for iteration in range(MAX_TOOL_ITERATIONS + 1):
+        # Collect the full response (text + possible tool_calls dict)
+        content_chunks: list[str] = []
+        tool_calls_payload: dict | None = None
+
+        async for chunk in ollama.chat_stream(
+            messages=conversation,
+            model=llm_model,
+            temperature=llm_temperature,
+            max_tokens=llm_max_tokens,
+            tools=OPENAI_TOOLS,
+        ):
+            if isinstance(chunk, dict) and chunk.get("tool_calls"):
+                tool_calls_payload = chunk
+            elif isinstance(chunk, str):
+                content_chunks.append(chunk)
+
+        response_text = "".join(content_chunks)
+
+        # If we got tool_calls AND we haven't exceeded iterations, execute them
+        if tool_calls_payload and iteration < MAX_TOOL_ITERATIONS:
+            raw_tool_calls = tool_calls_payload["tool_calls"]
+
+            # Stream any text the model produced before the tool calls
+            if response_text.strip():
+                all_text_parts.append(response_text)
+                event_data = json.dumps({"type": "chunk", "content": response_text + "\n\n"})
+                yield f"data: {event_data}\n\n"
+
+            # Build the assistant message with tool_calls for the conversation
+            assistant_msg_for_conv: dict = {
+                "role": "assistant",
+                "content": response_text or "",
+                "tool_calls": raw_tool_calls,
+            }
+            conversation.append(assistant_msg_for_conv)
+
+            # Execute each tool call and add role:"tool" result messages
+            for tc in raw_tool_calls:
+                tc_id = tc.get("id", str(uuid.uuid4()))
+                fn = tc.get("function", {})
+                tool_name = fn.get("name", "")
+                try:
+                    tool_params = json.loads(fn.get("arguments", "{}"))
+                except (json.JSONDecodeError, TypeError):
+                    tool_params = {}
+
+                _chat_log.info(
+                    "Native tool call [%d]: %s(%s)",
+                    iteration, tool_name, json.dumps(tool_params)[:200],
+                )
+
+                # Notify client about tool execution
+                tool_event = json.dumps({
+                    "type": "tool_call",
+                    "tool": tool_name,
+                    "params": tool_params,
+                })
+                yield f"data: {tool_event}\n\n"
+
+                # Execute the tool
+                result = await execute_tool(
+                    tool_name, tool_params, request.project_id,
+                    agent_id=session_agent_id or "reclaw-main",
+                )
+
+                result_text = result.get("result", result.get("error", "Unknown result"))
+                tool_results.append({"tool": tool_name, "result": result_text})
+
+                # Stream tool result notification to client
+                result_display = f"**{tool_name}**: {result_text}\n\n"
+                all_text_parts.append(result_display)
+                result_event = json.dumps({"type": "chunk", "content": result_display})
+                yield f"data: {result_event}\n\n"
+
+                # Append role:"tool" message for multi-turn tool use
+                conversation.append({
+                    "role": "tool",
+                    "tool_call_id": tc_id,
+                    "content": str(result_text),
+                })
+
+            # Loop back for the model's follow-up
+            continue
+        else:
+            # No tool calls -- final text response
+            all_text_parts.append(response_text)
+            event_data = json.dumps({"type": "chunk", "content": response_text})
+            yield f"data: {event_data}\n\n"
+            break
+
+
+async def _generate_text_fallback(
+    conversation: list[dict],
+    all_text_parts: list[str],
+    tool_results: list[dict],
+    request,
+    session_agent_id: str | None,
+    llm_model: str | None,
+    llm_temperature: float,
+    llm_max_tokens: int | None,
+):
+    """Legacy text-based tool parsing loop (regex fallback).
+
+    Yields SSE event strings.  Used when native tool calling is not
+    supported by the current model/provider.
+    """
+    for iteration in range(MAX_TOOL_ITERATIONS + 1):
+        full_text: list[str] = []
+        async for chunk in ollama.chat_stream(
+            messages=conversation,
+            model=llm_model,
+            temperature=llm_temperature,
+            max_tokens=llm_max_tokens,
+        ):
+            if isinstance(chunk, str):
+                full_text.append(chunk)
+
+        response_text = "".join(full_text)
+        tool_call, text_before, text_after = _extract_tool_call(response_text)
+
+        if tool_call and iteration < MAX_TOOL_ITERATIONS:
+            tool_name = tool_call.get("tool", "")
+            tool_params = tool_call.get("params", {})
+
+            _chat_log.info(
+                "Text fallback tool call [%d]: %s(%s)",
+                iteration, tool_name, json.dumps(tool_params)[:200],
+            )
+
+            if text_before:
+                all_text_parts.append(text_before)
+                event_data = json.dumps({"type": "chunk", "content": text_before + "\n\n"})
+                yield f"data: {event_data}\n\n"
+
+            tool_event = json.dumps({
+                "type": "tool_call",
+                "tool": tool_name,
+                "params": tool_params,
+            })
+            yield f"data: {tool_event}\n\n"
+
+            result = await execute_tool(
+                tool_name, tool_params, request.project_id,
+                agent_id=session_agent_id or "reclaw-main",
+            )
+
+            result_text = result.get("result", result.get("error", "Unknown result"))
+            tool_results.append({"tool": tool_name, "result": result_text})
+
+            result_display = f"**{tool_name}**: {result_text}\n\n"
+            all_text_parts.append(result_display)
+            result_event = json.dumps({"type": "chunk", "content": result_display})
+            yield f"data: {result_event}\n\n"
+
+            assistant_turn = (
+                text_before + f"\n\n[Tool: {tool_name}]"
+                if text_before
+                else f"[Tool: {tool_name}]"
+            )
+            conversation.append({"role": "assistant", "content": assistant_turn})
+            conversation.append({
+                "role": "user",
+                "content": (
+                    f"[Tool result for {tool_name}]:\n{result_text}\n\n"
+                    "Now respond to the user based on this result. "
+                    "Do not call another tool unless necessary."
+                ),
+            })
+            continue
+        else:
+            all_text_parts.append(response_text)
+            event_data = json.dumps({"type": "chunk", "content": response_text})
+            yield f"data: {event_data}\n\n"
+            break
 
 
 class ChatRequest(BaseModel):
@@ -225,9 +421,9 @@ async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db)):
     if agent_identity_prompt:
         system_prompt = agent_identity_prompt + "\n\n---\n\n" + system_prompt
 
-    # Inject system action tools so the LLM can perform actions
-    tools_prompt = build_tools_prompt()
-    system_prompt += "\n\n" + tools_prompt
+    # Native tool calling: tools are passed via the `tools` API parameter.
+    # The text-based tools prompt is only injected as a fallback (see below).
+    use_native_tools = True  # Will be flipped to False on API rejection
 
     # Inject project folder file awareness
     upload_dir = Path(settings.upload_dir) / request.project_id
@@ -302,92 +498,68 @@ async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db)):
     messages = [{"role": "system", "content": system_prompt}, *messages]
 
     async def generate():
-        """Stream the LLM response with ReAct tool-use loop.
+        """Stream the LLM response with native tool-calling loop.
 
-        Flow:
-        1. Get LLM response (non-streaming for tool detection)
-        2. Check for tool call JSON in the response
-        3. If found: execute tool, inject result, get follow-up response
-        4. Repeat up to MAX_TOOL_ITERATIONS times
-        5. Stream the final text response to the client
+        Primary flow (native tools):
+        1. Send messages + ``tools=OPENAI_TOOLS`` to the LLM
+        2. If response contains ``tool_calls`` -> execute each, append
+           ``role: "tool"`` results, loop (max MAX_TOOL_ITERATIONS)
+        3. Stream final text response to the client
+
+        Fallback flow (text-based regex):
+        If the API rejects the ``tools`` parameter we flip to the legacy
+        path: inject ``build_tools_prompt()`` into the system message and
+        parse tool calls out of the LLM text via regex.
 
         Uses its own DB session to avoid leak when client disconnects.
         """
+        nonlocal use_native_tools
+
         conversation = list(messages)  # Local copy for the tool loop
-        all_text_parts = []  # Accumulate text for the full response
-        tool_results = []  # Track executed tools for the response
+        all_text_parts: list[str] = []  # Accumulate text for the full response
+        tool_results: list[dict] = []   # Track executed tools for the response
 
         try:
-            for iteration in range(MAX_TOOL_ITERATIONS + 1):
-                # Get LLM response (collect fully to detect tool calls)
-                full_text = []
-                async for chunk in ollama.chat_stream(
-                    messages=conversation,
-                    model=llm_model,
-                    temperature=llm_temperature,
-                    max_tokens=llm_max_tokens,
-                ):
-                    full_text.append(chunk)
+            # ── Attempt native tool calling ──────────────────────────
+            if use_native_tools:
+                try:
+                    async for event in _generate_native_tools(
+                        conversation, all_text_parts, tool_results, request,
+                        session_agent_id, llm_model, llm_temperature, llm_max_tokens,
+                    ):
+                        yield event
+                except Exception as native_err:
+                    # If the API rejected the tools param (400/422), fall back
+                    err_str = str(native_err).lower()
+                    if any(k in err_str for k in ("tools", "400", "422", "unprocessable", "not supported")):
+                        _chat_log.warning(
+                            "Native tool calling rejected, falling back to text-based: %s",
+                            native_err,
+                        )
+                        use_native_tools = False
+                        # Reset accumulators
+                        all_text_parts.clear()
+                        tool_results.clear()
+                        conversation = list(messages)
+                    else:
+                        raise
 
-                response_text = "".join(full_text)
-
-                # Check for tool call in the response
-                tool_call, text_before, text_after = _extract_tool_call(response_text)
-
-                if tool_call and iteration < MAX_TOOL_ITERATIONS:
-                    tool_name = tool_call.get("tool", "")
-                    tool_params = tool_call.get("params", {})
-
-                    _chat_log.info(f"Tool call detected: {tool_name}({json.dumps(tool_params)[:200]})")
-
-                    # Stream the pre-tool text to the client
-                    if text_before:
-                        all_text_parts.append(text_before)
-                        event_data = json.dumps({"type": "chunk", "content": text_before + "\n\n"})
-                        yield f"data: {event_data}\n\n"
-
-                    # Notify client about tool execution
-                    tool_event = json.dumps({
-                        "type": "tool_call",
-                        "tool": tool_name,
-                        "params": tool_params,
-                    })
-                    yield f"data: {tool_event}\n\n"
-
-                    # Execute the tool
-                    result = await execute_tool(
-                        tool_name, tool_params, request.project_id,
-                        agent_id=session_agent_id or "reclaw-main",
-                    )
-
-                    result_text = result.get("result", result.get("error", "Unknown result"))
-                    tool_results.append({"tool": tool_name, "result": result_text})
-
-                    # Stream tool result notification
-                    result_display = f"🔧 **{tool_name}**: {result_text}\n\n"
-                    all_text_parts.append(result_display)
-                    result_event = json.dumps({"type": "chunk", "content": result_display})
-                    yield f"data: {result_event}\n\n"
-
-                    # Add the assistant's partial response and tool result to conversation
-                    assistant_turn = text_before + f"\n\n[Tool: {tool_name}]" if text_before else f"[Tool: {tool_name}]"
-                    conversation.append({"role": "assistant", "content": assistant_turn})
-                    conversation.append({
-                        "role": "user",
-                        "content": f"[Tool result for {tool_name}]:\n{result_text}\n\nNow respond to the user based on this result. Do not call another tool unless necessary.",
-                    })
-
-                    # Continue the loop to get the follow-up response
-                    continue
-
+            # ── Fallback: text-based tool parsing ────────────────────
+            if not use_native_tools:
+                # Inject tools prompt into the system message
+                tools_prompt = build_tools_prompt()
+                if conversation and conversation[0]["role"] == "system":
+                    conversation[0]["content"] += "\n\n" + tools_prompt
                 else:
-                    # No tool call — this is the final response. Stream it.
-                    all_text_parts.append(response_text)
-                    event_data = json.dumps({"type": "chunk", "content": response_text})
-                    yield f"data: {event_data}\n\n"
-                    break
+                    conversation.insert(0, {"role": "system", "content": tools_prompt})
 
-            # Save the full assistant response
+                async for event in _generate_text_fallback(
+                    conversation, all_text_parts, tool_results, request,
+                    session_agent_id, llm_model, llm_temperature, llm_max_tokens,
+                ):
+                    yield event
+
+            # ── Save the full assistant response ─────────────────────
             async with async_session() as save_db:
                 assistant_content = "".join(all_text_parts)
                 assistant_msg = Message(
