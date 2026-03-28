@@ -41,6 +41,7 @@ class LLMServerEntry:
         self.is_healthy = False
         self.last_latency_ms: float = 0
         self.available_models: list[str] = []
+        self.model_capabilities: dict = {}  # model_name -> ModelCapability.to_dict()
         self._client: httpx.AsyncClient | None = None
 
     async def _get_client(self) -> httpx.AsyncClient:
@@ -348,11 +349,43 @@ class LLMRouter:
             for s in sorted(self._servers.values(), key=lambda s: s.priority)
         ]
 
-    def _sorted_servers(self) -> list[LLMServerEntry]:
-        """Get servers sorted by priority (lower = better), healthy first."""
+    def _sorted_servers(
+        self,
+        require_tools: bool = False,
+        require_vision: bool = False,
+        min_context: int = 0,
+    ) -> list[LLMServerEntry]:
+        """Get servers sorted by priority (lower = better), healthy first.
+
+        Optional capability filters narrow the candidate list. If no server
+        matches the filter, all servers are returned as a fallback so that
+        routing still proceeds.
+        """
+        servers = list(self._servers.values())
+        if require_tools:
+            filtered = [
+                s for s in servers
+                if any(c.get("supports_tools") for c in s.model_capabilities.values())
+            ]
+            if filtered:
+                servers = filtered
+        if require_vision:
+            filtered = [
+                s for s in servers
+                if any(c.get("supports_vision") for c in s.model_capabilities.values())
+            ]
+            if filtered:
+                servers = filtered
+        if min_context > 0:
+            filtered = [
+                s for s in servers
+                if any(c.get("context_length", 0) >= min_context for c in s.model_capabilities.values())
+            ]
+            if filtered:
+                servers = filtered
         return sorted(
-            self._servers.values(),
-            key=lambda s: (not s.is_healthy, s.priority, s.last_latency_ms),
+            servers,
+            key=lambda s: (not s.is_healthy, s.priority, s.last_latency_ms or 999),
         )
 
     async def health(self) -> bool:
@@ -360,10 +393,26 @@ class LLMRouter:
         return any(s.is_healthy for s in self._servers.values())
 
     async def check_all_health(self) -> dict[str, bool]:
-        """Run health checks on all servers."""
+        """Run health checks on all servers and detect model capabilities."""
         results = {}
         for sid, server in self._servers.items():
             results[sid] = await server.check_health()
+            # After health check, detect capabilities for healthy servers
+            if server.is_healthy:
+                try:
+                    from app.core.model_capabilities import (
+                        detect_capabilities_lmstudio,
+                        detect_capabilities_ollama,
+                    )
+                    if server.provider_type == "ollama":
+                        caps = await detect_capabilities_ollama(server.host)
+                    else:
+                        caps = await detect_capabilities_lmstudio(server.host)
+                    server.model_capabilities = {
+                        k: v.to_dict() for k, v in caps.items()
+                    }
+                except Exception as e:
+                    logger.debug(f"Model capability detection failed for {server.name}: {e}")
         return results
 
     async def start_health_loop(self, interval: int = 60):
@@ -421,10 +470,11 @@ class LLMRouter:
             msgs = [{"role": "system", "content": system}, *msgs]
         msgs = self._sanitize_messages(msgs)
 
-        for server in self._sorted_servers():
+        for server in self._sorted_servers(require_tools=bool(tools)):
             if not server.is_healthy:
                 continue
             try:
+                logger.info(f"LLM Router: routing chat to {server.name} ({server.host})")
                 return await server.chat(msgs, model=model, temperature=temperature,
                                          max_tokens=max_tokens, tools=tools)
             except Exception as e:
@@ -442,10 +492,11 @@ class LLMRouter:
             msgs = [{"role": "system", "content": system}, *msgs]
         msgs = self._sanitize_messages(msgs)
 
-        for server in self._sorted_servers():
+        for server in self._sorted_servers(require_tools=bool(tools)):
             if not server.is_healthy:
                 continue
             try:
+                logger.info(f"LLM Router: routing stream to {server.name} ({server.host})")
                 async for chunk in server.chat_stream(msgs, model=model, temperature=temperature,
                                                       max_tokens=max_tokens, tools=tools):
                     yield chunk
