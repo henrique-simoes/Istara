@@ -21,7 +21,7 @@ const TABS: { id: IntegrationsTab; icon: any; label: string }[] = [
 ];
 
 export default function IntegrationsView() {
-  const { activeTab, setActiveTab, fetchChannels } = useIntegrationsStore();
+  const { activeTab, setActiveTab, fetchChannels, channelLoading, error } = useIntegrationsStore();
 
   useEffect(() => {
     fetchChannels();
@@ -60,7 +60,20 @@ export default function IntegrationsView() {
       </div>
 
       {/* Active tab content */}
-      {renderTab()}
+      {error ? (
+        <div className="flex-1 flex items-center justify-center p-8">
+          <div className="text-center">
+            <p className="text-sm text-red-500 mb-2">Failed to load integrations</p>
+            <p className="text-xs text-slate-400">{error}</p>
+            <button
+              onClick={() => fetchChannels()}
+              className="mt-4 px-4 py-2 text-sm bg-reclaw-600 text-white rounded-lg hover:bg-reclaw-700 transition-colors"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      ) : renderTab()}
     </div>
   );
 }

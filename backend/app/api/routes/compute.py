@@ -30,6 +30,7 @@ async def compute_stats():
         "total_cpu_cores": stats["total_cpu_cores"],
         "available_models": stats["available_models"],
         "swarm_tier": _compute_swarm_tier(stats["alive_nodes"]),
+        "nodes": stats.get("nodes", []),
     }
 
 

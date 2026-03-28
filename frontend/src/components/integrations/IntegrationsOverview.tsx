@@ -38,10 +38,10 @@ export default function IntegrationsOverview() {
     ]).finally(() => setLoaded(true));
   }, [fetchChannels, fetchDeployments, fetchSurveyIntegrations, fetchMCPClients]);
 
-  const activeChannels = channelInstances.filter((c) => c.is_active).length;
-  const activeDeployments = deploymentsList.filter((d) => d.state === "active").length;
-  const totalSurveyResponses = surveyIntegrations.length;
-  const totalMCPTools = mcpClients.reduce((acc, c) => acc + (c.tools?.length || 0), 0);
+  const activeChannels = (channelInstances || []).filter((c) => c.is_active).length;
+  const activeDeployments = (deploymentsList || []).filter((d) => d.state === "active").length;
+  const totalSurveyResponses = (surveyIntegrations || []).length;
+  const totalMCPTools = (mcpClients || []).reduce((acc, c) => acc + (c.tools?.length || 0), 0);
 
   const stats: StatCard[] = [
     { label: "Channels Active", value: activeChannels, icon: MessageSquare, color: "text-blue-500", tab: "messaging" },
@@ -52,14 +52,14 @@ export default function IntegrationsOverview() {
 
   // Build recent activity from channel instances + deployments
   const recentActivity = [
-    ...channelInstances.slice(0, 3).map((c) => ({
+    ...(channelInstances || []).slice(0, 3).map((c) => ({
       id: c.id,
       type: "channel" as const,
       label: `${c.platform} channel "${c.name}"`,
       detail: c.is_active ? "Active" : "Inactive",
       time: c.updated_at,
     })),
-    ...deploymentsList.slice(0, 3).map((d) => ({
+    ...(deploymentsList || []).slice(0, 3).map((d) => ({
       id: d.id,
       type: "deployment" as const,
       label: `${d.deployment_type} "${d.name}"`,
