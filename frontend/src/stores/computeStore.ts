@@ -41,7 +41,10 @@ export const useComputeStore = create<ComputeState>((set) => ({
   fetchStats: async () => {
     set({ loading: true });
     try {
-      const res = await fetch(`${API_BASE}/api/compute/stats`);
+      const token = localStorage.getItem("reclaw_token");
+      const headers: Record<string, string> = {};
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const res = await fetch(`${API_BASE}/api/compute/stats`, { headers });
       const data = await res.json();
       set({ stats: data, loading: false });
     } catch {
@@ -52,7 +55,10 @@ export const useComputeStore = create<ComputeState>((set) => ({
   fetchNodes: async () => {
     set({ loading: true });
     try {
-      const res = await fetch(`${API_BASE}/api/compute/nodes`);
+      const token = localStorage.getItem("reclaw_token");
+      const headers: Record<string, string> = {};
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const res = await fetch(`${API_BASE}/api/compute/nodes`, { headers });
       const data = await res.json();
       set({ stats: data, loading: false });
     } catch {
