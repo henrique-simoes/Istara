@@ -760,6 +760,18 @@ class AgentOrchestrator:
         all nuggets feed into all facts, all facts feed into all insights, etc.
         This ensures every finding has traceable evidence.
         """
+        # === VALIDATION GATE: sanitize tags before storage ===
+        for nugget_data in (output.nuggets or []):
+            tags = nugget_data.get("tags", [])
+            if isinstance(tags, str):
+                try:
+                    tags = json.loads(tags)
+                except (json.JSONDecodeError, TypeError):
+                    tags = []
+            # Filter empty/too-short tags (but keep ux-law: tags)
+            tags = [t for t in tags if t and (len(t.strip()) >= 2 or t.startswith("ux-law:"))]
+            nugget_data["tags"] = tags
+
         # Determine base phase from skill (Double Diamond)
         skill = registry.get(task.skill_name) if task.skill_name else None
         skill_phase = skill.phase.value if skill else None
@@ -855,6 +867,17 @@ class AgentOrchestrator:
             db.add(rec)
 
         await db.commit()
+
+        # Route findings to convergent project reports
+        try:
+            from app.core.report_manager import report_manager
+            all_finding_ids = created_nugget_ids + created_fact_ids + created_insight_ids
+            if all_finding_ids and skill:
+                await report_manager.route_findings(
+                    project_id, skill.name, all_finding_ids, db
+                )
+        except Exception as e:
+            logger.warning("Report routing failed: %s", e)
 
         # Broadcast finding_created events so the frontend updates in real-time
         total_findings = (
