@@ -8,10 +8,11 @@ from __future__ import annotations
 import logging
 from typing import Optional
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
 from pydantic import BaseModel
 
 from app.config import settings
+from app.core.security_middleware import require_admin_from_request
 
 router = APIRouter(prefix="/autoresearch")
 logger = logging.getLogger(__name__)
@@ -129,8 +130,9 @@ async def get_experiment(experiment_id: str):
 
 
 @router.post("/start")
-async def start_experiment(body: StartExperimentRequest, background_tasks: BackgroundTasks):
+async def start_experiment(body: StartExperimentRequest, request: Request, background_tasks: BackgroundTasks):
     """Start an autoresearch experiment loop in the background."""
+    require_admin_from_request(request)
     engine = _get_engine()
 
     if engine.is_running():
@@ -216,8 +218,9 @@ async def get_leaderboard():
 
 
 @router.post("/toggle")
-async def toggle_autoresearch(body: ToggleRequest):
+async def toggle_autoresearch(body: ToggleRequest, request: Request):
     """Enable or disable autoresearch."""
+    require_admin_from_request(request)
     settings.autoresearch_enabled = body.enabled
 
     engine = _get_engine()

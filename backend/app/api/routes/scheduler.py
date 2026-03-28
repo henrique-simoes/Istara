@@ -3,12 +3,13 @@
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.scheduler import CronParser, ScheduledTask
+from app.core.security_middleware import require_admin_from_request
 from app.models.database import get_db
 
 router = APIRouter()
@@ -60,8 +61,9 @@ class ScheduleResponse(BaseModel):
 # ---------------------------------------------------------------------------
 
 @router.post("/schedules", response_model=ScheduleResponse, status_code=201)
-async def create_schedule(data: ScheduleCreate, db: AsyncSession = Depends(get_db)):
+async def create_schedule(data: ScheduleCreate, request: Request, db: AsyncSession = Depends(get_db)):
     """Create a new scheduled task."""
+    require_admin_from_request(request)
     # Validate cron expression
     try:
         CronParser.parse(data.cron_expression)
@@ -154,8 +156,9 @@ async def update_schedule(
 
 
 @router.delete("/schedules/{schedule_id}", status_code=204)
-async def delete_schedule(schedule_id: str, db: AsyncSession = Depends(get_db)):
+async def delete_schedule(schedule_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     """Delete a scheduled task."""
+    require_admin_from_request(request)
     result = await db.execute(
         select(ScheduledTask).where(ScheduledTask.id == schedule_id)
     )

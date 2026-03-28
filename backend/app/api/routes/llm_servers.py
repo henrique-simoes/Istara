@@ -5,11 +5,13 @@ import logging
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.field_encryption import encrypt_field, decrypt_field
+from app.core.security_middleware import require_admin_from_request
 from app.models.database import get_db
 from app.models.llm_server import LLMServer
 
@@ -51,6 +53,7 @@ async def list_llm_servers(db: AsyncSession = Depends(get_db)):
                 "name": s.name,
                 "provider_type": s.provider_type,
                 "host": s.host,
+                "has_api_key": bool(s.api_key and s.api_key != ""),
                 "is_local": s.is_local,
                 "is_healthy": s.is_healthy,
                 "is_relay": s.is_relay,
@@ -66,14 +69,15 @@ async def list_llm_servers(db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/llm-servers")
-async def add_llm_server(data: LLMServerCreate, db: AsyncSession = Depends(get_db)):
+async def add_llm_server(data: LLMServerCreate, request: Request, db: AsyncSession = Depends(get_db)):
     """Add a new external LLM server."""
+    require_admin_from_request(request)
     server = LLMServer(
         id=str(uuid.uuid4()),
         name=data.name,
         provider_type=data.provider_type,
         host=data.host.rstrip("/"),
-        api_key=data.api_key,
+        api_key=encrypt_field(data.api_key) if data.api_key else "",
         is_local=data.is_local,
         priority=data.priority,
     )
@@ -81,14 +85,14 @@ async def add_llm_server(data: LLMServerCreate, db: AsyncSession = Depends(get_d
     await db.commit()
     await db.refresh(server)
 
-    # Register with the live router
+    # Register with the live router (decrypt key for runtime use)
     from app.core.llm_router import llm_router, LLMServerEntry
     entry = LLMServerEntry(
         server_id=server.id,
         name=server.name,
         provider_type=server.provider_type,
         host=server.host,
-        api_key=server.api_key,
+        api_key=decrypt_field(server.api_key) if server.api_key else "",
         priority=server.priority,
         is_local=server.is_local,
     )
@@ -143,15 +147,19 @@ async def health_check_server(server_id: str, db: AsyncSession = Depends(get_db)
 
 @router.patch("/llm-servers/{server_id}")
 async def update_llm_server(
-    server_id: str, data: LLMServerUpdate, db: AsyncSession = Depends(get_db)
+    server_id: str, data: LLMServerUpdate, request: Request, db: AsyncSession = Depends(get_db)
 ):
     """Update an LLM server's configuration."""
+    require_admin_from_request(request)
     result = await db.execute(select(LLMServer).where(LLMServer.id == server_id))
     server = result.scalar_one_or_none()
     if not server:
         raise HTTPException(status_code=404, detail="Server not found")
 
     update_data = data.model_dump(exclude_unset=True)
+    # Encrypt API key if being updated
+    if "api_key" in update_data and update_data["api_key"]:
+        update_data["api_key"] = encrypt_field(update_data["api_key"])
     for field, value in update_data.items():
         setattr(server, field, value)
     await db.commit()
@@ -160,8 +168,9 @@ async def update_llm_server(
 
 
 @router.delete("/llm-servers/{server_id}")
-async def delete_llm_server(server_id: str, db: AsyncSession = Depends(get_db)):
+async def delete_llm_server(server_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     """Remove an LLM server."""
+    require_admin_from_request(request)
     result = await db.execute(select(LLMServer).where(LLMServer.id == server_id))
     server = result.scalar_one_or_none()
     if not server:

@@ -2,10 +2,11 @@
 
 import json
 import logging
+import time
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, validator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -18,12 +19,37 @@ from app.models.user import User
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
+# ---------------------------------------------------------------------------
+# In-memory login rate limiter
+# ---------------------------------------------------------------------------
+_login_attempts: dict[str, list[float]] = {}  # IP -> [timestamps]
+MAX_LOGIN_ATTEMPTS = 5
+LOGIN_WINDOW = 60  # seconds
+
+
+async def _check_login_rate(request: Request):
+    client_ip = request.client.host if request.client else "unknown"
+    now = time.time()
+    attempts = _login_attempts.get(client_ip, [])
+    # Remove old attempts outside the window
+    attempts = [t for t in attempts if now - t < LOGIN_WINDOW]
+    if len(attempts) >= MAX_LOGIN_ATTEMPTS:
+        raise HTTPException(status_code=429, detail="Too many login attempts. Try again in 60 seconds.")
+    attempts.append(now)
+    _login_attempts[client_ip] = attempts
+
 
 class RegisterRequest(BaseModel):
     username: str
     email: str
     password: str
     display_name: str = ""
+
+    @validator("password")
+    def password_strength(cls, v):
+        if len(v) < 8:
+            raise ValueError("Password must be at least 8 characters")
+        return v
 
 
 class LoginRequest(BaseModel):
@@ -84,12 +110,14 @@ async def register(req: RegisterRequest):
 
 
 @router.post("/auth/login")
-async def login(req: LoginRequest, db: AsyncSession = Depends(get_db)):
+async def login(req: LoginRequest, request: Request, db: AsyncSession = Depends(get_db)):
     """Log in and receive a JWT token.
 
     Always issues a real JWT — even in local mode — because the
     SecurityAuthMiddleware requires valid JWTs on all protected endpoints.
     """
+    await _check_login_rate(request)
+
     from sqlalchemy import select
     from app.models.user import User
 

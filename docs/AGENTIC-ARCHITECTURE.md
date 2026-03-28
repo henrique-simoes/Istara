@@ -33,7 +33,7 @@ User Message
     |
     v
 [3] LLM Call with Native Tool Calling
-    ├── Provider: LM Studio or Ollama (llm_router.py → lmstudio.py)
+    ├── Provider: LM Studio or Ollama (compute_registry.py → lmstudio.py)
     ├── tools=OPENAI_TOOLS (14 tools in JSON Schema format)
     ├── Streaming: token-by-token to frontend via SSE
     └── Model selection: priority-based from healthy servers
@@ -60,8 +60,10 @@ User Message
 | 2 | `core/prompt_rag.py` | `compose_dynamic_prompt()` |
 | 2 | `core/context_hierarchy.py` | `compose_context()` |
 | 2 | `core/rag.py` | `retrieve_context()` |
-| 3 | `core/llm_router.py` | `LLMRouter.chat_stream()` |
+| 3 | `core/compute_registry.py` | `ComputeRegistry.chat_stream()` — LLM routing engine |
 | 3 | `core/lmstudio.py` | `LMStudioClient.chat_stream()` |
+| 3 | `core/llm_router.py` | Backward-compat wrapper (delegates to `compute_registry`) |
+| 3 | `core/compute_pool.py` | Backward-compat wrapper (delegates to `compute_registry`) |
 | 4 | `skills/system_actions.py` | `OPENAI_TOOLS`, `execute_tool()` |
 | 5 | `core/context_summarizer.py` | `summarize_if_needed()` |
 

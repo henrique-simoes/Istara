@@ -88,6 +88,7 @@ class OllamaClient:
         system: str | None = None,
         temperature: float = 0.7,
         max_tokens: int | None = None,
+        tools: list[dict] | None = None,
     ) -> dict:
         """Non-streaming chat completion."""
         msgs = list(messages)
@@ -105,6 +106,8 @@ class OllamaClient:
             "stream": False,
             "options": options,
         }
+        if tools:
+            payload["tools"] = tools
 
         client = await self._get_client()
         resp = await client.post("/api/chat", json=payload)
@@ -118,6 +121,7 @@ class OllamaClient:
         system: str | None = None,
         temperature: float = 0.7,
         max_tokens: int | None = None,
+        tools: list[dict] | None = None,
     ) -> AsyncGenerator[str, None]:
         """Streaming chat completion — yields content chunks."""
         msgs = list(messages)
@@ -135,6 +139,8 @@ class OllamaClient:
             "stream": True,
             "options": options,
         }
+        if tools:
+            payload["tools"] = tools
 
         client = await self._get_client()
         async with client.stream("POST", "/api/chat", json=payload, timeout=None) as resp:
