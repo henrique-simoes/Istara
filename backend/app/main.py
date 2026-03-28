@@ -212,7 +212,28 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     except Exception as e:
         _log.warning(f"Channel instance loading skipped: {e}")
 
-    # Network discovery: find LLM servers on local network FIRST
+    # Register configured local LLM server FIRST (before discovery)
+    try:
+        from app.core.llm_router import llm_router, LLMServerEntry
+        local_host = app_settings.lmstudio_host if app_settings.llm_provider == "lmstudio" else app_settings.ollama_host
+        local_type = app_settings.llm_provider
+        # Check if already registered
+        existing_hosts = {e.host for e in llm_router._servers.values()}
+        if local_host not in existing_hosts:
+            local_entry = LLMServerEntry(
+                server_id=f"local-{local_type}",
+                name=f"Local {local_type.title()}",
+                provider_type=local_type,
+                host=local_host,
+                priority=100,  # Highest priority for local
+                is_local=True,
+            )
+            llm_router.register_server(local_entry)
+            _log.info(f"Registered local LLM server: {local_host}")
+    except Exception as e:
+        _log.warning(f"Local LLM registration failed: {e}")
+
+    # Network discovery: find LLM servers on local network
     try:
         from app.core.network_discovery import discover_and_register
         discovered = await discover_and_register()

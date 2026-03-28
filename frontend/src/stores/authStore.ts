@@ -85,7 +85,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   checkTeamStatus: async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/auth/team-status`);
+      const _tk = localStorage.getItem("reclaw_token");
+      const _hd: Record<string, string> = {};
+      if (_tk) _hd["Authorization"] = `Bearer ${_tk}`;
+      const res = await fetch(`${API_BASE}/api/auth/team-status`, { headers: _hd });
       const data = await res.json();
       set({ teamMode: data.team_mode });
     } catch {

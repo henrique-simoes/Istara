@@ -25,7 +25,10 @@ export default function MetricsView() {
     if (!activeProjectId) return;
     setLoading(true);
     setError(null);
-    fetch(`${API_BASE}/api/metrics/${activeProjectId}`)
+    const _t = localStorage.getItem("reclaw_token");
+    const _h: Record<string, string> = {};
+    if (_t) _h["Authorization"] = `Bearer ${_t}`;
+    fetch(`${API_BASE}/api/metrics/${activeProjectId}`, { headers: _h })
       .then((r) => { if (!r.ok) throw new Error("Failed to load metrics"); return r.json(); })
       .then(setMetrics)
       .catch((e) => setError(e.message))
