@@ -11,6 +11,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.field_encryption import decrypt_field, encrypt_field
 from app.models.database import get_db
 from app.models.survey_integration import SurveyIntegration, SurveyLink
 
@@ -50,7 +51,8 @@ class SurveyCreateRequest(BaseModel):
 
 def _get_adapter(integration: SurveyIntegration):
     """Instantiate the correct adapter for an integration row."""
-    config = json.loads(integration.config_json) if integration.config_json else {}
+    raw = decrypt_field(integration.config_json) if integration.config_json else "{}"
+    config = json.loads(raw)
 
     if integration.platform == "surveymonkey":
         from app.services.survey_platforms.surveymonkey import SurveyMonkeyAdapter
@@ -127,7 +129,7 @@ async def create_integration(
         id=str(uuid.uuid4()),
         platform=data.platform,
         name=data.name,
-        config_json=json.dumps(data.config),
+        config_json=encrypt_field(json.dumps(data.config)),
         project_id=data.project_id,
     )
     db.add(integration)

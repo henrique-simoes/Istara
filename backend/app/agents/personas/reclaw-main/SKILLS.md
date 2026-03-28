@@ -169,6 +169,12 @@
 - Most APIs need no authentication — only Portal da Transparência and DataJud need free API keys
 
 ## Security Architecture
+- ReClaw uses production-grade security across ALL layers: authentication, encryption, filesystem, network
+- Field-level encryption: sensitive data (channel tokens, API keys, survey credentials, MCP headers) encrypted with Fernet (AES-128-CBC + HMAC-SHA256) before storage. Encrypted fields use `ENC:` prefix.
+- Data encryption key auto-generated on first startup, persisted to `.env`. If lost, encrypted data is unrecoverable — this is by design.
+- Filesystem hardening: data directory set to 0700 (owner-only), database files 0600, backup archives 0600
+- Admin user management: only admins can create/delete users and change roles via /api/auth/users endpoints. No direct DB manipulation allowed.
+- PostgreSQL connections use SSL when available
 - ReClaw uses production-grade JWT authentication on ALL endpoints — no exceptions except health check and login
 - Global SecurityAuthMiddleware enforces auth before any route handler runs — cannot be bypassed by new routes
 - On first startup, admin user auto-created with credentials printed to server console

@@ -455,6 +455,12 @@ class BackupManager:
 
             archive_checksum = _sha256_file(archive_path)
 
+            # Harden permissions: owner read/write only (0600)
+            try:
+                os.chmod(archive_path, 0o600)
+            except OSError:
+                pass  # May fail on some filesystems
+
             return {
                 "manifest": manifest,
                 "total_size": Path(archive_path).stat().st_size,
@@ -554,6 +560,10 @@ class BackupManager:
             state["last_full_at"] = timestamp
 
         state_path.write_text(json.dumps(state, indent=2))
+        try:
+            os.chmod(str(state_path), 0o600)
+        except OSError:
+            pass
 
     # -- Restore -------------------------------------------------------------
 

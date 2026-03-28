@@ -65,6 +65,27 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     app_settings.ensure_dirs()
     app_settings.ensure_secrets()
 
+    # Ensure data encryption key exists (auto-generated on first run)
+    try:
+        from app.core.field_encryption import ensure_encryption_key
+        ensure_encryption_key()
+    except Exception as e:
+        __import__("logging").getLogger(__name__).warning(f"Encryption key setup: {e}")
+
+    # Harden data directory permissions (owner-only access)
+    import os
+    import stat
+    from pathlib import Path
+    data_path = Path(app_settings.data_dir)
+    if data_path.exists():
+        try:
+            os.chmod(data_path, stat.S_IRWXU)  # 700: owner only
+            for item in data_path.iterdir():
+                if item.is_file():
+                    os.chmod(item, stat.S_IRUSR | stat.S_IWUSR)  # 600: owner read/write
+        except OSError:
+            pass  # May fail on some filesystems
+
     # Bootstrap admin user if none exists
     try:
         from app.models.user import User
