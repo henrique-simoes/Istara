@@ -73,16 +73,23 @@ def _get_fernet():
     return _fernet_instance
 
 
+_plaintext_warned = False
+
+
 def encrypt_field(plaintext: str) -> str:
     """Encrypt a string field. Returns the ciphertext as a string.
 
     If encryption is not available (no key or no cryptography lib),
     returns the plaintext unchanged (backward-compatible).
     """
+    global _plaintext_warned
     if not plaintext:
         return plaintext
     f = _get_fernet()
     if f is None:
+        if not _plaintext_warned:
+            logger.warning("Field encryption unavailable — storing sensitive data in plaintext")
+            _plaintext_warned = True
         return plaintext
     try:
         encrypted = f.encrypt(plaintext.encode())
@@ -124,6 +131,11 @@ def ensure_encryption_key() -> str:
         return settings.data_encryption_key
 
     if not CRYPTO_AVAILABLE:
+        logger.warning(
+            "SECURITY WARNING: 'cryptography' library not installed. "
+            "Sensitive data (channel tokens, API keys) will be stored in PLAINTEXT. "
+            "Install: pip install cryptography"
+        )
         return ""
 
     # Generate a new Fernet key

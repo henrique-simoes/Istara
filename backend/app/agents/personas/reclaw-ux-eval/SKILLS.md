@@ -39,7 +39,7 @@
 - Terminology load: how many domain-specific terms must a user learn before being productive?
 
 ### Competitive Experience Comparison
-- Benchmark against known UXR tools: Dovetail, EnjoyHQ, Optimal Workshop, UserTesting
+- Benchmark against established commercial UXR platforms
 - Identify feature parity gaps and experience advantages
 - Evaluate unique value propositions (AI-powered analysis, multi-agent system) and how well they're communicated
 - Assess whether ReClaw's complexity is justified by its capabilities relative to simpler alternatives

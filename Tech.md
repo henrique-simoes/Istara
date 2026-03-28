@@ -968,6 +968,8 @@ Pessimistic locking prevents multiple users/agents from working on the same task
 
 ### LLM Router
 
+> **Note:** As of the ComputeRegistry unification, `llm_router.py` and `compute_pool.py` are thin wrappers over `compute_registry.py`. See the "ComputeRegistry — Single Source of Truth" section for the current architecture.
+
 A provider-agnostic routing layer that supports Ollama, LM Studio, and any OpenAI-compatible endpoint:
 
 - **LLMRouter**: Same interface as `OllamaClient` (`health()`, `chat()`, `chat_stream()`, `embed()`) — drop-in replacement.
@@ -1005,6 +1007,8 @@ A Node.js daemon that allows team members to donate LLM compute:
 **Files**: `relay/` directory — `index.mjs`, `lib/connection.mjs`, `lib/state-machine.mjs`, `lib/heartbeat.mjs`, `lib/llm-proxy.mjs`
 
 ### Compute Pool
+
+> **Note:** As of the ComputeRegistry unification, `llm_router.py` and `compute_pool.py` are thin wrappers over `compute_registry.py`. See the "ComputeRegistry — Single Source of Truth" section for the current architecture.
 
 Server-side registry of connected relay nodes:
 

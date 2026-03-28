@@ -2,8 +2,8 @@
 
 ## Prerequisites
 
-- **Python 3.12+** (backend)
-- **Node.js 20+** (frontend)
+- **Python 3.11+** (backend)
+- **Node.js 18+** (frontend)
 - **LM Studio** or **Ollama** (local LLM inference)
 - **Docker 24.0+** (optional, for containerized deployment)
 

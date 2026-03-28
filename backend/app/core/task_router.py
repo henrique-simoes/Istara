@@ -27,11 +27,14 @@ SPECIALTY_KEYWORDS = {
         "audit", "data integrity", "system health", "monitoring",
         "infrastructure", "deployment", "security", "performance",
         "logging", "metrics",
+        "compute pool", "relay", "node", "docker", "container",
+        "encryption", "authentication", "jwt", "backup",
     ],
     "ui": [
         "ui", "interface", "component", "design", "layout", "css",
         "styling", "responsive", "visual", "accessibility", "wcag",
         "a11y", "contrast", "typography", "heuristic",
+        "aria", "touch target",
     ],
     "ux": [
         "usability", "user experience", "ux", "evaluation", "journey",
@@ -47,6 +50,9 @@ SPECIALTY_KEYWORDS = {
         "affinity", "competitive", "stakeholder", "diary", "ethnograph",
         "field study", "analytics", "jtbd", "jobs to be done",
         "synthesis", "report",
+        "channel", "telegram", "slack", "whatsapp", "messaging",
+        "mcp", "integration", "browser", "web fetch", "autoresearch",
+        "laws of ux", "ux law", "compliance", "gestalt", "fitts", "hick",
     ],
 }
 

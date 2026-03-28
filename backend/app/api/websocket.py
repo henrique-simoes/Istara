@@ -95,9 +95,8 @@ async def websocket_endpoint(websocket: WebSocket):
     - deployment_finding: New finding extracted from a deployment response
     - deployment_progress: Deployment analytics/progress update
     """
-    await manager.connect(websocket)
-
-    # Authenticate WebSocket connection
+    # Authenticate BEFORE accepting the connection — unauthenticated clients
+    # must never receive broadcast messages, even briefly.
     token = websocket.query_params.get("token", "")
     if not token:
         auth_header = websocket.headers.get("authorization", "")
@@ -112,6 +111,9 @@ async def websocket_endpoint(websocket: WebSocket):
     else:
         await websocket.close(code=4001, reason="Authentication required. Pass ?token=<jwt>")
         return
+
+    # Token is valid — now accept and register the connection
+    await manager.connect(websocket)
 
     try:
         # Send initial status
