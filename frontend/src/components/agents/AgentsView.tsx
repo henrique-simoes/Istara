@@ -536,7 +536,7 @@ function AgentDetail({ agent }: { agent: Agent }) {
             <button
               onClick={async () => {
                 try {
-                  const res = await fetch(`http://localhost:8000/api/agents/${agent.id}/export`);
+                  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/agents/${agent.id}/export`);
                   const data = await res.json();
                   const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
                   const url = URL.createObjectURL(blob);
@@ -961,7 +961,7 @@ export default function AgentsView() {
                           const text = await file.text();
                           const data = JSON.parse(text);
                           const agentData = data.agent || data;
-                          await fetch("http://localhost:8000/api/agents/import", {
+                          await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/agents/import`, {
                             method: "POST",
                             headers: { "Content-Type": "application/json" },
                             body: JSON.stringify(agentData),

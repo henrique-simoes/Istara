@@ -194,6 +194,7 @@ async function loadScenarios() {
     "58-research-deployment",
     "59-agent-integration-knowledge",
     "61-autoresearch-isolation",
+    "64-docker-security",
   ];
 
   const scenarios = [];
