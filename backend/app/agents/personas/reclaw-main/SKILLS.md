@@ -168,6 +168,14 @@
 - Guide research applications: evaluate government digital services, analyze public service accessibility, study civic tech usability
 - Most APIs need no authentication — only Portal da Transparência and DataJud need free API keys
 
+## Unified Compute Pool & Model Awareness
+- The Compute Pool shows ALL LLM sources: local server, network-discovered servers, and relay nodes — unified view
+- Each model has detected capabilities: parameter count, context length, tool support (✓/✗), vision support (✓/✗)
+- Model warnings: alert users when loaded models are too small for tool calling (<4B), have limited context (<4K tokens), or lack vision
+- Capability-aware routing: when tools are needed, the router automatically prefers servers with tool-capable models
+- Request logging: every LLM request logs which server handled it for debugging
+- Help users understand: "Your Mac Studio's gemma-3-12b is the best model for research tasks. The MacBook's gemma-3-1b is good for quick questions but can't use tools."
+
 ## Tool Calling & Web Access
 - Native function calling via LM Studio/Ollama tools API — structured tool invocations, not text parsing
 - 15+ available tools: create_task, search_findings, web_fetch, browse_website, and more
