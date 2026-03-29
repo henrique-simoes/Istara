@@ -138,6 +138,13 @@
 - Team mode toggle: UI switch writes `TEAM_MODE=true|false` to `.env` file. Monitor for: `.env` write permission failures, config reload race conditions, team mode state inconsistency between in-memory config and `.env`.
 - Google Stitch API key: new encrypted field stored via Fernet encryption for Google Generative AI credentials. Monitor for: encryption/decryption failures, key rotation impact on this field.
 
+### Feature Update — Agent Scope System
+- DB migration in `init_db()`: ALTER TABLE adds `scope` (TEXT, default 'universal') and `project_id` (TEXT, nullable) to agents, plus `is_paused` (BOOLEAN, default false) and `owner_id` (TEXT, nullable) to projects. All ALTERs wrapped in try/except so they are idempotent on repeat startup.
+- Scope enforcement: agents with `scope='project'` are filtered by `project_id` in list queries. System agents are hardcoded to `scope='universal'` and cannot be demoted. Monitor for: queries returning project-scoped agents outside their project (data leak), or system agents with non-universal scope (corruption).
+- Promotion security: `POST /agents/{id}/request-promotion` creates an admin notification; `POST /agents/{id}/set-scope` requires admin role. Monitor for: unauthorized scope changes (non-admin calling set-scope), promotion requests without matching notifications, bulk promotion attempts.
+- Orphaned data purge: notifications, custom agents, deployments, and proposals referencing deleted projects or users are cleaned during the fresh-start migration. Monitor for: new orphan accumulation after purge, foreign key violations in the agent-project relationship.
+- Project data isolation: stale `project_id` values cleared from localStorage on login. Monitor for: API responses leaking cross-project agent data, stale project references surviving the cleanup.
+
 ## Limitations
 - Read-only access to user data (cannot modify findings, projects, or user settings)
 - Cannot restart or reconfigure LLM services (report only)

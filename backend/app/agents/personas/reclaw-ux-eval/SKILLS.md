@@ -129,6 +129,13 @@
 - Sidebar scroll fix: nav and projects share a single scrollable container. Evaluate: does the unified scroll eliminate the previous dead-zone issue where "More" broke layout? Is the scroll behavior predictable — does it feel like one continuous list rather than two disjointed sections?
 - Settings label improvements: "(Server)" and "Server Model" labels clarify hardware context. Evaluate: do the labels reduce confusion for users who have both local and server LLM setups? Is the terminology consistent with how "server" is used elsewhere in the platform (Jakob's Law — internal consistency)?
 
+### Feature Update — Agent Scope System
+- Project isolation UX: agents scoped to a project only appear within that project context. Evaluate: does this filtering match user expectations (Jakob's Law — scope boundaries should be predictable)? When a user switches projects, is it clear that the agent list changed and why? Is there information scent indicating which agents are project-local vs universal?
+- "No Project Selected" prompt: when no project is active, views display a prompt instead of empty content. Evaluate: does the prompt clearly guide users to select a project (Recognition Rather Than Recall)? Is the prompt tone helpful rather than blocking? Does it reduce confusion compared to showing a blank or broken view (Doherty Threshold — immediate feedback about what to do next)?
+- Promotion discoverability: users can request promotion of a project-scoped agent to universal via a button. Evaluate: is the "Request Promotion" action discoverable (Paradox of Active User — will users find it without guidance)? Is the concept of promotion explained in-context (tooltip or helper text)? After requesting, is feedback immediate and clear (confirmation toast, status change on the card)?
+- Scope badge comprehension: agent cards show universal vs project scope indicators. Evaluate: do researchers understand the difference without reading documentation (Aesthetic-Usability Effect — clear visual distinction builds trust in the system's data isolation)? Is the badge terminology familiar or does it add unnecessary cognitive load?
+- Admin promotion flow: admins receive notifications for promotion requests and approve via set-scope. Evaluate: is the admin notification actionable (one-click approve/deny)? Is the approval flow efficient for admins managing many agents? Does the requester receive timely feedback when their promotion is approved or denied?
+
 ## Limitations
 - Evaluations are heuristic-based, not empirical (no real user testing data)
 - Cannot measure actual task completion times or error rates without user sessions

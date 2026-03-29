@@ -939,6 +939,28 @@ Agents stuck in ERROR state now auto-recover:
 - New `POST /agents/{id}/restart` endpoint for manual recovery (clears error counters)
 - Frontend polling keeps heartbeat status current (10s interval)
 
+### Agent Scope System
+
+Agents have a `scope` field that determines their visibility:
+- **Universal** (default for system agents): Visible across all projects
+- **Project**: Scoped to a single project, only visible when that project is active
+
+**Promotion Flow** (team mode):
+- Users can request promotion of project-scoped agents to universal via `POST /agents/{id}/request-promotion`
+- This creates an admin notification under the `agent_promotion` category
+- Only admins can promote agents via `POST /agents/{id}/set-scope`
+- System agents are always universal and cannot be demoted
+
+**API**: `GET /agents` accepts optional `project_id` to filter — returns universal agents + project-scoped agents for that project. Without `project_id`, returns all agents (admin/global view).
+
+**Model fields**: `scope` (VARCHAR 10, default "universal"), `project_id` (VARCHAR 36, default "")
+
+### Project Data Isolation
+
+Views that require a project context show a "No Project Selected" prompt when no project is active, preventing cross-project data leakage. The `activeProjectId` is cleared from localStorage when all projects are deleted, preventing stale references.
+
+Backend endpoints with optional `project_id` parameters (documents, findings, notifications, deployments) return all data when called without a project — the frontend guard prevents this in normal usage.
+
 ### Stability Fixes
 
 - **Integrations**: Wrapped in `<ErrorBoundary>` with loading guards; error cleared on tab switch; API response unwrapping for surveys and MCP

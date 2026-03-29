@@ -140,6 +140,14 @@
 - **Loops skill dropdown validation**: Create a custom loop, verify the skill picker returns the full skill catalog. Select a skill from the dropdown, save the loop, and verify the skill ID is persisted correctly. Test with an invalid/deleted skill ID — verify graceful error handling.
 - **Design Brief evidence and law badges**: Generate a design brief with UX law violations, verify badges render with correct violation counts. Navigate "View violations" and verify the findings list is filtered to the correct law ID. Test with zero violations — verify no badge is shown.
 
+### Feature Update — Agent Scope System Simulation Scenarios
+- **Scope filtering**: Create a project-scoped custom agent, verify it only appears in agent lists when that project is active. Switch to a different project and verify the agent is absent. Switch back and verify it reappears. Test with no active project — verify the agent is not listed.
+- **Promotion request flow**: Create a project-scoped agent, call `POST /agents/{id}/request-promotion`, verify 200 response and that an admin notification is created. Verify non-admin users cannot call `POST /agents/{id}/set-scope` (expect 403). Call set-scope as admin, verify the agent's scope changes to universal and it now appears in all project contexts.
+- **System agent immutability**: Verify all 5 system agents have `scope='universal'` and `project_id=null`. Attempt to change a system agent's scope via set-scope — verify it is rejected or ignored. System agents must never become project-scoped.
+- **Project data isolation**: Create two projects with project-scoped agents in each. Verify agents from project A do not leak into project B's agent list. Delete project A and verify its agents are cleaned up (no orphans).
+- **Stale localStorage cleanup**: Simulate storing a deleted project's ID in localStorage, then trigger the login cleanup flow. Verify the stale ID is removed and the UI shows "No Project Selected" instead of referencing a ghost project.
+- **DB migration idempotency**: Call `init_db()` twice in sequence. Verify the ALTER TABLE statements for `scope`, `project_id`, `is_paused`, and `owner_id` do not raise errors on the second run (try/except wrapping).
+
 ## Limitations
 - Cannot test actual browser rendering (tests are API-level, not visual)
 - Cannot simulate real user mouse movements or visual scanning patterns

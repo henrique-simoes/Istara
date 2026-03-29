@@ -46,9 +46,21 @@ class UpdateAgentRequest(BaseModel):
 
 
 @router.get("/agents")
-async def list_agents(include_system: bool = True, db: AsyncSession = Depends(get_db)):
-    """List all active agents."""
+async def list_agents(
+    include_system: bool = True,
+    project_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
+    """List agents — universal agents are always included, project-scoped
+    agents are filtered to the given project_id."""
     agents = await agent_service.list_agents(db, include_system)
+    if project_id:
+        # Show universal agents + agents scoped to this project
+        agents = [
+            a for a in agents
+            if a.get("scope", "universal") == "universal"
+            or a.get("project_id") == project_id
+        ]
     return {"agents": agents}
 
 
@@ -210,6 +222,73 @@ async def restart_agent(agent_id: str, db: AsyncSession = Depends(get_db)):
         agent.consecutive_failures = 0
     await db.commit()
     return {"status": "restarted", "agent_id": agent_id}
+
+
+# ───── Scope & Promotion ─────
+
+
+@router.post("/agents/{agent_id}/set-scope")
+async def set_agent_scope(
+    agent_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Set an agent's scope to 'universal' or 'project'.
+    Promoting to universal requires admin role in team mode."""
+    body = await request.json()
+    new_scope = body.get("scope", "project")
+    project_id = body.get("project_id", "")
+
+    agent = await agent_service.get_agent(db, agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
+
+    # System agents are always universal
+    if agent.is_system:
+        raise HTTPException(status_code=400, detail="System agents are always universal")
+
+    # Promoting to universal requires admin
+    if new_scope == "universal" and settings.team_mode:
+        try:
+            require_admin_from_request(request)
+        except Exception:
+            raise HTTPException(
+                status_code=403,
+                detail="Only admins can promote agents to universal scope"
+            )
+
+    agent.scope = new_scope
+    agent.project_id = project_id if new_scope == "project" else ""
+    await db.commit()
+    return {"agent_id": agent_id, "scope": new_scope, "project_id": agent.project_id}
+
+
+@router.post("/agents/{agent_id}/request-promotion")
+async def request_promotion(agent_id: str, request: Request, db: AsyncSession = Depends(get_db)):
+    """Submit a request to promote a project-scoped agent to universal.
+    Creates a notification for admins to review."""
+    agent = await agent_service.get_agent(db, agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
+
+    if agent.scope == "universal":
+        return {"status": "already_universal"}
+
+    # Create a notification for admins
+    from app.models.notification import Notification
+    import uuid
+    notif = Notification(
+        id=str(uuid.uuid4()),
+        title=f"Agent Promotion Request: {agent.name}",
+        body=f"A user has requested that agent '{agent.name}' be promoted from project scope to universal scope.",
+        category="agent_promotion",
+        severity="info",
+        source_type="agent",
+        source_id=agent_id,
+    )
+    db.add(notif)
+    await db.commit()
+    return {"status": "requested", "agent_id": agent_id}
 
 
 # ───── Avatar ─────

@@ -124,6 +124,13 @@
 - Settings label clarity: Hardware now labeled "(Server)", model shown as "Server Model". Audit: verify label changes do not break form field associations (`<label>` `for` attributes), screen readers announce the updated labels correctly, and tooltip/helper text explains the server context.
 - Document Organize streaming: AI-powered organization suggestions use streaming chat output. Audit: verify streaming text is announced progressively via `aria-live="polite"` region, the streaming container does not cause layout shift as content grows, and the loading/streaming state is communicated accessibly.
 
+### Feature Update — Agent Scope System
+- "No Project Selected" prompt: when no project is active, project-dependent views display a prompt guiding users to select a project. Audit: verify the prompt is announced to screen readers via an appropriate ARIA role (e.g., `role="status"` or `aria-live="polite"`), has adequate contrast, and provides a clear call-to-action (not just empty space).
+- Scope badge UI: agent cards display a scope indicator (universal vs project). Audit: verify badges use text+icon (not color-only, WCAG 1.4.1), have adequate contrast ratios in both light and dark themes, and screen readers announce the scope via `aria-label` or sr-only text (e.g., "Scope: project" not just a colored dot).
+- Promotion request button: project-scoped agent cards include a "Request Promotion" action. Audit: verify the button has a descriptive accessible name, is keyboard-reachable, provides confirmation feedback after the request is sent (success toast or inline status), and is hidden or disabled for already-universal agents.
+- Admin promotion controls: the `set-scope` admin action should have a confirmation dialog. Audit: verify focus trapping in the confirmation dialog, Escape closes it, destructive scope changes require explicit confirmation, and the dialog returns focus to the trigger element on close.
+- Stale project cleanup: localStorage project references are cleared on login. Audit: verify no UI flash or layout shift occurs when stale state is cleared — the transition to "No Project Selected" should be smooth, not a jarring re-render.
+
 ## Limitations
 - Cannot perform live browser testing (evaluation is based on code analysis and component structure)
 - Cannot measure actual render performance or layout shift
