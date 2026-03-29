@@ -138,6 +138,13 @@
 - Team mode toggle: UI switch writes `TEAM_MODE=true|false` to `.env` file. Monitor for: `.env` write permission failures, config reload race conditions, team mode state inconsistency between in-memory config and `.env`.
 - Google Stitch API key: new encrypted field stored via Fernet encryption for Google Generative AI credentials. Monitor for: encryption/decryption failures, key rotation impact on this field.
 
+### Auth & Onboarding Fixes
+- `GET /auth/me` JWT validation: the endpoint now decodes the JWT and returns the full user object (including `role`). Monitor for: token expiry edge cases where `fetchMe()` fires before the refresh token flow completes, returning a 401 that clears the user store.
+- `fetchMe()` timing: the frontend calls `/auth/me` on page load to restore the session. If the call races with other authenticated requests during hydration, stale auth state may briefly appear. Monitor for 401 spikes at page-load time.
+- `/auth/team-status` endpoint: returns `{ team_mode, has_users }`. This endpoint is unauthenticated (needed before any user exists). Monitor for: abuse potential (information disclosure of whether the instance has users), rate-limit this endpoint in production.
+- First-user registration: when `team_mode=true` and `has_users=false`, the LoginScreen shows a registration form. The first registered user is auto-promoted to admin. Monitor for: race condition if two users register simultaneously on a fresh server — only one should become admin.
+- Git hygiene: `_creation_proposals.json` removed from tracking, `.gitignore` updated. Monitor for: any runtime data files re-appearing in git status after deployments.
+
 ### Feature Update — Agent Scope System
 - DB migration in `init_db()`: ALTER TABLE adds `scope` (TEXT, default 'universal') and `project_id` (TEXT, nullable) to agents, plus `is_paused` (BOOLEAN, default false) and `owner_id` (TEXT, nullable) to projects. All ALTERs wrapped in try/except so they are idempotent on repeat startup.
 - Scope enforcement: agents with `scope='project'` are filtered by `project_id` in list queries. System agents are hardcoded to `scope='universal'` and cannot be demoted. Monitor for: queries returning project-scoped agents outside their project (data leak), or system agents with non-universal scope (corruption).

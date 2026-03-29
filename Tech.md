@@ -955,6 +955,20 @@ Agents have a `scope` field that determines their visibility:
 
 **Model fields**: `scope` (VARCHAR 10, default "universal"), `project_id` (VARCHAR 36, default "")
 
+### First-Run Onboarding
+
+Fresh server installations follow this flow:
+1. **No team mode (default)**: LoginScreen shows local-mode hint. Any credentials work. User gets admin JWT.
+2. **Team mode, no users**: LoginScreen auto-switches to registration mode with "First user — you will be the admin" prompt. First registered user becomes admin.
+3. **Team mode, users exist**: LoginScreen shows login form with "Create an account" toggle for new team members.
+4. **Client connecting to existing server**: Login with credentials provided by admin.
+
+The `/api/auth/team-status` endpoint returns `{team_mode, registration_enabled, has_users}` so the frontend knows which flow to show.
+
+### Auth State Restoration
+
+On page refresh, the JWT token persists in localStorage but the `user` object is lost. The `fetchMe()` method calls `GET /api/auth/me` to restore the full user (including `role`) from the JWT. This ensures admin UI (UserManagement, team mode toggle) is always visible to admins.
+
 ### Project Data Isolation
 
 Views that require a project context show a "No Project Selected" prompt when no project is active, preventing cross-project data leakage. The `activeProjectId` is cleared from localStorage when all projects are deleted, preventing stale references.
