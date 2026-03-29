@@ -539,6 +539,15 @@ async function main() {
   page.setDefaultTimeout(PLAYWRIGHT_ACTION_TIMEOUT_MS);
   page.setDefaultNavigationTimeout(PLAYWRIGHT_NAV_TIMEOUT_MS);
 
+  // Inject JWT token into browser localStorage so the frontend authenticates
+  if (apiClient._token) {
+    await page.goto("http://localhost:3000", { waitUntil: "domcontentloaded" });
+    await page.evaluate((token) => {
+      localStorage.setItem("reclaw_token", token);
+    }, apiClient._token);
+    console.log("  ✅ JWT token injected into browser");
+  }
+
   const screenshotFn = async (name) => {
     try {
       await page.screenshot({ path: join(screenshotDir, `${name}.png`) });
