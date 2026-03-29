@@ -730,19 +730,25 @@ ReClaw trades compression ratio for **zero dependencies** and **instant speed** 
 
 ### Simulation Framework
 
-ReClaw includes a comprehensive **Playwright + Node.js simulation agent** at `tests/simulation/` that runs 32 scenarios covering:
+ReClaw includes a comprehensive **Playwright + Node.js simulation agent** at `tests/simulation/` that runs 66 scenarios covering:
 
 | Category | Scenarios | Checks |
 |----------|----------|--------|
 | System health | Health check, onboarding, settings | 24 |
 | Core features | Chat, file upload, skills, findings, Kanban, sessions | 80+ |
-| Agent system | Architecture, communication, identity, personas | 50+ |
+| Agent system | Architecture, communication, identity, personas, factory | 50+ |
 | Data integrity | Vector DB, findings chains, task consistency | 30+ |
 | Advanced | Full pipeline, self-verification, DAG, robustness | 50+ |
-| **Self-evolution & compression** | Evolution scan, Prompt RAG, budget compliance, domain preservation | **35** |
-| **Documents system** | CRUD, search, filtering, sync, backup, UI navigation, keyboard shortcuts | **25** |
-| **Event wiring audit** | WebSocket event coverage, broadcast↔handler pairing, governor lifecycle, scheduler | **15** |
-| **Task-document linking & tools** | Task CRUD with new fields, document attach/detach, URL updates, system tools, frontend JS verification | **15** |
+| Self-evolution & compression | Evolution scan, Prompt RAG, budget compliance, domain preservation | 35 |
+| Documents system | CRUD, search, filtering, sync, backup, UI navigation, keyboard shortcuts | 25 |
+| Event wiring audit | WebSocket event coverage, broadcast↔handler pairing, governor lifecycle, scheduler | 15 |
+| Task-document linking & tools | Task CRUD with new fields, document attach/detach, URL updates, system tools | 15 |
+| Interfaces & Stitch | Mock generate, design chat, Figma import, handoff briefs, variants | 30+ |
+| Loops & schedule | Agent loops, custom loops, execution history, schedule CRUD | 16 |
+| Notifications & backup | Notification CRUD, preferences, backup system, restore | 30 |
+| Auth & security | Auth flow, content guard, process hardening, Docker security, data security | 40+ |
+| Meta-hyperagent | Self-improvement proposals, architecture evaluation | 12 |
+| **Total** | **66 scenarios** | **834 checks** |
 
 ### Evaluators
 
@@ -775,7 +781,16 @@ On machines with limited RAM (8GB), LM Studio can only load one model at a time 
 3. **After tests complete:** `POST /api/settings/maintenance/resume` — agents resume normal operation
 4. **Crash safety:** Signal handlers (`SIGINT`, `SIGTERM`) and the `.catch()` handler call `emergencyResume()` to ensure the backend never stays permanently paused after a test crash
 
-This replaces the previous approach of switching to a separate `gemma-3-1b-it-qat` test model, which caused LM Studio to load both models simultaneously and freeze the system.
+### Hardened Test Runner
+
+The simulation runner includes built-in resilience features:
+
+- **Sleep prevention**: Spawns `caffeinate -dims` (macOS) at startup, killed on exit — prevents display, idle, disk, and system sleep during long runs
+- **Per-scenario timeout**: Each scenario has a 30-minute timeout via `Promise.race()`. If a scenario hangs, it is marked `TIMEOUT` and the runner proceeds to the next
+- **Playwright timeouts**: Navigation and action timeouts set to 5 minutes (up from 30s default) to handle slow LLM inference
+- **No-skip guarantee**: Every scenario runs regardless of prior failures. The runner never bails early
+- **Structured failure summary**: After all scenarios complete, failures are categorized (TIMED OUT, ERRORS, FAILED CHECKS) with individual check names listed
+- **JWT authentication**: All API calls in scenarios use the authenticated `ctx.api` client. Bare `fetch()` calls include `api._headers()` for JWT
 
 ---
 

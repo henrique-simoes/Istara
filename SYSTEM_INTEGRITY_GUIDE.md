@@ -187,7 +187,7 @@ Global (independent of Project)
 All routes are registered in `backend/app/main.py::app.include_router()` with `/api` prefix unless noted.
 
 #### Authentication & Users (auth.py)
-- `POST /api/auth/login` — Public, no JWT required
+- `POST /api/auth/login` — Public, no JWT required. In local mode (team_mode=False), issues JWT without DB lookup
 - `POST /api/auth/register` — Public, no JWT required
 - `POST /api/auth/logout` — Clear token
 - `GET /api/auth/verify` — Verify current JWT
@@ -474,10 +474,14 @@ All routes are registered in `backend/app/main.py::app.include_router()` with `/
 ### Security Enforcement
 
 **Global JWT Middleware**: Every request to `/api/*` requires valid JWT in `Authorization: Bearer <token>` header, except:
-- `POST /api/auth/login` — Public
+- `POST /api/auth/login` — Public (local mode issues JWT without DB)
 - `POST /api/auth/register` — Public
+- `GET /api/auth/team-status` — Public
 - `GET /api/health` — Public
 - `GET /api/settings/status` — Public
+- `GET /.well-known/agent.json` — Public (A2A agent card)
+- `POST /a2a` — Public (A2A Protocol JSON-RPC)
+- Trailing slashes are normalized before exemption check
 - `GET /.well-known/agent.json` — Public
 - `/webhooks/*` — External verification (webhook signature or token)
 - `/_next/*`, `/favicon`, `/static/*` — Static assets
@@ -1498,11 +1502,15 @@ All configuration loaded from `.env` file and environment:
    - `/api/health`
    - `/api/auth/login`
    - `/api/auth/register`
+   - `/api/auth/team-status`
    - `/api/settings/status`
+   - `/.well-known/agent.json` (A2A agent card)
    - `/_next/*` (static assets)
    - `/favicon`
    - `/webhooks/*` (external verification)
-   - `/` (frontend)
+   - `/a2a` prefix (A2A Protocol JSON-RPC)
+   - `/` and non-`/api` paths (frontend)
+   - Trailing-slash variants are normalized (e.g. `/api/auth/login/` → `/api/auth/login`)
 
 2. **JWT Verification**:
    - Extract token from `Authorization: Bearer <token>` header
