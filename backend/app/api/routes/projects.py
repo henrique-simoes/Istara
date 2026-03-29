@@ -50,6 +50,8 @@ class ProjectResponse(BaseModel):
     company_context: str
     project_context: str
     guardrails: str
+    is_paused: bool = False
+    owner_id: str = ""
     created_at: datetime
     updated_at: datetime
 

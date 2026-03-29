@@ -76,3 +76,17 @@ async def init_db() -> None:
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+
+        # Lightweight schema migration: add columns that create_all()
+        # won't add to pre-existing tables.  Each ALTER is wrapped in a
+        # try/except so it's a no-op once the column exists.
+        import sqlalchemy as sa
+        migrations = [
+            "ALTER TABLE projects ADD COLUMN is_paused BOOLEAN NOT NULL DEFAULT 0",
+            "ALTER TABLE projects ADD COLUMN owner_id VARCHAR(36) NOT NULL DEFAULT ''",
+        ]
+        for ddl in migrations:
+            try:
+                await conn.execute(sa.text(ddl))
+            except Exception:
+                pass  # column already exists — safe to ignore

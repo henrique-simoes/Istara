@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Cpu, HardDrive, Monitor, Wifi, WifiOff, RefreshCw, Plus, Server, Trash2, Users } from "lucide-react";
 import { settings as settingsApi, llmServers } from "@/lib/api";
 import type { HardwareInfo, ModelRecommendation } from "@/lib/types";
+import { useAuthStore } from "@/stores/authStore";
 import UserManagement from "./UserManagement";
 
 export default function SettingsView() {
@@ -295,6 +296,8 @@ export default function SettingsView() {
                   { method: "POST", headers, body: JSON.stringify({ enabled: newState }) }
                 );
                 await fetchAll();
+                // Refresh auth store so UserManagement appears/disappears
+                useAuthStore.getState().checkTeamStatus();
               } catch (e) {
                 console.error("Failed to toggle team mode:", e);
               }

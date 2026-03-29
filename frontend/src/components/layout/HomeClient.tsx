@@ -34,6 +34,7 @@ import MobileNav from "@/components/layout/MobileNav";
 import OnboardingWizard from "@/components/onboarding/OnboardingWizard";
 import LoginScreen from "@/components/auth/LoginScreen";
 import { useProjectStore } from "@/stores/projectStore";
+import { useAuthStore } from "@/stores/authStore";
 import { useSessionStore } from "@/stores/sessionStore";
 import { useAgentStore } from "@/stores/agentStore";
 import { settings as settingsApi } from "@/lib/api";
@@ -80,6 +81,8 @@ export default function HomeClient() {
     }
     // Token exists — assume valid (middleware will reject if expired)
     setAuthenticated(true);
+    // Check team mode status so UserManagement renders when appropriate
+    useAuthStore.getState().checkTeamStatus();
 
     // Listen for token expiry events from API client
     const handleExpiry = () => setAuthenticated(false);
