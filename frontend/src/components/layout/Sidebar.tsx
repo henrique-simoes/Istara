@@ -71,11 +71,19 @@ export default function Sidebar({ activeView, onViewChange, onSearchOpen }: Side
     }
   }, [activeView]);
 
+  const [createError, setCreateError] = useState<string | null>(null);
+
   const handleCreateProject = async () => {
     if (!newProjectName.trim()) return;
-    await createProject(newProjectName.trim());
-    setNewProjectName("");
-    setShowNewProject(false);
+    setCreateError(null);
+    try {
+      await createProject(newProjectName.trim());
+      setNewProjectName("");
+      setShowNewProject(false);
+    } catch (e: any) {
+      setCreateError(e.message || "Failed to create project");
+      console.error("Project creation failed:", e);
+    }
   };
 
   // Primary nav: 5 items (simplified from 8)
@@ -245,12 +253,15 @@ export default function Sidebar({ activeView, onViewChange, onSearchOpen }: Side
                 type="text"
                 placeholder="Project name..."
                 value={newProjectName}
-                onChange={(e) => setNewProjectName(e.target.value)}
+                onChange={(e) => { setNewProjectName(e.target.value); setCreateError(null); }}
                 onKeyDown={(e) => e.key === "Enter" && handleCreateProject()}
                 className="w-full px-2 py-1.5 text-sm rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-reclaw-500"
                 aria-label="New project name"
                 autoFocus
               />
+              {createError && (
+                <p className="text-xs text-red-500 mt-1 px-1">{createError}</p>
+              )}
             </div>
           )}
 

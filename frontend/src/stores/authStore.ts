@@ -48,6 +48,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const data = await res.json();
       localStorage.setItem("reclaw_token", data.token);
       set({ user: data.user, token: data.token, loading: false });
+      // Check team status after login so UserManagement renders correctly
+      get().checkTeamStatus();
     } catch (e) {
       set({ loading: false });
       throw e;
@@ -69,6 +71,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const data = await res.json();
       localStorage.setItem("reclaw_token", data.token);
       set({ user: data.user, token: data.token, loading: false });
+      get().checkTeamStatus();
     } catch (e) {
       set({ loading: false });
       throw e;
