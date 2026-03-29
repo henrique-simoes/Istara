@@ -9,6 +9,7 @@ import SchedulesTab from "./SchedulesTab";
 import AgentLoopsTab from "./AgentLoopsTab";
 import CustomLoopsTab from "./CustomLoopsTab";
 import ExecutionHistoryTab from "./ExecutionHistoryTab";
+import ViewOnboarding from "@/components/common/ViewOnboarding";
 
 type LoopsTab = "overview" | "schedules" | "agent-loops" | "custom" | "history";
 
@@ -41,6 +42,7 @@ export default function LoopsView() {
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
+      <ViewOnboarding viewId="loops" title="Automated Research" description="Set up recurring skills on a schedule. Agents run analysis automatically — daily, hourly, or custom cron." chatPrompt="How do I create a research loop?" />
       {/* Tab bar */}
       <div className="flex items-center gap-1 px-4 py-2 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-x-auto">
         {TABS.map((tab) => (

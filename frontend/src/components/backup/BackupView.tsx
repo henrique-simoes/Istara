@@ -17,6 +17,7 @@ import {
 import { backups as backupsApi } from "@/lib/api";
 import type { BackupRecord, BackupConfig } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import ViewOnboarding from "@/components/common/ViewOnboarding";
 
 function formatBytes(bytes: number): string {
   if (bytes === 0) return "0 B";
@@ -157,6 +158,7 @@ export default function BackupView() {
 
   return (
     <div className="flex-1 overflow-y-auto p-6 max-w-4xl mx-auto space-y-6">
+      <ViewOnboarding viewId="backup" title="Data Protection" description="Create and restore backups of your entire ReClaw instance — database, files, vector store, and settings." chatPrompt="How do I backup my data?" />
       {/* Header */}
       <div className="flex items-center gap-3">
         <Archive size={24} className="text-reclaw-600 dark:text-reclaw-400" />

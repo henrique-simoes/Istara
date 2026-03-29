@@ -1035,6 +1035,44 @@ Built with Tauri v2 (5-15 MB binary, ~20 MB RAM). Rust backend for process manag
 
 **Files:** `frontend/src/components/common/DonateComputeToggle.tsx`
 
+## Contextual Onboarding System
+
+Every view has a non-blocking inline onboarding banner (`ViewOnboarding`) that:
+- Shows once per view (dismissal persisted to `localStorage` key `reclaw_onboarding_{viewId}`)
+- Explains the feature in 1-2 sentences
+- Provides 2-3 quick action buttons
+- Suggests a Chat prompt ("Try asking: ...")
+- Dismissible with X button or Escape key, `aria-live="polite"` for screen readers
+
+**21 views** have tailored onboarding content. Settings has a "Reset Onboarding Hints" button that clears all `reclaw_onboarding_*` keys.
+
+**Files:** `frontend/src/components/common/ViewOnboarding.tsx`, `frontend/src/hooks/useViewOnboarding.ts`
+
+## Enhanced Onboarding Wizard
+
+The first-run wizard (shown when 0 projects exist) expanded from 4 to 6 steps:
+
+1. **Welcome** — intro with 3 feature cards
+2. **LLM Check** (NEW) — detects Ollama/LM Studio, shows status or download links
+3. **Create Project** — name input
+4. **Link Folder** (NEW) — optional external folder linking (Google Drive, Dropbox, local)
+5. **Set Context** — company/product + research goals
+6. **Upload Files** — drag-drop file upload
+
+**Files:** `frontend/src/components/onboarding/OnboardingWizard.tsx`, `LLMCheckStep.tsx`, `FolderLinkStep.tsx`
+
+## External Folder Linking
+
+Projects can point at external folders (Google Drive, Dropbox, OneDrive, or any local directory). The FileWatcher monitors them for changes automatically.
+
+- **Project model**: `watch_folder_path` field (nullable string)
+- **API**: `POST /projects/{id}/link-folder` and `/unlink-folder`
+- **FileWatcher**: Already supported arbitrary paths; now filters cloud-sync temp files (`.partial`, `.tmp`, `~$*`, `.crdownload`)
+- **Sync**: `/documents/sync/{id}` checks `watch_folder_path` first, falls back to internal uploads dir
+- **Documents**: External files use `DocumentSource.EXTERNAL`, referenced by path (not copied)
+
+**Files:** `backend/app/models/project.py`, `backend/app/api/routes/projects.py`, `backend/app/core/file_watcher.py`
+
 ---
 
 ## Project Structure

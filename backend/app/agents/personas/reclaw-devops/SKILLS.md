@@ -138,6 +138,13 @@
 - Team mode toggle: UI switch writes `TEAM_MODE=true|false` to `.env` file. Monitor for: `.env` write permission failures, config reload race conditions, team mode state inconsistency between in-memory config and `.env`.
 - Google Stitch API key: new encrypted field stored via Fernet encryption for Google Generative AI credentials. Monitor for: encryption/decryption failures, key rotation impact on this field.
 
+### Onboarding UX & Folder Linking
+- FileWatcher cloud awareness: the watcher filters `.partial`, `.tmp`, and `~$` temporary files from Google Drive and Dropbox syncs before ingestion. Monitor for: filter bypass on edge-case filenames (e.g., files legitimately starting with `~$`), race conditions where a `.partial` file passes the filter if renamed before the check completes.
+- Folder path security: `POST /projects/{id}/link-folder` accepts absolute paths to external directories. Monitor for: path traversal attacks (`../../../etc/passwd`), symlink following into restricted areas, and permission errors when the backend process lacks read access to the linked folder. Validate that only permitted base directories are linkable.
+- ALTER TABLE migration: `init_db()` adds `linked_folder_path` (TEXT, nullable) and `linked_folder_type` (TEXT, nullable, values: `local`, `gdrive`, `dropbox`) to the projects table. ALTERs are wrapped in try/except for idempotency. Monitor for: migration failures on existing databases, null handling in queries that join on folder metadata.
+- ViewOnboarding localStorage persistence: banners are dismissed per-view using localStorage keys. Monitor for: localStorage quota exhaustion on constrained environments, stale keys accumulating after views are renamed or removed, and the Settings "Reset Onboarding Hints" button failing to clear all keys.
+- OnboardingWizard LLM health step: step 2 probes the configured LLM provider. Monitor for: probe timeouts blocking wizard progression, false negatives when LM Studio is healthy but slow to respond, and error messaging that exposes internal endpoint URLs.
+
 ### Auth & Onboarding Fixes
 - `GET /auth/me` JWT validation: the endpoint now decodes the JWT and returns the full user object (including `role`). Monitor for: token expiry edge cases where `fetchMe()` fires before the refresh token flow completes, returning a 401 that clears the user store.
 - `fetchMe()` timing: the frontend calls `/auth/me` on page load to restore the session. If the call races with other authenticated requests during hydration, stale auth state may briefly appear. Monitor for 401 spikes at page-load time.

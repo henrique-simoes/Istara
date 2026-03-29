@@ -6,6 +6,7 @@ import { useProjectStore } from "@/stores/projectStore";
 import { cn } from "@/lib/utils";
 import ContextPreview from "@/components/common/ContextPreview";
 import AutoSaveWarning from "@/components/common/AutoSaveWarning";
+import ViewOnboarding from "@/components/common/ViewOnboarding";
 
 interface ContextSection {
   id: string;
@@ -105,6 +106,7 @@ export default function ContextEditor() {
 
   return (
     <div className="flex-1 overflow-y-auto">
+      <ViewOnboarding viewId="context" title="Project Context" description="Define company background, research goals, and guardrails. This context helps agents give relevant, focused answers." chatPrompt="How does project context help agents?" />
       <div className="max-w-3xl mx-auto p-6 space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">

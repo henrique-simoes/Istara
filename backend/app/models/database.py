@@ -86,6 +86,7 @@ async def init_db() -> None:
             "ALTER TABLE projects ADD COLUMN owner_id VARCHAR(36) NOT NULL DEFAULT ''",
             "ALTER TABLE agents ADD COLUMN scope VARCHAR(10) NOT NULL DEFAULT 'universal'",
             "ALTER TABLE agents ADD COLUMN project_id VARCHAR(36) NOT NULL DEFAULT ''",
+            "ALTER TABLE projects ADD COLUMN watch_folder_path VARCHAR(1000)",
         ]
         for ddl in migrations:
             try:
