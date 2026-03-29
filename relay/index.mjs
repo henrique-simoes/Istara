@@ -14,13 +14,15 @@ import { createConnection } from "./lib/connection.mjs";
 import { StateMachine } from "./lib/state-machine.mjs";
 import { startHeartbeat, getSystemStats } from "./lib/heartbeat.mjs";
 import { LLMProxy } from "./lib/llm-proxy.mjs";
+import { decodeConnectionString } from "./lib/connection-string.mjs";
 
 program
   .name("reclaw-relay")
   .description("ReClaw Relay — donate LLM compute to the network")
   .version("0.1.0")
-  .requiredOption("-s, --server <url>", "ReClaw server WebSocket URL", "ws://localhost:8000/ws/relay")
+  .option("-s, --server <url>", "ReClaw server WebSocket URL", "ws://localhost:8000/ws/relay")
   .option("-t, --token <jwt>", "JWT authentication token", "")
+  .option("-c, --connection-string <string>", "Connection string (replaces --server and --token)")
   .option("-p, --provider <type>", "LLM provider: ollama or lmstudio", "ollama")
   .option("-h, --llm-host <url>", "Local LLM server URL", "http://localhost:11434")
   .option("-i, --heartbeat-interval <seconds>", "Heartbeat interval", "30")
@@ -28,8 +30,24 @@ program
 
 const opts = program.opts();
 
-console.log("🔗 ReClaw Relay starting...");
-console.log(`   Server: ${opts.server}`);
+// If connection string provided, decode and override server/token
+if (opts.connectionString) {
+  const decoded = decodeConnectionString(opts.connectionString);
+  if (!decoded) {
+    console.error("❌ Invalid or expired connection string.");
+    process.exit(1);
+  }
+  opts.server = decoded.wsUrl || decoded.serverUrl;
+  opts.token = decoded.jwt;
+  // Store network token for X-Access-Token header
+  opts.networkToken = decoded.networkToken;
+  console.log(`🔗 ReClaw Relay starting (from connection string)...`);
+  console.log(`   Server: ${opts.server}`);
+  console.log(`   Label: ${decoded.label || "unnamed"}`);
+} else {
+  console.log("🔗 ReClaw Relay starting...");
+  console.log(`   Server: ${opts.server}`);
+}
 console.log(`   Provider: ${opts.provider}`);
 console.log(`   LLM Host: ${opts.llmHost}`);
 
@@ -41,6 +59,7 @@ const stats = await getSystemStats();
 
 const ws = createConnection(opts.server, {
   token: opts.token,
+  networkToken: opts.networkToken || "",
   onOpen: async () => {
     console.log("✅ Connected to ReClaw server");
     stateMachine.transition("idle");

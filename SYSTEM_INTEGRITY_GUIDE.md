@@ -1507,6 +1507,8 @@ All configuration loaded from `.env` file and environment:
    - `/api/auth/register`
    - `/api/auth/team-status`
    - `/api/settings/status`
+   - `/api/connections/validate` (connection string check)
+   - `/api/connections/redeem` (connection string redemption)
    - `/.well-known/agent.json` (A2A agent card)
    - `/_next/*` (static assets)
    - `/favicon`

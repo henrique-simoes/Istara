@@ -1,0 +1,59 @@
+/// Configuration for the ReClaw desktop app.
+/// Stored at ~/.reclaw/config.json
+use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AppConfig {
+    /// "server" (full install) or "client" (relay only)
+    pub mode: String,
+    /// Server URL for client mode (from connection string)
+    pub server_url: String,
+    /// WebSocket URL for relay
+    pub ws_url: String,
+    /// Connection string (stored for reconnection)
+    pub connection_string: String,
+    /// Whether compute donation is enabled
+    pub donate_compute: bool,
+    /// Path to the ReClaw installation directory
+    pub install_dir: String,
+}
+
+impl Default for AppConfig {
+    fn default() -> Self {
+        Self {
+            mode: "server".to_string(),
+            server_url: "http://localhost:3000".to_string(),
+            ws_url: "ws://localhost:8000/ws/relay".to_string(),
+            connection_string: String::new(),
+            donate_compute: false,
+            install_dir: String::new(),
+        }
+    }
+}
+
+fn config_path() -> PathBuf {
+    let home = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
+    home.join(".reclaw").join("config.json")
+}
+
+pub fn load_config() -> AppConfig {
+    let path = config_path();
+    if path.exists() {
+        match std::fs::read_to_string(&path) {
+            Ok(content) => serde_json::from_str(&content).unwrap_or_default(),
+            Err(_) => AppConfig::default(),
+        }
+    } else {
+        AppConfig::default()
+    }
+}
+
+pub fn save_config(cfg: &AppConfig) -> Result<(), String> {
+    let path = config_path();
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+    let json = serde_json::to_string_pretty(cfg).map_err(|e| e.to_string())?;
+    std::fs::write(path, json).map_err(|e| e.to_string())
+}
