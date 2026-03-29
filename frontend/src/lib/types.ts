@@ -741,3 +741,59 @@ export interface ReclawUser {
   display_name: string;
   created_at: string;
 }
+
+// --- Research Integrity ---
+
+export interface ProjectReport {
+  id: string;
+  project_id: string;
+  title: string;
+  layer: number; // 1=raw, 2=analysis, 3=synthesis, 4=final
+  report_type: "study_analysis" | "synthesis" | "final_report";
+  scope: string;
+  executive_summary: string;
+  status: "draft" | "in_progress" | "review" | "final";
+  version: number;
+  finding_count: number;
+  mece_categories: Array<{ name: string; description: string; finding_ids: string[] }>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CodebookVersionType {
+  id: string;
+  project_id: string;
+  version: string;
+  codes: CodeEntry[];
+  change_log: string;
+  created_by: string;
+  methodology: "reflexive_ta" | "codebook_ta" | "grounded_theory";
+  created_at: string;
+}
+
+export interface CodeEntry {
+  code_id: string;
+  label: string;
+  brief_definition: string;
+  full_definition: string;
+  exclusion_criteria: string;
+  typical_example: string;
+  boundary_example?: string;
+  coding_method: string;
+  frequency: number;
+  parent_theme?: string | null;
+}
+
+export interface CodeApplicationType {
+  id: string;
+  project_id: string;
+  code_id: string;
+  source_text: string;
+  source_location: string;
+  coder_id: string;
+  coder_type: "llm" | "human" | "llm_reviewed";
+  confidence: number;
+  reasoning: string;
+  review_status: "pending" | "approved" | "rejected" | "modified";
+  created_at: string;
+}
