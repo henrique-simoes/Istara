@@ -254,8 +254,11 @@ export const skills = {
 // --- Agents ---
 
 export const agents = {
-  list: (includeSystem = true) =>
-    request<any>(`/api/agents?include_system=${includeSystem}`),
+  list: (includeSystem = true, projectId?: string) => {
+    const params = new URLSearchParams({ include_system: String(includeSystem) });
+    if (projectId) params.set("project_id", projectId);
+    return request<any>(`/api/agents?${params}`);
+  },
   get: (id: string) => request<any>(`/api/agents/${id}`),
   create: (data: {
     name: string;
@@ -272,6 +275,15 @@ export const agents = {
     request<any>(`/api/agents/${id}/pause`, { method: "POST" }),
   resume: (id: string) =>
     request<any>(`/api/agents/${id}/resume`, { method: "POST" }),
+  restart: (id: string) =>
+    request<any>(`/api/agents/${id}/restart`, { method: "POST" }),
+  setScope: (id: string, scope: string, projectId?: string) =>
+    request<any>(`/api/agents/${id}/set-scope`, {
+      method: "POST",
+      body: JSON.stringify({ scope, project_id: projectId || "" }),
+    }),
+  requestPromotion: (id: string) =>
+    request<any>(`/api/agents/${id}/request-promotion`, { method: "POST" }),
   uploadAvatar: async (id: string, file: File) => {
     const formData = new FormData();
     formData.append("file", file);

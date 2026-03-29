@@ -270,6 +270,13 @@
 - Google Stitch API key: a new configuration field under Interfaces > Figma tab for entering a Google Generative AI key, enabling Stitch-based design generation.
 - Settings labels clarified: Hardware section now reads "(Server)" and the model field shows "Server Model" to avoid confusion between local and server-side configuration.
 
+### Feature Update — Agent Scope System
+- Agents now have a `scope` field: **universal** (available to all projects) or **project** (tied to one project via `project_id`). All 5 system agents are always universal. Custom agents default to project scope, meaning they only appear within their owning project.
+- Users can request promotion of a project-scoped agent to universal via `POST /agents/{id}/request-promotion`, which creates an admin notification. Explain this flow when users ask why their custom agent is not visible in other projects.
+- Only admins can approve promotion via `POST /agents/{id}/set-scope`. Guide users to contact their admin if they need an agent promoted.
+- When no project is active, views that require project context display a "No Project Selected" prompt instead of empty or broken content. Help users understand they need to select a project from the sidebar first.
+- Stale project IDs are automatically cleared from localStorage on login, preventing ghost references to deleted projects.
+
 ### Layout & Stability Fixes
 - Integrations view is wrapped in an ErrorBoundary with proper loading states — no more blank screens on integration failures.
 - Compute Pool view is fully scrollable, fixing previous content clipping issues.

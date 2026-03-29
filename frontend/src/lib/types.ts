@@ -153,6 +153,8 @@ export interface Agent {
   executions: number;
   is_system: boolean;
   is_active: boolean;
+  scope: "universal" | "project";
+  project_id: string;
   created_at: string;
   updated_at: string;
 }

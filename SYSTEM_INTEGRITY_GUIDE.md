@@ -78,7 +78,7 @@ All models are registered in `backend/app/models/database.py::init_db()`:
 #### AGENT MODELS
 | Model | Table | Fields | Enum States |
 |-------|-------|--------|------------|
-| Agent | `agents` | capabilities (JSON), memory (JSON), specialties (JSON), system_prompt | AgentRole: TASK_EXECUTOR, DEVOPS_AUDIT, UI_AUDIT, UX_EVALUATION, USER_SIMULATION, CUSTOM; AgentState: IDLE, WORKING, PAUSED, ERROR, STOPPED; HeartbeatStatus: HEALTHY, DEGRADED, ERROR, STOPPED |
+| Agent | `agents` | capabilities (JSON), memory (JSON), specialties (JSON), system_prompt, scope (universal/project), project_id | AgentRole: TASK_EXECUTOR, DEVOPS_AUDIT, UI_AUDIT, UX_EVALUATION, USER_SIMULATION, CUSTOM; AgentState: IDLE, WORKING, PAUSED, ERROR, STOPPED; HeartbeatStatus: HEALTHY, DEGRADED, ERROR, STOPPED; AgentScope: UNIVERSAL, PROJECT |
 
 #### RESEARCH ANALYSIS MODELS
 | Model | Table | FK Dependencies | Scope |

@@ -11,6 +11,11 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.models.database import Base
 
 
+class AgentScope(str, enum.Enum):
+    UNIVERSAL = "universal"   # Available across all projects (system agents, promoted)
+    PROJECT = "project"       # Scoped to a single project
+
+
 class AgentRole(str, enum.Enum):
     TASK_EXECUTOR = "task_executor"
     DEVOPS_AUDIT = "devops_audit"
@@ -84,6 +89,8 @@ class Agent(Base):
     executions: Mapped[int] = mapped_column(Integer, default=0)
     is_system: Mapped[bool] = mapped_column(Boolean, default=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    scope: Mapped[str] = mapped_column(String(10), default="universal")  # "universal" | "project"
+    project_id: Mapped[str] = mapped_column(String(36), default="")  # Empty = universal
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
@@ -113,6 +120,8 @@ class Agent(Base):
             "executions": self.executions,
             "is_system": self.is_system,
             "is_active": self.is_active,
+            "scope": self.scope or "universal",
+            "project_id": self.project_id or "",
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
