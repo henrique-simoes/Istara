@@ -3,7 +3,7 @@
 import enum
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, Enum, String, Text
+from sqlalchemy import Boolean, DateTime, Enum, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.database import Base
@@ -32,6 +32,8 @@ class Project(Base):
     company_context: Mapped[str] = mapped_column(Text, default="")
     project_context: Mapped[str] = mapped_column(Text, default="")
     guardrails: Mapped[str] = mapped_column(Text, default="")
+    is_paused: Mapped[bool] = mapped_column(Boolean, default=False)
+    owner_id: Mapped[str] = mapped_column(String(36), default="")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )

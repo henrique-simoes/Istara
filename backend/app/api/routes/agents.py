@@ -195,6 +195,23 @@ async def resume_agent(agent_id: str, db: AsyncSession = Depends(get_db)):
     return {"status": "resumed"}
 
 
+@router.post("/agents/{agent_id}/restart")
+async def restart_agent(agent_id: str, db: AsyncSession = Depends(get_db)):
+    """Reset an agent from ERROR state back to IDLE, clearing error counters."""
+    from app.models.agent import AgentState, HeartbeatStatus
+    agent = await agent_service.get_agent(db, agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    agent.state = AgentState.IDLE
+    agent.heartbeat_status = HeartbeatStatus.HEALTHY
+    agent.error_count = 0
+    agent.consecutive_failures = getattr(agent, "consecutive_failures", 0)
+    if hasattr(agent, "consecutive_failures"):
+        agent.consecutive_failures = 0
+    await db.commit()
+    return {"status": "restarted", "agent_id": agent_id}
+
+
 # ───── Avatar ─────
 
 

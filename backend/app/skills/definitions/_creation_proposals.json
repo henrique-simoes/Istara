@@ -40,5 +40,131 @@
     "created_at": "2026-03-29T03:39:15.678424+00:00",
     "reviewed_at": null,
     "reject_reason": null
+  },
+  {
+    "id": "create_auto-survey-design-8d49a913_20260329180440",
+    "proposed_definition": {
+      "name": "auto-survey-design-8d49a913",
+      "display_name": "Auto: Analyze survey: f5948a53-a68f-42f1-9303-9b2e47df0d",
+      "description": "Autonomously proposed skill based on task: Analyze survey: f5948a53-a68f-42f1-9303-9b2e47df0ded",
+      "phase": "discover",
+      "skill_type": "mixed",
+      "plan_prompt": "Create a research plan for: {context}",
+      "execute_prompt": "Analyze the following data for patterns and insights.\nContext: {context}\n\nData:\n{content}",
+      "output_schema": "The survey data reveals that the phone verification step is a significant roadblock in Acme PM's onboarding process, leading to user drop-off. Users strongly prefer the invitation flow as a more seamless alternative. While appreciating the product's collaborative features and design, they find the UI complex and lack key integrations like Figma previews. Addressing these issues\u2014particularly phone verification, progressive disclosure, and design tool integration\u2014is crucial for improving user onbo"
+    },
+    "source_task_id": "8d49a913-1909-457c-8f73-d8f6084594d3",
+    "source_agent_id": "reclaw-main",
+    "reason": "High-quality output (8 findings) from task: Analyze survey: f5948a53-a68f-42f1-9303-9b2e47df0ded",
+    "confidence": 70,
+    "status": "pending",
+    "created_at": "2026-03-29T18:04:40.430284+00:00",
+    "reviewed_at": null,
+    "reject_reason": null
+  },
+  {
+    "id": "create_auto-nps-analysis-5e07610b_20260329182535",
+    "proposed_definition": {
+      "name": "auto-nps-analysis-5e07610b",
+      "display_name": "Auto: NPS analysis: f5948a53-a68f-42f1-9303-9b2e47df0ded",
+      "description": "Autonomously proposed skill based on task: NPS analysis: f5948a53-a68f-42f1-9303-9b2e47df0ded",
+      "phase": "deliver",
+      "skill_type": "mixed",
+      "plan_prompt": "Create a research plan for: {context}",
+      "execute_prompt": "Analyze the following data for patterns and insights.\nContext: {context}\n\nData:\n{content}",
+      "output_schema": "User feedback strongly indicates that the phone verification step is a major pain point and primary driver of onboarding drop-off.  The invitation flow provides a superior experience, suggesting it should be prioritized. Addressing UI complexity and integrating with design tools like Figma/Sketch are also crucial for improving user adoption."
+    },
+    "source_task_id": "5e07610b-3f47-4692-a1bd-6540c1b094a7",
+    "source_agent_id": "reclaw-main",
+    "reason": "High-quality output (6 findings) from task: NPS analysis: f5948a53-a68f-42f1-9303-9b2e47df0ded",
+    "confidence": 70,
+    "status": "pending",
+    "created_at": "2026-03-29T18:25:35.215176+00:00",
+    "reviewed_at": null,
+    "reject_reason": null
+  },
+  {
+    "id": "create_auto-research-synthesis-8e8496d4_20260329185408",
+    "proposed_definition": {
+      "name": "auto-research-synthesis-8e8496d4",
+      "display_name": "Auto: Synthesize: 356eae40-4caa-4f6f-b2d6-ad9776ca5c35",
+      "description": "Autonomously proposed skill based on task: Synthesize: 356eae40-4caa-4f6f-b2d6-ad9776ca5c35",
+      "phase": "define",
+      "skill_type": "mixed",
+      "plan_prompt": "Create a research plan for: {context}",
+      "execute_prompt": "Analyze the following data for patterns and insights.\nContext: {context}\n\nData:\n{content}",
+      "output_schema": "This research highlights a critical flaw in Acme PM's onboarding process: the mandatory phone verification. Addressing this, along with simplifying the UI and improving design tool integration, will significantly improve user acquisition and overall product satisfaction. The findings underscore the importance of a frictionless onboarding experience in today's competitive SaaS landscape."
+    },
+    "source_task_id": "8e8496d4-309a-4241-9059-11b2cf305d41",
+    "source_agent_id": "reclaw-main",
+    "reason": "High-quality output (3 findings) from task: Synthesize: 356eae40-4caa-4f6f-b2d6-ad9776ca5c35",
+    "confidence": 65,
+    "status": "pending",
+    "created_at": "2026-03-29T18:54:08.404204+00:00",
+    "reviewed_at": null,
+    "reject_reason": null
+  },
+  {
+    "id": "create_auto-research-synthesis-ac8ca5a4_20260329185505",
+    "proposed_definition": {
+      "name": "auto-research-synthesis-ac8ca5a4",
+      "display_name": "Auto: Synthesize: 60219d1a-057e-4edd-b5cf-6a8560d95e39",
+      "description": "Autonomously proposed skill based on task: Synthesize: 60219d1a-057e-4edd-b5cf-6a8560d95e39",
+      "phase": "define",
+      "skill_type": "mixed",
+      "plan_prompt": "Create a research plan for: {context}",
+      "execute_prompt": "Analyze the following data for patterns and insights.\nContext: {context}\n\nData:\n{content}",
+      "output_schema": "Acme PM has a powerful product, but its onboarding process is creating a significant barrier to adoption. By addressing the intrusive phone verification step and simplifying the initial user experience, Acme PM can significantly improve user acquisition, retention, and overall satisfaction."
+    },
+    "source_task_id": "ac8ca5a4-a975-48e6-8e8a-17c16a41e433",
+    "source_agent_id": "reclaw-main",
+    "reason": "High-quality output (3 findings) from task: Synthesize: 60219d1a-057e-4edd-b5cf-6a8560d95e39",
+    "confidence": 65,
+    "status": "pending",
+    "created_at": "2026-03-29T18:55:05.635443+00:00",
+    "reviewed_at": null,
+    "reject_reason": null
+  },
+  {
+    "id": "create_auto-research-synthesis-863f7168_20260329185657",
+    "proposed_definition": {
+      "name": "auto-research-synthesis-863f7168",
+      "display_name": "Auto: Synthesize: 8db84ebe-c55e-49bb-9b23-30c3a006b6c7",
+      "description": "Autonomously proposed skill based on task: Synthesize: 8db84ebe-c55e-49bb-9b23-30c3a006b6c7",
+      "phase": "define",
+      "skill_type": "mixed",
+      "plan_prompt": "Create a research plan for: {context}",
+      "execute_prompt": "Analyze the following data for patterns and insights.\nContext: {context}\n\nData:\n{content}",
+      "output_schema": "This research highlights a critical disconnect between Acme PM's product quality and its onboarding experience. Addressing the phone verification friction, simplifying the UI, and integrating with design tools are essential steps to improve user acquisition and align the onboarding process with the product's value proposition. Prioritizing these recommendations will significantly enhance user satisfaction and drive adoption."
+    },
+    "source_task_id": "863f7168-de0b-47d7-bf43-63918a7be97c",
+    "source_agent_id": "reclaw-main",
+    "reason": "High-quality output (3 findings) from task: Synthesize: 8db84ebe-c55e-49bb-9b23-30c3a006b6c7",
+    "confidence": 65,
+    "status": "pending",
+    "created_at": "2026-03-29T18:56:57.266367+00:00",
+    "reviewed_at": null,
+    "reject_reason": null
+  },
+  {
+    "id": "create_auto-research-synthesis-8f866394_20260329185749",
+    "proposed_definition": {
+      "name": "auto-research-synthesis-8f866394",
+      "display_name": "Auto: Synthesize: 247b471d-80d1-4f69-a4e4-366adcd0af3c",
+      "description": "Autonomously proposed skill based on task: Synthesize: 247b471d-80d1-4f69-a4e4-366adcd0af3c",
+      "phase": "define",
+      "skill_type": "mixed",
+      "plan_prompt": "Create a research plan for: {context}",
+      "execute_prompt": "Analyze the following data for patterns and insights.\nContext: {context}\n\nData:\n{content}",
+      "output_schema": "Acme PM has a powerful core product, but its onboarding process is actively deterring potential users. Addressing the phone verification friction and simplifying the initial experience, alongside design tool integration, will significantly improve user acquisition and ultimately contribute to Acme PM's success in the competitive project management market."
+    },
+    "source_task_id": "8f866394-4ebf-4f91-8c35-43ae3aef4f2d",
+    "source_agent_id": "reclaw-main",
+    "reason": "High-quality output (3 findings) from task: Synthesize: 247b471d-80d1-4f69-a4e4-366adcd0af3c",
+    "confidence": 65,
+    "status": "pending",
+    "created_at": "2026-03-29T18:57:49.666097+00:00",
+    "reviewed_at": null,
+    "reject_reason": null
   }
 ]

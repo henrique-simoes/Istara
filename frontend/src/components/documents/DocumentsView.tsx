@@ -34,7 +34,7 @@ import {
 } from "lucide-react";
 import { useProjectStore } from "@/stores/projectStore";
 import { useDocumentStore } from "@/stores/documentStore";
-import { documents as documentsApi } from "@/lib/api";
+import { documents as documentsApi, chat as chatApi } from "@/lib/api";
 import { cn, phaseLabel } from "@/lib/utils";
 import type { ReclawDocument, DocumentContent } from "@/lib/types";
 
@@ -124,6 +124,8 @@ export default function DocumentsView() {
 
   const [showFilters, setShowFilters] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [organizing, setOrganizing] = useState(false);
+  const [organizeResult, setOrganizeResult] = useState("");
   const [previewDoc, setPreviewDoc] = useState<ReclawDocument | null>(null);
   const [previewContent, setPreviewContent] = useState<DocumentContent | null>(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
@@ -167,6 +169,31 @@ export default function DocumentsView() {
     await fetchTags(activeProjectId);
     await fetchStats(activeProjectId);
     setSyncing(false);
+  };
+
+  const handleOrganize = async () => {
+    if (!activeProjectId) return;
+    setOrganizing(true);
+    setOrganizeResult("");
+    try {
+      let result = "";
+      for await (const event of chatApi.send(
+        activeProjectId,
+        "Organize and categorize all documents in this project by type, topic, and research phase. " +
+        "Suggest a clear folder structure and tag scheme. Do NOT rename or move any files — only analyze and recommend."
+      )) {
+        if (event.type === "chunk") {
+          result += event.content;
+          setOrganizeResult(result);
+        }
+      }
+      // Refresh document list after analysis
+      await fetchDocuments(activeProjectId);
+      await fetchTags(activeProjectId);
+    } catch (e) {
+      console.error("Organize files failed:", e);
+    }
+    setOrganizing(false);
   };
 
   const handleOpenPreview = async (doc: ReclawDocument) => {
@@ -301,8 +328,31 @@ export default function DocumentsView() {
               <RefreshCw size={14} className={syncing ? "animate-spin" : ""} />
               Sync
             </button>
+            <button
+              onClick={handleOrganize}
+              disabled={organizing}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors disabled:opacity-50"
+              aria-label="Organize files"
+              title="AI-powered document organization suggestions"
+            >
+              <Wand2 size={14} className={organizing ? "animate-pulse" : ""} />
+              Organize
+            </button>
           </div>
         </div>
+
+        {/* Organize Files Result */}
+        {organizeResult && (
+          <div className="rounded-lg border border-reclaw-200 dark:border-reclaw-800 bg-reclaw-50 dark:bg-reclaw-900/20 p-4 max-h-48 overflow-y-auto">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-medium text-reclaw-700 dark:text-reclaw-400">Organization Suggestions</span>
+              <button onClick={() => setOrganizeResult("")} className="text-slate-400 hover:text-slate-600" aria-label="Close suggestions">
+                <X size={14} />
+              </button>
+            </div>
+            <div className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap">{organizeResult}</div>
+          </div>
+        )}
 
         {/* Search bar */}
         <div className="relative">

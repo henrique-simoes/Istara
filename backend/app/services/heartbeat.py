@@ -56,7 +56,21 @@ class HeartbeatManager:
                 if agent.state == AgentState.STOPPED:
                     new_status = HeartbeatStatus.STOPPED
                 elif agent.state == AgentState.ERROR:
-                    new_status = HeartbeatStatus.ERROR
+                    # Auto-recover agents stuck in ERROR state:
+                    # If no recent error log in last 2 minutes, reset to IDLE.
+                    if agent.last_heartbeat_at:
+                        err_elapsed = (now - ensure_utc(agent.last_heartbeat_at)).total_seconds()
+                        if err_elapsed > 120:
+                            agent.state = AgentState.IDLE
+                            new_status = HeartbeatStatus.HEALTHY
+                            logger.info(
+                                f"Auto-recovered agent {agent.name} from ERROR to IDLE "
+                                f"(no recent errors for {err_elapsed:.0f}s)"
+                            )
+                        else:
+                            new_status = HeartbeatStatus.ERROR
+                    else:
+                        new_status = HeartbeatStatus.ERROR
                 elif agent.state == AgentState.PAUSED:
                     new_status = HeartbeatStatus.DEGRADED
                 elif agent.state in (AgentState.IDLE, AgentState.WORKING):
