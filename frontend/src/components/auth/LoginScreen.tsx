@@ -14,9 +14,11 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [mode, setMode] = useState<"login" | "register">("login");
+  const [mode, setMode] = useState<"login" | "register" | "join">("login");
   const [teamMode, setTeamMode] = useState(false);
   const [hasUsers, setHasUsers] = useState(true);
+  const [connectionString, setConnectionString] = useState("");
+  const [joinValidated, setJoinValidated] = useState<any>(null);
   const usernameRef = useRef<HTMLInputElement>(null);
 
   // Check team status on mount — determines if registration is available
@@ -42,6 +44,53 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+
+    // Join mode: first validate, then redeem
+    if (mode === "join") {
+      if (!joinValidated) {
+        // Step 1: Validate
+        if (!connectionString.trim()) { setError("Paste a connection string."); return; }
+        setLoading(true);
+        try {
+          const res = await fetch(`${API_BASE}/api/connections/validate`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ connection_string: connectionString.trim() }),
+          });
+          const data = await res.json();
+          if (!data.valid) { throw new Error(data.error || "Invalid connection string"); }
+          setJoinValidated(data);
+        } catch (err) {
+          setError(err instanceof Error ? err.message : "Invalid connection string");
+        } finally { setLoading(false); }
+        return;
+      }
+      // Step 2: Redeem (validated, now need username/password)
+      if (!username.trim() || !password.trim()) { setError("Choose a username and password."); return; }
+      setLoading(true);
+      try {
+        const res = await fetch(`${API_BASE}/api/connections/redeem`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            connection_string: connectionString.trim(),
+            username: username.trim(),
+            password,
+            email: email.trim(),
+          }),
+        });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({ detail: "Failed" }));
+          throw new Error(data.detail || "Redemption failed");
+        }
+        const data = await res.json();
+        localStorage.setItem("reclaw_token", data.token);
+        onLogin();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Something went wrong.");
+      } finally { setLoading(false); }
+      return;
+    }
 
     if (!username.trim() || !password.trim()) {
       setError("Username and password are required.");
@@ -104,6 +153,39 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
 
           {/* Login form */}
           <form onSubmit={handleSubmit} className="space-y-5">
+            {/* Join Server: connection string input */}
+            {mode === "join" && !joinValidated && (
+              <div>
+                <label
+                  htmlFor="join-connection-string"
+                  className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5"
+                >
+                  Connection String
+                </label>
+                <textarea
+                  id="join-connection-string"
+                  aria-label="Connection string"
+                  value={connectionString}
+                  onChange={(e) => setConnectionString(e.target.value)}
+                  disabled={loading}
+                  rows={3}
+                  className="w-full px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-reclaw-500 transition disabled:opacity-50 text-xs font-mono"
+                  placeholder="Paste the rcl_... connection string from your admin"
+                />
+              </div>
+            )}
+            {mode === "join" && joinValidated && (
+              <div className="rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 p-3 text-sm">
+                <p className="text-green-700 dark:text-green-400 font-medium">Server verified</p>
+                <p className="text-green-600 dark:text-green-500 text-xs mt-1">
+                  {joinValidated.server_url} {joinValidated.label && `(${joinValidated.label})`}
+                </p>
+                <p className="text-slate-500 text-xs mt-2">Choose a username and password to create your account.</p>
+              </div>
+            )}
+
+            {/* Username — shown for login, register, and join (after validation) */}
+            {(mode !== "join" || joinValidated) && (
             <div>
               <label
                 htmlFor="login-username"
@@ -124,8 +206,9 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
                 placeholder="Enter your username"
               />
             </div>
+            )}
 
-            {mode === "register" && (
+            {(mode === "register" || (mode === "join" && joinValidated)) && (
               <div>
                 <label
                   htmlFor="login-email"
@@ -208,35 +291,35 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
                   Signing in...
                 </span>
               ) : (
-                mode === "register" ? "Create Account" : "Sign In"
+                mode === "join"
+                  ? (joinValidated ? "Create Account & Connect" : "Verify Connection")
+                  : mode === "register" ? "Create Account" : "Sign In"
               )}
             </button>
           </form>
 
-          {/* Footer — toggle between login/register */}
+          {/* Footer — toggle between login/register/join */}
           {teamMode && (
-            <div className="mt-6 text-center">
-              {mode === "login" ? (
-                <p className="text-xs text-slate-400 dark:text-slate-500">
-                  New to this server?{" "}
-                  <button
-                    type="button"
-                    onClick={() => { setMode("register"); setError(""); }}
-                    className="text-reclaw-600 dark:text-reclaw-400 font-medium hover:underline"
-                  >
-                    Create an account
-                  </button>
-                </p>
-              ) : (
+            <div className="mt-6 text-center space-y-1">
+              {mode !== "login" && (
                 <p className="text-xs text-slate-400 dark:text-slate-500">
                   Already have an account?{" "}
-                  <button
-                    type="button"
-                    onClick={() => { setMode("login"); setError(""); }}
-                    className="text-reclaw-600 dark:text-reclaw-400 font-medium hover:underline"
-                  >
-                    Sign in
-                  </button>
+                  <button type="button" onClick={() => { setMode("login"); setError(""); setJoinValidated(null); }}
+                    className="text-reclaw-600 dark:text-reclaw-400 font-medium hover:underline">Sign in</button>
+                </p>
+              )}
+              {mode !== "register" && (
+                <p className="text-xs text-slate-400 dark:text-slate-500">
+                  New to this server?{" "}
+                  <button type="button" onClick={() => { setMode("register"); setError(""); setJoinValidated(null); }}
+                    className="text-reclaw-600 dark:text-reclaw-400 font-medium hover:underline">Create an account</button>
+                </p>
+              )}
+              {mode !== "join" && (
+                <p className="text-xs text-slate-400 dark:text-slate-500">
+                  Have a connection string?{" "}
+                  <button type="button" onClick={() => { setMode("join"); setError(""); setJoinValidated(null); }}
+                    className="text-reclaw-600 dark:text-reclaw-400 font-medium hover:underline">Join Server</button>
                 </p>
               )}
             </div>

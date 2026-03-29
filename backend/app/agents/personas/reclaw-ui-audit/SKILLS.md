@@ -138,6 +138,14 @@
 - Admin promotion controls: the `set-scope` admin action should have a confirmation dialog. Audit: verify focus trapping in the confirmation dialog, Escape closes it, destructive scope changes require explicit confirmation, and the dialog returns focus to the trigger element on close.
 - Stale project cleanup: localStorage project references are cleared on login. Audit: verify no UI flash or layout shift occurs when stale state is cleared — the transition to "No Project Selected" should be smooth, not a jarring re-render.
 
+## Desktop App, Connection Strings & Installers
+- LoginScreen "Join Server" tab: audit tab navigation between Login, Register, and Join Server modes. Verify `role="tablist"` with `role="tab"` children, `aria-selected` tracks the active tab, and focus moves into the tab panel on selection. The connection string input field must have an associated `<label>`, placeholder text must not be the only label (WCAG 1.3.1), and paste-triggered validation feedback must be announced via `aria-live`.
+- Connection string input: audit that HMAC validation errors display inline with the input (not as a toast that disappears), error text has adequate contrast (WCAG 1.4.3), and screen readers announce the error via `aria-describedby` linked to the error message element. Success state (auto-connect after valid paste) must provide visible feedback and screen reader announcement.
+- DonateComputeToggle: audit the Settings toggle for `role="switch"` with `aria-checked`, visible focus indicator in both light and dark themes, associated label via `for`/`id` or `aria-labelledby`, and state change announced to screen readers. The secondary detection status ("Local LLM detected" or "No local LLM found") must use text, not color-only (WCAG 1.4.1).
+- Desktop app tray menu: audit the Tauri v2 system tray menu for keyboard accessibility — menu must open on click and keyboard activation, items must be reachable via Arrow keys, and destructive actions (Quit, Stop Server) should have confirmation or at minimum a distinct visual grouping. Verify menu labels are descriptive ("Donate Compute: On" not just a checkmark icon).
+- Installer wizard accessibility: audit the .env wizard and dependency checker screens for form field labeling, step indicator semantics (e.g., "Step 2 of 4" via `aria-label` on a progress element), keyboard navigation between steps, and error states when a dependency check fails (clear text explanation, not just a red icon).
+- Relay `--connection-string` CLI output: while CLI is not a UI audit target, verify that any browser-initiated relay setup (via DonateComputeToggle) surfaces connection status accessibly — the WebSocket connection state indicator must use text+icon (not color-only) and update via `aria-live` region.
+
 ## Limitations
 - Cannot perform live browser testing (evaluation is based on code analysis and component structure)
 - Cannot measure actual render performance or layout shift

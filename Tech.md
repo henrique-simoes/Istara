@@ -985,6 +985,58 @@ Backend endpoints with optional `project_id` parameters (documents, findings, no
 
 ---
 
+## Connection String Protocol
+
+Tamper-proof bundles for secure client→server setup. Format: `rcl_<base64url(JSON)>.<base64url(HMAC-SHA256)>`
+
+Payload contains: `server_url`, `ws_url` (relay WebSocket), `network_token` (NETWORK_ACCESS_TOKEN), `jwt` (pre-minted for web login), `expires_at`, `label`.
+
+**Flow:**
+1. Admin generates in Settings → `POST /connections/generate` (admin-only)
+2. Client validates → `POST /connections/validate` (public, no auth required)
+3. Client redeems → `POST /connections/redeem` (creates user account, returns JWT + network token)
+
+One string gets a team member both web UI access (JWT) and relay compute donation (network token). Strings are HMAC-signed with `JWT_SECRET` — only the originating server can create valid ones.
+
+**Token rotation:** `POST /connections/rotate-network-token` generates new NETWORK_ACCESS_TOKEN, invalidates all existing connection strings, broadcasts to connected relays.
+
+**Files:** `backend/app/core/connection_string.py`, `backend/app/api/routes/connections.py`
+
+## Desktop App (Tauri v2)
+
+System tray application for macOS (menubar) and Windows (system tray). Two modes:
+
+- **Server+Client**: Manages backend, frontend, and relay subprocesses. Menu: Open Browser, Start/Stop Server, Stats, Compute Donation, Quit.
+- **Client-only**: Manages relay daemon only. Menu: Connection Status, Open Browser, Stats, Compute Donation, Change Server, Quit.
+
+Built with Tauri v2 (5-15 MB binary, ~20 MB RAM). Rust backend for process management, `sysinfo` crate for stats. Config stored at `~/.reclaw/config.json`.
+
+**Files:** `desktop/src-tauri/` (Rust), `desktop/src/` (HTML stats popover)
+
+## Cross-Platform Installer
+
+- **macOS:** `.dmg` via `create-dmg` with notarization support. Tauri universal binary (Intel + Apple Silicon).
+- **Windows:** `.exe` via NSIS. Install mode selector (Full/Client-only), dependency checker, Start Menu shortcuts.
+- **Dependency checker:** Python 3.11+, Node 18+, LM Studio/Ollama detection with download links.
+- **`.env` wizard:** Generates `.env` from template with guided LLM provider detection and secret generation.
+
+**Files:** `installer/macos/build-dmg.sh`, `installer/windows/nsis-installer.nsi`
+
+## Browser Compute Donation
+
+`DonateComputeToggle` component in Settings. When enabled:
+1. Detects local LLM (LM Studio port 1234, Ollama port 11434)
+2. Opens WebSocket to `/ws/relay` with JWT auth
+3. Registers as browser compute node
+4. Proxies LLM requests from server to local LLM via `fetch()`
+5. Sends heartbeat every 30s
+
+**Limitation:** Browser tabs throttle background WebSockets. Displayed note recommends desktop app for reliable donation.
+
+**Files:** `frontend/src/components/common/DonateComputeToggle.tsx`
+
+---
+
 ## Project Structure
 
 ```

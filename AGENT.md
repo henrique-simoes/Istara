@@ -159,7 +159,7 @@ lms server start
 - `create_project()`
 - `deploy_research()`
 
-### API Endpoints (328 total)
+### API Endpoints (332 total)
 Run `python scripts/update_agent_md.py --verbose` for full list.
 
 <!-- CAPABILITIES_END -->

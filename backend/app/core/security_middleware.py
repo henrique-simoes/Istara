@@ -38,6 +38,8 @@ EXEMPT_PATHS = {
     "/api/auth/register",
     "/api/auth/team-status",
     "/api/settings/status",
+    "/api/connections/validate",
+    "/api/connections/redeem",
     "/.well-known/agent.json",
 }
 

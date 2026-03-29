@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ReClaw</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      padding: 16px;
+      font-size: 13px;
+    }
+    .header { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+    .header .logo { font-size: 24px; }
+    .header h1 { font-size: 16px; font-weight: 600; }
+    .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .stat {
+      background: #1e293b;
+      border-radius: 8px;
+      padding: 10px 12px;
+      border: 1px solid #334155;
+    }
+    .stat .label { font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; }
+    .stat .value { font-size: 18px; font-weight: 700; margin-top: 2px; }
+    .connection-input {
+      width: 100%;
+      margin-top: 12px;
+      padding: 8px 12px;
+      border-radius: 6px;
+      border: 1px solid #334155;
+      background: #1e293b;
+      color: #e2e8f0;
+      font-family: monospace;
+      font-size: 11px;
+      resize: vertical;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      margin-top: 8px;
+      padding: 6px 14px;
+      border-radius: 6px;
+      border: none;
+      background: #6366f1;
+      color: white;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+    .btn:hover { background: #4f46e5; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <span class="logo">&#x1f43e;</span>
+    <h1>ReClaw Desktop</h1>
+  </div>
+
+  <div class="stats" id="stats">
+    <div class="stat">
+      <div class="label">CPU</div>
+      <div class="value" id="cpu">--</div>
+    </div>
+    <div class="stat">
+      <div class="label">RAM Free</div>
+      <div class="value" id="ram">--</div>
+    </div>
+    <div class="stat">
+      <div class="label">Cores</div>
+      <div class="value" id="cores">--</div>
+    </div>
+    <div class="stat">
+      <div class="label">OS</div>
+      <div class="value" id="os" style="font-size:11px">--</div>
+    </div>
+  </div>
+
+  <script>
+    // Poll stats from Tauri backend
+    async function refreshStats() {
+      try {
+        if (window.__TAURI__) {
+          const stats = await window.__TAURI__.core.invoke("get_stats");
+          document.getElementById("cpu").textContent = stats.cpu_usage_pct.toFixed(0) + "%";
+          document.getElementById("ram").textContent = stats.available_ram_gb + " GB";
+          document.getElementById("cores").textContent = stats.cpu_cores;
+          document.getElementById("os").textContent = stats.os;
+        }
+      } catch (e) {
+        console.error("Stats error:", e);
+      }
+    }
+    refreshStats();
+    setInterval(refreshStats, 5000);
+  </script>
+</body>
+</html>
