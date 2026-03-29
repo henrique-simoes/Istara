@@ -13,6 +13,7 @@ import { chromium } from "playwright";
 import { mkdirSync, writeFileSync, readFileSync, existsSync, symlinkSync, unlinkSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
+import { spawn } from "child_process";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const RESULTS_DIR = join(__dirname, ".results");
@@ -27,6 +28,48 @@ const skipSkills = args.includes("--skip-skills");
 
 const API_BASE = "http://localhost:8000";
 const FRONTEND = "http://localhost:3000";
+
+// ── Timeout Configuration ──────────────────────────────────
+// Generous timeouts to ensure the runner NEVER gets killed by timeouts.
+// Per-scenario: 30 minutes. Total run: no global limit (scenarios run sequentially).
+const SCENARIO_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes per scenario
+const PLAYWRIGHT_NAV_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes for page navigations
+const PLAYWRIGHT_ACTION_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes for actions/selectors
+
+// ── Keep Computer Awake (macOS caffeinate) ─────────────────
+let caffeinateProcess = null;
+
+function startCaffeinate() {
+  if (process.platform !== "darwin") return; // macOS only
+  try {
+    // -d: prevent display sleep, -i: prevent idle sleep,
+    // -m: prevent disk sleep, -s: prevent system sleep (AC power)
+    caffeinateProcess = spawn("caffeinate", ["-dims"], {
+      stdio: "ignore",
+      detached: false,
+    });
+    caffeinateProcess.on("error", () => {
+      // caffeinate not available — not fatal
+      caffeinateProcess = null;
+    });
+    caffeinateProcess.on("exit", () => {
+      caffeinateProcess = null;
+    });
+    console.log("  caffeinate: keeping system awake during tests (PID " + caffeinateProcess.pid + ")");
+  } catch {
+    // Non-fatal — tests still run, machine might sleep
+    console.warn("  caffeinate: could not start (non-fatal)");
+  }
+}
+
+function stopCaffeinate() {
+  if (caffeinateProcess) {
+    try {
+      caffeinateProcess.kill("SIGTERM");
+    } catch {}
+    caffeinateProcess = null;
+  }
+}
 
 // ── API Client ──────────────────────────────────────────────
 
@@ -478,7 +521,10 @@ async function main() {
   // Authenticate the API client — all endpoints now require JWT
   await apiClient.authenticate();
 
-  // Launch browser
+  // Keep the computer awake for the entire test run
+  startCaffeinate();
+
+  // Launch browser with generous timeouts so nothing times out prematurely
   const browser = await chromium.launch({
     headless,
     args: ["--no-sandbox"],
@@ -487,7 +533,11 @@ async function main() {
     viewport: { width: 1280, height: 800 },
     colorScheme: "dark",
   });
+  context.setDefaultTimeout(PLAYWRIGHT_ACTION_TIMEOUT_MS);
+  context.setDefaultNavigationTimeout(PLAYWRIGHT_NAV_TIMEOUT_MS);
   const page = await context.newPage();
+  page.setDefaultTimeout(PLAYWRIGHT_ACTION_TIMEOUT_MS);
+  page.setDefaultNavigationTimeout(PLAYWRIGHT_NAV_TIMEOUT_MS);
 
   const screenshotFn = async (name) => {
     try {
@@ -585,22 +635,45 @@ async function main() {
     llmConnected: false,
   };
 
-  // Run scenarios
-  console.log(`\nRunning ${singleScenario ? "scenario " + singleScenario : `${scenarios.length} scenarios`}...\n`);
+  // ── Run ALL scenarios — never skip, never bail early ──────
+  // Each scenario gets a generous timeout. If it exceeds the timeout, it is
+  // marked as TIMEOUT (a failure) and the runner moves on to the next scenario.
+  console.log(`\nRunning ${singleScenario ? "scenario " + singleScenario : `${scenarios.length} scenarios`}...`);
+  console.log(`  Per-scenario timeout: ${SCENARIO_TIMEOUT_MS / 60000} minutes\n`);
 
   const scenarioResults = [];
   for (const scenario of scenarios) {
     if (singleScenario && !scenario.id.includes(singleScenario)) continue;
 
     process.stdout.write(`  ${scenario.id}: ${scenario.name}... `);
+    const scenarioStart = Date.now();
     try {
-      const result = await scenario.run(ctx);
-      scenarioResults.push({ id: scenario.id, name: scenario.name, result });
+      // Wrap scenario.run in a timeout — never let a single scenario hang the runner
+      const result = await Promise.race([
+        scenario.run(ctx),
+        new Promise((_, reject) =>
+          setTimeout(
+            () => reject(new Error(`TIMEOUT after ${SCENARIO_TIMEOUT_MS / 60000} minutes`)),
+            SCENARIO_TIMEOUT_MS
+          )
+        ),
+      ]);
+      const elapsed = ((Date.now() - scenarioStart) / 1000).toFixed(1);
+      scenarioResults.push({ id: scenario.id, name: scenario.name, result, elapsed });
       const status = result.failed > 0 ? "FAIL" : result.skipped ? "SKIP" : "PASS";
-      console.log(`${status} (${result.passed}/${result.passed + result.failed})`);
+      console.log(`${status} (${result.passed}/${result.passed + result.failed}) [${elapsed}s]`);
     } catch (e) {
-      scenarioResults.push({ id: scenario.id, name: scenario.name, result: { checks: [], passed: 0, failed: 1 }, error: e.message });
-      console.log(`ERROR: ${e.message}`);
+      const elapsed = ((Date.now() - scenarioStart) / 1000).toFixed(1);
+      const isTimeout = e.message.startsWith("TIMEOUT");
+      scenarioResults.push({
+        id: scenario.id,
+        name: scenario.name,
+        result: { checks: [], passed: 0, failed: 1 },
+        error: e.message,
+        elapsed,
+        timedOut: isTimeout,
+      });
+      console.log(`${isTimeout ? "TIMEOUT" : "ERROR"}: ${e.message} [${elapsed}s]`);
     }
   }
 
@@ -637,27 +710,76 @@ async function main() {
 
   await browser.close();
 
-  // Summary
+  // ── Comprehensive Summary — everything needing attention ───
   const totalPassed = scenarioResults.reduce((sum, r) => sum + (r.result?.passed || 0), 0);
   const totalFailed = scenarioResults.reduce((sum, r) => sum + (r.result?.failed || 0), 0);
   const totalChecks = totalPassed + totalFailed;
 
-  console.log(`\n${"=".repeat(60)}`);
-  console.log(`RESULTS: ${totalPassed}/${totalChecks} checks passed (${totalChecks ? Math.round((totalPassed / totalChecks) * 100) : 0}%)`);
-  console.log(`Issues found: ${issues.length}`);
-  console.log(`Duration: ${Math.round(duration / 1000)}s`);
-  console.log(`Report: ${join(runDir, "report.md")}`);
-  console.log(`${"=".repeat(60)}\n`);
+  const failedScenarios = scenarioResults.filter((s) => s.result?.failed > 0 || s.error);
+  const timedOutScenarios = scenarioResults.filter((s) => s.timedOut);
+  const errorScenarios = scenarioResults.filter((s) => s.error && !s.timedOut);
+  const checkFailScenarios = scenarioResults.filter((s) => s.result?.failed > 0 && !s.error);
 
-  // Print critical issues
-  const critical = issues.filter((i) => i.severity === "critical");
-  if (critical.length > 0) {
-    console.log("CRITICAL ISSUES:");
-    for (const i of critical) {
-      console.log(`  - ${i.title} (${i.source})`);
+  console.log(`\n${"=".repeat(70)}`);
+  console.log(`  RECLAW SIMULATION RESULTS`);
+  console.log(`${"=".repeat(70)}`);
+  console.log(`  Scenarios run : ${scenarioResults.length}`);
+  console.log(`  Checks passed : ${totalPassed}/${totalChecks} (${totalChecks ? Math.round((totalPassed / totalChecks) * 100) : 0}%)`);
+  console.log(`  Failures      : ${failedScenarios.length} scenario(s)`);
+  console.log(`  Issues found  : ${issues.length}`);
+  console.log(`  Duration      : ${Math.round(duration / 1000)}s`);
+  console.log(`  Report        : ${join(runDir, "report.md")}`);
+  console.log(`${"=".repeat(70)}`);
+
+  // ── Detailed failure breakdown ───────────────────────────
+  if (failedScenarios.length > 0) {
+    console.log(`\n  ITEMS NEEDING ATTENTION (${failedScenarios.length})`);
+    console.log(`  ${"-".repeat(66)}`);
+
+    if (timedOutScenarios.length > 0) {
+      console.log(`\n  TIMED OUT (${timedOutScenarios.length}):`);
+      for (const s of timedOutScenarios) {
+        console.log(`    - [${s.id}] ${s.name} (ran for ${s.elapsed}s)`);
+      }
     }
-    console.log();
+
+    if (errorScenarios.length > 0) {
+      console.log(`\n  ERRORS (${errorScenarios.length}):`);
+      for (const s of errorScenarios) {
+        console.log(`    - [${s.id}] ${s.name}: ${s.error}`);
+      }
+    }
+
+    if (checkFailScenarios.length > 0) {
+      console.log(`\n  FAILED CHECKS (${checkFailScenarios.length} scenario(s)):`);
+      for (const s of checkFailScenarios) {
+        const failedChecks = (s.result?.checks || []).filter((c) => !c.passed);
+        console.log(`    - [${s.id}] ${s.name} (${s.result.failed} failed):`);
+        for (const c of failedChecks) {
+          console.log(`        * ${c.name}${c.detail ? ": " + c.detail : ""}`);
+        }
+      }
+    }
   }
+
+  // Print critical issues from evaluators too
+  const critical = issues.filter((i) => i.severity === "critical");
+  const high = issues.filter((i) => i.severity === "high");
+  if (critical.length > 0 || high.length > 0) {
+    console.log(`\n  CRITICAL/HIGH SEVERITY ISSUES (${critical.length + high.length}):`);
+    for (const i of critical) {
+      console.log(`    [CRITICAL] ${i.title} (${i.source})${i.detail ? " — " + i.detail : ""}`);
+    }
+    for (const i of high) {
+      console.log(`    [HIGH] ${i.title} (${i.source})${i.detail ? " — " + i.detail : ""}`);
+    }
+  }
+
+  if (failedScenarios.length === 0 && issues.length === 0) {
+    console.log(`\n  ALL CLEAR — every scenario passed with no issues.`);
+  }
+
+  console.log();
 
   // Resume ReClaw operations after simulation tests complete
   if (maintenancePaused) {
@@ -675,11 +797,13 @@ async function main() {
     }
   }
 
+  stopCaffeinate();
   process.exit(totalFailed > 0 ? 1 : 0);
 }
 
-// Safety: resume ReClaw operations on crash or interrupt
-async function emergencyResume() {
+// Safety: resume ReClaw operations and stop caffeinate on crash or interrupt
+async function emergencyCleanup() {
+  stopCaffeinate();
   try {
     await fetch(`${API_BASE}/api/settings/maintenance/resume`, {
       method: "POST",
@@ -690,18 +814,18 @@ async function emergencyResume() {
 }
 
 process.on("SIGINT", async () => {
-  console.log("\n  Interrupted — resuming ReClaw operations...");
-  await emergencyResume();
+  console.log("\n  Interrupted — cleaning up...");
+  await emergencyCleanup();
   process.exit(130);
 });
 
 process.on("SIGTERM", async () => {
-  await emergencyResume();
+  await emergencyCleanup();
   process.exit(143);
 });
 
 main().catch(async (e) => {
   console.error("Fatal error:", e);
-  await emergencyResume();
+  await emergencyCleanup();
   process.exit(1);
 });

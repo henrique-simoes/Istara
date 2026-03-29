@@ -142,7 +142,7 @@ export async function run(ctx) {
       originalInterval = original.loop_interval_seconds;
 
       const newInterval = (originalInterval || 60) + 10;
-      const updated = await (async (url, body) => { const r = await fetch("http://localhost:8000" + url, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }); if (!r.ok) throw new Error("PATCH " + url + ": " + r.status); return r.json(); })(`/api/loops/agents/${testAgentId}/config`, {
+      const updated = await (async (url, body) => { const r = await fetch("http://localhost:8000" + url, { method: "PATCH", headers: api._headers(), body: JSON.stringify(body) }); if (!r.ok) throw new Error("PATCH " + url + ": " + r.status); return r.json(); })(`/api/loops/agents/${testAgentId}/config`, {
         loop_interval_seconds: newInterval,
       });
       checks.push({
@@ -253,6 +253,7 @@ export async function run(ctx) {
     try {
       const res = await fetch(`http://localhost:8000/api/schedules/${testScheduleId}`, {
         method: "DELETE",
+        headers: api._headers(),
       });
       checks.push({
         name: "DELETE /api/schedules/{id} returns 204",
@@ -283,7 +284,7 @@ export async function run(ctx) {
   // ── 14. PATCH config — restore original interval ──
   if (testAgentId && originalInterval !== null) {
     try {
-      const restored = await (async (url, body) => { const r = await fetch("http://localhost:8000" + url, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }); if (!r.ok) throw new Error("PATCH " + url + ": " + r.status); return r.json(); })(`/api/loops/agents/${testAgentId}/config`, {
+      const restored = await (async (url, body) => { const r = await fetch("http://localhost:8000" + url, { method: "PATCH", headers: api._headers(), body: JSON.stringify(body) }); if (!r.ok) throw new Error("PATCH " + url + ": " + r.status); return r.json(); })(`/api/loops/agents/${testAgentId}/config`, {
         loop_interval_seconds: originalInterval,
       });
       checks.push({
@@ -298,10 +299,10 @@ export async function run(ctx) {
 
   // ── Cleanup ──
   for (const id of cleanup.scheduleIds) {
-    try { await fetch(`http://localhost:8000/api/schedules/${id}`, { method: "DELETE" }); } catch {}
+    try { await fetch(`http://localhost:8000/api/schedules/${id}`, { method: "DELETE", headers: api._headers() }); } catch {}
   }
   for (const id of cleanup.customLoopIds) {
-    try { await fetch(`http://localhost:8000/api/schedules/${id}`, { method: "DELETE" }); } catch {}
+    try { await fetch(`http://localhost:8000/api/schedules/${id}`, { method: "DELETE", headers: api._headers() }); } catch {}
   }
 
   return {

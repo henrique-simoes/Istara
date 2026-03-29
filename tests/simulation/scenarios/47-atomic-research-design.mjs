@@ -398,6 +398,7 @@ export async function run(ctx) {
     try {
       const res = await fetch(`http://localhost:8000/api/findings/design-decisions/${manualDecisionId}`, {
         method: "DELETE",
+        headers: api._headers(),
       });
       checks.push({
         name: "DELETE DesignDecision returns 204",
@@ -424,6 +425,7 @@ export async function run(ctx) {
   try {
     const res = await fetch("http://localhost:8000/api/interfaces/screens/nonexistent-screen-id-999", {
       method: "DELETE",
+      headers: api._headers(),
     });
     checks.push({
       name: "DELETE /api/interfaces/screens with invalid ID returns 404",
@@ -543,10 +545,10 @@ export async function run(ctx) {
 
   // ── Cleanup ──
   for (const id of cleanup.screenIds) {
-    try { await fetch(`http://localhost:8000/api/interfaces/screens/${id}`, { method: "DELETE" }); } catch {}
+    try { await fetch(`http://localhost:8000/api/interfaces/screens/${id}`, { method: "DELETE", headers: api._headers() }); } catch {}
   }
   for (const id of cleanup.decisionIds) {
-    try { await fetch(`http://localhost:8000/api/findings/design-decisions/${id}`, { method: "DELETE" }); } catch {}
+    try { await fetch(`http://localhost:8000/api/findings/design-decisions/${id}`, { method: "DELETE", headers: api._headers() }); } catch {}
   }
   for (const id of cleanup.recIds) {
     try { await api.delete(`/api/findings/recommendations/${id}`); } catch {}
@@ -562,7 +564,7 @@ export async function run(ctx) {
   }
   // Briefs don't have a delete endpoint typically, but try
   for (const id of cleanup.briefIds) {
-    try { await fetch(`http://localhost:8000/api/interfaces/handoff/briefs/${id}`, { method: "DELETE" }); } catch {}
+    try { await fetch(`http://localhost:8000/api/interfaces/handoff/briefs/${id}`, { method: "DELETE", headers: api._headers() }); } catch {}
   }
 
   return {

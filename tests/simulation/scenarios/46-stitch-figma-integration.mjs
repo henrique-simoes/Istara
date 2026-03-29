@@ -99,7 +99,7 @@ export async function run(ctx) {
     try {
       const res = await fetch("http://localhost:8000/api/interfaces/design-chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: api._headers(),
         body: JSON.stringify({
           message: "List available design tools",
           project_id: projectId,
@@ -320,7 +320,7 @@ export async function run(ctx) {
   try {
     const res = await fetch("http://localhost:8000/api/interfaces/handoff/dev-spec", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: api._headers(),
       body: JSON.stringify({ screen_id: "nonexistent-screen-id-999" }),
     });
     checks.push({
@@ -336,7 +336,7 @@ export async function run(ctx) {
   try {
     const res = await fetch("http://localhost:8000/api/interfaces/screens/variant", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: api._headers(),
       body: JSON.stringify({ screen_id: "nonexistent-screen-id-999", variant_type: "EXPLORE", count: 2 }),
     });
     checks.push({
@@ -352,7 +352,7 @@ export async function run(ctx) {
   try {
     const res = await fetch("http://localhost:8000/api/interfaces/screens/edit", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: api._headers(),
       body: JSON.stringify({ screen_id: "nonexistent-screen-id-999", instructions: "Make it blue" }),
     });
     checks.push({
@@ -366,7 +366,7 @@ export async function run(ctx) {
 
   // ── Cleanup ──
   for (const id of cleanup.screenIds) {
-    try { await fetch(`http://localhost:8000/api/interfaces/screens/${id}`, { method: "DELETE" }); } catch {}
+    try { await fetch(`http://localhost:8000/api/interfaces/screens/${id}`, { method: "DELETE", headers: api._headers() }); } catch {}
   }
 
   return {

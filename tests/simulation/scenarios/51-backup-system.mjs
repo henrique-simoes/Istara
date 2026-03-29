@@ -224,6 +224,7 @@ export async function run(ctx) {
     try {
       const res = await fetch(`http://localhost:8000/api/backups/${incrBackup.id}`, {
         method: "DELETE",
+        headers: api._headers(),
       });
       const passed204 = res.status === 204 || res.status === 200;
       // Verify removal
@@ -247,7 +248,7 @@ export async function run(ctx) {
   // ── Cleanup ──
   for (const id of cleanup.backupIds) {
     try {
-      await fetch(`http://localhost:8000/api/backups/${id}`, { method: "DELETE" });
+      await fetch(`http://localhost:8000/api/backups/${id}`, { method: "DELETE", headers: api._headers() });
     } catch {}
   }
 

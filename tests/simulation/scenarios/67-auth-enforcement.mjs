@@ -95,17 +95,26 @@ export async function run(ctx) {
     checks.push({ name: "MCP without JWT", passed: false, detail: e.message });
   }
 
-  // 7. Login endpoint accessible (exempt)
+  // 7. Login endpoint accessible (exempt from JWT middleware)
+  //    We send wrong credentials WITHOUT a JWT. The middleware must let the
+  //    request through (exempt path) so the *handler* can reject it.
+  //    The handler returns 401 with "Invalid username or password" — we
+  //    distinguish this from a middleware 401 ("Authentication required")
+  //    by inspecting the response body.
   try {
     const res = await fetch("http://localhost:8000/api/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username: "nonexistent", password: "wrong" }),
     });
+    const body = await res.json().catch(() => ({}));
+    // Middleware 401 says "Authentication required"; handler 401 says "Invalid username or password"
+    const reachedHandler = res.status === 429 || // rate-limited (handler)
+      (body.detail && !body.detail.includes("Authentication required"));
     checks.push({
       name: "Login endpoint accessible without JWT",
-      passed: res.status !== 401, // Should be 400 or 422, not 401
-      detail: `status=${res.status}`,
+      passed: reachedHandler,
+      detail: `status=${res.status} detail=${body.detail || "none"}`,
     });
   } catch (e) {
     checks.push({ name: "Login endpoint accessible", passed: false, detail: e.message });

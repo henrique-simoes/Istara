@@ -34,6 +34,7 @@ Date: 2024-02-10
     formData.append("file", blob, "sim-preview-test.txt");
     const res = await fetch(`http://localhost:8000/api/files/upload/${ctx.projectId}`, {
       method: "POST",
+      headers: { "Authorization": api._headers()["Authorization"] },
       body: formData,
     });
     const result = await res.json();
@@ -75,7 +76,7 @@ Date: 2024-02-10
   // 3. Serve file directly
   if (testFilename) {
     try {
-      const res = await fetch(`http://localhost:8000/api/files/${ctx.projectId}/serve/${testFilename}`);
+      const res = await fetch(`http://localhost:8000/api/files/${ctx.projectId}/serve/${testFilename}`, { headers: api._headers() });
       checks.push({
         name: "Serve file endpoint",
         passed: res.ok,

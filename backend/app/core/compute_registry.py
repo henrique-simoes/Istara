@@ -1151,7 +1151,9 @@ class ComputeRegistry:
         elif alive >= 4:
             tier = "standard"
         elif alive >= 2:
-            tier = "small"
+            tier = "conservative"
+        elif alive >= 1:
+            tier = "minimal"
         else:
             tier = "local_only"
 

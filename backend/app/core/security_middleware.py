@@ -9,8 +9,9 @@ Architecture:
 
 Security model:
     - ALL endpoints require JWT authentication by default
-    - Exempt paths: /api/health, /api/auth/login, /api/auth/register, /api/settings/status
-    - Exempt prefixes: /_next/, /favicon, /webhooks/ (have their own verification)
+    - Exempt paths: /api/health, /api/auth/login, /api/auth/register,
+      /api/auth/team-status, /api/settings/status, /.well-known/agent.json
+    - Exempt prefixes: /_next/, /favicon, /webhooks/, /static/, /a2a
     - WebSocket: JWT via ?token= query parameter
     - Admin-only operations checked via request.state.user.role
 
@@ -35,7 +36,9 @@ EXEMPT_PATHS = {
     "/api/health",
     "/api/auth/login",
     "/api/auth/register",
+    "/api/auth/team-status",
     "/api/settings/status",
+    "/.well-known/agent.json",
 }
 
 # Path prefixes that don't require authentication
@@ -44,12 +47,19 @@ EXEMPT_PREFIXES = (
     "/favicon",      # Browser icon
     "/webhooks/",    # External platform webhooks (have their own verification)
     "/static/",      # Static files
+    "/a2a",          # A2A Protocol — agent-to-agent communication (open by spec)
 )
 
 
 def _is_exempt(path: str) -> bool:
-    """Check if a request path is exempt from authentication."""
-    if path in EXEMPT_PATHS:
+    """Check if a request path is exempt from authentication.
+
+    Handles trailing-slash variants so that both ``/api/auth/login``
+    and ``/api/auth/login/`` are recognised as exempt.
+    """
+    # Normalise: strip trailing slash for comparison (but keep "/" itself)
+    normalised = path.rstrip("/") or "/"
+    if normalised in EXEMPT_PATHS:
         return True
     if path.startswith(EXEMPT_PREFIXES):
         return True
