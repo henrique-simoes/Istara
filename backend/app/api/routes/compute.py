@@ -122,6 +122,29 @@ async def relay_websocket(ws: WebSocket):
                 # is the preferred path.
                 compute_registry.remove_duplicate_network_nodes(node)
 
+                # Immediately detect model capabilities so the relay is
+                # usable for streaming without waiting for the 60s health loop.
+                if resolved_host:
+                    try:
+                        from app.core.model_capabilities import (
+                            detect_capabilities_lmstudio,
+                            detect_capabilities_ollama,
+                        )
+                        ptype = msg.get("provider_type", "ollama")
+                        if ptype == "ollama":
+                            caps = await detect_capabilities_ollama(resolved_host)
+                        else:
+                            caps = await detect_capabilities_lmstudio(resolved_host)
+                        node.model_capabilities = {
+                            k: v.to_dict() for k, v in caps.items()
+                        }
+                        logger.info(
+                            f"Relay capabilities detected immediately: "
+                            f"{len(node.model_capabilities)} models"
+                        )
+                    except Exception as e:
+                        logger.debug(f"Relay immediate capability detection failed: {e}")
+
                 await ws.send_json({"type": "registered", "node_id": node_id})
                 logger.info(f"Relay node registered: {node.name} ({node_id})")
 

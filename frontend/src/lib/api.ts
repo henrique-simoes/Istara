@@ -62,6 +62,10 @@ export const projects = {
     request<any>(`/api/projects/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   delete: (id: string) =>
     fetch(`${API_BASE}/api/projects/${id}`, { method: "DELETE", headers: { ..._getAuthHeaders() } }),
+  pause: (id: string) =>
+    request<any>(`/api/projects/${id}/pause`, { method: "POST" }),
+  resume: (id: string) =>
+    request<any>(`/api/projects/${id}/resume`, { method: "POST" }),
   versions: (id: string) => request<any[]>(`/api/projects/${id}/versions`),
 };
 
@@ -720,7 +724,10 @@ export const deployments = {
 
 export const surveys = {
   integrations: {
-    list: () => get<SurveyIntegration[]>("/api/surveys/integrations"),
+    list: async (): Promise<SurveyIntegration[]> => {
+      const res = await get<any>("/api/surveys/integrations");
+      return Array.isArray(res) ? res : (res?.integrations ?? []);
+    },
     create: (data: { platform: string; name: string; config: Record<string, any> }) =>
       post<SurveyIntegration>("/api/surveys/integrations", data),
     delete: (id: string) => del(`/api/surveys/integrations/${id}`),

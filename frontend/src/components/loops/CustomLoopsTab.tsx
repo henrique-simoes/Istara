@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Plus, Trash2, Power, PowerOff, RefreshCw } from "lucide-react";
 import { useLoopsStore } from "@/stores/loopsStore";
 import { useProjectStore } from "@/stores/projectStore";
+import { skills as skillsApi } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import CronBuilder from "./CronBuilder";
 
@@ -32,10 +33,16 @@ export default function CustomLoopsTab() {
   const { projects, fetchProjects } = useProjectStore();
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<CustomLoopForm>({ ...EMPTY_FORM });
+  const [availableSkills, setAvailableSkills] = useState<{ id: string; name: string }[]>([]);
 
   useEffect(() => {
     fetchHealth();
     fetchProjects();
+    // Load available skills for the dropdown
+    skillsApi.list().then((res: any) => {
+      const list = Array.isArray(res) ? res : (res?.skills ?? []);
+      setAvailableSkills(list.map((s: any) => ({ id: s.skill_id || s.id, name: s.name || s.skill_id || s.id })));
+    }).catch(() => {});
   }, [fetchHealth, fetchProjects]);
 
   const customLoops = health.filter((h) => h.source_type === "custom");
@@ -86,14 +93,18 @@ export default function CustomLoopsTab() {
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Skill Name</label>
-              <input
-                type="text"
+              <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Skill</label>
+              <select
                 value={form.skill_name}
                 onChange={(e) => setForm({ ...form, skill_name: e.target.value })}
-                placeholder="e.g. ux_evaluation"
                 className="w-full px-3 py-1.5 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-reclaw-500"
-              />
+                aria-label="Select skill for this loop"
+              >
+                <option value="">Select a skill...</option>
+                {availableSkills.map((s) => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </select>
             </div>
           </div>
 

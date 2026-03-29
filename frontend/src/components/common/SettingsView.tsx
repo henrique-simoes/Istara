@@ -82,7 +82,7 @@ export default function SettingsView() {
             )}
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-sm text-slate-500">Model:</span>
+            <span className="text-sm text-slate-500">Server Model:</span>
             <span className="text-sm font-mono">{systemStatus?.config?.model || "—"}</span>
           </div>
           <div className="flex items-center gap-2">
@@ -97,7 +97,7 @@ export default function SettingsView() {
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
           <h3 className="font-medium text-slate-900 dark:text-white mb-3 flex items-center gap-2">
             <Cpu size={18} />
-            Hardware
+            Hardware (Server)
           </h3>
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
@@ -280,10 +280,46 @@ export default function SettingsView() {
         </h3>
         <p className="text-sm text-slate-500 mb-3">
           Enable team mode to allow multiple users to connect, authenticate, and collaborate on research projects.
-          Set <code className="bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded text-xs">TEAM_MODE=true</code> in your <code className="bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded text-xs">.env</code> file to activate.
+          First registered user becomes admin.
         </p>
+        <div className="flex items-center gap-3 mb-3">
+          <button
+            onClick={async () => {
+              const newState = !systemStatus?.team_mode;
+              try {
+                const token = localStorage.getItem("reclaw_token");
+                const headers: Record<string, string> = { "Content-Type": "application/json" };
+                if (token) headers["Authorization"] = `Bearer ${token}`;
+                await fetch(
+                  `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/settings/team-mode`,
+                  { method: "POST", headers, body: JSON.stringify({ enabled: newState }) }
+                );
+                await fetchAll();
+              } catch (e) {
+                console.error("Failed to toggle team mode:", e);
+              }
+            }}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+              systemStatus?.team_mode
+                ? "bg-reclaw-600"
+                : "bg-slate-300 dark:bg-slate-600"
+            }`}
+            role="switch"
+            aria-checked={systemStatus?.team_mode || false}
+            aria-label="Toggle team mode"
+          >
+            <span
+              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                systemStatus?.team_mode ? "translate-x-6" : "translate-x-1"
+              }`}
+            />
+          </button>
+          <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+            {systemStatus?.team_mode ? "Enabled" : "Disabled"}
+          </span>
+        </div>
         <div className="text-xs text-slate-400">
-          Requires server restart. First registered user becomes admin.
+          Server restart recommended after changing. In team mode, users register and authenticate with JWT.
         </div>
       </div>
 

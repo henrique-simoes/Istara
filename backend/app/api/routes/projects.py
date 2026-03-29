@@ -144,6 +144,30 @@ async def update_project(
     return project
 
 
+@router.post("/projects/{project_id}/pause")
+async def pause_project(project_id: str, db: AsyncSession = Depends(get_db)):
+    """Pause a project — agents and loops stop executing for this project."""
+    result = await db.execute(select(Project).where(Project.id == project_id))
+    project = result.scalar_one_or_none()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    project.is_paused = True
+    await db.commit()
+    return {"status": "paused", "project_id": project_id}
+
+
+@router.post("/projects/{project_id}/resume")
+async def resume_project(project_id: str, db: AsyncSession = Depends(get_db)):
+    """Resume a paused project."""
+    result = await db.execute(select(Project).where(Project.id == project_id))
+    project = result.scalar_one_or_none()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    project.is_paused = False
+    await db.commit()
+    return {"status": "resumed", "project_id": project_id}
+
+
 @router.delete("/projects/{project_id}", status_code=204)
 async def delete_project(project_id: str, db: AsyncSession = Depends(get_db)):
     """Delete a project and all its data."""

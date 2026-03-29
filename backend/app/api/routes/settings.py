@@ -384,6 +384,7 @@ async def system_status():
     return {
         "status": "healthy" if llm_healthy else "degraded",
         "provider": settings.llm_provider,
+        "team_mode": settings.team_mode,
         "services": {
             "backend": "running",
             "llm": "connected" if llm_healthy else "disconnected",
@@ -395,3 +396,22 @@ async def system_status():
             "rag_top_k": settings.rag_top_k,
         },
     }
+
+
+@router.post("/settings/team-mode")
+async def toggle_team_mode(request: Request, db: AsyncSession = Depends(get_db)):
+    """Toggle team mode on/off. Requires admin in team mode."""
+    body = await request.json()
+    enabled = bool(body.get("enabled", False))
+
+    # In team mode, only admins can change this
+    if settings.team_mode:
+        try:
+            require_admin_from_request(request)
+        except Exception:
+            from fastapi import HTTPException
+            raise HTTPException(status_code=403, detail="Admin required to change team mode")
+
+    settings.team_mode = enabled
+    _persist_env("TEAM_MODE", str(enabled).lower())
+    return {"team_mode": enabled, "message": "Team mode updated. Server restart recommended for full effect."}

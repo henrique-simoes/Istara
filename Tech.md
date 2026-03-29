@@ -888,12 +888,64 @@ Agent cards display meaningful error states:
 - "Heartbeat Lost" when connection fails (not misleading "0 Errors")
 - "Recent Errors" section in agent detail pulls from work logs with actionable descriptions
 
+### Project Management
+
+Projects now support pause/resume and delete from the sidebar context menu:
+- **Pause**: `POST /projects/{id}/pause` — sets `is_paused=true`, agents and loops skip paused projects
+- **Resume**: `POST /projects/{id}/resume` — clears pause, normal operation resumes
+- **Delete**: Full cascade deletion of all project entities
+- **Owner**: `owner_id` field for per-user project ownership in team mode
+- **UI**: Right-click or hover menu on project items in sidebar with Pause/Delete actions
+
+### Team Mode
+
+Team mode can be toggled from the Settings UI (previously required `.env` edit):
+- `POST /settings/team-mode` — persists to `.env`, admin-only in team mode
+- Toggle switch in Settings page with live status display
+- User management via the existing `UserManagement` component
+
+### Document Organization
+
+Documents view now includes an "Organize Files" function (ported from Interviews):
+- AI-powered analysis: sends a chat request to categorize and tag project documents
+- Streaming results displayed in a collapsible panel
+- Does NOT rename or move files — only recommends structure
+
+### Custom Loop Skill Selection
+
+Custom loops now use a dropdown populated from the skill registry instead of free-text input:
+- Fetches all registered skills from `/api/skills`
+- Dropdown shows skill names for selection
+- Description field explains what the loop will do with the selected skill
+
+### Google Stitch (Generative AI) Configuration
+
+The Interfaces > Figma tab now includes Google Stitch API key configuration:
+- Input field with save/status indicator (same UX pattern as Figma token)
+- Link to Google AI Studio for API key generation
+- Backend: `POST /interfaces/configure/stitch` persists key to `.env`
+
+### Design Brief Evidence Display
+
+Design Briefs in the Handoff tab now show structured evidence:
+- **UX Laws Referenced**: Indigo pill badges for each law the brief considers
+- **Source Findings**: Evidence cards showing finding type (nugget, insight) and text
+- **Recommendations**: Bulleted list with optional UX law attribution
+
+### Agent Heartbeat Recovery
+
+Agents stuck in ERROR state now auto-recover:
+- Backend `HeartbeatManager` resets agents to IDLE after 120s without new errors
+- New `POST /agents/{id}/restart` endpoint for manual recovery (clears error counters)
+- Frontend polling keeps heartbeat status current (10s interval)
+
 ### Stability Fixes
 
-- **Integrations**: Wrapped in `<ErrorBoundary>` with loading guards to prevent UI freeze
+- **Integrations**: Wrapped in `<ErrorBoundary>` with loading guards; error cleared on tab switch; API response unwrapping for surveys and MCP
 - **Chat**: Messages container uses `h-0 flex-1` pattern for stable scrolling on session changes
-- **Compute Pool**: Fully scrollable within `overflow-y-auto` container
+- **Compute Pool**: Fully scrollable within `overflow-y-auto` container; relay capability detection on registration
 - **Meta-Agent**: Long content contained with `min-w-0`, `break-all`, `truncate`
+- **Sidebar**: Nav + projects share single scrollable container — "More" expansion no longer pushes projects off-screen
 
 ---
 

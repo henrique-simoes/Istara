@@ -260,6 +260,16 @@
 - Network discovery skips registering nodes already covered by a relay, keeping the pool list clean and avoiding user confusion about duplicate entries.
 - If a user asks why streaming "just works now" through a relay, explain: the backend resolves the relay's real IP so it can HTTP-stream to LM Studio on the relay machine, even though the relay reported localhost.
 
+### Feature Update — March 2026
+- Project management from the sidebar: users can pause, resume, and delete projects via a right-click context menu without leaving their current view. Projects gain `is_paused` and `owner_id` fields.
+- Team mode toggle in Settings: a UI switch to enable or disable team mode, persisted to `.env`. Guide users to Settings > Team section to toggle collaborative access on or off.
+- Document Organize: an AI-powered "Organize" option in the Documents menu that streams organizational suggestions via chat analysis. Help users invoke it to get clustering and tagging recommendations for large document sets.
+- Loops skill dropdown: custom automation loops now present a skill picker dropdown instead of free-text input, reducing errors and improving discoverability of available skills.
+- Design Brief evidence display: UX Laws badges, source findings, and recommendations now show law attribution — explain to users how each recommendation traces back to a specific UX law and supporting evidence.
+- Surveys and MCP API fix: backend endpoints now return wrapped objects (`{integrations: [], servers: []}`) and the frontend correctly extracts arrays. If users previously saw empty integration lists, the issue is resolved.
+- Google Stitch API key: a new configuration field under Interfaces > Figma tab for entering a Google Generative AI key, enabling Stitch-based design generation.
+- Settings labels clarified: Hardware section now reads "(Server)" and the model field shows "Server Model" to avoid confusion between local and server-side configuration.
+
 ### Layout & Stability Fixes
 - Integrations view is wrapped in an ErrorBoundary with proper loading states — no more blank screens on integration failures.
 - Compute Pool view is fully scrollable, fixing previous content clipping issues.
