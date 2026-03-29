@@ -74,7 +74,7 @@ export async function run(ctx) {
 
   // ── 4. Scheduler endpoint exists ──
   try {
-    const res = await fetch("http://localhost:8000/api/settings/status");
+    const res = await fetch("http://localhost:8000/api/settings/status", { headers: api._headers() });
     const data = await res.json();
     // The scheduler state is typically reported in system status
     checks.push({
@@ -91,6 +91,7 @@ export async function run(ctx) {
     // Test that the maintenance endpoint exists — don't actually pause
     const res = await fetch("http://localhost:8000/api/settings/maintenance/pause?reason=sim-hardening-probe", {
       method: "POST",
+      headers: api._headers(),
     });
     checks.push({
       name: "Maintenance pause endpoint exists",
@@ -99,7 +100,7 @@ export async function run(ctx) {
     });
     // Immediately resume if we paused
     if (res.ok) {
-      await fetch("http://localhost:8000/api/settings/maintenance/resume", { method: "POST" });
+      await fetch("http://localhost:8000/api/settings/maintenance/resume", { method: "POST", headers: api._headers() });
     }
   } catch (e) {
     checks.push({ name: "Maintenance pause endpoint", passed: false, detail: e.message });
@@ -108,6 +109,7 @@ export async function run(ctx) {
   try {
     const res = await fetch("http://localhost:8000/api/settings/maintenance/resume", {
       method: "POST",
+      headers: api._headers(),
     });
     checks.push({
       name: "Maintenance resume endpoint exists",

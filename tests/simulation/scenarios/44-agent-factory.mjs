@@ -9,7 +9,7 @@ export async function run(ctx) {
 
   // ── 1. GET pending agent creation proposals ──
   try {
-    const res = await fetch("http://localhost:8000/api/agents/creation-proposals/pending");
+    const res = await fetch("http://localhost:8000/api/agents/creation-proposals/pending", { headers: api._headers() });
     checks.push({
       name: "GET /api/agents/creation-proposals/pending responds",
       passed: res.status === 200 || res.status === 404,
@@ -29,7 +29,7 @@ export async function run(ctx) {
 
   // ── 2. GET all agent creation proposals ──
   try {
-    const res = await fetch("http://localhost:8000/api/agents/creation-proposals/all");
+    const res = await fetch("http://localhost:8000/api/agents/creation-proposals/all", { headers: api._headers() });
     checks.push({
       name: "GET /api/agents/creation-proposals/all responds",
       passed: res.status === 200 || res.status === 404,
@@ -51,7 +51,7 @@ export async function run(ctx) {
   try {
     const res = await fetch("http://localhost:8000/api/agents/creation-proposals/nonexistent/approve", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: api._headers(),
       body: JSON.stringify({}),
     });
     checks.push({
@@ -67,7 +67,7 @@ export async function run(ctx) {
   try {
     const res = await fetch("http://localhost:8000/api/agents/creation-proposals/nonexistent/reject", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: api._headers(),
       body: JSON.stringify({}),
     });
     checks.push({

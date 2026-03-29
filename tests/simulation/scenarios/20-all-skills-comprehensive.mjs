@@ -463,6 +463,7 @@ export async function run(ctx) {
         formData.append("file", blob, filename);
         const resp = await fetch(`http://localhost:8000/api/files/upload/${projectId}`, {
           method: "POST",
+          headers: { "Authorization": api._headers()["Authorization"] },
           body: formData,
         });
         const result = await resp.json().catch(() => ({}));

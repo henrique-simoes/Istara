@@ -220,6 +220,7 @@ export async function run(ctx) {
     try {
       const res = await fetch(`http://localhost:8000/api/interfaces/screens/${editedScreenId}`, {
         method: "DELETE",
+        headers: api._headers(),
       });
       checks.push({
         name: "DELETE screen returns 204",
@@ -283,7 +284,7 @@ export async function run(ctx) {
     try {
       const res = await fetch("http://localhost:8000/api/interfaces/design-chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: api._headers(),
         body: JSON.stringify({ message: "Hello", project_id: projectId }),
       });
       const contentType = res.headers.get("content-type") || "";
@@ -315,7 +316,7 @@ export async function run(ctx) {
   try {
     const res = await fetch("http://localhost:8000/api/interfaces/screens/generate", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: api._headers(),
       body: JSON.stringify({
         prompt: "A login screen",
         device_type: "mobile",
@@ -335,7 +336,7 @@ export async function run(ctx) {
   try {
     const res = await fetch("http://localhost:8000/api/interfaces/figma/import", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: api._headers(),
       body: JSON.stringify({
         figma_url: "https://figma.com/file/test123",
         project_id: projectId || "test",
@@ -396,7 +397,7 @@ export async function run(ctx) {
 
   // ── Cleanup ──
   for (const id of cleanup.screenIds) {
-    try { await fetch(`http://localhost:8000/api/interfaces/screens/${id}`, { method: "DELETE" }); } catch {}
+    try { await fetch(`http://localhost:8000/api/interfaces/screens/${id}`, { method: "DELETE", headers: api._headers() }); } catch {}
   }
   for (const id of cleanup.decisionIds) {
     try { await api.delete(`/api/findings/design-decisions/${id}`); } catch {}

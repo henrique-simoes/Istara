@@ -25,6 +25,7 @@ export async function run(ctx) {
       // Verify the upload endpoint responds (even without a file, it should return 422 not 404/500)
       const res = await fetch(`http://localhost:8000/api/files/upload/${ctx.projectId}`, {
         method: "POST",
+        headers: { "Authorization": api._headers()["Authorization"] },
       });
       checks.push({
         name: "Upload endpoint exists for project",

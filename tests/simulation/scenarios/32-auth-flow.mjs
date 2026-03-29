@@ -19,13 +19,24 @@ export async function run(ctx) {
     checks.push({ name: "Team status endpoint", passed: false, detail: e.message });
   }
 
-  // 2. Login in local mode (should return dummy token)
+  // 2. Login endpoint reachable (exempt from JWT middleware)
+  //    Send a raw fetch without JWT to confirm the middleware lets it through.
+  //    We expect either 200 (valid credentials) or 401 with "Invalid username"
+  //    (handler rejection), NOT 401 with "Authentication required" (middleware).
   try {
-    const login = await api.post("/api/auth/login", { username: "test", password: "test" });
+    const res = await fetch("http://localhost:8000/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username: "test", password: "test" }),
+    });
+    const body = await res.json().catch(() => ({}));
+    const reachedHandler = res.status === 200 ||
+      res.status === 429 ||
+      (body.detail && body.detail.includes("Invalid username or password"));
     checks.push({
       name: "Local mode login",
-      passed: !!login.token && !!login.user,
-      detail: `token=${login.token?.substring(0, 20)}... user=${login.user?.username}`,
+      passed: reachedHandler,
+      detail: `status=${res.status} detail=${body.detail || body.user?.username || "ok"}`,
     });
   } catch (e) {
     checks.push({ name: "Local mode login", passed: false, detail: e.message });

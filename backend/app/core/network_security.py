@@ -36,6 +36,8 @@ EXEMPT_PATHS = {
     "/api/health",
     "/api/auth/login",
     "/api/auth/register",
+    "/api/auth/team-status",
+    "/api/settings/status",
 }
 
 # Paths prefixed with these are exempt (for static assets, etc.)

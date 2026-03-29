@@ -80,7 +80,7 @@ export async function run(ctx) {
   // ── 4. Verify session was cascade-deleted ──
   if (sessionId) {
     try {
-      const res = await fetch(`http://localhost:8000/api/sessions/detail/${sessionId}`);
+      const res = await fetch(`http://localhost:8000/api/sessions/detail/${sessionId}`, { headers: api._headers() });
       checks.push({
         name: "Session cascade-deleted",
         passed: res.status === 404,
@@ -125,7 +125,7 @@ export async function run(ctx) {
 
   // ── 7. Test project 404 after deletion ──
   try {
-    const res = await fetch(`http://localhost:8000/api/projects/${projectId}`);
+    const res = await fetch(`http://localhost:8000/api/projects/${projectId}`, { headers: api._headers() });
     checks.push({
       name: "Project confirmed deleted",
       passed: res.status === 404,
