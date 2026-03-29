@@ -2,6 +2,20 @@
 
 For full system understanding, see [AGENT.md](AGENT.md).
 
+## MANDATORY: System Integrity Guide
+
+**Before making ANY change, consult these files:**
+- [SYSTEM_INTEGRITY_GUIDE.md](SYSTEM_INTEGRITY_GUIDE.md) — Complete reference: all models, routes, flows, dependencies
+- [CHANGE_CHECKLIST.md](CHANGE_CHECKLIST.md) — Step-by-step checklist for every type of change
+- [INTEGRITY_INDEX.md](INTEGRITY_INDEX.md) — Quick navigation to find what you need
+
+**After EVERY change:**
+1. Verify impact using the Change Impact Matrix in SYSTEM_INTEGRITY_GUIDE.md
+2. Update SYSTEM_INTEGRITY_GUIDE.md if you added models, routes, skills, types, or integrations
+3. Run `python scripts/update_agent_md.py` to update AGENT.md
+4. Run `python -m pytest tests/test_research_integrity.py` for backend verification
+5. Update Tech.md if the change affects architecture
+
 ## Quick Start
 
 ```bash
