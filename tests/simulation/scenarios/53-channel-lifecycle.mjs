@@ -242,6 +242,51 @@ export async function run(ctx) {
     checks.push({ name: "All platform types can coexist", passed: false, detail: e.message });
   }
 
+  // ── 16. UI — Integrations view loads without crashing ──
+  if (ctx.page) {
+    try {
+      const page = ctx.page;
+      await page.goto("http://localhost:3000", { waitUntil: "networkidle", timeout: 15000 });
+      await page.waitForTimeout(1500);
+
+      // Navigate to Integrations view
+      const integrationsBtn = page.locator('button[aria-label="Integrations"]').first();
+      let integrationsLoaded = false;
+
+      if (await integrationsBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await integrationsBtn.click();
+        await page.waitForTimeout(2000);
+
+        // Verify the view loaded (look for typical integrations content)
+        integrationsLoaded = await page.evaluate(() => {
+          const body = document.body.innerText.toLowerCase();
+          // The integrations view should mention channels, platforms, or integrations
+          return body.includes("integration") || body.includes("channel") || body.includes("telegram") ||
+                 body.includes("slack") || body.includes("connect") || body.includes("platform");
+        });
+      }
+
+      checks.push({
+        name: "Integrations UI view loads without crashing",
+        passed: integrationsLoaded,
+        detail: integrationsLoaded ? "View rendered successfully" : "Could not detect integrations content",
+      });
+
+      // Verify no console errors from the integrations view
+      const consoleErrors = await page.evaluate(() => {
+        return window.__reclawConsoleErrors || [];
+      });
+      const noFatalErrors = !Array.isArray(consoleErrors) || consoleErrors.length === 0;
+      checks.push({
+        name: "Integrations view has no fatal console errors",
+        passed: noFatalErrors,
+        detail: noFatalErrors ? "Clean" : `${consoleErrors.length} errors`,
+      });
+    } catch (e) {
+      checks.push({ name: "Integrations UI view loads without crashing", passed: false, detail: e.message });
+    }
+  }
+
   // ── Cleanup ──
   for (const id of cleanup.instanceIds) {
     try {

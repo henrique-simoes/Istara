@@ -409,6 +409,73 @@ function CreateAgentWizard({ onDone }: { onDone: () => void }) {
   );
 }
 
+// ─── Recent Errors ───
+
+function RecentErrors({ agentId }: { agentId: string }) {
+  const [errors, setErrors] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [fetched, setFetched] = useState(false);
+
+  useEffect(() => {
+    if (fetched) return;
+    setLoading(true);
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    fetch(`${baseUrl}/api/agents/log/recent?agent_id=${agentId}&limit=5`)
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to fetch");
+        return res.json();
+      })
+      .then((data) => {
+        setErrors(data.entries || data.logs || []);
+      })
+      .catch(() => {
+        setErrors([]);
+      })
+      .finally(() => {
+        setLoading(false);
+        setFetched(true);
+      });
+  }, [agentId, fetched]);
+
+  return (
+    <div>
+      <h4 className="text-xs font-semibold uppercase text-slate-500 mb-2 flex items-center gap-1">
+        <AlertTriangle size={12} />
+        Recent Errors
+      </h4>
+      {loading ? (
+        <p className="text-xs text-slate-400 flex items-center gap-1">
+          <RefreshCw size={10} className="animate-spin" /> Loading errors...
+        </p>
+      ) : errors.length === 0 ? (
+        <p className="text-xs text-slate-400">No recent errors</p>
+      ) : (
+        <div className="space-y-2">
+          {errors.map((entry: any, i: number) => (
+            <div key={entry.id || i} className="p-2 rounded-lg bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800">
+              <div className="flex items-start justify-between gap-2">
+                <p className="text-xs text-red-700 dark:text-red-300 flex-1">
+                  {entry.description || entry.error || entry.message || "Unknown error"}
+                </p>
+                <span className="text-[10px] text-red-400 shrink-0">
+                  {entry.timestamp || entry.created_at
+                    ? new Date(entry.timestamp || entry.created_at).toLocaleString()
+                    : ""}
+                </span>
+              </div>
+              {entry.suggested_action && (
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">
+                  Suggested: {entry.suggested_action}
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Agent Detail ───
 
 interface AgentRAGNote {
@@ -515,14 +582,25 @@ function AgentDetail({ agent }: { agent: Agent }) {
               <p className="text-[10px] text-slate-500">Executions</p>
             </div>
             <div className="text-center p-2 rounded-lg bg-slate-50 dark:bg-slate-800/50">
-              <p className="text-lg font-semibold text-slate-900 dark:text-white">{agent.error_count}</p>
-              <p className="text-[10px] text-slate-500">Errors</p>
+              <p className={cn("text-lg font-semibold", agent.heartbeat_status === "error" && agent.error_count === 0 ? "text-red-500" : "text-slate-900 dark:text-white")}>
+                {agent.heartbeat_status === "error" && agent.error_count === 0
+                  ? "Heartbeat Lost"
+                  : agent.error_count}
+              </p>
+              <p className="text-[10px] text-slate-500">
+                {agent.heartbeat_status === "error" && agent.error_count === 0
+                  ? "Connection Error"
+                  : "Errors"}
+              </p>
             </div>
             <div className="text-center p-2 rounded-lg bg-slate-50 dark:bg-slate-800/50">
               <p className="text-lg font-semibold text-slate-900 dark:text-white">{agent.heartbeat_interval_seconds}s</p>
               <p className="text-[10px] text-slate-500">Heartbeat</p>
             </div>
           </div>
+
+          {/* Recent Errors section */}
+          <RecentErrors agentId={agent.id} />
           <div className="flex flex-wrap gap-2">
             {agent.state === "paused" ? (
               <button onClick={() => resumeAgent(agent.id)} className="flex items-center gap-1 px-3 py-1.5 text-xs bg-green-100 text-green-700 rounded-lg hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400">
@@ -933,7 +1011,11 @@ export default function AgentsView() {
                         </div>
                         <div className="flex items-center gap-3 shrink-0">
                           <HeartbeatDot status={agent.heartbeat_status} isActive={agent.is_active && agent.state !== "paused"} size="md" />
-                          <span className={cn("text-xs capitalize", STATE_COLORS[agent.state])}>{agent.state}</span>
+                          <span className={cn("text-xs capitalize", STATE_COLORS[agent.state])}>
+                            {agent.heartbeat_status === "error" && agent.state !== "error"
+                              ? "Heartbeat Lost"
+                              : agent.state}
+                          </span>
                           {expanded ? <ChevronDown size={14} className="text-slate-400" /> : <ChevronRight size={14} className="text-slate-400" />}
                         </div>
                       </button>
@@ -1021,7 +1103,11 @@ export default function AgentsView() {
                           </div>
                           <div className="flex items-center gap-3 shrink-0">
                             <HeartbeatDot status={agent.heartbeat_status} isActive={agent.is_active && agent.state !== "paused"} size="md" />
-                            <span className={cn("text-xs capitalize", STATE_COLORS[agent.state])}>{agent.state}</span>
+                            <span className={cn("text-xs capitalize", STATE_COLORS[agent.state])}>
+                              {agent.heartbeat_status === "error" && agent.state !== "error"
+                                ? "Heartbeat Lost"
+                                : agent.state}
+                            </span>
                             {expanded ? <ChevronDown size={14} className="text-slate-400" /> : <ChevronRight size={14} className="text-slate-400" />}
                           </div>
                         </button>

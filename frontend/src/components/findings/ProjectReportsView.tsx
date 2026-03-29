@@ -75,6 +75,7 @@ export default function ProjectReportsView({
   const [allReports, setAllReports] = useState<ProjectReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
 
   const loadReports = useCallback(async () => {
     setLoading(true);
@@ -205,6 +206,8 @@ export default function ProjectReportsView({
           layer={4}
           reports={l4Reports}
           totalWidth="max-w-md"
+          selectedReportId={selectedReportId}
+          onSelectReport={setSelectedReportId}
         />
 
         {/* Visual connector */}
@@ -227,6 +230,8 @@ export default function ProjectReportsView({
           layer={3}
           reports={l3Reports}
           totalWidth="max-w-2xl"
+          selectedReportId={selectedReportId}
+          onSelectReport={setSelectedReportId}
         />
 
         {/* Visual connector */}
@@ -249,7 +254,113 @@ export default function ProjectReportsView({
           layer={2}
           reports={l2Reports}
           totalWidth="max-w-4xl"
+          selectedReportId={selectedReportId}
+          onSelectReport={setSelectedReportId}
         />
+
+        {/* Selected report detail panel */}
+        {selectedReportId && (() => {
+          const report = allReports.find((r) => r.id === selectedReportId);
+          if (!report) return null;
+          const layerConfig = LAYER_CONFIG[report.layer];
+          const statusConfig = STATUS_BADGE[report.status] || STATUS_BADGE.draft;
+
+          // Compute finding counts by type from mece_categories
+          const totalFindings = report.finding_count;
+          const meceCategories = report.mece_categories || [];
+
+          return (
+            <div className="transition-all duration-200 mt-4 mx-auto max-w-4xl bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl p-6 shadow-sm">
+              <div className="flex items-start justify-between gap-4 mb-4">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    {layerConfig && (
+                      <span className={cn("text-xs px-2 py-0.5 rounded-full font-medium", layerConfig.bgColor, layerConfig.color)}>
+                        {layerConfig.label}
+                      </span>
+                    )}
+                    <span className={cn("text-xs px-2 py-0.5 rounded-full font-medium", statusConfig.className)}>
+                      {statusConfig.label}
+                    </span>
+                  </div>
+                  <h3 className="text-base font-semibold text-slate-900 dark:text-white">
+                    {report.title}
+                  </h3>
+                </div>
+                <button
+                  onClick={() => setSelectedReportId(null)}
+                  className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 p-1"
+                  aria-label="Close detail panel"
+                >
+                  <span className="text-sm">Close</span>
+                </button>
+              </div>
+
+              {/* Executive summary */}
+              {report.executive_summary && (
+                <div className="mb-4">
+                  <h4 className="text-xs font-semibold uppercase text-slate-500 mb-1">Executive Summary</h4>
+                  <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
+                    {report.executive_summary}
+                  </p>
+                </div>
+              )}
+
+              {/* Stats grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+                <div className="text-center p-2 rounded-lg bg-slate-50 dark:bg-slate-900/50">
+                  <p className="text-lg font-semibold text-slate-900 dark:text-white">{totalFindings}</p>
+                  <p className="text-[10px] text-slate-500">Total Findings</p>
+                </div>
+                <div className="text-center p-2 rounded-lg bg-slate-50 dark:bg-slate-900/50">
+                  <p className="text-lg font-semibold text-slate-900 dark:text-white">v{report.version}</p>
+                  <p className="text-[10px] text-slate-500">Version</p>
+                </div>
+                <div className="text-center p-2 rounded-lg bg-slate-50 dark:bg-slate-900/50">
+                  <p className="text-lg font-semibold text-slate-900 dark:text-white">{meceCategories.length}</p>
+                  <p className="text-[10px] text-slate-500">MECE Categories</p>
+                </div>
+                <div className="text-center p-2 rounded-lg bg-slate-50 dark:bg-slate-900/50">
+                  <p className="text-sm font-medium text-slate-700 dark:text-slate-300">{formatDate(report.updated_at)}</p>
+                  <p className="text-[10px] text-slate-500">Last Updated</p>
+                </div>
+              </div>
+
+              {/* MECE Categories */}
+              {meceCategories.length > 0 && (
+                <div className="mb-4">
+                  <h4 className="text-xs font-semibold uppercase text-slate-500 mb-2">MECE Categories</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {meceCategories.map((cat) => (
+                      <div
+                        key={cat.name}
+                        className="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600"
+                        title={cat.description}
+                      >
+                        <span className="text-xs font-medium text-slate-700 dark:text-slate-300">
+                          {cat.name}
+                        </span>
+                        {cat.finding_ids.length > 0 && (
+                          <span className="ml-1.5 text-[10px] text-slate-500">
+                            ({cat.finding_ids.length} findings)
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Scope */}
+              {report.scope && (
+                <div>
+                  <h4 className="text-xs font-semibold uppercase text-slate-500 mb-1">Scope</h4>
+                  <p className="text-xs text-slate-600 dark:text-slate-400">{report.scope}</p>
+                </div>
+              )}
+            </div>
+          );
+        })()}
       </div>
     </div>
   );
@@ -261,10 +372,14 @@ function PyramidLayer({
   layer,
   reports,
   totalWidth,
+  selectedReportId,
+  onSelectReport,
 }: {
   layer: number;
   reports: ProjectReport[];
   totalWidth: string;
+  selectedReportId: string | null;
+  onSelectReport: (id: string) => void;
 }) {
   const config = LAYER_CONFIG[layer];
 
@@ -318,7 +433,13 @@ function PyramidLayer({
           }}
         >
           {reports.map((report) => (
-            <ReportCard key={report.id} report={report} layer={layer} />
+            <ReportCard
+              key={report.id}
+              report={report}
+              layer={layer}
+              isSelected={selectedReportId === report.id}
+              onSelect={() => onSelectReport(report.id)}
+            />
           ))}
         </div>
       )}
@@ -329,9 +450,13 @@ function PyramidLayer({
 function ReportCard({
   report,
   layer,
+  isSelected,
+  onSelect,
 }: {
   report: ProjectReport;
   layer: number;
+  isSelected: boolean;
+  onSelect: () => void;
 }) {
   const config = LAYER_CONFIG[layer];
   const statusConfig = STATUS_BADGE[report.status] || STATUS_BADGE.draft;
@@ -340,12 +465,16 @@ function ReportCard({
     <article
       role="listitem"
       tabIndex={0}
+      onClick={onSelect}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onSelect(); } }}
       className={cn(
-        "border rounded-lg p-4 transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-reclaw-500 focus-visible:ring-offset-1",
+        "border rounded-lg p-4 transition-all duration-200 cursor-pointer hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-reclaw-500 focus-visible:ring-offset-1",
         config?.borderColor || "border-slate-200 dark:border-slate-700",
-        config?.bgColor || "bg-white dark:bg-slate-900"
+        config?.bgColor || "bg-white dark:bg-slate-900",
+        isSelected && "ring-2 ring-reclaw-500 shadow-md"
       )}
       aria-label={`Report: ${report.title}`}
+      aria-selected={isSelected}
     >
       {/* Title + badges */}
       <div className="flex items-start justify-between gap-2 mb-2">

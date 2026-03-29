@@ -130,7 +130,7 @@ lms server start
 ## Capabilities Catalog
 
 ### Navigation Menu
-- Chat, Findings, UX Laws, Tasks, Interviews, Documents, Context, Skills, Agents, Memory, Interfaces, Integrations, Loops, Notifications, Autoresearch, Backup, Meta-Agent, Compute Pool, Ensemble Health, Metrics, History, Settings
+- Chat, Findings, UX Laws, Tasks, Interviews, Documents, Context, Skills, Agents, Memory, Interfaces, Integrations, Loops, Notifications, Settings, Autoresearch, Backup, Meta-Agent, Compute Pool, Ensemble Health, Metrics, History
 
 ### Agents
 - **design-lead**: Design Lead -- ReClaw Interface Agent

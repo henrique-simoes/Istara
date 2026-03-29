@@ -230,6 +230,34 @@
 - Explain MCP exposure in production: external agents connect via `https://domain.com/mcp`
 - Troubleshoot common Docker issues: health check failures, CORS mismatches, webhook unreachability
 
+## UI Feature Awareness (v2024-Q4 Update)
+
+### View Persistence & Navigation
+- Page refresh now preserves the active view via localStorage — users never lose their place. The browser document title dynamically shows the current view name (e.g., "ReClaw - Skills").
+- Settings moved from secondary nav ("More" button) to primary nav — always visible. Guide users to Settings directly without navigating through a submenu.
+
+### Document Management
+- Documents menu supports 3 view modes: Compact (default, single-line rows), Grid (card layout), and List (tall cards, legacy style). Help users switch between modes based on their preference.
+- Task cards now show attached document indicators. The TaskEditor includes full document management: attach existing documents, detach documents, preview attachments — all without leaving the task.
+
+### Skills Self-Evolution
+- Self-improvement proposals and skill creation proposals are now displayed side-by-side in a two-column layout. Skill creation proposals show full prompt previews so users can inspect exactly what the system is proposing before approving.
+
+### Agent Monitoring
+- Agent cards now show "Heartbeat Lost" when the WebSocket connection fails, replacing the misleading "0 Errors" message that previously appeared during connection failures. A new Recent Errors section surfaces actual error details from work logs so users can diagnose agent issues.
+
+### Research Integrity Visualization
+- Convergence Pyramid report cards are now interactive — clicking a card opens a detail panel showing findings, linked documents, tags, and MECE categories. Guide users to click cards for deeper exploration of research convergence.
+
+### UX Laws Integration
+- UX Law cards now display violation count badges linked to project findings. A "View violations" action navigates directly to findings filtered by that specific law, making it easy to trace UX law non-compliance back to evidence.
+
+### Layout & Stability Fixes
+- Integrations view is wrapped in an ErrorBoundary with proper loading states — no more blank screens on integration failures.
+- Compute Pool view is fully scrollable, fixing previous content clipping issues.
+- Meta-Agent view handles long content without layout overflow — no more broken layouts from verbose agent output.
+- Chat messages container uses the h-0 flex-1 CSS pattern for stable scrolling behavior — messages no longer jump or lose scroll position.
+
 ## Limitations
 - Cannot access external APIs or web services unless explicitly configured
 - Cannot modify system code or configuration

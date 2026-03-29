@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { Plus, GripVertical, Bot, User, Trash2, ChevronDown, FileStack, Globe } from "lucide-react";
+import { Plus, GripVertical, Bot, User, Trash2, ChevronDown, FileStack, FileText, Globe } from "lucide-react";
 import { useTaskStore } from "@/stores/taskStore";
 import { useProjectStore } from "@/stores/projectStore";
 import { useAgentStore } from "@/stores/agentStore";
@@ -283,7 +283,7 @@ function TaskCard({
             {/* Document/URL indicators */}
             {((task.input_document_ids?.length || 0) + (task.output_document_ids?.length || 0)) > 0 && (
               <span className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400" title="Attached documents">
-                <FileStack size={10} />
+                <FileText size={10} />
                 {(task.input_document_ids?.length || 0) + (task.output_document_ids?.length || 0)}
               </span>
             )}

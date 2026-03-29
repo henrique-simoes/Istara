@@ -28,6 +28,9 @@ import {
   ChevronRight,
   PanelRightClose,
   PanelRight,
+  List,
+  LayoutGrid,
+  AlignJustify,
 } from "lucide-react";
 import { useProjectStore } from "@/stores/projectStore";
 import { useDocumentStore } from "@/stores/documentStore";
@@ -125,6 +128,18 @@ export default function DocumentsView() {
   const [previewContent, setPreviewContent] = useState<DocumentContent | null>(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<"compact" | "list" | "grid">(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("reclaw_documents_view_mode");
+      if (stored === "compact" || stored === "list" || stored === "grid") return stored;
+    }
+    return "compact";
+  });
+
+  const handleViewMode = useCallback((mode: "compact" | "list" | "grid") => {
+    setViewMode(mode);
+    localStorage.setItem("reclaw_documents_view_mode", mode);
+  }, []);
 
   // Fetch documents on project change
   useEffect(() => {
@@ -216,6 +231,52 @@ export default function DocumentsView() {
             )}
           </div>
           <div className="flex items-center gap-2">
+            {/* View mode toggle */}
+            <div className="flex items-center border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden" role="group" aria-label="View mode">
+              <button
+                onClick={() => handleViewMode("compact")}
+                className={cn(
+                  "p-1.5 transition-colors",
+                  viewMode === "compact"
+                    ? "bg-reclaw-100 text-reclaw-700 dark:bg-reclaw-900/30 dark:text-reclaw-400"
+                    : "text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-600"
+                )}
+                aria-label="Compact view"
+                aria-pressed={viewMode === "compact"}
+                title="Compact view"
+              >
+                <AlignJustify size={14} />
+              </button>
+              <button
+                onClick={() => handleViewMode("grid")}
+                className={cn(
+                  "p-1.5 transition-colors",
+                  viewMode === "grid"
+                    ? "bg-reclaw-100 text-reclaw-700 dark:bg-reclaw-900/30 dark:text-reclaw-400"
+                    : "text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-600"
+                )}
+                aria-label="Grid view"
+                aria-pressed={viewMode === "grid"}
+                title="Grid view"
+              >
+                <LayoutGrid size={14} />
+              </button>
+              <button
+                onClick={() => handleViewMode("list")}
+                className={cn(
+                  "p-1.5 transition-colors",
+                  viewMode === "list"
+                    ? "bg-reclaw-100 text-reclaw-700 dark:bg-reclaw-900/30 dark:text-reclaw-400"
+                    : "text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-600"
+                )}
+                aria-label="List view"
+                aria-pressed={viewMode === "list"}
+                title="List view"
+              >
+                <List size={14} />
+              </button>
+            </div>
+
             <button
               onClick={() => setShowFilters(!showFilters)}
               className={cn(
@@ -348,16 +409,42 @@ export default function DocumentsView() {
             </p>
           </div>
         ) : (
-          <div className="space-y-1.5">
-            {documents.map((doc) => (
-              <DocumentCard
-                key={doc.id}
-                doc={doc}
-                onOpen={() => handleOpenPreview(doc)}
-                onDelete={() => setConfirmDelete(doc.id)}
-                isSelected={selectedDocId === doc.id}
-              />
-            ))}
+          <div
+            className={cn(
+              viewMode === "grid"
+                ? "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3"
+                : viewMode === "compact"
+                  ? "divide-y divide-slate-100 dark:divide-slate-800"
+                  : "space-y-1.5"
+            )}
+          >
+            {documents.map((doc) =>
+              viewMode === "compact" ? (
+                <DocumentCompactRow
+                  key={doc.id}
+                  doc={doc}
+                  onOpen={() => handleOpenPreview(doc)}
+                  onDelete={() => setConfirmDelete(doc.id)}
+                  isSelected={selectedDocId === doc.id}
+                />
+              ) : viewMode === "grid" ? (
+                <DocumentGridCard
+                  key={doc.id}
+                  doc={doc}
+                  onOpen={() => handleOpenPreview(doc)}
+                  onDelete={() => setConfirmDelete(doc.id)}
+                  isSelected={selectedDocId === doc.id}
+                />
+              ) : (
+                <DocumentCard
+                  key={doc.id}
+                  doc={doc}
+                  onOpen={() => handleOpenPreview(doc)}
+                  onDelete={() => setConfirmDelete(doc.id)}
+                  isSelected={selectedDocId === doc.id}
+                />
+              )
+            )}
           </div>
         )}
 
@@ -414,7 +501,155 @@ export default function DocumentsView() {
   );
 }
 
-// --- Document Card ---
+// --- Document Compact Row ---
+
+function DocumentCompactRow({
+  doc,
+  onOpen,
+  onDelete,
+  isSelected,
+}: {
+  doc: ReclawDocument;
+  onOpen: () => void;
+  onDelete: () => void;
+  isSelected: boolean;
+}) {
+  const Icon = fileIcon(doc.file_type);
+
+  return (
+    <div
+      role="listitem"
+      className={cn(
+        "group flex items-center gap-2 px-3 py-1.5 cursor-pointer transition-colors",
+        isSelected
+          ? "bg-reclaw-50 dark:bg-reclaw-900/10"
+          : "hover:bg-slate-50 dark:hover:bg-slate-800/50"
+      )}
+      onClick={onOpen}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen(); } }}
+      tabIndex={0}
+      aria-label={`Document: ${doc.title}`}
+    >
+      <Icon size={14} className="text-slate-400 shrink-0" />
+      <span className="text-sm text-slate-900 dark:text-white truncate flex-1 font-medium">
+        {doc.title}
+      </span>
+      <span className={cn("text-xs px-1.5 py-0.5 rounded font-medium shrink-0", STATUS_COLORS[doc.status] || STATUS_COLORS.ready)}>
+        {doc.status}
+      </span>
+      <span className="text-xs px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 shrink-0">
+        {SOURCE_LABELS[doc.source] || doc.source}
+      </span>
+      <span className="text-xs px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 shrink-0">
+        {doc.phase}
+      </span>
+      <span className="text-xs text-slate-400 shrink-0 whitespace-nowrap">
+        {timeAgo(doc.updated_at || doc.created_at)}
+      </span>
+      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+        <button
+          onClick={(e) => { e.stopPropagation(); onOpen(); }}
+          className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-400"
+          aria-label="Preview document"
+          title="Preview"
+        >
+          <Eye size={13} />
+        </button>
+        <button
+          onClick={(e) => { e.stopPropagation(); onDelete(); }}
+          className="p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-slate-400 hover:text-red-600"
+          aria-label="Delete document"
+          title="Delete"
+        >
+          <Trash2 size={13} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// --- Document Grid Card ---
+
+function DocumentGridCard({
+  doc,
+  onOpen,
+  onDelete,
+  isSelected,
+}: {
+  doc: ReclawDocument;
+  onOpen: () => void;
+  onDelete: () => void;
+  isSelected: boolean;
+}) {
+  const Icon = fileIcon(doc.file_type);
+
+  return (
+    <div
+      role="listitem"
+      className={cn(
+        "group h-[140px] overflow-hidden rounded-lg border transition-all cursor-pointer flex flex-col p-3",
+        isSelected
+          ? "border-reclaw-500 bg-reclaw-50/50 dark:bg-reclaw-900/10"
+          : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-reclaw-300 hover:shadow-sm dark:hover:border-reclaw-700"
+      )}
+      onClick={onOpen}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen(); } }}
+      tabIndex={0}
+      aria-label={`Document: ${doc.title}`}
+    >
+      {/* Top: icon + title + actions */}
+      <div className="flex items-start gap-2 mb-1.5">
+        <div className="p-1.5 rounded bg-slate-100 dark:bg-slate-700 shrink-0">
+          <Icon size={14} className="text-slate-500 dark:text-slate-400" />
+        </div>
+        <h4 className="text-sm font-medium text-slate-900 dark:text-white truncate flex-1">
+          {doc.title}
+        </h4>
+        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+          <button
+            onClick={(e) => { e.stopPropagation(); onOpen(); }}
+            className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-400"
+            aria-label="Preview document"
+            title="Preview"
+          >
+            <Eye size={13} />
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); onDelete(); }}
+            className="p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-slate-400 hover:text-red-600"
+            aria-label="Delete document"
+            title="Delete"
+          >
+            <Trash2 size={13} />
+          </button>
+        </div>
+      </div>
+
+      {/* Description */}
+      {doc.description && (
+        <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 mb-auto">
+          {doc.description}
+        </p>
+      )}
+      {!doc.description && <div className="mb-auto" />}
+
+      {/* Bottom metadata row */}
+      <div className="flex items-center gap-1.5 mt-1.5 pt-1.5 border-t border-slate-100 dark:border-slate-700">
+        <span className={cn("text-[10px] px-1.5 py-0.5 rounded font-medium", STATUS_COLORS[doc.status] || STATUS_COLORS.ready)}>
+          {doc.status}
+        </span>
+        <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400">
+          {doc.phase}
+        </span>
+        <span className="text-[10px] text-slate-400 ml-auto whitespace-nowrap">
+          {timeAgo(doc.updated_at || doc.created_at)}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// --- Document Card (List mode) ---
 
 function DocumentCard({
   doc,
@@ -434,7 +669,7 @@ function DocumentCard({
     <div
       role="listitem"
       className={cn(
-        "group p-2.5 rounded-lg border transition-all cursor-pointer",
+        "group p-2 rounded-lg border transition-all cursor-pointer",
         isSelected
           ? "border-reclaw-500 bg-reclaw-50/50 dark:bg-reclaw-900/10"
           : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-reclaw-300 hover:shadow-sm dark:hover:border-reclaw-700"
@@ -463,7 +698,7 @@ function DocumentCard({
 
           {/* Description */}
           {doc.description && (
-            <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 mb-1.5">
+            <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-1 mb-1">
               {doc.description}
             </p>
           )}

@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import { Save, X, Bot, User, Zap, FileStack, Globe, ClipboardList, Plus, Trash2 } from "lucide-react";
+import { useState, useEffect, useRef, forwardRef } from "react";
+import { Save, X, Bot, User, Zap, FileStack, FileText, Globe, ClipboardList, Plus, Trash2 } from "lucide-react";
 import { useTaskStore } from "@/stores/taskStore";
+import { useProjectStore } from "@/stores/projectStore";
+import { documents as documentsApi } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import type { Task } from "@/lib/types";
 
@@ -33,6 +35,7 @@ interface TaskEditorProps {
 
 export default function TaskEditor({ task, onClose }: TaskEditorProps) {
   const { updateTask } = useTaskStore();
+  const { activeProjectId } = useProjectStore();
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description);
   const [skillName, setSkillName] = useState(task.skill_name);
@@ -42,8 +45,58 @@ export default function TaskEditor({ task, onClose }: TaskEditorProps) {
   const [newUrl, setNewUrl] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const inputDocs = task.input_document_ids || [];
-  const outputDocs = task.output_document_ids || [];
+  const [inputDocs, setInputDocs] = useState<string[]>(task.input_document_ids || []);
+  const [outputDocs, setOutputDocs] = useState<string[]>(task.output_document_ids || []);
+  const [projectDocuments, setProjectDocuments] = useState<{ id: string; title: string }[]>([]);
+  const [showDocPicker, setShowDocPicker] = useState<"input" | "output" | null>(null);
+  const [docsLoading, setDocsLoading] = useState(false);
+  const docPickerRef = useRef<HTMLDivElement>(null);
+
+  // Fetch project documents when doc picker is opened
+  useEffect(() => {
+    if (!showDocPicker || !activeProjectId) return;
+    setDocsLoading(true);
+    documentsApi.list({ project_id: activeProjectId, page_size: 100 })
+      .then((data) => {
+        setProjectDocuments((data.documents || []).map((d: any) => ({ id: d.id, title: d.title })));
+      })
+      .catch(() => setProjectDocuments([]))
+      .finally(() => setDocsLoading(false));
+  }, [showDocPicker, activeProjectId]);
+
+  // Close doc picker on outside click
+  useEffect(() => {
+    if (!showDocPicker) return;
+    const handler = (e: MouseEvent) => {
+      if (docPickerRef.current && !docPickerRef.current.contains(e.target as Node)) {
+        setShowDocPicker(null);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [showDocPicker]);
+
+  const addDocument = (docId: string, target: "input" | "output") => {
+    if (target === "input" && !inputDocs.includes(docId)) {
+      setInputDocs([...inputDocs, docId]);
+    } else if (target === "output" && !outputDocs.includes(docId)) {
+      setOutputDocs([...outputDocs, docId]);
+    }
+    setShowDocPicker(null);
+  };
+
+  const removeInputDoc = (docId: string) => {
+    setInputDocs(inputDocs.filter((id) => id !== docId));
+  };
+
+  const removeOutputDoc = (docId: string) => {
+    setOutputDocs(outputDocs.filter((id) => id !== docId));
+  };
+
+  const getDocTitle = (docId: string) => {
+    const doc = projectDocuments.find((d) => d.id === docId);
+    return doc ? doc.title : docId.slice(0, 12) + "...";
+  };
 
   const handleAddUrl = () => {
     const trimmed = newUrl.trim();
@@ -67,6 +120,8 @@ export default function TaskEditor({ task, onClose }: TaskEditorProps) {
         user_context: userContext,
         instructions,
         urls,
+        input_document_ids: inputDocs,
+        output_document_ids: outputDocs,
       });
       onClose();
     } catch (e) {
@@ -189,29 +244,99 @@ export default function TaskEditor({ task, onClose }: TaskEditorProps) {
             </p>
           </div>
 
-          {/* Document attachments (read-only summary) */}
-          {(inputDocs.length > 0 || outputDocs.length > 0) && (
-            <div>
-              <label className="block text-xs font-medium text-slate-500 mb-1 flex items-center gap-1">
-                <FileStack size={12} /> Attached Documents
-              </label>
-              <div className="px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800/50 text-xs space-y-1">
-                {inputDocs.length > 0 && (
-                  <p className="text-slate-600 dark:text-slate-400">
-                    <span className="font-medium">Input:</span> {inputDocs.length} document(s)
-                  </p>
-                )}
-                {outputDocs.length > 0 && (
-                  <p className="text-slate-600 dark:text-slate-400">
-                    <span className="font-medium">Output:</span> {outputDocs.length} document(s)
-                  </p>
-                )}
-                <p className="text-[10px] text-slate-400">
-                  Attach documents via Chat or the Documents view.
-                </p>
+          {/* Input Documents */}
+          <div>
+            <label className="block text-xs font-medium text-slate-500 mb-1 flex items-center gap-1">
+              <FileText size={12} /> Input Documents
+            </label>
+            {inputDocs.length > 0 && (
+              <div className="space-y-1 mb-2">
+                {inputDocs.map((docId) => (
+                  <div key={docId} className="flex items-center gap-2 text-xs">
+                    <span className="flex items-center gap-1.5 flex-1 truncate text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-800 px-2 py-1 rounded">
+                      <FileText size={10} className="shrink-0 text-purple-500" />
+                      {getDocTitle(docId)}
+                    </span>
+                    <button
+                      onClick={() => removeInputDoc(docId)}
+                      className="p-1 text-red-400 hover:text-red-500"
+                      aria-label={`Remove input document ${docId}`}
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
+                ))}
               </div>
+            )}
+            {inputDocs.length === 0 && (
+              <p className="text-[10px] text-slate-400 mb-1">No input documents attached.</p>
+            )}
+            <div className="relative">
+              <button
+                onClick={() => setShowDocPicker(showDocPicker === "input" ? null : "input")}
+                className="flex items-center gap-1 px-2 py-1 text-xs rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 disabled:opacity-40"
+                disabled={!activeProjectId}
+              >
+                <Plus size={12} /> Attach Document
+              </button>
+              {showDocPicker === "input" && (
+                <DocumentPickerDropdown
+                  ref={docPickerRef}
+                  documents={projectDocuments}
+                  loading={docsLoading}
+                  excludeIds={inputDocs}
+                  onSelect={(id) => addDocument(id, "input")}
+                />
+              )}
             </div>
-          )}
+          </div>
+
+          {/* Output Documents */}
+          <div>
+            <label className="block text-xs font-medium text-slate-500 mb-1 flex items-center gap-1">
+              <FileStack size={12} /> Output Documents
+            </label>
+            {outputDocs.length > 0 && (
+              <div className="space-y-1 mb-2">
+                {outputDocs.map((docId) => (
+                  <div key={docId} className="flex items-center gap-2 text-xs">
+                    <span className="flex items-center gap-1.5 flex-1 truncate text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-800 px-2 py-1 rounded">
+                      <FileText size={10} className="shrink-0 text-green-500" />
+                      {getDocTitle(docId)}
+                    </span>
+                    <button
+                      onClick={() => removeOutputDoc(docId)}
+                      className="p-1 text-red-400 hover:text-red-500"
+                      aria-label={`Remove output document ${docId}`}
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            {outputDocs.length === 0 && (
+              <p className="text-[10px] text-slate-400 mb-1">No output documents attached.</p>
+            )}
+            <div className="relative">
+              <button
+                onClick={() => setShowDocPicker(showDocPicker === "output" ? null : "output")}
+                className="flex items-center gap-1 px-2 py-1 text-xs rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 disabled:opacity-40"
+                disabled={!activeProjectId}
+              >
+                <Plus size={12} /> Attach Document
+              </button>
+              {showDocPicker === "output" && (
+                <DocumentPickerDropdown
+                  ref={docPickerRef}
+                  documents={projectDocuments}
+                  loading={docsLoading}
+                  excludeIds={outputDocs}
+                  onSelect={(id) => addDocument(id, "output")}
+                />
+              )}
+            </div>
+          </div>
 
           {/* User context */}
           <div>
@@ -261,3 +386,43 @@ export default function TaskEditor({ task, onClose }: TaskEditorProps) {
     </div>
   );
 }
+
+/* ---------- Document Picker Dropdown ---------- */
+
+const DocumentPickerDropdown = forwardRef<
+  HTMLDivElement,
+  {
+    documents: { id: string; title: string }[];
+    loading: boolean;
+    excludeIds: string[];
+    onSelect: (id: string) => void;
+  }
+>(function DocumentPickerDropdown({ documents, loading, excludeIds, onSelect }, ref) {
+  const available = documents.filter((d) => !excludeIds.includes(d.id));
+
+  return (
+    <div
+      ref={ref}
+      className="absolute left-0 top-8 z-50 w-72 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 py-1 max-h-56 overflow-y-auto"
+    >
+      {loading ? (
+        <p className="px-3 py-2 text-xs text-slate-400">Loading documents...</p>
+      ) : available.length === 0 ? (
+        <p className="px-3 py-2 text-xs text-slate-400">
+          {documents.length === 0 ? "No documents in this project." : "All documents already attached."}
+        </p>
+      ) : (
+        available.map((doc) => (
+          <button
+            key={doc.id}
+            onClick={() => onSelect(doc.id)}
+            className="w-full text-left px-3 py-2 text-xs hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2"
+          >
+            <FileText size={12} className="shrink-0 text-slate-400" />
+            <span className="text-slate-700 dark:text-slate-300 truncate">{doc.title}</span>
+          </button>
+        ))
+      )}
+    </div>
+  );
+});

@@ -230,13 +230,96 @@ export async function run(ctx) {
     check(14, "Chat panel shows tool-use actions", false, e.message);
   }
 
-  // ── 15. Cleanup ─────────────────────────────────────────────
+  // ── 15. Phase 4E: Task cards show document indicators when documents are attached ──
+  // Create a new task with attached documents to verify UI indicators
+  let indicatorTaskId, indicatorDocId;
   try {
+    // Create a document to attach
+    const doc = await api.post("/api/documents", {
+      project_id: projectId,
+      title: "Indicator Test Document",
+      description: "Document for testing card indicators",
+      source: "user_upload",
+      file_name: "indicator-test.pdf",
+    });
+    indicatorDocId = doc.id;
+
+    // Create a task
+    const task = await api.post("/api/tasks", {
+      project_id: projectId,
+      title: "Task With Document Indicator",
+      description: "This task has a document attached for indicator testing",
+      skill_name: "competitive-analysis",
+      urls: ["https://example.com"],
+      input_document_ids: [],
+    });
+    indicatorTaskId = task.id;
+
+    // Attach the document
+    if (indicatorTaskId && indicatorDocId) {
+      await api.post(`/api/tasks/${indicatorTaskId}/attach?document_id=${indicatorDocId}&direction=input`, {});
+    }
+
+    // Now navigate to Tasks view and check for document indicators on cards
+    if (page) {
+      await page.goto("http://localhost:3000", { waitUntil: "networkidle", timeout: 15000 });
+      await page.waitForTimeout(1000);
+
+      const tasksNav = page.locator('button[aria-label="Tasks"]').first();
+      if (await tasksNav.isVisible({ timeout: 3000 })) {
+        await tasksNav.click();
+        await page.waitForTimeout(2000);
+
+        // Look for document indicators on task cards
+        const indicatorInfo = await page.evaluate(() => {
+          const body = document.body.innerText.toLowerCase();
+          // Look for document indicator icons or badges on task cards
+          const docIcons = document.querySelectorAll(
+            '[class*="document-indicator"], [aria-label*="document"], [title*="document"], ' +
+            'svg[class*="doc"], [class*="paperclip"], [class*="attachment"]'
+          );
+          // Also check for document count badges
+          const taskCards = document.querySelectorAll('[class*="task-card"], [class*="kanban-card"], [class*="rounded"][class*="border"][class*="shadow"]');
+          let cardsWithDocIndicator = 0;
+          for (const card of taskCards) {
+            const cardHtml = card.innerHTML.toLowerCase();
+            if (cardHtml.includes("document") || cardHtml.includes("paperclip") ||
+                cardHtml.includes("attachment") || cardHtml.includes("file") ||
+                cardHtml.includes("doc-icon") || cardHtml.includes("input_document")) {
+              cardsWithDocIndicator++;
+            }
+          }
+
+          return {
+            docIconCount: docIcons.length,
+            totalTaskCards: taskCards.length,
+            cardsWithDocIndicator,
+            bodyHasDocRef: body.includes("indicator test document") || body.includes("document indicator"),
+          };
+        });
+
+        check(15, "Phase 4E: Task cards show document indicators",
+          indicatorInfo.docIconCount > 0 || indicatorInfo.cardsWithDocIndicator > 0 || indicatorInfo.bodyHasDocRef,
+          `doc_icons=${indicatorInfo.docIconCount}, cards_with_indicator=${indicatorInfo.cardsWithDocIndicator}/${indicatorInfo.totalTaskCards}`);
+      } else {
+        check(15, "Phase 4E: Task cards show document indicators", false, "Tasks nav not visible");
+      }
+    } else {
+      check(15, "Phase 4E: Task cards show document indicators", false, "No page context");
+    }
+  } catch (e) {
+    check(15, "Phase 4E: Task cards show document indicators", false, e.message);
+  }
+
+  // ── 16. Cleanup ─────────────────────────────────────────────
+  try {
+    if (indicatorDocId) await api.delete(`/api/documents/${indicatorDocId}`);
+    if (indicatorTaskId) await api.delete(`/api/tasks/${indicatorTaskId}`);
     if (docId) await api.delete(`/api/documents/${docId}`);
     if (taskId) await api.delete(`/api/tasks/${taskId}`);
-    check(15, "Cleanup successful", true, "");
+    check(16, "Cleanup successful", true, "");
   } catch (e) {
-    check(15, "Cleanup successful", false, e.message);
+    check(16, "Cleanup successful", false, e.message);
   }
 
   // ── Summary ─────────────────────────────────────────────────

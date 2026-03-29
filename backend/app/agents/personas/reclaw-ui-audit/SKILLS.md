@@ -77,6 +77,38 @@
 - Memory burden → Miller's Law + Working Memory; Poor grouping → Chunking; Hidden features → Selective Attention
 - This provides deeper "why" context beyond just heuristic numbers — connects UI issues to cognitive science
 
+## UI Feature Awareness (v2024-Q4 Update)
+
+### View Persistence
+- Active view is persisted to localStorage on navigation. Document title updates to show the current view name. Audit: verify that view state survives page refresh, localStorage key is namespaced to avoid collisions, and document title updates are accessible to screen readers (no empty or generic titles).
+
+### Compact Document Views
+- Documents menu now supports 3 view modes: Compact (default, single-line rows), Grid (card layout), List (tall cards, legacy). Audit each mode for: consistent focus indicators, keyboard navigation between items, adequate touch targets in compact mode (rows must meet 24x24px minimum), proper ARIA roles (grid role for Grid mode, list role for List/Compact), and contrast ratios in all three layouts across light and dark themes.
+
+### Skills Self-Evolution Two-Column Layout
+- Self-improvement and creation proposals displayed side-by-side. Audit: responsive behavior on narrow viewports (should stack vertically below breakpoint), focus order follows logical reading order (left column then right), prompt preview text has adequate contrast and is scrollable without clipping, and the two-column layout does not break screen reader linear reading order.
+
+### Agent Error Surfacing
+- Agent cards show "Heartbeat Lost" status when connection fails. Recent Errors section shows actual error details. Audit: "Heartbeat Lost" uses text+icon (not color-only, WCAG 1.4.1), error details have sufficient contrast, error messages are announced via ARIA live regions, and the transition from healthy to error state is visually distinct without relying solely on color change.
+
+### Convergence Pyramid Interactivity
+- Report cards in the pyramid are now clickable, opening a detail panel. Audit: click targets meet minimum size requirements (Fitts's Law), interactive cards have visible focus indicators and hover states, detail panel has proper focus trapping, Escape closes the panel and returns focus to the triggering card, and the pyramid's interactive nature is communicated via ARIA roles (e.g., role="button" or tabindex on cards).
+
+### UX Laws Violation Badges
+- Law cards display violation count badges. "View violations" navigates to filtered findings. Audit: badges have adequate contrast against card background, badge count is accessible to screen readers (aria-label including count), "View violations" link has a descriptive accessible name (not just "View"), and navigation to filtered findings preserves focus context.
+
+### Task Document Attachments
+- Task cards show document attachment indicators. TaskEditor has attach/detach controls. Audit: attachment indicators use icon+text (not icon-only), attach/detach buttons have accessible names, document list in TaskEditor is keyboard-navigable, and detach action has a confirmation or undo mechanism (H3 — User Control and Freedom).
+
+### Settings in Primary Nav
+- Settings moved from secondary nav to primary nav. Audit: navigation order is logical, Settings item has proper active state indication, keyboard navigation (Tab/Arrow keys) works correctly in the updated nav structure, and no landmark region changes break screen reader navigation.
+
+### Integrations ErrorBoundary
+- Integrations view wrapped in ErrorBoundary with loading states. Audit: error fallback UI is accessible (not just a blank screen), loading states use appropriate ARIA attributes (aria-busy="true"), error recovery actions (retry button) are keyboard-accessible, and ErrorBoundary does not remove ARIA landmarks.
+
+### Scroll & Overflow Fixes
+- Compute Pool view is fully scrollable. Meta-Agent view handles long content overflow. Chat messages use h-0 flex-1 for stable scrolling. Audit: all scrollable regions are keyboard-scrollable (focusable container or focusable items within), scroll indicators are visible, overflow:hidden is not clipping interactive elements, and chat scroll position is preserved when new messages arrive (no unexpected jumps that disorient screen reader users).
+
 ## Limitations
 - Cannot perform live browser testing (evaluation is based on code analysis and component structure)
 - Cannot measure actual render performance or layout shift

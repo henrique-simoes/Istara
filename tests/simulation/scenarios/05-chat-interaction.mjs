@@ -31,6 +31,38 @@ export async function run(ctx) {
   await chatNav.click();
   await page.waitForTimeout(1000);
 
+  // ── Phase 2A: Chat Layout — verify messages container is scrollable ──
+  {
+    const messagesContainer = await page.evaluate(() => {
+      // Look for the messages container with overflow-y-auto
+      const containers = document.querySelectorAll('[class*="overflow-y-auto"], [class*="overflow-auto"]');
+      for (const c of containers) {
+        // The messages container is typically inside the chat view
+        if (c.closest('[class*="chat"], [class*="Chat"]') || c.querySelector('[class*="message"], [class*="bubble"]')) {
+          return {
+            found: true,
+            hasOverflowY: c.className.includes("overflow-y-auto") || c.className.includes("overflow-auto"),
+            className: c.className.substring(0, 120),
+          };
+        }
+      }
+      // Fallback: look for any scrollable container in the main area
+      const mainArea = document.querySelector('main, [class*="main"], [class*="content"]');
+      if (mainArea) {
+        const scrollable = mainArea.querySelector('[class*="overflow-y-auto"], [class*="overflow-auto"]');
+        if (scrollable) {
+          return { found: true, hasOverflowY: true, className: scrollable.className.substring(0, 120) };
+        }
+      }
+      return { found: false, hasOverflowY: false, className: "" };
+    });
+    checks.push({
+      name: "Chat messages container is scrollable (overflow-y-auto)",
+      passed: messagesContainer.found && messagesContainer.hasOverflowY,
+      detail: `found=${messagesContainer.found}, class="${messagesContainer.className}"`,
+    });
+  }
+
   // Find chat input
   const chatInput = page.locator('textarea[placeholder*="Ask about"], input[placeholder*="Ask about"]').first();
   const inputVisible = await chatInput.isVisible({ timeout: 3000 }).catch(() => false);
