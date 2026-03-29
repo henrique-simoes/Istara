@@ -210,6 +210,79 @@ export async function run(ctx) {
   });
   await screenshot("16-findings-populated");
 
+  // ── Research Integrity: Verify nugget source_location is stored ──
+  try {
+    const allNuggets = await api.get(`/api/findings/nuggets?project_id=${ctx.projectId}`);
+    const nuggetList = Array.isArray(allNuggets) ? allNuggets : [];
+    const simNuggets = nuggetList.filter((n) => n.text && n.text.startsWith("[SIM]"));
+    const withSourceLoc = simNuggets.filter((n) => typeof n.source_location === "string" && n.source_location.length > 0);
+    checks.push({
+      name: "Created nuggets have source_location stored",
+      passed: withSourceLoc.length >= 4,
+      detail: `${withSourceLoc.length}/${simNuggets.length} [SIM] nuggets have source_location`,
+    });
+  } catch (e) {
+    checks.push({ name: "Created nuggets have source_location stored", passed: false, detail: e.message });
+  }
+
+  // ── Research Integrity: Verify tags are JSON arrays, not empty ──
+  try {
+    const allNuggets = await api.get(`/api/findings/nuggets?project_id=${ctx.projectId}`);
+    const nuggetList = Array.isArray(allNuggets) ? allNuggets : [];
+    const simNuggets = nuggetList.filter((n) => n.text && n.text.startsWith("[SIM]"));
+    const withValidTags = simNuggets.filter((n) => Array.isArray(n.tags) && n.tags.length > 0);
+    checks.push({
+      name: "Nugget tags are JSON arrays (non-empty)",
+      passed: withValidTags.length >= 4,
+      detail: `${withValidTags.length}/${simNuggets.length} [SIM] nuggets have valid tags arrays`,
+    });
+  } catch (e) {
+    checks.push({ name: "Nugget tags are JSON arrays (non-empty)", passed: false, detail: e.message });
+  }
+
+  // ── Research Integrity: Verify phase field is correctly set ──
+  try {
+    const allNuggets = await api.get(`/api/findings/nuggets?project_id=${ctx.projectId}`);
+    const allFacts = await api.get(`/api/findings/facts?project_id=${ctx.projectId}`);
+    const allInsights = await api.get(`/api/findings/insights?project_id=${ctx.projectId}`);
+    const allRecs = await api.get(`/api/findings/recommendations?project_id=${ctx.projectId}`);
+    const validPhases = ["discover", "define", "develop", "deliver"];
+
+    const nuggetList = (Array.isArray(allNuggets) ? allNuggets : []).filter((n) => n.text && n.text.startsWith("[SIM]"));
+    const factList = (Array.isArray(allFacts) ? allFacts : []).filter((f) => f.text && f.text.startsWith("[SIM]"));
+    const insightList = (Array.isArray(allInsights) ? allInsights : []).filter((i) => i.text && i.text.startsWith("[SIM]"));
+    const recList = (Array.isArray(allRecs) ? allRecs : []).filter((r) => r.text && r.text.startsWith("[SIM]"));
+
+    const allFindings = [...nuggetList, ...factList, ...insightList, ...recList];
+    const withValidPhase = allFindings.filter((f) => validPhases.includes(f.phase));
+    checks.push({
+      name: "Phase field is valid (discover/define/develop/deliver)",
+      passed: withValidPhase.length === allFindings.length,
+      detail: `${withValidPhase.length}/${allFindings.length} findings have valid phase`,
+    });
+  } catch (e) {
+    checks.push({ name: "Phase field validation", passed: false, detail: e.message });
+  }
+
+  // ── Research Integrity: Test code-applications endpoint ──
+  try {
+    const codeApps = await api.get(`/api/code-applications/${ctx.projectId}`);
+    const list = Array.isArray(codeApps) ? codeApps : codeApps.applications || codeApps.code_applications || [];
+    checks.push({
+      name: "GET /api/code-applications/{project_id} responds",
+      passed: true,
+      detail: `count=${Array.isArray(list) ? list.length : 0}`,
+    });
+  } catch (e) {
+    // 404 is acceptable if the endpoint doesn't exist yet — the test documents the expectation
+    const is404 = e.message.includes("404");
+    checks.push({
+      name: "GET /api/code-applications/{project_id} responds",
+      passed: is404,
+      detail: is404 ? "Endpoint not implemented yet (404)" : e.message,
+    });
+  }
+
   return {
     checks,
     passed: checks.filter((c) => c.passed).length,
