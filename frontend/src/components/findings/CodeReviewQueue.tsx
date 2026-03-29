@@ -113,7 +113,8 @@ export default function CodeReviewQueue({ projectId }: CodeReviewQueueProps) {
   // Loading state
   if (loading) {
     return (
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto" role="status" aria-live="polite" aria-label="Loading review queue">
+        <span className="sr-only">Loading code review queue...</span>
         <div className="p-4 border-b border-slate-200 dark:border-slate-800">
           <div className="h-6 w-48 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
         </div>
@@ -139,11 +140,12 @@ export default function CodeReviewQueue({ projectId }: CodeReviewQueueProps) {
   // Error state
   if (error) {
     return (
-      <div className="flex-1 flex items-center justify-center p-8">
+      <div className="flex-1 flex items-center justify-center p-8" role="alert">
         <div className="text-center">
           <AlertCircle
             size={32}
             className="mx-auto text-red-500 dark:text-red-400 mb-3"
+            aria-hidden="true"
           />
           <p className="text-sm text-red-600 dark:text-red-400 font-medium mb-1">
             Failed to load review queue
@@ -153,7 +155,8 @@ export default function CodeReviewQueue({ projectId }: CodeReviewQueueProps) {
           </p>
           <button
             onClick={loadPending}
-            className="text-xs px-3 py-1.5 rounded-md bg-reclaw-600 text-white hover:bg-reclaw-700 transition-colors"
+            aria-label="Retry loading review queue"
+            className="text-xs px-3 py-1.5 rounded-md bg-reclaw-600 text-white hover:bg-reclaw-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-reclaw-500 focus-visible:ring-offset-1"
           >
             Retry
           </button>
@@ -165,11 +168,12 @@ export default function CodeReviewQueue({ projectId }: CodeReviewQueueProps) {
   // Empty state
   if (items.length === 0) {
     return (
-      <div className="flex-1 flex items-center justify-center p-8">
+      <div className="flex-1 flex items-center justify-center p-8" role="status">
         <div className="text-center">
           <ClipboardCheck
             size={32}
             className="mx-auto text-slate-300 dark:text-slate-600 mb-3"
+            aria-hidden="true"
           />
           <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">
             No codes pending review
@@ -183,7 +187,7 @@ export default function CodeReviewQueue({ projectId }: CodeReviewQueueProps) {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto">
+    <div className="flex-1 overflow-y-auto" role="region" aria-label="Code review queue">
       {/* Header */}
       <div className="p-4 border-b border-slate-200 dark:border-slate-800">
         <div className="flex items-center justify-between mb-2">
@@ -191,11 +195,12 @@ export default function CodeReviewQueue({ projectId }: CodeReviewQueueProps) {
             <MessageSquareText
               size={18}
               className="text-reclaw-600 dark:text-reclaw-400"
+              aria-hidden="true"
             />
             <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
               Code Review Queue
             </h2>
-            <span className="text-xs font-medium bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-2 py-0.5 rounded-full">
+            <span role="status" className="text-xs font-medium bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-2 py-0.5 rounded-full">
               {items.length} pending
             </span>
           </div>
@@ -210,13 +215,13 @@ export default function CodeReviewQueue({ projectId }: CodeReviewQueueProps) {
                 "inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md font-medium transition-colors",
                 bulkApproving
                   ? "bg-slate-200 dark:bg-slate-700 text-slate-400 cursor-not-allowed"
-                  : "bg-green-600 text-white hover:bg-green-700"
+                  : "bg-green-600 text-white hover:bg-green-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500 focus-visible:ring-offset-1"
               )}
             >
               {bulkApproving ? (
-                <Loader2 size={12} className="animate-spin" />
+                <Loader2 size={12} className="animate-spin" aria-hidden="true" />
               ) : (
-                <Zap size={12} />
+                <Zap size={12} aria-hidden="true" />
               )}
               Bulk Approve High Confidence ({highConfidenceCount})
             </button>
@@ -238,12 +243,14 @@ export default function CodeReviewQueue({ projectId }: CodeReviewQueueProps) {
       </div>
 
       {/* Review items */}
-      <div className="p-4 space-y-3">
+      <div className="p-4 space-y-3" role="list" aria-label="Pending code applications" aria-live="polite">
         {items.map((item) => {
           const isReviewing = reviewingId === item.id;
           return (
             <div
               key={item.id}
+              role="listitem"
+              aria-label={`Code application: ${item.code_id}`}
               className={cn(
                 "border rounded-lg overflow-hidden transition-opacity",
                 isReviewing
@@ -293,6 +300,7 @@ export default function CodeReviewQueue({ projectId }: CodeReviewQueueProps) {
                             : "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400"
                       )}
                     >
+                      <span className="sr-only">Coder type: </span>
                       {item.coder_type}
                     </span>
                   </div>
@@ -317,6 +325,7 @@ export default function CodeReviewQueue({ projectId }: CodeReviewQueueProps) {
                       Confidence
                     </p>
                     <span
+                      role="status"
                       className={cn(
                         "text-xs font-medium",
                         item.confidence >= 0.9
@@ -327,6 +336,9 @@ export default function CodeReviewQueue({ projectId }: CodeReviewQueueProps) {
                       )}
                     >
                       {Math.round(item.confidence * 100)}%
+                      <span className="sr-only">
+                        {" "}({item.confidence >= 0.9 ? "high" : item.confidence >= 0.7 ? "medium" : "low"} confidence)
+                      </span>
                     </span>
                   </div>
                   <div
@@ -365,9 +377,9 @@ export default function CodeReviewQueue({ projectId }: CodeReviewQueueProps) {
                     )}
                   >
                     {isReviewing ? (
-                      <Loader2 size={14} className="animate-spin" />
+                      <Loader2 size={14} className="animate-spin" aria-hidden="true" />
                     ) : (
-                      <CheckCircle2 size={14} />
+                      <CheckCircle2 size={14} aria-hidden="true" />
                     )}
                     Approve
                   </button>
@@ -379,13 +391,13 @@ export default function CodeReviewQueue({ projectId }: CodeReviewQueueProps) {
                       "inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-md transition-colors",
                       isReviewing
                         ? "bg-slate-200 dark:bg-slate-700 text-slate-400 cursor-not-allowed"
-                        : "bg-red-600 text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1"
+                        : "bg-red-600 text-white hover:bg-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-1"
                     )}
                   >
                     {isReviewing ? (
-                      <Loader2 size={14} className="animate-spin" />
+                      <Loader2 size={14} className="animate-spin" aria-hidden="true" />
                     ) : (
-                      <XCircle size={14} />
+                      <XCircle size={14} aria-hidden="true" />
                     )}
                     Reject
                   </button>
