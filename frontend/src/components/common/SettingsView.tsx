@@ -6,6 +6,8 @@ import { settings as settingsApi, llmServers } from "@/lib/api";
 import type { HardwareInfo, ModelRecommendation } from "@/lib/types";
 import { useAuthStore } from "@/stores/authStore";
 import UserManagement from "./UserManagement";
+import ConnectionStringPanel from "@/components/settings/ConnectionStringPanel";
+import DonateComputeToggle from "@/components/common/DonateComputeToggle";
 
 export default function SettingsView() {
   const [hardware, setHardware] = useState<HardwareInfo | null>(null);
@@ -54,6 +56,12 @@ export default function SettingsView() {
 
       {/* Team Members */}
       <UserManagement />
+
+      {/* Connection Strings (admin only, team mode) */}
+      <ConnectionStringPanel />
+
+      {/* Compute Donation */}
+      <DonateComputeToggle />
 
       {/* System Status */}
       <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">

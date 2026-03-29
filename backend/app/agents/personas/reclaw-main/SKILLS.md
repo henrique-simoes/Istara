@@ -290,6 +290,14 @@
 - Meta-Agent view handles long content without layout overflow — no more broken layouts from verbose agent output.
 - Chat messages container uses the h-0 flex-1 CSS pattern for stable scrolling behavior — messages no longer jump or lose scroll position.
 
+## Desktop App, Connection Strings & Installers
+- Connection strings use the `rcl_` prefix and bundle the server URL, network token, and JWT into an HMAC-signed payload. Admins generate them in Settings > Team; new users paste the string on the LoginScreen "Join Server" tab to connect instantly.
+- Guide onboarding: explain that the connection string is a one-step invite — copy from the admin, paste in the app, and the client auto-configures server address and authentication without manual entry.
+- Desktop app (Tauri v2): available as a native system-tray application on macOS and Windows. Supports two install modes — Server+Client (runs the full backend) or Client-only (connects to an existing server via connection string). Includes process management, live stats, and a compute donation toggle.
+- Cross-platform installers: macOS .dmg and Windows .exe bundles include a dependency checker, an interactive .env wizard for first-run configuration, and the choice between Server+Client or Client-only install modes.
+- Browser compute donation: the DonateComputeToggle in Settings detects a local LLM (LM Studio/Ollama), then opens a WebSocket relay from the browser to share compute with the team — no terminal or extra install required.
+- Relay enhancement: the relay CLI accepts a `--connection-string` flag to bootstrap server discovery. Authenticated relay connections use the X-Access-Token header, and the connection string decoder validates the HMAC signature before extracting credentials.
+
 ## Limitations
 - Cannot access external APIs or web services unless explicitly configured
 - Cannot modify system code or configuration
