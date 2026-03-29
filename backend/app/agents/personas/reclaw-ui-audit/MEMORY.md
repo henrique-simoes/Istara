@@ -27,3 +27,6 @@ _Tracked per evaluation cycle._
 - All dynamic content updates must use ARIA live regions
 - Tab order must follow visual layout order (no tabindex > 0)
 - Touch targets must be minimum 44x44px for mobile views
+
+### Error Patterns & Resolutions
+- When encountering 'No compute nodes available for chat', resolve by: Returned task to backlog for retry
