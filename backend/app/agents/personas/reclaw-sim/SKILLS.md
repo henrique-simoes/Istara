@@ -122,6 +122,14 @@
 ### Scroll & Overflow Testing
 - Simulate large datasets in Compute Pool view, verify full scrollability. Simulate long content in Meta-Agent view, verify no layout overflow. Simulate rapid message arrival in Chat, verify scroll stays anchored to bottom for new messages. Test: manual scroll-up during message arrival preserves position, scroll-to-bottom button appears when scrolled up.
 
+### Compute Pool Streaming & Relay Simulation Scenarios
+- **Relay capability detection**: Register a relay node, then verify the health check probes the relay's provider via HTTP and populates capabilities (tool support, context length, vision). Verify capability badges appear in the compute pool API response.
+- **Network/Relay deduplication**: Register a network node, then register a relay pointing to the same provider host. Verify the network node is automatically removed and only the relay entry remains. Verify re-registering the relay does not create duplicates.
+- **Relay host resolution**: Register a relay that reports `provider_host: "http://localhost:1234"`. Verify the backend resolves localhost to the relay's actual IP. Test streaming a request through the relay — verify the response completes successfully (not a connection-refused error).
+- **Tool filter with unknown capabilities**: Register a node before capability detection completes. Verify the node is NOT excluded from tool-support filtered queries — it should be eligible to serve requests. After detection completes, verify filtering works correctly based on actual capabilities.
+- **Network discovery skip**: Establish a relay connection, then trigger a network scan. Verify the scan does not re-register a node for the relay-covered provider. After relay disconnects, verify the next scan can re-discover the node as a network entry.
+- **No "Local Only" when relay online**: With a relay connected, verify the compute pool does not show misleading "Local Only" status. The pool should reflect that remote compute is available via the relay.
+
 ## Limitations
 - Cannot test actual browser rendering (tests are API-level, not visual)
 - Cannot simulate real user mouse movements or visual scanning patterns

@@ -252,6 +252,14 @@
 ### UX Laws Integration
 - UX Law cards now display violation count badges linked to project findings. A "View violations" action navigates directly to findings filtered by that specific law, making it easy to trace UX law non-compliance back to evidence.
 
+### Compute Pool Streaming Fixes
+- Relay nodes now resolve `localhost` provider URLs to the relay's actual IP address, so the backend can stream directly to a remote relay's LM Studio — users no longer see failed connections when a relay reports localhost.
+- Health checks detect model capabilities (tool support, context length, vision) for relay nodes via HTTP probe, not just local/network nodes — relay capability badges now appear correctly in the Compute Pool UI.
+- When a relay registers, duplicate network-discovered nodes pointing to the same provider are automatically removed. Users see one clean entry per machine instead of confusing Network + Relay duplicates.
+- Nodes with unknown capabilities (not yet probed) are no longer excluded from the tool-support filter — they can still serve requests while detection completes, preventing premature "no capable nodes" errors.
+- Network discovery skips registering nodes already covered by a relay, keeping the pool list clean and avoiding user confusion about duplicate entries.
+- If a user asks why streaming "just works now" through a relay, explain: the backend resolves the relay's real IP so it can HTTP-stream to LM Studio on the relay machine, even though the relay reported localhost.
+
 ### Layout & Stability Fixes
 - Integrations view is wrapped in an ErrorBoundary with proper loading states — no more blank screens on integration failures.
 - Compute Pool view is fully scrollable, fixing previous content clipping issues.

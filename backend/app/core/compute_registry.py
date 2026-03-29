@@ -505,6 +505,34 @@ class ComputeRegistry:
     def unregister_node(self, node_id: str) -> None:
         self.remove_node(node_id)
 
+    def remove_duplicate_network_nodes(self, relay_node: ComputeNode) -> None:
+        """Remove network-discovered nodes that point to the same LLM
+        provider as a newly registered relay node.  The relay is the
+        preferred connection path, so keeping both is confusing."""
+        if not relay_node.host:
+            return
+        from urllib.parse import urlparse
+        relay_parsed = urlparse(relay_node.host)
+        relay_key = (relay_parsed.hostname, relay_parsed.port)
+
+        to_remove = []
+        for nid, n in list(self._nodes.items()):
+            if n.source != "network":
+                continue
+            n_parsed = urlparse(n.host)
+            if (n_parsed.hostname, n_parsed.port) == relay_key:
+                # Same machine — transfer capabilities before removing
+                if n.model_capabilities and not relay_node.model_capabilities:
+                    relay_node.model_capabilities = dict(n.model_capabilities)
+                to_remove.append(nid)
+        for nid in to_remove:
+            name = self._nodes[nid].name
+            self.remove_node(nid)
+            logger.info(
+                f"ComputeRegistry: removed duplicate network node "
+                f"'{name}' (covered by relay '{relay_node.name}')"
+            )
+
     def update_heartbeat(self, node_id: str, stats: dict) -> None:
         node = self._nodes.get(node_id)
         if not node:
@@ -535,6 +563,29 @@ class ComputeRegistry:
                     node.is_healthy = False
                     node.health_state = "unhealthy"
                 results[nid] = node.is_healthy
+                # Detect capabilities for healthy relay nodes via HTTP
+                # to their resolved provider address.
+                if node.is_healthy and not node.model_capabilities and node.host:
+                    try:
+                        from app.core.model_capabilities import (
+                            detect_capabilities_lmstudio,
+                            detect_capabilities_ollama,
+                        )
+                        if node.provider_type == "ollama":
+                            caps = await detect_capabilities_ollama(node.host)
+                        else:
+                            caps = await detect_capabilities_lmstudio(node.host)
+                        node.model_capabilities = {
+                            k: v.to_dict() for k, v in caps.items()
+                        }
+                        logger.info(
+                            f"Detected capabilities for relay {node.name}: "
+                            f"{len(node.model_capabilities)} models"
+                        )
+                    except Exception as e:
+                        logger.debug(
+                            f"Relay capability detection failed for {node.name}: {e}"
+                        )
                 continue
 
             # HTTP-based health check
@@ -611,11 +662,21 @@ class ComputeRegistry:
         """
         servers = list(self._nodes.values())
         if require_tools:
-            filtered = [
+            # Nodes with detected tool support
+            tool_nodes = [
                 s for s in servers
                 if any(
                     c.get("supports_tools") for c in s.model_capabilities.values()
                 )
+            ]
+            # Nodes whose capabilities haven't been detected yet —
+            # don't exclude them; they may well support tools.
+            unknown_nodes = [
+                s for s in servers
+                if s.is_healthy and not s.model_capabilities
+            ]
+            filtered = tool_nodes + [
+                n for n in unknown_nodes if n not in tool_nodes
             ]
             if filtered:
                 servers = filtered
@@ -659,8 +720,14 @@ class ComputeRegistry:
                     c.get("supports_tools") for c in n.model_capabilities.values()
                 )
             ]
-            if tool_capable:
-                candidates = tool_capable
+            # Include nodes with unknown capabilities (not yet detected)
+            unknown_capable = [
+                n for n in candidates
+                if not n.model_capabilities and n not in tool_capable
+            ]
+            combined = tool_capable + unknown_capable
+            if combined:
+                candidates = combined
 
         if require_vision and candidates:
             vision_capable = [

@@ -79,10 +79,26 @@ async def relay_websocket(ws: WebSocket):
             msg_type = msg.get("type", "")
 
             if msg_type == "register":
+                # Resolve provider_host: relay reports "localhost" which
+                # is unreachable from the backend. Replace with the
+                # relay's actual IP so HTTP streaming works directly.
+                provider_host = msg.get("provider_host", "")
+                ip_addr = msg.get("ip_address", "")
+                resolved_host = provider_host
+                if ip_addr and provider_host:
+                    from urllib.parse import urlparse, urlunparse
+                    parsed = urlparse(provider_host)
+                    if parsed.hostname in ("localhost", "127.0.0.1", "::1"):
+                        netloc = f"{ip_addr}:{parsed.port}" if parsed.port else ip_addr
+                        resolved_host = urlunparse(parsed._replace(netloc=netloc))
+                        logger.info(
+                            f"Relay host resolved: {provider_host} -> {resolved_host}"
+                        )
+
                 node = ComputeNode(
                     node_id=node_id,
                     name=f"Relay: {msg.get('hostname', 'unknown')}",
-                    host=msg.get("provider_host", ""),
+                    host=resolved_host,
                     source="relay",
                     provider_type=msg.get("provider_type", "ollama"),
                     is_relay=True,
@@ -91,8 +107,8 @@ async def relay_websocket(ws: WebSocket):
                     priority=20,
                     websocket=ws,
                     user_id=msg.get("user_id", "anonymous"),
-                    ip_address=msg.get("ip_address", ""),
-                    provider_host=msg.get("provider_host", ""),
+                    ip_address=ip_addr,
+                    provider_host=provider_host,
                     ram_total_gb=msg.get("ram_total_gb", 0),
                     cpu_cores=msg.get("cpu_cores", 0),
                     gpu_name=msg.get("gpu_name", ""),
@@ -100,6 +116,12 @@ async def relay_websocket(ws: WebSocket):
                     loaded_models=msg.get("loaded_models", []),
                 )
                 compute_registry.register_node(node)
+
+                # Deduplicate: remove network-discovered nodes that
+                # point to the same provider, since the relay connection
+                # is the preferred path.
+                compute_registry.remove_duplicate_network_nodes(node)
+
                 await ws.send_json({"type": "registered", "node_id": node_id})
                 logger.info(f"Relay node registered: {node.name} ({node_id})")
 

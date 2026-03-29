@@ -185,6 +185,22 @@ async def discover_and_register() -> list[dict]:
         if server_id in llm_router._servers:
             continue
 
+        # Skip if a relay node already covers this host (relay is
+        # preferred since it has a live WebSocket connection).
+        from urllib.parse import urlparse
+        disc_host = server_info.get("host", "")
+        disc_parsed = urlparse(disc_host)
+        relay_covers = False
+        for node in llm_router._servers.values():
+            if getattr(node, "is_relay", False):
+                n_parsed = urlparse(getattr(node, "host", ""))
+                if (n_parsed.hostname, n_parsed.port) == (disc_parsed.hostname, disc_parsed.port):
+                    relay_covers = True
+                    break
+        if relay_covers:
+            logger.info(f"Skipping network node {server_info['name']} — already covered by relay")
+            continue
+
         entry = LLMServerEntry(
             server_id=server_id,
             name=server_info["name"],
