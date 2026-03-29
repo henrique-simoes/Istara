@@ -1,6 +1,6 @@
 /** API client for ReClaw backend. */
 
-import type { ChatSession, ChatMessage, InferencePresetConfig, DAGNode, DAGHealth, DAGExpandResult, DAGGrepResult, ReclawDocument, DocumentContent, DocumentTag, DocumentStats, InterfacesStatus, BackupRecord, BackupConfig, MetaProposal, MetaVariant, MetaHyperagentStatus, ChannelInstance, ChannelMessage, ChannelConversation, ResearchDeployment, DeploymentAnalytics, SurveyIntegration, SurveyLink, MCPServerConfig, MCPAccessPolicy, MCPAuditEntry, AutoresearchStatus, AutoresearchExperiment, AutoresearchConfig, ModelSkillLeaderboard, UXLaw, LawMatch, ComplianceProfile, RadarChartData, FeaturedMCPServer, ReclawUser } from "@/lib/types";
+import type { ChatSession, ChatMessage, InferencePresetConfig, DAGNode, DAGHealth, DAGExpandResult, DAGGrepResult, ReclawDocument, DocumentContent, DocumentTag, DocumentStats, InterfacesStatus, BackupRecord, BackupConfig, MetaProposal, MetaVariant, MetaHyperagentStatus, ChannelInstance, ChannelMessage, ChannelConversation, ResearchDeployment, DeploymentAnalytics, SurveyIntegration, SurveyLink, MCPServerConfig, MCPAccessPolicy, MCPAuditEntry, AutoresearchStatus, AutoresearchExperiment, AutoresearchConfig, ModelSkillLeaderboard, UXLaw, LawMatch, ComplianceProfile, RadarChartData, FeaturedMCPServer, ReclawUser, ProjectReport, CodebookVersionType, CodeApplicationType } from "@/lib/types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -812,4 +812,36 @@ export const users = {
   delete: (id: string) => del(`/api/auth/users/${id}`),
   changeRole: (id: string, role: string) =>
     patch<ReclawUser>(`/api/auth/users/${id}/role`, { role }),
+};
+
+// --- Research Integrity ---
+
+export const reports = {
+  list: (projectId: string) => get<ProjectReport[]>(`/api/reports/${projectId}`),
+};
+
+export const codebookVersions = {
+  list: (projectId: string) => get<CodebookVersionType[]>(`/api/codebook-versions/${projectId}`),
+  latest: (projectId: string) => get<CodebookVersionType>(`/api/codebook-versions/${projectId}/latest`),
+  create: (data: {
+    project_id: string;
+    version: string;
+    codes: unknown[];
+    change_log: string;
+    methodology?: string;
+  }) => post<CodebookVersionType>("/api/codebook-versions", data),
+};
+
+export const codeApplications = {
+  list: (projectId: string, status?: string) =>
+    get<CodeApplicationType[]>(`/api/code-applications/${projectId}${status ? `?status=${status}` : ""}`),
+  pending: (projectId: string) =>
+    get<CodeApplicationType[]>(`/api/code-applications/${projectId}/pending`),
+  review: (applicationId: string, reviewStatus: string, reviewedBy?: string) =>
+    patch<CodeApplicationType>(`/api/code-applications/${applicationId}/review`, {
+      review_status: reviewStatus,
+      reviewed_by: reviewedBy || "user",
+    }),
+  bulkApprove: (projectId: string, minConfidence?: number) =>
+    post<{ approved_count: number }>(`/api/code-applications/${projectId}/bulk-approve?min_confidence=${minConfidence || 0.9}`, {}),
 };

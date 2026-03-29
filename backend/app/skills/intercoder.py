@@ -116,6 +116,151 @@ def cohen_kappa(coder_a: list[list[str]], coder_b: list[list[str]], all_codes: l
     }
 
 
+def krippendorff_alpha(coders: list[list[list[str]]], all_codes: list[str]) -> dict:
+    """Compute Krippendorff's Alpha for N coders on nominal data.
+
+    More robust than Cohen's Kappa:
+    - Handles any number of coders (not just 2)
+    - Handles missing data properly
+    - Based on Krippendorff (2004, 2011) Content Analysis
+
+    For multi-label coding, we use the binary approach: for each code,
+    create a binary (present/absent) reliability matrix, then compute
+    alpha per code and average.
+
+    Args:
+        coders: List of coders, each containing a list of code lists per item.
+                e.g., [coder_a_items, coder_b_items] where each item is a list of codes.
+        all_codes: Complete list of unique codes.
+
+    Returns:
+        Dict with alpha, per-code alpha, interpretation.
+    """
+    n_coders = len(coders)
+    if n_coders == 0 or not all_codes:
+        return {
+            "alpha": 0.0, "interpretation": "unreliable",
+            "n_coders": 0, "n_items": 0, "n_codes": 0,
+            "per_code_alpha": [], "unreliable_codes": [],
+        }
+
+    # All coders must have the same number of items; use the minimum if they differ
+    n_items = min(len(c) for c in coders) if coders else 0
+    if n_items == 0:
+        return {
+            "alpha": 0.0, "interpretation": "unreliable",
+            "n_coders": n_coders, "n_items": 0, "n_codes": len(all_codes),
+            "per_code_alpha": [], "unreliable_codes": [],
+        }
+
+    per_code_results = []
+
+    for code in all_codes:
+        # Build binary reliability matrix: rows = items, columns = coders
+        # Value is 1 if code present, 0 if absent, None if missing
+        matrix: list[list[int | None]] = []
+        for i in range(n_items):
+            row = []
+            for c in range(n_coders):
+                if i < len(coders[c]) and coders[c][i] is not None:
+                    row.append(1 if code in coders[c][i] else 0)
+                else:
+                    row.append(None)  # missing data
+            matrix.append(row)
+
+        # Compute observed disagreement Do
+        # For each item, count pairwise disagreements among coders who coded it
+        total_do_numerator = 0.0
+        total_pairable = 0  # total number of pairable values across all items
+
+        for row in matrix:
+            values = [v for v in row if v is not None]
+            m_u = len(values)  # number of coders for this item
+            if m_u < 2:
+                continue  # need at least 2 coders to compare
+            total_pairable += m_u
+            # Count disagreements in all pairs within this item
+            disagreements = 0
+            for vi in range(len(values)):
+                for vj in range(vi + 1, len(values)):
+                    if values[vi] != values[vj]:
+                        disagreements += 1
+            # Krippendorff (2004): weight by 1/(m_u - 1) for each item
+            total_do_numerator += disagreements / (m_u - 1)
+
+        if total_pairable == 0:
+            per_code_results.append({
+                "code": code, "alpha": 0.0,
+            })
+            continue
+
+        do = total_do_numerator / total_pairable  # observed disagreement (normalized)
+
+        # Compute expected disagreement De from marginal frequencies
+        # Count total 1s and 0s across all non-missing values
+        n_ones = 0
+        n_zeros = 0
+        for row in matrix:
+            for v in row:
+                if v is not None:
+                    if v == 1:
+                        n_ones += 1
+                    else:
+                        n_zeros += 1
+        n_total = n_ones + n_zeros
+        if n_total < 2:
+            per_code_results.append({
+                "code": code, "alpha": 0.0,
+            })
+            continue
+
+        # For nominal metric: De = (n_ones * n_zeros) / (n_total * (n_total - 1) / 2)
+        # Simplified: De = 2 * (n_ones / n_total) * (n_zeros / n_total) * n_total / (n_total - 1)
+        de = (2 * n_ones * n_zeros) / (n_total * (n_total - 1))
+
+        if de == 0.0:
+            code_alpha = 1.0  # perfect agreement (all values identical)
+        else:
+            code_alpha = 1.0 - (do / de)
+
+        per_code_results.append({
+            "code": code,
+            "alpha": round(code_alpha, 3),
+        })
+
+    # Overall alpha = average of per-code alphas (macro average)
+    if per_code_results:
+        overall_alpha = sum(r["alpha"] for r in per_code_results) / len(per_code_results)
+    else:
+        overall_alpha = 0.0
+
+    overall_alpha = round(overall_alpha, 3)
+
+    # Krippendorff (2004) interpretation scale
+    if overall_alpha >= 0.800:
+        interpretation = "reliable"
+    elif overall_alpha >= 0.667:
+        interpretation = "tentatively_acceptable"
+    else:
+        interpretation = "unreliable"
+
+    unreliable_codes = [
+        {"code": r["code"], "alpha": r["alpha"], "issue": "Below reliability threshold",
+         "resolution": "Review code definition and coder training"}
+        for r in per_code_results if r["alpha"] < 0.667
+    ]
+
+    return {
+        "alpha": overall_alpha,
+        "interpretation": interpretation,
+        "n_coders": n_coders,
+        "n_items": n_items,
+        "n_codes": len(all_codes),
+        "per_code_alpha": per_code_results,
+        "unreliable_codes": unreliable_codes,
+    }
+
+
 # Prompts for the two independent coding passes
 
 CODER_A_PROMPT = """You are Coder A performing qualitative coding on research data.
@@ -212,9 +357,10 @@ class KappaIntercoderSkill(BaseSkill):
     @property
     def description(self) -> str:
         return (
-            "True dual-coding thematic analysis with Python-calculated Cohen's Kappa. "
-            "Runs two independent LLM coding passes, calculates Kappa with actual math, "
-            "and reconciles disagreements. Follows Landis & Koch interpretation scale."
+            "True dual-coding thematic analysis with Python-calculated Cohen's Kappa and "
+            "Krippendorff's Alpha. Runs two independent LLM coding passes, calculates both "
+            "reliability metrics with actual math, and reconciles disagreements. "
+            "Follows Landis & Koch (Kappa) and Krippendorff (2004) interpretation scales."
         )
 
     @property
@@ -227,7 +373,7 @@ class KappaIntercoderSkill(BaseSkill):
 
     @property
     def version(self) -> str:
-        return "3.0.0"
+        return "3.1.0"
 
     async def plan(self, skill_input: SkillInput) -> dict:
         ctx = skill_input.project_context or skill_input.user_context or "General UX research"
@@ -328,6 +474,9 @@ class KappaIntercoderSkill(BaseSkill):
         all_codes = sorted(all_codes_set)
         reliability = cohen_kappa(coder_a_codes, coder_b_codes, all_codes)
 
+        # Also compute Krippendorff's Alpha
+        alpha_result = krippendorff_alpha([coder_a_codes, coder_b_codes], all_codes)
+
         # --- Step 4: Reconcile disagreements ---
         disagreements = [r for r in combined_results if not r["agreed"]]
         themes = []
@@ -382,9 +531,10 @@ class KappaIntercoderSkill(BaseSkill):
             for r in combined_results
         ]
         insights = [
-            {"text": f"Kappa = {reliability['kappa']} ({reliability['interpretation']}). "
+            {"text": f"Cohen's Kappa = {reliability['kappa']} ({reliability['interpretation']}), "
+                     f"Krippendorff's Alpha = {alpha_result['alpha']} ({alpha_result['interpretation']}). "
                      f"{len(disagreements)} of {len(combined_results)} segments had disagreements.",
-             "confidence": "high" if reliability["kappa"] >= 0.60 else "medium"}
+             "confidence": "high" if reliability["kappa"] >= 0.60 and alpha_result["alpha"] >= 0.667 else "medium"}
         ]
 
         # Add theme-based insights
@@ -398,13 +548,15 @@ class KappaIntercoderSkill(BaseSkill):
             "codebook": codebook_entries,
             "codebook_refinements": codebook_refinements,
             "reliability": reliability,
+            "krippendorff_alpha": alpha_result,
             "coding_results": combined_results,
             "themes": themes,
         }
 
         summary = (
-            f"Dual-coding analysis complete. Cohen's Kappa = {reliability['kappa']} "
-            f"({reliability['interpretation']}). "
+            f"Dual-coding analysis complete. "
+            f"Cohen's Kappa = {reliability['kappa']} ({reliability['interpretation']}), "
+            f"Krippendorff's Alpha = {alpha_result['alpha']} ({alpha_result['interpretation']}). "
             f"{len(codebook_entries)} codes, {len(combined_results)} segments coded, "
             f"{len(disagreements)} disagreements reconciled, {len(themes)} themes identified."
         )
