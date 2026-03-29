@@ -297,7 +297,8 @@ export default function SettingsView() {
                 );
                 await fetchAll();
                 // Refresh auth store so UserManagement appears/disappears
-                useAuthStore.getState().checkTeamStatus();
+                await useAuthStore.getState().checkTeamStatus();
+                await useAuthStore.getState().fetchMe();
               } catch (e) {
                 console.error("Failed to toggle team mode:", e);
               }

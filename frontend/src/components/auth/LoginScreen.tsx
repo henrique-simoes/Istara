@@ -11,14 +11,33 @@ interface LoginScreenProps {
 export default function LoginScreen({ onLogin }: LoginScreenProps) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [email, setEmail] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [mode, setMode] = useState<"login" | "register">("login");
+  const [teamMode, setTeamMode] = useState(false);
+  const [hasUsers, setHasUsers] = useState(true);
   const usernameRef = useRef<HTMLInputElement>(null);
+
+  // Check team status on mount — determines if registration is available
+  useEffect(() => {
+    fetch(`${API_BASE}/api/auth/team-status`)
+      .then((r) => r.json())
+      .then((d) => {
+        setTeamMode(d.team_mode || false);
+        setHasUsers(d.has_users !== false);
+        // Fresh server with team mode + no users → show register directly
+        if (d.team_mode && d.has_users === false) {
+          setMode("register");
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // Auto-focus username input on mount
   useEffect(() => {
     usernameRef.current?.focus();
-  }, []);
+  }, [mode]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,25 +47,34 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
       setError("Username and password are required.");
       return;
     }
+    if (mode === "register" && !email.trim()) {
+      setError("Email is required for registration.");
+      return;
+    }
 
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/api/auth/login`, {
+      const endpoint = mode === "register" ? "/api/auth/register" : "/api/auth/login";
+      const body = mode === "register"
+        ? { username: username.trim(), password, email: email.trim(), display_name: username.trim() }
+        : { username: username.trim(), password };
+
+      const res = await fetch(`${API_BASE}${endpoint}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: username.trim(), password }),
+        body: JSON.stringify(body),
       });
 
       if (!res.ok) {
-        const body = await res.json().catch(() => ({ detail: "Login failed" }));
-        throw new Error(body.detail || `Login failed (${res.status})`);
+        const data = await res.json().catch(() => ({ detail: `${mode === "register" ? "Registration" : "Login"} failed` }));
+        throw new Error(data.detail || `Failed (${res.status})`);
       }
 
       const data = await res.json();
       localStorage.setItem("reclaw_token", data.token);
       onLogin();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Login failed. Please try again.");
+      setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -67,6 +95,11 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
             <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
               Local-first AI for UX Research
             </p>
+            {mode === "register" && !hasUsers && (
+              <p className="text-xs text-reclaw-600 dark:text-reclaw-400 mt-2 font-medium">
+                First user — you will be the admin.
+              </p>
+            )}
           </div>
 
           {/* Login form */}
@@ -91,6 +124,28 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
                 placeholder="Enter your username"
               />
             </div>
+
+            {mode === "register" && (
+              <div>
+                <label
+                  htmlFor="login-email"
+                  className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5"
+                >
+                  Email
+                </label>
+                <input
+                  id="login-email"
+                  type="email"
+                  aria-label="Email"
+                  autoComplete="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  disabled={loading}
+                  className="w-full px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-reclaw-500 focus:border-transparent transition disabled:opacity-50"
+                  placeholder="you@company.com"
+                />
+              </div>
+            )}
 
             <div>
               <label
@@ -153,15 +208,44 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
                   Signing in...
                 </span>
               ) : (
-                "Sign In"
+                mode === "register" ? "Create Account" : "Sign In"
               )}
             </button>
           </form>
 
-          {/* Footer hint */}
-          <p className="mt-6 text-center text-xs text-slate-400 dark:text-slate-500">
-            First time? Check the server console for your admin credentials.
-          </p>
+          {/* Footer — toggle between login/register */}
+          {teamMode && (
+            <div className="mt-6 text-center">
+              {mode === "login" ? (
+                <p className="text-xs text-slate-400 dark:text-slate-500">
+                  New to this server?{" "}
+                  <button
+                    type="button"
+                    onClick={() => { setMode("register"); setError(""); }}
+                    className="text-reclaw-600 dark:text-reclaw-400 font-medium hover:underline"
+                  >
+                    Create an account
+                  </button>
+                </p>
+              ) : (
+                <p className="text-xs text-slate-400 dark:text-slate-500">
+                  Already have an account?{" "}
+                  <button
+                    type="button"
+                    onClick={() => { setMode("login"); setError(""); }}
+                    className="text-reclaw-600 dark:text-reclaw-400 font-medium hover:underline"
+                  >
+                    Sign in
+                  </button>
+                </p>
+              )}
+            </div>
+          )}
+          {!teamMode && (
+            <p className="mt-6 text-center text-xs text-slate-400 dark:text-slate-500">
+              Local mode — enter any username and password to continue.
+            </p>
+          )}
         </div>
       </div>
     </div>

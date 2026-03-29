@@ -270,6 +270,13 @@
 - Google Stitch API key: a new configuration field under Interfaces > Figma tab for entering a Google Generative AI key, enabling Stitch-based design generation.
 - Settings labels clarified: Hardware section now reads "(Server)" and the model field shows "Server Model" to avoid confusion between local and server-side configuration.
 
+### Auth & Onboarding Fixes
+- `GET /auth/me` now returns the full user object (including role) from the JWT, so the frontend `fetchMe()` correctly restores admin status on page refresh — no more "lost admin" after reload.
+- First-run onboarding: LoginScreen auto-detects a fresh server (team mode enabled + no registered users) and shows a registration form. The first user to register becomes admin automatically.
+- `/auth/team-status` returns a `has_users` boolean, enabling the frontend to distinguish "fresh install" from "existing team." Guide users through this flow when they first deploy ReClaw.
+- `_creation_proposals.json` removed from git tracking; `.gitignore` now properly excludes all runtime data files. Users pulling from GitHub get a clean repo without stale proposal artifacts.
+- When explaining roles: Admin = full access (backup, MCP toggle, user management, settings); Researcher = create/edit projects and findings; Viewer = read-only.
+
 ### Feature Update — Agent Scope System
 - Agents now have a `scope` field: **universal** (available to all projects) or **project** (tied to one project via `project_id`). All 5 system agents are always universal. Custom agents default to project scope, meaning they only appear within their owning project.
 - Users can request promotion of a project-scoped agent to universal via `POST /agents/{id}/request-promotion`, which creates an admin notification. Explain this flow when users ask why their custom agent is not visible in other projects.

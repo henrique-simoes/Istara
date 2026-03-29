@@ -158,24 +158,64 @@ async def login(req: LoginRequest, request: Request, db: AsyncSession = Depends(
     }
 
 @router.get("/auth/me")
-async def get_me(user: dict = None):
-    """Get current user info. In local mode, returns a default user."""
+async def get_me(request: Request):
+    """Get current user info from JWT token. Works in both local and team mode."""
+    from app.core.auth import verify_token
+
+    # Extract token from Authorization header
+    auth_header = request.headers.get("authorization", "")
+    token = auth_header.removeprefix("Bearer ").strip()
+    if not token:
+        token = request.query_params.get("token", "")
+
     if not settings.team_mode:
+        # Local mode — always admin
+        payload = verify_token(token) if token else None
         return {
             "id": "local",
-            "username": "local",
+            "username": payload.get("username", "local") if payload else "local",
             "email": "local@localhost",
             "role": "admin",
-            "display_name": "Local User",
+            "display_name": payload.get("username", "Local User") if payload else "Local User",
             "preferences": {},
             "team_mode": False,
         }
 
-    # Extract token from the request — handled by middleware injecting user
-    # For now this route requires the auth middleware to populate `user`
-    from fastapi import Request
+    # Team mode — decode JWT to get user info
+    if not token:
+        raise HTTPException(status_code=401, detail="Authentication required")
 
-    return {"team_mode": True, "message": "Use Authorization header with JWT token"}
+    payload = verify_token(token)
+    if not payload:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+    # Try to get full user from DB for email/preferences
+    from app.models.database import async_session
+    from app.models.user import User
+    async with async_session() as db:
+        result = await db.execute(select(User).where(User.id == payload["sub"]))
+        user = result.scalar_one_or_none()
+        if user:
+            return {
+                "id": user.id,
+                "username": user.username,
+                "email": user.email or "",
+                "role": user.role.value if hasattr(user.role, "value") else str(user.role),
+                "display_name": user.display_name or user.username,
+                "preferences": json.loads(user.preferences) if user.preferences else {},
+                "team_mode": True,
+            }
+
+    # Fallback to JWT claims if user not in DB
+    return {
+        "id": payload.get("sub", ""),
+        "username": payload.get("username", ""),
+        "email": "",
+        "role": payload.get("role", "viewer"),
+        "display_name": payload.get("username", ""),
+        "preferences": {},
+        "team_mode": True,
+    }
 
 
 @router.put("/auth/preferences")
@@ -189,10 +229,18 @@ async def update_preferences(req: PreferencesRequest):
 
 @router.get("/auth/team-status")
 async def team_status():
-    """Check if team mode is enabled and get basic info."""
+    """Check if team mode is enabled and get basic info.
+    Includes has_users so fresh installs know to show registration."""
+    has_users = False
+    if settings.team_mode:
+        from app.models.user import User
+        async with async_session() as db:
+            result = await db.execute(select(User).limit(1))
+            has_users = result.scalar_one_or_none() is not None
     return {
         "team_mode": settings.team_mode,
         "registration_enabled": settings.team_mode,
+        "has_users": has_users,
     }
 
 
