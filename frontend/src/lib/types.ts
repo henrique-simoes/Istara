@@ -11,6 +11,8 @@ export interface Project {
   company_context: string;
   project_context: string;
   guardrails: string;
+  is_paused: boolean;
+  owner_id: string;
   created_at: string;
   updated_at: string;
 }
