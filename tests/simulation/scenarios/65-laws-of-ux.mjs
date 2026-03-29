@@ -191,5 +191,80 @@ export async function run(ctx) {
     });
   }
 
+  // ── 16. Phase 4D: UX Laws Badges — violation count badges when compliance data available ──
+  // First, run a compliance check on the persistent project to get violation data
+  if (ctx.projectId) {
+    try {
+      const compliance = await api.get(`/api/laws/compliance/${ctx.projectId}`);
+
+      // Check if compliance data has violations
+      const violations = compliance.violations || compliance.issues || [];
+      const violationCount = Array.isArray(violations) ? violations.length : 0;
+      const overallScore = compliance.overall_score;
+
+      checks.push({
+        name: "Phase 4D: Compliance endpoint returns violation data for project",
+        passed: overallScore !== undefined,
+        detail: `overall_score=${overallScore}, violations=${violationCount}`,
+      });
+
+      // If we have a page context, check the UI for badges
+      if (ctx.page) {
+        const page = ctx.page;
+        try {
+          await page.goto("http://localhost:3000", { waitUntil: "networkidle", timeout: 15000 });
+          await page.waitForTimeout(1500);
+
+          // Navigate to a view where UX law badges would appear (Findings or Skills)
+          const findingsBtn = page.locator('button[aria-label="Findings"]').first();
+          if (await findingsBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+            await findingsBtn.click();
+            await page.waitForTimeout(2000);
+          }
+
+          // Look for badge elements that show violation counts
+          const badgeInfo = await page.evaluate(() => {
+            // Badges are typically small rounded elements with numbers
+            const badges = document.querySelectorAll(
+              '[class*="badge"], [class*="Badge"], [class*="rounded-full"][class*="text-xs"], ' +
+              '[class*="rounded-full"][class*="text-sm"], [class*="pill"], ' +
+              'span[class*="bg-red"], span[class*="bg-amber"], span[class*="bg-yellow"]'
+            );
+            let violationBadges = 0;
+            let badgeTexts = [];
+            for (const badge of badges) {
+              const text = badge.innerText.trim();
+              // Violation badges typically show a number or "N violations"
+              if (/^\d+$/.test(text) || text.includes("violation") || text.includes("issue")) {
+                violationBadges++;
+                badgeTexts.push(text);
+              }
+            }
+
+            // Also check for UX law-specific badge elements
+            const lawBadges = document.querySelectorAll('[class*="law"][class*="badge"], [data-law-id]');
+
+            return {
+              totalBadgeElements: badges.length,
+              violationBadges,
+              lawBadgeElements: lawBadges.length,
+              badgeTexts: badgeTexts.slice(0, 5),
+            };
+          });
+
+          checks.push({
+            name: "Phase 4D: UI renders violation count badges",
+            passed: badgeInfo.totalBadgeElements > 0 || badgeInfo.lawBadgeElements > 0,
+            detail: `total_badges=${badgeInfo.totalBadgeElements}, violation_badges=${badgeInfo.violationBadges}, law_badges=${badgeInfo.lawBadgeElements}, texts=${badgeInfo.badgeTexts.join(",")}`,
+          });
+        } catch (e) {
+          checks.push({ name: "Phase 4D: UI renders violation count badges", passed: false, detail: e.message });
+        }
+      }
+    } catch (e) {
+      checks.push({ name: "Phase 4D: Compliance violation data", passed: false, detail: e.message });
+    }
+  }
+
   return checks;
 }

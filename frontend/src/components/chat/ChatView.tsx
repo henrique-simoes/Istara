@@ -420,14 +420,14 @@ export default function ChatView() {
   };
 
   return (
-    <div className="flex-1 flex overflow-hidden">
+    <div className="flex-1 flex min-h-0 overflow-hidden">
       {activeProjectId && (
         <ChatSessionsSidebar projectId={activeProjectId} />
       )}
 
       {/* Main chat area */}
       <div
-        className={cn("flex-1 flex flex-col", dragOver && "ring-2 ring-reclaw-500 ring-inset bg-reclaw-50/50 dark:bg-reclaw-900/10")}
+        className={cn("flex-1 flex flex-col min-h-0 overflow-hidden", dragOver && "ring-2 ring-reclaw-500 ring-inset bg-reclaw-50/50 dark:bg-reclaw-900/10")}
         onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
         onDragLeave={() => setDragOver(false)}
         onDrop={handleDrop}
@@ -452,7 +452,7 @@ export default function ChatView() {
         )}
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4" tabIndex={0} role="log" aria-label="Chat messages">
+        <div className="h-0 flex-1 overflow-y-auto p-4 space-y-4" tabIndex={0} role="log" aria-label="Chat messages">
           {messages.length === 0 && !streaming && (
             <div className="flex items-center justify-center h-full text-slate-400">
               <div className="text-center max-w-md">

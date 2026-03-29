@@ -68,6 +68,10 @@ backend/app/skills/definitions/_deleted/
 # Claude Code local settings
 .claude/settings.local.json
 
+# Runtime PID files
+*.pid
+.reclaw-*.pid
+
 # Exported projects
 ReClaw-Projects/
 

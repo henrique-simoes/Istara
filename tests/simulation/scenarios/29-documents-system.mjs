@@ -375,6 +375,95 @@ export async function run(ctx) {
   }
 
   // ──────────────────────────────────────────────────────────────────
+  // 23b. Phase 3: Documents View Modes — compact (default), grid, list
+  // ──────────────────────────────────────────────────────────────────
+  try {
+    // Verify compact view renders by default
+    const compactElements = await page.evaluate(() => {
+      // Compact rows are typically table-like or narrow row elements
+      const rows = document.querySelectorAll('[class*="compact"], [class*="table-row"], tr[class*="document"], [class*="doc-row"]');
+      const anyRowLayout = document.querySelectorAll('[class*="flex"][class*="items-center"][class*="py-"]');
+      return { compactCount: rows.length, rowLayoutCount: anyRowLayout.length };
+    });
+    check("23b-1", "Phase 3: Compact view renders by default",
+      compactElements.compactCount > 0 || compactElements.rowLayoutCount > 0,
+      `compact=${compactElements.compactCount}, rowLayout=${compactElements.rowLayoutCount}`);
+
+    // Look for view mode toggle buttons (grid/list/compact)
+    const viewModeToggles = await page.evaluate(() => {
+      const btns = document.querySelectorAll('button[aria-label*="view"], button[aria-label*="View"], button[title*="view"], button[title*="View"]');
+      const gridBtn = document.querySelector('button[aria-label*="Grid"], button[aria-label*="grid"], button[title*="Grid"]');
+      const listBtn = document.querySelector('button[aria-label*="List"], button[aria-label*="list"], button[title*="List"]');
+      const compactBtn = document.querySelector('button[aria-label*="Compact"], button[aria-label*="compact"], button[title*="Compact"]');
+      return {
+        totalToggleBtns: btns.length,
+        hasGrid: !!gridBtn,
+        hasList: !!listBtn,
+        hasCompact: !!compactBtn,
+        gridLabel: gridBtn?.getAttribute("aria-label") || gridBtn?.getAttribute("title") || "",
+        listLabel: listBtn?.getAttribute("aria-label") || listBtn?.getAttribute("title") || "",
+      };
+    });
+    check("23b-2", "Phase 3: View mode toggle buttons exist",
+      viewModeToggles.hasGrid || viewModeToggles.hasList || viewModeToggles.totalToggleBtns >= 2,
+      `grid=${viewModeToggles.hasGrid}, list=${viewModeToggles.hasList}, total=${viewModeToggles.totalToggleBtns}`);
+
+    // Toggle to grid view if button exists
+    if (viewModeToggles.hasGrid) {
+      const gridBtn = await page.$('button[aria-label*="Grid"], button[aria-label*="grid"], button[title*="Grid"]');
+      if (gridBtn) {
+        await gridBtn.click();
+        await page.waitForTimeout(800);
+        const hasGrid = await page.evaluate(() => {
+          const gridEl = document.querySelector('[class*="grid-cols"], [class*="grid "]');
+          return !!gridEl;
+        });
+        check("23b-3", "Phase 3: Grid view renders grid layout CSS",
+          hasGrid,
+          `grid_layout_found=${hasGrid}`);
+      }
+    } else {
+      check("23b-3", "Phase 3: Grid view renders grid layout CSS", false, "Grid button not found");
+    }
+
+    // Toggle to list view if button exists
+    if (viewModeToggles.hasList) {
+      const listBtn = await page.$('button[aria-label*="List"], button[aria-label*="list"], button[title*="List"]');
+      if (listBtn) {
+        await listBtn.click();
+        await page.waitForTimeout(800);
+        const hasList = await page.evaluate(() => {
+          const listEl = document.querySelector('[class*="space-y"], [class*="divide-y"], [class*="flex-col"][class*="gap"]');
+          return !!listEl;
+        });
+        check("23b-4", "Phase 3: List view renders list layout",
+          hasList,
+          `list_layout_found=${hasList}`);
+      }
+    } else {
+      check("23b-4", "Phase 3: List view renders list layout", false, "List button not found");
+    }
+
+    // Verify view mode persists to localStorage
+    const viewModePersisted = await page.evaluate(() => {
+      const stored = localStorage.getItem("reclaw_documents_view_mode") || localStorage.getItem("documents_view_mode");
+      return stored;
+    });
+    check("23b-5", "Phase 3: View mode persists to localStorage",
+      !!viewModePersisted,
+      `stored_mode="${viewModePersisted}"`);
+
+    // Switch back to compact if possible
+    if (viewModeToggles.hasCompact) {
+      const compactBtn = await page.$('button[aria-label*="Compact"], button[aria-label*="compact"], button[title*="Compact"]');
+      if (compactBtn) await compactBtn.click();
+      await page.waitForTimeout(500);
+    }
+  } catch (e) {
+    check("23b", "Phase 3: Documents view modes", false, e.message);
+  }
+
+  // ──────────────────────────────────────────────────────────────────
   // 24. Delete a document
   // ──────────────────────────────────────────────────────────────────
   try {

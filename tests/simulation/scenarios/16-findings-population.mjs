@@ -210,6 +210,54 @@ export async function run(ctx) {
   });
   await screenshot("16-findings-populated");
 
+  // ── Phase 4C: Convergence Pyramid — report cards are clickable ──
+  if (findingsVisible) {
+    try {
+      const pyramidInfo = await page.evaluate(() => {
+        // Look for pyramid/convergence-related elements
+        const pyramidEl = document.querySelector('[class*="pyramid"], [class*="convergence"], [class*="funnel"]');
+
+        // Check for report cards that should be clickable
+        const cards = document.querySelectorAll('[class*="rounded"][class*="border"], [class*="card"]');
+        let clickableCards = 0;
+        let totalFindingsCards = 0;
+
+        for (const card of cards) {
+          const text = card.innerText.toLowerCase();
+          const isFindingsCard = text.includes("nugget") || text.includes("fact") ||
+                                 text.includes("insight") || text.includes("recommendation") ||
+                                 text.includes("[sim]");
+          if (isFindingsCard) {
+            totalFindingsCards++;
+            // Check if card is clickable (has cursor-pointer, onclick, or is a button/link)
+            const style = window.getComputedStyle(card);
+            const hasPointer = style.cursor === "pointer" || card.className.includes("cursor-pointer");
+            const hasOnClick = card.onclick !== null || card.getAttribute("role") === "button" ||
+                               card.tagName === "BUTTON" || card.tagName === "A" ||
+                               card.closest("button") || card.closest("a");
+            if (hasPointer || hasOnClick) {
+              clickableCards++;
+            }
+          }
+        }
+
+        return {
+          hasPyramid: !!pyramidEl,
+          totalFindingsCards,
+          clickableCards,
+        };
+      });
+
+      checks.push({
+        name: "Phase 4C: Findings report cards are clickable (cursor-pointer/onclick)",
+        passed: pyramidInfo.clickableCards > 0 || pyramidInfo.totalFindingsCards === 0,
+        detail: `clickable=${pyramidInfo.clickableCards}/${pyramidInfo.totalFindingsCards}, pyramid_el=${pyramidInfo.hasPyramid}`,
+      });
+    } catch (e) {
+      checks.push({ name: "Phase 4C: Convergence pyramid cards clickable", passed: false, detail: e.message });
+    }
+  }
+
   // ── Research Integrity: Verify nugget source_location is stored ──
   try {
     const allNuggets = await api.get(`/api/findings/nuggets?project_id=${ctx.projectId}`);

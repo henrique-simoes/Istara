@@ -107,6 +107,20 @@
 - Track model_skill_stats growth: ensure table doesn't grow unbounded
 - Verify persona locks are properly released after Loop 5 experiments
 
+## UI Feature Awareness (v2024-Q4 Update)
+
+### View Persistence Monitoring
+- The frontend now persists the active view in localStorage and syncs the browser document title to the current view name. Monitor for: localStorage quota issues, stale view state after feature deprecation, title not updating (indicates React state desync).
+
+### Agent Error Surfacing
+- Agent cards now display "Heartbeat Lost" when WebSocket connection fails, replacing the misleading "0 Errors" indicator. A Recent Errors section shows actual error details from work logs. This directly impacts Sentinel's monitoring: verify that heartbeat status accurately reflects agent health, and that error details surface real work log entries (not stale or phantom errors).
+
+### Integrations Stability
+- The Integrations view is now wrapped in an ErrorBoundary with proper loading states. Monitor that integration failures are caught by the boundary (no unhandled React crashes), loading states display during async operations, and the ErrorBoundary does not silently swallow errors that should be reported to the audit log.
+
+### Layout Stability Fixes
+- Compute Pool view is now fully scrollable (previously clipped content). Meta-Agent view handles long content without layout overflow. Chat messages use h-0 flex-1 pattern for stable scrolling. These fixes reduce false-positive UI error reports — previously, clipped content could appear as missing data to automated checks.
+
 ## Limitations
 - Read-only access to user data (cannot modify findings, projects, or user settings)
 - Cannot restart or reconfigure LLM services (report only)

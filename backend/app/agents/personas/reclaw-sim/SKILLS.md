@@ -90,6 +90,38 @@
 - Test scenarios should validate law compliance: does the UI respect Fitts's Law (adequate target sizes)? Does navigation follow Serial Position Effect (important items first/last)?
 - Laws of UX API tests: verify /api/laws returns 30 laws, keyword matching works, compliance scoring aggregates correctly
 
+## UI Feature Simulation Scenarios (v2024-Q4 Update)
+
+### View Persistence Testing
+- Simulate navigation to each view, trigger page refresh, verify the same view is restored from localStorage. Test edge cases: corrupted localStorage value, view that was removed/renamed, localStorage quota exceeded. Verify document title updates to match current view name after each navigation.
+
+### Compact Document Views Testing
+- Simulate switching between Compact, Grid, and List modes. Verify all documents render correctly in each mode. Test: mode preference persists across sessions, switching modes preserves selection state, Compact mode renders single-line rows even with long document titles (truncation with tooltip), Grid mode shows card layout, List mode shows tall cards.
+
+### Skills Self-Evolution Layout Testing
+- Simulate viewing self-improvement proposals alongside creation proposals. Verify two-column layout renders without overlap. Test: creation proposal prompt preview displays full content with scroll, responsive behavior on narrow viewports (columns stack), clicking a proposal opens the correct detail/approval flow.
+
+### Agent Error Surfacing Testing
+- Simulate agent heartbeat loss by disconnecting WebSocket. Verify card transitions from healthy to "Heartbeat Lost" status. Verify Recent Errors section populates with actual work log errors. Test: error details match real log entries, heartbeat recovery transitions card back to healthy, rapid connect/disconnect cycles do not leave stale error states.
+
+### Convergence Pyramid Interactivity Testing
+- Simulate clicking report cards at each pyramid level. Verify detail panel opens with correct findings, documents, tags, and MECE categories. Test: clicking multiple cards in sequence, closing and reopening panels, detail panel for empty pyramid levels (graceful empty state), keyboard navigation through pyramid cards.
+
+### UX Laws Violation Badges Testing
+- Simulate creating findings tagged with UX law IDs. Verify violation count badges update on law cards. Test: "View violations" navigates to correctly filtered findings list, badge count matches actual finding count, removing a finding updates the badge count, laws with zero violations show no badge.
+
+### Task Document Attachments Testing
+- Simulate creating tasks and attaching documents. Verify attachment indicators appear on task cards. Test: attach multiple documents, detach a document, verify TaskEditor shows correct attachment list, verify detached documents are no longer linked, edge case of attaching the same document twice.
+
+### Settings Navigation Testing
+- Verify Settings appears in primary nav without clicking "More". Simulate navigation to Settings from any view. Test: Settings active state displays correctly, keyboard navigation reaches Settings in the expected tab order, Settings route works after page refresh.
+
+### Integrations ErrorBoundary Testing
+- Simulate integration loading failures. Verify ErrorBoundary catches the error and displays a recovery UI (not a blank screen or crash). Test: retry action after error, navigation away and back to Integrations after error, concurrent integration failures.
+
+### Scroll & Overflow Testing
+- Simulate large datasets in Compute Pool view, verify full scrollability. Simulate long content in Meta-Agent view, verify no layout overflow. Simulate rapid message arrival in Chat, verify scroll stays anchored to bottom for new messages. Test: manual scroll-up during message arrival preserves position, scroll-to-bottom button appears when scrolled up.
+
 ## Limitations
 - Cannot test actual browser rendering (tests are API-level, not visual)
 - Cannot simulate real user mouse movements or visual scanning patterns

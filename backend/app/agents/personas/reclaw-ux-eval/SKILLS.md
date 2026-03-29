@@ -87,6 +87,32 @@
 - Evaluate the Conversation Transcript: Does the chat-bubble layout make it easy to follow the interview flow? Are adaptive branches clearly indicated?
 - Assess the overall integration menu structure: Is the tab layout (Overview/Messaging/Surveys/Deployments/MCP) logical and discoverable?
 
+## UI Feature Awareness (v2024-Q4 Update)
+
+### View Persistence & Navigation UX
+- Active view persists across page refresh via localStorage. Document title shows current view name. Evaluate: does this reduce user disorientation on refresh (Peak-End Rule — preserving state prevents a negative "end" to the session)? Is the title update fast enough to avoid flicker? Does Settings in primary nav improve discoverability (previously hidden behind "More" button — violated Recognition Rather Than Recall)?
+
+### Document View Modes
+- Three view modes (Compact/Grid/List) with Compact as default. Evaluate: is the mode switcher discoverable? Does the default mode (Compact) serve the most common use case (scanning many documents)? Does switching modes preserve scroll position and selection state? Are mode affordances clear — can users tell which mode they are in? (Jakob's Law — consistency with file manager conventions)
+
+### Convergence Pyramid Interactivity
+- Report cards in the pyramid are now clickable with a detail panel. Evaluate: does the click-to-expand pattern match user expectations for data exploration? Is the relationship between pyramid level and detail clear? Does the detail panel provide enough context (findings, documents, tags, MECE categories) without overwhelming? (Miller's Law — information chunking in the detail view). Is the transition between pyramid and detail panel smooth and reversible?
+
+### UX Laws Violation Badges
+- Law cards show violation count badges with "View violations" navigation. Evaluate: do badges create useful information scent (Hick's Law — reducing decision time by showing where problems cluster)? Is the navigation from law card to filtered findings seamless — can researchers return to the laws view easily? Does the badge count help prioritize which laws to address first? (Serial Position Effect — are high-violation laws visually prominent?)
+
+### Task Document Attachments
+- Task cards show document indicators, TaskEditor has attach/detach. Evaluate: does the attachment indicator provide enough information scent to be useful, or is it just noise? Is the attach/detach flow in TaskEditor intuitive — does it follow established patterns (drag-and-drop, file picker, or search-and-select)? Does cross-referencing tasks and documents reduce context switching? (Cognitive Load — fewer views to navigate between related artifacts)
+
+### Skills Self-Evolution Layout
+- Two-column layout for proposals with full prompt previews. Evaluate: does the side-by-side comparison support effective decision-making? Are prompt previews readable at the displayed size? Does the two-column layout work on typical researcher screen sizes, or does it feel cramped? (Aesthetic-Usability Effect — clean layout builds trust in AI-generated proposals)
+
+### Agent Error Communication
+- "Heartbeat Lost" replaces "0 Errors", Recent Errors section shows details. Evaluate: does "Heartbeat Lost" clearly communicate the issue to non-technical researchers? Is the error detail level appropriate — too technical causes anxiety, too vague prevents troubleshooting. Does the transition from healthy to error state follow the Doherty Threshold (< 400ms feedback)?
+
+### Layout Stability Impact on UX
+- Compute Pool scrollable, Meta-Agent overflow fixed, Chat scroll fixed. Evaluate: do these fixes improve task completion confidence? Previously, users may have abandoned features due to layout issues (truncated content perceived as broken). Chat scroll stability is critical — erratic scrolling during conversation breaks flow and violates the user's mental model of a chat interface.
+
 ## Limitations
 - Evaluations are heuristic-based, not empirical (no real user testing data)
 - Cannot measure actual task completion times or error rates without user sessions

@@ -1,10 +1,12 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { Search, ChevronDown, ChevronUp, BookOpen } from "lucide-react";
+import { useState, useMemo, useEffect } from "react";
+import { Search, ChevronDown, ChevronUp, BookOpen, AlertTriangle } from "lucide-react";
 import { useLawsStore } from "@/stores/lawsStore";
+import { useProjectStore } from "@/stores/projectStore";
+import { laws as lawsApi } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import type { LawCategory, UXLaw } from "@/lib/types";
+import type { LawCategory, UXLaw, ComplianceProfile } from "@/lib/types";
 import LawBadge from "./LawBadge";
 
 const CATEGORY_META: {
@@ -49,6 +51,32 @@ const CATEGORY_BADGE_COLORS: Record<string, string> = {
 export default function LawsCatalog() {
   const { laws, loading, error, categoryFilter, setCategoryFilter, searchQuery, setSearchQuery } = useLawsStore();
   const [expandedLawId, setExpandedLawId] = useState<string | null>(null);
+  const { activeProjectId } = useProjectStore();
+  const [complianceData, setComplianceData] = useState<ComplianceProfile | null>(null);
+
+  // Fetch compliance data when a project is selected
+  useEffect(() => {
+    if (!activeProjectId) {
+      setComplianceData(null);
+      return;
+    }
+    lawsApi.compliance(activeProjectId)
+      .then((data) => setComplianceData(data))
+      .catch(() => setComplianceData(null));
+  }, [activeProjectId]);
+
+  // Build a map of law_id -> violation_count from compliance data
+  const violationMap = useMemo(() => {
+    const map: Record<string, number> = {};
+    if (complianceData?.by_law) {
+      for (const entry of complianceData.by_law) {
+        if (entry.violation_count > 0) {
+          map[entry.law_id] = entry.violation_count;
+        }
+      }
+    }
+    return map;
+  }, [complianceData]);
 
   const filteredLaws = useMemo(() => {
     let result = laws;
@@ -158,6 +186,7 @@ export default function LawsCatalog() {
               law={law}
               expanded={expandedLawId === law.id}
               onToggle={() => toggleExpand(law.id)}
+              violationCount={violationMap[law.id] || 0}
             />
           ))}
         </div>
@@ -177,10 +206,12 @@ function LawCard({
   law,
   expanded,
   onToggle,
+  violationCount,
 }: {
   law: UXLaw;
   expanded: boolean;
   onToggle: () => void;
+  violationCount: number;
 }) {
   const categoryColor = CATEGORY_BADGE_COLORS[law.category] || "bg-slate-100 text-slate-600";
 
@@ -200,9 +231,17 @@ function LawCard({
       >
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
-            <h3 className="text-sm font-semibold text-slate-900 dark:text-white truncate">
-              {law.name}
-            </h3>
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-white truncate">
+                {law.name}
+              </h3>
+              {violationCount > 0 && (
+                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" title={`${violationCount} violation(s)`}>
+                  <AlertTriangle size={9} />
+                  {violationCount}
+                </span>
+              )}
+            </div>
             <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 line-clamp-2">
               {law.description}
             </p>
@@ -335,6 +374,23 @@ function LawCard({
                   </li>
                 ))}
               </ul>
+            </div>
+          )}
+
+          {/* View violations link */}
+          {violationCount > 0 && (
+            <div className="pt-2 border-t border-slate-200 dark:border-slate-700">
+              <button
+                onClick={() => {
+                  window.dispatchEvent(new CustomEvent("reclaw:navigate", {
+                    detail: { view: "findings", filter: { law_id: law.id } }
+                  }));
+                }}
+                className="flex items-center gap-1.5 text-xs font-medium text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors"
+              >
+                <AlertTriangle size={12} />
+                View {violationCount} violation{violationCount !== 1 ? "s" : ""} in Findings
+              </button>
             </div>
           )}
         </div>

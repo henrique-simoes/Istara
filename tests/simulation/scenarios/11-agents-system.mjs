@@ -289,6 +289,66 @@ export async function run(ctx) {
     }
   }
 
+  // ── Phase 4B: Agent Error Display ──
+  // When an agent has heartbeat "error" state with error_count=0,
+  // the UI should show "Heartbeat Lost" or "Connection Error" instead of "0 Errors"
+  if (agentsViewVisible) {
+    // First, check the current heartbeat status via API for any error states
+    try {
+      const hb = await api.get("/api/agents/heartbeat/status");
+      const agentStatuses = hb.agents || [];
+
+      // Check the UI text for any agents that have error state
+      const errorDisplayInfo = await page.evaluate(() => {
+        const body = document.body.innerText;
+        // These phrases should NOT appear (they are the old incorrect display)
+        const hasZeroErrors = body.includes("0 Errors") || body.includes("0 errors");
+        // These phrases SHOULD appear when there's a heartbeat error with 0 error count
+        const hasHeartbeatLost = body.includes("Heartbeat Lost") || body.includes("heartbeat lost");
+        const hasConnectionError = body.includes("Connection Error") || body.includes("connection error");
+        const hasLostContact = body.includes("Lost Contact") || body.includes("lost contact");
+        return {
+          hasZeroErrors,
+          hasHeartbeatLost,
+          hasConnectionError,
+          hasLostContact,
+        };
+      });
+
+      // The UI should never show "0 Errors" — if there's an error state,
+      // it should display a descriptive message instead
+      checks.push({
+        name: "Phase 4B: UI does not show misleading '0 Errors' for heartbeat issues",
+        passed: !errorDisplayInfo.hasZeroErrors,
+        detail: `zero_errors_shown=${errorDisplayInfo.hasZeroErrors}, heartbeat_lost=${errorDisplayInfo.hasHeartbeatLost}, connection_error=${errorDisplayInfo.hasConnectionError}`,
+      });
+
+      // Verify that agent cards show meaningful error states
+      // Check that error-state agents display proper labels
+      const errorAgentCards = await page.evaluate(() => {
+        const cards = document.querySelectorAll('[class*="border"][class*="rounded"]');
+        let hasDescriptiveErrorLabel = false;
+        for (const card of cards) {
+          const text = card.innerText;
+          if (text.includes("Heartbeat Lost") || text.includes("Connection Error") ||
+              text.includes("Lost Contact") || text.includes("Offline") ||
+              text.includes("Unreachable")) {
+            hasDescriptiveErrorLabel = true;
+            break;
+          }
+        }
+        return { hasDescriptiveErrorLabel, cardCount: cards.length };
+      });
+      checks.push({
+        name: "Phase 4B: Agent cards use descriptive error labels",
+        passed: errorAgentCards.hasDescriptiveErrorLabel || agentStatuses.every(a => a.status !== "error"),
+        detail: `descriptive_labels=${errorAgentCards.hasDescriptiveErrorLabel}, cards=${errorAgentCards.cardCount}, any_errors=${agentStatuses.some(a => a.status === "error")}`,
+      });
+    } catch (e) {
+      checks.push({ name: "Phase 4B: Agent error display", passed: false, detail: e.message });
+    }
+  }
+
   // 16. Chat view renders
   // Navigate to Chat view and verify it loaded
   await page.keyboard.press("Meta+1");
