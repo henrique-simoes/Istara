@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, lazy, Suspense } from "react";
 import {
   Diamond,
   ChevronDown,
@@ -10,6 +10,9 @@ import {
   Target,
   Sparkles,
   Link2,
+  BookOpen,
+  ClipboardCheck,
+  Layers,
 } from "lucide-react";
 import { useProjectStore } from "@/stores/projectStore";
 import { findings as findingsApi } from "@/lib/api";
@@ -17,6 +20,20 @@ import type { FindingsSummary, Nugget, Fact, Insight, Recommendation, ProjectPha
 import { cn, confidenceColor, phaseLabel } from "@/lib/utils";
 import AtomicDrilldown from "./AtomicDrilldown";
 import LawBadge from "@/components/laws/LawBadge";
+
+// Research Integrity sub-views
+const CodebookViewer = lazy(() => import("./CodebookViewer"));
+const CodeReviewQueue = lazy(() => import("./CodeReviewQueue"));
+const ProjectReportsView = lazy(() => import("./ProjectReportsView"));
+
+type FindingsTab = "evidence" | "codebook" | "review" | "reports";
+
+const FINDINGS_TABS: { id: FindingsTab; label: string; icon: typeof Diamond }[] = [
+  { id: "evidence", label: "Evidence", icon: Sparkles },
+  { id: "codebook", label: "Codebook", icon: BookOpen },
+  { id: "review", label: "Review", icon: ClipboardCheck },
+  { id: "reports", label: "Reports", icon: Layers },
+];
 
 const PHASE_TABS: { id: ProjectPhase; label: string; icon: typeof Diamond }[] = [
   { id: "discover", label: "Discover", icon: Diamond },
@@ -27,6 +44,7 @@ const PHASE_TABS: { id: ProjectPhase; label: string; icon: typeof Diamond }[] = 
 
 export default function FindingsView() {
   const { activeProjectId } = useProjectStore();
+  const [activeTab, setActiveTab] = useState<FindingsTab>("evidence");
   const [activePhase, setActivePhase] = useState<ProjectPhase>("discover");
   const [summary, setSummary] = useState<FindingsSummary | null>(null);
   const [nuggets, setNuggets] = useState<Nugget[]>([]);
@@ -122,10 +140,58 @@ export default function FindingsView() {
     <div className="flex-1 overflow-y-auto">
       {/* Header */}
       <div className="p-4 border-b border-slate-200 dark:border-slate-800">
-        <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-3">
+        <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
           🔍 Findings
         </h2>
 
+        {/* Top-level tabs: Evidence | Codebook | Review | Reports */}
+        <div
+          className="flex gap-1 mb-3 border-b border-slate-200 dark:border-slate-700"
+          role="tablist"
+          aria-label="Findings views"
+        >
+          {FINDINGS_TABS.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              role="tab"
+              aria-selected={activeTab === tab.id}
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-2 text-sm font-medium border-b-2 transition-colors -mb-px",
+                activeTab === tab.id
+                  ? "border-reclaw-600 text-reclaw-600 dark:border-reclaw-400 dark:text-reclaw-400"
+                  : "border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
+              )}
+            >
+              <tab.icon size={14} />
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+      </div>
+
+      {/* Research Integrity sub-views */}
+      {activeTab === "codebook" && activeProjectId && (
+        <Suspense fallback={<div className="p-8 text-center text-slate-400">Loading codebook...</div>}>
+          <CodebookViewer projectId={activeProjectId} />
+        </Suspense>
+      )}
+      {activeTab === "review" && activeProjectId && (
+        <Suspense fallback={<div className="p-8 text-center text-slate-400">Loading review queue...</div>}>
+          <CodeReviewQueue projectId={activeProjectId} />
+        </Suspense>
+      )}
+      {activeTab === "reports" && activeProjectId && (
+        <Suspense fallback={<div className="p-8 text-center text-slate-400">Loading reports...</div>}>
+          <ProjectReportsView projectId={activeProjectId} />
+        </Suspense>
+      )}
+
+      {/* Evidence tab content */}
+      {activeTab === "evidence" && (
+      <>
+      <div className="p-4 border-b border-slate-200 dark:border-slate-800">
         {/* Phase tabs */}
         <div
           className="flex gap-1 bg-slate-100 dark:bg-slate-800 rounded-lg p-1"
@@ -326,6 +392,8 @@ export default function FindingsView() {
           finding={drilldownFinding}
           onClose={() => setDrilldownFinding(null)}
         />
+      )}
+      </>
       )}
     </div>
   );

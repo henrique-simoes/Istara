@@ -83,3 +83,10 @@
 - Cannot test with real assistive technology (screen readers, switch devices)
 - Evaluation is based on standard compliance, not empirical user testing
 - Cannot evaluate motion/animation timing without runtime observation
+
+## Research Integrity UI Audit
+- **Codebook Viewer**: Audit the versioned codebook display — each code must render all 6 components (name, definition, inclusion criteria, exclusion criteria, example, counter-example). Verify version history navigation, diff highlighting between versions, and accessible table/list semantics.
+- **Code Review Queue**: Audit the LLM-applied codes pending human review — each item must show source text, LLM reasoning, and approve/reject controls. Verify low-confidence items are visually distinguished, bulk approve/reject is keyboard-accessible, and ARIA roles are correct on action buttons.
+- **Project Reports View**: Audit the convergence pyramid visualization — L2 (analysis), L3 (synthesis), L4 (final report) levels must be visually distinct with clear hierarchy. Verify pyramid is not color-only (text labels required for WCAG), interactive drill-down has proper focus management, and empty levels show meaningful empty states.
+- **Evidence Chain Traceability**: Audit nugget displays with source_location — verify source references are interactive links, not plain text. Check that the trace from recommendation back to source text is navigable without excessive clicks, and that source_location formatting is consistent and accessible.
+- **Confidence Indicators**: Audit confidence score displays on findings — verify indicators use text+icon (not color-only), contrast ratios meet WCAG AA, and screen readers convey confidence level semantically (e.g., via aria-valuenow on progress elements).

@@ -664,6 +664,32 @@ export async function run(ctx) {
     };
   });
 
+  // ── Step 8: Verify kappa-thematic-analysis skill catalog entry ──
+  await safeCheck("kappa-thematic-analysis skill is in catalog", async () => {
+    const kappaSkill = allSkills.find((s) => s.name === "kappa-thematic-analysis");
+    return {
+      name: "kappa-thematic-analysis skill is in catalog",
+      passed: !!kappaSkill,
+      detail: kappaSkill
+        ? `phase=${kappaSkill.phase}, type=${kappaSkill.skill_type}`
+        : "Skill not found in registry",
+    };
+  });
+
+  await safeCheck("kappa-thematic-analysis description mentions Cohen's Kappa AND Krippendorff's Alpha", async () => {
+    const detail = await api.get("/api/skills/kappa-thematic-analysis");
+    const desc = (detail.description || detail.display_name || "").toLowerCase();
+    const prompt = (detail.system_prompt || detail.prompt_template || detail.instructions || "").toLowerCase();
+    const combined = `${desc} ${prompt}`;
+    const hasKappa = combined.includes("kappa");
+    const hasAlpha = combined.includes("krippendorff") || combined.includes("alpha");
+    return {
+      name: "kappa-thematic-analysis description mentions Cohen's Kappa AND Krippendorff's Alpha",
+      passed: hasKappa && hasAlpha,
+      detail: `mentions_kappa=${hasKappa}, mentions_alpha=${hasAlpha}, desc_length=${desc.length}`,
+    };
+  });
+
   // ── Summary ──
   const passed = checks.filter((c) => c.passed).length;
   const failed = checks.filter((c) => !c.passed).length;

@@ -93,3 +93,10 @@
 - Recommendations are based on best practices, not validated through A/B testing
 - Cannot evaluate brand perception or emotional design impact
 - Cognitive load estimates are theoretical, not measured through physiological data
+
+## Research Integrity UX Evaluation
+- **Researcher Workflow Assessment**: Evaluate the end-to-end research integrity flow: coding -> review -> approve -> convergence. Measure steps to completion, identify friction points where researchers abandon the workflow, and assess whether the linear progression is intuitive or requires backtracking.
+- **Code Review Queue Usability**: Assess the review queue UX — does low-confidence-first sorting help researchers prioritize effectively? Is bulk approve/reject discoverable and safe (confirmation before bulk actions)? Can researchers efficiently process a queue of 50+ codes without fatigue?
+- **Report Convergence Comprehension**: Evaluate whether researchers understand the convergence pyramid (L2 analysis, L3 synthesis, L4 final). Test: can a first-time user explain what each level means? Is the relationship between levels clear? Are transitions between levels visually communicated?
+- **Evidence Chain Navigation**: Assess whether researchers can trace a recommendation back to its source text. Measure the number of clicks from a final recommendation to the original data. Evaluate whether the navigation path is linear and predictable or requires context switching between views.
+- **Codebook Versioning UX**: Evaluate the codebook version management experience — are diffs between versions readable? Are changelogs surfaced at the right moment? Can researchers understand what changed and why without leaving their current task?

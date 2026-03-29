@@ -1550,19 +1550,103 @@ Optional Caddy service (profile: `production`) provides automatic TLS via Let's 
 
 ### Research Integrity System
 
-Qualitative research pipeline following academic gold standards:
+ReClaw's qualitative research pipeline follows academic gold standards — Braun & Clarke (2006) reflexive thematic analysis, Saldaña (2021) coding manual, O'Connor & Joffe (2020) ICR guidelines, Krippendorff (2004) content analysis, Lincoln & Guba (1985) trustworthiness framework, Minto Pyramid Principle (MECE), Weick (1995) sensemaking, and Denzin (1978) triangulation.
 
-**Codebook System** (Saldaña 2021): Persistent versioned codebooks, 6 components per code. `CodebookVersion` model.
+**Core Principle**: Every finding must be traceable to exact source text — no hallucinated conclusions.
 
-**Code Application Audit Trail** (O'Connor & Joffe 2020): Every code → source text + location + coder + reasoning + review status. `CodeApplication` model.
+#### Mandatory Source Citation
 
-**Validation Executor**: Runs adversarial_review, dual_run, self_moa, debate_rounds. Gates finding storage.
+All 5 qualitative skill definitions (thematic-analysis, user-interviews, usability-testing, contextual-inquiry, diary-studies) require chain-of-thought coding per nugget:
 
-**Document Convergence** (Minto Pyramid + Weick Sensemaking): L1 raw → L2 analysis (per method) → L3 synthesis (triangulation) → L4 final (MECE). `ReportManager` routes skill outputs to reports.
+| Field | Purpose | Example |
+|-------|---------|---------|
+| `text` | Exact verbatim quote (3-300 words) | "I couldn't find where the export button was hidden" |
+| `source` | Filename or participant ID | interview_p1_sarah.txt |
+| `source_location` | Line, timestamp, or section | line:42-44 |
+| `tags` | Applied codes | ["NAV_CONFUSION", "FEATURE_DISCOVERABILITY"] |
+| `coding_reasoning` | Why this code applies (1-2 sentences) | "Participant describes inability to locate a UI element" |
+| `confidence` | high / medium / low | high |
 
-**Triangulation** (Denzin 1978): Findings from 2+ methods → higher confidence. Auto-synthesis trigger.
+The agent pipeline (`_store_findings()`) maps confidence strings to floats (high→0.9, medium→0.6, low→0.3) and stores `source_location` on every Nugget.
 
-**ICR**: Cohen's Kappa + Krippendorff's Alpha. Real math, not LLM-generated.
+#### Codebook System (Saldaña 2021)
+
+Persistent versioned codebooks. Each code has 6 components: label, brief_definition, full_definition, exclusion_criteria, typical_example, boundary_example. `CodebookVersion` model stores `codes_json` with version tracking and changelog. Supports reflexive_ta, codebook_ta, and grounded_theory methodologies.
+
+#### Code Application Audit Trail (O'Connor & Joffe 2020)
+
+Every time a code is applied to source data, a `CodeApplication` record is created: project_id, code_id, source_text, source_location, coder_id, coder_type (llm/human/llm_reviewed), confidence, reasoning, review_status (pending/approved/rejected/modified), reviewed_by, reviewed_at. This creates a full Lincoln & Guba audit trail from recommendation back to exact source text.
+
+**Human Review Queue**: LLM-applied codes land as `pending`. API endpoints:
+- `GET /api/code-applications/{project_id}/pending` — sorted by confidence (lowest first)
+- `PATCH /api/code-applications/{id}/review` — approve/reject/modify with reviewer ID
+- `POST /api/code-applications/{project_id}/bulk-approve?min_confidence=0.9` — auto-approve high-confidence
+
+#### Validation Gates
+
+The `ValidationExecutor` runs multi-pass validation BEFORE findings are stored:
+
+| Method | What It Does | Pass Threshold |
+|--------|-------------|---------------|
+| `adversarial_review` | LLM-as-judge rates code quality, evidence grounding, chain integrity, hallucination risk, depth (1-5 each) | Overall ≥ 3/5 |
+| `dual_run` | Checks tag consistency across adjacent nuggets (Jaccard overlap) | Avg overlap ≥ 0.15 |
+| `self_moa` | Verifies insights against RAG knowledge base | ≥ 30% verified |
+| `debate_rounds` | Internal consistency check across insights | Basic coherence |
+
+If validation fails → task stays `IN_REVIEW`, findings are NOT stored. The `AdaptiveValidation` system selects the best method based on historical performance per skill.
+
+#### Document Convergence (Four-Layer Pyramid)
+
+Skill outputs don't create new documents — they UPDATE existing reports via `ReportManager`:
+
+```
+L4: Final Deliverable (1-2 per project)     — MECE-structured, all stakeholders
+ ↑
+L3: Research Synthesis (auto-triggers)       — Cross-method triangulation
+ ↑
+L2: Study Analysis (1 per method)            — "Interview Analysis", "Usability Study", etc.
+ ↑
+L1: Raw artifacts (codebooks, intermediates)  — Feeds RAG, not user-facing
+```
+
+**`SCOPE_MAP`** routes 25 skills to report scopes: thematic-analysis → "Interview Analysis", usability-testing → "Usability Study", survey-design → "Survey Analysis", etc.
+
+**Auto-synthesis**: When 2+ L2 reports exist, `_check_synthesis_trigger()` auto-creates/updates an L3 "Research Synthesis" report, aggregating all L2 finding IDs. Triangulated findings (confirmed by 2+ methods) get higher confidence.
+
+**MECE Restructuring**: Findings organized into mutually exclusive, collectively exhaustive categories using the Minto Pyramid Principle — bottom-up analysis, top-down presentation.
+
+#### Intercoder Reliability
+
+`KappaIntercoderSkill` (v3.1.0) runs a true dual-coding pipeline:
+1. **Coder A** — LLM open-codes data (temp=0.3)
+2. **Coder B** — Independent LLM re-codes using Coder A's codebook (temp=0.3)
+3. **Python computes both metrics** (no LLM math):
+   - **Cohen's Kappa**: Binary agreement per code, macro-averaged. Landis & Koch scale (poor/slight/fair/moderate/substantial/almost_perfect).
+   - **Krippendorff's Alpha**: Handles N coders, missing data, nominal metric. Scale: reliable (≥0.800), tentatively acceptable (≥0.667), unreliable (<0.667).
+4. **Reconciliation**: Third LLM pass resolves disagreements, refines codebook definitions
+
+Both metrics reported with per-code breakdowns. Low-agreement codes flagged for codebook refinement.
+
+#### Evidence Chain
+
+Full audit trail: `Recommendation → Insight → Fact → Nugget → source_text + source_location + coding_reasoning → CodeApplication (who, what, where, why, reviewed?)`
+
+#### API Endpoints
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/api/reports/{project_id}` | GET | Project reports (convergence pyramid) |
+| `/api/codebook-versions/{project_id}` | GET | Codebook version history |
+| `/api/codebook-versions/{project_id}/latest` | GET | Latest codebook |
+| `/api/codebook-versions` | POST | Create new codebook version |
+| `/api/code-applications/{project_id}` | GET | All code applications |
+| `/api/code-applications/{project_id}/pending` | GET | Pending human review |
+| `/api/code-applications/{id}/review` | PATCH | Approve/reject code |
+| `/api/code-applications/{project_id}/bulk-approve` | POST | Bulk-approve high-confidence |
+
+#### Testing
+
+56 pytest tests covering: CodebookVersion model (4), CodeApplication model (4), Cohen's Kappa math (10), Krippendorff's Alpha math (12), ValidationExecutor (10), ReportManager (6+), ProjectReport model (7+). All use in-memory async SQLite. Simulation scenario 70 covers end-to-end API testing.
 
 ### Native Tool Calling
 
