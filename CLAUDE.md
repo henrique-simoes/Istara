@@ -2,19 +2,50 @@
 
 For full system understanding, see [AGENT.md](AGENT.md).
 
-## MANDATORY: System Integrity Guide
+## MANDATORY: System Integrity Protocol
 
-**Before making ANY change, consult these files:**
-- [SYSTEM_INTEGRITY_GUIDE.md](SYSTEM_INTEGRITY_GUIDE.md) — Complete reference: all models, routes, flows, dependencies
-- [CHANGE_CHECKLIST.md](CHANGE_CHECKLIST.md) — Step-by-step checklist for every type of change
-- [INTEGRITY_INDEX.md](INTEGRITY_INDEX.md) — Quick navigation to find what you need
+This protocol is NON-NEGOTIABLE. Skipping any step risks breaking subsystems.
 
-**After EVERY change:**
-1. Verify impact using the Change Impact Matrix in SYSTEM_INTEGRITY_GUIDE.md
-2. Update SYSTEM_INTEGRITY_GUIDE.md if you added models, routes, skills, types, or integrations
-3. Run `python scripts/update_agent_md.py` to update AGENT.md
-4. Run `python -m pytest tests/test_research_integrity.py` for backend verification
-5. Update Tech.md if the change affects architecture
+### Before ANY Code Change
+1. Read [CHANGE_CHECKLIST.md](CHANGE_CHECKLIST.md) for the type of change you're making
+2. Check the Change Impact Matrix in [SYSTEM_INTEGRITY_GUIDE.md](SYSTEM_INTEGRITY_GUIDE.md)
+3. Identify ALL files that need updating (use the dependency graph in the guide)
+
+### After EVERY Code Change — The Integrity Gate
+Every commit MUST pass this gate. No exceptions.
+
+```
+┌─────────────────────────────────────────────────┐
+│            INTEGRITY GATE (run before commit)    │
+│                                                  │
+│  □ Tests pass: pytest tests/                     │
+│  □ Integrity check: python scripts/check_integrity.py │
+│  □ AGENT.md updated: python scripts/update_agent_md.py │
+│  □ SYSTEM_INTEGRITY_GUIDE.md updated if:         │
+│     - New model added                            │
+│     - New API route added                        │
+│     - New skill definition added                 │
+│     - New frontend type/API namespace added      │
+│     - New WebSocket event added                  │
+│     - New integration/channel added              │
+│     - Agent personas changed                     │
+│  □ Tech.md updated if architecture changed       │
+│  □ Affected test scenarios updated               │
+│  □ All 5 agent personas know about the feature   │
+│  □ WCAG compliance verified on new UI components │
+└─────────────────────────────────────────────────┘
+```
+
+**The `check_integrity.py` script will FAIL if the guide is out of sync.** It cross-references database.py models, main.py routes, skill definitions, and frontend types against SYSTEM_INTEGRITY_GUIDE.md. If it exits with code 1, update the guide before committing.
+
+### Reference Files
+- [SYSTEM_INTEGRITY_GUIDE.md](SYSTEM_INTEGRITY_GUIDE.md) — 80KB complete reference: 51+ models, 200+ endpoints, 53 skills, data flows, dependency graph
+- [CHANGE_CHECKLIST.md](CHANGE_CHECKLIST.md) — Step-by-step procedures for each change type + common pitfalls
+- [INTEGRITY_INDEX.md](INTEGRITY_INDEX.md) — Quick navigation
+- [INVESTIGATION_SUMMARY.md](INVESTIGATION_SUMMARY.md) — Architecture overview + critical paths
+
+### Self-Updating Rule
+**The guide documents MUST be updated as part of the same commit that changes the system.** Not in a follow-up. Not later. In the SAME commit. If you add a model, the guide's model registry gets a new row in that commit. If you add a route, the guide's route table gets a new row in that commit. This is how the guide stays reliable.
 
 ## Quick Start
 

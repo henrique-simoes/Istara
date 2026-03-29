@@ -116,9 +116,9 @@ All models are registered in `backend/app/models/database.py::init_db()`:
 | ResearchDeployment | `research_deployments` | Deployed research to participants |
 | SurveyIntegration | `survey_integrations` | Survey platform connections |
 | SurveyLink | `survey_links` | Survey response links |
-| MCPServerConfig | `mcp_server_configs` | Model Context Protocol server configs |
-| MCPAccessPolicy | `mcp_access_policies` | MCP security policies |
-| MCPAuditEntry | `mcp_audit_logs` | MCP audit trail |
+| MCPServerConfig | `mcp_server_configs` | Model Context Protocol server configs (from mcp_server_config module) |
+| MCPAccessPolicy | `mcp_access_policies` | MCP security policies (from mcp_access_policy module) |
+| MCPAuditEntry | `mcp_audit_logs` | MCP audit trail (from mcp_audit_log module) |
 | AutoresearchExperiment | `autoresearch_experiments` | Automated research loop execution |
 | LoopExecution | `loop_executions` | Task loop execution history |
 | AgentLoopConfig | `agent_loop_configs` | Configuration for agent task loops |
@@ -628,76 +628,99 @@ class SkillOutput:
     metadata: dict
 ```
 
-### All 53 Registered Skills
+### All 50+ Registered Skills
 
-**Skill Definitions** stored in `backend/app/skills/definitions/` as JSON files.
+**Skill Definitions** stored in `backend/app/skills/definitions/` as JSON files (hyphenated filenames).
 
 Loaded at startup via `backend/app/skills/registry.py::load_default_skills()`.
 
 Can be loaded at runtime via `POST /api/skills/register?name={skill_name}`.
 
-#### Discovery Phase (10 skills)
-- `interviews_thematic_analysis` — Code interview transcripts
-- `surveys_data_analysis` — Analyze survey responses
-- `usability_tests_analysis` — Extract insights from test sessions
-- `field_study_synthesis` — Synthesize field observations
-- `competitive_analysis` — Analyze competitor products
-- `user_interviews_personas` — Generate personas from interviews
-- `survey_sentiment_analysis` — Extract sentiment from surveys
-- `focus_group_analysis` — Analyze focus group discussions
-- `analytics_user_behavior` — Analyze user behavior data
-- `social_listening_trends` — Extract trends from social data
+#### Complete Skill Registry
 
-#### Definition Phase (12 skills)
-- `personas_refinement` — Refine and validate personas
-- `jobs_to_be_done_analysis` — JTBD framework analysis
-- `empathy_mapping` — Create empathy maps
-- `user_journey_mapping` — Map user journeys
-- `service_blueprint_creation` — Create service blueprints
-- `problem_statement_generation` — Define problem statements
-- `opportunity_mapping` — Identify opportunities
-- `mental_models_extraction` — Extract mental models
-- `design_principles_synthesis` — Synthesize design principles
-- `research_gap_analysis` — Identify research gaps
-- `insights_prioritization` — Rank insights by impact
-- `recommendation_validation` — Validate recommendations
+| Skill Name (Filename) | Phase | Type | Description |
+|-------|-------|------|-------------|
+| `ab-test-analysis` | deliver | analysis | Analyze A/B test results |
+| `accessibility-audit` | develop | validation | Audit WCAG accessibility compliance |
+| `affinity-mapping` | define | analysis | Group user research insights into themes |
+| `analytics-review` | discover | analysis | Review analytics data and metrics |
+| `card-sorting` | define | analysis | Analyze card sorting results |
+| `cognitive-walkthrough` | develop | validation | Conduct cognitive walkthrough evaluation |
+| `competitive-analysis` | discover | analysis | Analyze competitor products and strategies |
+| `concept-testing` | develop | validation | Test design concepts with users |
+| `contextual-inquiry` | discover | retrieval | Conduct contextual inquiry field research |
+| `design-critique` | develop | analysis | Conduct design critique sessions |
+| `design-decision-documentation` | deliver | generation | Document design decisions and rationale |
+| `design-handoff-documentation` | deliver | generation | Create design handoff specs |
+| `design-iteration-feedback` | develop | analysis | Analyze iteration feedback |
+| `empathy-mapping` | define | analysis | Create empathy maps for users |
+| `design-pattern-application` | develop | transformation | Apply design patterns to solutions |
+| `design-specification-creation` | deliver | generation | Write detailed design specifications |
+| `design-system-audit` | develop | validation | Audit design system consistency |
+| `desk-research` | discover | retrieval | Conduct desk research |
+| `diary-studies` | discover | retrieval | Conduct diary study research |
+| `field-studies` | discover | retrieval | Conduct field study observations |
+| `heuristic-evaluation` | develop | validation | Apply Nielsen's usability heuristics |
+| `hmw-statements` | define | generation | Generate How-Might-We statements |
+| `impact-measurement-plan` | deliver | generation | Plan impact measurement strategy |
+| `information-architecture-validation` | develop | validation | Validate information architecture |
+| `interaction-design-validation` | develop | validation | Validate interaction design |
+| `interview-question-generator` | discover | generation | Generate interview questions |
+| `journey-mapping` | define | analysis | Map user journeys |
+| `jtbd-analysis` | define | analysis | Jobs-to-be-Done framework analysis |
+| `kappa-thematic-analysis` | discover | analysis | Thematic analysis with inter-rater reliability |
+| `longitudinal-tracking` | discover | retrieval | Conduct longitudinal tracking studies |
+| `nps-analysis` | discover | analysis | Analyze NPS survey data |
+| `persona-creation` | discover | generation | Create user personas |
+| `prioritization-matrix` | define | analysis | Prioritize insights/recommendations |
+| `prototype-feedback` | develop | analysis | Analyze prototype feedback |
+| `prototype-testing` | develop | validation | Test prototypes with users |
+| `regression-impact` | develop | analysis | Analyze regression impact |
+| `repository-curation` | discover | retrieval | Curate research repositories |
+| `research-retro` | deliver | analysis | Retrospective research analysis |
+| `research-synthesis` | deliver | analysis | Synthesize research findings |
+| `stakeholder-interviews` | discover | retrieval | Conduct stakeholder interviews |
+| `stakeholder-presentation` | deliver | generation | Create stakeholder presentations |
+| `stitch-design` | develop | transformation | Integrate Stitch design artifacts |
+| `stitch-design-system` | develop | transformation | Enhance design system via Stitch |
+| `stitch-enhance-prompt` | develop | transformation | Enhance prompts with Stitch context |
+| `stitch-react-components` | develop | generation | Generate React components via Stitch |
+| `survey-ai-detection` | discover | analysis | Detect AI-generated survey responses |
+| `survey-design` | discover | generation | Design survey questionnaires |
+| `survey-generator` | discover | generation | Generate survey questions |
+| `sus-umux-scoring` | discover | analysis | Calculate SUS/UMUX scores |
+| `task-analysis-quant` | discover | analysis | Quantitative task analysis |
+| `taxonomy-generator` | define | generation | Generate research taxonomies |
+| `thematic-analysis` | discover | analysis | Conduct thematic analysis |
+| `tree-testing` | develop | validation | Conduct tree testing studies |
+| `usability-testing` | develop | validation | Conduct usability tests |
+| `user-flow-mapping` | define | analysis | Map user flows |
+| `user-interviews` | discover | retrieval | Conduct user interviews |
+| `ux-law-compliance` | deliver | validation | Audit UX law compliance |
+| `workshop-facilitation` | define | analysis | Facilitate research workshops |
 
-#### Develop Phase (15 skills)
-- `design_concept_generation` — Generate design concepts
-- `design_iteration_feedback` — Analyze iteration feedback
-- `prototype_testing` — Test prototypes with users
-- `accessibility_evaluation` — Check WCAG compliance
-- `information_architecture_validation` — Validate IA
-- `content_strategy_optimization` — Optimize content
-- `design_pattern_application` — Apply design patterns
-- `interaction_design_validation` — Validate interactions
-- `performance_optimization_analysis` — Analyze performance
-- `responsive_design_validation` — Check responsive design
-- `design_systems_documentation` — Document design system
-- `component_testing` — Test components
-- `color_contrast_validation` — Check color contrast
-- `typography_analysis` — Analyze typography
-- `usability_heuristics_evaluation` — Apply Nielsen's heuristics
+#### Legacy/Deprecated Skill Names (for reference)
 
-#### Deliver Phase (12 skills)
-- `research_report_synthesis` — Synthesize final report
-- `stakeholder_presentation_creation` — Create presentation
-- `implementation_roadmap_generation` — Generate roadmap
-- `design_handoff_documentation` — Create design handoff
-- `training_material_creation` — Create training docs
-- `design_specification_creation` — Write design specs
-- `metrics_framework_definition` — Define success metrics
-- `launch_readiness_checklist` — Pre-launch checklist
-- `impact_measurement_plan` — Plan impact measurement
-- `design_decision_documentation` — Document decisions
-- `lessons_learned_compilation` — Compile lessons
-- `knowledge_transfer_planning` — Plan knowledge transfer
-
-#### Generic/Cross-phase (4 skills)
-- `web_research` — General web search
-- `document_summarization` — Summarize documents
-- `data_transformation` — Transform data formats
-- `quality_validation` — Validate output quality
+These represent older naming conventions that should be migrated to hyphenated format:
+- `interviews_thematic_analysis` → `thematic-analysis`
+- `surveys_data_analysis` → `survey-design`
+- `usability_tests_analysis` → `usability-testing`
+- `field_study_synthesis` → `field-studies`
+- `user_interviews_personas` → `persona-creation`
+- `survey_sentiment_analysis` → `survey-ai-detection`
+- `focus_group_analysis` → `interview-question-generator`
+- `analytics_user_behavior` → `analytics-review`
+- `personas_refinement` → `persona-creation`
+- `jobs_to_be_done_analysis` → `jtbd-analysis`
+- `empathy_mapping` → `affinity-mapping`
+- `user_journey_mapping` → `journey-mapping`
+- `design_concept_generation` → `concept-testing`
+- `accessibility_evaluation` → `accessibility-audit`
+- `design_systems_documentation` → `design-system-audit`
+- `research_report_synthesis` → `research-synthesis`
+- `stakeholder_presentation_creation` → `stakeholder-presentation`
+- `design_handoff_documentation` → `design-handoff-documentation`
+- `design_decision_documentation` → `design-decision-documentation`
 
 ### Skill Execution Flow
 
@@ -1008,11 +1031,15 @@ All frontend types are defined in a single file for consistency:
 | `Recommendation` | Action (text, insight_ids[], priority, effort, status) |
 | `FindingsSummary` | Counts (nuggets, facts, insights, recommendations) |
 | `CodebookVersion` | Codebook snapshot (id, version, structure_json) |
+| `CodeEntry` | Individual code in codebook (id, name, description, definition) |
 | `CodeApplicationType` | Code audit record (source_text, code_id, coder_type, review_status) |
+| `CodebookVersionType` | Type definition for codebook versions (id, version_number, created_at) |
 | `ProjectReport` | Convergence pyramid (layer 1-4, content_json, status) |
 | `Agent` | Agent metadata (role, capabilities, heartbeat_status) |
 | `ReclawDocument` | Document with full content (content_text, content_preview) |
 | `DocumentStats` | Document analytics (word_count, chunk_count) |
+| `DocumentContent` | Document full content with metadata |
+| `DocumentTag` | Tag applied to documents (name, color, usage_count) |
 | `ChannelInstance` | Messaging integration (platform, status) |
 | `ChannelMessage` | Message from channel (content, author) |
 | `ChannelConversation` | Channel thread (messages[]) |
@@ -1042,6 +1069,14 @@ All frontend types are defined in a single file for consistency:
 | `InterfacesStatus` | Integration health (platform, status, last_sync) |
 | `InferencePresetConfig` | LLM preset (temperature, max_tokens, context_window) |
 | `ReclawUser` | User record (username, role) |
+| `AppNotification` | Application notification (type, message, timestamp, read_status) |
+| `WSEvent` | WebSocket event structure (type, data, timestamp) |
+| `HardwareInfo` | Hardware capabilities (ram_gb, cpu_cores, gpu_name, gpu_vram_mb) |
+| `ModelRecommendation` | Model recommendation (model_name, match_score, reason, capabilities) |
+| `AgentCapacityCheck` | Agent capacity metrics (current_load, max_capacity, available_slots) |
+| `FeaturedMCPServer` | Featured MCP server listing (id, name, description, stars) |
+| `RadarChartData` | Radar chart visualization data (axes[], values[]) |
+| `LoopHealthItem` | Loop execution health metric (status, last_run, success_rate) |
 
 ### API Client (`frontend/src/lib/api.ts`)
 
