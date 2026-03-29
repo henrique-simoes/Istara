@@ -129,6 +129,72 @@ export async function run(ctx) {
   // best-effort UI check that depends on viewport size (hidden below xl breakpoint).
   checks.push({ name: "Evidence Chain panel visible", passed: evidenceChain || true, detail: evidenceChain ? "Visible" : "Panel not visible (viewport may be too narrow or panel collapsed)" });
 
+  // ── Research Integrity: Nugget field validation ──
+  try {
+    const allNuggets = await api.get(`/api/findings/nuggets?project_id=${ctx.projectId}`);
+    const nuggetList = Array.isArray(allNuggets) ? allNuggets : [];
+
+    if (nuggetList.length > 0) {
+      // Verify nuggets have source_location populated (non-empty string)
+      const withSourceLoc = nuggetList.filter((n) => typeof n.source_location === "string" && n.source_location.length > 0);
+      checks.push({
+        name: "Nuggets have source_location populated",
+        passed: withSourceLoc.length === nuggetList.length,
+        detail: `${withSourceLoc.length}/${nuggetList.length} nuggets have non-empty source_location`,
+      });
+
+      // Verify nuggets have confidence field (number between 0-1)
+      const withConfidence = nuggetList.filter((n) => typeof n.confidence === "number" && n.confidence >= 0 && n.confidence <= 1);
+      checks.push({
+        name: "Nuggets have valid confidence (0-1)",
+        passed: withConfidence.length === nuggetList.length,
+        detail: `${withConfidence.length}/${nuggetList.length} nuggets have valid confidence`,
+      });
+
+      // Verify nuggets have non-empty tags array
+      const withTags = nuggetList.filter((n) => Array.isArray(n.tags) && n.tags.length > 0);
+      checks.push({
+        name: "Nuggets have non-empty tags array",
+        passed: withTags.length === nuggetList.length,
+        detail: `${withTags.length}/${nuggetList.length} nuggets have tags`,
+      });
+    } else {
+      checks.push({ name: "Nuggets have source_location populated", passed: true, detail: "No nuggets yet (populated in later scenario)" });
+      checks.push({ name: "Nuggets have valid confidence (0-1)", passed: true, detail: "No nuggets yet (populated in later scenario)" });
+      checks.push({ name: "Nuggets have non-empty tags array", passed: true, detail: "No nuggets yet (populated in later scenario)" });
+    }
+  } catch (e) {
+    checks.push({ name: "Nugget field validation", passed: false, detail: e.message });
+  }
+
+  // ── Research Integrity: Evidence chain links — fact.nugget_ids reference real nugget IDs ──
+  try {
+    const allFacts = await api.get(`/api/findings/facts?project_id=${ctx.projectId}`);
+    const factList = Array.isArray(allFacts) ? allFacts : [];
+    const allNuggets2 = await api.get(`/api/findings/nuggets?project_id=${ctx.projectId}`);
+    const nuggetIds = new Set((Array.isArray(allNuggets2) ? allNuggets2 : []).map((n) => n.id));
+
+    if (factList.length > 0 && nuggetIds.size > 0) {
+      const factsWithValidLinks = factList.filter((f) => {
+        const ids = Array.isArray(f.nugget_ids) ? f.nugget_ids : [];
+        return ids.length === 0 || ids.every((id) => nuggetIds.has(id));
+      });
+      checks.push({
+        name: "Evidence chain: fact.nugget_ids reference real nugget IDs",
+        passed: factsWithValidLinks.length === factList.length,
+        detail: `${factsWithValidLinks.length}/${factList.length} facts have valid nugget references`,
+      });
+    } else {
+      checks.push({
+        name: "Evidence chain: fact.nugget_ids reference real nugget IDs",
+        passed: true,
+        detail: factList.length === 0 ? "No facts yet (populated in later scenario)" : "No nuggets to cross-reference",
+      });
+    }
+  } catch (e) {
+    checks.push({ name: "Evidence chain: fact.nugget_ids validation", passed: false, detail: e.message });
+  }
+
   return {
     checks,
     passed: checks.filter((c) => c.passed).length,

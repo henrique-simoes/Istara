@@ -97,3 +97,10 @@
 - Cannot measure actual user satisfaction or emotional response
 - Simulation data must be cleaned up to avoid polluting the real database
 - Cannot test authentication flows (operates with system-level API access)
+
+## Research Integrity Workflow Simulation
+- **End-to-End Thematic Analysis**: Simulate the full research integrity pipeline: upload data -> run thematic analysis skill -> review generated codes -> approve/reject each code -> check convergence report. Verify each stage transitions correctly and data persists between steps.
+- **Validation Gate Testing**: Submit intentionally low-quality or malformed data (empty transcripts, nonsense text, duplicate entries) and verify the system blocks or flags it appropriately. Confirm validation error messages are actionable and the system does not proceed with invalid data.
+- **Codebook Versioning**: Create an initial codebook via analysis, then modify codes (rename, merge, split, delete). Verify a new codebook version is created with correct version number, the previous version remains accessible, and diffs between versions accurately reflect the changes made.
+- **Evidence Chain Traceability**: After analysis completes, trace a recommendation from the final report (L4) back through synthesis (L3), analysis (L2), and down to the original source text nugget. Verify source_location references are correct and point to actual content in the uploaded data.
+- **Report Convergence**: Run 2+ analysis methods on the same dataset, then verify L3 synthesis is auto-created from the L2 analyses. Check that the convergence pyramid populates correctly, conflicting findings across methods are surfaced, and the final L4 report integrates all L3 syntheses.
