@@ -805,6 +805,11 @@ class AgentOrchestrator:
                 )
             except Exception:
                 _enriched_tags = nugget_data.get("tags", [])
+            # Map confidence string to float
+            _conf_str = nugget_data.get("confidence", "")
+            _conf_map = {"high": 0.9, "medium": 0.6, "low": 0.3}
+            _conf_val = _conf_map.get(_conf_str, 1.0) if isinstance(_conf_str, str) else float(_conf_str or 1.0)
+
             nugget = Nugget(
                 id=nid,
                 project_id=project_id,
@@ -813,9 +818,32 @@ class AgentOrchestrator:
                 source_location=nugget_data.get("source_location", ""),
                 tags=json.dumps(_enriched_tags),
                 phase=nugget_phase,
+                confidence=_conf_val,
             )
             db.add(nugget)
             created_nugget_ids.append(nid)
+
+            # If chain-of-thought reasoning is provided, create CodeApplication record
+            _reasoning = nugget_data.get("coding_reasoning", "")
+            if _reasoning and isinstance(_enriched_tags, list) and _enriched_tags:
+                try:
+                    from app.models.code_application import CodeApplication
+                    for _tag in _enriched_tags[:5]:  # Cap per nugget
+                        if isinstance(_tag, str) and _tag.strip():
+                            ca = CodeApplication(
+                                id=str(uuid.uuid4()),
+                                project_id=project_id,
+                                code_id=_tag,
+                                source_text=nugget_data.get("text", "")[:2000],
+                                source_location=nugget_data.get("source_location", ""),
+                                coder_id=self.agent_id,
+                                coder_type="llm",
+                                confidence=_conf_val,
+                                reasoning=_reasoning,
+                            )
+                            db.add(ca)
+                except Exception as e:
+                    logger.debug("CodeApplication creation skipped: %s", e)
 
         # Store facts — link to nuggets
         for fact_data in output.facts:
