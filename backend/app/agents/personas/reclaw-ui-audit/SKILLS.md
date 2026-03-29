@@ -124,6 +124,13 @@
 - Settings label clarity: Hardware now labeled "(Server)", model shown as "Server Model". Audit: verify label changes do not break form field associations (`<label>` `for` attributes), screen readers announce the updated labels correctly, and tooltip/helper text explains the server context.
 - Document Organize streaming: AI-powered organization suggestions use streaming chat output. Audit: verify streaming text is announced progressively via `aria-live="polite"` region, the streaming container does not cause layout shift as content grows, and the loading/streaming state is communicated accessibly.
 
+### Auth & Onboarding Fixes
+- LoginScreen registration form: when the server is fresh (team mode + no users), a registration form replaces the login form. Audit: verify form fields have associated `<label>` elements, required indicators are accessible (not color-only), and error messages use `aria-live` for screen reader announcement.
+- Mode toggle (login vs register): the LoginScreen switches between login and registration modes. Audit: verify focus moves logically when the form changes, the toggle button has a descriptive accessible name (not just "Register"/"Login" without context), and the transition does not cause layout shift that disorients screen reader users.
+- Admin role restoration on refresh: `fetchMe()` restores the user session including admin status. Audit: verify no UI flash occurs where admin-only controls (Settings > Team, MCP toggle) briefly disappear and reappear during session restoration — use a loading state or skeleton instead.
+- Team status indicator: the login screen uses `/auth/team-status` to detect fresh installs. Audit: verify the "first user becomes admin" messaging is clear, uses adequate contrast, and is not conveyed by color alone (WCAG 1.4.1).
+- First-user admin messaging: the registration form should clearly communicate that the first user will receive admin privileges. Audit: verify this information is accessible to screen readers and positioned near the submit button for context.
+
 ### Feature Update — Agent Scope System
 - "No Project Selected" prompt: when no project is active, project-dependent views display a prompt guiding users to select a project. Audit: verify the prompt is announced to screen readers via an appropriate ARIA role (e.g., `role="status"` or `aria-live="polite"`), has adequate contrast, and provides a clear call-to-action (not just empty space).
 - Scope badge UI: agent cards display a scope indicator (universal vs project). Audit: verify badges use text+icon (not color-only, WCAG 1.4.1), have adequate contrast ratios in both light and dark themes, and screen readers announce the scope via `aria-label` or sr-only text (e.g., "Scope: project" not just a colored dot).

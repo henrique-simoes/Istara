@@ -23,6 +23,7 @@ interface AuthState {
   register: (username: string, email: string, password: string, displayName?: string) => Promise<void>;
   logout: () => void;
   checkTeamStatus: () => Promise<void>;
+  fetchMe: () => Promise<void>;
   updatePreferences: (prefs: Record<string, unknown>) => Promise<void>;
   getAuthHeaders: () => Record<string, string>;
 }
@@ -96,6 +97,35 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({ teamMode: data.team_mode });
     } catch {
       set({ teamMode: false });
+    }
+  },
+
+  /** Restore user object from JWT token via /auth/me.
+   *  Called on app mount and after team mode changes so that
+   *  currentUser.role is always available. */
+  fetchMe: async () => {
+    const _tk = localStorage.getItem("reclaw_token");
+    if (!_tk) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/me`, {
+        headers: { Authorization: `Bearer ${_tk}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        set({
+          user: {
+            id: data.id,
+            username: data.username,
+            email: data.email || "",
+            role: data.role,
+            display_name: data.display_name || data.username,
+            preferences: data.preferences || {},
+          },
+          teamMode: data.team_mode ?? get().teamMode,
+        });
+      }
+    } catch {
+      // Token invalid or server down — don't touch state
     }
   },
 

@@ -81,7 +81,8 @@ export default function HomeClient() {
     }
     // Token exists — assume valid (middleware will reject if expired)
     setAuthenticated(true);
-    // Check team mode status so UserManagement renders when appropriate
+    // Restore user object from JWT + check team mode status
+    useAuthStore.getState().fetchMe();
     useAuthStore.getState().checkTeamStatus();
 
     // Listen for token expiry events from API client
