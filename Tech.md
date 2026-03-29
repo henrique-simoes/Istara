@@ -850,6 +850,53 @@ All settings are configurable via environment variables or `.env`:
 
 ---
 
+## Frontend UX Architecture
+
+### View Persistence & Navigation
+
+ReClaw uses a single-page architecture with **22 views** rendered via a switch in `HomeClient.tsx`. Navigation state is persisted to `localStorage` so page refresh preserves the current view. The browser `document.title` updates to reflect the active view name (e.g., "Documents — ReClaw").
+
+- **Keyboard shortcuts**: Cmd+1-0 for view switching, Cmd+K for search, Cmd+. for right panel toggle, ? for shortcuts help
+- **Settings** is in the primary navigation (always visible, not hidden behind "More")
+- **Custom events**: Components use `window.dispatchEvent(new CustomEvent("reclaw:navigate", { detail }))` for cross-component navigation
+
+### Document View Modes
+
+The Documents menu supports 3 display modes persisted to `localStorage`:
+
+| Mode | Description | Row Height |
+|------|-------------|------------|
+| **Compact** (default) | Single-line rows: icon, title, status, source, time, actions | ~40px |
+| **Grid** | Fixed-height cards in responsive 3-column grid | ~140px |
+| **List** | Original card layout with reduced padding | ~80px |
+
+### Interactive Research Visualizations
+
+- **Convergence Pyramid** (Findings > Reports): Report cards at each layer (L2-L4) are clickable. Clicking shows a detail panel with executive summary, finding counts, tags, MECE categories, and linked documents.
+- **UX Laws Catalog**: Law cards display violation count badges from project compliance data. "View violations" navigates to Findings filtered by that law.
+- **Task Document Attachments**: Kanban task cards show document indicators. TaskEditor provides full attach/detach management for input and output documents.
+
+### Skills Self-Evolution UI
+
+The Skills > Proposals tab uses a two-column layout:
+- **Left**: Self-improvement proposals (current value → proposed value diffs)
+- **Right**: Skill creation proposals with collapsible prompt preview, phase badge, and specialties
+
+### Agent Error Surfacing
+
+Agent cards display meaningful error states:
+- "Heartbeat Lost" when connection fails (not misleading "0 Errors")
+- "Recent Errors" section in agent detail pulls from work logs with actionable descriptions
+
+### Stability Fixes
+
+- **Integrations**: Wrapped in `<ErrorBoundary>` with loading guards to prevent UI freeze
+- **Chat**: Messages container uses `h-0 flex-1` pattern for stable scrolling on session changes
+- **Compute Pool**: Fully scrollable within `overflow-y-auto` container
+- **Meta-Agent**: Long content contained with `min-w-0`, `break-all`, `truncate`
+
+---
+
 ## Project Structure
 
 ```

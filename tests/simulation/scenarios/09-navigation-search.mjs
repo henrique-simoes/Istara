@@ -18,12 +18,12 @@ export async function run(ctx) {
     checks.push({ name: `Nav item: ${item}`, passed: visible, detail: "" });
   }
 
-  // Test More button reveals secondary nav
+  // Test More button reveals secondary nav (Settings moved to primary nav in Phase 2B)
   const moreBtn = page.locator('button[aria-label="More views"]').first();
   if (await moreBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
     await moreBtn.click();
     await page.waitForTimeout(500);
-    const secondaryItems = ["Metrics", "History", "Settings"];
+    const secondaryItems = ["Metrics", "History"];
     for (const item of secondaryItems) {
       const btn = page.locator(`button[aria-label="${item}"]`).first();
       const visible = await btn.isVisible({ timeout: 1000 }).catch(() => false);
@@ -50,6 +50,76 @@ export async function run(ctx) {
     const activeBtn = page.locator(`button[aria-label="${expectedView}"][aria-selected="true"]`).first();
     const isActive = await activeBtn.isVisible({ timeout: 1000 }).catch(() => false);
     checks.push({ name: `Shortcut Cmd+${key} → ${expectedView}`, passed: isActive, detail: "" });
+  }
+
+  // ── Phase 0: View Persistence ──
+  // Navigate to Documents view, verify it was saved to localStorage
+  {
+    const docsBtn = page.locator('button[aria-label="Documents"]').first();
+    if (await docsBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await docsBtn.click();
+      await page.waitForTimeout(800);
+
+      // Check localStorage for persisted view
+      const savedView = await page.evaluate(() => localStorage.getItem("reclaw_active_view"));
+      checks.push({
+        name: "View persistence: localStorage stores active view",
+        passed: savedView === "documents",
+        detail: `reclaw_active_view="${savedView}"`,
+      });
+
+      // Check document title includes view name
+      const docTitle = await page.title();
+      const titleIncludesView = docTitle.toLowerCase().includes("document");
+      checks.push({
+        name: "View persistence: document title includes view name",
+        passed: titleIncludesView,
+        detail: `title="${docTitle}"`,
+      });
+
+      // Navigate away and back — verify persistence across reload
+      await page.reload({ waitUntil: "networkidle" });
+      await page.waitForTimeout(1500);
+      const restoredView = await page.evaluate(() => localStorage.getItem("reclaw_active_view"));
+      checks.push({
+        name: "View persistence: survives page reload",
+        passed: restoredView === "documents",
+        detail: `after reload: reclaw_active_view="${restoredView}"`,
+      });
+    } else {
+      checks.push({ name: "View persistence: localStorage stores active view", passed: false, detail: "Documents nav button not visible" });
+    }
+  }
+
+  // ── Phase 2B: Settings Visibility in Primary Nav ──
+  // Settings should appear in primary nav, not hidden behind "More"
+  {
+    await page.goto("http://localhost:3000", { waitUntil: "networkidle" });
+    await page.waitForTimeout(1000);
+
+    const settingsBtn = page.locator('button[aria-label="Settings"]').first();
+    const settingsVisible = await settingsBtn.isVisible({ timeout: 2000 }).catch(() => false);
+
+    // Verify Settings is visible WITHOUT needing to click "More"
+    checks.push({
+      name: "Settings visible in primary nav (not behind More)",
+      passed: settingsVisible,
+      detail: settingsVisible ? "Settings directly visible" : "Settings not found in primary nav",
+    });
+
+    // If Settings is visible, verify it's NOT inside a secondary/expanded menu
+    if (settingsVisible) {
+      const isInSecondaryPanel = await settingsBtn.evaluate((btn) => {
+        // Check if the button is inside a panel that was triggered by "More"
+        const parent = btn.closest('[class*="secondary"], [class*="expanded"], [class*="more-menu"]');
+        return !!parent;
+      });
+      checks.push({
+        name: "Settings is in primary nav section (not secondary)",
+        passed: !isInSecondaryPanel,
+        detail: `in_secondary_panel=${isInSecondaryPanel}`,
+      });
+    }
   }
 
   // Test Cmd+K search modal

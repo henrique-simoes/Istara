@@ -283,14 +283,14 @@ export default function MetaHyperagentView() {
                     >
                       {variant.target_system}
                     </span>
-                    <code className="text-xs text-slate-500 dark:text-slate-400 font-mono">
+                    <code className="text-xs text-slate-500 dark:text-slate-400 font-mono break-all">
                       {variant.parameter_path}
                     </code>
                   </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <span className="text-red-500 line-through">{formatValue(variant.old_value)}</span>
-                    <span className="text-slate-400">→</span>
-                    <span className="text-green-600 font-medium">{formatValue(variant.new_value)}</span>
+                  <div className="flex items-center gap-2 text-sm overflow-x-auto">
+                    <span className="text-red-500 line-through break-all">{formatValue(variant.old_value)}</span>
+                    <span className="text-slate-400 shrink-0">→</span>
+                    <span className="text-green-600 font-medium break-all">{formatValue(variant.new_value)}</span>
                   </div>
                   <div className="flex items-center gap-3 mt-2 text-xs text-slate-400">
                     <span className="flex items-center gap-1">
@@ -350,14 +350,14 @@ export default function MetaHyperagentView() {
                     >
                       {proposal.target_system}
                     </span>
-                    <code className="text-xs text-slate-500 dark:text-slate-400 font-mono">
+                    <code className="text-xs text-slate-500 dark:text-slate-400 font-mono break-all">
                       {proposal.parameter_path}
                     </code>
                   </div>
-                  <div className="flex items-center gap-2 text-sm mb-2">
-                    <span className="text-slate-500">{formatValue(proposal.current_value)}</span>
-                    <span className="text-slate-400">→</span>
-                    <span className="text-reclaw-600 dark:text-reclaw-400 font-medium">
+                  <div className="flex items-center gap-2 text-sm mb-2 overflow-x-auto">
+                    <span className="text-slate-500 break-all">{formatValue(proposal.current_value)}</span>
+                    <span className="text-slate-400 shrink-0">→</span>
+                    <span className="text-reclaw-600 dark:text-reclaw-400 font-medium break-all">
                       {formatValue(proposal.proposed_value)}
                     </span>
                   </div>
@@ -471,11 +471,11 @@ export default function MetaHyperagentView() {
           <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 max-h-64 overflow-y-auto">
             <div className="divide-y divide-slate-100 dark:divide-slate-700/50">
               {observations.audit_log.map((entry: any, i: number) => (
-                <div key={i} className="px-4 py-2.5 text-xs flex items-center gap-3">
+                <div key={i} className="px-4 py-2.5 text-xs flex items-center gap-3 min-w-0">
                   <span className="text-slate-400 shrink-0 font-mono">
                     {entry.timestamp ? timeAgo(entry.timestamp) : "--"}
                   </span>
-                  <span className="text-slate-700 dark:text-slate-300 truncate">
+                  <span className="text-slate-700 dark:text-slate-300 truncate min-w-0">
                     {entry.action || entry.message || JSON.stringify(entry)}
                   </span>
                 </div>

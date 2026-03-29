@@ -105,6 +105,11 @@ export default function SkillsView() {
   const [proposals, setProposals] = useState<ProposalData[]>([]);
   const [phaseCounts, setPhaseCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
+  const [skillsError, setSkillsError] = useState<string | null>(null);
+  const [proposalsError, setProposalsError] = useState<string | null>(null);
+  const [creationProposalsError, setCreationProposalsError] = useState<string | null>(null);
+  const [proposalsLoading, setProposalsLoading] = useState(false);
+  const [creationProposalsLoading, setCreationProposalsLoading] = useState(false);
 
   // Create form
   const [newSkill, setNewSkill] = useState({
@@ -122,6 +127,7 @@ export default function SkillsView() {
 
   const fetchSkills = async () => {
     setLoading(true);
+    setSkillsError(null);
     try {
       const [skillsRes, healthRes] = await Promise.all([
         skillsApi.list(),
@@ -135,18 +141,21 @@ export default function SkillsView() {
       }
       setHealthMap(hMap);
     } catch (e) {
-      console.error("Failed to load skills:", e);
+      setSkillsError(e instanceof Error ? e.message : "Failed to load skills");
     }
     setLoading(false);
   };
 
   const fetchProposals = async () => {
+    setProposalsLoading(true);
+    setProposalsError(null);
     try {
       const res = await skillsApi.proposals.all();
       setProposals(res.proposals || []);
     } catch (e) {
-      console.error("Failed to load proposals:", e);
+      setProposalsError(e instanceof Error ? e.message : "Failed to load proposals");
     }
+    setProposalsLoading(false);
   };
 
   useEffect(() => {
@@ -175,10 +184,15 @@ export default function SkillsView() {
   const pendingCreations = creationProposals.filter((p: any) => p.status === "pending");
 
   const fetchCreationProposals = async () => {
+    setCreationProposalsLoading(true);
+    setCreationProposalsError(null);
     try {
       const res = await skillsApi.creationProposals.all();
       setCreationProposals(res.proposals || []);
-    } catch { /* endpoint may not exist yet */ }
+    } catch (e) {
+      setCreationProposalsError(e instanceof Error ? e.message : "Failed to load creation proposals");
+    }
+    setCreationProposalsLoading(false);
   };
 
   const handleApproveCreation = async (id: string) => {
@@ -592,151 +606,188 @@ export default function SkillsView() {
 
       {/* ===== SELF-EVOLUTION TAB ===== */}
       {tab === "proposals" && (
-        <div className="space-y-4">
-          <div className="flex items-center gap-2 mb-2">
-            <Sparkles size={16} className="text-amber-500" />
-            <h3 className="font-medium text-slate-900 dark:text-white">
-              Self-Improvement Proposals
-            </h3>
-            <span className="text-xs text-slate-400">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* ── Left Column: Self-Improvement Proposals ── */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Sparkles size={16} className="text-amber-500" />
+              <h3 className="font-medium text-slate-900 dark:text-white">
+                Self-Improvement Proposals
+              </h3>
+            </div>
+            <p className="text-xs text-slate-400">
               ReClaw analyzes skill performance and proposes improvements
-            </span>
-          </div>
+            </p>
 
-          {pendingProposals.length === 0 && proposals.length === 0 && (
-            <div className="text-center py-12 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
-              <Sparkles
-                size={32}
-                className="mx-auto mb-3 text-slate-300"
-              />
-              <p className="text-slate-500 text-sm">
-                No improvement proposals yet.
-              </p>
-              <p className="text-slate-400 text-xs mt-1">
-                As skills are used, ReClaw will suggest improvements based on
-                performance data.
-              </p>
-            </div>
-          )}
+            {proposalsLoading && (
+              <div className="flex items-center justify-center py-8">
+                <RefreshCw size={16} className="animate-spin text-amber-500 mr-2" />
+                <span className="text-sm text-slate-400">Loading proposals...</span>
+              </div>
+            )}
 
-          {/* Pending */}
-          {pendingProposals.length > 0 && (
-            <div className="space-y-2">
-              <h4 className="text-xs font-semibold uppercase text-amber-600">
-                Pending Review ({pendingProposals.length})
-              </h4>
-              {pendingProposals.map((p) => (
-                <div
-                  key={p.id}
-                  className="bg-amber-50 dark:bg-amber-900/10 rounded-xl border border-amber-200 dark:border-amber-800 p-4 space-y-2"
-                >
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <span className="font-medium text-sm text-slate-900 dark:text-white">
-                        {p.skill_name}
-                      </span>
-                      <span className="text-xs text-slate-400 ml-2">
-                        .{p.field}
-                      </span>
-                    </div>
-                    <span className="text-xs text-amber-600 font-medium">
-                      {(p.confidence * 100).toFixed(0)}% confidence
-                    </span>
-                  </div>
-                  <p className="text-xs text-slate-600 dark:text-slate-400">
-                    {p.reason}
-                  </p>
-                  <div className="space-y-3">
-                    <div>
-                      <p className="text-xs text-slate-400 mb-1">
-                        Current
-                      </p>
-                      <pre className="text-sm text-red-800 dark:text-red-200 bg-red-50 dark:bg-red-900/30 rounded p-2 min-h-[40px] max-h-64 overflow-y-auto whitespace-pre-wrap break-words">
-                        {p.current_value || "(No content available — the proposal may reference a field change that cannot be displayed)"}
-                      </pre>
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-400 mb-1">
-                        Proposed
-                      </p>
-                      <pre className="text-sm text-green-800 dark:text-green-200 bg-green-50 dark:bg-green-900/30 rounded p-2 min-h-[40px] max-h-64 overflow-y-auto whitespace-pre-wrap break-words">
-                        {p.proposed_value || "(No content available)"}
-                      </pre>
-                    </div>
-                  </div>
-                  <div className="flex gap-2 pt-1">
-                    <button
-                      onClick={() => handleApprove(p.id)}
-                      className="flex items-center gap-1 px-3 py-1 rounded-lg bg-green-600 text-white text-xs font-medium hover:bg-green-700"
-                    >
-                      <CheckCircle2 size={12} /> Approve
-                    </button>
-                    <button
-                      onClick={() => handleReject(p.id)}
-                      className="flex items-center gap-1 px-3 py-1 rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs font-medium hover:bg-slate-300"
-                    >
-                      <XCircle size={12} /> Reject
-                    </button>
-                  </div>
+            {proposalsError && (
+              <div className="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-xs text-red-600 dark:text-red-400">
+                <div className="flex items-center gap-1 mb-1">
+                  <AlertCircle size={12} />
+                  <span className="font-medium">Failed to load proposals</span>
                 </div>
-              ))}
-            </div>
-          )}
+                <p>{proposalsError}</p>
+              </div>
+            )}
 
-          {/* History */}
-          {proposals.filter((p) => p.status !== "pending").length > 0 && (
-            <div className="space-y-2">
-              <h4 className="text-xs font-semibold uppercase text-slate-400">
-                History
-              </h4>
-              {proposals
-                .filter((p) => p.status !== "pending")
-                .reverse()
-                .slice(0, 20)
-                .map((p) => (
+            {!proposalsLoading && !proposalsError && pendingProposals.length === 0 && proposals.length === 0 && (
+              <div className="text-center py-12 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                <Sparkles
+                  size={32}
+                  className="mx-auto mb-3 text-slate-300"
+                />
+                <p className="text-slate-500 text-sm">
+                  No proposals pending
+                </p>
+                <p className="text-slate-400 text-xs mt-1">
+                  As skills are used, ReClaw will suggest improvements based on
+                  performance data.
+                </p>
+              </div>
+            )}
+
+            {/* Pending */}
+            {pendingProposals.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="text-xs font-semibold uppercase text-amber-600">
+                  Pending Review ({pendingProposals.length})
+                </h4>
+                {pendingProposals.map((p) => (
                   <div
                     key={p.id}
-                    className="flex items-center gap-3 px-4 py-2 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700"
+                    className="bg-amber-50 dark:bg-amber-900/10 rounded-xl border border-amber-200 dark:border-amber-800 p-4 space-y-2"
                   >
-                    {p.status === "approved" ? (
-                      <CheckCircle2 size={14} className="text-green-500 shrink-0" />
-                    ) : (
-                      <XCircle size={14} className="text-red-400 shrink-0" />
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                        {p.skill_name}
-                      </span>
-                      <span className="text-xs text-slate-400 ml-1">
-                        .{p.field}
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <span className="font-medium text-sm text-slate-900 dark:text-white">
+                          {p.skill_name}
+                        </span>
+                        <span className="text-xs text-slate-400 ml-2">
+                          .{p.field}
+                        </span>
+                      </div>
+                      <span className="text-xs text-amber-600 font-medium">
+                        {(p.confidence * 100).toFixed(0)}% confidence
                       </span>
                     </div>
-                    <span className="text-xs text-slate-400">
-                      {p.reviewed_at
-                        ? new Date(p.reviewed_at).toLocaleDateString()
-                        : ""}
-                    </span>
+                    <p className="text-xs text-slate-600 dark:text-slate-400">
+                      {p.reason}
+                    </p>
+                    <div className="space-y-3">
+                      <div>
+                        <p className="text-xs text-slate-400 mb-1">
+                          Current
+                        </p>
+                        <pre className="text-sm text-red-800 dark:text-red-200 bg-red-50 dark:bg-red-900/30 rounded p-2 min-h-[40px] max-h-64 overflow-y-auto whitespace-pre-wrap break-words">
+                          {p.current_value || "(No content available — the proposal may reference a field change that cannot be displayed)"}
+                        </pre>
+                      </div>
+                      <div>
+                        <p className="text-xs text-slate-400 mb-1">
+                          Proposed
+                        </p>
+                        <pre className="text-sm text-green-800 dark:text-green-200 bg-green-50 dark:bg-green-900/30 rounded p-2 min-h-[40px] max-h-64 overflow-y-auto whitespace-pre-wrap break-words">
+                          {p.proposed_value || "(No content available)"}
+                        </pre>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 pt-1">
+                      <button
+                        onClick={() => handleApprove(p.id)}
+                        className="flex items-center gap-1 px-3 py-1 rounded-lg bg-green-600 text-white text-xs font-medium hover:bg-green-700"
+                      >
+                        <CheckCircle2 size={12} /> Approve
+                      </button>
+                      <button
+                        onClick={() => handleReject(p.id)}
+                        className="flex items-center gap-1 px-3 py-1 rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs font-medium hover:bg-slate-300"
+                      >
+                        <XCircle size={12} /> Reject
+                      </button>
+                    </div>
                   </div>
                 ))}
-            </div>
-          )}
+              </div>
+            )}
 
-          {/* ===== SKILL CREATION PROPOSALS (Autonomous) ===== */}
-          <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
-            <div className="flex items-center gap-2 mb-3">
+            {/* History */}
+            {proposals.filter((p) => p.status !== "pending").length > 0 && (
+              <div className="space-y-2">
+                <h4 className="text-xs font-semibold uppercase text-slate-400">
+                  History
+                </h4>
+                {proposals
+                  .filter((p) => p.status !== "pending")
+                  .reverse()
+                  .slice(0, 20)
+                  .map((p) => (
+                    <div
+                      key={p.id}
+                      className="flex items-center gap-3 px-4 py-2 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700"
+                    >
+                      {p.status === "approved" ? (
+                        <CheckCircle2 size={14} className="text-green-500 shrink-0" />
+                      ) : (
+                        <XCircle size={14} className="text-red-400 shrink-0" />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                          {p.skill_name}
+                        </span>
+                        <span className="text-xs text-slate-400 ml-1">
+                          .{p.field}
+                        </span>
+                      </div>
+                      <span className="text-xs text-slate-400">
+                        {p.reviewed_at
+                          ? new Date(p.reviewed_at).toLocaleDateString()
+                          : ""}
+                      </span>
+                    </div>
+                  ))}
+              </div>
+            )}
+          </div>
+
+          {/* ── Right Column: Skill Creation Proposals ── */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 mb-2">
               <Wand2 size={16} className="text-purple-500" />
               <h3 className="font-medium text-slate-900 dark:text-white">
                 Skill Creation Proposals
               </h3>
-              <span className="text-xs text-slate-400">
-                Agents propose new skills based on successful task patterns
-              </span>
             </div>
+            <p className="text-xs text-slate-400">
+              Agents propose new skills based on successful task patterns
+            </p>
 
-            {pendingCreations.length === 0 && creationProposals.length === 0 && (
-              <div className="text-center py-8 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+            {creationProposalsLoading && (
+              <div className="flex items-center justify-center py-8">
+                <RefreshCw size={16} className="animate-spin text-purple-500 mr-2" />
+                <span className="text-sm text-slate-400">Loading creation proposals...</span>
+              </div>
+            )}
+
+            {creationProposalsError && (
+              <div className="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-xs text-red-600 dark:text-red-400">
+                <div className="flex items-center gap-1 mb-1">
+                  <AlertCircle size={12} />
+                  <span className="font-medium">Failed to load creation proposals</span>
+                </div>
+                <p>{creationProposalsError}</p>
+              </div>
+            )}
+
+            {!creationProposalsLoading && !creationProposalsError && pendingCreations.length === 0 && creationProposals.length === 0 && (
+              <div className="text-center py-12 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
                 <Wand2 size={28} className="mx-auto mb-2 text-slate-300" />
-                <p className="text-slate-500 text-sm">No creation proposals yet.</p>
+                <p className="text-slate-500 text-sm">No proposals pending</p>
                 <p className="text-slate-400 text-xs mt-1">
                   When agents complete high-quality tasks, they may propose new reusable skills.
                 </p>
@@ -749,47 +800,12 @@ export default function SkillsView() {
                   Pending Review ({pendingCreations.length})
                 </h4>
                 {pendingCreations.map((p: any) => (
-                  <div
+                  <CreationProposalCard
                     key={p.id}
-                    className="bg-purple-50 dark:bg-purple-900/10 rounded-xl border border-purple-200 dark:border-purple-800 p-4 space-y-3"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <span className="font-medium text-sm text-slate-900 dark:text-white">
-                          {p.proposed_definition?.display_name || p.proposed_definition?.name || "New Skill"}
-                        </span>
-                        {p.proposed_definition?.phase && (
-                          <span className={cn("ml-2 px-2 py-0.5 rounded-full text-xs", PHASE_COLORS[p.proposed_definition.phase] || "bg-slate-100 text-slate-600")}>
-                            {p.proposed_definition.phase}
-                          </span>
-                        )}
-                      </div>
-                      <span className="text-xs text-purple-600 font-medium">
-                        {p.confidence}% confidence
-                      </span>
-                    </div>
-                    <p className="text-xs text-slate-600 dark:text-slate-400">
-                      {p.proposed_definition?.description || p.reason}
-                    </p>
-                    <div className="flex items-center gap-3 text-xs text-slate-400">
-                      <span>Source: {p.source_agent_id || "agent"}</span>
-                      <span>Task: {p.source_task_id?.slice(0, 8) || "—"}</span>
-                    </div>
-                    <div className="flex gap-2 pt-1">
-                      <button
-                        onClick={() => handleApproveCreation(p.id)}
-                        className="flex items-center gap-1 px-3 py-1 rounded-lg bg-purple-600 text-white text-xs font-medium hover:bg-purple-700"
-                      >
-                        <CheckCircle2 size={12} /> Approve & Register
-                      </button>
-                      <button
-                        onClick={() => handleRejectCreation(p.id)}
-                        className="flex items-center gap-1 px-3 py-1 rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs font-medium hover:bg-slate-300"
-                      >
-                        <XCircle size={12} /> Reject
-                      </button>
-                    </div>
-                  </div>
+                    proposal={p}
+                    onApprove={() => handleApproveCreation(p.id)}
+                    onReject={() => handleRejectCreation(p.id)}
+                  />
                 ))}
               </div>
             )}
@@ -984,6 +1000,98 @@ export default function SkillsView() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+/* ---------- Creation Proposal Card with collapsible prompt ---------- */
+
+function CreationProposalCard({
+  proposal,
+  onApprove,
+  onReject,
+}: {
+  proposal: any;
+  onApprove: () => void;
+  onReject: () => void;
+}) {
+  const [showFullPrompt, setShowFullPrompt] = useState(false);
+  const def = proposal.proposed_definition || {};
+  const systemPrompt = def.system_prompt || def.execute_prompt || "";
+  const proposedName = def.display_name || def.name || "New Skill";
+  const specialties: string[] = def.specialties || def.detection_keywords || [];
+
+  return (
+    <div className="bg-purple-50 dark:bg-purple-900/10 rounded-xl border border-purple-200 dark:border-purple-800 p-4 space-y-3">
+      <div className="flex items-start justify-between">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="font-medium text-sm text-slate-900 dark:text-white">
+            {proposedName}
+          </span>
+          {def.phase && (
+            <span className={cn("px-2 py-0.5 rounded-full text-xs", PHASE_COLORS[def.phase] || "bg-slate-100 text-slate-600")}>
+              {def.phase}
+            </span>
+          )}
+        </div>
+        <span className="text-xs text-purple-600 font-medium">
+          {proposal.confidence}% confidence
+        </span>
+      </div>
+
+      <p className="text-xs text-slate-600 dark:text-slate-400">
+        {def.description || proposal.reason}
+      </p>
+
+      {/* Specialties badges */}
+      {specialties.length > 0 && (
+        <div className="flex flex-wrap gap-1">
+          {specialties.map((s: string) => (
+            <span key={s} className="px-2 py-0.5 rounded-full text-[10px] bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
+              {s}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Collapsible system prompt preview */}
+      {systemPrompt && (
+        <div className="text-xs">
+          <p className="text-slate-400 mb-1">System Prompt Preview</p>
+          <pre className="bg-slate-50 dark:bg-slate-800 rounded p-2 whitespace-pre-wrap max-h-40 overflow-y-auto text-slate-700 dark:text-slate-300">
+            {showFullPrompt ? systemPrompt : systemPrompt.slice(0, 200)}
+            {!showFullPrompt && systemPrompt.length > 200 && "..."}
+          </pre>
+          {systemPrompt.length > 200 && (
+            <button
+              onClick={() => setShowFullPrompt(!showFullPrompt)}
+              className="mt-1 text-xs text-purple-600 dark:text-purple-400 hover:underline"
+            >
+              {showFullPrompt ? "Show less" : "Show more"}
+            </button>
+          )}
+        </div>
+      )}
+
+      <div className="flex items-center gap-3 text-xs text-slate-400">
+        <span>Source: {proposal.source_agent_id || "agent"}</span>
+        <span>Task: {proposal.source_task_id?.slice(0, 8) || "--"}</span>
+      </div>
+
+      <div className="flex gap-2 pt-1">
+        <button
+          onClick={onApprove}
+          className="flex items-center gap-1 px-3 py-1 rounded-lg bg-purple-600 text-white text-xs font-medium hover:bg-purple-700"
+        >
+          <CheckCircle2 size={12} /> Approve & Register
+        </button>
+        <button
+          onClick={onReject}
+          className="flex items-center gap-1 px-3 py-1 rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs font-medium hover:bg-slate-300"
+        >
+          <XCircle size={12} /> Reject
+        </button>
+      </div>
     </div>
   );
 }

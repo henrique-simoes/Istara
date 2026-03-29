@@ -59,6 +59,14 @@ export default function Sidebar({ activeView, onViewChange, onSearchOpen }: Side
     fetchProjects();
   }, [fetchProjects]);
 
+  // Auto-expand secondary nav when the active view is a secondary item
+  useEffect(() => {
+    const secondaryIds = ["autoresearch", "backup", "meta-hyperagent", "compute", "ensemble", "metrics", "history"];
+    if (secondaryIds.includes(activeView)) {
+      setShowSecondary(true);
+    }
+  }, [activeView]);
+
   const handleCreateProject = async () => {
     if (!newProjectName.trim()) return;
     await createProject(newProjectName.trim());
@@ -82,6 +90,7 @@ export default function Sidebar({ activeView, onViewChange, onSearchOpen }: Side
     { id: "integrations", icon: MessageSquare, label: "Integrations" },
     { id: "loops", icon: RefreshCw, label: "Loops" },
     { id: "notifications", icon: Bell, label: "Notifications" },
+    { id: "settings", icon: Settings, label: "Settings" },
   ];
 
   // Secondary nav: accessible via "More" or header icons
@@ -93,7 +102,6 @@ export default function Sidebar({ activeView, onViewChange, onSearchOpen }: Side
     { id: "ensemble", icon: Activity, label: "Ensemble Health" },
     { id: "metrics", icon: BarChart3, label: "Metrics" },
     { id: "history", icon: History, label: "History" },
-    { id: "settings", icon: Settings, label: "Settings" },
   ];
 
   return (

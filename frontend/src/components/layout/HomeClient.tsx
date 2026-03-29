@@ -38,8 +38,32 @@ import { useSessionStore } from "@/stores/sessionStore";
 import { useAgentStore } from "@/stores/agentStore";
 import { settings as settingsApi } from "@/lib/api";
 
+const VIEW_STORAGE_KEY = "reclaw_active_view";
+const VIEW_NAMES: Record<string, string> = {
+  chat: "Chat", findings: "Findings", tasks: "Tasks", laws: "UX Laws",
+  interviews: "Interviews", documents: "Documents", metrics: "Metrics",
+  context: "Context", skills: "Skills", agents: "Agents", memory: "Memory",
+  interfaces: "Interfaces", integrations: "Integrations", loops: "Loops",
+  notifications: "Notifications", backup: "Backup", "meta-hyperagent": "Meta-Agent",
+  autoresearch: "AutoResearch", history: "History", compute: "Compute Pool",
+  ensemble: "Ensemble Health", settings: "Settings",
+};
+
+function getSavedView(): string {
+  if (typeof window === "undefined") return "chat";
+  try { return localStorage.getItem(VIEW_STORAGE_KEY) || "chat"; } catch { return "chat"; }
+}
+
 export default function HomeClient() {
-  const [activeView, setActiveView] = useState("chat");
+  const [activeView, setActiveViewRaw] = useState(getSavedView);
+  const setActiveView = (view: string) => {
+    setActiveViewRaw(view);
+    try { localStorage.setItem(VIEW_STORAGE_KEY, view); } catch {}
+    document.title = `${VIEW_NAMES[view] || "ReClaw"} — ReClaw`;
+  };
+  // Set title on mount
+  useEffect(() => { document.title = `${VIEW_NAMES[activeView] || "ReClaw"} — ReClaw`; }, []);
+
   const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);

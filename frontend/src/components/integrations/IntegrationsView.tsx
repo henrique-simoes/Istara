@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect } from "react";
-import { MessageSquare, BarChart3, FileQuestion, Plug, Rocket } from "lucide-react";
+import { useEffect, useState } from "react";
+import { MessageSquare, BarChart3, FileQuestion, Plug, Rocket, Loader2 } from "lucide-react";
 import { useIntegrationsStore } from "@/stores/integrationsStore";
 import { cn } from "@/lib/utils";
+import ErrorBoundary from "@/components/common/ErrorBoundary";
 import MessagingTab from "./MessagingTab";
 import SurveysTab from "./SurveysTab";
 import MCPTab from "./MCPTab";
@@ -22,9 +23,19 @@ const TABS: { id: IntegrationsTab; icon: any; label: string }[] = [
 
 export default function IntegrationsView() {
   const { activeTab, setActiveTab, fetchChannels, channelLoading, error } = useIntegrationsStore();
+  const [initialLoading, setInitialLoading] = useState(true);
 
   useEffect(() => {
-    fetchChannels();
+    let cancelled = false;
+    setInitialLoading(true);
+    fetchChannels()
+      .catch((err: unknown) => {
+        console.error("IntegrationsView: failed to fetch channels", err);
+      })
+      .finally(() => {
+        if (!cancelled) setInitialLoading(false);
+      });
+    return () => { cancelled = true; };
   }, [fetchChannels]);
 
   const renderTab = () => {
@@ -73,7 +84,16 @@ export default function IntegrationsView() {
             </button>
           </div>
         </div>
-      ) : renderTab()}
+      ) : initialLoading ? (
+        <div className="flex-1 flex items-center justify-center p-8">
+          <Loader2 size={24} className="animate-spin text-reclaw-500" />
+          <span className="ml-2 text-sm text-slate-400">Loading integrations...</span>
+        </div>
+      ) : (
+        <ErrorBoundary>
+          {renderTab()}
+        </ErrorBoundary>
+      )}
     </div>
   );
 }

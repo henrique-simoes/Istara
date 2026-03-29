@@ -99,6 +99,7 @@ export default function ComputePoolView() {
     : SWARM_TIERS.local_only;
 
   return (
+    <div className="flex-1 overflow-y-auto">
     <div className="p-6 max-w-5xl mx-auto space-y-6">
       <div>
         <h2 className="text-xl font-bold text-slate-900 dark:text-white">Compute Pool</h2>
@@ -347,6 +348,7 @@ export default function ComputePoolView() {
           </div>
         )}
       </div>
+    </div>
     </div>
   );
 }
