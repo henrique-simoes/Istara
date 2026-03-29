@@ -797,12 +797,14 @@ class ComputeRegistry:
     _nodes: dict[str, ComputeNode]  # node_id → ComputeNode
 
     def register_node(node: ComputeNode) -> None
-    def deregister_node(node_id: str) -> None
-    def get_node(node_id: str) -> ComputeNode | None
-    def list_nodes(provider_type: str = None, healthy_only: bool = False) -> list[ComputeNode]
-    async def get_best_node(capabilities: list[str], model: str) -> ComputeNode | None
-    async def check_all_health() -> None
-    async def route_request(model: str, prompt: str, **kwargs) -> AsyncGenerator[str, None]
+    def remove_node(node_id: str) -> None
+    def remove_duplicate_network_nodes(relay_node: ComputeNode) -> None  # dedup on relay register
+    def update_heartbeat(node_id: str, stats: dict) -> None
+    async def check_all_health() -> dict[str, bool]  # also detects relay capabilities
+    def _sorted_servers(require_tools, require_vision, min_context) -> list[ComputeNode]
+    async def chat_stream(messages, model, ...) -> AsyncGenerator[str | dict, None]
+    async def embed(text, model) -> list[float]
+    def get_stats() -> dict  # nodes, tier, RAM, models
 ```
 
 ### ComputeNode Structure
@@ -814,6 +816,7 @@ class ComputeNode:
     node_id: str
     name: str
     host: str  # http://localhost:1234 or http://192.168.1.100:8000
+              # NOTE: for relay nodes, localhost is auto-resolved to relay's IP
     source: str  # "local" | "network" | "relay" | "browser"
     provider_type: str  # "lmstudio" | "ollama" | "openai_compat"
 

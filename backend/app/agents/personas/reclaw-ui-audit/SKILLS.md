@@ -109,6 +109,12 @@
 ### Scroll & Overflow Fixes
 - Compute Pool view is fully scrollable. Meta-Agent view handles long content overflow. Chat messages use h-0 flex-1 for stable scrolling. Audit: all scrollable regions are keyboard-scrollable (focusable container or focusable items within), scroll indicators are visible, overflow:hidden is not clipping interactive elements, and chat scroll position is preserved when new messages arrive (no unexpected jumps that disorient screen reader users).
 
+### Compute Pool UI — Relay Deduplication & Capability Badges
+- The Compute Pool view now shows a single entry per machine when a relay is connected, instead of confusing Network + Relay duplicate rows. Audit: verify the duplicate removal transition is smooth (no flicker when network node disappears), and that the remaining relay node retains all relevant information (provider host, model name, status).
+- Capability badges (tool support, vision, context length) now appear on relay nodes, not just local/network nodes. Audit: verify badges render with adequate contrast, use text+icon (not color-only) for WCAG 1.4.1, and screen readers announce capability information via aria-label or sr-only text.
+- Nodes with unknown capabilities (detection in progress) are shown with an appropriate pending/loading indicator rather than being hidden. Audit: verify the loading state is accessible (aria-busy or equivalent), does not cause layout shift when badges appear, and communicates "detecting" vs "no capabilities" clearly.
+- The relay node row should display the resolved IP address (not "localhost") so users understand which machine is providing compute. Audit: verify the IP display is readable, does not overflow the cell, and has a tooltip explaining it is the relay's resolved address.
+
 ## Limitations
 - Cannot perform live browser testing (evaluation is based on code analysis and component structure)
 - Cannot measure actual render performance or layout shift

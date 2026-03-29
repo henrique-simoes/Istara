@@ -121,6 +121,14 @@
 ### Layout Stability Fixes
 - Compute Pool view is now fully scrollable (previously clipped content). Meta-Agent view handles long content without layout overflow. Chat messages use h-0 flex-1 pattern for stable scrolling. These fixes reduce false-positive UI error reports — previously, clipped content could appear as missing data to automated checks.
 
+### Compute Pool Streaming & Relay Fixes
+- Relay host resolution: when a relay node reports `provider_host: "http://localhost:1234"`, the backend now resolves localhost to the relay's actual IP (from the WebSocket connection). Monitor for: resolution failures if relay connects through a proxy, incorrect IP detection behind NAT layers.
+- Relay capability detection: health checks now probe relay nodes via HTTP for model capabilities (tool support, context length, vision), same as network/local nodes. Monitor: HTTP probe timeouts to relay IPs, stale capability data if relay model changes without re-probe.
+- Network/Relay deduplication: when a relay registers, any network-discovered node pointing to the same `provider_host:port` is automatically removed (relay is preferred path). Monitor for: race conditions during simultaneous relay connect + network scan, incorrect deduplication if two distinct machines share an IP (unlikely but possible with VPN).
+- Tool filter fallback: nodes with unknown capabilities (not yet detected) are no longer excluded from the tool-support filter — they get a chance to serve requests during the detection window. Monitor: whether unknown-capability nodes cause tool-call failures before detection completes.
+- Network discovery skip: network scan now skips registering nodes already covered by a relay connection. Monitor: scan logs for skip events, verify relay-covered nodes are not re-added after relay disconnects (they should be re-discoverable).
+- These changes reduce false alerts from the compute pool: fewer duplicate node warnings, fewer "node unreachable" errors from localhost resolution failures, and more accurate capability reporting.
+
 ## Limitations
 - Read-only access to user data (cannot modify findings, projects, or user settings)
 - Cannot restart or reconfigure LLM services (report only)
