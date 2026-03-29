@@ -102,7 +102,8 @@ export default function ProjectReportsView({
   // Loading state
   if (loading) {
     return (
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto" role="status" aria-live="polite" aria-label="Loading reports">
+        <span className="sr-only">Loading project reports...</span>
         <div className="p-4 border-b border-slate-200 dark:border-slate-800">
           <div className="h-6 w-48 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
         </div>
@@ -129,11 +130,12 @@ export default function ProjectReportsView({
   // Error state
   if (error) {
     return (
-      <div className="flex-1 flex items-center justify-center p-8">
+      <div className="flex-1 flex items-center justify-center p-8" role="alert">
         <div className="text-center">
           <AlertCircle
             size={32}
             className="mx-auto text-red-500 dark:text-red-400 mb-3"
+            aria-hidden="true"
           />
           <p className="text-sm text-red-600 dark:text-red-400 font-medium mb-1">
             Failed to load reports
@@ -143,7 +145,8 @@ export default function ProjectReportsView({
           </p>
           <button
             onClick={loadReports}
-            className="text-xs px-3 py-1.5 rounded-md bg-reclaw-600 text-white hover:bg-reclaw-700 transition-colors"
+            aria-label="Retry loading reports"
+            className="text-xs px-3 py-1.5 rounded-md bg-reclaw-600 text-white hover:bg-reclaw-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-reclaw-500 focus-visible:ring-offset-1"
           >
             Retry
           </button>
@@ -155,11 +158,12 @@ export default function ProjectReportsView({
   // Empty state
   if (allReports.length === 0) {
     return (
-      <div className="flex-1 flex items-center justify-center p-8">
+      <div className="flex-1 flex items-center justify-center p-8" role="status">
         <div className="text-center">
           <FileStack
             size={32}
             className="mx-auto text-slate-300 dark:text-slate-600 mb-3"
+            aria-hidden="true"
           />
           <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">
             No reports yet
@@ -173,13 +177,14 @@ export default function ProjectReportsView({
   }
 
   return (
-    <div className="flex-1 overflow-y-auto">
+    <div className="flex-1 overflow-y-auto" role="region" aria-label="Convergence pyramid reports">
       {/* Header */}
       <div className="p-4 border-b border-slate-200 dark:border-slate-800">
         <div className="flex items-center gap-2">
           <FileStack
             size={18}
             className="text-reclaw-600 dark:text-reclaw-400"
+            aria-hidden="true"
           />
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
             Convergence Pyramid
@@ -204,7 +209,7 @@ export default function ProjectReportsView({
 
         {/* Visual connector */}
         {(l4Reports.length > 0 || l3Reports.length > 0) && (
-          <div className="flex justify-center">
+          <div className="flex justify-center" aria-hidden="true">
             <div className="flex flex-col items-center gap-1">
               <ArrowUpRight
                 size={16}
@@ -226,7 +231,7 @@ export default function ProjectReportsView({
 
         {/* Visual connector */}
         {(l3Reports.length > 0 || l2Reports.length > 0) && (
-          <div className="flex justify-center">
+          <div className="flex justify-center" aria-hidden="true">
             <div className="flex flex-col items-center gap-1">
               <ArrowUpRight
                 size={16}
@@ -266,10 +271,10 @@ function PyramidLayer({
   if (!config) return null;
 
   return (
-    <div className={cn("mx-auto w-full", totalWidth)}>
+    <div className={cn("mx-auto w-full", totalWidth)} role="region" aria-label={config.label}>
       {/* Layer label */}
       <div className="flex items-center gap-2 mb-3">
-        <Layers size={14} className={config.color} />
+        <Layers size={14} className={config.color} aria-hidden="true" />
         <h3 className={cn("text-sm font-semibold", config.color)}>
           {config.label}
         </h3>
@@ -284,7 +289,8 @@ function PyramidLayer({
               config.color
             )}
           >
-            {reports.length}
+            <span className="sr-only">{reports.length} reports</span>
+            <span aria-hidden="true">{reports.length}</span>
           </span>
         )}
       </div>
@@ -292,6 +298,7 @@ function PyramidLayer({
       {/* Report cards */}
       {reports.length === 0 ? (
         <div
+          role="status"
           className={cn(
             "border border-dashed rounded-lg p-4 text-center",
             config.borderColor
@@ -303,6 +310,8 @@ function PyramidLayer({
         </div>
       ) : (
         <div
+          role="list"
+          aria-label={`${config.label} reports`}
           className="grid gap-3"
           style={{
             gridTemplateColumns: `repeat(${Math.min(reports.length, 3)}, minmax(0, 1fr))`,
@@ -329,8 +338,10 @@ function ReportCard({
 
   return (
     <article
+      role="listitem"
+      tabIndex={0}
       className={cn(
-        "border rounded-lg p-4 transition-shadow hover:shadow-md",
+        "border rounded-lg p-4 transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-reclaw-500 focus-visible:ring-offset-1",
         config?.borderColor || "border-slate-200 dark:border-slate-700",
         config?.bgColor || "bg-white dark:bg-slate-900"
       )}
@@ -350,11 +361,13 @@ function ReportCard({
           )}
           {/* Status badge */}
           <span
+            role="status"
             className={cn(
               "text-[10px] font-medium px-1.5 py-0.5 rounded-full whitespace-nowrap",
               statusConfig.className
             )}
           >
+            <span className="sr-only">Status: </span>
             {statusConfig.label}
           </span>
         </div>
@@ -386,17 +399,18 @@ function ReportCard({
 
       {/* MECE categories preview */}
       {report.mece_categories && report.mece_categories.length > 0 && (
-        <div className="mt-2 flex flex-wrap gap-1">
+        <div className="mt-2 flex flex-wrap gap-1" role="list" aria-label="MECE categories">
           {report.mece_categories.slice(0, 3).map((cat) => (
             <span
               key={cat.name}
+              role="listitem"
               className="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 px-1.5 py-0.5 rounded"
               title={cat.description}
             >
               {cat.name}
               {cat.finding_ids.length > 0 && (
                 <span className="ml-0.5 opacity-70">
-                  ({cat.finding_ids.length})
+                  ({cat.finding_ids.length}<span className="sr-only"> findings</span>)
                 </span>
               )}
             </span>

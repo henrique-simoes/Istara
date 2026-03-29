@@ -177,12 +177,14 @@ export default function CodebookViewer({ projectId }: CodebookViewerProps) {
               Codebook v{selectedVersion.version}
             </h2>
             <span
+              role="status"
               className={cn(
                 "text-xs font-medium px-2 py-0.5 rounded-full",
                 METHODOLOGY_COLORS[selectedVersion.methodology] ||
                   "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
               )}
             >
+              <span className="sr-only">Methodology: </span>
               {METHODOLOGY_LABELS[selectedVersion.methodology] ||
                 selectedVersion.methodology}
             </span>
@@ -282,7 +284,7 @@ export default function CodebookViewer({ projectId }: CodebookViewerProps) {
 
               {/* Expanded details */}
               {isExpanded && (
-                <div className="border-t border-slate-200 dark:border-slate-700 p-4 space-y-3 bg-slate-50/50 dark:bg-slate-800/20">
+                <div id={panelId} className="border-t border-slate-200 dark:border-slate-700 p-4 space-y-3 bg-slate-50/50 dark:bg-slate-800/20">
                   {/* Brief definition (always visible when expanded) */}
                   <div>
                     <h4 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">
