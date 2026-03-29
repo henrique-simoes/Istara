@@ -113,10 +113,26 @@ async def register(req: RegisterRequest):
 async def login(req: LoginRequest, request: Request, db: AsyncSession = Depends(get_db)):
     """Log in and receive a JWT token.
 
-    Always issues a real JWT — even in local mode — because the
-    SecurityAuthMiddleware requires valid JWTs on all protected endpoints.
+    In local mode (team_mode=False), accepts any credentials and returns a
+    local-admin JWT so that the SecurityAuthMiddleware passes on subsequent
+    requests.  In team mode, validates against the database.
     """
     await _check_login_rate(request)
+
+    # Local mode — issue a local-admin token without DB lookup
+    if not settings.team_mode:
+        token = create_token("local", req.username or "local", "admin")
+        return {
+            "token": token,
+            "user": {
+                "id": "local",
+                "username": req.username or "local",
+                "email": "local@localhost",
+                "role": "admin",
+                "display_name": req.username or "Local User",
+                "preferences": {},
+            },
+        }
 
     from sqlalchemy import select
     from app.models.user import User

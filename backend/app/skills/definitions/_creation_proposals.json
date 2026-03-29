@@ -19,5 +19,26 @@
     "created_at": "2026-03-26T22:06:06.248260+00:00",
     "reviewed_at": null,
     "reject_reason": null
+  },
+  {
+    "id": "create_auto-survey-ai-detection-f88952f6_20260329033915",
+    "proposed_definition": {
+      "name": "auto-survey-ai-detection-f88952f6",
+      "display_name": "Auto: Analyze survey responses for AI-generated answers",
+      "description": "Autonomously proposed skill based on task: Analyze survey responses for AI-generated answers",
+      "phase": "discover",
+      "skill_type": "mixed",
+      "plan_prompt": "Create a research plan for: {context}",
+      "execute_prompt": "Analyze the following data for patterns and insights.\nContext: {context}\n\nData:\n{content}",
+      "output_schema": "Based on a limited sample, there's no strong evidence to suggest AI-generated content in either response. Both responses provide valuable insights into user pain points with the onboarding process, particularly regarding phone verification and design tool integration.  The feedback aligns well with Acme PM's target user profile (PMs, designers, eng leads). Further investigation is needed with a larger dataset to confirm these findings."
+    },
+    "source_task_id": "f88952f6-3a02-41e8-bb3c-982da9c9e816",
+    "source_agent_id": "reclaw-main",
+    "reason": "High-quality output (6 findings) from task: Analyze survey responses for AI-generated answers",
+    "confidence": 70,
+    "status": "pending",
+    "created_at": "2026-03-29T03:39:15.678424+00:00",
+    "reviewed_at": null,
+    "reject_reason": null
   }
 ]

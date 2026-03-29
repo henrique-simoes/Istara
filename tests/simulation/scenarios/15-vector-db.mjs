@@ -49,6 +49,7 @@ P001: Automatic tagging of interview quotes. Like, highlight a passage and have 
       formData.append("file", blob, "sim-interview-transcript.txt");
       const res = await fetch(`http://localhost:8000/api/files/upload/${ctx.projectId}`, {
         method: "POST",
+        headers: { "Authorization": api._headers()["Authorization"] },
         body: formData,
       });
       checks.push({

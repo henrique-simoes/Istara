@@ -203,7 +203,7 @@ export async function run(ctx) {
 
       // Verify session actually gone
       try {
-        const res = await fetch(`http://localhost:8000/api/sessions/detail/${sessionId}`);
+        const res = await fetch(`http://localhost:8000/api/sessions/detail/${sessionId}`, { headers: api._headers() });
         checks.push({
           name: "Session deletion confirmed (404)",
           passed: res.status === 404,

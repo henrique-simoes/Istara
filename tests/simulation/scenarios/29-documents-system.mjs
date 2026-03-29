@@ -385,7 +385,7 @@ export async function run(ctx) {
       source: "external",
     });
     // Delete it
-    const delRes = await fetch(`http://localhost:8000/api/documents/${tempDoc.id}`, { method: "DELETE" });
+    const delRes = await fetch(`http://localhost:8000/api/documents/${tempDoc.id}`, { method: "DELETE", headers: api._headers() });
     // Verify it's gone
     let gone = false;
     try {

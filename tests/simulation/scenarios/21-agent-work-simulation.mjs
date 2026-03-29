@@ -450,11 +450,18 @@ export async function run(ctx) {
   await safeCheck("Resource Governor — budget not paused under normal load", async () => {
     const gov = await api.get("/api/resources");
     const paused = gov.budget?.paused || false;
+    const inMaintenance = gov.maintenance_mode === true;
+
+    // If the test runner has put the system into maintenance mode (to reserve
+    // LLM resources for testing), paused=true is expected and correct.
+    const passed = inMaintenance ? paused : !paused;
 
     return {
       name: "Resource Governor — budget not paused under normal load",
-      passed: !paused,
-      detail: `paused=${paused}, max_agents=${gov.budget?.max_concurrent_agents}`,
+      passed,
+      detail: inMaintenance
+        ? `maintenance_mode=true (paused=${paused} is expected during test runs)`
+        : `paused=${paused}, max_agents=${gov.budget?.max_concurrent_agents}`,
     };
   });
 

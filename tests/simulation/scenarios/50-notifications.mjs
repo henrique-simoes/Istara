@@ -217,7 +217,7 @@ export async function run(ctx) {
 
   // ── 12. PUT /api/notifications/preferences — update preferences ──
   try {
-    const result = await (async (url, body) => { const r = await fetch("http://localhost:8000" + url, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }); if (!r.ok) throw new Error("PUT " + url + ": " + r.status); return r.json(); })("/api/notifications/preferences", {
+    const result = await (async (url, body) => { const r = await fetch("http://localhost:8000" + url, { method: "PUT", headers: api._headers(), body: JSON.stringify(body) }); if (!r.ok) throw new Error("PUT " + url + ": " + r.status); return r.json(); })("/api/notifications/preferences", {
       preferences: [
         {
           category: "sim_test_category",
@@ -243,6 +243,7 @@ export async function run(ctx) {
     try {
       const res = await fetch(`http://localhost:8000/api/notifications/${firstNotificationId}`, {
         method: "DELETE",
+        headers: api._headers(),
       });
       checks.push({
         name: "DELETE /api/notifications/{id} returns 204",
@@ -287,7 +288,7 @@ export async function run(ctx) {
 
   // ── Cleanup ──
   for (const id of cleanup.taskIds) {
-    try { await fetch(`http://localhost:8000/api/tasks/${id}`, { method: "DELETE" }); } catch {}
+    try { await fetch(`http://localhost:8000/api/tasks/${id}`, { method: "DELETE", headers: api._headers() }); } catch {}
   }
   // Mark all notifications as read to leave system clean
   try { await api.post("/api/notifications/read-all", {}); } catch {}

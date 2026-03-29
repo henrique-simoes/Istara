@@ -493,7 +493,7 @@ export async function run(ctx) {
     const testFileKey = "NONEXISTENT_KEY_FOR_TEST";
 
     try {
-      const res = await fetch(`http://localhost:8000/api/interfaces/figma/design-system/${testFileKey}`);
+      const res = await fetch(`http://localhost:8000/api/interfaces/figma/design-system/${testFileKey}`, { headers: api._headers() });
       // We expect a 502 (Figma returns 404 for invalid keys) — that proves the endpoint works
       checks.push({
         name: "Figma: design-system endpoint exists and calls API",
@@ -535,6 +535,37 @@ export async function run(ctx) {
       passed: true,
       detail: "FIGMA_API_TOKEN not set, skipping live Figma tests",
     });
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  // MOCK FALLBACK — ensure evidence chain can be verified even without Stitch
+  // ══════════════════════════════════════════════════════════════════════
+
+  if (!generatedScreenId && !stitchConfigured && recId) {
+    try {
+      const mockScreen = await api.post("/api/interfaces/mock/generate", {
+        project_id: projectId,
+        prompt: "[SIM-48] Mock fallback: streamlined onboarding wizard",
+        device_type: "DESKTOP",
+        seed_finding_ids: [recId],
+      });
+      generatedScreenId = mockScreen.id;
+      generatedDecisionId = mockScreen.design_decision_id;
+      cleanup.screenIds.push(generatedScreenId);
+      if (generatedDecisionId) cleanup.decisionIds.push(generatedDecisionId);
+
+      checks.push({
+        name: "Mock fallback: screen generated (Stitch not configured)",
+        passed: !!generatedScreenId,
+        detail: `screen_id=${generatedScreenId}, decision_id=${generatedDecisionId}`,
+      });
+    } catch (e) {
+      checks.push({
+        name: "Mock fallback: screen generation",
+        passed: false,
+        detail: e.message,
+      });
+    }
   }
 
   // ══════════════════════════════════════════════════════════════════════
@@ -597,7 +628,7 @@ export async function run(ctx) {
     try {
       const res = await fetch("http://localhost:8000/api/interfaces/design-chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: api._headers(),
         body: JSON.stringify({
           message: "List the available design tools",
           project_id: projectId,
@@ -686,12 +717,12 @@ export async function run(ctx) {
 
   for (const id of cleanup.screenIds) {
     try {
-      await fetch(`http://localhost:8000/api/interfaces/screens/${id}`, { method: "DELETE" });
+      await fetch(`http://localhost:8000/api/interfaces/screens/${id}`, { method: "DELETE", headers: api._headers() });
     } catch {}
   }
   for (const id of cleanup.decisionIds) {
     try {
-      await fetch(`http://localhost:8000/api/findings/design-decisions/${id}`, { method: "DELETE" });
+      await fetch(`http://localhost:8000/api/findings/design-decisions/${id}`, { method: "DELETE", headers: api._headers() });
     } catch {}
   }
   for (const id of cleanup.recIds) {
@@ -708,7 +739,7 @@ export async function run(ctx) {
   }
   for (const id of cleanup.briefIds) {
     try {
-      await fetch(`http://localhost:8000/api/interfaces/handoff/briefs/${id}`, { method: "DELETE" });
+      await fetch(`http://localhost:8000/api/interfaces/handoff/briefs/${id}`, { method: "DELETE", headers: api._headers() });
     } catch {}
   }
 

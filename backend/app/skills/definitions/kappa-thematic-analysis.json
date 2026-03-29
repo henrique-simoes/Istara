@@ -1,7 +1,7 @@
 {
   "name": "kappa-thematic-analysis",
   "display_name": "Kappa Intercoder Thematic Analysis",
-  "description": "Thematic analysis with Cohen's Kappa intercoder reliability measurement. Runs two independent coding passes, compares agreement, calculates Kappa, and reconciles disagreements. Follows Landis & Koch interpretation scale.",
+  "description": "Thematic analysis with Cohen's Kappa and Krippendorff's Alpha intercoder reliability measurement. Runs two independent coding passes, compares agreement, calculates reliability coefficients, and reconciles disagreements. Follows Landis & Koch interpretation scale.",
   "phase": "define",
   "skill_type": "qualitative",
   "version": "2.0.0",

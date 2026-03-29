@@ -311,7 +311,7 @@ export async function run(ctx) {
     const results = [];
     for (const ep of apiEndpoints) {
       try {
-        const res = await fetch(`http://localhost:8000${ep.path}`);
+        const res = await fetch(`http://localhost:8000${ep.path}`, { headers: api._headers() });
         results.push({ path: ep.path, status: res.status, ok: res.status === 200 });
       } catch (e) {
         results.push({ path: ep.path, status: 0, ok: false });
@@ -335,7 +335,7 @@ export async function run(ctx) {
     for (const ep of apiEndpoints.slice(0, 8)) {
       const start = Date.now();
       try {
-        await fetch(`http://localhost:8000${ep.path}`);
+        await fetch(`http://localhost:8000${ep.path}`, { headers: api._headers() });
       } catch {}
       const elapsed = Date.now() - start;
       timings.push({ path: ep.path, ms: elapsed, ok: elapsed < 2000 });
@@ -355,7 +355,7 @@ export async function run(ctx) {
     const results = [];
     for (const ep of apiEndpoints.slice(0, 8)) {
       try {
-        const res = await fetch(`http://localhost:8000${ep.path}`);
+        const res = await fetch(`http://localhost:8000${ep.path}`, { headers: api._headers() });
         const ct = res.headers.get("content-type") || "";
         results.push({ path: ep.path, ct, ok: ct.includes("application/json") });
       } catch (e) {
@@ -385,7 +385,7 @@ export async function run(ctx) {
     const results = [];
     for (const path of tests) {
       try {
-        const res = await fetch(`http://localhost:8000${path}`);
+        const res = await fetch(`http://localhost:8000${path}`, { headers: api._headers() });
         results.push({ path, status: res.status, ok: res.status === 404 || res.status === 422 });
       } catch {
         results.push({ path, status: 0, ok: false });
@@ -597,7 +597,7 @@ export async function run(ctx) {
     try {
       const res = await fetch("http://localhost:8000/api/settings/provider", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: api._headers(),
         body: JSON.stringify({ provider: "malicious-provider" }),
       });
       // Should return 400 or 422
@@ -633,7 +633,7 @@ export async function run(ctx) {
 
   await safeCheck("[Scheduler] Endpoint responds", async () => {
     try {
-      const res = await fetch("http://localhost:8000/api/schedules");
+      const res = await fetch("http://localhost:8000/api/schedules", { headers: api._headers() });
       return {
         name: "[Scheduler] Endpoint responds",
         passed: res.status === 200,
@@ -646,7 +646,7 @@ export async function run(ctx) {
 
   await safeCheck("[Channels] Endpoint responds", async () => {
     try {
-      const res = await fetch("http://localhost:8000/api/channels");
+      const res = await fetch("http://localhost:8000/api/channels", { headers: api._headers() });
       return {
         name: "[Channels] Endpoint responds",
         passed: res.status === 200,
