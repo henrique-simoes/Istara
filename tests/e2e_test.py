@@ -58,6 +58,48 @@ def main():
     print("=" * 60)
 
     # =========================================================
+    # PHASE 0: Authentication
+    # =========================================================
+    print("\n🔐 Phase 0: Authentication")
+
+    # Read admin password from .env (auto-generated on first startup)
+    admin_pass = ""
+    env_path = Path(__file__).parent.parent / "backend" / ".env"
+    if env_path.exists():
+        for line in env_path.read_text().splitlines():
+            if line.startswith("ADMIN_PASSWORD="):
+                admin_pass = line.split("=", 1)[1].strip()
+                break
+    if not admin_pass:
+        # Try root .env as fallback
+        env_path2 = Path(__file__).parent.parent / ".env"
+        if env_path2.exists():
+            for line in env_path2.read_text().splitlines():
+                if line.startswith("ADMIN_PASSWORD="):
+                    admin_pass = line.split("=", 1)[1].strip()
+                    break
+
+    if admin_pass:
+        try:
+            login_resp = client.post("/api/auth/login", json={
+                "username": os.environ.get("RECLAW_ADMIN_USER", "admin"),
+                "password": admin_pass,
+            })
+            if login_resp.status_code == 200:
+                token = login_resp.json().get("token") or login_resp.json().get("access_token", "")
+                if token:
+                    client.headers["Authorization"] = f"Bearer {token}"
+                    print(f"  ✅ Authenticated as admin (JWT set)")
+                else:
+                    print(f"  ⚠️  Login succeeded but no token in response")
+            else:
+                print(f"  ⚠️  Login failed ({login_resp.status_code}): {login_resp.text[:200]}")
+        except Exception as e:
+            print(f"  ⚠️  Login error: {e}")
+    else:
+        print("  ⚠️  No ADMIN_PASSWORD found in .env — some tests will fail with 401")
+
+    # =========================================================
     # PHASE 1: System Health
     # =========================================================
     print("\n📡 Phase 1: System Health")
