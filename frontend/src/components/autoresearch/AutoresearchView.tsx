@@ -8,6 +8,7 @@ import ExperimentDashboard from "./ExperimentDashboard";
 import ExperimentHistory from "./ExperimentHistory";
 import LeaderboardTab from "./LeaderboardTab";
 import ConfigPanel from "./ConfigPanel";
+import ViewOnboarding from "@/components/common/ViewOnboarding";
 
 type AutoresearchTab = "dashboard" | "experiments" | "leaderboard" | "config";
 
@@ -42,6 +43,7 @@ export default function AutoresearchView() {
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
+      <ViewOnboarding viewId="autoresearch" title="Autonomous Research" description="Self-improving research loops — agents experiment with strategies and models. Leaderboard shows what works best." chatPrompt="How does autoresearch work?" />
       {/* Tab bar */}
       <div className="flex items-center gap-1 px-4 py-2 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-x-auto">
         {TABS.map((tab) => (

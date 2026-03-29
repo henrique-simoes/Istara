@@ -9,10 +9,14 @@ import {
   ArrowLeft,
   Check,
   Building2,
+  Cpu,
+  FolderOpen,
 } from "lucide-react";
 import { useProjectStore } from "@/stores/projectStore";
 import { files as filesApi } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import LLMCheckStep from "./LLMCheckStep";
+import FolderLinkStep from "./FolderLinkStep";
 
 interface OnboardingWizardProps {
   onComplete: () => void;
@@ -20,7 +24,9 @@ interface OnboardingWizardProps {
 
 const STEPS = [
   { id: "welcome", title: "Welcome to ReClaw", icon: Sparkles },
+  { id: "llm-check", title: "LLM Provider", icon: Cpu },
   { id: "project", title: "Create Your First Project", icon: FolderPlus },
+  { id: "folder", title: "Link Research Folder", icon: FolderOpen },
   { id: "context", title: "Set Your Context", icon: Building2 },
   { id: "upload", title: "Upload Research Data", icon: Upload },
 ];
@@ -43,7 +49,7 @@ export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) 
     try {
       const project = await createProject(projectName.trim());
       setCreatedProjectId(project.id);
-      setStep(2);
+      setStep(3); // Go to folder link step
     } catch (e: any) {
       setError(e.message || "Failed to create project. Is the backend running?");
     }
@@ -58,7 +64,7 @@ export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) 
         await updateProject(createdProjectId, updates);
       }
     }
-    setStep(3);
+    setStep(5); // Go to upload step
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -134,8 +140,35 @@ export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) 
             </div>
           )}
 
-          {/* Step 1: Create Project */}
+          {/* Step 1: LLM Check */}
           {step === 1 && (
+            <div>
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-1">
+                LLM Provider Check
+              </h2>
+              <p className="text-sm text-slate-500 mb-4">
+                ReClaw uses a local AI model for research analysis. Let's check if one is running.
+              </p>
+              <LLMCheckStep />
+              <div className="flex justify-between mt-4">
+                <button
+                  onClick={() => setStep(0)}
+                  className="flex items-center gap-1 text-sm text-slate-400 hover:text-slate-600"
+                >
+                  <ArrowLeft size={14} /> Back
+                </button>
+                <button
+                  onClick={() => setStep(2)}
+                  className="flex items-center gap-2 px-5 py-2.5 bg-reclaw-600 text-white rounded-xl hover:bg-reclaw-700 font-medium text-sm"
+                >
+                  Continue <ArrowRight size={14} />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Step 2: Create Project */}
+          {step === 2 && (
             <div>
               <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-1">
                 Create Your First Project
@@ -165,7 +198,7 @@ export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) 
 
               <div className="flex justify-between">
                 <button
-                  onClick={() => setStep(0)}
+                  onClick={() => setStep(1)}
                   className="flex items-center gap-1 text-sm text-slate-400 hover:text-slate-600"
                 >
                   <ArrowLeft size={14} /> Back
@@ -186,8 +219,32 @@ export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) 
             </div>
           )}
 
-          {/* Step 2: Context */}
-          {step === 2 && (
+          {/* Step 3: Link Folder */}
+          {step === 3 && (
+            <div>
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-1">
+                Link a Research Folder
+              </h2>
+              <FolderLinkStep projectId={createdProjectId} />
+              <div className="flex justify-between mt-4">
+                <button
+                  onClick={() => setStep(2)}
+                  className="flex items-center gap-1 text-sm text-slate-400 hover:text-slate-600"
+                >
+                  <ArrowLeft size={14} /> Back
+                </button>
+                <button
+                  onClick={() => setStep(4)}
+                  className="flex items-center gap-2 px-5 py-2.5 bg-reclaw-600 text-white rounded-xl hover:bg-reclaw-700 font-medium text-sm"
+                >
+                  Continue <ArrowRight size={14} />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Step 4: Context */}
+          {step === 4 && (
             <div>
               <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-1">
                 Set Your Context
@@ -220,7 +277,7 @@ export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) 
 
               <div className="flex justify-between">
                 <button
-                  onClick={() => setStep(1)}
+                  onClick={() => setStep(3)}
                   className="flex items-center gap-1 text-sm text-slate-400 hover:text-slate-600"
                 >
                   <ArrowLeft size={14} /> Back
@@ -235,8 +292,8 @@ export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) 
             </div>
           )}
 
-          {/* Step 3: Upload */}
-          {step === 3 && (
+          {/* Step 5: Upload */}
+          {step === 5 && (
             <div>
               <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-1">
                 Upload Research Data
@@ -281,7 +338,7 @@ export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) 
 
               <div className="flex justify-between">
                 <button
-                  onClick={() => setStep(2)}
+                  onClick={() => setStep(4)}
                   className="flex items-center gap-1 text-sm text-slate-400 hover:text-slate-600"
                 >
                   <ArrowLeft size={14} /> Back

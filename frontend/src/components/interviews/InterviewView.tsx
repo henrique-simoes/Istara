@@ -32,6 +32,7 @@ import { useAgentStore } from "@/stores/agentStore";
 import { files as filesApi, findings as findingsApi, chat as chatApi } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { ApiError } from "@/hooks/useApiCall";
+import ViewOnboarding from "@/components/common/ViewOnboarding";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -575,6 +576,7 @@ export default function InterviewView() {
 
   return (
     <div className="flex-1 flex overflow-hidden">
+      <ViewOnboarding viewId="interviews" title="Interview Analysis" description="Upload interview transcripts and audio. Agents extract themes, sentiment, key quotes, and participant insights." chatPrompt="How do I analyze interviews?" />
       {/* Tag creation popover */}
       {tagCreatePopover && (
         <TagCreatePopover

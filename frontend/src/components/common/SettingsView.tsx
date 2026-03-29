@@ -8,6 +8,7 @@ import { useAuthStore } from "@/stores/authStore";
 import UserManagement from "./UserManagement";
 import ConnectionStringPanel from "@/components/settings/ConnectionStringPanel";
 import DonateComputeToggle from "@/components/common/DonateComputeToggle";
+import { resetAllOnboarding } from "@/hooks/useViewOnboarding";
 
 export default function SettingsView() {
   const [hardware, setHardware] = useState<HardwareInfo | null>(null);
@@ -335,13 +336,23 @@ export default function SettingsView() {
         </div>
       </div>
 
-      <button
-        onClick={fetchAll}
-        className="flex items-center gap-2 text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
-      >
-        <RefreshCw size={14} />
-        Refresh
-      </button>
+      {/* Onboarding Hints Reset */}
+      <div className="flex items-center gap-4">
+        <button
+          onClick={() => { resetAllOnboarding(); alert("Onboarding hints reset. They will reappear on next visit to each view."); }}
+          className="flex items-center gap-2 text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+        >
+          <RefreshCw size={14} />
+          Reset Onboarding Hints
+        </button>
+        <button
+          onClick={fetchAll}
+          className="flex items-center gap-2 text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+        >
+          <RefreshCw size={14} />
+          Refresh
+        </button>
+      </div>
     </div>
   );
 }

@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { useComputeStore } from "@/stores/computeStore";
 import { cn } from "@/lib/utils";
+import ViewOnboarding from "@/components/common/ViewOnboarding";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -100,6 +101,7 @@ export default function ComputePoolView() {
 
   return (
     <div className="flex-1 overflow-y-auto">
+    <ViewOnboarding viewId="compute" title="LLM Compute" description="All LLM servers powering your agents — local, network-discovered, and relay nodes. Donate compute or manage connections." chatPrompt="How does the compute pool work?" />
     <div className="p-6 max-w-5xl mx-auto space-y-6">
       <div>
         <h2 className="text-xl font-bold text-slate-900 dark:text-white">Compute Pool</h2>

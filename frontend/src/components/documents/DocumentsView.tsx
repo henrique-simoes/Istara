@@ -37,6 +37,7 @@ import { useDocumentStore } from "@/stores/documentStore";
 import { documents as documentsApi, chat as chatApi } from "@/lib/api";
 import { cn, phaseLabel } from "@/lib/utils";
 import type { ReclawDocument, DocumentContent } from "@/lib/types";
+import ViewOnboarding from "@/components/common/ViewOnboarding";
 
 const PHASES = [
   { id: "", label: "All Phases" },
@@ -245,6 +246,7 @@ export default function DocumentsView() {
 
   return (
     <div className="flex flex-col h-full bg-white dark:bg-slate-950">
+      <ViewOnboarding viewId="documents" title="Your Research Files" description="All documents in your project — uploaded files, agent outputs, and task results. Drag files here, link an external folder, or use Organize for AI categorization." chatPrompt="How do I organize my documents?" />
       {/* Header */}
       <div className="border-b border-slate-200 dark:border-slate-800 p-4">
         <div className="flex items-center justify-between mb-3">

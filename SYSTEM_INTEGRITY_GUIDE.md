@@ -55,7 +55,7 @@ All models are registered in `backend/app/models/database.py::init_db()`:
 #### CORE RESEARCH MODELS (Atomic Evidence Chain)
 | Model | Table | FK Dependencies | Cascade | `to_dict()` |
 |-------|-------|-----------------|---------|-----------|
-| Project | `projects` | - | [Tasks, Messages, Nuggets, Facts, Insights, Recommendations, Sessions, Codebooks, Documents, DesignScreens, DesignBriefs, DesignDecisions] | ✓ | Fields: is_paused (bool), owner_id (str) |
+| Project | `projects` | - | [Tasks, Messages, Nuggets, Facts, Insights, Recommendations, Sessions, Codebooks, Documents, DesignScreens, DesignBriefs, DesignDecisions] | ✓ | Fields: is_paused (bool), owner_id (str), watch_folder_path (str, nullable) |
 | Nugget | `nuggets` | Project → projects.id | - | ✗ |
 | Fact | `facts` | Project → projects.id | - | ✗ |
 | Insight | `insights` | Project → projects.id | - | ✗ |

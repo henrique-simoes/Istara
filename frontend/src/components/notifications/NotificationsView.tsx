@@ -6,6 +6,7 @@ import { useNotificationStore } from "@/stores/notificationStore";
 import { cn } from "@/lib/utils";
 import NotificationListTab from "./NotificationListTab";
 import NotificationPrefsTab from "./NotificationPrefsTab";
+import ViewOnboarding from "@/components/common/ViewOnboarding";
 
 type NotificationsTab = "all" | "preferences";
 
@@ -32,6 +33,7 @@ export default function NotificationsView() {
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
+      <ViewOnboarding viewId="notifications" title="Activity Feed" description="Notifications from agents, skills, and system events. Filter by category, severity, or agent." chatPrompt="What triggers notifications?" />
       {/* Tab bar */}
       <div className="flex items-center gap-1 px-4 py-2 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-x-auto">
         {TABS.map((tab) => (

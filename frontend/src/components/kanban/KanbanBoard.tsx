@@ -8,6 +8,7 @@ import { useAgentStore } from "@/stores/agentStore";
 import type { Task, TaskStatus } from "@/lib/types";
 import { cn, statusLabel } from "@/lib/utils";
 import ConfirmDialog from "@/components/common/ConfirmDialog";
+import ViewOnboarding from "@/components/common/ViewOnboarding";
 import TaskEditor from "./TaskEditor";
 
 const COLUMNS: { id: TaskStatus; color: string }[] = [
@@ -436,6 +437,7 @@ export default function KanbanBoard() {
 
   return (
     <div className="flex-1 overflow-x-auto p-4">
+      <ViewOnboarding viewId="tasks" title="Research Workflow" description="Kanban board of research tasks. Agents create tasks when you upload files. Drag to reorder, attach documents, track progress." chatPrompt="How do tasks work?" />
       <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Tasks</h2>
 
       <div className="flex gap-4 min-w-max">
