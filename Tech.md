@@ -1074,12 +1074,17 @@ A Node.js daemon that allows team members to donate LLM compute:
 
 Server-side registry of connected relay nodes:
 
-- **Node scoring**: `score = (model_capability * 0.4) + (1 - load) * 0.3 + (1/latency) * 0.2 + (ram) * 0.1`
+- **Node scoring**: `score = 100 - (active_requests*15) - (latency/10) - priority + (ram_available*2)`
 - **Capacity tracking**: Total RAM, CPU cores, available models across the pool.
 - **Best-node selection**: For any given model request, selects the node with the highest score.
 - **WebSocket endpoint**: `/ws/relay` for relay node connections.
+- **Relay host resolution**: Relay nodes report `provider_host` as `localhost`; on registration the backend resolves this to the relay's actual IP address so HTTP streaming can reach the relay's LM Studio directly.
+- **Capability detection for relays**: The health loop detects model capabilities (tool support, context length, vision) via HTTP probe for relay nodes, not just local/network nodes.
+- **Network/Relay deduplication**: When a relay registers, any network-discovered node pointing to the same `host:port` is automatically removed. Relay is the preferred connection path. Capabilities are transferred from the network node before removal.
+- **Tool filter fallback**: Nodes whose capabilities haven't been detected yet are included in the tool-support filter rather than excluded, preventing "No compute nodes available" errors on freshly registered relays.
+- **Network discovery skip**: `discover_and_register()` skips hosts already covered by an active relay connection.
 
-**Files**: `backend/app/core/compute_pool.py`, `backend/app/api/routes/compute.py`
+**Files**: `backend/app/core/compute_pool.py`, `backend/app/core/compute_registry.py`, `backend/app/api/routes/compute.py`, `backend/app/core/network_discovery.py`
 
 ### Consensus Engine
 

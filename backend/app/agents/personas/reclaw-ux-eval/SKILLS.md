@@ -113,6 +113,13 @@
 ### Layout Stability Impact on UX
 - Compute Pool scrollable, Meta-Agent overflow fixed, Chat scroll fixed. Evaluate: do these fixes improve task completion confidence? Previously, users may have abandoned features due to layout issues (truncated content perceived as broken). Chat scroll stability is critical — erratic scrolling during conversation breaks flow and violates the user's mental model of a chat interface.
 
+### Compute Pool UX — Simplified Mental Model
+- Users now see one node per machine instead of confusing Network + Relay duplicate entries. Evaluate: does this reduce cognitive load when scanning the pool list (Miller's Law — fewer items to parse)? Is the single-entry model consistent with user expectations of "one machine = one row" (Jakob's Law)?
+- Capability badges (tool support, vision, context length) now appear on relay nodes. Evaluate: do badges provide useful information scent for choosing which node to prefer, or are they noise for non-technical researchers? Is badge placement consistent with local/network node badges (Consistency)?
+- Nodes with capabilities still being detected remain visible with a pending state rather than disappearing. Evaluate: does showing "detecting..." reduce anxiety compared to nodes vanishing and reappearing (Doherty Threshold — system communicates what it is doing)? Is the pending state distinguishable from "no capabilities"?
+- The relay node displays a resolved IP instead of "localhost". Evaluate: does showing the real IP help users identify which team member's machine is providing compute, or does it introduce unnecessary technical detail? Consider whether a friendly hostname or label would serve better.
+- Overall: the pool now presents a simpler, more accurate picture of available compute — fewer confusing states, better status accuracy, and a clearer mental model of the distributed compute topology.
+
 ## Limitations
 - Evaluations are heuristic-based, not empirical (no real user testing data)
 - Cannot measure actual task completion times or error rates without user sessions
