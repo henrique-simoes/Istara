@@ -69,7 +69,7 @@ export default function HomeClient() {
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [authenticated, setAuthenticated] = useState<boolean | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
-  const { projects, fetchProjects } = useProjectStore();
+  const { projects, activeProjectId, fetchProjects } = useProjectStore();
 
   // Check authentication on mount
   useEffect(() => {
@@ -167,7 +167,29 @@ export default function HomeClient() {
     return <LoginScreen onLogin={() => setAuthenticated(true)} />;
   }
 
+  // Views that require an active project to show meaningful content
+  const PROJECT_REQUIRED_VIEWS = new Set([
+    "chat", "tasks", "findings", "laws", "interviews", "documents",
+    "metrics", "context", "loops", "memory", "history", "interfaces",
+    "autoresearch", "backup",
+  ]);
+
   const renderView = () => {
+    // Guard: views that need a project show a prompt when none is selected
+    if (PROJECT_REQUIRED_VIEWS.has(activeView) && !activeProjectId) {
+      return (
+        <div className="flex-1 flex items-center justify-center p-8">
+          <div className="text-center max-w-sm">
+            <div className="text-4xl mb-3">📂</div>
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">No Project Selected</h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
+              Create or select a project in the sidebar to use {VIEW_NAMES[activeView] || "this view"}.
+            </p>
+          </div>
+        </div>
+      );
+    }
+
     switch (activeView) {
       case "chat": return <ChatView />;
       case "tasks": return <KanbanBoard />;

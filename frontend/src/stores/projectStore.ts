@@ -48,12 +48,19 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     try {
       const data = await projectsApi.list();
       set({ projects: data, loading: false });
-      // Restore saved project if it exists in the fetched list; fallback to first
+      // Restore saved project if it exists in the fetched list; fallback to first.
+      // CRITICAL: clear stale ID when no projects exist or saved ID is orphaned.
       const current = get().activeProjectId;
       const hasCurrent = current && data.some((p) => p.id === current);
-      if (!hasCurrent && data.length > 0) {
-        saveProjectId(data[0].id);
-        set({ activeProjectId: data[0].id });
+      if (!hasCurrent) {
+        if (data.length > 0) {
+          saveProjectId(data[0].id);
+          set({ activeProjectId: data[0].id });
+        } else {
+          // No projects at all — clear any stale ID
+          saveProjectId(null);
+          set({ activeProjectId: null });
+        }
       }
     } catch (e: any) {
       set({ error: e.message, loading: false });
