@@ -29,7 +29,31 @@ export default function FigmaTab() {
   const [designSystem, setDesignSystem] = useState<any>(null);
   const [dsError, setDsError] = useState<string | null>(null);
 
+  // Stitch/Google API
+  const [stitchKey, setStitchKey] = useState("");
+  const [savingStitch, setSavingStitch] = useState(false);
+  const [stitchSaved, setStitchSaved] = useState(false);
+  const [stitchError, setStitchError] = useState<string | null>(null);
+
   const figmaConfigured = status?.figma_configured;
+  const stitchConfigured = status?.stitch_configured;
+
+  const handleSaveStitch = async () => {
+    if (!stitchKey.trim()) return;
+    setSavingStitch(true);
+    setStitchError(null);
+    setStitchSaved(false);
+    try {
+      await interfacesApi.configure.stitch({ api_key: stitchKey.trim() });
+      setStitchSaved(true);
+      setStitchKey("");
+      useInterfacesStore.getState().fetchStatus();
+    } catch (e: any) {
+      setStitchError(e.message);
+    } finally {
+      setSavingStitch(false);
+    }
+  };
 
   const handleSaveToken = async () => {
     if (!apiToken.trim()) return;
@@ -137,6 +161,60 @@ export default function FigmaTab() {
             className="inline-flex items-center gap-1 text-sm text-reclaw-600 hover:text-reclaw-700 dark:text-reclaw-400 mt-2"
           >
             <ExternalLink size={12} /> Get your Figma API token
+          </a>
+        </section>
+
+        {/* Google Stitch Configuration */}
+        <section>
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-1">Google Stitch (Generative AI)</h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
+            Connect Google Generative AI to enable AI-powered screen generation via the Stitch MCP protocol.
+          </p>
+
+          <div className="flex items-center gap-2 mb-3">
+            {stitchConfigured ? (
+              <span className="flex items-center gap-1 text-sm text-green-600 dark:text-green-400">
+                <CheckCircle2 size={14} /> Connected
+              </span>
+            ) : (
+              <span className="flex items-center gap-1 text-sm text-slate-400">
+                <XCircle size={14} /> Not configured
+              </span>
+            )}
+          </div>
+
+          <div className="flex gap-2">
+            <input
+              type="password"
+              value={stitchKey}
+              onChange={(e) => setStitchKey(e.target.value)}
+              placeholder="Google API key"
+              className="flex-1 px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+            />
+            <button
+              onClick={handleSaveStitch}
+              disabled={!stitchKey.trim() || savingStitch}
+              className="flex items-center gap-1.5 px-4 py-2 text-sm bg-reclaw-600 text-white rounded-lg hover:bg-reclaw-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {savingStitch ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+              Save
+            </button>
+          </div>
+
+          {stitchSaved && (
+            <p className="text-sm text-green-600 dark:text-green-400 mt-2">Google API key saved successfully.</p>
+          )}
+          {stitchError && (
+            <p className="text-sm text-red-600 dark:text-red-400 mt-2">{stitchError}</p>
+          )}
+
+          <a
+            href="https://aistudio.google.com/app/apikey"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-sm text-reclaw-600 hover:text-reclaw-700 dark:text-reclaw-400 mt-2"
+          >
+            <ExternalLink size={12} /> Get your Google AI API key
           </a>
         </section>
 

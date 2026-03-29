@@ -130,6 +130,16 @@
 - **Network discovery skip**: Establish a relay connection, then trigger a network scan. Verify the scan does not re-register a node for the relay-covered provider. After relay disconnects, verify the next scan can re-discover the node as a network entry.
 - **No "Local Only" when relay online**: With a relay connected, verify the compute pool does not show misleading "Local Only" status. The pool should reflect that remote compute is available via the relay.
 
+### Feature Update — March 2026 Simulation Scenarios
+- **Surveys and MCP API unwrapping**: Call `/api/integrations` and `/api/mcp/servers`, verify responses return wrapped objects (`{integrations: [], servers: []}`), not raw arrays. Parse the wrapper and verify the inner array is correctly typed. Test edge case: empty arrays should still be wrapped.
+- **Sidebar layout regression**: Simulate adding 50+ projects, verify the sidebar remains scrollable without layout breakage. Verify the "More" nav item does not overflow or push content offscreen. Test rapid navigation between projects while the list is scrolled.
+- **Agent heartbeat recovery**: Simulate heartbeat loss by pausing the agent worker for >120 seconds. Verify auto-recovery triggers, the agent transitions back to healthy status, and error counters reset to zero. Test the manual restart endpoint (`POST /api/agents/{id}/restart`) and verify it returns 200 with cleared state. Test rapid restart calls to verify idempotency.
+- **Project CRUD via context menu**: Create a project, then pause it via API (`PATCH /api/projects/{id}` with `is_paused: true`). Verify `is_paused` persists and the project stops generating agent work. Resume and verify work resumes. Delete the project and verify cascading cleanup (tasks, findings, sessions removed). Test deleting a paused project.
+- **Team mode toggle persistence**: Toggle team mode on via Settings API, verify `.env` contains `TEAM_MODE=true`. Toggle off, verify `.env` updated. Restart the server simulation and verify the persisted value is loaded correctly.
+- **Document Organize streaming**: Upload 10+ documents to a project, invoke the Organize endpoint, and verify the streaming response produces valid organizational suggestions. Test with zero documents (should return a meaningful empty-state message, not an error).
+- **Loops skill dropdown validation**: Create a custom loop, verify the skill picker returns the full skill catalog. Select a skill from the dropdown, save the loop, and verify the skill ID is persisted correctly. Test with an invalid/deleted skill ID — verify graceful error handling.
+- **Design Brief evidence and law badges**: Generate a design brief with UX law violations, verify badges render with correct violation counts. Navigate "View violations" and verify the findings list is filtered to the correct law ID. Test with zero violations — verify no badge is shown.
+
 ## Limitations
 - Cannot test actual browser rendering (tests are API-level, not visual)
 - Cannot simulate real user mouse movements or visual scanning patterns

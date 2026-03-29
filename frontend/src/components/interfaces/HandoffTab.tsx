@@ -120,6 +120,63 @@ export default function HandoffTab() {
                       <div className="mt-3 text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap">
                         {brief.content}
                       </div>
+
+                      {/* UX Laws Referenced */}
+                      {brief.ux_laws && brief.ux_laws.length > 0 && (
+                        <div className="mt-4 p-3 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800">
+                          <h5 className="text-xs font-semibold text-indigo-700 dark:text-indigo-400 mb-2">UX Laws Referenced</h5>
+                          <div className="flex flex-wrap gap-1.5">
+                            {brief.ux_laws.map((law: string, i: number) => (
+                              <span key={i} className="inline-flex px-2 py-0.5 text-xs rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300">
+                                {law}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Evidence / Source Findings */}
+                      {brief.source_findings && brief.source_findings.length > 0 && (
+                        <div className="mt-3 p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
+                          <h5 className="text-xs font-semibold text-slate-600 dark:text-slate-400 mb-2">
+                            Evidence ({brief.source_findings.length} finding{brief.source_findings.length !== 1 ? "s" : ""})
+                          </h5>
+                          <div className="space-y-1.5">
+                            {brief.source_findings.slice(0, 5).map((f: any, i: number) => (
+                              <div key={i} className="flex items-start gap-2 text-xs">
+                                <span className={`shrink-0 px-1.5 py-0.5 rounded font-medium ${
+                                  f.type === "nugget" ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400" :
+                                  f.type === "insight" ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" :
+                                  "bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-400"
+                                }`}>
+                                  {f.type || "finding"}
+                                </span>
+                                <span className="text-slate-600 dark:text-slate-400 line-clamp-2">{f.text}</span>
+                              </div>
+                            ))}
+                            {brief.source_findings.length > 5 && (
+                              <p className="text-xs text-slate-400 italic">+{brief.source_findings.length - 5} more</p>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Recommendations with law references */}
+                      {brief.recommendations && brief.recommendations.length > 0 && (
+                        <div className="mt-3 p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
+                          <h5 className="text-xs font-semibold text-green-700 dark:text-green-400 mb-2">Recommendations</h5>
+                          <ul className="space-y-1.5 list-disc list-inside text-xs text-green-800 dark:text-green-300">
+                            {brief.recommendations.map((rec: any, i: number) => (
+                              <li key={i}>
+                                {typeof rec === "string" ? rec : rec.text}
+                                {rec.law && (
+                                  <span className="ml-1 text-indigo-600 dark:text-indigo-400 font-medium">({rec.law})</span>
+                                )}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

@@ -38,6 +38,12 @@ export default function IntegrationsView() {
     return () => { cancelled = true; };
   }, [fetchChannels]);
 
+  // Clear error when switching tabs so one tab's error doesn't block others
+  const handleTabChange = (tab: IntegrationsTab) => {
+    useIntegrationsStore.setState({ error: null });
+    setActiveTab(tab);
+  };
+
   const renderTab = () => {
     switch (activeTab) {
       case "overview": return <IntegrationsOverview />;
@@ -56,7 +62,7 @@ export default function IntegrationsView() {
         {TABS.map((tab) => (
           <button
             key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
+            onClick={() => handleTabChange(tab.id)}
             className={cn(
               "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors",
               activeTab === tab.id
@@ -71,20 +77,7 @@ export default function IntegrationsView() {
       </div>
 
       {/* Active tab content */}
-      {error ? (
-        <div className="flex-1 flex items-center justify-center p-8">
-          <div className="text-center">
-            <p className="text-sm text-red-500 mb-2">Failed to load integrations</p>
-            <p className="text-xs text-slate-400">{error}</p>
-            <button
-              onClick={() => fetchChannels()}
-              className="mt-4 px-4 py-2 text-sm bg-reclaw-600 text-white rounded-lg hover:bg-reclaw-700 transition-colors"
-            >
-              Retry
-            </button>
-          </div>
-        </div>
-      ) : initialLoading ? (
+      {initialLoading ? (
         <div className="flex-1 flex items-center justify-center p-8">
           <Loader2 size={24} className="animate-spin text-reclaw-500" />
           <span className="ml-2 text-sm text-slate-400">Loading integrations...</span>

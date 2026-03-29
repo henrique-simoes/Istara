@@ -31,6 +31,8 @@ interface ProjectStore {
   createProject: (name: string, description?: string) => Promise<Project>;
   updateProject: (id: string, data: Record<string, unknown>) => Promise<void>;
   deleteProject: (id: string) => Promise<void>;
+  pauseProject: (id: string) => Promise<void>;
+  resumeProject: (id: string) => Promise<void>;
 
   activeProject: () => Project | undefined;
 }
@@ -90,6 +92,24 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
         activeProjectId: newActiveId,
       };
     });
+  },
+
+  pauseProject: async (id: string) => {
+    await projectsApi.pause(id);
+    set((s) => ({
+      projects: s.projects.map((p) =>
+        p.id === id ? { ...p, is_paused: true } : p
+      ),
+    }));
+  },
+
+  resumeProject: async (id: string) => {
+    await projectsApi.resume(id);
+    set((s) => ({
+      projects: s.projects.map((p) =>
+        p.id === id ? { ...p, is_paused: false } : p
+      ),
+    }));
   },
 
   activeProject: () => {

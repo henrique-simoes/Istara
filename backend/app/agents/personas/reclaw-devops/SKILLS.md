@@ -129,6 +129,15 @@
 - Network discovery skip: network scan now skips registering nodes already covered by a relay connection. Monitor: scan logs for skip events, verify relay-covered nodes are not re-added after relay disconnects (they should be re-discoverable).
 - These changes reduce false alerts from the compute pool: fewer duplicate node warnings, fewer "node unreachable" errors from localhost resolution failures, and more accurate capability reporting.
 
+### Feature Update — March 2026
+- Agent heartbeat recovery: agents now auto-recover after 120 seconds of heartbeat loss, with a manual restart endpoint (`POST /api/agents/{id}/restart`). Error counters are cleared on successful recovery. Monitor for: restart loops, counters not resetting, recovery timing drift.
+- Project model changes: `is_paused` (boolean) and `owner_id` (foreign key to User) added to the Project model. Pause/resume/delete operations exposed via sidebar context menu API. Monitor for: orphaned projects after user deletion, pause state not propagating to active agent tasks.
+- Surveys and MCP API wrapper fix: backend endpoints now return wrapped objects (`{integrations: [], servers: []}`) instead of raw arrays. This fixed frontend deserialization errors. Monitor for: any new endpoints that return unwrapped arrays (regression), type mismatches in API consumers.
+- Relay immediate capability detection: capabilities are now detected at relay registration time via HTTP probe, not deferred to the health loop. This eliminates the window where relay nodes appear without capability badges. Monitor for: registration latency increase due to synchronous probe, probe timeout blocking registration.
+- Settings label updates: Hardware section labeled "(Server)", model field shows "Server Model". Backend serves these labels from config — monitor for localization or config desync issues.
+- Team mode toggle: UI switch writes `TEAM_MODE=true|false` to `.env` file. Monitor for: `.env` write permission failures, config reload race conditions, team mode state inconsistency between in-memory config and `.env`.
+- Google Stitch API key: new encrypted field stored via Fernet encryption for Google Generative AI credentials. Monitor for: encryption/decryption failures, key rotation impact on this field.
+
 ## Limitations
 - Read-only access to user data (cannot modify findings, projects, or user settings)
 - Cannot restart or reconfigure LLM services (report only)
