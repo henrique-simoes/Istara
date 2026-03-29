@@ -17,6 +17,7 @@ import {
 import { metaHyperagent as metaApi } from "@/lib/api";
 import type { MetaProposal, MetaVariant, MetaHyperagentStatus } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import ViewOnboarding from "@/components/common/ViewOnboarding";
 
 function timeAgo(dateStr: string): string {
   const now = new Date();
@@ -200,6 +201,7 @@ export default function MetaHyperagentView() {
 
   return (
     <div className="flex-1 overflow-y-auto p-6 max-w-4xl mx-auto space-y-6">
+      <ViewOnboarding viewId="meta-hyperagent" title="Self-Improvement Engine" description="The meta-agent's audit trail — hyperparameter tuning, A/B testing, and self-modification. Agents optimize themselves." chatPrompt="What does the meta-agent do?" />
       {/* Header */}
       <div className="flex items-center gap-3">
         <Sparkles size={24} className="text-reclaw-600 dark:text-reclaw-400" />

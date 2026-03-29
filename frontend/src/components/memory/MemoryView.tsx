@@ -20,6 +20,7 @@ import ContextDAGView from "./ContextDAGView";
 import { memory as memoryApi, agents as agentsApi } from "@/lib/api";
 import { useProjectStore } from "@/stores/projectStore";
 import { cn } from "@/lib/utils";
+import ViewOnboarding from "@/components/common/ViewOnboarding";
 
 type MemoryTab = "knowledge" | "agent" | "health" | "context-dag";
 
@@ -608,6 +609,7 @@ export default function MemoryView() {
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
+      <ViewOnboarding viewId="memory" title="Knowledge Base" description="Your project's knowledge — RAG embeddings, agent memory, and context DAG. This is what agents 'know' about your research." chatPrompt="How does the knowledge base work?" />
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-800">
         <div className="flex items-center gap-3">

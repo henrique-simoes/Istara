@@ -25,6 +25,7 @@ import {
 import { skills as skillsApi } from "@/lib/api";
 import { useProjectStore } from "@/stores/projectStore";
 import { cn } from "@/lib/utils";
+import ViewOnboarding from "@/components/common/ViewOnboarding";
 
 type PhaseFilter = "all" | "discover" | "define" | "develop" | "deliver";
 type Tab = "catalog" | "proposals" | "create";
@@ -292,6 +293,7 @@ export default function SkillsView() {
 
   return (
     <div className="flex-1 overflow-y-auto p-6 max-w-4xl mx-auto space-y-5" tabIndex={0} role="region" aria-label="Skills catalog">
+      <ViewOnboarding viewId="skills" title="Research Skills" description="53 research skills — card sorting, heuristic evaluation, affinity mapping, and more. Skills self-improve through use." chatPrompt="What skills are available?" />
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">

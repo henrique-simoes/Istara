@@ -20,6 +20,7 @@ import type { FindingsSummary, Nugget, Fact, Insight, Recommendation, ProjectPha
 import { cn, confidenceColor, phaseLabel } from "@/lib/utils";
 import AtomicDrilldown from "./AtomicDrilldown";
 import LawBadge from "@/components/laws/LawBadge";
+import ViewOnboarding from "@/components/common/ViewOnboarding";
 
 // Research Integrity sub-views
 const CodebookViewer = lazy(() => import("./CodebookViewer"));
@@ -138,6 +139,7 @@ export default function FindingsView() {
 
   return (
     <div className="flex-1 overflow-y-auto">
+      <ViewOnboarding viewId="findings" title="Research Evidence" description="Nuggets, facts, insights, and recommendations from your research. Auto-generated as agents analyze data. Filter by phase and type." chatPrompt="How do findings work in ReClaw?" />
       {/* Header */}
       <div className="p-4 border-b border-slate-200 dark:border-slate-800">
         <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">

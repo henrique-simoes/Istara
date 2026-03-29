@@ -9,6 +9,7 @@ import { useAgentStore } from "@/stores/agentStore";
 import { cn, formatDate } from "@/lib/utils";
 import { files as filesApi } from "@/lib/api";
 import { ChatSkeleton } from "@/components/common/LoadingSkeleton";
+import ViewOnboarding from "@/components/common/ViewOnboarding";
 import ChatSessionsSidebar from "./ChatSessionsSidebar";
 
 /* ── Chat Avatars ── */
@@ -421,6 +422,7 @@ export default function ChatView() {
 
   return (
     <div className="flex-1 flex min-h-0 overflow-hidden">
+      <ViewOnboarding viewId="chat" title="Your Research Assistant" description="Chat with your AI agent about research. Upload files, ask questions, or run analysis skills. Agents understand your project context." chatPrompt="What can I do in Chat?" />
       {activeProjectId && (
         <ChatSessionsSidebar projectId={activeProjectId} />
       )}

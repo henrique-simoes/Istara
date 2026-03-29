@@ -273,12 +273,38 @@ class FileWatcher:
 
     # ── File processing ─────────────────────────────────────────────────
 
+    # Cloud-sync temp file patterns to skip
+    _TEMP_PATTERNS = {
+        ".partial", ".tmp", ".crdownload", ".download", ".part",
+    }
+    _TEMP_PREFIXES = ("~$", ".~", "._")
+
+    def _is_temp_file(self, path: Path) -> bool:
+        """Check if a file is a temporary/partial file from cloud sync or editors."""
+        name = path.name
+        suffix = path.suffix.lower()
+        if suffix in self._TEMP_PATTERNS:
+            return True
+        if any(name.startswith(p) for p in self._TEMP_PREFIXES):
+            return True
+        if name.endswith("~"):
+            return True
+        return False
+
     async def _process_file(self, file_path: Path, project_id: str) -> dict | None:
         """Process a single file and ingest into the vector store.
 
         Returns:
             Summary dict of what was processed, or None if skipped/failed.
         """
+        # Skip cloud-sync temp files
+        if self._is_temp_file(file_path):
+            return None
+
+        # Skip if file disappeared (cloud conflict resolution)
+        if not file_path.exists():
+            return None
+
         suffix = file_path.suffix.lower()
         if suffix not in get_supported_extensions():
             return None

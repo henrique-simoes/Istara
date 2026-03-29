@@ -6,6 +6,7 @@ import { useLawsStore } from "@/stores/lawsStore";
 import { cn } from "@/lib/utils";
 import LawsCatalog from "./LawsCatalog";
 import ComplianceProfile from "./ComplianceProfile";
+import ViewOnboarding from "@/components/common/ViewOnboarding";
 
 type LawsTab = "catalog" | "compliance";
 
@@ -34,6 +35,7 @@ export default function LawsView() {
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
+      <ViewOnboarding viewId="laws" title="Laws of UX Compliance" description="30 Laws of UX (Yablonski, 2024) with compliance scoring. See which laws your design violates based on evaluation findings." chatPrompt="What are the Laws of UX?" />
       {/* Tab bar */}
       <div className="flex items-center gap-1 px-4 py-2 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-x-auto">
         {TABS.map((tab) => (

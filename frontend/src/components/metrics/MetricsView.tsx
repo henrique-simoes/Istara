@@ -5,6 +5,7 @@ import { BarChart3, Target, TrendingUp, CheckCircle, MessageSquare, Loader2, Ale
 import { useProjectStore } from "@/stores/projectStore";
 import { cn } from "@/lib/utils";
 import { ApiError } from "@/hooks/useApiCall";
+import ViewOnboarding from "@/components/common/ViewOnboarding";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -65,6 +66,7 @@ export default function MetricsView() {
 
   return (
     <div className="flex-1 overflow-y-auto p-6">
+      <ViewOnboarding viewId="metrics" title="Research Metrics" description="Quantitative dashboard — finding counts, skill effectiveness, project velocity. Track your research progress." chatPrompt="What metrics does ReClaw track?" />
       <div className="max-w-5xl mx-auto">
         <h2 className="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2 mb-6">
           <BarChart3 size={20} /> 📊 Research Metrics

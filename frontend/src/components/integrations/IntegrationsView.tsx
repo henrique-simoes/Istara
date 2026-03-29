@@ -5,6 +5,7 @@ import { MessageSquare, BarChart3, FileQuestion, Plug, Rocket, Loader2 } from "l
 import { useIntegrationsStore } from "@/stores/integrationsStore";
 import { cn } from "@/lib/utils";
 import ErrorBoundary from "@/components/common/ErrorBoundary";
+import ViewOnboarding from "@/components/common/ViewOnboarding";
 import MessagingTab from "./MessagingTab";
 import SurveysTab from "./SurveysTab";
 import MCPTab from "./MCPTab";
@@ -57,6 +58,7 @@ export default function IntegrationsView() {
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
+      <ViewOnboarding viewId="integrations" title="External Services" description="Connect messaging channels (Slack, Telegram), survey platforms, MCP servers, and research deployments." chatPrompt="What integrations are available?" />
       {/* Tab bar */}
       <div className="flex items-center gap-1 px-4 py-2 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-x-auto">
         {TABS.map((tab) => (

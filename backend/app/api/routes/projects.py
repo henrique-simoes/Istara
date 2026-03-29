@@ -1,7 +1,10 @@
 """Project CRUD API routes."""
 
+import logging
 import uuid
 from datetime import datetime, timezone
+
+logger = logging.getLogger(__name__)
 
 from pathlib import Path
 
@@ -52,6 +55,7 @@ class ProjectResponse(BaseModel):
     guardrails: str
     is_paused: bool = False
     owner_id: str = ""
+    watch_folder_path: str | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -168,6 +172,64 @@ async def resume_project(project_id: str, db: AsyncSession = Depends(get_db)):
     project.is_paused = False
     await db.commit()
     return {"status": "resumed", "project_id": project_id}
+
+
+@router.post("/projects/{project_id}/link-folder")
+async def link_folder(project_id: str, request: Request, db: AsyncSession = Depends(get_db)):
+    """Link an external folder to a project for automatic file monitoring.
+    Supports any local folder — Google Drive, Dropbox, or plain directories."""
+    body = await request.json()
+    folder_path = body.get("folder_path", "").strip()
+    if not folder_path:
+        raise HTTPException(status_code=400, detail="folder_path is required")
+
+    folder = Path(folder_path)
+    if not folder.exists():
+        raise HTTPException(status_code=400, detail=f"Folder does not exist: {folder_path}")
+    if not folder.is_dir():
+        raise HTTPException(status_code=400, detail=f"Path is not a directory: {folder_path}")
+
+    result = await db.execute(select(Project).where(Project.id == project_id))
+    project = result.scalar_one_or_none()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    project.watch_folder_path = str(folder.resolve())
+    await db.commit()
+
+    # Register with file watcher
+    file_watcher = getattr(request.app.state, "file_watcher", None)
+    if file_watcher:
+        file_watcher.add_watch(str(folder.resolve()), project_id)
+        logger.info(f"Linked external folder for project {project_id}: {folder.resolve()}")
+
+    return {
+        "status": "linked",
+        "project_id": project_id,
+        "watch_folder_path": str(folder.resolve()),
+    }
+
+
+@router.post("/projects/{project_id}/unlink-folder")
+async def unlink_folder(project_id: str, request: Request, db: AsyncSession = Depends(get_db)):
+    """Remove the external folder link from a project.
+    Existing documents are kept, but new files won't be monitored."""
+    result = await db.execute(select(Project).where(Project.id == project_id))
+    project = result.scalar_one_or_none()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    old_path = project.watch_folder_path
+    project.watch_folder_path = None
+    await db.commit()
+
+    # Remove from file watcher
+    file_watcher = getattr(request.app.state, "file_watcher", None)
+    if file_watcher and old_path:
+        file_watcher.remove_watch(old_path)
+        logger.info(f"Unlinked external folder for project {project_id}: {old_path}")
+
+    return {"status": "unlinked", "project_id": project_id}
 
 
 @router.delete("/projects/{project_id}", status_code=204)
