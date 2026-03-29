@@ -747,7 +747,10 @@ export const mcp = {
     exposure: () => get<any>("/api/mcp/server/exposure"),
   },
   clients: {
-    list: () => get<MCPServerConfig[]>("/api/mcp/clients"),
+    list: async (): Promise<MCPServerConfig[]> => {
+      const res = await get<any>("/api/mcp/clients");
+      return Array.isArray(res) ? res : (res?.servers ?? []);
+    },
     create: (data: { name: string; url: string; transport?: string; headers?: any }) =>
       post<MCPServerConfig>("/api/mcp/clients", data),
     delete: (id: string) => del(`/api/mcp/clients/${id}`),
@@ -756,7 +759,10 @@ export const mcp = {
     call: (id: string, toolName: string, args: any) =>
       post<any>(`/api/mcp/clients/${id}/call`, { tool_name: toolName, arguments: args }),
     health: (id: string) => get<any>(`/api/mcp/clients/${id}/health`),
-    allTools: () => get<any[]>("/api/mcp/clients/tools"),
+    allTools: async (): Promise<any[]> => {
+      const res = await get<any>("/api/mcp/clients/tools");
+      return Array.isArray(res) ? res : (res?.tools ?? []);
+    },
   },
   featured: {
     list: () => get<FeaturedMCPServer[]>("/api/mcp/featured"),
