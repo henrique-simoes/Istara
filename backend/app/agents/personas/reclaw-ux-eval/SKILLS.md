@@ -137,6 +137,12 @@
 - Reset hints discoverability: a Settings button clears all onboarding banners. Evaluate: is the reset action discoverable for users who dismissed banners too quickly and want them back (Recognition Rather Than Recall)? Is it placed near other onboarding-related settings, or buried in a general section?
 - Banner chat prompt suggestions: each banner includes a suggested chat prompt. Evaluate: do suggestions reduce time-to-first-interaction (Tesler's Law — complexity moved from user to system), or do they feel prescriptive? Are prompts contextual to the current view, making them genuinely useful starting points?
 
+### Production Installer & Desktop App
+- Installation friction: target is download-to-working in under 10 minutes. The 6-step setup wizard (mode, deps, LLM, config, progress, done) must feel fast. Evaluate: does the dependency download step show clear progress (Visibility of System Status)? Are optional deps clearly marked?
+- First-run experience: after install, user sees the Tauri tray icon and setup wizard. Evaluate: is the path from "just installed" to "open browser and see ReClaw" obvious (Goal-Gradient Effect)? Does auto-start on login match user expectations (Jakob's Law — similar apps auto-start)?
+- Dependency choice UX: users choose Python, Node, Ollama, LM Studio. Evaluate: are descriptions clear for non-developers? Does the checkbox-with-detection pattern reduce friction (Recognition Rather Than Recall)?
+- Uninstall data preservation: "Keep your research data?" dialog. Evaluate: is the consequence of each choice clear? Default should be "keep" to prevent accidental data loss (Error Prevention).
+
 ### Auth & Onboarding Fixes
 - First-run onboarding flow: LoginScreen auto-detects a fresh server and shows registration instead of login. Evaluate: does this follow Recognition Rather Than Recall (H6) — users do not need to know they must register first, the system guides them? Is the transition from "no users exist" to "register" seamless and self-explanatory?
 - First-user admin messaging: the first registered user automatically becomes admin. Evaluate: is this communicated clearly before submission (Visibility of System Status)? Does the messaging reduce anxiety ("you will be the administrator") rather than create confusion? Is the admin concept explained in-context for non-technical researchers?

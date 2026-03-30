@@ -1015,12 +1015,49 @@ Built with Tauri v2 (5-15 MB binary, ~20 MB RAM). Rust backend for process manag
 
 ## Cross-Platform Installer
 
-- **macOS:** `.dmg` via `create-dmg` with notarization support. Tauri universal binary (Intel + Apple Silicon).
-- **Windows:** `.exe` via NSIS. Install mode selector (Full/Client-only), dependency checker, Start Menu shortcuts.
-- **Dependency checker:** Python 3.11+, Node 18+, LM Studio/Ollama detection with download links.
-- **`.env` wizard:** Generates `.env` from template with guided LLM provider detection and secret generation.
+### macOS (.dmg)
+Complete installer with bundled source code. `build-dmg.sh` builds the Tauri universal binary (Intel + Apple Silicon), bundles backend/frontend/relay source into `ReClaw.app/Contents/Resources/reclaw/`, creates `.dmg` with drag-to-Applications UX, and optionally notarizes via `xcrun notarytool`. LaunchAgent (`com.reclaw.server.plist`) enables auto-start on login.
 
-**Files:** `installer/macos/build-dmg.sh`, `installer/windows/nsis-installer.nsi`
+### Windows (.exe via NSIS + MUI2)
+Full installer wizard with:
+- Install mode page: "Server (Full Install)" vs "Client Only"
+- Dependency detection: auto-detects Python, Node.js, Ollama via command execution
+- Dependency download: fetches Python 3.12, Node.js 20, Ollama from official sources
+- LLM provider selection: LM Studio (recommended) vs Ollama
+- Backend setup: creates Python venv, `pip install -r requirements.txt`, `npm ci`, `npm run build`
+- Registry: Add/Remove Programs entry, Start Menu shortcuts, optional auto-start via Run key
+- Uninstaller: stops processes, removes files, offers to keep research data
+
+### Desktop App (Tauri v2) — Process Management
+System tray app that actually manages backend, frontend, and relay as child processes:
+- `ProcessManager` (Rust) spawns/kills uvicorn, Next.js, and relay daemon
+- `find_python()` finds venv or system Python, platform-specific
+- Health polling via TCP connect to ports 8000/3000 every 10s
+- Tray menu events wired to real start/stop/relay/quit commands
+- First-run setup wizard (HTML in Tauri webview) with dependency detection and installation
+- Config at `~/.reclaw/config.json` for mode, server URL, connection string, install dir
+
+### CI/CD (GitHub Actions)
+`.github/workflows/build-installers.yml` auto-builds on every push to main:
+- macOS: Builds Tauri universal binary, bundles source, creates DMG
+- Windows: Builds Tauri EXE, creates NSIS installer
+- On tag push (v*): creates GitHub Release with DMG + EXE artifacts
+
+### Dependency Installer (Rust)
+`desktop/src-tauri/src/installer.rs` handles platform-specific dependency installation:
+- macOS: Downloads `.pkg` from python.org/nodejs.org, runs `installer` command; Ollama via curl install script
+- Windows: Downloads `.exe`/`.msi`, runs silent install; PowerShell for downloads
+- Detection: `python3 --version`, `node --version`, TCP port probes for LM Studio/Ollama
+
+### Secret Generation
+`scripts/generate-secrets.sh` generates ALL production secrets:
+- `JWT_SECRET` — 32-byte base64 for token signing
+- `DATA_ENCRYPTION_KEY` — 32-byte base64 for data at rest
+- `NETWORK_ACCESS_TOKEN` — 32-byte for relay/network auth
+- `RELAY_TOKEN` — 24-byte for relay daemon auth
+- `POSTGRES_PASSWORD` — 16-byte for team mode PostgreSQL
+
+**Files:** `installer/macos/build-dmg.sh`, `installer/macos/com.reclaw.server.plist`, `installer/windows/nsis-installer.nsi`, `installer/windows/reclaw-service.bat`, `.github/workflows/build-installers.yml`, `desktop/src-tauri/src/{main,commands,process,tray,health,installer,backend_setup,config,stats}.rs`
 
 ## Browser Compute Donation
 
