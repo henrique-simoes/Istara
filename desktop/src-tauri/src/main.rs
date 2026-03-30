@@ -88,7 +88,11 @@ fn main() {
             // Graceful shutdown on window close
             if let tauri::WindowEvent::Destroyed = event {
                 if window.label() == "main" || window.label() == "setup" {
-                    let pm_arc = window.state::<AppState>().process_manager.clone();
+                    // Clone Arc in its own block so the State borrow ends before we use the Arc
+                    let pm_arc = {
+                        let state = window.state::<AppState>();
+                        state.process_manager.clone()
+                    };
                     if let Ok(mut guard) = pm_arc.lock() {
                         guard.stop_all();
                     }
