@@ -9,7 +9,10 @@
 # ═══════════════════════════════════════════════════════════════════
 { # Wraps entire script so partial downloads don't execute
 
-set -euo pipefail
+set -eo pipefail
+
+# Show where the script fails if it crashes
+trap 'echo ""; echo "  ✗ Installation failed at line $LINENO. Please report this at:"; echo "    https://github.com/henrique-simoes/Istara/issues"; echo ""' ERR
 
 REPO="henrique-simoes/Istara"
 INSTALL_DIR="${ISTARA_DIR:-$HOME/.istara}"
@@ -66,24 +69,41 @@ case "$OS" in
     *) fail "Unsupported platform: $OS"; exit 1 ;;
 esac
 
-# ── Version comparison ───────────────────────────────────────────
+# ── Version comparison (no sort -V, works on all macOS) ──────────
 version_ge() {
     local v1="$1" v2="$2"
-    [ "$(printf '%s\n' "$v1" "$v2" | sort -V | head -n1)" = "$v2" ]
+    local major1 minor1 major2 minor2
+    major1=$(echo "$v1" | cut -d. -f1)
+    minor1=$(echo "$v1" | cut -d. -f2)
+    major2=$(echo "$v2" | cut -d. -f1)
+    minor2=$(echo "$v2" | cut -d. -f2)
+    [ "${major1:-0}" -gt "${major2:-0}" ] && return 0
+    [ "${major1:-0}" -eq "${major2:-0}" ] && [ "${minor1:-0}" -ge "${minor2:-0}" ] && return 0
+    return 1
 }
 
 # ── Dependency detection ─────────────────────────────────────────
 detect_python() {
-    local paths=("python3" "/opt/homebrew/bin/python3" "/usr/local/bin/python3"
+    local paths=(
+        "/opt/homebrew/bin/python3.12"
+        "/opt/homebrew/bin/python3"
+        "/usr/local/bin/python3"
         "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3"
         "/Library/Frameworks/Python.framework/Versions/3.11/bin/python3"
-        "$HOME/.pyenv/shims/python3" "/usr/bin/python3")
+        "$HOME/.pyenv/shims/python3"
+        "python3"
+    )
     for py in "${paths[@]}"; do
-        if command -v "$py" >/dev/null 2>&1 || [ -x "$py" ]; then
-            local ver; ver=$("$py" --version 2>&1 | grep -oE '[0-9]+\.[0-9]+' | head -1)
-            if version_ge "${ver:-0}" "3.11"; then
-                echo "$py"; return 0
-            fi
+        # Skip if not executable
+        if ! command -v "$py" >/dev/null 2>&1 && ! [ -x "$py" ]; then
+            continue
+        fi
+        # Get version (skip Apple CLI tools stub which opens a dialog)
+        local ver=""
+        ver=$("$py" --version 2>&1 | grep -oE '[0-9]+\.[0-9]+' | head -1 || true)
+        if [ -n "$ver" ] && version_ge "$ver" "3.11"; then
+            echo "$py"
+            return 0
         fi
     done
     return 1
@@ -152,7 +172,13 @@ ensure_homebrew() {
 }
 
 ensure_python() {
-    detect_python >/dev/null 2>&1 && { ok "Python $($(detect_python) --version 2>&1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')"; return 0; }
+    local found_py=""
+    found_py=$(detect_python 2>/dev/null) || found_py=""
+    if [ -n "$found_py" ]; then
+        local pyver; pyver=$("$found_py" --version 2>&1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || echo "unknown")
+        ok "Python $pyver ($found_py)"
+        return 0
+    fi
     info "Installing Python 3.12..."
     ensure_homebrew
     brew install python@3.12
@@ -235,7 +261,7 @@ if [ "$MODE" = "server" ]; then
         echo "    ${BOLD}b)${NC} Ollama    — ${DIM}https://ollama.com${NC} (CLI, lightweight)"
         echo ""
         ask "Install now? [a/b/skip]: "
-        local llm_choice=""; read -r llm_choice </dev/tty
+        llm_choice=""; read -r llm_choice </dev/tty
         case "$llm_choice" in
             a|A) open "https://lmstudio.ai" 2>/dev/null || true; LLM_PROVIDER="lmstudio" ;;
             b|B)
@@ -273,35 +299,38 @@ ok "Version: $VERSION"
 if [ "$MODE" = "server" ]; then
     header "Step 4: Backend Setup"
 
-    PYTHON=$(detect_python)
+    PYTHON=$(detect_python) || { fail "Python 3.11+ not found. Install it and try again."; exit 1; }
+    info "Using Python: $PYTHON"
 
     # Create venv
     if [ ! -d "$INSTALL_DIR/venv" ]; then
         info "Creating Python virtual environment..."
-        "$PYTHON" -m venv "$INSTALL_DIR/venv"
+        "$PYTHON" -m venv "$INSTALL_DIR/venv" || { fail "Failed to create venv. Is python3-venv installed?"; exit 1; }
         ok "Virtual environment created"
     else
         ok "Virtual environment exists"
     fi
 
     # Install pip deps
-    info "Installing backend dependencies (this takes 1-2 minutes)..."
-    "$INSTALL_DIR/venv/bin/pip" install --upgrade pip --quiet
-    "$INSTALL_DIR/venv/bin/pip" install -r "$INSTALL_DIR/backend/requirements.txt" --quiet
+    info "Upgrading pip..."
+    "$INSTALL_DIR/venv/bin/pip" install --upgrade pip 2>&1 | tail -1
+    info "Installing backend dependencies (this takes 1-3 minutes)..."
+    "$INSTALL_DIR/venv/bin/pip" install -r "$INSTALL_DIR/backend/requirements.txt" 2>&1 | grep -E "^(Collecting|Installing|Successfully)" | head -20 || true
     ok "Backend dependencies installed"
 
     # Frontend
     header "Step 5: Frontend Setup"
-    NPM=$(detect_npm)
-    info "Installing frontend dependencies..."
+    NPM=$(detect_npm) || { fail "npm not found. Install Node.js and try again."; exit 1; }
+    info "Using npm: $NPM"
+    info "Installing frontend dependencies (this takes 1-2 minutes)..."
     cd "$INSTALL_DIR/frontend"
-    "$NPM" ci --silent 2>/dev/null || "$NPM" install --silent
+    "$NPM" ci 2>&1 | tail -3 || "$NPM" install 2>&1 | tail -3
     ok "Frontend dependencies installed"
 
     info "Building frontend (this takes 1-2 minutes)..."
     NEXT_PUBLIC_API_URL="http://localhost:8000" \
     NEXT_PUBLIC_WS_URL="ws://localhost:8000" \
-    "$NPM" run build --silent
+    "$NPM" run build 2>&1 | tail -5 || { fail "Frontend build failed"; exit 1; }
     ok "Frontend built"
 
     # Data directories
