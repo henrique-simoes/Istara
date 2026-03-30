@@ -134,10 +134,6 @@ NETWORK_ACCESS_TOKEN={net}
 # Team mode (set to true for multi-user)
 TEAM_MODE=false
 
-# Frontend URLs
-NEXT_PUBLIC_API_URL=http://localhost:8000
-NEXT_PUBLIC_WS_URL=ws://localhost:8000
-
 # CORS
 CORS_ORIGINS=http://localhost:3000
 

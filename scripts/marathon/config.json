@@ -115,7 +115,17 @@
         "auto_update_git_pull",
         "update_notification_broadcast",
         "startup_update_check",
-        "cli_update_command"
+        "cli_update_command",
+        "tray_shell_delegation_start",
+        "tray_shell_delegation_stop",
+        "tray_menu_label_reflects_port_state",
+        "tray_donate_toggle_saves_config",
+        "tray_donate_shows_feedback_dialog",
+        "tray_lm_click_shows_dialog",
+        "tray_check_updates_three_tier",
+        "tray_update_shows_result_dialog",
+        "tray_health_loop_state_change_rebuild",
+        "tray_ansi_strip_from_script_output"
       ]
     }
   ],

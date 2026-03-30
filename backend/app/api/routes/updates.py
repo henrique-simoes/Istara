@@ -409,9 +409,9 @@ async def check_for_updates_on_startup():
                 "message": f"Update from {current} to {latest_tag}. Go to Settings to update.",
                 "current_version": current,
                 "latest_version": latest_tag,
-                })
-            except Exception as e:
-                logger.debug(f"Failed to persist update notification: {e}")
+            })
+        except Exception as e:
+            logger.debug(f"Failed to persist update notification: {e}")
 
     except Exception as e:
         logger.debug(f"Startup update check failed: {e}")
