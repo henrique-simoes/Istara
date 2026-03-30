@@ -35,12 +35,17 @@ echo "Setting Istara version to: $VERSION"
 
 # ── Update all version files ──────────────────────────────────────
 
-# Convert CalVer to semver for Tauri/Cargo (they reject non-semver).
-# 2026.03.29 → 0.2026.329   |   2026.03.29.2 → 0.2026.3292
+# Convert CalVer to semver for Tauri/Cargo.
+# Windows MSI requires each segment ≤ 255, so we can't use 0.2026.329.
+# Strategy: MAJOR = last 2 digits of year, MINOR = month*31+day, PATCH = build#
+# 2026.03.29 → 26.122.0   |   2026.03.29.2 → 26.122.2
 SEMVER_VERSION=$(echo "$VERSION" | awk -F. '{
-    if (NF==3) printf "0.%s.%s%s", $1, $2+0, $3+0;
-    else if (NF==4) printf "0.%s.%s%s%s", $1, $2+0, $3+0, $4;
-    else print "0.0.1"
+    year = $1 % 100;
+    month = $2 + 0;
+    day = $3 + 0;
+    minor = month * 31 + day;
+    build = ($4 ? $4 : 0);
+    printf "%d.%d.%d", year, minor, build
 }')
 
 # 1. Tauri config (JSON) — needs semver
