@@ -307,10 +307,12 @@
 - Relay enhancement: the relay CLI accepts a `--connection-string` flag to bootstrap server discovery. Authenticated relay connections use the X-Access-Token header, and the connection string decoder validates the HMAC signature before extracting credentials.
 
 ### Versioning & Auto-Updates
-- Istara uses CalVer date-based versioning: `YYYY.MM.DD` (e.g., `2026.03.29`). Multiple builds in one day append `.N` (e.g., `2026.03.29.2`). Explain to users that newer versions always have a later date.
-- Settings page shows "Software Updates" section with current version and update availability. When an update is available, guide users through: (1) click "Backup & Prepare Update" to create a full backup, (2) click "Download Update" to get the new installer from GitHub Releases.
-- The desktop tray app checks for updates every 6 hours and emits a notification when a newer version is found on GitHub Releases.
-- CI/CD automatically builds macOS DMG + Windows EXE on every push to main, and creates a GitHub Release with both artifacts on tagged commits (v*). Users download from the Releases page.
+- Istara uses CalVer date-based versioning: `YYYY.MM.DD` (e.g., `2026.03.30`). Multiple builds in one day append `.N` (e.g., `2026.03.30.14`). Explain to users that newer versions always have a later date.
+- **Auto-update**: Users click "Update Now" in Settings → Software Updates. The system automatically: creates a backup → runs `git pull` → updates pip dependencies → rebuilds the frontend → restarts the server. The page reloads automatically when the server comes back.
+- **CLI update**: `istara update` does the same from the terminal: stops services → git pull → rebuild → restart.
+- **Startup check**: The backend checks GitHub Releases 15 seconds after startup. If a newer version exists, it broadcasts an `update_available` WebSocket event and creates a notification in the Notifications view.
+- **Notification**: Update notifications appear in the Notifications bell icon with a link to Settings. The tray app checks every 6 hours and shows an OS-level notification.
+- When users report "Current Version: unknown" — the VERSION file path was misconfigured. It should now resolve correctly. If it persists, check that the VERSION file exists at the project root.
 
 ### Production Installer & Desktop App
 - The desktop app (Tauri v2) now has full process management: ProcessManager in process.rs is wired to commands.rs, so tray events trigger real start/stop/relay actions with health polling every 10 seconds. Guide users through tray menu operations — start, stop, check status, and donate compute are all live actions, not stubs.

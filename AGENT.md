@@ -165,7 +165,7 @@ ollama serve          # Ollama
 - `create_project()`
 - `deploy_research()`
 
-### API Endpoints (337 total)
+### API Endpoints (338 total)
 Run `python scripts/update_agent_md.py --verbose` for full list.
 
 <!-- CAPABILITIES_END -->

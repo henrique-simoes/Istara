@@ -386,6 +386,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     except Exception as e:
         _log.debug(f"Meta-hyperagent startup skipped: {e}")
 
+    # Background update check (non-blocking, 15s delay)
+    try:
+        from app.api.routes.updates import check_for_updates_on_startup
+        asyncio.create_task(check_for_updates_on_startup())
+        _log.info("Startup update check scheduled.")
+    except Exception as e:
+        _log.debug(f"Startup update check skipped: {e}")
+
     yield
 
     # Shutdown
