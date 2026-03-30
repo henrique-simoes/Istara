@@ -78,6 +78,23 @@ EVENT_METADATA: dict[str, dict[str, Any] | None] = {
         "severity": "info",
         "title_template": "Loop executed",
     },
+    "update_available": {
+        "category": "system",
+        "severity": "info",
+        "title_template": "Software Update Available",
+        "action_type": "navigate",
+        "action_target": "settings",
+    },
+    "update_started": {
+        "category": "system",
+        "severity": "warning",
+        "title_template": "Istara is updating",
+    },
+    "update_failed": {
+        "category": "system",
+        "severity": "error",
+        "title_template": "Update failed",
+    },
     # Skip — would be recursive
     "notification_created": None,
     # Skip — too frequent

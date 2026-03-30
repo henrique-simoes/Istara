@@ -1021,15 +1021,26 @@ Istara uses date-based CalVer: `YYYY.MM.DD` (e.g., `2026.03.29`). Multiple build
 **Files updated**: `VERSION`, `desktop/src-tauri/tauri.conf.json`, `desktop/package.json`, `desktop/src-tauri/Cargo.toml`, `frontend/package.json`, `relay/package.json`, `backend/pyproject.toml`, `installer/windows/nsis-installer.nsi`
 
 ### Update Check System
-- `GET /api/updates/version` — returns current version (public, no auth)
+- `GET /api/updates/version` — returns current version from VERSION file (public, no auth). Fixed: resolves VERSION from multiple candidate paths (parents[4], parents[3], CWD, CWD parent) to handle different install layouts.
 - `GET /api/updates/check` — queries GitHub Releases API, compares CalVer strings lexicographically, returns `{update_available, latest_version, downloads, changelog}`
 - `POST /api/updates/prepare` — creates pre-update backup (admin-only in team mode), returns backup ID
+- `POST /api/updates/apply` — **one-click auto-update**: creates backup → generates a background shell script → stops services → `git pull` → `pip install` → `npm install && npm run build` → restarts services. The script runs in a detached process (`start_new_session=True`) that survives server shutdown. Returns immediately with `{status: "updating"}`.
+
+### Startup Update Check
+On backend startup (15s delay), `check_for_updates_on_startup()` queries GitHub API. If a newer version exists, it:
+1. Broadcasts `update_available` WebSocket event to all connected clients
+2. Persists an `update_available` notification to the database (category: `system`, severity: `info`, action: navigate to settings)
+Notification types added to EVENT_METADATA: `update_available`, `update_started`, `update_failed`.
+
+### CLI Update Command
+`istara update` — stops services → `git pull` → updates pip deps → rebuilds frontend → starts services. Shows progress with version diff (e.g., "Updated from 2026.03.30.13 to 2026.03.30.14").
 
 ### Frontend Update Notification
 `UpdateChecker` component in Settings page auto-checks on mount. Shows:
-- Current version
-- Update available banner with version + changelog preview
-- "Backup & Prepare Update" button → creates full backup → "Download Update" link to GitHub Release
+- Current version (from `/api/updates/version`)
+- Update available banner with version, release name, changelog preview
+- **"Update Now" button** → calls `POST /api/updates/apply` → shows progress: "Creating backup..." → "Pulling latest code..." → "Restarting server..." → polls `/api/updates/version` every 3s until server comes back → auto-reloads the page
+- Fallback: if auto-update fails, shows error with suggestion to run `istara update` from terminal
 
 ### Desktop Tray Update Notification
 `health.rs` checks GitHub Releases API every 6 hours. When a newer version is found, emits `update-available` event to the webview. Future: OS-native notification via Tauri notification plugin.

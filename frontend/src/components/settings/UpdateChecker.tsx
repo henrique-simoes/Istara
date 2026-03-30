@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Download, CheckCircle2, AlertTriangle, Loader2, ExternalLink, Shield } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Download, CheckCircle2, AlertTriangle, Loader2, Shield, RefreshCw, Rocket } from "lucide-react";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -21,13 +20,13 @@ interface UpdateInfo {
 /**
  * Update checker component for Settings page.
  * Checks GitHub Releases for newer versions.
- * Admins can trigger pre-update backup and download.
+ * Supports one-click auto-update (backup → git pull → rebuild → restart).
  */
 export default function UpdateChecker() {
   const [checking, setChecking] = useState(false);
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
-  const [preparing, setPreparing] = useState(false);
-  const [prepared, setPrepared] = useState(false);
+  const [updating, setUpdating] = useState(false);
+  const [updateStatus, setUpdateStatus] = useState<"idle" | "backing_up" | "updating" | "restarting" | "done" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
 
   // Auto-check on mount
@@ -35,15 +34,18 @@ export default function UpdateChecker() {
     checkForUpdates();
   }, []);
 
+  const getHeaders = (): Record<string, string> => {
+    const headers: Record<string, string> = {};
+    const token = localStorage.getItem("istara_token");
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+    return headers;
+  };
+
   const checkForUpdates = async () => {
     setChecking(true);
     setError(null);
     try {
-      const token = localStorage.getItem("istara_token");
-      const headers: Record<string, string> = {};
-      if (token) headers["Authorization"] = `Bearer ${token}`;
-
-      const res = await fetch(`${API_BASE}/api/updates/check`, { headers });
+      const res = await fetch(`${API_BASE}/api/updates/check`, { headers: getHeaders() });
       const data = await res.json();
       setUpdateInfo(data);
     } catch (e: any) {
@@ -53,32 +55,72 @@ export default function UpdateChecker() {
     }
   };
 
-  const prepareUpdate = async () => {
-    setPreparing(true);
+  const applyUpdate = async () => {
+    setUpdating(true);
     setError(null);
+    setUpdateStatus("backing_up");
+
     try {
-      const token = localStorage.getItem("istara_token");
-      const res = await fetch(`${API_BASE}/api/updates/prepare`, {
+      // The backend handles everything: backup → git pull → rebuild → restart
+      setUpdateStatus("updating");
+      const res = await fetch(`${API_BASE}/api/updates/apply`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
+        headers: { ...getHeaders(), "Content-Type": "application/json" },
       });
+
       if (!res.ok) {
-        const data = await res.json().catch(() => ({ detail: "Backup failed" }));
+        const data = await res.json().catch(() => ({ detail: "Update failed" }));
         throw new Error(data.detail);
       }
-      setPrepared(true);
+
+      setUpdateStatus("restarting");
+
+      // The server will restart — poll until it comes back
+      let attempts = 0;
+      const maxAttempts = 60; // 3 minutes (every 3s)
+      const pollInterval = setInterval(async () => {
+        attempts++;
+        try {
+          const healthRes = await fetch(`${API_BASE}/api/updates/version`, {
+            signal: AbortSignal.timeout(2000),
+          });
+          if (healthRes.ok) {
+            const data = await healthRes.json();
+            clearInterval(pollInterval);
+            setUpdateStatus("done");
+            setUpdateInfo((prev) =>
+              prev ? { ...prev, current_version: data.version, update_available: false } : null,
+            );
+            // Reload after a brief pause to pick up new frontend code
+            setTimeout(() => window.location.reload(), 2000);
+          }
+        } catch {
+          // Server still restarting — keep polling
+        }
+        if (attempts >= maxAttempts) {
+          clearInterval(pollInterval);
+          setUpdateStatus("error");
+          setError("Server did not come back after 3 minutes. Check istara logs.");
+        }
+      }, 3000);
     } catch (e: any) {
       setError(e.message);
+      setUpdateStatus("error");
     } finally {
-      setPreparing(false);
+      setUpdating(false);
     }
   };
 
+  const statusMessages: Record<string, string> = {
+    backing_up: "Creating backup...",
+    updating: "Pulling latest code and rebuilding...",
+    restarting: "Restarting server — please wait...",
+    done: "Update complete! Reloading...",
+    error: "Update failed",
+  };
+
   return (
-    <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+    <div id="tour-target-software-updates" className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
       <div className="flex items-center justify-between mb-3">
         <h3 className="font-medium text-slate-900 dark:text-white flex items-center gap-2">
           <Download size={18} />
@@ -86,11 +128,11 @@ export default function UpdateChecker() {
         </h3>
         <button
           onClick={checkForUpdates}
-          disabled={checking}
+          disabled={checking || updating}
           className="text-xs text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 flex items-center gap-1"
           aria-label="Check for updates"
         >
-          {checking ? <Loader2 size={12} className="animate-spin" /> : null}
+          {checking ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
           {checking ? "Checking..." : "Check Now"}
         </button>
       </div>
@@ -100,14 +142,37 @@ export default function UpdateChecker() {
         Current version: <span className="font-mono font-medium text-slate-700 dark:text-slate-300">{updateInfo?.current_version || "..."}</span>
       </div>
 
+      {/* Update in progress */}
+      {updateStatus !== "idle" && updateStatus !== "error" && (
+        <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-4 mb-3">
+          <div className="flex items-center gap-3">
+            {updateStatus === "done" ? (
+              <CheckCircle2 size={20} className="text-green-600 shrink-0" />
+            ) : (
+              <Loader2 size={20} className="text-amber-600 animate-spin shrink-0" />
+            )}
+            <div>
+              <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
+                {statusMessages[updateStatus]}
+              </p>
+              {updateStatus === "restarting" && (
+                <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                  This usually takes 1-2 minutes. The page will reload automatically.
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Update available */}
-      {updateInfo?.update_available && (
+      {updateInfo?.update_available && updateStatus === "idle" && (
         <div className="rounded-lg border border-istara-200 dark:border-istara-800 bg-istara-50 dark:bg-istara-900/20 p-4 mb-3">
           <div className="flex items-start gap-3">
-            <Download size={20} className="text-istara-600 shrink-0 mt-0.5" />
+            <Rocket size={20} className="text-istara-600 shrink-0 mt-0.5" />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-istara-800 dark:text-istara-300">
-                Update Available: {updateInfo.latest_version}
+                Istara {updateInfo.latest_version} is available
               </p>
               {updateInfo.release_name && (
                 <p className="text-xs text-istara-600 dark:text-istara-400 mt-0.5">
@@ -121,35 +186,17 @@ export default function UpdateChecker() {
               )}
 
               <div className="flex items-center gap-3 mt-3">
-                {/* Step 1: Backup */}
-                {!prepared ? (
-                  <button
-                    onClick={prepareUpdate}
-                    disabled={preparing}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-istara-600 text-white hover:bg-istara-700 disabled:opacity-50 transition-colors"
-                  >
-                    {preparing ? <Loader2 size={12} className="animate-spin" /> : <Shield size={12} />}
-                    {preparing ? "Creating backup..." : "Backup & Prepare Update"}
-                  </button>
-                ) : (
-                  <>
-                    <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
-                      <CheckCircle2 size={12} /> Backup complete
-                    </span>
-                    {/* Step 2: Download */}
-                    {updateInfo.release_url && (
-                      <a
-                        href={updateInfo.release_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-istara-600 text-white hover:bg-istara-700 transition-colors"
-                      >
-                        <ExternalLink size={12} />
-                        Download Update
-                      </a>
-                    )}
-                  </>
-                )}
+                <button
+                  onClick={applyUpdate}
+                  disabled={updating}
+                  className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg bg-istara-600 text-white hover:bg-istara-700 disabled:opacity-50 transition-colors"
+                >
+                  <Shield size={14} />
+                  Update Now
+                </button>
+                <p className="text-xs text-slate-400">
+                  Auto-backup → update → restart
+                </p>
               </div>
             </div>
           </div>
@@ -157,7 +204,7 @@ export default function UpdateChecker() {
       )}
 
       {/* No update */}
-      {updateInfo && !updateInfo.update_available && !updateInfo.error && (
+      {updateInfo && !updateInfo.update_available && !updateInfo.error && updateStatus === "idle" && (
         <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
           <CheckCircle2 size={14} />
           You're running the latest version.
@@ -166,9 +213,9 @@ export default function UpdateChecker() {
 
       {/* Error */}
       {(updateInfo?.error || error) && (
-        <div className="flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400">
+        <div className="flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400 mt-2">
           <AlertTriangle size={12} />
-          {updateInfo?.error || error}
+          {error || updateInfo?.error}
         </div>
       )}
     </div>
