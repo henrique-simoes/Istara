@@ -1,0 +1,17 @@
+{
+  "identifier": "default",
+  "description": "Default capabilities for Istara desktop app",
+  "local": true,
+  "windows": ["*"],
+  "permissions": [
+    "core:default",
+    "shell:default",
+    "shell:allow-open",
+    "updater:default",
+    "dialog:default",
+    "dialog:allow-ask",
+    "dialog:allow-message",
+    "process:default",
+    "process:allow-restart"
+  ]
+}

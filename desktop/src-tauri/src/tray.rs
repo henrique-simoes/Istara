@@ -128,6 +128,51 @@ pub fn setup_tray<R: Runtime>(
                     .build();
                 }
             }
+            "check_updates" => {
+                let handle = app.clone();
+                tauri::async_runtime::spawn(async move {
+                    use tauri_plugin_updater::UpdaterExt;
+                    use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
+
+                    match handle.updater() {
+                        Ok(updater) => match updater.check().await {
+                            Ok(Some(update)) => {
+                                let version = update.version.clone();
+                                let body = update.body.clone().unwrap_or_default();
+                                let preview = if body.len() > 200 { &body[..200] } else { &body };
+                                let yes = handle
+                                    .dialog()
+                                    .message(format!("Istara {} is available.\n\n{}\n\nUpdate now?", version, preview))
+                                    .title("Update Available")
+                                    .kind(MessageDialogKind::Info)
+                                    .buttons(MessageDialogButtons::OkCancelCustom("Update Now".to_string(), "Later".to_string()))
+                                    .blocking_show();
+                                if yes {
+                                    let _ = update.download_and_install(|_, _| {}, || {}).await;
+                                    handle.restart();
+                                }
+                            }
+                            Ok(None) => {
+                                let _ = handle.dialog()
+                                    .message("You're running the latest version of Istara.")
+                                    .title("No Updates")
+                                    .kind(MessageDialogKind::Info)
+                                    .buttons(MessageDialogButtons::Ok)
+                                    .blocking_show();
+                            }
+                            Err(e) => {
+                                let _ = handle.dialog()
+                                    .message(format!("Could not check for updates: {}", e))
+                                    .title("Update Check Failed")
+                                    .kind(MessageDialogKind::Error)
+                                    .buttons(MessageDialogButtons::Ok)
+                                    .blocking_show();
+                            }
+                        },
+                        Err(e) => eprintln!("Updater error: {}", e),
+                    }
+                });
+            }
             "quit" => {
                 if let Ok(mut guard) = pm.lock() {
                     guard.stop_all();
@@ -177,6 +222,7 @@ fn build_server_menu<R: Runtime>(
             &MenuItem::with_id(app, "start_lm", lm_label, true, None::<&str>)?,
             &MenuItem::with_id(app, "stats", "System Stats...", true, None::<&str>)?,
             &MenuItem::with_id(app, "donate", donate_label, true, None::<&str>)?,
+            &MenuItem::with_id(app, "check_updates", "Check for Updates", true, None::<&str>)?,
             &MenuItem::with_id(app, "quit", "Quit Istara", true, None::<&str>)?,
         ],
     )?;
@@ -207,6 +253,7 @@ fn build_client_menu<R: Runtime>(
             &MenuItem::with_id(app, "stats", "System Stats...", true, None::<&str>)?,
             &MenuItem::with_id(app, "donate", donate_label, true, None::<&str>)?,
             &MenuItem::with_id(app, "change_server", "Change Server...", true, None::<&str>)?,
+            &MenuItem::with_id(app, "check_updates", "Check for Updates", true, None::<&str>)?,
             &MenuItem::with_id(app, "quit", "Quit Istara", true, None::<&str>)?,
         ],
     )?;
