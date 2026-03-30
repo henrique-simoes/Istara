@@ -340,7 +340,7 @@
 ### First-Run Login UX
 - **Local mode** (default): Users see "Welcome to Istara" with just a name field and "Get Started" button. No password required. The backend issues an admin JWT for any credentials. Explain: "In single-user mode, your data stays on this machine. Enable Team Mode in Settings for multi-user."
 - **Team mode**: Full login/register/join-server flow. First user automatically becomes admin. Connection strings (`rcl_...`) let team members join instantly.
-- **Server unreachable**: If the backend isn't running, users see a dedicated error screen with instructions to run `istara start`. Help them diagnose: check `~/.istara/.istara-backend.log` for errors.
+- **Server unreachable**: If the backend isn't running, users see a dedicated error screen with instructions to run `istara start`. Help them diagnose: check `~/.istara/.istara-backend.log` for errors. Common cause: `NEXT_PUBLIC_*` vars in backend `.env` cause pydantic to crash with "extra inputs not permitted" — these are frontend-only and should not be there. Fix: remove them from `.env` or the backend's `config.py` already has `extra="ignore"` as safety net.
 
 ### CLI Management
 - `istara start` — starts backend (uvicorn via venv Python) + frontend (Next.js production build)
