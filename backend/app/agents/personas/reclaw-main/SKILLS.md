@@ -306,6 +306,12 @@
 - Browser compute donation: the DonateComputeToggle in Settings detects a local LLM (LM Studio/Ollama), then opens a WebSocket relay from the browser to share compute with the team — no terminal or extra install required.
 - Relay enhancement: the relay CLI accepts a `--connection-string` flag to bootstrap server discovery. Authenticated relay connections use the X-Access-Token header, and the connection string decoder validates the HMAC signature before extracting credentials.
 
+### Versioning & Auto-Updates
+- ReClaw uses CalVer date-based versioning: `YYYY.MM.DD` (e.g., `2026.03.29`). Multiple builds in one day append `.N` (e.g., `2026.03.29.2`). Explain to users that newer versions always have a later date.
+- Settings page shows "Software Updates" section with current version and update availability. When an update is available, guide users through: (1) click "Backup & Prepare Update" to create a full backup, (2) click "Download Update" to get the new installer from GitHub Releases.
+- The desktop tray app checks for updates every 6 hours and emits a notification when a newer version is found on GitHub Releases.
+- CI/CD automatically builds macOS DMG + Windows EXE on every push to main, and creates a GitHub Release with both artifacts on tagged commits (v*). Users download from the Releases page.
+
 ### Production Installer & Desktop App
 - The desktop app (Tauri v2) now has full process management: ProcessManager in process.rs is wired to commands.rs, so tray events trigger real start/stop/relay actions with health polling every 10 seconds. Guide users through tray menu operations — start, stop, check status, and donate compute are all live actions, not stubs.
 - macOS installer ships as a DMG with bundled source, a LaunchAgent for auto-start on login, and a universal binary supporting both Intel and Apple Silicon Macs. Explain to users that ReClaw will start automatically after install unless they disable the LaunchAgent in System Settings.

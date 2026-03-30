@@ -132,6 +132,10 @@
 - Reset Onboarding Hints button: the Settings button that clears all banners must have a descriptive accessible name (not just "Reset"), provide confirmation feedback after activation (toast or inline status), and not cause layout shift on other Settings content.
 - Chat prompt suggestions: onboarding banners include suggested chat prompts. Audit: suggestion chips must be keyboard-navigable, have `role="button"` or be actual `<button>` elements, and announce their label to screen readers (not rely on truncated text alone).
 
+### Versioning & Auto-Updates
+- UpdateChecker component in Settings: verify version text contrast, update banner accessibility (`aria-live` for update notification), "Backup & Prepare" button focus management, download link opens in new tab with `rel="noopener"`.
+- Tray update notification: verify OS-native notification is accessible to screen readers on both macOS VoiceOver and Windows Narrator.
+
 ### Production Installer & Desktop App
 - Setup wizard (Tauri webview): 6-step HTML form with radio-card selection, progress bar, dependency checkboxes. Audit for: keyboard navigation between steps, focus management on step transitions, screen reader announcement of install progress.
 - NSIS wizard pages: MUI2 pages use Windows native controls. Verify tab order on dependency checkboxes, radio button group keyboard selection, progress detail text readability.

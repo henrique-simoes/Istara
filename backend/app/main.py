@@ -25,6 +25,7 @@ from app.api.routes import code_applications as code_applications_routes
 from app.api.routes import codebook_versions as codebook_versions_routes
 from app.api.routes import webhooks as webhook_routes
 from app.api.routes import connections as connection_routes
+from app.api.routes import updates as update_routes
 from app.api.websocket import router as ws_router
 from app.channels.base import channel_router
 from app.agents.devops_agent import devops_agent
@@ -532,6 +533,7 @@ app.include_router(codebook_versions_routes.router, prefix="/api", tags=["Codebo
 app.include_router(laws_routes.router, prefix="/api", tags=["Laws of UX"])
 app.include_router(webhook_routes.router, tags=["Webhooks"])
 app.include_router(connection_routes.router, prefix="/api", tags=["Connections"])
+app.include_router(update_routes.router, prefix="/api", tags=["Updates"])
 app.include_router(ws_router)
 
 
