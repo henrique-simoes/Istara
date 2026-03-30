@@ -291,10 +291,28 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
             </p>
           </div>
 
+          {/* Banner for members who have a connection string */}
+          {mode === "login" && (
+            <div className="mb-4 rounded-lg bg-istara-50 dark:bg-istara-900/20 border border-istara-200 dark:border-istara-800 px-4 py-3 text-center">
+              <p className="text-xs text-istara-700 dark:text-istara-400">
+                Got a connection string from your admin?{" "}
+                <button type="button" onClick={() => { setMode("join"); setError(""); }} className="font-semibold underline hover:text-istara-800 dark:hover:text-istara-300">
+                  Join Server →
+                </button>
+              </p>
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Join Server: connection string input */}
             {mode === "join" && !joinValidated && (
               <div>
+                <div className="rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-3 mb-4">
+                  <p className="text-blue-700 dark:text-blue-400 text-xs leading-relaxed">
+                    Your admin should have given you a connection string that starts with <code className="bg-blue-100 dark:bg-blue-900/50 px-1 rounded">rcl_</code>.
+                    Paste it below to connect to the team server.
+                  </p>
+                </div>
                 <label
                   htmlFor="join-connection-string"
                   className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5"
@@ -309,17 +327,20 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
                   disabled={loading}
                   rows={3}
                   className="w-full px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-istara-500 transition disabled:opacity-50 text-xs font-mono"
-                  placeholder="Paste the rcl_... connection string from your admin"
+                  placeholder="rcl_eyJ2Ijo..."
                 />
               </div>
             )}
             {mode === "join" && joinValidated && (
               <div className="rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 p-3 text-sm">
-                <p className="text-green-700 dark:text-green-400 font-medium">Server verified</p>
+                <p className="text-green-700 dark:text-green-400 font-medium">Server verified ✓</p>
                 <p className="text-green-600 dark:text-green-500 text-xs mt-1">
                   {joinValidated.server_url} {joinValidated.label && `(${joinValidated.label})`}
                 </p>
-                <p className="text-slate-500 text-xs mt-2">Choose a username and password to create your account.</p>
+                <p className="text-slate-500 text-xs mt-2">
+                  Choose a username and password for your new account.
+                  If your admin already created one for you, <button type="button" onClick={() => { setMode("login"); setError(""); setJoinValidated(null); }} className="text-istara-600 dark:text-istara-400 font-medium hover:underline">go to Sign In</button> instead.
+                </p>
               </div>
             )}
 

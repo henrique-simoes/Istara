@@ -31,8 +31,9 @@ import ToastNotification from "@/components/common/ToastNotification";
 import ErrorBoundary from "@/components/common/ErrorBoundary";
 import KeyboardShortcuts from "@/components/common/KeyboardShortcuts";
 import MobileNav from "@/components/layout/MobileNav";
-import OnboardingWizard from "@/components/onboarding/OnboardingWizard";
+import GuidedTour from "@/components/onboarding/GuidedTour";
 import LoginScreen from "@/components/auth/LoginScreen";
+import { useTourStore, isTourCompleted } from "@/stores/tourStore";
 import { useProjectStore } from "@/stores/projectStore";
 import { useAuthStore } from "@/stores/authStore";
 import { useSessionStore } from "@/stores/sessionStore";
@@ -69,7 +70,6 @@ export default function HomeClient() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [authenticated, setAuthenticated] = useState<boolean | null>(null);
-  const [showOnboarding, setShowOnboarding] = useState(false);
   const { projects, activeProjectId, fetchProjects } = useProjectStore();
 
   // Check authentication on mount
@@ -91,13 +91,18 @@ export default function HomeClient() {
     return () => window.removeEventListener("istara:auth-expired", handleExpiry);
   }, []);
 
-  // Check if first-run (no projects) — only after authenticated
+  // Check if first-run — start guided tour if no projects and tour not completed
   useEffect(() => {
     if (!authenticated) return;
     fetchProjects().then(() => {
       const store = useProjectStore.getState();
-      if (store.projects.length === 0) {
-        setShowOnboarding(true);
+      const tourCompleted = isTourCompleted();
+      const tourStore = useTourStore.getState();
+      if (!tourCompleted && !tourStore.active) {
+        const user = useAuthStore.getState().user;
+        const role = user?.role || "admin";
+        const hasProjects = store.projects.length > 0;
+        tourStore.startTour(role, hasProjects);
       }
     });
   }, [fetchProjects]);
@@ -253,9 +258,7 @@ export default function HomeClient() {
       <ToastNotification />
       <SearchModal open={searchOpen} onClose={() => setSearchOpen(false)} onNavigate={setActiveView} />
       <KeyboardShortcuts open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
-      {showOnboarding && (
-        <OnboardingWizard onComplete={() => setShowOnboarding(false)} />
-      )}
+      <GuidedTour setActiveView={setActiveView} currentView={activeView} />
     </div>
   );
 }

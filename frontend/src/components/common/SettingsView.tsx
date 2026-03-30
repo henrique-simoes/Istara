@@ -60,7 +60,9 @@ export default function SettingsView() {
       <UpdateChecker />
 
       {/* Team Members */}
-      <UserManagement />
+      <div id="tour-target-user-management">
+        <UserManagement />
+      </div>
 
       {/* Connection Strings (admin only, team mode) */}
       <ConnectionStringPanel />
@@ -69,7 +71,7 @@ export default function SettingsView() {
       <DonateComputeToggle />
 
       {/* System Status */}
-      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+      <div id="tour-target-system-status" className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
         <h3 className="font-medium text-slate-900 dark:text-white mb-3 flex items-center gap-2">
           <Monitor size={18} />
           System Status
@@ -287,7 +289,7 @@ export default function SettingsView() {
       <LLMServersSection />
 
       {/* Team Mode */}
-      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+      <div id="tour-target-team-mode" className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
         <h3 className="font-medium text-slate-900 dark:text-white mb-3 flex items-center gap-2">
           <Users size={18} />
           Team Mode
@@ -312,6 +314,8 @@ export default function SettingsView() {
                 // Refresh auth store so UserManagement appears/disappears
                 await useAuthStore.getState().checkTeamStatus();
                 await useAuthStore.getState().fetchMe();
+                // Notify guided tour
+                window.dispatchEvent(new CustomEvent("istara:team-mode-toggled", { detail: { enabled: newState } }));
               } catch (e) {
                 console.error("Failed to toggle team mode:", e);
               }

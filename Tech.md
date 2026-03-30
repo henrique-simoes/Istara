@@ -1142,31 +1142,44 @@ System tray application for macOS (menubar) and Windows (system tray). **Manager
 
 **Files:** `frontend/src/components/common/DonateComputeToggle.tsx`
 
-## Contextual Onboarding System
+## Guided Onboarding Tour
 
-Every view has a non-blocking inline onboarding banner (`ViewOnboarding`) that:
-- Shows once per view (dismissal persisted to `localStorage` key `istara_onboarding_{viewId}`)
-- Explains the feature in 1-2 sentences
-- Provides 2-3 quick action buttons
-- Suggests a Chat prompt ("Try asking: ...")
-- Dismissible with X button or Escape key, `aria-live="polite"` for screen readers
+Replaces the old modal OnboardingWizard with an in-app guided tour that navigates through real views.
 
-**21 views** have tailored onboarding content. Settings has a "Reset Onboarding Hints" button that clears all `istara_onboarding_*` keys.
+### Architecture
+- **tourStore.ts** (Zustand) — Manages tour step, conditional flags (role, team mode, LLM status), persists to localStorage
+- **GuidedTour.tsx** — Orchestrator: navigates views via `setActiveView()`, renders popovers or inline cards, polls LLM status
+- **TourPopover.tsx** — Floating card with spotlight overlay (box-shadow cutout), positioned via `getBoundingClientRect()`. WCAG: `role="dialog"`, keyboard nav, focus management
+- **TourInlineStep.tsx** — Full-screen centered cards for steps 0-1 (folder selection + project creation) before any project exists
 
-**Files:** `frontend/src/components/common/ViewOnboarding.tsx`, `frontend/src/hooks/useViewOnboarding.ts`
+### Three Onboarding Paths
+1. **Admin (first user)**: Folder → Project → Team Mode → Invite → Connection String → Files → Context → Tasks → LLM Check → Chat (10 steps)
+2. **Team member**: Skips project creation (if projects exist) and team management. Starts at Files → Context → Tasks → LLM → Chat
+3. **Returning user**: Tour completed flag in localStorage, never shows again
 
-## Enhanced Onboarding Wizard
+### Step Flow
+| Step | View | Target Element | Content |
+|------|------|----------------|---------|
+| 0 | (inline) | — | Welcome + folder selection |
+| 1 | (inline) | — | Project creation + folder linking |
+| 2 | settings | #tour-target-team-mode | Enable Team Mode toggle |
+| 3 | settings | #tour-target-user-management | Invite team members (conditional) |
+| 4 | settings | #tour-target-connection-strings | Generate connection string (conditional) |
+| 5 | (centered) | — | Add research files to folder |
+| 6 | context | #tour-target-context-editor | Fill project context |
+| 7 | tasks | #tour-target-kanban | Task board introduction |
+| 8 | settings | #tour-target-system-status | LLM model check + polling |
+| 9 | chat | — | Welcome to chat, auto-dismiss |
 
-The first-run wizard (shown when 0 projects exist) expanded from 4 to 6 steps:
+### Event System
+- `istara:team-mode-toggled` — dispatched by SettingsView after toggle, updates tour conditional
+- `istara:connection-string-generated` — dispatched by ConnectionStringPanel after generation
+- LLM status polling: step 8 polls `/api/settings/status` every 3s until connected
 
-1. **Welcome** — intro with 3 feature cards
-2. **LLM Check** (NEW) — detects Ollama/LM Studio, shows status or download links
-3. **Create Project** — name input
-4. **Link Folder** (NEW) — optional external folder linking (Google Drive, Dropbox, local)
-5. **Set Context** — company/product + research goals
-6. **Upload Files** — drag-drop file upload
+### Pre-Login Member Guidance
+LoginScreen enhanced for team mode: "Got a connection string?" banner on sign-in tab, step-by-step help text in Join Server mode, inline guidance after validation.
 
-**Files:** `frontend/src/components/onboarding/OnboardingWizard.tsx`, `LLMCheckStep.tsx`, `FolderLinkStep.tsx`
+**Files:** `frontend/src/stores/tourStore.ts`, `frontend/src/components/onboarding/{GuidedTour,TourPopover,TourInlineStep}.tsx`, `frontend/src/components/layout/HomeClient.tsx`, `frontend/src/components/auth/LoginScreen.tsx`
 
 ## External Folder Linking
 
