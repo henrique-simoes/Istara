@@ -110,7 +110,12 @@
         "login_team_mode_registration",
         "login_server_unreachable_screen",
         "config_json_integrity",
-        "tray_app_config_read"
+        "tray_app_config_read",
+        "version_file_resolution",
+        "auto_update_git_pull",
+        "update_notification_broadcast",
+        "startup_update_check",
+        "cli_update_command"
       ]
     }
   ],

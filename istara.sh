@@ -268,6 +268,63 @@ _logs() {
     tail -f "$BACKEND_LOG" "$FRONTEND_LOG" 2>/dev/null || echo "No log files found. Start Istara first."
 }
 
+_update() {
+    echo ""
+    echo -e "${CYAN}═══ Updating Istara ═══${NC}"
+    echo ""
+
+    local CURRENT_VERSION=$(cat "$ROOT/VERSION" 2>/dev/null || echo "unknown")
+    info "  Current version: $CURRENT_VERSION"
+
+    # Must be a git repo
+    if [ ! -d "$ROOT/.git" ]; then
+        echo -e "  ${RED}✗ Not a git-based install. Cannot auto-update.${NC}"
+        exit 1
+    fi
+
+    # Stop services
+    echo -n "  Stopping services..."
+    _stop 2>/dev/null
+    echo -e "\r  ${GREEN}✓${NC} Services stopped"
+
+    # Pull latest code
+    echo -n "  Pulling latest code..."
+    cd "$ROOT"
+    git pull --ff-only 2>/dev/null || git pull 2>/dev/null || {
+        echo -e "\r  ${RED}✗ git pull failed${NC}"
+        exit 1
+    }
+    local NEW_VERSION=$(cat "$ROOT/VERSION" 2>/dev/null || echo "unknown")
+    echo -e "\r  ${GREEN}✓${NC} Updated to $NEW_VERSION"
+
+    # Update backend deps
+    local PYTHON; PYTHON=$(_find_python)
+    if [ -x "$ROOT/venv/bin/pip" ]; then
+        echo -n "  Updating backend dependencies..."
+        "$ROOT/venv/bin/pip" install -r "$ROOT/backend/requirements.txt" --quiet 2>/dev/null || true
+        echo -e "\r  ${GREEN}✓${NC} Backend dependencies updated"
+    fi
+
+    # Rebuild frontend
+    local NPM; NPM=$(_find_npm)
+    if [ -d "$ROOT/frontend" ]; then
+        echo -n "  Rebuilding frontend..."
+        cd "$ROOT/frontend"
+        "$NPM" install --silent 2>/dev/null || true
+        NEXT_PUBLIC_API_URL="http://localhost:8000" NEXT_PUBLIC_WS_URL="ws://localhost:8000" \
+            "$NPM" run build --silent 2>/dev/null || true
+        cd "$ROOT"
+        echo -e "\r  ${GREEN}✓${NC} Frontend rebuilt"
+    fi
+
+    # Start services
+    _start
+
+    echo ""
+    echo -e "  ${GREEN}${BOLD}✓ Updated from $CURRENT_VERSION to $NEW_VERSION${NC}"
+    echo ""
+}
+
 # ─────────────────────────────────────────────────────────
 # Main
 # ─────────────────────────────────────────────────────────
@@ -276,11 +333,12 @@ case "${1:-toggle}" in
     start)   _start ;;
     stop)    _stop ;;
     restart) _stop; sleep 1; _start ;;
+    update)  _update ;;
     status)  _status ;;
     logs)    _logs ;;
     toggle)  _toggle ;;
     *)
-        echo "Usage: $0 {start|stop|restart|status|logs}"
+        echo "Usage: $0 {start|stop|restart|update|status|logs}"
         echo "       $0          (toggle: start if stopped, stop if running)"
         exit 1
         ;;
