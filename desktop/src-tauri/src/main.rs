@@ -20,14 +20,14 @@ mod tray;
 
 use commands::AppState;
 use process::ProcessManager;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use tauri::Manager;
 
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .manage(AppState {
-            process_manager: Mutex::new(ProcessManager::new()),
+            process_manager: Arc::new(Mutex::new(ProcessManager::new())),
         })
         .setup(|app| {
             let cfg = config::load_config();
@@ -87,9 +87,9 @@ fn main() {
             // Graceful shutdown on window close
             if let tauri::WindowEvent::Destroyed = event {
                 if window.label() == "main" || window.label() == "setup" {
-                    let app_state = window.state::<AppState>();
-                    if let Ok(mut pm) = app_state.process_manager.lock() {
-                        pm.stop_all();
+                    let pm = window.state::<AppState>().process_manager.clone();
+                    if let Ok(mut guard) = pm.lock() {
+                        guard.stop_all();
                     }
                 }
             }
