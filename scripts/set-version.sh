@@ -14,8 +14,8 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
 # Generate version from date or use argument
 if [ "${1:-}" = "--bump" ]; then
-    # Read current version and increment build number
-    CURRENT=$(grep '"version"' "$ROOT/desktop/src-tauri/tauri.conf.json" | head -1 | grep -o '"[0-9.]*"' | tr -d '"')
+    # Read current CalVer version from VERSION file (NOT tauri.conf.json which has semver)
+    CURRENT=$(cat "$ROOT/VERSION" 2>/dev/null | tr -d '[:space:]')
     TODAY=$(date -u +%Y.%m.%d)
 
     if [[ "$CURRENT" == "$TODAY"* ]]; then

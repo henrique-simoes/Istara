@@ -1,6 +1,6 @@
 {
   "name": "istara-relay",
-  "version": "2026.03.30.9",
+  "version": "2026.03.30.10",
   "description": "Istara Relay — donate LLM compute to the Istara network",
   "type": "module",
   "main": "index.mjs",
