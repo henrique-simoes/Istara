@@ -2,12 +2,12 @@
 use crate::config;
 use crate::process::ProcessManager;
 use crate::stats;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use tauri::State;
 
 /// Shared process manager stored in Tauri managed state.
 pub struct AppState {
-    pub process_manager: Mutex<ProcessManager>,
+    pub process_manager: Arc<Mutex<ProcessManager>>,
 }
 
 #[tauri::command]
