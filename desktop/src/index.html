@@ -315,8 +315,22 @@
       const list = document.getElementById('dep-list');
       list.innerHTML = '<div style="color:#94a3b8; font-size:12px; padding:8px;">Detecting installed software...</div>';
 
+      // Call Rust backend for real detection (checks actual file paths, not just PATH)
       if (window.__TAURI__) {
-        // Use Tauri to detect (future: actual commands)
+        try {
+          const detected = await window.__TAURI__.core.invoke('detect_dependencies');
+          // Update deps array with real detection results
+          detected.forEach(d => {
+            const existing = deps.find(dep => dep.id === d.id);
+            if (existing) {
+              existing.detected = d.detected;
+              existing.version = d.version;
+              existing.install = !d.detected && existing.required;
+            }
+          });
+        } catch (e) {
+          console.error('Detection failed:', e);
+        }
       }
 
       // Render dep list
