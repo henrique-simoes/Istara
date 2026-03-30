@@ -2,17 +2,29 @@
 
 ## Installation Options
 
-### Option 1: Native Installer (Recommended for non-developers)
+### Option 1: Homebrew (macOS — Recommended)
+
+```bash
+brew install --cask henrique-simoes/istara/istara
+```
+
+### Option 2: Shell One-Liner (macOS)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/henrique-simoes/Istara/main/scripts/install-istara.sh | sh
+```
+
+### Option 3: Native Installer
 
 Download the latest installer from [GitHub Releases](https://github.com/henrique-simoes/Istara/releases):
-- **macOS**: `Istara-x.x.x.dmg` — drag to Applications, launch, follow the setup wizard
-- **Windows**: `Istara-Setup-x.x.x.exe` — run installer, choose mode, follow wizard
+- **macOS**: `Istara-YYYY.MM.DD.dmg` — drag to Applications, launch, follow the setup wizard
+- **Windows**: `Istara_x64-setup.exe` — run installer, choose mode, follow wizard
 
-The installer:
-- Detects and installs missing dependencies (Python 3.12, Node.js 20, Ollama)
-- Sets up backend, frontend, and relay
-- Generates security keys automatically
-- Creates a system tray icon for easy management
+All installation methods:
+- Set up the system tray icon for easy management
+- Detect and install missing dependencies (Python 3.12, Node.js 20, Ollama)
+- Generate security keys automatically
+- Auto-check for updates on startup
 
 ### Option 2: Docker (Recommended for servers)
 

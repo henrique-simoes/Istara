@@ -489,15 +489,26 @@ Istara is **zero-trust by default**:
 - Node 20+
 - [LM Studio](https://lmstudio.ai) or [Ollama](https://ollama.ai) with at least one model loaded
 
-### Option A: Desktop Installer (Recommended)
+### Option A: Homebrew (macOS — Recommended)
+
+```bash
+brew install --cask henrique-simoes/istara/istara
+```
+
+### Option B: Shell One-Liner (macOS)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/henrique-simoes/Istara/main/scripts/install-istara.sh | sh
+```
+
+### Option C: Desktop Installer
 
 Download from [Releases](https://github.com/henrique-simoes/Istara/releases):
 
 | Platform | File |
 |---|---|
-| macOS (Apple Silicon / Intel) | `Istara-2026.03.29.dmg` |
-| Windows 10/11 | `Istara-Setup-2026.03.29.exe` |
-| Linux | `Istara-2026.03.29.AppImage` |
+| macOS (Apple Silicon / Intel) | `Istara-YYYY.MM.DD.dmg` |
+| Windows 10/11 | `Istara_x64-setup.exe` |
 
 The setup wizard handles LLM configuration, creates your first project, and launches the system tray agent. First research session in under 5 minutes.
 
