@@ -3,6 +3,7 @@
 import asyncio
 import logging
 import subprocess
+import time
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -13,6 +14,10 @@ from app.models.database import get_db
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+# ── In-memory cache for GitHub API responses (avoids 403 rate limit) ──
+_update_cache: dict = {}
+_CACHE_TTL = 600  # 10 minutes — GitHub allows 60 req/hour unauthenticated
 
 # Read version from VERSION file at project root.
 # Path: backend/app/api/routes/updates.py → 4 parents up → project root
@@ -61,20 +66,70 @@ async def current_version():
 
 @router.get("/updates/check")
 async def check_for_updates():
-    """Check GitHub Releases for a newer version.
+    """Check for a newer version using git (primary) or GitHub API (fallback).
 
-    Compares the local VERSION against the latest GitHub Release tag.
-    Returns update availability, download URLs, and changelog.
+    Strategy:
+    1. Try `git fetch --tags` + compare local VERSION against latest tag (no API needed)
+    2. Fall back to GitHub Releases API (cached 10 min to avoid 403 rate limit)
+    3. If both fail, return current version with error message
     """
     current = get_current_version()
+
+    # ── Method 1: Git-based check (no rate limit, works for shell installs) ──
+    install_dir = get_install_dir()
+    if install_dir and (install_dir / ".git").is_dir():
+        try:
+            result = await asyncio.to_thread(
+                subprocess.run,
+                ["git", "fetch", "--tags", "--quiet"],
+                cwd=str(install_dir),
+                capture_output=True,
+                timeout=15,
+            )
+            if result.returncode == 0:
+                # Get the latest tag
+                tag_result = await asyncio.to_thread(
+                    subprocess.run,
+                    ["git", "tag", "--sort=-v:refname"],
+                    cwd=str(install_dir),
+                    capture_output=True,
+                    text=True,
+                    timeout=5,
+                )
+                if tag_result.returncode == 0 and tag_result.stdout.strip():
+                    latest_tag = tag_result.stdout.strip().split("\n")[0].lstrip("v")
+                    update_available = latest_tag > current if latest_tag and current != "unknown" else False
+                    return {
+                        "update_available": update_available,
+                        "current_version": current,
+                        "latest_version": latest_tag,
+                        "release_url": f"https://github.com/henrique-simoes/Istara/releases/tag/v{latest_tag}",
+                        "method": "git",
+                    }
+        except Exception as e:
+            logger.debug(f"Git-based update check failed: {e}")
+
+    # ── Method 2: GitHub API (cached to avoid 403 rate limit) ──
+    cache_key = "github_release"
+    cached = _update_cache.get(cache_key)
+    if cached and time.time() - cached["time"] < _CACHE_TTL:
+        # Return cached response with fresh current_version
+        result = {**cached["data"], "current_version": current}
+        result["update_available"] = (
+            result.get("latest_version", "") > current
+            if current != "unknown" else False
+        )
+        return result
 
     try:
         import httpx
         async with httpx.AsyncClient(timeout=10.0) as client:
-            # GitHub API: get latest release
             resp = await client.get(
                 "https://api.github.com/repos/henrique-simoes/Istara/releases/latest",
-                headers={"Accept": "application/vnd.github.v3+json"},
+                headers={
+                    "Accept": "application/vnd.github.v3+json",
+                    "User-Agent": f"Istara/{current}",
+                },
             )
 
             if resp.status_code == 404:
@@ -83,6 +138,14 @@ async def check_for_updates():
                     "current_version": current,
                     "latest_version": current,
                     "message": "No releases published yet",
+                }
+
+            if resp.status_code == 403:
+                # Rate limited — try git method or return graceful message
+                return {
+                    "update_available": False,
+                    "current_version": current,
+                    "error": "GitHub API rate limit reached. Try again in a few minutes, or run: istara update",
                 }
 
             if resp.status_code != 200:
@@ -98,11 +161,8 @@ async def check_for_updates():
             published_at = release.get("published_at", "")
             body = release.get("body", "")
             html_url = release.get("html_url", "")
-
-            # Compare versions (CalVer: lexicographic comparison works)
             update_available = latest_tag > current if latest_tag and current != "unknown" else False
 
-            # Extract download URLs for each platform
             assets = release.get("assets", [])
             downloads = {}
             for asset in assets:
@@ -113,7 +173,7 @@ async def check_for_updates():
                 elif ".exe" in name or ".msi" in name:
                     downloads["windows"] = url
 
-            return {
+            result = {
                 "update_available": update_available,
                 "current_version": current,
                 "latest_version": latest_tag,
@@ -122,7 +182,12 @@ async def check_for_updates():
                 "changelog": body[:500] if body else "",
                 "release_url": html_url,
                 "downloads": downloads,
+                "method": "github_api",
             }
+
+            # Cache the result
+            _update_cache[cache_key] = {"data": result, "time": time.time()}
+            return result
 
     except Exception as e:
         logger.warning(f"Update check failed: {e}")
@@ -305,7 +370,8 @@ rm -f .istara-update.sh
 async def check_for_updates_on_startup():
     """Called once on app startup — checks for updates and creates a notification if available.
 
-    This runs in a background task after the server is fully started.
+    Uses the same check_for_updates() endpoint (which uses git first, then cached GitHub API)
+    to avoid burning API rate limit. Runs as a background task after the server is fully started.
     """
     await asyncio.sleep(15)  # Wait for server to fully initialize
 
@@ -314,44 +380,35 @@ async def check_for_updates_on_startup():
         if current == "unknown":
             return
 
-        import httpx
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            resp = await client.get(
-                "https://api.github.com/repos/henrique-simoes/Istara/releases/latest",
-                headers={"Accept": "application/vnd.github.v3+json"},
-            )
-            if resp.status_code != 200:
-                return
+        # Use the same endpoint logic (git-first, API-cached)
+        result = await check_for_updates()
+        if not result.get("update_available"):
+            return
 
-            release = resp.json()
-            latest_tag = release.get("tag_name", "").lstrip("v")
-            if not latest_tag or latest_tag <= current:
-                return
+        latest_tag = result.get("latest_version", "")
+        logger.info(f"Update available: {current} → {latest_tag}")
 
-            # Update is available — create a notification
-            logger.info(f"Update available: {current} → {latest_tag}")
-            changelog = release.get("body", "")[:200]
+        # Broadcast WebSocket notification
+        try:
+            from app.api.websocket import manager
+            await manager.broadcast("update_available", {
+                "current_version": current,
+                "latest_version": latest_tag,
+                "release_name": result.get("release_name", ""),
+                "changelog": result.get("changelog", ""),
+                "release_url": result.get("release_url", ""),
+            })
+        except Exception:
+            pass
 
-            try:
-                from app.api.websocket import manager
-                await manager.broadcast("update_available", {
-                    "current_version": current,
-                    "latest_version": latest_tag,
-                    "release_name": release.get("name", ""),
-                    "changelog": changelog,
-                    "release_url": release.get("html_url", ""),
-                })
-            except Exception:
-                pass
-
-            # Also persist as a notification in the database
-            try:
-                from app.services.notification_service import persist_notification
-                await persist_notification("update_available", {
-                    "title": f"Istara {latest_tag} is available",
-                    "message": f"Update from {current} to {latest_tag}. Go to Settings to update.",
-                    "current_version": current,
-                    "latest_version": latest_tag,
+        # Persist notification to database
+        try:
+            from app.services.notification_service import persist_notification
+            await persist_notification("update_available", {
+                "title": f"Istara {latest_tag} is available",
+                "message": f"Update from {current} to {latest_tag}. Go to Settings to update.",
+                "current_version": current,
+                "latest_version": latest_tag,
                 })
             except Exception as e:
                 logger.debug(f"Failed to persist update notification: {e}")
