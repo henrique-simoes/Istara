@@ -92,20 +92,22 @@ export default function HomeClient() {
   }, []);
 
   // Check if first-run — start guided tour if no projects and tour not completed
+  const [tourReady, setTourReady] = useState(false);
   useEffect(() => {
     if (!authenticated) return;
     fetchProjects().then(() => {
       const store = useProjectStore.getState();
       const tourCompleted = isTourCompleted();
-      const tourStore = useTourStore.getState();
-      if (!tourCompleted && !tourStore.active) {
+      const tourState = useTourStore.getState();
+      if (!tourCompleted && !tourState.active) {
         const user = useAuthStore.getState().user;
         const role = user?.role || "admin";
         const hasProjects = store.projects.length > 0;
-        tourStore.startTour(role, hasProjects);
+        useTourStore.getState().startTour(role, hasProjects);
       }
+      setTourReady(true);
     });
-  }, [fetchProjects]);
+  }, [authenticated, fetchProjects]);
 
   // Handle istara:navigate events from AgentsView, ToastNotification, etc.
   useEffect(() => {
@@ -170,10 +172,21 @@ export default function HomeClient() {
     return () => window.removeEventListener("keydown", handler);
   }, []);
 
+  const tourActive = useTourStore((s) => s.active);
+  const tourStep = useTourStore((s) => s.step);
+
   // Show login screen if not authenticated
   if (authenticated === null) return null; // Loading state
   if (authenticated === false) {
     return <LoginScreen onLogin={() => setAuthenticated(true)} />;
+  }
+
+  // While tour check is loading, show nothing (prevents flash of main UI)
+  if (!tourReady) return null;
+
+  // If tour is on inline steps (0-1), render ONLY the tour (no sidebar/UI behind)
+  if (tourActive && tourStep <= 1) {
+    return <GuidedTour setActiveView={setActiveView} currentView={activeView} />;
   }
 
   // Views that require an active project to show meaningful content
