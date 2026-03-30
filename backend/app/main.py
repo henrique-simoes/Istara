@@ -437,10 +437,22 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     _sd_log.info("Shutdown complete.")
 
 
+# Read version from VERSION file (CalVer: YYYY.MM.DD)
+def _read_version() -> str:
+    try:
+        vf = Path(__file__).resolve().parents[2] / "VERSION"
+        if vf.exists():
+            return vf.read_text().strip()
+    except Exception:
+        pass
+    return "dev"
+
+ISTARA_VERSION = _read_version()
+
 app = FastAPI(
     title="Istara",
     description="Local-first AI agent for UX Research",
-    version="0.1.0",
+    version=ISTARA_VERSION,
     lifespan=lifespan,
 )
 
@@ -557,7 +569,7 @@ async def agent_card():
         "name": "Istara",
         "description": "Local-first AI agent for UX Research — analyzes interviews, surveys, usability tests and more using 40+ research skills.",
         "url": "http://localhost:8000",
-        "version": "0.1.0",
+        "version": ISTARA_VERSION,
         "protocol_version": "0.1",
         "capabilities": {
             "streaming": False,
