@@ -1,8 +1,8 @@
 🇧🇷 [Leia em Português](README.pt-BR.md)
 
 <div align="center">
-
-</div><img width="300" height="300" alt="Istara" src="https://github.com/user-attachments/assets/b250903a-8272-43b7-b91d-dfcf3b249910" />
+<img width="300" height="300" alt="Istara" src="https://github.com/user-attachments/assets/b250903a-8272-43b7-b91d-dfcf3b249910" />
+</div>
 
 # 🐾 Istara
 
