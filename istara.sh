@@ -22,6 +22,26 @@ FRONTEND_LOG="$ROOT/.istara-frontend.log"
 BACKEND_PORT=8000
 FRONTEND_PORT=3000
 
+# Find the correct Python — prefer venv, then Homebrew, then system
+_find_python() {
+    [ -x "$ROOT/venv/bin/python" ] && { echo "$ROOT/venv/bin/python"; return; }
+    [ -x "$ROOT/venv/bin/python3" ] && { echo "$ROOT/venv/bin/python3"; return; }
+    command -v python3 >/dev/null 2>&1 && { echo "python3"; return; }
+    [ -x "/opt/homebrew/bin/python3.12" ] && { echo "/opt/homebrew/bin/python3.12"; return; }
+    [ -x "/opt/homebrew/bin/python3" ] && { echo "/opt/homebrew/bin/python3"; return; }
+    echo "python3"  # last resort
+}
+
+# Find npm — prefer Homebrew linked, then keg-only paths
+_find_npm() {
+    command -v npm >/dev/null 2>&1 && { echo "npm"; return; }
+    [ -x "/opt/homebrew/bin/npm" ] && { echo "/opt/homebrew/bin/npm"; return; }
+    [ -x "/opt/homebrew/opt/node/bin/npm" ] && { echo "/opt/homebrew/opt/node/bin/npm"; return; }
+    [ -x "/opt/homebrew/opt/node@22/bin/npm" ] && { echo "/opt/homebrew/opt/node@22/bin/npm"; return; }
+    [ -x "/opt/homebrew/opt/node@20/bin/npm" ] && { echo "/opt/homebrew/opt/node@20/bin/npm"; return; }
+    echo "npm"  # last resort
+}
+
 # Colors
 GREEN='\033[0;32m'
 RED='\033[0;31m'
@@ -85,9 +105,15 @@ _start() {
     if _is_running "$BACKEND_PID_FILE"; then
         echo -e "  Backend:  ${YELLOW}already running${NC} (PID $(cat "$BACKEND_PID_FILE"))"
     else
+        local PYTHON; PYTHON=$(_find_python)
+        if [ ! -x "$ROOT/venv/bin/python" ] && [ ! -x "$ROOT/venv/bin/python3" ]; then
+            echo -e "\r  Backend:  ${RED}✗ venv not found${NC}  — run the installer first"
+            echo -e "           ${YELLOW}curl -fsSL https://raw.githubusercontent.com/henrique-simoes/Istara/main/scripts/install-istara.sh | bash${NC}"
+            return 1
+        fi
         echo -n "  Backend:  starting..."
         cd "$ROOT/backend"
-        nohup python -m uvicorn app.main:app \
+        nohup "$PYTHON" -m uvicorn app.main:app \
             --host 0.0.0.0 \
             --port $BACKEND_PORT \
             --log-level info \
@@ -115,10 +141,17 @@ _start() {
     if _is_running "$FRONTEND_PID_FILE"; then
         echo -e "  Frontend: ${YELLOW}already running${NC} (PID $(cat "$FRONTEND_PID_FILE"))"
     else
+        local NPM; NPM=$(_find_npm)
         echo -n "  Frontend: starting..."
         cd "$ROOT/frontend"
-        nohup npm run dev -- --port $FRONTEND_PORT \
-            > "$FRONTEND_LOG" 2>&1 &
+        # Use production server if built, otherwise fall back to dev
+        if [ -d ".next" ]; then
+            nohup "$NPM" start -- --port $FRONTEND_PORT \
+                > "$FRONTEND_LOG" 2>&1 &
+        else
+            nohup "$NPM" run dev -- --port $FRONTEND_PORT \
+                > "$FRONTEND_LOG" 2>&1 &
+        fi
         local fpid=$!
         echo "$fpid" > "$FRONTEND_PID_FILE"
         cd "$ROOT"
