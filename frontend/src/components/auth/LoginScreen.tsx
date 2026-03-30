@@ -19,24 +19,28 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
   const [hasUsers, setHasUsers] = useState(true);
   const [connectionString, setConnectionString] = useState("");
   const [joinValidated, setJoinValidated] = useState<any>(null);
+  const [serverReachable, setServerReachable] = useState<boolean | null>(null);
   const usernameRef = useRef<HTMLInputElement>(null);
 
-  // Check team status on mount — determines if registration is available
+  // Check team status on mount — determines UI mode
   useEffect(() => {
     fetch(`${API_BASE}/api/auth/team-status`)
       .then((r) => r.json())
       .then((d) => {
         setTeamMode(d.team_mode || false);
         setHasUsers(d.has_users !== false);
+        setServerReachable(true);
         // Fresh server with team mode + no users → show register directly
         if (d.team_mode && d.has_users === false) {
           setMode("register");
         }
       })
-      .catch(() => {});
+      .catch(() => {
+        setServerReachable(false);
+      });
   }, []);
 
-  // Auto-focus username input on mount
+  // Auto-focus username input
   useEffect(() => {
     usernameRef.current?.focus();
   }, [mode]);
@@ -48,7 +52,6 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
     // Join mode: first validate, then redeem
     if (mode === "join") {
       if (!joinValidated) {
-        // Step 1: Validate
         if (!connectionString.trim()) { setError("Paste a connection string."); return; }
         setLoading(true);
         try {
@@ -65,7 +68,6 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
         } finally { setLoading(false); }
         return;
       }
-      // Step 2: Redeem (validated, now need username/password)
       if (!username.trim() || !password.trim()) { setError("Choose a username and password."); return; }
       setLoading(true);
       try {
@@ -87,18 +89,31 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
         localStorage.setItem("istara_token", data.token);
         onLogin();
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Something went wrong.");
+        if (err instanceof TypeError && err.message === "Failed to fetch") {
+          setError("Cannot connect to the server. Make sure the backend is running.");
+        } else {
+          setError(err instanceof Error ? err.message : "Something went wrong.");
+        }
       } finally { setLoading(false); }
       return;
     }
 
-    if (!username.trim() || !password.trim()) {
-      setError("Username and password are required.");
-      return;
-    }
-    if (mode === "register" && !email.trim()) {
-      setError("Email is required for registration.");
-      return;
+    // Local mode — only name is required
+    if (!teamMode) {
+      if (!username.trim()) {
+        setError("Enter your name to continue.");
+        return;
+      }
+    } else {
+      // Team mode — username and password required
+      if (!username.trim() || !password.trim()) {
+        setError("Username and password are required.");
+        return;
+      }
+      if (mode === "register" && !email.trim()) {
+        setError("Email is required for registration.");
+        return;
+      }
     }
 
     setLoading(true);
@@ -106,7 +121,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
       const endpoint = mode === "register" ? "/api/auth/register" : "/api/auth/login";
       const body = mode === "register"
         ? { username: username.trim(), password, email: email.trim(), display_name: username.trim() }
-        : { username: username.trim(), password };
+        : { username: username.trim(), password: password || "local" };
 
       const res = await fetch(`${API_BASE}${endpoint}`, {
         method: "POST",
@@ -123,12 +138,132 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
       localStorage.setItem("istara_token", data.token);
       onLogin();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+      if (err instanceof TypeError && err.message === "Failed to fetch") {
+        setError("Cannot connect to the Istara server. Make sure the backend is running on port 8000.");
+      } else {
+        setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
   };
 
+  // ── Server not reachable ──────────────────────────────────
+  if (serverReachable === false) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950 px-4">
+        <div className="w-full max-w-md">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 p-8">
+            <div className="text-center mb-6">
+              <div className="text-5xl mb-3" role="img" aria-label="Istara logo">🐾</div>
+              <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Istara</h1>
+            </div>
+            <div className="rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 p-4 text-center">
+              <p className="text-amber-800 dark:text-amber-300 font-medium text-sm">
+                Cannot connect to the Istara server
+              </p>
+              <p className="text-amber-600 dark:text-amber-400 text-xs mt-2">
+                The backend API at <code className="bg-amber-100 dark:bg-amber-900/50 px-1 rounded">{API_BASE}</code> is not responding.
+              </p>
+              <div className="mt-4 text-xs text-slate-500 dark:text-slate-400 space-y-1">
+                <p>Start the server with:</p>
+                <code className="block bg-slate-100 dark:bg-slate-800 px-3 py-2 rounded font-mono text-slate-700 dark:text-slate-300">
+                  istara start
+                </code>
+              </div>
+            </div>
+            <button
+              onClick={() => window.location.reload()}
+              className="mt-4 w-full py-2 px-4 rounded-lg border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition"
+            >
+              Retry Connection
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Local mode — welcoming first-run experience ───────────
+  if (!teamMode && mode === "login") {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950 px-4">
+        <div className="w-full max-w-md">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 p-8">
+            <div className="text-center mb-6">
+              <div className="text-5xl mb-3" role="img" aria-label="Istara logo">🐾</div>
+              <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+                Welcome to Istara
+              </h1>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                Local-first AI agents for UX Research
+              </p>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div>
+                <label
+                  htmlFor="login-username"
+                  className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5"
+                >
+                  Your Name
+                </label>
+                <input
+                  ref={usernameRef}
+                  id="login-username"
+                  type="text"
+                  aria-label="Your name"
+                  autoComplete="username"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  disabled={loading}
+                  className="w-full px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-istara-500 focus:border-transparent transition disabled:opacity-50"
+                  placeholder="e.g. Sarah, John, Research Team"
+                />
+              </div>
+
+              {error && (
+                <div
+                  role="alert"
+                  className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg px-3 py-2"
+                >
+                  {error}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={loading || !username.trim()}
+                className="w-full py-2.5 px-4 rounded-lg bg-istara-600 hover:bg-istara-700 active:bg-istara-800 text-white font-medium transition focus:outline-none focus:ring-2 focus:ring-istara-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loading ? (
+                  <span className="inline-flex items-center gap-2">
+                    <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    Getting started...
+                  </span>
+                ) : (
+                  "Get Started"
+                )}
+              </button>
+            </form>
+
+            <p className="mt-6 text-center text-xs text-slate-400 dark:text-slate-500">
+              Single-user mode. Your data stays on this machine.
+              <br />
+              <span className="text-slate-400 dark:text-slate-600">
+                Enable Team Mode in Settings for multi-user collaboration.
+              </span>
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Team mode: login / register / join ────────────────────
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950 px-4">
       <div className="w-full max-w-md">
@@ -139,19 +274,23 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
               🐾
             </div>
             <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-              Istara
+              {mode === "register" && !hasUsers
+                ? "Create Admin Account"
+                : mode === "register"
+                ? "Create Account"
+                : mode === "join"
+                ? "Join Server"
+                : "Sign In"
+              }
             </h1>
             <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-              Local-first AI for UX Research
+              {mode === "register" && !hasUsers
+                ? "You'll be the admin for this Istara server."
+                : "Local-first AI agents for UX Research"
+              }
             </p>
-            {mode === "register" && !hasUsers && (
-              <p className="text-xs text-istara-600 dark:text-istara-400 mt-2 font-medium">
-                First user — you will be the admin.
-              </p>
-            )}
           </div>
 
-          {/* Login form */}
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Join Server: connection string input */}
             {mode === "join" && !joinValidated && (
@@ -203,7 +342,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
                 onChange={(e) => setUsername(e.target.value)}
                 disabled={loading}
                 className="w-full px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-istara-500 focus:border-transparent transition disabled:opacity-50"
-                placeholder="Enter your username"
+                placeholder="Choose a username"
               />
             </div>
             )}
@@ -230,6 +369,8 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
               </div>
             )}
 
+            {/* Password — only in team mode */}
+            {(mode !== "join" || joinValidated) && (
             <div>
               <label
                 htmlFor="login-password"
@@ -241,14 +382,15 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
                 id="login-password"
                 type="password"
                 aria-label="Password"
-                autoComplete="current-password"
+                autoComplete={mode === "register" ? "new-password" : "current-password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={loading}
                 className="w-full px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-istara-500 focus:border-transparent transition disabled:opacity-50"
-                placeholder="Enter your password"
+                placeholder={mode === "register" ? "At least 8 characters" : "Enter your password"}
               />
             </div>
+            )}
 
             {/* Error message */}
             {error && (
@@ -267,28 +409,11 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
             >
               {loading ? (
                 <span className="inline-flex items-center gap-2">
-                  <svg
-                    className="animate-spin h-4 w-4"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    aria-hidden="true"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    />
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                    />
+                  <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                   </svg>
-                  Signing in...
+                  {mode === "register" ? "Creating account..." : mode === "join" ? "Connecting..." : "Signing in..."}
                 </span>
               ) : (
                 mode === "join"
@@ -299,36 +424,29 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
           </form>
 
           {/* Footer — toggle between login/register/join */}
-          {teamMode && (
-            <div className="mt-6 text-center space-y-1">
-              {mode !== "login" && (
-                <p className="text-xs text-slate-400 dark:text-slate-500">
-                  Already have an account?{" "}
-                  <button type="button" onClick={() => { setMode("login"); setError(""); setJoinValidated(null); }}
-                    className="text-istara-600 dark:text-istara-400 font-medium hover:underline">Sign in</button>
-                </p>
-              )}
-              {mode !== "register" && (
-                <p className="text-xs text-slate-400 dark:text-slate-500">
-                  New to this server?{" "}
-                  <button type="button" onClick={() => { setMode("register"); setError(""); setJoinValidated(null); }}
-                    className="text-istara-600 dark:text-istara-400 font-medium hover:underline">Create an account</button>
-                </p>
-              )}
-              {mode !== "join" && (
-                <p className="text-xs text-slate-400 dark:text-slate-500">
-                  Have a connection string?{" "}
-                  <button type="button" onClick={() => { setMode("join"); setError(""); setJoinValidated(null); }}
-                    className="text-istara-600 dark:text-istara-400 font-medium hover:underline">Join Server</button>
-                </p>
-              )}
-            </div>
-          )}
-          {!teamMode && (
-            <p className="mt-6 text-center text-xs text-slate-400 dark:text-slate-500">
-              Local mode — enter any username and password to continue.
-            </p>
-          )}
+          <div className="mt-6 text-center space-y-1">
+            {mode !== "login" && (
+              <p className="text-xs text-slate-400 dark:text-slate-500">
+                Already have an account?{" "}
+                <button type="button" onClick={() => { setMode("login"); setError(""); setJoinValidated(null); }}
+                  className="text-istara-600 dark:text-istara-400 font-medium hover:underline">Sign in</button>
+              </p>
+            )}
+            {mode !== "register" && (
+              <p className="text-xs text-slate-400 dark:text-slate-500">
+                New to this server?{" "}
+                <button type="button" onClick={() => { setMode("register"); setError(""); setJoinValidated(null); }}
+                  className="text-istara-600 dark:text-istara-400 font-medium hover:underline">Create an account</button>
+              </p>
+            )}
+            {mode !== "join" && (
+              <p className="text-xs text-slate-400 dark:text-slate-500">
+                Have a connection string?{" "}
+                <button type="button" onClick={() => { setMode("join"); setError(""); setJoinValidated(null); }}
+                  className="text-istara-600 dark:text-istara-400 font-medium hover:underline">Join Server</button>
+              </p>
+            )}
+          </div>
         </div>
       </div>
     </div>
