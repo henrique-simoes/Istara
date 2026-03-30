@@ -192,6 +192,8 @@ jobs:
           path: |
             installer/macos/Istara-*.dmg
             desktop/src-tauri/target/*/release/bundle/dmg/*.dmg
+            desktop/src-tauri/target/*/release/bundle/macos/*.tar.gz
+            desktop/src-tauri/target/*/release/bundle/macos/*.tar.gz.sig
           retention-days: 30
           if-no-files-found: warn
 
@@ -279,7 +281,10 @@ jobs:
           name: Istara-Windows-${{ needs.version.outputs.version }}
           path: |
             desktop/src-tauri/target/release/bundle/nsis/*.exe
+            desktop/src-tauri/target/release/bundle/nsis/*.exe.sig
             desktop/src-tauri/target/release/bundle/msi/*.msi
+            desktop/src-tauri/target/release/bundle/msi/*.msi.zip
+            desktop/src-tauri/target/release/bundle/msi/*.msi.zip.sig
           retention-days: 30
           if-no-files-found: warn
 
@@ -295,8 +300,51 @@ jobs:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
 
-      - name: List artifacts
-        run: find . -type f \( -name "*.dmg" -o -name "*.exe" -o -name "*.msi" \) | head -20
+      - name: List all artifacts
+        run: find . -type f \( -name "*.dmg" -o -name "*.exe" -o -name "*.msi" -o -name "*.tar.gz" -o -name "*.sig" \) | sort
+
+      - name: Generate latest.json for auto-updater
+        run: |
+          VERSION="${{ needs.version.outputs.version }}"
+          REPO="https://github.com/henrique-simoes/Istara/releases/download/v${VERSION}"
+
+          # Find signature files
+          MAC_SIG=$(find . -name "*.app.tar.gz.sig" -type f | head -1)
+          WIN_SIG=$(find . -name "*-setup.exe.sig" -o -name "*.msi.zip.sig" -type f | head -1)
+
+          MAC_SIG_CONTENT=""
+          WIN_SIG_CONTENT=""
+          if [ -f "$MAC_SIG" ]; then MAC_SIG_CONTENT=$(cat "$MAC_SIG"); fi
+          if [ -f "$WIN_SIG" ]; then WIN_SIG_CONTENT=$(cat "$WIN_SIG"); fi
+
+          # Find artifact filenames
+          MAC_TAR=$(find . -name "*.app.tar.gz" ! -name "*.sig" -type f | head -1 | xargs -I{} basename {})
+          WIN_EXE=$(find . -name "*-setup.exe" ! -name "*.sig" -type f | head -1 | xargs -I{} basename {})
+
+          cat > latest.json << ENDJSON
+          {
+            "version": "${VERSION}",
+            "notes": "Istara ${VERSION} — see release page for details.",
+            "pub_date": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "platforms": {
+              "darwin-aarch64": {
+                "signature": "${MAC_SIG_CONTENT}",
+                "url": "${REPO}/${MAC_TAR:-Istara.app.tar.gz}"
+              },
+              "darwin-x86_64": {
+                "signature": "${MAC_SIG_CONTENT}",
+                "url": "${REPO}/${MAC_TAR:-Istara.app.tar.gz}"
+              },
+              "windows-x86_64": {
+                "signature": "${WIN_SIG_CONTENT}",
+                "url": "${REPO}/${WIN_EXE:-Istara-setup.exe}"
+              }
+            }
+          }
+          ENDJSON
+
+          echo "Generated latest.json:"
+          cat latest.json
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -309,18 +357,20 @@ jobs:
             ### Installation
             - **macOS**: Download the `.dmg`, drag Istara to Applications
             - **Windows**: Download the `.exe` installer, run it
-
-            ### Update from previous version
-            1. Open Settings in Istara
-            2. Click "Backup & Prepare Update" in Software Updates
-            3. Download and install the new version
+            - **Existing users**: The app will notify you automatically — click "Update Now"
 
             ---
             *Auto-generated release. See [commits](https://github.com/henrique-simoes/Istara/commits/main) for changes.*
           files: |
+            latest.json
             Istara-macOS-*/**/*.dmg
+            Istara-macOS-*/**/*.tar.gz
+            Istara-macOS-*/**/*.tar.gz.sig
             Istara-Windows-*/**/*.exe
+            Istara-Windows-*/**/*.exe.sig
             Istara-Windows-*/**/*.msi
+            Istara-Windows-*/**/*.msi.zip
+            Istara-Windows-*/**/*.msi.zip.sig
           generate_release_notes: true
           draft: false
           prerelease: false
