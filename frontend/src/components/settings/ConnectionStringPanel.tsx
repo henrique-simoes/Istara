@@ -47,6 +47,8 @@ export default function ConnectionStringPanel() {
       }
       const data = await res.json();
       setConnectionString(data.connection_string);
+      // Notify guided tour
+      window.dispatchEvent(new CustomEvent("istara:connection-string-generated"));
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -83,7 +85,7 @@ export default function ConnectionStringPanel() {
   };
 
   return (
-    <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+    <div id="tour-target-connection-strings" className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
       <h3 className="font-medium text-slate-900 dark:text-white mb-3 flex items-center gap-2">
         <Key size={18} />
         Connection Strings

@@ -16,7 +16,8 @@
       "description": "Playwright: navigate all views, screenshot, axe-core, keyboard shortcuts, dark mode",
       "requires": ["backend", "frontend"],
       "scenarios": ["02", "09", "19", "45"],
-      "evaluators": ["accessibility", "heuristics", "performance"]
+      "evaluators": ["accessibility", "heuristics", "performance"],
+      "custom_checks": ["tour_admin_10_steps", "tour_member_skip_flow", "tour_llm_poll_check", "tour_persistence_refresh", "tour_keyboard_wcag"]
     },
     {
       "id": "C",

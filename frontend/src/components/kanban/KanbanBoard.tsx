@@ -436,7 +436,7 @@ export default function KanbanBoard() {
   }
 
   return (
-    <div className="flex-1 overflow-x-auto p-4">
+    <div id="tour-target-kanban" className="flex-1 overflow-x-auto p-4">
       <ViewOnboarding viewId="tasks" title="Research Workflow" description="Kanban board of research tasks. Agents create tasks when you upload files. Drag to reorder, attach documents, track progress." chatPrompt="How do tasks work?" />
       <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Tasks</h2>
 
