@@ -14,7 +14,7 @@
 
 ; ── Metadata ──────────────────────────────────────────────────────────
 Name "ReClaw"
-!define VERSION "0.1.0"
+!define VERSION "2026.03.29"
 OutFile "ReClaw-Setup-${VERSION}.exe"
 InstallDir "$PROGRAMFILES\ReClaw"
 RequestExecutionLevel admin

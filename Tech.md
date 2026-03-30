@@ -1013,6 +1013,35 @@ Built with Tauri v2 (5-15 MB binary, ~20 MB RAM). Rust backend for process manag
 
 **Files:** `desktop/src-tauri/` (Rust), `desktop/src/` (HTML stats popover)
 
+## Versioning & Auto-Updates
+
+### CalVer Versioning
+ReClaw uses date-based CalVer: `YYYY.MM.DD` (e.g., `2026.03.29`). Multiple builds in one day use `YYYY.MM.DD.N` (e.g., `2026.03.29.2`). Version is set across 7 files by `scripts/set-version.sh` and stored in a root `VERSION` file.
+
+**Files updated**: `VERSION`, `desktop/src-tauri/tauri.conf.json`, `desktop/package.json`, `desktop/src-tauri/Cargo.toml`, `frontend/package.json`, `relay/package.json`, `backend/pyproject.toml`, `installer/windows/nsis-installer.nsi`
+
+### Update Check System
+- `GET /api/updates/version` — returns current version (public, no auth)
+- `GET /api/updates/check` — queries GitHub Releases API, compares CalVer strings lexicographically, returns `{update_available, latest_version, downloads, changelog}`
+- `POST /api/updates/prepare` — creates pre-update backup (admin-only in team mode), returns backup ID
+
+### Frontend Update Notification
+`UpdateChecker` component in Settings page auto-checks on mount. Shows:
+- Current version
+- Update available banner with version + changelog preview
+- "Backup & Prepare Update" button → creates full backup → "Download Update" link to GitHub Release
+
+### Desktop Tray Update Notification
+`health.rs` checks GitHub Releases API every 6 hours. When a newer version is found, emits `update-available` event to the webview. Future: OS-native notification via Tauri notification plugin.
+
+### CI/CD Release Flow
+On tag push (`v*`) or manual dispatch:
+1. `version` job determines CalVer string
+2. `build-macos` + `build-windows` jobs set version, build Tauri + DMG/EXE
+3. `release` job creates GitHub Release with both artifacts and auto-generated release notes
+
+**Files**: `scripts/set-version.sh`, `backend/app/api/routes/updates.py`, `frontend/src/components/settings/UpdateChecker.tsx`, `desktop/src-tauri/src/health.rs`, `.github/workflows/build-installers.yml`
+
 ## Cross-Platform Installer
 
 ### macOS (.dmg)

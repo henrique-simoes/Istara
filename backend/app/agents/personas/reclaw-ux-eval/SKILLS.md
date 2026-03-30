@@ -137,6 +137,11 @@
 - Reset hints discoverability: a Settings button clears all onboarding banners. Evaluate: is the reset action discoverable for users who dismissed banners too quickly and want them back (Recognition Rather Than Recall)? Is it placed near other onboarding-related settings, or buried in a general section?
 - Banner chat prompt suggestions: each banner includes a suggested chat prompt. Evaluate: do suggestions reduce time-to-first-interaction (Tesler's Law — complexity moved from user to system), or do they feel prescriptive? Are prompts contextual to the current view, making them genuinely useful starting points?
 
+### Versioning & Auto-Updates
+- Update UX: "Backup & Prepare" → "Download" two-step flow reduces anxiety about data loss (Error Prevention). Evaluate: is the backup step clearly mandatory before download? Does the changelog preview build confidence?
+- CalVer dates are human-readable (2026.03.29 = March 29, 2026), reducing cognitive load vs semver. Users instantly know how old their version is.
+- Tray notification every 6h: evaluate frequency — too frequent = notification fatigue, too rare = missed updates. 6h is a good balance for daily-use software.
+
 ### Production Installer & Desktop App
 - Installation friction: target is download-to-working in under 10 minutes. The 6-step setup wizard (mode, deps, LLM, config, progress, done) must feel fast. Evaluate: does the dependency download step show clear progress (Visibility of System Status)? Are optional deps clearly marked?
 - First-run experience: after install, user sees the Tauri tray icon and setup wizard. Evaluate: is the path from "just installed" to "open browser and see ReClaw" obvious (Goal-Gradient Effect)? Does auto-start on login match user expectations (Jakob's Law — similar apps auto-start)?

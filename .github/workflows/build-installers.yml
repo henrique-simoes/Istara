@@ -5,6 +5,10 @@ on:
     branches: [main]
     tags: ['v*']
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version override (leave empty for auto CalVer)'
+        required: false
 
 permissions:
   contents: write
@@ -13,12 +17,50 @@ env:
   TAURI_CLI_VERSION: "2"
 
 jobs:
+  # ── Set Version ────────────────────────────────────────────────────
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Determine version
+        id: version
+        run: |
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          elif [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            VERSION="${GITHUB_REF#refs/tags/v}"
+          else
+            # CalVer: YYYY.MM.DD[.N]
+            TODAY=$(date -u +%Y.%m.%d)
+            # Check if VERSION file already has today's date
+            CURRENT=$(cat VERSION 2>/dev/null || echo "")
+            if [[ "$CURRENT" == "$TODAY"* ]]; then
+              # Same day — increment build number
+              BUILD=$(echo "$CURRENT" | awk -F. '{print ($4 ? $4+1 : 2)}')
+              VERSION="${TODAY}.${BUILD}"
+            else
+              VERSION="$TODAY"
+            fi
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Building ReClaw $VERSION"
+
   # ── macOS Build ────────────────────────────────────────────────────
   build-macos:
+    needs: version
     runs-on: macos-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Set version
+        run: |
+          chmod +x scripts/set-version.sh
+          ./scripts/set-version.sh "${{ needs.version.outputs.version }}"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -46,48 +88,18 @@ jobs:
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
 
-      - name: Bundle source into app
-        if: success()
-        run: |
-          APP_PATH="desktop/src-tauri/target/universal-apple-darwin/release/bundle/macos/ReClaw.app"
-          if [ ! -d "$APP_PATH" ]; then
-            APP_PATH="desktop/src-tauri/target/release/bundle/macos/ReClaw.app"
-          fi
-          if [ -d "$APP_PATH" ]; then
-            RESOURCES="$APP_PATH/Contents/Resources/reclaw"
-            mkdir -p "$RESOURCES"
-            rsync -a --exclude='__pycache__' --exclude='*.pyc' --exclude='.env' \
-              --exclude='data/' --exclude='venv/' backend/ "$RESOURCES/backend/"
-            rsync -a --exclude='node_modules/' --exclude='.next/' frontend/ "$RESOURCES/frontend/"
-            rsync -a --exclude='node_modules/' relay/ "$RESOURCES/relay/"
-            cp .env.example "$RESOURCES/.env.example"
-            echo "Source bundled into app"
-          else
-            echo "App bundle not found — skipping bundle step"
-          fi
-
-      - name: Create DMG
+      - name: Bundle source into app + create DMG
         if: success()
         run: |
           brew install create-dmg 2>/dev/null || true
-          APP_PATH="desktop/src-tauri/target/universal-apple-darwin/release/bundle/macos/ReClaw.app"
-          if [ ! -d "$APP_PATH" ]; then
-            APP_PATH="desktop/src-tauri/target/release/bundle/macos/ReClaw.app"
-          fi
-          if [ -d "$APP_PATH" ]; then
-            VERSION=$(grep '"version"' desktop/src-tauri/tauri.conf.json | head -1 | grep -o '[0-9]\+\.[0-9]\+\.[0-9]\+' || echo "0.1.0")
-            create-dmg --volname "ReClaw" \
-              --window-size 600 400 \
-              --icon "ReClaw.app" 150 190 \
-              --app-drop-link 450 190 \
-              "installer/macos/ReClaw-${VERSION}.dmg" "$APP_PATH" || true
-          fi
+          chmod +x installer/macos/build-dmg.sh
+          cd installer/macos && ./build-dmg.sh || true
 
-      - name: Upload macOS DMG
+      - name: Upload macOS artifacts
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: ReClaw-macOS
+          name: ReClaw-macOS-${{ needs.version.outputs.version }}
           path: |
             installer/macos/ReClaw-*.dmg
             desktop/src-tauri/target/*/release/bundle/macos/*.dmg
@@ -96,10 +108,17 @@ jobs:
 
   # ── Windows Build ──────────────────────────────────────────────────
   build-windows:
+    needs: version
     runs-on: windows-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Set version
+        shell: bash
+        run: |
+          chmod +x scripts/set-version.sh
+          ./scripts/set-version.sh "${{ needs.version.outputs.version }}"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -125,39 +144,55 @@ jobs:
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
 
-      # Note: NSIS installer requires the Tauri binary + NSIS plugins (inetc)
-      # For now, upload the Tauri-generated installer directly
-      - name: Upload Windows Installer
+      - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: ReClaw-Windows
+          name: ReClaw-Windows-${{ needs.version.outputs.version }}
           path: |
             desktop/src-tauri/target/release/bundle/nsis/*.exe
             desktop/src-tauri/target/release/bundle/msi/*.msi
-            installer/windows/ReClaw-Setup-*.exe
           retention-days: 30
           if-no-files-found: warn
 
-  # ── Release (on tag push) ──────────────────────────────────────────
+  # ── Release (on tag push or manual) ────────────────────────────────
   release:
-    if: startsWith(github.ref, 'refs/tags/v')
-    needs: [build-macos, build-windows]
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    needs: [version, build-macos, build-windows]
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Download all artifacts
         uses: actions/download-artifact@v4
 
       - name: List artifacts
-        run: find . -type f -name "*.dmg" -o -name "*.exe" -o -name "*.msi" | head -20
+        run: find . -type f \( -name "*.dmg" -o -name "*.exe" -o -name "*.msi" \) | head -20
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: v${{ needs.version.outputs.version }}
+          name: ReClaw ${{ needs.version.outputs.version }}
+          body: |
+            ## ReClaw ${{ needs.version.outputs.version }}
+
+            ### Installation
+            - **macOS**: Download the `.dmg`, drag ReClaw to Applications
+            - **Windows**: Download the `.exe` installer, run it
+
+            ### Update from previous version
+            1. Open Settings in ReClaw
+            2. Click "Backup & Prepare Update" in Software Updates
+            3. Download and install the new version
+
+            ---
+            *Auto-generated release. See [commits](https://github.com/henrique-simoes/ReClaw/commits/main) for changes.*
           files: |
-            ReClaw-macOS/**/*.dmg
-            ReClaw-Windows/**/*.exe
-            ReClaw-Windows/**/*.msi
+            ReClaw-macOS-*/**/*.dmg
+            ReClaw-Windows-*/**/*.exe
+            ReClaw-Windows-*/**/*.msi
           generate_release_notes: true
           draft: false
           prerelease: false
