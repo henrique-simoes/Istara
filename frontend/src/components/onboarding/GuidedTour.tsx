@@ -242,6 +242,7 @@ export default function GuidedTour({ setActiveView, currentView }: GuidedTourPro
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [showResume, setShowResume] = useState(false);
   const autoDismissRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const navigatingRef = useRef(false);
 
   const step = tour.step;
   const stepDef = STEPS[step] || null;
@@ -250,17 +251,37 @@ export default function GuidedTour({ setActiveView, currentView }: GuidedTourPro
   useEffect(() => {
     if (!tour.active || !stepDef) return;
     if (stepDef.view && stepDef.view !== currentView) {
+      navigatingRef.current = true;
       setActiveView(stepDef.view);
+      // Clear navigating flag after view transition completes
+      const timer = setTimeout(() => { navigatingRef.current = false; }, 500);
+      return () => clearTimeout(timer);
+    } else {
+      navigatingRef.current = false;
     }
   }, [tour.active, step, stepDef, currentView, setActiveView]);
 
-  // Show "Resume Tour" if user navigates away from tour's target view
+  // Show "Resume Tour" only when the USER manually navigates away
+  // (not during our programmatic navigation)
   useEffect(() => {
     if (!tour.active || !stepDef?.view) {
       setShowResume(false);
       return;
     }
-    setShowResume(stepDef.view !== currentView);
+    // Don't show resume if we're in the middle of navigating to the view
+    if (navigatingRef.current) {
+      setShowResume(false);
+      return;
+    }
+    // Delay resume pill by 1s to avoid flash during view transitions
+    const timer = setTimeout(() => {
+      if (stepDef.view !== currentView && !navigatingRef.current) {
+        setShowResume(true);
+      } else {
+        setShowResume(false);
+      }
+    }, 1000);
+    return () => clearTimeout(timer);
   }, [tour.active, stepDef, currentView]);
 
   // Listen for custom events from settings components

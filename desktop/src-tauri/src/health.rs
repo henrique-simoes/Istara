@@ -42,6 +42,19 @@ pub fn health_loop<R: Runtime>(app: AppHandle<R>) {
         };
         let _ = app.emit("health-status", &status);
 
+        // Rebuild tray menu to reflect current server state (Start ↔ Stop)
+        {
+            use tauri::Manager;
+            let cfg = crate::config::load_config();
+            if cfg.mode == "server" {
+                if let Ok(menu) = crate::tray::build_server_menu_pub(&app) {
+                    if let Some(tray) = app.tray_by_id("main") {
+                        let _ = tray.set_menu(Some(menu));
+                    }
+                }
+            }
+        }
+
         // Periodic update check (every 6 hours)
         if last_update_check.elapsed() >= UPDATE_CHECK_INTERVAL {
             last_update_check = std::time::Instant::now();
