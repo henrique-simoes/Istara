@@ -35,28 +35,29 @@ fn main() {
             // Set up system tray
             tray::setup_tray(app.handle(), &cfg)?;
 
+            // Clone the Arc so we can use it without lifetime issues
+            let pm = app.state::<AppState>().process_manager.clone();
+
             // If server mode, auto-start services
             if cfg.mode == "server" && !cfg.install_dir.is_empty() {
-                let app_state = app.state::<AppState>();
-                if let Ok(mut pm) = app_state.process_manager.lock() {
-                    let _ = pm.start_backend(&cfg.install_dir);
-                    let _ = pm.start_frontend(&cfg.install_dir);
+                if let Ok(mut guard) = pm.lock() {
+                    let _ = guard.start_backend(&cfg.install_dir);
+                    let _ = guard.start_frontend(&cfg.install_dir);
                     if cfg.donate_compute {
-                        let _ = pm.start_relay(&cfg.install_dir, &cfg.connection_string);
+                        let _ = guard.start_relay(&cfg.install_dir, &cfg.connection_string);
                     }
                 }
             }
 
             // If client mode with connection string, start relay
             if cfg.mode == "client" && !cfg.connection_string.is_empty() && cfg.donate_compute {
-                let app_state = app.state::<AppState>();
-                if let Ok(mut pm) = app_state.process_manager.lock() {
+                if let Ok(mut guard) = pm.lock() {
                     let install_dir = if cfg.install_dir.is_empty() {
                         commands::find_install_dir_public()
                     } else {
                         cfg.install_dir.clone()
                     };
-                    let _ = pm.start_relay(&install_dir, &cfg.connection_string);
+                    let _ = guard.start_relay(&install_dir, &cfg.connection_string);
                 }
             }
 
@@ -87,8 +88,8 @@ fn main() {
             // Graceful shutdown on window close
             if let tauri::WindowEvent::Destroyed = event {
                 if window.label() == "main" || window.label() == "setup" {
-                    let pm = window.state::<AppState>().process_manager.clone();
-                    if let Ok(mut guard) = pm.lock() {
+                    let pm_arc = window.state::<AppState>().process_manager.clone();
+                    if let Ok(mut guard) = pm_arc.lock() {
                         guard.stop_all();
                     }
                 }
