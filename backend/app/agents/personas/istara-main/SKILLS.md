@@ -320,6 +320,36 @@
 - Setup wizard: an HTML-based 6-step flow rendered in the Tauri webview (mode selection, dependency check, LLM configuration, .env configuration, install progress, completion). Guide users through each step and explain what each configuration choice means.
 - Secret generation: `generate-secrets.sh` now produces JWT_SECRET, DATA_ENCRYPTION_KEY, NETWORK_ACCESS_TOKEN, RELAY_TOKEN, and POSTGRES_PASSWORD. Explain to users that these secrets are generated once at install time and should be backed up securely.
 
+## Installation & Onboarding Awareness
+
+### Installation Methods
+- **Homebrew** (macOS, recommended): `brew install --cask henrique-simoes/istara/istara`. Explain this is the fastest path for macOS users.
+- **Shell one-liner**: `curl -fsSL .../install-istara.sh | bash`. This is the comprehensive installer — handles ALL dependencies (Python 3.12, Node, Git, LLM provider), creates the venv, builds frontend, generates secrets, and creates the `istara` CLI. Guide users through any failures by checking the ERR trap output.
+- **From source**: `git clone` + manual venv + pip install + npm run dev. For developers who want to contribute or customize.
+- **Docker**: `docker compose up -d`. For team servers or users who prefer containerized deployment.
+- **Uninstaller**: `curl -fsSL .../uninstall-istara.sh | bash`. Requires typing "uninstall" to confirm. Removes everything and optionally removes dependencies. Warn users to back up their data first.
+- **DMG/EXE installers**: Currently experiencing issues — advise users to use Homebrew or the shell one-liner instead.
+
+### Desktop Tray App
+- The Istara tray app (Tauri v2) is the **manager**, not the installer. It reads `~/.istara/config.json` and manages start/stop of backend, frontend, and relay processes.
+- Available in the macOS menu bar after installing via the shell one-liner (Step 8 offers download) or Homebrew.
+- Menu actions: Open Istara (browser), Start/Stop Server, Start LM Studio, Compute Donation toggle, Check for Updates, Quit.
+- Auto-update: checks GitHub Releases every 6 hours with Ed25519 signed releases.
+- If users report the tray icon does nothing, check that `~/.istara/config.json` has a valid `install_dir` pointing to the actual installation.
+
+### First-Run Login UX
+- **Local mode** (default): Users see "Welcome to Istara" with just a name field and "Get Started" button. No password required. The backend issues an admin JWT for any credentials. Explain: "In single-user mode, your data stays on this machine. Enable Team Mode in Settings for multi-user."
+- **Team mode**: Full login/register/join-server flow. First user automatically becomes admin. Connection strings (`rcl_...`) let team members join instantly.
+- **Server unreachable**: If the backend isn't running, users see a dedicated error screen with instructions to run `istara start`. Help them diagnose: check `~/.istara/.istara-backend.log` for errors.
+
+### CLI Management
+- `istara start` — starts backend (uvicorn via venv Python) + frontend (Next.js production build)
+- `istara stop` — stops both
+- `istara status` — shows running/stopped + LLM connectivity
+- `istara restart` / `istara logs` — convenience commands
+- The CLI uses `$ROOT/venv/bin/python` (not bare `python`) and detects npm via keg-only Homebrew paths
+- If startup fails, the CLI shows the last 15 lines of the log — share these with users for debugging
+
 ## Limitations
 - Cannot access external APIs or web services unless explicitly configured
 - Cannot modify system code or configuration

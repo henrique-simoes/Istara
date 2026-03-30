@@ -184,6 +184,13 @@
 - **Installer first-run simulation**: Simulate the dependency checker: mock missing Python/Node dependencies and verify the checker reports them with actionable install instructions. Simulate the .env wizard: verify it generates a valid .env with JWT_SECRET, DATA_ENCRYPTION_KEY, and DATA_DIR. Verify Server+Client mode starts both backend and frontend processes. Verify Client-only mode skips backend startup and prompts for a connection string.
 - **Desktop app lifecycle**: Simulate Tauri tray interactions: start in Server+Client mode, verify health endpoint responds, toggle compute donation on/off via tray menu, verify relay state matches. Simulate quit — verify backend process is stopped cleanly (no orphaned processes). Simulate Client-only mode startup with no connection string — verify the app opens the LoginScreen "Join Server" tab.
 
+### Installation & First-Run Simulation
+- **Shell installer**: Verify the one-liner installs all dependencies, creates venv, builds frontend, generates .env, writes config.json, and adds `istara` to PATH. Test on clean machines (no Python/Node) and machines with existing installs. Verify the ERR trap shows line numbers on failure.
+- **CLI lifecycle**: `istara start` → verify backend PID is alive + health endpoint responds within 15s. `istara stop` → verify both PIDs cleaned up + ports freed. `istara status` → verify output matches actual process state. Test: start, kill backend manually, verify `istara status` detects the dead process and cleans up the PID file.
+- **Login UX flow**: Local mode — verify name-only screen appears, "Get Started" works, JWT is issued. Team mode with no users — verify registration screen auto-appears, first user gets admin role. Server unreachable — verify error screen with `istara start` instructions. Team mode with users — verify login/register/join toggles work.
+- **Uninstaller safety**: Run uninstaller on a test install. Verify it stops processes, removes files, cleans PATH, removes LaunchAgent. Verify "uninstall" confirmation is required (not just Y/n). Verify optional dependency removal defaults to No.
+- **Tray app integration**: Install via shell one-liner (Step 8), verify Istara.app appears in /Applications. Launch, verify tray icon appears with menu. Start server via tray, verify backend+frontend start. Stop via tray, verify clean shutdown.
+
 ## Limitations
 - Cannot test actual browser rendering (tests are API-level, not visual)
 - Cannot simulate real user mouse movements or visual scanning patterns
