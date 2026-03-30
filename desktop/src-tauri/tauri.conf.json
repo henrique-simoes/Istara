@@ -20,6 +20,7 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "createUpdaterArtifacts": true,
     "resources": [
       "../../VERSION",
       "../../.env.example",
@@ -44,6 +45,15 @@
   "plugins": {
     "shell": {
       "open": true
+    },
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEYxNjdGNUE2REUyRjFCNzAKUldSd0d5L2VwdlZuOFpLZzZkcDZyb1dieWJVS2dFMXd4MzUvaTdtNzI3MXlmTU4yRFR3L242TjIK",
+      "endpoints": [
+        "https://github.com/henrique-simoes/Istara/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
     }
   }
 }

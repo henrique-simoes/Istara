@@ -6,6 +6,7 @@
 //
 // On first launch (no config file), shows a setup wizard window.
 // On subsequent launches, minimizes to system tray.
+// Auto-checks for updates via tauri-plugin-updater.
 
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
@@ -28,6 +29,9 @@ use tauri::Manager;
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_process::init())
         .manage(AppState {
             process_manager: Arc::new(Mutex::new(ProcessManager::new())),
         })
@@ -69,6 +73,15 @@ fn main() {
                 health::health_loop(handle);
             });
 
+            // Check for updates on startup (non-blocking)
+            #[cfg(desktop)]
+            {
+                let update_handle = app.handle().clone();
+                tauri::async_runtime::spawn(async move {
+                    check_for_update_on_startup(update_handle).await;
+                });
+            }
+
             // If first run (no config file exists), show the setup wizard window
             if config::is_first_run() {
                 let window = tauri::WebviewWindowBuilder::new(
@@ -86,7 +99,6 @@ fn main() {
 
             Ok(())
         })
-        // ProcessManager::drop() handles graceful shutdown automatically
         .invoke_handler(tauri::generate_handler![
             commands::get_stats,
             commands::get_config,
@@ -104,4 +116,71 @@ fn main() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running Istara desktop app");
+}
+
+/// Check for updates on startup. Shows a dialog if an update is available.
+#[cfg(desktop)]
+async fn check_for_update_on_startup(app: tauri::AppHandle) {
+    use tauri_plugin_updater::UpdaterExt;
+    use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
+
+    // Wait a few seconds before checking (let the app finish loading)
+    tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+
+    match app.updater() {
+        Ok(updater) => {
+            match updater.check().await {
+                Ok(Some(update)) => {
+                    let version = update.version.clone();
+                    let body = update.body.clone().unwrap_or_default();
+                    let preview = if body.len() > 200 { &body[..200] } else { &body };
+
+                    let yes = app
+                        .dialog()
+                        .message(format!(
+                            "Istara {} is available (you have {}).\n\n{}\n\nUpdate now?",
+                            version, env!("CARGO_PKG_VERSION"), preview
+                        ))
+                        .title("Update Available")
+                        .kind(MessageDialogKind::Info)
+                        .buttons(MessageDialogButtons::OkCancelCustom("Update Now".to_string(), "Later".to_string()))
+                        .blocking_show();
+
+                    if yes {
+                        println!("User accepted update to {}", version);
+                        match update.download_and_install(
+                            |chunk, total| {
+                                let pct = total.map(|t| (chunk as u64) * 100 / t).unwrap_or(0);
+                                println!("Downloading update: {}%", pct);
+                            },
+                            || println!("Download complete — installing..."),
+                        ).await {
+                            Ok(_) => {
+                                println!("Update installed — restarting");
+                                app.restart();
+                            }
+                            Err(e) => {
+                                eprintln!("Update install failed: {}", e);
+                                let _ = app.dialog()
+                                    .message(format!("Update failed: {}", e))
+                                    .title("Update Error")
+                                    .kind(MessageDialogKind::Error)
+                                    .buttons(MessageDialogButtons::Ok)
+                                    .blocking_show();
+                            }
+                        }
+                    }
+                }
+                Ok(None) => {
+                    println!("Already on latest version");
+                }
+                Err(e) => {
+                    eprintln!("Update check failed: {}", e);
+                }
+            }
+        }
+        Err(e) => {
+            eprintln!("Updater init failed: {}", e);
+        }
+    }
 }
