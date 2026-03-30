@@ -1,6 +1,6 @@
 {
   "name": "istara-frontend",
-  "version": "2026.03.30.4",
+  "version": "2026.03.30.5",
   "private": true,
   "scripts": {
     "dev": "next dev",

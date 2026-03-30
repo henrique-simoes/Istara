@@ -233,44 +233,44 @@ jobs:
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
 
-      - name: Bundle source into NSIS installer directory
-        shell: bash
+      - name: Bundle source into installer directory
+        shell: pwsh
         run: |
-          # Find the Tauri install directory used by NSIS
-          NSIS_DIR="desktop/src-tauri/target/release"
-          if [ ! -d "$NSIS_DIR" ]; then
-            echo "No release build found"
+          $RESOURCES = "desktop\src-tauri\target\release\istara"
+          if (!(Test-Path "desktop\src-tauri\target\release")) {
+            Write-Host "No release build found"
             exit 0
-          fi
+          }
 
-          # Create istara source bundle alongside the exe
-          RESOURCES="$NSIS_DIR/istara"
-          mkdir -p "$RESOURCES"
+          # Backend source (exclude __pycache__, data, venv)
+          robocopy backend "$RESOURCES\backend" /E /XD __pycache__ data venv .venv .pytest_cache /XF *.pyc .env /NFL /NDL /NJH /NJS /NC /NS /NP
+          if ($LASTEXITCODE -ge 8) { Write-Host "Backend copy warning: $LASTEXITCODE" }
 
-          # Backend source
-          rsync -a --exclude='__pycache__' --exclude='*.pyc' --exclude='.env' \
-            --exclude='data/' --exclude='venv/' --exclude='.venv/' --exclude='.pytest_cache/' \
-            backend/ "$RESOURCES/backend/"
-
-          # Frontend source
-          rsync -a --exclude='node_modules/' --exclude='.next/' --exclude='out/' \
-            frontend/ "$RESOURCES/frontend/"
+          # Frontend source (exclude node_modules, .next)
+          robocopy frontend "$RESOURCES\frontend" /E /XD node_modules .next out /NFL /NDL /NJH /NJS /NC /NS /NP
+          if ($LASTEXITCODE -ge 8) { Write-Host "Frontend copy warning: $LASTEXITCODE" }
 
           # Relay
-          rsync -a --exclude='node_modules/' relay/ "$RESOURCES/relay/"
+          robocopy relay "$RESOURCES\relay" /E /XD node_modules /NFL /NDL /NJH /NJS /NC /NS /NP
+          if ($LASTEXITCODE -ge 8) { Write-Host "Relay copy warning: $LASTEXITCODE" }
 
-          # Config
-          cp .env.example "$RESOURCES/.env.example"
-          cp VERSION "$RESOURCES/VERSION"
+          # Config files
+          Copy-Item ".env.example" "$RESOURCES\.env.example" -Force
+          Copy-Item "VERSION" "$RESOURCES\VERSION" -Force
 
           # Agent personas
-          for p in istara-main istara-devops istara-ui-audit istara-ux-eval istara-sim; do
-            if [ -d "backend/app/agents/personas/$p" ]; then
-              rsync -a "backend/app/agents/personas/$p/" "$RESOURCES/backend/app/agents/personas/$p/"
-            fi
-          done
+          foreach ($p in @("istara-main","istara-devops","istara-ui-audit","istara-ux-eval","istara-sim")) {
+            $src = "backend\app\agents\personas\$p"
+            if (Test-Path $src) {
+              robocopy $src "$RESOURCES\backend\app\agents\personas\$p" /E /NFL /NDL /NJH /NJS /NC /NS /NP
+            }
+          }
 
-          echo "Windows source bundled: $(du -sh "$RESOURCES" | cut -f1)"
+          $size = (Get-ChildItem -Path $RESOURCES -Recurse | Measure-Object -Property Length -Sum).Sum / 1MB
+          Write-Host "Windows source bundled: $([math]::Round($size, 1)) MB"
+
+          # Reset exit code (robocopy returns 1 for successful copies)
+          exit 0
 
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
