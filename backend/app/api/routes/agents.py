@@ -3,6 +3,15 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path
+
+
+def _get_version() -> str:
+    try:
+        vf = Path(__file__).resolve().parents[3] / "VERSION"
+        return vf.read_text().strip() if vf.exists() else "dev"
+    except Exception:
+        return "dev"
 import shutil
 from pathlib import Path
 
@@ -805,7 +814,7 @@ async def export_agent(agent_id: str, db: AsyncSession = Depends(get_db)):
     if not agent:
         raise HTTPException(status_code=404, detail="Agent not found")
     return {
-        "istara_version": "0.1.0",
+        "istara_version": _get_version(),
         "type": "agent_config",
         "agent": {
             "name": agent["name"],

@@ -9,6 +9,7 @@
  *   istara-relay --server ws://your-server:8000/ws/relay --token <jwt>
  */
 
+import fs from "fs";
 import { program } from "commander";
 import { createConnection } from "./lib/connection.mjs";
 import { StateMachine } from "./lib/state-machine.mjs";
@@ -19,7 +20,7 @@ import { decodeConnectionString } from "./lib/connection-string.mjs";
 program
   .name("istara-relay")
   .description("Istara Relay — donate LLM compute to the network")
-  .version("0.1.0")
+  .version((() => { try { return fs.readFileSync(new URL('../VERSION', import.meta.url), 'utf8').trim(); } catch { return 'dev'; } })())
   .option("-s, --server <url>", "Istara server WebSocket URL", "ws://localhost:8000/ws/relay")
   .option("-t, --token <jwt>", "JWT authentication token", "")
   .option("-c, --connection-string <string>", "Connection string (replaces --server and --token)")
