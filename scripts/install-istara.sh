@@ -515,6 +515,51 @@ if [ "$MODE" = "server" ]; then
 SEOF
 fi
 
+# ── Step 8: Install Desktop Tray App (optional) ────────────
+if [ "$PLATFORM" = "macos" ]; then
+    if [ ! -d "/Applications/Istara.app" ] && [ ! -d "$HOME/Applications/Istara.app" ]; then
+        echo ""
+        header "Desktop Tray App (Optional)"
+        echo "  The Istara tray icon lets you start/stop the server, check status,"
+        echo "  donate compute, and check for updates — all from your menu bar."
+        echo ""
+        if confirm "Download and install the Istara tray app?" "y"; then
+            info "Downloading latest Istara.app..."
+            # Get latest DMG URL from GitHub releases
+            LATEST_DMG=$(curl -sL "https://api.github.com/repos/${REPO}/releases/latest" \
+                | grep -o '"browser_download_url":[[:space:]]*"[^"]*\.dmg"' \
+                | head -1 | sed 's/.*"browser_download_url":[[:space:]]*"//' | sed 's/"$//')
+            if [ -n "$LATEST_DMG" ]; then
+                TMPDIR_DMG=$(mktemp -d)
+                curl -fSL "$LATEST_DMG" -o "$TMPDIR_DMG/Istara.dmg" 2>&1 | tail -1 || true
+                if [ -f "$TMPDIR_DMG/Istara.dmg" ]; then
+                    # Mount, copy, unmount
+                    hdiutil attach "$TMPDIR_DMG/Istara.dmg" -quiet -nobrowse -mountpoint "$TMPDIR_DMG/mnt" 2>/dev/null || true
+                    if [ -d "$TMPDIR_DMG/mnt/Istara.app" ]; then
+                        cp -R "$TMPDIR_DMG/mnt/Istara.app" /Applications/ 2>/dev/null || \
+                            cp -R "$TMPDIR_DMG/mnt/Istara.app" "$HOME/Applications/" 2>/dev/null || true
+                        hdiutil detach "$TMPDIR_DMG/mnt" -quiet 2>/dev/null || true
+                        ok "Istara.app installed to Applications"
+                        info "Launch it from Applications or Spotlight to get the tray icon."
+                    else
+                        hdiutil detach "$TMPDIR_DMG/mnt" -quiet 2>/dev/null || true
+                        warn "DMG did not contain Istara.app — you can install it manually later"
+                    fi
+                else
+                    warn "Download failed — you can install the tray app manually from GitHub Releases"
+                fi
+                rm -rf "$TMPDIR_DMG"
+            else
+                warn "Could not find latest DMG — you can install the tray app manually from GitHub Releases"
+            fi
+        else
+            ok "Skipped tray app — you can install it later from GitHub Releases"
+        fi
+    else
+        ok "Istara.app already installed"
+    fi
+fi
+
 # ═══════════════════════════════════════════════════════════════════
 # Done!
 # ═══════════════════════════════════════════════════════════════════

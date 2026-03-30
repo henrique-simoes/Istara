@@ -1044,53 +1044,80 @@ On tag push (`v*`) or manual dispatch:
 
 ## Installation Methods
 
+### Architecture: Installer vs Manager
+
+Istara separates **installation** from **management**:
+- **Installation** is handled by the shell one-liner (`install-istara.sh`) or Homebrew. This installs all dependencies (Python 3.12, Node 20, LLM provider), clones the repo, creates the venv, builds the frontend, and generates configuration.
+- **Management** is handled by the desktop tray app (`Istara.app`) or the CLI (`istara start/stop/status`). The tray app reads `~/.istara/config.json` to find the install directory and manages backend/frontend/relay processes.
+
+> **Note:** The DMG/EXE native installers are currently experiencing issues and should not be used. Use Homebrew or the shell one-liner instead.
+
 ### Homebrew (macOS — Recommended)
 ```bash
 brew install --cask henrique-simoes/istara/istara
 ```
 Custom tap at `henrique-simoes/homebrew-istara`. Cask formula at `homebrew/istara.rb`. Uses `livecheck` with `:github_latest` strategy for version detection. `auto_updates true` since the app has built-in auto-updater. `zap` stanza cleans `~/Library/Application Support/com.istara.desktop/`, `~/.istara/`, LaunchAgent, caches.
 
-### Shell One-Liner (macOS)
+### Shell One-Liner (macOS / Linux)
 ```bash
-curl -fsSL https://raw.githubusercontent.com/henrique-simoes/Istara/main/scripts/install-istara.sh | sh
+curl -fsSL https://raw.githubusercontent.com/henrique-simoes/Istara/main/scripts/install-istara.sh | bash
 ```
-Detects platform and architecture. Downloads latest DMG from GitHub Releases API, mounts it, copies `Istara.app` to `/Applications`, removes quarantine attribute, offers to launch. Linux and Windows show manual instructions.
+Interactive terminal wizard that:
+1. Asks for mode: **Server** (full install) or **Client** (relay only)
+2. Installs missing dependencies via Homebrew (Python 3.12, Node, Git)
+3. Detects LLM provider (LM Studio / Ollama) or offers to install one
+4. Clones the repo to `~/.istara/`
+5. Creates Python venv, installs pip dependencies
+6. Installs frontend dependencies, builds production Next.js
+7. Generates `.env` with security keys (JWT, encryption, network token)
+8. Creates `istara` CLI command in PATH
+9. Offers to download and install the tray app to `/Applications/`
+10. Offers to start the server immediately
 
-**Files:** `scripts/install-istara.sh`, `homebrew/istara.rb`
+Handles edge cases: keg-only Homebrew formulas, prompts inside `$(...)` write to `/dev/tty`, `set -eo pipefail` (not `-u`), ERR trap for debugging.
 
-### macOS (.dmg)
-Complete installer with bundled source code. `build-dmg.sh` builds the Tauri universal binary (Intel + Apple Silicon), bundles backend/frontend/relay source into `Istara.app/Contents/Resources/istara/`, creates `.dmg` with drag-to-Applications UX, and optionally notarizes via `xcrun notarytool`. LaunchAgent (`com.istara.server.plist`) enables auto-start on login.
+### Uninstall
+```bash
+curl -fsSL https://raw.githubusercontent.com/henrique-simoes/Istara/main/scripts/uninstall-istara.sh | bash
+```
+Interactive uninstaller: scans for all Istara files, requires typing "uninstall" to confirm, stops processes, removes LaunchAgent, desktop app, install directory, shell PATH entries, logs. Optionally removes dependencies (Python, Node, Ollama) with individual Y/n prompts defaulting to No.
 
-### Windows (.exe via NSIS + MUI2)
-Full installer wizard with:
-- Install mode page: "Server (Full Install)" vs "Client Only"
-- Dependency detection: auto-detects Python, Node.js, Ollama via command execution
-- Dependency download: fetches Python 3.12, Node.js 20, Ollama from official sources
-- LLM provider selection: LM Studio (recommended) vs Ollama
-- Backend setup: creates Python venv, `pip install -r requirements.txt`, `npm ci`, `npm run build`
-- Registry: Add/Remove Programs entry, Start Menu shortcuts, optional auto-start via Run key
-- Uninstaller: stops processes, removes files, offers to keep research data
+### CLI Management (`istara.sh`)
+```bash
+istara start    # Start backend + frontend (production mode)
+istara stop     # Stop both
+istara restart  # Stop then start
+istara status   # Show what's running + LLM connectivity
+istara logs     # Tail both log files
+```
+- Uses venv Python (`$ROOT/venv/bin/python`) — not bare `python`
+- Finds npm via `_find_npm()` checking keg-only Homebrew paths
+- Uses `npm start` (production) when `.next/` build exists, `npm run dev` for development
+- PID verification: checks if process died immediately after spawn, shows log tail on failure
+- Health check polling: waits up to 15s for backend, 20s for frontend
 
-### Desktop App (Tauri v2) — Process Management
-System tray app that actually manages backend, frontend, and relay as child processes:
+### Desktop App (Tauri v2) — Tray Manager
+System tray application for macOS (menubar) and Windows (system tray). **Manager only — does not install.**
+
 - `ProcessManager` (Rust) spawns/kills uvicorn, Next.js, and relay daemon
-- `find_python()` finds venv or system Python, platform-specific
+- `path_resolver.rs` finds Python/Node at real filesystem paths (venv, Homebrew ARM/Intel, pyenv, nvm, fnm, python.org, system)
+- `Stdio::null()` prevents pipe deadlocks on long-running processes
 - Health polling via TCP connect to ports 8000/3000 every 10s
-- Tray menu events wired to real start/stop/relay/quit commands
-- First-run setup wizard (HTML in Tauri webview) with dependency detection and installation
-- Config at `~/.istara/config.json` for mode, server URL, connection string, install dir
+- Tray menu: Open Istara, Start/Stop Server, Start LM Studio, Compute Donation, Check for Updates, Quit
+- Auto-start via `~/.istara/config.json` — reads `mode`, `install_dir`, `donate_compute`
+- Auto-update via `tauri-plugin-updater` with Ed25519 signed releases and `latest.json` from GitHub Releases
+- Bug fix: uses `app.tray_by_id("main")` instead of `TrayIconBuilder::new()` (tauri-apps/tauri#11931)
+
+### Login UX
+- **Local mode** (default, single user): "Welcome to Istara" screen with name field only, "Get Started" button, no password. Backend accepts any credentials and issues admin JWT.
+- **Team mode** (multi-user): Full login/register/join-server flow. First user becomes admin. Connection strings for team members.
+- **Server unreachable**: Dedicated error screen showing the API URL and `istara start` command.
 
 ### CI/CD (GitHub Actions)
 `.github/workflows/build-installers.yml` auto-builds on every push to main:
 - macOS: Builds Tauri universal binary, bundles source, creates DMG
 - Windows: Builds Tauri EXE, creates NSIS installer
-- On tag push (v*): creates GitHub Release with DMG + EXE artifacts
-
-### Dependency Installer (Rust)
-`desktop/src-tauri/src/installer.rs` handles platform-specific dependency installation:
-- macOS: Downloads `.pkg` from python.org/nodejs.org, runs `installer` command; Ollama via curl install script
-- Windows: Downloads `.exe`/`.msi`, runs silent install; PowerShell for downloads
-- Detection: `python3 --version`, `node --version`, TCP port probes for LM Studio/Ollama
+- On tag push (v*): creates GitHub Release with both artifacts and auto-generated release notes
 
 ### Secret Generation
 `scripts/generate-secrets.sh` generates ALL production secrets:
@@ -1100,7 +1127,7 @@ System tray app that actually manages backend, frontend, and relay as child proc
 - `RELAY_TOKEN` — 24-byte for relay daemon auth
 - `POSTGRES_PASSWORD` — 16-byte for team mode PostgreSQL
 
-**Files:** `installer/macos/build-dmg.sh`, `installer/macos/com.istara.server.plist`, `installer/windows/nsis-installer.nsi`, `installer/windows/istara-service.bat`, `.github/workflows/build-installers.yml`, `desktop/src-tauri/src/{main,commands,process,tray,health,installer,backend_setup,config,stats}.rs`
+**Files:** `scripts/install-istara.sh`, `scripts/uninstall-istara.sh`, `istara.sh`, `homebrew/istara.rb`, `.github/workflows/build-installers.yml`, `desktop/src-tauri/src/{main,commands,process,tray,health,config,stats,path_resolver}.rs`
 
 ## Browser Compute Donation
 

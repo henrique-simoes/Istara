@@ -4,10 +4,12 @@
 
 **Istara** is a local-first, privacy-first AI agent for UX Research. It runs entirely on the user's machine with local LLMs (via LM Studio or Ollama), ensuring research data never leaves the user's control.
 
-- **Version**: 0.1.0
-- **License**: Open source
+- **Version**: 2026.03.30 (CalVer)
+- **License**: MIT, open source
 - **Philosophy**: Local-first, privacy-first, open research methodology
 - **Stack**: Next.js frontend + FastAPI backend + SQLite + LanceDB + WebSocket
+- **Install**: `curl -fsSL .../install-istara.sh | bash` or `brew install --cask henrique-simoes/istara/istara`
+- **Manage**: Desktop tray app (Tauri v2) or CLI (`istara start/stop/status`)
 
 ## Architecture
 
@@ -113,14 +115,18 @@ Register models in `database.py`, routes in `main.py`, nav items in `Sidebar.tsx
 ## Commands
 
 ```bash
-# Start backend
-cd backend && python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+# Production (after install)
+istara start          # Start backend + frontend
+istara stop           # Stop both
+istara status         # Show running processes + LLM connectivity
 
-# Start frontend
+# Development (from source)
+cd backend && python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
 cd frontend && npm run dev
 
-# Start LM Studio
-lms server start
+# LLM
+lms server start      # LM Studio
+ollama serve          # Ollama
 ```
 
 <!-- CAPABILITIES_START -->
