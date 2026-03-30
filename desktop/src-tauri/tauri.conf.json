@@ -20,6 +20,15 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "resources": [
+      "../../VERSION",
+      "../../.env.example",
+      "../../backend/requirements.txt",
+      "../../backend/pyproject.toml",
+      "../../backend/alembic.ini",
+      "../../relay/index.mjs",
+      "../../relay/package.json"
+    ],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

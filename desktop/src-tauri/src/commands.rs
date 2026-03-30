@@ -1,5 +1,7 @@
-/// Tauri IPC commands — real process management wired to ProcessManager.
+/// Tauri IPC commands — real process management.
 use crate::config;
+use crate::first_run;
+use crate::path_resolver;
 use crate::process::ProcessManager;
 use crate::stats;
 use std::sync::{Arc, Mutex};
@@ -23,18 +25,12 @@ pub fn get_config() -> Result<config::AppConfig, String> {
 #[tauri::command]
 pub fn start_server(state: State<'_, AppState>) -> Result<String, String> {
     let cfg = config::load_config();
-    let install_dir = if cfg.install_dir.is_empty() {
-        // Default: look for backend/frontend relative to app bundle or CWD
-        find_install_dir()
-    } else {
-        cfg.install_dir.clone()
-    };
+    let install_dir = get_install_dir(&cfg);
 
     let mut pm = state.process_manager.lock().map_err(|e| e.to_string())?;
     pm.start_backend(&install_dir)?;
     pm.start_frontend(&install_dir)?;
 
-    // If compute donation is enabled, also start relay
     if cfg.donate_compute {
         pm.start_relay(&install_dir, &cfg.connection_string)?;
     }
@@ -56,14 +52,9 @@ pub fn toggle_relay(state: State<'_, AppState>, enabled: bool) -> Result<String,
     config::save_config(&cfg)?;
 
     let mut pm = state.process_manager.lock().map_err(|e| e.to_string())?;
-
     if enabled {
-        let install_dir = if cfg.install_dir.is_empty() {
-            find_install_dir()
-        } else {
-            cfg.install_dir.clone()
-        };
-        pm.start_relay(&install_dir, &cfg.connection_string)?;
+        let dir = get_install_dir(&cfg);
+        pm.start_relay(&dir, &cfg.connection_string)?;
         Ok("Relay started".to_string())
     } else {
         pm.stop_relay();
@@ -72,28 +63,20 @@ pub fn toggle_relay(state: State<'_, AppState>, enabled: bool) -> Result<String,
 }
 
 #[tauri::command]
-pub fn set_connection_string(
-    state: State<'_, AppState>,
-    conn_str: String,
-) -> Result<String, String> {
+pub fn set_connection_string(state: State<'_, AppState>, conn_str: String) -> Result<String, String> {
     let mut cfg = config::load_config();
     cfg.connection_string = conn_str;
     cfg.mode = "client".to_string();
     config::save_config(&cfg)?;
 
-    // Restart relay with new connection string
     let mut pm = state.process_manager.lock().map_err(|e| e.to_string())?;
     pm.stop_relay();
     if cfg.donate_compute {
-        let install_dir = if cfg.install_dir.is_empty() {
-            find_install_dir()
-        } else {
-            cfg.install_dir.clone()
-        };
-        pm.start_relay(&install_dir, &cfg.connection_string)?;
+        let dir = get_install_dir(&cfg);
+        pm.start_relay(&dir, &cfg.connection_string)?;
     }
 
-    Ok("Connection string saved and relay restarted".to_string())
+    Ok("Connection string saved".to_string())
 }
 
 #[tauri::command]
@@ -109,83 +92,107 @@ pub fn open_browser() -> Result<(), String> {
 
 #[tauri::command]
 pub fn get_server_status() -> Result<serde_json::Value, String> {
-    // Check if backend health endpoint responds
-    let healthy = match std::net::TcpStream::connect_timeout(
-        &"127.0.0.1:8000".parse().unwrap(),
-        std::time::Duration::from_secs(2),
-    ) {
-        Ok(_) => true,
-        Err(_) => false,
-    };
+    let backend = check_port(8000);
+    let frontend = check_port(3000);
+    let lm_studio = check_port(1234);
+    let ollama = check_port(11434);
 
     Ok(serde_json::json!({
-        "backend_running": healthy,
+        "backend_running": backend,
+        "frontend_running": frontend,
+        "lm_studio_running": lm_studio,
+        "ollama_running": ollama,
         "mode": config::load_config().mode,
     }))
 }
 
-/// Run the full backend setup: create venv, install deps, generate .env.
+/// Run first-run copy + backend setup.
 #[tauri::command]
-pub fn run_backend_setup(llm_provider: String) -> Result<Vec<String>, String> {
-    let install_dir = find_install_dir();
-    let path = std::path::Path::new(&install_dir);
-    crate::backend_setup::setup_backend(path, &llm_provider)
+pub fn run_backend_setup(app: tauri::AppHandle, llm_provider: String) -> Result<Vec<String>, String> {
+    let mut log = Vec::new();
+
+    // Step 1: Copy source from bundle to writable data dir
+    log.push("Copying source files to data directory...".to_string());
+    let data_dir = first_run::ensure_source_copied(&app)?;
+    log.push(format!("  Source copied to {}", data_dir.display()));
+
+    // Step 2: Run backend setup in the writable dir
+    let setup_logs = crate::backend_setup::setup_backend(&data_dir, &llm_provider)?;
+    log.extend(setup_logs);
+
+    // Step 3: Save the install dir to config
+    let mut cfg = config::load_config();
+    cfg.install_dir = data_dir.to_string_lossy().to_string();
+    config::save_config(&cfg)?;
+    log.push(format!("  Configuration saved (install dir: {})", data_dir.display()));
+
+    Ok(log)
 }
 
-/// Run the frontend setup: npm install + build.
+/// Run frontend setup.
 #[tauri::command]
 pub fn run_frontend_setup() -> Result<Vec<String>, String> {
-    let install_dir = find_install_dir();
+    let cfg = config::load_config();
+    let install_dir = get_install_dir(&cfg);
     let path = std::path::Path::new(&install_dir);
     crate::backend_setup::setup_frontend(path)
 }
 
-/// Save the setup configuration and mark first-run complete.
+/// Save setup config and mark first-run complete.
 #[tauri::command]
-pub fn save_setup_config(mode: String, llm_provider: String, connection_string: String) -> Result<String, String> {
-    let install_dir = find_install_dir();
-    let mut cfg = config::AppConfig::default();
+pub fn save_setup_config(mode: String, _llm_provider: String, connection_string: String) -> Result<String, String> {
+    let mut cfg = config::load_config();
     cfg.mode = mode;
-    cfg.install_dir = install_dir;
     cfg.connection_string = connection_string;
-    cfg.donate_compute = false;
-    if cfg.mode == "client" {
-        cfg.server_url = "remote".to_string();
+    if cfg.install_dir.is_empty() {
+        // Use default data dir
+        if let Some(home) = dirs::home_dir() {
+            let data_dir = home.join("Library/Application Support/com.istara.desktop");
+            if data_dir.join("backend").exists() {
+                cfg.install_dir = data_dir.to_string_lossy().to_string();
+            }
+        }
     }
     config::save_config(&cfg)?;
     Ok("Setup complete".to_string())
 }
 
-/// Public wrapper for find_install_dir (used from main.rs).
+/// Public wrapper for finding install dir.
 pub fn find_install_dir_public() -> String {
-    find_install_dir()
+    get_install_dir(&config::load_config())
 }
 
-/// Find the Istara installation directory.
-/// Checks: config, app bundle Resources, CWD, ~/.istara
-fn find_install_dir() -> String {
-    // 1. Check app bundle (macOS)
+/// Determine the install directory.
+/// Priority: config > app data dir > ~/.istara > CWD
+/// NEVER returns the .app bundle path (read-only).
+fn get_install_dir(cfg: &config::AppConfig) -> String {
+    // 1. Config override
+    if !cfg.install_dir.is_empty() && std::path::Path::new(&cfg.install_dir).join("backend").exists() {
+        return cfg.install_dir.clone();
+    }
+
+    // 2. Standard app data dir (where first_run copies to)
     #[cfg(target_os = "macos")]
     {
-        if let Ok(exe) = std::env::current_exe() {
-            let resources = exe
-                .parent() // MacOS/
-                .and_then(|p| p.parent()) // Contents/
-                .map(|p| p.join("Resources").join("istara"));
-            if let Some(path) = resources {
-                if path.join("backend").exists() {
-                    return path.to_string_lossy().to_string();
-                }
+        if let Some(home) = dirs::home_dir() {
+            let data_dir = home.join("Library/Application Support/com.istara.desktop");
+            if data_dir.join("backend").exists() {
+                return data_dir.to_string_lossy().to_string();
             }
         }
     }
 
-    // 2. Check CWD
-    if std::path::Path::new("backend").exists() {
-        return ".".to_string();
+    #[cfg(target_os = "windows")]
+    {
+        if let Ok(appdata) = std::env::var("APPDATA") {
+            let data_dir = std::path::Path::new(&appdata).join("com.istara.desktop");
+            if data_dir.join("backend").exists() {
+                return data_dir.to_string_lossy().to_string();
+            }
+        }
     }
 
-    // 3. Check ~/.istara
+    // 3. ~/.istara (manual setup)
     if let Some(home) = dirs::home_dir() {
         let istara_dir = home.join(".istara");
         if istara_dir.join("backend").exists() {
@@ -193,7 +200,12 @@ fn find_install_dir() -> String {
         }
     }
 
-    // 4. Check standard install paths
+    // 4. CWD (development)
+    if std::path::Path::new("backend").exists() {
+        return ".".to_string();
+    }
+
+    // 5. Windows Program Files
     #[cfg(target_os = "windows")]
     {
         let prog = std::path::Path::new(r"C:\Program Files\Istara");
@@ -202,8 +214,15 @@ fn find_install_dir() -> String {
         }
     }
 
-    // Fallback: use home dir
+    // Fallback
     dirs::home_dir()
         .map(|h| h.join(".istara").to_string_lossy().to_string())
         .unwrap_or_else(|| ".".to_string())
+}
+
+fn check_port(port: u16) -> bool {
+    std::net::TcpStream::connect_timeout(
+        &format!("127.0.0.1:{}", port).parse().unwrap(),
+        std::time::Duration::from_secs(1),
+    ).is_ok()
 }
