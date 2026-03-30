@@ -350,6 +350,14 @@
 - The CLI uses `$ROOT/venv/bin/python` (not bare `python`) and detects npm via keg-only Homebrew paths
 - If startup fails, the CLI shows the last 15 lines of the log — share these with users for debugging
 
+### Guided Onboarding Tour
+- The old modal OnboardingWizard has been replaced with a **Guided Tour** that walks users through the real app views using floating popovers.
+- 10 steps: Folder Selection → Project Creation → Team Mode → Invite Members → Connection Strings → Add Files → Project Context → Tasks → LLM Model Check → Chat
+- Admin path: all 10 steps. Member path: skips project creation (if exists) and team management. Steps 3-4 conditional on team mode being enabled.
+- Step 8 (LLM Check): polls the backend every 3s until LLM is connected. Shows Recommended Model and Available Models sections. Tells user to load a model in LM Studio/Ollama.
+- Tour persists to localStorage — survives page refresh. "Skip tour" available on every step. "Resume Tour" pill appears if user navigates away.
+- When explaining the onboarding to users: "Istara walks you through setup step by step — choosing a folder, creating a project, inviting your team, and making sure your AI model is connected."
+
 ## Limitations
 - Cannot access external APIs or web services unless explicitly configured
 - Cannot modify system code or configuration

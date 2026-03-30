@@ -190,6 +190,8 @@
 - **Login UX flow**: Local mode — verify name-only screen appears, "Get Started" works, JWT is issued. Team mode with no users — verify registration screen auto-appears, first user gets admin role. Server unreachable — verify error screen with `istara start` instructions. Team mode with users — verify login/register/join toggles work.
 - **Uninstaller safety**: Run uninstaller on a test install. Verify it stops processes, removes files, cleans PATH, removes LaunchAgent. Verify "uninstall" confirmation is required (not just Y/n). Verify optional dependency removal defaults to No.
 - **Tray app integration**: Install via shell one-liner (Step 8), verify Istara.app appears in /Applications. Launch, verify tray icon appears with menu. Start server via tray, verify backend+frontend start. Stop via tray, verify clean shutdown.
+- **Guided tour flow**: Simulate the full 10-step admin tour: folder input → project creation → team mode toggle → connection string generation → file prompt → context fill → tasks view → LLM check (mock connected/disconnected states) → chat arrival. Verify step progression, conditional skipping (non-admin skips steps 2-4, existing projects skip 0-1), localStorage persistence across refresh, and skip functionality.
+- **Member tour flow**: Simulate a team member joining via connection string on login screen. Verify the pre-login guidance banner, join mode help text, post-validation account creation. After login, verify tour starts at step 5 (skipping project + team), with member-specific popover text.
 
 ## Limitations
 - Cannot test actual browser rendering (tests are API-level, not visual)
