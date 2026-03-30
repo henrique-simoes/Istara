@@ -1,8 +1,9 @@
 /// System tray setup and menu construction.
-/// Two modes: Server+Client (full menu) and Client-only (relay menu).
-/// Menu events are wired to actual process management commands.
+/// Menu events drive real process management.
 use crate::commands::AppState;
 use crate::config::AppConfig;
+use crate::process::ProcessManager;
+use std::sync::{Arc, Mutex};
 use tauri::{
     menu::{Menu, MenuItem},
     tray::TrayIconBuilder,
@@ -17,6 +18,13 @@ pub fn setup_tray<R: Runtime>(
         build_server_menu(app)?
     } else {
         build_client_menu(app, cfg)?
+    };
+
+    // Clone the Arc<Mutex<ProcessManager>> so the closure owns it
+    // (avoids all borrow-lifetime issues with tauri::State in closures)
+    let pm: Arc<Mutex<ProcessManager>> = {
+        let state = app.state::<AppState>();
+        state.process_manager.clone()
     };
 
     TrayIconBuilder::new()
@@ -36,47 +44,42 @@ pub fn setup_tray<R: Runtime>(
                     let _ = open::that(&url);
                 }
                 "start" => {
-                    let app_state = app.state::<AppState>();
                     let cfg = crate::config::load_config();
                     let dir = if cfg.install_dir.is_empty() {
                         crate::commands::find_install_dir_public()
                     } else {
                         cfg.install_dir.clone()
                     };
-                    if let Ok(mut pm) = app_state.process_manager.lock() {
-                        let _ = pm.start_backend(&dir);
-                        let _ = pm.start_frontend(&dir);
+                    if let Ok(mut guard) = pm.lock() {
+                        let _ = guard.start_backend(&dir);
+                        let _ = guard.start_frontend(&dir);
                     }
                 }
                 "stop" => {
-                    let app_state = app.state::<AppState>();
-                    if let Ok(mut pm) = app_state.process_manager.lock() {
-                        pm.stop_all();
+                    if let Ok(mut guard) = pm.lock() {
+                        guard.stop_all();
                     }
                 }
                 "donate" => {
                     let mut cfg = crate::config::load_config();
                     cfg.donate_compute = !cfg.donate_compute;
                     let _ = crate::config::save_config(&cfg);
-
-                    let app_state = app.state::<AppState>();
-                    if let Ok(mut pm) = app_state.process_manager.lock() {
+                    if let Ok(mut guard) = pm.lock() {
                         if cfg.donate_compute {
                             let dir = if cfg.install_dir.is_empty() {
                                 crate::commands::find_install_dir_public()
                             } else {
                                 cfg.install_dir.clone()
                             };
-                            let _ = pm.start_relay(&dir, &cfg.connection_string);
+                            let _ = guard.start_relay(&dir, &cfg.connection_string);
                         } else {
-                            pm.stop_relay();
+                            guard.stop_relay();
                         }
                     }
                 }
                 "quit" => {
-                    let app_state = app.state::<AppState>();
-                    if let Ok(mut pm) = app_state.process_manager.lock() {
-                        pm.stop_all();
+                    if let Ok(mut guard) = pm.lock() {
+                        guard.stop_all();
                     }
                     app.exit(0);
                 }
