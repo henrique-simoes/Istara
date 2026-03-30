@@ -83,7 +83,7 @@ Every research activity originates as a **Task** on the Kanban board, executes a
 | LLM | LM Studio / Ollama | Local inference, OpenAI-compatible APIs |
 | Embeddings | nomic-embed-text | Runs on CPU, tiny memory footprint |
 | Real-time | WebSocket (FastAPI) | 16 broadcast event types, full UI synchronization |
-| Desktop | Tauri (Rust) | Native system tray, lightweight, cross-platform |
+| Desktop | Tauri v2 (Rust) | Thin GUI tray, delegates to `istara.sh` for process management |
 
 ---
 

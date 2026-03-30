@@ -4,7 +4,8 @@
 //   curl -fsSL https://raw.githubusercontent.com/henrique-simoes/Istara/main/scripts/install-istara.sh | bash
 //
 // The tray app reads ~/.istara/config.json to find the install directory,
-// then manages start/stop of the backend, frontend, and relay processes.
+// then delegates to istara.sh for start/stop of backend + frontend.
+// Relay is managed directly for compute donation.
 
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
@@ -36,7 +37,7 @@ fn main() {
             // Set up system tray menu
             tray::setup_tray(app.handle(), &cfg)?;
 
-            // Clone Arc once for process management
+            // Clone Arc for relay management
             let pm = {
                 let state = app.state::<AppState>();
                 state.process_manager.clone()
@@ -44,29 +45,36 @@ fn main() {
 
             // Auto-start server if config says so and install dir exists
             if cfg.mode == "server" && !cfg.install_dir.is_empty() {
-                if std::path::Path::new(&cfg.install_dir).join("backend").exists() {
-                    if let Ok(mut guard) = pm.lock() {
-                        if let Err(e) = guard.start_backend(&cfg.install_dir) {
-                            eprintln!("[tray] Auto-start backend failed: {}", e);
+                let install_dir = cfg.install_dir.clone();
+                let donate = cfg.donate_compute;
+                let conn_str = cfg.connection_string.clone();
+                let pm_clone = pm.clone();
+
+                // Run in background thread (istara.sh blocks for health checks)
+                std::thread::spawn(move || {
+                    match ProcessManager::start_server(&install_dir) {
+                        Ok(_) => eprintln!("[tray] Auto-start server succeeded"),
+                        Err(e) => {
+                            eprintln!("[tray] Auto-start server failed: {}", e);
+                            return;
                         }
-                        if let Err(e) = guard.start_frontend(&cfg.install_dir) {
-                            eprintln!("[tray] Auto-start frontend failed: {}", e);
-                        }
-                        if cfg.donate_compute {
-                            if let Err(e) = guard.start_relay(&cfg.install_dir, &cfg.connection_string) {
+                    }
+                    if donate {
+                        if let Ok(mut guard) = pm_clone.lock() {
+                            if let Err(e) = guard.start_relay(&install_dir, &conn_str) {
                                 eprintln!("[tray] Auto-start relay failed: {}", e);
                             }
                         }
                     }
-                } else {
-                    eprintln!("[tray] Backend dir not found at: {}/backend", cfg.install_dir);
-                }
+                });
             }
 
             // Auto-start relay for client mode
             if cfg.mode == "client" && !cfg.connection_string.is_empty() && cfg.donate_compute {
+                let install_dir = cfg.install_dir.clone();
+                let conn_str = cfg.connection_string.clone();
                 if let Ok(mut guard) = pm.lock() {
-                    if let Err(e) = guard.start_relay(&cfg.install_dir, &cfg.connection_string) {
+                    if let Err(e) = guard.start_relay(&install_dir, &conn_str) {
                         eprintln!("[tray] Auto-start relay (client) failed: {}", e);
                     }
                 }
@@ -78,7 +86,7 @@ fn main() {
                 health::health_loop(handle);
             });
 
-            // Auto-check for updates on startup
+            // Auto-check for updates on startup (Tauri built-in updater)
             #[cfg(desktop)]
             {
                 let update_handle = app.handle().clone();
@@ -111,23 +119,32 @@ fn main() {
 
 #[cfg(desktop)]
 async fn check_for_update(app: tauri::AppHandle) {
-    use tauri_plugin_updater::UpdaterExt;
     use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
+    use tauri_plugin_updater::UpdaterExt;
 
     tokio::time::sleep(std::time::Duration::from_secs(10)).await;
 
     let Ok(updater) = app.updater() else { return };
-    let Ok(Some(update)) = updater.check().await else { return };
+    let Ok(Some(update)) = updater.check().await else {
+        return;
+    };
 
     let version = update.version.clone();
     let body = update.body.clone().unwrap_or_default();
     let preview = if body.len() > 200 { &body[..200] } else { &body };
 
-    let yes = app.dialog()
-        .message(format!("Istara {} is available.\n\n{}\n\nUpdate now?", version, preview))
+    let yes = app
+        .dialog()
+        .message(format!(
+            "Istara {} is available.\n\n{}\n\nUpdate now?",
+            version, preview
+        ))
         .title("Update Available")
         .kind(MessageDialogKind::Info)
-        .buttons(MessageDialogButtons::OkCancelCustom("Update Now".to_string(), "Later".to_string()))
+        .buttons(MessageDialogButtons::OkCancelCustom(
+            "Update Now".to_string(),
+            "Later".to_string(),
+        ))
         .blocking_show();
 
     if yes {

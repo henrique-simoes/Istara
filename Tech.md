@@ -1004,14 +1004,14 @@ One string gets a team member both web UI access (JWT) and relay compute donatio
 
 ## Desktop App (Tauri v2)
 
-System tray application for macOS (menubar) and Windows (system tray). Two modes:
+System tray application for macOS (menubar) and Windows (system tray). **Thin GUI layer** that delegates process management to `istara.sh` for single-source-of-truth reliability. Two modes:
 
-- **Server+Client**: Manages backend, frontend, and relay subprocesses. Menu: Open Browser, Start/Stop Server, Stats, Compute Donation, Quit.
-- **Client-only**: Manages relay daemon only. Menu: Connection Status, Open Browser, Stats, Compute Donation, Change Server, Quit.
+- **Server+Client**: Delegates start/stop to `istara.sh`. Menu: Open Browser, Start/Stop Server (with live port-based label), LLM Status (with donation toggle), Compute Donation, Check for Updates, Quit.
+- **Client-only**: Manages relay daemon only. Menu: Connection Status, Open Browser, Compute Donation, Change Server, Check for Updates, Quit.
 
-Built with Tauri v2 (5-15 MB binary, ~20 MB RAM). Rust backend for process management, `sysinfo` crate for stats. Config stored at `~/.istara/config.json`.
+Built with Tauri v2 (5-15 MB binary, ~20 MB RAM). Process management via `istara.sh` shell delegation, relay managed directly in Rust, `sysinfo` crate for stats. Config stored at `~/.istara/config.json`.
 
-**Files:** `desktop/src-tauri/` (Rust), `desktop/src/` (HTML stats popover)
+**Files:** `desktop/src-tauri/src/{main,commands,process,tray,health,config,stats,path_resolver}.rs`, `desktop/src/` (HTML stats popover)
 
 ## Versioning & Auto-Updates
 
@@ -1043,7 +1043,7 @@ Notification types added to EVENT_METADATA: `update_available`, `update_started`
 - Fallback: if auto-update fails, shows error with suggestion to run `istara update` from terminal
 
 ### Desktop Tray Update Notification
-`health.rs` checks GitHub Releases API every 6 hours. When a newer version is found, emits `update-available` event to the webview. Future: OS-native notification via Tauri notification plugin.
+`health.rs` checks for updates every 6 hours using `git fetch --tags` (no GitHub API rate limit). When a newer version is found, emits `update-available` event to the webview. The tray's "Check for Updates" menu item uses a three-tier approach: Tauri built-in updater, git tag comparison, or GitHub releases fallback — every path shows a native dialog result.
 
 ### CI/CD Release Flow
 On tag push (`v*`) or manual dispatch:
@@ -1059,7 +1059,7 @@ On tag push (`v*`) or manual dispatch:
 
 Istara separates **installation** from **management**:
 - **Installation** is handled by the shell one-liner (`install-istara.sh`) or Homebrew. This installs all dependencies (Python 3.12, Node 20, LLM provider), clones the repo, creates the venv, builds the frontend, and generates configuration.
-- **Management** is handled by the desktop tray app (`Istara.app`) or the CLI (`istara start/stop/status`). The tray app reads `~/.istara/config.json` to find the install directory and manages backend/frontend/relay processes.
+- **Management** is handled by the CLI (`istara start/stop/status/update`) or the desktop tray app (`Istara.app`). The tray app delegates to `istara.sh` for start/stop operations, ensuring the CLI and GUI use identical process management logic (PID files, process groups, health waits).
 
 > **Note:** The DMG/EXE native installers are currently experiencing issues and should not be used. Use Homebrew or the shell one-liner instead.
 
@@ -1110,15 +1110,19 @@ istara logs     # Tail both log files
 ### Desktop App (Tauri v2) — Tray Manager
 System tray application for macOS (menubar) and Windows (system tray). **Manager only — does not install.**
 
-- `ProcessManager` (Rust) spawns/kills uvicorn, Next.js, and relay daemon. **Zombie detection**: `try_wait()` checks if child processes are actually alive before reporting `is_running()`. Dead processes are cleaned up automatically on next call. Also checks port 8000/3000 as fallback for externally-started servers.
-- **Process logging**: stdout/stderr go to `~/.istara/logs/{backend,frontend,relay}.log` instead of /dev/null. Enables debugging when processes crash.
-- `path_resolver.rs` finds Python/Node at real filesystem paths (venv, Homebrew ARM/Intel, pyenv, nvm, fnm, python.org, system). Validates existence before returning.
-- Health loop: polls ports every 10s, rebuilds tray menu only on state change or every 30s (not every 10s), checks GitHub for updates every 6h with rate-limit detection.
-- Tray menu: rebuilds after every user action (Start/Stop, Donate toggle) to update labels immediately. "Open Istara" checks if server is actually running and shows dialog if not.
-- Donate Compute: verifies relay actually starts before saving config. If relay fails, config is NOT updated — prevents "On" label with no relay running.
-- Config resilience: corrupt `config.json` is backed up to `.json.bak` before resetting to defaults. Logged as warning.
-- Check Updates: tries Tauri updater first (DMG installs), falls back to GitHub Releases dialog (shell installs) with `istara update` hint.
-- Auto-start via `~/.istara/config.json` — reads `mode`, `install_dir`, `donate_compute`. Startup errors are logged (not silently discarded).
+**Architecture: Shell Delegation** — The tray app is a thin GUI layer over `istara.sh`. Start/Stop operations delegate to the CLI script (single source of truth for PID files, process groups, port cleanup, health waits). This ensures the CLI and GUI use identical process management logic. Only the relay daemon is managed directly by the Rust process (not part of `istara.sh`).
+
+- **Start/Stop**: Calls `istara.sh start` / `istara.sh stop` in a background thread (blocking operations take up to 35s for health checks). Menu rebuilds after the operation completes. Errors shown in native dialog with log details.
+- **Menu state**: Always driven by port checks (`127.0.0.1:8000`, `:3000`, `:1234`, `:11434`). Labels show `● Stop Istara Server` when ports are open, `○ Start Istara Server` when down. Green checkmarks for LLM status, circle indicators for donation state.
+- **Compute Donation**: Toggles `donate_compute` in config and saves immediately. Tries to start/stop relay. If relay dir missing, saves config anyway (donation activates when relay becomes available) and shows warning dialog. Every toggle shows confirmation dialog.
+- **LLM Status Click**: If LLM running, shows dialog with provider name + donation status, offers to toggle donation. If not running, offers to open LM Studio.
+- **Check Updates**: Three-tier check: (1) Tauri built-in updater for DMG installs, (2) `git fetch --tags` + version comparison for shell installs, (3) fallback to open GitHub releases. Every path shows a result dialog — no silent failures.
+- **Health loop**: Polls ports every 10s, rebuilds tray menu on state change or every 30s. Tracks backend, frontend, LM Studio, and Ollama port states. Checks for updates via git tags every 6h (no GitHub API rate limit).
+- **Relay management**: Relay `Child` process managed directly with `try_wait()` zombie detection. Log output goes to `~/.istara/logs/relay.log`.
+- **Config resilience**: corrupt `config.json` is backed up to `.json.bak` before resetting to defaults. Logged as warning.
+- `path_resolver.rs` finds Python/Node at real filesystem paths (venv, Homebrew ARM/Intel, pyenv, nvm, fnm, python.org, system). Used only for relay's Node.js path.
+- Auto-start via `~/.istara/config.json` — reads `mode`, `install_dir`, `donate_compute`. Runs `istara.sh start` in background thread. Startup errors are logged (not silently discarded).
+- **ANSI stripping**: `istara.sh` output contains terminal colors; `strip_ansi()` cleans output for error dialogs.
 
 ### Login UX
 - **Local mode** (default, single user): "Welcome to Istara" screen with name field only, "Get Started" button, no password. Backend accepts any credentials and issues admin JWT.
