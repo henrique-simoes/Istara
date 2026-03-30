@@ -23,9 +23,25 @@ pub fn get_config() -> Result<config::AppConfig, String> {
 }
 
 #[tauri::command]
-pub fn start_server(state: State<'_, AppState>) -> Result<String, String> {
+pub fn start_server(app: tauri::AppHandle, state: State<'_, AppState>) -> Result<String, String> {
     let cfg = config::load_config();
-    let install_dir = get_install_dir(&cfg);
+    let mut install_dir = get_install_dir(&cfg);
+
+    // If no install dir found, try to copy source from bundle first
+    if !std::path::Path::new(&install_dir).join("backend").exists() {
+        match first_run::ensure_source_copied(&app) {
+            Ok(data_dir) => {
+                install_dir = data_dir.to_string_lossy().to_string();
+                // Save for next time
+                let mut cfg = config::load_config();
+                cfg.install_dir = install_dir.clone();
+                let _ = config::save_config(&cfg);
+            }
+            Err(e) => {
+                return Err(format!("Cannot find Istara source code. Run the setup wizard first. ({})", e));
+            }
+        }
+    }
 
     let mut pm = state.process_manager.lock().map_err(|e| e.to_string())?;
     pm.start_backend(&install_dir)?;
