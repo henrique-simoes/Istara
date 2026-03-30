@@ -2,6 +2,8 @@
 
 <div align="center">
 
+</div><img width="2048" height="2048" alt="Istara" src="https://github.com/user-attachments/assets/b250903a-8272-43b7-b91d-dfcf3b249910" />
+
 # 🐾 Istara
 
 ### Local-first AI agents for UX Research — your data never leaves your machine
@@ -20,7 +22,6 @@
 *Five autonomous AI agents. Fifty-three self-improving research skills. Zero cloud dependency.*
 *Every insight is evidence-grounded. Every agent gets smarter with every session.*
 
-</div>
 
 ---
 
