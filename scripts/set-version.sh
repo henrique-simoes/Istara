@@ -35,20 +35,28 @@ echo "Setting Istara version to: $VERSION"
 
 # ── Update all version files ──────────────────────────────────────
 
-# 1. Tauri config (JSON)
-sed -i.bak "s/\"version\": \"[^\"]*\"/\"version\": \"$VERSION\"/" "$ROOT/desktop/src-tauri/tauri.conf.json"
+# Convert CalVer to semver for Tauri/Cargo (they reject non-semver).
+# 2026.03.29 → 0.2026.329   |   2026.03.29.2 → 0.2026.3292
+SEMVER_VERSION=$(echo "$VERSION" | awk -F. '{
+    if (NF==3) printf "0.%s.%s%s", $1, $2+0, $3+0;
+    else if (NF==4) printf "0.%s.%s%s%s", $1, $2+0, $3+0, $4;
+    else print "0.0.1"
+}')
+
+# 1. Tauri config (JSON) — needs semver
+sed -i.bak "s/\"version\": \"[^\"]*\"/\"version\": \"$SEMVER_VERSION\"/" "$ROOT/desktop/src-tauri/tauri.conf.json"
 rm -f "$ROOT/desktop/src-tauri/tauri.conf.json.bak"
-echo "  ✓ desktop/src-tauri/tauri.conf.json"
+echo "  ✓ desktop/src-tauri/tauri.conf.json (semver: $SEMVER_VERSION)"
 
 # 2. Desktop package.json
 sed -i.bak "s/\"version\": \"[^\"]*\"/\"version\": \"$VERSION\"/" "$ROOT/desktop/package.json"
 rm -f "$ROOT/desktop/package.json.bak"
 echo "  ✓ desktop/package.json"
 
-# 3. Rust Cargo.toml (version field)
-sed -i.bak "s/^version = \"[^\"]*\"/version = \"$VERSION\"/" "$ROOT/desktop/src-tauri/Cargo.toml"
+# 3. Rust Cargo.toml — needs semver
+sed -i.bak "s/^version = \"[^\"]*\"/version = \"$SEMVER_VERSION\"/" "$ROOT/desktop/src-tauri/Cargo.toml"
 rm -f "$ROOT/desktop/src-tauri/Cargo.toml.bak"
-echo "  ✓ desktop/src-tauri/Cargo.toml"
+echo "  ✓ desktop/src-tauri/Cargo.toml (semver: $SEMVER_VERSION)"
 
 # 4. Frontend package.json
 sed -i.bak "s/\"version\": \"[^\"]*\"/\"version\": \"$VERSION\"/" "$ROOT/frontend/package.json"
