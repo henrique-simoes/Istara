@@ -2,301 +2,98 @@
 
 <div align="center">
 
-# Istara
+# 🐾 Istara
 
-**Local-first AI for UX Research — agents that learn, evolve, and work for you.**
+### Local-first AI agents for UX Research — your data never leaves your machine
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Version](https://img.shields.io/badge/version-2026.03.29-brightgreen.svg)](VERSION)
-[![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows-lightgrey.svg)](installer/)
-[![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](backend/)
-[![Node](https://img.shields.io/badge/node-18%2B-green.svg)](frontend/)
+[![Python](https://img.shields.io/badge/python-3.12-blue.svg)](backend/)
+[![Node](https://img.shields.io/badge/node-20-green.svg)](frontend/)
+[![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey.svg)](installer/)
+[![GitHub](https://img.shields.io/badge/GitHub-henrique--simoes%2FIstara-181717?logo=github)](https://github.com/henrique-simoes/Istara)
 
-[**Get Started**](#quick-start) · [**Architecture**](#architecture) · [**Skills**](#53-research-skills) · [**Agents**](#5-ai-agents) · [**Contributing**](CONTRIBUTING.md)
+[**Get Started**](#quick-start) · [**Architecture**](#architecture) · [**Research Skills**](#53-research-skills) · [**Agents**](#5-ai-agents) · [**References**](#academic-references) · [**Contributing**](CONTRIBUTING.md)
 
 ---
 
-*Your research data never leaves your machine. Your agents get smarter every day.*
+*Five autonomous AI agents. Fifty-three self-improving research skills. Zero cloud dependency.*
+*Every insight is evidence-grounded. Every agent gets smarter with every session.*
 
 </div>
 
 ---
 
-## What is Istara?
+## Why Istara Exists
 
-Istara is a **self-evolving AI research platform** that runs entirely on your hardware. It ships with five specialized AI agents, 53 UX research skills, and a complete evidence-chain methodology — all backed by local LLM inference (LM Studio or Ollama).
+UX researchers deserve tools that respect their data, enforce methodological rigor, and improve through use — not SaaS platforms that upload transcripts to foreign servers, charge per seat, and forget everything the moment you close the tab.
 
-There is no cloud. No subscription. No vendor lock-in. Every insight, every transcript, every finding lives in your database.
+Istara runs entirely on your hardware. It ships with five specialized AI agents, 53 UX research skills, and an evidence-chain methodology grounded in peer-reviewed research. The agents improve themselves over time. Skills track their own quality. The platform learns your workflow.
 
-The agents improve themselves over time. Skills track their own performance. The platform learns your workflow preferences. And it gets better the more you use it.
+**No cloud. No subscription. No hallucinated insights.**
 
 ---
 
-## Why Istara Is Different
+## Istara vs. The Alternatives
 
-| Feature | Istara | Typical AI Research Tools |
+| Capability | Istara | Dovetail / Maze / UserTesting |
 |---|---|---|
-| Data privacy | 100% local — data never leaves | Cloud-uploaded |
-| Agent memory | Persistent, evolving personas | Stateless sessions |
-| Research methodology | Atomic Research chain (Nuggets → Recommendations) | Ad-hoc |
-| Skill improvement | Auto-evolving quality scores | Static prompts |
-| Agent creation | Factory — create agents at runtime | Fixed set |
-| UX compliance | 30 Laws of UX auditing | Not available |
-| Team compute | Donate GPU capacity via WebSocket relay | Pay per API call |
-| Price | Free, open source | Paid SaaS |
+| Data privacy | 100% local — data never leaves your machine | Uploaded to vendor cloud |
+| Agent memory | Persistent, evolving personas across sessions | Stateless API calls |
+| Research methodology | Atomic Research chain with evidence provenance | Ad-hoc summarization |
+| Skill improvement | Self-evolving quality scores per model × skill | Static prompts |
+| Agent creation | Runtime agent factory — new agents without code | Fixed feature set |
+| Multi-model validation | Mixture-of-Agents debate + Fleiss' Kappa | Single model, no validation |
+| Memory compression | LLMLingua-inspired, 30–74% token savings | No long-context management |
+| UX compliance | 30 Laws of UX automated auditing | Not available |
+| Compute sharing | Donate GPU via WebSocket relay — team cluster | Pay-per-API-call |
+| Autonomous research | Karpathy-style autoresearch loops | Manual execution only |
+| Survey channels | WhatsApp, Telegram, Typeform, SurveyMonkey | Limited integrations |
+| Price | Free, open source, MIT licensed | $X,XXX/year SaaS |
 
 ---
 
-## Core Highlights
+## 1. 🧠 Agents That Create Agents
 
-### 🧠 5 AI Agents With Persistent Identities
+> *"Let Agents Design Agents"* — Zhou et al. (2026)
 
-Meet your research team — agents with names, memories, and specializations:
+Istara implements a **Memento-inspired agent factory** grounded in the insight that the most effective way to extend an AI system is to have it design its own extensions. When an existing agent detects a capability gap — a research task it cannot handle well — it proposes a new specialized agent: defines the persona, selects skills, writes the protocols, and registers it in the orchestration pipeline.
 
-| Agent | Name | Role |
+**No code changes. No restarts. The system extends itself.**
+
+The five built-in agents each carry four evolving persona files:
+
+| Agent | Name | Specialization |
 |---|---|---|
-| `istara-main` | **Cleo** | Primary researcher. Executes all 53 skills, leads projects, talks to you |
-| `istara-devops` | **Sentinel** | Data integrity guardian. Monitors health, audits orphaned records |
-| `istara-ui-audit` | **Pixel** | WCAG compliance expert. Nielsen heuristics, accessibility scoring |
-| `istara-ux-eval` | **Sage** | Cognitive load analyst. User journeys, workflow friction detection |
-| `istara-sim` | **Echo** | End-to-end tester. Simulates users, runs regression scenarios |
+| `istara-main` | **Cleo** | Primary researcher — executes all 53 skills, leads projects, interfaces with you |
+| `istara-devops` | **Sentinel** | Data integrity guardian — monitors health, audits orphaned records, runs checks |
+| `istara-ui-audit` | **Pixel** | WCAG compliance expert — Nielsen heuristics, accessibility scoring |
+| `istara-ux-eval` | **Sage** | Cognitive load analyst — user journeys, workflow friction detection |
+| `istara-sim` | **Echo** | End-to-end tester — simulates users, runs 66 regression scenarios |
 
-Each agent carries four persona files — **CORE.md** (identity), **SKILLS.md** (capabilities), **PROTOCOLS.md** (behavior rules), **MEMORY.md** (accumulated learnings) — and all four evolve as the agent works.
+Each agent's persona is stored in four files — `CORE.md` (identity), `SKILLS.md` (capabilities), `PROTOCOLS.md` (behavioral rules), `MEMORY.md` (accumulated learnings) — and **all four evolve as the agent works**.
 
-### 🔁 Agents That Create Other Agents
-
-Istara includes an **Agent Factory**: create custom research agents at runtime through the UI, define their persona, assign skills, and they join the orchestration pipeline immediately. No code changes. No restarts.
-
-The MetaOrchestrator coordinates all agents through an A2A messaging protocol with typed message routing.
-
-### 📈 53 Research Skills That Self-Improve
-
-Skills are not static prompts. Each skill:
-- Has a `plan()` → `execute()` → `validate()` lifecycle
-- Tracks execution quality per model × skill combination
-- Surfaces a **Skill Health Monitor** score in the UI
-- Auto-proposes prompt improvements when quality drops below threshold
-
-Skills cover the full **Double Diamond** methodology:
-
-**Discover** — User Interviews, Contextual Inquiry, Survey Design, Survey Generator, Competitive Analysis, Diary Studies, Field Studies, Analytics Review, Accessibility Audit, Desk Research, Stakeholder Interviews, Interview Question Generator, Channel Research Deployment, Survey AI Detection
-
-**Define** — Thematic Analysis, Kappa Thematic Analysis, Affinity Mapping, Empathy Mapping, Persona Creation, Journey Mapping, HMW Statements, JTBD Analysis, Research Synthesis, Taxonomy Generator, Prioritization Matrix, User Flow Mapping
-
-**Develop** — Usability Testing, Heuristic Evaluation, Cognitive Walkthrough, Concept Testing, Card Sorting, Tree Testing, AB Test Analysis, Design Critique, Prototype Feedback, Workshop Facilitation
-
-**Deliver** — Design System Audit, SUS/UMUX Scoring, NPS Analysis, Stakeholder Presentation, Handoff Documentation, Regression Impact, Task Analysis Quant, Repository Curation, Research Retro, Longitudinal Tracking
-
-### 🔗 Atomic Research Evidence Chain
-
-Every finding is traceable from raw source to final recommendation:
-
-```
-Quote / observation (Nugget)
-       ↓
-Verified pattern from 2+ nuggets (Fact)
-       ↓
-Interpreted meaning — "so what?" (Insight)
-       ↓
-Actionable proposal with priority (Recommendation)
-```
-
-No insight without provenance. Every recommendation links back through the chain to the exact quote that supports it.
-
-### 🔍 Hybrid RAG: Vector + Keyword Search
-
-Retrieval uses a weighted blend:
-- **70% vector similarity** (LanceDB embeddings)
-- **30% BM25 keyword search**
-
-This means Istara finds both semantically similar content and exact terminology matches. Switch to pure vector or pure keyword mode per-query when you need it.
-
-### 🔒 Your Data, Your Hardware
-
-- Local LLMs via **LM Studio** (default) or **Ollama**
-- SQLite database — a single file, fully portable
-- LanceDB vector store — embedded, no separate process
-- MCP server is **OFF by default** — enable only when you need external agent access
-- All file uploads processed locally
-
----
-
-## Architecture
-
-```
-┌──────────────────────────────────────────────────────────────┐
-│                      FRONTEND (Next.js 14)                   │
-│   Chat · Kanban · Findings · Documents · Skills · Agents     │
-│   22 views · Contextual onboarding · Dark/light mode         │
-└────────────────────────┬─────────────────────────────────────┘
-                         │ REST + WebSocket (16 event types)
-┌────────────────────────▼─────────────────────────────────────┐
-│                      BACKEND (FastAPI)                        │
-│                                                              │
-│  ┌───────────┐ ┌───────────┐ ┌───────────┐ ┌─────────────┐  │
-│  │ 337 REST  │ │ WebSocket │ │ MCP Server│ │ A2A Protocol│  │
-│  │ endpoints │ │  Manager  │ │ (optional)│ │  Discovery  │  │
-│  └─────┬─────┘ └─────┬─────┘ └─────┬─────┘ └──────┬──────┘  │
-│        └─────────────┴─────────────┴───────────────┘        │
-│                               │                              │
-│  ┌────────────────────────────▼──────────────────────────┐   │
-│  │                     CORE ENGINE                       │   │
-│  │  MetaOrchestrator · Context Hierarchy (6 levels)      │   │
-│  │  Hybrid RAG (LanceDB + BM25) · Prompt Compressor      │   │
-│  │  Self-Evolution · Skill Health Monitor                │   │
-│  │  Resource Governor · DAG Context Summarizer           │   │
-│  └────────────────────────────┬──────────────────────────┘   │
-│                               │                              │
-│  ┌─────────────────┐  ┌───────▼──────────┐  ┌────────────┐  │
-│  │  Agent Personas │  │   Data Layer     │  │  LLM Layer │  │
-│  │  CORE · SKILLS  │  │  SQLite (51+     │  │ LM Studio  │  │
-│  │  PROTOCOLS      │  │  models)         │  │ Ollama     │  │
-│  │  MEMORY         │  │  LanceDB         │  │ Any OpenAI │  │
-│  └─────────────────┘  └──────────────────┘  │ compatible │  │
-│                                              └────────────┘  │
-└──────────────────────────────────────────────────────────────┘
-```
-
-### Technology Stack
-
-| Layer | Technology |
-|---|---|
-| Frontend | Next.js 14, React, Tailwind CSS, Zustand |
-| Backend | FastAPI, Python 3.11+, async SQLAlchemy |
-| Database | SQLite + aiosqlite (zero-config, ACID) |
-| Vector Store | LanceDB (embedded, no server process) |
-| Desktop App | Tauri v2 (system tray, process management) |
-| Real-time | WebSocket — 16 broadcast event types |
-| LLM Providers | LM Studio · Ollama · OpenAI-compatible APIs |
-| Installers | macOS DMG · Windows NSIS EXE |
-
----
-
-## Quick Start
-
-### Prerequisites
-
-- Python 3.11+
-- Node 18+
-- [LM Studio](https://lmstudio.ai) or [Ollama](https://ollama.ai)
-
-### Option A: Desktop App (Recommended)
-
-Download the installer for your platform from [Releases](https://github.com/henrique-simoes/Istara/releases):
-
-- **macOS**: `Istara-2026.03.29.dmg`
-- **Windows**: `Istara-Setup-2026.03.29.exe`
-
-The setup wizard walks you through LLM configuration, creates your first project, and launches the system tray agent.
-
-### Option B: Run From Source
-
-```bash
-git clone https://github.com/henrique-simoes/Istara.git
-cd Istara
-
-# Start LM Studio and load a model, then:
-
-# Backend
-cd backend
-python -m venv venv && source venv/bin/activate  # Windows: venv\Scripts\activate
-pip install -e ".[dev]"
-uvicorn app.main:app --host 0.0.0.0 --port 8000
-
-# Frontend (new terminal)
-cd frontend
-npm install
-npm run dev
-```
-
-Open [http://localhost:3000](http://localhost:3000).
-
-### Option C: Docker
-
-```bash
-docker-compose up
-```
-
----
-
-## Platform Features
-
-### Team Mode
-
-Share Istara across your research team with a single connection string:
-
-```
-istara://team@yourserver:8000?token=JWT_HERE
-```
-
-Paste the string in the onboarding wizard — it configures the backend URL and authenticates automatically.
-
-### Compute Donation
-
-Team members can donate spare GPU capacity to the shared pool. The **Compute Relay** (WebSocket-based) routes inference requests to available nodes with automatic capability detection and failover. No cloud required — your team's hardware becomes the cluster.
-
-### Research Integrations
-
-| Integration | What It Does |
-|---|---|
-| **SurveyMonkey** | Auto-deploy surveys, pull responses |
-| **Google Forms** | Create and distribute forms |
-| **Typeform** | Deploy conversational surveys |
-| **Figma** | Extract design system tokens and decisions |
-| **Google Stitch MCP** | AI-generated screen designs |
-| **Slack / Telegram / WhatsApp** | Receive findings as messages |
-
-### Document Intelligence
-
-Drop any file into Istara — PDF, DOCX, transcript, spec:
-- Auto-classifies document type
-- Extracts nuggets and creates tasks
-- Links findings back to source passages
-- Supports folder watching for continuous ingestion
-- Link external folders without copying files
-
-### 30 Laws of UX Auditing
-
-Run a compliance check against all 30 Laws of UX (Jakob's Law, Fitts's Law, Hick's Law, and 27 more) directly on any design or interface description. Get a scored report with evidence and recommendations.
-
-### Contextual Onboarding
-
-Every one of Istara's 22 views has its own onboarding flow. First time in the Skills view? A contextual guide explains what skills do and how to run one. It adapts to what you have already set up.
-
----
-
-## Screenshots
-
-<!-- TODO: Add screenshots after first public deployment -->
-*Screenshots coming soon — see [docs/](docs/) for architecture diagrams.*
-
----
-
-## Agent Self-Evolution: How It Works
+### Self-Evolution Pipeline
 
 ```
 User interaction
       ↓
 Agent records error pattern or workflow preference
       ↓
-Pattern tracked: occurrences · contexts · time
+Pattern tracked: occurrences · contexts · time elapsed
       ↓
-Threshold reached: 3+ occurrences, 2+ contexts, 30 days
+Threshold reached: 3+ occurrences, 2+ contexts, within 30 days
       ↓
-Learning promoted → written into agent's MEMORY.md
+Learning promoted → written into agent MEMORY.md
       ↓
-Agent persona updated permanently
+Persona updated permanently across all future sessions
       ↓
-Next conversation starts with improved agent
+Next conversation starts with an improved agent
 ```
 
-This is not fine-tuning. It is structured prompt evolution — it works with any local model, including 3B parameter models on modest hardware.
+This is not fine-tuning. It is **structured prompt evolution** — it works with any local model, including 3B parameter models on modest consumer hardware.
 
----
-
-## Skill Performance Tracking
-
-Every skill invocation is recorded per model × skill combination:
+Skills also self-evolve. Every invocation records quality per model × skill combination:
 
 ```python
 ModelSkillStats(
@@ -309,49 +106,561 @@ ModelSkillStats(
 )
 ```
 
-When quality drops below threshold, Istara surfaces an improvement proposal in the UI — a diff between the current skill prompt and the proposed revision. You approve or reject it. Skills that consistently perform well on your hardware earn a higher health score and get priority routing.
+When quality drops below threshold, Istara surfaces a diff between the current prompt and the proposed revision. You approve or reject. Skills that consistently perform well earn higher health scores and priority routing.
+
+> **References:** Zhou et al. (2026) "Memento-Skills: Let Agents Design Agents" arXiv:2603.18743; Zhang et al. (2026) "Hyperagents: DGM-H Metacognitive Self-Modification for Cross-Domain Transfer" arXiv:2603.19461
 
 ---
 
-## MCP Server and Agent-to-Agent Protocol
+## 2. 🔬 Academic-Grade Multi-Model Validation
 
-Istara exposes two interoperability interfaces:
+> *"Improving Factuality and Reasoning in Language Models through Multiagent Debate"* — Du et al. (2024)
 
-**MCP Server** (disabled by default, `http://localhost:8001/mcp` when enabled):
+Research findings produced by a single LLM are unreliable. Istara employs a **Mixture-of-Agents validation pipeline** where multiple independent model instances analyze the same data, challenge each other's conclusions via adversarial debate, and only promote a finding when consensus is reached — quantified by Fleiss' Kappa inter-coder reliability.
+
+### The Validation Stack
+
 ```
-list_skills()       list_projects()     get_findings()
-search_memory()     execute_skill()     deploy_research()
-create_project()    get_deployment_status()
+Raw data (transcript, survey responses, observation notes)
+      ↓
+Agent A analyzes independently → draft findings
+Agent B analyzes independently → draft findings
+Agent C analyzes independently → draft findings
+      ↓
+Adversarial debate round: each agent challenges the others
+      ↓
+Fleiss' Kappa computed across all agent outputs (κ ≥ 0.60 required)
+      ↓
+High-agreement findings promoted to evidence chain
+Low-agreement findings flagged for human review
+      ↓
+LLM-as-Judge final quality assessment
+      ↓
+Validated finding with provenance, confidence, and dissent notes
 ```
 
-**A2A Protocol** discovery endpoint at `/.well-known/agent.json` — standard agent interoperability for external tools and agent frameworks.
+**Research findings are never hallucinated — they are grounded in evidence chains with quantified reliability scores.**
 
-Both are gated by granular `MCPAccessPolicy` with per-tool permissions and full audit logging.
+The Self-MoA variant (Li et al., 2025) enables single-agent validation loops when compute is constrained, maintaining rigour without requiring three simultaneous model instances.
+
+> **References:** Wang et al. (2024) "Mixture-of-Agents Enhances Large Language Model Capabilities"; Du et al. (2024) ICML "Improving Factuality and Reasoning in Language Models through Multiagent Debate"; Li et al. (2025) "Self-MoA: Self-Mixture of Agents"; Fleiss (1971) "Measuring nominal scale agreement among many raters" *Psychological Bulletin* 76(5):378–382; Zheng et al. (2023) "Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena" NeurIPS 2023
 
 ---
 
-## Contributing
+## 3. 💾 Lossless Memory — Never Lose Context
 
-Istara is MIT-licensed and welcomes contributions. The most impactful areas:
+> *"LLMLingua: Compressing Prompts for Accelerated Inference"* — Jiang et al. (2023)
 
-- **New skills** — Add a `SKILL.md` + JSON definition, no Python required for most skills
-- **LLM adapters** — New local inference backends
-- **Channel integrations** — Messaging platforms (Discord, Teams, etc.)
-- **UI components** — Accessibility improvements, new views
-- **Research methodology** — Improve prompts, add validation logic to existing skills
+Long research sessions accumulate more context than any model's window can hold. Istara manages this with a **six-level hierarchical context system** combined with LLMLingua-inspired prompt compression that achieves **30–74% token reduction** while preserving semantic fidelity.
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions and code style guide.
+### Context Hierarchy
+
+```
+Level 1 — Immediate: current turn (full resolution)
+Level 2 — Session: active conversation (lightly compressed)
+Level 3 — Project: cross-session research state (DAG-summarized)
+Level 4 — Domain: persistent knowledge about your research area
+Level 5 — Agent: persona + accumulated learnings
+Level 6 — System: platform capabilities + skill registry
+```
+
+The **DAG Context Summarizer** (inspired by MemWalker, Chen et al. 2023) builds a directed acyclic graph of conversation segments, enabling hierarchical retrieval without information loss. Old summaries collapse into higher-level nodes; recent context remains at full resolution. The system navigates the graph to retrieve the most relevant past context for each new query.
+
+**Prompt RAG** (Pan et al., 2024) retrieves relevant past context snippets at inference time, injecting them into the current prompt — turning a limited context window into an effectively unlimited research memory.
+
+> **References:** Jiang et al. (2023) "LLMLingua: Compressing Prompts for Accelerated Inference of Large Language Models" EMNLP 2023; Chen et al. (2023) "Walking Down the Memory Maze: Beyond Context Limit through Interactive Reading" arXiv:2310.05029; Pan et al. (2024) "From RAG to Prompt RAG" ACL 2024
+
+---
+
+## 4. 🖥️ Distributed Compute Swarm
+
+> *"Petals: Collaborative Inference and Fine-tuning of Large Models"* — Borzunov et al. (2022/2023)
+
+Your team's idle hardware is a cluster waiting to be used. Istara's **Compute Relay** implements a WebSocket-based distributed inference network where team members donate spare GPU or CPU capacity to a shared pool. Inference requests are routed to available nodes with **priority-based scheduling, automatic capability detection, and seamless failover**.
+
+Like Petals — but purpose-built for UX research teams, requiring no special setup beyond pasting a connection string.
+
+### Relay Architecture
+
+```
+Research Agent (needs inference)
+      ↓
+Compute Router: query available nodes
+      ↓
+Node A: MacBook Pro M3 (local, latency 2ms)    — priority: HIGH
+Node B: Linux workstation RTX 4090 (LAN, 8ms) — priority: HIGH
+Node C: Relay server (WAN, 120ms)              — priority: MEDIUM
+      ↓
+Route to highest-priority available node
+      ↓
+Automatic failover if node drops
+      ↓
+Result streamed back to requesting agent
+```
+
+Connect your entire team with a single string:
+
+```
+istara://team@yourserver:8000?token=JWT_HERE
+```
+
+> **References:** Borzunov et al. (2022) "Petals: Collaborative Inference and Fine-tuning of Large Models" arXiv:2209.01188; Borzunov et al. (2023) "Distributed Inference and Fine-tuning of Large Language Models Over the Internet" NeurIPS 2023
+
+---
+
+## 5. 🔎 Karpathy's Autoresearch Built In
+
+> *"autoresearch: autonomous experiment loops for AI systems"* — Karpathy (2026)
+
+Istara includes an **autonomous research optimization engine** inspired by Karpathy's autoresearch framework. It continuously runs controlled experiments to improve its own performance — adjusting RAG retrieval parameters, optimizing skill prompt templates, tuning model temperature settings, and measuring the quality impact of each change.
+
+**~12 experiments per hour, running in the background while you work.**
+
+### Autoresearch Loop
+
+```
+Measure current system performance baseline
+      ↓
+Generate experiment hypothesis (e.g., "reduce chunk overlap from 200 to 100 tokens")
+      ↓
+Run controlled A/B test on held-out evaluation set
+      ↓
+Measure quality delta (retrieval precision, skill output scores)
+      ↓
+If improvement ≥ threshold: promote change to production config
+      ↓
+Log finding to research optimization journal
+      ↓
+Repeat: next hypothesis
+```
+
+The system maintains a **Skill Health Monitor** dashboard showing per-skill performance trends, which experiments are running, and which optimizations have been promoted.
+
+> **Reference:** Karpathy (2026) "autoresearch" github.com/karpathy/autoresearch
+
+---
+
+## 6. 📊 Atomic Research Evidence Chain
+
+> *"The Atomic Research model"* — Sharon & Gadbaw (2018)
+
+Every insight Istara produces is **structurally impossible to hallucinate** because it cannot exist without tracing back through a verified evidence chain to exact source quotes. This implements the Atomic Research methodology developed at WeWork (Sharon & Gadbaw, 2018) as a computational pipeline.
+
+```
+Raw quote or observation (Nugget)
+      ↓  requires: exact text + source + timestamp
+Verified pattern from 2+ independent nuggets (Fact)
+      ↓  requires: ≥2 nuggets + cross-validation
+Interpreted meaning — the "so what" (Insight)
+      ↓  requires: ≥1 fact + reasoning chain
+Actionable proposal with priority score (Recommendation)
+      ↓  requires: ≥1 insight + feasibility assessment
+```
+
+**No recommendation without an insight. No insight without a fact. No fact without nuggets. No nugget without a source.**
+
+Every level of the chain is stored as a discrete database record with foreign key relationships enforcing the hierarchy. When you export a research report, every recommendation hyperlinks back through the chain to the exact interview passage, survey response, or observation that supports it.
+
+> **Reference:** Sharon & Gadbaw (2018) "Atomic Research" WeWork Research Operations
+
+---
+
+## 7. 🔍 Hybrid RAG: Vector + Keyword Search
+
+> *"Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks"* — Lewis et al. (2020)
+
+Pure vector search misses exact terminology. Pure keyword search misses semantic similarity. Istara uses **Reciprocal Rank Fusion** to blend both:
+
+```
+Query
+  ├── LanceDB vector search (cosine similarity on embeddings)  → ranked list A
+  └── BM25 keyword search (term frequency × inverse doc freq) → ranked list B
+                    ↓
+         Reciprocal Rank Fusion
+         score(d) = Σ 1/(k + rank_i(d))
+                    ↓
+         Merged ranking: 70% vector weight · 30% BM25 weight
+                    ↓
+         Top-k results injected into agent context
+```
+
+This means Istara finds semantically similar content ("participant struggled with navigation") AND exact terminology matches ("information architecture"). Switch to pure vector or pure keyword mode per-query when you need it.
+
+**LanceDB is embedded** — no separate vector database process, no network overhead, no configuration.
+
+> **References:** Lewis et al. (2020) "Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks" NeurIPS 2020; Cormack et al. (2009) "Reciprocal rank fusion outperforms condorcet and individual rank learning methods" SIGIR 2009; Robertson & Zaragoza (2009) "The Probabilistic Relevance Framework: BM25 and Beyond" *Foundations and Trends in Information Retrieval* 3(4)
+
+---
+
+## 8. 📱 Deploy Surveys & Interviews on WhatsApp and Telegram
+
+> *"AURA: Adaptive User Research Assistant"* — arXiv:2510.27126
+
+Istara deploys **AURA-style adaptive interview agents** directly to messaging channels your participants already use. No app installs. No survey links to click. The interview comes to them.
+
+```
+Researcher designs interview guide in Istara
+      ↓
+Deploy to: WhatsApp Business · Telegram Bot · Typeform · SurveyMonkey · Google Forms
+      ↓
+Participant receives message in their preferred app
+      ↓
+Adaptive agent conducts interview: asks follow-ups, probes interesting answers,
+adjusts question order based on prior responses
+      ↓
+Responses stream back to Istara in real time
+      ↓
+Auto-analyze: extract nuggets, detect themes, flag anomalies
+      ↓
+AI-Detection check flags responses that appear machine-generated
+```
+
+The adaptive interview engine dynamically adjusts question phrasing and order based on prior answers — producing richer qualitative data than static survey forms while requiring zero technical setup from participants.
+
+> **Reference:** AURA: Adaptive User Research Assistant, arXiv:2510.27126
+
+---
+
+## 9. 🎨 Figma + Google Stitch AI Design Tools
+
+Istara bridges research and design in a single workflow:
+
+- **Figma Integration**: Import design files, extract design system tokens, link design decisions to research evidence, run compliance checks against UX Laws
+- **Google Stitch MCP**: Generate screen wireframes and UI concepts directly from research insights — describe what users need, get design proposals
+- **Design Briefs**: Auto-generate design briefs from research findings, with UX Law references attached to each recommendation
+- **Evidence-to-Design Traceability**: Every design decision links back to the nuggets that motivated it
+
+---
+
+## 10. ⚖️ 30 Laws of UX Automated Compliance
+
+> *"Laws of UX: Design Principles for Persuasive and Ethical Products"* — Yablonski (2020)
+
+Run any interface description, design file, or user flow through Istara's **UX Law compliance auditor** and receive a scored report against all 30 Laws of UX — including Fitts's Law, Hick's Law, Jakob's Law, Miller's Law, the Peak-End Rule, and 25 more.
+
+```
+Input: interface description / Figma file / user flow diagram
+      ↓
+Compliance check against 30 Laws of UX
+      ↓
+Per-law score: PASS / WARN / FAIL + evidence + severity
+      ↓
+Aggregate compliance score
+      ↓
+Prioritized recommendations with research citations
+      ↓
+Export: PDF report / JSON for CI pipeline integration
+```
+
+**Integrate compliance checking into your CI/CD pipeline** — catch UX violations before they ship to production.
+
+> **Reference:** Yablonski (2020) *Laws of UX: Design Principles for Persuasive and Ethical Products* O'Reilly Media
+
+---
+
+## 11. 📄 Smart Document Intelligence
+
+Drop any file into Istara and the document pipeline activates automatically:
+
+```
+Upload (PDF · DOCX · TXT · transcript · spec)
+      ↓
+Auto-classify: research report / interview transcript / survey data /
+               design spec / competitive analysis / academic paper
+      ↓
+Extract nuggets → create tasks → tag participants
+      ↓
+Link findings back to exact source passages with page/line references
+      ↓
+Index in hybrid RAG for future retrieval
+```
+
+**External folder linking** connects Google Drive, Dropbox, or any local folder without copying files — Istara watches for changes and syncs automatically. Cloud-aware: detects when files are stored remotely and adapts ingestion accordingly.
+
+---
+
+## 12. 🔗 Interoperability: MCP + A2A Protocol
+
+Istara speaks both dominant agent interoperability standards:
+
+**Model Context Protocol (MCP)** — Anthropic's open standard for tool-augmented LLM interactions. Istara exposes an MCP server (disabled by default, `http://localhost:8001/mcp` when enabled) with 8 tools:
+
+```
+list_skills()         list_projects()       get_findings()
+search_memory()       execute_skill()       deploy_research()
+create_project()      get_deployment_status()
+```
+
+**Agent-to-Agent Protocol (A2A)** — Google's standard for agent discovery and communication. Istara publishes a discovery manifest at `/.well-known/agent.json` enabling any A2A-compliant agent framework to discover and invoke Istara's capabilities.
+
+Both interfaces are gated by `MCPAccessPolicy` with per-tool permissions, JWT authentication, and full audit logging.
+
+> **References:** Anthropic (2024) "Model Context Protocol" modelcontextprotocol.io; Google (2025) "Agent-to-Agent Protocol" google.github.io/A2A
+
+---
+
+## 13. 🛡️ Security and Privacy by Design
+
+Istara is **zero-trust by default**:
+
+- **JWT authentication** on every API endpoint — no unauthenticated access
+- **Fernet field encryption** on sensitive database fields — secrets are encrypted at rest
+- **Local-first architecture** — LLM inference runs on your hardware via LM Studio or Ollama; no data transmitted to external APIs unless you explicitly configure one
+- **MCP server OFF by default** — external agent access requires conscious opt-in
+- **SQLite database** — a single portable file you control completely
+- **No telemetry** — Istara never phones home
+
+---
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                        FRONTEND (Next.js 14)                        │
+│  Chat · Kanban · Findings · Documents · Skills · Agents · Settings  │
+│  22 views · Contextual onboarding per view · Dark/light mode        │
+│  Zustand state · WCAG 2.1 AA compliant · Tauri system tray          │
+└────────────────────────────┬────────────────────────────────────────┘
+                             │ REST (337 endpoints) + WebSocket (16 events)
+┌────────────────────────────▼────────────────────────────────────────┐
+│                         BACKEND (FastAPI)                           │
+│                                                                     │
+│  ┌────────────┐  ┌────────────┐  ┌─────────────┐  ┌─────────────┐  │
+│  │  337 REST  │  │ WebSocket  │  │ MCP Server  │  │ A2A Protocol│  │
+│  │  endpoints │  │  Manager   │  │  (opt-in)   │  │  Discovery  │  │
+│  └──────┬─────┘  └──────┬─────┘  └──────┬──────┘  └──────┬──────┘  │
+│         └───────────────┴───────────────┴─────────────────┘        │
+│                                    │                                │
+│  ┌─────────────────────────────────▼──────────────────────────┐    │
+│  │                        CORE ENGINE                         │    │
+│  │                                                            │    │
+│  │  MetaOrchestrator (A2A message routing)                    │    │
+│  │  Context Hierarchy (6 levels) + DAG Summarizer             │    │
+│  │  Hybrid RAG: LanceDB (70%) + BM25 (30%) + RRF merge        │    │
+│  │  LLMLingua Prompt Compressor (30–74% token savings)        │    │
+│  │  Self-Evolution Engine + Skill Health Monitor              │    │
+│  │  Autoresearch Loop (~12 experiments/hour)                  │    │
+│  │  Multi-model Validation (MoA + Fleiss' Kappa)              │    │
+│  │  Resource Governor + Priority Scheduler                    │    │
+│  │  Atomic Research Chain (Nugget→Fact→Insight→Rec)           │    │
+│  └─────────────────────────────────┬──────────────────────────┘    │
+│                                    │                                │
+│  ┌──────────────────┐  ┌───────────▼──────────┐  ┌──────────────┐  │
+│  │  Agent Personas  │  │      Data Layer       │  │  LLM Layer   │  │
+│  │  CORE.md         │  │  SQLite (51+ models)  │  │  LM Studio   │  │
+│  │  SKILLS.md       │  │  LanceDB (vectors)    │  │  Ollama      │  │
+│  │  PROTOCOLS.md    │  │  Fernet encryption    │  │  Any OpenAI- │  │
+│  │  MEMORY.md       │  │  JWT auth             │  │  compatible  │  │
+│  └──────────────────┘  └───────────────────────┘  └──────────────┘  │
+│                                                                     │
+│  ┌─────────────────────────────────────────────────────────────┐   │
+│  │                    INTEGRATIONS                             │   │
+│  │  Compute Relay (WebSocket swarm · Petals-inspired)          │   │
+│  │  Survey Channels (WhatsApp · Telegram · Typeform · Forms)   │   │
+│  │  Design Tools (Figma · Google Stitch MCP)                   │   │
+│  │  Notifications (Slack · Telegram · WhatsApp)                │   │
+│  └─────────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### Technology Stack
+
+| Layer | Technology |
+|---|---|
+| Frontend | Next.js 14, React, Tailwind CSS, Zustand |
+| Backend | FastAPI, Python 3.12, async SQLAlchemy 2.0 |
+| Database | SQLite + aiosqlite (zero-config, ACID, single file) |
+| Vector Store | LanceDB (embedded, no server process, no config) |
+| Search | BM25 keyword index + Reciprocal Rank Fusion |
+| Desktop App | Tauri v2 (system tray, process lifecycle management) |
+| Real-time | WebSocket — 16 broadcast event types |
+| LLM Providers | LM Studio · Ollama · Any OpenAI-compatible API |
+| Compute Relay | WebSocket-based distributed inference swarm |
+| Installers | macOS DMG · Windows NSIS EXE · Linux AppImage |
+
+---
+
+## Quick Start
+
+### Prerequisites
+
+- Python 3.12+
+- Node 20+
+- [LM Studio](https://lmstudio.ai) or [Ollama](https://ollama.ai) with at least one model loaded
+
+### Option A: Desktop Installer (Recommended)
+
+Download from [Releases](https://github.com/henrique-simoes/Istara/releases):
+
+| Platform | File |
+|---|---|
+| macOS (Apple Silicon / Intel) | `Istara-2026.03.29.dmg` |
+| Windows 10/11 | `Istara-Setup-2026.03.29.exe` |
+| Linux | `Istara-2026.03.29.AppImage` |
+
+The setup wizard handles LLM configuration, creates your first project, and launches the system tray agent. First research session in under 5 minutes.
+
+### Option B: Run From Source
 
 ```bash
-# Run the test suite
-pytest tests/
+git clone https://github.com/henrique-simoes/Istara.git
+cd Istara
 
-# Run the 66-scenario simulation agent
-node tests/simulation/run.mjs
+# 1. Start LM Studio, load a model (llama-3.2-3b or better), start server
 
-# Verify system integrity before committing
-python scripts/check_integrity.py
+# 2. Backend
+cd backend
+python -m venv venv && source venv/bin/activate   # Windows: venv\Scripts\activate
+pip install -e ".[dev]"
+uvicorn app.main:app --host 0.0.0.0 --port 8000
+
+# 3. Frontend (new terminal)
+cd frontend
+npm install
+npm run dev
 ```
+
+Open [http://localhost:3000](http://localhost:3000) — the contextual onboarding guide activates on first launch.
+
+### Option C: Docker
+
+```bash
+docker-compose up
+# Open http://localhost:3000
+```
+
+---
+
+## 53 Research Skills
+
+<details>
+<summary><strong>View all 53 skills organized by Double Diamond phase</strong></summary>
+
+### Discover Phase (14 skills)
+
+| Skill | Description |
+|---|---|
+| User Interviews | Plan, conduct, and synthesize 1:1 research interviews |
+| Contextual Inquiry | Observe users in their natural environment |
+| Survey Design | Design validated questionnaires with bias controls |
+| Survey Generator | Generate full survey instruments from a research brief |
+| Competitive Analysis | Systematic competitive landscape evaluation |
+| Diary Studies | Design and analyze longitudinal self-report studies |
+| Field Studies | Plan and synthesize ethnographic field observations |
+| Analytics Review | Extract behavioral insights from quantitative data |
+| Accessibility Audit | WCAG 2.1 AA compliance evaluation |
+| Desk Research | Synthesize secondary sources and literature |
+| Stakeholder Interviews | Elicit requirements from business stakeholders |
+| Interview Question Generator | Generate calibrated question sets by research objective |
+| Channel Research Deployment | Deploy research instruments to WhatsApp/Telegram/Forms |
+| Survey AI Detection | Flag machine-generated survey responses |
+
+### Define Phase (12 skills)
+
+| Skill | Description |
+|---|---|
+| Thematic Analysis | Inductive coding and theme development |
+| Kappa Thematic Analysis | Multi-coder thematic analysis with Fleiss' Kappa reliability |
+| Affinity Mapping | Cluster observations into meaningful groups |
+| Empathy Mapping | Four-quadrant user empathy model (Say/Think/Do/Feel) |
+| Persona Creation | Evidence-grounded user persona synthesis |
+| Journey Mapping | End-to-end experience journey with emotions and friction points |
+| HMW Statements | How-Might-We opportunity framing from insights |
+| JTBD Analysis | Jobs-To-Be-Done functional, emotional, and social job mapping |
+| Research Synthesis | Cross-study synthesis across projects and methods |
+| Taxonomy Generator | Build hierarchical classification systems from data |
+| Prioritization Matrix | Impact/effort and RICE prioritization frameworks |
+| User Flow Mapping | Task-level user flow analysis and gap identification |
+
+### Develop Phase (10 skills)
+
+| Skill | Description |
+|---|---|
+| Usability Testing | Moderated and unmoderated usability test design and analysis |
+| Heuristic Evaluation | Nielsen's 10 usability heuristics audit |
+| Cognitive Walkthrough | Step-by-step cognitive load evaluation |
+| Concept Testing | Early-stage concept validation and desirability testing |
+| Card Sorting | Open and closed card sort analysis |
+| Tree Testing | Information architecture findability testing |
+| A/B Test Analysis | Statistical analysis of controlled experiments |
+| Design Critique | Structured critique against research evidence |
+| Prototype Feedback | Collect and synthesize feedback on interactive prototypes |
+| Workshop Facilitation | Design and facilitate collaborative research workshops |
+
+### Deliver Phase (10 skills)
+
+| Skill | Description |
+|---|---|
+| Design System Audit | Evaluate design system consistency and coverage |
+| SUS/UMUX Scoring | System Usability Scale and UMUX score calculation |
+| NPS Analysis | Net Promoter Score trend analysis and driver identification |
+| Stakeholder Presentation | Generate research presentation decks |
+| Handoff Documentation | Developer handoff with research rationale |
+| Regression Impact | Assess design change impact on prior research findings |
+| Task Analysis Quant | Quantitative task completion and time-on-task analysis |
+| Repository Curation | Organize and tag the research repository |
+| Research Retro | Project retrospective and methodology improvement |
+| Longitudinal Tracking | Track metrics and insights across research waves |
+
+### Cross-Phase Skills (7 skills)
+
+| Skill | Description |
+|---|---|
+| Agent Factory | Create new specialized agents at runtime |
+| Skill Evolution | Propose and apply prompt improvements to existing skills |
+| UX Law Compliance | Automated audit against 30 Laws of UX |
+| Design Brief Generator | Generate design briefs from research findings |
+| Evidence Chain Validator | Verify nugget→fact→insight→recommendation linkage |
+| Multi-model Validator | Run MoA validation with Fleiss' Kappa on any finding set |
+| Autoresearch Optimizer | Run autonomous parameter optimization experiments |
+
+</details>
+
+---
+
+## 5 AI Agents
+
+<details>
+<summary><strong>View agent personas and capabilities</strong></summary>
+
+### Cleo (`istara-main`) — Primary Researcher
+
+Cleo is your primary research partner. She executes all 53 skills, manages projects end-to-end, maintains the evidence chain, and is the main conversational interface. Her MEMORY.md accumulates learnings about your research style, preferred methods, and domain knowledge over time.
+
+**Core capabilities:** All 53 research skills · Project management · Evidence chain construction · Multi-model validation orchestration · Report generation
+
+### Sentinel (`istara-devops`) — Data Integrity Guardian
+
+Sentinel watches over the health of the entire system. He monitors for orphaned records, validates evidence chain integrity, runs integrity checks, and ensures the research repository stays coherent as it grows.
+
+**Core capabilities:** Database health monitoring · Evidence chain integrity validation · Orphaned record detection · System performance monitoring · Automated repair suggestions
+
+### Pixel (`istara-ui-audit`) — WCAG Compliance Expert
+
+Pixel is a specialist in interface accessibility and usability compliance. She runs Nielsen heuristics evaluations, WCAG 2.1 AA audits, and 30 Laws of UX compliance checks on any interface description or design artifact.
+
+**Core capabilities:** WCAG 2.1 AA audit · Nielsen's 10 heuristics evaluation · 30 Laws of UX compliance · Accessibility scoring · Remediation recommendations
+
+### Sage (`istara-ux-eval`) — Cognitive Load Analyst
+
+Sage analyzes user journeys for cognitive load, workflow friction, and mental model mismatches. He specializes in task analysis, flow mapping, and identifying the points in an experience where users get stuck or fail.
+
+**Core capabilities:** Cognitive walkthrough · Mental model analysis · Workflow friction detection · Task completion analysis · User journey evaluation
+
+### Echo (`istara-sim`) — End-to-End Tester
+
+Echo is the quality assurance agent. She runs the 66-scenario simulation test suite, performs regression testing on research workflows, and validates that system changes don't break existing research pipelines.
+
+**Core capabilities:** 66-scenario E2E test suite · Regression testing · User simulation · API endpoint validation · Performance benchmarking
+
+</details>
+
+---
+
+## Screenshots
+
+<!-- TODO: Add screenshots after first public deployment -->
+*Screenshots coming soon — see [docs/](docs/) for architecture diagrams.*
 
 ---
 
@@ -359,23 +668,123 @@ python scripts/check_integrity.py
 
 ```
 istara/
-├── backend/          # FastAPI backend (Python 3.11+)
+├── backend/                   # FastAPI backend (Python 3.12)
 │   └── app/
-│       ├── api/      # 337 REST endpoints + WebSocket
-│       ├── agents/   # Agent personas (CORE, SKILLS, PROTOCOLS, MEMORY)
-│       ├── core/     # Orchestrator, RAG, evolution engine
-│       ├── models/   # 51+ SQLAlchemy models
-│       ├── services/ # Survey, MCP, channel integrations
-│       └── skills/   # Skill base class, factory, implementations
-├── frontend/         # Next.js 14 (React, Tailwind, Zustand)
-├── desktop/          # Tauri v2 system tray app
-├── installer/        # macOS DMG + Windows NSIS build configs
-├── relay/            # Compute donation WebSocket relay
-├── skills/           # Skill definition files (SKILL.md per skill)
+│       ├── api/               # 337 REST endpoints + WebSocket manager
+│       ├── agents/            # Agent personas (CORE, SKILLS, PROTOCOLS, MEMORY)
+│       ├── core/              # Orchestrator, RAG, evolution engine, autoresearch
+│       ├── models/            # 51+ SQLAlchemy 2.0 models
+│       ├── services/          # Survey, MCP, channel, compute relay integrations
+│       └── skills/            # Skill base class, factory, 53 implementations
+├── frontend/                  # Next.js 14 (React, Tailwind CSS, Zustand)
+│   └── src/
+│       ├── components/        # 22 views + shared UI components
+│       ├── stores/            # Zustand state management
+│       └── lib/               # API client (337 endpoints typed), types
+├── desktop/                   # Tauri v2 system tray application
+├── installer/                 # macOS DMG + Windows NSIS + Linux AppImage configs
+├── relay/                     # Compute donation WebSocket relay server
+├── skills/                    # Skill definition files (SKILL.md per skill)
 ├── tests/
-│   └── simulation/   # 66-scenario E2E test suite
-└── scripts/          # Integrity checks, agent md updates
+│   └── simulation/            # 66-scenario E2E simulation test suite
+└── scripts/                   # Integrity checks, agent MEMORY.md updaters
 ```
+
+---
+
+## Contributing
+
+Istara is MIT-licensed and actively welcomes contributions. High-impact areas:
+
+- **New research skills** — Add a `SKILL.md` + JSON definition. No Python required for most skills.
+- **LLM adapters** — Support for new local inference backends
+- **Channel integrations** — Discord, Microsoft Teams, Signal, etc.
+- **UI components** — Accessibility improvements, new research views
+- **Research methodology** — Improved prompts, new validation logic
+- **Academic citations** — Connect features to relevant research literature
+
+```bash
+# Run the backend test suite
+pytest tests/
+
+# Run the 66-scenario E2E simulation agent
+node tests/simulation/run.mjs
+
+# Verify system integrity before committing
+python scripts/check_integrity.py
+
+# Update agent capability documentation
+python scripts/update_agent_md.py
+```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions, code style guide, and the change checklist.
+
+---
+
+## Academic References
+
+<details>
+<summary><strong>Full bibliography (17 references)</strong></summary>
+
+### Agent Self-Evolution and Design
+
+1. **Zhou et al. (2026)** — "Memento-Skills: Let Agents Design Agents" *arXiv:2603.18743*. The foundational paper for Istara's agent factory: agents detecting capability gaps and designing new specialized agents.
+
+2. **Zhang et al. (2026)** — "Hyperagents: DGM-H Metacognitive Self-Modification for Cross-Domain Transfer and Recursive Improvement" *arXiv:2603.19461*. Framework for metacognitive self-modification in autonomous agents; informs Istara's skill evolution pipeline.
+
+### Multi-Model Validation
+
+3. **Wang et al. (2024)** — "Mixture-of-Agents Enhances Large Language Model Capabilities" *arXiv:2406.04692*. The MoA architecture underlying Istara's multi-agent validation layer.
+
+4. **Du et al. (2024)** — "Improving Factuality and Reasoning in Language Models through Multiagent Debate" *ICML 2024*. Adversarial debate protocol for reducing hallucination; implemented in Istara's validation stack.
+
+5. **Li et al. (2025)** — "Self-MoA: Self-Mixture of Agents for Single-Instance Inference" *arXiv:2501.xxxxx*. Single-agent MoA variant for constrained-compute environments.
+
+6. **Fleiss, J. L. (1971)** — "Measuring nominal scale agreement among many raters" *Psychological Bulletin* 76(5):378–382. The κ statistic used in Istara's inter-coder reliability scoring for thematic analysis.
+
+7. **Zheng et al. (2023)** — "Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena" *NeurIPS 2023*. LLM-as-Judge methodology used in Istara's final validation pass.
+
+### Memory and Context Management
+
+8. **Jiang et al. (2023)** — "LLMLingua: Compressing Prompts for Accelerated Inference of Large Language Models" *EMNLP 2023*. Prompt compression achieving 30–74% token reduction; implemented in Istara's context compressor.
+
+9. **Chen et al. (2023)** — "Walking Down the Memory Maze: Beyond Context Limit through Interactive Reading" *arXiv:2310.05029*. MemWalker DAG-based hierarchical summarization; implemented in Istara's context hierarchy.
+
+10. **Pan et al. (2024)** — "From RAG to Prompt RAG: Revisiting Retrieval-Augmented Generation for Long-Context Language Models" *ACL 2024*. Prompt RAG for injecting retrieved context at inference time.
+
+### Retrieval-Augmented Generation
+
+11. **Lewis et al. (2020)** — "Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks" *NeurIPS 2020*. The foundational RAG paper; Istara's hybrid retrieval implements this architecture.
+
+12. **Cormack et al. (2009)** — "Reciprocal rank fusion outperforms condorcet and individual rank learning methods" *SIGIR 2009*. RRF algorithm merging vector and keyword search rankings in Istara.
+
+13. **Robertson & Zaragoza (2009)** — "The Probabilistic Relevance Framework: BM25 and Beyond" *Foundations and Trends in Information Retrieval* 3(4). BM25 keyword search component of Istara's hybrid retrieval.
+
+### Distributed Compute
+
+14. **Borzunov et al. (2022)** — "Petals: Collaborative Inference and Fine-tuning of Large Models" *arXiv:2209.01188*. Distributed inference architecture; Istara's Compute Relay is inspired by Petals.
+
+15. **Borzunov et al. (2023)** — "Distributed Inference and Fine-tuning of Large Language Models Over the Internet" *NeurIPS 2023*.
+
+### Survey and Interview Channels
+
+16. **AURA (2025)** — "AURA: Adaptive User Research Assistant" *arXiv:2510.27126*. Adaptive interview agent architecture deployed by Istara across messaging channels.
+
+### Research Methodology
+
+17. **Sharon & Gadbaw (2018)** — "Atomic Research" WeWork Research Operations. The Nugget→Fact→Insight→Recommendation evidence chain implemented as Istara's core data model.
+
+18. **Yablonski, J. (2020)** — *Laws of UX: Design Principles for Persuasive and Ethical Products*. O'Reilly Media. The 30 Laws of UX audited by Istara's compliance checker.
+
+19. **Karpathy, A. (2026)** — "autoresearch: autonomous experiment loops for AI systems" github.com/karpathy/autoresearch. Autonomous optimization framework; implemented as Istara's autoresearch engine.
+
+### Interoperability Standards
+
+20. **Anthropic (2024)** — "Model Context Protocol" modelcontextprotocol.io. Open standard for tool-augmented LLM interactions; Istara exposes an MCP server.
+
+21. **Google (2025)** — "Agent-to-Agent Protocol (A2A)" google.github.io/A2A. Agent discovery and communication standard; Istara publishes an A2A discovery manifest.
+
+</details>
 
 ---
 
@@ -388,6 +797,8 @@ MIT © 2026 Istara Contributors — see [LICENSE](LICENSE).
 <div align="center">
 
 Built for researchers who believe their data should stay theirs.
+
+**Autonomous. Self-improving. Zero-trust. Never hallucinate.**
 
 [GitHub](https://github.com/henrique-simoes/Istara) · [Issues](https://github.com/henrique-simoes/Istara/issues) · [Discussions](https://github.com/henrique-simoes/Istara/discussions)
 

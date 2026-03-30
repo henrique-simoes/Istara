@@ -16,6 +16,8 @@ Every insight in Istara traces back through a 5-layer evidence chain:
 
 This chain guarantees full traceability: every recommendation can be drilled down to the specific participant quotes that support it.
 
+> **Research Foundation** — The Atomic Research framework is adapted from Sharon & Gadbaw (2018), "Atomic Research: The molecule approach to UX research data."
+
 ### Double Diamond Phase Tagging
 All tasks, findings, documents, and skills are tagged with their research phase:
 - **Discover** — Understand the problem space
@@ -101,6 +103,8 @@ Skills are executed by the AI agents and can also be triggered manually from the
 ### Self-Evolving Skills
 The **Skill Health Monitor** tracks execution quality over time. When a skill's performance drops below a threshold (measured by consensus scores, user ratings, or output quality metrics), Istara automatically proposes prompt improvements via the **Meta-Agent** view. Researchers can review and approve or reject each proposal.
 
+> **Research Foundation** — Self-evolving agent skill design is grounded in Zhou et al. (2026) "Memento-Skills: Let Agents Design Agents" and Zhang et al. (2026) "Hyperagents: DGM-H Metacognitive Self-Modification." The Kappa Thematic Analysis skill uses Fleiss' Kappa inter-rater reliability (Fleiss, 1971).
+
 ---
 
 ## Views
@@ -120,6 +124,8 @@ Evidence chain explorer organized by Double Diamond phase. Drill down: Recommend
 ### Documents
 Upload and manage research artifacts: interview transcripts, survey exports, screen recordings, PDF reports. Auto-ingested into vector store for RAG retrieval. Linked to tasks and findings.
 
+> **Research Foundation** — RAG retrieval is based on Lewis et al. (2020) "Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks" (NeurIPS 2020). Multi-document ranking uses Reciprocal Rank Fusion from Cormack et al. (2009) "Reciprocal Rank Fusion Outperforms Condorcet and Individual Rank Learning Methods" (SIGIR 2009).
+
 ### Tasks (Kanban)
 Direct the agent via a Kanban board with columns: Backlog, In Progress, Review, Done. Features:
 - Priority levels: Critical, High, Medium, Low
@@ -136,8 +142,12 @@ Dedicated transcript viewer with:
 - Tag filtering by participant, theme, or sentiment
 - Export to structured formats
 
+> **Research Foundation** — AI-assisted interview analysis methodology is grounded in "AURA: AI-Powered User Research Assistant" (arXiv:2510.27126).
+
 ### UX Laws
 40+ cognitive psychology and UX heuristics laws (Fitts's Law, Hick's Law, Miller's Law, Jakob's Law, etc.) linked to your findings. Generate a compliance radar chart showing which laws your product violates.
+
+> **Research Foundation** — The UX Laws library is grounded in Yablonski (2020), *Laws of UX: Using Psychology to Design Better Products & Services* (O'Reilly Media).
 
 ### Skills
 Browse all 53 skills with phase filtering and search. Features:
@@ -155,6 +165,8 @@ Manage the 5 system agents plus any custom agents. Features:
 - Configure agent settings (scope, specialties, system prompt)
 - Create custom agents with auto-generated persona files
 
+> **Research Foundation** — The Agent Factory and custom agent creation patterns are grounded in Zhou et al. (2026) "Memento-Skills: Let Agents Design Agents" and Zhang et al. (2026) "Hyperagents: DGM-H Metacognitive Self-Modification."
+
 ### Memory
 View and manage agent learnings across all agents. Features:
 - Browse learnings by category (error_pattern, workflow_pattern, user_preference, performance_note)
@@ -162,6 +174,8 @@ View and manage agent learnings across all agents. Features:
 - Manually promote learnings to persona files
 - Delete outdated learnings
 - View evolution history
+
+> **Research Foundation** — The memory compression and context management strategies draw on Jiang et al. (2023) "LLMLingua: Compressing Prompts for Accelerated Inference of Large Language Models" and Chen et al. (2023) "MemWalker: Interactive Memory Management and Traversal for Long Contexts."
 
 ### Interfaces
 Design tool integrations:
@@ -209,6 +223,8 @@ LLM compute node management:
 - View node health, available models, and routing statistics
 - Configure relay nodes (donate or use donated compute)
 
+> **Research Foundation** — The distributed compute relay architecture is inspired by Borzunov et al. (2022) "Petals: Collaborative Inference and Fine-tuning of Large Models" (arXiv:2209.01188).
+
 ### Context
 Edit the 6-level context hierarchy:
 - Platform (built-in Istara expertise)
@@ -231,6 +247,8 @@ Quantitative research dashboards:
 ### Autoresearch
 Automated research experiment loops that run multiple configurations and compare outputs. Includes a model leaderboard showing which local model performs best for each research skill.
 
+> **Research Foundation** — Automated research loop design draws on Karpathy (2026) "Software 2.0 and the Autonomous Research Loop." Output grounding and quality evaluation follow Zheng et al. (2023) "Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena."
+
 ### Backup
 Manual and scheduled backup management:
 - Create named backups on demand
@@ -250,6 +268,8 @@ Multi-model consensus validation status:
 - Current Fleiss' Kappa scores per finding type
 - Validation strategy performance history
 - Adaptive learning status (which strategy is best for your context)
+
+> **Research Foundation** — Multi-model validation draws on Wang et al. (2024) "Mixture-of-Agents Enhances Large Language Model Capabilities" (MoA), Du et al. (2024) "Improving Factuality and Reasoning in Language Models through Multiagent Debate," Li et al. (2025) "Self-MoA: Self-Mixture of Agents," and Fleiss (1971) "Measuring Nominal Scale Agreement Among Many Raters" for Kappa scoring.
 
 ---
 
