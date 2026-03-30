@@ -2,7 +2,7 @@
 
 <div align="center">
 
-</div><img width="2048" height="2048" alt="Istara" src="https://github.com/user-attachments/assets/b250903a-8272-43b7-b91d-dfcf3b249910" />
+</div><img width="300" height="300" alt="Istara" src="https://github.com/user-attachments/assets/b250903a-8272-43b7-b91d-dfcf3b249910" />
 
 # 🐾 Istara
 
