@@ -89,7 +89,7 @@ O Istara roda inteiramente no seu hardware. Ele vem com cinco agentes de IA espe
 
 ## Istara vs. As Alternativas
 
-| Capacidade | Istara | Dovetail / Maze / UserTesting |
+| Capacidade | Istara | Alternativas |
 |---|---|---|
 | Privacidade de dados | 100% local — dados nunca saem da sua máquina | Upload para servidores do fornecedor |
 | Memória dos agentes | Personas persistentes e evolutivas entre sessões | Chamadas de API sem estado |
