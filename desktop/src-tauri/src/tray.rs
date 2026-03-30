@@ -62,6 +62,13 @@ pub fn setup_tray<R: Runtime>(
                         let _ = guard.start_frontend(&cfg.install_dir);
                     }
                 }
+                // Rebuild the menu to update labels (Start ↔ Stop)
+                let cfg2 = crate::config::load_config();
+                if let Ok(new_menu) = build_server_menu(app) {
+                    if let Some(tray) = app.tray_by_id("main") {
+                        let _ = tray.set_menu(Some(new_menu));
+                    }
+                }
             }
             "start_lm" => {
                 #[cfg(target_os = "macos")]
@@ -75,9 +82,26 @@ pub fn setup_tray<R: Runtime>(
                 let _ = crate::config::save_config(&cfg);
                 if let Ok(mut guard) = pm.lock() {
                     if cfg.donate_compute {
-                        let _ = guard.start_relay(&cfg.install_dir, &cfg.connection_string);
+                        if !cfg.connection_string.is_empty() || cfg.mode == "server" {
+                            let _ = guard.start_relay(&cfg.install_dir, &cfg.connection_string);
+                        }
                     } else {
                         guard.stop_relay();
+                    }
+                }
+                // Rebuild the menu to update the Compute Donation label
+                if cfg.mode == "server" {
+                    if let Ok(new_menu) = build_server_menu(app) {
+                        if let Some(tray) = app.tray_by_id("main") {
+                            let _ = tray.set_menu(Some(new_menu));
+                        }
+                    }
+                } else {
+                    let cfg_new = crate::config::load_config();
+                    if let Ok(new_menu) = build_client_menu(app, &cfg_new) {
+                        if let Some(tray) = app.tray_by_id("main") {
+                            let _ = tray.set_menu(Some(new_menu));
+                        }
                     }
                 }
             }
@@ -86,9 +110,13 @@ pub fn setup_tray<R: Runtime>(
                 tauri::async_runtime::spawn(async move {
                     use tauri_plugin_updater::UpdaterExt;
                     use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
-                    match handle.updater() {
-                        Ok(updater) => match updater.check().await {
+
+                    // Try the Tauri updater first (for DMG-installed apps)
+                    let mut handled = false;
+                    if let Ok(updater) = handle.updater() {
+                        match updater.check().await {
                             Ok(Some(update)) => {
+                                handled = true;
                                 let v = update.version.clone();
                                 let body = update.body.clone().unwrap_or_default();
                                 let preview = if body.len() > 200 { &body[..200] } else { &body };
@@ -104,6 +132,7 @@ pub fn setup_tray<R: Runtime>(
                                 }
                             }
                             Ok(None) => {
+                                handled = true;
                                 let _ = handle.dialog()
                                     .message("You're running the latest version of Istara.")
                                     .title("No Updates")
@@ -111,9 +140,21 @@ pub fn setup_tray<R: Runtime>(
                                     .buttons(MessageDialogButtons::Ok)
                                     .blocking_show();
                             }
-                            Err(e) => { eprintln!("Update check failed: {}", e); }
-                        },
-                        Err(e) => { eprintln!("Updater error: {}", e); }
+                            Err(_) => {} // Updater failed — fall through to web check
+                        }
+                    }
+
+                    // Fallback: check GitHub releases directly and offer to open in browser
+                    if !handled {
+                        let yes = handle.dialog()
+                            .message("Check for updates on GitHub?\n\nFor shell-installed Istara, run: istara update")
+                            .title("Check for Updates")
+                            .kind(MessageDialogKind::Info)
+                            .buttons(MessageDialogButtons::OkCancelCustom("Open GitHub".to_string(), "Close".to_string()))
+                            .blocking_show();
+                        if yes {
+                            let _ = open::that("https://github.com/henrique-simoes/Istara/releases");
+                        }
                     }
                 });
             }
@@ -136,6 +177,11 @@ pub fn setup_tray<R: Runtime>(
     });
 
     Ok(())
+}
+
+/// Public wrapper for health loop to rebuild server menu.
+pub fn build_server_menu_pub<R: Runtime>(app: &AppHandle<R>) -> Result<Menu<R>, Box<dyn std::error::Error>> {
+    build_server_menu(app)
 }
 
 fn build_server_menu<R: Runtime>(app: &AppHandle<R>) -> Result<Menu<R>, Box<dyn std::error::Error>> {
