@@ -122,6 +122,18 @@ _start() {
         echo "$bpid" > "$BACKEND_PID_FILE"
         cd "$ROOT"
 
+        # Quick check — did it die immediately?
+        sleep 0.5
+        if ! kill -0 "$bpid" 2>/dev/null; then
+            echo -e "\r  Backend:  ${RED}✗ crashed on startup${NC}"
+            echo ""
+            echo -e "  ${YELLOW}Error from $BACKEND_LOG:${NC}"
+            tail -15 "$BACKEND_LOG" 2>/dev/null | sed 's/^/    /'
+            echo ""
+            rm -f "$BACKEND_PID_FILE"
+            return 1
+        fi
+
         # Wait for backend to be ready (up to 15s)
         local attempts=0
         while [ $attempts -lt 30 ]; do
@@ -133,6 +145,16 @@ _start() {
             attempts=$((attempts + 1))
         done
         if [ $attempts -ge 30 ]; then
+            # Check if process actually died
+            if ! kill -0 "$bpid" 2>/dev/null; then
+                echo -e "\r  Backend:  ${RED}✗ failed to start${NC}"
+                echo ""
+                echo -e "  ${YELLOW}Last lines from $BACKEND_LOG:${NC}"
+                tail -10 "$BACKEND_LOG" 2>/dev/null | sed 's/^/    /'
+                echo ""
+                rm -f "$BACKEND_PID_FILE"
+                return 1
+            fi
             echo -e "\r  Backend:  ${YELLOW}⏳ starting slowly${NC} (PID $bpid) — check $BACKEND_LOG"
         fi
     fi
@@ -156,6 +178,18 @@ _start() {
         echo "$fpid" > "$FRONTEND_PID_FILE"
         cd "$ROOT"
 
+        # Quick check — did it die immediately?
+        sleep 0.5
+        if ! kill -0 "$fpid" 2>/dev/null; then
+            echo -e "\r  Frontend: ${RED}✗ crashed on startup${NC}"
+            echo ""
+            echo -e "  ${YELLOW}Error from $FRONTEND_LOG:${NC}"
+            tail -15 "$FRONTEND_LOG" 2>/dev/null | sed 's/^/    /'
+            echo ""
+            rm -f "$FRONTEND_PID_FILE"
+            return 1
+        fi
+
         # Wait for frontend to be ready (up to 20s)
         local attempts=0
         while [ $attempts -lt 40 ]; do
@@ -167,6 +201,16 @@ _start() {
             attempts=$((attempts + 1))
         done
         if [ $attempts -ge 40 ]; then
+            # Check if process actually died
+            if ! kill -0 "$fpid" 2>/dev/null; then
+                echo -e "\r  Frontend: ${RED}✗ failed to start${NC}"
+                echo ""
+                echo -e "  ${YELLOW}Last lines from $FRONTEND_LOG:${NC}"
+                tail -10 "$FRONTEND_LOG" 2>/dev/null | sed 's/^/    /'
+                echo ""
+                rm -f "$FRONTEND_PID_FILE"
+                return 1
+            fi
             echo -e "\r  Frontend: ${YELLOW}⏳ starting slowly${NC} (PID $fpid) — check $FRONTEND_LOG"
         fi
     fi

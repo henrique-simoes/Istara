@@ -1,6 +1,6 @@
 {
-  "version": "3.0.0",
-  "description": "Istara Pre-Release Test Marathon — ALL 65 scenarios across 12 cycles",
+  "version": "4.0.0",
+  "description": "Istara Pre-Release Test Marathon — 70+ scenarios across 13 cycles",
   "cycles": [
     {
       "id": "A",
@@ -42,9 +42,10 @@
     {
       "id": "F",
       "name": "Security & Auth",
-      "description": "JWT enforcement, admin-only ops, field encryption, user management, security headers",
+      "description": "JWT enforcement, admin-only ops, field encryption, user management, security headers, login UX, team mode",
       "requires": ["backend"],
-      "scenarios": ["43", "56", "57", "64", "66", "67", "68", "69"]
+      "scenarios": ["43", "56", "57", "64", "66", "67", "68", "69"],
+      "custom_checks": ["local_mode_login", "team_mode_registration", "server_unreachable_screen", "connection_string_roundtrip"]
     },
     {
       "id": "G",
@@ -91,6 +92,25 @@
       "requires": ["backend", "llm"],
       "scenarios": ["17", "48"],
       "custom_checks": ["full_pipeline_validation"]
+    },
+    {
+      "id": "M",
+      "name": "Installation & CLI",
+      "description": "Shell installer, CLI management, tray app integration, uninstaller, first-run login UX",
+      "requires": ["backend"],
+      "scenarios": [],
+      "custom_checks": [
+        "cli_start_stop_status",
+        "backend_pid_verification",
+        "frontend_production_mode",
+        "venv_python_resolution",
+        "npm_keg_path_detection",
+        "login_local_mode_no_password",
+        "login_team_mode_registration",
+        "login_server_unreachable_screen",
+        "config_json_integrity",
+        "tray_app_config_read"
+      ]
     }
   ],
   "settings": {

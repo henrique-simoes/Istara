@@ -179,6 +179,13 @@
 - Installer integrity: macOS .dmg and Windows .exe bundles include a dependency checker and .env wizard. Monitor for: incomplete installs (missing dependencies flagged but user proceeded), .env files with insecure defaults (e.g., default JWT secret in team mode), and permission issues on the data directory after install (should be 0700).
 - Browser compute donation audit: DonateComputeToggle opens a WebSocket relay from the browser. Monitor for: relay connections from unauthenticated browser sessions (should require valid JWT), excessive relay registrations from a single user, and relay capability probes timing out through browser-originated connections.
 
+### Installation & Runtime Integrity
+- **Shell installer audit**: The `install-istara.sh` script installs Python 3.12, Node, Git, clones the repo, creates venv, builds frontend, generates `.env`. Monitor for: incomplete installs (partial venv, missing node_modules), stale `.env` with default secrets, broken PATH entries in shell profiles. The script uses `set -eo pipefail` with an ERR trap — check `~/.istara/.istara-backend.log` for failures.
+- **Uninstaller safety**: `uninstall-istara.sh` requires typing "uninstall" to confirm. Monitor for: orphaned LaunchAgents after uninstall, incomplete PATH cleanup in `.zshrc`/`.bashrc`, residual config at `~/.istara/` if uninstall is interrupted.
+- **CLI management (`istara.sh`)**: Uses `$ROOT/venv/bin/python` for backend (not bare `python`). PID verification: if backend dies on startup, the CLI detects it within 0.5s, shows the last 15 log lines, and removes the stale PID file. Monitor for: stale PID files from crashed processes, frontend running in dev mode instead of production (`npm start` vs `npm run dev`).
+- **Login UX**: Local mode accepts any credentials and issues admin JWT — no password validation. Team mode requires registration (first user = admin). Monitor for: users stuck on the "Cannot connect to server" screen (backend not running), stale `istara_token` in localStorage pointing to expired JWTs, team-status endpoint returning wrong `has_users` flag.
+- **Tray app health**: Reads `~/.istara/config.json` for `install_dir`. If `install_dir` is empty or points to a non-existent directory, all tray actions fail silently. Monitor for: config.json missing after install, config.json with wrong paths after moving the install directory.
+
 ## Limitations
 - Read-only access to user data (cannot modify findings, projects, or user settings)
 - Cannot restart or reconfigure LLM services (report only)
