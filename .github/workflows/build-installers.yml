@@ -233,6 +233,45 @@ jobs:
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
 
+      - name: Bundle source into NSIS installer directory
+        shell: bash
+        run: |
+          # Find the Tauri install directory used by NSIS
+          NSIS_DIR="desktop/src-tauri/target/release"
+          if [ ! -d "$NSIS_DIR" ]; then
+            echo "No release build found"
+            exit 0
+          fi
+
+          # Create istara source bundle alongside the exe
+          RESOURCES="$NSIS_DIR/istara"
+          mkdir -p "$RESOURCES"
+
+          # Backend source
+          rsync -a --exclude='__pycache__' --exclude='*.pyc' --exclude='.env' \
+            --exclude='data/' --exclude='venv/' --exclude='.venv/' --exclude='.pytest_cache/' \
+            backend/ "$RESOURCES/backend/"
+
+          # Frontend source
+          rsync -a --exclude='node_modules/' --exclude='.next/' --exclude='out/' \
+            frontend/ "$RESOURCES/frontend/"
+
+          # Relay
+          rsync -a --exclude='node_modules/' relay/ "$RESOURCES/relay/"
+
+          # Config
+          cp .env.example "$RESOURCES/.env.example"
+          cp VERSION "$RESOURCES/VERSION"
+
+          # Agent personas
+          for p in istara-main istara-devops istara-ui-audit istara-ux-eval istara-sim; do
+            if [ -d "backend/app/agents/personas/$p" ]; then
+              rsync -a "backend/app/agents/personas/$p/" "$RESOURCES/backend/app/agents/personas/$p/"
+            fi
+          done
+
+          echo "Windows source bundled: $(du -sh "$RESOURCES" | cut -f1)"
+
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
         if: always()
