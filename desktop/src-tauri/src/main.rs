@@ -96,6 +96,9 @@ fn main() {
             commands::get_server_status,
             installer::detect_dependencies,
             installer::install_dependency,
+            commands::run_backend_setup,
+            commands::run_frontend_setup,
+            commands::save_setup_config,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Istara desktop app");
