@@ -112,11 +112,24 @@ detect_python() {
 }
 
 detect_node() {
-    local paths=("node" "/opt/homebrew/bin/node" "/usr/local/bin/node")
+    local paths=(
+        "node"
+        "/opt/homebrew/bin/node"
+        "/usr/local/bin/node"
+        "/opt/homebrew/opt/node/bin/node"
+        "/opt/homebrew/opt/node@20/bin/node"
+        "/opt/homebrew/opt/node@22/bin/node"
+    )
     # nvm
     [ -f "$HOME/.nvm/alias/default" ] && {
         local v; v=$(cat "$HOME/.nvm/alias/default")
         paths+=("$HOME/.nvm/versions/node/$v/bin/node")
+    }
+    # fnm
+    [ -d "$HOME/.local/share/fnm" ] && {
+        for nd_dir in "$HOME/.local/share/fnm/node-versions"/*/installation/bin; do
+            [ -x "$nd_dir/node" ] && paths+=("$nd_dir/node")
+        done
     }
     for nd in "${paths[@]}"; do
         if command -v "$nd" >/dev/null 2>&1 || [ -x "$nd" ]; then
@@ -130,10 +143,16 @@ detect_node() {
 }
 
 detect_npm() {
-    local nd; nd=$(detect_node 2>/dev/null) || nd="node"
-    local npm_path="$(dirname "$nd")/npm"
-    [ -x "$npm_path" ] && { echo "$npm_path"; return 0; }
+    local nd; nd=$(detect_node 2>/dev/null) || nd=""
+    if [ -n "$nd" ]; then
+        local npm_path="$(dirname "$nd")/npm"
+        [ -x "$npm_path" ] && { echo "$npm_path"; return 0; }
+    fi
     command -v npm >/dev/null 2>&1 && { echo "npm"; return 0; }
+    # Check keg-only Homebrew paths
+    for keg in "/opt/homebrew/opt/node/bin/npm" "/opt/homebrew/opt/node@22/bin/npm" "/opt/homebrew/opt/node@20/bin/npm"; do
+        [ -x "$keg" ] && { echo "$keg"; return 0; }
+    done
     return 1
 }
 
@@ -188,12 +207,44 @@ ensure_python() {
 }
 
 ensure_node() {
-    detect_node >/dev/null 2>&1 && { ok "Node $($(detect_node) --version 2>&1)"; return 0; }
-    info "Installing Node.js 20..."
+    local found_node=""
+    found_node=$(detect_node 2>/dev/null) || found_node=""
+    if [ -n "$found_node" ]; then
+        local nver; nver=$("$found_node" --version 2>&1 || echo "unknown")
+        ok "Node $nver ($found_node)"
+        # Make sure this node's bin dir is in PATH for npm
+        local node_bin; node_bin="$(dirname "$found_node")"
+        case ":$PATH:" in
+            *":$node_bin:"*) ;;  # already in PATH
+            *) export PATH="$node_bin:$PATH" ;;
+        esac
+        return 0
+    fi
+    info "Installing Node.js..."
     ensure_homebrew
-    brew install node@20
-    export PATH="$(brew --prefix node@20)/bin:$PATH"
-    ok "Node.js 20 installed"
+    # Install 'node' (main formula, links properly) not 'node@20' (keg-only, link conflicts)
+    brew install node 2>/dev/null || {
+        # If main formula fails, try node@22 or node@20 and add keg path
+        brew install node@22 2>/dev/null || brew install node@20 2>/dev/null || {
+            fail "Failed to install Node.js via Homebrew"
+            exit 1
+        }
+    }
+    # Add Homebrew keg-only node paths if needed
+    for keg in node node@22 node@20; do
+        local keg_path; keg_path="$(brew --prefix "$keg" 2>/dev/null)/bin" || continue
+        if [ -x "$keg_path/node" ]; then
+            export PATH="$keg_path:$PATH"
+            break
+        fi
+    done
+    # Verify it actually works
+    found_node=$(detect_node 2>/dev/null) || found_node=""
+    if [ -z "$found_node" ]; then
+        fail "Node.js installed but not found in PATH. Try: brew link --overwrite node"
+        exit 1
+    fi
+    ok "Node $($(detect_node) --version 2>&1) installed"
 }
 
 ensure_git() {
