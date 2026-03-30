@@ -355,12 +355,32 @@ jobs:
             ## Istara ${{ needs.version.outputs.version }}
 
             ### Installation
-            - **macOS**: Download the `.dmg`, drag Istara to Applications
-            - **Windows**: Download the `.exe` installer, run it
-            - **Existing users**: The app will notify you automatically — click "Update Now"
+
+            **macOS (Homebrew)**:
+            ```bash
+            brew install --cask henrique-simoes/istara/istara
+            ```
+
+            **macOS (shell one-liner)**:
+            ```bash
+            curl -fsSL https://raw.githubusercontent.com/henrique-simoes/Istara/main/scripts/install-istara.sh | sh
+            ```
+
+            **macOS (manual)**: Download the `.dmg`, drag Istara to Applications
+
+            **Windows**: Download the `.exe` installer, run it
+
+            **Docker**:
+            ```bash
+            git clone https://github.com/henrique-simoes/Istara.git && cd Istara
+            cp .env.example .env && docker compose up -d
+            ```
+
+            ### Updates
+            Existing users: the app checks for updates automatically on startup and shows "Update Now" when a new version is available. Or click **Check for Updates** in the system tray menu.
 
             ---
-            *Auto-generated release. See [commits](https://github.com/henrique-simoes/Istara/commits/main) for changes.*
+            *Full changelog and documentation: [Wiki](https://github.com/henrique-simoes/Istara/wiki)*
           files: |
             latest.json
             Istara-macOS-*/**/*.dmg

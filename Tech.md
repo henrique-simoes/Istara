@@ -1042,7 +1042,21 @@ On tag push (`v*`) or manual dispatch:
 
 **Files**: `scripts/set-version.sh`, `backend/app/api/routes/updates.py`, `frontend/src/components/settings/UpdateChecker.tsx`, `desktop/src-tauri/src/health.rs`, `.github/workflows/build-installers.yml`
 
-## Cross-Platform Installer
+## Installation Methods
+
+### Homebrew (macOS — Recommended)
+```bash
+brew install --cask henrique-simoes/istara/istara
+```
+Custom tap at `henrique-simoes/homebrew-istara`. Cask formula at `homebrew/istara.rb`. Uses `livecheck` with `:github_latest` strategy for version detection. `auto_updates true` since the app has built-in auto-updater. `zap` stanza cleans `~/Library/Application Support/com.istara.desktop/`, `~/.istara/`, LaunchAgent, caches.
+
+### Shell One-Liner (macOS)
+```bash
+curl -fsSL https://raw.githubusercontent.com/henrique-simoes/Istara/main/scripts/install-istara.sh | sh
+```
+Detects platform and architecture. Downloads latest DMG from GitHub Releases API, mounts it, copies `Istara.app` to `/Applications`, removes quarantine attribute, offers to launch. Linux and Windows show manual instructions.
+
+**Files:** `scripts/install-istara.sh`, `homebrew/istara.rb`
 
 ### macOS (.dmg)
 Complete installer with bundled source code. `build-dmg.sh` builds the Tauri universal binary (Intel + Apple Silicon), bundles backend/frontend/relay source into `Istara.app/Contents/Resources/istara/`, creates `.dmg` with drag-to-Applications UX, and optionally notarizes via `xcrun notarytool`. LaunchAgent (`com.istara.server.plist`) enables auto-start on login.
