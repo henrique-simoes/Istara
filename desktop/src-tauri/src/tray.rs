@@ -5,7 +5,7 @@ use crate::commands::AppState;
 use crate::config::AppConfig;
 use tauri::{
     menu::{Menu, MenuItem},
-    tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
+    tray::TrayIconBuilder,
     AppHandle, Manager, Runtime,
 };
 
@@ -27,30 +27,30 @@ pub fn setup_tray<R: Runtime>(
             let id = event.id().as_ref();
             match id {
                 "open" => {
-                    let _ = open::that(
-                        if crate::config::load_config().mode == "server" {
-                            "http://localhost:3000"
-                        } else {
-                            &crate::config::load_config().server_url
-                        }
-                    );
+                    let cfg = crate::config::load_config();
+                    let url = if cfg.mode == "server" {
+                        "http://localhost:3000".to_string()
+                    } else {
+                        cfg.server_url.clone()
+                    };
+                    let _ = open::that(&url);
                 }
                 "start" => {
-                    let state: tauri::State<'_, AppState> = app.state();
-                    if let Ok(mut pm) = state.process_manager.lock() {
-                        let cfg = crate::config::load_config();
-                        let dir = if cfg.install_dir.is_empty() {
-                            crate::commands::find_install_dir_public()
-                        } else {
-                            cfg.install_dir.clone()
-                        };
+                    let app_state = app.state::<AppState>();
+                    let cfg = crate::config::load_config();
+                    let dir = if cfg.install_dir.is_empty() {
+                        crate::commands::find_install_dir_public()
+                    } else {
+                        cfg.install_dir.clone()
+                    };
+                    if let Ok(mut pm) = app_state.process_manager.lock() {
                         let _ = pm.start_backend(&dir);
                         let _ = pm.start_frontend(&dir);
                     }
                 }
                 "stop" => {
-                    let state: tauri::State<'_, AppState> = app.state();
-                    if let Ok(mut pm) = state.process_manager.lock() {
+                    let app_state = app.state::<AppState>();
+                    if let Ok(mut pm) = app_state.process_manager.lock() {
                         pm.stop_all();
                     }
                 }
@@ -59,8 +59,8 @@ pub fn setup_tray<R: Runtime>(
                     cfg.donate_compute = !cfg.donate_compute;
                     let _ = crate::config::save_config(&cfg);
 
-                    let state: tauri::State<'_, AppState> = app.state();
-                    if let Ok(mut pm) = state.process_manager.lock() {
+                    let app_state = app.state::<AppState>();
+                    if let Ok(mut pm) = app_state.process_manager.lock() {
                         if cfg.donate_compute {
                             let dir = if cfg.install_dir.is_empty() {
                                 crate::commands::find_install_dir_public()
@@ -74,8 +74,8 @@ pub fn setup_tray<R: Runtime>(
                     }
                 }
                 "quit" => {
-                    let state: tauri::State<'_, AppState> = app.state();
-                    if let Ok(mut pm) = state.process_manager.lock() {
+                    let app_state = app.state::<AppState>();
+                    if let Ok(mut pm) = app_state.process_manager.lock() {
                         pm.stop_all();
                     }
                     app.exit(0);

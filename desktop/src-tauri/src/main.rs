@@ -37,8 +37,8 @@ fn main() {
 
             // If server mode, auto-start services
             if cfg.mode == "server" && !cfg.install_dir.is_empty() {
-                let state: tauri::State<'_, AppState> = app.state();
-                if let Ok(mut pm) = state.process_manager.lock() {
+                let app_state = app.state::<AppState>();
+                if let Ok(mut pm) = app_state.process_manager.lock() {
                     let _ = pm.start_backend(&cfg.install_dir);
                     let _ = pm.start_frontend(&cfg.install_dir);
                     if cfg.donate_compute {
@@ -49,8 +49,8 @@ fn main() {
 
             // If client mode with connection string, start relay
             if cfg.mode == "client" && !cfg.connection_string.is_empty() && cfg.donate_compute {
-                let state: tauri::State<'_, AppState> = app.state();
-                if let Ok(mut pm) = state.process_manager.lock() {
+                let app_state = app.state::<AppState>();
+                if let Ok(mut pm) = app_state.process_manager.lock() {
                     let install_dir = if cfg.install_dir.is_empty() {
                         commands::find_install_dir_public()
                     } else {
@@ -87,8 +87,8 @@ fn main() {
             // Graceful shutdown on window close
             if let tauri::WindowEvent::Destroyed = event {
                 if window.label() == "main" || window.label() == "setup" {
-                    let state: tauri::State<'_, AppState> = window.state();
-                    if let Ok(mut pm) = state.process_manager.lock() {
+                    let app_state = window.state::<AppState>();
+                    if let Ok(mut pm) = app_state.process_manager.lock() {
                         pm.stop_all();
                     }
                 }
