@@ -2,7 +2,7 @@
 name: hmw-statements
 description: "Generate 'How Might We' statements from insights, score by impact/feasibility."
 metadata:
-  reclaw:
+  istara:
     phase: define
     type: qualitative
     version: "1.0.0"

@@ -80,7 +80,7 @@ export default function MCPTab() {
     return (
       <div className="flex-1 overflow-y-auto">
         <div className="px-6 py-3 border-b border-slate-200 dark:border-slate-800">
-          <button onClick={() => setShowPolicyEditor(false)} className="text-sm text-reclaw-600 hover:text-reclaw-700 dark:text-reclaw-400 transition-colors">
+          <button onClick={() => setShowPolicyEditor(false)} className="text-sm text-istara-600 hover:text-istara-700 dark:text-istara-400 transition-colors">
             &larr; Back to MCP
           </button>
         </div>
@@ -93,7 +93,7 @@ export default function MCPTab() {
     return (
       <div className="flex-1 overflow-y-auto">
         <div className="px-6 py-3 border-b border-slate-200 dark:border-slate-800">
-          <button onClick={() => setShowAuditLog(false)} className="text-sm text-reclaw-600 hover:text-reclaw-700 dark:text-reclaw-400 transition-colors">
+          <button onClick={() => setShowAuditLog(false)} className="text-sm text-istara-600 hover:text-istara-700 dark:text-istara-400 transition-colors">
             &larr; Back to MCP
           </button>
         </div>
@@ -104,11 +104,11 @@ export default function MCPTab() {
 
   return (
     <div className="flex-1 overflow-y-auto p-6 space-y-8">
-      {/* Section 1: ReClaw as MCP Server */}
+      {/* Section 1: Istara as MCP Server */}
       <section>
-        <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-1">ReClaw as MCP Server</h2>
+        <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-1">Istara as MCP Server</h2>
         <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
-          Expose ReClaw&apos;s tools and findings to external MCP clients.
+          Expose Istara&apos;s tools and findings to external MCP clients.
         </p>
 
         {/* Warning banner */}
@@ -181,12 +181,12 @@ export default function MCPTab() {
           <div>
             <h2 className="text-lg font-bold text-slate-900 dark:text-white">Connected MCP Servers</h2>
             <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-              Connect to external MCP servers to extend ReClaw with additional tools.
+              Connect to external MCP servers to extend Istara with additional tools.
             </p>
           </div>
           <button
             onClick={() => setShowServerSetup(true)}
-            className="flex items-center gap-1.5 px-3 py-2 text-sm bg-reclaw-600 text-white rounded-lg hover:bg-reclaw-700 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-2 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700 transition-colors"
           >
             <Plus size={14} />
             Add Server
@@ -208,7 +208,7 @@ export default function MCPTab() {
             </p>
             <button
               onClick={() => setShowServerSetup(true)}
-              className="px-4 py-2 text-sm bg-reclaw-600 text-white rounded-lg hover:bg-reclaw-700 transition-colors"
+              className="px-4 py-2 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700 transition-colors"
             >
               Add First Server
             </button>
@@ -239,15 +239,15 @@ export default function MCPTab() {
             <div>
               <h3 className="font-medium text-slate-900 dark:text-white mb-1">As MCP Server</h3>
               <p>
-                When enabled, ReClaw exposes its research tools (findings search, document access, skill execution)
-                via the MCP protocol. External tools like Claude Desktop can connect and use ReClaw&apos;s capabilities.
+                When enabled, Istara exposes its research tools (findings search, document access, skill execution)
+                via the MCP protocol. External tools like Claude Desktop can connect and use Istara&apos;s capabilities.
               </p>
             </div>
             <div>
               <h3 className="font-medium text-slate-900 dark:text-white mb-1">As MCP Client</h3>
               <p>
-                Connect to external MCP servers to give ReClaw access to additional tools. After adding a server,
-                use &ldquo;Discover Tools&rdquo; to see available capabilities. ReClaw agents can then call these tools during task execution.
+                Connect to external MCP servers to give Istara access to additional tools. After adding a server,
+                use &ldquo;Discover Tools&rdquo; to see available capabilities. Istara agents can then call these tools during task execution.
               </p>
             </div>
             <div>
@@ -338,7 +338,7 @@ function FeaturedServersSection({ onConnect }: { onConnect: () => Promise<void> 
                       "px-4 py-1.5 text-xs font-medium rounded-lg transition-colors",
                       connecting === server.id
                         ? "bg-slate-200 text-slate-500 dark:bg-slate-700 dark:text-slate-400"
-                        : "bg-reclaw-600 text-white hover:bg-reclaw-700"
+                        : "bg-istara-600 text-white hover:bg-istara-700"
                     )}
                   >
                     {connecting === server.id ? "Connecting..." : "Connect"}
@@ -381,7 +381,7 @@ function FeaturedServersSection({ onConnect }: { onConnect: () => Promise<void> 
                     <ul className="space-y-1">
                       {server.ux_research_applications.map((app: string, i: number) => (
                         <li key={i} className="text-xs text-slate-600 dark:text-slate-400 flex items-start gap-1.5">
-                          <span className="text-reclaw-500 mt-0.5 shrink-0">+</span>
+                          <span className="text-istara-500 mt-0.5 shrink-0">+</span>
                           {app}
                         </li>
                       ))}
@@ -400,7 +400,7 @@ function FeaturedServersSection({ onConnect }: { onConnect: () => Promise<void> 
                   </div>
                 )}
                 <div className="flex items-center gap-3 pt-1">
-                  <a href={server.repository} target="_blank" rel="noopener noreferrer" className="text-xs text-reclaw-600 hover:text-reclaw-700 dark:text-reclaw-400 underline">
+                  <a href={server.repository} target="_blank" rel="noopener noreferrer" className="text-xs text-istara-600 hover:text-istara-700 dark:text-istara-400 underline">
                     GitHub Repository
                   </a>
                   <span className="text-xs text-slate-400">Install: pip install {server.package}</span>
@@ -445,7 +445,7 @@ function MCPClientCard({
             onClick={() => onDiscover(client.id)}
             disabled={discovering}
             aria-label="Discover tools"
-            className="p-1.5 rounded-lg text-slate-400 hover:text-reclaw-600 hover:bg-reclaw-50 dark:hover:bg-reclaw-900/20 transition-colors disabled:opacity-50"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-istara-600 hover:bg-istara-50 dark:hover:bg-istara-900/20 transition-colors disabled:opacity-50"
           >
             <RefreshCw size={14} className={discovering ? "animate-spin" : ""} />
           </button>

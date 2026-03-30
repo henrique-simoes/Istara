@@ -45,7 +45,7 @@ export default function ExecutionHistoryTab() {
         <select
           value={executionFilters.source_type}
           onChange={(e) => handleFilterChange("source_type", e.target.value)}
-          className="px-3 py-1.5 text-xs rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+          className="px-3 py-1.5 text-xs rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-istara-500"
         >
           <option value="">All Types</option>
           <option value="agent">Agent</option>
@@ -55,7 +55,7 @@ export default function ExecutionHistoryTab() {
         <select
           value={executionFilters.status}
           onChange={(e) => handleFilterChange("status", e.target.value)}
-          className="px-3 py-1.5 text-xs rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+          className="px-3 py-1.5 text-xs rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-istara-500"
         >
           <option value="">All Statuses</option>
           <option value="success">Success</option>
@@ -67,19 +67,19 @@ export default function ExecutionHistoryTab() {
           type="date"
           value={executionFilters.from_date}
           onChange={(e) => handleFilterChange("from_date", e.target.value)}
-          className="px-3 py-1.5 text-xs rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+          className="px-3 py-1.5 text-xs rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-istara-500"
           placeholder="From"
         />
         <input
           type="date"
           value={executionFilters.to_date}
           onChange={(e) => handleFilterChange("to_date", e.target.value)}
-          className="px-3 py-1.5 text-xs rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+          className="px-3 py-1.5 text-xs rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-istara-500"
           placeholder="To"
         />
         <button
           onClick={applyFilters}
-          className="px-3 py-1.5 text-xs font-medium rounded-lg bg-reclaw-600 text-white hover:bg-reclaw-700"
+          className="px-3 py-1.5 text-xs font-medium rounded-lg bg-istara-600 text-white hover:bg-istara-700"
         >
           Filter
         </button>

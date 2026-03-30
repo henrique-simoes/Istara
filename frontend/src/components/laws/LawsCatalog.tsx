@@ -136,7 +136,7 @@ export default function LawsCatalog() {
           placeholder="Search laws by name, description, or keyword..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full pl-9 pr-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+          className="w-full pl-9 pr-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-istara-500"
           aria-label="Search UX laws"
         />
       </div>
@@ -172,7 +172,7 @@ export default function LawsCatalog() {
                 setSearchQuery("");
                 setCategoryFilter(null);
               }}
-              className="mt-2 text-sm text-reclaw-600 dark:text-reclaw-400 hover:underline"
+              className="mt-2 text-sm text-istara-600 dark:text-istara-400 hover:underline"
             >
               Clear filters
             </button>
@@ -219,13 +219,13 @@ function LawCard({
     <div
       className={cn(
         "border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800/50 transition-shadow",
-        expanded && "shadow-md ring-1 ring-reclaw-200 dark:ring-reclaw-800"
+        expanded && "shadow-md ring-1 ring-istara-200 dark:ring-istara-800"
       )}
     >
       {/* Card header */}
       <button
         onClick={onToggle}
-        className="w-full text-left p-4 focus:outline-none focus:ring-2 focus:ring-reclaw-500 rounded-t-lg"
+        className="w-full text-left p-4 focus:outline-none focus:ring-2 focus:ring-istara-500 rounded-t-lg"
         aria-expanded={expanded}
         aria-label={`${law.name} - click to ${expanded ? "collapse" : "expand"} details`}
       >
@@ -292,7 +292,7 @@ function LawCard({
               <ul className="space-y-1">
                 {law.key_takeaways.map((t, i) => (
                   <li key={i} className="text-xs text-slate-700 dark:text-slate-300 flex items-start gap-1.5">
-                    <span className="text-reclaw-500 mt-0.5 shrink-0">-</span>
+                    <span className="text-istara-500 mt-0.5 shrink-0">-</span>
                     <span>{t}</span>
                   </li>
                 ))}
@@ -309,7 +309,7 @@ function LawCard({
               <ul className="space-y-1">
                 {law.design_implications.map((d, i) => (
                   <li key={i} className="text-xs text-slate-700 dark:text-slate-300 flex items-start gap-1.5">
-                    <span className="text-reclaw-500 mt-0.5 shrink-0">-</span>
+                    <span className="text-istara-500 mt-0.5 shrink-0">-</span>
                     <span>{d}</span>
                   </li>
                 ))}
@@ -353,7 +353,7 @@ function LawCard({
               <ul className="space-y-1">
                 {law.examples.map((ex, i) => (
                   <li key={i} className="text-xs text-slate-700 dark:text-slate-300 flex items-start gap-1.5">
-                    <span className="text-reclaw-500 mt-0.5 shrink-0">-</span>
+                    <span className="text-istara-500 mt-0.5 shrink-0">-</span>
                     <span>{ex}</span>
                   </li>
                 ))}
@@ -382,7 +382,7 @@ function LawCard({
             <div className="pt-2 border-t border-slate-200 dark:border-slate-700">
               <button
                 onClick={() => {
-                  window.dispatchEvent(new CustomEvent("reclaw:navigate", {
+                  window.dispatchEvent(new CustomEvent("istara:navigate", {
                     detail: { view: "findings", filter: { law_id: law.id } }
                   }));
                 }}

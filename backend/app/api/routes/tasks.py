@@ -151,8 +151,8 @@ async def create_task(data: TaskCreate, db: AsyncSession = Depends(get_db)):
                 f"Auto-routed task '{data.title}' → {agent_id} ({routing['routing_reason']})"
             )
         except Exception as e:
-            _log.getLogger(__name__).warning(f"Task routing failed, defaulting to reclaw-main: {e}")
-            agent_id = "reclaw-main"
+            _log.getLogger(__name__).warning(f"Task routing failed, defaulting to istara-main: {e}")
+            agent_id = "istara-main"
 
     task = Task(
         id=str(uuid.uuid4()),

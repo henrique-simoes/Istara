@@ -71,10 +71,10 @@ backend/app/skills/definitions/_deleted/
 
 # Runtime PID files
 *.pid
-.reclaw-*.pid
+.istara-*.pid
 
 # Exported projects
-ReClaw-Projects/
+Istara-Projects/
 
 # Database volumes
 postgres_data/

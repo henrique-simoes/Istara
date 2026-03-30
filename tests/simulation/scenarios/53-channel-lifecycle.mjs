@@ -274,7 +274,7 @@ export async function run(ctx) {
 
       // Verify no console errors from the integrations view
       const consoleErrors = await page.evaluate(() => {
-        return window.__reclawConsoleErrors || [];
+        return window.__istaraConsoleErrors || [];
       });
       const noFatalErrors = !Array.isArray(consoleErrors) || consoleErrors.length === 0;
       checks.push({

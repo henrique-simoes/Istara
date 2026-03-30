@@ -27,7 +27,7 @@ export default function ConnectionStringPanel() {
     setError(null);
     setConnectionString("");
     try {
-      const token = localStorage.getItem("reclaw_token");
+      const token = localStorage.getItem("istara_token");
       const serverUrl = window.location.origin.replace(":3000", ":8000");
       const res = await fetch(`${API_BASE}/api/connections/generate`, {
         method: "POST",
@@ -58,7 +58,7 @@ export default function ConnectionStringPanel() {
     if (!window.confirm("Rotate the network access token? All existing connection strings will be invalidated.")) return;
     setRotating(true);
     try {
-      const token = localStorage.getItem("reclaw_token");
+      const token = localStorage.getItem("istara_token");
       await fetch(`${API_BASE}/api/connections/rotate-network-token`, {
         method: "POST",
         headers: {
@@ -100,13 +100,13 @@ export default function ConnectionStringPanel() {
           placeholder="Label (e.g. Alice's laptop)"
           value={label}
           onChange={(e) => setLabel(e.target.value)}
-          className="flex-1 px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+          className="flex-1 px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-istara-500"
           aria-label="Connection string label"
         />
         <select
           value={expiryHours}
           onChange={(e) => setExpiryHours(Number(e.target.value))}
-          className="px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+          className="px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-istara-500"
           aria-label="Connection string expiry"
         >
           <option value={24}>1 day</option>
@@ -117,7 +117,7 @@ export default function ConnectionStringPanel() {
         <button
           onClick={handleGenerate}
           disabled={generating}
-          className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium bg-reclaw-600 text-white rounded-lg hover:bg-reclaw-700 disabled:opacity-50 transition-colors"
+          className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium bg-istara-600 text-white rounded-lg hover:bg-istara-700 disabled:opacity-50 transition-colors"
         >
           {generating ? <Loader2 size={14} className="animate-spin" /> : <Key size={14} />}
           Generate

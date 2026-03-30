@@ -1,30 +1,30 @@
-# ReClaw Technical Architecture
+# Istara Technical Architecture
 
 > **Local-first AI agents for UX Research** — autonomous, self-evolving, hardware-aware.
 
-ReClaw is a production-grade agent platform designed for UX researchers who want AI that runs on their machine, learns from their work, and gets better over time — without sending data to the cloud.
+Istara is a production-grade agent platform designed for UX researchers who want AI that runs on their machine, learns from their work, and gets better over time — without sending data to the cloud.
 
 ---
 
-## Why ReClaw's Architecture Matters
+## Why Istara's Architecture Matters
 
-Before diving into details, here are the design decisions that make ReClaw a robust choice for researchers and teams who care about data ownership, cost, and reliability.
+Before diving into details, here are the design decisions that make Istara a robust choice for researchers and teams who care about data ownership, cost, and reliability.
 
 ### 1. Agents That Actually Improve Themselves
 
-Most agent frameworks treat prompts as static configuration. ReClaw's agents **evolve**: they record error patterns, track workflow preferences, and when patterns reach maturity thresholds (3+ occurrences, 2+ contexts, 30 days), those learnings are permanently promoted into the agent's persona files. This is not fine-tuning — it's structured prompt evolution that works with any local model.
+Most agent frameworks treat prompts as static configuration. Istara's agents **evolve**: they record error patterns, track workflow preferences, and when patterns reach maturity thresholds (3+ occurrences, 2+ contexts, 30 days), those learnings are permanently promoted into the agent's persona files. This is not fine-tuning — it's structured prompt evolution that works with any local model.
 
 ### 2. Every Finding Is Traceable to Source
 
-ReClaw implements the **Atomic Research** methodology (Nugget → Fact → Insight → Recommendation) with full evidence chains. Every insight links back through facts to the exact quote or data point that supports it. No hallucinated conclusions without provenance.
+Istara implements the **Atomic Research** methodology (Nugget → Fact → Insight → Recommendation) with full evidence chains. Every insight links back through facts to the exact quote or data point that supports it. No hallucinated conclusions without provenance.
 
 ### 3. Lossless Context Memory
 
-Conversations are never thrown away. ReClaw's **DAG-based context summarization** creates hierarchical summaries of older messages while preserving the originals. Agents can drill back into any conversation depth to recover details. Combined with a 6-level context hierarchy, every chat gets the right context without exceeding the model's window.
+Conversations are never thrown away. Istara's **DAG-based context summarization** creates hierarchical summaries of older messages while preserving the originals. Agents can drill back into any conversation depth to recover details. Combined with a 6-level context hierarchy, every chat gets the right context without exceeding the model's window.
 
 ### 4. Works With Any Local Model (1.5B to 70B)
 
-A hardware-aware **Resource Governor** monitors RAM, CPU, and GPU to prevent system overload. **Prompt RAG** dynamically retrieves only the relevant persona sections for each query (30-50% token savings). **LLMLingua-inspired compression** removes filler without losing meaning (15-30% savings). Together, these allow ReClaw to run meaningfully on a 3B model with a 2K context window — or scale up to use everything a 70B model offers.
+A hardware-aware **Resource Governor** monitors RAM, CPU, and GPU to prevent system overload. **Prompt RAG** dynamically retrieves only the relevant persona sections for each query (30-50% token savings). **LLMLingua-inspired compression** removes filler without losing meaning (15-30% savings). Together, these allow Istara to run meaningfully on a 3B model with a 2K context window — or scale up to use everything a 70B model offers.
 
 ### 5. 45+ Research Skills, Self-Monitoring
 
@@ -32,7 +32,7 @@ Each skill follows the Double Diamond methodology and produces structured output
 
 ### 6. Five Coordinated Agents, Not One
 
-ReClaw runs a **meta-orchestrator** coordinating five specialized agents — a task executor, a DevOps auditor, a UI auditor, a UX evaluator, and a user simulator. Each has a distinct persona, and they communicate through an internal A2A messaging system. Custom agents participate in the same pipeline automatically.
+Istara runs a **meta-orchestrator** coordinating five specialized agents — a task executor, a DevOps auditor, a UI auditor, a UX evaluator, and a user simulator. Each has a distinct persona, and they communicate through an internal A2A messaging system. Custom agents participate in the same pipeline automatically.
 
 ---
 
@@ -92,11 +92,11 @@ ReClaw runs a **meta-orchestrator** coordinating five specialized agents — a t
 
 ### Multi-Agent Architecture
 
-ReClaw runs five coordinated agents managed by a **MetaOrchestrator**. Each agent has a distinct role, persona, and work pattern.
+Istara runs five coordinated agents managed by a **MetaOrchestrator**. Each agent has a distinct role, persona, and work pattern.
 
 | Agent | Role | Persona | What It Does |
 |-------|------|---------|-------------|
-| **ReClaw** | Task Executor | Cleo | Primary worker. Executes all 45+ skills, produces findings |
+| **Istara** | Task Executor | Cleo | Primary worker. Executes all 45+ skills, produces findings |
 | **Sentinel** | DevOps Audit | — | Monitors data integrity, orphaned references, system health |
 | **Pixel** | UI Audit | — | Runs Nielsen's heuristics, WCAG checks, design system audits |
 | **Sage** | UX Evaluation | — | Evaluates UX quality, cognitive load, journey completeness |
@@ -186,7 +186,7 @@ Tasks support bidirectional document linking, allowing users and agents to attac
 
 ### System Action Tools (LLM-Native Tool Selection)
 
-Instead of hardcoded intent detection with regex/dictionaries, ReClaw uses **structured tool schemas** injected into the LLM's system prompt. The LLM itself decides which tool to call based on the user's natural language request.
+Instead of hardcoded intent detection with regex/dictionaries, Istara uses **structured tool schemas** injected into the LLM's system prompt. The LLM itself decides which tool to call based on the user's natural language request.
 
 **13 System Tools** (`backend/app/skills/system_actions.py`):
 
@@ -214,7 +214,7 @@ Instead of hardcoded intent detection with regex/dictionaries, ReClaw uses **str
 
 ## Self-Evolution Pipeline
 
-ReClaw implements an OpenClaw-inspired self-improvement system where agents literally rewrite their own personas based on accumulated experience.
+Istara implements an OpenClaw-inspired self-improvement system where agents literally rewrite their own personas based on accumulated experience.
 
 ### How It Works
 
@@ -265,7 +265,7 @@ When users create a custom agent, the system auto-generates all four persona fil
 
 ## Prompt Management for Local Models
 
-Running on local models (1.5B to 14B parameters) with limited context windows (2K to 8K tokens) requires careful prompt engineering. ReClaw implements three complementary strategies.
+Running on local models (1.5B to 14B parameters) with limited context windows (2K to 8K tokens) requires careful prompt engineering. Istara implements three complementary strategies.
 
 ### Strategy 1: Prompt RAG (Query-Aware System Prompts)
 
@@ -348,7 +348,7 @@ Every prompt is composed from a layered context system where each level adds dom
 
 | Level | Type | What It Contains | Example |
 |-------|------|-----------------|---------|
-| 0 | **Platform** | ReClaw defaults — UXR expertise, Atomic Research methodology | "You are a UX Research agent..." |
+| 0 | **Platform** | Istara defaults — UXR expertise, Atomic Research methodology | "You are a UX Research agent..." |
 | 1 | **Company** | Organization culture, terminology, research standards | "Our company uses NPS > 50 as the success threshold" |
 | 2 | **Product** | Product-specific knowledge, user base, competitors | "The app targets enterprise HR managers" |
 | 3 | **Project** | Research questions, goals, timeline, participants | "We're studying onboarding friction for Q2" |
@@ -359,7 +359,7 @@ Contexts at each level are stored as `ContextDocument` records in the database w
 
 ### DAG-Based Lossless Context Summarization
 
-Traditional context management either truncates (lossy) or keeps everything (overflow). ReClaw's **Context DAG** (`core/context_dag.py`) provides a third option: hierarchical summarization with full recovery.
+Traditional context management either truncates (lossy) or keeps everything (overflow). Istara's **Context DAG** (`core/context_dag.py`) provides a third option: hierarchical summarization with full recovery.
 
 ```
 Depth 2:  [Summary of summaries: "The project explored 3 themes..."]
@@ -447,7 +447,7 @@ The **SkillManager** (`skills/skill_manager.py`) tracks execution quality:
 
 ## Document System — Source of Truth
 
-Every file a user uploads, every output an agent produces, and every task completion that generates an artifact becomes a **Document**. Documents are ReClaw's source of truth — the final, findable output of everything.
+Every file a user uploads, every output an agent produces, and every task completion that generates an artifact becomes a **Document**. Documents are Istara's source of truth — the final, findable output of everything.
 
 ### Document Lifecycle
 
@@ -503,7 +503,7 @@ Documents are included in project exports alongside findings, tasks, messages, s
 
 ### Hybrid Search
 
-ReClaw's retrieval combines **vector similarity** and **keyword search** using configurable weights:
+Istara's retrieval combines **vector similarity** and **keyword search** using configurable weights:
 
 | Component | Weight | Method | Strengths |
 |-----------|--------|--------|----------|
@@ -544,7 +544,7 @@ result = verify_claim(claim_text, project_id)
 
 ### Resource Governor
 
-The **ResourceGovernor** (`core/resource_governor.py`) prevents ReClaw from overwhelming the host machine:
+The **ResourceGovernor** (`core/resource_governor.py`) prevents Istara from overwhelming the host machine:
 
 ```python
 class ResourceBudget:
@@ -601,7 +601,7 @@ Apple Silicon MLX quantizations are detected and preferred when available.
 
 ### Agent Architecture Comparison
 
-| Capability | ReClaw | Google ADK | LangGraph | CrewAI | AutoGen |
+| Capability | Istara | Google ADK | LangGraph | CrewAI | AutoGen |
 |-----------|--------|-----------|-----------|--------|---------|
 | **Agent identity** | 4-file MD persona + 6-level context | Description string | Prompt template | Role/goal/backstory | System message |
 | **Memory persistence** | SQLite + LanceDB + MEMORY.md + DAG | SessionService | Checkpointer | Short/long/entity | Conversation only |
@@ -616,7 +616,7 @@ Apple Silicon MLX quantizations are detected and preferred when available.
 
 ### Protocol Compatibility
 
-| Protocol | What It Does | ReClaw Status |
+| Protocol | What It Does | Istara Status |
 |----------|-------------|---------------|
 | **A2A** (Google) | Agent-to-agent communication, task lifecycle | Partial — DB-backed messaging, `/.well-known/agent.json` exposed |
 | **MCP** (Anthropic) | Model-tool integration (resources, tools, prompts) | Compatible — skills can be exposed as MCP tools, contexts as resources |
@@ -628,17 +628,17 @@ Apple Silicon MLX quantizations are detected and preferred when available.
 |----------|--------|-------------|-------|-------------|
 | **LLMLingua** (Microsoft) | GPT-2 perplexity scoring | PyTorch + GPU | ~100ms | 2-20x |
 | **LLMLingua-2** | BERT token classifier | PyTorch + GPU | ~50ms | 2-10x |
-| **ReClaw heuristic** | Word importance + domain terms + sentence scoring | None (pure Python) | ~5ms | 1.2-2x |
-| **Prompt RAG** (ReClaw) | Query-aware section retrieval | None | ~10ms | 1.5-3x |
+| **Istara heuristic** | Word importance + domain terms + sentence scoring | None (pure Python) | ~5ms | 1.2-2x |
+| **Prompt RAG** (Istara) | Query-aware section retrieval | None | ~10ms | 1.5-3x |
 | **Truncation** | Cut at token limit | None | ~0ms | Variable |
 
-ReClaw trades compression ratio for **zero dependencies** and **instant speed** — the right trade-off for local-first where every millisecond of inference startup matters.
+Istara trades compression ratio for **zero dependencies** and **instant speed** — the right trade-off for local-first where every millisecond of inference startup matters.
 
 ### Memory System Comparison
 
 | System | Short-term | Long-term | Structured | Self-evolving |
 |--------|-----------|-----------|-----------|---------------|
-| **ReClaw** | Message history + DAG summaries | MEMORY.md + AgentLearning DB + Vector store | 6-level hierarchy + Atomic Research | Yes (promotion pipeline) |
+| **Istara** | Message history + DAG summaries | MEMORY.md + AgentLearning DB + Vector store | 6-level hierarchy + Atomic Research | Yes (promotion pipeline) |
 | **LangChain** | Buffer/summary/token memory | VectorStoreMemory | Entity memory | No |
 | **CrewAI** | Conversation buffer | RAG-based long-term | Entity tracking | No |
 | **AutoGen** | Conversation history | None built-in | None | No |
@@ -654,7 +654,7 @@ ReClaw trades compression ratio for **zero dependencies** and **instant speed** 
 1. User types "Create a task to analyze interview transcripts and attach report.pdf"
 2. Frontend sends POST /api/chat with message + project_id + session_id
 3. Backend:
-   a. Loads session → gets assigned agent (e.g., reclaw-main)
+   a. Loads session → gets assigned agent (e.g., istara-main)
    b. Prompt RAG: composes query-aware agent identity
       - Identity anchor (559 tokens) always included
       - Retrieves 8 relevant sections (interview skills, methodology protocols)
@@ -730,7 +730,7 @@ ReClaw trades compression ratio for **zero dependencies** and **instant speed** 
 
 ### Simulation Framework
 
-ReClaw includes a comprehensive **Playwright + Node.js simulation agent** at `tests/simulation/` that runs 66 scenarios covering:
+Istara includes a comprehensive **Playwright + Node.js simulation agent** at `tests/simulation/` that runs 66 scenarios covering:
 
 | Category | Scenarios | Checks |
 |----------|----------|--------|
@@ -776,7 +776,7 @@ The self-evolution and prompt compression scenario includes **35 checks** specif
 
 On machines with limited RAM (8GB), LM Studio can only load one model at a time without severe performance degradation. The simulation test runner uses the **Maintenance Mode** system to guarantee exclusive model access:
 
-1. **Before tests start:** `POST /api/settings/maintenance/pause` — halts all ReClaw agent work and LLM calls
+1. **Before tests start:** `POST /api/settings/maintenance/pause` — halts all Istara agent work and LLM calls
 2. **During tests:** Tests use the user's currently configured model (no model switching). Only test LLM calls hit the model.
 3. **After tests complete:** `POST /api/settings/maintenance/resume` — agents resume normal operation
 4. **Crash safety:** Signal handlers (`SIGINT`, `SIGTERM`) and the `.catch()` handler call `emergencyResume()` to ensure the backend never stays permanently paused after a test crash
@@ -854,11 +854,11 @@ All settings are configurable via environment variables or `.env`:
 
 ### View Persistence & Navigation
 
-ReClaw uses a single-page architecture with **22 views** rendered via a switch in `HomeClient.tsx`. Navigation state is persisted to `localStorage` so page refresh preserves the current view. The browser `document.title` updates to reflect the active view name (e.g., "Documents — ReClaw").
+Istara uses a single-page architecture with **22 views** rendered via a switch in `HomeClient.tsx`. Navigation state is persisted to `localStorage` so page refresh preserves the current view. The browser `document.title` updates to reflect the active view name (e.g., "Documents — Istara").
 
 - **Keyboard shortcuts**: Cmd+1-0 for view switching, Cmd+K for search, Cmd+. for right panel toggle, ? for shortcuts help
 - **Settings** is in the primary navigation (always visible, not hidden behind "More")
-- **Custom events**: Components use `window.dispatchEvent(new CustomEvent("reclaw:navigate", { detail }))` for cross-component navigation
+- **Custom events**: Components use `window.dispatchEvent(new CustomEvent("istara:navigate", { detail }))` for cross-component navigation
 
 ### Document View Modes
 
@@ -1009,14 +1009,14 @@ System tray application for macOS (menubar) and Windows (system tray). Two modes
 - **Server+Client**: Manages backend, frontend, and relay subprocesses. Menu: Open Browser, Start/Stop Server, Stats, Compute Donation, Quit.
 - **Client-only**: Manages relay daemon only. Menu: Connection Status, Open Browser, Stats, Compute Donation, Change Server, Quit.
 
-Built with Tauri v2 (5-15 MB binary, ~20 MB RAM). Rust backend for process management, `sysinfo` crate for stats. Config stored at `~/.reclaw/config.json`.
+Built with Tauri v2 (5-15 MB binary, ~20 MB RAM). Rust backend for process management, `sysinfo` crate for stats. Config stored at `~/.istara/config.json`.
 
 **Files:** `desktop/src-tauri/` (Rust), `desktop/src/` (HTML stats popover)
 
 ## Versioning & Auto-Updates
 
 ### CalVer Versioning
-ReClaw uses date-based CalVer: `YYYY.MM.DD` (e.g., `2026.03.29`). Multiple builds in one day use `YYYY.MM.DD.N` (e.g., `2026.03.29.2`). Version is set across 7 files by `scripts/set-version.sh` and stored in a root `VERSION` file.
+Istara uses date-based CalVer: `YYYY.MM.DD` (e.g., `2026.03.29`). Multiple builds in one day use `YYYY.MM.DD.N` (e.g., `2026.03.29.2`). Version is set across 7 files by `scripts/set-version.sh` and stored in a root `VERSION` file.
 
 **Files updated**: `VERSION`, `desktop/src-tauri/tauri.conf.json`, `desktop/package.json`, `desktop/src-tauri/Cargo.toml`, `frontend/package.json`, `relay/package.json`, `backend/pyproject.toml`, `installer/windows/nsis-installer.nsi`
 
@@ -1045,7 +1045,7 @@ On tag push (`v*`) or manual dispatch:
 ## Cross-Platform Installer
 
 ### macOS (.dmg)
-Complete installer with bundled source code. `build-dmg.sh` builds the Tauri universal binary (Intel + Apple Silicon), bundles backend/frontend/relay source into `ReClaw.app/Contents/Resources/reclaw/`, creates `.dmg` with drag-to-Applications UX, and optionally notarizes via `xcrun notarytool`. LaunchAgent (`com.reclaw.server.plist`) enables auto-start on login.
+Complete installer with bundled source code. `build-dmg.sh` builds the Tauri universal binary (Intel + Apple Silicon), bundles backend/frontend/relay source into `Istara.app/Contents/Resources/istara/`, creates `.dmg` with drag-to-Applications UX, and optionally notarizes via `xcrun notarytool`. LaunchAgent (`com.istara.server.plist`) enables auto-start on login.
 
 ### Windows (.exe via NSIS + MUI2)
 Full installer wizard with:
@@ -1064,7 +1064,7 @@ System tray app that actually manages backend, frontend, and relay as child proc
 - Health polling via TCP connect to ports 8000/3000 every 10s
 - Tray menu events wired to real start/stop/relay/quit commands
 - First-run setup wizard (HTML in Tauri webview) with dependency detection and installation
-- Config at `~/.reclaw/config.json` for mode, server URL, connection string, install dir
+- Config at `~/.istara/config.json` for mode, server URL, connection string, install dir
 
 ### CI/CD (GitHub Actions)
 `.github/workflows/build-installers.yml` auto-builds on every push to main:
@@ -1086,7 +1086,7 @@ System tray app that actually manages backend, frontend, and relay as child proc
 - `RELAY_TOKEN` — 24-byte for relay daemon auth
 - `POSTGRES_PASSWORD` — 16-byte for team mode PostgreSQL
 
-**Files:** `installer/macos/build-dmg.sh`, `installer/macos/com.reclaw.server.plist`, `installer/windows/nsis-installer.nsi`, `installer/windows/reclaw-service.bat`, `.github/workflows/build-installers.yml`, `desktop/src-tauri/src/{main,commands,process,tray,health,installer,backend_setup,config,stats}.rs`
+**Files:** `installer/macos/build-dmg.sh`, `installer/macos/com.istara.server.plist`, `installer/windows/nsis-installer.nsi`, `installer/windows/istara-service.bat`, `.github/workflows/build-installers.yml`, `desktop/src-tauri/src/{main,commands,process,tray,health,installer,backend_setup,config,stats}.rs`
 
 ## Browser Compute Donation
 
@@ -1104,13 +1104,13 @@ System tray app that actually manages backend, frontend, and relay as child proc
 ## Contextual Onboarding System
 
 Every view has a non-blocking inline onboarding banner (`ViewOnboarding`) that:
-- Shows once per view (dismissal persisted to `localStorage` key `reclaw_onboarding_{viewId}`)
+- Shows once per view (dismissal persisted to `localStorage` key `istara_onboarding_{viewId}`)
 - Explains the feature in 1-2 sentences
 - Provides 2-3 quick action buttons
 - Suggests a Chat prompt ("Try asking: ...")
 - Dismissible with X button or Escape key, `aria-live="polite"` for screen readers
 
-**21 views** have tailored onboarding content. Settings has a "Reset Onboarding Hints" button that clears all `reclaw_onboarding_*` keys.
+**21 views** have tailored onboarding content. Settings has a "Reset Onboarding Hints" button that clears all `istara_onboarding_*` keys.
 
 **Files:** `frontend/src/components/common/ViewOnboarding.tsx`, `frontend/src/hooks/useViewOnboarding.ts`
 
@@ -1144,7 +1144,7 @@ Projects can point at external folders (Google Drive, Dropbox, OneDrive, or any 
 ## Project Structure
 
 ```
-ReClaw-main/
+Istara-main/
 ├── backend/
 │   ├── app/
 │   │   ├── main.py                    # FastAPI app, lifespan, A2A endpoint
@@ -1157,11 +1157,11 @@ ReClaw-main/
 │   │   │   ├── user_sim_agent.py      # Simulated user testing
 │   │   │   ├── custom_worker.py       # Custom agent worker loop
 │   │   │   └── personas/              # Agent persona MD files
-│   │   │       ├── reclaw-main/       # Cleo's identity
-│   │   │       ├── reclaw-devops/     # Sentinel's identity
-│   │   │       ├── reclaw-ui-audit/   # Pixel's identity
-│   │   │       ├── reclaw-ux-eval/    # Sage's identity
-│   │   │       └── reclaw-sim/        # Echo's identity
+│   │   │       ├── istara-main/       # Cleo's identity
+│   │   │       ├── istara-devops/     # Sentinel's identity
+│   │   │       ├── istara-ui-audit/   # Pixel's identity
+│   │   │       ├── istara-ux-eval/    # Sage's identity
+│   │   │       └── istara-sim/        # Echo's identity
 │   │   ├── core/
 │   │   │   ├── agent.py               # AgentOrchestrator (work loop)
 │   │   │   ├── agent_identity.py      # Persona loading + compression
@@ -1252,7 +1252,7 @@ ReClaw-main/
 
 ### Multi-User Team Mode
 
-ReClaw supports both local (single-user, no auth) and team modes:
+Istara supports both local (single-user, no auth) and team modes:
 
 - **Local mode** (default): No authentication, single implicit "local" user with admin privileges.
 - **Team mode** (`TEAM_MODE=true`): JWT-based authentication with role-based access control (admin, researcher, viewer). First registered user becomes admin.
@@ -1299,7 +1299,7 @@ Automatic discovery of LLM servers (LM Studio, Ollama, OpenAI-compatible) on the
 
 **Files**: `backend/app/core/network_discovery.py`, `backend/app/main.py` (startup integration)
 
-### ReClaw Relay Daemon
+### Istara Relay Daemon
 
 A Node.js daemon that allows team members to donate LLM compute:
 
@@ -1386,7 +1386,7 @@ The MetaOrchestrator scales agent count based on available compute:
 Major UX overhaul addressing WCAG compliance, Nielsen's heuristics violations, and usability issues:
 
 - **Notification Center**: Full notification center (like GitHub/LinkedIn) with bell icon, unread badge, notification history (max 50), mark-all-as-read, clear-all. All notification backgrounds use solid opacity (≥80%) for WCAG contrast compliance. Every notification navigates to its relevant page on click.
-- **Chat Agent Identity**: Chat bubbles now show the actual agent name (not hardcoded "ReClaw") during both message history and streaming responses. Agent names are resolved from the session's agent_id against the agent store.
+- **Chat Agent Identity**: Chat bubbles now show the actual agent name (not hardcoded "Istara") during both message history and streaming responses. Agent names are resolved from the session's agent_id against the agent store.
 - **Settings Model/Server Display**: Each model now shows its provider server name and type (Ollama, LM Studio, OpenAI Compatible) as inline badges. Backend enriches model data with server metadata from the LLM Router.
 - **Ensemble Health Explanations**: Added expandable explanations for Fleiss' Kappa, per-method methodology descriptions (accordion pattern), metric tooltips on hover, and a color legend for confidence score interpretation. All on-demand to avoid overcrowding.
 - **Agent Status Polling**: Agent store now polls every 10 seconds + listens for WebSocket `agent_status` events in real-time. Agents correctly show WORKING/IDLE/PAUSED states instead of always "idle".
@@ -1401,14 +1401,14 @@ Major UX overhaul addressing WCAG compliance, Nielsen's heuristics violations, a
 
 ### Multi-Agent Task Routing & Architecture (March 2026)
 
-ReClaw is now a **true multi-agent system** where tasks are automatically routed to the best-matching agent based on specialty domains. Previously, all tasks went to the main ReClaw agent — now the intelligent task router analyzes each task's keywords, skill requirements, and description to determine which agent(s) should handle it.
+Istara is now a **true multi-agent system** where tasks are automatically routed to the best-matching agent based on specialty domains. Previously, all tasks went to the main Istara agent — now the intelligent task router analyzes each task's keywords, skill requirements, and description to determine which agent(s) should handle it.
 
 **Task Router** (`backend/app/core/task_router.py`):
 - **Specialty-based routing**: Each agent has defined specialties (research, devops, ui, ux, simulation). The router matches task keywords against specialty domains.
 - **Multi-specialty detection**: Tasks that require multiple domains (e.g., "accessibility audit of user journey") are assigned a primary agent and collaboration requests are sent to secondary agents via A2A.
 - **User-created agent support**: Custom agents define their specialties in the `specialties` JSON column on the Agent model. The router considers all active agents — system and user-created.
 - **Explicit assignment respected**: If a task is manually assigned to an agent, the router respects that assignment.
-- **Graceful fallback**: If the target agent is inactive, tasks fall back to reclaw-main.
+- **Graceful fallback**: If the target agent is inactive, tasks fall back to istara-main.
 
 **Sub-Agent Task Execution** (`backend/app/core/sub_agent_worker.py`):
 - All 4 sub-agents (Sentinel, Pixel, Sage, Echo) now have dual duties: their original monitoring/audit cycles PLUS task execution for their specialty domain.
@@ -1422,7 +1422,7 @@ ReClaw is now a **true multi-agent system** where tasks are automatically routed
 
 **Agent Specialties** (`backend/app/models/agent.py`):
 - New `specialties` JSON column on the Agent model.
-- System agents seeded with domain specialties: reclaw-main=research, reclaw-devops=devops, reclaw-ui-audit=ui, reclaw-ux-eval=ux, reclaw-sim=simulation.
+- System agents seeded with domain specialties: istara-main=research, istara-devops=devops, istara-ui-audit=ui, istara-ux-eval=ux, istara-sim=simulation.
 - User-created agents can set specialties at creation or via memory.
 
 ### Agent Identity UI & Persona System (March 2026)
@@ -1513,7 +1513,7 @@ Switching between SQLite (local mode) and PostgreSQL (team mode) no longer risks
 
 ### Interfaces Menu & Research→Design Bridge
 
-The Interfaces menu creates a bridge between UX Research and Product Design within ReClaw. It provides:
+The Interfaces menu creates a bridge between UX Research and Product Design within Istara. It provides:
 
 - **Design Chat**: An AI design assistant (Design Lead agent) with automatic research context injection via RAG. Uses the same SSE streaming and ReAct tool loop as the main Chat, with design-specific tools (generate_screen, edit_screen, create_variant, search_findings_for_design, create_design_brief, import_from_figma, list_screens).
 
@@ -1536,9 +1536,9 @@ DesignDecision is a new finding type that links Recommendations to design screen
 
 ### Google Stitch Integration (Apache 2.0)
 
-ReClaw integrates with Google Stitch via a Python httpx wrapper (backend/app/services/stitch_service.py). The SDK is TypeScript-only, so the backend calls Stitch's REST API directly. All generated HTML is scanned through ContentGuard for prompt injection protection.
+Istara integrates with Google Stitch via a Python httpx wrapper (backend/app/services/stitch_service.py). The SDK is TypeScript-only, so the backend calls Stitch's REST API directly. All generated HTML is scanned through ContentGuard for prompt injection protection.
 
-Four Stitch Skills are imported as ReClaw skill definitions (Apache 2.0 license):
+Four Stitch Skills are imported as Istara skill definitions (Apache 2.0 license):
 - stitch-design: Prompt enhancement + screen generation
 - stitch-enhance-prompt: Design prompt refinement
 - stitch-react-components: HTML→React conversion
@@ -1546,11 +1546,11 @@ Four Stitch Skills are imported as ReClaw skill definitions (Apache 2.0 license)
 
 ### Figma MCP Integration
 
-ReClaw proxies Figma's REST API v1 (api.figma.com) via backend/app/services/figma_service.py. Supports: file retrieval, node inspection, image export, component listing, style extraction, and design system synthesis.
+Istara proxies Figma's REST API v1 (api.figma.com) via backend/app/services/figma_service.py. Supports: file retrieval, node inspection, image export, component listing, style extraction, and design system synthesis.
 
 ### Privacy & Local-First Considerations
 
-Both Stitch and Figma integrations break ReClaw's local-first approach by sending data to external services. The system provides:
+Both Stitch and Figma integrations break Istara's local-first approach by sending data to external services. The system provides:
 - First-time onboarding with explicit privacy warnings
 - Per-session privacy acknowledgment banners before external API calls
 - Clear visual indicators when data leaves the local environment
@@ -1558,7 +1558,7 @@ Both Stitch and Figma integrations break ReClaw's local-first approach by sendin
 
 ### Loops & Schedule
 
-The Loops & Schedule menu provides centralized monitoring and control for all automated processes in ReClaw:
+The Loops & Schedule menu provides centralized monitoring and control for all automated processes in Istara:
 
 - **Loop Overview Dashboard**: Real-time health monitoring of all background processes (agent loops, orchestrator, meta-orchestrator, heartbeat, scheduler). Status indicators show active/paused/behind-schedule/stopped states with interval and last-run timestamps. The `/api/loops/overview` endpoint returns agents, schedules, and a consolidated `health_summary` with per-status counts.
 
@@ -1590,7 +1590,7 @@ The Notifications menu replaces the ephemeral toast-based notification system wi
 
 ### Automated Backup System
 
-ReClaw includes a comprehensive backup system that protects all user data with minimal configuration:
+Istara includes a comprehensive backup system that protects all user data with minimal configuration:
 
 - **10-Component Coverage**: Every backup captures all data components — SQLite database, agent personas, skill definitions, project files, vector store, configuration, logs, documents, memory indices, and meta-overrides. Each component is tracked in the backup manifest with individual checksums.
 
@@ -1608,7 +1608,7 @@ ReClaw includes a comprehensive backup system that protects all user data with m
 
 ### Meta-Hyperagent (Experimental)
 
-The Meta-Hyperagent is an experimental self-improvement layer inspired by the Hyperagents paper (DGM-H) on metacognitive self-modification. It observes ReClaw's own subsystems and proposes parameter optimizations:
+The Meta-Hyperagent is an experimental self-improvement layer inspired by the Hyperagents paper (DGM-H) on metacognitive self-modification. It observes Istara's own subsystems and proposes parameter optimizations:
 
 - **5 Observed Subsystems**: The meta-hyperagent monitors routing (task-to-agent matching accuracy), evolution (prompt promotion rate and quality), skill selection (skill-task match rate), quality evaluation (verification pass rate), and agent capabilities (capability utilization and error rates).
 
@@ -1642,7 +1642,7 @@ The Meta-Hyperagent is an experimental self-improvement layer inspired by the Hy
 
 ### Multi-Instance Channel Architecture
 
-ReClaw supports multiple messaging channel instances per platform (e.g., two Telegram bots for different studies).
+Istara supports multiple messaging channel instances per platform (e.g., two Telegram bots for different studies).
 
 | Platform | Transport | Auth | Features |
 |----------|-----------|------|----------|
@@ -1717,14 +1717,14 @@ Deploy interviews, surveys, and diary studies through messaging channels with ad
 
 ### SECURITY: Local-First Boundary
 
-MCP is the only ReClaw subsystem that allows external access to local data. It is:
+MCP is the only Istara subsystem that allows external access to local data. It is:
 - **OFF by default** — requires explicit user activation
 - **Gated by MCPAccessPolicy** — granular per-tool, per-resource, per-project permissions
 - **Fully audited** — every request logged with caller info
 
-### MCP Server (ReClaw as Provider)
+### MCP Server (Istara as Provider)
 
-Exposes ReClaw capabilities via FastMCP at `/mcp` when enabled.
+Exposes Istara capabilities via FastMCP at `/mcp` when enabled.
 
 | Tool | Risk | Default |
 |------|------|---------|
@@ -1739,7 +1739,7 @@ Exposes ReClaw capabilities via FastMCP at `/mcp` when enabled.
 
 ### MCP Client Registry
 
-Connect external MCP servers to augment ReClaw's capabilities. Discover tools, cache them, invoke on demand.
+Connect external MCP servers to augment Istara's capabilities. Discover tools, cache them, invoke on demand.
 
 **API**: `/api/mcp/server/*` for server management, `/api/mcp/clients/*` for client registry.
 
@@ -1841,7 +1841,7 @@ Optional Caddy service (profile: `production`) provides automatic TLS via Let's 
 
 ### ComputeRegistry — Single Source of Truth
 
-`compute_registry.py` (1010 lines) replaces both `LLMRouter` and `ComputePool` as the single authority for all LLM compute. If a node isn't in the registry, it doesn't exist to ReClaw.
+`compute_registry.py` (1010 lines) replaces both `LLMRouter` and `ComputePool` as the single authority for all LLM compute. If a node isn't in the registry, it doesn't exist to Istara.
 
 **Node sources**:
 - **Local**: Server machine's LM Studio/Ollama (auto-registered at startup, priority=1)
@@ -1861,7 +1861,7 @@ Optional Caddy service (profile: `production`) provides automatic TLS via Let's 
 
 ### Research Integrity System
 
-ReClaw's qualitative research pipeline follows academic gold standards — Braun & Clarke (2006) reflexive thematic analysis, Saldaña (2021) coding manual, O'Connor & Joffe (2020) ICR guidelines, Krippendorff (2004) content analysis, Lincoln & Guba (1985) trustworthiness framework, Minto Pyramid Principle (MECE), Weick (1995) sensemaking, and Denzin (1978) triangulation.
+Istara's qualitative research pipeline follows academic gold standards — Braun & Clarke (2006) reflexive thematic analysis, Saldaña (2021) coding manual, O'Connor & Joffe (2020) ICR guidelines, Krippendorff (2004) content analysis, Lincoln & Guba (1985) trustworthiness framework, Minto Pyramid Principle (MECE), Weick (1995) sensemaking, and Denzin (1978) triangulation.
 
 **Core Principle**: Every finding must be traceable to exact source text — no hallucinated conclusions.
 
@@ -1961,7 +1961,7 @@ Full audit trail: `Recommendation → Insight → Fact → Nugget → source_tex
 
 ### Native Tool Calling
 
-ReClaw uses native OpenAI-compatible function calling via the `tools` API parameter. LM Studio and Ollama both support this format. Tools are defined in `OPENAI_TOOLS` (system_actions.py) with JSON Schema parameters.
+Istara uses native OpenAI-compatible function calling via the `tools` API parameter. LM Studio and Ollama both support this format. Tools are defined in `OPENAI_TOOLS` (system_actions.py) with JSON Schema parameters.
 
 **15 system tools**: create_task, search_documents, list_tasks, move_task, attach_document, search_findings, list_project_files, assign_agent, send_agent_message, get_document_content, search_memory, update_task, sync_project_documents, **web_fetch**, **browse_website**.
 
@@ -2094,4 +2094,4 @@ The `model_skill_stats` table tracks quality per (skill, model, temperature). Lo
 
 ---
 
-*ReClaw is open-source and built for researchers who believe AI should work for them — on their machine, on their terms.*
+*Istara is open-source and built for researchers who believe AI should work for them — on their machine, on their terms.*

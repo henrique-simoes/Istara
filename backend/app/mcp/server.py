@@ -1,4 +1,4 @@
-"""ReClaw MCP Server -- exposes research capabilities to external agents.
+"""Istara MCP Server -- exposes research capabilities to external agents.
 
 SECURITY WARNING: This server allows external AI agents to access local
 research data.  All tools are gated by MCPAccessPolicy with granular
@@ -96,7 +96,7 @@ async def _gated_call(tool_name: str, arguments: dict | None, handler):
 # ---------------------------------------------------------------------------
 
 if MCP_AVAILABLE:
-    mcp = FastMCP("ReClaw", description="Local-first AI agent for UX Research")
+    mcp = FastMCP("Istara", description="Local-first AI agent for UX Research")
 
     # ---- Low-risk tools ---------------------------------------------------
 

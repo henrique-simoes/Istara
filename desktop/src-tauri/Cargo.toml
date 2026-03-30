@@ -1,8 +1,8 @@
 [package]
-name = "reclaw-desktop"
+name = "istara-desktop"
 version = "2026.03.29"
-description = "ReClaw Desktop — System tray app for managing ReClaw server and relay"
-authors = ["ReClaw Team"]
+description = "Istara Desktop — System tray app for managing Istara server and relay"
+authors = ["Istara Team"]
 license = "MIT"
 edition = "2021"
 

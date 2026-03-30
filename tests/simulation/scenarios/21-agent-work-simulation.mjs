@@ -45,8 +45,8 @@ export async function run(ctx) {
 
   await safeCheck("Agent capabilities — task executor has all capabilities", async () => {
     const data = await api.get("/api/agents");
-    const main = (data.agents || []).find((a) => a.id === "reclaw-main");
-    if (!main) return { name: "Agent capabilities — task executor has all capabilities", passed: false, detail: "reclaw-main not found" };
+    const main = (data.agents || []).find((a) => a.id === "istara-main");
+    if (!main) return { name: "Agent capabilities — task executor has all capabilities", passed: false, detail: "istara-main not found" };
 
     const expectedCaps = ["skill_execution", "findings_write", "task_creation"];
     const hasCaps = expectedCaps.every((c) => (main.capabilities || []).includes(c));
@@ -154,17 +154,17 @@ export async function run(ctx) {
 
   // ── Step 5: Assign tasks to main agent ──
 
-  await safeCheck("Assign tasks to reclaw-main", async () => {
+  await safeCheck("Assign tasks to istara-main", async () => {
     let assigned = 0;
     for (const task of createdTasks) {
       try {
-        await api.patch(`/api/tasks/${task.id}`, { agent_id: "reclaw-main" });
+        await api.patch(`/api/tasks/${task.id}`, { agent_id: "istara-main" });
         assigned++;
       } catch {}
     }
 
     return {
-      name: "Assign tasks to reclaw-main",
+      name: "Assign tasks to istara-main",
       passed: assigned === createdTasks.length,
       detail: `${assigned}/${createdTasks.length} tasks assigned`,
     };
@@ -353,7 +353,7 @@ export async function run(ctx) {
           method: "tasks/send",
           params: {
             from: sender.id,
-            to: "reclaw-main",
+            to: "istara-main",
             message: {
               text: "[SIM-21] A2A task: Analyze checkout usability data",
               metadata: { priority: "high", source: "simulation" },

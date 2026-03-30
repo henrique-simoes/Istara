@@ -68,7 +68,7 @@ export default function GenerateTab() {
           </p>
           <button
             onClick={() => useInterfacesStore.getState().setActiveTab("figma")}
-            className="px-4 py-2 text-sm bg-reclaw-600 text-white rounded-lg hover:bg-reclaw-700 transition-colors"
+            className="px-4 py-2 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700 transition-colors"
           >
             Configure Stitch
           </button>
@@ -101,7 +101,7 @@ export default function GenerateTab() {
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             placeholder="Describe the screen you want to generate, e.g., 'A mobile onboarding flow with three steps showing key features, using a warm color palette and large illustrations'"
-            className="w-full min-h-[120px] px-4 py-3 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-reclaw-500 resize-y"
+            className="w-full min-h-[120px] px-4 py-3 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-istara-500 resize-y"
           />
         </div>
 
@@ -118,7 +118,7 @@ export default function GenerateTab() {
                 className={cn(
                   "px-4 py-2 text-sm rounded-lg border transition-colors",
                   deviceType === dt.value
-                    ? "border-reclaw-500 bg-reclaw-50 dark:bg-reclaw-900/20 text-reclaw-700 dark:text-reclaw-400"
+                    ? "border-istara-500 bg-istara-50 dark:bg-istara-900/20 text-istara-700 dark:text-istara-400"
                     : "border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-600"
                 )}
               >
@@ -136,7 +136,7 @@ export default function GenerateTab() {
           <select
             value={model}
             onChange={(e) => setModel(e.target.value)}
-            className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+            className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-istara-500"
           >
             {MODELS.map((m) => (
               <option key={m.value} value={m.value}>{m.label}</option>
@@ -152,7 +152,7 @@ export default function GenerateTab() {
             </label>
             <button
               onClick={() => setShowFindingsPicker(true)}
-              className="flex items-center gap-1 text-sm text-reclaw-600 hover:text-reclaw-700 dark:text-reclaw-400 dark:hover:text-reclaw-300"
+              className="flex items-center gap-1 text-sm text-istara-600 hover:text-istara-700 dark:text-istara-400 dark:hover:text-istara-300"
             >
               <Sparkles size={14} />
               Select Findings
@@ -163,12 +163,12 @@ export default function GenerateTab() {
               {seedFindings.map((id) => (
                 <span
                   key={id}
-                  className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-reclaw-100 dark:bg-reclaw-900/30 text-reclaw-700 dark:text-reclaw-400 rounded-full"
+                  className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-istara-100 dark:bg-istara-900/30 text-istara-700 dark:text-istara-400 rounded-full"
                 >
                   {id.slice(0, 8)}...
                   <button
                     onClick={() => setSeedFindings(seedFindings.filter((f) => f !== id))}
-                    className="hover:text-reclaw-900 dark:hover:text-reclaw-200"
+                    className="hover:text-istara-900 dark:hover:text-istara-200"
                     aria-label={`Remove finding ${id.slice(0, 8)}`}
                   >
                     <X size={12} />
@@ -186,7 +186,7 @@ export default function GenerateTab() {
           className={cn(
             "w-full py-3 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2",
             prompt.trim() && !generating
-              ? "bg-reclaw-600 text-white hover:bg-reclaw-700"
+              ? "bg-istara-600 text-white hover:bg-istara-700"
               : "bg-slate-200 dark:bg-slate-700 text-slate-400 cursor-not-allowed"
           )}
         >

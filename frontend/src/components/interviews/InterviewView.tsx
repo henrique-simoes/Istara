@@ -203,7 +203,7 @@ function FilePreview({
       <div className="p-4">
         <div className="bg-slate-100 dark:bg-slate-800 rounded-xl p-4">
           <div className="flex items-center gap-2 mb-3">
-            <Volume2 size={16} className="text-reclaw-600" />
+            <Volume2 size={16} className="text-istara-600" />
             <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{filename}</span>
           </div>
           <audio
@@ -313,7 +313,7 @@ function SendToAgentButton({
       const message = `Investigate these research tags in depth: ${tagList}. Search the project database for evidence related to these themes, identify patterns, and provide a detailed analysis.`;
       // Navigate to chat with the agent
       window.dispatchEvent(
-        new CustomEvent("reclaw:navigate", {
+        new CustomEvent("istara:navigate", {
           detail: { view: "chat", agent_id: agentId, prefill: message },
         })
       );
@@ -328,7 +328,7 @@ function SendToAgentButton({
       <button
         onClick={() => setOpen(!open)}
         disabled={sending}
-        className="flex items-center gap-1 px-3 py-1.5 text-xs bg-reclaw-600 text-white rounded-lg hover:bg-reclaw-700 disabled:opacity-50"
+        className="flex items-center gap-1 px-3 py-1.5 text-xs bg-istara-600 text-white rounded-lg hover:bg-istara-700 disabled:opacity-50"
       >
         {sending ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} />}
         Send to Agent
@@ -343,10 +343,10 @@ function SendToAgentButton({
             onClick={() => handleSendToAgent(null)}
             className="w-full text-left px-3 py-1.5 text-xs hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-2"
           >
-            <span className="text-sm">🐾</span> ReClaw (Main)
+            <span className="text-sm">🐾</span> Istara (Main)
           </button>
           {agents
-            .filter((a) => a.is_active && a.id !== "reclaw-main")
+            .filter((a) => a.is_active && a.id !== "istara-main")
             .map((agent) => (
               <button
                 key={agent.id}
@@ -592,7 +592,7 @@ export default function InterviewView() {
         {/* Header */}
         <div className="flex items-center justify-between p-3 border-b border-slate-200 dark:border-slate-800">
           <h2 className="font-semibold text-slate-900 dark:text-white text-sm flex items-center gap-2">
-            <Mic size={16} className="text-reclaw-600" />
+            <Mic size={16} className="text-istara-600" />
             Interviews & Transcripts
           </h2>
           <div className="flex items-center gap-2">
@@ -623,7 +623,7 @@ export default function InterviewView() {
             />
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="flex items-center gap-1 px-3 py-1.5 text-xs bg-reclaw-600 text-white rounded-lg hover:bg-reclaw-700"
+              className="flex items-center gap-1 px-3 py-1.5 text-xs bg-istara-600 text-white rounded-lg hover:bg-istara-700"
             >
               <Upload size={12} /> Upload
             </button>
@@ -678,7 +678,7 @@ export default function InterviewView() {
                   setAnalyzing(false);
                 }}
                 disabled={analyzing}
-                className="flex items-center gap-1 px-2 py-1 text-[10px] text-reclaw-600 hover:text-reclaw-700 hover:bg-reclaw-50 dark:hover:bg-reclaw-900/20 rounded-md disabled:opacity-50"
+                className="flex items-center gap-1 px-2 py-1 text-[10px] text-istara-600 hover:text-istara-700 hover:bg-istara-50 dark:hover:bg-istara-900/20 rounded-md disabled:opacity-50"
               >
                 <Wand2 size={10} /> Organize Files
               </button>
@@ -707,7 +707,7 @@ export default function InterviewView() {
                     className={cn(
                       "flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] transition-colors text-left",
                       selectedFile === f.name
-                        ? "bg-reclaw-100 dark:bg-reclaw-900/30 text-reclaw-700"
+                        ? "bg-istara-100 dark:bg-istara-900/30 text-istara-700"
                         : hasTagNuggets
                         ? "bg-purple-50 dark:bg-purple-900/20 text-purple-700 border border-purple-200 dark:border-purple-800"
                         : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200"
@@ -736,11 +736,11 @@ export default function InterviewView() {
               <Mic size={48} className="text-slate-300" />
               <p className="text-sm font-medium">No interview files yet</p>
               <p className="text-xs text-center max-w-xs">
-                Upload interview transcripts (TXT, PDF, DOCX), audio recordings, or video files and ReClaw will extract nuggets, themes, and insights.
+                Upload interview transcripts (TXT, PDF, DOCX), audio recordings, or video files and Istara will extract nuggets, themes, and insights.
               </p>
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="flex items-center gap-2 px-4 py-2 bg-reclaw-600 text-white rounded-lg hover:bg-reclaw-700 text-sm mt-2"
+                className="flex items-center gap-2 px-4 py-2 bg-istara-600 text-white rounded-lg hover:bg-istara-700 text-sm mt-2"
               >
                 <Upload size={14} /> Upload Files
               </button>
@@ -758,7 +758,7 @@ export default function InterviewView() {
                 <div className="p-4 pb-0">
                   <button
                     onClick={handleAnalyze}
-                    className="flex items-center gap-2 px-4 py-2 bg-reclaw-600 text-white rounded-lg hover:bg-reclaw-700 text-sm"
+                    className="flex items-center gap-2 px-4 py-2 bg-istara-600 text-white rounded-lg hover:bg-istara-700 text-sm"
                   >
                     <Sparkles size={14} /> Analyze this file
                   </button>
@@ -767,10 +767,10 @@ export default function InterviewView() {
 
               {/* Analysis result (streaming) */}
               {analysisResult && (
-                <div className="mx-4 mt-3 rounded-xl bg-reclaw-50 dark:bg-reclaw-900/10 border border-reclaw-200 dark:border-reclaw-800 p-4">
+                <div className="mx-4 mt-3 rounded-xl bg-istara-50 dark:bg-istara-900/10 border border-istara-200 dark:border-istara-800 p-4">
                   <div className="flex items-center gap-2 mb-2">
-                    <Sparkles size={14} className="text-reclaw-600" />
-                    <span className="text-xs font-semibold text-reclaw-700 dark:text-reclaw-400">
+                    <Sparkles size={14} className="text-istara-600" />
+                    <span className="text-xs font-semibold text-istara-700 dark:text-istara-400">
                       Analysis Result {analyzing && "(streaming...)"}
                     </span>
                   </div>
@@ -824,7 +824,7 @@ export default function InterviewView() {
                 onClick={() => handleTagClick(null)}
                 className={cn(
                   "text-xs px-2 py-0.5 rounded-full transition-colors",
-                  !activeTag ? "bg-reclaw-600 text-white" : "bg-slate-200 dark:bg-slate-700 text-slate-600"
+                  !activeTag ? "bg-istara-600 text-white" : "bg-slate-200 dark:bg-slate-700 text-slate-600"
                 )}
               >
                 All ({nuggets.length})
@@ -868,7 +868,7 @@ export default function InterviewView() {
                     "w-full text-left p-2.5 rounded-lg border transition-colors",
                     highlightText && nugget.text.slice(0, 100) === highlightText
                       ? "bg-amber-50 dark:bg-amber-900/20 border-amber-300 dark:border-amber-700"
-                      : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-reclaw-300 dark:hover:border-reclaw-700"
+                      : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-istara-300 dark:hover:border-istara-700"
                   )}
                 >
                   <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
@@ -932,7 +932,7 @@ export default function InterviewView() {
                   setAnalyzing(false);
                 }}
                 disabled={analyzing}
-                className="w-full text-left text-xs text-reclaw-600 hover:text-reclaw-700 py-1 disabled:opacity-50 flex items-center gap-1.5"
+                className="w-full text-left text-xs text-istara-600 hover:text-istara-700 py-1 disabled:opacity-50 flex items-center gap-1.5"
               >
                 <action.icon size={10} /> {action.label}
               </button>

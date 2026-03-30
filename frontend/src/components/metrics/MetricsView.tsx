@@ -26,7 +26,7 @@ export default function MetricsView() {
     if (!activeProjectId) return;
     setLoading(true);
     setError(null);
-    const _t = localStorage.getItem("reclaw_token");
+    const _t = localStorage.getItem("istara_token");
     const _h: Record<string, string> = {};
     if (_t) _h["Authorization"] = `Bearer ${_t}`;
     fetch(`${API_BASE}/api/metrics/${activeProjectId}`, { headers: _h })
@@ -66,7 +66,7 @@ export default function MetricsView() {
 
   return (
     <div className="flex-1 overflow-y-auto p-6">
-      <ViewOnboarding viewId="metrics" title="Research Metrics" description="Quantitative dashboard — finding counts, skill effectiveness, project velocity. Track your research progress." chatPrompt="What metrics does ReClaw track?" />
+      <ViewOnboarding viewId="metrics" title="Research Metrics" description="Quantitative dashboard — finding counts, skill effectiveness, project velocity. Track your research progress." chatPrompt="What metrics does Istara track?" />
       <div className="max-w-5xl mx-auto">
         <h2 className="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2 mb-6">
           <BarChart3 size={20} /> 📊 Research Metrics
@@ -74,7 +74,7 @@ export default function MetricsView() {
 
         {/* Top-level cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <MetricCard emoji="📊" label="Total Findings" value={metrics.findings.total} color="border-reclaw-500" />
+          <MetricCard emoji="📊" label="Total Findings" value={metrics.findings.total} color="border-istara-500" />
           <MetricCard emoji="✅" label="Task Completion" value={`${metrics.tasks.completion_rate}%`}
             sub={`${metrics.tasks.done}/${metrics.tasks.total} tasks`}
             color={metrics.tasks.completion_rate >= 75 ? "border-green-500" : metrics.tasks.completion_rate >= 50 ? "border-yellow-500" : "border-red-500"} />
@@ -120,7 +120,7 @@ export default function MetricsView() {
                 </div>
                 <div className="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-3">
                   <div
-                    className="bg-reclaw-500 h-3 rounded-full transition-all duration-500"
+                    className="bg-istara-500 h-3 rounded-full transition-all duration-500"
                     style={{ width: `${(data.total / maxPhaseTotal) * 100}%` }}
                   />
                 </div>
@@ -150,7 +150,7 @@ export default function MetricsView() {
                   fill="none" stroke="currentColor" strokeWidth="3"
                 />
                 <path
-                  className="text-reclaw-500"
+                  className="text-istara-500"
                   d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                   fill="none" stroke="currentColor" strokeWidth="3"
                   strokeDasharray={`${metrics.tasks.completion_rate}, 100`}

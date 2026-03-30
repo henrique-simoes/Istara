@@ -1,4 +1,4 @@
-"""Tests for ReClaw Research Integrity System.
+"""Tests for Istara Research Integrity System.
 
 Covers: CodebookVersion, CodeApplication, ProjectReport models,
         Cohen's Kappa, Krippendorff's Alpha calculations,

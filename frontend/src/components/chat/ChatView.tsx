@@ -23,9 +23,9 @@ function UserAvatar() {
 }
 
 function AgentAvatar({ name }: { name?: string }) {
-  const label = name || "ReClaw";
+  const label = name || "Istara";
   return (
-    <div className="w-8 h-8 rounded-full bg-reclaw-100 dark:bg-reclaw-900/40 flex items-center justify-center flex-shrink-0" title={label}>
+    <div className="w-8 h-8 rounded-full bg-istara-100 dark:bg-istara-900/40 flex items-center justify-center flex-shrink-0" title={label}>
       <span className="text-sm">🐾</span>
     </div>
   );
@@ -99,7 +99,7 @@ function CustomLLMPanel({
               className={cn(
                 "py-1.5 px-2 text-xs rounded-md transition-colors capitalize",
                 reasoning === level
-                  ? "bg-reclaw-600 text-white"
+                  ? "bg-istara-600 text-white"
                   : "bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-200"
               )}
             >
@@ -127,7 +127,7 @@ function CustomLLMPanel({
           step="0.05"
           value={temperature}
           onChange={(e) => setTemperature(parseFloat(e.target.value))}
-          className="w-full h-1.5 rounded-full appearance-none bg-slate-200 dark:bg-slate-700 accent-reclaw-600"
+          className="w-full h-1.5 rounded-full appearance-none bg-slate-200 dark:bg-slate-700 accent-istara-600"
         />
         <div className="flex justify-between text-[10px] text-slate-400 mt-0.5">
           <span>Precise</span>
@@ -150,7 +150,7 @@ function CustomLLMPanel({
           step="256"
           value={maxTokens}
           onChange={(e) => setMaxTokens(parseInt(e.target.value))}
-          className="w-full h-1.5 rounded-full appearance-none bg-slate-200 dark:bg-slate-700 accent-reclaw-600"
+          className="w-full h-1.5 rounded-full appearance-none bg-slate-200 dark:bg-slate-700 accent-istara-600"
         />
         <div className="flex justify-between text-[10px] text-slate-400 mt-0.5">
           <span>Short (256)</span>
@@ -173,7 +173,7 @@ function CustomLLMPanel({
           step="0.05"
           value={topP}
           onChange={(e) => setTopP(parseFloat(e.target.value))}
-          className="w-full h-1.5 rounded-full appearance-none bg-slate-200 dark:bg-slate-700 accent-reclaw-600"
+          className="w-full h-1.5 rounded-full appearance-none bg-slate-200 dark:bg-slate-700 accent-istara-600"
         />
         <div className="flex justify-between text-[10px] text-slate-400 mt-0.5">
           <span>Focused</span>
@@ -193,7 +193,7 @@ function CustomLLMPanel({
       {/* Save */}
       <button
         onClick={save}
-        className="w-full py-1.5 bg-reclaw-600 text-white text-xs font-medium rounded-md hover:bg-reclaw-700 transition-colors"
+        className="w-full py-1.5 bg-istara-600 text-white text-xs font-medium rounded-md hover:bg-istara-700 transition-colors"
       >
         Apply Settings
       </button>
@@ -230,7 +230,7 @@ function ChatToolbar({
         >
           <Bot size={12} className="text-slate-500" />
           <span className="text-slate-600 dark:text-slate-400">
-            {assignedAgent ? assignedAgent.name : "ReClaw (Main)"}
+            {assignedAgent ? assignedAgent.name : "Istara (Main)"}
           </span>
           <ChevronDown size={10} className="text-slate-400" />
         </button>
@@ -240,18 +240,18 @@ function ChatToolbar({
               onClick={() => { onUpdateSession({ agent_id: null }); setShowAgents(false); }}
               className={cn(
                 "w-full text-left px-3 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-2",
-                !activeSession.agent_id && "bg-reclaw-50 dark:bg-reclaw-900/20"
+                !activeSession.agent_id && "bg-istara-50 dark:bg-istara-900/20"
               )}
             >
-              <span className="text-sm">🐾</span> ReClaw (Main)
+              <span className="text-sm">🐾</span> Istara (Main)
             </button>
-            {agents.filter((a: any) => a.is_active && a.id !== "reclaw-main").map((agent: any) => (
+            {agents.filter((a: any) => a.is_active && a.id !== "istara-main").map((agent: any) => (
               <button
                 key={agent.id}
                 onClick={() => { onUpdateSession({ agent_id: agent.id }); setShowAgents(false); }}
                 className={cn(
                   "w-full text-left px-3 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-2",
-                  activeSession.agent_id === agent.id && "bg-reclaw-50 dark:bg-reclaw-900/20"
+                  activeSession.agent_id === agent.id && "bg-istara-50 dark:bg-istara-900/20"
                 )}
               >
                 <div
@@ -297,14 +297,14 @@ function ChatToolbar({
                 }}
                 className={cn(
                   "w-full text-left px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-700",
-                  currentPreset === key && "bg-reclaw-50 dark:bg-reclaw-900/20"
+                  currentPreset === key && "bg-istara-50 dark:bg-istara-900/20"
                 )}
               >
                 <div className="flex items-center gap-2">
                   <span>{info.icon}</span>
                   <span className="font-medium text-slate-900 dark:text-white">{info.label}</span>
                   {currentPreset === key && (
-                    <span className="ml-auto text-reclaw-600 text-[10px]">Active</span>
+                    <span className="ml-auto text-istara-600 text-[10px]">Active</span>
                   )}
                 </div>
                 <p className="text-[10px] text-slate-500 mt-0.5 ml-6">{info.desc}</p>
@@ -429,7 +429,7 @@ export default function ChatView() {
 
       {/* Main chat area */}
       <div
-        className={cn("flex-1 flex flex-col min-h-0 overflow-hidden", dragOver && "ring-2 ring-reclaw-500 ring-inset bg-reclaw-50/50 dark:bg-reclaw-900/10")}
+        className={cn("flex-1 flex flex-col min-h-0 overflow-hidden", dragOver && "ring-2 ring-istara-500 ring-inset bg-istara-50/50 dark:bg-istara-900/10")}
         onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
         onDragLeave={() => setDragOver(false)}
         onDrop={handleDrop}
@@ -445,10 +445,10 @@ export default function ChatView() {
 
         {/* Drag overlay */}
         {dragOver && (
-          <div className="absolute inset-0 z-10 flex items-center justify-center bg-reclaw-50/80 dark:bg-reclaw-900/80 pointer-events-none">
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-istara-50/80 dark:bg-istara-900/80 pointer-events-none">
             <div className="text-center">
-              <Upload size={40} className="mx-auto text-reclaw-500 mb-2" />
-              <p className="text-reclaw-700 dark:text-reclaw-400 font-medium">Drop files to upload</p>
+              <Upload size={40} className="mx-auto text-istara-500 mb-2" />
+              <p className="text-istara-700 dark:text-istara-400 font-medium">Drop files to upload</p>
             </div>
           </div>
         )}
@@ -484,14 +484,14 @@ export default function ChatView() {
               <div className="flex-1 min-w-0">
                 {msg.role !== "user" && (
                   <p className="text-xs text-slate-500 dark:text-slate-400 mb-1 px-1 font-medium">
-                    {msg.agent_name || "ReClaw"}
+                    {msg.agent_name || "Istara"}
                   </p>
                 )}
                 <div
                   className={cn(
                     "rounded-2xl px-4 py-3",
                     msg.role === "user"
-                      ? "bg-reclaw-600 text-white rounded-br-md"
+                      ? "bg-istara-600 text-white rounded-br-md"
                       : "bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-bl-md"
                   )}
                 >
@@ -521,7 +521,7 @@ export default function ChatView() {
           {streaming && streamingContent && (() => {
             const agentId = activeSession?.agent_id;
             const streamAgent = agentId ? agents.find((a) => a.id === agentId) : undefined;
-            const streamAgentName = streamAgent?.name || "ReClaw";
+            const streamAgentName = streamAgent?.name || "Istara";
             return (
             <div className="mr-auto max-w-3xl flex gap-2.5 message-enter">
               <div className="mt-1"><AgentAvatar name={streamAgentName} /></div>
@@ -540,7 +540,7 @@ export default function ChatView() {
           {streaming && !streamingContent && (() => {
             const agentId = activeSession?.agent_id;
             const thinkAgent = agentId ? agents.find((a) => a.id === agentId) : undefined;
-            const thinkAgentName = thinkAgent?.name || "ReClaw";
+            const thinkAgentName = thinkAgent?.name || "Istara";
             return (
             <div className="mr-auto flex items-center gap-2.5 text-slate-400 px-4">
               <div className="mt-0"><AgentAvatar name={thinkAgentName} /></div>
@@ -611,7 +611,7 @@ export default function ChatView() {
                 }}
                 placeholder="Ask about your research, or drop files here..."
                 rows={1}
-                className="w-full resize-none rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-reclaw-500 focus:border-transparent"
+                className="w-full resize-none rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-istara-500 focus:border-transparent"
                 style={{ minHeight: "44px", maxHeight: "120px" }}
               />
             </div>
@@ -623,7 +623,7 @@ export default function ChatView() {
               className={cn(
                 "p-2.5 rounded-lg transition-colors",
                 input.trim() && !streaming
-                  ? "bg-reclaw-600 text-white hover:bg-reclaw-700"
+                  ? "bg-istara-600 text-white hover:bg-istara-700"
                   : "bg-slate-200 dark:bg-slate-700 text-slate-400 cursor-not-allowed"
               )}
             >

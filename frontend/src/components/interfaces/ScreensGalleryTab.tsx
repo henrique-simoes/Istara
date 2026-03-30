@@ -104,7 +104,7 @@ export default function ScreensGalleryTab() {
               <h4 className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Source Findings</h4>
               <div className="flex flex-wrap gap-1">
                 {selectedScreen.source_findings.map((id: string) => (
-                  <span key={id} className="px-2 py-0.5 text-xs bg-reclaw-100 dark:bg-reclaw-900/30 text-reclaw-700 dark:text-reclaw-400 rounded-full">
+                  <span key={id} className="px-2 py-0.5 text-xs bg-istara-100 dark:bg-istara-900/30 text-istara-700 dark:text-istara-400 rounded-full">
                     {id.slice(0, 8)}...
                   </span>
                 ))}
@@ -118,7 +118,7 @@ export default function ScreensGalleryTab() {
             {selectedScreen.html_content && (
               <button
                 onClick={() => openHtml(selectedScreen.html_content)}
-                className="flex items-center gap-1.5 px-3 py-2 text-sm bg-reclaw-600 text-white rounded-lg hover:bg-reclaw-700 transition-colors"
+                className="flex items-center gap-1.5 px-3 py-2 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700 transition-colors"
               >
                 <ExternalLink size={14} /> View HTML
               </button>
@@ -161,10 +161,10 @@ export default function ScreensGalleryTab() {
               <button
                 key={screen.id}
                 onClick={() => setSelectedScreen(screen)}
-                className="text-left bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4 hover:shadow-md hover:border-reclaw-300 dark:hover:border-reclaw-700 transition-all"
+                className="text-left bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4 hover:shadow-md hover:border-istara-300 dark:hover:border-istara-700 transition-all"
               >
                 {/* Preview placeholder */}
-                <div className="h-32 rounded-lg mb-3 flex items-center justify-center bg-gradient-to-br from-reclaw-50 to-violet-50 dark:from-reclaw-900/20 dark:to-violet-900/20 border border-slate-100 dark:border-slate-700">
+                <div className="h-32 rounded-lg mb-3 flex items-center justify-center bg-gradient-to-br from-istara-50 to-violet-50 dark:from-istara-900/20 dark:to-violet-900/20 border border-slate-100 dark:border-slate-700">
                   <DeviceIcon size={32} className="text-slate-300 dark:text-slate-600" />
                 </div>
 

@@ -2,7 +2,7 @@
 name: survey-design
 description: "Design surveys with bias checking, analyze responses with statistical summaries and cross-tabs."
 metadata:
-  reclaw:
+  istara:
     phase: discover
     type: quantitative
     version: "1.0.0"

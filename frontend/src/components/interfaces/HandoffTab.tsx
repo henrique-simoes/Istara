@@ -74,7 +74,7 @@ export default function HandoffTab() {
             <button
               onClick={handleGenerateBrief}
               disabled={generatingBrief}
-              className="flex items-center gap-1.5 px-4 py-2 text-sm bg-reclaw-600 text-white rounded-lg hover:bg-reclaw-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="flex items-center gap-1.5 px-4 py-2 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {generatingBrief ? <Loader2 size={14} className="animate-spin" /> : <FileOutput size={14} />}
               Generate Brief
@@ -203,7 +203,7 @@ export default function HandoffTab() {
                 <select
                   value={selectedScreenId}
                   onChange={(e) => setSelectedScreenId(e.target.value)}
-                  className="flex-1 px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+                  className="flex-1 px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-istara-500"
                 >
                   <option value="">Select a screen...</option>
                   {screens.map((screen: any) => (
@@ -215,7 +215,7 @@ export default function HandoffTab() {
                 <button
                   onClick={handleGenerateSpec}
                   disabled={!selectedScreenId || generatingSpec}
-                  className="flex items-center gap-1.5 px-4 py-2 text-sm bg-reclaw-600 text-white rounded-lg hover:bg-reclaw-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="flex items-center gap-1.5 px-4 py-2 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   {generatingSpec ? <Loader2 size={14} className="animate-spin" /> : <FileOutput size={14} />}
                   Generate Spec

@@ -62,11 +62,11 @@ export default function ExperimentDashboard() {
     <div className="flex-1 overflow-y-auto p-6 space-y-6">
       {/* Active experiment card */}
       {status?.running && status.current_experiment && (
-        <div className="rounded-lg border border-reclaw-300 dark:border-reclaw-700 bg-reclaw-50 dark:bg-reclaw-900/20 p-4">
+        <div className="rounded-lg border border-istara-300 dark:border-istara-700 bg-istara-50 dark:bg-istara-900/20 p-4">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <Loader2 size={18} className="animate-spin text-reclaw-600 dark:text-reclaw-400" />
-              <h3 className="font-semibold text-reclaw-700 dark:text-reclaw-400">
+              <Loader2 size={18} className="animate-spin text-istara-600 dark:text-istara-400" />
+              <h3 className="font-semibold text-istara-700 dark:text-istara-400">
                 Experiment Running
               </h3>
             </div>
@@ -136,7 +136,7 @@ export default function ExperimentDashboard() {
             <Activity size={16} />
             <span className="text-xs font-medium uppercase">Best Delta</span>
           </div>
-          <p className="text-2xl font-bold text-reclaw-600 dark:text-reclaw-400">
+          <p className="text-2xl font-bold text-istara-600 dark:text-istara-400">
             +{bestDelta.toFixed(3)}
           </p>
         </div>
@@ -161,7 +161,7 @@ export default function ExperimentDashboard() {
                 value={loopType}
                 onChange={(e) => setLoopType(e.target.value)}
                 aria-label="Experiment loop type"
-                className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+                className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-istara-500"
               >
                 {LOOP_TYPES.map((lt) => (
                   <option key={lt.value} value={lt.value}>
@@ -184,7 +184,7 @@ export default function ExperimentDashboard() {
                 onChange={(e) => setTarget(e.target.value)}
                 placeholder="skill name, agent id..."
                 aria-label="Experiment target"
-                className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+                className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-istara-500"
               />
             </div>
             <div>
@@ -202,7 +202,7 @@ export default function ExperimentDashboard() {
                 min={1}
                 max={200}
                 aria-label="Maximum iterations"
-                className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+                className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-istara-500"
               />
             </div>
             <div className="flex items-end">
@@ -213,7 +213,7 @@ export default function ExperimentDashboard() {
                 className={cn(
                   "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors w-full justify-center",
                   target.trim() && status?.enabled
-                    ? "bg-reclaw-600 text-white hover:bg-reclaw-700"
+                    ? "bg-istara-600 text-white hover:bg-istara-700"
                     : "bg-slate-200 dark:bg-slate-700 text-slate-400 dark:text-slate-500 cursor-not-allowed"
                 )}
               >

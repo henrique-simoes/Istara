@@ -133,7 +133,7 @@ export default function DocumentsView() {
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<"compact" | "list" | "grid">(() => {
     if (typeof window !== "undefined") {
-      const stored = localStorage.getItem("reclaw_documents_view_mode");
+      const stored = localStorage.getItem("istara_documents_view_mode");
       if (stored === "compact" || stored === "list" || stored === "grid") return stored;
     }
     return "compact";
@@ -141,7 +141,7 @@ export default function DocumentsView() {
 
   const handleViewMode = useCallback((mode: "compact" | "list" | "grid") => {
     setViewMode(mode);
-    localStorage.setItem("reclaw_documents_view_mode", mode);
+    localStorage.setItem("istara_documents_view_mode", mode);
   }, []);
 
   // Fetch documents on project change
@@ -251,7 +251,7 @@ export default function DocumentsView() {
       <div className="border-b border-slate-200 dark:border-slate-800 p-4">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <FileText size={20} className="text-reclaw-600" />
+            <FileText size={20} className="text-istara-600" />
             <h2 className="text-lg font-bold text-slate-900 dark:text-white">Documents</h2>
             {stats && (
               <span className="text-xs bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded-full text-slate-500">
@@ -267,7 +267,7 @@ export default function DocumentsView() {
                 className={cn(
                   "p-1.5 transition-colors",
                   viewMode === "compact"
-                    ? "bg-reclaw-100 text-reclaw-700 dark:bg-reclaw-900/30 dark:text-reclaw-400"
+                    ? "bg-istara-100 text-istara-700 dark:bg-istara-900/30 dark:text-istara-400"
                     : "text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-600"
                 )}
                 aria-label="Compact view"
@@ -281,7 +281,7 @@ export default function DocumentsView() {
                 className={cn(
                   "p-1.5 transition-colors",
                   viewMode === "grid"
-                    ? "bg-reclaw-100 text-reclaw-700 dark:bg-reclaw-900/30 dark:text-reclaw-400"
+                    ? "bg-istara-100 text-istara-700 dark:bg-istara-900/30 dark:text-istara-400"
                     : "text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-600"
                 )}
                 aria-label="Grid view"
@@ -295,7 +295,7 @@ export default function DocumentsView() {
                 className={cn(
                   "p-1.5 transition-colors",
                   viewMode === "list"
-                    ? "bg-reclaw-100 text-reclaw-700 dark:bg-reclaw-900/30 dark:text-reclaw-400"
+                    ? "bg-istara-100 text-istara-700 dark:bg-istara-900/30 dark:text-istara-400"
                     : "text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-600"
                 )}
                 aria-label="List view"
@@ -311,7 +311,7 @@ export default function DocumentsView() {
               className={cn(
                 "flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm transition-colors",
                 showFilters
-                  ? "bg-reclaw-100 text-reclaw-700 dark:bg-reclaw-900/30 dark:text-reclaw-400"
+                  ? "bg-istara-100 text-istara-700 dark:bg-istara-900/30 dark:text-istara-400"
                   : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
               )}
               aria-label="Toggle filters"
@@ -345,9 +345,9 @@ export default function DocumentsView() {
 
         {/* Organize Files Result */}
         {organizeResult && (
-          <div className="rounded-lg border border-reclaw-200 dark:border-reclaw-800 bg-reclaw-50 dark:bg-reclaw-900/20 p-4 max-h-48 overflow-y-auto">
+          <div className="rounded-lg border border-istara-200 dark:border-istara-800 bg-istara-50 dark:bg-istara-900/20 p-4 max-h-48 overflow-y-auto">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium text-reclaw-700 dark:text-reclaw-400">Organization Suggestions</span>
+              <span className="text-xs font-medium text-istara-700 dark:text-istara-400">Organization Suggestions</span>
               <button onClick={() => setOrganizeResult("")} className="text-slate-400 hover:text-slate-600" aria-label="Close suggestions">
                 <X size={14} />
               </button>
@@ -365,7 +365,7 @@ export default function DocumentsView() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             onKeyDown={handleSearchKeyDown}
-            className="w-full pl-9 pr-8 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+            className="w-full pl-9 pr-8 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-istara-500"
             aria-label="Search documents"
           />
           {searchQuery && (
@@ -386,7 +386,7 @@ export default function DocumentsView() {
             <select
               value={filterPhase}
               onChange={(e) => setFilterPhase(e.target.value)}
-              className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+              className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-istara-500"
               aria-label="Filter by phase"
             >
               {PHASES.map((p) => (
@@ -398,7 +398,7 @@ export default function DocumentsView() {
             <select
               value={filterSource}
               onChange={(e) => setFilterSource(e.target.value)}
-              className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+              className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-istara-500"
               aria-label="Filter by source"
             >
               {SOURCES.map((s) => (
@@ -411,7 +411,7 @@ export default function DocumentsView() {
               <select
                 value={filterTag}
                 onChange={(e) => setFilterTag(e.target.value)}
-                className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+                className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-istara-500"
                 aria-label="Filter by tag"
               >
                 <option value="">All Tags</option>
@@ -445,7 +445,7 @@ export default function DocumentsView() {
       <div className="flex-1 overflow-y-auto p-4" role="list" aria-label="Documents list">
         {loading && documents.length === 0 ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 size={20} className="animate-spin text-reclaw-600" />
+            <Loader2 size={20} className="animate-spin text-istara-600" />
             <span className="ml-2 text-sm text-slate-500">Loading documents...</span>
           </div>
         ) : documents.length === 0 ? (
@@ -574,7 +574,7 @@ function DocumentCompactRow({
       className={cn(
         "group flex items-center gap-2 px-3 py-1.5 cursor-pointer transition-colors",
         isSelected
-          ? "bg-reclaw-50 dark:bg-reclaw-900/10"
+          ? "bg-istara-50 dark:bg-istara-900/10"
           : "hover:bg-slate-50 dark:hover:bg-slate-800/50"
       )}
       onClick={onOpen}
@@ -641,8 +641,8 @@ function DocumentGridCard({
       className={cn(
         "group h-[140px] overflow-hidden rounded-lg border transition-all cursor-pointer flex flex-col p-3",
         isSelected
-          ? "border-reclaw-500 bg-reclaw-50/50 dark:bg-reclaw-900/10"
-          : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-reclaw-300 hover:shadow-sm dark:hover:border-reclaw-700"
+          ? "border-istara-500 bg-istara-50/50 dark:bg-istara-900/10"
+          : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-istara-300 hover:shadow-sm dark:hover:border-istara-700"
       )}
       onClick={onOpen}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen(); } }}
@@ -723,8 +723,8 @@ function DocumentCard({
       className={cn(
         "group p-2 rounded-lg border transition-all cursor-pointer",
         isSelected
-          ? "border-reclaw-500 bg-reclaw-50/50 dark:bg-reclaw-900/10"
-          : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-reclaw-300 hover:shadow-sm dark:hover:border-reclaw-700"
+          ? "border-istara-500 bg-istara-50/50 dark:bg-istara-900/10"
+          : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-istara-300 hover:shadow-sm dark:hover:border-istara-700"
       )}
       onClick={onOpen}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen(); } }}
@@ -811,7 +811,7 @@ function DocumentCard({
               {tags.slice(0, 5).map((tag) => (
                 <span
                   key={tag}
-                  className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] bg-reclaw-50 text-reclaw-700 dark:bg-reclaw-900/30 dark:text-reclaw-400"
+                  className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] bg-istara-50 text-istara-700 dark:bg-istara-900/30 dark:text-istara-400"
                 >
                   <Tag size={8} />
                   {tag}
@@ -896,7 +896,7 @@ function DocumentPreview({
         <div className="flex-1 overflow-y-auto p-4">
           {loading ? (
             <div className="flex items-center justify-center py-12">
-              <Loader2 size={20} className="animate-spin text-reclaw-600" />
+              <Loader2 size={20} className="animate-spin text-istara-600" />
               <span className="ml-2 text-sm text-slate-500">Loading content...</span>
             </div>
           ) : content?.content ? (
@@ -964,7 +964,7 @@ function DocumentPreview({
               <div className="space-y-1">
                 {doc.agent_ids.map((id) => (
                   <div key={id} className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400">
-                    <Bot size={12} className="text-reclaw-600" />
+                    <Bot size={12} className="text-istara-600" />
                     <span className="truncate">{id}</span>
                   </div>
                 ))}
@@ -1003,7 +1003,7 @@ function DocumentPreview({
                 {doc.tags.map((tag) => (
                   <span
                     key={tag}
-                    className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] bg-reclaw-50 text-reclaw-700 dark:bg-reclaw-900/30 dark:text-reclaw-400"
+                    className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] bg-istara-50 text-istara-700 dark:bg-istara-900/30 dark:text-istara-400"
                   >
                     <Tag size={8} />
                     {tag}
@@ -1019,7 +1019,7 @@ function DocumentPreview({
               <div className="space-y-2 text-xs">
                 {Object.entries(atomicPath).map(([key, value]) => (
                   <div key={key} className="flex items-start gap-2">
-                    <ChevronRight size={10} className="mt-0.5 text-reclaw-500 shrink-0" />
+                    <ChevronRight size={10} className="mt-0.5 text-istara-500 shrink-0" />
                     <div>
                       <span className="font-medium text-slate-700 dark:text-slate-300 capitalize">
                         {key.replace(/_/g, " ")}

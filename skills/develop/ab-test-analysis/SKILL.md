@@ -2,7 +2,7 @@
 name: ab-test-analysis
 description: "Analyze A/B test results — statistical significance, confidence intervals, segment breakdowns."
 metadata:
-  reclaw:
+  istara:
     phase: develop
     type: quantitative
     version: "1.0.0"

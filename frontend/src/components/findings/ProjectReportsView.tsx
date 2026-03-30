@@ -36,9 +36,9 @@ const LAYER_CONFIG: Record<
   },
   4: {
     label: "L4 - Final Report",
-    color: "text-reclaw-700 dark:text-reclaw-400",
-    bgColor: "bg-reclaw-50 dark:bg-reclaw-900/20",
-    borderColor: "border-reclaw-200 dark:border-reclaw-800",
+    color: "text-istara-700 dark:text-istara-400",
+    bgColor: "bg-istara-50 dark:bg-istara-900/20",
+    borderColor: "border-istara-200 dark:border-istara-800",
     description: "Executive-level final reports",
   },
 };
@@ -147,7 +147,7 @@ export default function ProjectReportsView({
           <button
             onClick={loadReports}
             aria-label="Retry loading reports"
-            className="text-xs px-3 py-1.5 rounded-md bg-reclaw-600 text-white hover:bg-reclaw-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-reclaw-500 focus-visible:ring-offset-1"
+            className="text-xs px-3 py-1.5 rounded-md bg-istara-600 text-white hover:bg-istara-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-istara-500 focus-visible:ring-offset-1"
           >
             Retry
           </button>
@@ -184,7 +184,7 @@ export default function ProjectReportsView({
         <div className="flex items-center gap-2">
           <FileStack
             size={18}
-            className="text-reclaw-600 dark:text-reclaw-400"
+            className="text-istara-600 dark:text-istara-400"
             aria-hidden="true"
           />
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
@@ -468,10 +468,10 @@ function ReportCard({
       onClick={onSelect}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onSelect(); } }}
       className={cn(
-        "border rounded-lg p-4 transition-all duration-200 cursor-pointer hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-reclaw-500 focus-visible:ring-offset-1",
+        "border rounded-lg p-4 transition-all duration-200 cursor-pointer hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-istara-500 focus-visible:ring-offset-1",
         config?.borderColor || "border-slate-200 dark:border-slate-700",
         config?.bgColor || "bg-white dark:bg-slate-900",
-        isSelected && "ring-2 ring-reclaw-500 shadow-md"
+        isSelected && "ring-2 ring-istara-500 shadow-md"
       )}
       aria-label={`Report: ${report.title}`}
       aria-selected={isSelected}

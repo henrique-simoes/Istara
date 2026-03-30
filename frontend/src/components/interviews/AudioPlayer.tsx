@@ -87,7 +87,7 @@ export default function AudioPlayer({ src, onTimeUpdate }: AudioPlayerProps) {
         max={duration || 0}
         value={currentTime}
         onChange={seek}
-        className="w-full h-1.5 rounded-full appearance-none bg-slate-300 dark:bg-slate-700 cursor-pointer accent-reclaw-500"
+        className="w-full h-1.5 rounded-full appearance-none bg-slate-300 dark:bg-slate-700 cursor-pointer accent-istara-500"
         aria-label="Audio progress"
       />
 
@@ -105,7 +105,7 @@ export default function AudioPlayer({ src, onTimeUpdate }: AudioPlayerProps) {
           <button
             onClick={togglePlay}
             aria-label={playing ? "Pause" : "Play"}
-            className="p-2 rounded-full bg-reclaw-600 text-white hover:bg-reclaw-700"
+            className="p-2 rounded-full bg-istara-600 text-white hover:bg-istara-700"
           >
             {playing ? <Pause size={16} /> : <Play size={16} />}
           </button>

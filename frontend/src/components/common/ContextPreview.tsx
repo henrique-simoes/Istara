@@ -23,7 +23,7 @@ export default function ContextPreview() {
     setLoading(true);
     setError(null);
     try {
-      const _tk = localStorage.getItem("reclaw_token");
+      const _tk = localStorage.getItem("istara_token");
       const _hd: Record<string, string> = {};
       if (_tk) _hd["Authorization"] = `Bearer ${_tk}`;
       const res = await fetch(`${API_BASE}/api/contexts/composed/${activeProjectId}`, { headers: _hd });
@@ -49,7 +49,7 @@ export default function ContextPreview() {
         className="flex items-center justify-between w-full p-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
       >
         <div className="flex items-center gap-3">
-          <Brain size={20} className="text-reclaw-600" />
+          <Brain size={20} className="text-istara-600" />
           <div className="text-left">
             <h3 className="font-medium text-slate-900 dark:text-white text-sm">
               What the Agent Knows

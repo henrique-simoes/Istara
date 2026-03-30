@@ -21,15 +21,15 @@ export async function run(ctx) {
     });
 
     // Check main agent exists
-    const mainAgent = agents.find((a) => a.id === "reclaw-main");
+    const mainAgent = agents.find((a) => a.id === "istara-main");
     checks.push({
-      name: "ReClaw main agent exists",
+      name: "Istara main agent exists",
       passed: !!mainAgent,
       detail: mainAgent ? `id=${mainAgent.id}, name=${mainAgent.name}, state=${mainAgent.state}` : "Not found",
     });
   } catch (e) {
     checks.push({ name: "System agents seeded", passed: false, detail: e.message });
-    checks.push({ name: "ReClaw main agent exists", passed: false, detail: e.message });
+    checks.push({ name: "Istara main agent exists", passed: false, detail: e.message });
   }
 
   // 2. Create a user agent

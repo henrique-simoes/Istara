@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# ReClaw Test Marathon — Manual start
+# Istara Test Marathon — Manual start
 #
 # Usage:
 #   ./scripts/marathon/start-marathon.sh           # Run next cycle
@@ -14,7 +14,7 @@ cd "$(dirname "$0")/../.."
 mkdir -p data/test-marathon/cycles data/test-marathon/issues
 
 if [ "${1:-}" = "--loop" ]; then
-    echo "🏃 Starting ReClaw Test Marathon (continuous loop, 30min interval)"
+    echo "🏃 Starting Istara Test Marathon (continuous loop, 30min interval)"
     echo "   Press Ctrl+C to stop"
     echo "   Logs: data/test-marathon/MARATHON_LOG.md"
     echo ""

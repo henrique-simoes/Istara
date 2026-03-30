@@ -93,12 +93,12 @@ export default function MCPServerSetup({ onClose }: MCPServerSetupProps) {
     return (
       <div className="flex-1 flex items-center justify-center p-6">
         <div className="text-center">
-          <CheckCircle2 size={48} className="mx-auto mb-4 text-reclaw-500" />
+          <CheckCircle2 size={48} className="mx-auto mb-4 text-istara-500" />
           <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Server Added!</h2>
           <p className="text-sm text-slate-600 dark:text-slate-400 mb-6">
             &ldquo;{name || "New MCP Server"}&rdquo; has been connected. Tools have been discovered and are ready to use.
           </p>
-          <button onClick={onClose} className="px-4 py-2 text-sm bg-reclaw-600 text-white rounded-lg hover:bg-reclaw-700 transition-colors">
+          <button onClick={onClose} className="px-4 py-2 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700 transition-colors">
             Done
           </button>
         </div>
@@ -111,7 +111,7 @@ export default function MCPServerSetup({ onClose }: MCPServerSetupProps) {
       <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-lg overflow-hidden">
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800">
           <div className="flex items-center gap-2">
-            <Server size={18} className="text-reclaw-500" />
+            <Server size={18} className="text-istara-500" />
             <h2 className="text-lg font-bold text-slate-900 dark:text-white">Add MCP Server</h2>
           </div>
           <button onClick={onClose} aria-label="Close" className="p-1 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
@@ -128,7 +128,7 @@ export default function MCPServerSetup({ onClose }: MCPServerSetupProps) {
               placeholder="e.g., My MCP Server"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+              className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-istara-500"
             />
           </div>
 
@@ -140,7 +140,7 @@ export default function MCPServerSetup({ onClose }: MCPServerSetupProps) {
               placeholder="http://localhost:3001/mcp"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
-              className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+              className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-istara-500"
             />
           </div>
 
@@ -155,7 +155,7 @@ export default function MCPServerSetup({ onClose }: MCPServerSetupProps) {
                   className={cn(
                     "p-2 rounded-lg border-2 text-center transition-all",
                     transport === t.id
-                      ? "border-reclaw-500 bg-reclaw-50 dark:bg-reclaw-900/20"
+                      ? "border-istara-500 bg-istara-50 dark:bg-istara-900/20"
                       : "border-slate-200 dark:border-slate-700 hover:border-slate-300"
                   )}
                 >
@@ -175,7 +175,7 @@ export default function MCPServerSetup({ onClose }: MCPServerSetupProps) {
               value={headers}
               onChange={(e) => setHeaders(e.target.value)}
               rows={3}
-              className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-reclaw-500 font-mono"
+              className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-istara-500 font-mono"
             />
           </div>
 
@@ -206,7 +206,7 @@ export default function MCPServerSetup({ onClose }: MCPServerSetupProps) {
           <button
             onClick={handleSave}
             disabled={!url.trim() || saving}
-            className="px-4 py-2 text-sm bg-reclaw-600 text-white rounded-lg hover:bg-reclaw-700 disabled:opacity-50 transition-colors"
+            className="px-4 py-2 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700 disabled:opacity-50 transition-colors"
           >
             {saving ? "Saving..." : "Save Server"}
           </button>

@@ -118,7 +118,7 @@ async def websocket_endpoint(websocket: WebSocket):
     try:
         # Send initial status
         await manager.send_to(websocket, "connected", {
-            "message": "Connected to ReClaw real-time updates.",
+            "message": "Connected to Istara real-time updates.",
         })
 
         # Keep connection alive, handle incoming messages

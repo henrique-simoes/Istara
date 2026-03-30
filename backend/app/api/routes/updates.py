@@ -17,7 +17,7 @@ VERSION_FILE = Path(__file__).resolve().parents[3] / "VERSION"
 
 
 def get_current_version() -> str:
-    """Read the current ReClaw version from the VERSION file."""
+    """Read the current Istara version from the VERSION file."""
     try:
         if VERSION_FILE.exists():
             return VERSION_FILE.read_text().strip()
@@ -28,7 +28,7 @@ def get_current_version() -> str:
 
 @router.get("/updates/version")
 async def current_version():
-    """Return the current ReClaw version."""
+    """Return the current Istara version."""
     return {
         "version": get_current_version(),
         "format": "calver",
@@ -50,7 +50,7 @@ async def check_for_updates():
         async with httpx.AsyncClient(timeout=10.0) as client:
             # GitHub API: get latest release
             resp = await client.get(
-                "https://api.github.com/repos/henrique-simoes/ReClaw/releases/latest",
+                "https://api.github.com/repos/henrique-simoes/Istara/releases/latest",
                 headers={"Accept": "application/vnd.github.v3+json"},
             )
 

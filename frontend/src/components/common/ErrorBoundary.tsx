@@ -24,7 +24,7 @@ export default class ErrorBoundary extends React.Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
-    console.error("ReClaw Error:", error, info);
+    console.error("Istara Error:", error, info);
   }
 
   render() {
@@ -42,7 +42,7 @@ export default class ErrorBoundary extends React.Component<Props, State> {
               </p>
               <button
                 onClick={() => this.setState({ hasError: false, error: null })}
-                className="flex items-center gap-2 mx-auto px-4 py-2 bg-reclaw-600 text-white rounded-lg hover:bg-reclaw-700 text-sm"
+                className="flex items-center gap-2 mx-auto px-4 py-2 bg-istara-600 text-white rounded-lg hover:bg-istara-700 text-sm"
               >
                 <RefreshCw size={14} /> Try Again
               </button>

@@ -39,7 +39,7 @@ export default function UpdateChecker() {
     setChecking(true);
     setError(null);
     try {
-      const token = localStorage.getItem("reclaw_token");
+      const token = localStorage.getItem("istara_token");
       const headers: Record<string, string> = {};
       if (token) headers["Authorization"] = `Bearer ${token}`;
 
@@ -57,7 +57,7 @@ export default function UpdateChecker() {
     setPreparing(true);
     setError(null);
     try {
-      const token = localStorage.getItem("reclaw_token");
+      const token = localStorage.getItem("istara_token");
       const res = await fetch(`${API_BASE}/api/updates/prepare`, {
         method: "POST",
         headers: {
@@ -102,15 +102,15 @@ export default function UpdateChecker() {
 
       {/* Update available */}
       {updateInfo?.update_available && (
-        <div className="rounded-lg border border-reclaw-200 dark:border-reclaw-800 bg-reclaw-50 dark:bg-reclaw-900/20 p-4 mb-3">
+        <div className="rounded-lg border border-istara-200 dark:border-istara-800 bg-istara-50 dark:bg-istara-900/20 p-4 mb-3">
           <div className="flex items-start gap-3">
-            <Download size={20} className="text-reclaw-600 shrink-0 mt-0.5" />
+            <Download size={20} className="text-istara-600 shrink-0 mt-0.5" />
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-reclaw-800 dark:text-reclaw-300">
+              <p className="text-sm font-semibold text-istara-800 dark:text-istara-300">
                 Update Available: {updateInfo.latest_version}
               </p>
               {updateInfo.release_name && (
-                <p className="text-xs text-reclaw-600 dark:text-reclaw-400 mt-0.5">
+                <p className="text-xs text-istara-600 dark:text-istara-400 mt-0.5">
                   {updateInfo.release_name}
                 </p>
               )}
@@ -126,7 +126,7 @@ export default function UpdateChecker() {
                   <button
                     onClick={prepareUpdate}
                     disabled={preparing}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-reclaw-600 text-white hover:bg-reclaw-700 disabled:opacity-50 transition-colors"
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-istara-600 text-white hover:bg-istara-700 disabled:opacity-50 transition-colors"
                   >
                     {preparing ? <Loader2 size={12} className="animate-spin" /> : <Shield size={12} />}
                     {preparing ? "Creating backup..." : "Backup & Prepare Update"}
@@ -142,7 +142,7 @@ export default function UpdateChecker() {
                         href={updateInfo.release_url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-reclaw-600 text-white hover:bg-reclaw-700 transition-colors"
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-istara-600 text-white hover:bg-istara-700 transition-colors"
                       >
                         <ExternalLink size={12} />
                         Download Update

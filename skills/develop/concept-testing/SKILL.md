@@ -2,7 +2,7 @@
 name: concept-testing
 description: "Structure concept test protocols, analyze reactions, preference rankings."
 metadata:
-  reclaw:
+  istara:
     phase: develop
     type: mixed
     version: "1.0.0"

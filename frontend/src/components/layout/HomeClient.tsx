@@ -39,7 +39,7 @@ import { useSessionStore } from "@/stores/sessionStore";
 import { useAgentStore } from "@/stores/agentStore";
 import { settings as settingsApi } from "@/lib/api";
 
-const VIEW_STORAGE_KEY = "reclaw_active_view";
+const VIEW_STORAGE_KEY = "istara_active_view";
 const VIEW_NAMES: Record<string, string> = {
   chat: "Chat", findings: "Findings", tasks: "Tasks", laws: "UX Laws",
   interviews: "Interviews", documents: "Documents", metrics: "Metrics",
@@ -60,10 +60,10 @@ export default function HomeClient() {
   const setActiveView = (view: string) => {
     setActiveViewRaw(view);
     try { localStorage.setItem(VIEW_STORAGE_KEY, view); } catch {}
-    document.title = `${VIEW_NAMES[view] || "ReClaw"} — ReClaw`;
+    document.title = `${VIEW_NAMES[view] || "Istara"} — Istara`;
   };
   // Set title on mount
-  useEffect(() => { document.title = `${VIEW_NAMES[activeView] || "ReClaw"} — ReClaw`; }, []);
+  useEffect(() => { document.title = `${VIEW_NAMES[activeView] || "Istara"} — Istara`; }, []);
 
   const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -74,7 +74,7 @@ export default function HomeClient() {
 
   // Check authentication on mount
   useEffect(() => {
-    const token = localStorage.getItem("reclaw_token");
+    const token = localStorage.getItem("istara_token");
     if (!token || token === "local-mode") {
       setAuthenticated(false);
       return;
@@ -87,8 +87,8 @@ export default function HomeClient() {
 
     // Listen for token expiry events from API client
     const handleExpiry = () => setAuthenticated(false);
-    window.addEventListener("reclaw:auth-expired", handleExpiry);
-    return () => window.removeEventListener("reclaw:auth-expired", handleExpiry);
+    window.addEventListener("istara:auth-expired", handleExpiry);
+    return () => window.removeEventListener("istara:auth-expired", handleExpiry);
   }, []);
 
   // Check if first-run (no projects) — only after authenticated
@@ -102,7 +102,7 @@ export default function HomeClient() {
     });
   }, [fetchProjects]);
 
-  // Handle reclaw:navigate events from AgentsView, ToastNotification, etc.
+  // Handle istara:navigate events from AgentsView, ToastNotification, etc.
   useEffect(() => {
     const handler = async (e: Event) => {
       const detail = (e as CustomEvent).detail;
@@ -133,8 +133,8 @@ export default function HomeClient() {
         }
       }
     };
-    window.addEventListener("reclaw:navigate", handler);
-    return () => window.removeEventListener("reclaw:navigate", handler);
+    window.addEventListener("istara:navigate", handler);
+    return () => window.removeEventListener("istara:navigate", handler);
   }, []);
 
   // Global Cmd+K for search

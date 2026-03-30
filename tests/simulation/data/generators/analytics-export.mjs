@@ -1,5 +1,5 @@
 /**
- * Analytics export generator for ReClaw simulation.
+ * Analytics export generator for Istara simulation.
  * Produces realistic analytics CSV data: daily metrics, funnel data,
  * and A/B test results.
  */

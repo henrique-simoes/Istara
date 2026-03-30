@@ -1,4 +1,4 @@
-"""Google Chat channel adapter for ReClaw.
+"""Google Chat channel adapter for Istara.
 
 Webhook-based adapter supporting Google Chat via webhook URLs or the
 Google Chat API with service account credentials.

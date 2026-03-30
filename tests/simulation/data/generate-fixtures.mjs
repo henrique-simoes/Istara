@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Generate all mock research data fixtures for ReClaw testing.
+ * Generate all mock research data fixtures for Istara testing.
  *
  * Creates ~64 files across all research types so every skill has data to work with.
  *
@@ -38,7 +38,7 @@ function save(filename, content) {
   process.stdout.write(`  [${totalFiles}] ${filename}\n`);
 }
 
-console.log("=== ReClaw Fixture Generator ===\n");
+console.log("=== Istara Fixture Generator ===\n");
 
 // ── Interview Transcripts (32 files: 4 per topic × 8 topics) ──────────
 console.log("Generating interview transcripts...");

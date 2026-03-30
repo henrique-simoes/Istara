@@ -60,7 +60,7 @@ ProjectManager Pro is a mid-market research ops tool targeting UX teams of 5-20.
 - No offline support
 - Limited export formats (PDF only)
 - Pricing starts at $49/user/month — expensive for small teams
-### Key Differentiators vs ReClaw
+### Key Differentiators vs Istara
 - They have recruitment built-in; we focus on analysis depth
 - Their AI tagging is faster but less accurate
 - We support more file formats and have better RAG search
@@ -76,7 +76,7 @@ InsightHub targets enterprise research teams (50+).
 - Poor mobile experience
 - No agent or automation capabilities
 ### Market Positioning
-ReClaw sits between these two — more powerful than ProjectManager Pro, more accessible than InsightHub.
+Istara sits between these two — more powerful than ProjectManager Pro, more accessible than InsightHub.
 `;
   const competitorPath = join(tmpDir, "competitor-analysis.md");
   writeFileSync(competitorPath, competitorContent);
@@ -146,7 +146,7 @@ Duration: 30 minutes
 ## Auditor: Design Team
 
 ### Color Consistency
-- Primary brand color (reclaw-600) used inconsistently — 3 different hex values found
+- Primary brand color (istara-600) used inconsistently — 3 different hex values found
 - Dark mode contrast ratios: 2 violations on findings cards (AA fail)
 - Status colors (green/yellow/red) not colorblind-safe — need patterns or icons
 

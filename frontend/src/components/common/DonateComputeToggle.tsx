@@ -51,7 +51,7 @@ export default function DonateComputeToggle() {
       return;
     }
 
-    const token = localStorage.getItem("reclaw_token");
+    const token = localStorage.getItem("istara_token");
     const url = `${WS_BASE}/ws/relay${token ? `?token=${token}` : ""}`;
 
     const ws = new WebSocket(url);
@@ -177,7 +177,7 @@ export default function DonateComputeToggle() {
           onClick={() => setEnabled(!enabled)}
           className={cn(
             "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
-            enabled ? "bg-reclaw-600" : "bg-slate-300 dark:bg-slate-600"
+            enabled ? "bg-istara-600" : "bg-slate-300 dark:bg-slate-600"
           )}
           role="switch"
           aria-checked={enabled}

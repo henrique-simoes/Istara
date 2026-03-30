@@ -1,6 +1,6 @@
 # Survey Platform Integrations
 
-ReClaw connects to SurveyMonkey, Google Forms, and Typeform to create surveys and ingest responses into the Atomic Research chain.
+Istara connects to SurveyMonkey, Google Forms, and Typeform to create surveys and ingest responses into the Atomic Research chain.
 
 ## Supported Platforms
 
@@ -14,7 +14,7 @@ ReClaw connects to SurveyMonkey, Google Forms, and Typeform to create surveys an
 - **Auth**: Google service account or OAuth
 - **Create forms**: POST /v1/forms + batchUpdate
 - **Get responses**: GET /v1/forms/{id}/responses
-- **Webhooks**: Not supported natively. Use ReClaw Loops/Scheduler for polling.
+- **Webhooks**: Not supported natively. Use Istara Loops/Scheduler for polling.
 - **Note**: After March 2026, forms created via API are unpublished by default.
 
 ### Typeform

@@ -2,7 +2,7 @@
 name: user-interviews
 description: "Plan, conduct, and analyze user interviews. Generate interview guides, process transcripts, extract nuggets and themes, synthesize findings."
 metadata:
-  reclaw:
+  istara:
     phase: discover
     type: qualitative
     version: "1.0.0"
@@ -21,9 +21,9 @@ metadata:
 ## Workflow
 
 1. **Plan** — Provide research questions → receive interview guide with probes
-2. **Conduct** — Use the guide (ReClaw provides facilitation tips)
+2. **Conduct** — Use the guide (Istara provides facilitation tips)
 3. **Upload** — Drop transcript files into the project
-4. **Analyze** — ReClaw extracts nuggets, tags themes, scores confidence
+4. **Analyze** — Istara extracts nuggets, tags themes, scores confidence
 5. **Synthesize** — Cross-interview patterns → facts → insights → recommendations
 
 ## Input

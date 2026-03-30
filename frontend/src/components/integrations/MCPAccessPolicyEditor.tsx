@@ -87,13 +87,13 @@ export default function MCPAccessPolicyEditor() {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Shield size={18} className="text-reclaw-500" />
+          <Shield size={18} className="text-istara-500" />
           <h2 className="text-lg font-bold text-slate-900 dark:text-white">Access Policy</h2>
         </div>
         <button
           onClick={handleSave}
           disabled={saving}
-          className="flex items-center gap-1.5 px-3 py-2 text-sm bg-reclaw-600 text-white rounded-lg hover:bg-reclaw-700 disabled:opacity-50 transition-colors"
+          className="flex items-center gap-1.5 px-3 py-2 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700 disabled:opacity-50 transition-colors"
         >
           {saving ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
           {saved ? "Saved!" : "Save Policy"}
@@ -119,7 +119,7 @@ export default function MCPAccessPolicyEditor() {
                       aria-label={`Toggle ${name}`}
                       className={cn(
                         "w-9 h-5 rounded-full transition-colors relative",
-                        config.allowed ? "bg-reclaw-500" : "bg-slate-300 dark:bg-slate-600"
+                        config.allowed ? "bg-istara-500" : "bg-slate-300 dark:bg-slate-600"
                       )}
                     >
                       <span className={cn(
@@ -158,7 +158,7 @@ export default function MCPAccessPolicyEditor() {
                       aria-label={`Toggle ${name}`}
                       className={cn(
                         "w-9 h-5 rounded-full transition-colors relative",
-                        config.allowed ? "bg-reclaw-500" : "bg-slate-300 dark:bg-slate-600"
+                        config.allowed ? "bg-istara-500" : "bg-slate-300 dark:bg-slate-600"
                       )}
                     >
                       <span className={cn(
@@ -191,7 +191,7 @@ export default function MCPAccessPolicyEditor() {
               min={1}
               value={maxFindings}
               onChange={(e) => { setMaxFindings(parseInt(e.target.value) || 1); setSaved(false); }}
-              className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+              className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-istara-500"
             />
           </div>
           <div>
@@ -203,7 +203,7 @@ export default function MCPAccessPolicyEditor() {
               min={1}
               value={maxSkillExec}
               onChange={(e) => { setMaxSkillExec(parseInt(e.target.value) || 1); setSaved(false); }}
-              className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+              className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-istara-500"
             />
           </div>
         </div>

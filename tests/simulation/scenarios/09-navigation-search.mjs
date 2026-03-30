@@ -61,11 +61,11 @@ export async function run(ctx) {
       await page.waitForTimeout(800);
 
       // Check localStorage for persisted view
-      const savedView = await page.evaluate(() => localStorage.getItem("reclaw_active_view"));
+      const savedView = await page.evaluate(() => localStorage.getItem("istara_active_view"));
       checks.push({
         name: "View persistence: localStorage stores active view",
         passed: savedView === "documents",
-        detail: `reclaw_active_view="${savedView}"`,
+        detail: `istara_active_view="${savedView}"`,
       });
 
       // Check document title includes view name
@@ -80,11 +80,11 @@ export async function run(ctx) {
       // Navigate away and back — verify persistence across reload
       await page.reload({ waitUntil: "networkidle" });
       await page.waitForTimeout(1500);
-      const restoredView = await page.evaluate(() => localStorage.getItem("reclaw_active_view"));
+      const restoredView = await page.evaluate(() => localStorage.getItem("istara_active_view"));
       checks.push({
         name: "View persistence: survives page reload",
         passed: restoredView === "documents",
-        detail: `after reload: reclaw_active_view="${restoredView}"`,
+        detail: `after reload: istara_active_view="${restoredView}"`,
       });
     } else {
       checks.push({ name: "View persistence: localStorage stores active view", passed: false, detail: "Documents nav button not visible" });

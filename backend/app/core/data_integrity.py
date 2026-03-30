@@ -97,7 +97,7 @@ async def run_integrity_check(db: AsyncSession) -> dict:
         persona_dirs = [d.name for d in persona_path.iterdir() if d.is_dir()]
         db_agents = await _get_agent_ids(db)
         # System agents are always valid
-        system_agents = {"reclaw-main", "reclaw-devops", "reclaw-ui-audit", "reclaw-ux-eval", "reclaw-sim"}
+        system_agents = {"istara-main", "istara-devops", "istara-ui-audit", "istara-ux-eval", "istara-sim"}
 
         orphaned_personas = [
             d for d in persona_dirs

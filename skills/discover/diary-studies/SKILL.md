@@ -2,7 +2,7 @@
 name: diary-studies
 description: "Design diary study prompts, analyze entries over time, identify behavioral patterns and emotional arcs."
 metadata:
-  reclaw:
+  istara:
     phase: discover
     type: qualitative
     version: "1.0.0"

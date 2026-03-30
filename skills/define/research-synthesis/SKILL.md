@@ -2,7 +2,7 @@
 name: research-synthesis
 description: "Generate structured research reports: executive summary, methodology, findings, recommendations."
 metadata:
-  reclaw:
+  istara:
     phase: define
     type: mixed
     version: "1.0.0"

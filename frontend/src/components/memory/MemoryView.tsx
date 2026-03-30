@@ -137,14 +137,14 @@ function KnowledgeBaseTab({ projectId }: { projectId: string }) {
             onKeyDown={(e) => e.key === "Enter" && handleSearch()}
             placeholder="Hybrid search across knowledge base..."
             aria-label="Search knowledge base"
-            className="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-reclaw-500 text-slate-900 dark:text-slate-100"
+            className="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-istara-500 text-slate-900 dark:text-slate-100"
           />
         </div>
         <button
           onClick={handleSearch}
           disabled={searching}
           aria-label="Run search"
-          className="px-4 py-2 text-sm bg-reclaw-600 text-white rounded-lg hover:bg-reclaw-700 disabled:opacity-50"
+          className="px-4 py-2 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700 disabled:opacity-50"
         >
           {searching ? "Searching..." : "Search"}
         </button>
@@ -182,7 +182,7 @@ function KnowledgeBaseTab({ projectId }: { projectId: string }) {
                       <FileText size={12} className="text-slate-400" />
                       <span className="text-xs text-slate-500 truncate max-w-[300px]">{r.source}</span>
                     </div>
-                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-reclaw-100 dark:bg-reclaw-900/30 text-reclaw-700 dark:text-reclaw-400">
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-istara-100 dark:bg-istara-900/30 text-istara-700 dark:text-istara-400">
                       {(r.score * 100).toFixed(1)}%
                     </span>
                   </div>
@@ -366,7 +366,7 @@ function AgentMemoryTab({ projectId }: { projectId: string }) {
               aria-label={`Toggle notes for ${agent.name}`}
               className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
             >
-              <div className="w-8 h-8 rounded-full bg-reclaw-100 dark:bg-reclaw-900/30 flex items-center justify-center text-reclaw-600 dark:text-reclaw-400 text-xs font-semibold">
+              <div className="w-8 h-8 rounded-full bg-istara-100 dark:bg-istara-900/30 flex items-center justify-center text-istara-600 dark:text-istara-400 text-xs font-semibold">
                 {agent.name.charAt(0).toUpperCase()}
               </div>
               <div className="flex-1 min-w-0">
@@ -442,7 +442,7 @@ function HealthTab({ projectId }: { projectId: string }) {
         <button
           onClick={fetchStats}
           aria-label="Retry loading health data"
-          className="mt-3 px-4 py-2 text-sm bg-reclaw-600 text-white rounded-lg hover:bg-reclaw-700"
+          className="mt-3 px-4 py-2 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700"
         >
           Retry
         </button>
@@ -527,7 +527,7 @@ function HealthTab({ projectId }: { projectId: string }) {
             <div className="flex items-center gap-2">
               <div className="w-24 h-1.5 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
                 <div
-                  className="h-full rounded-full bg-reclaw-500"
+                  className="h-full rounded-full bg-istara-500"
                   style={{ width: `${stats.hybrid_weights.vector * 100}%` }}
                 />
               </div>
@@ -613,7 +613,7 @@ export default function MemoryView() {
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-800">
         <div className="flex items-center gap-3">
-          <Brain size={20} className="text-reclaw-600" />
+          <Brain size={20} className="text-istara-600" />
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Memory</h2>
         </div>
       </div>
@@ -628,7 +628,7 @@ export default function MemoryView() {
             className={cn(
               "flex items-center gap-2 px-4 py-2 text-sm rounded-lg transition-colors",
               activeTab === tab.id
-                ? "bg-reclaw-100 text-reclaw-700 dark:bg-reclaw-900/30 dark:text-reclaw-400 font-medium"
+                ? "bg-istara-100 text-istara-700 dark:bg-istara-900/30 dark:text-istara-400 font-medium"
                 : "text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
             )}
           >

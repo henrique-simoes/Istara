@@ -2,7 +2,7 @@
 name: cognitive-walkthrough
 description: "Systematic task analysis: will user notice, understand, associate, interpret feedback?"
 metadata:
-  reclaw:
+  istara:
     phase: develop
     type: qualitative
     version: "1.0.0"

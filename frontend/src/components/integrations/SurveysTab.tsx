@@ -82,7 +82,7 @@ export default function SurveysTab() {
         </div>
         <button
           onClick={() => setShowWizard(true)}
-          className="flex items-center gap-1.5 px-3 py-2 text-sm bg-reclaw-600 text-white rounded-lg hover:bg-reclaw-700 transition-colors"
+          className="flex items-center gap-1.5 px-3 py-2 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700 transition-colors"
         >
           <Plus size={14} />
           Connect Platform
@@ -105,7 +105,7 @@ export default function SurveysTab() {
           </p>
           <button
             onClick={() => setShowWizard(true)}
-            className="px-4 py-2 text-sm bg-reclaw-600 text-white rounded-lg hover:bg-reclaw-700 transition-colors"
+            className="px-4 py-2 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700 transition-colors"
           >
             Connect First Platform
           </button>
@@ -192,7 +192,7 @@ export default function SurveysTab() {
                         onClick={() => handleSync(link.id)}
                         disabled={syncing === link.id}
                         aria-label="Sync survey responses"
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-reclaw-600 hover:bg-reclaw-50 dark:hover:bg-reclaw-900/20 transition-colors disabled:opacity-50"
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-istara-600 hover:bg-istara-50 dark:hover:bg-istara-900/20 transition-colors disabled:opacity-50"
                       >
                         <RefreshCw size={14} className={syncing === link.id ? "animate-spin" : ""} />
                       </button>

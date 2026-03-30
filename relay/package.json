@@ -1,11 +1,11 @@
 {
-  "name": "reclaw-relay",
+  "name": "istara-relay",
   "version": "2026.03.29",
-  "description": "ReClaw Relay — donate LLM compute to the ReClaw network",
+  "description": "Istara Relay — donate LLM compute to the Istara network",
   "type": "module",
   "main": "index.mjs",
   "bin": {
-    "reclaw-relay": "./index.mjs"
+    "istara-relay": "./index.mjs"
   },
   "scripts": {
     "start": "node index.mjs",

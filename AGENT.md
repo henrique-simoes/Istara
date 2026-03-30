@@ -1,8 +1,8 @@
-# ReClaw — Agent-Readable System Specification
+# Istara — Agent-Readable System Specification
 
 ## System Identity
 
-**ReClaw** is a local-first, privacy-first AI agent for UX Research. It runs entirely on the user's machine with local LLMs (via LM Studio or Ollama), ensuring research data never leaves the user's control.
+**Istara** is a local-first, privacy-first AI agent for UX Research. It runs entirely on the user's machine with local LLMs (via LM Studio or Ollama), ensuring research data never leaves the user's control.
 
 - **Version**: 0.1.0
 - **License**: Open source
@@ -34,21 +34,21 @@ LLM Providers (LM Studio or Ollama — local inference)
 
 ## Agent System
 
-ReClaw has 5 specialized agents:
+Istara has 5 specialized agents:
 
 | Agent | Role | Specialty |
 |-------|------|-----------|
-| **Cleo** (reclaw-main) | Task Executor | Research execution, skill invocation, user interaction |
-| **Sentinel** (reclaw-devops) | DevOps Audit | Data integrity, system health, performance monitoring |
-| **Pixel** (reclaw-ui-audit) | UI Audit | WCAG compliance, Nielsen heuristics, design system |
-| **Sage** (reclaw-ux-eval) | UX Evaluation | Cognitive load, user journeys, workflow analysis |
-| **Echo** (reclaw-sim) | User Simulation | End-to-end testing, scenario simulation, regression |
+| **Cleo** (istara-main) | Task Executor | Research execution, skill invocation, user interaction |
+| **Sentinel** (istara-devops) | DevOps Audit | Data integrity, system health, performance monitoring |
+| **Pixel** (istara-ui-audit) | UI Audit | WCAG compliance, Nielsen heuristics, design system |
+| **Sage** (istara-ux-eval) | UX Evaluation | Cognitive load, user journeys, workflow analysis |
+| **Echo** (istara-sim) | User Simulation | End-to-end testing, scenario simulation, regression |
 
 Each agent has 4 persona files: CORE.md (identity), SKILLS.md (capabilities), PROTOCOLS.md (behavior), MEMORY.md (learnings).
 
 ## Research Methodology
 
-ReClaw implements the **Atomic Research** evidence chain:
+Istara implements the **Atomic Research** evidence chain:
 - **Nuggets**: Raw evidence (quotes, observations, data points) from sources
 - **Facts**: Verified patterns derived from 2+ nuggets
 - **Insights**: Interpreted meanings answering "so what?"
@@ -66,10 +66,10 @@ Research phases follow the **Double Diamond**: Discover -> Define -> Develop -> 
 ## Agent Interaction Guide
 
 ### Via MCP (when enabled)
-External agents can connect to ReClaw's MCP server at `http://localhost:8001/mcp` (if enabled). Available tools depend on the user's access policy configuration.
+External agents can connect to Istara's MCP server at `http://localhost:8001/mcp` (if enabled). Available tools depend on the user's access policy configuration.
 
 ### Via A2A Protocol
-ReClaw exposes an A2A Protocol discovery endpoint at `/.well-known/agent.json`.
+Istara exposes an A2A Protocol discovery endpoint at `/.well-known/agent.json`.
 
 ### Via REST API
 Full REST API at `http://localhost:8000/api/` with endpoints for projects, tasks, findings, skills, channels, deployments, surveys, and MCP management.
@@ -133,12 +133,12 @@ lms server start
 - Chat, Findings, UX Laws, Tasks, Interviews, Documents, Context, Skills, Agents, Memory, Interfaces, Integrations, Loops, Notifications, Settings, Autoresearch, Backup, Meta-Agent, Compute Pool, Ensemble Health, Metrics, History
 
 ### Agents
-- **design-lead**: Design Lead -- ReClaw Interface Agent
-- **reclaw-devops**: Sentinel -- DevOps Audit Agent
-- **reclaw-main**: ReClaw Research Coordinator
-- **reclaw-sim**: Echo -- User Simulation Agent
-- **reclaw-ui-audit**: Pixel -- UI Audit Agent
-- **reclaw-ux-eval**: Sage -- UX Evaluation Agent
+- **design-lead**: Design Lead -- Istara Interface Agent
+- **istara-devops**: Sentinel -- DevOps Audit Agent
+- **istara-main**: Istara Research Coordinator
+- **istara-sim**: Echo -- User Simulation Agent
+- **istara-ui-audit**: Pixel -- UI Audit Agent
+- **istara-ux-eval**: Sage -- UX Evaluation Agent
 
 ### Skills
 - **Define**: Affinity Mapping, Empathy Mapping, Hmw Statements, Journey Mapping, Jtbd Analysis, Kappa Thematic Analysis, Persona Creation, Prioritization Matrix, Research Synthesis, Taxonomy Generator, Thematic Analysis, User Flow Mapping

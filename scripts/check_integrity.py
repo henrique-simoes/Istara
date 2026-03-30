@@ -88,7 +88,7 @@ def check_guide_exists():
 
 
 def main():
-    print("🔍 ReClaw Integrity Check")
+    print("🔍 Istara Integrity Check")
     print("=" * 50)
 
     check_guide_exists()

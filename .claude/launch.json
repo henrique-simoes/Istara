@@ -2,13 +2,13 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "ReClaw Backend (FastAPI/Uvicorn)",
+      "name": "Istara Backend (FastAPI/Uvicorn)",
       "runtimeExecutable": "/opt/homebrew/bin/python3.11",
       "runtimeArgs": ["-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--app-dir", "backend"],
       "port": 8000
     },
     {
-      "name": "ReClaw Frontend (Next.js)",
+      "name": "Istara Frontend (Next.js)",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["--prefix", "frontend", "run", "dev"],
       "port": 3000

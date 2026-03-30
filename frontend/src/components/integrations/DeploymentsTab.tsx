@@ -63,7 +63,7 @@ export default function DeploymentsTab() {
         </div>
         <button
           onClick={() => setShowWizard(true)}
-          className="flex items-center gap-1.5 px-3 py-2 text-sm bg-reclaw-600 text-white rounded-lg hover:bg-reclaw-700 transition-colors"
+          className="flex items-center gap-1.5 px-3 py-2 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700 transition-colors"
         >
           <Plus size={14} />
           New Deployment
@@ -118,7 +118,7 @@ export default function DeploymentsTab() {
           </p>
           <button
             onClick={() => setShowWizard(true)}
-            className="px-4 py-2 text-sm bg-reclaw-600 text-white rounded-lg hover:bg-reclaw-700 transition-colors"
+            className="px-4 py-2 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700 transition-colors"
           >
             Create First Deployment
           </button>
@@ -135,7 +135,7 @@ export default function DeploymentsTab() {
               <button
                 key={deployment.id}
                 onClick={() => selectDeployment(deployment.id)}
-                className="w-full text-left bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 hover:border-reclaw-300 dark:hover:border-reclaw-700 transition-colors"
+                className="w-full text-left bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 hover:border-istara-300 dark:hover:border-istara-700 transition-colors"
               >
                 <div className="flex items-start justify-between mb-2">
                   <div>
@@ -157,7 +157,7 @@ export default function DeploymentsTab() {
                   </div>
                   <div className="h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-reclaw-500 rounded-full transition-all"
+                      className="h-full bg-istara-500 rounded-full transition-all"
                       style={{ width: `${Math.min(progress, 100)}%` }}
                     />
                   </div>

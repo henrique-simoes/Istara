@@ -13,7 +13,7 @@ import { join } from "node:path";
 const VIEWPORT = { width: 1280, height: 800 };
 
 /** Base URL for the Next.js frontend */
-const BASE_URL = process.env.RECLAW_FRONTEND_URL || "http://localhost:3000";
+const BASE_URL = process.env.ISTARA_FRONTEND_URL || "http://localhost:3000";
 
 /**
  * Launch a Chromium browser and return a configured page.
@@ -131,7 +131,7 @@ export async function navigateTo(page, path = "/") {
 }
 
 /**
- * Wait for the ReClaw app shell to be fully loaded (sidebar visible).
+ * Wait for the Istara app shell to be fully loaded (sidebar visible).
  *
  * @param {import("playwright").Page} page
  * @param {number}                     timeout  Max ms to wait (default 20 000)

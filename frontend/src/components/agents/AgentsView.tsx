@@ -189,16 +189,16 @@ function CreateAgentWizard({ onDone }: { onDone: () => void }) {
               className={cn(
                 "w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium transition-colors",
                 i === step
-                  ? "bg-reclaw-600 text-white"
+                  ? "bg-istara-600 text-white"
                   : i < step
-                  ? "bg-reclaw-100 text-reclaw-700 dark:bg-reclaw-900/30 dark:text-reclaw-400"
+                  ? "bg-istara-100 text-istara-700 dark:bg-istara-900/30 dark:text-istara-400"
                   : "bg-slate-100 text-slate-400 dark:bg-slate-800"
               )}
             >
               {i + 1}
             </button>
             {i < steps.length - 1 && (
-              <div className={cn("w-6 h-0.5", i < step ? "bg-reclaw-400" : "bg-slate-200 dark:bg-slate-700")} />
+              <div className={cn("w-6 h-0.5", i < step ? "bg-istara-400" : "bg-slate-200 dark:bg-slate-700")} />
             )}
           </div>
         ))}
@@ -215,7 +215,7 @@ function CreateAgentWizard({ onDone }: { onDone: () => void }) {
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Research Assistant, Interview Analyst..."
-              className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+              className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-istara-500"
               autoFocus
             />
           </div>
@@ -233,7 +233,7 @@ function CreateAgentWizard({ onDone }: { onDone: () => void }) {
             <select
               value={role}
               onChange={(e) => setRole(e.target.value as AgentRole)}
-              className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+              className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-istara-500"
             >
               {Object.entries(ROLE_LABELS).map(([key, label]) => (
                 <option key={key} value={key}>{label}</option>
@@ -247,7 +247,7 @@ function CreateAgentWizard({ onDone }: { onDone: () => void }) {
               onChange={(e) => setPrompt(e.target.value)}
               placeholder="Describe what this agent should do, its personality, and any specific instructions..."
               rows={6}
-              className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-reclaw-500 resize-none"
+              className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-istara-500 resize-none"
             />
           </div>
         </div>
@@ -267,7 +267,7 @@ function CreateAgentWizard({ onDone }: { onDone: () => void }) {
                 type="checkbox"
                 checked={capabilities.includes(cap.id)}
                 onChange={() => toggleCapability(cap.id)}
-                className="w-4 h-4 rounded border-slate-300 text-reclaw-600 focus:ring-reclaw-500"
+                className="w-4 h-4 rounded border-slate-300 text-istara-600 focus:ring-istara-500"
               />
             </label>
           ))}
@@ -392,7 +392,7 @@ function CreateAgentWizard({ onDone }: { onDone: () => void }) {
           <button
             onClick={() => setStep(step + 1)}
             disabled={step === 0 && !name.trim()}
-            className="flex items-center gap-1 px-4 py-2 text-sm bg-reclaw-600 text-white rounded-lg hover:bg-reclaw-700 disabled:opacity-50"
+            className="flex items-center gap-1 px-4 py-2 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700 disabled:opacity-50"
           >
             Next <ArrowRight size={14} />
           </button>
@@ -400,7 +400,7 @@ function CreateAgentWizard({ onDone }: { onDone: () => void }) {
           <button
             onClick={handleCreate}
             disabled={creating || !name.trim()}
-            className="px-4 py-2 text-sm bg-reclaw-600 text-white rounded-lg hover:bg-reclaw-700 disabled:opacity-50"
+            className="px-4 py-2 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700 disabled:opacity-50"
           >
             {creating ? "Creating..." : "Create Agent"}
           </button>
@@ -546,7 +546,7 @@ function AgentDetail({ agent }: { agent: Agent }) {
             className={cn(
               "px-3 py-1.5 text-xs rounded-lg capitalize transition-colors",
               tab === t
-                ? "bg-reclaw-100 text-reclaw-700 dark:bg-reclaw-900/30 dark:text-reclaw-400"
+                ? "bg-istara-100 text-istara-700 dark:bg-istara-900/30 dark:text-istara-400"
                 : "text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
             )}
           >
@@ -566,7 +566,7 @@ function AgentDetail({ agent }: { agent: Agent }) {
                 </p>
                 <button
                   onClick={() => setTab("identity")}
-                  className="mt-1 text-xs text-reclaw-600 dark:text-reclaw-400 hover:underline flex items-center gap-1"
+                  className="mt-1 text-xs text-istara-600 dark:text-istara-400 hover:underline flex items-center gap-1"
                 >
                   <ArrowRight size={10} /> View full identity files
                 </button>
@@ -634,11 +634,11 @@ function AgentDetail({ agent }: { agent: Agent }) {
             </button>
             <button
               onClick={() => {
-                window.dispatchEvent(new CustomEvent("reclaw:navigate", {
+                window.dispatchEvent(new CustomEvent("istara:navigate", {
                   detail: { view: "chat", agent_id: agent.id }
                 }));
               }}
-              className="flex items-center gap-1 px-2 py-1 text-xs bg-reclaw-100 dark:bg-reclaw-900/30 text-reclaw-600 dark:text-reclaw-400 rounded hover:bg-reclaw-200"
+              className="flex items-center gap-1 px-2 py-1 text-xs bg-istara-100 dark:bg-istara-900/30 text-istara-600 dark:text-istara-400 rounded hover:bg-istara-200"
             >
               <MessageSquare size={12} /> Chat
             </button>
@@ -753,7 +753,7 @@ function AgentDetail({ agent }: { agent: Agent }) {
                       <textarea
                         value={editContent}
                         onChange={(e) => { setEditContent(e.target.value); setIdentityDirty(true); }}
-                        className="w-full min-h-[300px] p-3 text-sm font-mono text-slate-800 dark:text-slate-100 bg-white dark:bg-slate-900 border-0 focus:ring-2 focus:ring-reclaw-500 resize-y"
+                        className="w-full min-h-[300px] p-3 text-sm font-mono text-slate-800 dark:text-slate-100 bg-white dark:bg-slate-900 border-0 focus:ring-2 focus:ring-istara-500 resize-y"
                         spellCheck={false}
                       />
                     ) : (
@@ -841,7 +841,7 @@ function AgentDetail({ agent }: { agent: Agent }) {
               }}
               className={cn(
                 "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
-                agent.is_active ? "bg-reclaw-600" : "bg-slate-300 dark:bg-slate-600"
+                agent.is_active ? "bg-istara-600" : "bg-slate-300 dark:bg-slate-600"
               )}
               role="switch"
               aria-checked={agent.is_active}
@@ -873,7 +873,7 @@ function AgentDetail({ agent }: { agent: Agent }) {
                     }}
                     className={cn(
                       "relative inline-flex h-5 w-9 items-center rounded-full transition-colors",
-                      enabled ? "bg-reclaw-500" : "bg-slate-300 dark:bg-slate-600"
+                      enabled ? "bg-istara-500" : "bg-slate-300 dark:bg-slate-600"
                     )}
                     role="switch"
                     aria-checked={enabled}
@@ -957,7 +957,7 @@ export default function AgentsView() {
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-800">
         <div className="flex items-center gap-3">
-          <Users size={20} className="text-reclaw-600" />
+          <Users size={20} className="text-istara-600" />
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Agents</h2>
           <span className="text-xs text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
             {agents.length} total
@@ -974,7 +974,7 @@ export default function AgentsView() {
             className={cn(
               "px-4 py-2 text-sm rounded-lg transition-colors",
               activeTab === tab
-                ? "bg-reclaw-100 text-reclaw-700 dark:bg-reclaw-900/30 dark:text-reclaw-400 font-medium"
+                ? "bg-istara-100 text-istara-700 dark:bg-istara-900/30 dark:text-istara-400 font-medium"
                 : "text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
             )}
           >
@@ -1063,7 +1063,7 @@ export default function AgentsView() {
                   </button>
                   <button
                     onClick={() => setActiveTab("create")}
-                    className="flex items-center gap-1 text-xs text-reclaw-600 hover:text-reclaw-700"
+                    className="flex items-center gap-1 text-xs text-istara-600 hover:text-istara-700"
                   >
                     <Plus size={14} /> New Agent
                   </button>
@@ -1076,7 +1076,7 @@ export default function AgentsView() {
                   <p className="text-xs text-slate-400 mb-4">Create an agent to specialize in specific research tasks</p>
                   <button
                     onClick={() => setActiveTab("create")}
-                    className="inline-flex items-center gap-1 px-4 py-2 text-sm bg-reclaw-600 text-white rounded-lg hover:bg-reclaw-700"
+                    className="inline-flex items-center gap-1 px-4 py-2 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700"
                   >
                     <Plus size={14} /> Create Agent
                   </button>

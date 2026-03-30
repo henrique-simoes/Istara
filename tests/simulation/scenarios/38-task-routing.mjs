@@ -16,7 +16,7 @@ export async function run(ctx) {
   try {
     const data = await api.get("/api/agents");
     agents = data.agents || [];
-    const systemIds = ["reclaw-main", "reclaw-devops", "reclaw-ui-audit", "reclaw-ux-eval", "reclaw-sim"];
+    const systemIds = ["istara-main", "istara-devops", "istara-ui-audit", "istara-ux-eval", "istara-sim"];
     const foundSystem = systemIds.filter((id) => agents.some((a) => a.id === id));
     checks.push({
       name: "All 5 system agents present",
@@ -49,7 +49,7 @@ export async function run(ctx) {
     });
     checks.push({
       name: "UI task routed to ui-audit or main",
-      passed: task.agent_id === "reclaw-ui-audit" || task.agent_id === "reclaw-main",
+      passed: task.agent_id === "istara-ui-audit" || task.agent_id === "istara-main",
       detail: `agent_id=${task.agent_id}`,
     });
   } catch (e) {
@@ -67,14 +67,14 @@ export async function run(ctx) {
     devopsTaskId = task.id;
     checks.push({
       name: "DevOps task routed to devops or main",
-      passed: task.agent_id === "reclaw-devops" || task.agent_id === "reclaw-main",
+      passed: task.agent_id === "istara-devops" || task.agent_id === "istara-main",
       detail: `agent_id=${task.agent_id}`,
     });
   } catch (e) {
     checks.push({ name: "DevOps task routed to devops or main", passed: false, detail: e.message });
   }
 
-  // ── 4. Create general research task → should route to reclaw-main ──
+  // ── 4. Create general research task → should route to istara-main ──
   let researchTaskId = null;
   try {
     const task = await api.post("/api/tasks", {
@@ -84,12 +84,12 @@ export async function run(ctx) {
     });
     researchTaskId = task.id;
     checks.push({
-      name: "Research task routed to reclaw-main",
-      passed: task.agent_id === "reclaw-main",
+      name: "Research task routed to istara-main",
+      passed: task.agent_id === "istara-main",
       detail: `agent_id=${task.agent_id}`,
     });
   } catch (e) {
-    checks.push({ name: "Research task routed to reclaw-main", passed: false, detail: e.message });
+    checks.push({ name: "Research task routed to istara-main", passed: false, detail: e.message });
   }
 
   // ── 5. Create task with explicit agent_id → should respect assignment ──
@@ -99,12 +99,12 @@ export async function run(ctx) {
       project_id: ctx.projectId,
       title: "[SIM] Explicit assignment test",
       description: "This task has an explicit agent",
-      agent_id: "reclaw-ux-eval",
+      agent_id: "istara-ux-eval",
     });
     explicitTaskId = task.id;
     checks.push({
       name: "Explicit agent assignment respected",
-      passed: task.agent_id === "reclaw-ux-eval",
+      passed: task.agent_id === "istara-ux-eval",
       detail: `agent_id=${task.agent_id}`,
     });
   } catch (e) {
@@ -113,7 +113,7 @@ export async function run(ctx) {
 
   // ── 6. Agent specialties field ──
   try {
-    const mainAgent = await api.get("/api/agents/reclaw-main");
+    const mainAgent = await api.get("/api/agents/istara-main");
     checks.push({
       name: "Agent has specialties field",
       passed: Array.isArray(mainAgent.specialties),

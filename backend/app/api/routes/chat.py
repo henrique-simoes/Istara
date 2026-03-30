@@ -198,7 +198,7 @@ async def _generate_native_tools(
                 # Execute the tool
                 result = await execute_tool(
                     tool_name, tool_params, request.project_id,
-                    agent_id=session_agent_id or "reclaw-main",
+                    agent_id=session_agent_id or "istara-main",
                 )
 
                 result_text = result.get("result", result.get("error", "Unknown result"))
@@ -279,7 +279,7 @@ async def _generate_text_fallback(
 
             result = await execute_tool(
                 tool_name, tool_params, request.project_id,
-                agent_id=session_agent_id or "reclaw-main",
+                agent_id=session_agent_id or "istara-main",
             )
 
             result_text = result.get("result", result.get("error", "Unknown result"))
@@ -423,16 +423,16 @@ async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db)):
             session.last_message_at = user_msg.created_at
             await db.commit()
 
-    # If no agent identity loaded yet, default to reclaw-main
+    # If no agent identity loaded yet, default to istara-main
     if not agent_identity_prompt:
         try:
             agent_identity_prompt = await compose_dynamic_prompt(
-                "reclaw-main",
+                "istara-main",
                 query=request.message,
                 use_embeddings=True,
             )
         except Exception:
-            agent_identity_prompt = load_agent_identity("reclaw-main")
+            agent_identity_prompt = load_agent_identity("istara-main")
 
     # Retrieve context via RAG
     rag_context = await retrieve_context(request.project_id, request.message)

@@ -12,7 +12,7 @@ export default function PrivacyWarningBanner({ service, onAcknowledge }: { servi
             External Data Sharing
           </p>
           <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
-            This action sends data to {service}. This breaks ReClaw&apos;s local-first approach.
+            This action sends data to {service}. This breaks Istara&apos;s local-first approach.
             Your research data, prompts, and generated designs will be shared with external services.
           </p>
           <button onClick={onAcknowledge} className="mt-2 text-sm font-medium text-amber-800 dark:text-amber-200 underline hover:no-underline">

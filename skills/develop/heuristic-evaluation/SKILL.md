@@ -2,7 +2,7 @@
 name: heuristic-evaluation
 description: "Evaluate against Nielsen's 10 heuristics (or custom set), severity ratings, prioritized findings."
 metadata:
-  reclaw:
+  istara:
     phase: develop
     type: qualitative
     version: "1.0.0"

@@ -2,7 +2,7 @@
 name: research-retro
 description: "Analyze research process effectiveness, identify improvements, update team practices."
 metadata:
-  reclaw:
+  istara:
     phase: deliver
     type: qualitative
     version: "1.0.0"

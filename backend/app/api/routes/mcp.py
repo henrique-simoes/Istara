@@ -1,6 +1,6 @@
 """MCP management API -- server exposure control + client registry.
 
-MCP Server endpoints manage what ReClaw exposes to external agents.
+MCP Server endpoints manage what Istara exposes to external agents.
 MCP Client endpoints manage connections TO external MCP servers.
 """
 
@@ -61,7 +61,7 @@ class ToolCallRequest(BaseModel):
 
 
 # ===========================================================================
-# MCP SERVER ENDPOINTS (what ReClaw exposes)
+# MCP SERVER ENDPOINTS (what Istara exposes)
 # ===========================================================================
 
 
@@ -80,7 +80,7 @@ async def get_server_status(db: AsyncSession = Depends(get_db)):
         "mcp_library_installed": MCP_AVAILABLE,
         "exposure": exposure,
         "warning": (
-            "MCP server is ENABLED. External agents can access ReClaw data "
+            "MCP server is ENABLED. External agents can access Istara data "
             "according to the access policy."
         )
         if settings.mcp_server_enabled
@@ -402,7 +402,7 @@ async def connect_featured_server(
     body: ConnectFeaturedRequest,
     db: AsyncSession = Depends(get_db),
 ):
-    """Quick-connect a featured MCP server to ReClaw's client registry.
+    """Quick-connect a featured MCP server to Istara's client registry.
 
     Creates a new MCP client config from the featured server's definition,
     optionally setting environment variables (API keys).
@@ -424,7 +424,7 @@ async def connect_featured_server(
     if not featured:
         raise HTTPException(status_code=404, detail=f"Featured server '{server_id}' not found")
 
-    # Register using HTTP URL (preferred for ReClaw's client manager)
+    # Register using HTTP URL (preferred for Istara's client manager)
     url = featured.get("http_url", "")
     if not url:
         raise HTTPException(

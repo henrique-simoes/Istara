@@ -58,7 +58,7 @@ fn check_for_update() -> Option<UpdateAvailable> {
     let current = read_version_file().unwrap_or_else(|| "unknown".to_string());
 
     // Use a simple HTTP GET to GitHub API
-    let url = "https://api.github.com/repos/henrique-simoes/ReClaw/releases/latest";
+    let url = "https://api.github.com/repos/henrique-simoes/Istara/releases/latest";
 
     match std::process::Command::new("curl")
         .args(["-sS", "-H", "Accept: application/vnd.github.v3+json", url])
@@ -113,7 +113,7 @@ fn read_version_file() -> Option<String> {
             let version_path = exe
                 .parent()
                 .and_then(|p| p.parent())
-                .map(|p| p.join("Resources").join("reclaw").join("VERSION"));
+                .map(|p| p.join("Resources").join("istara").join("VERSION"));
             if let Some(path) = version_path {
                 if let Ok(v) = std::fs::read_to_string(path) {
                     return Some(v.trim().to_string());

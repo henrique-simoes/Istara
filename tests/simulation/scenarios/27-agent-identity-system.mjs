@@ -20,11 +20,11 @@ export async function run(ctx) {
     });
 
     const expectedNames = {
-      "reclaw-main": "ReClaw",
-      "reclaw-devops": "Sentinel",
-      "reclaw-ui-audit": "Pixel",
-      "reclaw-ux-eval": "Sage",
-      "reclaw-sim": "Echo",
+      "istara-main": "Istara",
+      "istara-devops": "Sentinel",
+      "istara-ui-audit": "Pixel",
+      "istara-ux-eval": "Sage",
+      "istara-sim": "Echo",
     };
 
     for (const [agentId, expectedName] of Object.entries(expectedNames)) {
@@ -49,7 +49,7 @@ export async function run(ctx) {
   }
 
   // ── 2. Persona MD files loaded via identity endpoint ──
-  const agentIds = ["reclaw-main", "reclaw-devops", "reclaw-ui-audit", "reclaw-ux-eval", "reclaw-sim"];
+  const agentIds = ["istara-main", "istara-devops", "istara-ui-audit", "istara-ux-eval", "istara-sim"];
   for (const agentId of agentIds) {
     try {
       const identity = await api.get(`/api/agents/${agentId}/identity`);
@@ -87,10 +87,10 @@ export async function run(ctx) {
 
   // ── 4. Learnings endpoint ──
   try {
-    const learnings = await api.get("/api/agents/reclaw-main/learnings");
+    const learnings = await api.get("/api/agents/istara-main/learnings");
     checks.push({
       name: "Learnings endpoint returns correct structure",
-      passed: learnings.agent_id === "reclaw-main" && Array.isArray(learnings.learnings),
+      passed: learnings.agent_id === "istara-main" && Array.isArray(learnings.learnings),
       detail: `agent_id=${learnings.agent_id}, learnings count=${(learnings.learnings || []).length}`,
     });
   } catch (e) {
@@ -121,10 +121,10 @@ export async function run(ctx) {
 
   // ── 6. MEMORY.md has learnings structure ──
   try {
-    const identity = await api.get("/api/agents/reclaw-main/identity");
+    const identity = await api.get("/api/agents/istara-main/identity");
     const memory = identity.files?.["MEMORY.md"] || "";
     checks.push({
-      name: "ReClaw MEMORY.md has learnings structure",
+      name: "Istara MEMORY.md has learnings structure",
       passed: memory.includes("Learnings Log") || memory.includes("Error Patterns"),
       detail: "Structure present",
     });
@@ -157,13 +157,13 @@ export async function run(ctx) {
 
   // ── 8. PUT identity endpoint exists and works ──
   try {
-    const identity = await api.get("/api/agents/reclaw-main/identity");
+    const identity = await api.get("/api/agents/istara-main/identity");
     const originalCore = identity.files?.["CORE.md"] || "";
     // Save with marker
-    await api.put("/api/agents/reclaw-main/identity", {
+    await api.put("/api/agents/istara-main/identity", {
       files: { "CORE.md": originalCore + "\n<!-- test27 -->" },
     });
-    const verify = await api.get("/api/agents/reclaw-main/identity");
+    const verify = await api.get("/api/agents/istara-main/identity");
     const hasMarker = (verify.files?.["CORE.md"] || "").includes("<!-- test27 -->");
     checks.push({
       name: "PUT identity endpoint works",
@@ -171,7 +171,7 @@ export async function run(ctx) {
       detail: hasMarker ? "Update confirmed" : "Update not persisted",
     });
     // Restore
-    await api.put("/api/agents/reclaw-main/identity", {
+    await api.put("/api/agents/istara-main/identity", {
       files: { "CORE.md": originalCore },
     });
   } catch (e) {
@@ -180,7 +180,7 @@ export async function run(ctx) {
 
   // ── 9. Agent specialties field present ──
   try {
-    const agent = await api.get("/api/agents/reclaw-main");
+    const agent = await api.get("/api/agents/istara-main");
     checks.push({
       name: "Agent model has specialties field",
       passed: agent.specialties !== undefined,

@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 
-const PREFIX = "reclaw_onboarding_";
+const PREFIX = "istara_onboarding_";
 
 /**
  * Hook for per-view onboarding dismissal state.

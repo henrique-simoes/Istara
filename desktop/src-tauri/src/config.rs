@@ -1,5 +1,5 @@
-/// Configuration for the ReClaw desktop app.
-/// Stored at ~/.reclaw/config.json
+/// Configuration for the Istara desktop app.
+/// Stored at ~/.istara/config.json
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
@@ -15,7 +15,7 @@ pub struct AppConfig {
     pub connection_string: String,
     /// Whether compute donation is enabled
     pub donate_compute: bool,
-    /// Path to the ReClaw installation directory
+    /// Path to the Istara installation directory
     pub install_dir: String,
 }
 
@@ -34,7 +34,7 @@ impl Default for AppConfig {
 
 fn config_path() -> PathBuf {
     let home = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
-    home.join(".reclaw").join("config.json")
+    home.join(".istara").join("config.json")
 }
 
 pub fn load_config() -> AppConfig {

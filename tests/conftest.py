@@ -1,4 +1,4 @@
-"""Pytest configuration for ReClaw tests."""
+"""Pytest configuration for Istara tests."""
 
 import sys
 from pathlib import Path

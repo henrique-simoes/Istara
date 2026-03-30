@@ -21,7 +21,7 @@ pub fn setup_tray<R: Runtime>(
 
     TrayIconBuilder::new()
         .menu(&menu)
-        .tooltip("ReClaw")
+        .tooltip("Istara")
         .show_menu_on_left_click(true)
         .on_menu_event(move |app, event| {
             let id = event.id().as_ref();
@@ -94,11 +94,11 @@ fn build_server_menu<R: Runtime>(
     let menu = Menu::with_items(
         app,
         &[
-            &MenuItem::with_id(app, "open", "Open ReClaw in Browser", true, None::<&str>)?,
+            &MenuItem::with_id(app, "open", "Open Istara in Browser", true, None::<&str>)?,
             &MenuItem::with_id(app, "start", "Start Server", true, None::<&str>)?,
             &MenuItem::with_id(app, "stop", "Stop Server", true, None::<&str>)?,
             &MenuItem::with_id(app, "donate", "Toggle Compute Donation", true, None::<&str>)?,
-            &MenuItem::with_id(app, "quit", "Quit ReClaw", true, None::<&str>)?,
+            &MenuItem::with_id(app, "quit", "Quit Istara", true, None::<&str>)?,
         ],
     )?;
     Ok(menu)
@@ -118,9 +118,9 @@ fn build_client_menu<R: Runtime>(
         app,
         &[
             &MenuItem::with_id(app, "status", &status_label, false, None::<&str>)?,
-            &MenuItem::with_id(app, "open", "Open ReClaw in Browser", true, None::<&str>)?,
+            &MenuItem::with_id(app, "open", "Open Istara in Browser", true, None::<&str>)?,
             &MenuItem::with_id(app, "donate", "Toggle Compute Donation", true, None::<&str>)?,
-            &MenuItem::with_id(app, "quit", "Quit ReClaw", true, None::<&str>)?,
+            &MenuItem::with_id(app, "quit", "Quit Istara", true, None::<&str>)?,
         ],
     )?;
     Ok(menu)

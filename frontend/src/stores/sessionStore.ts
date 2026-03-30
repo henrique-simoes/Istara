@@ -5,7 +5,7 @@ import type { ChatSession, InferencePreset, InferencePresetConfig } from "@/lib/
 import { sessions as sessionsApi } from "@/lib/api";
 
 // Persist activeSessionId to localStorage so it survives page refreshes
-const ACTIVE_SESSION_KEY = "reclaw-active-session";
+const ACTIVE_SESSION_KEY = "istara-active-session";
 
 function getSavedSessionId(): string | null {
   if (typeof window === "undefined") return null;

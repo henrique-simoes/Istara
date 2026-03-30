@@ -1,4 +1,4 @@
-"""Survey response ingestion — converts survey responses into ReClaw Nuggets.
+"""Survey response ingestion — converts survey responses into Istara Nuggets.
 
 Each question-answer pair from a survey response becomes a Nugget (raw evidence)
 in the Atomic Research evidence chain.  The nuggets are tagged with the survey
@@ -36,10 +36,10 @@ async def ingest_responses(
 
     Args:
         db: Async database session.
-        link: The SurveyLink that ties the external survey to a ReClaw project.
+        link: The SurveyLink that ties the external survey to a Istara project.
         responses: Normalised responses from a survey adapter, each with an
             ``"answers"`` key containing ``[{"question": str, "answer": str}, ...]``.
-        project_id: The ReClaw project to attach nuggets to.
+        project_id: The Istara project to attach nuggets to.
 
     Returns:
         A summary dict: ``{"nuggets_created": int, "responses_processed": int}``.

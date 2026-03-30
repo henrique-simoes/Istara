@@ -1,4 +1,4 @@
-"""WhatsApp Business Cloud API channel adapter for ReClaw.
+"""WhatsApp Business Cloud API channel adapter for Istara.
 
 Webhook-based adapter using the Meta Graph API for sending messages and
 receiving inbound messages via webhook callbacks.

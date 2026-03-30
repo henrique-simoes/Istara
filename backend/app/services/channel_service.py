@@ -299,7 +299,7 @@ async def send_message(
         instance_id=instance_id,
         direction="outbound",
         sender_id="system",
-        sender_name="ReClaw",
+        sender_name="Istara",
         content=text,
         channel_id=channel_id,
     )

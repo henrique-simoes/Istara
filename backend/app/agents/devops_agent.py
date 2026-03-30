@@ -44,7 +44,7 @@ class DevOpsAuditAgent:
         self._audit_log: list[dict] = []
         # Task execution worker
         from app.core.sub_agent_worker import SubAgentWorker
-        self._worker = SubAgentWorker("reclaw-devops", check_interval=30)
+        self._worker = SubAgentWorker("istara-devops", check_interval=30)
 
     async def start(self) -> None:
         """Start the continuous audit loop."""
@@ -94,7 +94,7 @@ class DevOpsAuditAgent:
                 try:
                     from app.core.agent_learning import agent_learning
                     await agent_learning.record_error_learning(
-                        agent_id="reclaw-devops",
+                        agent_id="istara-devops",
                         error_message=error_msg,
                         resolution="Caught in audit loop, will retry next cycle",
                     )

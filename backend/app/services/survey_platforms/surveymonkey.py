@@ -159,7 +159,7 @@ class SurveyMonkeyAdapter(SurveyPlatformAdapter):
     async def register_webhook(self, survey_id: str, webhook_url: str) -> dict:
         """POST /v3/webhooks — register for response_completed events."""
         body = {
-            "name": f"reclaw-{survey_id}",
+            "name": f"istara-{survey_id}",
             "event_type": "response_completed",
             "object_type": "survey",
             "object_ids": [survey_id],

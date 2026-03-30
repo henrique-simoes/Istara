@@ -1,5 +1,5 @@
 /**
- * Competitive analysis generator for ReClaw simulation.
+ * Competitive analysis generator for Istara simulation.
  * Produces realistic markdown competitor profile documents with
  * company overview, feature comparison, pricing, and market analysis.
  */

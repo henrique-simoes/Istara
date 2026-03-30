@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "description": "Pre-configured MCP servers available for one-click connection in ReClaw.",
+  "description": "Pre-configured MCP servers available for one-click connection in Istara.",
   "servers": [
     {
       "id": "mcp-brasil",
@@ -108,7 +108,7 @@
     {
       "id": "playwright-mcp",
       "name": "Playwright Browser",
-      "description": "Control a real browser from ReClaw agents. Navigate websites, click elements, fill forms, take screenshots, and extract accessibility trees. Essential for UX research: competitor analysis, usability testing, design evaluation, and web content extraction.",
+      "description": "Control a real browser from Istara agents. Navigate websites, click elements, fill forms, take screenshots, and extract accessibility trees. Essential for UX research: competitor analysis, usability testing, design evaluation, and web content extraction.",
       "package": "@playwright/mcp",
       "repository": "https://github.com/microsoft/playwright-mcp",
       "license": "Apache-2.0",

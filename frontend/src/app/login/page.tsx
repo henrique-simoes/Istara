@@ -34,7 +34,7 @@ export default function LoginPage() {
       <div className="w-full max-w-md p-8 bg-white dark:bg-slate-900 rounded-xl shadow-lg border border-slate-200 dark:border-slate-800">
         <div className="text-center mb-8">
           <span className="text-4xl">🐾</span>
-          <h1 className="text-2xl font-bold mt-2 text-slate-900 dark:text-white">ReClaw</h1>
+          <h1 className="text-2xl font-bold mt-2 text-slate-900 dark:text-white">Istara</h1>
           <p className="text-sm text-slate-500 mt-1">AI-Powered UX Research Platform</p>
         </div>
 
@@ -83,7 +83,7 @@ export default function LoginPage() {
               onChange={(e) => setUsername(e.target.value)}
               required
               autoComplete="username"
-              className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+              className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-istara-500"
             />
           </div>
 
@@ -100,7 +100,7 @@ export default function LoginPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   required
                   autoComplete="email"
-                  className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+                  className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-istara-500"
                 />
               </div>
               <div>
@@ -113,7 +113,7 @@ export default function LoginPage() {
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
                   autoComplete="name"
-                  className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+                  className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-istara-500"
                 />
               </div>
             </>
@@ -130,14 +130,14 @@ export default function LoginPage() {
               onChange={(e) => setPassword(e.target.value)}
               required
               autoComplete={mode === "login" ? "current-password" : "new-password"}
-              className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+              className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-istara-500"
             />
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-2.5 bg-reclaw-600 hover:bg-reclaw-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-reclaw-500 focus:ring-offset-2"
+            className="w-full py-2.5 bg-istara-600 hover:bg-istara-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-istara-500 focus:ring-offset-2"
           >
             {loading ? "Please wait..." : mode === "login" ? "Sign In" : "Create Account"}
           </button>

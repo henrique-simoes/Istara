@@ -90,7 +90,7 @@ export default function ChannelSetupWizard({ onClose }: ChannelSetupWizardProps)
         {/* Progress bar */}
         <div className="h-1 bg-slate-100 dark:bg-slate-800">
           <div
-            className="h-full bg-reclaw-500 transition-all duration-300"
+            className="h-full bg-istara-500 transition-all duration-300"
             style={{ width: `${((stepIndex + 1) / STEPS.length) * 100}%` }}
           />
         </div>
@@ -116,7 +116,7 @@ export default function ChannelSetupWizard({ onClose }: ChannelSetupWizardProps)
                     className={cn(
                       "flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all text-center",
                       selectedPlatform === p.id
-                        ? "border-reclaw-500 bg-reclaw-50 dark:bg-reclaw-900/20"
+                        ? "border-istara-500 bg-istara-50 dark:bg-istara-900/20"
                         : "border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600"
                     )}
                   >
@@ -147,7 +147,7 @@ export default function ChannelSetupWizard({ onClose }: ChannelSetupWizardProps)
                       placeholder={field.placeholder}
                       value={credentials[field.label] || ""}
                       onChange={(e) => setCredentials({ ...credentials, [field.label]: e.target.value })}
-                      className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+                      className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-istara-500"
                     />
                   </div>
                 ))}
@@ -167,7 +167,7 @@ export default function ChannelSetupWizard({ onClose }: ChannelSetupWizardProps)
                 placeholder="e.g., Research Telegram Bot"
                 value={channelName}
                 onChange={(e) => setChannelName(e.target.value)}
-                className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+                className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-istara-500"
                 autoFocus
               />
             </div>
@@ -189,7 +189,7 @@ export default function ChannelSetupWizard({ onClose }: ChannelSetupWizardProps)
                   <button
                     onClick={handleTest}
                     disabled={testing}
-                    className="px-4 py-2 text-sm bg-reclaw-600 text-white rounded-lg hover:bg-reclaw-700 disabled:opacity-50 transition-colors"
+                    className="px-4 py-2 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700 disabled:opacity-50 transition-colors"
                   >
                     {testing ? "Testing..." : "Retry"}
                   </button>
@@ -199,7 +199,7 @@ export default function ChannelSetupWizard({ onClose }: ChannelSetupWizardProps)
                   <button
                     onClick={handleTest}
                     disabled={testing}
-                    className="px-6 py-2.5 text-sm bg-reclaw-600 text-white rounded-lg hover:bg-reclaw-700 disabled:opacity-50 transition-colors"
+                    className="px-6 py-2.5 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700 disabled:opacity-50 transition-colors"
                   >
                     {testing ? "Testing Connection..." : "Test Connection"}
                   </button>
@@ -214,7 +214,7 @@ export default function ChannelSetupWizard({ onClose }: ChannelSetupWizardProps)
           {/* Step: Done */}
           {currentStep === "done" && (
             <div className="text-center py-4">
-              <CheckCircle2 size={48} className="mx-auto mb-4 text-reclaw-500" />
+              <CheckCircle2 size={48} className="mx-auto mb-4 text-istara-500" />
               <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Channel Connected!</h2>
               <p className="text-sm text-slate-600 dark:text-slate-400">
                 Your {PLATFORMS.find((p) => p.id === selectedPlatform)?.label} channel &ldquo;{channelName}&rdquo; is ready.
@@ -240,7 +240,7 @@ export default function ChannelSetupWizard({ onClose }: ChannelSetupWizardProps)
                 key={i}
                 className={cn(
                   "w-2 h-2 rounded-full transition-colors",
-                  i === stepIndex ? "bg-reclaw-500" : i < stepIndex ? "bg-reclaw-300" : "bg-slate-200 dark:bg-slate-700"
+                  i === stepIndex ? "bg-istara-500" : i < stepIndex ? "bg-istara-300" : "bg-slate-200 dark:bg-slate-700"
                 )}
               />
             ))}
@@ -248,14 +248,14 @@ export default function ChannelSetupWizard({ onClose }: ChannelSetupWizardProps)
 
           <div>
             {currentStep === "done" ? (
-              <button onClick={onClose} className="px-4 py-2 text-sm bg-reclaw-600 text-white rounded-lg hover:bg-reclaw-700 transition-colors">
+              <button onClick={onClose} className="px-4 py-2 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700 transition-colors">
                 Done
               </button>
             ) : currentStep === "test" ? null : (
               <button
                 onClick={goNext}
                 disabled={!canProceed()}
-                className="flex items-center gap-1 px-4 py-2 text-sm bg-reclaw-600 text-white rounded-lg hover:bg-reclaw-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="flex items-center gap-1 px-4 py-2 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 Next <ChevronRight size={14} />
               </button>

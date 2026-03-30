@@ -46,12 +46,12 @@ class ProjectVersioning:
             return
 
         self._run_git("init")
-        self._run_git("config", "user.email", "reclaw@local")
-        self._run_git("config", "user.name", "ReClaw")
+        self._run_git("config", "user.email", "istara@local")
+        self._run_git("config", "user.name", "Istara")
 
         # Initial commit
         readme = self.project_dir / "README.md"
-        readme.write_text(f"# Project: {self.project_id}\n\nManaged by ReClaw.\n")
+        readme.write_text(f"# Project: {self.project_id}\n\nManaged by Istara.\n")
         self._run_git("add", ".")
         self._run_git("commit", "-m", "Initialize project")
 

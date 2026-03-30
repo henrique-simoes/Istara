@@ -5,7 +5,7 @@ import type { Project } from "@/lib/types";
 import { projects as projectsApi } from "@/lib/api";
 
 // Persist activeProjectId to localStorage so it survives page refreshes
-const PROJECT_KEY = "reclaw-active-project";
+const PROJECT_KEY = "istara-active-project";
 
 function getSavedProjectId(): string | null {
   if (typeof window === "undefined") return null;
