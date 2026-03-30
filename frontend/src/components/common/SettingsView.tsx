@@ -7,6 +7,7 @@ import type { HardwareInfo, ModelRecommendation } from "@/lib/types";
 import { useAuthStore } from "@/stores/authStore";
 import UserManagement from "./UserManagement";
 import ConnectionStringPanel from "@/components/settings/ConnectionStringPanel";
+import UpdateChecker from "@/components/settings/UpdateChecker";
 import DonateComputeToggle from "@/components/common/DonateComputeToggle";
 import { resetAllOnboarding } from "@/hooks/useViewOnboarding";
 
@@ -54,6 +55,9 @@ export default function SettingsView() {
   return (
     <div className="flex-1 overflow-y-auto p-6 max-w-3xl mx-auto space-y-6">
       <h2 className="text-lg font-semibold text-slate-900 dark:text-white">⚙️ Settings</h2>
+
+      {/* Software Updates */}
+      <UpdateChecker />
 
       {/* Team Members */}
       <UserManagement />

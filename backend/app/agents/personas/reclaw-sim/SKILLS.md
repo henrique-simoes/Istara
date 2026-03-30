@@ -148,6 +148,11 @@
 - **Folder linking provider types**: Test linking a Google Drive folder (mock path or mount), a Dropbox folder, and a local filesystem folder. Verify `linked_folder_type` is correctly set to `gdrive`, `dropbox`, or `local` respectively. Test switching a project's linked folder from one provider to another — verify the old watcher is stopped and the new one starts.
 - **Onboarding banner content accuracy**: For each of the 21 views, verify the banner title and description match the view's purpose. Verify the chat prompt suggestion is contextually relevant (e.g., Skills view suggests a skill-related prompt, not a project prompt). Test clicking a chat prompt suggestion — verify it populates the chat input.
 
+### Versioning & Update Simulation Scenarios
+- **Version check**: Call `GET /api/updates/version`, verify returns CalVer string matching VERSION file. Call `GET /api/updates/check`, verify GitHub API response parsing. Test with no releases (404), current release (no update), older release (update available).
+- **Pre-update backup**: Call `POST /api/updates/prepare`, verify backup record created, verify backup file exists on disk with correct checksums. Test with insufficient disk space (should fail gracefully).
+- **CalVer ordering**: Verify `2026.03.29` < `2026.03.30` < `2026.04.01` < `2026.04.01.2` lexicographically. Test daily build number increment via `set-version.sh --bump`.
+
 ### Production Installer Simulation Scenarios
 - **Dependency detection**: Call `installer::detect_dependencies()` on a fresh machine. Verify Python, Node, Ollama, LM Studio, Docker detection returns correct `detected` booleans and version strings. Test with deps installed and uninstalled.
 - **NSIS install mode capture**: Run Windows installer, select "Client Only" mode, verify `$InstallMode` is "client" (not hardcoded "full"). Verify dependency page is skipped for client mode.

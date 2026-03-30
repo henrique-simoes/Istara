@@ -145,6 +145,11 @@
 - ViewOnboarding localStorage persistence: banners are dismissed per-view using localStorage keys. Monitor for: localStorage quota exhaustion on constrained environments, stale keys accumulating after views are renamed or removed, and the Settings "Reset Onboarding Hints" button failing to clear all keys.
 - OnboardingWizard LLM health step: step 2 probes the configured LLM provider. Monitor for: probe timeouts blocking wizard progression, false negatives when LM Studio is healthy but slow to respond, and error messaging that exposes internal endpoint URLs.
 
+### Versioning & Auto-Updates
+- CalVer `YYYY.MM.DD[.N]` set across 7 files by `scripts/set-version.sh`. CI/CD auto-versions on build. Monitor: VERSION file consistency, CalVer lexicographic comparison correctness, GitHub API rate limits on update checks (60/hr unauthenticated).
+- `POST /api/updates/prepare` triggers pre-update backup via backup_manager. Monitor: backup completion before update proceeds, disk space for backup, backup verification checksums.
+- Tray app checks GitHub Releases API every 6h via curl subprocess. Monitor: curl availability on all platforms, JSON parsing edge cases, network failure handling.
+
 ### Production Installer & Desktop App
 - CI/CD pipeline: `.github/workflows/build-installers.yml` builds macOS DMG + Windows EXE on every push to main. Tag pushes (v*) create GitHub Releases with both artifacts. Monitor build times and artifact sizes.
 - Secret generation: `scripts/generate-secrets.sh` now produces 5 keys (JWT_SECRET, DATA_ENCRYPTION_KEY, NETWORK_ACCESS_TOKEN, RELAY_TOKEN, POSTGRES_PASSWORD). Ensure rotation procedures exist for production deployments.

@@ -1,6 +1,6 @@
 [package]
 name = "reclaw-desktop"
-version = "0.1.0"
+version = "2026.03.29"
 description = "ReClaw Desktop — System tray app for managing ReClaw server and relay"
 authors = ["ReClaw Team"]
 license = "MIT"
