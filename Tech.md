@@ -1110,14 +1110,15 @@ istara logs     # Tail both log files
 ### Desktop App (Tauri v2) — Tray Manager
 System tray application for macOS (menubar) and Windows (system tray). **Manager only — does not install.**
 
-- `ProcessManager` (Rust) spawns/kills uvicorn, Next.js, and relay daemon
-- `path_resolver.rs` finds Python/Node at real filesystem paths (venv, Homebrew ARM/Intel, pyenv, nvm, fnm, python.org, system)
-- `Stdio::null()` prevents pipe deadlocks on long-running processes
-- Health polling via TCP connect to ports 8000/3000 every 10s
-- Tray menu: Open Istara, Start/Stop Server, Start LM Studio, Compute Donation, Check for Updates, Quit
-- Auto-start via `~/.istara/config.json` — reads `mode`, `install_dir`, `donate_compute`
-- Auto-update via `tauri-plugin-updater` with Ed25519 signed releases and `latest.json` from GitHub Releases
-- Bug fix: uses `app.tray_by_id("main")` instead of `TrayIconBuilder::new()` (tauri-apps/tauri#11931)
+- `ProcessManager` (Rust) spawns/kills uvicorn, Next.js, and relay daemon. **Zombie detection**: `try_wait()` checks if child processes are actually alive before reporting `is_running()`. Dead processes are cleaned up automatically on next call. Also checks port 8000/3000 as fallback for externally-started servers.
+- **Process logging**: stdout/stderr go to `~/.istara/logs/{backend,frontend,relay}.log` instead of /dev/null. Enables debugging when processes crash.
+- `path_resolver.rs` finds Python/Node at real filesystem paths (venv, Homebrew ARM/Intel, pyenv, nvm, fnm, python.org, system). Validates existence before returning.
+- Health loop: polls ports every 10s, rebuilds tray menu only on state change or every 30s (not every 10s), checks GitHub for updates every 6h with rate-limit detection.
+- Tray menu: rebuilds after every user action (Start/Stop, Donate toggle) to update labels immediately. "Open Istara" checks if server is actually running and shows dialog if not.
+- Donate Compute: verifies relay actually starts before saving config. If relay fails, config is NOT updated — prevents "On" label with no relay running.
+- Config resilience: corrupt `config.json` is backed up to `.json.bak` before resetting to defaults. Logged as warning.
+- Check Updates: tries Tauri updater first (DMG installs), falls back to GitHub Releases dialog (shell installs) with `istara update` hint.
+- Auto-start via `~/.istara/config.json` — reads `mode`, `install_dir`, `donate_compute`. Startup errors are logged (not silently discarded).
 
 ### Login UX
 - **Local mode** (default, single user): "Welcome to Istara" screen with name field only, "Get Started" button, no password. Backend accepts any credentials and issues admin JWT.
