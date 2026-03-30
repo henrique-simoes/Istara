@@ -5,6 +5,19 @@ import { Wifi, WifiOff, Cpu, HardDrive } from "lucide-react";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import type { WSEvent } from "@/lib/types";
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+function IstaraVersion() {
+  const [version, setVersion] = useState("...");
+  useEffect(() => {
+    fetch(`${API_BASE}/api/updates/version`)
+      .then(r => r.json())
+      .then(d => setVersion(d.version || "dev"))
+      .catch(() => setVersion("dev"));
+  }, []);
+  return <span>🐾 Istara v{version}</span>;
+}
+
 export default function StatusBar() {
   const [agentStatus, setAgentStatus] = useState("Idle");
   const [agentDetail, setAgentDetail] = useState("");
@@ -62,7 +75,7 @@ export default function StatusBar() {
 
       <div className="flex items-center gap-4">
         <span className="hidden sm:inline">Press <kbd className="px-1 py-0.5 bg-slate-200 dark:bg-slate-700 rounded text-[10px]">?</kbd> for shortcuts</span>
-        <span>🐾 Istara v{process.env.npm_package_version || "0.1.0"}</span>
+        <IstaraVersion />
       </div>
     </footer>
   );
