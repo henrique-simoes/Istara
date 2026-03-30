@@ -89,7 +89,7 @@ Istara runs entirely on your hardware. It ships with five specialized AI agents,
 
 ## Istara vs. The Alternatives
 
-| Capability | Istara | Dovetail / Maze / UserTesting |
+| Capability | Istara | Alternatives |
 |---|---|---|
 | Data privacy | 100% local — data never leaves your machine | Uploaded to vendor cloud |
 | Agent memory | Persistent, evolving personas across sessions | Stateless API calls |
