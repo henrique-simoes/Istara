@@ -145,6 +145,13 @@
 - ViewOnboarding localStorage persistence: banners are dismissed per-view using localStorage keys. Monitor for: localStorage quota exhaustion on constrained environments, stale keys accumulating after views are renamed or removed, and the Settings "Reset Onboarding Hints" button failing to clear all keys.
 - OnboardingWizard LLM health step: step 2 probes the configured LLM provider. Monitor for: probe timeouts blocking wizard progression, false negatives when LM Studio is healthy but slow to respond, and error messaging that exposes internal endpoint URLs.
 
+### Production Installer & Desktop App
+- CI/CD pipeline: `.github/workflows/build-installers.yml` builds macOS DMG + Windows EXE on every push to main. Tag pushes (v*) create GitHub Releases with both artifacts. Monitor build times and artifact sizes.
+- Secret generation: `scripts/generate-secrets.sh` now produces 5 keys (JWT_SECRET, DATA_ENCRYPTION_KEY, NETWORK_ACCESS_TOKEN, RELAY_TOKEN, POSTGRES_PASSWORD). Ensure rotation procedures exist for production deployments.
+- Desktop ProcessManager (Rust): spawns uvicorn and Next.js as child processes with PID tracking. Monitor for zombie processes if Tauri app crashes without graceful shutdown.
+- NSIS installer downloads Python/Node.js from official sources during install. Verify download URLs stay valid across Python/Node version bumps. Pin to specific versions in the NSIS script.
+- macOS DMG bundles source in `ReClaw.app/Contents/Resources/reclaw/`. LaunchAgent at `~/Library/LaunchAgents/com.reclaw.server.plist` enables auto-start. Monitor for Gatekeeper/notarization issues.
+
 ### Auth & Onboarding Fixes
 - `GET /auth/me` JWT validation: the endpoint now decodes the JWT and returns the full user object (including `role`). Monitor for: token expiry edge cases where `fetchMe()` fires before the refresh token flow completes, returning a 401 that clears the user store.
 - `fetchMe()` timing: the frontend calls `/auth/me` on page load to restore the session. If the call races with other authenticated requests during hydration, stale auth state may briefly appear. Monitor for 401 spikes at page-load time.

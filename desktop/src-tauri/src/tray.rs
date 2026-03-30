@@ -1,10 +1,12 @@
 /// System tray setup and menu construction.
 /// Two modes: Server+Client (full menu) and Client-only (relay menu).
+/// Menu events are wired to actual process management commands.
+use crate::commands::AppState;
 use crate::config::AppConfig;
 use tauri::{
     menu::{Menu, MenuItem},
-    tray::TrayIconBuilder,
-    AppHandle, Runtime,
+    tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
+    AppHandle, Manager, Runtime,
 };
 
 pub fn setup_tray<R: Runtime>(
@@ -20,8 +22,66 @@ pub fn setup_tray<R: Runtime>(
     TrayIconBuilder::new()
         .menu(&menu)
         .tooltip("ReClaw")
-        .on_menu_event(move |_app, event| {
-            println!("Tray menu event: {:?}", event.id());
+        .show_menu_on_left_click(true)
+        .on_menu_event(move |app, event| {
+            let id = event.id().as_ref();
+            match id {
+                "open" => {
+                    let _ = open::that(
+                        if crate::config::load_config().mode == "server" {
+                            "http://localhost:3000"
+                        } else {
+                            &crate::config::load_config().server_url
+                        }
+                    );
+                }
+                "start" => {
+                    let state: tauri::State<'_, AppState> = app.state();
+                    if let Ok(mut pm) = state.process_manager.lock() {
+                        let cfg = crate::config::load_config();
+                        let dir = if cfg.install_dir.is_empty() {
+                            crate::commands::find_install_dir_public()
+                        } else {
+                            cfg.install_dir.clone()
+                        };
+                        let _ = pm.start_backend(&dir);
+                        let _ = pm.start_frontend(&dir);
+                    }
+                }
+                "stop" => {
+                    let state: tauri::State<'_, AppState> = app.state();
+                    if let Ok(mut pm) = state.process_manager.lock() {
+                        pm.stop_all();
+                    }
+                }
+                "donate" => {
+                    let mut cfg = crate::config::load_config();
+                    cfg.donate_compute = !cfg.donate_compute;
+                    let _ = crate::config::save_config(&cfg);
+
+                    let state: tauri::State<'_, AppState> = app.state();
+                    if let Ok(mut pm) = state.process_manager.lock() {
+                        if cfg.donate_compute {
+                            let dir = if cfg.install_dir.is_empty() {
+                                crate::commands::find_install_dir_public()
+                            } else {
+                                cfg.install_dir.clone()
+                            };
+                            let _ = pm.start_relay(&dir, &cfg.connection_string);
+                        } else {
+                            pm.stop_relay();
+                        }
+                    }
+                }
+                "quit" => {
+                    let state: tauri::State<'_, AppState> = app.state();
+                    if let Ok(mut pm) = state.process_manager.lock() {
+                        pm.stop_all();
+                    }
+                    app.exit(0);
+                }
+                _ => {}
+            }
         })
         .build(app)?;
 
@@ -34,14 +94,10 @@ fn build_server_menu<R: Runtime>(
     let menu = Menu::with_items(
         app,
         &[
-            &MenuItem::with_id(app, "open", "Open ReClaw", true, None::<&str>)?,
-            &MenuItem::with_id(app, "separator1", "---", false, None::<&str>)?,
+            &MenuItem::with_id(app, "open", "Open ReClaw in Browser", true, None::<&str>)?,
             &MenuItem::with_id(app, "start", "Start Server", true, None::<&str>)?,
             &MenuItem::with_id(app, "stop", "Stop Server", true, None::<&str>)?,
-            &MenuItem::with_id(app, "separator2", "---", false, None::<&str>)?,
-            &MenuItem::with_id(app, "stats", "System Stats...", true, None::<&str>)?,
-            &MenuItem::with_id(app, "donate", "Compute Donation: Off", true, None::<&str>)?,
-            &MenuItem::with_id(app, "separator3", "---", false, None::<&str>)?,
+            &MenuItem::with_id(app, "donate", "Toggle Compute Donation", true, None::<&str>)?,
             &MenuItem::with_id(app, "quit", "Quit ReClaw", true, None::<&str>)?,
         ],
     )?;
@@ -62,18 +118,8 @@ fn build_client_menu<R: Runtime>(
         app,
         &[
             &MenuItem::with_id(app, "status", &status_label, false, None::<&str>)?,
-            &MenuItem::with_id(app, "open", "Open ReClaw", true, None::<&str>)?,
-            &MenuItem::with_id(app, "separator1", "---", false, None::<&str>)?,
-            &MenuItem::with_id(app, "stats", "System Stats...", true, None::<&str>)?,
-            &MenuItem::with_id(
-                app,
-                "donate",
-                if cfg.donate_compute { "Donating Compute" } else { "Compute Donation: Off" },
-                true,
-                None::<&str>,
-            )?,
-            &MenuItem::with_id(app, "change_server", "Change Server...", true, None::<&str>)?,
-            &MenuItem::with_id(app, "separator2", "---", false, None::<&str>)?,
+            &MenuItem::with_id(app, "open", "Open ReClaw in Browser", true, None::<&str>)?,
+            &MenuItem::with_id(app, "donate", "Toggle Compute Donation", true, None::<&str>)?,
             &MenuItem::with_id(app, "quit", "Quit ReClaw", true, None::<&str>)?,
         ],
     )?;
