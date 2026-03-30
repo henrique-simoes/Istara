@@ -124,6 +124,38 @@ pub fn get_server_status() -> Result<serde_json::Value, String> {
     }))
 }
 
+/// Run the full backend setup: create venv, install deps, generate .env.
+#[tauri::command]
+pub fn run_backend_setup(llm_provider: String) -> Result<Vec<String>, String> {
+    let install_dir = find_install_dir();
+    let path = std::path::Path::new(&install_dir);
+    crate::backend_setup::setup_backend(path, &llm_provider)
+}
+
+/// Run the frontend setup: npm install + build.
+#[tauri::command]
+pub fn run_frontend_setup() -> Result<Vec<String>, String> {
+    let install_dir = find_install_dir();
+    let path = std::path::Path::new(&install_dir);
+    crate::backend_setup::setup_frontend(path)
+}
+
+/// Save the setup configuration and mark first-run complete.
+#[tauri::command]
+pub fn save_setup_config(mode: String, llm_provider: String, connection_string: String) -> Result<String, String> {
+    let install_dir = find_install_dir();
+    let mut cfg = config::AppConfig::default();
+    cfg.mode = mode;
+    cfg.install_dir = install_dir;
+    cfg.connection_string = connection_string;
+    cfg.donate_compute = false;
+    if cfg.mode == "client" {
+        cfg.server_url = "remote".to_string();
+    }
+    config::save_config(&cfg)?;
+    Ok("Setup complete".to_string())
+}
+
 /// Public wrapper for find_install_dir (used from main.rs).
 pub fn find_install_dir_public() -> String {
     find_install_dir()
