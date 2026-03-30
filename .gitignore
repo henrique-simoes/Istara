@@ -86,3 +86,6 @@ data/mcp_cache/
 # Autoresearch data
 data/autoresearch/
 data/_skill_model_config.json
+
+# Rust build output
+desktop/src-tauri/target/

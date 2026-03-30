@@ -1,6 +1,8 @@
 /// Backend and frontend setup — creates venv, installs deps, generates .env, builds frontend.
 /// Called during the installation wizard's progress step.
+/// All operations run in the WRITABLE data directory (not the app bundle).
 
+use crate::path_resolver;
 use std::fs;
 use std::path::Path;
 use std::process::Command;
@@ -16,7 +18,8 @@ pub fn setup_backend(install_dir: &Path, llm_provider: &str) -> Result<Vec<Strin
 
     // 1. Create Python virtual environment
     log.push("Creating Python virtual environment...".to_string());
-    let python = find_python();
+    let python = path_resolver::find_python(install_dir.to_str().unwrap_or("."));
+    log.push(format!("  Using Python: {}", python));
     let venv_dir = install_dir.join("venv");
     Command::new(&python)
         .args(["-m", "venv", venv_dir.to_str().unwrap()])
@@ -26,7 +29,7 @@ pub fn setup_backend(install_dir: &Path, llm_provider: &str) -> Result<Vec<Strin
 
     // 2. Install pip dependencies
     log.push("Installing backend dependencies (this may take a few minutes)...".to_string());
-    let pip = get_pip_path(&venv_dir);
+    let pip = path_resolver::find_pip(install_dir.to_str().unwrap_or("."));
     let status = Command::new(&pip)
         .args(["install", "-r", backend_dir.join("requirements.txt").to_str().unwrap()])
         .status()
@@ -63,15 +66,16 @@ pub fn setup_frontend(install_dir: &Path) -> Result<Vec<String>, String> {
 
     // 1. npm ci (clean install)
     log.push("Installing frontend dependencies...".to_string());
-    let npm = if cfg!(target_os = "windows") { "npm.cmd" } else { "npm" };
-    let status = Command::new(npm)
+    let npm = path_resolver::find_npm();
+    log.push(format!("  Using npm: {}", npm));
+    let status = Command::new(&npm)
         .args(["ci"])
         .current_dir(&frontend_dir)
         .status()
         .map_err(|e| format!("npm ci failed: {}", e))?;
     if !status.success() {
         // Fallback to npm install
-        Command::new(npm)
+        Command::new(&npm)
             .args(["install"])
             .current_dir(&frontend_dir)
             .status()
@@ -81,7 +85,7 @@ pub fn setup_frontend(install_dir: &Path) -> Result<Vec<String>, String> {
 
     // 2. Build production frontend
     log.push("Building frontend (this may take a minute)...".to_string());
-    let status = Command::new(npm)
+    let status = Command::new(&npm)
         .args(["run", "build"])
         .current_dir(&frontend_dir)
         .env("NEXT_PUBLIC_API_URL", "http://localhost:8000")
@@ -214,16 +218,4 @@ fn generate_random_base64(bytes: usize) -> String {
     encoded
 }
 
-fn find_python() -> String {
-    #[cfg(target_os = "windows")]
-    { "python".to_string() }
-    #[cfg(not(target_os = "windows"))]
-    { "python3".to_string() }
-}
-
-fn get_pip_path(venv_dir: &Path) -> String {
-    #[cfg(target_os = "windows")]
-    { venv_dir.join("Scripts").join("pip.exe").to_string_lossy().to_string() }
-    #[cfg(not(target_os = "windows"))]
-    { venv_dir.join("bin").join("pip").to_string_lossy().to_string() }
-}
+// Python and pip paths are now resolved by path_resolver module.

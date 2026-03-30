@@ -12,8 +12,10 @@
 mod backend_setup;
 mod commands;
 mod config;
+mod first_run;
 mod health;
 mod installer;
+mod path_resolver;
 mod process;
 mod stats;
 mod tray;
