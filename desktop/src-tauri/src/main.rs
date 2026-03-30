@@ -46,19 +46,29 @@ fn main() {
             if cfg.mode == "server" && !cfg.install_dir.is_empty() {
                 if std::path::Path::new(&cfg.install_dir).join("backend").exists() {
                     if let Ok(mut guard) = pm.lock() {
-                        let _ = guard.start_backend(&cfg.install_dir);
-                        let _ = guard.start_frontend(&cfg.install_dir);
+                        if let Err(e) = guard.start_backend(&cfg.install_dir) {
+                            eprintln!("[tray] Auto-start backend failed: {}", e);
+                        }
+                        if let Err(e) = guard.start_frontend(&cfg.install_dir) {
+                            eprintln!("[tray] Auto-start frontend failed: {}", e);
+                        }
                         if cfg.donate_compute {
-                            let _ = guard.start_relay(&cfg.install_dir, &cfg.connection_string);
+                            if let Err(e) = guard.start_relay(&cfg.install_dir, &cfg.connection_string) {
+                                eprintln!("[tray] Auto-start relay failed: {}", e);
+                            }
                         }
                     }
+                } else {
+                    eprintln!("[tray] Backend dir not found at: {}/backend", cfg.install_dir);
                 }
             }
 
             // Auto-start relay for client mode
             if cfg.mode == "client" && !cfg.connection_string.is_empty() && cfg.donate_compute {
                 if let Ok(mut guard) = pm.lock() {
-                    let _ = guard.start_relay(&cfg.install_dir, &cfg.connection_string);
+                    if let Err(e) = guard.start_relay(&cfg.install_dir, &cfg.connection_string) {
+                        eprintln!("[tray] Auto-start relay (client) failed: {}", e);
+                    }
                 }
             }
 
