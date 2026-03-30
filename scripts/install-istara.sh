@@ -40,14 +40,16 @@ ask()     { printf "  ${BOLD}?${NC} %s" "$*"; }
 
 prompt_default() {
     local q="$1" d="$2"
-    ask "$q ${DIM}[$d]${NC}: "
+    # Must write prompt to /dev/tty, NOT stdout — because callers use $(prompt_default ...)
+    # which captures stdout. Without this, the prompt is invisible and the script hangs.
+    printf "  ${BOLD}?${NC} %s ${DIM}[%s]${NC}: " "$q" "$d" >/dev/tty
     local r; read -r r </dev/tty
     echo "${r:-$d}"
 }
 
 prompt_password() {
-    ask "$1: "
-    local p; read -rs p </dev/tty; echo "" >&2
+    printf "  ${BOLD}?${NC} %s: " "$1" >/dev/tty
+    local p; read -rs p </dev/tty; printf "\n" >/dev/tty
     echo "$p"
 }
 
