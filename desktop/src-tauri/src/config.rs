@@ -1,5 +1,6 @@
 /// Configuration for the Istara desktop app.
 /// Stored at ~/.istara/config.json
+/// Handles corrupt configs gracefully with backup + recovery.
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
@@ -39,13 +40,30 @@ fn config_path() -> PathBuf {
 
 pub fn load_config() -> AppConfig {
     let path = config_path();
-    if path.exists() {
-        match std::fs::read_to_string(&path) {
-            Ok(content) => serde_json::from_str(&content).unwrap_or_default(),
-            Err(_) => AppConfig::default(),
+    if !path.exists() {
+        return AppConfig::default();
+    }
+
+    match std::fs::read_to_string(&path) {
+        Ok(content) => {
+            match serde_json::from_str::<AppConfig>(&content) {
+                Ok(cfg) => cfg,
+                Err(e) => {
+                    // Config is corrupt — back it up and return defaults
+                    eprintln!(
+                        "[tray] WARNING: config.json is corrupt ({}). Backing up to config.json.bak",
+                        e
+                    );
+                    let backup = path.with_extension("json.bak");
+                    let _ = std::fs::copy(&path, &backup);
+                    AppConfig::default()
+                }
+            }
         }
-    } else {
-        AppConfig::default()
+        Err(e) => {
+            eprintln!("[tray] WARNING: Cannot read config.json: {}", e);
+            AppConfig::default()
+        }
     }
 }
 
