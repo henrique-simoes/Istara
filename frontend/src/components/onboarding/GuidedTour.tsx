@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useCallback, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, type ReactNode } from "react";
 import { useTourStore, TOUR_TOTAL_STEPS } from "@/stores/tourStore";
 import { settings as settingsApi } from "@/lib/api";
 import TourPopover from "./TourPopover";
@@ -13,17 +13,21 @@ interface GuidedTourProps {
   currentView: string;
 }
 
+type TourStore = ReturnType<typeof useTourStore.getState>;
+interface ExtraInfo {
+  llmConnected: boolean;
+  llmProvider: string;
+  llmModel: string;
+}
+
 /** Step definitions for the guided tour. */
 interface StepDef {
-  view: string | null; // null = inline step (no view navigation)
+  view: string | null;
   targetSelector: string | null;
   placement: "top" | "bottom" | "left" | "right";
   title: string;
-  getDescription: (tour: ReturnType<typeof useTourStore.getState>) => React.ReactNode;
-  getActions: (
-    tour: ReturnType<typeof useTourStore.getState>,
-    extra: { llmConnected: boolean; llmProvider: string; llmModel: string },
-  ) => { label: string; onClick: () => void; variant?: "primary" | "secondary" | "ghost" }[];
+  getDescription: (tour: TourStore, extra: ExtraInfo) => ReactNode;
+  getActions: (tour: TourStore, extra: ExtraInfo) => { label: string; onClick: () => void; variant?: "primary" | "secondary" | "ghost" }[];
   spotlight?: boolean;
 }
 
@@ -34,8 +38,8 @@ const STEPS: StepDef[] = [
     targetSelector: null,
     placement: "bottom",
     title: "Welcome",
-    getDescription: () => "",
-    getActions: () => [],
+    getDescription: (_t, _e) => "",
+    getActions: (_t, _e) => [],
   },
   // Step 1: Create Project — rendered by TourInlineStep
   {
@@ -43,8 +47,8 @@ const STEPS: StepDef[] = [
     targetSelector: null,
     placement: "bottom",
     title: "Create Project",
-    getDescription: () => "",
-    getActions: () => [],
+    getDescription: (_t, _e) => "",
+    getActions: (_t, _e) => [],
   },
   // Step 2: Team Mode
   {
@@ -52,14 +56,14 @@ const STEPS: StepDef[] = [
     targetSelector: "#tour-target-team-mode",
     placement: "bottom",
     title: "Invite Your Team",
-    getDescription: () => (
+    getDescription: (_t: TourStore, _e: ExtraInfo) => (
       <p>
         Enable <strong>Team Mode</strong> to let others collaborate on your research.
         Toggle it on, or skip this for solo use.
       </p>
     ),
-    getActions: (tour) => [
-      { label: "Next", onClick: () => tour.nextStep(), variant: "primary" },
+    getActions: (tour: TourStore, _e: ExtraInfo) => [
+      { label: "Next", onClick: () => tour.nextStep(), variant: "primary" as const },
     ],
     spotlight: true,
   },
@@ -69,14 +73,14 @@ const STEPS: StepDef[] = [
     targetSelector: "#tour-target-user-management",
     placement: "bottom",
     title: "Invite Team Members",
-    getDescription: () => (
+    getDescription: (_t: TourStore, _e: ExtraInfo) => (
       <p>
         Create accounts for your team here, or use <strong>Connection Strings</strong> below
         for self-service invites. Team members paste the string on the login screen.
       </p>
     ),
-    getActions: (tour) => [
-      { label: "Next", onClick: () => tour.nextStep(), variant: "primary" },
+    getActions: (tour: TourStore, _e: ExtraInfo) => [
+      { label: "Next", onClick: () => tour.nextStep(), variant: "primary" as const },
     ],
     spotlight: true,
   },
@@ -86,7 +90,7 @@ const STEPS: StepDef[] = [
     targetSelector: "#tour-target-connection-strings",
     placement: "top",
     title: "Share a Connection String",
-    getDescription: (tour) =>
+    getDescription: (tour: TourStore, _e: ExtraInfo) =>
       tour.connectionStringGenerated ? (
         <p className="text-green-700 dark:text-green-400 font-medium">
           Connection string generated! Share it with your team members — they paste it on the login screen to join instantly.
@@ -94,21 +98,21 @@ const STEPS: StepDef[] = [
       ) : (
         <p>
           Generate a <strong>Connection String</strong> and share it with team members.
-          Choose a label (e.g. "Alice's laptop") and an expiry time, then click Generate.
+          Choose a label (e.g. &quot;Alice&apos;s laptop&quot;) and an expiry time, then click Generate.
         </p>
       ),
-    getActions: (tour) => [
-      { label: "Next", onClick: () => tour.nextStep(), variant: "primary" },
+    getActions: (tour: TourStore, _e: ExtraInfo) => [
+      { label: "Next", onClick: () => tour.nextStep(), variant: "primary" as const },
     ],
     spotlight: true,
   },
   // Step 5: Add Files
   {
-    view: null, // stays on current view
-    targetSelector: null, // centered popover
+    view: null,
+    targetSelector: null,
     placement: "bottom",
     title: "Add Your Research Files",
-    getDescription: (tour) => (
+    getDescription: (tour: TourStore, _e: ExtraInfo) => (
       <div>
         <p>
           Put your research files (transcripts, surveys, reports, spreadsheets) in your project folder:
@@ -123,8 +127,8 @@ const STEPS: StepDef[] = [
         </p>
       </div>
     ),
-    getActions: (tour) => [
-      { label: "Next", onClick: () => tour.nextStep(), variant: "primary" },
+    getActions: (tour: TourStore, _e: ExtraInfo) => [
+      { label: "Next", onClick: () => tour.nextStep(), variant: "primary" as const },
     ],
   },
   // Step 6: Project Context
@@ -133,7 +137,7 @@ const STEPS: StepDef[] = [
     targetSelector: "#tour-target-context-editor",
     placement: "top",
     title: "Set Your Research Context",
-    getDescription: (tour) =>
+    getDescription: (tour: TourStore, _e: ExtraInfo) =>
       tour.role !== "admin" ? (
         <p>
           Review the project context your admin set up. You can update the company info,
@@ -145,8 +149,8 @@ const STEPS: StepDef[] = [
           relevant analysis, ask better questions, and produce insights that fit your domain.
         </p>
       ),
-    getActions: (tour) => [
-      { label: "Done", onClick: () => tour.nextStep(), variant: "primary" },
+    getActions: (tour: TourStore, _e: ExtraInfo) => [
+      { label: "Done", onClick: () => tour.nextStep(), variant: "primary" as const },
     ],
     spotlight: true,
   },
@@ -156,7 +160,7 @@ const STEPS: StepDef[] = [
     targetSelector: "#tour-target-kanban",
     placement: "top",
     title: "Your Research Task Board",
-    getDescription: (tour) =>
+    getDescription: (tour: TourStore, _e: ExtraInfo) =>
       tour.role !== "admin" ? (
         <p>
           Check the task board for work assigned to you. Your admin may have created tasks.
@@ -168,8 +172,8 @@ const STEPS: StepDef[] = [
           autonomously — analyzing data, generating insights, and updating progress.
         </p>
       ),
-    getActions: (tour) => [
-      { label: "Next", onClick: () => tour.nextStep(), variant: "primary" },
+    getActions: (tour: TourStore, _e: ExtraInfo) => [
+      { label: "Next", onClick: () => tour.nextStep(), variant: "primary" as const },
     ],
     spotlight: true,
   },
@@ -179,13 +183,14 @@ const STEPS: StepDef[] = [
     targetSelector: "#tour-target-system-status",
     placement: "bottom",
     title: "Connect Your AI Model",
-    getDescription: (_tour, extra) =>
+    getDescription: (_t: TourStore, extra: ExtraInfo) =>
       extra.llmConnected ? (
         <div>
           <p className="text-green-700 dark:text-green-400 font-medium mb-1">
-            LLM connected! Model: <code className="font-mono">{extra.llmModel || "unknown"}</code>
+            {"LLM connected! Model: "}
+            <code className="font-mono">{extra.llmModel || "unknown"}</code>
           </p>
-          <p>You're all set to start researching with AI assistance.</p>
+          <p>{"You're all set to start researching with AI assistance."}</p>
         </div>
       ) : (
         <div>
@@ -202,9 +207,9 @@ const STEPS: StepDef[] = [
           </p>
         </div>
       ),
-    getActions: (_tour, extra) =>
+    getActions: (tour: TourStore, extra: ExtraInfo) =>
       extra.llmConnected
-        ? [{ label: "Start Chatting →", onClick: () => _tour.nextStep(), variant: "primary" as const }]
+        ? [{ label: "Start Chatting \u2192", onClick: () => tour.nextStep(), variant: "primary" as const }]
         : [],
     spotlight: true,
   },
@@ -214,20 +219,20 @@ const STEPS: StepDef[] = [
     targetSelector: null,
     placement: "bottom",
     title: "You're Ready!",
-    getDescription: () => (
+    getDescription: (_t: TourStore, _e: ExtraInfo) => (
       <div>
         <p className="mb-2">
           Start chatting with Istara about your research. Try:
         </p>
         <ul className="list-disc list-inside text-xs space-y-1 text-slate-500 dark:text-slate-400">
-          <li>"Analyze the documents in my project"</li>
-          <li>"Create a research plan for user interviews"</li>
-          <li>"What themes emerge from my data?"</li>
+          <li>{"\"Analyze the documents in my project\""}</li>
+          <li>{"\"Create a research plan for user interviews\""}</li>
+          <li>{"\"What themes emerge from my data?\""}</li>
         </ul>
       </div>
     ),
-    getActions: (tour) => [
-      { label: "Got it!", onClick: () => tour.completeTour(), variant: "primary" },
+    getActions: (tour: TourStore, _e: ExtraInfo) => [
+      { label: "Got it!", onClick: () => tour.completeTour(), variant: "primary" as const },
     ],
   },
 ];
