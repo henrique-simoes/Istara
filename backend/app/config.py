@@ -1,4 +1,4 @@
-"""ReClaw application configuration."""
+"""Istara application configuration."""
 
 from pathlib import Path
 
@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     lmstudio_embed_model: str = "default"
 
     # Database
-    database_url: str = "sqlite+aiosqlite:///./data/reclaw.db"
+    database_url: str = "sqlite+aiosqlite:///./data/istara.db"
     lance_db_path: str = "./data/lance_db"
 
     # Files
@@ -111,7 +111,7 @@ class Settings(BaseSettings):
     meta_hyperagent_observation_interval_hours: int = 6
     meta_hyperagent_variant_observation_hours: int = 72
 
-    # MCP Server (exposes ReClaw to external agents — OFF by default for security)
+    # MCP Server (exposes Istara to external agents — OFF by default for security)
     mcp_server_enabled: bool = False
     mcp_server_port: int = 8001
 
@@ -135,7 +135,7 @@ class Settings(BaseSettings):
         Persists the generated secret to .env so it survives container restarts.
         """
         import secrets as _secrets
-        insecure_defaults = {"", "reclaw-dev-secret-change-in-production"}
+        insecure_defaults = {"", "istara-dev-secret-change-in-production"}
         if self.jwt_secret in insecure_defaults:
             self.jwt_secret = _secrets.token_urlsafe(32)
             # Persist to .env

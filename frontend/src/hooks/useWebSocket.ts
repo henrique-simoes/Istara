@@ -17,7 +17,7 @@ export function useWebSocket(onEvent?: (event: WSEvent) => void) {
     if (wsRef.current?.readyState === WebSocket.OPEN) return;
 
     // Append JWT token as query parameter for authentication
-    const token = typeof window !== "undefined" ? localStorage.getItem("reclaw_token") : null;
+    const token = typeof window !== "undefined" ? localStorage.getItem("istara_token") : null;
     const wsUrl = token
       ? `${WS_URL}?token=${encodeURIComponent(token)}`
       : WS_URL;
@@ -25,7 +25,7 @@ export function useWebSocket(onEvent?: (event: WSEvent) => void) {
 
     ws.onopen = () => {
       setConnected(true);
-      console.log("[ReClaw WS] Connected");
+      console.log("[Istara WS] Connected");
     };
 
     ws.onmessage = (event) => {
@@ -43,7 +43,7 @@ export function useWebSocket(onEvent?: (event: WSEvent) => void) {
 
     ws.onclose = () => {
       setConnected(false);
-      console.log("[ReClaw WS] Disconnected. Reconnecting in 3s...");
+      console.log("[Istara WS] Disconnected. Reconnecting in 3s...");
       reconnectTimer.current = setTimeout(connect, 3000);
     };
 

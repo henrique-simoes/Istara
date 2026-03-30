@@ -297,7 +297,7 @@ export default function SkillsView() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Wand2 size={20} className="text-reclaw-600" />
+          <Wand2 size={20} className="text-istara-600" />
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
             Skills
           </h2>
@@ -390,7 +390,7 @@ export default function SkillsView() {
                 placeholder="Search skills..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+                className="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-istara-500"
               />
             </div>
           </div>
@@ -557,7 +557,7 @@ export default function SkillsView() {
                       <div className="flex gap-2 pt-2 border-t border-slate-100 dark:border-slate-700">
                         <button
                           onClick={() => handleExecute(skill.name)}
-                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-reclaw-600 text-white text-xs font-medium hover:bg-reclaw-700"
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-istara-600 text-white text-xs font-medium hover:bg-istara-700"
                         >
                           <Play size={12} /> Run
                         </button>
@@ -618,7 +618,7 @@ export default function SkillsView() {
               </h3>
             </div>
             <p className="text-xs text-slate-400">
-              ReClaw analyzes skill performance and proposes improvements
+              Istara analyzes skill performance and proposes improvements
             </p>
 
             {proposalsLoading && (
@@ -648,7 +648,7 @@ export default function SkillsView() {
                   No proposals pending
                 </p>
                 <p className="text-slate-400 text-xs mt-1">
-                  As skills are used, ReClaw will suggest improvements based on
+                  As skills are used, Istara will suggest improvements based on
                   performance data.
                 </p>
               </div>
@@ -849,7 +849,7 @@ export default function SkillsView() {
       {tab === "create" && (
         <div className="space-y-4">
           <div className="flex items-center gap-2 mb-2">
-            <Plus size={16} className="text-reclaw-600" />
+            <Plus size={16} className="text-istara-600" />
             <h3 className="font-medium text-slate-900 dark:text-white">
               Create New Skill
             </h3>
@@ -868,7 +868,7 @@ export default function SkillsView() {
                   onChange={(e) =>
                     setNewSkill({ ...newSkill, name: e.target.value })
                   }
-                  className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+                  className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-istara-500"
                 />
               </div>
               <div>
@@ -882,7 +882,7 @@ export default function SkillsView() {
                   onChange={(e) =>
                     setNewSkill({ ...newSkill, display_name: e.target.value })
                   }
-                  className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+                  className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-istara-500"
                 />
               </div>
             </div>
@@ -898,7 +898,7 @@ export default function SkillsView() {
                   setNewSkill({ ...newSkill, description: e.target.value })
                 }
                 rows={2}
-                className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-reclaw-500 resize-none"
+                className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-istara-500 resize-none"
               />
             </div>
 
@@ -912,7 +912,7 @@ export default function SkillsView() {
                   onChange={(e) =>
                     setNewSkill({ ...newSkill, phase: e.target.value })
                   }
-                  className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+                  className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-istara-500"
                 >
                   <option value="discover">Discover</option>
                   <option value="define">Define</option>
@@ -929,7 +929,7 @@ export default function SkillsView() {
                   onChange={(e) =>
                     setNewSkill({ ...newSkill, skill_type: e.target.value })
                   }
-                  className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+                  className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-istara-500"
                 >
                   <option value="analysis">Analysis</option>
                   <option value="generation">Generation</option>
@@ -950,7 +950,7 @@ export default function SkillsView() {
                   setNewSkill({ ...newSkill, plan_prompt: e.target.value })
                 }
                 rows={4}
-                className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-reclaw-500 resize-none"
+                className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-istara-500 resize-none"
               />
             </div>
 
@@ -965,7 +965,7 @@ export default function SkillsView() {
                   setNewSkill({ ...newSkill, execute_prompt: e.target.value })
                 }
                 rows={6}
-                className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-reclaw-500 resize-none"
+                className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-istara-500 resize-none"
               />
             </div>
 
@@ -980,7 +980,7 @@ export default function SkillsView() {
                   setNewSkill({ ...newSkill, output_schema: e.target.value })
                 }
                 rows={3}
-                className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-reclaw-500 resize-none"
+                className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-istara-500 resize-none"
               />
             </div>
 
@@ -988,7 +988,7 @@ export default function SkillsView() {
               <button
                 onClick={handleCreate}
                 disabled={!newSkill.name || !newSkill.display_name}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-reclaw-600 text-white text-sm font-medium hover:bg-reclaw-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-istara-600 text-white text-sm font-medium hover:bg-istara-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Plus size={14} /> Create Skill
               </button>
@@ -1124,7 +1124,7 @@ function SkillEditor({
           value={desc}
           onChange={(e) => setDesc(e.target.value)}
           rows={2}
-          className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-reclaw-500 resize-none"
+          className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-istara-500 resize-none"
         />
       </div>
       <div>
@@ -1135,7 +1135,7 @@ function SkillEditor({
           value={planPrompt}
           onChange={(e) => setPlanPrompt(e.target.value)}
           rows={4}
-          className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-reclaw-500 resize-none"
+          className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-istara-500 resize-none"
         />
       </div>
       <div>
@@ -1146,7 +1146,7 @@ function SkillEditor({
           value={execPrompt}
           onChange={(e) => setExecPrompt(e.target.value)}
           rows={6}
-          className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-reclaw-500 resize-none"
+          className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-istara-500 resize-none"
         />
       </div>
       <div>
@@ -1158,7 +1158,7 @@ function SkillEditor({
           placeholder="What changed?"
           value={changelog}
           onChange={(e) => setChangelog(e.target.value)}
-          className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+          className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-istara-500"
         />
       </div>
       <div className="flex gap-2">
@@ -1171,7 +1171,7 @@ function SkillEditor({
               changelog_entry: changelog,
             })
           }
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-reclaw-600 text-white text-xs font-medium hover:bg-reclaw-700"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-istara-600 text-white text-xs font-medium hover:bg-istara-700"
         >
           <CheckCircle2 size={12} /> Save Changes
         </button>

@@ -2,7 +2,7 @@
 name: channel-research-deployment
 description: "Deploy interviews, surveys, and diary studies via messaging channels (Telegram, Slack, WhatsApp, Google Chat) with adaptive questioning and real-time analytics."
 metadata:
-  reclaw:
+  istara:
     phase: discover
     type: mixed
     version: "1.0.0"

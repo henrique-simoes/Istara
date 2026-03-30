@@ -7,7 +7,7 @@ export default function DarkModeToggle() {
   const [dark, setDark] = useState(false);
 
   useEffect(() => {
-    const stored = localStorage.getItem("reclaw-theme");
+    const stored = localStorage.getItem("istara-theme");
     const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
     const isDark = stored === "dark" || (!stored && prefersDark);
     setDark(isDark);
@@ -18,7 +18,7 @@ export default function DarkModeToggle() {
     const next = !dark;
     setDark(next);
     document.documentElement.classList.toggle("dark", next);
-    localStorage.setItem("reclaw-theme", next ? "dark" : "light");
+    localStorage.setItem("istara-theme", next ? "dark" : "light");
   };
 
   return (

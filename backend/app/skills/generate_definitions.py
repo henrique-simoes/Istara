@@ -83,7 +83,7 @@ def generate_definitions():
             "created_at": "2026-03-14T00:00:00Z",
             "updated_at": "2026-03-14T00:00:00Z",
             "metadata": {
-                "author": "ReClaw",
+                "author": "Istara",
                 "tags": [phase, skill_type],
             },
             "changelog": [{
@@ -123,7 +123,7 @@ def generate_definitions():
             "module": module,
             "created_at": "2026-03-14T00:00:00Z",
             "updated_at": "2026-03-14T00:00:00Z",
-            "metadata": {"author": "ReClaw", "tags": [phase, stype, "custom"]},
+            "metadata": {"author": "Istara", "tags": [phase, stype, "custom"]},
             "changelog": [{"version": "1.0.0", "date": "2026-03-14T00:00:00Z", "changes": "Initial creation"}],
         }
         path = DEFINITIONS_DIR / f"{name}.json"

@@ -30,7 +30,7 @@ interface AuthState {
 
 export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
-  token: typeof window !== "undefined" ? localStorage.getItem("reclaw_token") : null,
+  token: typeof window !== "undefined" ? localStorage.getItem("istara_token") : null,
   teamMode: false,
   loading: false,
 
@@ -47,7 +47,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         throw new Error(err.detail || "Login failed");
       }
       const data = await res.json();
-      localStorage.setItem("reclaw_token", data.token);
+      localStorage.setItem("istara_token", data.token);
       set({ user: data.user, token: data.token, loading: false });
       // Check team status after login so UserManagement renders correctly
       get().checkTeamStatus();
@@ -70,7 +70,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         throw new Error(err.detail || "Registration failed");
       }
       const data = await res.json();
-      localStorage.setItem("reclaw_token", data.token);
+      localStorage.setItem("istara_token", data.token);
       set({ user: data.user, token: data.token, loading: false });
       get().checkTeamStatus();
     } catch (e) {
@@ -80,7 +80,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   logout: () => {
-    localStorage.removeItem("reclaw_token");
+    localStorage.removeItem("istara_token");
     set({ user: null, token: null });
     if (typeof window !== "undefined") {
       window.location.reload();
@@ -89,7 +89,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   checkTeamStatus: async () => {
     try {
-      const _tk = localStorage.getItem("reclaw_token");
+      const _tk = localStorage.getItem("istara_token");
       const _hd: Record<string, string> = {};
       if (_tk) _hd["Authorization"] = `Bearer ${_tk}`;
       const res = await fetch(`${API_BASE}/api/auth/team-status`, { headers: _hd });
@@ -104,7 +104,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
    *  Called on app mount and after team mode changes so that
    *  currentUser.role is always available. */
   fetchMe: async () => {
-    const _tk = localStorage.getItem("reclaw_token");
+    const _tk = localStorage.getItem("istara_token");
     if (!_tk) return;
     try {
       const res = await fetch(`${API_BASE}/api/auth/me`, {

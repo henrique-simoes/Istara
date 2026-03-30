@@ -1,6 +1,6 @@
 """Global Security Middleware — enforces JWT authentication on ALL requests.
 
-This is the primary security layer for ReClaw. Every request to a protected
+This is the primary security layer for Istara. Every request to a protected
 endpoint MUST carry a valid JWT in the Authorization header. No exceptions
 except explicitly exempt paths (health check, login, register, webhooks).
 

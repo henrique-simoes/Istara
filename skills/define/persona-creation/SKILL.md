@@ -2,7 +2,7 @@
 name: persona-creation
 description: "Synthesize evidence-based personas from research data. Every claim linked to sources."
 metadata:
-  reclaw:
+  istara:
     phase: define
     type: qualitative
     version: "1.0.0"

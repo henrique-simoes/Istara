@@ -75,7 +75,7 @@ export default function SchedulesTab() {
           onClick={() => setShowForm(!showForm)}
           className={cn(
             "flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors",
-            "bg-reclaw-600 text-white hover:bg-reclaw-700"
+            "bg-istara-600 text-white hover:bg-istara-700"
           )}
         >
           <Plus size={14} />
@@ -94,7 +94,7 @@ export default function SchedulesTab() {
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
                 placeholder="e.g. Daily UX Scan"
-                className="w-full px-3 py-1.5 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+                className="w-full px-3 py-1.5 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-istara-500"
               />
             </div>
             <div>
@@ -104,7 +104,7 @@ export default function SchedulesTab() {
                 value={form.skill_name}
                 onChange={(e) => setForm({ ...form, skill_name: e.target.value })}
                 placeholder="e.g. ux_evaluation"
-                className="w-full px-3 py-1.5 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+                className="w-full px-3 py-1.5 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-istara-500"
               />
             </div>
           </div>
@@ -115,7 +115,7 @@ export default function SchedulesTab() {
               value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
               placeholder="Optional description..."
-              className="w-full px-3 py-1.5 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+              className="w-full px-3 py-1.5 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-istara-500"
             />
           </div>
           <div>
@@ -126,7 +126,7 @@ export default function SchedulesTab() {
             <button
               onClick={handleCreate}
               disabled={!form.name.trim() || !form.skill_name.trim()}
-              className="px-4 py-1.5 text-sm font-medium rounded-lg bg-reclaw-600 text-white hover:bg-reclaw-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-1.5 text-sm font-medium rounded-lg bg-istara-600 text-white hover:bg-istara-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Create
             </button>

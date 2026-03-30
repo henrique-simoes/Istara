@@ -1,4 +1,4 @@
-"""Meta-Hyperagent — optional system-tuning layer for ReClaw.
+"""Meta-Hyperagent — optional system-tuning layer for Istara.
 
 Observes subsystem metrics (task routing, self-evolution, skill selection,
 quality evaluation, agent capabilities) and proposes parameter adjustments.

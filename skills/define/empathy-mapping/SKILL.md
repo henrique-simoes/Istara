@@ -2,7 +2,7 @@
 name: empathy-mapping
 description: "Create Says/Thinks/Does/Feels quadrants from interview data, identify contradictions."
 metadata:
-  reclaw:
+  istara:
     phase: define
     type: qualitative
     version: "1.0.0"

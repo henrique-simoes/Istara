@@ -59,7 +59,7 @@ function DAGTreeNode({
   };
 
   const depthColors: Record<number, string> = {
-    0: "bg-reclaw-100 dark:bg-reclaw-900/30 text-reclaw-700 dark:text-reclaw-400",
+    0: "bg-istara-100 dark:bg-istara-900/30 text-istara-700 dark:text-istara-400",
     1: "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400",
     2: "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400",
     3: "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400",
@@ -149,7 +149,7 @@ function DAGTreeNode({
                   className={cn(
                     "p-2 rounded-lg text-xs",
                     item.type === "summary"
-                      ? "bg-reclaw-50 dark:bg-reclaw-900/20 border border-reclaw-200 dark:border-reclaw-800"
+                      ? "bg-istara-50 dark:bg-istara-900/20 border border-istara-200 dark:border-istara-800"
                       : "bg-slate-50 dark:bg-slate-800/80"
                   )}
                 >
@@ -169,7 +169,7 @@ function DAGTreeNode({
                       </span>
                     )}
                     {item.type === "summary" && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-reclaw-100 dark:bg-reclaw-900/30 text-reclaw-600 dark:text-reclaw-400">
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-istara-100 dark:bg-istara-900/30 text-istara-600 dark:text-istara-400">
                         summary
                       </span>
                     )}
@@ -352,7 +352,7 @@ export default function ContextDAGView() {
               value=""
               onChange={(e) => selectSession(e.target.value)}
               aria-label="Select chat session"
-              className="px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+              className="px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-istara-500"
             >
               <option value="" disabled>
                 Choose a session...
@@ -384,7 +384,7 @@ export default function ContextDAGView() {
           value={activeSessionId}
           onChange={(e) => selectSession(e.target.value)}
           aria-label="Select chat session"
-          className="flex-1 px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-reclaw-500 truncate"
+          className="flex-1 px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-istara-500 truncate"
         >
           {sessions.map((s) => (
             <option key={s.id} value={s.id}>
@@ -414,7 +414,7 @@ export default function ContextDAGView() {
           <button
             onClick={fetchDAG}
             aria-label="Retry loading DAG data"
-            className="mt-3 px-4 py-2 text-sm bg-reclaw-600 text-white rounded-lg hover:bg-reclaw-700"
+            className="mt-3 px-4 py-2 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700"
           >
             Retry
           </button>
@@ -454,7 +454,7 @@ export default function ContextDAGView() {
               <p className="text-[10px] text-slate-500">Fresh Tail</p>
             </div>
             <div className="p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50">
-              <p className="text-lg font-bold text-reclaw-600 dark:text-reclaw-400">
+              <p className="text-lg font-bold text-istara-600 dark:text-istara-400">
                 {(health.compression_ratio * 100).toFixed(1)}%
               </p>
               <p className="text-[10px] text-slate-500">Compression</p>
@@ -473,7 +473,7 @@ export default function ContextDAGView() {
               <button
                 onClick={handleCompact}
                 aria-label="Compact conversation history"
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-reclaw-600 dark:text-reclaw-400 hover:bg-reclaw-50 dark:hover:bg-reclaw-900/20 rounded-lg transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-istara-600 dark:text-istara-400 hover:bg-istara-50 dark:hover:bg-istara-900/20 rounded-lg transition-colors"
               >
                 <Layers size={12} />
                 Compact Now
@@ -507,14 +507,14 @@ export default function ContextDAGView() {
               onKeyDown={(e) => e.key === "Enter" && handleSearch()}
               placeholder="Search conversation history..."
               aria-label="Search conversation history"
-              className="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-reclaw-500 text-slate-900 dark:text-slate-100"
+              className="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-istara-500 text-slate-900 dark:text-slate-100"
             />
           </div>
           <button
             onClick={handleSearch}
             disabled={searching}
             aria-label="Run history search"
-            className="px-4 py-2 text-sm bg-reclaw-600 text-white rounded-lg hover:bg-reclaw-700 disabled:opacity-50"
+            className="px-4 py-2 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700 disabled:opacity-50"
           >
             {searching ? "Searching..." : "Search"}
           </button>

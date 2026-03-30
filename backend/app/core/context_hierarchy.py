@@ -3,7 +3,7 @@
 The context hierarchy ensures agents never hallucinate or go off-track.
 Each layer acts as a system prompt, with strict inheritance:
 
-    Level 0: Platform defaults (ReClaw UXR expertise)
+    Level 0: Platform defaults (Istara UXR expertise)
     Level 1: Company context (org-wide — culture, product, terminology, guardrails)
     Level 2: Product contexts (per-product — features, users, domain knowledge)
     Level 3: Project contexts (per-project — research questions, goals, timeline, phase)
@@ -13,7 +13,7 @@ Each layer acts as a system prompt, with strict inheritance:
 Users can create multiple contexts at each level. The system composes
 them into a final prompt that guides all agent behavior.
 
-This is the single most important quality control mechanism in ReClaw.
+This is the single most important quality control mechanism in Istara.
 """
 
 import logging
@@ -56,7 +56,7 @@ class ContextDocument(Base):
     )
 
 
-PLATFORM_CONTEXT = """You are ReClaw, an expert UX Research assistant. You help researchers organize, analyze, and synthesize research findings using rigorous methodology.
+PLATFORM_CONTEXT = """You are Istara, an expert UX Research assistant. You help researchers organize, analyze, and synthesize research findings using rigorous methodology.
 
 Core principles:
 - ALWAYS cite sources when referencing specific documents or data
@@ -95,7 +95,7 @@ class ContextHierarchy:
         layers: list[str] = []
 
         # Level 0: Platform defaults
-        layers.append(f"## ReClaw Platform Context\n{PLATFORM_CONTEXT}")
+        layers.append(f"## Istara Platform Context\n{PLATFORM_CONTEXT}")
 
         # Level 1-5: Load from database
         query = select(ContextDocument).where(

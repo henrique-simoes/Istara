@@ -172,7 +172,7 @@ class FileWatcher:
                     title=task_title,
                     description=f"Auto-created from file: {file_path.name}",
                     skill_name=skill_name,
-                    agent_id="reclaw-main",
+                    agent_id="istara-main",
                     priority=priority,
                     position=max_pos + 1,
                 )

@@ -2,7 +2,7 @@
 name: accessibility-audit
 description: "Review against WCAG guidelines, identify violations, prioritize by impact, suggest fixes."
 metadata:
-  reclaw:
+  istara:
     phase: discover
     type: mixed
     version: "1.0.0"

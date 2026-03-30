@@ -2,7 +2,7 @@
 name: sus-umux-scoring
 description: "Calculate SUS/UMUX scores, percentile rankings, benchmark against industry, track over time."
 metadata:
-  reclaw:
+  istara:
     phase: deliver
     type: quantitative
     version: "1.0.0"

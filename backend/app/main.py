@@ -1,4 +1,4 @@
-"""ReClaw — Local-first AI agent for UX Research."""
+"""Istara — Local-first AI agent for UX Research."""
 
 from __future__ import annotations
 
@@ -438,7 +438,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 
 app = FastAPI(
-    title="ReClaw",
+    title="Istara",
     description="Local-first AI agent for UX Research",
     version="0.1.0",
     lifespan=lifespan,
@@ -540,7 +540,7 @@ app.include_router(ws_router)
 @app.get("/api/health")
 async def health_check() -> dict:
     """Health check endpoint."""
-    return {"status": "healthy", "service": "reclaw"}
+    return {"status": "healthy", "service": "istara"}
 
 
 @app.get("/api/skill-registry")
@@ -554,7 +554,7 @@ async def list_registered_skills():
 async def agent_card():
     """A2A Protocol: Agent Card discovery endpoint."""
     return {
-        "name": "ReClaw",
+        "name": "Istara",
         "description": "Local-first AI agent for UX Research — analyzes interviews, surveys, usability tests and more using 40+ research skills.",
         "url": "http://localhost:8000",
         "version": "0.1.0",
@@ -605,7 +605,7 @@ async def a2a_jsonrpc(request: Request):
             msg = await a2a_svc.send_message(
                 db,
                 from_agent_id=params.get("from", "external"),
-                to_agent_id=params.get("to", "reclaw-main"),
+                to_agent_id=params.get("to", "istara-main"),
                 message_type="a2a_task",
                 content=params.get("message", {}).get("text", ""),
                 metadata=params.get("message", {}).get("metadata"),

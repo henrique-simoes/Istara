@@ -31,7 +31,7 @@ export default function MCPAuditLog() {
     <div className="p-6 space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Activity size={18} className="text-reclaw-500" />
+          <Activity size={18} className="text-istara-500" />
           <h2 className="text-lg font-bold text-slate-900 dark:text-white">Audit Log</h2>
         </div>
         <button
@@ -54,7 +54,7 @@ export default function MCPAuditLog() {
           <Activity size={32} className="mx-auto mb-3 text-slate-300 dark:text-slate-600" />
           <p className="text-sm text-slate-500 dark:text-slate-400">No audit entries yet.</p>
           <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
-            Entries will appear as external tools access ReClaw via MCP.
+            Entries will appear as external tools access Istara via MCP.
           </p>
         </div>
       ) : (
@@ -107,7 +107,7 @@ export default function MCPAuditLog() {
           {entries.length >= limit && (
             <button
               onClick={() => setLimit(limit + 50)}
-              className="w-full py-2 text-xs text-reclaw-600 hover:text-reclaw-700 dark:text-reclaw-400 transition-colors"
+              className="w-full py-2 text-xs text-istara-600 hover:text-istara-700 dark:text-istara-400 transition-colors"
             >
               Load more...
             </button>

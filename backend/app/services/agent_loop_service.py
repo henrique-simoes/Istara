@@ -22,11 +22,11 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 AGENT_INTERVAL_ATTRS: dict[str, tuple[str, str, str]] = {
-    "reclaw-devops": ("app.agents.devops_agent", "devops_agent", "_audit_interval"),
-    "reclaw-ui-audit": ("app.agents.ui_audit_agent", "ui_audit_agent", "_audit_interval"),
-    "reclaw-ux-eval": ("app.agents.ux_eval_agent", "ux_eval_agent", "_audit_interval"),
-    "reclaw-sim": ("app.agents.user_sim_agent", "user_sim_agent", "_sim_interval"),
-    "reclaw-main": ("app.core.agent", "agent", "_loop_interval"),
+    "istara-devops": ("app.agents.devops_agent", "devops_agent", "_audit_interval"),
+    "istara-ui-audit": ("app.agents.ui_audit_agent", "ui_audit_agent", "_audit_interval"),
+    "istara-ux-eval": ("app.agents.ux_eval_agent", "ux_eval_agent", "_audit_interval"),
+    "istara-sim": ("app.agents.user_sim_agent", "user_sim_agent", "_sim_interval"),
+    "istara-main": ("app.core.agent", "agent", "_loop_interval"),
 }
 
 

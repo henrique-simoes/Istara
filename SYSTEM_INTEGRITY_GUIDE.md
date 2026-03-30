@@ -1,4 +1,4 @@
-# ReClaw System Integrity Guide
+# Istara System Integrity Guide
 
 **Last Updated**: 2026-03-28
 **System Version**: Post-ComputeRegistry unification
@@ -25,7 +25,7 @@
 
 ## EXECUTIVE SUMMARY
 
-ReClaw is a local-first AI agent for UX research built on a **unified compute registry** that serves as the single source of truth for all LLM compute resources. The system is organized into clear layers:
+Istara is a local-first AI agent for UX research built on a **unified compute registry** that serves as the single source of truth for all LLM compute resources. The system is organized into clear layers:
 
 - **Database Layer**: 51+ SQLAlchemy models with cascade-delete relationships anchored in Project entity
 - **API Layer**: 35 route modules covering 200+ endpoints with global JWT authentication
@@ -879,7 +879,7 @@ class ComputeNode:
    ```python
    from app.core.network_discovery import discover_and_register
    discovered = await discover_and_register()
-   # Finds other ReClaw instances, Ollama servers, LM Studio on network
+   # Finds other Istara instances, Ollama servers, LM Studio on network
    # Auto-registers as "network" type nodes
    ```
 
@@ -1338,7 +1338,7 @@ Secondary nav items:
 
 ```typescript
 const ws = new WebSocket(
-  `ws://${API_BASE}/ws?token=${localStorage.getItem("reclaw_token")}`
+  `ws://${API_BASE}/ws?token=${localStorage.getItem("istara_token")}`
 );
 
 ws.onmessage = (e) => {
@@ -1457,7 +1457,7 @@ All configuration loaded from `.env` file and environment:
 - `LMSTUDIO_HOST`, `LMSTUDIO_MODEL`, `LMSTUDIO_EMBED_MODEL`
 
 **Database**:
-- `DATABASE_URL` = "sqlite+aiosqlite:///./data/reclaw.db" or PostgreSQL URL
+- `DATABASE_URL` = "sqlite+aiosqlite:///./data/istara.db" or PostgreSQL URL
 - `LANCE_DB_PATH` = "./data/lance_db" (vector store)
 
 **Files**:
@@ -2177,7 +2177,7 @@ Legend:
 
 ### Migration Path from Old Systems
 
-If migrating from older ReClaw version:
+If migrating from older Istara version:
 
 1. **Export Data**:
    ```bash
@@ -2229,7 +2229,7 @@ agent_status, task_progress, file_processed, finding_created, resource_throttle,
 
 **END OF SYSTEM INTEGRITY GUIDE**
 
-This guide represents the complete, current state of the ReClaw system as of 2026-03-28. Use it as the authoritative reference for:
+This guide represents the complete, current state of the Istara system as of 2026-03-28. Use it as the authoritative reference for:
 - What exists and how it's structured
 - What changes when you modify each component
 - How to add new features safely

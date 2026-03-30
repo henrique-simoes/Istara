@@ -2,7 +2,7 @@
 name: usability-testing
 description: "Create test scripts, process session data, calculate task success/time/errors, identify patterns."
 metadata:
-  reclaw:
+  istara:
     phase: develop
     type: mixed
     version: "1.0.0"

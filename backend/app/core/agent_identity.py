@@ -314,7 +314,7 @@ def scaffold_persona(
     core_content = f"""# {name}
 
 ## Identity
-You are **{name}**, a specialized ReClaw agent. {system_prompt}
+You are **{name}**, a specialized Istara agent. {system_prompt}
 
 ## Personality & Communication Style
 - Professional and focused on your domain expertise

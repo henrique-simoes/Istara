@@ -1,4 +1,4 @@
-# ReClaw Comprehensive Codebase Audit Report
+# Istara Comprehensive Codebase Audit Report
 
 **Date**: 2026-03-28
 **Scope**: Full codebase — security, code quality, paid platform references, agent system, architecture conflicts, documentation
@@ -7,7 +7,7 @@
 
 ## Executive Summary
 
-3 parallel audit agents analyzed the entire ReClaw codebase. Results:
+3 parallel audit agents analyzed the entire Istara codebase. Results:
 
 | Severity | Security | Code Quality | Agent System | Total |
 |----------|----------|-------------|-------------|-------|
@@ -41,7 +41,7 @@
 ### 4. Agent ID mismatch in orchestrator sub-agent sync
 - **File**: `backend/app/agents/orchestrator.py:253-256`
 - **Impact**: MetaOrchestrator NEVER syncs sub-agent states — they appear perpetually stopped
-- **Fix**: Change `agent_map` keys to match `_ROLE_AGENT_IDS` (e.g., `"reclaw-devops"` not `"reclaw-devops_audit"`)
+- **Fix**: Change `agent_map` keys to match `_ROLE_AGENT_IDS` (e.g., `"istara-devops"` not `"istara-devops_audit"`)
 
 ### 5. Priority "urgent" vs "critical" mismatch
 - **File**: `backend/app/skills/system_actions.py:52` + `backend/app/core/agent.py:225`
@@ -66,7 +66,7 @@
 | # | Issue | File |
 |---|-------|------|
 | 1 | README.md references "Dovetail" | `README.md:7` |
-| 2 | Sage persona references Dovetail, EnjoyHQ, Optimal Workshop, UserTesting | `reclaw-ux-eval/SKILLS.md:42` |
+| 2 | Sage persona references Dovetail, EnjoyHQ, Optimal Workshop, UserTesting | `istara-ux-eval/SKILLS.md:42` |
 | 21 | Relay LLM response handler is a no-op (silently drops responses) | `compute.py:114-116` |
 | 24 | SETUP-GUIDE.md says Python 3.12+ but pyproject.toml says 3.11+ | `SETUP-GUIDE.md:5` |
 
@@ -75,7 +75,7 @@
 |---|-------|------|
 | 3 | OllamaClient.chat_stream missing `tools` parameter | `ollama.py:114-149` |
 | 4 | SPECIALTY_KEYWORDS missing new feature domains (channels, MCP, browser, autoresearch, Laws of UX) | `task_router.py:25-51` |
-| 5 | Sage persona references paid tools | `reclaw-ux-eval/SKILLS.md:42` |
+| 5 | Sage persona references paid tools | `istara-ux-eval/SKILLS.md:42` |
 
 ---
 
@@ -112,7 +112,7 @@
 | File | Reference | Action |
 |------|-----------|--------|
 | `README.md:7` | Dovetail | Replace with generic |
-| `reclaw-ux-eval/SKILLS.md:42` | Dovetail, EnjoyHQ, Optimal Workshop, UserTesting | Replace with "commercial UXR platforms" |
+| `istara-ux-eval/SKILLS.md:42` | Dovetail, EnjoyHQ, Optimal Workshop, UserTesting | Replace with "commercial UXR platforms" |
 | `usability-testing.json` | "UserTesting, Maze" | Replace with "remote unmoderated platforms" |
 | `tree-testing.json` | "Optimal Workshop" (multiple) | Replace with "tree testing platform" |
 | `card-sorting.json` | "OptimalSort, UserZoom, Maze" | Replace with "digital card sorting tools" |

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Seed a ReClaw project with all generated fixture data.
+ * Seed a Istara project with all generated fixture data.
  *
  * 1. Creates a "UX Research Demo" project via the API
  * 2. Uploads all fixture files
@@ -30,7 +30,7 @@ for (let i = 0; i < args.length; i++) {
 const api = (path) => `${baseUrl}/api${path}`;
 
 async function main() {
-  console.log("=== ReClaw Project Seeder ===\n");
+  console.log("=== Istara Project Seeder ===\n");
   console.log(`API: ${baseUrl}\n`);
 
   // 1. Check API health
@@ -52,7 +52,7 @@ async function main() {
     body: JSON.stringify({
       name: "UX Research Demo",
       description:
-        "Demo project seeded with mock research data for testing all ReClaw skills and agent workflows.",
+        "Demo project seeded with mock research data for testing all Istara skills and agent workflows.",
       phase: "discover",
       company_context:
         "Mid-size B2B SaaS company (200 employees). Product is a project management platform targeting teams of 5-50. Key competitors: Asana, Monday.com, ClickUp.",
@@ -143,7 +143,7 @@ async function main() {
   console.log(`Project ID: ${project.id}`);
   console.log(`Files uploaded: ${uploaded}`);
   console.log(`\nNext steps:`);
-  console.log(`  1. Open ReClaw in your browser`);
+  console.log(`  1. Open Istara in your browser`);
   console.log(`  2. Select the "${project.name}" project`);
   console.log(`  3. Check the Tasks view — research tasks should appear`);
   console.log(`  4. The agent will start processing tasks automatically`);

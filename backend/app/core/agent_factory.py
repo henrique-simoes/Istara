@@ -136,14 +136,14 @@ class AgentFactory:
         """Create a proposal for a new agent based on capability gap."""
         # Generate agent name from specialties
         primary_specialty = specialties_needed[0] if specialties_needed else "general"
-        agent_name = f"reclaw-{primary_specialty}"
+        agent_name = f"istara-{primary_specialty}"
 
         # Generate role description
         role = f"Specialized agent for {', '.join(specialties_needed)} tasks"
 
         # Generate system prompt
         system_prompt = (
-            f"You are a specialized ReClaw agent focused on "
+            f"You are a specialized Istara agent focused on "
             f"{', '.join(specialties_needed)}. "
             f"Your role is to handle tasks requiring expertise in these domains. "
             f"Follow the Atomic Research methodology and produce structured findings."
@@ -151,10 +151,10 @@ class AgentFactory:
 
         # Generate CORE.md
         core_md = (
-            f"# {agent_name.replace('reclaw-', '').title()} Agent\n"
+            f"# {agent_name.replace('istara-', '').title()} Agent\n"
             f"\n"
             f"## Identity\n"
-            f"I am **{agent_name}**, a specialized ReClaw agent created to fill "
+            f"I am **{agent_name}**, a specialized Istara agent created to fill "
             f"a capability gap in {', '.join(specialties_needed)}.\n"
             f"\n"
             f"## Purpose\n"
@@ -169,9 +169,9 @@ class AgentFactory:
             f"- Produce structured findings (nuggets, facts, insights, recommendations)\n"
             f"\n"
             f"## Collaboration\n"
-            f"- Participate in A2A messaging with other ReClaw agents\n"
+            f"- Participate in A2A messaging with other Istara agents\n"
             f"- Accept task routing for matching specialties\n"
-            f"- Report findings through standard ReClaw protocols\n"
+            f"- Report findings through standard Istara protocols\n"
         )
 
         proposal = AgentCreationProposal(

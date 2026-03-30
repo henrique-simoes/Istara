@@ -1,12 +1,12 @@
-# ReClaw Setup Guide
+# Istara Setup Guide
 
 ## Installation Options
 
 ### Option 1: Native Installer (Recommended for non-developers)
 
-Download the latest installer from [GitHub Releases](https://github.com/henrique-simoes/ReClaw/releases):
-- **macOS**: `ReClaw-x.x.x.dmg` — drag to Applications, launch, follow the setup wizard
-- **Windows**: `ReClaw-Setup-x.x.x.exe` — run installer, choose mode, follow wizard
+Download the latest installer from [GitHub Releases](https://github.com/henrique-simoes/Istara/releases):
+- **macOS**: `Istara-x.x.x.dmg` — drag to Applications, launch, follow the setup wizard
+- **Windows**: `Istara-Setup-x.x.x.exe` — run installer, choose mode, follow wizard
 
 The installer:
 - Detects and installs missing dependencies (Python 3.12, Node.js 20, Ollama)
@@ -17,15 +17,15 @@ The installer:
 ### Option 2: Docker (Recommended for servers)
 
 ```bash
-git clone https://github.com/henrique-simoes/ReClaw.git
-cd ReClaw
+git clone https://github.com/henrique-simoes/Istara.git
+cd Istara
 cp .env.example .env
 mkdir -p data
 docker compose up -d
 
 # Pull LLM model (first run only)
-docker exec reclaw-ollama ollama pull qwen3:latest
-docker exec reclaw-ollama ollama pull nomic-embed-text
+docker exec istara-ollama ollama pull qwen3:latest
+docker exec istara-ollama ollama pull nomic-embed-text
 ```
 
 ### Option 3: Bare Metal (Development)
@@ -62,9 +62,9 @@ lms server start   # LM Studio (recommended)
 
 ## First Run
 
-After installation, ReClaw shows a 6-step onboarding wizard:
+After installation, Istara shows a 6-step onboarding wizard:
 
-1. **Welcome** — Introduction to ReClaw
+1. **Welcome** — Introduction to Istara
 2. **LLM Check** — Detects if Ollama or LM Studio is running
 3. **Create Project** — Name your first research project
 4. **Link Folder** (optional) — Point at a Google Drive, Dropbox, or local research folder
@@ -99,7 +99,7 @@ Team members paste it on the login page or in the desktop app to connect.
 Team members can donate their local LLM compute to the server:
 
 ### Via Desktop App (Recommended)
-- Install ReClaw in "Client Only" mode
+- Install Istara in "Client Only" mode
 - Paste connection string in the tray app
 - Toggle "Compute Donation" in the tray menu
 

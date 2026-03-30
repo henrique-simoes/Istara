@@ -2,7 +2,7 @@
 name: user-flow-mapping
 description: "Document current-state user flows, identify friction points, map to research findings."
 metadata:
-  reclaw:
+  istara:
     phase: define
     type: mixed
     version: "1.0.0"

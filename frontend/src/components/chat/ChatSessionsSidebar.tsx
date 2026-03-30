@@ -82,7 +82,7 @@ export default function ChatSessionsSidebar({ projectId }: ChatSessionsSidebarPr
         className={cn(
           "group flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-colors",
           isActive
-            ? "bg-reclaw-100 dark:bg-reclaw-900/30 text-reclaw-700 dark:text-reclaw-400"
+            ? "bg-istara-100 dark:bg-istara-900/30 text-istara-700 dark:text-istara-400"
             : "hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300"
         )}
       >
@@ -113,7 +113,7 @@ export default function ChatSessionsSidebar({ projectId }: ChatSessionsSidebarPr
                 if (e.key === "Enter") handleRenameSubmit(session.id);
                 if (e.key === "Escape") setRenamingId(null);
               }}
-              className="w-full text-xs bg-white dark:bg-slate-700 border border-reclaw-500 rounded px-1 py-0.5 focus:outline-none"
+              className="w-full text-xs bg-white dark:bg-slate-700 border border-istara-500 rounded px-1 py-0.5 focus:outline-none"
               onClick={(e) => e.stopPropagation()}
             />
           ) : (
@@ -225,7 +225,7 @@ export default function ChatSessionsSidebar({ projectId }: ChatSessionsSidebarPr
                 <p className="text-xs text-slate-400">No chats yet</p>
                 <button
                   onClick={handleNew}
-                  className="mt-2 text-xs text-reclaw-600 hover:text-reclaw-700"
+                  className="mt-2 text-xs text-istara-600 hover:text-istara-700"
                 >
                   Start a conversation
                 </button>

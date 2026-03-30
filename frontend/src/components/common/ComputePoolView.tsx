@@ -86,7 +86,7 @@ export default function ComputePoolView() {
   }, [fetchStats]);
 
   useEffect(() => {
-    const token = localStorage.getItem("reclaw_token");
+    const token = localStorage.getItem("istara_token");
     const headers: Record<string, string> = {};
     if (token) headers["Authorization"] = `Bearer ${token}`;
     fetch(`${API_BASE}/api/compute/model-warnings`, { headers })

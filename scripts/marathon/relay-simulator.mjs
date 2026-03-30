@@ -16,7 +16,7 @@
 
 import WebSocket from "ws";
 
-const SERVER = process.env.RECLAW_SERVER || "ws://localhost:8000/ws/relay";
+const SERVER = process.env.ISTARA_SERVER || "ws://localhost:8000/ws/relay";
 const args = process.argv.slice(2);
 const duration = args.includes("--duration") ? parseInt(args[args.indexOf("--duration") + 1]) || 30 : 30;
 const nodeCount = args.includes("--nodes") ? parseInt(args[args.indexOf("--nodes") + 1]) || 1 : 1;
@@ -125,7 +125,7 @@ function connectNode(nodeConfig, nodeIndex) {
 }
 
 async function main() {
-  console.log(`\n🖥️  ReClaw Relay Node Simulator`);
+  console.log(`\n🖥️  Istara Relay Node Simulator`);
   console.log(`   Server: ${SERVER}`);
   console.log(`   Nodes: ${Math.min(nodeCount, SIMULATED_NODES.length)}`);
   console.log(`   Duration: ${duration}s\n`);

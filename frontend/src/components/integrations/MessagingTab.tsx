@@ -57,7 +57,7 @@ export default function MessagingTab() {
             <h2 className="text-sm font-semibold text-slate-900 dark:text-white">Channels</h2>
             <button
               onClick={() => setShowWizard(true)}
-              className="flex items-center gap-1 px-2.5 py-1.5 text-xs bg-reclaw-600 text-white rounded-lg hover:bg-reclaw-700 transition-colors"
+              className="flex items-center gap-1 px-2.5 py-1.5 text-xs bg-istara-600 text-white rounded-lg hover:bg-istara-700 transition-colors"
             >
               <Plus size={12} />
               Add Channel
@@ -72,7 +72,7 @@ export default function MessagingTab() {
                 className={cn(
                   "px-2.5 py-1 text-xs rounded-full whitespace-nowrap transition-colors",
                   platformFilter === p.id
-                    ? "bg-reclaw-100 text-reclaw-700 dark:bg-reclaw-900/30 dark:text-reclaw-400"
+                    ? "bg-istara-100 text-istara-700 dark:bg-istara-900/30 dark:text-istara-400"
                     : "text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
                 )}
               >
@@ -97,7 +97,7 @@ export default function MessagingTab() {
               </p>
               <button
                 onClick={() => setShowWizard(true)}
-                className="px-4 py-2 text-sm bg-reclaw-600 text-white rounded-lg hover:bg-reclaw-700 transition-colors"
+                className="px-4 py-2 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700 transition-colors"
               >
                 Add First Channel
               </button>
@@ -133,7 +133,7 @@ export default function MessagingTab() {
                   className={cn(
                     "px-3 py-1.5 text-xs rounded-lg transition-colors",
                     detailView === "messages"
-                      ? "bg-reclaw-100 text-reclaw-700 dark:bg-reclaw-900/30 dark:text-reclaw-400"
+                      ? "bg-istara-100 text-istara-700 dark:bg-istara-900/30 dark:text-istara-400"
                       : "text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
                   )}
                 >
@@ -144,7 +144,7 @@ export default function MessagingTab() {
                   className={cn(
                     "px-3 py-1.5 text-xs rounded-lg transition-colors",
                     detailView === "conversations"
-                      ? "bg-reclaw-100 text-reclaw-700 dark:bg-reclaw-900/30 dark:text-reclaw-400"
+                      ? "bg-istara-100 text-istara-700 dark:bg-istara-900/30 dark:text-istara-400"
                       : "text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
                   )}
                 >

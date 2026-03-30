@@ -30,7 +30,7 @@ export default function ConfirmDialog({
   const buttonColors = {
     danger: "bg-red-600 hover:bg-red-700 text-white",
     warning: "bg-amber-600 hover:bg-amber-700 text-white",
-    default: "bg-reclaw-600 hover:bg-reclaw-700 text-white",
+    default: "bg-istara-600 hover:bg-istara-700 text-white",
   };
 
   return (

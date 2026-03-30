@@ -1,4 +1,4 @@
-"""System Action Tools — every ReClaw operation as an LLM-callable tool.
+"""System Action Tools — every Istara operation as an LLM-callable tool.
 
 These tools allow agents to perform any user-level operation through chat:
 creating tasks, searching documents, attaching files, moving tasks, querying
@@ -158,7 +158,7 @@ OPENAI_TOOLS: list[dict] = [
                 "type": "object",
                 "properties": {
                     "task_id": {"type": "string", "description": "The task to assign"},
-                    "agent_id": {"type": "string", "description": "The agent ID to assign (e.g., 'reclaw-main')"},
+                    "agent_id": {"type": "string", "description": "The agent ID to assign (e.g., 'istara-main')"},
                 },
                 "required": ["task_id", "agent_id"],
             },
@@ -344,7 +344,7 @@ SYSTEM_TOOLS = [
         "description": "Assign an agent to a task. Use when the user asks to delegate work or assign a specific agent.",
         "parameters": {
             "task_id": {"type": "string", "required": True, "description": "The task to assign"},
-            "agent_id": {"type": "string", "required": True, "description": "The agent ID to assign (e.g., 'reclaw-main')"},
+            "agent_id": {"type": "string", "required": True, "description": "The agent ID to assign (e.g., 'istara-main')"},
         },
     },
     {
@@ -420,7 +420,7 @@ def build_tools_prompt() -> str:
     lines = [
         "## Available Tools",
         "",
-        "You can perform actions in ReClaw by responding with a tool call in this exact JSON format:",
+        "You can perform actions in Istara by responding with a tool call in this exact JSON format:",
         "```json",
         '{"tool": "tool_name", "params": {"param1": "value1"}}',
         "```",
@@ -454,7 +454,7 @@ async def execute_tool(
     tool_name: str,
     params: dict[str, Any],
     project_id: str,
-    agent_id: str = "reclaw-main",
+    agent_id: str = "istara-main",
 ) -> dict[str, Any]:
     """Execute a system action tool and return the result.
 
@@ -830,7 +830,7 @@ async def _exec_web_fetch(params: dict, project_id: str, agent_id: str) -> str:
         async with _httpx.AsyncClient(timeout=15.0, follow_redirects=True) as client:
             resp = await client.get(
                 url,
-                headers={"User-Agent": "ReClaw/1.0 (UX Research Agent)"},
+                headers={"User-Agent": "Istara/1.0 (UX Research Agent)"},
             )
             resp.raise_for_status()
 

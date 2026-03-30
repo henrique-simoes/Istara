@@ -51,7 +51,7 @@ const COLORS = {
   success: "border-green-500 bg-green-50 dark:bg-green-900/80",
   warning: "border-yellow-500 bg-yellow-50 dark:bg-yellow-900/80",
   info: "border-blue-500 bg-blue-50 dark:bg-blue-900/80",
-  agent: "border-reclaw-500 bg-reclaw-50 dark:bg-reclaw-900/80",
+  agent: "border-istara-500 bg-istara-50 dark:bg-istara-900/80",
   file: "border-purple-500 bg-purple-50 dark:bg-purple-900/80",
   suggestion: "border-amber-500 bg-amber-50 dark:bg-amber-900/80",
 };
@@ -60,7 +60,7 @@ const ICON_COLORS = {
   success: "text-green-600",
   warning: "text-yellow-600",
   info: "text-blue-600",
-  agent: "text-reclaw-600",
+  agent: "text-istara-600",
   file: "text-purple-600",
   suggestion: "text-amber-600",
 };
@@ -208,14 +208,14 @@ export default function ToastNotification() {
         <button
           ref={bellRef}
           onClick={() => {
-            window.dispatchEvent(new CustomEvent("reclaw:navigate", { detail: "notifications" }));
+            window.dispatchEvent(new CustomEvent("istara:navigate", { detail: "notifications" }));
           }}
           aria-label={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ""}`}
           className={cn(
             "relative p-2 rounded-full shadow-lg transition-colors",
             "bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700",
             "hover:bg-slate-100 dark:hover:bg-slate-700",
-            "focus:outline-none focus:ring-2 focus:ring-reclaw-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900"
+            "focus:outline-none focus:ring-2 focus:ring-istara-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900"
           )}
         >
           <Bell size={20} className="text-slate-600 dark:text-slate-300" />
@@ -245,7 +245,7 @@ export default function ToastNotification() {
                 key={toast.id}
                 onClick={() => {
                   if (toast.navigateTo) {
-                    window.dispatchEvent(new CustomEvent("reclaw:navigate", { detail: { view: toast.navigateTo } }));
+                    window.dispatchEvent(new CustomEvent("istara:navigate", { detail: { view: toast.navigateTo } }));
                   }
                   removeToast(toast.id);
                 }}
@@ -269,7 +269,7 @@ export default function ToastNotification() {
                     onClick={(e) => { e.stopPropagation(); removeToast(toast.id); }}
                     className={cn(
                       "p-0.5 rounded hover:bg-black/10 dark:hover:bg-white/10",
-                      "focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+                      "focus:outline-none focus:ring-2 focus:ring-istara-500"
                     )}
                     aria-label="Dismiss notification"
                   >
@@ -284,9 +284,9 @@ export default function ToastNotification() {
                         onClick={(e) => { e.stopPropagation(); action.onClick(); removeToast(toast.id); }}
                         className={cn(
                           "text-xs px-2 py-1 rounded",
-                          "focus:outline-none focus:ring-2 focus:ring-reclaw-500",
+                          "focus:outline-none focus:ring-2 focus:ring-istara-500",
                           i === 0
-                            ? "bg-reclaw-600 text-white hover:bg-reclaw-700"
+                            ? "bg-istara-600 text-white hover:bg-istara-700"
                             : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-300"
                         )}
                       >
@@ -301,9 +301,9 @@ export default function ToastNotification() {
           {/* View All link */}
           <button
             onClick={() => {
-              window.dispatchEvent(new CustomEvent("reclaw:navigate", { detail: "notifications" }));
+              window.dispatchEvent(new CustomEvent("istara:navigate", { detail: "notifications" }));
             }}
-            className="w-full text-center text-xs text-reclaw-600 dark:text-reclaw-400 hover:text-reclaw-700 dark:hover:text-reclaw-300 py-1.5 bg-white/80 dark:bg-slate-800/80 rounded-lg border border-slate-200 dark:border-slate-700 backdrop-blur"
+            className="w-full text-center text-xs text-istara-600 dark:text-istara-400 hover:text-istara-700 dark:hover:text-istara-300 py-1.5 bg-white/80 dark:bg-slate-800/80 rounded-lg border border-slate-200 dark:border-slate-700 backdrop-blur"
           >
             View All
           </button>

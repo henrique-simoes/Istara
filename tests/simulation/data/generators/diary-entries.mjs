@@ -1,5 +1,5 @@
 /**
- * Diary study generator for ReClaw simulation.
+ * Diary study generator for Istara simulation.
  * Produces realistic markdown diary study entries with daily logs,
  * mood tracking, weekly reflections, and end-of-study summaries.
  */

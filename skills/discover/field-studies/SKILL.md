@@ -2,7 +2,7 @@
 name: field-studies
 description: "Structure field notes, code observations, identify cultural and environmental patterns."
 metadata:
-  reclaw:
+  istara:
     phase: discover
     type: qualitative
     version: "1.0.0"

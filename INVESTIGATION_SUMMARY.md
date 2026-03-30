@@ -2,14 +2,14 @@
 
 **Date**: 2026-03-28
 **Investigator**: Claude Code Agent
-**System**: ReClaw v0.1.0 (Post-ComputeRegistry Unification)
+**System**: Istara v0.1.0 (Post-ComputeRegistry Unification)
 **Status**: COMPLETE — All subsystems mapped and documented
 
 ---
 
 ## INVESTIGATION SCOPE
 
-Comprehensive analysis of ReClaw's architecture across 14 investigation areas:
+Comprehensive analysis of Istara's architecture across 14 investigation areas:
 
 1. ✓ **Database & Models** — 51+ models, cascade relationships, indexes
 2. ✓ **API Routes** — 35 modules, 200+ endpoints, JWT enforcement
@@ -388,7 +388,7 @@ Request → Registry filtering → Node selection → Retry logic → Failover �
 
 ## SIGN-OFF
 
-This investigation comprehensively maps the ReClaw system v0.1.0 (Post-ComputeRegistry unification).
+This investigation comprehensively maps the Istara system v0.1.0 (Post-ComputeRegistry unification).
 
 **Investigation Status**: ✓ COMPLETE
 **Documentation Status**: ✓ COMPLETE
@@ -418,6 +418,6 @@ This investigation comprehensively maps the ReClaw system v0.1.0 (Post-ComputeRe
 
 **Investigation Completed**: 2026-03-28
 **Document Version**: 1.0
-**System Version**: ReClaw 0.1.0 (Post-ComputeRegistry)
+**System Version**: Istara 0.1.0 (Post-ComputeRegistry)
 
 For questions or updates needed, consult SYSTEM_INTEGRITY_GUIDE.md or CHANGE_CHECKLIST.md.

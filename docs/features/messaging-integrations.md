@@ -1,6 +1,6 @@
 # Messaging Integrations
 
-ReClaw supports multi-instance messaging channel integration with Telegram, Slack, WhatsApp, and Google Chat.
+Istara supports multi-instance messaging channel integration with Telegram, Slack, WhatsApp, and Google Chat.
 
 ## Architecture
 
@@ -16,7 +16,7 @@ ChannelInstance (DB) <-> ChannelAdapter (in-memory) <-> Platform API
 - **Auth**: Bot token from @BotFather
 - **Transport**: Long polling (no server exposure needed)
 - **Features**: Text, voice messages, photos, documents, inline keyboards
-- **Setup**: Create bot via @BotFather -> copy token -> paste in ReClaw setup wizard
+- **Setup**: Create bot via @BotFather -> copy token -> paste in Istara setup wizard
 
 ### Slack
 - **Auth**: Bot token (xoxb-...) + Signing secret

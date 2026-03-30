@@ -2,7 +2,7 @@
 name: design-critique
 description: "Structured critique using UX principles — Gestalt, visual hierarchy, cognitive load, etc."
 metadata:
-  reclaw:
+  istara:
     phase: develop
     type: qualitative
     version: "1.0.0"

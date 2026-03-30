@@ -77,7 +77,7 @@ export default function LLMCheckStep() {
             No local LLM server detected
           </p>
           <p className="text-xs text-amber-600 dark:text-amber-400 mt-1 leading-relaxed">
-            ReClaw needs a local LLM to power its AI agents. Install one of these:
+            Istara needs a local LLM to power its AI agents. Install one of these:
           </p>
         </div>
       </div>
@@ -88,7 +88,7 @@ export default function LLMCheckStep() {
           rel="noopener noreferrer"
           className="flex items-center gap-2 p-3 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-sm"
         >
-          <ExternalLink size={14} className="text-reclaw-500" />
+          <ExternalLink size={14} className="text-istara-500" />
           <div>
             <span className="font-medium text-slate-900 dark:text-white">LM Studio</span>
             <span className="block text-xs text-slate-400">GUI, easy setup</span>
@@ -100,7 +100,7 @@ export default function LLMCheckStep() {
           rel="noopener noreferrer"
           className="flex items-center gap-2 p-3 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-sm"
         >
-          <ExternalLink size={14} className="text-reclaw-500" />
+          <ExternalLink size={14} className="text-istara-500" />
           <div>
             <span className="font-medium text-slate-900 dark:text-white">Ollama</span>
             <span className="block text-xs text-slate-400">CLI, lightweight</span>

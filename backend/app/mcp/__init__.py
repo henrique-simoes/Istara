@@ -1,1 +1,1 @@
-# ReClaw MCP package — server and security modules.
+# Istara MCP package — server and security modules.

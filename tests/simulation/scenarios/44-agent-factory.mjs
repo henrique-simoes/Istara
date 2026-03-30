@@ -96,7 +96,7 @@ export async function run(ctx) {
   // ── 6. System agents have specialties defined ──
   if (agents.length > 0) {
     const systemAgents = agents.filter((a) =>
-      a.id?.startsWith("reclaw-") || a.role === "system"
+      a.id?.startsWith("istara-") || a.role === "system"
     );
     const withSpecialties = systemAgents.filter(
       (a) => Array.isArray(a.specialties) && a.specialties.length > 0

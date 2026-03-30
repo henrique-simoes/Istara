@@ -82,7 +82,7 @@ export default function VersionHistory() {
                 <div className="space-y-1">
                   {entries.map((entry) => {
                     const isExpanded = expandedHash === entry.commit_hash;
-                    const isAgent = entry.author === "ReClaw";
+                    const isAgent = entry.author === "Istara";
 
                     return (
                       <div
@@ -100,12 +100,12 @@ export default function VersionHistory() {
                             className={cn(
                               "w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5",
                               isAgent
-                                ? "bg-reclaw-100 dark:bg-reclaw-900/30"
+                                ? "bg-istara-100 dark:bg-istara-900/30"
                                 : "bg-blue-100 dark:bg-blue-900/30"
                             )}
                           >
                             {isAgent ? (
-                              <Bot size={12} className="text-reclaw-600" />
+                              <Bot size={12} className="text-istara-600" />
                             ) : (
                               <User size={12} className="text-blue-600" />
                             )}

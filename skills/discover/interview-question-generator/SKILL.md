@@ -2,7 +2,7 @@
 name: interview-question-generator
 description: "Generate interview questions from project context, research goals, and existing findings."
 metadata:
-  reclaw:
+  istara:
     phase: discover
     type: qualitative
     version: "1.0.0"

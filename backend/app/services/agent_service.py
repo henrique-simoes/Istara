@@ -26,11 +26,11 @@ logger = logging.getLogger(__name__)
 # if persona files are missing.
 SYSTEM_AGENTS = [
     {
-        "id": "reclaw-main",
-        "name": "ReClaw",
+        "id": "istara-main",
+        "name": "Istara",
         "role": AgentRole.TASK_EXECUTOR,
         "system_prompt": (
-            "You are ReClaw, the primary Research Coordinator. You orchestrate "
+            "You are Istara, the primary Research Coordinator. You orchestrate "
             "research workflows, execute analytical skills, synthesize findings, "
             "and provide expert UX research guidance at every stage of the Double "
             "Diamond. You are evidence-driven, structured, proactive, and honest "
@@ -41,7 +41,7 @@ SYSTEM_AGENTS = [
         "is_system": True,
     },
     {
-        "id": "reclaw-devops",
+        "id": "istara-devops",
         "name": "Sentinel",
         "role": AgentRole.DEVOPS_AUDIT,
         "system_prompt": (
@@ -55,7 +55,7 @@ SYSTEM_AGENTS = [
         "is_system": True,
     },
     {
-        "id": "reclaw-ui-audit",
+        "id": "istara-ui-audit",
         "name": "Pixel",
         "role": AgentRole.UI_AUDIT,
         "system_prompt": (
@@ -70,7 +70,7 @@ SYSTEM_AGENTS = [
         "is_system": True,
     },
     {
-        "id": "reclaw-ux-eval",
+        "id": "istara-ux-eval",
         "name": "Sage",
         "role": AgentRole.UX_EVALUATION,
         "system_prompt": (
@@ -84,7 +84,7 @@ SYSTEM_AGENTS = [
         "is_system": True,
     },
     {
-        "id": "reclaw-sim",
+        "id": "istara-sim",
         "name": "Echo",
         "role": AgentRole.USER_SIMULATION,
         "system_prompt": (

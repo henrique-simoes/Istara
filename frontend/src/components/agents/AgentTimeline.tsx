@@ -29,7 +29,7 @@ const TYPE_COLORS: Record<string, string> = {
   fact: "text-purple-500",
   insight: "text-amber-500",
   recommendation: "text-green-500",
-  task: "text-reclaw-500",
+  task: "text-istara-500",
 };
 
 export default function AgentTimeline() {
@@ -60,19 +60,19 @@ export default function AgentTimeline() {
       const all: TimelineEntry[] = [];
 
       for (const n of nuggets) {
-        all.push({ id: n.id, type: "nugget", title: n.text?.slice(0, 80) || "Nugget", agent_id: n.agent_id || null, agent_name: n.agent_id || "ReClaw", created_at: n.created_at, selected: false });
+        all.push({ id: n.id, type: "nugget", title: n.text?.slice(0, 80) || "Nugget", agent_id: n.agent_id || null, agent_name: n.agent_id || "Istara", created_at: n.created_at, selected: false });
       }
       for (const f of facts) {
-        all.push({ id: f.id, type: "fact", title: f.text?.slice(0, 80) || "Fact", agent_id: f.agent_id || null, agent_name: f.agent_id || "ReClaw", created_at: f.created_at, selected: false });
+        all.push({ id: f.id, type: "fact", title: f.text?.slice(0, 80) || "Fact", agent_id: f.agent_id || null, agent_name: f.agent_id || "Istara", created_at: f.created_at, selected: false });
       }
       for (const i of insights) {
-        all.push({ id: i.id, type: "insight", title: i.text?.slice(0, 80) || "Insight", agent_id: i.agent_id || null, agent_name: i.agent_id || "ReClaw", created_at: i.created_at, selected: false });
+        all.push({ id: i.id, type: "insight", title: i.text?.slice(0, 80) || "Insight", agent_id: i.agent_id || null, agent_name: i.agent_id || "Istara", created_at: i.created_at, selected: false });
       }
       for (const r of recs) {
-        all.push({ id: r.id, type: "recommendation", title: r.text?.slice(0, 80) || "Recommendation", agent_id: r.agent_id || null, agent_name: r.agent_id || "ReClaw", created_at: r.created_at, selected: false });
+        all.push({ id: r.id, type: "recommendation", title: r.text?.slice(0, 80) || "Recommendation", agent_id: r.agent_id || null, agent_name: r.agent_id || "Istara", created_at: r.created_at, selected: false });
       }
       for (const t of taskList) {
-        all.push({ id: t.id, type: "task", title: t.title || "Task", agent_id: t.agent_id || null, agent_name: t.agent_id || "ReClaw", created_at: t.created_at, selected: false });
+        all.push({ id: t.id, type: "task", title: t.title || "Task", agent_id: t.agent_id || null, agent_name: t.agent_id || "Istara", created_at: t.created_at, selected: false });
       }
 
       all.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
@@ -144,7 +144,7 @@ export default function AgentTimeline() {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2">
-              <Clock size={20} className="text-reclaw-600" />
+              <Clock size={20} className="text-istara-600" />
               Agent Timeline
             </h2>
             <p className="text-sm text-slate-500 mt-1">

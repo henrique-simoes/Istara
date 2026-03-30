@@ -1,4 +1,4 @@
-// ReClaw Desktop — System tray app for server management and compute donation.
+// Istara Desktop — System tray app for server management and compute donation.
 //
 // Two modes:
 // - Server+Client: manages backend, frontend, and relay subprocesses
@@ -73,7 +73,7 @@ fn main() {
                     "setup",
                     tauri::WebviewUrl::App("index.html".into()),
                 )
-                .title("ReClaw Setup")
+                .title("Istara Setup")
                 .inner_size(640.0, 520.0)
                 .resizable(false)
                 .center()
@@ -105,5 +105,5 @@ fn main() {
             commands::get_server_status,
         ])
         .run(tauri::generate_context!())
-        .expect("error while running ReClaw desktop app");
+        .expect("error while running Istara desktop app");
 }

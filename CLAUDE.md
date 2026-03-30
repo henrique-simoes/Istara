@@ -1,4 +1,4 @@
-# ReClaw — Claude Code Development Guide
+# Istara — Claude Code Development Guide
 
 For full system understanding, see [AGENT.md](AGENT.md).
 
@@ -78,7 +78,7 @@ lms server start
 ### Code Style
 - Backend: Python 3.11+, async/await, type hints, SQLAlchemy 2.0 mapped_column
 - Frontend: TypeScript, "use client" on all components, Tailwind CSS, `cn()` for conditional classes
-- Colors: `reclaw-{50-900}` scale, dark mode via class toggle
+- Colors: `istara-{50-900}` scale, dark mode via class toggle
 - Accessibility: `aria-label` on icon buttons, `role="tab"/"tablist"`, FocusTrap in modals
 
 ### Testing

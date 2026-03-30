@@ -2,7 +2,7 @@
 name: contextual-inquiry
 description: "Structure and analyze contextual inquiry observations — studying users in their natural work environment."
 metadata:
-  reclaw:
+  istara:
     phase: discover
     type: qualitative
     version: "1.0.0"

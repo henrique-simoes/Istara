@@ -144,7 +144,7 @@ export default function NotificationPrefsTab() {
           className={cn(
             "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors",
             dirty
-              ? "bg-reclaw-600 text-white hover:bg-reclaw-700"
+              ? "bg-istara-600 text-white hover:bg-istara-700"
               : "bg-slate-200 dark:bg-slate-700 text-slate-400 cursor-not-allowed"
           )}
         >
@@ -175,8 +175,8 @@ function ToggleSwitch({
       aria-label={label}
       onClick={onChange}
       className={cn(
-        "relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-reclaw-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900",
-        checked ? "bg-reclaw-600" : "bg-slate-300 dark:bg-slate-600"
+        "relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-istara-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900",
+        checked ? "bg-istara-600" : "bg-slate-300 dark:bg-slate-600"
       )}
     >
       <span

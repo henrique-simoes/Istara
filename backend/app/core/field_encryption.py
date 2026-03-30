@@ -65,7 +65,7 @@ def _get_fernet():
         import hashlib
 
         derived = hashlib.pbkdf2_hmac(
-            "sha256", key.encode(), b"reclaw-field-encryption", 100_000
+            "sha256", key.encode(), b"istara-field-encryption", 100_000
         )
         fernet_key = base64.urlsafe_b64encode(derived[:32])
         _fernet_instance = Fernet(fernet_key)

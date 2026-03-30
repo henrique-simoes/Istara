@@ -60,7 +60,7 @@ export default function ExperimentHistory() {
               setPage(0);
             }}
             aria-label="Filter by loop type"
-            className="px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+            className="px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-istara-500"
           >
             {LOOP_TYPE_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>
@@ -81,7 +81,7 @@ export default function ExperimentHistory() {
               setPage(0);
             }}
             aria-label="Filter by outcome"
-            className="px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+            className="px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-istara-500"
           >
             <option value="">All Outcomes</option>
             <option value="true">Kept</option>

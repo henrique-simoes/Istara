@@ -67,10 +67,10 @@ async def get_hardware_info():
             "hardware": {
                 "total_ram_gb": profile.total_ram_gb,
                 "available_ram_gb": profile.available_ram_gb,
-                "reclaw_ram_budget_gb": profile.reclaw_ram_budget_gb,
+                "istara_ram_budget_gb": profile.istara_ram_budget_gb,
                 "cpu_cores": profile.cpu_cores,
                 "cpu_arch": profile.cpu_arch,
-                "reclaw_cpu_budget_cores": profile.reclaw_cpu_budget_cores,
+                "istara_cpu_budget_cores": profile.istara_cpu_budget_cores,
                 "gpu": {
                     "vendor": profile.gpu.vendor,
                     "name": profile.gpu.name,

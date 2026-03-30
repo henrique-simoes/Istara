@@ -206,7 +206,7 @@ class TypeformAdapter(SurveyPlatformAdapter):
 
         Uses HMAC-SHA256 secret if configured.
         """
-        tag = f"reclaw-{survey_id}"
+        tag = f"istara-{survey_id}"
         secret = self.config.get("webhook_secret", "")
 
         body: dict[str, Any] = {

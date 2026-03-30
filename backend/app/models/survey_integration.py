@@ -37,7 +37,7 @@ class SurveyIntegration(Base):
 
 
 class SurveyLink(Base):
-    """A link between an external survey and a ReClaw project for response ingestion."""
+    """A link between an external survey and a Istara project for response ingestion."""
 
     __tablename__ = "survey_links"
 

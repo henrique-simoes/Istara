@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ReClaw Setup</title>
+  <title>Istara Setup</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -88,7 +88,7 @@
 <body>
   <div class="header">
     <span class="logo">&#x1f43e;</span>
-    <h1>ReClaw Setup</h1>
+    <h1>Istara Setup</h1>
     <p>Local-first AI for UX Research</p>
   </div>
 
@@ -98,21 +98,21 @@
 
     <!-- Step 0: Welcome + Mode -->
     <div class="step active" data-step="0">
-      <h2>Welcome to ReClaw</h2>
-      <p class="subtitle">Choose how you want to use ReClaw on this machine.</p>
+      <h2>Welcome to Istara</h2>
+      <p class="subtitle">Choose how you want to use Istara on this machine.</p>
       <div class="radio-group" id="mode-group">
         <label class="radio-card selected" onclick="selectMode('server')">
           <div class="radio-dot"></div>
           <div>
             <div class="radio-label">&#x1f5a5;&#xfe0f; Server (Full Install)</div>
-            <div class="radio-desc">Run your own ReClaw server with AI agents, research tools, and a web UI.</div>
+            <div class="radio-desc">Run your own Istara server with AI agents, research tools, and a web UI.</div>
           </div>
         </label>
         <label class="radio-card" onclick="selectMode('client')">
           <div class="radio-dot"></div>
           <div>
             <div class="radio-label">&#x1f4bb; Client (Connect to Server)</div>
-            <div class="radio-desc">Donate compute and access a remote ReClaw server. Requires a connection string from your admin.</div>
+            <div class="radio-desc">Donate compute and access a remote Istara server. Requires a connection string from your admin.</div>
           </div>
         </label>
       </div>
@@ -126,7 +126,7 @@
     <!-- Step 1: Dependencies (Server mode) -->
     <div class="step" data-step="1">
       <h2>Dependencies</h2>
-      <p class="subtitle">ReClaw needs these to run. Uncheck any you've already installed.</p>
+      <p class="subtitle">Istara needs these to run. Uncheck any you've already installed.</p>
       <div class="dep-list" id="dep-list">
         <!-- Populated by JS -->
       </div>
@@ -172,7 +172,7 @@
       <p class="subtitle">Set up your server. Defaults work for most users.</p>
       <div class="input-group">
         <label>Data Directory</label>
-        <input type="text" id="data-dir" placeholder="~/.reclaw/data" />
+        <input type="text" id="data-dir" placeholder="~/.istara/data" />
       </div>
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
         <div class="input-group">
@@ -189,7 +189,7 @@
     <!-- Step 4: Install Progress -->
     <div class="step" data-step="4">
       <h2>Installing...</h2>
-      <p class="subtitle">Sit back while ReClaw sets everything up.</p>
+      <p class="subtitle">Sit back while Istara sets everything up.</p>
       <div class="install-log" id="install-log"></div>
       <div id="install-progress" style="height:4px; background:#334155; border-radius:2px; overflow:hidden; margin-bottom:12px;">
         <div id="install-bar" style="height:100%; background:#6366f1; width:0%; transition:width 0.3s;"></div>
@@ -200,7 +200,7 @@
     <div class="step" data-step="5">
       <div class="success-card">
         <span class="check">&#x2705;</span>
-        <h2>ReClaw is Ready!</h2>
+        <h2>Istara is Ready!</h2>
         <p class="subtitle">Your local AI research assistant is set up and running.</p>
       </div>
     </div>
@@ -268,7 +268,7 @@
       document.getElementById('btn-back').style.visibility = getStepIndex() > 0 ? 'visible' : 'hidden';
 
       if (step === 5) {
-        document.getElementById('btn-next').textContent = 'Open ReClaw';
+        document.getElementById('btn-next').textContent = 'Open Istara';
       } else if (step === 4) {
         document.getElementById('btn-next').textContent = 'Installing...';
         document.getElementById('btn-next').disabled = true;
@@ -353,7 +353,7 @@
         bar.style.width = pct + '%';
       }
 
-      addLog('Starting ReClaw installation...', 'progress');
+      addLog('Starting Istara installation...', 'progress');
 
       if (installMode === 'server') {
         // Install selected dependencies
@@ -430,7 +430,7 @@
         setProgress(80);
         addLog('Saving configuration...', 'progress');
         await new Promise(r => setTimeout(r, 500));
-        addLog('  Config saved to ~/.reclaw/config.json', 'done');
+        addLog('  Config saved to ~/.istara/config.json', 'done');
       }
 
       setProgress(100);
@@ -451,7 +451,7 @@
       }
 
       // Enable next button
-      document.getElementById('btn-next').textContent = 'Open ReClaw';
+      document.getElementById('btn-next').textContent = 'Open Istara';
       document.getElementById('btn-next').disabled = false;
       showStep(5);
     }

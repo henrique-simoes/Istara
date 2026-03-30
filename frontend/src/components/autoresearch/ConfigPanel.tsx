@@ -69,7 +69,7 @@ export default function ConfigPanel() {
               updateConfig({ max_experiments_per_run: Number(e.target.value) })
             }
             aria-label="Max experiments per run"
-            className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-reclaw-600"
+            className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-istara-600"
           />
           <div className="flex justify-between text-xs text-slate-400 mt-1">
             <span>1</span>
@@ -99,7 +99,7 @@ export default function ConfigPanel() {
               updateConfig({ max_daily_experiments: Number(e.target.value) })
             }
             aria-label="Max daily experiments"
-            className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-reclaw-600"
+            className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-istara-600"
           />
           <div className="flex justify-between text-xs text-slate-400 mt-1">
             <span>1</span>
@@ -131,7 +131,7 @@ export default function ConfigPanel() {
                 type="checkbox"
                 defaultChecked
                 aria-label={`Enable ${loop.label}`}
-                className="mt-0.5 rounded border-slate-300 dark:border-slate-600 text-reclaw-600 focus:ring-reclaw-500"
+                className="mt-0.5 rounded border-slate-300 dark:border-slate-600 text-istara-600 focus:ring-istara-500"
               />
               <div>
                 <span className="text-sm font-medium text-slate-900 dark:text-white">
@@ -155,7 +155,7 @@ export default function ConfigPanel() {
             target="_blank"
             rel="noopener noreferrer"
             aria-label="Karpathy autoresearch repository on GitHub"
-            className="inline-flex items-center gap-1 text-reclaw-600 dark:text-reclaw-400 hover:underline"
+            className="inline-flex items-center gap-1 text-istara-600 dark:text-istara-400 hover:underline"
           >
             github.com/karpathy/autoresearch
             <ExternalLink size={12} />

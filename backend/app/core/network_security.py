@@ -1,6 +1,6 @@
-"""Network Security Middleware — protects ReClaw when accessible beyond localhost.
+"""Network Security Middleware — protects Istara when accessible beyond localhost.
 
-When ReClaw binds to 0.0.0.0 (network-accessible), non-localhost requests
+When Istara binds to 0.0.0.0 (network-accessible), non-localhost requests
 must provide a valid access token. This is a lightweight security layer
 that works WITHOUT team mode / PostgreSQL — suitable for LAN deployments
 and enterprise networks.

@@ -34,7 +34,7 @@ export default function MobileNav({ activeView, onViewChange }: MobileNavProps) 
             className={cn(
               "flex flex-col items-center gap-0.5 px-3 py-1 rounded-lg transition-colors",
               activeView === item.id
-                ? "text-reclaw-600"
+                ? "text-istara-600"
                 : "text-slate-400"
             )}
             aria-label={item.label}

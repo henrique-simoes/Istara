@@ -144,10 +144,10 @@ async def _exec_generate_screen(params: dict, project_id: str, agent_id: str) ->
                 )
 
     try:
-        # Create or reuse a Stitch project for this ReClaw project
+        # Create or reuse a Stitch project for this Istara project
         stitch_project_id = "default"
         try:
-            stitch_proj = await stitch_service.create_project(f"ReClaw-{project_id[:8]}")
+            stitch_proj = await stitch_service.create_project(f"Istara-{project_id[:8]}")
             raw_name = stitch_proj.get("name", "")
             stitch_project_id = stitch_service.extract_project_id(raw_name) if raw_name else "default"
         except Exception:

@@ -124,9 +124,9 @@ The full chain is: Nugget -> Fact -> Insight -> Recommendation -> DesignDecision
 - Sage's evaluation results may trigger variant generation (REFINE or EXPLORE)
 - Resolve conflicts between Sage's heuristic findings and original research
 
-### With ReClaw (Main Agent)
+### With Istara (Main Agent)
 - Request additional research context when findings are insufficient
-- Report design progress and blockers to ReClaw for project coordination
+- Report design progress and blockers to Istara for project coordination
 - Consult on scope changes when design reveals gaps in research coverage
 
 ## Error Handling

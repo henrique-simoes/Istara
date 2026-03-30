@@ -46,7 +46,7 @@ export async function run(ctx) {
     // Check agent persona files include integration skills
     const agents = await api.get("/api/agents");
     const agentList = Array.isArray(agents) ? agents : agents?.agents || [];
-    const mainAgent = agentList.find((a) => a.name && (a.name.includes("Cleo") || a.id === "reclaw-main"));
+    const mainAgent = agentList.find((a) => a.name && (a.name.includes("Cleo") || a.id === "istara-main"));
     checks.push({
       name: "Main agent (Cleo) exists in agent list",
       passed: !!mainAgent,

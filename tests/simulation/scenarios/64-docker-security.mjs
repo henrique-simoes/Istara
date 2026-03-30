@@ -111,7 +111,7 @@ export async function run(ctx) {
   // ── 8. Health endpoint response format ──
   try {
     const health = await api.get("/api/health");
-    const hasService = health.service === "reclaw";
+    const hasService = health.service === "istara";
     checks.push({
       name: "Health endpoint includes service identifier",
       passed: hasService,

@@ -2,7 +2,7 @@
 name: journey-mapping
 description: "Build end-to-end journey maps with stages, actions, emotions, pain points, opportunities — all linked to evidence."
 metadata:
-  reclaw:
+  istara:
     phase: define
     type: mixed
     version: "1.0.0"

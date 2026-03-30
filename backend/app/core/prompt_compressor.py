@@ -1,7 +1,7 @@
 """Prompt Compressor — LLMLingua-inspired heuristic compression for system prompts.
 
 Microsoft's LLMLingua uses a small model (GPT-2) to score token perplexity
-and remove low-information tokens.  Since ReClaw runs on local machines and
+and remove low-information tokens.  Since Istara runs on local machines and
 can't assume torch/transformers are available, this module implements a
 lightweight heuristic equivalent that follows the same principles:
 

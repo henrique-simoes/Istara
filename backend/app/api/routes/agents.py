@@ -805,7 +805,7 @@ async def export_agent(agent_id: str, db: AsyncSession = Depends(get_db)):
     if not agent:
         raise HTTPException(status_code=404, detail="Agent not found")
     return {
-        "reclaw_version": "0.1.0",
+        "istara_version": "0.1.0",
         "type": "agent_config",
         "agent": {
             "name": agent["name"],

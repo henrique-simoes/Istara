@@ -105,7 +105,7 @@ function RoleDropdown({
           ROLE_CONFIG[currentRole]?.color || "text-slate-600",
           disabled
             ? "opacity-60 cursor-not-allowed"
-            : "hover:ring-2 hover:ring-reclaw-300 cursor-pointer"
+            : "hover:ring-2 hover:ring-istara-300 cursor-pointer"
         )}
         aria-label="Change role"
         aria-haspopup="listbox"
@@ -140,7 +140,7 @@ function RoleDropdown({
                 <div className="text-sm font-medium text-slate-900 dark:text-white flex items-center gap-2">
                   {config.label}
                   {currentRole === roleKey && (
-                    <Check size={12} className="text-reclaw-600" />
+                    <Check size={12} className="text-istara-600" />
                   )}
                 </div>
                 <div className="text-xs text-slate-500">{config.description}</div>
@@ -158,7 +158,7 @@ function RoleDropdown({
 function UserAvatar({ name, size = "md" }: { name: string; size?: "sm" | "md" }) {
   const letter = (name || "?").charAt(0).toUpperCase();
   const colors = [
-    "bg-reclaw-100 text-reclaw-700 dark:bg-reclaw-900/40 dark:text-reclaw-300",
+    "bg-istara-100 text-istara-700 dark:bg-istara-900/40 dark:text-istara-300",
     "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
     "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300",
     "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
@@ -345,7 +345,7 @@ function InviteForm({
             placeholder="e.g., Sarah Chen"
             value={displayName}
             onChange={(e) => setDisplayName(e.target.value)}
-            className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-reclaw-500 focus:border-transparent"
+            className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-istara-500 focus:border-transparent"
           />
         </div>
 
@@ -368,7 +368,7 @@ function InviteForm({
               "w-full px-3 py-2 text-sm rounded-lg border bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:border-transparent",
               errors.username
                 ? "border-red-400 dark:border-red-600 focus:ring-red-500"
-                : "border-slate-300 dark:border-slate-600 focus:ring-reclaw-500"
+                : "border-slate-300 dark:border-slate-600 focus:ring-istara-500"
             )}
             aria-invalid={!!errors.username}
             aria-describedby={errors.username ? "invite-username-error" : undefined}
@@ -398,7 +398,7 @@ function InviteForm({
               "w-full px-3 py-2 text-sm rounded-lg border bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:border-transparent",
               errors.email
                 ? "border-red-400 dark:border-red-600 focus:ring-red-500"
-                : "border-slate-300 dark:border-slate-600 focus:ring-reclaw-500"
+                : "border-slate-300 dark:border-slate-600 focus:ring-istara-500"
             )}
             aria-invalid={!!errors.email}
             aria-describedby={errors.email ? "invite-email-error" : undefined}
@@ -429,7 +429,7 @@ function InviteForm({
                 "w-full px-3 py-2 pr-10 text-sm rounded-lg border bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:border-transparent",
                 errors.password
                   ? "border-red-400 dark:border-red-600 focus:ring-red-500"
-                  : "border-slate-300 dark:border-slate-600 focus:ring-reclaw-500"
+                  : "border-slate-300 dark:border-slate-600 focus:ring-istara-500"
               )}
               aria-invalid={!!errors.password}
               aria-describedby={errors.password ? "invite-password-error" : undefined}
@@ -466,19 +466,19 @@ function InviteForm({
                 className={cn(
                   "flex flex-col items-center gap-1 p-2.5 rounded-lg border text-center transition-all",
                   role === roleKey
-                    ? "border-reclaw-500 bg-reclaw-50 dark:bg-reclaw-900/20 ring-1 ring-reclaw-500"
+                    ? "border-istara-500 bg-istara-50 dark:bg-istara-900/20 ring-1 ring-istara-500"
                     : "border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600"
                 )}
               >
                 <config.icon
                   size={16}
-                  className={role === roleKey ? "text-reclaw-600" : "text-slate-400"}
+                  className={role === roleKey ? "text-istara-600" : "text-slate-400"}
                 />
                 <span
                   className={cn(
                     "text-xs font-medium",
                     role === roleKey
-                      ? "text-reclaw-700 dark:text-reclaw-300"
+                      ? "text-istara-700 dark:text-istara-300"
                       : "text-slate-700 dark:text-slate-300"
                   )}
                 >
@@ -488,7 +488,7 @@ function InviteForm({
                   {config.description}
                 </span>
                 {roleKey === "researcher" && role !== roleKey && (
-                  <span className="text-[10px] text-reclaw-600 dark:text-reclaw-400 font-medium">
+                  <span className="text-[10px] text-istara-600 dark:text-istara-400 font-medium">
                     Recommended
                   </span>
                 )}
@@ -517,8 +517,8 @@ function InviteForm({
             className={cn(
               "px-4 py-2 text-sm font-medium rounded-lg transition-colors",
               submitting
-                ? "bg-reclaw-400 text-white cursor-not-allowed"
-                : "bg-reclaw-600 hover:bg-reclaw-700 text-white"
+                ? "bg-istara-400 text-white cursor-not-allowed"
+                : "bg-istara-600 hover:bg-istara-700 text-white"
             )}
           >
             {submitting ? "Creating..." : "Create Account"}
@@ -617,7 +617,7 @@ export default function UserManagement() {
               setShowInviteForm(true);
               setCreatedCredentials(null);
             }}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg bg-reclaw-600 hover:bg-reclaw-700 text-white transition-colors"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg bg-istara-600 hover:bg-istara-700 text-white transition-colors"
             aria-label="Invite a new team member"
           >
             <UserPlus size={14} />
@@ -671,14 +671,14 @@ export default function UserManagement() {
 
           {/* Current user */}
           {currentUser && (
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-reclaw-50/50 dark:bg-reclaw-900/10 border border-reclaw-100 dark:border-reclaw-900/30 mb-2">
+            <div className="flex items-center gap-3 p-3 rounded-lg bg-istara-50/50 dark:bg-istara-900/10 border border-istara-100 dark:border-istara-900/30 mb-2">
               <UserAvatar name={currentUser.display_name || currentUser.username} />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium text-slate-900 dark:text-white truncate">
                     {currentUser.display_name || currentUser.username}
                   </span>
-                  <span className="text-xs text-reclaw-600 dark:text-reclaw-400 font-medium shrink-0">
+                  <span className="text-xs text-istara-600 dark:text-istara-400 font-medium shrink-0">
                     (You)
                   </span>
                 </div>
@@ -703,7 +703,7 @@ export default function UserManagement() {
                     setShowInviteForm(true);
                     setCreatedCredentials(null);
                   }}
-                  className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg bg-reclaw-600 hover:bg-reclaw-700 text-white transition-colors"
+                  className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg bg-istara-600 hover:bg-istara-700 text-white transition-colors"
                   aria-label="Invite a new team member"
                 >
                   <UserPlus size={14} />

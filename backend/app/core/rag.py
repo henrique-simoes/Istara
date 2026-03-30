@@ -379,7 +379,7 @@ def build_augmented_prompt(
         Formatted system prompt with all context layers.
     """
     parts = [
-        "You are ReClaw, an expert UX Research assistant. "
+        "You are Istara, an expert UX Research assistant. "
         "You help researchers organize, analyze, and synthesize research findings. "
         "Always cite your sources when referencing specific documents. "
         "If you're uncertain, say so — never fabricate evidence."

@@ -158,10 +158,10 @@ export default function BackupView() {
 
   return (
     <div className="flex-1 overflow-y-auto p-6 max-w-4xl mx-auto space-y-6">
-      <ViewOnboarding viewId="backup" title="Data Protection" description="Create and restore backups of your entire ReClaw instance — database, files, vector store, and settings." chatPrompt="How do I backup my data?" />
+      <ViewOnboarding viewId="backup" title="Data Protection" description="Create and restore backups of your entire Istara instance — database, files, vector store, and settings." chatPrompt="How do I backup my data?" />
       {/* Header */}
       <div className="flex items-center gap-3">
-        <Archive size={24} className="text-reclaw-600 dark:text-reclaw-400" />
+        <Archive size={24} className="text-istara-600 dark:text-istara-400" />
         <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
           Backup & Recovery
         </h2>
@@ -207,7 +207,7 @@ export default function BackupView() {
           disabled={creating}
           className={cn(
             "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors",
-            "bg-reclaw-600 text-white hover:bg-reclaw-700 disabled:opacity-50"
+            "bg-istara-600 text-white hover:bg-istara-700 disabled:opacity-50"
           )}
         >
           {creating ? <RefreshCw size={16} className="animate-spin" /> : <Plus size={16} />}
@@ -382,7 +382,7 @@ export default function BackupView() {
                 className={cn(
                   "relative w-10 h-5 rounded-full transition-colors",
                   configForm.backup_enabled
-                    ? "bg-reclaw-600"
+                    ? "bg-istara-600"
                     : "bg-slate-300 dark:bg-slate-600"
                 )}
               >
@@ -411,7 +411,7 @@ export default function BackupView() {
                     backup_interval_hours: parseInt(e.target.value) || 24,
                   }))
                 }
-                className="w-20 px-2 py-1 text-sm rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+                className="w-20 px-2 py-1 text-sm rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-istara-500"
               />
             </div>
 
@@ -431,7 +431,7 @@ export default function BackupView() {
                     backup_retention_count: parseInt(e.target.value) || 10,
                   }))
                 }
-                className="w-20 px-2 py-1 text-sm rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+                className="w-20 px-2 py-1 text-sm rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-istara-500"
               />
             </div>
 
@@ -451,7 +451,7 @@ export default function BackupView() {
                     backup_full_interval_days: parseInt(e.target.value) || 7,
                   }))
                 }
-                className="w-20 px-2 py-1 text-sm rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+                className="w-20 px-2 py-1 text-sm rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-istara-500"
               />
             </div>
 
@@ -462,7 +462,7 @@ export default function BackupView() {
                 disabled={savingConfig}
                 className={cn(
                   "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors",
-                  "bg-reclaw-600 text-white hover:bg-reclaw-700 disabled:opacity-50"
+                  "bg-istara-600 text-white hover:bg-istara-700 disabled:opacity-50"
                 )}
               >
                 {savingConfig && <RefreshCw size={14} className="animate-spin" />}

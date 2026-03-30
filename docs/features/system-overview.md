@@ -1,6 +1,6 @@
-# ReClaw System Overview
+# Istara System Overview
 
-A complete feature catalog for agents and users to understand all ReClaw capabilities.
+A complete feature catalog for agents and users to understand all Istara capabilities.
 
 ## Core Philosophy
 
@@ -13,7 +13,7 @@ A complete feature catalog for agents and users to understand all ReClaw capabil
 ## Feature Map
 
 ### Chat
-Natural language interface to all ReClaw capabilities. Agents understand project context, available skills, and can execute research tasks from conversation.
+Natural language interface to all Istara capabilities. Agents understand project context, available skills, and can execute research tasks from conversation.
 
 ### Findings
 Atomic Research evidence chain: Nuggets (raw evidence) -> Facts (verified patterns) -> Insights (interpreted meanings) -> Recommendations (actionable proposals). Every finding traces back to its source.
@@ -53,7 +53,7 @@ Multi-platform integration hub with 5 tabs:
 - **Messaging**: Telegram, Slack, WhatsApp, Google Chat — multi-instance channel management
 - **Surveys**: SurveyMonkey, Google Forms, Typeform — create surveys and ingest responses
 - **Deployments**: Deploy interviews/surveys via messaging with adaptive questioning and real-time analytics
-- **MCP**: Expose ReClaw to external agents (server) or connect external tools (client)
+- **MCP**: Expose Istara to external agents (server) or connect external tools (client)
 
 ### Loops & Schedule
 Recurring task execution on configurable intervals per agent.
@@ -77,7 +77,7 @@ Unified view of all LLM servers: local, network-discovered, and relay nodes. Don
 LLM server configuration, hardware detection, resource governance, team mode toggle, connection string generation, compute donation, and system preferences. Hardware shows server stats. Team members managed via invite form with role selection (admin/researcher/viewer).
 
 ### Desktop App
-System tray app (macOS menubar / Windows system tray) for managing ReClaw:
+System tray app (macOS menubar / Windows system tray) for managing Istara:
 - **Server mode**: Start/Stop server, open browser, compute donation, stats
 - **Client mode**: Connection status, compute donation, change server
 - Setup wizard on first launch with dependency installation

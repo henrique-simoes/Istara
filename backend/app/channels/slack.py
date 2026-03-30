@@ -1,4 +1,4 @@
-"""Slack channel adapter for ReClaw.
+"""Slack channel adapter for Istara.
 
 Real implementation using ``slack-bolt[async]>=1.20.0`` with Socket Mode or HTTP.
 Handles message events and app_mention events.

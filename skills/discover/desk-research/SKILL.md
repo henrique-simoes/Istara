@@ -2,7 +2,7 @@
 name: desk-research
 description: "Summarize academic papers, industry reports, best practices relevant to the research domain."
 metadata:
-  reclaw:
+  istara:
     phase: discover
     type: mixed
     version: "1.0.0"

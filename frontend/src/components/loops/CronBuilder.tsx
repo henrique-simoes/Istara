@@ -152,7 +152,7 @@ export default function CronBuilder({ value, onChange }: CronBuilderProps) {
             className={cn(
               "text-xs px-2.5 py-1 rounded-md border transition-colors",
               value === preset.cron
-                ? "bg-reclaw-100 border-reclaw-300 text-reclaw-700 dark:bg-reclaw-900/30 dark:border-reclaw-600 dark:text-reclaw-400"
+                ? "bg-istara-100 border-istara-300 text-istara-700 dark:bg-istara-900/30 dark:border-istara-600 dark:text-istara-400"
                 : "border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
             )}
           >
@@ -171,7 +171,7 @@ export default function CronBuilder({ value, onChange }: CronBuilderProps) {
             <select
               value={field.value}
               onChange={(e) => updateField(field.index, e.target.value)}
-              className="w-full text-xs px-2 py-1.5 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+              className="w-full text-xs px-2 py-1.5 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-istara-500"
             >
               {field.options.map((opt) => (
                 <option key={opt.value} value={opt.value}>

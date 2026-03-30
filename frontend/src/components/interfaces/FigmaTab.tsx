@@ -135,12 +135,12 @@ export default function FigmaTab() {
               value={apiToken}
               onChange={(e) => setApiToken(e.target.value)}
               placeholder="Figma API token"
-              className="flex-1 px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+              className="flex-1 px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-istara-500"
             />
             <button
               onClick={handleSaveToken}
               disabled={!apiToken.trim() || savingToken}
-              className="flex items-center gap-1.5 px-4 py-2 text-sm bg-reclaw-600 text-white rounded-lg hover:bg-reclaw-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="flex items-center gap-1.5 px-4 py-2 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {savingToken ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
               Save
@@ -158,7 +158,7 @@ export default function FigmaTab() {
             href="https://www.figma.com/developers/api#access-tokens"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-sm text-reclaw-600 hover:text-reclaw-700 dark:text-reclaw-400 mt-2"
+            className="inline-flex items-center gap-1 text-sm text-istara-600 hover:text-istara-700 dark:text-istara-400 mt-2"
           >
             <ExternalLink size={12} /> Get your Figma API token
           </a>
@@ -189,12 +189,12 @@ export default function FigmaTab() {
               value={stitchKey}
               onChange={(e) => setStitchKey(e.target.value)}
               placeholder="Google API key"
-              className="flex-1 px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+              className="flex-1 px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-istara-500"
             />
             <button
               onClick={handleSaveStitch}
               disabled={!stitchKey.trim() || savingStitch}
-              className="flex items-center gap-1.5 px-4 py-2 text-sm bg-reclaw-600 text-white rounded-lg hover:bg-reclaw-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="flex items-center gap-1.5 px-4 py-2 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {savingStitch ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
               Save
@@ -212,7 +212,7 @@ export default function FigmaTab() {
             href="https://aistudio.google.com/app/apikey"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-sm text-reclaw-600 hover:text-reclaw-700 dark:text-reclaw-400 mt-2"
+            className="inline-flex items-center gap-1 text-sm text-istara-600 hover:text-istara-700 dark:text-istara-400 mt-2"
           >
             <ExternalLink size={12} /> Get your Google AI API key
           </a>
@@ -237,12 +237,12 @@ export default function FigmaTab() {
                   value={figmaUrl}
                   onChange={(e) => setFigmaUrl(e.target.value)}
                   placeholder="https://www.figma.com/file/..."
-                  className="flex-1 px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+                  className="flex-1 px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-istara-500"
                 />
                 <button
                   onClick={handleImport}
                   disabled={!figmaUrl.trim() || importing}
-                  className="flex items-center gap-1.5 px-4 py-2 text-sm bg-reclaw-600 text-white rounded-lg hover:bg-reclaw-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="flex items-center gap-1.5 px-4 py-2 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   {importing ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
                   Import
@@ -280,12 +280,12 @@ export default function FigmaTab() {
                   value={fileKey}
                   onChange={(e) => setFileKey(e.target.value)}
                   placeholder="Figma file key (from URL)"
-                  className="flex-1 px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+                  className="flex-1 px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-istara-500"
                 />
                 <button
                   onClick={handleExtractDS}
                   disabled={!fileKey.trim() || extracting}
-                  className="flex items-center gap-1.5 px-4 py-2 text-sm bg-reclaw-600 text-white rounded-lg hover:bg-reclaw-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="flex items-center gap-1.5 px-4 py-2 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   {extracting ? <Loader2 size={14} className="animate-spin" /> : <Layers size={14} />}
                   Extract

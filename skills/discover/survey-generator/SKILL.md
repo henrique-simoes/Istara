@@ -2,7 +2,7 @@
 name: survey-generator
 description: "Generate context-aware surveys from project knowledge — research questions, context layers, existing findings."
 metadata:
-  reclaw:
+  istara:
     phase: discover
     type: mixed
     version: "1.0.0"

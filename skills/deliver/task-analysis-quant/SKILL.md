@@ -2,7 +2,7 @@
 name: task-analysis-quant
 description: "Task completion rates, time-on-task, error rates, efficiency metrics, benchmarks."
 metadata:
-  reclaw:
+  istara:
     phase: deliver
     type: quantitative
     version: "1.0.0"

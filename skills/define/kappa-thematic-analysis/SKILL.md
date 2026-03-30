@@ -3,7 +3,7 @@ name: kappa-thematic-analysis
 description: "Thematic analysis with Cohen's/Fleiss' Kappa intercoder reliability.
 Supports agent-only, human-only, or agent+human coding with reliability measurement."
 metadata:
-  reclaw:
+  istara:
     phase: define
     type: qualitative
     version: "1.0.0"
@@ -15,8 +15,8 @@ Rigorous thematic analysis with Cohen's/Fleiss' Kappa intercoder reliability mea
 
 ## Modes
 
-- **Agent-only** — ReClaw generates two independent codings and measures agreement
-- **Agent + Human** — Human codes, ReClaw codes independently, Kappa measured between them
+- **Agent-only** — Istara generates two independent codings and measures agreement
+- **Agent + Human** — Human codes, Istara codes independently, Kappa measured between them
 - **Multi-coder** — Fleiss' Kappa for 3+ coders
 
 ## Kappa Interpretation (Landis & Koch 1977)

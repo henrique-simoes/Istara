@@ -2,7 +2,7 @@
 name: handoff-documentation
 description: "Generate developer handoff docs: specs, annotations, edge cases, accessibility requirements."
 metadata:
-  reclaw:
+  istara:
     phase: deliver
     type: mixed
     version: "1.0.0"

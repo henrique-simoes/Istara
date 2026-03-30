@@ -1,8 +1,8 @@
-# ReClaw Agentic Architecture — Complete Pipeline Documentation
+# Istara Agentic Architecture — Complete Pipeline Documentation
 
 ## Overview
 
-ReClaw's agent system operates through two parallel pipelines: **interactive chat** (user-driven, real-time) and **autonomous work** (background, task-driven). Both share the same tool ecosystem, memory systems, and finding storage.
+Istara's agent system operates through two parallel pipelines: **interactive chat** (user-driven, real-time) and **autonomous work** (background, task-driven). Both share the same tool ecosystem, memory systems, and finding storage.
 
 ---
 
@@ -185,7 +185,7 @@ Autoresearch loops (6 types, overnight)
 | **Self-verification** | Self-MoA | Li et al. (2025) | `agent.py` `_self_verify_output()` |
 | **Adversarial review** | Multi-Agent Debate | Du et al. (2024), ICML 2024 | `adaptive_validation.py` debate_rounds |
 | **Prompt compression** | LLMLingua | Jiang et al. (2023) | `agent_identity.py` llmlingua strategy |
-| **Query-aware prompts** | Prompt RAG | Novel (ReClaw) | `prompt_rag.py` |
+| **Query-aware prompts** | Prompt RAG | Novel (Istara) | `prompt_rag.py` |
 | **Optimization loops** | Autoresearch | Karpathy (2026), MIT | `autoresearch_engine.py`, 6 runners |
 | **Skill self-improvement** | Memento-Skills | "Let Agents Design Agents" (2025) | `skill_manager.py`, `agent_factory.py` |
 | **Heuristic evaluation** | Nielsen's 10 | Nielsen & Molich (1990), CHI | `heuristic-evaluation.json` skill |
@@ -210,7 +210,7 @@ Autoresearch loops (6 types, overnight)
 ## Browser UI Automation (Implemented)
 
 ### Playwright MCP — Precise Browser Control
-- Microsoft's official `@playwright/mcp` server — available as featured MCP server in ReClaw
+- Microsoft's official `@playwright/mcp` server — available as featured MCP server in Istara
 - 21 tools: navigate, click, type, screenshot, accessibility tree, network, console, JS eval
 - Uses accessibility trees (2-5KB text) — works with any text model, no vision required
 - Install: `npx @playwright/mcp@latest --port 3100` → connect in MCP tab
@@ -232,7 +232,7 @@ Autoresearch loops (6 types, overnight)
 
 ## Benchmark vs Reference Platforms
 
-| Capability | ReClaw | OpenClaw | Hermes | Claude Code |
+| Capability | Istara | OpenClaw | Hermes | Claude Code |
 |---|---|---|---|---|
 | Native Tool Calling | ✅ Full (OpenAI format) | ✅ Full | ✅ Full | ✅ Full |
 | Multi-Step Reasoning | ✅ 8-iter ReAct | ✅ Full | ✅ Full | ✅ Full |

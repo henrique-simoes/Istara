@@ -464,7 +464,7 @@ export async function run(ctx) {
     }
     const exported = await api.get(`/api/agents/${testAgentId}/export`);
 
-    const hasVersion = typeof exported.reclaw_version === "string";
+    const hasVersion = typeof exported.istara_version === "string";
     const hasType = exported.type === "agent_config";
     const hasAgent = typeof exported.agent === "object" && exported.agent !== null;
     const agentData = exported.agent || {};
@@ -479,7 +479,7 @@ export async function run(ctx) {
       name: "Agent Export — returns portable config",
       passed,
       detail: passed
-        ? `version=${exported.reclaw_version}, agent.name=${agentData.name}`
+        ? `version=${exported.istara_version}, agent.name=${agentData.name}`
         : `version=${hasVersion}, type=${hasType}, agent=${hasAgent}, name=${hasName}`,
     };
   });

@@ -284,7 +284,7 @@ async def get_project_versions(project_id: str, limit: int = 50):
 async def export_project(project_id: str, export_path: str | None = None, db: AsyncSession = Depends(get_db)):
     """Export a project to a standalone folder on the user's computer.
 
-    If export_path is not provided, exports to ~/ReClaw-Projects/{project_name}/
+    If export_path is not provided, exports to ~/Istara-Projects/{project_name}/
     """
     import json
     import shutil
@@ -298,7 +298,7 @@ async def export_project(project_id: str, export_path: str | None = None, db: As
     # Determine export path
     safe_name = "".join(c if c.isalnum() or c in "-_ " else "" for c in project.name).strip()
     if not export_path:
-        export_path = str(Path.home() / "ReClaw-Projects" / safe_name)
+        export_path = str(Path.home() / "Istara-Projects" / safe_name)
 
     export_dir = Path(export_path)
     export_dir.mkdir(parents=True, exist_ok=True)
@@ -409,7 +409,7 @@ async def export_project(project_id: str, export_path: str | None = None, db: As
     # Create a README
     readme = f"""# {project.name}
 
-Exported from ReClaw on {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}
+Exported from Istara on {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}
 
 ## Contents
 - `project.json` — Project metadata and context
@@ -422,7 +422,7 @@ Exported from ReClaw on {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC
 - `files/` — Uploaded research files
 
 ## Re-importing
-To import this project back into ReClaw, use the import feature or copy the files folder.
+To import this project back into Istara, use the import feature or copy the files folder.
 """
     (export_dir / "README.md").write_text(readme)
 

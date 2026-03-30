@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ═══════════════════════════════════════════════════════════════════════
-# ReClaw macOS Installer Builder
-# Produces a complete .dmg with ReClaw.app + bundled source code
+# Istara macOS Installer Builder
+# Produces a complete .dmg with Istara.app + bundled source code
 # ═══════════════════════════════════════════════════════════════════════
 #
 # Prerequisites:
@@ -19,10 +19,10 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 VERSION=$(grep '"version"' "$ROOT/desktop/src-tauri/tauri.conf.json" | head -1 | grep -o '[0-9]\+\.[0-9]\+\.[0-9]\+')
-DMG_NAME="ReClaw-${VERSION:-0.1.0}.dmg"
+DMG_NAME="Istara-${VERSION:-0.1.0}.dmg"
 
 echo "═══════════════════════════════════════════════════════════════"
-echo "  Building ReClaw $VERSION for macOS"
+echo "  Building Istara $VERSION for macOS"
 echo "═══════════════════════════════════════════════════════════════"
 
 # ── Step 1: Build Tauri app ──────────────────────────────────────────
@@ -43,10 +43,10 @@ else
     exit 1
 fi
 
-APP_PATH="src-tauri/target/universal-apple-darwin/release/bundle/macos/ReClaw.app"
+APP_PATH="src-tauri/target/universal-apple-darwin/release/bundle/macos/Istara.app"
 if [ ! -d "$APP_PATH" ]; then
     # Fallback: try release bundle without universal target
-    APP_PATH="src-tauri/target/release/bundle/macos/ReClaw.app"
+    APP_PATH="src-tauri/target/release/bundle/macos/Istara.app"
 fi
 if [ ! -d "$APP_PATH" ]; then
     echo "  ✗ Build failed — .app bundle not found"
@@ -54,10 +54,10 @@ if [ ! -d "$APP_PATH" ]; then
 fi
 echo "  ✓ Tauri app built: $APP_PATH"
 
-# ── Step 2: Bundle ReClaw source code into .app ─────────────────────
+# ── Step 2: Bundle Istara source code into .app ─────────────────────
 echo ""
-echo "▸ Step 2/5: Bundling ReClaw source code into app bundle..."
-RESOURCES="$APP_PATH/Contents/Resources/reclaw"
+echo "▸ Step 2/5: Bundling Istara source code into app bundle..."
+RESOURCES="$APP_PATH/Contents/Resources/istara"
 mkdir -p "$RESOURCES"
 
 # Backend (Python source — venv created at first run by setup wizard)
@@ -74,8 +74,8 @@ rsync -a --exclude='node_modules/' "$ROOT/relay/" "$RESOURCES/relay/"
 
 # Config and scripts
 cp "$ROOT/.env.example" "$RESOURCES/.env.example"
-cp "$ROOT/reclaw.sh" "$RESOURCES/reclaw.sh"
-chmod +x "$RESOURCES/reclaw.sh"
+cp "$ROOT/istara.sh" "$RESOURCES/istara.sh"
+chmod +x "$RESOURCES/istara.sh"
 
 # Skills definitions (system skills, not proposals/stats)
 rsync -a --exclude='_proposals.json' --exclude='_creation_proposals.json' \
@@ -83,7 +83,7 @@ rsync -a --exclude='_proposals.json' --exclude='_creation_proposals.json' \
     "$ROOT/backend/app/skills/definitions/" "$RESOURCES/backend/app/skills/definitions/"
 
 # Agent personas (system agents only — no UUID custom agents)
-for persona in reclaw-main reclaw-devops reclaw-ui-audit reclaw-ux-eval reclaw-sim; do
+for persona in istara-main istara-devops istara-ui-audit istara-ux-eval istara-sim; do
     rsync -a "$ROOT/backend/app/agents/personas/$persona/" \
         "$RESOURCES/backend/app/agents/personas/$persona/"
 done
@@ -94,7 +94,7 @@ echo "  ✓ Source bundled ($(du -sh "$RESOURCES" | cut -f1) total)"
 echo ""
 echo "▸ Step 3/5: Including LaunchAgent for auto-start..."
 mkdir -p "$RESOURCES/installer"
-cp "$ROOT/installer/macos/com.reclaw.server.plist" "$RESOURCES/installer/" 2>/dev/null || true
+cp "$ROOT/installer/macos/com.istara.server.plist" "$RESOURCES/installer/" 2>/dev/null || true
 echo "  ✓ LaunchAgent template included"
 
 # ── Step 4: Create .dmg ─────────────────────────────────────────────
@@ -104,18 +104,18 @@ cd "$ROOT"
 
 if command -v create-dmg &> /dev/null; then
     create-dmg \
-        --volname "ReClaw" \
+        --volname "Istara" \
         --window-size 600 400 \
         --icon-size 100 \
-        --icon "ReClaw.app" 150 190 \
+        --icon "Istara.app" 150 190 \
         --app-drop-link 450 190 \
-        --hide-extension "ReClaw.app" \
+        --hide-extension "Istara.app" \
         "installer/macos/$DMG_NAME" \
         "desktop/$APP_PATH" 2>&1 || true
     echo "  ✓ DMG created: installer/macos/$DMG_NAME"
 else
     # Fallback: simple DMG creation
-    hdiutil create -volname "ReClaw" -srcfolder "desktop/$APP_PATH" \
+    hdiutil create -volname "Istara" -srcfolder "desktop/$APP_PATH" \
         -ov -format UDZO "installer/macos/$DMG_NAME" 2>&1
     echo "  ✓ DMG created (basic): installer/macos/$DMG_NAME"
 fi
@@ -138,7 +138,7 @@ fi
 
 echo ""
 echo "═══════════════════════════════════════════════════════════════"
-echo "  ✓ ReClaw $VERSION macOS installer ready!"
+echo "  ✓ Istara $VERSION macOS installer ready!"
 echo "  📦 installer/macos/$DMG_NAME"
 echo "  📏 $(du -h "installer/macos/$DMG_NAME" | cut -f1)"
 echo "═══════════════════════════════════════════════════════════════"

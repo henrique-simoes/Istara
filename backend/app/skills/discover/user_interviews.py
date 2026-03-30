@@ -1,4 +1,4 @@
-"""User Interviews skill — the reference implementation for ReClaw skills.
+"""User Interviews skill — the reference implementation for Istara skills.
 
 Capabilities:
 - Generate interview guides based on research questions
@@ -216,7 +216,7 @@ class UserInterviewsSkill(BaseSkill):
                 f"Recruit {num_participants} participants matching your target audience",
                 "Review and customize the interview guide below",
                 "Conduct interviews (record with consent)",
-                "Upload transcripts to ReClaw for analysis",
+                "Upload transcripts to Istara for analysis",
                 "Review extracted nuggets and themes",
                 "Synthesize findings across all interviews",
             ],

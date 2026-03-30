@@ -9,7 +9,7 @@ from app.models.database import Base
 
 
 class MCPServerConfig(Base):
-    """Configuration for an external MCP server connected to ReClaw.
+    """Configuration for an external MCP server connected to Istara.
 
     Used by the MCP Client Registry to discover and invoke tools
     from external MCP servers.

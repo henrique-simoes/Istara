@@ -2,7 +2,7 @@
 name: thematic-analysis
 description: "Rigorous coding (open → axial → selective), codebook management, inter-rater reliability."
 metadata:
-  reclaw:
+  istara:
     phase: define
     type: qualitative
     version: "1.0.0"

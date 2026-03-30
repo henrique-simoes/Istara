@@ -2,7 +2,7 @@
 name: analytics-review
 description: "Interpret analytics exports — funnels, drop-offs, segments, anomalies, conversion paths."
 metadata:
-  reclaw:
+  istara:
     phase: discover
     type: quantitative
     version: "1.0.0"

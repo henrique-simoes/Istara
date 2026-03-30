@@ -1,7 +1,7 @@
 services:
   ollama:
     image: ollama/ollama:latest
-    container_name: reclaw-ollama
+    container_name: istara-ollama
     ports:
       - "11434:11434"
     volumes:
@@ -25,17 +25,17 @@ services:
   # PostgreSQL — only needed for team mode (TEAM_MODE=true)
   postgres:
     image: postgres:16-alpine
-    container_name: reclaw-postgres
+    container_name: istara-postgres
     ports:
       - "5432:5432"
     environment:
-      - POSTGRES_USER=${POSTGRES_USER:-reclaw}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-reclaw}
-      - POSTGRES_DB=${POSTGRES_DB:-reclaw}
+      - POSTGRES_USER=${POSTGRES_USER:-istara}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-istara}
+      - POSTGRES_DB=${POSTGRES_DB:-istara}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-reclaw}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-istara}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -47,7 +47,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: reclaw-backend
+    container_name: istara-backend
     ports:
       - "8000:8000"
     volumes:
@@ -63,7 +63,7 @@ services:
       - LMSTUDIO_MODEL=${LMSTUDIO_MODEL:-default}
       - LMSTUDIO_EMBED_MODEL=${LMSTUDIO_EMBED_MODEL:-default}
       # Database (SQLite for local, PostgreSQL for team)
-      - DATABASE_URL=${DATABASE_URL:-sqlite+aiosqlite:///./data/reclaw.db}
+      - DATABASE_URL=${DATABASE_URL:-sqlite+aiosqlite:///./data/istara.db}
       - LANCE_DB_PATH=./data/lance_db
       - UPLOAD_DIR=./data/uploads
       - PROJECTS_DIR=./data/projects
@@ -111,7 +111,7 @@ services:
       args:
         - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000}
         - NEXT_PUBLIC_WS_URL=${NEXT_PUBLIC_WS_URL:-ws://localhost:8000/ws}
-    container_name: reclaw-frontend
+    container_name: istara-frontend
     ports:
       - "3000:3000"
     healthcheck:
@@ -132,7 +132,7 @@ services:
   # Caddy reverse proxy — auto-TLS, production deployment
   caddy:
     image: caddy:2-alpine
-    container_name: reclaw-caddy
+    container_name: istara-caddy
     ports:
       - "80:80"
       - "443:443"
@@ -154,9 +154,9 @@ services:
     build:
       context: ./relay
       dockerfile: Dockerfile
-    container_name: reclaw-relay
+    container_name: istara-relay
     environment:
-      - RECLAW_SERVER=${RECLAW_SERVER:-ws://backend:8000/ws/relay}
+      - ISTARA_SERVER=${ISTARA_SERVER:-ws://backend:8000/ws/relay}
       - LLM_PROVIDER=${LLM_PROVIDER:-ollama}
       - LLM_HOST=${LLM_HOST:-http://ollama:11434}
       - RELAY_TOKEN=${RELAY_TOKEN:-}

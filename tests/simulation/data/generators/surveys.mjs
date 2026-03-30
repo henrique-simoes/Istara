@@ -1,5 +1,5 @@
 /**
- * Survey CSV generator for ReClaw simulation.
+ * Survey CSV generator for Istara simulation.
  * Produces realistic survey response data in CSV format with both
  * quantitative (Likert, NPS) and qualitative (open-ended) questions.
  */

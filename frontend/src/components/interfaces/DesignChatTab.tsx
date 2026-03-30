@@ -75,7 +75,7 @@ export default function DesignChatTab() {
                 className={cn(
                   "rounded-2xl px-4 py-3",
                   msg.role === "user"
-                    ? "bg-reclaw-600 text-white rounded-br-md"
+                    ? "bg-istara-600 text-white rounded-br-md"
                     : "bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-bl-md"
                 )}
               >
@@ -137,7 +137,7 @@ export default function DesignChatTab() {
               }}
               placeholder="Ask about design decisions, generate screens, or discuss UI patterns..."
               rows={1}
-              className="w-full resize-none rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-reclaw-500 focus:border-transparent"
+              className="w-full resize-none rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-istara-500 focus:border-transparent"
               style={{ minHeight: "44px", maxHeight: "120px" }}
             />
           </div>
@@ -148,7 +148,7 @@ export default function DesignChatTab() {
             className={cn(
               "p-2.5 rounded-lg transition-colors",
               input.trim() && !designStreaming
-                ? "bg-reclaw-600 text-white hover:bg-reclaw-700"
+                ? "bg-istara-600 text-white hover:bg-istara-700"
                 : "bg-slate-200 dark:bg-slate-700 text-slate-400 cursor-not-allowed"
             )}
           >

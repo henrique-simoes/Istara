@@ -71,7 +71,7 @@ export default function CustomLoopsTab() {
         <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Custom Loops</h2>
         <button
           onClick={() => setShowForm(!showForm)}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium bg-reclaw-600 text-white hover:bg-reclaw-700 transition-colors"
+          className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium bg-istara-600 text-white hover:bg-istara-700 transition-colors"
         >
           <Plus size={14} />
           Create Loop
@@ -89,7 +89,7 @@ export default function CustomLoopsTab() {
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
                 placeholder="Loop name"
-                className="w-full px-3 py-1.5 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+                className="w-full px-3 py-1.5 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-istara-500"
               />
             </div>
             <div>
@@ -97,7 +97,7 @@ export default function CustomLoopsTab() {
               <select
                 value={form.skill_name}
                 onChange={(e) => setForm({ ...form, skill_name: e.target.value })}
-                className="w-full px-3 py-1.5 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+                className="w-full px-3 py-1.5 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-istara-500"
                 aria-label="Select skill for this loop"
               >
                 <option value="">Select a skill...</option>
@@ -114,7 +114,7 @@ export default function CustomLoopsTab() {
               <select
                 value={form.project_id}
                 onChange={(e) => setForm({ ...form, project_id: e.target.value })}
-                className="w-full px-3 py-1.5 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+                className="w-full px-3 py-1.5 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-istara-500"
               >
                 <option value="">All projects</option>
                 {projects.map((p) => (
@@ -129,7 +129,7 @@ export default function CustomLoopsTab() {
                 value={form.description}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
                 placeholder="Optional description"
-                className="w-full px-3 py-1.5 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+                className="w-full px-3 py-1.5 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-istara-500"
               />
             </div>
           </div>
@@ -144,7 +144,7 @@ export default function CustomLoopsTab() {
                 className={cn(
                   "px-3 py-1 text-xs rounded-md border transition-colors",
                   form.mode === "interval"
-                    ? "bg-reclaw-100 border-reclaw-300 text-reclaw-700 dark:bg-reclaw-900/30 dark:text-reclaw-400"
+                    ? "bg-istara-100 border-istara-300 text-istara-700 dark:bg-istara-900/30 dark:text-istara-400"
                     : "border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800"
                 )}
               >
@@ -156,7 +156,7 @@ export default function CustomLoopsTab() {
                 className={cn(
                   "px-3 py-1 text-xs rounded-md border transition-colors",
                   form.mode === "cron"
-                    ? "bg-reclaw-100 border-reclaw-300 text-reclaw-700 dark:bg-reclaw-900/30 dark:text-reclaw-400"
+                    ? "bg-istara-100 border-istara-300 text-istara-700 dark:bg-istara-900/30 dark:text-istara-400"
                     : "border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800"
                 )}
               >
@@ -172,7 +172,7 @@ export default function CustomLoopsTab() {
                   max={86400}
                   value={form.interval_seconds}
                   onChange={(e) => setForm({ ...form, interval_seconds: parseInt(e.target.value, 10) || "" })}
-                  className="w-24 px-3 py-1.5 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+                  className="w-24 px-3 py-1.5 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-istara-500"
                 />
                 <span className="text-xs text-slate-500 dark:text-slate-400">seconds</span>
               </div>
@@ -185,7 +185,7 @@ export default function CustomLoopsTab() {
             <button
               onClick={handleCreate}
               disabled={!form.name.trim() || !form.skill_name.trim() || loading}
-              className="px-4 py-1.5 text-sm font-medium rounded-lg bg-reclaw-600 text-white hover:bg-reclaw-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-1.5 text-sm font-medium rounded-lg bg-istara-600 text-white hover:bg-istara-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? "Creating..." : "Create Loop"}
             </button>

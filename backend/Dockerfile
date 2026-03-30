@@ -12,12 +12,12 @@ FROM python:3.12-slim
 WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl libmagic1 && rm -rf /var/lib/apt/lists/*
-RUN useradd --system --no-create-home reclaw
+RUN useradd --system --no-create-home istara
 COPY --from=builder /install /usr/local
 COPY --from=builder /build .
 RUN mkdir -p data/uploads data/projects data/lance_db data/backups data/channel_audio \
-    && chown -R reclaw:reclaw data
-USER reclaw
+    && chown -R istara:istara data
+USER istara
 EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
     CMD ["curl", "-f", "http://localhost:8000/api/health"]
