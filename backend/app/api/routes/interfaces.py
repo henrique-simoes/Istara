@@ -1,6 +1,6 @@
 """Interfaces API routes -- Design chat, screen management, Figma, and handoff.
 
-This module powers the Interfaces menu in ReClaw, providing:
+This module powers the Interfaces menu in Istara, providing:
 1. Design-chat: SSE streaming with ReAct tool loop (mirrors chat.py)
 2. Screen CRUD: list, get, generate, edit, variant, delete
 3. Figma integration: import and export
@@ -140,7 +140,7 @@ class ConfigureFigmaRequest(BaseModel):
 
 
 DESIGN_LEAD_PREAMBLE = """\
-You are the Design Lead agent in ReClaw. You bridge UX Research and Product Design.
+You are the Design Lead agent in Istara. You bridge UX Research and Product Design.
 Your role is to translate research insights into actionable design specifications,
 generate UI concepts using available design tools, and ensure every design decision
 is grounded in evidence from the research findings. You are collaborative,
@@ -508,7 +508,7 @@ async def generate_screen(data: GenerateRequest, db: AsyncSession = Depends(get_
     # Create or reuse a Stitch project
     stitch_project_id = "default"
     try:
-        stitch_proj = await stitch_service.create_project(f"ReClaw-{data.project_id[:8]}")
+        stitch_proj = await stitch_service.create_project(f"Istara-{data.project_id[:8]}")
         raw_name = stitch_proj.get("name", "")
         stitch_project_id = stitch_service.extract_project_id(raw_name) if raw_name else "default"
     except Exception:

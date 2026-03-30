@@ -129,8 +129,8 @@ export default function SettingsView() {
               <p className="font-medium text-slate-900 dark:text-white">{hardware.total_ram_gb} GB</p>
             </div>
             <div>
-              <p className="text-slate-500">Available for ReClaw</p>
-              <p className="font-medium text-reclaw-600">{hardware.reclaw_ram_budget_gb} GB</p>
+              <p className="text-slate-500">Available for Istara</p>
+              <p className="font-medium text-istara-600">{hardware.istara_ram_budget_gb} GB</p>
             </div>
             {hardware.gpu && (
               <>
@@ -152,34 +152,34 @@ export default function SettingsView() {
 
       {/* Model Recommendation */}
       {recommendation && (
-        <div className="bg-reclaw-50 dark:bg-reclaw-900/20 rounded-xl border border-reclaw-200 dark:border-reclaw-800 p-5">
-          <h3 className="font-medium text-reclaw-800 dark:text-reclaw-300 mb-3 flex items-center gap-2">
+        <div className="bg-istara-50 dark:bg-istara-900/20 rounded-xl border border-istara-200 dark:border-istara-800 p-5">
+          <h3 className="font-medium text-istara-800 dark:text-istara-300 mb-3 flex items-center gap-2">
             <HardDrive size={18} />
             Recommended Model
           </h3>
           <div className="grid grid-cols-2 gap-3 text-sm">
             <div>
-              <p className="text-reclaw-600 dark:text-reclaw-400">Model</p>
-              <p className="font-bold font-mono text-reclaw-800 dark:text-reclaw-200">
+              <p className="text-istara-600 dark:text-istara-400">Model</p>
+              <p className="font-bold font-mono text-istara-800 dark:text-istara-200">
                 {recommendation.model_name}
               </p>
             </div>
             <div>
-              <p className="text-reclaw-600 dark:text-reclaw-400">Quantization</p>
+              <p className="text-istara-600 dark:text-istara-400">Quantization</p>
               <p className="font-medium font-mono">{recommendation.quantization}</p>
             </div>
             <div>
-              <p className="text-reclaw-600 dark:text-reclaw-400">Context Length</p>
+              <p className="text-istara-600 dark:text-istara-400">Context Length</p>
               <p className="font-medium">{recommendation.context_length.toLocaleString()} tokens</p>
             </div>
             <div>
-              <p className="text-reclaw-600 dark:text-reclaw-400">GPU Layers</p>
+              <p className="text-istara-600 dark:text-istara-400">GPU Layers</p>
               <p className="font-medium">
                 {recommendation.gpu_layers === -1 ? "All (full offload)" : recommendation.gpu_layers}
               </p>
             </div>
           </div>
-          <p className="mt-3 text-xs text-reclaw-600 dark:text-reclaw-400 italic">
+          <p className="mt-3 text-xs text-istara-600 dark:text-istara-400 italic">
             {recommendation.reason}
           </p>
         </div>
@@ -226,7 +226,7 @@ export default function SettingsView() {
                     </div>
                   </div>
                   {model.name === models.active_model ? (
-                    <span className="text-xs bg-reclaw-100 dark:bg-reclaw-900/30 text-reclaw-700 dark:text-reclaw-400 rounded-full px-2 py-0.5 ml-2 shrink-0">
+                    <span className="text-xs bg-istara-100 dark:bg-istara-900/30 text-istara-700 dark:text-istara-400 rounded-full px-2 py-0.5 ml-2 shrink-0">
                       Active
                     </span>
                   ) : (
@@ -239,7 +239,7 @@ export default function SettingsView() {
                           console.error("Failed to switch model:", e);
                         }
                       }}
-                      className="text-xs px-3 py-1 rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-reclaw-100 hover:text-reclaw-700 transition-colors ml-2 shrink-0"
+                      className="text-xs px-3 py-1 rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-istara-100 hover:text-istara-700 transition-colors ml-2 shrink-0"
                     >
                       Switch
                     </button>
@@ -263,7 +263,7 @@ export default function SettingsView() {
           <input
             type="text"
             placeholder="e.g., qwen3:7b, llama3:8b, mistral:latest"
-            className="flex-1 px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+            className="flex-1 px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-istara-500"
             onKeyDown={async (e) => {
               if (e.key === "Enter") {
                 const input = e.target as HTMLInputElement;
@@ -301,7 +301,7 @@ export default function SettingsView() {
             onClick={async () => {
               const newState = !systemStatus?.team_mode;
               try {
-                const token = localStorage.getItem("reclaw_token");
+                const token = localStorage.getItem("istara_token");
                 const headers: Record<string, string> = { "Content-Type": "application/json" };
                 if (token) headers["Authorization"] = `Bearer ${token}`;
                 await fetch(
@@ -318,7 +318,7 @@ export default function SettingsView() {
             }}
             className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
               systemStatus?.team_mode
-                ? "bg-reclaw-600"
+                ? "bg-istara-600"
                 : "bg-slate-300 dark:bg-slate-600"
             }`}
             role="switch"
@@ -437,19 +437,19 @@ function LLMServersSection() {
             placeholder="Server name"
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
-            className="w-full px-2 py-1.5 text-sm rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+            className="w-full px-2 py-1.5 text-sm rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-istara-500"
           />
           <input
             type="text"
             placeholder="Host URL (e.g. http://192.168.1.100:1234)"
             value={newHost}
             onChange={(e) => setNewHost(e.target.value)}
-            className="w-full px-2 py-1.5 text-sm rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+            className="w-full px-2 py-1.5 text-sm rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-istara-500"
           />
           <select
             value={newType}
             onChange={(e) => setNewType(e.target.value)}
-            className="w-full px-2 py-1.5 text-sm rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+            className="w-full px-2 py-1.5 text-sm rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-istara-500"
             aria-label="Provider type"
           >
             <option value="openai_compat">OpenAI Compatible</option>
@@ -458,7 +458,7 @@ function LLMServersSection() {
           </select>
           <button
             onClick={handleAdd}
-            className="w-full py-1.5 bg-reclaw-600 hover:bg-reclaw-700 text-white text-sm font-medium rounded"
+            className="w-full py-1.5 bg-istara-600 hover:bg-istara-700 text-white text-sm font-medium rounded"
           >
             Add Server
           </button>

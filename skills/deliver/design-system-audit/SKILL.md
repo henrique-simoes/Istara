@@ -2,7 +2,7 @@
 name: design-system-audit
 description: "Evaluate consistency against design system, identify deviations, accessibility compliance."
 metadata:
-  reclaw:
+  istara:
     phase: deliver
     type: mixed
     version: "1.0.0"

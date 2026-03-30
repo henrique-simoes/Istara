@@ -39,7 +39,7 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               title: `[Upstream] Karpathy autoresearch updated`,
-              body: `New commit detected on [karpathy/autoresearch](https://github.com/karpathy/autoresearch).\n\nLatest SHA: \`${process.env.LATEST_SHA}\`\nMessage: ${process.env.COMMIT_MSG}\n\nReview for relevant changes to incorporate into ReClaw's autoresearch integration.\n\n_This issue was auto-created by the upstream tracker._`,
+              body: `New commit detected on [karpathy/autoresearch](https://github.com/karpathy/autoresearch).\n\nLatest SHA: \`${process.env.LATEST_SHA}\`\nMessage: ${process.env.COMMIT_MSG}\n\nReview for relevant changes to incorporate into Istara's autoresearch integration.\n\n_This issue was auto-created by the upstream tracker._`,
               labels: ['upstream', 'autoresearch']
             });
         env:

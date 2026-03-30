@@ -34,11 +34,11 @@ export async function run(ctx) {
 
   // ── 2. Per-agent evolution candidates endpoint ──
   const agentIds = [
-    "reclaw-main",
-    "reclaw-devops",
-    "reclaw-ui-audit",
-    "reclaw-ux-eval",
-    "reclaw-sim",
+    "istara-main",
+    "istara-devops",
+    "istara-ui-audit",
+    "istara-ux-eval",
+    "istara-sim",
   ];
   for (const agentId of agentIds) {
     try {
@@ -62,11 +62,11 @@ export async function run(ctx) {
 
   // ── 3. Auto-evolve endpoint (safe to call — only promotes mature patterns) ──
   try {
-    const evolve = await api.post("/api/agents/reclaw-main/evolution/auto");
+    const evolve = await api.post("/api/agents/istara-main/evolution/auto");
     checks.push({
       name: "Auto-evolve endpoint returns valid response",
       passed:
-        evolve.agent_id === "reclaw-main" &&
+        evolve.agent_id === "istara-main" &&
         typeof evolve.promotions_applied === "number" &&
         Array.isArray(evolve.promotions),
       detail: `${evolve.promotions_applied} promotions applied`,
@@ -103,7 +103,7 @@ export async function run(ctx) {
 
   // ── 5. Compression actually reduces token count for large prompts ──
   try {
-    const stats = await api.get("/api/agents/reclaw-main/prompt/stats");
+    const stats = await api.get("/api/agents/istara-main/prompt/stats");
     checks.push({
       name: "LLMLingua compression produces smaller output",
       passed: stats.compressed_tokens < stats.full_tokens,
@@ -137,11 +137,11 @@ export async function run(ctx) {
 
   // ── 7. Learnings endpoint still works ──
   try {
-    const learnings = await api.get("/api/agents/reclaw-main/learnings");
+    const learnings = await api.get("/api/agents/istara-main/learnings");
     checks.push({
       name: "Learnings endpoint still returns valid data",
       passed:
-        learnings.agent_id === "reclaw-main" &&
+        learnings.agent_id === "istara-main" &&
         Array.isArray(learnings.learnings),
       detail: `${learnings.learnings.length} learnings`,
     });
@@ -176,11 +176,11 @@ export async function run(ctx) {
   // ── 9. Prompt RAG: different queries retrieve different sections ──
   try {
     const interviewPrompt = await api.post(
-      "/api/agents/reclaw-main/prompt/compose",
+      "/api/agents/istara-main/prompt/compose",
       { query: "How do I analyze interview transcripts?", use_embeddings: false }
     );
     const usabilityPrompt = await api.post(
-      "/api/agents/reclaw-main/prompt/compose",
+      "/api/agents/istara-main/prompt/compose",
       { query: "Run a usability heuristic evaluation", use_embeddings: false }
     );
 
@@ -215,7 +215,7 @@ export async function run(ctx) {
   // ── 10. Prompt RAG: identity anchor always preserved ──
   try {
     const result = await api.post(
-      "/api/agents/reclaw-main/prompt/compose",
+      "/api/agents/istara-main/prompt/compose",
       { query: "random nonsensical question about nothing relevant" }
     );
     checks.push({
@@ -235,7 +235,7 @@ export async function run(ctx) {
   // ── 11. Prompt RAG: composed prompt is smaller than full identity ──
   try {
     const result = await api.post(
-      "/api/agents/reclaw-main/prompt/compose",
+      "/api/agents/istara-main/prompt/compose",
       { query: "Tell me about user research", max_tokens: 1024 }
     );
     // Allow 10% overshoot since token estimation is ~4 chars/token heuristic
@@ -281,7 +281,7 @@ export async function run(ctx) {
   // ── 13. Compression preserves domain terms (UX research vocabulary) ──
   try {
     // Use the full identity endpoint to verify domain terms survive compression
-    const identity = await api.get("/api/agents/reclaw-main/identity");
+    const identity = await api.get("/api/agents/istara-main/identity");
     const fullText = Object.values(identity.files || {}).join(" ").toLowerCase();
 
     // Key domain terms that should exist in the agent's persona
@@ -301,7 +301,7 @@ export async function run(ctx) {
 
     // Check composed prompt includes sections whose HEADERS reference domain terms
     const result = await api.post(
-      "/api/agents/reclaw-main/prompt/compose",
+      "/api/agents/istara-main/prompt/compose",
       { query: "Analyze research findings and create usability insights and recommendations" }
     );
 
@@ -330,7 +330,7 @@ export async function run(ctx) {
   // ── 14. Tiny budget test: even at 512 tokens, identity + some skills remain ──
   try {
     const result = await api.post(
-      "/api/agents/reclaw-main/prompt/compose",
+      "/api/agents/istara-main/prompt/compose",
       { query: "Help me with research", max_tokens: 512 }
     );
     checks.push({
@@ -353,7 +353,7 @@ export async function run(ctx) {
   // ── 15. Section relevance scoring: interview query scores interview sections higher ──
   try {
     const result = await api.post(
-      "/api/agents/reclaw-main/prompt/compose",
+      "/api/agents/istara-main/prompt/compose",
       { query: "How to conduct and analyze user interviews" }
     );
     // Find section scores related to interviews vs unrelated sections

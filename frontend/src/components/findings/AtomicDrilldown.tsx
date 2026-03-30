@@ -201,9 +201,9 @@ export default function AtomicDrilldown({ projectId, finding: initialFinding, on
                     className={cn(
                       "px-1.5 py-0.5 rounded transition-colors",
                       isActive
-                        ? "text-reclaw-600 font-semibold bg-reclaw-50 dark:bg-reclaw-900/20"
+                        ? "text-istara-600 font-semibold bg-istara-50 dark:bg-istara-900/20"
                         : hasItems
-                          ? "hover:text-reclaw-500 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                          ? "hover:text-istara-500 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
                           : "opacity-40 cursor-default"
                     )}
                   >
@@ -233,7 +233,7 @@ export default function AtomicDrilldown({ projectId, finding: initialFinding, on
                   color={getColor(activeFinding.type)}
                   highlighted
                 >
-                  <div className="p-3 rounded-lg bg-reclaw-50 dark:bg-reclaw-900/20 border-2 border-reclaw-300 dark:border-reclaw-700">
+                  <div className="p-3 rounded-lg bg-istara-50 dark:bg-istara-900/20 border-2 border-istara-300 dark:border-istara-700">
                     <p className="text-sm text-slate-900 dark:text-white font-medium">
                       {activeFinding.text}
                     </p>
@@ -243,8 +243,8 @@ export default function AtomicDrilldown({ projectId, finding: initialFinding, on
                         className={cn(
                           "mt-2 inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-md transition-colors",
                           showLinkPanel
-                            ? "bg-reclaw-600 text-white"
-                            : "bg-white dark:bg-slate-800 text-reclaw-600 border border-reclaw-300 dark:border-reclaw-700 hover:bg-reclaw-50 dark:hover:bg-reclaw-900/30"
+                            ? "bg-istara-600 text-white"
+                            : "bg-white dark:bg-slate-800 text-istara-600 border border-istara-300 dark:border-istara-700 hover:bg-istara-50 dark:hover:bg-istara-900/30"
                         )}
                       >
                         {showLinkPanel ? <X size={12} /> : <Link2 size={12} />}
@@ -257,7 +257,7 @@ export default function AtomicDrilldown({ projectId, finding: initialFinding, on
 
               {/* Link Evidence Panel */}
               {showLinkPanel && LINKABLE_TYPES[activeFinding.type] && (
-                <div className="mb-6 ml-8 border border-reclaw-200 dark:border-reclaw-800 rounded-lg bg-reclaw-50/50 dark:bg-reclaw-900/10 p-3">
+                <div className="mb-6 ml-8 border border-istara-200 dark:border-istara-800 rounded-lg bg-istara-50/50 dark:bg-istara-900/10 p-3">
                   <div className="flex items-center gap-2 mb-3">
                     <Search size={14} className="text-slate-400" />
                     <input
@@ -265,7 +265,7 @@ export default function AtomicDrilldown({ projectId, finding: initialFinding, on
                       placeholder={`Search ${LINKABLE_TYPES[activeFinding.type]!.label.toLowerCase()} to link...`}
                       value={linkSearch}
                       onChange={(e) => setLinkSearch(e.target.value)}
-                      className="flex-1 text-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-reclaw-400"
+                      className="flex-1 text-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-istara-400"
                     />
                   </div>
                   <div className="max-h-48 overflow-y-auto space-y-1.5">
@@ -287,7 +287,7 @@ export default function AtomicDrilldown({ projectId, finding: initialFinding, on
                           <button
                             onClick={() => handleLink(candidate.id)}
                             disabled={linkingId === candidate.id}
-                            className="shrink-0 inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded bg-reclaw-600 text-white hover:bg-reclaw-700 disabled:opacity-50 transition-colors"
+                            className="shrink-0 inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded bg-istara-600 text-white hover:bg-istara-700 disabled:opacity-50 transition-colors"
                           >
                             {linkingId === candidate.id ? (
                               "Linking..."
@@ -409,7 +409,7 @@ export default function AtomicDrilldown({ projectId, finding: initialFinding, on
                             className={cn(
                               "flex items-center gap-2 px-4 py-2 rounded-lg border text-xs font-medium",
                               level.color,
-                              activeFinding.type === level.label.toLowerCase() && "ring-2 ring-reclaw-400 ring-offset-1"
+                              activeFinding.type === level.label.toLowerCase() && "ring-2 ring-istara-400 ring-offset-1"
                             )}
                           >
                             <span>{level.icon}</span>
@@ -424,7 +424,7 @@ export default function AtomicDrilldown({ projectId, finding: initialFinding, on
                     {LINKABLE_TYPES[activeFinding.type] && (
                       <button
                         onClick={() => setShowLinkPanel(true)}
-                        className="mt-5 inline-flex items-center gap-1.5 text-sm px-4 py-2 rounded-lg bg-reclaw-600 text-white hover:bg-reclaw-700 transition-colors"
+                        className="mt-5 inline-flex items-center gap-1.5 text-sm px-4 py-2 rounded-lg bg-istara-600 text-white hover:bg-istara-700 transition-colors"
                       >
                         <Link2 size={14} />
                         Link {LINKABLE_TYPES[activeFinding.type]!.label}
@@ -547,7 +547,7 @@ function ChainLevel({
   return (
     <div className={cn("mb-4", highlighted && "")}>
       <div className="flex items-center gap-2 mb-2">
-        <div className={cn("w-6 h-6 rounded-full flex items-center justify-center", highlighted ? "bg-reclaw-100" : "bg-slate-100 dark:bg-slate-800")}>
+        <div className={cn("w-6 h-6 rounded-full flex items-center justify-center", highlighted ? "bg-istara-100" : "bg-slate-100 dark:bg-slate-800")}>
           <Icon size={14} className={color} />
         </div>
         <h4 className={cn("text-xs font-semibold uppercase", color)}>{label}</h4>
@@ -577,7 +577,7 @@ function EvidenceCard({
       onClick={onClick}
       className={cn(
         "p-2.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700",
-        onClick && "cursor-pointer hover:border-reclaw-300 dark:hover:border-reclaw-700 hover:shadow-sm transition-all"
+        onClick && "cursor-pointer hover:border-istara-300 dark:hover:border-istara-700 hover:shadow-sm transition-all"
       )}
     >
       <p className="text-xs text-slate-700 dark:text-slate-300">{text}</p>
@@ -605,7 +605,7 @@ function EvidenceCard({
           </span>
         ))}
         {onClick && (
-          <span className="text-[10px] text-reclaw-500 ml-auto">Click to drill in →</span>
+          <span className="text-[10px] text-istara-500 ml-auto">Click to drill in →</span>
         )}
       </div>
     </div>

@@ -149,7 +149,7 @@ export default function TaskEditor({ task, onClose }: TaskEditorProps) {
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+              className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-istara-500"
             />
           </div>
 
@@ -160,7 +160,7 @@ export default function TaskEditor({ task, onClose }: TaskEditorProps) {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={2}
-              className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-reclaw-500 resize-y"
+              className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-istara-500 resize-y"
               placeholder="What should the agent do?"
             />
           </div>
@@ -173,7 +173,7 @@ export default function TaskEditor({ task, onClose }: TaskEditorProps) {
             <select
               value={skillName}
               onChange={(e) => setSkillName(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+              className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-istara-500"
             >
               {SKILL_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -193,7 +193,7 @@ export default function TaskEditor({ task, onClose }: TaskEditorProps) {
               value={instructions}
               onChange={(e) => setInstructions(e.target.value)}
               rows={2}
-              className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-reclaw-500 resize-y"
+              className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-istara-500 resize-y"
               placeholder="Step-by-step instructions for the agent (e.g., 'Focus on onboarding flows' or 'Compare only pricing pages')..."
             />
           </div>
@@ -228,7 +228,7 @@ export default function TaskEditor({ task, onClose }: TaskEditorProps) {
                 onChange={(e) => setNewUrl(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddUrl(); } }}
                 placeholder="https://example.com/page-to-analyze"
-                className="flex-1 px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+                className="flex-1 px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs focus:outline-none focus:ring-2 focus:ring-istara-500"
               />
               <button
                 onClick={handleAddUrl}
@@ -347,7 +347,7 @@ export default function TaskEditor({ task, onClose }: TaskEditorProps) {
               value={userContext}
               onChange={(e) => setUserContext(e.target.value)}
               rows={2}
-              className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-reclaw-500 resize-y font-mono"
+              className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-istara-500 resize-y font-mono"
               placeholder="Give the agent project-specific context or constraints..."
             />
           </div>
@@ -376,7 +376,7 @@ export default function TaskEditor({ task, onClose }: TaskEditorProps) {
           <button
             onClick={handleSave}
             disabled={saving || !title.trim()}
-            className="flex items-center gap-2 px-4 py-2 text-sm rounded-lg bg-reclaw-600 text-white hover:bg-reclaw-700 disabled:opacity-50 font-medium"
+            className="flex items-center gap-2 px-4 py-2 text-sm rounded-lg bg-istara-600 text-white hover:bg-istara-700 disabled:opacity-50 font-medium"
           >
             <Save size={14} />
             {saving ? "Saving..." : "Save Changes"}

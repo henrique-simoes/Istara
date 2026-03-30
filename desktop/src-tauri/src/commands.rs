@@ -129,8 +129,8 @@ pub fn find_install_dir_public() -> String {
     find_install_dir()
 }
 
-/// Find the ReClaw installation directory.
-/// Checks: config, app bundle Resources, CWD, ~/.reclaw
+/// Find the Istara installation directory.
+/// Checks: config, app bundle Resources, CWD, ~/.istara
 fn find_install_dir() -> String {
     // 1. Check app bundle (macOS)
     #[cfg(target_os = "macos")]
@@ -139,7 +139,7 @@ fn find_install_dir() -> String {
             let resources = exe
                 .parent() // MacOS/
                 .and_then(|p| p.parent()) // Contents/
-                .map(|p| p.join("Resources").join("reclaw"));
+                .map(|p| p.join("Resources").join("istara"));
             if let Some(path) = resources {
                 if path.join("backend").exists() {
                     return path.to_string_lossy().to_string();
@@ -153,18 +153,18 @@ fn find_install_dir() -> String {
         return ".".to_string();
     }
 
-    // 3. Check ~/.reclaw
+    // 3. Check ~/.istara
     if let Some(home) = dirs::home_dir() {
-        let reclaw_dir = home.join(".reclaw");
-        if reclaw_dir.join("backend").exists() {
-            return reclaw_dir.to_string_lossy().to_string();
+        let istara_dir = home.join(".istara");
+        if istara_dir.join("backend").exists() {
+            return istara_dir.to_string_lossy().to_string();
         }
     }
 
     // 4. Check standard install paths
     #[cfg(target_os = "windows")]
     {
-        let prog = std::path::Path::new(r"C:\Program Files\ReClaw");
+        let prog = std::path::Path::new(r"C:\Program Files\Istara");
         if prog.join("backend").exists() {
             return prog.to_string_lossy().to_string();
         }
@@ -172,6 +172,6 @@ fn find_install_dir() -> String {
 
     // Fallback: use home dir
     dirs::home_dir()
-        .map(|h| h.join(".reclaw").to_string_lossy().to_string())
+        .map(|h| h.join(".istara").to_string_lossy().to_string())
         .unwrap_or_else(|| ".".to_string())
 }

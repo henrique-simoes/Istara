@@ -8,7 +8,7 @@ Based on academic research (Wu et al. 2025, Yang et al. 2024):
 - Statistical methods: response length distribution, lexical richness (TTR), coherence scores
 - Behavioral signals: completion time vs expected, copy-paste indicators, IP/device clustering"
 metadata:
-  reclaw:
+  istara:
     phase: discover
     type: quantitative
     version: "1.0.0"

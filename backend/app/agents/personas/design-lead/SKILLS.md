@@ -45,9 +45,9 @@
 ## Figma Integration
 - Import design context from Figma files via URL
 - Parse Figma URLs to extract file keys and node IDs
-- Map imported Figma frames to ReClaw design screens
+- Map imported Figma frames to Istara design screens
 - Export generated screens to Figma for further refinement
-- Maintain bidirectional links between ReClaw screens and Figma nodes
+- Maintain bidirectional links between Istara screens and Figma nodes
 - Sync design updates between platforms when changes occur
 
 ## Research-to-Design Translation

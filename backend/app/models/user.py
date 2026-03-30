@@ -16,7 +16,7 @@ class UserRole(str, enum.Enum):
 
 
 class User(Base):
-    """A ReClaw user (team mode)."""
+    """A Istara user (team mode)."""
 
     __tablename__ = "users"
 

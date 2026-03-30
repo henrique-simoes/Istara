@@ -177,7 +177,7 @@ function AgentLoopCard({
             step={5}
             value={localInterval}
             onChange={(e) => handleIntervalChange(parseInt(e.target.value, 10))}
-            className="flex-1 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-reclaw-600"
+            className="flex-1 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-istara-600"
           />
           <div className="flex items-center gap-1">
             <input
@@ -186,14 +186,14 @@ function AgentLoopCard({
               max={600}
               value={localInterval}
               onChange={(e) => handleIntervalChange(parseInt(e.target.value, 10) || 10)}
-              className="w-16 text-xs px-2 py-1 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-right focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+              className="w-16 text-xs px-2 py-1 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-right focus:outline-none focus:ring-2 focus:ring-istara-500"
             />
             <span className="text-xs text-slate-500 dark:text-slate-400">sec</span>
           </div>
           {dirty && (
             <button
               onClick={applyInterval}
-              className="px-2 py-1 text-xs font-medium rounded bg-reclaw-600 text-white hover:bg-reclaw-700"
+              className="px-2 py-1 text-xs font-medium rounded bg-istara-600 text-white hover:bg-istara-700"
             >
               Apply
             </button>
@@ -210,7 +210,7 @@ function AgentLoopCard({
               className={cn(
                 "text-[10px] px-2 py-0.5 rounded border transition-colors",
                 localInterval === preset
-                  ? "bg-reclaw-100 border-reclaw-300 text-reclaw-700 dark:bg-reclaw-900/30 dark:border-reclaw-600 dark:text-reclaw-400"
+                  ? "bg-istara-100 border-istara-300 text-istara-700 dark:bg-istara-900/30 dark:border-istara-600 dark:text-istara-400"
                   : "border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800"
               )}
             >

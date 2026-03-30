@@ -2,7 +2,7 @@
 name: regression-impact
 description: "Before/after comparisons, measure impact of changes, statistical significance."
 metadata:
-  reclaw:
+  istara:
     phase: deliver
     type: quantitative
     version: "1.0.0"

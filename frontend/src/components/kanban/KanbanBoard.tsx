@@ -121,7 +121,7 @@ function AgentAssignMenu({
             }}
             className={cn(
               "w-full text-left px-3 py-2 text-xs hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2",
-              currentAgentId === agent.id && "bg-reclaw-50 dark:bg-reclaw-900/20"
+              currentAgentId === agent.id && "bg-istara-50 dark:bg-istara-900/20"
             )}
           >
             <span className={cn("w-5 h-5 rounded-full flex items-center justify-center text-white text-[10px] font-semibold", bgColors[colorIdx])}>
@@ -226,7 +226,7 @@ function TaskCard({
                     e.stopPropagation();
                     setShowAgentMenu(!showAgentMenu);
                   }}
-                  className="hover:ring-2 hover:ring-reclaw-300 rounded-full"
+                  className="hover:ring-2 hover:ring-istara-300 rounded-full"
                   aria-label="Change assigned agent"
                 >
                   <AgentMiniAvatar agentId={task.agent_id} />
@@ -237,7 +237,7 @@ function TaskCard({
                     e.stopPropagation();
                     setShowAgentMenu(!showAgentMenu);
                   }}
-                  className="w-6 h-6 rounded-full border-2 border-dashed border-slate-300 dark:border-slate-600 flex items-center justify-center hover:border-reclaw-400 transition-colors"
+                  className="w-6 h-6 rounded-full border-2 border-dashed border-slate-300 dark:border-slate-600 flex items-center justify-center hover:border-istara-400 transition-colors"
                   aria-label="Assign agent"
                 >
                   <Plus size={10} className="text-slate-400" />
@@ -256,7 +256,7 @@ function TaskCard({
           {/* Badges row */}
           <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
             {task.skill_name && (
-              <span className="inline-block text-[10px] bg-reclaw-100 dark:bg-reclaw-900/30 text-reclaw-700 dark:text-reclaw-400 rounded px-1.5 py-0.5">
+              <span className="inline-block text-[10px] bg-istara-100 dark:bg-istara-900/30 text-istara-700 dark:text-istara-400 rounded px-1.5 py-0.5">
                 {task.skill_name}
               </span>
             )}
@@ -301,7 +301,7 @@ function TaskCard({
             <div className="mt-2">
               <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-1.5">
                 <div
-                  className="bg-reclaw-500 h-1.5 rounded-full transition-all"
+                  className="bg-istara-500 h-1.5 rounded-full transition-all"
                   style={{ width: `${task.progress * 100}%` }}
                 />
               </div>
@@ -355,7 +355,7 @@ function TaskCard({
                   <div className="space-y-0.5">
                     {task.urls.map((url, i) => (
                       <a key={i} href={url} target="_blank" rel="noopener noreferrer"
-                        className="block text-reclaw-600 dark:text-reclaw-400 truncate hover:underline"
+                        className="block text-istara-600 dark:text-istara-400 truncate hover:underline"
                         onClick={(e) => e.stopPropagation()}
                       >{url}</a>
                     ))}
@@ -368,7 +368,7 @@ function TaskCard({
                     e.stopPropagation();
                     onEdit();
                   }}
-                  className="text-xs text-reclaw-600 hover:text-reclaw-700 font-medium"
+                  className="text-xs text-istara-600 hover:text-istara-700 font-medium"
                 >
                   Edit
                 </button>
@@ -489,7 +489,7 @@ export default function KanbanBoard() {
                       if (e.key === "Enter") handleCreate(col.id);
                       if (e.key === "Escape") setAddingTo(null);
                     }}
-                    className="w-full px-2 py-1.5 text-sm rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+                    className="w-full px-2 py-1.5 text-sm rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-istara-500"
                     autoFocus
                   />
                 </div>

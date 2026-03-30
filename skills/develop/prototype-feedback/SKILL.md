@@ -2,7 +2,7 @@
 name: prototype-feedback
 description: "Process feedback on prototypes, categorize by theme/severity/screen, track across iterations."
 metadata:
-  reclaw:
+  istara:
     phase: develop
     type: mixed
     version: "1.0.0"

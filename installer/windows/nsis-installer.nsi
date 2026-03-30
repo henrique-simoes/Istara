@@ -1,5 +1,5 @@
 ; ═══════════════════════════════════════════════════════════════════════
-; ReClaw Windows Installer — NSIS + MUI2
+; Istara Windows Installer — NSIS + MUI2
 ; Production-ready installer with dependency management
 ; ═══════════════════════════════════════════════════════════════════════
 ;
@@ -13,12 +13,12 @@
 !include "WinMessages.nsh"
 
 ; ── Metadata ──────────────────────────────────────────────────────────
-Name "ReClaw"
+Name "Istara"
 !define VERSION "2026.03.29"
-OutFile "ReClaw-Setup-${VERSION}.exe"
-InstallDir "$PROGRAMFILES\ReClaw"
+OutFile "Istara-Setup-${VERSION}.exe"
+InstallDir "$PROGRAMFILES\Istara"
 RequestExecutionLevel admin
-BrandingText "ReClaw ${VERSION} — Local-first AI for UX Research"
+BrandingText "Istara ${VERSION} — Local-first AI for UX Research"
 Unicode True
 
 ; ── Variables ─────────────────────────────────────────────────────────
@@ -67,10 +67,10 @@ Function PageInstallMode
     nsDialogs::Create 1018
     Pop $0
 
-    ${NSD_CreateLabel} 0 0 100% 20u "Choose how to install ReClaw:"
+    ${NSD_CreateLabel} 0 0 100% 20u "Choose how to install Istara:"
     Pop $0
 
-    ${NSD_CreateRadioButton} 20u 30u 90% 12u "Server (Full Install) — Run your own ReClaw server"
+    ${NSD_CreateRadioButton} 20u 30u 90% 12u "Server (Full Install) — Run your own Istara server"
     Pop $1
     ${NSD_Check} $1
 
@@ -78,7 +78,7 @@ Function PageInstallMode
     Pop $0
     SetCtlColors $0 808080 transparent
 
-    ${NSD_CreateRadioButton} 20u 68u 90% 12u "Client Only — Connect to an existing ReClaw server"
+    ${NSD_CreateRadioButton} 20u 68u 90% 12u "Client Only — Connect to an existing Istara server"
     Pop $2
 
     ${NSD_CreateLabel} 40u 82u 85% 16u "Installs the relay daemon and system tray app. Requires only Node.js 20."
@@ -111,7 +111,7 @@ Function PageDependencies
     nsDialogs::Create 1018
     Pop $0
 
-    ${NSD_CreateLabel} 0 0 100% 16u "ReClaw needs these dependencies. Check the ones to install:"
+    ${NSD_CreateLabel} 0 0 100% 16u "Istara needs these dependencies. Check the ones to install:"
     Pop $0
 
     ; Python
@@ -283,11 +283,11 @@ Section "Install Dependencies"
     ${EndIf}
 SectionEnd
 
-Section "ReClaw Files"
+Section "Istara Files"
     SetOutPath $INSTDIR
 
-    ; Copy ReClaw source code
-    DetailPrint "Installing ReClaw files..."
+    ; Copy Istara source code
+    DetailPrint "Installing Istara files..."
 
     ; Backend
     SetOutPath "$INSTDIR\backend"
@@ -306,13 +306,13 @@ Section "ReClaw Files"
 
     ; Desktop app (Tauri binary)
     SetOutPath "$INSTDIR"
-    File "..\..\desktop\src-tauri\target\release\ReClaw.exe"
+    File "..\..\desktop\src-tauri\target\release\Istara.exe"
 
     ; Config template
     File "..\..\\.env.example"
 
     ; Service wrapper
-    File "reclaw-service.bat"
+    File "istara-service.bat"
 
     ; Create data directories
     CreateDirectory "$INSTDIR\data"
@@ -352,12 +352,12 @@ SectionEnd
 
 Section "Shortcuts & Registry"
     ; Start Menu
-    CreateDirectory "$SMPROGRAMS\ReClaw"
-    CreateShortcut "$SMPROGRAMS\ReClaw\ReClaw.lnk" "$INSTDIR\ReClaw.exe"
-    CreateShortcut "$SMPROGRAMS\ReClaw\Uninstall.lnk" "$INSTDIR\uninstall.exe"
+    CreateDirectory "$SMPROGRAMS\Istara"
+    CreateShortcut "$SMPROGRAMS\Istara\Istara.lnk" "$INSTDIR\Istara.exe"
+    CreateShortcut "$SMPROGRAMS\Istara\Uninstall.lnk" "$INSTDIR\uninstall.exe"
 
     ; Desktop shortcut (optional)
-    CreateShortcut "$DESKTOP\ReClaw.lnk" "$INSTDIR\ReClaw.exe"
+    CreateShortcut "$DESKTOP\Istara.lnk" "$INSTDIR\Istara.exe"
 
     ; Add to PATH
     EnVar::AddValue "PATH" "$INSTDIR"
@@ -366,20 +366,20 @@ Section "Shortcuts & Registry"
     WriteUninstaller "$INSTDIR\uninstall.exe"
 
     ; Registry for Add/Remove Programs
-    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ReClaw" \
-        "DisplayName" "ReClaw"
-    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ReClaw" \
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Istara" \
+        "DisplayName" "Istara"
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Istara" \
         "UninstallString" "$\"$INSTDIR\uninstall.exe$\""
-    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ReClaw" \
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Istara" \
         "DisplayVersion" "${VERSION}"
-    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ReClaw" \
-        "Publisher" "ReClaw Team"
-    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ReClaw" \
-        "DisplayIcon" "$INSTDIR\ReClaw.exe"
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Istara" \
+        "Publisher" "Istara Team"
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Istara" \
+        "DisplayIcon" "$INSTDIR\Istara.exe"
 
     ; Optional: Auto-start on login
     WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Run" \
-        "ReClaw" "$\"$INSTDIR\ReClaw.exe$\""
+        "Istara" "$\"$INSTDIR\Istara.exe$\""
 SectionEnd
 
 ; ═══════════════════════════════════════════════════════════════════════
@@ -388,28 +388,28 @@ SectionEnd
 
 Section "Uninstall"
     ; Stop services
-    nsExec::ExecToLog 'taskkill /f /im ReClaw.exe'
+    nsExec::ExecToLog 'taskkill /f /im Istara.exe'
     nsExec::ExecToLog 'taskkill /f /im python.exe /fi "WINDOWTITLE eq uvicorn"'
     nsExec::ExecToLog 'taskkill /f /im node.exe'
 
     ; Remove auto-start
-    DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "ReClaw"
+    DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "Istara"
 
     ; Remove registry entries
-    DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ReClaw"
+    DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Istara"
 
     ; Remove shortcuts
-    RMDir /r "$SMPROGRAMS\ReClaw"
-    Delete "$DESKTOP\ReClaw.lnk"
+    RMDir /r "$SMPROGRAMS\Istara"
+    Delete "$DESKTOP\Istara.lnk"
 
     ; Remove program files (but NOT data directory)
     RMDir /r "$INSTDIR\backend"
     RMDir /r "$INSTDIR\frontend"
     RMDir /r "$INSTDIR\relay"
     RMDir /r "$INSTDIR\venv"
-    Delete "$INSTDIR\ReClaw.exe"
+    Delete "$INSTDIR\Istara.exe"
     Delete "$INSTDIR\.env.example"
-    Delete "$INSTDIR\reclaw-service.bat"
+    Delete "$INSTDIR\istara-service.bat"
     Delete "$INSTDIR\uninstall.exe"
 
     ; Ask about data

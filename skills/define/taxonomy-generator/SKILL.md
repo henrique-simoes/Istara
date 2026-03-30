@@ -3,7 +3,7 @@ name: taxonomy-generator
 description: "Generate multi-level taxonomies for projects, tasks, features, and companies.
 Supports fine-tuning depth by context level (company-wide, product, feature, task)."
 metadata:
-  reclaw:
+  istara:
     phase: define
     type: mixed
     version: "1.0.0"

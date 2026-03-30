@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.istara.server</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Applications/Istara.app/Contents/MacOS/Istara</string>
+        <string>--background</string>
+    </array>
+
+    <!-- Start automatically on login -->
+    <key>RunAtLoad</key>
+    <true/>
+
+    <!-- Restart if it crashes -->
+    <key>KeepAlive</key>
+    <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+    </dict>
+
+    <!-- Throttle restarts to every 10 seconds -->
+    <key>ThrottleInterval</key>
+    <integer>10</integer>
+
+    <!-- Log output -->
+    <key>StandardOutPath</key>
+    <string>/tmp/istara-stdout.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/istara-stderr.log</string>
+
+    <!-- Nice priority (don't hog CPU at login) -->
+    <key>Nice</key>
+    <integer>5</integer>
+</dict>
+</plist>

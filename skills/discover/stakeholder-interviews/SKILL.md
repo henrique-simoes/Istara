@@ -2,7 +2,7 @@
 name: stakeholder-interviews
 description: "Generate stakeholder interview guides, synthesize business goals, map assumptions vs evidence."
 metadata:
-  reclaw:
+  istara:
     phase: discover
     type: qualitative
     version: "1.0.0"

@@ -1,4 +1,4 @@
-"""Multi-channel adapter framework for ReClaw.
+"""Multi-channel adapter framework for Istara.
 
 Provides abstract base classes for channel adapters (Slack, Telegram, WhatsApp, etc.)
 and a router that manages adapter lifecycle and message routing.

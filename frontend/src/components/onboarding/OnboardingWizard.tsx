@@ -23,7 +23,7 @@ interface OnboardingWizardProps {
 }
 
 const STEPS = [
-  { id: "welcome", title: "Welcome to ReClaw", icon: Sparkles },
+  { id: "welcome", title: "Welcome to Istara", icon: Sparkles },
   { id: "llm-check", title: "LLM Provider", icon: Cpu },
   { id: "project", title: "Create Your First Project", icon: FolderPlus },
   { id: "folder", title: "Link Research Folder", icon: FolderOpen },
@@ -96,7 +96,7 @@ export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) 
               key={s.id}
               className={cn(
                 "h-1 flex-1 rounded-full transition-colors",
-                i <= step ? "bg-reclaw-500" : "bg-slate-200 dark:bg-slate-700"
+                i <= step ? "bg-istara-500" : "bg-slate-200 dark:bg-slate-700"
               )}
             />
           ))}
@@ -109,7 +109,7 @@ export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) 
             <div className="text-center">
               <span className="text-5xl block mb-4">🐾</span>
               <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">
-                Welcome to ReClaw
+                Welcome to Istara
               </h2>
               <p className="text-slate-500 mb-2">
                 Your local-first AI agent for UX Research.
@@ -133,7 +133,7 @@ export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) 
 
               <button
                 onClick={() => setStep(1)}
-                className="flex items-center gap-2 mx-auto px-6 py-3 bg-reclaw-600 text-white rounded-xl hover:bg-reclaw-700 font-medium"
+                className="flex items-center gap-2 mx-auto px-6 py-3 bg-istara-600 text-white rounded-xl hover:bg-istara-700 font-medium"
               >
                 Get Started <ArrowRight size={16} />
               </button>
@@ -147,7 +147,7 @@ export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) 
                 LLM Provider Check
               </h2>
               <p className="text-sm text-slate-500 mb-4">
-                ReClaw uses a local AI model for research analysis. Let's check if one is running.
+                Istara uses a local AI model for research analysis. Let's check if one is running.
               </p>
               <LLMCheckStep />
               <div className="flex justify-between mt-4">
@@ -159,7 +159,7 @@ export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) 
                 </button>
                 <button
                   onClick={() => setStep(2)}
-                  className="flex items-center gap-2 px-5 py-2.5 bg-reclaw-600 text-white rounded-xl hover:bg-reclaw-700 font-medium text-sm"
+                  className="flex items-center gap-2 px-5 py-2.5 bg-istara-600 text-white rounded-xl hover:bg-istara-700 font-medium text-sm"
                 >
                   Continue <ArrowRight size={14} />
                 </button>
@@ -186,7 +186,7 @@ export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) 
                 onChange={(e) => setProjectName(e.target.value)}
                 placeholder="e.g., Onboarding Redesign Study"
                 onKeyDown={(e) => e.key === "Enter" && handleCreateProject()}
-                className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-reclaw-500 mb-4"
+                className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-istara-500 mb-4"
                 autoFocus
               />
 
@@ -209,7 +209,7 @@ export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) 
                   className={cn(
                     "flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium text-sm",
                     projectName.trim()
-                      ? "bg-reclaw-600 text-white hover:bg-reclaw-700"
+                      ? "bg-istara-600 text-white hover:bg-istara-700"
                       : "bg-slate-200 text-slate-400 cursor-not-allowed"
                   )}
                 >
@@ -235,7 +235,7 @@ export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) 
                 </button>
                 <button
                   onClick={() => setStep(4)}
-                  className="flex items-center gap-2 px-5 py-2.5 bg-reclaw-600 text-white rounded-xl hover:bg-reclaw-700 font-medium text-sm"
+                  className="flex items-center gap-2 px-5 py-2.5 bg-istara-600 text-white rounded-xl hover:bg-istara-700 font-medium text-sm"
                 >
                   Continue <ArrowRight size={14} />
                 </button>
@@ -261,7 +261,7 @@ export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) 
                 onChange={(e) => setCompanyContext(e.target.value)}
                 placeholder="e.g., B2B SaaS for project management, targeting mid-market teams..."
                 rows={2}
-                className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-reclaw-500 mb-3"
+                className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-istara-500 mb-3"
               />
 
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
@@ -272,7 +272,7 @@ export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) 
                 onChange={(e) => setProjectContext(e.target.value)}
                 placeholder="e.g., Understand why users drop off during onboarding. Goal: reduce churn by 20%..."
                 rows={2}
-                className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-reclaw-500 mb-4"
+                className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-istara-500 mb-4"
               />
 
               <div className="flex justify-between">
@@ -284,7 +284,7 @@ export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) 
                 </button>
                 <button
                   onClick={handleSaveContext}
-                  className="flex items-center gap-2 px-5 py-2.5 bg-reclaw-600 text-white rounded-xl hover:bg-reclaw-700 font-medium text-sm"
+                  className="flex items-center gap-2 px-5 py-2.5 bg-istara-600 text-white rounded-xl hover:bg-istara-700 font-medium text-sm"
                 >
                   {companyContext || projectContext ? "Save & Continue" : "Skip for Now"} <ArrowRight size={14} />
                 </button>
@@ -314,7 +314,7 @@ export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) 
               <button
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploading}
-                className="w-full border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl p-8 text-center hover:border-reclaw-400 hover:bg-reclaw-50 dark:hover:bg-reclaw-900/10 transition-colors mb-3"
+                className="w-full border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl p-8 text-center hover:border-istara-400 hover:bg-istara-50 dark:hover:bg-istara-900/10 transition-colors mb-3"
               >
                 <Upload size={24} className="mx-auto text-slate-400 mb-2" />
                 <p className="text-sm text-slate-600 dark:text-slate-400">
@@ -329,7 +329,7 @@ export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) 
                 <div className="mb-4">
                   <p className="text-xs font-medium text-slate-500 mb-1">Uploaded:</p>
                   {uploadedFiles.map((f) => (
-                    <div key={f} className="flex items-center gap-2 text-xs text-reclaw-600 py-0.5">
+                    <div key={f} className="flex items-center gap-2 text-xs text-istara-600 py-0.5">
                       <Check size={12} /> {f}
                     </div>
                   ))}
@@ -345,7 +345,7 @@ export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) 
                 </button>
                 <button
                   onClick={onComplete}
-                  className="flex items-center gap-2 px-5 py-2.5 bg-reclaw-600 text-white rounded-xl hover:bg-reclaw-700 font-medium text-sm"
+                  className="flex items-center gap-2 px-5 py-2.5 bg-istara-600 text-white rounded-xl hover:bg-istara-700 font-medium text-sm"
                 >
                   {uploadedFiles.length > 0 ? "Start Researching" : "Skip & Explore"} <Sparkles size={14} />
                 </button>

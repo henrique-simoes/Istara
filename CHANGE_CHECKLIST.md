@@ -1,4 +1,4 @@
-# ReClaw Change Checklist
+# Istara Change Checklist
 
 Use this checklist for EVERY change to ensure nothing breaks. Cross-reference with **SYSTEM_INTEGRITY_GUIDE.md** for details.
 
@@ -410,10 +410,10 @@ curl http://localhost:8000/api/settings/data-integrity
 ### Debugging
 ```bash
 # Check logs (if using logging)
-tail -f /var/log/reclaw/app.log
+tail -f /var/log/istara/app.log
 
 # Check database
-sqlite3 ./data/reclaw.db "SELECT COUNT(*) FROM projects;"
+sqlite3 ./data/istara.db "SELECT COUNT(*) FROM projects;"
 
 # Check LLM model loaded
 curl http://localhost:1234/v1/models

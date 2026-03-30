@@ -61,7 +61,7 @@ export async function evaluate(ctx) {
 
   // H4: Consistency and standards
   // Check button styling consistency
-  const primaryButtons = await page.locator('button[class*="reclaw"]').count();
+  const primaryButtons = await page.locator('button[class*="istara"]').count();
   const allButtons = await page.locator("button").count();
   scores.push({
     id: "H4",
@@ -70,7 +70,7 @@ export async function evaluate(ctx) {
     observations: [
       `${primaryButtons} themed buttons, ${allButtons} total buttons`,
       "Navigation uses consistent icon+label pattern",
-      "Color scheme uses reclaw-600 primary throughout",
+      "Color scheme uses istara-600 primary throughout",
     ],
     suggestions: ["Ensure all interactive elements have consistent hover/focus states"],
   });

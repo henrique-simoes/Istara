@@ -67,11 +67,11 @@ ROLE_TO_SPECIALTY = {
 
 # System agent IDs to specialty mapping
 SYSTEM_AGENT_SPECIALTIES = {
-    "reclaw-main": ["research"],
-    "reclaw-devops": ["devops"],
-    "reclaw-ui-audit": ["ui"],
-    "reclaw-ux-eval": ["ux"],
-    "reclaw-sim": ["simulation"],
+    "istara-main": ["research"],
+    "istara-devops": ["devops"],
+    "istara-ui-audit": ["ui"],
+    "istara-ux-eval": ["ux"],
+    "istara-sim": ["simulation"],
 }
 
 
@@ -193,8 +193,8 @@ async def route_task(
     primary_specialty = specialties[0]
     primary_candidates = spec_to_agents.get(primary_specialty, [])
 
-    # Choose primary agent (prefer the first matching agent; reclaw-main as ultimate fallback)
-    primary_agent = primary_candidates[0] if primary_candidates else "reclaw-main"
+    # Choose primary agent (prefer the first matching agent; istara-main as ultimate fallback)
+    primary_agent = primary_candidates[0] if primary_candidates else "istara-main"
 
     # Determine collaborators for multi-specialty tasks
     collaborators = []

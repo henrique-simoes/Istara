@@ -2,7 +2,7 @@
 name: longitudinal-tracking
 description: "Track metrics and findings over time, identify trends, seasonal patterns, regression detection."
 metadata:
-  reclaw:
+  istara:
     phase: deliver
     type: mixed
     version: "1.0.0"

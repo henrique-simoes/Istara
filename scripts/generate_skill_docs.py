@@ -27,9 +27,9 @@ SKILL_DETAILS = {
 ## Workflow
 
 1. **Plan** — Provide research questions → receive interview guide with probes
-2. **Conduct** — Use the guide (ReClaw provides facilitation tips)
+2. **Conduct** — Use the guide (Istara provides facilitation tips)
 3. **Upload** — Drop transcript files into the project
-4. **Analyze** — ReClaw extracts nuggets, tags themes, scores confidence
+4. **Analyze** — Istara extracts nuggets, tags themes, scores confidence
 5. **Synthesize** — Cross-interview patterns → facts → insights → recommendations
 
 ## Input
@@ -96,8 +96,8 @@ Rigorous thematic analysis with Cohen's/Fleiss' Kappa intercoder reliability mea
 
 ## Modes
 
-- **Agent-only** — ReClaw generates two independent codings and measures agreement
-- **Agent + Human** — Human codes, ReClaw codes independently, Kappa measured between them
+- **Agent-only** — Istara generates two independent codings and measures agreement
+- **Agent + Human** — Human codes, Istara codes independently, Kappa measured between them
 - **Multi-coder** — Fleiss' Kappa for 3+ coders
 
 ## Kappa Interpretation (Landis & Koch 1977)
@@ -178,7 +178,7 @@ def generate_skill_md(name, defn, detail=None):
         f"name: {name}",
         f"description: \"{desc}\"",
         "metadata:",
-        "  reclaw:",
+        "  istara:",
         f"    phase: {phase}",
         f"    type: {skill_type}",
         f"    version: \"{version}\"",

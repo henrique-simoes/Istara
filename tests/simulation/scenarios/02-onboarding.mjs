@@ -19,7 +19,7 @@ export async function run(ctx) {
   await page.waitForTimeout(3000);
 
   // Check if onboarding wizard appeared (only shows when no projects exist)
-  const wizardVisible = await page.locator("text=Welcome to ReClaw").isVisible().catch(() => false);
+  const wizardVisible = await page.locator("text=Welcome to Istara").isVisible().catch(() => false);
 
   if (wizardVisible) {
     checks.push({ name: "Onboarding wizard appears", passed: true, detail: "Wizard detected (no projects yet)" });

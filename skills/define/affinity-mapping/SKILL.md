@@ -2,7 +2,7 @@
 name: affinity-mapping
 description: "Auto-cluster research nuggets and notes into themes. Users can refine groupings interactively."
 metadata:
-  reclaw:
+  istara:
     phase: define
     type: qualitative
     version: "1.0.0"

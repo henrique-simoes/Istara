@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * ReClaw Test Marathon — Single Cycle Runner
+ * Istara Test Marathon — Single Cycle Runner
  *
  * Runs one test cycle (A-L) from the marathon configuration.
  * Called by the scheduled task every 30 minutes.
@@ -304,7 +304,7 @@ function updateMarathonLog(state, latestReport) {
     ? Math.round((state.total_passed / state.total_checks_run) * 1000) / 10
     : 0;
 
-  let log = `# ReClaw Test Marathon — Pre-Release Validation
+  let log = `# Istara Test Marathon — Pre-Release Validation
 
 Started: ${state.started_at}
 Last updated: ${new Date().toISOString()}
@@ -344,7 +344,7 @@ async function main() {
 
   const env = await checkEnvironment();
 
-  console.log("\n🏃 ReClaw Test Marathon — Cycle Runner");
+  console.log("\n🏃 Istara Test Marathon — Cycle Runner");
   console.log("=====================================");
   console.log(`Backend: ${env.backend ? "✅" : "❌"}  Frontend: ${env.frontend ? "✅" : "❌"}  LLM: ${env.llm ? "✅" : "❌"}  Network LLM: ${env.network_llm ? "✅" : "❌"}`);
   console.log(`Stitch: ${env.stitch_key ? "✅" : "❌"}  Figma: ${env.figma_key ? "✅" : "❌"}`);

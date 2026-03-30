@@ -1,5 +1,5 @@
 /**
- * Field research notes generator for ReClaw simulation.
+ * Field research notes generator for Istara simulation.
  * Produces realistic markdown field observation notes with
  * participant observations, quotes, and researcher reflections.
  */

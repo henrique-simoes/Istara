@@ -318,7 +318,7 @@ class SelfEvolutionEngine:
             core_content = f"""# {name} -- Custom Research Agent
 
 ## Identity
-You are {name}, a custom agent created within the ReClaw UX Research platform.
+You are {name}, a custom agent created within the Istara UX Research platform.
 Your primary directive is defined by your creator's system prompt.
 
 ## Creator's Directive

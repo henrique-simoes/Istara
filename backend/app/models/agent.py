@@ -62,7 +62,7 @@ DEFAULT_CAPABILITIES = [
 
 
 class Agent(Base):
-    """A ReClaw agent (main or sub-agent)."""
+    """A Istara agent (main or sub-agent)."""
 
     __tablename__ = "agents"
 

@@ -64,7 +64,7 @@ export default function ChannelConversationsPanel({ channelId }: ChannelConversa
             className={cn(
               "px-2 py-1 text-xs rounded-full transition-colors",
               !stateFilter
-                ? "bg-reclaw-100 text-reclaw-700 dark:bg-reclaw-900/30 dark:text-reclaw-400"
+                ? "bg-istara-100 text-istara-700 dark:bg-istara-900/30 dark:text-istara-400"
                 : "text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
             )}
           >
@@ -80,7 +80,7 @@ export default function ChannelConversationsPanel({ channelId }: ChannelConversa
                 className={cn(
                   "px-2 py-1 text-xs rounded-full transition-colors capitalize",
                   stateFilter === s
-                    ? "bg-reclaw-100 text-reclaw-700 dark:bg-reclaw-900/30 dark:text-reclaw-400"
+                    ? "bg-istara-100 text-istara-700 dark:bg-istara-900/30 dark:text-istara-400"
                     : "text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
                 )}
               >

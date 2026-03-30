@@ -71,15 +71,15 @@ export async function run(ctx) {
     checks.push({ name: "POST /api/backups/create creates full backup with status=completed", passed: false, detail: e.message });
   }
 
-  // ── 5. Backup filename contains "reclaw_backup" ──
+  // ── 5. Backup filename contains "istara_backup" ──
   if (fullBackup) {
     checks.push({
-      name: "Backup filename contains 'reclaw_backup'",
-      passed: (fullBackup.filename || "").includes("reclaw_backup"),
+      name: "Backup filename contains 'istara_backup'",
+      passed: (fullBackup.filename || "").includes("istara_backup"),
       detail: `filename=${fullBackup.filename}`,
     });
   } else {
-    checks.push({ name: "Backup filename contains 'reclaw_backup'", passed: false, detail: "No backup created" });
+    checks.push({ name: "Backup filename contains 'istara_backup'", passed: false, detail: "No backup created" });
   }
 
   // ── 6. Backup has size_bytes > 0 ──

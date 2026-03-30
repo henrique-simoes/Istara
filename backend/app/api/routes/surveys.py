@@ -184,7 +184,7 @@ async def create_platform_survey(
     data: SurveyCreateRequest,
     db: AsyncSession = Depends(get_db),
 ):
-    """Create a new survey on the connected platform from ReClaw data."""
+    """Create a new survey on the connected platform from Istara data."""
     integration = await _get_integration(db, integration_id)
     adapter = _get_adapter(integration)
 
@@ -203,7 +203,7 @@ async def create_platform_survey(
 
 
 # ---------------------------------------------------------------------------
-# Survey Links (tie an external survey to a ReClaw project)
+# Survey Links (tie an external survey to a Istara project)
 # ---------------------------------------------------------------------------
 
 
@@ -212,7 +212,7 @@ async def create_link(
     data: LinkCreate,
     db: AsyncSession = Depends(get_db),
 ):
-    """Link an external survey to a ReClaw project for response ingestion."""
+    """Link an external survey to a Istara project for response ingestion."""
     # Verify integration exists
     await _get_integration(db, data.integration_id)
 

@@ -115,7 +115,7 @@ export default function ContextEditor() {
               📂 Project Context
             </h2>
             <p className="text-sm text-slate-500 mt-1">
-              These context layers shape how ReClaw understands and works on your project.
+              These context layers shape how Istara understands and works on your project.
               The agent reads them before every task.
             </p>
           </div>
@@ -126,7 +126,7 @@ export default function ContextEditor() {
               "flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ml-4",
               saved
                 ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                : "bg-reclaw-600 text-white hover:bg-reclaw-700"
+                : "bg-istara-600 text-white hover:bg-istara-700"
             )}
           >
             <Save size={14} />
@@ -150,7 +150,7 @@ export default function ContextEditor() {
                 className="flex items-center justify-between w-full p-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
               >
                 <div className="flex items-center gap-3">
-                  <section.icon size={20} className="text-reclaw-600" />
+                  <section.icon size={20} className="text-istara-600" />
                   <div className="text-left">
                     <h3 className="font-medium text-slate-900 dark:text-white">
                       {section.label}
@@ -160,7 +160,7 @@ export default function ContextEditor() {
                 </div>
                 <div className="flex items-center gap-2">
                   {charCount > 0 && (
-                    <span className="text-xs bg-reclaw-100 dark:bg-reclaw-900/30 text-reclaw-700 dark:text-reclaw-400 px-2 py-0.5 rounded-full">
+                    <span className="text-xs bg-istara-100 dark:bg-istara-900/30 text-istara-700 dark:text-istara-400 px-2 py-0.5 rounded-full">
                       {charCount} chars
                     </span>
                   )}
@@ -178,13 +178,13 @@ export default function ContextEditor() {
                     }
                     placeholder={section.placeholder}
                     rows={8}
-                    className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 p-3 text-sm font-mono leading-relaxed focus:outline-none focus:ring-2 focus:ring-reclaw-500 focus:border-transparent resize-y"
+                    className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 p-3 text-sm font-mono leading-relaxed focus:outline-none focus:ring-2 focus:ring-istara-500 focus:border-transparent resize-y"
                   />
                   <div className="flex justify-end mt-2">
                     <button
                       onClick={() => handleSave(section.field)}
                       disabled={saving}
-                      className="text-sm text-reclaw-600 hover:text-reclaw-700 font-medium"
+                      className="text-sm text-istara-600 hover:text-istara-700 font-medium"
                     >
                       {saving ? "Saving..." : `Save ${section.label}`}
                     </button>

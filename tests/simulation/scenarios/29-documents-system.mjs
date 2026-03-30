@@ -50,7 +50,7 @@ export async function run(ctx) {
       file_size: 2048,
       source: "task_output",
       task_id: null,
-      agent_ids: ["reclaw-main"],
+      agent_ids: ["istara-main"],
       skill_names: ["user-interviews", "thematic-analysis"],
       tags: ["interviews", "onboarding", "friction"],
       phase: "discover",
@@ -103,7 +103,7 @@ export async function run(ctx) {
       title: "Usability Test Report",
       description: "You asked to evaluate the checkout flow usability.",
       source: "task_output",
-      agent_ids: ["reclaw-main"],
+      agent_ids: ["istara-main"],
       skill_names: ["usability-testing"],
       tags: ["usability", "checkout"],
       phase: "develop",
@@ -446,7 +446,7 @@ export async function run(ctx) {
 
     // Verify view mode persists to localStorage
     const viewModePersisted = await page.evaluate(() => {
-      const stored = localStorage.getItem("reclaw_documents_view_mode") || localStorage.getItem("documents_view_mode");
+      const stored = localStorage.getItem("istara_documents_view_mode") || localStorage.getItem("documents_view_mode");
       return stored;
     });
     check("23b-5", "Phase 3: View mode persists to localStorage",

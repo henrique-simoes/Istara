@@ -139,7 +139,7 @@ export default function FindingsView() {
 
   return (
     <div className="flex-1 overflow-y-auto">
-      <ViewOnboarding viewId="findings" title="Research Evidence" description="Nuggets, facts, insights, and recommendations from your research. Auto-generated as agents analyze data. Filter by phase and type." chatPrompt="How do findings work in ReClaw?" />
+      <ViewOnboarding viewId="findings" title="Research Evidence" description="Nuggets, facts, insights, and recommendations from your research. Auto-generated as agents analyze data. Filter by phase and type." chatPrompt="How do findings work in Istara?" />
       {/* Header */}
       <div className="p-4 border-b border-slate-200 dark:border-slate-800">
         <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
@@ -161,7 +161,7 @@ export default function FindingsView() {
               className={cn(
                 "flex items-center gap-1.5 px-3 py-2 text-sm font-medium border-b-2 transition-colors -mb-px",
                 activeTab === tab.id
-                  ? "border-reclaw-600 text-reclaw-600 dark:border-reclaw-400 dark:text-reclaw-400"
+                  ? "border-istara-600 text-istara-600 dark:border-istara-400 dark:text-istara-400"
                   : "border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
               )}
             >
@@ -319,7 +319,7 @@ export default function FindingsView() {
                           <p className="flex-1 text-sm text-slate-900 dark:text-white">{item.text}</p>
                           {linkCount > 0 && (
                             <span
-                              className="shrink-0 inline-flex items-center gap-0.5 text-[10px] font-medium text-reclaw-600 dark:text-reclaw-400 bg-reclaw-50 dark:bg-reclaw-900/20 rounded-full px-1.5 py-0.5"
+                              className="shrink-0 inline-flex items-center gap-0.5 text-[10px] font-medium text-istara-600 dark:text-istara-400 bg-istara-50 dark:bg-istara-900/20 rounded-full px-1.5 py-0.5"
                               title={`${linkCount} linked evidence item${linkCount !== 1 ? "s" : ""}`}
                             >
                               <Link2 size={10} />

@@ -1,6 +1,6 @@
 """MCP security service — access control, rate limiting, and audit logging.
 
-SECURITY: ReClaw is local-first.  The MCP server breaks that boundary by
+SECURITY: Istara is local-first.  The MCP server breaks that boundary by
 allowing external AI agents to access local research data.  Every tool
 invocation must pass through this service before executing.
 """

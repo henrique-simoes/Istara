@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ═══════════════════════════════════════════════════════════════════
-# ReClaw Version Manager
+# Istara Version Manager
 # Sets the version across all package files using CalVer (YYYY.MM.DD)
 #
 # Usage:
@@ -31,7 +31,7 @@ else
     VERSION=$(date -u +%Y.%m.%d)
 fi
 
-echo "Setting ReClaw version to: $VERSION"
+echo "Setting Istara version to: $VERSION"
 
 # ── Update all version files ──────────────────────────────────────
 

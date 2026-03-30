@@ -65,7 +65,7 @@ export default function ChannelInstanceCard({ instance, onSelect, selected }: Ch
       className={cn(
         "w-full text-left bg-white dark:bg-slate-900 border rounded-xl p-4 transition-all",
         selected
-          ? "border-reclaw-400 dark:border-reclaw-600 ring-1 ring-reclaw-200 dark:ring-reclaw-800"
+          ? "border-istara-400 dark:border-istara-600 ring-1 ring-istara-200 dark:ring-istara-800"
           : "border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700"
       )}
     >

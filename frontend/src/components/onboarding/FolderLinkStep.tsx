@@ -24,7 +24,7 @@ export default function FolderLinkStep({ projectId }: FolderLinkStepProps) {
     setLinking(true);
     setError(null);
     try {
-      const token = localStorage.getItem("reclaw_token");
+      const token = localStorage.getItem("istara_token");
       const res = await fetch(`${API_BASE}/api/projects/${projectId}/link-folder`, {
         method: "POST",
         headers: {
@@ -67,7 +67,7 @@ export default function FolderLinkStep({ projectId }: FolderLinkStepProps) {
   return (
     <div className="space-y-4">
       <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-        Already have a research folder? Point ReClaw at it — files will be monitored and auto-analyzed.
+        Already have a research folder? Point Istara at it — files will be monitored and auto-analyzed.
         Works with <strong>Google Drive</strong>, <strong>Dropbox</strong>, <strong>OneDrive</strong>, or any local folder.
       </p>
 
@@ -80,14 +80,14 @@ export default function FolderLinkStep({ projectId }: FolderLinkStepProps) {
             onChange={(e) => { setFolderPath(e.target.value); setError(null); }}
             onKeyDown={(e) => e.key === "Enter" && handleLink()}
             placeholder="/Users/you/Google Drive/UX Research"
-            className="w-full pl-10 pr-3 py-2.5 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-reclaw-500 transition"
+            className="w-full pl-10 pr-3 py-2.5 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-istara-500 transition"
             aria-label="Folder path"
           />
         </div>
         <button
           onClick={handleLink}
           disabled={!folderPath.trim() || !projectId || linking}
-          className="px-4 py-2.5 text-sm font-medium rounded-lg bg-reclaw-600 text-white hover:bg-reclaw-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="px-4 py-2.5 text-sm font-medium rounded-lg bg-istara-600 text-white hover:bg-istara-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           {linking ? "Linking..." : "Link"}
         </button>

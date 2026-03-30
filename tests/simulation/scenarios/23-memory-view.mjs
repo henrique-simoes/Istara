@@ -45,7 +45,7 @@ export async function run(ctx) {
 
   // ── 4. Agent Notes API ──
   try {
-    const notes = await api.get(`/api/memory/${ctx.projectId}/agent/reclaw-main/notes`);
+    const notes = await api.get(`/api/memory/${ctx.projectId}/agent/istara-main/notes`);
     const hasShape = "agent_id" in notes && "notes" in notes;
     checks.push({ name: "Agent notes API", passed: hasShape, detail: `notes=${notes.notes?.length || 0}` });
   } catch (e) {

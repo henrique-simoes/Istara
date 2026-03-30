@@ -2,7 +2,7 @@
 name: card-sorting
 description: "Analyze open/closed/hybrid card sorts — dendrograms, similarity matrices, IA recommendations."
 metadata:
-  reclaw:
+  istara:
     phase: develop
     type: quantitative
     version: "1.0.0"

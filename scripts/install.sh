@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-echo "🐾 ReClaw Installer"
+echo "🐾 Istara Installer"
 echo "==================="
 echo ""
 
@@ -41,7 +41,7 @@ echo "✅ Docker Compose found"
 echo ""
 
 # Clone or update repo
-INSTALL_DIR="${RECLAW_DIR:-$HOME/reclaw}"
+INSTALL_DIR="${ISTARA_DIR:-$HOME/istara}"
 
 if [ -d "$INSTALL_DIR" ]; then
     echo "📁 Found existing installation at $INSTALL_DIR"
@@ -49,8 +49,8 @@ if [ -d "$INSTALL_DIR" ]; then
     cd "$INSTALL_DIR"
     git pull --ff-only 2>/dev/null || echo "   ⚠️  Could not pull (local changes?). Continuing with current version."
 else
-    echo "📥 Cloning ReClaw to $INSTALL_DIR..."
-    git clone https://github.com/henrique-simoes/ReClaw.git "$INSTALL_DIR"
+    echo "📥 Cloning Istara to $INSTALL_DIR..."
+    git clone https://github.com/henrique-simoes/Istara.git "$INSTALL_DIR"
     cd "$INSTALL_DIR"
 fi
 
@@ -65,13 +65,13 @@ echo "📁 Creating data directories..."
 mkdir -p data/watch data/uploads data/projects data/lance_db
 
 echo ""
-echo "🚀 Starting ReClaw..."
+echo "🚀 Starting Istara..."
 echo ""
 
 $COMPOSE_CMD up -d --build
 
 echo ""
-echo "✅ ReClaw is starting up!"
+echo "✅ Istara is starting up!"
 echo ""
 echo "🌐 Open http://localhost:3000 in your browser"
 echo ""
@@ -79,8 +79,8 @@ echo "First run may take a few minutes while models are downloaded."
 echo ""
 echo "Useful commands:"
 echo "  $COMPOSE_CMD logs -f          # View logs"
-echo "  $COMPOSE_CMD down             # Stop ReClaw"
-echo "  $COMPOSE_CMD up -d            # Start ReClaw"
+echo "  $COMPOSE_CMD down             # Stop Istara"
+echo "  $COMPOSE_CMD up -d            # Start Istara"
 echo "  $COMPOSE_CMD pull && $COMPOSE_CMD up -d --build  # Update"
 echo ""
 echo "🐾 Happy researching!"

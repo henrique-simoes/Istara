@@ -30,11 +30,11 @@ class DocumentSource(str, enum.Enum):
 
 
 class Document(Base):
-    """A document produced by or provided to ReClaw.
+    """A document produced by or provided to Istara.
 
     Every file the user puts in the project folder and every output
     an agent or task produces is tracked as a Document. Documents
-    are the final outputs of everything in ReClaw and form the
+    are the final outputs of everything in Istara and form the
     source of truth for agents and users.
     """
 

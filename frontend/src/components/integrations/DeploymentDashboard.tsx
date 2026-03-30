@@ -120,7 +120,7 @@ export default function DeploymentDashboard({ deployment, onBack }: DeploymentDa
             <span>{progress}%</span>
           </div>
           <div className="h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-            <div className="h-full bg-reclaw-500 rounded-full transition-all" style={{ width: `${Math.min(progress, 100)}%` }} />
+            <div className="h-full bg-istara-500 rounded-full transition-all" style={{ width: `${Math.min(progress, 100)}%` }} />
           </div>
         </div>
 
@@ -133,7 +133,7 @@ export default function DeploymentDashboard({ deployment, onBack }: DeploymentDa
               className={cn(
                 "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors",
                 activeTab === tab.id
-                  ? "bg-reclaw-100 text-reclaw-700 dark:bg-reclaw-900/30 dark:text-reclaw-400"
+                  ? "bg-istara-100 text-istara-700 dark:bg-istara-900/30 dark:text-istara-400"
                   : "text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
               )}
             >
@@ -248,7 +248,7 @@ function QuestionAnalytics({ analytics }: { analytics: DeploymentAnalytics | nul
               <div key={qs.index} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-4">
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex-1 min-w-0">
-                    <span className="text-xs font-medium text-reclaw-600 dark:text-reclaw-400">Q{qs.index + 1}</span>
+                    <span className="text-xs font-medium text-istara-600 dark:text-istara-400">Q{qs.index + 1}</span>
                     <p className="text-sm text-slate-900 dark:text-white mt-0.5">{qs.text}</p>
                   </div>
                 </div>
@@ -258,7 +258,7 @@ function QuestionAnalytics({ analytics }: { analytics: DeploymentAnalytics | nul
                   <span>{responsePct}% response rate</span>
                 </div>
                 <div className="h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full mt-2 overflow-hidden">
-                  <div className="h-full bg-reclaw-500 rounded-full" style={{ width: `${responsePct}%` }} />
+                  <div className="h-full bg-istara-500 rounded-full" style={{ width: `${responsePct}%` }} />
                 </div>
               </div>
             );
@@ -307,7 +307,7 @@ function ParticipantTracker({ conversations, onViewTranscript }: { conversations
                 <td className="px-3 py-2">
                   <button
                     onClick={() => onViewTranscript(conv.id)}
-                    className="text-xs text-reclaw-600 hover:text-reclaw-700 dark:text-reclaw-400 transition-colors"
+                    className="text-xs text-istara-600 hover:text-istara-700 dark:text-istara-400 transition-colors"
                   >
                     View
                   </button>
@@ -382,7 +382,7 @@ function Timeline({ deployment }: { deployment: ResearchDeployment }) {
 function TimelineItem({ time, label }: { time: string; label: string }) {
   return (
     <div className="relative flex items-start gap-3">
-      <div className="absolute -left-4 w-3 h-3 bg-reclaw-500 rounded-full border-2 border-white dark:border-slate-900" />
+      <div className="absolute -left-4 w-3 h-3 bg-istara-500 rounded-full border-2 border-white dark:border-slate-900" />
       <div>
         <p className="text-sm text-slate-900 dark:text-white">{label}</p>
         <p className="text-xs text-slate-500 dark:text-slate-400">{new Date(time).toLocaleString()}</p>

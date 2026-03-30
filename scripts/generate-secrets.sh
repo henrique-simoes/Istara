@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ═══════════════════════════════════════════════════════════════════
-# ReClaw Secret Generator
+# Istara Secret Generator
 # Generates ALL security keys needed for a production deployment
 # ═══════════════════════════════════════════════════════════════════
 set -euo pipefail
@@ -16,7 +16,7 @@ RELAY_TOKEN=$(openssl rand -base64 24 | tr -d '/+=')
 
 cat > "$OUTPUT" <<EOF
 # ═══════════════════════════════════════════════════════════════════
-# ReClaw Secrets — Auto-generated $(date -u +%Y-%m-%dT%H:%M:%SZ)
+# Istara Secrets — Auto-generated $(date -u +%Y-%m-%dT%H:%M:%SZ)
 # DO NOT commit this file. Copy values to your .env
 # ═══════════════════════════════════════════════════════════════════
 

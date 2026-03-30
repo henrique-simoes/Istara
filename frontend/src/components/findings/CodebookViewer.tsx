@@ -134,7 +134,7 @@ export default function CodebookViewer({ projectId }: CodebookViewerProps) {
           <button
             onClick={loadVersions}
             aria-label="Retry loading codebook"
-            className="text-xs px-3 py-1.5 rounded-md bg-reclaw-600 text-white hover:bg-reclaw-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-reclaw-500 focus-visible:ring-offset-1"
+            className="text-xs px-3 py-1.5 rounded-md bg-istara-600 text-white hover:bg-istara-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-istara-500 focus-visible:ring-offset-1"
           >
             Retry
           </button>
@@ -172,7 +172,7 @@ export default function CodebookViewer({ projectId }: CodebookViewerProps) {
       <div className="p-4 border-b border-slate-200 dark:border-slate-800">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
-            <Book size={18} className="text-reclaw-600 dark:text-reclaw-400" aria-hidden="true" />
+            <Book size={18} className="text-istara-600 dark:text-istara-400" aria-hidden="true" />
             <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
               Codebook v{selectedVersion.version}
             </h2>
@@ -200,7 +200,7 @@ export default function CodebookViewer({ projectId }: CodebookViewerProps) {
                 id="codebook-version-select"
                 value={selectedVersion.id}
                 onChange={(e) => handleVersionChange(e.target.value)}
-                className="text-sm border border-slate-200 dark:border-slate-700 rounded-md px-2 py-1 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+                className="text-sm border border-slate-200 dark:border-slate-700 rounded-md px-2 py-1 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-istara-500"
               >
                 {versions.map((v) => (
                   <option key={v.id} value={v.id}>
@@ -240,7 +240,7 @@ export default function CodebookViewer({ projectId }: CodebookViewerProps) {
                 aria-expanded={isExpanded}
                 aria-controls={panelId}
                 aria-label={`${isExpanded ? "Collapse" : "Expand"} code: ${code.label}`}
-                className="flex items-center justify-between w-full p-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-reclaw-500 focus-visible:ring-inset"
+                className="flex items-center justify-between w-full p-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-istara-500 focus-visible:ring-inset"
               >
                 <div className="flex items-center gap-2 min-w-0">
                   {isExpanded ? (
@@ -258,7 +258,7 @@ export default function CodebookViewer({ projectId }: CodebookViewerProps) {
                   )}
                   <Tag
                     size={14}
-                    className="text-reclaw-600 dark:text-reclaw-400 shrink-0"
+                    className="text-istara-600 dark:text-istara-400 shrink-0"
                     aria-hidden="true"
                   />
                   <span className="font-medium text-sm text-slate-900 dark:text-white truncate">

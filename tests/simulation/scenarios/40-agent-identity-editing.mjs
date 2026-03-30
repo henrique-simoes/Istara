@@ -9,7 +9,7 @@ export async function run(ctx) {
 
   // ── 1. GET identity returns all 4 files ──
   try {
-    const identity = await api.get("/api/agents/reclaw-main/identity");
+    const identity = await api.get("/api/agents/istara-main/identity");
     checks.push({
       name: "GET identity returns files",
       passed: identity.files && Object.keys(identity.files).length === 4,
@@ -37,19 +37,19 @@ export async function run(ctx) {
   // ── 2. PUT identity updates files ──
   let originalCore = "";
   try {
-    const identity = await api.get("/api/agents/reclaw-main/identity");
+    const identity = await api.get("/api/agents/istara-main/identity");
     originalCore = identity.files?.["CORE.md"] || "";
 
     // Update with test content appended
     const testMarker = "\n\n<!-- SIM TEST MARKER -->";
-    const updated = await api.put("/api/agents/reclaw-main/identity", {
+    const updated = await api.put("/api/agents/istara-main/identity", {
       files: {
         "CORE.md": originalCore + testMarker,
       },
     });
 
     // Verify the update persisted
-    const verify = await api.get("/api/agents/reclaw-main/identity");
+    const verify = await api.get("/api/agents/istara-main/identity");
     const hasMarker = (verify.files?.["CORE.md"] || "").includes("SIM TEST MARKER");
     checks.push({
       name: "PUT identity saves changes",
@@ -58,7 +58,7 @@ export async function run(ctx) {
     });
 
     // Restore original
-    await api.put("/api/agents/reclaw-main/identity", {
+    await api.put("/api/agents/istara-main/identity", {
       files: { "CORE.md": originalCore },
     });
     checks.push({ name: "Identity restore after test", passed: true, detail: "Restored" });
@@ -67,7 +67,7 @@ export async function run(ctx) {
     // Attempt restore
     if (originalCore) {
       try {
-        await api.put("/api/agents/reclaw-main/identity", {
+        await api.put("/api/agents/istara-main/identity", {
           files: { "CORE.md": originalCore },
         });
       } catch {}
@@ -76,7 +76,7 @@ export async function run(ctx) {
 
   // ── 3. PUT identity rejects invalid file names ──
   try {
-    await api.put("/api/agents/reclaw-main/identity", {
+    await api.put("/api/agents/istara-main/identity", {
       files: { "EVIL.md": "hacker content" },
     });
     checks.push({ name: "Rejects invalid file names", passed: false, detail: "Should have thrown" });
@@ -132,10 +132,10 @@ export async function run(ctx) {
     // Look for any agent card to click on — try multiple selectors
     let agentFound = false;
     const agentSelectors = [
-      'text=ReClaw',
-      '[data-agent-id="reclaw-main"]',
+      'text=Istara',
+      '[data-agent-id="istara-main"]',
       'text=Sentinel',
-      'text=reclaw-main',
+      'text=istara-main',
     ];
 
     for (const sel of agentSelectors) {

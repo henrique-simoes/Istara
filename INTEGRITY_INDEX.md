@@ -1,4 +1,4 @@
-# ReClaw System Integrity Documentation Index
+# Istara System Integrity Documentation Index
 
 **Created**: 2026-03-28
 **System Version**: v0.1.0 (Post-ComputeRegistry Unification)

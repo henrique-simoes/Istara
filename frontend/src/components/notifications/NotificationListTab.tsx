@@ -78,7 +78,7 @@ export default function NotificationListTab() {
     }
     if (notification.action_target) {
       window.dispatchEvent(
-        new CustomEvent("reclaw:navigate", { detail: notification.action_target })
+        new CustomEvent("istara:navigate", { detail: notification.action_target })
       );
     }
   };
@@ -113,7 +113,7 @@ export default function NotificationListTab() {
                         current.includes(sev) ? current.filter((s: string) => s !== sev) : [...current, sev]
                       );
                     }}
-                    className="rounded border-slate-300 dark:border-slate-600 text-reclaw-600 focus:ring-reclaw-500 focus:ring-offset-0"
+                    className="rounded border-slate-300 dark:border-slate-600 text-istara-600 focus:ring-istara-500 focus:ring-offset-0"
                   />
                   <span className="text-xs text-slate-600 dark:text-slate-400 capitalize">{sev}</span>
                 </label>
@@ -126,7 +126,7 @@ export default function NotificationListTab() {
               <select
                 value={filters.agent_id}
                 onChange={(e) => setFilter("agent_id", e.target.value)}
-                className="w-full px-2 py-1.5 text-xs rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+                className="w-full px-2 py-1.5 text-xs rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-istara-500"
               >
                 <option value="">All agents</option>
                 {agents.map((a) => (
@@ -141,7 +141,7 @@ export default function NotificationListTab() {
               <select
                 value={filters.project_id}
                 onChange={(e) => setFilter("project_id", e.target.value)}
-                className="w-full px-2 py-1.5 text-xs rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+                className="w-full px-2 py-1.5 text-xs rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-istara-500"
               >
                 <option value="">All projects</option>
                 {projects.map((p) => (
@@ -160,7 +160,7 @@ export default function NotificationListTab() {
                   value={filters.search}
                   onChange={(e) => setFilter("search", e.target.value)}
                   placeholder="Search notifications..."
-                  className="w-full pl-7 pr-2 py-1.5 text-xs rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+                  className="w-full pl-7 pr-2 py-1.5 text-xs rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-istara-500"
                 />
               </div>
             </div>
@@ -173,7 +173,7 @@ export default function NotificationListTab() {
                   type="date"
                   value={filters.from_date}
                   onChange={(e) => setFilter("from_date", e.target.value)}
-                  className="w-full px-2 py-1 text-xs rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+                  className="w-full px-2 py-1 text-xs rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-istara-500"
                 />
               </div>
               <div>
@@ -182,7 +182,7 @@ export default function NotificationListTab() {
                   type="date"
                   value={filters.to_date}
                   onChange={(e) => setFilter("to_date", e.target.value)}
-                  className="w-full px-2 py-1 text-xs rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+                  className="w-full px-2 py-1 text-xs rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-istara-500"
                 />
               </div>
             </div>
@@ -191,7 +191,7 @@ export default function NotificationListTab() {
             <div className="flex items-center gap-2 pt-2">
               <button
                 onClick={applyFilters}
-                className="flex-1 px-3 py-1.5 text-xs font-medium rounded-lg bg-reclaw-600 text-white hover:bg-reclaw-700"
+                className="flex-1 px-3 py-1.5 text-xs font-medium rounded-lg bg-istara-600 text-white hover:bg-istara-700"
               >
                 Apply
               </button>
@@ -220,7 +220,7 @@ export default function NotificationListTab() {
             </button>
             <span className="text-xs text-slate-500 dark:text-slate-400">
               {total} notification{total !== 1 ? "s" : ""}
-              {unreadCount > 0 && <span className="ml-1 text-reclaw-600 dark:text-reclaw-400">({unreadCount} unread)</span>}
+              {unreadCount > 0 && <span className="ml-1 text-istara-600 dark:text-istara-400">({unreadCount} unread)</span>}
             </span>
           </div>
           <button
@@ -257,7 +257,7 @@ export default function NotificationListTab() {
                   className={cn(
                     "flex items-start gap-3 px-4 py-3 cursor-pointer border-b border-slate-100 dark:border-slate-800 transition-colors",
                     "hover:bg-slate-50 dark:hover:bg-slate-800",
-                    "focus:outline-none focus:bg-slate-100 dark:focus:bg-slate-800 focus:ring-2 focus:ring-inset focus:ring-reclaw-500",
+                    "focus:outline-none focus:bg-slate-100 dark:focus:bg-slate-800 focus:ring-2 focus:ring-inset focus:ring-istara-500",
                     !notification.read && "bg-blue-50/60 dark:bg-blue-900/20"
                   )}
                 >
@@ -276,7 +276,7 @@ export default function NotificationListTab() {
                       </p>
                       <div className="flex items-center gap-2 shrink-0">
                         {!notification.read && (
-                          <span className="w-2 h-2 rounded-full bg-reclaw-500" aria-hidden="true" />
+                          <span className="w-2 h-2 rounded-full bg-istara-500" aria-hidden="true" />
                         )}
                         <button
                           onClick={(e) => { e.stopPropagation(); deleteNotification(notification.id); }}

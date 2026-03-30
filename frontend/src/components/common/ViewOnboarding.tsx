@@ -57,13 +57,13 @@ export default function ViewOnboarding({
       role="region"
       aria-label={`${title} onboarding`}
       aria-live="polite"
-      className="mx-4 mt-3 mb-1 rounded-lg border border-reclaw-200 dark:border-reclaw-800 bg-reclaw-50 dark:bg-reclaw-900/20 p-4 relative"
+      className="mx-4 mt-3 mb-1 rounded-lg border border-istara-200 dark:border-istara-800 bg-istara-50 dark:bg-istara-900/20 p-4 relative"
     >
       {/* Dismiss button */}
       <button
         ref={closeRef}
         onClick={dismiss}
-        className="absolute top-3 right-3 p-1 rounded-md text-reclaw-400 hover:text-reclaw-600 dark:hover:text-reclaw-300 hover:bg-reclaw-100 dark:hover:bg-reclaw-800/40 transition-colors"
+        className="absolute top-3 right-3 p-1 rounded-md text-istara-400 hover:text-istara-600 dark:hover:text-istara-300 hover:bg-istara-100 dark:hover:bg-istara-800/40 transition-colors"
         aria-label="Dismiss hint"
       >
         <X size={16} />
@@ -71,13 +71,13 @@ export default function ViewOnboarding({
 
       {/* Content */}
       <div className="flex items-start gap-3 pr-8">
-        <Lightbulb size={20} className="text-reclaw-500 shrink-0 mt-0.5" aria-hidden="true" />
+        <Lightbulb size={20} className="text-istara-500 shrink-0 mt-0.5" aria-hidden="true" />
         <div className="space-y-2 min-w-0">
           <div>
-            <h3 className="text-sm font-semibold text-reclaw-800 dark:text-reclaw-300">
+            <h3 className="text-sm font-semibold text-istara-800 dark:text-istara-300">
               {title}
             </h3>
-            <p className="text-xs text-reclaw-600 dark:text-reclaw-400 mt-0.5 leading-relaxed">
+            <p className="text-xs text-istara-600 dark:text-istara-400 mt-0.5 leading-relaxed">
               {description}
             </p>
           </div>
@@ -92,8 +92,8 @@ export default function ViewOnboarding({
                   className={cn(
                     "px-3 py-1 text-xs font-medium rounded-md transition-colors",
                     i === 0
-                      ? "bg-reclaw-600 text-white hover:bg-reclaw-700"
-                      : "bg-reclaw-100 dark:bg-reclaw-800/40 text-reclaw-700 dark:text-reclaw-300 hover:bg-reclaw-200 dark:hover:bg-reclaw-800/60"
+                      ? "bg-istara-600 text-white hover:bg-istara-700"
+                      : "bg-istara-100 dark:bg-istara-800/40 text-istara-700 dark:text-istara-300 hover:bg-istara-200 dark:hover:bg-istara-800/60"
                   )}
                 >
                   {action.label}
@@ -103,7 +103,7 @@ export default function ViewOnboarding({
           )}
 
           {/* Chat hint */}
-          <p className="text-[11px] text-reclaw-500 dark:text-reclaw-500 flex items-center gap-1">
+          <p className="text-[11px] text-istara-500 dark:text-istara-500 flex items-center gap-1">
             <MessageSquare size={10} aria-hidden="true" />
             {chatPrompt
               ? <>Try asking: &ldquo;{chatPrompt}&rdquo;</>

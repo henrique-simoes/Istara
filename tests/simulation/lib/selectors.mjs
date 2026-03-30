@@ -1,5 +1,5 @@
 /**
- * Centralized CSS / ARIA selectors for every UI element in ReClaw.
+ * Centralized CSS / ARIA selectors for every UI element in Istara.
  *
  * All selectors are plain strings suitable for Playwright's `page.$()`,
  * `page.click()`, `page.waitForSelector()`, etc.
@@ -307,7 +307,7 @@ export const ONBOARDING = {
   progressBar: ".flex.gap-1.p-4 .rounded-full",
 
   /** Step 0: Welcome */
-  welcomeHeading: 'text="Welcome to ReClaw"',
+  welcomeHeading: 'text="Welcome to Istara"',
   getStartedBtn: 'button:has-text("Get Started")',
 
   /** Step 1: Create project */
@@ -342,7 +342,7 @@ export const TOAST = {
   success: ".border-green-500",
   warning: ".border-yellow-500",
   info: ".border-blue-500",
-  agent: ".border-reclaw-500",
+  agent: ".border-istara-500",
   file: ".border-purple-500",
   suggestion: ".border-amber-500",
 

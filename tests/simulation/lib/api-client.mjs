@@ -1,5 +1,5 @@
 /**
- * Direct REST client for the ReClaw backend API.
+ * Direct REST client for the Istara backend API.
  *
  * Mirrors the endpoint structure from `frontend/src/lib/api.ts` but uses
  * plain `fetch()` so it can run from Node without a browser.  All methods
@@ -9,7 +9,7 @@
  * collected array — streaming is irrelevant for test assertions.
  */
 
-const API_BASE = process.env.RECLAW_API_URL || "http://localhost:8000";
+const API_BASE = process.env.ISTARA_API_URL || "http://localhost:8000";
 
 // ---------------------------------------------------------------------------
 // Internal request helper

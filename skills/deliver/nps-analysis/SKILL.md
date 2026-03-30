@@ -2,7 +2,7 @@
 name: nps-analysis
 description: "Calculate NPS, segment analysis, open-ended response analysis, trend tracking."
 metadata:
-  reclaw:
+  istara:
     phase: deliver
     type: quantitative
     version: "1.0.0"

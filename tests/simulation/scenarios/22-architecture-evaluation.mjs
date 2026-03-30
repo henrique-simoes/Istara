@@ -1,5 +1,5 @@
 /** Scenario 22 — Architecture Evaluation:
- *  Evaluates ReClaw's entire system architecture against OpenClaw/NemoClaw patterns,
+ *  Evaluates Istara's entire system architecture against OpenClaw/NemoClaw patterns,
  *  protocol compliance, evidence chain integrity, Double Diamond coverage,
  *  API consistency, error handling, and self-improvement mechanisms.
  */

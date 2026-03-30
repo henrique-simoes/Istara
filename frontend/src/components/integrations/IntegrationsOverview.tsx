@@ -97,11 +97,11 @@ export default function IntegrationsOverview() {
           <button
             key={stat.label}
             onClick={() => setActiveTab(stat.tab)}
-            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 text-left hover:border-reclaw-300 dark:hover:border-reclaw-700 transition-colors group"
+            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 text-left hover:border-istara-300 dark:hover:border-istara-700 transition-colors group"
           >
             <div className="flex items-center justify-between mb-3">
               <stat.icon size={20} className={stat.color} />
-              <ArrowRight size={14} className="text-slate-300 dark:text-slate-600 group-hover:text-reclaw-500 transition-colors" />
+              <ArrowRight size={14} className="text-slate-300 dark:text-slate-600 group-hover:text-istara-500 transition-colors" />
             </div>
             <div className="text-2xl font-bold text-slate-900 dark:text-white">{stat.value}</div>
             <div className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">{stat.label}</div>
@@ -125,7 +125,7 @@ export default function IntegrationsOverview() {
             </p>
             <button
               onClick={() => setActiveTab("messaging")}
-              className="mt-4 px-4 py-2 text-sm bg-reclaw-600 text-white rounded-lg hover:bg-reclaw-700 transition-colors"
+              className="mt-4 px-4 py-2 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700 transition-colors"
             >
               Add First Channel
             </button>

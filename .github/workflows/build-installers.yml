@@ -47,7 +47,7 @@ jobs:
             fi
           fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "Building ReClaw $VERSION"
+          echo "Building Istara $VERSION"
 
   # ── macOS Build ────────────────────────────────────────────────────
   build-macos:
@@ -99,9 +99,9 @@ jobs:
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: ReClaw-macOS-${{ needs.version.outputs.version }}
+          name: Istara-macOS-${{ needs.version.outputs.version }}
           path: |
-            installer/macos/ReClaw-*.dmg
+            installer/macos/Istara-*.dmg
             desktop/src-tauri/target/*/release/bundle/macos/*.dmg
           retention-days: 30
           if-no-files-found: warn
@@ -148,7 +148,7 @@ jobs:
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: ReClaw-Windows-${{ needs.version.outputs.version }}
+          name: Istara-Windows-${{ needs.version.outputs.version }}
           path: |
             desktop/src-tauri/target/release/bundle/nsis/*.exe
             desktop/src-tauri/target/release/bundle/msi/*.msi
@@ -174,25 +174,25 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ needs.version.outputs.version }}
-          name: ReClaw ${{ needs.version.outputs.version }}
+          name: Istara ${{ needs.version.outputs.version }}
           body: |
-            ## ReClaw ${{ needs.version.outputs.version }}
+            ## Istara ${{ needs.version.outputs.version }}
 
             ### Installation
-            - **macOS**: Download the `.dmg`, drag ReClaw to Applications
+            - **macOS**: Download the `.dmg`, drag Istara to Applications
             - **Windows**: Download the `.exe` installer, run it
 
             ### Update from previous version
-            1. Open Settings in ReClaw
+            1. Open Settings in Istara
             2. Click "Backup & Prepare Update" in Software Updates
             3. Download and install the new version
 
             ---
-            *Auto-generated release. See [commits](https://github.com/henrique-simoes/ReClaw/commits/main) for changes.*
+            *Auto-generated release. See [commits](https://github.com/henrique-simoes/Istara/commits/main) for changes.*
           files: |
-            ReClaw-macOS-*/**/*.dmg
-            ReClaw-Windows-*/**/*.exe
-            ReClaw-Windows-*/**/*.msi
+            Istara-macOS-*/**/*.dmg
+            Istara-Windows-*/**/*.exe
+            Istara-Windows-*/**/*.msi
           generate_release_notes: true
           draft: false
           prerelease: false

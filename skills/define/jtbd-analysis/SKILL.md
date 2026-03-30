@@ -2,7 +2,7 @@
 name: jtbd-analysis
 description: "Extract JTBD statements from research, identify functional/emotional/social jobs."
 metadata:
-  reclaw:
+  istara:
     phase: define
     type: mixed
     version: "1.0.0"

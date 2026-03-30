@@ -70,7 +70,7 @@ export default function InterfacesOnboarding() {
         {/* Progress bar */}
         <div className="h-1 bg-slate-100 dark:bg-slate-800">
           <div
-            className="h-full bg-reclaw-500 transition-all duration-300"
+            className="h-full bg-istara-500 transition-all duration-300"
             style={{ width: `${((stepIndex + 1) / STEPS.length) * 100}%` }}
           />
         </div>
@@ -79,7 +79,7 @@ export default function InterfacesOnboarding() {
           {/* Welcome */}
           {currentStep === "welcome" && (
             <div className="text-center py-4">
-              <Palette size={48} className="mx-auto mb-4 text-reclaw-500" />
+              <Palette size={48} className="mx-auto mb-4 text-istara-500" />
               <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">
                 Welcome to Interfaces
               </h2>
@@ -106,14 +106,14 @@ export default function InterfacesOnboarding() {
                   value={stitchKey}
                   onChange={(e) => setStitchKey(e.target.value)}
                   placeholder="Google Gemini API key"
-                  className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+                  className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-istara-500"
                 />
 
                 <div className="flex items-center gap-2">
                   <button
                     onClick={handleSaveStitch}
                     disabled={!stitchKey.trim() || savingStitch}
-                    className="px-4 py-2 text-sm bg-reclaw-600 text-white rounded-lg hover:bg-reclaw-700 disabled:opacity-50 transition-colors"
+                    className="px-4 py-2 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700 disabled:opacity-50 transition-colors"
                   >
                     {savingStitch ? "Saving..." : "Save Key"}
                   </button>
@@ -132,7 +132,7 @@ export default function InterfacesOnboarding() {
                   href="https://aistudio.google.com/apikey"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-sm text-reclaw-600 hover:text-reclaw-700 dark:text-reclaw-400"
+                  className="inline-flex items-center gap-1 text-sm text-istara-600 hover:text-istara-700 dark:text-istara-400"
                 >
                   <ExternalLink size={12} /> Get your API key
                 </a>
@@ -156,14 +156,14 @@ export default function InterfacesOnboarding() {
                   value={figmaToken}
                   onChange={(e) => setFigmaToken(e.target.value)}
                   placeholder="Figma personal access token"
-                  className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+                  className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-istara-500"
                 />
 
                 <div className="flex items-center gap-2">
                   <button
                     onClick={handleSaveFigma}
                     disabled={!figmaToken.trim() || savingFigma}
-                    className="px-4 py-2 text-sm bg-reclaw-600 text-white rounded-lg hover:bg-reclaw-700 disabled:opacity-50 transition-colors"
+                    className="px-4 py-2 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700 disabled:opacity-50 transition-colors"
                   >
                     {savingFigma ? "Saving..." : "Save Token"}
                   </button>
@@ -182,7 +182,7 @@ export default function InterfacesOnboarding() {
                   href="https://www.figma.com/developers/api#access-tokens"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-sm text-reclaw-600 hover:text-reclaw-700 dark:text-reclaw-400"
+                  className="inline-flex items-center gap-1 text-sm text-istara-600 hover:text-istara-700 dark:text-istara-400"
                 >
                   <ExternalLink size={12} /> Get your token
                 </a>
@@ -205,7 +205,7 @@ export default function InterfacesOnboarding() {
                       Important: External Data Sharing
                     </p>
                     <p className="text-sm text-amber-700 dark:text-amber-300">
-                      Sending data to Stitch or Figma breaks ReClaw&apos;s local-first approach.
+                      Sending data to Stitch or Figma breaks Istara&apos;s local-first approach.
                       Your research data and prompts will be shared with external services (Google/Figma).
                     </p>
                   </div>
@@ -217,7 +217,7 @@ export default function InterfacesOnboarding() {
                   type="checkbox"
                   checked={privacyChecked}
                   onChange={(e) => setPrivacyChecked(e.target.checked)}
-                  className="mt-1 rounded border-slate-300 dark:border-slate-600 text-reclaw-600 focus:ring-reclaw-500"
+                  className="mt-1 rounded border-slate-300 dark:border-slate-600 text-istara-600 focus:ring-istara-500"
                 />
                 <span className="text-sm text-slate-700 dark:text-slate-300">
                   I understand that using Interfaces features will send data to external services,
@@ -230,7 +230,7 @@ export default function InterfacesOnboarding() {
           {/* Done */}
           {currentStep === "done" && (
             <div className="text-center py-4">
-              <Sparkles size={48} className="mx-auto mb-4 text-reclaw-500" />
+              <Sparkles size={48} className="mx-auto mb-4 text-istara-500" />
               <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">
                 You&apos;re all set!
               </h2>
@@ -265,7 +265,7 @@ export default function InterfacesOnboarding() {
                 key={i}
                 className={cn(
                   "w-2 h-2 rounded-full transition-colors",
-                  i === stepIndex ? "bg-reclaw-500" : i < stepIndex ? "bg-reclaw-300" : "bg-slate-200 dark:bg-slate-700"
+                  i === stepIndex ? "bg-istara-500" : i < stepIndex ? "bg-istara-300" : "bg-slate-200 dark:bg-slate-700"
                 )}
               />
             ))}
@@ -275,7 +275,7 @@ export default function InterfacesOnboarding() {
             {currentStep === "done" ? (
               <button
                 onClick={handleDone}
-                className="px-4 py-2 text-sm bg-reclaw-600 text-white rounded-lg hover:bg-reclaw-700 transition-colors"
+                className="px-4 py-2 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700 transition-colors"
               >
                 Get Started
               </button>
@@ -289,7 +289,7 @@ export default function InterfacesOnboarding() {
                 </button>
                 <button
                   onClick={goNext}
-                  className="flex items-center gap-1 px-4 py-2 text-sm bg-reclaw-600 text-white rounded-lg hover:bg-reclaw-700 transition-colors"
+                  className="flex items-center gap-1 px-4 py-2 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700 transition-colors"
                 >
                   Next <ChevronRight size={14} />
                 </button>
@@ -298,14 +298,14 @@ export default function InterfacesOnboarding() {
               <button
                 onClick={goNext}
                 disabled={!privacyChecked}
-                className="flex items-center gap-1 px-4 py-2 text-sm bg-reclaw-600 text-white rounded-lg hover:bg-reclaw-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="flex items-center gap-1 px-4 py-2 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 Next <ChevronRight size={14} />
               </button>
             ) : (
               <button
                 onClick={goNext}
-                className="flex items-center gap-1 px-4 py-2 text-sm bg-reclaw-600 text-white rounded-lg hover:bg-reclaw-700 transition-colors"
+                className="flex items-center gap-1 px-4 py-2 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700 transition-colors"
               >
                 Next <ChevronRight size={14} />
               </button>

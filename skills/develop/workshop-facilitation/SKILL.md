@@ -2,7 +2,7 @@
 name: workshop-facilitation
 description: "Generate workshop agendas, activities, templates. Process workshop outputs into findings."
 metadata:
-  reclaw:
+  istara:
     phase: develop
     type: qualitative
     version: "1.0.0"

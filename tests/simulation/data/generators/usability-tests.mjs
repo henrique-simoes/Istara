@@ -1,5 +1,5 @@
 /**
- * Usability test report generator for ReClaw simulation.
+ * Usability test report generator for Istara simulation.
  * Produces realistic markdown usability test reports with SUS scores,
  * task metrics, and participant observations.
  */

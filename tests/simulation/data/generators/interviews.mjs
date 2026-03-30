@@ -1,5 +1,5 @@
 /**
- * Interview transcript generator for ReClaw simulation.
+ * Interview transcript generator for Istara simulation.
  * Produces realistic user interview transcripts drawing from corpora data.
  */
 

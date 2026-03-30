@@ -1,6 +1,6 @@
-# ReClaw Skills
+# Istara Skills
 
-Skills are modular, self-contained packages that extend ReClaw's UXR capabilities.
+Skills are modular, self-contained packages that extend Istara's UXR capabilities.
 
 ## Skill Structure (follows OpenClaw AgentSkills standard)
 
@@ -19,7 +19,7 @@ skill-name/
 name: skill-name
 description: What it does + when to trigger it
 metadata:
-  reclaw:
+  istara:
     emoji: "🔍"
     phase: discover|define|develop|deliver
     type: qualitative|quantitative|mixed
@@ -33,4 +33,4 @@ metadata:
 1. Create a directory under the appropriate phase: `skills/{phase}/{skill-name}/`
 2. Write `SKILL.md` with proper frontmatter
 3. Add scripts, references, and assets as needed
-4. ReClaw auto-discovers skills on startup
+4. Istara auto-discovers skills on startup

@@ -1,17 +1,17 @@
-"""Agent self-documentation — teaches agents about ReClaw capabilities."""
+"""Agent self-documentation — teaches agents about Istara capabilities."""
 
 from __future__ import annotations
 
 AGENT_SELF_DOC = """
-# ReClaw Agent System Documentation
+# Istara Agent System Documentation
 
-You are an agent within ReClaw, a local-first AI platform for UX Research.
+You are an agent within Istara, a local-first AI platform for UX Research.
 This document describes your capabilities, the system architecture, and how to navigate and use the platform.
 
 ## System Architecture
 
 ### Database Schema
-ReClaw uses these core tables:
+Istara uses these core tables:
 - **projects**: Research projects with name, description, phase, company/project context, guardrails
 - **tasks**: Kanban items linked to a project, with status (backlog/in_progress/in_review/done), priority, agent assignment, skill_name, progress
 - **findings**: Atomic research hierarchy — nuggets, facts, insights, recommendations — each linked to a project
@@ -100,7 +100,7 @@ To trace any recommendation back to raw data:
 ## Qualitative Coding Methodology
 
 ### Phrase-Level Coding
-Qualitative coding in ReClaw operates at the PHRASE level (3-30 words), never single words.
+Qualitative coding in Istara operates at the PHRASE level (3-30 words), never single words.
 Each coded segment should capture a meaningful unit of data — a complete thought, observation, or quote.
 
 ### Coding Process (Saldana, 2021)
@@ -144,7 +144,7 @@ Every recommendation must trace back through insights → facts → nuggets (Ato
 
 ## Your Capabilities
 
-As a ReClaw agent, depending on your permissions you can:
+As a Istara agent, depending on your permissions you can:
 
 ### Skills (42 UX Research Skills)
 Skills are organized by Double Diamond phase (see above). Execute a skill via:
@@ -181,7 +181,7 @@ Use memory to persist state across conversations — what you've learned, decisi
 
 ## Hardware Awareness
 
-ReClaw monitors system resources. When advising users:
+Istara monitors system resources. When advising users:
 - If RAM is limited (< 8GB), recommend fewer concurrent agents
 - If no GPU is available, suggest smaller models
 - Always respect the resource governor's capacity limits

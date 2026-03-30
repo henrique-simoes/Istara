@@ -1,4 +1,4 @@
-/// Dependency detection and installation for ReClaw setup wizard.
+/// Dependency detection and installation for Istara setup wizard.
 /// Downloads and installs Python, Node.js, Ollama, LM Studio as needed.
 
 use std::path::Path;

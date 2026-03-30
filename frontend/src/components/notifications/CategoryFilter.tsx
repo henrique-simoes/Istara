@@ -45,7 +45,7 @@ export default function CategoryFilter({ selected, onChange }: CategoryFilterPro
         <div className="flex items-center gap-2">
           <button
             onClick={selectAll}
-            className="text-[10px] text-reclaw-600 dark:text-reclaw-400 hover:underline"
+            className="text-[10px] text-istara-600 dark:text-istara-400 hover:underline"
           >
             Select All
           </button>
@@ -67,7 +67,7 @@ export default function CategoryFilter({ selected, onChange }: CategoryFilterPro
               type="checkbox"
               checked={selected.includes(cat.id)}
               onChange={() => toggleCategory(cat.id)}
-              className="rounded border-slate-300 dark:border-slate-600 text-reclaw-600 focus:ring-reclaw-500 focus:ring-offset-0"
+              className="rounded border-slate-300 dark:border-slate-600 text-istara-600 focus:ring-istara-500 focus:ring-offset-0"
             />
             <span className="text-xs text-slate-600 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-slate-200">
               {cat.label}

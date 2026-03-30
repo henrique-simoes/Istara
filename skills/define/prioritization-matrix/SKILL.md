@@ -2,7 +2,7 @@
 name: prioritization-matrix
 description: "Impact vs Effort scoring, MoSCoW prioritization, stakeholder alignment."
 metadata:
-  reclaw:
+  istara:
     phase: define
     type: quantitative
     version: "1.0.0"

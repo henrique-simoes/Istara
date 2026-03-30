@@ -1,8 +1,8 @@
 {
-  "name": "reclaw-desktop",
+  "name": "istara-desktop",
   "version": "2026.03.29",
   "private": true,
-  "description": "ReClaw Desktop — System tray app and setup wizard",
+  "description": "Istara Desktop — System tray app and setup wizard",
   "scripts": {
     "tauri": "tauri",
     "dev": "tauri dev",

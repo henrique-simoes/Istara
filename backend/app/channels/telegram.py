@@ -1,4 +1,4 @@
-"""Telegram channel adapter for ReClaw.
+"""Telegram channel adapter for Istara.
 
 Real implementation using ``python-telegram-bot>=22.0`` with async polling.
 Handles text, voice, photo, and document messages.

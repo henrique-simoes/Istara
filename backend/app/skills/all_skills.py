@@ -1,4 +1,4 @@
-"""All 40+ ReClaw UXR skills — defined using the skill factory.
+"""All 40+ Istara UXR skills — defined using the skill factory.
 
 Hand-written skills (more complex logic):
 - user_interviews (discover)

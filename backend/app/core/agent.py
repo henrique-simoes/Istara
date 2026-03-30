@@ -1,6 +1,6 @@
-"""Agent Orchestrator — the autonomous work loop that makes ReClaw an agent.
+"""Agent Orchestrator — the autonomous work loop that makes Istara an agent.
 
-This is the brain of ReClaw. It:
+This is the brain of Istara. It:
 1. Picks tasks from the Kanban board (highest priority first)
 2. Selects the appropriate skill for each task
 3. Executes the skill with project context
@@ -57,7 +57,7 @@ logger = logging.getLogger(__name__)
 class AgentOrchestrator:
     """Autonomous agent that picks tasks and runs skills."""
 
-    def __init__(self, agent_id: str = "reclaw-main") -> None:
+    def __init__(self, agent_id: str = "istara-main") -> None:
         self._running = False
         self._agent_id = agent_id
         self._current_task_id: str | None = None
@@ -216,7 +216,7 @@ class AgentOrchestrator:
 
         Priority order:
         1. Tasks explicitly assigned to this agent — by priority then position
-        2. Unassigned tasks (only for reclaw-main as fallback)
+        2. Unassigned tasks (only for istara-main as fallback)
 
         Priority mapping: critical > high > medium > low
         Skips tasks in backoff period after retries.
@@ -250,7 +250,7 @@ class AgentOrchestrator:
                 return task
 
         # Fallback: pick unassigned tasks (main agent only to avoid contention)
-        if self._agent_id == "reclaw-main":
+        if self._agent_id == "istara-main":
             result = await db.execute(
                 select(Task)
                 .where(
@@ -348,7 +348,7 @@ class AgentOrchestrator:
                         text = insight.get("text", "") if isinstance(insight, dict) else str(insight)
                         if text:
                             await agent_memory.memory_store(
-                                task.agent_id or "reclaw-main",
+                                task.agent_id or "istara-main",
                                 project.id,
                                 text,
                                 tags=["auto-insight", task.skill_name or "general"],
@@ -671,7 +671,7 @@ class AgentOrchestrator:
 
     async def _check_agent_skill_acl(self, agent_id: str | None, skill_name: str) -> bool:
         """Check if an agent is allowed to use a skill. Returns True if allowed."""
-        if not agent_id or agent_id == "reclaw-main":
+        if not agent_id or agent_id == "istara-main":
             return True  # Main agent can use all skills
 
         try:

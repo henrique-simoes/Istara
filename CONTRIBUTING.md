@@ -1,12 +1,12 @@
-# Contributing to ReClaw
+# Contributing to Istara
 
-Thank you for your interest in contributing to ReClaw! 🐾
+Thank you for your interest in contributing to Istara! 🐾
 
 ## Quick Start
 
 ```bash
-git clone https://github.com/henrique-simoes/ReClaw.git
-cd ReClaw
+git clone https://github.com/henrique-simoes/Istara.git
+cd Istara
 
 # Backend
 cd backend

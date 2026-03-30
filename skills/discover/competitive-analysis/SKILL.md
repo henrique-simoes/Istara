@@ -2,7 +2,7 @@
 name: competitive-analysis
 description: "Research competitors, create feature matrices, identify UX patterns, gaps, and opportunities."
 metadata:
-  reclaw:
+  istara:
     phase: discover
     type: mixed
     version: "1.0.0"

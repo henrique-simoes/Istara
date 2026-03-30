@@ -84,7 +84,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
           throw new Error(data.detail || "Redemption failed");
         }
         const data = await res.json();
-        localStorage.setItem("reclaw_token", data.token);
+        localStorage.setItem("istara_token", data.token);
         onLogin();
       } catch (err) {
         setError(err instanceof Error ? err.message : "Something went wrong.");
@@ -120,7 +120,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
       }
 
       const data = await res.json();
-      localStorage.setItem("reclaw_token", data.token);
+      localStorage.setItem("istara_token", data.token);
       onLogin();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
@@ -135,17 +135,17 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
         <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 p-8">
           {/* Logo and title */}
           <div className="text-center mb-8">
-            <div className="text-5xl mb-3" role="img" aria-label="ReClaw logo">
+            <div className="text-5xl mb-3" role="img" aria-label="Istara logo">
               🐾
             </div>
             <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-              ReClaw
+              Istara
             </h1>
             <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
               Local-first AI for UX Research
             </p>
             {mode === "register" && !hasUsers && (
-              <p className="text-xs text-reclaw-600 dark:text-reclaw-400 mt-2 font-medium">
+              <p className="text-xs text-istara-600 dark:text-istara-400 mt-2 font-medium">
                 First user — you will be the admin.
               </p>
             )}
@@ -169,7 +169,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
                   onChange={(e) => setConnectionString(e.target.value)}
                   disabled={loading}
                   rows={3}
-                  className="w-full px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-reclaw-500 transition disabled:opacity-50 text-xs font-mono"
+                  className="w-full px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-istara-500 transition disabled:opacity-50 text-xs font-mono"
                   placeholder="Paste the rcl_... connection string from your admin"
                 />
               </div>
@@ -202,7 +202,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 disabled={loading}
-                className="w-full px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-reclaw-500 focus:border-transparent transition disabled:opacity-50"
+                className="w-full px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-istara-500 focus:border-transparent transition disabled:opacity-50"
                 placeholder="Enter your username"
               />
             </div>
@@ -224,7 +224,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   disabled={loading}
-                  className="w-full px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-reclaw-500 focus:border-transparent transition disabled:opacity-50"
+                  className="w-full px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-istara-500 focus:border-transparent transition disabled:opacity-50"
                   placeholder="you@company.com"
                 />
               </div>
@@ -245,7 +245,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={loading}
-                className="w-full px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-reclaw-500 focus:border-transparent transition disabled:opacity-50"
+                className="w-full px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-istara-500 focus:border-transparent transition disabled:opacity-50"
                 placeholder="Enter your password"
               />
             </div>
@@ -263,7 +263,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-2.5 px-4 rounded-lg bg-reclaw-600 hover:bg-reclaw-700 active:bg-reclaw-800 text-white font-medium transition focus:outline-none focus:ring-2 focus:ring-reclaw-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-2.5 px-4 rounded-lg bg-istara-600 hover:bg-istara-700 active:bg-istara-800 text-white font-medium transition focus:outline-none focus:ring-2 focus:ring-istara-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? (
                 <span className="inline-flex items-center gap-2">
@@ -305,21 +305,21 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
                 <p className="text-xs text-slate-400 dark:text-slate-500">
                   Already have an account?{" "}
                   <button type="button" onClick={() => { setMode("login"); setError(""); setJoinValidated(null); }}
-                    className="text-reclaw-600 dark:text-reclaw-400 font-medium hover:underline">Sign in</button>
+                    className="text-istara-600 dark:text-istara-400 font-medium hover:underline">Sign in</button>
                 </p>
               )}
               {mode !== "register" && (
                 <p className="text-xs text-slate-400 dark:text-slate-500">
                   New to this server?{" "}
                   <button type="button" onClick={() => { setMode("register"); setError(""); setJoinValidated(null); }}
-                    className="text-reclaw-600 dark:text-reclaw-400 font-medium hover:underline">Create an account</button>
+                    className="text-istara-600 dark:text-istara-400 font-medium hover:underline">Create an account</button>
                 </p>
               )}
               {mode !== "join" && (
                 <p className="text-xs text-slate-400 dark:text-slate-500">
                   Have a connection string?{" "}
                   <button type="button" onClick={() => { setMode("join"); setError(""); setJoinValidated(null); }}
-                    className="text-reclaw-600 dark:text-reclaw-400 font-medium hover:underline">Join Server</button>
+                    className="text-istara-600 dark:text-istara-400 font-medium hover:underline">Join Server</button>
                 </p>
               )}
             </div>

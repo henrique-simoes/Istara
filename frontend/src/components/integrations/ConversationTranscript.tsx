@@ -69,7 +69,7 @@ export default function ConversationTranscript({ deploymentId, conversationId, o
                     "max-w-[80%] px-4 py-2.5 rounded-2xl",
                     isInterviewer
                       ? "bg-slate-100 dark:bg-slate-800 rounded-tl-sm"
-                      : "bg-reclaw-500 text-white rounded-tr-sm"
+                      : "bg-istara-500 text-white rounded-tr-sm"
                   )}>
                     <div className="flex items-center gap-2 mb-1">
                       {isInterviewer ? (

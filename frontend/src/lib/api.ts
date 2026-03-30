@@ -1,4 +1,4 @@
-/** API client for ReClaw backend. */
+/** API client for Istara backend. */
 
 import type { ChatSession, ChatMessage, InferencePresetConfig, DAGNode, DAGHealth, DAGExpandResult, DAGGrepResult, ReclawDocument, DocumentContent, DocumentTag, DocumentStats, InterfacesStatus, BackupRecord, BackupConfig, MetaProposal, MetaVariant, MetaHyperagentStatus, ChannelInstance, ChannelMessage, ChannelConversation, ResearchDeployment, DeploymentAnalytics, SurveyIntegration, SurveyLink, MCPServerConfig, MCPAccessPolicy, MCPAuditEntry, AutoresearchStatus, AutoresearchExperiment, AutoresearchConfig, ModelSkillLeaderboard, UXLaw, LawMatch, ComplianceProfile, RadarChartData, FeaturedMCPServer, ReclawUser, ProjectReport, CodebookVersionType, CodeApplicationType } from "@/lib/types";
 
@@ -6,7 +6,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 function _getAuthHeaders(): Record<string, string> {
   if (typeof window === "undefined") return {};
-  const token = localStorage.getItem("reclaw_token");
+  const token = localStorage.getItem("istara_token");
   if (token) {
     return { Authorization: `Bearer ${token}` };
   }
@@ -20,11 +20,11 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   });
   if (res.status === 401) {
     // Only clear token and signal re-auth — do NOT reload (causes infinite loop)
-    const hadToken = !!localStorage.getItem("reclaw_token");
-    localStorage.removeItem("reclaw_token");
+    const hadToken = !!localStorage.getItem("istara_token");
+    localStorage.removeItem("istara_token");
     if (hadToken && typeof window !== "undefined") {
       // Token was present but expired/invalid — dispatch event for auth gate
-      window.dispatchEvent(new Event("reclaw:auth-expired"));
+      window.dispatchEvent(new Event("istara:auth-expired"));
     }
     throw new Error("Authentication required");
   }

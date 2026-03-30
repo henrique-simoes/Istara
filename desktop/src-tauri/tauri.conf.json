@@ -1,8 +1,8 @@
 {
   "$schema": "https://raw.githubusercontent.com/nicehash/tauri/refs/tags/tauri-v2.3.1/crates/tauri-cli/schema.json",
-  "productName": "ReClaw",
+  "productName": "Istara",
   "version": "2026.03.29",
-  "identifier": "com.reclaw.desktop",
+  "identifier": "com.istara.desktop",
   "build": {
     "frontendDist": "../src",
     "devUrl": "http://localhost:1420",

@@ -67,7 +67,7 @@ export default function ChannelMessagesPanel({ channelId }: ChannelMessagesPanel
               <div key={msg.id} className="px-5 py-3 flex items-start gap-3">
                 <div className={cn(
                   "mt-1 shrink-0",
-                  msg.direction === "outbound" ? "text-reclaw-500" : "text-blue-500"
+                  msg.direction === "outbound" ? "text-istara-500" : "text-blue-500"
                 )}>
                   {msg.direction === "outbound" ? <ArrowRight size={14} /> : <ArrowLeft size={14} />}
                 </div>
@@ -79,7 +79,7 @@ export default function ChannelMessagesPanel({ channelId }: ChannelMessagesPanel
                     <span className={cn(
                       "text-[10px] px-1.5 py-0.5 rounded-full",
                       msg.direction === "outbound"
-                        ? "bg-reclaw-50 text-reclaw-600 dark:bg-reclaw-900/20 dark:text-reclaw-400"
+                        ? "bg-istara-50 text-istara-600 dark:bg-istara-900/20 dark:text-istara-400"
                         : "bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400"
                     )}>
                       {msg.direction}

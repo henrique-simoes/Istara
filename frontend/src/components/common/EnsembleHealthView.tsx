@@ -104,7 +104,7 @@ export default function EnsembleHealthView() {
     if (!projectId) return;
     setLoading(true);
     // Fetch adaptive learning stats
-    const _token = localStorage.getItem("reclaw_token");
+    const _token = localStorage.getItem("istara_token");
     const _headers: Record<string, string> = {};
     if (_token) _headers["Authorization"] = `Bearer ${_token}`;
     fetch(`${API_BASE}/api/compute/stats`, { headers: _headers })
@@ -342,7 +342,7 @@ export default function EnsembleHealthView() {
           Adaptive Method Learning
         </h3>
         <p className="text-xs text-blue-600 dark:text-blue-400">
-          ReClaw automatically learns which validation method works best for each project,
+          Istara automatically learns which validation method works best for each project,
           skill, and agent combination. Methods are scored with recency-weighted performance
           metrics (exponential decay, 30-day half-life). The system improves over time.
         </p>

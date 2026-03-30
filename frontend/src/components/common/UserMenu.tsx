@@ -31,8 +31,8 @@ export default function UserMenu({ collapsed }: UserMenuProps) {
           "hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400"
         )}
       >
-        <div className="w-7 h-7 rounded-full bg-reclaw-100 dark:bg-reclaw-900/30 flex items-center justify-center">
-          <User size={14} className="text-reclaw-600 dark:text-reclaw-400" />
+        <div className="w-7 h-7 rounded-full bg-istara-100 dark:bg-istara-900/30 flex items-center justify-center">
+          <User size={14} className="text-istara-600 dark:text-istara-400" />
         </div>
         {!collapsed && (
           <>
@@ -54,7 +54,7 @@ export default function UserMenu({ collapsed }: UserMenuProps) {
             role="menuitem"
             onClick={() => {
               setOpen(false);
-              window.dispatchEvent(new CustomEvent("reclaw:navigate", { detail: { view: "settings" } }));
+              window.dispatchEvent(new CustomEvent("istara:navigate", { detail: { view: "settings" } }));
             }}
             className="flex items-center gap-2 w-full px-3 py-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700"
           >

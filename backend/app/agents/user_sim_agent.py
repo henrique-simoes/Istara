@@ -17,11 +17,11 @@ import httpx
 from app.api.websocket import broadcast_agent_status
 
 logger = logging.getLogger(__name__)
-API_BASE = os.getenv("RECLAW_API_BASE", "http://localhost:8000")
+API_BASE = os.getenv("ISTARA_API_BASE", "http://localhost:8000")
 
 
 class UserSimAgent:
-    """Simulates user behavior against the ReClaw API."""
+    """Simulates user behavior against the Istara API."""
 
     def __init__(self) -> None:
         self._running = False
@@ -30,7 +30,7 @@ class UserSimAgent:
         self._client: httpx.AsyncClient | None = None
         # Task execution worker
         from app.core.sub_agent_worker import SubAgentWorker
-        self._worker = SubAgentWorker("reclaw-sim", check_interval=30)
+        self._worker = SubAgentWorker("istara-sim", check_interval=30)
 
     async def _get_client(self) -> httpx.AsyncClient:
         if self._client is None or self._client.is_closed:

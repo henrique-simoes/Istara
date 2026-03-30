@@ -1,287 +1,394 @@
-# ReClaw
+🇧🇷 [Leia em Português](README.pt-BR.md)
 
-**Local-first AI agent for UX Research.**
+<div align="center">
 
-ReClaw is an open-source research assistant that runs entirely on your machine. It helps UX researchers organize, analyze, and synthesize research findings using local LLMs — no data ever leaves your computer.
+# Istara
 
-> Think **OpenClaw meets Google NotebookLM meets commercial UXR platforms** — but running on your hardware, your models, your data.
+**Local-first AI for UX Research — agents that learn, evolve, and work for you.**
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Version](https://img.shields.io/badge/version-2026.03.29-brightgreen.svg)](VERSION)
+[![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows-lightgrey.svg)](installer/)
+[![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](backend/)
+[![Node](https://img.shields.io/badge/node-18%2B-green.svg)](frontend/)
 
----
-
-## Screenshots
-
-### Chat — Conversational research assistant
-Talk to the agent, drop files, trigger skills with natural language.
-
-![Chat View](docs/screenshots/chat.png)
-
-### Findings — Atomic Research organized by phase
-Every insight traces back: Recommendations > Insights > Facts > Nuggets > Sources.
-
-![Findings View](docs/screenshots/findings.png)
-
-### Tasks — Kanban board for directing the agent
-Create tasks, the agent picks them up and runs the appropriate skill.
-
-![Tasks View](docs/screenshots/tasks.png)
-
-### Skills — 42 UXR skills with self-evolution
-Browse, search, edit, and create skills. Track how skills improve over time.
-
-![Skills View](docs/screenshots/skills.png)
-
-### Context — 6-layer hierarchy that guides the agent
-Edit company, project, guardrails, and task context. The agent reads these before every response.
-
-![Context View](docs/screenshots/context.png)
-
-### Settings — Hardware-aware model management
-Auto-detects your hardware and recommends the best model. Supports LM Studio and Ollama.
-
-![Settings View](docs/screenshots/settings.png)
+[**Get Started**](#quick-start) · [**Architecture**](#architecture) · [**Skills**](#53-research-skills) · [**Agents**](#5-ai-agents) · [**Contributing**](CONTRIBUTING.md)
 
 ---
 
-## Features
+*Your research data never leaves your machine. Your agents get smarter every day.*
 
-### AI-Powered Research
-- **42 UXR skills** — qualitative and quantitative methods across the full Double Diamond
-- **Atomic Research** — every insight traces back: Recommendations > Insights > Facts > Nuggets > Sources
-- **RAG on local files** — ask questions about your research data with retrieval-augmented generation
-- **Self-evolving skills** — ReClaw analyzes skill performance and proposes improvements automatically
-
-### Beautiful Research UI
-- **Chat** — conversational interface with skill execution ("analyze my interviews")
-- **Findings** — organized by Double Diamond phase with evidence chain drill-down
-- **Tasks** — Kanban board to direct the agent
-- **Skills** — browse all 42 skills, edit prompts, track self-evolution, create custom skills
-- **Interviews** — transcript viewer with nugget extraction and tag filtering
-- **Metrics** — SUS, NPS, task completion dashboards with benchmarks
-- **Context** — editable 6-layer hierarchy (platform > company > product > project > task > agent)
-- **Search** — Cmd+K global search across all findings
-- **History** — version tracking with rollback
-- **Settings** — hardware info, model management, system status
-
-### Local-First & Hardware-Aware
-- **Data never leaves your machine** — everything runs locally
-- **LM Studio + Ollama support** — choose your preferred LLM provider
-- **Auto-detects hardware** — picks the best model & quantization for your RAM/GPU
-- **Resource governor** — won't overwhelm your machine, reserves resources for other apps
-- **Token budget management** — context window guard with automatic history trimming
-
-### Multi-Agent System
-- **Task Executor** — picks Kanban tasks, runs skills, stores findings
-- **DevOps Audit** — monitors data integrity, system health
-- **UI Audit** — heuristic evaluation, accessibility checking
-- **UX Evaluation** — holistic platform experience assessment
-- **User Simulation** — end-to-end API testing
-- **Meta-Orchestrator** — coordinates all agents, prevents conflicts
-- **Cron Scheduler** — schedule recurring skill executions with cron expressions
-- **Multi-Channel Adapters** — extensible Slack, Telegram, and custom channel support
+</div>
 
 ---
 
-## Quick Start
+## What is Istara?
 
-### Prerequisites
-- Python 3.11+
-- Node.js 18+
-- [LM Studio](https://lmstudio.ai/) or [Ollama](https://ollama.ai/)
-- 8GB RAM minimum (16GB recommended)
+Istara is a **self-evolving AI research platform** that runs entirely on your hardware. It ships with five specialized AI agents, 53 UX research skills, and a complete evidence-chain methodology — all backed by local LLM inference (LM Studio or Ollama).
 
-### Setup
+There is no cloud. No subscription. No vendor lock-in. Every insight, every transcript, every finding lives in your database.
 
-```bash
-git clone https://github.com/henrique-simoes/ReClaw.git
-cd ReClaw
-
-# Backend
-cd backend && pip install -e ".[dev]" && cd ..
-
-# Frontend
-cd frontend && npm install && cd ..
-
-# Configure LLM provider
-cp .env.example .env
-# Edit .env to set LLM_PROVIDER=lmstudio or LLM_PROVIDER=ollama
-```
-
-### Run
-
-```bash
-# Start your LLM provider (LM Studio or Ollama)
-lms server start          # LM Studio
-# OR: ollama serve        # Ollama
-
-# Backend
-python -m uvicorn app.main:app --port 8000 --app-dir backend
-
-# Frontend
-cd frontend && npm run dev
-```
-
-Then open **http://localhost:3000**
-
-### Docker (alternative)
-
-```bash
-cp .env.example .env
-mkdir -p data/watch data/uploads data/projects data/lance_db
-docker compose up
-```
+The agents improve themselves over time. Skills track their own performance. The platform learns your workflow preferences. And it gets better the more you use it.
 
 ---
 
-## 42 UXR Skills
+## Why Istara Is Different
 
-### Discover (10 skills)
-User Interviews, Contextual Inquiry, Diary Studies, Competitive Analysis, Stakeholder Interviews, Survey Design & Analysis, Analytics Review, Desk Research, Field Studies / Ethnography, Accessibility Audit
-
-### Define (12 skills)
-Affinity Mapping, Persona Creation, Journey Mapping, Empathy Mapping, JTBD Analysis, HMW Statements, User Flow Mapping, Thematic Analysis, Research Synthesis, Prioritization Matrix, Kappa Intercoder Thematic Analysis, Taxonomy Generator
-
-### Develop (10 skills)
-Usability Testing, Heuristic Evaluation, A/B Test Analysis, Card Sorting, Tree Testing, Concept Testing, Cognitive Walkthrough, Design Critique, Prototype Feedback, Workshop Facilitation
-
-### Deliver (10 skills)
-SUS/UMUX Scoring, NPS Analysis, Task Analysis, Regression/Impact Analysis, Design System Audit, Handoff Documentation, Repository Curation, Stakeholder Presentations, Research Retros, Longitudinal Tracking
-
-Skills follow the [OpenClaw AgentSkills standard](skills/README.md) — each is a self-contained directory with `SKILL.md`, references, and scripts.
+| Feature | Istara | Typical AI Research Tools |
+|---|---|---|
+| Data privacy | 100% local — data never leaves | Cloud-uploaded |
+| Agent memory | Persistent, evolving personas | Stateless sessions |
+| Research methodology | Atomic Research chain (Nuggets → Recommendations) | Ad-hoc |
+| Skill improvement | Auto-evolving quality scores | Static prompts |
+| Agent creation | Factory — create agents at runtime | Fixed set |
+| UX compliance | 30 Laws of UX auditing | Not available |
+| Team compute | Donate GPU capacity via WebSocket relay | Pay per API call |
+| Price | Free, open source | Paid SaaS |
 
 ---
 
-## Context Hierarchy
+## Core Highlights
 
-6-level system that ensures agents never hallucinate or go off-track:
+### 🧠 5 AI Agents With Persistent Identities
+
+Meet your research team — agents with names, memories, and specializations:
+
+| Agent | Name | Role |
+|---|---|---|
+| `istara-main` | **Cleo** | Primary researcher. Executes all 53 skills, leads projects, talks to you |
+| `istara-devops` | **Sentinel** | Data integrity guardian. Monitors health, audits orphaned records |
+| `istara-ui-audit` | **Pixel** | WCAG compliance expert. Nielsen heuristics, accessibility scoring |
+| `istara-ux-eval` | **Sage** | Cognitive load analyst. User journeys, workflow friction detection |
+| `istara-sim` | **Echo** | End-to-end tester. Simulates users, runs regression scenarios |
+
+Each agent carries four persona files — **CORE.md** (identity), **SKILLS.md** (capabilities), **PROTOCOLS.md** (behavior rules), **MEMORY.md** (accumulated learnings) — and all four evolve as the agent works.
+
+### 🔁 Agents That Create Other Agents
+
+Istara includes an **Agent Factory**: create custom research agents at runtime through the UI, define their persona, assign skills, and they join the orchestration pipeline immediately. No code changes. No restarts.
+
+The MetaOrchestrator coordinates all agents through an A2A messaging protocol with typed message routing.
+
+### 📈 53 Research Skills That Self-Improve
+
+Skills are not static prompts. Each skill:
+- Has a `plan()` → `execute()` → `validate()` lifecycle
+- Tracks execution quality per model × skill combination
+- Surfaces a **Skill Health Monitor** score in the UI
+- Auto-proposes prompt improvements when quality drops below threshold
+
+Skills cover the full **Double Diamond** methodology:
+
+**Discover** — User Interviews, Contextual Inquiry, Survey Design, Survey Generator, Competitive Analysis, Diary Studies, Field Studies, Analytics Review, Accessibility Audit, Desk Research, Stakeholder Interviews, Interview Question Generator, Channel Research Deployment, Survey AI Detection
+
+**Define** — Thematic Analysis, Kappa Thematic Analysis, Affinity Mapping, Empathy Mapping, Persona Creation, Journey Mapping, HMW Statements, JTBD Analysis, Research Synthesis, Taxonomy Generator, Prioritization Matrix, User Flow Mapping
+
+**Develop** — Usability Testing, Heuristic Evaluation, Cognitive Walkthrough, Concept Testing, Card Sorting, Tree Testing, AB Test Analysis, Design Critique, Prototype Feedback, Workshop Facilitation
+
+**Deliver** — Design System Audit, SUS/UMUX Scoring, NPS Analysis, Stakeholder Presentation, Handoff Documentation, Regression Impact, Task Analysis Quant, Repository Curation, Research Retro, Longitudinal Tracking
+
+### 🔗 Atomic Research Evidence Chain
+
+Every finding is traceable from raw source to final recommendation:
 
 ```
-Level 0: Platform ---- ReClaw UXR expertise (built-in)
-Level 1: Company ----- Organization, product, culture, terminology
-Level 2: Product ----- Features, users, domain knowledge
-Level 3: Project ----- Research questions, goals, timeline
-Level 4: Task -------- Per-task instructions from Kanban cards
-Level 5: Agent ------- Per-agent system prompts and constraints
+Quote / observation (Nugget)
+       ↓
+Verified pattern from 2+ nuggets (Fact)
+       ↓
+Interpreted meaning — "so what?" (Insight)
+       ↓
+Actionable proposal with priority (Recommendation)
 ```
 
-Each level is user-editable and composes into the agent's working context. Higher levels override lower levels.
+No insight without provenance. Every recommendation links back through the chain to the exact quote that supports it.
+
+### 🔍 Hybrid RAG: Vector + Keyword Search
+
+Retrieval uses a weighted blend:
+- **70% vector similarity** (LanceDB embeddings)
+- **30% BM25 keyword search**
+
+This means Istara finds both semantically similar content and exact terminology matches. Switch to pure vector or pure keyword mode per-query when you need it.
+
+### 🔒 Your Data, Your Hardware
+
+- Local LLMs via **LM Studio** (default) or **Ollama**
+- SQLite database — a single file, fully portable
+- LanceDB vector store — embedded, no separate process
+- MCP server is **OFF by default** — enable only when you need external agent access
+- All file uploads processed locally
 
 ---
 
 ## Architecture
 
 ```
-Browser (localhost:3000)
-    | HTTP/WebSocket
-Frontend (Next.js + React + Tailwind)
-    | REST API + SSE Streaming
-Backend (FastAPI + SQLAlchemy + LanceDB)
-    | OpenAI-compatible API
-LM Studio / Ollama (Local LLMs)
+┌──────────────────────────────────────────────────────────────┐
+│                      FRONTEND (Next.js 14)                   │
+│   Chat · Kanban · Findings · Documents · Skills · Agents     │
+│   22 views · Contextual onboarding · Dark/light mode         │
+└────────────────────────┬─────────────────────────────────────┘
+                         │ REST + WebSocket (16 event types)
+┌────────────────────────▼─────────────────────────────────────┐
+│                      BACKEND (FastAPI)                        │
+│                                                              │
+│  ┌───────────┐ ┌───────────┐ ┌───────────┐ ┌─────────────┐  │
+│  │ 337 REST  │ │ WebSocket │ │ MCP Server│ │ A2A Protocol│  │
+│  │ endpoints │ │  Manager  │ │ (optional)│ │  Discovery  │  │
+│  └─────┬─────┘ └─────┬─────┘ └─────┬─────┘ └──────┬──────┘  │
+│        └─────────────┴─────────────┴───────────────┘        │
+│                               │                              │
+│  ┌────────────────────────────▼──────────────────────────┐   │
+│  │                     CORE ENGINE                       │   │
+│  │  MetaOrchestrator · Context Hierarchy (6 levels)      │   │
+│  │  Hybrid RAG (LanceDB + BM25) · Prompt Compressor      │   │
+│  │  Self-Evolution · Skill Health Monitor                │   │
+│  │  Resource Governor · DAG Context Summarizer           │   │
+│  └────────────────────────────┬──────────────────────────┘   │
+│                               │                              │
+│  ┌─────────────────┐  ┌───────▼──────────┐  ┌────────────┐  │
+│  │  Agent Personas │  │   Data Layer     │  │  LLM Layer │  │
+│  │  CORE · SKILLS  │  │  SQLite (51+     │  │ LM Studio  │  │
+│  │  PROTOCOLS      │  │  models)         │  │ Ollama     │  │
+│  │  MEMORY         │  │  LanceDB         │  │ Any OpenAI │  │
+│  └─────────────────┘  └──────────────────┘  │ compatible │  │
+│                                              └────────────┘  │
+└──────────────────────────────────────────────────────────────┘
 ```
 
-| Component | Technology | Why |
-|-----------|-----------|-----|
-| Frontend | Next.js 14 + React + Tailwind + Zustand | Rich UI, SSR, great DX |
-| Backend | FastAPI (async) + SQLAlchemy | Best AI/ML ecosystem, async, fast |
-| Vector Store | LanceDB (embedded) | No extra server, low RAM footprint |
-| Database | SQLite (via aiosqlite) | Zero config, reliable, local |
-| LLM | LM Studio / Ollama | Hardware detection, multi-model, OpenAI-compatible API |
-| Embedding | nomic-embed-text | Runs on CPU, tiny footprint |
+### Technology Stack
+
+| Layer | Technology |
+|---|---|
+| Frontend | Next.js 14, React, Tailwind CSS, Zustand |
+| Backend | FastAPI, Python 3.11+, async SQLAlchemy |
+| Database | SQLite + aiosqlite (zero-config, ACID) |
+| Vector Store | LanceDB (embedded, no server process) |
+| Desktop App | Tauri v2 (system tray, process management) |
+| Real-time | WebSocket — 16 broadcast event types |
+| LLM Providers | LM Studio · Ollama · OpenAI-compatible APIs |
+| Installers | macOS DMG · Windows NSIS EXE |
 
 ---
 
-## Keyboard Shortcuts
+## Quick Start
 
-| Shortcut | Action |
-|----------|--------|
-| `Cmd+K` | Search findings |
-| `Cmd+1` - `Cmd+6` | Switch views (Chat, Findings, Tasks, Interviews, Context, Skills) |
-| `Cmd+.` | Toggle right panel |
-| `?` | Show keyboard shortcuts |
-| `Esc` | Close modal / cancel |
-| `Enter` | Send message / confirm |
+### Prerequisites
 
----
+- Python 3.11+
+- Node 18+
+- [LM Studio](https://lmstudio.ai) or [Ollama](https://ollama.ai)
 
-## Development
+### Option A: Desktop App (Recommended)
+
+Download the installer for your platform from [Releases](https://github.com/henrique-simoes/Istara/releases):
+
+- **macOS**: `Istara-2026.03.29.dmg`
+- **Windows**: `Istara-Setup-2026.03.29.exe`
+
+The setup wizard walks you through LLM configuration, creates your first project, and launches the system tray agent.
+
+### Option B: Run From Source
 
 ```bash
+git clone https://github.com/henrique-simoes/Istara.git
+cd Istara
+
+# Start LM Studio and load a model, then:
+
 # Backend
-cd backend && python -m venv venv && source venv/bin/activate
+cd backend
+python -m venv venv && source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -e ".[dev]"
-uvicorn app.main:app --reload --port 8000
+uvicorn app.main:app --host 0.0.0.0 --port 8000
 
-# Frontend
-cd frontend && npm install && npm run dev
-
-# LM Studio
-lms server start
-# OR Ollama
-ollama serve && ollama pull qwen3:latest
+# Frontend (new terminal)
+cd frontend
+npm install
+npm run dev
 ```
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+Open [http://localhost:3000](http://localhost:3000).
+
+### Option C: Docker
+
+```bash
+docker-compose up
+```
 
 ---
 
-## Roadmap
+## Platform Features
 
-- [x] Core platform (chat, findings, tasks, skills)
-- [x] 42 UXR skills across all Double Diamond phases
-- [x] Multi-agent system with orchestrator
-- [x] Context hierarchy and resource governor
-- [x] LM Studio + Ollama provider support
-- [x] Skills management UI with self-evolution tracking
-- [x] Token budget management and context window guard
-- [x] Cron scheduler for recurring tasks
-- [x] Multi-channel adapter framework (Slack, Telegram)
-- [ ] URL-based routing and deep linking
-- [ ] Audio playback with transcript sync
-- [ ] Full Slack / Telegram integration
-- [x] Team features (auth, shared knowledge, access control)
-- [x] Multi-model consensus validation (Fleiss' Kappa + cosine similarity)
-- [x] Distributed compute via relay nodes
-- [x] External LLM server support (Ollama, LM Studio, OpenAI-compatible)
-- [x] Adaptive validation method learning
-- [x] Dynamic swarm orchestration
-- [ ] Native installers (dmg, exe, AppImage)
-- [ ] Skill marketplace
+### Team Mode
+
+Share Istara across your research team with a single connection string:
+
+```
+istara://team@yourserver:8000?token=JWT_HERE
+```
+
+Paste the string in the onboarding wizard — it configures the backend URL and authenticates automatically.
+
+### Compute Donation
+
+Team members can donate spare GPU capacity to the shared pool. The **Compute Relay** (WebSocket-based) routes inference requests to available nodes with automatic capability detection and failover. No cloud required — your team's hardware becomes the cluster.
+
+### Research Integrations
+
+| Integration | What It Does |
+|---|---|
+| **SurveyMonkey** | Auto-deploy surveys, pull responses |
+| **Google Forms** | Create and distribute forms |
+| **Typeform** | Deploy conversational surveys |
+| **Figma** | Extract design system tokens and decisions |
+| **Google Stitch MCP** | AI-generated screen designs |
+| **Slack / Telegram / WhatsApp** | Receive findings as messages |
+
+### Document Intelligence
+
+Drop any file into Istara — PDF, DOCX, transcript, spec:
+- Auto-classifies document type
+- Extracts nuggets and creates tasks
+- Links findings back to source passages
+- Supports folder watching for continuous ingestion
+- Link external folders without copying files
+
+### 30 Laws of UX Auditing
+
+Run a compliance check against all 30 Laws of UX (Jakob's Law, Fitts's Law, Hick's Law, and 27 more) directly on any design or interface description. Get a scored report with evidence and recommendations.
+
+### Contextual Onboarding
+
+Every one of Istara's 22 views has its own onboarding flow. First time in the Skills view? A contextual guide explains what skills do and how to run one. It adapts to what you have already set up.
 
 ---
 
-## Academic Foundations
+## Screenshots
 
-ReClaw's multi-model validation and distributed computing are grounded in peer-reviewed research:
+<!-- TODO: Add screenshots after first public deployment -->
+*Screenshots coming soon — see [docs/](docs/) for architecture diagrams.*
 
-| Feature | Reference | Venue |
-|---------|-----------|-------|
-| **Mixture-of-Agents** ensemble consensus | Wang et al. *Together AI* (2025) | ICLR 2025 |
-| **Self-MoA** temperature variation validation | Li et al. (2025) | arXiv 2025 |
-| **LLM-Blender** response aggregation | Jiang et al. (2023) | ACL 2023 |
-| **Multi-Agent Debate** iterative refinement | Du et al. (2024) | ICML 2024 |
-| **LLM-as-Judge** evaluation framework | Zheng et al. (2023) | NeurIPS 2023 |
-| **Petals** distributed LLM inference | Borzunov et al. (2023) | ACL + NeurIPS 2023 |
-| **Hive** volunteer computing for ML | - | SoftwareX 2025 |
-| **BOINC** distributed computing model | Anderson (2020) | - |
-| **Multi-LLM Thematic Analysis** | Jain et al. (2025) | arXiv 2025 |
-| **Fleiss' Kappa** inter-rater reliability | Fleiss (1971) | Psychological Bulletin |
-| **Atomic Research** methodology | Pidcock (2018) | - |
+---
 
-### How ReClaw Uses These
+## Agent Self-Evolution: How It Works
 
-- **Consensus Engine**: Implements Fleiss' Kappa for categorical agreement and cosine similarity for semantic agreement across multiple model responses. Tiered confidence thresholds by finding type (nuggets κ≥0.70, facts κ≥0.65, insights κ≥0.55, recommendations κ≥0.50).
-- **Validation Patterns**: Five strategies — dual-run, adversarial review, full ensemble, Self-MoA (temperature variation), and debate rounds.
-- **Adaptive Learning**: Tracks which validation method works best per project/skill/agent using weighted scoring with exponential decay recency bias (30-day half-life).
-- **Distributed Compute**: Relay daemon enables team members to donate LLM compute via outbound WebSocket connections (NAT-friendly, no inbound ports). Priority queue ensures user interactions take precedence over background work.
+```
+User interaction
+      ↓
+Agent records error pattern or workflow preference
+      ↓
+Pattern tracked: occurrences · contexts · time
+      ↓
+Threshold reached: 3+ occurrences, 2+ contexts, 30 days
+      ↓
+Learning promoted → written into agent's MEMORY.md
+      ↓
+Agent persona updated permanently
+      ↓
+Next conversation starts with improved agent
+```
+
+This is not fine-tuning. It is structured prompt evolution — it works with any local model, including 3B parameter models on modest hardware.
+
+---
+
+## Skill Performance Tracking
+
+Every skill invocation is recorded per model × skill combination:
+
+```python
+ModelSkillStats(
+    model_name="llama-3.2-3b",
+    skill_name="thematic_analysis",
+    success_rate=0.94,
+    avg_quality_score=4.2,
+    execution_count=47,
+    last_improvement_proposed="2026-03-15"
+)
+```
+
+When quality drops below threshold, Istara surfaces an improvement proposal in the UI — a diff between the current skill prompt and the proposed revision. You approve or reject it. Skills that consistently perform well on your hardware earn a higher health score and get priority routing.
+
+---
+
+## MCP Server and Agent-to-Agent Protocol
+
+Istara exposes two interoperability interfaces:
+
+**MCP Server** (disabled by default, `http://localhost:8001/mcp` when enabled):
+```
+list_skills()       list_projects()     get_findings()
+search_memory()     execute_skill()     deploy_research()
+create_project()    get_deployment_status()
+```
+
+**A2A Protocol** discovery endpoint at `/.well-known/agent.json` — standard agent interoperability for external tools and agent frameworks.
+
+Both are gated by granular `MCPAccessPolicy` with per-tool permissions and full audit logging.
+
+---
+
+## Contributing
+
+Istara is MIT-licensed and welcomes contributions. The most impactful areas:
+
+- **New skills** — Add a `SKILL.md` + JSON definition, no Python required for most skills
+- **LLM adapters** — New local inference backends
+- **Channel integrations** — Messaging platforms (Discord, Teams, etc.)
+- **UI components** — Accessibility improvements, new views
+- **Research methodology** — Improve prompts, add validation logic to existing skills
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions and code style guide.
+
+```bash
+# Run the test suite
+pytest tests/
+
+# Run the 66-scenario simulation agent
+node tests/simulation/run.mjs
+
+# Verify system integrity before committing
+python scripts/check_integrity.py
+```
+
+---
+
+## Repository Structure
+
+```
+istara/
+├── backend/          # FastAPI backend (Python 3.11+)
+│   └── app/
+│       ├── api/      # 337 REST endpoints + WebSocket
+│       ├── agents/   # Agent personas (CORE, SKILLS, PROTOCOLS, MEMORY)
+│       ├── core/     # Orchestrator, RAG, evolution engine
+│       ├── models/   # 51+ SQLAlchemy models
+│       ├── services/ # Survey, MCP, channel integrations
+│       └── skills/   # Skill base class, factory, implementations
+├── frontend/         # Next.js 14 (React, Tailwind, Zustand)
+├── desktop/          # Tauri v2 system tray app
+├── installer/        # macOS DMG + Windows NSIS build configs
+├── relay/            # Compute donation WebSocket relay
+├── skills/           # Skill definition files (SKILL.md per skill)
+├── tests/
+│   └── simulation/   # 66-scenario E2E test suite
+└── scripts/          # Integrity checks, agent md updates
+```
 
 ---
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT © 2026 Istara Contributors — see [LICENSE](LICENSE).
 
 ---
 
-Built with ReClaw by the ReClaw community.
+<div align="center">
+
+Built for researchers who believe their data should stay theirs.
+
+[GitHub](https://github.com/henrique-simoes/Istara) · [Issues](https://github.com/henrique-simoes/Istara/issues) · [Discussions](https://github.com/henrique-simoes/Istara/discussions)
+
+</div>

@@ -31,7 +31,7 @@ async def compute_stats():
 
 @router.get("/compute/model-warnings")
 async def model_warnings():
-    """Check loaded models for capability limitations relevant to ReClaw."""
+    """Check loaded models for capability limitations relevant to Istara."""
     return {"warnings": compute_registry.get_warnings()}
 
 

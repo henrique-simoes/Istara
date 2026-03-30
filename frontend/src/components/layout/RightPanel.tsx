@@ -100,11 +100,11 @@ export default function RightPanel({ activeView, collapsed, onToggle }: RightPan
         <div className="space-y-2 text-xs">
           <p className="text-slate-400">Agents understand what you need. Try:</p>
           <div className="space-y-1">
-            <p className="text-reclaw-600">"Create a task to analyze interviews"</p>
-            <p className="text-reclaw-600">"Find documents about onboarding"</p>
-            <p className="text-reclaw-600">"What insights do we have so far?"</p>
-            <p className="text-reclaw-600">"Attach report.pdf to the usability task"</p>
-            <p className="text-reclaw-600">"Fetch https://competitor.com for analysis"</p>
+            <p className="text-istara-600">"Create a task to analyze interviews"</p>
+            <p className="text-istara-600">"Find documents about onboarding"</p>
+            <p className="text-istara-600">"What insights do we have so far?"</p>
+            <p className="text-istara-600">"Attach report.pdf to the usability task"</p>
+            <p className="text-istara-600">"Fetch https://competitor.com for analysis"</p>
           </div>
           <p className="text-[10px] text-slate-400 mt-1">
             Agents use 13 system tools to perform actions, search documents, manage tasks, and query findings directly from chat.
@@ -169,7 +169,7 @@ export default function RightPanel({ activeView, collapsed, onToggle }: RightPan
         <div className="space-y-3 text-xs text-slate-500">
           <div>
             <p className="font-medium text-slate-700 dark:text-slate-300">Layer 1: Agent Base</p>
-            <p>ReClaw's core UXR expertise (always active)</p>
+            <p>Istara's core UXR expertise (always active)</p>
           </div>
           <div>
             <p className="font-medium text-slate-700 dark:text-slate-300">Layer 2: Company</p>

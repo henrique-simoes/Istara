@@ -242,7 +242,7 @@ export default function ComplianceProfile() {
                         {item.finding_ids.map((fid) => (
                           <span
                             key={fid}
-                            className="text-[10px] bg-reclaw-50 dark:bg-reclaw-900/20 text-reclaw-600 dark:text-reclaw-400 rounded px-1.5 py-0.5 font-mono"
+                            className="text-[10px] bg-istara-50 dark:bg-istara-900/20 text-istara-600 dark:text-istara-400 rounded px-1.5 py-0.5 font-mono"
                           >
                             {fid.slice(0, 8)}
                           </span>

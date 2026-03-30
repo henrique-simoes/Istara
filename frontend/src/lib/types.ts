@@ -1,4 +1,4 @@
-/** Core types for ReClaw frontend. */
+/** Core types for Istara frontend. */
 
 export type ProjectPhase = "discover" | "define" | "develop" | "deliver";
 export type TaskStatus = "backlog" | "in_progress" | "in_review" | "done";
@@ -115,10 +115,10 @@ export interface FindingsSummary {
 export interface HardwareInfo {
   total_ram_gb: number;
   available_ram_gb: number;
-  reclaw_ram_budget_gb: number;
+  istara_ram_budget_gb: number;
   cpu_cores: number;
   cpu_arch: string;
-  reclaw_cpu_budget_cores: number;
+  istara_cpu_budget_cores: number;
   gpu: { vendor: string; name: string; vram_mb: number } | null;
   os: string;
 }

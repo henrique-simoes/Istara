@@ -1,4 +1,4 @@
-"""Automated backup manager for ReClaw data.
+"""Automated backup manager for Istara data.
 
 Handles full and incremental backups of databases, vector stores, uploads,
 project repos, agent personas, skill definitions, and configuration files.
@@ -213,7 +213,7 @@ class BackupManager:
         record_id = str(uuid.uuid4())
         now = datetime.now(timezone.utc)
         timestamp = now.strftime("%Y%m%d_%H%M%S")
-        filename = f"reclaw_backup_{timestamp}.tar.gz"
+        filename = f"istara_backup_{timestamp}.tar.gz"
         archive_path = Path(settings.backup_dir) / filename
 
         # Create DB record (in_progress)
@@ -328,19 +328,19 @@ class BackupManager:
         previous_checksums: dict[str, str],
     ) -> dict:
         """Build the tar.gz archive (blocking — runs in executor)."""
-        with tempfile.TemporaryDirectory(prefix="reclaw_backup_") as tmp_dir:
+        with tempfile.TemporaryDirectory(prefix="istara_backup_") as tmp_dir:
             tmp = Path(tmp_dir)
             checksums: dict[str, str] = {}
             components: dict[str, dict] = {}
 
             # ── 1. Main SQLite database ──
-            main_db_src = "./data/reclaw.db"
+            main_db_src = "./data/istara.db"
             if Path(main_db_src).exists():
-                dest = tmp / "data" / "reclaw.db"
+                dest = tmp / "data" / "istara.db"
                 dest.parent.mkdir(parents=True, exist_ok=True)
                 _safe_sqlite_copy(main_db_src, str(dest))
                 if dest.exists():
-                    checksums["data/reclaw.db"] = _sha256_file(dest)
+                    checksums["data/istara.db"] = _sha256_file(dest)
                     components["database"] = {
                         "size_bytes": dest.stat().st_size,
                     }
@@ -606,7 +606,7 @@ class BackupManager:
         """Extract and restore backup files (blocking)."""
         restored_components: list[str] = []
 
-        with tempfile.TemporaryDirectory(prefix="reclaw_restore_") as tmp_dir:
+        with tempfile.TemporaryDirectory(prefix="istara_restore_") as tmp_dir:
             # Extract
             with tarfile.open(archive_path, "r:gz") as tar:
                 tar.extractall(tmp_dir)
@@ -631,9 +631,9 @@ class BackupManager:
                             )
 
             # Restore database
-            db_src = tmp / "data" / "reclaw.db"
+            db_src = tmp / "data" / "istara.db"
             if db_src.exists():
-                shutil.copy2(str(db_src), "./data/reclaw.db")
+                shutil.copy2(str(db_src), "./data/istara.db")
                 restored_components.append("database")
 
             # Restore embedding cache
@@ -722,7 +722,7 @@ class BackupManager:
 
     def _verify_sync(self, archive_path: str) -> dict:
         """Verify archive checksums (blocking)."""
-        with tempfile.TemporaryDirectory(prefix="reclaw_verify_") as tmp_dir:
+        with tempfile.TemporaryDirectory(prefix="istara_verify_") as tmp_dir:
             with tarfile.open(archive_path, "r:gz") as tar:
                 tar.extractall(tmp_dir, filter="data")
 
@@ -811,7 +811,7 @@ class BackupManager:
         estimates: dict[str, int] = {}
 
         # Database
-        db_path = Path("./data/reclaw.db")
+        db_path = Path("./data/istara.db")
         if db_path.exists():
             estimates["database"] = db_path.stat().st_size
 

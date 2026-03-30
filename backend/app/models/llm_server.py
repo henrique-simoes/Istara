@@ -9,7 +9,7 @@ from app.models.database import Base
 
 
 class LLMServer(Base):
-    """An LLM server endpoint that ReClaw can route requests to."""
+    """An LLM server endpoint that Istara can route requests to."""
 
     __tablename__ = "llm_servers"
 

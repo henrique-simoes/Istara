@@ -33,8 +33,8 @@ interface InterfacesStore {
   clearDesignMessages: () => void;
 }
 
-const ONBOARDING_KEY = "reclaw-interfaces-onboarding-dismissed";
-const PRIVACY_KEY = "reclaw-interfaces-privacy-acknowledged";
+const ONBOARDING_KEY = "istara-interfaces-onboarding-dismissed";
+const PRIVACY_KEY = "istara-interfaces-privacy-acknowledged";
 
 function getStoredBool(key: string): boolean {
   if (typeof window === "undefined") return false;

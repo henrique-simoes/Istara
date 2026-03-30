@@ -91,7 +91,7 @@ export default function DeploymentWizard({ onClose }: DeploymentWizardProps) {
       <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-2xl overflow-hidden">
         {/* Progress bar */}
         <div className="h-1 bg-slate-100 dark:bg-slate-800">
-          <div className="h-full bg-reclaw-500 transition-all duration-300" style={{ width: `${((stepIndex + 1) / STEPS.length) * 100}%` }} />
+          <div className="h-full bg-istara-500 transition-all duration-300" style={{ width: `${((stepIndex + 1) / STEPS.length) * 100}%` }} />
         </div>
 
         <div className="flex justify-end px-4 pt-3">
@@ -114,7 +114,7 @@ export default function DeploymentWizard({ onClose }: DeploymentWizardProps) {
                     className={cn(
                       "flex flex-col w-full p-4 rounded-xl border-2 transition-all text-left",
                       deploymentType === t.id
-                        ? "border-reclaw-500 bg-reclaw-50 dark:bg-reclaw-900/20"
+                        ? "border-istara-500 bg-istara-50 dark:bg-istara-900/20"
                         : "border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600"
                     )}
                   >
@@ -140,7 +140,7 @@ export default function DeploymentWizard({ onClose }: DeploymentWizardProps) {
                       placeholder={`Question ${i + 1}...`}
                       value={q.text}
                       onChange={(e) => updateQuestion(i, e.target.value)}
-                      className="flex-1 px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+                      className="flex-1 px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-istara-500"
                     />
                     {questions.length > 1 && (
                       <button onClick={() => removeQuestion(i)} aria-label="Remove question" className="p-2 rounded-lg text-slate-400 hover:text-red-500 transition-colors">
@@ -149,7 +149,7 @@ export default function DeploymentWizard({ onClose }: DeploymentWizardProps) {
                     )}
                   </div>
                 ))}
-                <button onClick={addQuestion} className="flex items-center gap-1 text-sm text-reclaw-600 hover:text-reclaw-700 dark:text-reclaw-400 transition-colors">
+                <button onClick={addQuestion} className="flex items-center gap-1 text-sm text-istara-600 hover:text-istara-700 dark:text-istara-400 transition-colors">
                   <Plus size={14} /> Add Question
                 </button>
               </div>
@@ -167,7 +167,7 @@ export default function DeploymentWizard({ onClose }: DeploymentWizardProps) {
                     type="checkbox"
                     checked={adaptiveEnabled}
                     onChange={(e) => setAdaptiveEnabled(e.target.checked)}
-                    className="rounded border-slate-300 dark:border-slate-600 text-reclaw-600 focus:ring-reclaw-500"
+                    className="rounded border-slate-300 dark:border-slate-600 text-istara-600 focus:ring-istara-500"
                   />
                   <div>
                     <span className="text-sm font-medium text-slate-900 dark:text-white">Enable Adaptive Follow-ups</span>
@@ -185,7 +185,7 @@ export default function DeploymentWizard({ onClose }: DeploymentWizardProps) {
                       max={5}
                       value={maxFollowUps}
                       onChange={(e) => setMaxFollowUps(parseInt(e.target.value) || 0)}
-                      className="w-24 px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+                      className="w-24 px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-istara-500"
                     />
                   </div>
                 )}
@@ -211,7 +211,7 @@ export default function DeploymentWizard({ onClose }: DeploymentWizardProps) {
                       className={cn(
                         "flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all",
                         selectedChannels.includes(ch.id)
-                          ? "border-reclaw-500 bg-reclaw-50 dark:bg-reclaw-900/20"
+                          ? "border-istara-500 bg-istara-50 dark:bg-istara-900/20"
                           : "border-slate-200 dark:border-slate-700"
                       )}
                     >
@@ -219,7 +219,7 @@ export default function DeploymentWizard({ onClose }: DeploymentWizardProps) {
                         type="checkbox"
                         checked={selectedChannels.includes(ch.id)}
                         onChange={() => toggleChannel(ch.id)}
-                        className="rounded border-slate-300 dark:border-slate-600 text-reclaw-600 focus:ring-reclaw-500"
+                        className="rounded border-slate-300 dark:border-slate-600 text-istara-600 focus:ring-istara-500"
                       />
                       <div>
                         <span className="text-sm font-medium text-slate-900 dark:text-white">{ch.name}</span>
@@ -245,7 +245,7 @@ export default function DeploymentWizard({ onClose }: DeploymentWizardProps) {
                     placeholder="e.g., Q1 User Interview Sprint"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+                    className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-istara-500"
                     autoFocus
                   />
                 </div>
@@ -256,7 +256,7 @@ export default function DeploymentWizard({ onClose }: DeploymentWizardProps) {
                     min={1}
                     value={targetResponses}
                     onChange={(e) => setTargetResponses(parseInt(e.target.value) || 1)}
-                    className="w-32 px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+                    className="w-32 px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-istara-500"
                   />
                   <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
                     The deployment will auto-complete when this target is reached.
@@ -271,7 +271,7 @@ export default function DeploymentWizard({ onClose }: DeploymentWizardProps) {
             <div className="text-center py-4">
               {deployed ? (
                 <>
-                  <CheckCircle2 size={48} className="mx-auto mb-4 text-reclaw-500" />
+                  <CheckCircle2 size={48} className="mx-auto mb-4 text-istara-500" />
                   <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Deployment Created!</h2>
                   <p className="text-sm text-slate-600 dark:text-slate-400">
                     &ldquo;{name}&rdquo; is ready. Activate it from the deployments dashboard to begin collecting responses.
@@ -279,7 +279,7 @@ export default function DeploymentWizard({ onClose }: DeploymentWizardProps) {
                 </>
               ) : (
                 <>
-                  <Rocket size={48} className="mx-auto mb-4 text-reclaw-500" />
+                  <Rocket size={48} className="mx-auto mb-4 text-istara-500" />
                   <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Ready to Deploy</h2>
                   <div className="text-sm text-slate-600 dark:text-slate-400 text-left max-w-sm mx-auto space-y-1 mb-6">
                     <p><strong>Type:</strong> {deploymentType}</p>
@@ -290,7 +290,7 @@ export default function DeploymentWizard({ onClose }: DeploymentWizardProps) {
                   <button
                     onClick={handleDeploy}
                     disabled={deploying}
-                    className="px-6 py-2.5 text-sm bg-reclaw-600 text-white rounded-lg hover:bg-reclaw-700 disabled:opacity-50 transition-colors"
+                    className="px-6 py-2.5 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700 disabled:opacity-50 transition-colors"
                   >
                     {deploying ? "Creating..." : "Create Deployment"}
                   </button>
@@ -311,14 +311,14 @@ export default function DeploymentWizard({ onClose }: DeploymentWizardProps) {
           </div>
           <div className="flex items-center gap-2">
             {STEPS.map((_, i) => (
-              <div key={i} className={cn("w-2 h-2 rounded-full transition-colors", i === stepIndex ? "bg-reclaw-500" : i < stepIndex ? "bg-reclaw-300" : "bg-slate-200 dark:bg-slate-700")} />
+              <div key={i} className={cn("w-2 h-2 rounded-full transition-colors", i === stepIndex ? "bg-istara-500" : i < stepIndex ? "bg-istara-300" : "bg-slate-200 dark:bg-slate-700")} />
             ))}
           </div>
           <div>
             {deployed ? (
-              <button onClick={onClose} className="px-4 py-2 text-sm bg-reclaw-600 text-white rounded-lg hover:bg-reclaw-700 transition-colors">Done</button>
+              <button onClick={onClose} className="px-4 py-2 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700 transition-colors">Done</button>
             ) : currentStep === "deploy" ? null : (
-              <button onClick={goNext} disabled={!canProceed()} className="flex items-center gap-1 px-4 py-2 text-sm bg-reclaw-600 text-white rounded-lg hover:bg-reclaw-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+              <button onClick={goNext} disabled={!canProceed()} className="flex items-center gap-1 px-4 py-2 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
                 Next <ChevronRight size={14} />
               </button>
             )}

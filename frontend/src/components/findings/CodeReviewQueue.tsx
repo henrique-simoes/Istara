@@ -156,7 +156,7 @@ export default function CodeReviewQueue({ projectId }: CodeReviewQueueProps) {
           <button
             onClick={loadPending}
             aria-label="Retry loading review queue"
-            className="text-xs px-3 py-1.5 rounded-md bg-reclaw-600 text-white hover:bg-reclaw-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-reclaw-500 focus-visible:ring-offset-1"
+            className="text-xs px-3 py-1.5 rounded-md bg-istara-600 text-white hover:bg-istara-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-istara-500 focus-visible:ring-offset-1"
           >
             Retry
           </button>
@@ -194,7 +194,7 @@ export default function CodeReviewQueue({ projectId }: CodeReviewQueueProps) {
           <div className="flex items-center gap-2">
             <MessageSquareText
               size={18}
-              className="text-reclaw-600 dark:text-reclaw-400"
+              className="text-istara-600 dark:text-istara-400"
               aria-hidden="true"
             />
             <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
@@ -282,7 +282,7 @@ export default function CodeReviewQueue({ projectId }: CodeReviewQueueProps) {
                     <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">
                       Applied Code
                     </p>
-                    <span className="inline-flex items-center gap-1 text-sm font-medium text-reclaw-700 dark:text-reclaw-400 bg-reclaw-50 dark:bg-reclaw-900/20 px-2 py-0.5 rounded">
+                    <span className="inline-flex items-center gap-1 text-sm font-medium text-istara-700 dark:text-istara-400 bg-istara-50 dark:bg-istara-900/20 px-2 py-0.5 rounded">
                       {item.code_id}
                     </span>
                   </div>

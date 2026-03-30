@@ -1,6 +1,6 @@
 """UI Audit Agent — continuous UI quality, accessibility, and heuristics checking.
 
-This agent validates the ReClaw UI by:
+This agent validates the Istara UI by:
 1. Fetching real frontend pages via HTTP and analyzing HTML structure
 2. Checking API responses for consistency
 3. Evaluating against Nielsen's 10 heuristics (using LLM + real data)
@@ -26,8 +26,8 @@ from app.core.ollama import ollama
 
 logger = logging.getLogger(__name__)
 
-FRONTEND_BASE = os.getenv("RECLAW_FRONTEND_BASE", "http://localhost:3000")
-API_BASE = os.getenv("RECLAW_API_BASE", "http://localhost:8000")
+FRONTEND_BASE = os.getenv("ISTARA_FRONTEND_BASE", "http://localhost:3000")
+API_BASE = os.getenv("ISTARA_API_BASE", "http://localhost:8000")
 
 
 class Severity(str, Enum):
@@ -73,7 +73,7 @@ class UIAuditReport:
 
 
 class UIAuditAgent:
-    """Continuously audits the ReClaw UI for quality issues."""
+    """Continuously audits the Istara UI for quality issues."""
 
     def __init__(self) -> None:
         self._running = False
@@ -83,7 +83,7 @@ class UIAuditAgent:
         self._last_html: str = ""
         # Task execution worker
         from app.core.sub_agent_worker import SubAgentWorker
-        self._worker = SubAgentWorker("reclaw-ui-audit", check_interval=30)
+        self._worker = SubAgentWorker("istara-ui-audit", check_interval=30)
 
     async def _get_client(self) -> httpx.AsyncClient:
         if self._client is None or self._client.is_closed:
@@ -466,7 +466,7 @@ class UIAuditAgent:
             for i in report.issues[:20]
         )
 
-        prompt = f"""You are a UX expert evaluating a web application called ReClaw (a UX Research assistant).
+        prompt = f"""You are a UX expert evaluating a web application called Istara (a UX Research assistant).
 
 Real audit data from this cycle:
 - Frontend pages fetched: {report.pages_fetched}

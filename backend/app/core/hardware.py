@@ -32,8 +32,8 @@ class HardwareProfile:
     os_version: str
 
     @property
-    def reclaw_ram_budget_gb(self) -> float:
-        """RAM available for ReClaw after reserving for OS/apps.
+    def istara_ram_budget_gb(self) -> float:
+        """RAM available for Istara after reserving for OS/apps.
 
         The reserve is proportional: on machines with <=8GB, we reserve
         only 2GB instead of the default 4GB to avoid zero-budget situations.
@@ -46,8 +46,8 @@ class HardwareProfile:
         return max(0, self.available_ram_gb - reserve)
 
     @property
-    def reclaw_cpu_budget_cores(self) -> int:
-        """CPU cores available for ReClaw."""
+    def istara_cpu_budget_cores(self) -> int:
+        """CPU cores available for Istara."""
         reserved = int(self.cpu_cores * settings.resource_reserve_cpu_percent / 100)
         return max(1, self.cpu_cores - reserved)
 
@@ -163,7 +163,7 @@ def detect_hardware() -> HardwareProfile:
 
 def recommend_model(profile: HardwareProfile) -> ModelRecommendation:
     """Recommend the best model configuration based on hardware profile."""
-    ram = profile.reclaw_ram_budget_gb
+    ram = profile.istara_ram_budget_gb
     gpu_vram_gb = (profile.gpu.vram_mb / 1024) if profile.gpu else 0
     is_apple = profile.gpu and profile.gpu.vendor == "Apple"
 

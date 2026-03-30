@@ -130,7 +130,7 @@ export default function Sidebar({ activeView, onViewChange, onSearchOpen }: Side
         {!collapsed && (
           <div className="flex items-center gap-2">
             <span className="text-xl">🐾</span>
-            <span className="font-bold text-lg text-slate-900 dark:text-white">ReClaw</span>
+            <span className="font-bold text-lg text-slate-900 dark:text-white">Istara</span>
           </div>
         )}
         <div className="flex items-center gap-1">
@@ -184,7 +184,7 @@ export default function Sidebar({ activeView, onViewChange, onSearchOpen }: Side
               className={cn(
                 "flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm transition-colors",
                 activeView === item.id
-                  ? "bg-reclaw-100 text-reclaw-700 dark:bg-reclaw-900/30 dark:text-reclaw-400"
+                  ? "bg-istara-100 text-istara-700 dark:bg-istara-900/30 dark:text-istara-400"
                   : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
               )}
             >
@@ -219,7 +219,7 @@ export default function Sidebar({ activeView, onViewChange, onSearchOpen }: Side
                   "flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm transition-colors",
                   collapsed ? "" : "pl-6",
                   activeView === item.id
-                    ? "bg-reclaw-100 text-reclaw-700 dark:bg-reclaw-900/30 dark:text-reclaw-400"
+                    ? "bg-istara-100 text-istara-700 dark:bg-istara-900/30 dark:text-istara-400"
                     : "text-slate-500 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
                 )}
               >
@@ -255,7 +255,7 @@ export default function Sidebar({ activeView, onViewChange, onSearchOpen }: Side
                 value={newProjectName}
                 onChange={(e) => { setNewProjectName(e.target.value); setCreateError(null); }}
                 onKeyDown={(e) => e.key === "Enter" && handleCreateProject()}
-                className="w-full px-2 py-1.5 text-sm rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+                className="w-full px-2 py-1.5 text-sm rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-istara-500"
                 aria-label="New project name"
                 autoFocus
               />

@@ -2,7 +2,7 @@
 name: stakeholder-presentation
 description: "Generate presentation content from findings, tailored to audience (exec/design/eng)."
 metadata:
-  reclaw:
+  istara:
     phase: deliver
     type: mixed
     version: "1.0.0"

@@ -145,7 +145,7 @@ export class RunReport {
     const lines = [];
 
     // Header
-    lines.push(`# ReClaw Simulation Report`);
+    lines.push(`# Istara Simulation Report`);
     lines.push("");
     lines.push(`**Status:** ${statusEmoji}`);
     lines.push(`**Date:** ${this.startedAt.toISOString()}`);

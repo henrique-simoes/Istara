@@ -2,7 +2,7 @@
 name: repository-curation
 description: "Organize all research into searchable, tagged repository with atomic research principles."
 metadata:
-  reclaw:
+  istara:
     phase: deliver
     type: mixed
     version: "1.0.0"

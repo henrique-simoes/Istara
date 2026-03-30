@@ -2,7 +2,7 @@
 name: tree-testing
 description: "Process tree test results — findability, success/directness scores, path analysis."
 metadata:
-  reclaw:
+  istara:
     phase: develop
     type: quantitative
     version: "1.0.0"

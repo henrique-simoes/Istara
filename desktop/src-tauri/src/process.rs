@@ -1,5 +1,5 @@
 /// Child process management — start/stop backend, frontend, and relay.
-/// Ports the logic from reclaw.sh to Rust for cross-platform subprocess control.
+/// Ports the logic from istara.sh to Rust for cross-platform subprocess control.
 
 use std::process::{Child, Command, Stdio};
 

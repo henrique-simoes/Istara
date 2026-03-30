@@ -1,4 +1,4 @@
-"""UX Evaluation Agent — tests real ReClaw API journeys end-to-end.
+"""UX Evaluation Agent — tests real Istara API journeys end-to-end.
 
 Unlike the UI Audit Agent (which checks heuristics/accessibility per component),
 this agent evaluates the holistic UX by actually calling API endpoints to simulate
@@ -19,7 +19,7 @@ from app.api.websocket import broadcast_agent_status
 
 logger = logging.getLogger(__name__)
 
-API_BASE = os.getenv("RECLAW_API_BASE", "http://localhost:8000")
+API_BASE = os.getenv("ISTARA_API_BASE", "http://localhost:8000")
 
 
 class UXEvalAgent:
@@ -32,7 +32,7 @@ class UXEvalAgent:
         self._client: httpx.AsyncClient | None = None
         # Task execution worker
         from app.core.sub_agent_worker import SubAgentWorker
-        self._worker = SubAgentWorker("reclaw-ux-eval", check_interval=30)
+        self._worker = SubAgentWorker("istara-ux-eval", check_interval=30)
 
     async def _get_client(self) -> httpx.AsyncClient:
         if self._client is None or self._client.is_closed:
@@ -297,7 +297,7 @@ class UXEvalAgent:
             if task_id:
                 result = await self._step(
                     client, "Assign to agent", "PATCH", f"/api/tasks/{task_id}",
-                    json={"agent_id": "reclaw-main"},
+                    json={"agent_id": "istara-main"},
                 )
                 steps.append(result)
 

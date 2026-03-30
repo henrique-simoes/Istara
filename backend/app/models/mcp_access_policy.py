@@ -1,6 +1,6 @@
 """MCP access policy model — granular permission control for MCP server exposure.
 
-SECURITY: ReClaw is local-first. MCP breaks that boundary by allowing external
+SECURITY: Istara is local-first. MCP breaks that boundary by allowing external
 agents to query local research data. Every tool/resource is gated by this policy.
 """
 

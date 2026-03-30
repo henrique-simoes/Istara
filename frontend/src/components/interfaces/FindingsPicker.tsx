@@ -58,7 +58,7 @@ export default function FindingsPicker({ projectId, selectedIds, onConfirm, onCa
         <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-800">
           <h3 className="font-semibold text-slate-900 dark:text-white">Seed from Findings</h3>
           <div className="flex items-center gap-2">
-            <span className="text-xs bg-reclaw-100 dark:bg-reclaw-900/30 text-reclaw-700 dark:text-reclaw-400 px-2 py-0.5 rounded-full">
+            <span className="text-xs bg-istara-100 dark:bg-istara-900/30 text-istara-700 dark:text-istara-400 px-2 py-0.5 rounded-full">
               {selected.size} selected
             </span>
             <button onClick={onCancel} className="text-slate-400 hover:text-slate-600" aria-label="Close">
@@ -76,7 +76,7 @@ export default function FindingsPicker({ projectId, selectedIds, onConfirm, onCa
               className={cn(
                 "px-3 py-1.5 text-sm rounded-md capitalize transition-colors",
                 tab === t
-                  ? "bg-reclaw-100 text-reclaw-700 dark:bg-reclaw-900/30 dark:text-reclaw-400"
+                  ? "bg-istara-100 text-istara-700 dark:bg-istara-900/30 dark:text-istara-400"
                   : "text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
               )}
             >
@@ -94,7 +94,7 @@ export default function FindingsPicker({ projectId, selectedIds, onConfirm, onCa
               placeholder="Filter findings..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-reclaw-500"
+              className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-istara-500"
             />
           </div>
         </div>
@@ -113,12 +113,12 @@ export default function FindingsPicker({ projectId, selectedIds, onConfirm, onCa
                 className={cn(
                   "w-full flex items-start gap-2 text-left px-3 py-2 rounded-lg text-sm transition-colors",
                   selected.has(item.id)
-                    ? "bg-reclaw-50 dark:bg-reclaw-900/20"
+                    ? "bg-istara-50 dark:bg-istara-900/20"
                     : "hover:bg-slate-50 dark:hover:bg-slate-800/50"
                 )}
               >
                 {selected.has(item.id) ? (
-                  <CheckSquare size={16} className="text-reclaw-600 shrink-0 mt-0.5" />
+                  <CheckSquare size={16} className="text-istara-600 shrink-0 mt-0.5" />
                 ) : (
                   <Square size={16} className="text-slate-300 dark:text-slate-600 shrink-0 mt-0.5" />
                 )}
@@ -138,7 +138,7 @@ export default function FindingsPicker({ projectId, selectedIds, onConfirm, onCa
           </button>
           <button
             onClick={() => onConfirm(Array.from(selected))}
-            className="px-4 py-2 text-sm bg-reclaw-600 text-white rounded-lg hover:bg-reclaw-700 transition-colors"
+            className="px-4 py-2 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700 transition-colors"
           >
             Confirm ({selected.size})
           </button>

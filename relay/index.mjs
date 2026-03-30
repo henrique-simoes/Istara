@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 /**
- * ReClaw Relay — Donate LLM compute to the ReClaw network.
+ * Istara Relay — Donate LLM compute to the Istara network.
  *
  * Connects outbound via WebSocket (NAT-friendly — no inbound ports needed).
  * Reports hardware stats and forwards LLM requests to local Ollama/LM Studio.
  *
  * Usage:
- *   reclaw-relay --server ws://your-server:8000/ws/relay --token <jwt>
+ *   istara-relay --server ws://your-server:8000/ws/relay --token <jwt>
  */
 
 import { program } from "commander";
@@ -17,10 +17,10 @@ import { LLMProxy } from "./lib/llm-proxy.mjs";
 import { decodeConnectionString } from "./lib/connection-string.mjs";
 
 program
-  .name("reclaw-relay")
-  .description("ReClaw Relay — donate LLM compute to the network")
+  .name("istara-relay")
+  .description("Istara Relay — donate LLM compute to the network")
   .version("0.1.0")
-  .option("-s, --server <url>", "ReClaw server WebSocket URL", "ws://localhost:8000/ws/relay")
+  .option("-s, --server <url>", "Istara server WebSocket URL", "ws://localhost:8000/ws/relay")
   .option("-t, --token <jwt>", "JWT authentication token", "")
   .option("-c, --connection-string <string>", "Connection string (replaces --server and --token)")
   .option("-p, --provider <type>", "LLM provider: ollama or lmstudio", "ollama")
@@ -41,11 +41,11 @@ if (opts.connectionString) {
   opts.token = decoded.jwt;
   // Store network token for X-Access-Token header
   opts.networkToken = decoded.networkToken;
-  console.log(`🔗 ReClaw Relay starting (from connection string)...`);
+  console.log(`🔗 Istara Relay starting (from connection string)...`);
   console.log(`   Server: ${opts.server}`);
   console.log(`   Label: ${decoded.label || "unnamed"}`);
 } else {
-  console.log("🔗 ReClaw Relay starting...");
+  console.log("🔗 Istara Relay starting...");
   console.log(`   Server: ${opts.server}`);
 }
 console.log(`   Provider: ${opts.provider}`);
@@ -61,7 +61,7 @@ const ws = createConnection(opts.server, {
   token: opts.token,
   networkToken: opts.networkToken || "",
   onOpen: async () => {
-    console.log("✅ Connected to ReClaw server");
+    console.log("✅ Connected to Istara server");
     stateMachine.transition("idle");
 
     // Register with server

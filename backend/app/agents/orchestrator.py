@@ -1,4 +1,4 @@
-"""Meta-Orchestrator — coordinates all ReClaw agents autonomously.
+"""Meta-Orchestrator — coordinates all Istara agents autonomously.
 
 During development and runtime, this orchestrator:
 1. Manages agent lifecycle (start, stop, health)
@@ -80,16 +80,16 @@ class ManagedAgent:
 
 # Agent ID -> Role mapping for identity loading
 _ROLE_AGENT_IDS = {
-    AgentRole.TASK_EXECUTOR: "reclaw-main",
-    AgentRole.DEVOPS_AUDIT: "reclaw-devops",
-    AgentRole.UI_AUDIT: "reclaw-ui-audit",
-    AgentRole.UX_EVALUATION: "reclaw-ux-eval",
-    AgentRole.USER_SIMULATION: "reclaw-sim",
+    AgentRole.TASK_EXECUTOR: "istara-main",
+    AgentRole.DEVOPS_AUDIT: "istara-devops",
+    AgentRole.UI_AUDIT: "istara-ui-audit",
+    AgentRole.UX_EVALUATION: "istara-ux-eval",
+    AgentRole.USER_SIMULATION: "istara-sim",
 }
 
 # Short fallback prompts (used only if persona MD files are missing)
 _FALLBACK_PROMPTS = {
-    AgentRole.TASK_EXECUTOR: "You are ReClaw, the primary research coordinator. You orchestrate UX research workflows, execute analytical skills, and synthesize findings.",
+    AgentRole.TASK_EXECUTOR: "You are Istara, the primary research coordinator. You orchestrate UX research workflows, execute analytical skills, and synthesize findings.",
     AgentRole.DEVOPS_AUDIT: "You are Sentinel, the DevOps audit agent. You monitor data integrity, system health, and operational reliability.",
     AgentRole.UI_AUDIT: "You are Pixel, the UI audit agent. You evaluate interfaces against Nielsen's heuristics and WCAG 2.2 AA standards.",
     AgentRole.UX_EVALUATION: "You are Sage, the UX evaluation agent. You evaluate the end-to-end experience from a human-centered design perspective.",
@@ -111,7 +111,7 @@ def _load_role_prompt(role: AgentRole) -> str:
                 return identity
     except Exception:
         pass
-    return _FALLBACK_PROMPTS.get(role, "You are a ReClaw agent.")
+    return _FALLBACK_PROMPTS.get(role, "You are a Istara agent.")
 
 
 # Legacy alias — some code references DEFAULT_SYSTEM_PROMPTS directly
@@ -119,7 +119,7 @@ DEFAULT_SYSTEM_PROMPTS = _FALLBACK_PROMPTS
 
 
 class MetaOrchestrator:
-    """Coordinates all ReClaw agents, preventing conflicts and ensuring coverage."""
+    """Coordinates all Istara agents, preventing conflicts and ensuring coverage."""
 
     def __init__(self) -> None:
         self._agents: dict[str, ManagedAgent] = {}
@@ -131,14 +131,14 @@ class MetaOrchestrator:
         """Create the default set of managed agents with full persona identities."""
         # Agent display names (persona names)
         _role_names = {
-            AgentRole.TASK_EXECUTOR: "ReClaw",
+            AgentRole.TASK_EXECUTOR: "Istara",
             AgentRole.DEVOPS_AUDIT: "Sentinel",
             AgentRole.UI_AUDIT: "Pixel",
             AgentRole.UX_EVALUATION: "Sage",
             AgentRole.USER_SIMULATION: "Echo",
         }
         for role in AgentRole:
-            agent_id = _ROLE_AGENT_IDS.get(role, f"reclaw-{role.value}")
+            agent_id = _ROLE_AGENT_IDS.get(role, f"istara-{role.value}")
             if agent_id not in self._agents:
                 self._agents[agent_id] = ManagedAgent(
                     id=agent_id,
@@ -250,10 +250,10 @@ class MetaOrchestrator:
             from app.agents.user_sim_agent import user_sim_agent
 
             agent_map = {
-                "reclaw-devops": devops_agent,
-                "reclaw-ui-audit": ui_audit_agent,
-                "reclaw-ux-eval": ux_eval_agent,
-                "reclaw-sim": user_sim_agent,
+                "istara-devops": devops_agent,
+                "istara-ui-audit": ui_audit_agent,
+                "istara-ux-eval": ux_eval_agent,
+                "istara-sim": user_sim_agent,
             }
 
             for agent_id, real_agent in agent_map.items():
@@ -331,9 +331,9 @@ class MetaOrchestrator:
                         f"Auto-routed: {task.title} ({routing['routing_reason']})",
                     )
 
-                    # Detect capability gaps when routing falls back to reclaw-main
+                    # Detect capability gaps when routing falls back to istara-main
                     if (
-                        routing["primary_agent_id"] == "reclaw-main"
+                        routing["primary_agent_id"] == "istara-main"
                         and "fallback" in routing.get("routing_reason", "").lower()
                     ):
                         try:
@@ -408,7 +408,7 @@ class MetaOrchestrator:
                 # Wake the appropriate agent orchestrators
                 for agent_id in assigned_agents:
                     try:
-                        if agent_id == "reclaw-main":
+                        if agent_id == "istara-main":
                             from app.core.agent import agent as agent_orchestrator
                             agent_orchestrator.wake()
                         # Sub-agents are woken via their own check cycles

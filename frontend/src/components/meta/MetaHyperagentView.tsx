@@ -153,7 +153,7 @@ export default function MetaHyperagentView() {
       <div className="flex-1 overflow-y-auto p-6 max-w-4xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center gap-3">
-          <Sparkles size={24} className="text-reclaw-600 dark:text-reclaw-400" />
+          <Sparkles size={24} className="text-istara-600 dark:text-istara-400" />
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
             Meta-Hyperagent
           </h2>
@@ -188,7 +188,7 @@ export default function MetaHyperagentView() {
             disabled={toggling}
             className={cn(
               "flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-colors",
-              "bg-reclaw-600 text-white hover:bg-reclaw-700 disabled:opacity-50"
+              "bg-istara-600 text-white hover:bg-istara-700 disabled:opacity-50"
             )}
           >
             {toggling ? <RefreshCw size={16} className="animate-spin" /> : <Sparkles size={16} />}
@@ -204,7 +204,7 @@ export default function MetaHyperagentView() {
       <ViewOnboarding viewId="meta-hyperagent" title="Self-Improvement Engine" description="The meta-agent's audit trail — hyperparameter tuning, A/B testing, and self-modification. Agents optimize themselves." chatPrompt="What does the meta-agent do?" />
       {/* Header */}
       <div className="flex items-center gap-3">
-        <Sparkles size={24} className="text-reclaw-600 dark:text-reclaw-400" />
+        <Sparkles size={24} className="text-istara-600 dark:text-istara-400" />
         <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
           Meta-Hyperagent
         </h2>
@@ -359,7 +359,7 @@ export default function MetaHyperagentView() {
                   <div className="flex items-center gap-2 text-sm mb-2 overflow-x-auto">
                     <span className="text-slate-500 break-all">{formatValue(proposal.current_value)}</span>
                     <span className="text-slate-400 shrink-0">→</span>
-                    <span className="text-reclaw-600 dark:text-reclaw-400 font-medium break-all">
+                    <span className="text-istara-600 dark:text-istara-400 font-medium break-all">
                       {formatValue(proposal.proposed_value)}
                     </span>
                   </div>
