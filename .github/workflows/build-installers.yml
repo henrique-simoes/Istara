@@ -124,11 +124,65 @@ jobs:
           fi
         continue-on-error: true
 
-      - name: Bundle source into app + create DMG
+      - name: Bundle source code into .app
+        run: |
+          # Find the built .app
+          APP=$(find desktop/src-tauri/target -name "Istara.app" -type d | head -1)
+          if [ -z "$APP" ]; then
+            echo "No .app bundle found — skipping source bundling"
+            exit 0
+          fi
+          echo "Bundling source into: $APP"
+
+          RESOURCES="$APP/Contents/Resources/istara"
+          mkdir -p "$RESOURCES"
+
+          # Backend source (no data, no venv, no __pycache__)
+          rsync -a --exclude='__pycache__' --exclude='*.pyc' --exclude='.env' \
+            --exclude='data/' --exclude='venv/' --exclude='.venv/' --exclude='.pytest_cache/' \
+            backend/ "$RESOURCES/backend/"
+
+          # Frontend source (no node_modules, no .next build)
+          rsync -a --exclude='node_modules/' --exclude='.next/' --exclude='out/' \
+            frontend/ "$RESOURCES/frontend/"
+
+          # Relay
+          rsync -a --exclude='node_modules/' relay/ "$RESOURCES/relay/"
+
+          # Config files
+          cp .env.example "$RESOURCES/.env.example"
+          cp VERSION "$RESOURCES/VERSION"
+
+          # Agent personas (system only)
+          for p in istara-main istara-devops istara-ui-audit istara-ux-eval istara-sim; do
+            if [ -d "backend/app/agents/personas/$p" ]; then
+              rsync -a "backend/app/agents/personas/$p/" "$RESOURCES/backend/app/agents/personas/$p/"
+            fi
+          done
+
+          echo "Source bundled: $(du -sh "$RESOURCES" | cut -f1)"
+
+      - name: Create DMG with drag-to-Applications
         run: |
           brew install create-dmg 2>/dev/null || true
-          chmod +x installer/macos/build-dmg.sh
-          cd installer/macos && ./build-dmg.sh || true
+          APP=$(find desktop/src-tauri/target -name "Istara.app" -type d | head -1)
+          if [ -z "$APP" ]; then exit 0; fi
+          VERSION="${{ needs.version.outputs.version }}"
+
+          create-dmg \
+            --volname "Istara" \
+            --window-size 600 400 \
+            --icon-size 100 \
+            --icon "Istara.app" 150 190 \
+            --app-drop-link 450 190 \
+            --hide-extension "Istara.app" \
+            "installer/macos/Istara-${VERSION}.dmg" "$APP" || true
+
+          # Fallback: if create-dmg fails, use hdiutil
+          if [ ! -f "installer/macos/Istara-${VERSION}.dmg" ]; then
+            hdiutil create -volname "Istara" -srcfolder "$APP" \
+              -ov -format UDZO "installer/macos/Istara-${VERSION}.dmg" || true
+          fi
 
       - name: Upload macOS artifacts
         uses: actions/upload-artifact@v4
@@ -137,7 +191,7 @@ jobs:
           name: Istara-macOS-${{ needs.version.outputs.version }}
           path: |
             installer/macos/Istara-*.dmg
-            desktop/src-tauri/target/*/release/bundle/macos/*.dmg
+            desktop/src-tauri/target/*/release/bundle/dmg/*.dmg
           retention-days: 30
           if-no-files-found: warn
 
