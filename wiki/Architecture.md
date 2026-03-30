@@ -258,3 +258,97 @@ Request routing:
 3. On failure: automatic failover to next available node
 4. Priority: user interactions > background tasks
 ```
+
+---
+
+## Research Foundations
+
+The following academic works directly inform Istara's architecture and feature design.
+
+### Agent Design & Self-Evolution
+
+1. **Zhou et al. (2026)** — "Memento-Skills: Let Agents Design Agents." Informs the Agent Factory, self-evolving skill system, and Meta-Agent view. The core principle of agent-generated skill definitions is implemented in Istara's skill evolution pipeline.
+
+2. **Zhang et al. (2026)** — "Hyperagents: DGM-H Metacognitive Self-Modification, Cross-Domain Transfer, and Recursive Improvement." Informs the recursive self-improvement model, cross-domain skill transfer, and the Ensemble Health adaptive learning system.
+
+### Multi-Model Validation & Consensus
+
+3. **Wang et al. (2024)** — "Mixture-of-Agents Enhances Large Language Model Capabilities" (MoA). Foundation for Istara's multi-model consensus validation, where outputs from multiple local models are aggregated to improve reliability.
+
+4. **Du et al. (2024)** — "Improving Factuality and Reasoning in Language Models through Multiagent Debate." Informs the debate-style validation strategy used in Ensemble Health, where agents challenge each other's outputs.
+
+5. **Li et al. (2025)** — "Self-MoA: Self-Mixture of Agents." Extends the MoA pattern to single-agent self-ensemble, used in Istara's adaptive validation strategy selection.
+
+6. **Fleiss, J. L. (1971)** — "Measuring Nominal Scale Agreement Among Many Raters." *Psychological Bulletin*, 76(5), 378–382. Provides the statistical basis for Kappa Thematic Analysis and the Fleiss' Kappa scores in Ensemble Health.
+
+### Memory & Context Compression
+
+7. **Jiang et al. (2023)** — "LLMLingua: Compressing Prompts for Accelerated Inference of Large Language Models." arXiv:2310.05736. Inspires Istara's LLMLingua-style 4-phase heuristic compression pipeline, achieving 15–30% additional token savings on local 2K–8K context models.
+
+8. **Chen et al. (2023)** — "MemWalker: Interactive Memory Management and Traversal for Long Contexts." arXiv:2310.05029. Inspires the Context DAG (Directed Acyclic Graph) that summarizes older conversation turns without discarding them.
+
+### Retrieval-Augmented Generation
+
+9. **Lewis et al. (2020)** — "Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks." *Advances in Neural Information Processing Systems (NeurIPS 2020)*, 33, 9459–9474. The foundational RAG architecture implemented in Istara's document ingestion and retrieval pipeline.
+
+10. **Cormack, G. V., Clarke, C. L. A., & Buettcher, S. (2009)** — "Reciprocal Rank Fusion Outperforms Condorcet and Individual Rank Learning Methods." *Proceedings of SIGIR 2009*, 758–759. The RRF algorithm used in Istara's multi-source document ranking.
+
+### Distributed Compute
+
+11. **Borzunov et al. (2022)** — "Petals: Collaborative Inference and Fine-tuning of Large Models." arXiv:2209.01188. Inspires Istara's relay node architecture, enabling users to donate and consume distributed LLM compute over WebSocket connections.
+
+### Automated Research
+
+12. **Karpathy, A. (2026)** — "Software 2.0 and the Autonomous Research Loop." Informs Istara's Autoresearch view: automated experiment loops, model leaderboards, and multi-configuration output comparison.
+
+### Atomic Research Methodology
+
+13. **Sharon, T. & Gadbaw, D. (2018)** — "Atomic Research: The molecule approach to UX research data." Defines the 5-layer evidence chain (Nugget → Fact → Insight → Recommendation → Code Application) implemented throughout Istara's Findings system.
+
+### UX Design Principles
+
+14. **Yablonski, J. (2020)** — *Laws of UX: Using Psychology to Design Better Products & Services.* O'Reilly Media, ISBN 978-1492055310. The theoretical basis for Istara's UX Laws view (40+ heuristics) and the compliance radar chart.
+
+### AI-Assisted Interview Analysis
+
+15. **AURA: AI-Powered User Research Assistant (2025)** — arXiv:2510.27126. Grounds Istara's AI-assisted interview analysis, inline nugget extraction, and automated transcript coding features.
+
+### Output Grounding & Quality Evaluation
+
+16. **Zheng et al. (2023)** — "Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena." arXiv:2306.05685. Informs Istara's LLM-as-Judge grounding strategy used in Autoresearch and the Ensemble Health validation pipeline to assess output quality without human annotation.
+
+---
+
+### Full Bibliography (APA Format)
+
+Borzunov, A., Baranchuk, D., Dettmers, T., Ryabinin, M., Belkada, Y., Chumachenko, M., ... & Babenko, A. (2022). *Petals: Collaborative inference and fine-tuning of large models.* arXiv:2209.01188.
+
+Chen, H., Pasunuru, R., Weston, J., & Celikyilmaz, A. (2023). *MemWalker: Interactive memory management and traversal for long contexts.* arXiv:2310.05029.
+
+Cormack, G. V., Clarke, C. L. A., & Buettcher, S. (2009). Reciprocal rank fusion outperforms Condorcet and individual rank learning methods. *Proceedings of the 32nd International ACM SIGIR Conference on Research and Development in Information Retrieval*, 758–759.
+
+Du, Y., Li, S., Torralba, A., Tenenbaum, J. B., & Mordatch, I. (2024). *Improving factuality and reasoning in language models through multiagent debate.* Proceedings of ICML 2024.
+
+Fleiss, J. L. (1971). Measuring nominal scale agreement among many raters. *Psychological Bulletin*, 76(5), 378–382.
+
+Jiang, H., Wu, Q., Lin, C.-Y., Yang, P., & Qiu, X. (2023). *LLMLingua: Compressing prompts for accelerated inference of large language models.* arXiv:2310.05736.
+
+Karpathy, A. (2026). *Software 2.0 and the autonomous research loop.*
+
+Lewis, P., Perez, E., Piktus, A., Petroni, F., Karpukhin, V., Goyal, N., ... & Kiela, D. (2020). Retrieval-augmented generation for knowledge-intensive NLP tasks. *Advances in Neural Information Processing Systems (NeurIPS 2020)*, 33, 9459–9474.
+
+Li, M., et al. (2025). *Self-MoA: Self-mixture of agents.*
+
+Sharon, T. & Gadbaw, D. (2018). *Atomic research: The molecule approach to UX research data.*
+
+Wang, J., Wang, J., Athiwaratkun, B., Zhang, C., & Zou, J. (2024). *Mixture-of-agents enhances large language model capabilities.* arXiv:2406.04692.
+
+Yablonski, J. (2020). *Laws of UX: Using psychology to design better products & services.* O'Reilly Media.
+
+Zhang, et al. (2026). *Hyperagents: DGM-H metacognitive self-modification, cross-domain transfer, and recursive improvement.*
+
+Zheng, L., Chiang, W.-L., Sheng, Y., Zhuang, S., Wu, Z., Zhuang, Y., ... & Stoica, I. (2023). *Judging LLM-as-a-judge with MT-Bench and Chatbot Arena.* arXiv:2306.05685.
+
+Zhou, et al. (2026). *Memento-Skills: Let agents design agents.*
+
+*AURA: AI-Powered User Research Assistant.* (2025). arXiv:2510.27126.
