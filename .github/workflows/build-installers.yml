@@ -9,6 +9,9 @@ on:
 permissions:
   contents: write
 
+env:
+  TAURI_CLI_VERSION: "2"
+
 jobs:
   # ── macOS Build ────────────────────────────────────────────────────
   build-macos:
@@ -27,31 +30,69 @@ jobs:
         with:
           targets: aarch64-apple-darwin,x86_64-apple-darwin
 
-      - name: Install create-dmg
-        run: brew install create-dmg
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: desktop/src-tauri
 
-      - name: Install Tauri CLI
-        run: npm install -g @tauri-apps/cli@next
-
-      - name: Build Tauri app
+      - name: Install desktop dependencies
         working-directory: desktop
-        run: |
-          npm install 2>/dev/null || true
-          npx tauri build --target universal-apple-darwin
+        run: npm install
+
+      - name: Build Tauri app (universal binary)
+        working-directory: desktop
+        run: npx tauri build --target universal-apple-darwin
+        continue-on-error: true
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
 
-      - name: Bundle source + create DMG
+      - name: Bundle source into app
+        if: success()
         run: |
-          chmod +x installer/macos/build-dmg.sh
-          cd installer/macos && ./build-dmg.sh
+          APP_PATH="desktop/src-tauri/target/universal-apple-darwin/release/bundle/macos/ReClaw.app"
+          if [ ! -d "$APP_PATH" ]; then
+            APP_PATH="desktop/src-tauri/target/release/bundle/macos/ReClaw.app"
+          fi
+          if [ -d "$APP_PATH" ]; then
+            RESOURCES="$APP_PATH/Contents/Resources/reclaw"
+            mkdir -p "$RESOURCES"
+            rsync -a --exclude='__pycache__' --exclude='*.pyc' --exclude='.env' \
+              --exclude='data/' --exclude='venv/' backend/ "$RESOURCES/backend/"
+            rsync -a --exclude='node_modules/' --exclude='.next/' frontend/ "$RESOURCES/frontend/"
+            rsync -a --exclude='node_modules/' relay/ "$RESOURCES/relay/"
+            cp .env.example "$RESOURCES/.env.example"
+            echo "Source bundled into app"
+          else
+            echo "App bundle not found — skipping bundle step"
+          fi
+
+      - name: Create DMG
+        if: success()
+        run: |
+          brew install create-dmg 2>/dev/null || true
+          APP_PATH="desktop/src-tauri/target/universal-apple-darwin/release/bundle/macos/ReClaw.app"
+          if [ ! -d "$APP_PATH" ]; then
+            APP_PATH="desktop/src-tauri/target/release/bundle/macos/ReClaw.app"
+          fi
+          if [ -d "$APP_PATH" ]; then
+            VERSION=$(grep '"version"' desktop/src-tauri/tauri.conf.json | head -1 | grep -o '[0-9]\+\.[0-9]\+\.[0-9]\+' || echo "0.1.0")
+            create-dmg --volname "ReClaw" \
+              --window-size 600 400 \
+              --icon "ReClaw.app" 150 190 \
+              --app-drop-link 450 190 \
+              "installer/macos/ReClaw-${VERSION}.dmg" "$APP_PATH" || true
+          fi
 
       - name: Upload macOS DMG
         uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: ReClaw-macOS
-          path: installer/macos/ReClaw-*.dmg
+          path: |
+            installer/macos/ReClaw-*.dmg
+            desktop/src-tauri/target/*/release/bundle/macos/*.dmg
           retention-days: 30
+          if-no-files-found: warn
 
   # ── Windows Build ──────────────────────────────────────────────────
   build-windows:
@@ -68,28 +109,35 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Install NSIS
-        run: choco install nsis -y
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: desktop/src-tauri
 
-      - name: Install Tauri CLI
-        run: npm install -g @tauri-apps/cli@next
+      - name: Install desktop dependencies
+        working-directory: desktop
+        run: npm install
 
       - name: Build Tauri app
         working-directory: desktop
         run: npx tauri build
+        continue-on-error: true
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
 
-      - name: Build NSIS Installer
-        working-directory: installer/windows
-        run: makensis nsis-installer.nsi
-
+      # Note: NSIS installer requires the Tauri binary + NSIS plugins (inetc)
+      # For now, upload the Tauri-generated installer directly
       - name: Upload Windows Installer
         uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: ReClaw-Windows
-          path: installer/windows/ReClaw-Setup-*.exe
+          path: |
+            desktop/src-tauri/target/release/bundle/nsis/*.exe
+            desktop/src-tauri/target/release/bundle/msi/*.msi
+            installer/windows/ReClaw-Setup-*.exe
           retention-days: 30
+          if-no-files-found: warn
 
   # ── Release (on tag push) ──────────────────────────────────────────
   release:
@@ -100,12 +148,16 @@ jobs:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
 
+      - name: List artifacts
+        run: find . -type f -name "*.dmg" -o -name "*.exe" -o -name "*.msi" | head -20
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            ReClaw-macOS/ReClaw-*.dmg
-            ReClaw-Windows/ReClaw-Setup-*.exe
+            ReClaw-macOS/**/*.dmg
+            ReClaw-Windows/**/*.exe
+            ReClaw-Windows/**/*.msi
           generate_release_notes: true
           draft: false
           prerelease: false

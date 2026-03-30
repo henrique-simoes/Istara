@@ -6,8 +6,9 @@ A complete feature catalog for agents and users to understand all ReClaw capabil
 
 - **Local-first**: All data stays on the user's machine. No cloud dependency.
 - **Privacy-first**: Research data never leaves user control unless explicitly configured.
-- **Open methodology**: 45+ UXR skills based on industry-standard research methods.
+- **Open methodology**: 53 UXR skills based on industry-standard research methods.
 - **Agent-powered**: 5 specialized AI agents that learn and improve over time.
+- **Cross-platform**: Native installers for macOS (.dmg) and Windows (.exe) with setup wizard.
 
 ## Feature Map
 
@@ -30,7 +31,7 @@ Upload and manage research artifacts (PDF, DOCX, CSV, TXT, MD). Documents are au
 Six-level context hierarchy: Platform -> Company -> Product -> Project -> Task -> Agent. Each level can be edited to provide rich context for LLM inference.
 
 ### Skills
-45+ UXR skills organized by Double Diamond phase (Discover/Define/Develop/Deliver). Skills can be executed manually or automatically by agents. The skill system is self-improving with quality monitoring and proposals.
+53 UXR skills organized by Double Diamond phase (Discover/Define/Develop/Deliver). Skills can be executed manually or automatically by agents. The skill system is self-improving with quality monitoring and proposals.
 
 ### Agents
 5 specialized agents with persistent identities, learnable memory, and self-evolution:
@@ -66,5 +67,20 @@ Automated incremental/full backups with retention policy, restore, and verificat
 ### Meta-Agent (Experimental)
 Optional meta-agent that observes system performance and proposes parameter optimizations. Off by default. All changes require user approval.
 
+### UX Laws
+30 Laws of UX (Yablonski, 2024) with compliance scoring. Evaluate your design against cognitive psychology principles. Violation badges link directly to relevant findings.
+
+### Compute Pool
+Unified view of all LLM servers: local, network-discovered, and relay nodes. Donate compute from browser or desktop app. Connection strings for team relay setup.
+
 ### Settings
-LLM server configuration, hardware detection, resource governance, and system preferences.
+LLM server configuration, hardware detection, resource governance, team mode toggle, connection string generation, compute donation, and system preferences. Hardware shows server stats. Team members managed via invite form with role selection (admin/researcher/viewer).
+
+### Desktop App
+System tray app (macOS menubar / Windows system tray) for managing ReClaw:
+- **Server mode**: Start/Stop server, open browser, compute donation, stats
+- **Client mode**: Connection status, compute donation, change server
+- Setup wizard on first launch with dependency installation
+
+### Project Management
+Projects support pause/resume/delete via sidebar context menu. External folder linking watches Google Drive, Dropbox, or any local folder. Documents auto-discovered by FileWatcher with cloud-sync temp file filtering.

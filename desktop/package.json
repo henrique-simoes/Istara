@@ -1,0 +1,16 @@
+{
+  "name": "reclaw-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "ReClaw Desktop — System tray app and setup wizard",
+  "scripts": {
+    "tauri": "tauri",
+    "dev": "tauri dev",
+    "build": "tauri build",
+    "build:mac": "tauri build --target universal-apple-darwin",
+    "build:win": "tauri build"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.0.0"
+  }
+}
