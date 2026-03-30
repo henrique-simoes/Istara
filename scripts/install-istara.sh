@@ -410,7 +410,9 @@ if [ "$MODE" = "server" ]; then
         NET_TOKEN=$(gen_secret)
 
         cat > "$INSTALL_DIR/backend/.env" <<ENVEOF
-# Istara Configuration — generated $(date -u +%Y-%m-%dT%H:%M:%SZ)
+# Istara Backend Configuration — generated $(date -u +%Y-%m-%dT%H:%M:%SZ)
+# NOTE: NEXT_PUBLIC_* vars are frontend-only (baked into the Next.js build).
+# They are NOT needed here — the backend ignores them.
 
 LLM_PROVIDER=${LLM_PROVIDER}
 $(echo "$LLM_PROVIDER" | tr '[:lower:]' '[:upper:]')_HOST=${LLM_HOST}
@@ -422,8 +424,6 @@ DATA_ENCRYPTION_KEY=${ENCRYPT_KEY}
 NETWORK_ACCESS_TOKEN=${NET_TOKEN}
 TEAM_MODE=false
 
-NEXT_PUBLIC_API_URL=http://localhost:${BACKEND_PORT}
-NEXT_PUBLIC_WS_URL=ws://localhost:${BACKEND_PORT}
 CORS_ORIGINS=http://localhost:${FRONTEND_PORT}
 
 RAG_CHUNK_SIZE=1500
@@ -579,8 +579,20 @@ if [ "$MODE" = "server" ]; then
     echo ""
 
     if confirm "Start Istara now?"; then
-        cd "$INSTALL_DIR"
-        ./istara.sh start
+        # If tray app is installed, launch it (it auto-starts the server)
+        if [ -d "/Applications/Istara.app" ] || [ -d "$HOME/Applications/Istara.app" ]; then
+            info "Launching Istara tray app (it will start the server automatically)..."
+            open -a Istara 2>/dev/null || true
+            sleep 3
+            ok "Istara tray app launched — check your menu bar for the tray icon"
+            info "Opening browser..."
+            open "http://localhost:${FRONTEND_PORT:-3000}" 2>/dev/null || true
+        else
+            cd "$INSTALL_DIR"
+            ./istara.sh start
+            info "Opening browser..."
+            open "http://localhost:${FRONTEND_PORT:-3000}" 2>/dev/null || true
+        fi
     fi
 else
     echo -e "  ${BOLD}Start the relay:${NC}"

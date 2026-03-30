@@ -120,7 +120,7 @@ class Settings(BaseSettings):
     autoresearch_max_experiments_per_run: int = 20
     autoresearch_max_daily_experiments: int = 200
 
-    model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
+    model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
 
     def ensure_dirs(self) -> None:
         """Create required directories if they don't exist."""
