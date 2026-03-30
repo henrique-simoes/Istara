@@ -9,19 +9,71 @@
 ### Local-first AI agents for UX Research — your data never leaves your machine
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-2026.03.29-brightgreen.svg)](VERSION)
+[![Version](https://img.shields.io/badge/version-2026.03.30-brightgreen.svg)](VERSION)
 [![Python](https://img.shields.io/badge/python-3.12-blue.svg)](backend/)
 [![Node](https://img.shields.io/badge/node-20-green.svg)](frontend/)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey.svg)](installer/)
 [![GitHub](https://img.shields.io/badge/GitHub-henrique--simoes%2FIstara-181717?logo=github)](https://github.com/henrique-simoes/Istara)
 
-[**Get Started**](#quick-start) · [**Architecture**](#architecture) · [**Research Skills**](#53-research-skills) · [**Agents**](#5-ai-agents) · [**References**](#academic-references) · [**Contributing**](CONTRIBUTING.md)
+[**Install**](#install) · [**Architecture**](#architecture) · [**Research Skills**](#53-research-skills) · [**Agents**](#5-ai-agents) · [**References**](#academic-references) · [**Contributing**](CONTRIBUTING.md)
 
 ---
 
 *Five autonomous AI agents. Fifty-three self-improving research skills. Zero cloud dependency.*
 *Every insight is evidence-grounded. Every agent gets smarter with every session.*
 
+---
+
+## Install
+
+### Homebrew (macOS — Recommended)
+
+```bash
+brew install --cask henrique-simoes/istara/istara
+```
+
+### Shell One-Liner (macOS / Linux)
+
+Installs all dependencies (Python, Node, LLM provider), sets up the server, and offers to start it:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/henrique-simoes/Istara/main/scripts/install-istara.sh | bash
+```
+
+### From Source
+
+```bash
+git clone https://github.com/henrique-simoes/Istara.git
+cd Istara
+
+# Backend
+cd backend
+python3 -m venv venv && source venv/bin/activate
+pip install -e ".[dev]"
+uvicorn app.main:app --host 0.0.0.0 --port 8000
+
+# Frontend (new terminal)
+cd frontend
+npm install && npm run dev
+```
+
+### Docker
+
+```bash
+git clone https://github.com/henrique-simoes/Istara.git && cd Istara
+cp .env.example .env
+docker compose up -d
+```
+
+### Uninstall
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/henrique-simoes/Istara/main/scripts/uninstall-istara.sh | bash
+```
+
+> **DMG / EXE Installers:** The native desktop installers (`.dmg` for macOS, `.exe` for Windows) available on the [Releases](https://github.com/henrique-simoes/Istara/releases) page are currently experiencing issues and **should not be used**. Use one of the methods above instead. We are actively working on a fix.
+
+Open [http://localhost:3000](http://localhost:3000) after starting. The onboarding wizard guides you through your first project.
 
 ---
 
@@ -483,62 +535,15 @@ Istara is **zero-trust by default**:
 
 ## Quick Start
 
-### Prerequisites
+See [**Install**](#install) above for all installation methods. Prerequisites:
 
-- Python 3.12+
-- Node 20+
-- [LM Studio](https://lmstudio.ai) or [Ollama](https://ollama.ai) with at least one model loaded
+- **Python 3.12+** and **Node 20+** (the shell installer handles these automatically)
+- **[LM Studio](https://lmstudio.ai)** or **[Ollama](https://ollama.ai)** with at least one model loaded
 
-### Option A: Homebrew (macOS — Recommended)
-
-```bash
-brew install --cask henrique-simoes/istara/istara
-```
-
-### Option B: Shell One-Liner (macOS)
+After installing, start the server and open [http://localhost:3000](http://localhost:3000):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/henrique-simoes/Istara/main/scripts/install-istara.sh | sh
-```
-
-### Option C: Desktop Installer
-
-Download from [Releases](https://github.com/henrique-simoes/Istara/releases):
-
-| Platform | File |
-|---|---|
-| macOS (Apple Silicon / Intel) | `Istara-YYYY.MM.DD.dmg` |
-| Windows 10/11 | `Istara_x64-setup.exe` |
-
-The setup wizard handles LLM configuration, creates your first project, and launches the system tray agent. First research session in under 5 minutes.
-
-### Option B: Run From Source
-
-```bash
-git clone https://github.com/henrique-simoes/Istara.git
-cd Istara
-
-# 1. Start LM Studio, load a model (llama-3.2-3b or better), start server
-
-# 2. Backend
-cd backend
-python -m venv venv && source venv/bin/activate   # Windows: venv\Scripts\activate
-pip install -e ".[dev]"
-uvicorn app.main:app --host 0.0.0.0 --port 8000
-
-# 3. Frontend (new terminal)
-cd frontend
-npm install
-npm run dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) — the contextual onboarding guide activates on first launch.
-
-### Option C: Docker
-
-```bash
-docker-compose up
-# Open http://localhost:3000
+istara start
 ```
 
 ---
