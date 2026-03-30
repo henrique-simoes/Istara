@@ -36,7 +36,9 @@ pub fn start_server(state: State<'_, AppState>) -> Result<String, String> {
     pm.start_backend(dir)?;
     pm.start_frontend(dir)?;
     if cfg.donate_compute {
-        pm.start_relay(dir, &cfg.connection_string)?;
+        if let Err(e) = pm.start_relay(dir, &cfg.connection_string) {
+            eprintln!("[tray] Relay start failed during server start: {}", e);
+        }
     }
     Ok("Server started".to_string())
 }
@@ -65,14 +67,20 @@ pub fn toggle_relay(state: State<'_, AppState>, enabled: bool) -> Result<String,
 
 #[tauri::command]
 pub fn set_connection_string(state: State<'_, AppState>, conn_str: String) -> Result<String, String> {
+    // Validate connection string format
+    let trimmed = conn_str.trim();
+    if !trimmed.is_empty() && !trimmed.starts_with("rcl_") && !trimmed.starts_with("ws://") && !trimmed.starts_with("wss://") {
+        return Err("Invalid connection string. Expected rcl_... (from admin) or ws://... URL.".to_string());
+    }
+
     let mut cfg = config::load_config();
-    cfg.connection_string = conn_str;
+    cfg.connection_string = trimmed.to_string();
     cfg.mode = "client".to_string();
     config::save_config(&cfg)?;
     let mut pm = state.process_manager.lock().map_err(|e| e.to_string())?;
     pm.stop_relay();
-    if cfg.donate_compute {
-        pm.start_relay(&cfg.install_dir, &cfg.connection_string)?;
+    if cfg.donate_compute && !trimmed.is_empty() {
+        pm.start_relay(&cfg.install_dir, trimmed)?;
     }
     Ok("Connection string saved".to_string())
 }
@@ -80,6 +88,18 @@ pub fn set_connection_string(state: State<'_, AppState>, conn_str: String) -> Re
 #[tauri::command]
 pub fn open_browser() -> Result<(), String> {
     let cfg = config::load_config();
+    // Check if the server is actually running before opening
+    let port_open = std::net::TcpStream::connect_timeout(
+        &"127.0.0.1:3000".parse().unwrap(),
+        std::time::Duration::from_secs(1),
+    ).is_ok() || std::net::TcpStream::connect_timeout(
+        &"127.0.0.1:8000".parse().unwrap(),
+        std::time::Duration::from_secs(1),
+    ).is_ok();
+
+    if !port_open {
+        return Err("Server is not running. Start it first.".to_string());
+    }
     open::that(&cfg.server_url).map_err(|e| e.to_string())
 }
 
@@ -93,10 +113,6 @@ pub fn get_server_status() -> Result<serde_json::Value, String> {
         "mode": config::load_config().mode,
         "install_dir": config::load_config().install_dir,
     }))
-}
-
-pub fn find_install_dir_public() -> String {
-    config::load_config().install_dir
 }
 
 fn check_port(port: u16) -> bool {
