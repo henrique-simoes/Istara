@@ -49,6 +49,10 @@ pub fn load_config() -> AppConfig {
     }
 }
 
+pub fn is_first_run() -> bool {
+    !config_path().exists()
+}
+
 pub fn save_config(cfg: &AppConfig) -> Result<(), String> {
     let path = config_path();
     if let Some(parent) = path.parent() {

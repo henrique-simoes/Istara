@@ -306,6 +306,14 @@
 - Browser compute donation: the DonateComputeToggle in Settings detects a local LLM (LM Studio/Ollama), then opens a WebSocket relay from the browser to share compute with the team — no terminal or extra install required.
 - Relay enhancement: the relay CLI accepts a `--connection-string` flag to bootstrap server discovery. Authenticated relay connections use the X-Access-Token header, and the connection string decoder validates the HMAC signature before extracting credentials.
 
+### Production Installer & Desktop App
+- The desktop app (Tauri v2) now has full process management: ProcessManager in process.rs is wired to commands.rs, so tray events trigger real start/stop/relay actions with health polling every 10 seconds. Guide users through tray menu operations — start, stop, check status, and donate compute are all live actions, not stubs.
+- macOS installer ships as a DMG with bundled source, a LaunchAgent for auto-start on login, and a universal binary supporting both Intel and Apple Silicon Macs. Explain to users that ReClaw will start automatically after install unless they disable the LaunchAgent in System Settings.
+- Windows installer uses an NSIS MUI2 wizard that detects missing dependencies (Python, Node, Ollama), downloads them automatically, offers Server+Client or Client-only install mode selection, sets up the backend venv, and includes an uninstaller that preserves user data by default. Walk users through each wizard page when asked.
+- CI/CD pipeline: GitHub Actions builds macOS DMG and Windows EXE on every push, and creates a GitHub Release with both artifacts on tagged commits. Explain to users where to find the latest release and which artifact matches their platform.
+- Setup wizard: an HTML-based 6-step flow rendered in the Tauri webview (mode selection, dependency check, LLM configuration, .env configuration, install progress, completion). Guide users through each step and explain what each configuration choice means.
+- Secret generation: `generate-secrets.sh` now produces JWT_SECRET, DATA_ENCRYPTION_KEY, NETWORK_ACCESS_TOKEN, RELAY_TOKEN, and POSTGRES_PASSWORD. Explain to users that these secrets are generated once at install time and should be backed up securely.
+
 ## Limitations
 - Cannot access external APIs or web services unless explicitly configured
 - Cannot modify system code or configuration

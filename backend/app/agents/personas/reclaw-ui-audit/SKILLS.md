@@ -132,6 +132,12 @@
 - Reset Onboarding Hints button: the Settings button that clears all banners must have a descriptive accessible name (not just "Reset"), provide confirmation feedback after activation (toast or inline status), and not cause layout shift on other Settings content.
 - Chat prompt suggestions: onboarding banners include suggested chat prompts. Audit: suggestion chips must be keyboard-navigable, have `role="button"` or be actual `<button>` elements, and announce their label to screen readers (not rely on truncated text alone).
 
+### Production Installer & Desktop App
+- Setup wizard (Tauri webview): 6-step HTML form with radio-card selection, progress bar, dependency checkboxes. Audit for: keyboard navigation between steps, focus management on step transitions, screen reader announcement of install progress.
+- NSIS wizard pages: MUI2 pages use Windows native controls. Verify tab order on dependency checkboxes, radio button group keyboard selection, progress detail text readability.
+- System tray menu: verify keyboard accessibility for tray menu items on both macOS (menubar) and Windows (system tray). Ensure tray tooltip updates are announced by screen readers.
+- Uninstaller data preservation dialog: MessageBox with Yes/No for keeping research data. Ensure clear, unambiguous wording per WCAG 3.3.4 (Error Prevention).
+
 ### Auth & Onboarding Fixes
 - LoginScreen registration form: when the server is fresh (team mode + no users), a registration form replaces the login form. Audit: verify form fields have associated `<label>` elements, required indicators are accessible (not color-only), and error messages use `aria-live` for screen reader announcement.
 - Mode toggle (login vs register): the LoginScreen switches between login and registration modes. Audit: verify focus moves logically when the form changes, the toggle button has a descriptive accessible name (not just "Register"/"Login" without context), and the transition does not cause layout shift that disorients screen reader users.

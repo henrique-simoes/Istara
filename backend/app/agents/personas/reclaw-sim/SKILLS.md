@@ -148,6 +148,14 @@
 - **Folder linking provider types**: Test linking a Google Drive folder (mock path or mount), a Dropbox folder, and a local filesystem folder. Verify `linked_folder_type` is correctly set to `gdrive`, `dropbox`, or `local` respectively. Test switching a project's linked folder from one provider to another — verify the old watcher is stopped and the new one starts.
 - **Onboarding banner content accuracy**: For each of the 21 views, verify the banner title and description match the view's purpose. Verify the chat prompt suggestion is contextually relevant (e.g., Skills view suggests a skill-related prompt, not a project prompt). Test clicking a chat prompt suggestion — verify it populates the chat input.
 
+### Production Installer Simulation Scenarios
+- **Dependency detection**: Call `installer::detect_dependencies()` on a fresh machine. Verify Python, Node, Ollama, LM Studio, Docker detection returns correct `detected` booleans and version strings. Test with deps installed and uninstalled.
+- **NSIS install mode capture**: Run Windows installer, select "Client Only" mode, verify `$InstallMode` is "client" (not hardcoded "full"). Verify dependency page is skipped for client mode.
+- **macOS DMG bundle integrity**: Build DMG, mount it, verify `ReClaw.app/Contents/Resources/reclaw/backend/` exists with all source files. Verify no `__pycache__`, `node_modules`, `.env`, or `data/` directories are included.
+- **Setup wizard flow**: Launch Tauri app with no `~/.reclaw/config.json`. Verify setup wizard window opens. Complete all 6 steps. Verify config file is created with correct mode, LLM provider, and install dir. Verify services start after completion.
+- **Uninstall data preservation**: Run Windows uninstaller, choose "Keep data" → verify `data/` directory preserved. Run again, choose "Delete" → verify `data/` removed.
+- **CI/CD artifact verification**: Push to main branch, verify GitHub Actions builds both macOS DMG and Windows EXE. Push a `v*` tag, verify GitHub Release is created with both artifacts attached.
+
 ### Auth & Onboarding Simulation Scenarios
 - **Fresh server registration**: Start with an empty database (no users). Call `GET /auth/team-status`, verify `{ team_mode: true, has_users: false }`. Submit a registration request, verify the first user is created with `role: "admin"`. Call team-status again, verify `has_users: true`. Attempt a second registration and verify the form is no longer offered (login mode instead).
 - **Admin detection on refresh**: Log in as admin, call `GET /auth/me`, verify the response includes `role: "admin"` with the full user object. Simulate a page refresh by re-calling `/auth/me` with the same JWT — verify the admin role persists and is not downgraded to a default role.
