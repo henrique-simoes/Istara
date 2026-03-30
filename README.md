@@ -525,7 +525,7 @@ Istara is **zero-trust by default**:
 | Database | SQLite + aiosqlite (zero-config, ACID, single file) |
 | Vector Store | LanceDB (embedded, no server process, no config) |
 | Search | BM25 keyword index + Reciprocal Rank Fusion |
-| Desktop App | Tauri v2 (system tray, process lifecycle management) |
+| Desktop App | Tauri v2 (thin GUI tray, delegates to `istara.sh` for process management) |
 | Real-time | WebSocket — 16 broadcast event types |
 | LLM Providers | LM Studio · Ollama · Any OpenAI-compatible API |
 | Compute Relay | WebSocket-based distributed inference swarm |

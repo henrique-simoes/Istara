@@ -302,11 +302,13 @@ Projects can be linked to external folders on the filesystem:
 
 ## Desktop App
 
-The Tauri-based desktop app provides:
-- System tray icon with quick access to the interface
+The Tauri v2 desktop app provides a thin GUI tray layer that delegates to `istara.sh`:
+- System tray icon with live port-based state indicators (Start/Stop reflects actual server state)
+- Process management via shell delegation to `istara.sh` (single source of truth for PID files)
+- LLM status click with donation toggle or LM Studio launch prompt
+- Compute Donation toggle with confirmation dialogs and relay management
+- Three-tier update checking (Tauri updater, git tags, GitHub releases) with result dialogs
 - First-run setup wizard for configuration
-- Backend process management (start/stop without terminal)
-- Native notifications for agent activity
 - macOS `.dmg` and Windows NSIS installer
 
 ---
@@ -314,6 +316,6 @@ The Tauri-based desktop app provides:
 ## CalVer Versioning and Auto-Updates
 
 - Version format: `YYYY.MM.DD` (e.g., `2026.03.29`)
-- Auto-update check runs at startup
+- Auto-update check runs at startup (backend) and every 6 hours (tray app via `git fetch --tags`)
 - **Pre-update backup** created automatically before applying any update
 - Update channel configurable in Settings (stable / dev)

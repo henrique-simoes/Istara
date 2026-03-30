@@ -301,7 +301,7 @@
 ## Desktop App, Connection Strings & Installers
 - Connection strings use the `rcl_` prefix and bundle the server URL, network token, and JWT into an HMAC-signed payload. Admins generate them in Settings > Team; new users paste the string on the LoginScreen "Join Server" tab to connect instantly.
 - Guide onboarding: explain that the connection string is a one-step invite — copy from the admin, paste in the app, and the client auto-configures server address and authentication without manual entry.
-- Desktop app (Tauri v2): available as a native system-tray application on macOS and Windows. Supports two install modes — Server+Client (runs the full backend) or Client-only (connects to an existing server via connection string). Includes process management, live stats, and a compute donation toggle.
+- Desktop app (Tauri v2): a thin GUI tray app on macOS and Windows that delegates start/stop to `istara.sh` (CLI and GUI use identical process management). Server+Client mode runs the full backend; Client-only mode connects via connection string. Menu shows live port state: Start/Stop label updates based on actual ports (8000/3000). LLM Status click offers donation toggle when LLM is running, or to open LM Studio if not. Compute Donation always shows confirmation dialog. Check for Updates uses three-tier approach (Tauri updater, git tags, GitHub releases) — always shows a result dialog.
 - Cross-platform installers: macOS .dmg and Windows .exe bundles include a dependency checker, an interactive .env wizard for first-run configuration, and the choice between Server+Client or Client-only install modes.
 - Browser compute donation: the DonateComputeToggle in Settings detects a local LLM (LM Studio/Ollama), then opens a WebSocket relay from the browser to share compute with the team — no terminal or extra install required.
 - Relay enhancement: the relay CLI accepts a `--connection-string` flag to bootstrap server discovery. Authenticated relay connections use the X-Access-Token header, and the connection string decoder validates the HMAC signature before extracting credentials.
@@ -311,11 +311,11 @@
 - **Auto-update**: Users click "Update Now" in Settings → Software Updates. The system automatically: creates a backup → runs `git pull` → updates pip dependencies → rebuilds the frontend → restarts the server. The page reloads automatically when the server comes back.
 - **CLI update**: `istara update` does the same from the terminal: stops services → git pull → rebuild → restart.
 - **Startup check**: The backend checks GitHub Releases 15 seconds after startup. If a newer version exists, it broadcasts an `update_available` WebSocket event and creates a notification in the Notifications view.
-- **Notification**: Update notifications appear in the Notifications bell icon with a link to Settings. The tray app checks every 6 hours and shows an OS-level notification.
+- **Notification**: Update notifications appear in the Notifications bell icon with a link to Settings. The tray app checks every 6 hours via `git fetch --tags` (no API rate limit) and emits an `update-available` event.
 - When users report "Current Version: unknown" — the VERSION file path was misconfigured. It should now resolve correctly. If it persists, check that the VERSION file exists at the project root.
 
 ### Production Installer & Desktop App
-- The desktop app (Tauri v2) now has full process management: ProcessManager in process.rs is wired to commands.rs, so tray events trigger real start/stop/relay actions with health polling every 10 seconds. Guide users through tray menu operations — start, stop, check status, and donate compute are all live actions, not stubs.
+- The desktop app (Tauri v2) uses shell delegation: `process.rs` calls `istara.sh start/stop` in a background thread for server management. Only the relay daemon is managed directly in Rust. Menu state is driven by port checks. Guide users through tray menu operations — Start/Stop shows actual running state, Donate shows confirmation, LLM click shows status dialog, Check Updates shows result.
 - macOS installer ships as a DMG with bundled source, a LaunchAgent for auto-start on login, and a universal binary supporting both Intel and Apple Silicon Macs. Explain to users that Istara will start automatically after install unless they disable the LaunchAgent in System Settings.
 - Windows installer uses an NSIS MUI2 wizard that detects missing dependencies (Python, Node, Ollama), downloads them automatically, offers Server+Client or Client-only install mode selection, sets up the backend venv, and includes an uninstaller that preserves user data by default. Walk users through each wizard page when asked.
 - CI/CD pipeline: GitHub Actions builds macOS DMG and Windows EXE on every push, and creates a GitHub Release with both artifacts on tagged commits. Explain to users where to find the latest release and which artifact matches their platform.
@@ -333,11 +333,17 @@
 - **DMG/EXE installers**: Currently experiencing issues — advise users to use Homebrew or the shell one-liner instead.
 
 ### Desktop Tray App
-- The Istara tray app (Tauri v2) is the **manager**, not the installer. It reads `~/.istara/config.json` and manages start/stop of backend, frontend, and relay processes.
+- The Istara tray app (Tauri v2) is a thin **manager** GUI — it delegates all start/stop to `istara.sh` (single source of truth for PID files, process groups, health waits).
 - Available in the macOS menu bar after installing via the shell one-liner (Step 8 offers download) or Homebrew.
-- Menu actions: Open Istara (browser), Start/Stop Server, Start LM Studio, Compute Donation toggle, Check for Updates, Quit.
-- Auto-update: checks GitHub Releases every 6 hours with Ed25519 signed releases.
-- If users report the tray icon does nothing, check that `~/.istara/config.json` has a valid `install_dir` pointing to the actual installation.
+- Menu items and behaviors:
+  - **Open Istara**: Opens browser only if ports are up, shows "Server Not Running" dialog otherwise.
+  - **Start/Stop Server**: Label shows `● Stop` when server running, `○ Start` when down. Runs `istara.sh` in background thread. Shows error dialog on failure with log details.
+  - **LM Studio / Ollama Status**: If LLM running, shows status dialog with option to toggle compute donation. If not, offers to open LM Studio.
+  - **Compute Donation**: Toggle with confirmation dialog. Config always saves. Relay failures shown in warning dialog.
+  - **Check for Updates**: Three-tier check (Tauri updater, git tags, GitHub releases). Always shows a result dialog — no silent failures.
+  - **Quit**: Stops relay (managed by app), leaves backend/frontend running (managed by PID files).
+- Health loop: polls ports every 10s, rebuilds menu on state change or every 30s. Checks updates via git tags every 6h.
+- If users report the tray icon shows wrong state, check that `~/.istara/config.json` has a valid `install_dir` pointing to the actual installation with `istara.sh` present.
 
 ### First-Run Login UX
 - **Local mode** (default): Users see "Welcome to Istara" with just a name field and "Get Started" button. No password required. The backend issues an admin JWT for any credentials. Explain: "In single-user mode, your data stays on this machine. Enable Team Mode in Settings for multi-user."

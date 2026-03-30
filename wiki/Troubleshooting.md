@@ -261,6 +261,40 @@ LM_STUDIO_URL=http://172.17.0.1:1234  # Docker bridge IP
 
 ---
 
+## Desktop Tray App Issues
+
+### Tray icon shows wrong Start/Stop state
+
+The menu label reflects actual port state (8000/3000). If the label is wrong:
+1. Wait 10 seconds for the health loop to refresh
+2. If persistent, check `~/.istara/config.json` has a valid `install_dir` pointing to your installation
+3. Verify `istara.sh` exists in your install directory: `ls ~/.istara/istara.sh`
+
+### Compute Donation shows Off when On
+
+The tray reads `donate_compute` from `~/.istara/config.json` every time the menu is rebuilt. Check the config file:
+```bash
+cat ~/.istara/config.json | python3 -c "import sys,json; print(json.load(sys.stdin).get('donate_compute'))"
+```
+
+### Check for Updates shows nothing
+
+The tray uses a three-tier approach: Tauri updater (DMG installs), git tags, GitHub releases. Ensure git is available:
+```bash
+which git
+cd ~/.istara && git fetch --tags
+```
+
+### Backend fails to start via tray
+
+The tray delegates to `istara.sh`. Check the CLI directly:
+```bash
+cd ~/.istara && ./istara.sh start
+```
+If it fails, check `~/.istara/.istara-backend.log` for errors. Common cause: `NEXT_PUBLIC_*` vars in `backend/.env` crash pydantic.
+
+---
+
 ## Getting More Help
 
 If none of the above resolves your issue:

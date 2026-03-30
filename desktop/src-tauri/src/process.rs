@@ -1,25 +1,65 @@
-/// Child process management — start/stop backend, frontend, relay.
-/// Uses path_resolver to find Python/Node/npm at their actual locations.
-/// Logs process output to ~/.istara/logs/ for debugging.
+/// Process management — delegates to istara.sh for backend + frontend.
+/// Relay is managed directly since istara.sh doesn't handle it.
+///
+/// Architecture: The system tray is a thin GUI layer. istara.sh handles
+/// PID files, process groups, port cleanup, and health waits. This ensures
+/// the CLI and GUI use identical process management logic — one source of truth.
 
 use crate::path_resolver;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
+use std::time::Duration;
 
 pub struct ProcessManager {
-    backend: Option<Child>,
-    frontend: Option<Child>,
     relay: Option<Child>,
     log_dir: PathBuf,
 }
 
-fn check_port(port: u16) -> bool {
+pub fn check_port(port: u16) -> bool {
     std::net::TcpStream::connect_timeout(
         &format!("127.0.0.1:{}", port).parse().unwrap(),
-        std::time::Duration::from_secs(1),
+        Duration::from_secs(1),
     )
     .is_ok()
+}
+
+/// Check if backend or frontend is running (port check).
+pub fn is_server_running() -> bool {
+    check_port(8000) || check_port(3000)
+}
+
+/// Check if LM Studio is running (port 1234).
+pub fn is_lm_studio_running() -> bool {
+    check_port(1234)
+}
+
+/// Check if Ollama is running (port 11434).
+pub fn is_ollama_running() -> bool {
+    check_port(11434)
+}
+
+/// Find istara.sh in the install directory or ~/.istara.
+fn find_istara_script(install_dir: &str) -> Result<PathBuf, String> {
+    // Check install_dir first
+    if !install_dir.is_empty() {
+        let script = PathBuf::from(install_dir).join("istara.sh");
+        if script.exists() {
+            return Ok(script);
+        }
+    }
+
+    // Check ~/.istara/istara.sh
+    if let Some(home) = dirs::home_dir() {
+        let alt = home.join(".istara").join("istara.sh");
+        if alt.exists() {
+            return Ok(alt);
+        }
+    }
+
+    Err(format!(
+        "istara.sh not found. Install Istara first:\n  curl -fsSL https://raw.githubusercontent.com/henrique-simoes/Istara/main/scripts/install-istara.sh | bash"
+    ))
 }
 
 impl ProcessManager {
@@ -30,144 +70,102 @@ impl ProcessManager {
             .join("logs");
         let _ = fs::create_dir_all(&log_dir);
         Self {
-            backend: None,
-            frontend: None,
             relay: None,
             log_dir,
         }
     }
 
-    /// Check if a child process is actually alive (not just stored in the struct).
-    fn is_child_alive(child: &mut Option<Child>) -> bool {
-        if let Some(ref mut c) = child {
-            // try_wait: Ok(Some(_)) = exited, Ok(None) = still running, Err = error
-            match c.try_wait() {
-                Ok(Some(_status)) => {
-                    // Process exited — clean up the zombie
-                    false
-                }
-                Ok(None) => true,  // Still running
-                Err(_) => false,   // Error checking — assume dead
-            }
+    /// Start backend + frontend via istara.sh.
+    /// BLOCKING: waits for health checks (up to ~35s). Run in a background thread.
+    pub fn start_server(install_dir: &str) -> Result<String, String> {
+        let script = find_istara_script(install_dir)?;
+
+        eprintln!("[tray] Starting server via {}", script.display());
+        let output = Command::new("bash")
+            .arg(script.to_str().unwrap())
+            .arg("start")
+            .current_dir(if install_dir.is_empty() {
+                dirs::home_dir()
+                    .unwrap_or_else(|| PathBuf::from("."))
+                    .join(".istara")
+                    .to_str()
+                    .unwrap_or(".")
+                    .to_string()
+            } else {
+                install_dir.to_string()
+            })
+            .output()
+            .map_err(|e| format!("istara.sh start failed: {}", e))?;
+
+        let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+        let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+        let combined = strip_ansi(&format!("{}{}", stdout, stderr));
+
+        if check_port(8000) || check_port(3000) {
+            eprintln!("[tray] Server started successfully");
+            Ok(combined)
+        } else if output.status.success() {
+            eprintln!("[tray] istara.sh reported success but ports not yet bound");
+            Ok(combined)
         } else {
-            false
+            let msg = combined.trim().to_string();
+            eprintln!("[tray] Server failed to start:\n{}", msg);
+            Err(if msg.is_empty() {
+                "Server failed to start. Check ~/.istara/logs/ for details.".to_string()
+            } else {
+                msg
+            })
         }
     }
 
-    /// Clean up dead child processes (call before start to handle zombies).
-    fn cleanup_dead(&mut self) {
-        if !Self::is_child_alive(&mut self.backend) {
-            self.backend = None;
-        }
-        if !Self::is_child_alive(&mut self.frontend) {
-            self.frontend = None;
-        }
-        if !Self::is_child_alive(&mut self.relay) {
-            self.relay = None;
-        }
+    /// Stop backend + frontend via istara.sh.
+    /// BLOCKING: run in a background thread.
+    pub fn stop_server(install_dir: &str) -> Result<String, String> {
+        let script = find_istara_script(install_dir)?;
+
+        eprintln!("[tray] Stopping server via {}", script.display());
+        let output = Command::new("bash")
+            .arg(script.to_str().unwrap())
+            .arg("stop")
+            .current_dir(if install_dir.is_empty() {
+                dirs::home_dir()
+                    .unwrap_or_else(|| PathBuf::from("."))
+                    .join(".istara")
+                    .to_str()
+                    .unwrap_or(".")
+                    .to_string()
+            } else {
+                install_dir.to_string()
+            })
+            .output()
+            .map_err(|e| format!("istara.sh stop failed: {}", e))?;
+
+        let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+        eprintln!("[tray] Server stopped");
+        Ok(strip_ansi(&stdout))
     }
 
-    /// Start the backend (FastAPI via uvicorn). Logs to ~/.istara/logs/backend.log.
-    pub fn start_backend(&mut self, install_dir: &str) -> Result<(), String> {
-        self.cleanup_dead();
-        if self.backend.is_some() {
-            return Ok(()); // Actually running (verified by cleanup_dead)
-        }
-
-        let backend_dir = format!("{}/backend", install_dir);
-        if !Path::new(&backend_dir).exists() {
-            return Err(format!("Backend directory not found: {}", backend_dir));
-        }
-
-        let python = path_resolver::find_python(install_dir);
-        if !Path::new(&python).exists() && !which_exists(&python) {
-            return Err(format!(
-                "Python not found at '{}'. Install Python 3.12+ or run the installer.",
-                python
-            ));
-        }
-
-        let log_file = fs::File::create(self.log_dir.join("backend.log"))
-            .map_err(|e| format!("Cannot create backend log: {}", e))?;
-        let err_file = log_file.try_clone()
-            .map_err(|e| format!("Cannot clone log file: {}", e))?;
-
-        eprintln!("[tray] Starting backend: {} -m uvicorn (cwd: {})", python, backend_dir);
-
-        let child = Command::new(&python)
-            .args(["-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--log-level", "info"])
-            .current_dir(&backend_dir)
-            .stdout(Stdio::from(log_file))
-            .stderr(Stdio::from(err_file))
-            .spawn()
-            .map_err(|e| format!("Failed to start backend ({}): {}", python, e))?;
-
-        eprintln!("[tray] Backend started (PID: {})", child.id());
-        self.backend = Some(child);
-        Ok(())
-    }
-
-    /// Start the frontend (Next.js). Logs to ~/.istara/logs/frontend.log.
-    pub fn start_frontend(&mut self, install_dir: &str) -> Result<(), String> {
-        self.cleanup_dead();
-        if self.frontend.is_some() {
-            return Ok(());
-        }
-
-        let frontend_dir = format!("{}/frontend", install_dir);
-        if !Path::new(&frontend_dir).exists() {
-            return Err(format!("Frontend directory not found: {}", frontend_dir));
-        }
-
-        // Check node_modules exist
-        if !Path::new(&format!("{}/node_modules", frontend_dir)).exists() {
-            return Err("Frontend dependencies not installed. Run: cd frontend && npm install".to_string());
-        }
-
-        let has_build = Path::new(&format!("{}/.next", frontend_dir)).exists();
-
-        let (cmd, args) = if has_build {
-            let npx = path_resolver::find_npx();
-            (npx, vec!["next".to_string(), "start".to_string(), "--port".to_string(), "3000".to_string()])
-        } else {
-            let npm = path_resolver::find_npm();
-            (npm, vec!["run".to_string(), "dev".to_string(), "--".to_string(), "--port".to_string(), "3000".to_string()])
-        };
-
-        let log_file = fs::File::create(self.log_dir.join("frontend.log"))
-            .map_err(|e| format!("Cannot create frontend log: {}", e))?;
-        let err_file = log_file.try_clone()
-            .map_err(|e| format!("Cannot clone log file: {}", e))?;
-
-        eprintln!("[tray] Starting frontend: {} {:?} (cwd: {})", cmd, args, frontend_dir);
-
-        let child = Command::new(&cmd)
-            .args(&args)
-            .current_dir(&frontend_dir)
-            .stdout(Stdio::from(log_file))
-            .stderr(Stdio::from(err_file))
-            .spawn()
-            .map_err(|e| format!("Failed to start frontend ({}): {}", cmd, e))?;
-
-        eprintln!("[tray] Frontend started (PID: {})", child.id());
-        self.frontend = Some(child);
-        Ok(())
-    }
-
-    /// Start the relay daemon. Logs to ~/.istara/logs/relay.log.
+    /// Start the relay daemon. Managed directly (not part of istara.sh).
     pub fn start_relay(&mut self, install_dir: &str, connection_string: &str) -> Result<(), String> {
-        self.cleanup_dead();
-        if self.relay.is_some() {
-            return Ok(());
+        // Clean up dead relay first
+        if let Some(ref mut c) = self.relay {
+            match c.try_wait() {
+                Ok(Some(_)) | Err(_) => {
+                    self.relay = None;
+                }
+                Ok(None) => return Ok(()), // Already running
+            }
         }
 
         let relay_dir = format!("{}/relay", install_dir);
         if !Path::new(&relay_dir).exists() {
-            return Err(format!("Relay directory not found: {}", relay_dir));
+            return Err(
+                "Relay directory not found. Compute donation requires the relay component."
+                    .to_string(),
+            );
         }
 
         let node = path_resolver::find_node();
-
         let mut cmd = Command::new(&node);
         cmd.arg("index.mjs");
         if !connection_string.is_empty() {
@@ -178,7 +176,8 @@ impl ProcessManager {
 
         let log_file = fs::File::create(self.log_dir.join("relay.log"))
             .map_err(|e| format!("Cannot create relay log: {}", e))?;
-        let err_file = log_file.try_clone()
+        let err_file = log_file
+            .try_clone()
             .map_err(|e| format!("Cannot clone log file: {}", e))?;
 
         let child = cmd
@@ -186,7 +185,7 @@ impl ProcessManager {
             .stdout(Stdio::from(log_file))
             .stderr(Stdio::from(err_file))
             .spawn()
-            .map_err(|e| format!("Failed to start relay ({}): {}", node, e))?;
+            .map_err(|e| format!("Failed to start relay: {}", e))?;
 
         eprintln!("[tray] Relay started (PID: {})", child.id());
         self.relay = Some(child);
@@ -196,34 +195,30 @@ impl ProcessManager {
     pub fn stop_relay(&mut self) {
         if let Some(ref mut child) = self.relay {
             let _ = child.kill();
-            let _ = child.wait(); // Reap the zombie
+            let _ = child.wait();
             eprintln!("[tray] Relay stopped");
         }
         self.relay = None;
     }
 
+    /// Stop relay on drop. Backend/frontend are managed by istara.sh PID files.
     pub fn stop_all(&mut self) {
-        for (name, child) in [
-            ("Backend", &mut self.backend),
-            ("Frontend", &mut self.frontend),
-            ("Relay", &mut self.relay),
-        ] {
-            if let Some(ref mut c) = child {
-                let _ = c.kill();
-                let _ = c.wait(); // Reap the zombie
-                eprintln!("[tray] {} stopped", name);
-            }
-            *child = None;
-        }
+        self.stop_relay();
     }
 
-    /// Check if backend or frontend is actually running (verifies process + port).
-    pub fn is_running(&mut self) -> bool {
-        self.cleanup_dead();
-        // Check both: our managed process AND the actual port
-        let has_managed = self.backend.is_some() || self.frontend.is_some();
-        let has_ports = check_port(8000) || check_port(3000);
-        has_managed || has_ports
+    /// Check if relay is actually running.
+    pub fn is_relay_running(&mut self) -> bool {
+        if let Some(ref mut c) = self.relay {
+            match c.try_wait() {
+                Ok(Some(_)) | Err(_) => {
+                    self.relay = None;
+                    false
+                }
+                Ok(None) => true,
+            }
+        } else {
+            false
+        }
     }
 }
 
@@ -233,13 +228,25 @@ impl Drop for ProcessManager {
     }
 }
 
-/// Check if a command exists on PATH.
-fn which_exists(cmd: &str) -> bool {
-    Command::new("which")
-        .arg(cmd)
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status()
-        .map(|s| s.success())
-        .unwrap_or(false)
+/// Strip ANSI escape codes from a string (istara.sh output has colors).
+fn strip_ansi(s: &str) -> String {
+    let mut result = String::with_capacity(s.len());
+    let mut chars = s.chars().peekable();
+    while let Some(c) = chars.next() {
+        if c == '\x1b' {
+            // Skip escape sequence: ESC [ ... final_byte
+            if chars.peek() == Some(&'[') {
+                chars.next();
+                while let Some(&next) = chars.peek() {
+                    chars.next();
+                    if next.is_ascii_alphabetic() || next == 'm' {
+                        break;
+                    }
+                }
+            }
+        } else {
+            result.push(c);
+        }
+    }
+    result
 }
