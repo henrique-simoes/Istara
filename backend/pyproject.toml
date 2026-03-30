@@ -2,7 +2,6 @@
 name = "istara-backend"
 version = "2026.03.29"
 description = "Istara — Local-first AI agent for UX Research"
-readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.11"
 dependencies = [
@@ -53,6 +52,14 @@ dev = [
     "httpx>=0.28.0",
     "ruff>=0.8.0",
 ]
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+exclude = ["alembic*", "tests*", "data*"]
+
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
 
 [tool.ruff]
 target-version = "py311"
