@@ -353,6 +353,7 @@
       const log = document.getElementById('install-log');
       const bar = document.getElementById('install-bar');
       let progress = 0;
+      let hadError = false;
 
       function addLog(msg, cls = '') {
         const line = document.createElement('div');
@@ -367,10 +368,14 @@
         bar.style.width = pct + '%';
       }
 
+      const invoke = window.__TAURI__
+        ? window.__TAURI__.core.invoke
+        : async () => { throw new Error('Tauri not available — run from the desktop app'); };
+
       addLog('Starting Istara installation...', 'progress');
 
       if (installMode === 'server') {
-        // Install selected dependencies
+        // ── Step 1: Install missing dependencies ──
         const toInstall = deps.filter(d => {
           const checkbox = document.querySelector(`[data-dep="${d.id}"]`);
           return checkbox && checkbox.checked && !d.detected;
@@ -378,93 +383,108 @@
 
         for (const dep of toInstall) {
           addLog(`Installing ${dep.name}...`, 'progress');
-          setProgress(progress + 10);
-          if (window.__TAURI__) {
-            try {
-              // Call Tauri installer command (future)
-              await new Promise(r => setTimeout(r, 1000));
-              addLog(`  ${dep.name} installed`, 'done');
-            } catch (e) {
-              addLog(`  Failed: ${e}`, 'error');
-            }
-          } else {
-            await new Promise(r => setTimeout(r, 500));
-            addLog(`  ${dep.name} — download from official site`, 'done');
+          setProgress(progress + 8);
+          try {
+            const result = await invoke('install_dependency', { depId: dep.id });
+            addLog(`  ✓ ${result}`, 'done');
+          } catch (e) {
+            addLog(`  ⚠ ${dep.name}: ${e}`, 'error');
+            // Non-blocking — user may install manually
           }
         }
 
+        // ── Step 2: Backend setup (venv + pip install + .env) ──
         setProgress(30);
         addLog('Setting up backend (Python venv + dependencies)...', 'progress');
-        if (window.__TAURI__) {
-          try { await window.__TAURI__.core.invoke('start_server'); } catch(e) { addLog('  ' + e, 'error'); }
-        }
-        await new Promise(r => setTimeout(r, 2000));
-        addLog('  Backend dependencies installed', 'done');
-
-        setProgress(50);
-        addLog('Building frontend...', 'progress');
-        await new Promise(r => setTimeout(r, 2000));
-        addLog('  Frontend built', 'done');
-
-        setProgress(70);
-        addLog('Generating security keys...', 'progress');
-        await new Promise(r => setTimeout(r, 500));
-        addLog('  JWT secret generated', 'done');
-        addLog('  Encryption key generated', 'done');
-
-        setProgress(80);
-        addLog('Creating data directories...', 'progress');
-        await new Promise(r => setTimeout(r, 300));
-        addLog('  data/uploads, data/projects, data/lance_db created', 'done');
-
-        setProgress(90);
-        addLog('Starting services...', 'progress');
-        await new Promise(r => setTimeout(r, 2000));
-        addLog('  Backend running on port 8000', 'done');
-        addLog('  Frontend running on port 3000', 'done');
-
-      } else {
-        // Client mode — just set up relay
-        setProgress(30);
-        addLog('Setting up relay daemon...', 'progress');
-        await new Promise(r => setTimeout(r, 1000));
-        addLog('  Relay configured', 'done');
-
-        setProgress(60);
-        const connStr = document.getElementById('conn-str')?.value || '';
-        if (connStr) {
-          addLog('Validating connection string...', 'progress');
-          if (window.__TAURI__) {
-            try { await window.__TAURI__.core.invoke('set_connection_string', { connStr }); } catch(e) { addLog('  ' + e, 'error'); }
+        addLog('  This may take a few minutes...', '');
+        try {
+          const logs = await invoke('run_backend_setup', { llmProvider: llmProvider });
+          if (Array.isArray(logs)) {
+            logs.forEach(l => addLog('  ' + l, 'done'));
           }
-          await new Promise(r => setTimeout(r, 1000));
-          addLog('  Connected to server', 'done');
+          addLog('  ✓ Backend setup complete', 'done');
+        } catch (e) {
+          addLog('  ✗ Backend setup failed: ' + e, 'error');
+          hadError = true;
         }
 
+        // ── Step 3: Frontend setup (npm install + build) ──
+        setProgress(60);
+        addLog('Setting up frontend...', 'progress');
+        try {
+          const logs = await invoke('run_frontend_setup');
+          if (Array.isArray(logs)) {
+            logs.forEach(l => addLog('  ' + l, 'done'));
+          }
+          addLog('  ✓ Frontend setup complete', 'done');
+        } catch (e) {
+          addLog('  ✗ Frontend setup failed: ' + e, 'error');
+          hadError = true;
+        }
+
+        // ── Step 4: Save config ──
         setProgress(80);
         addLog('Saving configuration...', 'progress');
-        await new Promise(r => setTimeout(r, 500));
-        addLog('  Config saved to ~/.istara/config.json', 'done');
+        try {
+          await invoke('save_setup_config', {
+            mode: 'server',
+            llmProvider: llmProvider,
+            connectionString: '',
+          });
+          addLog('  ✓ Configuration saved', 'done');
+        } catch (e) {
+          addLog('  ✗ Config save failed: ' + e, 'error');
+        }
+
+        // ── Step 5: Start server ──
+        setProgress(90);
+        addLog('Starting Istara server...', 'progress');
+        try {
+          await invoke('start_server');
+          addLog('  ✓ Backend running on port 8000', 'done');
+          addLog('  ✓ Frontend running on port 3000', 'done');
+        } catch (e) {
+          addLog('  ⚠ Server start: ' + e, 'error');
+        }
+
+      } else {
+        // ── Client mode ──
+        setProgress(30);
+        const connStr = document.getElementById('conn-str')?.value || '';
+
+        if (connStr) {
+          addLog('Configuring relay with connection string...', 'progress');
+          try {
+            await invoke('set_connection_string', { connStr: connStr });
+            addLog('  ✓ Connection string saved', 'done');
+          } catch (e) {
+            addLog('  ✗ Failed: ' + e, 'error');
+          }
+        }
+
+        setProgress(70);
+        addLog('Saving configuration...', 'progress');
+        try {
+          await invoke('save_setup_config', {
+            mode: 'client',
+            llmProvider: '',
+            connectionString: connStr,
+          });
+          addLog('  ✓ Configuration saved', 'done');
+        } catch (e) {
+          addLog('  ✗ ' + e, 'error');
+        }
       }
 
       setProgress(100);
       addLog('');
-      addLog('Installation complete!', 'done');
-
-      // Save config
-      if (window.__TAURI__) {
-        const cfg = {
-          mode: installMode,
-          server_url: installMode === 'client' ? 'remote' : 'http://localhost:3000',
-          ws_url: 'ws://localhost:8000/ws/relay',
-          connection_string: document.getElementById('conn-str')?.value || '',
-          donate_compute: false,
-          install_dir: '', // Will be detected
-        };
-        // Save via Tauri (future: proper command)
+      if (hadError) {
+        addLog('Setup completed with errors — check the log above.', 'error');
+      } else {
+        addLog('✓ Istara is ready!', 'done');
       }
 
-      // Enable next button
+      // Enable the final button
       document.getElementById('btn-next').textContent = 'Open Istara';
       document.getElementById('btn-next').disabled = false;
       showStep(5);
