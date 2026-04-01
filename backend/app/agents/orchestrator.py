@@ -325,6 +325,23 @@ class MetaOrchestrator:
                     )
 
                     task.agent_id = routing["primary_agent_id"]
+
+                    # Merge any existing A2A collaboration responses into task context
+                    try:
+                        from app.services.a2a import get_messages
+                        collab_responses = await get_messages(
+                            routing["primary_agent_id"],
+                            message_type="collaboration_response",
+                            limit=10,
+                        )
+                        for resp in collab_responses:
+                            resp_meta = resp.metadata if isinstance(resp.metadata, dict) else {}
+                            if resp_meta.get("task_id") == task.id:
+                                collab_context = f"\n[{resp.from_agent_id} analysis]: {resp.content[:500]}"
+                                task.user_context = (task.user_context or "") + collab_context
+                    except Exception as e:
+                        logger.debug(f"Collaboration response merge skipped: {e}")
+
                     self._log_action(
                         routing["primary_agent_id"],
                         "task_assigned",
