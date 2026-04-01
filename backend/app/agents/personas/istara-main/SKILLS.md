@@ -381,3 +381,11 @@
 - Notification bell moved to sidebar header (next to dark mode toggle) with red unread count badge. More visible than a nav item.
 - Error messages from the backend are now human-readable. Validation errors show the specific field issue instead of "[object Object]".
 - Ensemble Health page now scrolls correctly on all screen sizes.
+
+### Chat UX & Ensemble Validation (v2026.04.01.3)
+- Chat renders markdown: headers, bold, code blocks, tables, lists. Streaming responses also render in real-time.
+- File upload shows preview chips before sending. Users can queue multiple files and project document references.
+- Project Document Picker: a searchable dropdown in chat to attach existing project documents without re-uploading.
+- Task instructions ("Specific Instructions" field) are now included in LLM prompts alongside context and description.
+- Ensemble validation runs after every skill execution: Self-MoA (default, single server), Dual Run, Adversarial Review, Full Ensemble, Debate Rounds. Results stored on tasks and feed Ensemble Health view.
+- CSV files classified by column headers to distinguish survey data from interview transcripts.

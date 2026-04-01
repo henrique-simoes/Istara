@@ -1182,6 +1182,34 @@ Reusable AI suggestion panel with chat session linking. Replaces static text box
 
 **Files:** `frontend/src/components/common/InteractiveSuggestionBox.tsx`, `frontend/src/components/common/ToastNotification.tsx`, `frontend/src/components/layout/Sidebar.tsx`, `frontend/src/lib/api.ts`, `frontend/src/components/documents/DocumentsView.tsx`, `frontend/src/components/layout/HomeClient.tsx`, `frontend/src/components/common/EnsembleHealthView.tsx`, `frontend/src/components/common/SettingsView.tsx`, `backend/app/core/compute_registry.py`, `backend/app/api/routes/llm_servers.py`, `relay/lib/llm-proxy.mjs`, `relay/index.mjs`
 
+## Chat System
+
+### Markdown Rendering
+Chat messages render markdown using `react-markdown` + `remark-gfm` with Tailwind `prose` classes. Headers, bold, code blocks, tables, and lists all render properly. User messages stay plain text; assistant messages get full markdown treatment. Streaming responses also render markdown in real-time.
+
+### File Attachment UX
+Files queue as preview chips before sending (not uploaded on select). Multiple files supported. Chips show filename + remove button. On send: files upload via `POST /api/files/upload/{project_id}`, then the message includes `[Attached files: ...]` context.
+
+### Project Document Picker
+A FolderOpen button opens a searchable dropdown of project documents (calls `GET /api/documents/list` with search param). Selected docs appear as purple reference chips alongside file chips. Referenced docs are included as `[Referenced project documents: ...]` in the message.
+
+### Task Instructions Passthrough
+The Task model's `instructions` field (Specific Instructions) is now included in LLM prompts. Previously silently dropped. Both `_execute_general_task()` and SkillInput construction include it.
+
+**Files:** `frontend/src/components/chat/ChatView.tsx`, `backend/app/core/agent.py`
+
+## Ensemble Validation Integration
+
+The ensemble validation framework (5 methods: Self-MoA, Dual Run, Adversarial Review, Full Ensemble, Debate Rounds) is wired into the agent execution loop. After every skill execution in `agent.py`, the `AdaptiveSelector` picks the best validation method based on historical performance, runs it, and records the result.
+
+**Self-MoA as default:** Works with a single LLM server by varying temperature (0.3, 0.7, 1.0). Multi-server methods (dual_run, full_ensemble) require 2+ registered servers.
+
+**Data flow:** Skill execution → AdaptiveSelector.select_method() → validation function → consensus scoring (Fleiss' Kappa + cosine similarity) → task.validation_method/consensus_score updated → MethodMetric recorded → EnsembleHealthView displays aggregated data.
+
+**File classification:** CSV files classified by column headers: survey keywords (SUS, rating, score, satisfaction, NPS) → `survey_data`, interview keywords → `interview_transcript`, otherwise `csv_data`. Prevents misclassification of survey CSVs as interviews.
+
+**Files:** `backend/app/core/agent.py`, `backend/app/core/validation.py`, `backend/app/core/adaptive_validation.py`, `backend/app/core/consensus.py`, `backend/app/core/file_processor.py`
+
 ## Guided Onboarding Tour
 
 Replaces the old modal OnboardingWizard with an in-app guided tour that navigates through real views.

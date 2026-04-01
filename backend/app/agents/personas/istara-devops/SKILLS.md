@@ -200,3 +200,10 @@
 - Notification bell in sidebar header polls `fetchUnreadCount()` every 30s. Monitor for: excessive API calls if multiple tabs are open, unreadCount going stale if notifications are read in another tab.
 - `api.ts` error extraction handles FastAPI validation errors (detail arrays). Monitor for: edge cases where `detail` is neither string nor array (e.g., null, number, nested object).
 - EnsembleHealth scrolling fixed with `flex-1 overflow-y-auto`. Monitor for: content clipping on very small screens, scroll position reset on re-render.
+
+### Chat UX, Ensemble Wiring & Agent Pipeline (v2026.04.01.3)
+- Chat messages now render markdown (react-markdown + remark-gfm). Monitor for: XSS via markdown injection in user messages, performance with large messages, prose class conflicts with dark mode.
+- File upload shows chips before sending. Monitor for: memory leaks from large pending files, upload failures leaving orphaned chips, concurrent uploads.
+- Ensemble validation wired into agent execution loop. Monitor for: validation timeout blocking task completion, Self-MoA temperature variance producing incoherent consensus, AdaptiveSelector returning stale method choices.
+- Task `instructions` field now passed to LLM. Monitor for: prompt length exceeding model context window when instructions + context + user_context are combined.
+- CSV file classification by headers. Monitor for: edge cases where headers don't contain expected keywords, multilingual column names.
