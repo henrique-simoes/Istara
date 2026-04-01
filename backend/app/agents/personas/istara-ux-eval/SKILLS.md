@@ -190,3 +190,9 @@
 - Notification bell with badge: Always visible in header (Aesthetic-Usability Effect, Visibility of System Status).
 - Error messages: Human-readable (H9: Help Users Recognize and Recover from Errors). "[object Object]" was a complete failure of this heuristic.
 - EnsembleHealth scroll: Hidden content is invisible content (H1: Visibility of System Status).
+
+### Chat UX & Agent Pipeline UX (v2026.04.01.3)
+- Chat markdown: formatted output respects Recognition Rather Than Recall (H6) — users read structured content instead of parsing raw markdown syntax.
+- File chips: preview before send gives user control (H3: User Control and Freedom). Remove button = undo.
+- Document picker: Recognition Rather Than Recall (H6) — browse and search existing docs instead of remembering names.
+- Ensemble validation: transparent confidence scoring improves Trust (Aesthetic-Usability Effect) and Visibility of System Status (H1).

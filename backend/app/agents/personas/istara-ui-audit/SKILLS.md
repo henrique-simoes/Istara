@@ -184,3 +184,8 @@
 - Toast notifications: verify announced by screen readers via `role="status"`. Toast dismiss has `aria-label`.
 - API error display: validation errors render as text, not raw objects. Adequate color contrast (WCAG 1.4.3).
 - EnsembleHealth: scrollable container is keyboard-navigable. Expanded panels remain accessible.
+
+### Chat UX Accessibility (v2026.04.01.3)
+- Chat markdown: verify prose classes maintain contrast in dark mode. Code blocks must be keyboard-focusable. Tables need proper `<th>` semantics.
+- File chips: verify remove button has aria-label. Chips are keyboard-reachable. Screen reader announces file name.
+- Document picker: verify search input has aria-label. Results are navigable with arrow keys. Selected state announced.
