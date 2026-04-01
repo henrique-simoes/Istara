@@ -13,6 +13,9 @@
 
 set -euo pipefail
 
+# Ensure common binary directories are in PATH (GUI apps and nohup don't inherit shell PATH)
+export PATH="/opt/homebrew/bin:/opt/homebrew/opt/node/bin:/usr/local/bin:$PATH"
+
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 BACKEND_PID_FILE="$ROOT/.istara-backend.pid"
 FRONTEND_PID_FILE="$ROOT/.istara-frontend.pid"
