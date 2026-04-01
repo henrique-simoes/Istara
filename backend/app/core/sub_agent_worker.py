@@ -10,6 +10,7 @@ This module provides a shared work loop that any sub-agent can integrate.
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 from datetime import datetime, timezone
 
@@ -61,17 +62,21 @@ class SubAgentWorker:
             # Process A2A inbox before looking for tasks
             try:
                 from app.services.a2a import get_messages, mark_read
-                from app.core.rag import retrieve_context
-                messages = await get_messages(self._agent_id, unread_only=True, limit=3)
+                messages = await get_messages(db, self._agent_id, unread_only=True, limit=3)
                 for msg in messages:
-                    if msg.message_type == "collaboration_request":
-                        metadata = msg.metadata if isinstance(msg.metadata, dict) else {}
+                    msg_type = msg.get("message_type") if isinstance(msg, dict) else getattr(msg, "message_type", "")
+                    if msg_type == "collaboration_request":
+                        metadata = msg.get("metadata", {}) if isinstance(msg, dict) else getattr(msg, "metadata", {})
+                        if isinstance(metadata, str):
+                            metadata = json.loads(metadata) if metadata else {}
                         task_id = metadata.get("task_id")
                         if task_id:
                             task_obj = await db.get(Task, task_id)
                             if task_obj:
                                 logger.info(f"SubAgent {self._agent_id} processing A2A for task {task_id}")
-                    await mark_read(msg.id)
+                    msg_id = msg.get("id") if isinstance(msg, dict) else getattr(msg, "id", "")
+                    if msg_id:
+                        await mark_read(db, msg_id)
             except Exception as e:
                 logger.debug(f"SubAgent A2A check skipped: {e}")
 
