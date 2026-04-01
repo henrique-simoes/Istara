@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
   CheckCircle,
   AlertTriangle,
@@ -9,7 +9,6 @@ import {
   FileText,
   Lightbulb,
   Cpu,
-  Bell,
 } from "lucide-react";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { cn } from "@/lib/utils";
@@ -70,9 +69,6 @@ let nextId = 0;
 export default function ToastNotification() {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [history, setHistory] = useState<NotificationHistoryItem[]>([]);
-  const bellRef = useRef<HTMLButtonElement>(null);
-
-  const unreadCount = history.filter((n) => !n.read).length;
 
   const addToHistory = useCallback((toast: Toast) => {
     const item: NotificationHistoryItem = {
@@ -215,33 +211,6 @@ export default function ToastNotification() {
 
   return (
     <>
-      {/* Bell icon button — navigates to Notifications view */}
-      <div className="fixed bottom-16 right-[calc(1rem+24rem+0.5rem)] z-50 sm:right-[calc(1rem+24rem+0.5rem)]">
-        <button
-          ref={bellRef}
-          onClick={() => {
-            window.dispatchEvent(new CustomEvent("istara:navigate", { detail: "notifications" }));
-          }}
-          aria-label={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ""}`}
-          className={cn(
-            "relative p-2 rounded-full shadow-lg transition-colors",
-            "bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700",
-            "hover:bg-slate-100 dark:hover:bg-slate-700",
-            "focus:outline-none focus:ring-2 focus:ring-istara-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900"
-          )}
-        >
-          <Bell size={20} className="text-slate-600 dark:text-slate-300" />
-          {unreadCount > 0 && (
-            <span
-              className="absolute -top-1 -right-1 flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold text-white bg-red-600 rounded-full"
-              aria-hidden="true"
-            >
-              {unreadCount > 99 ? "99+" : unreadCount}
-            </span>
-          )}
-        </button>
-      </div>
-
       {/* Toast notifications */}
       {toasts.length > 0 && (
         <div

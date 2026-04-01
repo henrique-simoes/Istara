@@ -1176,7 +1176,11 @@ Reusable AI suggestion panel with chat session linking. Replaces static text box
 
 **Error Extraction Fix:** `api.ts` now handles FastAPI validation errors (422) where `detail` is an array of `{ loc, msg, type }` objects. Extracts `msg` fields and joins with semicolons instead of showing `[object Object]`.
 
-**Files:** `frontend/src/components/common/InteractiveSuggestionBox.tsx`, `frontend/src/components/common/ToastNotification.tsx`, `frontend/src/components/layout/Sidebar.tsx`, `frontend/src/lib/api.ts`, `frontend/src/components/documents/DocumentsView.tsx`, `frontend/src/components/layout/HomeClient.tsx`, `frontend/src/components/common/EnsembleHealthView.tsx`
+**LLM Server API Key Support:** Settings > LLM Servers now has an optional API key field when adding servers. Keys are encrypted on save (`encrypt_field`), passed as `Authorization: Bearer` header to the LLM provider. The health check detects 401/403 auth failures and reports `health_error: "API key required"` — displayed as red text below the server entry. Relay nodes accept `--llm-api-key` flag for authenticated local LLMs. The relay admin configures the key once; users connecting via relay don't need separate keys.
+
+**Tour Timing Fix:** `HomeClient.tsx` now waits for backend health (`GET /api/health`) with up to 15 retries (2s each) before checking projects and starting the tour. Prevents the race condition where frontend loads before backend, causing empty project list and wrong tour state or missing tour.
+
+**Files:** `frontend/src/components/common/InteractiveSuggestionBox.tsx`, `frontend/src/components/common/ToastNotification.tsx`, `frontend/src/components/layout/Sidebar.tsx`, `frontend/src/lib/api.ts`, `frontend/src/components/documents/DocumentsView.tsx`, `frontend/src/components/layout/HomeClient.tsx`, `frontend/src/components/common/EnsembleHealthView.tsx`, `frontend/src/components/common/SettingsView.tsx`, `backend/app/core/compute_registry.py`, `backend/app/api/routes/llm_servers.py`, `relay/lib/llm-proxy.mjs`, `relay/index.mjs`
 
 ## Guided Onboarding Tour
 

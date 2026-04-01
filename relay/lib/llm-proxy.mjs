@@ -1,11 +1,22 @@
 /**
  * LLM Proxy — forwards LLM requests to local Ollama or LM Studio.
+ * Supports optional API key for servers that require authentication.
  */
 
 export class LLMProxy {
-  constructor(providerType, host) {
+  constructor(providerType, host, apiKey) {
     this.providerType = providerType; // ollama | lmstudio
     this.host = host.replace(/\/$/, "");
+    this.apiKey = apiKey || "";
+  }
+
+  /** Build headers with optional auth. */
+  _headers() {
+    const h = { "Content-Type": "application/json" };
+    if (this.apiKey) {
+      h["Authorization"] = `Bearer ${this.apiKey}`;
+    }
+    return h;
   }
 
   async listModels() {
@@ -14,7 +25,10 @@ export class LLMProxy {
         ? `${this.host}/api/tags`
         : `${this.host}/v1/models`;
 
-      const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
+      const res = await fetch(url, {
+        headers: this._headers(),
+        signal: AbortSignal.timeout(5000),
+      });
       if (!res.ok) return [];
 
       const data = await res.json();
@@ -42,7 +56,7 @@ export class LLMProxy {
 
       const res = await fetch(`${this.host}/api/chat`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: this._headers(),
         body: JSON.stringify(payload),
       });
       return await res.json();
@@ -58,7 +72,7 @@ export class LLMProxy {
 
       const res = await fetch(`${this.host}/v1/chat/completions`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: this._headers(),
         body: JSON.stringify(payload),
       });
       const data = await res.json();

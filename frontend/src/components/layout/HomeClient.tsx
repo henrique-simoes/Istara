@@ -91,11 +91,36 @@ export default function HomeClient() {
     return () => window.removeEventListener("istara:auth-expired", handleExpiry);
   }, []);
 
-  // Check if first-run — start guided tour if no projects and tour not completed
+  // Check if first-run — start guided tour if no projects and tour not completed.
+  // Waits for the backend to be healthy before checking projects, preventing
+  // false "no projects" state when the backend is still starting.
   const [tourReady, setTourReady] = useState(false);
   useEffect(() => {
     if (!authenticated) return;
-    fetchProjects().then(() => {
+    let cancelled = false;
+    const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+    const initTour = async () => {
+      // Wait for backend health (up to 30s) — prevents race where frontend
+      // loads before backend, causing empty project list and wrong tour state.
+      for (let i = 0; i < 15; i++) {
+        try {
+          const res = await fetch(`${API_BASE}/api/health`, { signal: AbortSignal.timeout(2000) });
+          if (res.ok) break;
+        } catch {
+          // Backend not ready yet
+        }
+        await new Promise((r) => setTimeout(r, 2000));
+        if (cancelled) return;
+      }
+
+      try {
+        await fetchProjects();
+      } catch {
+        // Backend may still be starting — proceed with empty state
+      }
+      if (cancelled) return;
+
       const store = useProjectStore.getState();
       const tourCompleted = isTourCompleted();
       const tourState = useTourStore.getState();
@@ -106,7 +131,10 @@ export default function HomeClient() {
         useTourStore.getState().startTour(role, hasProjects);
       }
       setTourReady(true);
-    });
+    };
+
+    initTour();
+    return () => { cancelled = true; };
   }, [authenticated, fetchProjects]);
 
   // Handle istara:navigate events from AgentsView, ToastNotification, etc.
