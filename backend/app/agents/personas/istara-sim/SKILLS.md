@@ -214,3 +214,11 @@
 - **Notification bell badge**: Create notification via API, verify badge shows "1". Mark read, verify disappears. Create 100+, verify "99+".
 - **API error extraction**: POST /auth/users with invalid email, verify readable error not "[object Object]".
 - **EnsembleHealth scroll**: Navigate to Ensemble Health, verify scrollable when content exceeds viewport.
+
+### Chat UX & Ensemble Simulation (v2026.04.01.3)
+- **Chat markdown**: Send message with ## headers, **bold**, code blocks. Verify rendered as HTML, not raw text.
+- **File chips**: Select files, verify chips appear. Remove one, verify removed. Send, verify all upload.
+- **Document picker**: Click FolderOpen, search documents, select one, verify purple chip. Send message, verify reference included.
+- **Task instructions**: Create task with "Specific Instructions" filled. Run agent. Verify instructions appear in the LLM prompt.
+- **Ensemble validation**: After agent processes task, verify task.validation_method is set. Check MethodMetric has a new record.
+- **CSV classification**: Upload survey CSV (with SUS, rating columns). Verify classified as survey_data, not interview_transcript.
