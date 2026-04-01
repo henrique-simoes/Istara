@@ -19,6 +19,7 @@ Agents under management:
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import uuid
 from dataclasses import dataclass, field
@@ -329,15 +330,18 @@ class MetaOrchestrator:
                     # Merge any existing A2A collaboration responses into task context
                     try:
                         from app.services.a2a import get_messages
-                        collab_responses = await get_messages(
-                            routing["primary_agent_id"],
-                            message_type="collaboration_response",
-                            limit=10,
-                        )
+                        collab_responses = await get_messages(db, routing["primary_agent_id"], limit=10)
                         for resp in collab_responses:
-                            resp_meta = resp.metadata if isinstance(resp.metadata, dict) else {}
+                            resp_type = resp.get("message_type") if isinstance(resp, dict) else getattr(resp, "message_type", "")
+                            if resp_type != "collaboration_response":
+                                continue
+                            resp_meta = resp.get("metadata", {}) if isinstance(resp, dict) else getattr(resp, "metadata", {})
+                            if isinstance(resp_meta, str):
+                                resp_meta = json.loads(resp_meta) if resp_meta else {}
                             if resp_meta.get("task_id") == task.id:
-                                collab_context = f"\n[{resp.from_agent_id} analysis]: {resp.content[:500]}"
+                                resp_from = resp.get("from_agent_id", "") if isinstance(resp, dict) else getattr(resp, "from_agent_id", "")
+                                resp_content = resp.get("content", "") if isinstance(resp, dict) else getattr(resp, "content", "")
+                                collab_context = f"\n[{resp_from} analysis]: {resp_content[:500]}"
                                 task.user_context = (task.user_context or "") + collab_context
                     except Exception as e:
                         logger.debug(f"Collaboration response merge skipped: {e}")
