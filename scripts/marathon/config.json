@@ -17,7 +17,7 @@
       "requires": ["backend", "frontend"],
       "scenarios": ["02", "09", "19", "45"],
       "evaluators": ["accessibility", "heuristics", "performance"],
-      "custom_checks": ["tour_admin_10_steps", "tour_member_skip_flow", "tour_llm_poll_check", "tour_persistence_refresh", "tour_keyboard_wcag"]
+      "custom_checks": ["tour_admin_10_steps", "tour_member_skip_flow", "tour_llm_poll_check", "tour_persistence_refresh", "tour_keyboard_wcag", "interactive_suggestion_box_session_creation", "interactive_suggestion_box_streaming", "interactive_suggestion_box_reply", "interactive_suggestion_box_continue_in_chat", "notification_bell_unread_badge", "sync_toast_feedback", "api_error_extraction_validation", "ensemble_health_scrolling"]
     },
     {
       "id": "C",

@@ -32,6 +32,7 @@ import {
   BookOpen,
 } from "lucide-react";
 import { useProjectStore } from "@/stores/projectStore";
+import { useNotificationStore } from "@/stores/notificationStore";
 import DarkModeToggle from "@/components/common/DarkModeToggle";
 import UserMenu from "@/components/common/UserMenu";
 import { cn, phaseLabel } from "@/lib/utils";
@@ -40,6 +41,35 @@ interface SidebarProps {
   activeView: string;
   onViewChange: (view: string) => void;
   onSearchOpen?: () => void;
+}
+
+function NotificationBell({ onViewChange }: { onViewChange: (view: string) => void }) {
+  const { unreadCount, fetchUnreadCount } = useNotificationStore();
+
+  useEffect(() => {
+    fetchUnreadCount();
+    const interval = setInterval(fetchUnreadCount, 30_000);
+    return () => clearInterval(interval);
+  }, [fetchUnreadCount]);
+
+  return (
+    <button
+      onClick={() => onViewChange("notifications")}
+      className="relative p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 transition-colors focus:outline-none focus:ring-2 focus:ring-istara-500"
+      aria-label={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ""}`}
+      title="Notifications"
+    >
+      <Bell size={16} />
+      {unreadCount > 0 && (
+        <span
+          className="absolute -top-0.5 -right-0.5 flex items-center justify-center min-w-[14px] h-[14px] px-0.5 text-[9px] font-bold text-white bg-red-600 rounded-full"
+          aria-hidden="true"
+        >
+          {unreadCount > 99 ? "99+" : unreadCount}
+        </span>
+      )}
+    </button>
+  );
 }
 
 export default function Sidebar({ activeView, onViewChange, onSearchOpen }: SidebarProps) {
@@ -101,7 +131,6 @@ export default function Sidebar({ activeView, onViewChange, onSearchOpen }: Side
     { id: "interfaces", icon: Palette, label: "Interfaces" },
     { id: "integrations", icon: MessageSquare, label: "Integrations" },
     { id: "loops", icon: RefreshCw, label: "Loops" },
-    { id: "notifications", icon: Bell, label: "Notifications" },
     { id: "settings", icon: Settings, label: "Settings" },
   ];
 
@@ -134,6 +163,7 @@ export default function Sidebar({ activeView, onViewChange, onSearchOpen }: Side
           </div>
         )}
         <div className="flex items-center gap-1">
+          <NotificationBell onViewChange={onViewChange} />
           <DarkModeToggle />
           <button
             onClick={() => setCollapsed(!collapsed)}

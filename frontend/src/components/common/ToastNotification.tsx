@@ -201,6 +201,18 @@ export default function ToastNotification() {
 
   useWebSocket(handleEvent);
 
+  // Global toast API — any component can dispatch istara:toast to show a toast
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { type, title, message, duration, navigateTo } = (e as CustomEvent).detail || {};
+      if (title && message) {
+        addToast(type || "info", title, message, duration, navigateTo);
+      }
+    };
+    window.addEventListener("istara:toast", handler);
+    return () => window.removeEventListener("istara:toast", handler);
+  }, [addToast]);
+
   return (
     <>
       {/* Bell icon button — navigates to Notifications view */}

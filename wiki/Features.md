@@ -313,6 +313,30 @@ The Tauri v2 desktop app provides a thin GUI tray layer that delegates to `istar
 
 ---
 
+## AI Suggestion Boxes
+
+InteractiveSuggestionBox — a reusable component for inline AI conversations:
+- Creates a real chat session when suggestions are requested
+- Streams the AI response with auto-scroll
+- Quick-reply input for follow-up questions without leaving the current view
+- "Continue in Chat" link navigates to the full session in the Chat view
+- Used in Documents ("Organize") and available for Interviews and other views
+
+## Notifications
+
+- Notification bell with unread count badge in the sidebar header (next to dark mode toggle)
+- Red badge shows count (up to "99+")
+- Click navigates to the Notifications view
+- Polls for new notifications every 30 seconds
+
+## Documents Sync
+
+- Sync button scans the project folder for new files
+- Shows a toast notification with the count of files found
+- Auto-sync runs on project load to detect new files automatically
+
+---
+
 ## CalVer Versioning and Auto-Updates
 
 - Version format: `YYYY.MM.DD` (e.g., `2026.03.29`)

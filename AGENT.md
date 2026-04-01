@@ -136,7 +136,7 @@ ollama serve          # Ollama
 ## Capabilities Catalog
 
 ### Navigation Menu
-- Chat, Findings, UX Laws, Tasks, Interviews, Documents, Context, Skills, Agents, Memory, Interfaces, Integrations, Loops, Notifications, Settings, Autoresearch, Backup, Meta-Agent, Compute Pool, Ensemble Health, Metrics, History
+- Chat, Findings, UX Laws, Tasks, Interviews, Documents, Context, Skills, Agents, Memory, Interfaces, Integrations, Loops, Settings, Autoresearch, Backup, Meta-Agent, Compute Pool, Ensemble Health, Metrics, History
 
 ### Agents
 - **design-lead**: Design Lead -- Istara Interface Agent

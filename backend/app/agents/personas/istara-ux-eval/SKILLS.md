@@ -183,3 +183,10 @@
 - **Report Convergence Comprehension**: Evaluate whether researchers understand the convergence pyramid (L2 analysis, L3 synthesis, L4 final). Test: can a first-time user explain what each level means? Is the relationship between levels clear? Are transitions between levels visually communicated?
 - **Evidence Chain Navigation**: Assess whether researchers can trace a recommendation back to its source text. Measure the number of clicks from a final recommendation to the original data. Evaluate whether the navigation path is linear and predictable or requires context switching between views.
 - **Codebook Versioning UX**: Evaluate the codebook version management experience — are diffs between versions readable? Are changelogs surfaced at the right moment? Can researchers understand what changed and why without leaving their current task?
+
+### InteractiveSuggestionBox & UI Fixes UX (v2026.04.01)
+- InteractiveSuggestionBox: Keeps user in Documents while interacting with AI (Tesler's Law). "Continue in Chat" escape hatch (Flexibility). Auto-scroll maintains attention (Visibility of System Status).
+- Sync toast: Closure after action. Previously silent with no feedback.
+- Notification bell with badge: Always visible in header (Aesthetic-Usability Effect, Visibility of System Status).
+- Error messages: Human-readable (H9: Help Users Recognize and Recover from Errors). "[object Object]" was a complete failure of this heuristic.
+- EnsembleHealth scroll: Hidden content is invisible content (H1: Visibility of System Status).

@@ -34,10 +34,11 @@ import {
 } from "lucide-react";
 import { useProjectStore } from "@/stores/projectStore";
 import { useDocumentStore } from "@/stores/documentStore";
-import { documents as documentsApi, chat as chatApi } from "@/lib/api";
+import { documents as documentsApi } from "@/lib/api";
 import { cn, phaseLabel } from "@/lib/utils";
 import type { ReclawDocument, DocumentContent } from "@/lib/types";
 import ViewOnboarding from "@/components/common/ViewOnboarding";
+import InteractiveSuggestionBox from "@/components/common/InteractiveSuggestionBox";
 
 const PHASES = [
   { id: "", label: "All Phases" },
@@ -125,8 +126,7 @@ export default function DocumentsView() {
 
   const [showFilters, setShowFilters] = useState(false);
   const [syncing, setSyncing] = useState(false);
-  const [organizing, setOrganizing] = useState(false);
-  const [organizeResult, setOrganizeResult] = useState("");
+  const [showOrganize, setShowOrganize] = useState(false);
   const [previewDoc, setPreviewDoc] = useState<ReclawDocument | null>(null);
   const [previewContent, setPreviewContent] = useState<DocumentContent | null>(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
@@ -165,37 +165,30 @@ export default function DocumentsView() {
   const handleSync = async () => {
     if (!activeProjectId) return;
     setSyncing(true);
-    await syncDocuments(activeProjectId);
-    await fetchDocuments(activeProjectId);
-    await fetchTags(activeProjectId);
-    await fetchStats(activeProjectId);
+    try {
+      const count = await syncDocuments(activeProjectId);
+      await fetchDocuments(activeProjectId);
+      await fetchTags(activeProjectId);
+      await fetchStats(activeProjectId);
+      // Show feedback toast
+      window.dispatchEvent(
+        new CustomEvent("istara:toast", {
+          detail: count > 0
+            ? { type: "success", title: "Files Synced", message: `${count} new file${count !== 1 ? "s" : ""} added from project folder.` }
+            : { type: "info", title: "Sync Complete", message: "No new files found in project folder." },
+        })
+      );
+    } catch (e: any) {
+      window.dispatchEvent(
+        new CustomEvent("istara:toast", {
+          detail: { type: "warning", title: "Sync Failed", message: e.message || "Could not sync project files." },
+        })
+      );
+    }
     setSyncing(false);
   };
 
-  const handleOrganize = async () => {
-    if (!activeProjectId) return;
-    setOrganizing(true);
-    setOrganizeResult("");
-    try {
-      let result = "";
-      for await (const event of chatApi.send(
-        activeProjectId,
-        "Organize and categorize all documents in this project by type, topic, and research phase. " +
-        "Suggest a clear folder structure and tag scheme. Do NOT rename or move any files — only analyze and recommend."
-      )) {
-        if (event.type === "chunk") {
-          result += event.content;
-          setOrganizeResult(result);
-        }
-      }
-      // Refresh document list after analysis
-      await fetchDocuments(activeProjectId);
-      await fetchTags(activeProjectId);
-    } catch (e) {
-      console.error("Organize files failed:", e);
-    }
-    setOrganizing(false);
-  };
+  // handleOrganize replaced by InteractiveSuggestionBox — toggle showOrganize state
 
   const handleOpenPreview = async (doc: ReclawDocument) => {
     setPreviewDoc(doc);
@@ -331,29 +324,32 @@ export default function DocumentsView() {
               Sync
             </button>
             <button
-              onClick={handleOrganize}
-              disabled={organizing}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors disabled:opacity-50"
+              onClick={() => setShowOrganize(!showOrganize)}
+              disabled={!activeProjectId}
+              className={cn(
+                "flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm transition-colors disabled:opacity-50",
+                showOrganize
+                  ? "bg-istara-100 text-istara-700 dark:bg-istara-900/30 dark:text-istara-400"
+                  : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+              )}
               aria-label="Organize files"
+              aria-expanded={showOrganize}
               title="AI-powered document organization suggestions"
             >
-              <Wand2 size={14} className={organizing ? "animate-pulse" : ""} />
+              <Wand2 size={14} />
               Organize
             </button>
           </div>
         </div>
 
-        {/* Organize Files Result */}
-        {organizeResult && (
-          <div className="rounded-lg border border-istara-200 dark:border-istara-800 bg-istara-50 dark:bg-istara-900/20 p-4 max-h-48 overflow-y-auto">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium text-istara-700 dark:text-istara-400">Organization Suggestions</span>
-              <button onClick={() => setOrganizeResult("")} className="text-slate-400 hover:text-slate-600" aria-label="Close suggestions">
-                <X size={14} />
-              </button>
-            </div>
-            <div className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap">{organizeResult}</div>
-          </div>
+        {/* Interactive Organization Suggestions */}
+        {showOrganize && activeProjectId && (
+          <InteractiveSuggestionBox
+            projectId={activeProjectId}
+            prompt="Organize and categorize all documents in this project by type, topic, and research phase. Suggest a clear folder structure and tag scheme. Do NOT rename or move any files — only analyze and recommend."
+            title="Organization Suggestions"
+            onClose={() => setShowOrganize(false)}
+          />
         )}
 
         {/* Search bar */}

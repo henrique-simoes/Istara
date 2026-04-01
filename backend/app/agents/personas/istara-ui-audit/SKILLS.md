@@ -177,3 +177,10 @@
 - **Project Reports View**: Audit the convergence pyramid visualization — L2 (analysis), L3 (synthesis), L4 (final report) levels must be visually distinct with clear hierarchy. Verify pyramid is not color-only (text labels required for WCAG), interactive drill-down has proper focus management, and empty levels show meaningful empty states.
 - **Evidence Chain Traceability**: Audit nugget displays with source_location — verify source references are interactive links, not plain text. Check that the trace from recommendation back to source text is navigable without excessive clicks, and that source_location formatting is consistent and accessible.
 - **Confidence Indicators**: Audit confidence score displays on findings — verify indicators use text+icon (not color-only), contrast ratios meet WCAG AA, and screen readers convey confidence level semantically (e.g., via aria-valuenow on progress elements).
+
+### InteractiveSuggestionBox & UI Fixes Accessibility (v2026.04.01)
+- InteractiveSuggestionBox: `role="region"` with `aria-label`. Content area uses `aria-live="polite"`. Reply input has `aria-label="Follow-up question"`. Auto-scroll must not disorient screen readers.
+- Notification bell: `aria-label` includes unread count. Badge uses `aria-hidden="true"`. Focus ring on keyboard navigation. Size matches DarkModeToggle.
+- Toast notifications: verify announced by screen readers via `role="status"`. Toast dismiss has `aria-label`.
+- API error display: validation errors render as text, not raw objects. Adequate color contrast (WCAG 1.4.3).
+- EnsembleHealth: scrollable container is keyboard-navigable. Expanded panels remain accessible.
