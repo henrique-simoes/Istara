@@ -64,6 +64,23 @@ _is_running() {
     return 1
 }
 
+# Kill any process holding a port (cleanup stale/orphan processes)
+_free_port() {
+    local port="$1"
+    local pids
+    pids=$(lsof -ti:"$port" 2>/dev/null) || true
+    if [ -n "$pids" ]; then
+        echo "$pids" | xargs kill 2>/dev/null || true
+        sleep 0.3
+        # Force kill if still alive
+        pids=$(lsof -ti:"$port" 2>/dev/null) || true
+        if [ -n "$pids" ]; then
+            echo "$pids" | xargs kill -9 2>/dev/null || true
+            sleep 0.2
+        fi
+    fi
+}
+
 _status() {
     echo ""
     echo -e "${CYAN}═══ Istara Status ═══${NC}"
@@ -105,6 +122,10 @@ _start() {
     if _is_running "$BACKEND_PID_FILE"; then
         echo -e "  Backend:  ${YELLOW}already running${NC} (PID $(cat "$BACKEND_PID_FILE"))"
     else
+        # Free port if held by a stale/orphan process
+        if lsof -ti:$BACKEND_PORT >/dev/null 2>&1; then
+            _free_port $BACKEND_PORT
+        fi
         local PYTHON; PYTHON=$(_find_python)
         if [ ! -x "$ROOT/venv/bin/python" ] && [ ! -x "$ROOT/venv/bin/python3" ]; then
             echo -e "\r  Backend:  ${RED}✗ venv not found${NC}  — run the installer first"
@@ -163,6 +184,10 @@ _start() {
     if _is_running "$FRONTEND_PID_FILE"; then
         echo -e "  Frontend: ${YELLOW}already running${NC} (PID $(cat "$FRONTEND_PID_FILE"))"
     else
+        # Free port if held by a stale/orphan process
+        if lsof -ti:$FRONTEND_PORT >/dev/null 2>&1; then
+            _free_port $FRONTEND_PORT
+        fi
         local NPM; NPM=$(_find_npm)
         echo -n "  Frontend: starting..."
         cd "$ROOT/frontend"
