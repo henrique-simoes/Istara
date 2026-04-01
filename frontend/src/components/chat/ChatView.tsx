@@ -1,13 +1,15 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Send, Paperclip, Loader2, StopCircle, Upload, User, Settings2, Bot, Zap, ChevronDown, HelpCircle, X, AlertTriangle } from "lucide-react";
+import { Send, Paperclip, Loader2, StopCircle, Upload, User, Settings2, Bot, Zap, ChevronDown, HelpCircle, X, AlertTriangle, FolderOpen, FileText } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { useChatStore } from "@/stores/chatStore";
 import { useProjectStore } from "@/stores/projectStore";
 import { useSessionStore } from "@/stores/sessionStore";
 import { useAgentStore } from "@/stores/agentStore";
 import { cn, formatDate } from "@/lib/utils";
-import { files as filesApi } from "@/lib/api";
+import { files as filesApi, documents as documentsApi } from "@/lib/api";
 import { ChatSkeleton } from "@/components/common/LoadingSkeleton";
 import ViewOnboarding from "@/components/common/ViewOnboarding";
 import ChatSessionsSidebar from "./ChatSessionsSidebar";
@@ -338,6 +340,12 @@ export default function ChatView() {
   const [input, setInput] = useState("");
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const [showDocPicker, setShowDocPicker] = useState(false);
+  const [pickerDocs, setPickerDocs] = useState<{ id: string; title: string }[]>([]);
+  const [pickerSearch, setPickerSearch] = useState("");
+  const [pickerLoading, setPickerLoading] = useState(false);
+  const [pendingDocRefs, setPendingDocRefs] = useState<{ id: string; title: string }[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -369,30 +377,98 @@ export default function ChatView() {
     }
   }, [pendingPrefill, activeProjectId, activeSessionId, streaming, loadingHistory, setPendingPrefill, sendMessage]);
 
-  const handleSend = () => {
-    if (!input.trim() || !activeProjectId || streaming) return;
-    sendMessage(activeProjectId, input.trim(), activeSessionId || undefined);
+  const handleSend = async () => {
+    const text = input.trim();
+    const files = [...pendingFiles];
+    const docRefs = [...pendingDocRefs];
+    if ((!text && files.length === 0 && docRefs.length === 0) || !activeProjectId || streaming) return;
+
     setInput("");
-  };
+    setPendingFiles([]);
+    setPendingDocRefs([]);
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !activeProjectId) return;
-
-    try {
-      const result = await filesApi.upload(activeProjectId, file);
-      // Show confirmation in chat
-      await sendMessage(
-        activeProjectId,
-        `I just uploaded "${file.name}" (${result.chunks_indexed} chunks indexed). Can you analyze it?`,
-        activeSessionId || undefined,
-      );
-    } catch (err) {
-      console.error("Upload failed:", err);
+    // Upload pending files first, collect names
+    const uploadedNames: string[] = [];
+    for (const file of files) {
+      try {
+        const result = await filesApi.upload(activeProjectId, file);
+        uploadedNames.push(`${file.name} (${result.chunks_indexed} chunks indexed)`);
+      } catch (err) {
+        console.error("Upload failed:", err);
+        uploadedNames.push(`${file.name} (upload failed)`);
+      }
     }
 
-    // Reset input
+    // Build message with attachment context
+    let message = text;
+    if (uploadedNames.length > 0) {
+      const fileList = uploadedNames.join(", ");
+      message = text
+        ? `${text}\n\n[Attached files: ${fileList}]`
+        : `I uploaded: ${fileList}. Please analyze.`;
+    }
+    if (docRefs.length > 0) {
+      const refList = docRefs.map((d) => d.title).join(", ");
+      message = message
+        ? `${message}\n\n[Referenced project documents: ${refList}]`
+        : `Please analyze these project documents: ${refList}`;
+    }
+
+    sendMessage(activeProjectId, message, activeSessionId || undefined);
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+    setPendingFiles((prev) => [...prev, ...Array.from(files)]);
     if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const removePendingFile = (index: number) => {
+    setPendingFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const removePendingDocRef = (id: string) => {
+    setPendingDocRefs((prev) => prev.filter((d) => d.id !== id));
+  };
+
+  // Document picker
+  const openDocPicker = async () => {
+    if (!activeProjectId) return;
+    setShowDocPicker(true);
+    setPickerLoading(true);
+    try {
+      const data = await documentsApi.list({ project_id: activeProjectId, page_size: 50 });
+      setPickerDocs(data.documents || []);
+    } catch {
+      setPickerDocs([]);
+    }
+    setPickerLoading(false);
+  };
+
+  const searchDocs = async (query: string) => {
+    setPickerSearch(query);
+    if (!activeProjectId) return;
+    if (!query.trim()) {
+      openDocPicker();
+      return;
+    }
+    setPickerLoading(true);
+    try {
+      const data = await documentsApi.list({ project_id: activeProjectId, search: query.trim(), page_size: 30 });
+      setPickerDocs(data.documents || []);
+    } catch {
+      setPickerDocs([]);
+    }
+    setPickerLoading(false);
+  };
+
+  const selectDocRef = (doc: { id: string; title: string }) => {
+    if (!pendingDocRefs.find((d) => d.id === doc.id)) {
+      setPendingDocRefs((prev) => [...prev, doc]);
+    }
+    setShowDocPicker(false);
+    setPickerSearch("");
   };
 
   if (!activeProjectId) {
@@ -495,7 +571,13 @@ export default function ChatView() {
                       : "bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-bl-md"
                   )}
                 >
-                  <div className="whitespace-pre-wrap text-sm">{msg.content}</div>
+                  {msg.role === "user" ? (
+                    <div className="whitespace-pre-wrap text-sm">{msg.content}</div>
+                  ) : (
+                    <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5 prose-pre:my-2 prose-code:text-xs">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+                    </div>
+                  )}
                   {msg.sources && msg.sources.length > 0 && (
                     <div className="mt-2 pt-2 border-t border-slate-200 dark:border-slate-700">
                       <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Sources:</p>
@@ -528,8 +610,8 @@ export default function ChatView() {
               <div className="flex-1 min-w-0">
                 <p className="text-xs text-slate-500 dark:text-slate-400 mb-1 px-1 font-medium">{streamAgentName}</p>
                 <div className="rounded-2xl rounded-bl-md px-4 py-3 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100">
-                  <div className="whitespace-pre-wrap text-sm streaming-cursor">
-                    {streamingContent}
+                  <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5 prose-pre:my-2 prose-code:text-xs streaming-cursor">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{streamingContent}</ReactMarkdown>
                   </div>
                 </div>
               </div>
@@ -582,53 +664,121 @@ export default function ChatView() {
 
         {/* Input */}
         <div className="border-t border-slate-200 dark:border-slate-800 p-4">
-          <div className="flex items-end gap-2 max-w-3xl mx-auto">
-            <input
-              ref={fileInputRef}
-              type="file"
-              className="hidden"
-              accept=".pdf,.docx,.txt,.csv,.md"
-              onChange={handleFileUpload}
-            />
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="p-2.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-              title="Upload file"
-              aria-label="Upload file"
-            >
-              <Paperclip size={20} />
-            </button>
+          <div className="max-w-3xl mx-auto">
+            {/* Pending file chips */}
+            {(pendingFiles.length > 0 || pendingDocRefs.length > 0) && (
+              <div className="flex flex-wrap gap-1.5 mb-2">
+                {pendingFiles.map((f, i) => (
+                  <span key={`file-${i}`} className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-istara-50 dark:bg-istara-900/20 text-istara-700 dark:text-istara-300 border border-istara-200 dark:border-istara-800 rounded-lg">
+                    <Paperclip size={10} />
+                    {f.name}
+                    <button onClick={() => removePendingFile(i)} className="ml-0.5 text-slate-400 hover:text-red-500" aria-label={`Remove ${f.name}`}><X size={10} /></button>
+                  </span>
+                ))}
+                {pendingDocRefs.map((d) => (
+                  <span key={`doc-${d.id}`} className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 rounded-lg">
+                    <FileText size={10} />
+                    {d.title}
+                    <button onClick={() => removePendingDocRef(d.id)} className="ml-0.5 text-slate-400 hover:text-red-500" aria-label={`Remove ${d.title}`}><X size={10} /></button>
+                  </span>
+                ))}
+              </div>
+            )}
 
-            <div className="flex-1 relative">
-              <textarea
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSend();
-                  }
-                }}
-                placeholder="Ask about your research, or drop files here..."
-                rows={1}
-                className="w-full resize-none rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-istara-500 focus:border-transparent"
-                style={{ minHeight: "44px", maxHeight: "120px" }}
+            <div className="flex items-end gap-2">
+              <input
+                ref={fileInputRef}
+                type="file"
+                className="hidden"
+                accept=".pdf,.docx,.txt,.csv,.md,.mp3,.wav,.mp4,.mov,.jpg,.jpeg,.png"
+                multiple
+                onChange={handleFileSelect}
               />
-            </div>
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="p-2.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                title="Upload file"
+                aria-label="Upload file"
+              >
+                <Paperclip size={20} />
+              </button>
+              <button
+                onClick={openDocPicker}
+                className="p-2.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                title="Attach project document"
+                aria-label="Attach project document"
+              >
+                <FolderOpen size={20} />
+              </button>
 
-            <button
-              onClick={handleSend}
-              disabled={!input.trim() || streaming}
+              <div className="flex-1 relative">
+                <textarea
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSend();
+                    }
+                  }}
+                  placeholder="Ask about your research, or drop files here..."
+                  rows={1}
+                  className="w-full resize-none rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-istara-500 focus:border-transparent"
+                  style={{ minHeight: "44px", maxHeight: "120px" }}
+                />
+              </div>
+
+              <button
+                onClick={handleSend}
+                disabled={!input.trim() && pendingFiles.length === 0 && pendingDocRefs.length === 0 || streaming}
               aria-label="Send message"
               className={cn(
                 "p-2.5 rounded-lg transition-colors",
-                input.trim() && !streaming
+                (input.trim() || pendingFiles.length > 0 || pendingDocRefs.length > 0) && !streaming
                   ? "bg-istara-600 text-white hover:bg-istara-700"
                   : "bg-slate-200 dark:bg-slate-700 text-slate-400 cursor-not-allowed"
               )}
             >
               <Send size={20} />
             </button>
+          </div>
+
+          {/* Document picker modal */}
+          {showDocPicker && (
+            <div className="mt-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg p-3 max-h-64 overflow-hidden flex flex-col">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-medium text-slate-700 dark:text-slate-300">Attach from Project</span>
+                <button onClick={() => { setShowDocPicker(false); setPickerSearch(""); }} className="text-slate-400 hover:text-slate-600" aria-label="Close picker"><X size={14} /></button>
+              </div>
+              <input
+                type="text"
+                placeholder="Search documents..."
+                value={pickerSearch}
+                onChange={(e) => searchDocs(e.target.value)}
+                className="w-full px-2.5 py-1.5 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 mb-2 focus:outline-none focus:ring-2 focus:ring-istara-500"
+                autoFocus
+                aria-label="Search project documents"
+              />
+              <div className="flex-1 overflow-y-auto space-y-0.5">
+                {pickerLoading ? (
+                  <p className="text-xs text-slate-400 text-center py-4">Loading...</p>
+                ) : pickerDocs.length === 0 ? (
+                  <p className="text-xs text-slate-400 text-center py-4">No documents found</p>
+                ) : (
+                  pickerDocs.map((doc) => (
+                    <button
+                      key={doc.id}
+                      onClick={() => selectDocRef(doc)}
+                      className="w-full text-left px-2.5 py-1.5 rounded-lg text-sm hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-2 text-slate-700 dark:text-slate-300"
+                    >
+                      <FileText size={14} className="text-purple-500 flex-shrink-0" />
+                      <span className="truncate">{doc.title || "Untitled"}</span>
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
           </div>
         </div>
       </div>

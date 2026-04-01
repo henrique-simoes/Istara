@@ -1,6 +1,6 @@
 {
   "name": "istara-frontend",
-  "version": "2026.04.01.2",
+  "version": "2026.04.01.3",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -26,6 +26,8 @@
     "next": "14.2.0",
     "react": "^18.3.0",
     "react-dom": "^18.3.0",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1",
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7",
     "zustand": "^5.0.0"
