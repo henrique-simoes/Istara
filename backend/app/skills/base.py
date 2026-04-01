@@ -153,13 +153,24 @@ class BaseSkill(ABC):
             if not nugget.get("tags"):
                 warnings.append(f"Nugget missing tags/codes: '{text[:50]}...'")
 
-        # Evidence chain: insights should reference facts or have supporting evidence
+        # Evidence chain integrity
         if output.insights and not output.facts and not output.nuggets:
             warnings.append("Insights generated without supporting nuggets or facts (broken evidence chain).")
-
-        # Recommendations without insights
         if output.recommendations and not output.insights:
             warnings.append("Recommendations generated without supporting insights (broken evidence chain).")
+
+        # Confidence score bounds
+        for finding_type in ["nuggets", "facts", "insights", "recommendations"]:
+            for f in getattr(output, finding_type, []):
+                conf = f.get("confidence")
+                if conf is not None and isinstance(conf, (int, float)):
+                    if conf < 0 or conf > 1:
+                        warnings.append(f"{finding_type} has invalid confidence {conf} (must be 0-1): '{f.get('text', '')[:40]}...'")
+
+        # Source attribution on facts and insights
+        for fact in output.facts:
+            if not fact.get("nugget_ids") and not fact.get("source"):
+                warnings.append(f"Fact has no source or nugget link: '{fact.get('text', '')[:50]}...'")
 
         return warnings
 

@@ -58,6 +58,23 @@ class SubAgentWorker:
     async def _check_and_execute(self) -> None:
         """Check for tasks assigned to this agent and execute them."""
         async with async_session() as db:
+            # Process A2A inbox before looking for tasks
+            try:
+                from app.services.a2a import get_messages, mark_read
+                from app.core.rag import retrieve_context
+                messages = await get_messages(self._agent_id, unread_only=True, limit=3)
+                for msg in messages:
+                    if msg.message_type == "collaboration_request":
+                        metadata = msg.metadata if isinstance(msg.metadata, dict) else {}
+                        task_id = metadata.get("task_id")
+                        if task_id:
+                            task_obj = await db.get(Task, task_id)
+                            if task_obj:
+                                logger.info(f"SubAgent {self._agent_id} processing A2A for task {task_id}")
+                    await mark_read(msg.id)
+            except Exception as e:
+                logger.debug(f"SubAgent A2A check skipped: {e}")
+
             priority_order = case(
                 (Task.priority == "critical", 0),
                 (Task.priority == "high", 1),
