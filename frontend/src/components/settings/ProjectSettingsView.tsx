@@ -88,6 +88,10 @@ export default function ProjectSettingsView() {
   const [showDelete, setShowDelete] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState("");
 
+  // Link folder
+  const [folderInput, setFolderInput] = useState("");
+  const [linkingFolder, setLinkingFolder] = useState(false);
+
   // Fetch metrics
   useEffect(() => {
     if (!activeProjectId) return;
@@ -433,18 +437,76 @@ export default function ProjectSettingsView() {
           </h3>
           {project.watch_folder_path ? (
             <div className="flex items-center justify-between">
-              <code className="text-sm text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-900 px-2 py-1 rounded">{project.watch_folder_path}</code>
+              <code className="text-sm text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-900 px-2 py-1 rounded truncate">{project.watch_folder_path}</code>
               {isAdmin && (
                 <button
-                  onClick={() => updateProject(activeProjectId!, { watch_folder_path: null })}
-                  className="text-xs text-red-500 hover:text-red-600"
+                  onClick={async () => {
+                    await fetch(`${API_BASE}/api/projects/${activeProjectId}/unlink-folder`, { method: "POST", headers: { "Content-Type": "application/json", ..._authHeaders() } });
+                    await updateProject(activeProjectId!, { watch_folder_path: null });
+                    window.dispatchEvent(new CustomEvent("istara:toast", { detail: { type: "info", title: "Folder Unlinked", message: "Project folder has been unlinked." } }));
+                  }}
+                  className="text-xs text-red-500 hover:text-red-600 ml-2 flex-shrink-0"
                 >
                   Unlink
                 </button>
               )}
             </div>
+          ) : isAdmin ? (
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={folderInput}
+                onChange={(e) => setFolderInput(e.target.value)}
+                placeholder="e.g., /Users/you/Research/ProjectFiles"
+                className="flex-1 px-2.5 py-1.5 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-istara-500"
+                onKeyDown={(e) => e.key === "Enter" && folderInput.trim() && !linkingFolder && (async () => {
+                  setLinkingFolder(true);
+                  try {
+                    const res = await fetch(`${API_BASE}/api/projects/${activeProjectId}/link-folder`, {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json", ..._authHeaders() },
+                      body: JSON.stringify({ folder_path: folderInput.trim() }),
+                    });
+                    if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.detail || "Failed to link folder"); }
+                    const data = await res.json();
+                    await updateProject(activeProjectId!, { watch_folder_path: data.watch_folder_path });
+                    setFolderInput("");
+                    window.dispatchEvent(new CustomEvent("istara:toast", { detail: { type: "success", title: "Folder Linked", message: `Watching ${data.watch_folder_path}` } }));
+                  } catch (err: any) {
+                    window.dispatchEvent(new CustomEvent("istara:toast", { detail: { type: "warning", title: "Link Failed", message: err.message || "Could not link folder." } }));
+                  }
+                  setLinkingFolder(false);
+                })()}
+                aria-label="Folder path"
+              />
+              <button
+                onClick={async () => {
+                  if (!folderInput.trim() || linkingFolder) return;
+                  setLinkingFolder(true);
+                  try {
+                    const res = await fetch(`${API_BASE}/api/projects/${activeProjectId}/link-folder`, {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json", ..._authHeaders() },
+                      body: JSON.stringify({ folder_path: folderInput.trim() }),
+                    });
+                    if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.detail || "Failed to link folder"); }
+                    const data = await res.json();
+                    await updateProject(activeProjectId!, { watch_folder_path: data.watch_folder_path });
+                    setFolderInput("");
+                    window.dispatchEvent(new CustomEvent("istara:toast", { detail: { type: "success", title: "Folder Linked", message: `Watching ${data.watch_folder_path}` } }));
+                  } catch (err: any) {
+                    window.dispatchEvent(new CustomEvent("istara:toast", { detail: { type: "warning", title: "Link Failed", message: err.message || "Could not link folder." } }));
+                  }
+                  setLinkingFolder(false);
+                }}
+                disabled={!folderInput.trim() || linkingFolder}
+                className="px-3 py-1.5 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700 disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0"
+              >
+                {linkingFolder ? "Linking..." : "Link Folder"}
+              </button>
+            </div>
           ) : (
-            <p className="text-sm text-slate-400">No folder linked. Link a folder in the onboarding tour or via the API.</p>
+            <p className="text-sm text-slate-400">No folder linked. Ask an admin to link a project folder.</p>
           )}
         </div>
 
