@@ -141,7 +141,7 @@ export default function Sidebar({ activeView, onViewChange, onSearchOpen }: Side
     { id: "meta-hyperagent", icon: Sparkles, label: "Meta-Agent" },
     { id: "compute", icon: Server, label: "Compute Pool" },
     { id: "ensemble", icon: Activity, label: "Ensemble Health" },
-    { id: "metrics", icon: BarChart3, label: "Metrics" },
+    { id: "project-settings", icon: Settings, label: "Project Settings" },
     { id: "history", icon: History, label: "History" },
   ];
 
