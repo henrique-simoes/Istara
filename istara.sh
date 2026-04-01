@@ -312,9 +312,11 @@ _update() {
     _stop 2>/dev/null
     echo -e "\r  ${GREEN}✓${NC} Services stopped"
 
-    # Pull latest code
+    # Pull latest code (discard local changes — update replaces everything)
     echo -n "  Pulling latest code..."
     cd "$ROOT"
+    git checkout -- . 2>/dev/null || true
+    git clean -fd 2>/dev/null || true
     git pull --ff-only 2>/dev/null || git pull 2>/dev/null || {
         echo -e "\r  ${RED}✗ git pull failed${NC}"
         exit 1
