@@ -13,6 +13,7 @@ export interface Project {
   guardrails: string;
   is_paused: boolean;
   owner_id: string;
+  watch_folder_path: string | null;
   created_at: string;
   updated_at: string;
 }

@@ -8,7 +8,7 @@ import ChatView from "@/components/chat/ChatView";
 import KanbanBoard from "@/components/kanban/KanbanBoard";
 import FindingsView from "@/components/findings/FindingsView";
 import InterviewView from "@/components/interviews/InterviewView";
-import MetricsView from "@/components/metrics/MetricsView";
+import ProjectSettingsView from "@/components/settings/ProjectSettingsView";
 import ContextEditor from "@/components/projects/ContextEditor";
 import VersionHistory from "@/components/common/VersionHistory";
 import SettingsView from "@/components/common/SettingsView";
@@ -43,7 +43,7 @@ import { settings as settingsApi } from "@/lib/api";
 const VIEW_STORAGE_KEY = "istara_active_view";
 const VIEW_NAMES: Record<string, string> = {
   chat: "Chat", findings: "Findings", tasks: "Tasks", laws: "UX Laws",
-  interviews: "Interviews", documents: "Documents", metrics: "Metrics",
+  interviews: "Interviews", documents: "Documents", "project-settings": "Project Settings",
   context: "Context", skills: "Skills", agents: "Agents", memory: "Memory",
   interfaces: "Interfaces", integrations: "Integrations", loops: "Loops",
   notifications: "Notifications", backup: "Backup", "meta-hyperagent": "Meta-Agent",
@@ -223,7 +223,7 @@ export default function HomeClient() {
   // Views that require an active project to show meaningful content
   const PROJECT_REQUIRED_VIEWS = new Set([
     "chat", "tasks", "findings", "laws", "interviews", "documents",
-    "metrics", "context", "loops", "memory", "history", "interfaces",
+    "project-settings", "context", "loops", "memory", "history", "interfaces",
     "autoresearch", "backup",
   ]);
 
@@ -250,7 +250,7 @@ export default function HomeClient() {
       case "laws": return <LawsView />;
       case "interviews": return <InterviewView />;
       case "documents": return <DocumentsView />;
-      case "metrics": return <MetricsView />;
+      case "project-settings": return <ProjectSettingsView />;
       case "context": return <ContextEditor />;
       case "skills": return <SkillsView />;
       case "agents": return <AgentsView />;

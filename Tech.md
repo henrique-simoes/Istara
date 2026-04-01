@@ -1210,6 +1210,29 @@ The ensemble validation framework (5 methods: Self-MoA, Dual Run, Adversarial Re
 
 **Files:** `backend/app/core/agent.py`, `backend/app/core/validation.py`, `backend/app/core/adaptive_validation.py`, `backend/app/core/consensus.py`, `backend/app/core/file_processor.py`
 
+## Project Settings (formerly Metrics)
+
+The Metrics view has been replaced with a comprehensive Project Settings view (`frontend/src/components/settings/ProjectSettingsView.tsx`). Combines project management with research metrics in a single scrollable page.
+
+**Sections:**
+1. **Project Header**: Inline-editable project name (pencil icon), phase badge, Pause/Resume toggle (admin only)
+2. **Research Metrics**: All original MetricsView content — finding counts, atomic research breakdown, Double Diamond phase coverage, task completion circular progress
+3. **Team Access** (team mode only): Per-project member management with `ProjectMember` model. Add server users to projects, set project-level roles (admin/member/viewer), view last active time, remove members
+4. **Linked Folder**: Shows the watch folder path with unlink action
+5. **Danger Zone**: Export project + Delete with type-name-to-confirm safety
+
+**Data Model:** `ProjectMember` table (project_id, user_id, role, added_by, last_active) with FK cascade delete to projects. Separate from server-level user roles — a user can be "admin" on the server but "viewer" on a specific project.
+
+**API Endpoints:**
+- `GET /projects/{id}/members` — list with user info enrichment
+- `POST /projects/{id}/members` — add (admin only, user must exist on server)
+- `DELETE /projects/{id}/members/{user_id}` — remove
+- `PATCH /projects/{id}/members/{user_id}` — change project role
+
+**Navigation:** Moved from secondary nav ("More") to secondary nav as "Project Settings" with Settings icon. Requires active project.
+
+**Files:** `frontend/src/components/settings/ProjectSettingsView.tsx`, `backend/app/models/project_member.py`, `backend/app/api/routes/projects.py`, `frontend/src/components/layout/Sidebar.tsx`, `frontend/src/components/layout/HomeClient.tsx`
+
 ## Guided Onboarding Tour
 
 Replaces the old modal OnboardingWizard with an in-app guided tour that navigates through real views.

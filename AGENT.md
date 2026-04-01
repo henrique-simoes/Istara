@@ -136,7 +136,7 @@ ollama serve          # Ollama
 ## Capabilities Catalog
 
 ### Navigation Menu
-- Chat, Findings, UX Laws, Tasks, Interviews, Documents, Context, Skills, Agents, Memory, Interfaces, Integrations, Loops, Settings, Autoresearch, Backup, Meta-Agent, Compute Pool, Ensemble Health, Metrics, History
+- Chat, Findings, UX Laws, Tasks, Interviews, Documents, Context, Skills, Agents, Memory, Interfaces, Integrations, Loops, Settings, Autoresearch, Backup, Meta-Agent, Compute Pool, Ensemble Health, Project Settings, History
 
 ### Agents
 - **design-lead**: Design Lead -- Istara Interface Agent
@@ -153,7 +153,7 @@ ollama serve          # Ollama
 - **Discover**: Accessibility Audit, Analytics Review, Channel Research Deployment, Competitive Analysis, Contextual Inquiry, Desk Research, Diary Studies, Field Studies, Interview Question Generator, Stakeholder Interviews, Survey Ai Detection, Survey Design, Survey Generator, User Interviews
 
 ### Data Models
-- Agent, A2AMessage, AgentLoopConfig, AutoresearchExperiment, BackupRecord, ChannelConversation, ChannelInstance, ChannelMessage, CodeApplication, Codebook, Code, CodebookVersion, ContextDAGNode, DesignScreen, DesignBrief, DesignDecision, Document, Nugget, Fact, Insight, Recommendation, LLMServer, LoopExecution, MCPAccessPolicy, MCPAuditEntry, MCPServerConfig, Message, MethodMetric, ModelSkillStats, Notification, NotificationPreference, Project, ProjectReport, ResearchDeployment, ChatSession, SurveyIntegration, SurveyLink, Task, User
+- Agent, A2AMessage, AgentLoopConfig, AutoresearchExperiment, BackupRecord, ChannelConversation, ChannelInstance, ChannelMessage, CodeApplication, Codebook, Code, CodebookVersion, ContextDAGNode, DesignScreen, DesignBrief, DesignDecision, Document, Nugget, Fact, Insight, Recommendation, LLMServer, LoopExecution, MCPAccessPolicy, MCPAuditEntry, MCPServerConfig, Message, MethodMetric, ModelSkillStats, Notification, NotificationPreference, Project, ProjectMember, ProjectReport, ResearchDeployment, ChatSession, SurveyIntegration, SurveyLink, Task, User
 
 ### MCP Server Tools
 - `list_skills()`
@@ -165,7 +165,7 @@ ollama serve          # Ollama
 - `create_project()`
 - `deploy_research()`
 
-### API Endpoints (338 total)
+### API Endpoints (342 total)
 Run `python scripts/update_agent_md.py --verbose` for full list.
 
 <!-- CAPABILITIES_END -->

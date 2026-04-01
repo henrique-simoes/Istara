@@ -431,3 +431,156 @@ To import this project back into Istara, use the import feature or copy the file
         "path": str(export_dir),
         "files_count": len(list(export_dir.rglob("*"))),
     }
+
+
+# ── Project Members ──────────────────────────────────────────────────
+
+
+class AddMemberRequest(BaseModel):
+    user_id: str
+    role: str = "member"  # admin | member | viewer
+
+
+class UpdateMemberRoleRequest(BaseModel):
+    role: str
+
+
+@router.get("/projects/{project_id}/members")
+async def list_project_members(project_id: str, db: AsyncSession = Depends(get_db)):
+    """List all members of a project with their last active time."""
+    from app.models.project_member import ProjectMember
+    from app.models.user import User
+
+    result = await db.execute(
+        select(ProjectMember).where(ProjectMember.project_id == project_id)
+    )
+    members = result.scalars().all()
+
+    # Enrich with user info
+    user_ids = [m.user_id for m in members]
+    users_result = await db.execute(select(User).where(User.id.in_(user_ids)))
+    users_by_id = {u.id: u for u in users_result.scalars().all()}
+
+    return {
+        "members": [
+            {
+                **m.to_dict(),
+                "username": users_by_id[m.user_id].username if m.user_id in users_by_id else "unknown",
+                "email": users_by_id[m.user_id].email if m.user_id in users_by_id else "",
+                "display_name": getattr(users_by_id.get(m.user_id), "display_name", "") or "",
+            }
+            for m in members
+        ]
+    }
+
+
+@router.post("/projects/{project_id}/members")
+async def add_project_member(
+    project_id: str, data: AddMemberRequest, request: Request, db: AsyncSession = Depends(get_db)
+):
+    """Add a server user to this project. Admin only."""
+    from app.core.security_middleware import require_admin_from_request
+    from app.models.project_member import ProjectMember
+    from app.models.user import User
+
+    require_admin_from_request(request)
+
+    # Verify project exists
+    project = await db.get(Project, project_id)
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    # Verify user exists on this server
+    user = await db.get(User, data.user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found on this server")
+
+    # Check not already a member
+    existing = await db.execute(
+        select(ProjectMember).where(
+            ProjectMember.project_id == project_id,
+            ProjectMember.user_id == data.user_id,
+        )
+    )
+    if existing.scalar_one_or_none():
+        raise HTTPException(status_code=409, detail="User is already a member of this project")
+
+    # Get current user ID for added_by
+    current_user_id = ""
+    try:
+        from app.core.auth import get_user_from_request
+        current_user = get_user_from_request(request)
+        current_user_id = current_user.get("sub", "") if current_user else ""
+    except Exception:
+        pass
+
+    member = ProjectMember(
+        id=str(uuid.uuid4()),
+        project_id=project_id,
+        user_id=data.user_id,
+        role=data.role,
+        added_by=current_user_id,
+    )
+    db.add(member)
+    await db.commit()
+
+    return {"added": True, "member_id": member.id, "user_id": data.user_id, "role": data.role}
+
+
+@router.delete("/projects/{project_id}/members/{user_id}")
+async def remove_project_member(
+    project_id: str, user_id: str, request: Request, db: AsyncSession = Depends(get_db)
+):
+    """Remove a user from a project. Admin only."""
+    from app.core.security_middleware import require_admin_from_request
+    from app.models.project_member import ProjectMember
+
+    require_admin_from_request(request)
+
+    result = await db.execute(
+        select(ProjectMember).where(
+            ProjectMember.project_id == project_id,
+            ProjectMember.user_id == user_id,
+        )
+    )
+    member = result.scalar_one_or_none()
+    if not member:
+        raise HTTPException(status_code=404, detail="Member not found in this project")
+
+    await db.delete(member)
+    await db.commit()
+
+    return {"removed": True, "user_id": user_id}
+
+
+@router.patch("/projects/{project_id}/members/{user_id}")
+async def update_member_role(
+    project_id: str,
+    user_id: str,
+    data: UpdateMemberRoleRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Change a member's project-level role. Admin only."""
+    from app.core.security_middleware import require_admin_from_request
+    from app.models.project_member import ProjectMember
+
+    require_admin_from_request(request)
+
+    if data.role not in ("admin", "member", "viewer"):
+        raise HTTPException(status_code=400, detail="Role must be admin, member, or viewer")
+
+    result = await db.execute(
+        select(ProjectMember).where(
+            ProjectMember.project_id == project_id,
+            ProjectMember.user_id == user_id,
+        )
+    )
+    member = result.scalar_one_or_none()
+    if not member:
+        raise HTTPException(status_code=404, detail="Member not found in this project")
+
+    member.role = data.role
+    await db.commit()
+
+    return {"updated": True, "user_id": user_id, "role": data.role}
