@@ -125,7 +125,13 @@
         "tray_check_updates_three_tier",
         "tray_update_shows_result_dialog",
         "tray_health_loop_state_change_rebuild",
-        "tray_ansi_strip_from_script_output"
+        "tray_ansi_strip_from_script_output",
+        "llm_server_api_key_add",
+        "llm_server_auth_error_display",
+        "llm_server_health_error_feedback",
+        "tour_waits_for_backend_health",
+        "tour_skip_persists_localstorage",
+        "relay_llm_api_key_passthrough"
       ]
     }
   ],

@@ -46,6 +46,13 @@ async def list_llm_servers(db: AsyncSession = Depends(get_db)):
     from app.core.llm_router import llm_router
     router_status = llm_router.list_servers()
 
+    # Get live health error from compute registry nodes
+    from app.core.compute_registry import compute_registry
+    node_errors = {}
+    for nid, node in compute_registry._nodes.items():
+        if hasattr(node, "health_error") and node.health_error:
+            node_errors[nid] = node.health_error
+
     return {
         "servers": [
             {
@@ -61,6 +68,7 @@ async def list_llm_servers(db: AsyncSession = Depends(get_db)):
                 "last_latency_ms": s.last_latency_ms,
                 "last_health_check": s.last_health_check.isoformat() if s.last_health_check else None,
                 "capabilities": json.loads(s.capabilities) if s.capabilities else {},
+                "health_error": node_errors.get(s.id, ""),
             }
             for s in servers
         ],
@@ -140,9 +148,18 @@ async def health_check_server(server_id: str, db: AsyncSession = Depends(get_db)
         server.last_health_check = datetime.now(timezone.utc)
         server.last_latency_ms = router_server.last_latency_ms
         await db.commit()
-        return {"server_id": server_id, "healthy": healthy, "latency_ms": router_server.last_latency_ms}
+        # Get health error from the compute node
+        from app.core.compute_registry import compute_registry
+        node = compute_registry._nodes.get(server_id)
+        health_error = getattr(node, "health_error", "") if node else ""
+        return {
+            "server_id": server_id,
+            "healthy": healthy,
+            "latency_ms": router_server.last_latency_ms,
+            "health_error": health_error,
+        }
 
-    return {"server_id": server_id, "healthy": False, "error": "Server not registered in router"}
+    return {"server_id": server_id, "healthy": False, "health_error": "Server not registered in router"}
 
 
 @router.patch("/llm-servers/{server_id}")
