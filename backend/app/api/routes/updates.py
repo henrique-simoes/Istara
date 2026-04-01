@@ -317,6 +317,10 @@ if [ -f istara.sh ]; then
     ./istara.sh stop 2>/dev/null || true
 fi
 
+# Discard local changes (update replaces everything)
+git checkout -- . 2>/dev/null || true
+git clean -fd 2>/dev/null || true
+
 # Pull latest code
 git pull --ff-only 2>/dev/null || git pull
 
