@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Cpu, HardDrive, Monitor, Wifi, WifiOff, RefreshCw, Plus, Server, Trash2, Users } from "lucide-react";
+import { Cpu, HardDrive, Monitor, Wifi, WifiOff, RefreshCw, Plus, Server, Trash2, Users, Lock } from "lucide-react";
 import { settings as settingsApi, llmServers } from "@/lib/api";
 import type { HardwareInfo, ModelRecommendation } from "@/lib/types";
 import { useAuthStore } from "@/stores/authStore";
@@ -371,6 +371,8 @@ function LLMServersSection() {
   const [newName, setNewName] = useState("");
   const [newHost, setNewHost] = useState("");
   const [newType, setNewType] = useState("openai_compat");
+  const [newApiKey, setNewApiKey] = useState("");
+  const [addError, setAddError] = useState<string | null>(null);
 
   const fetchServers = async () => {
     try {
@@ -385,18 +387,33 @@ function LLMServersSection() {
 
   const handleAdd = async () => {
     if (!newName.trim() || !newHost.trim()) return;
+    setAddError(null);
     try {
-      await llmServers.add({
+      const result = await llmServers.add({
         name: newName.trim(),
         provider_type: newType,
         host: newHost.trim(),
+        api_key: newApiKey.trim() || undefined,
       });
       setNewName("");
       setNewHost("");
+      setNewApiKey("");
       setShowAdd(false);
       await fetchServers();
-    } catch (err) {
-      console.error("Failed to add server:", err);
+      // If the server was added but is unhealthy, show a toast with guidance
+      if (result && !result.is_healthy) {
+        window.dispatchEvent(
+          new CustomEvent("istara:toast", {
+            detail: {
+              type: "warning",
+              title: "Server Unreachable",
+              message: `${newName.trim()} was added but could not connect. Check the host URL and API key.`,
+            },
+          })
+        );
+      }
+    } catch (err: any) {
+      setAddError(err.message || "Failed to add server");
     }
   };
 
@@ -460,6 +477,17 @@ function LLMServersSection() {
             <option value="lmstudio">LM Studio</option>
             <option value="ollama">Ollama</option>
           </select>
+          <input
+            type="password"
+            placeholder="API key (leave blank if server has no auth)"
+            value={newApiKey}
+            onChange={(e) => setNewApiKey(e.target.value)}
+            className="w-full px-2 py-1.5 text-sm rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-istara-500"
+            aria-label="API key"
+          />
+          {addError && (
+            <p className="text-xs text-red-500">{addError}</p>
+          )}
           <button
             onClick={handleAdd}
             className="w-full py-1.5 bg-istara-600 hover:bg-istara-700 text-white text-sm font-medium rounded"
@@ -473,10 +501,16 @@ function LLMServersSection() {
         <div className="space-y-2">
           {servers.map((s) => (
             <div key={s.id} className="flex items-center gap-2 p-2 rounded border border-slate-100 dark:border-slate-700">
-              <div className={`w-2 h-2 rounded-full ${s.is_healthy ? "bg-green-500" : "bg-red-500"}`} />
-              <div className="flex-1">
-                <div className="text-sm font-medium text-slate-800 dark:text-slate-200">{s.name}</div>
-                <div className="text-xs text-slate-400">{s.host} ({s.provider_type})</div>
+              <div className={`w-2 h-2 rounded-full flex-shrink-0 ${s.is_healthy ? "bg-green-500" : "bg-red-500"}`} title={s.is_healthy ? "Connected" : (s.health_error || "Unreachable")} />
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium text-slate-800 dark:text-slate-200 flex items-center gap-1">
+                  {s.name}
+                  {s.has_api_key && <span title="API key configured"><Lock size={10} className="text-slate-400" /></span>}
+                </div>
+                <div className="text-xs text-slate-400 truncate">{s.host} ({s.provider_type})</div>
+                {!s.is_healthy && s.health_error && (
+                  <div className="text-xs text-red-500 mt-0.5">{s.health_error}</div>
+                )}
               </div>
               <button
                 onClick={() => handleHealthCheck(s.id)}

@@ -26,6 +26,7 @@ program
   .option("-c, --connection-string <string>", "Connection string (replaces --server and --token)")
   .option("-p, --provider <type>", "LLM provider: ollama or lmstudio", "ollama")
   .option("-h, --llm-host <url>", "Local LLM server URL", "http://localhost:11434")
+  .option("-k, --llm-api-key <key>", "API key for local LLM server (if auth required)", "")
   .option("-i, --heartbeat-interval <seconds>", "Heartbeat interval", "30")
   .parse();
 
@@ -53,7 +54,7 @@ console.log(`   Provider: ${opts.provider}`);
 console.log(`   LLM Host: ${opts.llmHost}`);
 
 const stateMachine = new StateMachine();
-const llmProxy = new LLMProxy(opts.provider, opts.llmHost);
+const llmProxy = new LLMProxy(opts.provider, opts.llmHost, opts.llmApiKey);
 
 // Gather initial system info for registration
 const stats = await getSystemStats();

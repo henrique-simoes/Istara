@@ -43,6 +43,7 @@ class ComputeNode:
     # Health
     is_healthy: bool = False
     health_state: str = "unknown"
+    health_error: str = ""
     last_health_check: float = 0
     consecutive_failures: int = 0
     cooldown_until: float = 0
@@ -168,14 +169,39 @@ class ComputeNode:
                 except Exception:
                     pass
                 self.health_state = "ready"
+                self.health_error = ""
                 self.consecutive_failures = 0
                 self.last_health_check = time.time()
+            elif resp.status_code in (401, 403):
+                # Auth failure — server requires an API key
+                self.health_state = "auth_required"
+                try:
+                    err_data = resp.json()
+                    err_msg = err_data.get("error", {})
+                    if isinstance(err_msg, dict):
+                        self.health_error = err_msg.get("message", "API key required")
+                    else:
+                        self.health_error = str(err_msg) or "API key required"
+                except Exception:
+                    self.health_error = "API key required by this server"
             else:
                 self.health_state = "unhealthy"
-        except Exception:
+                self.health_error = f"Server returned HTTP {resp.status_code}"
+        except httpx.ConnectError:
+            self.is_healthy = False
+            self.latency_ms = 9999
+            self.health_state = "unreachable"
+            self.health_error = "Cannot connect — check the host URL"
+        except httpx.TimeoutException:
+            self.is_healthy = False
+            self.latency_ms = 9999
+            self.health_state = "timeout"
+            self.health_error = "Connection timed out"
+        except Exception as e:
             self.is_healthy = False
             self.latency_ms = 9999
             self.health_state = "unhealthy"
+            self.health_error = str(e)[:200] if str(e) else "Unknown error"
         return self.is_healthy
 
     def _resolve_model(self, model: str | None) -> str:
