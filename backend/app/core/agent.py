@@ -218,11 +218,13 @@ class AgentOrchestrator:
         """Process pending A2A collaboration requests from other agents."""
         try:
             from app.services.a2a import get_messages, mark_read
-            messages = await get_messages(self._agent_id, unread_only=True, limit=3)
+            messages = await get_messages(db, self._agent_id, unread_only=True, limit=3)
             for msg in messages:
-                if msg.message_type == "collaboration_request":
+                if msg.get("message_type") == "collaboration_request" if isinstance(msg, dict) else getattr(msg, "message_type", "") == "collaboration_request":
                     await self._handle_collaboration(db, msg)
-                await mark_read(msg.id)
+                msg_id = msg.get("id") if isinstance(msg, dict) else getattr(msg, "id", "")
+                if msg_id:
+                    await mark_read(db, msg_id)
         except Exception as e:
             logger.debug(f"A2A inbox check skipped: {e}")
 
@@ -252,12 +254,15 @@ class AgentOrchestrator:
 
             # Send response back
             from app.services.a2a import send_message
+            msg_from = msg.get("from_agent_id") if isinstance(msg, dict) else getattr(msg, "from_agent_id", "")
+            msg_id = msg.get("id") if isinstance(msg, dict) else getattr(msg, "id", "")
             await send_message(
+                db=db,
                 from_agent_id=self._agent_id,
-                to_agent_id=msg.from_agent_id,
+                to_agent_id=msg_from,
                 message_type="collaboration_response",
                 content=analysis[:2000],
-                metadata={"task_id": task_id, "responding_to": msg.id},
+                metadata={"task_id": task_id, "responding_to": msg_id},
             )
 
             # Append to task notes
