@@ -207,3 +207,10 @@
 - **Codebook Versioning**: Create an initial codebook via analysis, then modify codes (rename, merge, split, delete). Verify a new codebook version is created with correct version number, the previous version remains accessible, and diffs between versions accurately reflect the changes made.
 - **Evidence Chain Traceability**: After analysis completes, trace a recommendation from the final report (L4) back through synthesis (L3), analysis (L2), and down to the original source text nugget. Verify source_location references are correct and point to actual content in the uploaded data.
 - **Report Convergence**: Run 2+ analysis methods on the same dataset, then verify L3 synthesis is auto-created from the L2 analyses. Check that the convergence pyramid populates correctly, conflicting findings across methods are surfaced, and the final L4 report integrates all L3 syntheses.
+
+### InteractiveSuggestionBox & UI Fixes Simulation (v2026.04.01)
+- **InteractiveSuggestionBox lifecycle**: Open Documents, click Organize, verify session created via sessionsApi.create(), verify streaming chunks with auto-scroll, type follow-up reply, verify sends to same session, click "Continue in Chat", verify navigation to Chat view with correct session.
+- **Sync toast**: Click Sync in Documents, verify toast with count. Verify auto-dismiss after 5s.
+- **Notification bell badge**: Create notification via API, verify badge shows "1". Mark read, verify disappears. Create 100+, verify "99+".
+- **API error extraction**: POST /auth/users with invalid email, verify readable error not "[object Object]".
+- **EnsembleHealth scroll**: Navigate to Ensemble Health, verify scrollable when content exceeds viewport.

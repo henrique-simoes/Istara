@@ -193,3 +193,10 @@
 - Cannot modify database schema or run migrations
 - Audit cycle interval is fixed at startup (default 5 minutes)
 - Cannot decrypt or inspect encrypted fields
+
+### InteractiveSuggestionBox & UI Fixes (v2026.04.01)
+- InteractiveSuggestionBox creates real chat sessions for AI suggestions (Documents "Organize"). Monitor for: orphaned sessions (session created but user never interacts), suggestion box left open without cleanup, concurrent streaming from multiple suggestion boxes.
+- Global toast API via `istara:toast` custom event. Monitor for: event listeners not cleaned up on unmount, toast flood from rapid sync clicks, toast z-index conflicts with modals.
+- Notification bell in sidebar header polls `fetchUnreadCount()` every 30s. Monitor for: excessive API calls if multiple tabs are open, unreadCount going stale if notifications are read in another tab.
+- `api.ts` error extraction handles FastAPI validation errors (detail arrays). Monitor for: edge cases where `detail` is neither string nor array (e.g., null, number, nested object).
+- EnsembleHealth scrolling fixed with `flex-1 overflow-y-auto`. Monitor for: content clipping on very small screens, scroll position reset on re-render.

@@ -177,7 +177,7 @@ export default function EnsembleHealthView() {
   };
 
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-6">
+    <div className="flex-1 overflow-y-auto p-6 max-w-5xl mx-auto space-y-6">
       <div>
         <h2 className="text-xl font-bold text-slate-900 dark:text-white">Ensemble Health</h2>
         <p className="text-sm text-slate-500 mt-1">
