@@ -306,12 +306,15 @@ class AgentOrchestrator:
             await broadcast_agent_status("warning", f"Skill blocked: {skill.name} not in agent ACL")
             return
 
-        # Build skill input
+        # Build skill input — include task instructions and context
+        task_context = task.user_context or task.description
+        if getattr(task, "instructions", None):
+            task_context += f"\n\nSpecific instructions: {task.instructions}"
         skill_input = SkillInput(
             project_id=project.id,
             task_id=task.id,
             parameters={"mode": "analyze"},
-            user_context=task.user_context or task.description,
+            user_context=task_context,
             project_context=project.project_context,
             company_context=project.company_context,
         )
@@ -332,6 +335,56 @@ class AgentOrchestrator:
 
             # Execute the skill
             output = await skill.execute(skill_input)
+
+            # ── Ensemble validation (if available) ──
+            # Validates findings using multi-perspective methods before storing.
+            # Self-MoA works with a single server (varies temperature).
+            try:
+                from app.core.adaptive_validation import AdaptiveSelector
+                from app.core.validation import self_moa, adversarial_review, dual_run, full_ensemble, debate_rounds
+                import json as _json
+
+                selector = AdaptiveSelector()
+                method = await selector.select_method(project.id, skill.name, self.agent_id)
+
+                if method and method != "skip" and output.summary:
+                    await broadcast_task_progress(task.id, 0.5, f"Validating ({method})...")
+                    validation_fns = {
+                        "self_moa": self_moa,
+                        "adversarial_review": adversarial_review,
+                        "dual_run": dual_run,
+                        "full_ensemble": full_ensemble,
+                        "debate_rounds": debate_rounds,
+                    }
+                    fn = validation_fns.get(method)
+                    if fn:
+                        # All validation functions accept (prompt, system, model, n)
+                        val_result = await fn(
+                            prompt=skill_input.user_context or task.description,
+                            system=output.summary,
+                        )
+                        task.validation_method = method
+                        task.validation_result = _json.dumps({
+                            "agreement_score": val_result.consensus.agreement_score,
+                            "kappa": val_result.consensus.kappa,
+                            "cosine_sim": val_result.consensus.cosine_sim,
+                            "confidence": val_result.consensus.confidence,
+                        })
+                        task.consensus_score = val_result.consensus.agreement_score
+
+                        # Use best response if consensus is high
+                        if val_result.best_response and val_result.consensus.agreement_score >= 0.55:
+                            output.summary = val_result.best_response
+
+                        # Record metrics for adaptive learning
+                        await selector.record_outcome(
+                            project.id, skill.name, self.agent_id, method,
+                            val_result.consensus.agreement_score,
+                            val_result.consensus.agreement_score >= 0.5,
+                        )
+                        logger.info(f"Validation [{method}]: score={val_result.consensus.agreement_score:.2f}")
+            except Exception as e:
+                logger.debug(f"Ensemble validation skipped: {e}")
 
             # Store findings in the database
             await self._store_findings(db, project.id, output, task)
@@ -708,10 +761,18 @@ class AgentOrchestrator:
         if context.has_context:
             system_prompt += f"\n\n## Relevant Documents\n{context.context_text}"
 
+        # Build user message with all task fields
+        user_parts = [f"Task: {task.title}", f"Details: {task.description}"]
+        if task.user_context:
+            user_parts.append(f"Additional context: {task.user_context}")
+        if getattr(task, "instructions", None):
+            user_parts.append(f"Specific instructions: {task.instructions}")
+        user_msg = "\n\n".join(user_parts)
+
         response = await ollama.chat(
             messages=[
                 {"role": "system", "content": system_prompt},
-                {"role": "user", "content": f"Task: {task.title}\n\nDetails: {task.description}\n\nAdditional context: {task.user_context}"},
+                {"role": "user", "content": user_msg},
             ],
         )
 
