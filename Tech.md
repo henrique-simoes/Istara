@@ -1210,6 +1210,44 @@ The ensemble validation framework (5 methods: Self-MoA, Dual Run, Adversarial Re
 
 **Files:** `backend/app/core/agent.py`, `backend/app/core/validation.py`, `backend/app/core/adaptive_validation.py`, `backend/app/core/consensus.py`, `backend/app/core/file_processor.py`
 
+## Agent Architecture Overhaul (v2026.04.01.5)
+
+### ReAct Tool Loop for Autonomous Tasks
+The agent orchestrator now has tool-calling intelligence for general tasks (no matching skill). Uses the same 15 tools available in chat (create_task, search_documents, search_findings, search_memory, etc.) with a 5-iteration max ReAct loop. Native OpenAI tool calling with fallback to single-call on API rejection.
+
+### RAG Before Skill Execution
+Before skill selection, the agent retrieves relevant documents via `retrieve_context()`. RAG context is injected into SkillInput.user_context so skills have document awareness without loading all files.
+
+### Timeout Protection
+`skill.execute()` wrapped in `asyncio.wait_for(timeout=300)`. Skills that take >5 minutes produce a timeout SkillOutput.
+
+### LLM Self-Reflection
+Replaced heuristic `_self_verify_output()` with `_llm_reflect_on_output()`. Sends task + output to LLM with structured evaluation prompt. Checks: addresses task, evidence-based, chain complete, no hallucinations. Returns `{verified, confidence, reason}` JSON. Falls back to heuristic on failure.
+
+### A2A Collaboration Activated
+Agents now poll their A2A inbox every work cycle via `_process_a2a_inbox()`. Collaboration requests trigger expert analysis (LLM call with agent-specific system prompt + RAG context) and send `collaboration_response` back. Responses are merged into task context by the orchestrator before the primary agent processes the task. SubAgentWorker also polls A2A.
+
+### Structured Output Validation
+`base.py validate_output()` checks evidence chain integrity (insights without facts, recommendations without insights), confidence score bounds (0-1), and source attribution on facts. Warnings logged in `task.agent_notes` before storing.
+
+### Report Pipeline Completion
+- **Artifacts → Documents**: Skill artifacts now create `Document` records with `source=agent_output`, visible in Documents view. Linked to `task.output_document_ids`.
+- **Ensemble confidence → Reports**: `task.consensus_score` flows to report's `content_json.avg_consensus`.
+- **Executive summaries**: Auto-generated via LLM when reports reach 3+ findings.
+- **MECE categorization**: Auto-generated via LLM when reports reach 5+ findings. Populates `mece_categories_json`.
+- **L4 auto-generation**: When L3 synthesis reaches 10+ findings, L4 final report auto-created with executive summary and MECE structure.
+
+**Complete data flow:**
+```
+Task → RAG retrieval → Skill execution (timeout) → Schema validation
+→ Ensemble validation → LLM reflection → Store findings
+→ Route to L2 report → Auto-trigger L3 synthesis → MECE categorization
+→ Executive summary → Auto-trigger L4 final report
+→ Artifacts → Document records → task.output_document_ids
+```
+
+**Files:** `backend/app/core/agent.py`, `backend/app/core/report_manager.py`, `backend/app/skills/base.py`, `backend/app/core/sub_agent_worker.py`, `backend/app/agents/orchestrator.py`
+
 ## Project Settings (formerly Metrics)
 
 The Metrics view has been replaced with a comprehensive Project Settings view (`frontend/src/components/settings/ProjectSettingsView.tsx`). Combines project management with research metrics in a single scrollable page.

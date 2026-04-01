@@ -142,6 +142,9 @@ class AgentOrchestrator:
         await governor.throttle_if_needed()
 
         async with async_session() as db:
+            # 0. Process A2A inbox (collaboration requests from other agents)
+            await self._process_a2a_inbox(db)
+
             # 1. Find the next task to work on
             task = await self._pick_next_task(db)
             if not task:
@@ -210,6 +213,60 @@ class AgentOrchestrator:
             if elapsed < backoff:
                 return True
         return False
+
+    async def _process_a2a_inbox(self, db: AsyncSession) -> None:
+        """Process pending A2A collaboration requests from other agents."""
+        try:
+            from app.services.a2a import get_messages, mark_read
+            messages = await get_messages(self._agent_id, unread_only=True, limit=3)
+            for msg in messages:
+                if msg.message_type == "collaboration_request":
+                    await self._handle_collaboration(db, msg)
+                await mark_read(msg.id)
+        except Exception as e:
+            logger.debug(f"A2A inbox check skipped: {e}")
+
+    async def _handle_collaboration(self, db: AsyncSession, msg) -> None:
+        """Respond to a collaboration request from another agent."""
+        try:
+            metadata = msg.metadata if isinstance(msg.metadata, dict) else json.loads(msg.metadata or "{}")
+            task_id = metadata.get("task_id")
+            if not task_id:
+                return
+
+            task = await db.get(Task, task_id)
+            if not task or task.status not in ("backlog", "in_progress"):
+                return
+
+            specialties = metadata.get("specialties_needed", [])
+            context = await retrieve_context(task.project_id, task.title + " " + (task.description or ""))
+
+            response = await ollama.chat(messages=[
+                {"role": "system", "content": f"You are {self._agent_id}, a specialist in: {', '.join(specialties) if specialties else 'UX research'}. Provide your expert analysis concisely."},
+                {"role": "user", "content": f"Task: {task.title}\nDescription: {task.description or 'N/A'}\nContext: {context.context_text[:1000] if context.has_context else 'No additional context.'}"},
+            ])
+
+            analysis = response.get("message", {}).get("content", "")
+            if not analysis:
+                return
+
+            # Send response back
+            from app.services.a2a import send_message
+            await send_message(
+                from_agent_id=self._agent_id,
+                to_agent_id=msg.from_agent_id,
+                message_type="collaboration_response",
+                content=analysis[:2000],
+                metadata={"task_id": task_id, "responding_to": msg.id},
+            )
+
+            # Append to task notes
+            collab_note = f"\n\n--- {self._agent_id} collaboration ---\n{analysis[:1000]}"
+            task.agent_notes = (task.agent_notes or "") + collab_note
+            await db.commit()
+            logger.info(f"A2A: {self._agent_id} responded to collaboration for task {task_id}")
+        except Exception as e:
+            logger.debug(f"A2A collaboration handling failed: {e}")
 
     async def _pick_next_task(self, db: AsyncSession) -> Task | None:
         """Pick the highest priority task assigned to THIS agent.
@@ -285,10 +342,13 @@ class AgentOrchestrator:
         await broadcast_agent_status("working", f"Working on: {task.title}")
         await broadcast_task_progress(task.id, 0.1, "Starting task...")
 
+        # Retrieve RAG context before skill selection (gives skills document awareness)
+        rag_context = await retrieve_context(project.id, task.title + " " + (task.description or ""), top_k=5)
+
         # Determine which skill to use
         skill = await self._select_skill(task)
         if not skill:
-            # No specific skill — use general chat to work on the task
+            # No specific skill — use tool-augmented general reasoning
             await self._execute_general_task(db, task, project)
             await complete_checkpoint(db, task.id)
             return
@@ -306,10 +366,12 @@ class AgentOrchestrator:
             await broadcast_agent_status("warning", f"Skill blocked: {skill.name} not in agent ACL")
             return
 
-        # Build skill input — include task instructions and context
+        # Build skill input — include task instructions, context, and RAG documents
         task_context = task.user_context or task.description
         if getattr(task, "instructions", None):
             task_context += f"\n\nSpecific instructions: {task.instructions}"
+        if rag_context.has_context:
+            task_context += f"\n\n## Relevant Documents\n{rag_context.context_text}"
         skill_input = SkillInput(
             project_id=project.id,
             task_id=task.id,
@@ -333,8 +395,12 @@ class AgentOrchestrator:
             # Checkpoint: executing
             await update_checkpoint(db, task.id, "executing")
 
-            # Execute the skill
-            output = await skill.execute(skill_input)
+            # Execute the skill (with timeout protection)
+            try:
+                output = await asyncio.wait_for(skill.execute(skill_input), timeout=300)
+            except asyncio.TimeoutError:
+                output = SkillOutput(success=False, summary="Skill timed out after 5 minutes.", errors=["timeout"])
+                logger.warning(f"Skill {skill.name} timed out for task {task.id}")
 
             # ── Ensemble validation (if available) ──
             # Validates findings using multi-perspective methods before storing.
@@ -386,6 +452,15 @@ class AgentOrchestrator:
             except Exception as e:
                 logger.debug(f"Ensemble validation skipped: {e}")
 
+            # Validate output structure before storing
+            try:
+                validation_issues = await skill.validate_output(output)
+                if validation_issues:
+                    logger.warning(f"Output validation for {skill.name}: {validation_issues[:3]}")
+                    task.agent_notes = (task.agent_notes or "") + f"\n[Validation: {'; '.join(validation_issues[:3])}]"
+            except Exception as e:
+                logger.debug(f"Output validation skipped: {e}")
+
             # Store findings in the database
             await self._store_findings(db, project.id, output, task)
             await broadcast_task_progress(task.id, 0.7, "Storing findings...")
@@ -414,8 +489,8 @@ class AgentOrchestrator:
                 await broadcast_task_progress(task.id, 0.8, "Verifying findings...")
                 await self._verify_findings(db, project.id, output)
 
-            # Self-verify output quality
-            verified, verify_reason = self._self_verify_output(output)
+            # Self-verify output quality (LLM reflection with heuristic fallback)
+            verified, verify_reason = await self._self_verify_output(task, output)
             quality_score = 0.8 if output.success else 0.2
 
             if verified:
@@ -769,43 +844,73 @@ class AgentOrchestrator:
             user_parts.append(f"Specific instructions: {task.instructions}")
         user_msg = "\n\n".join(user_parts)
 
-        response = await ollama.chat(
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_msg},
-            ],
-        )
+        # Tool-augmented ReAct loop — same tools available in chat
+        MAX_AGENT_TOOL_ITERATIONS = 5
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_msg},
+        ]
+        result = ""
+        tools_used = []
 
-        result = response.get("message", {}).get("content", "")
+        try:
+            from app.skills.system_actions import OPENAI_TOOLS, execute_tool
+            use_tools = True
+        except ImportError:
+            use_tools = False
 
-        # Verify the LLM response quality
-        error_patterns = ["error:", "failed", "unable to", "could not"]
-        result_lower = (result or "").lower()
-        has_error_pattern = any(p in result_lower for p in error_patterns)
+        for iteration in range(MAX_AGENT_TOOL_ITERATIONS + 1):
+            if use_tools and iteration < MAX_AGENT_TOOL_ITERATIONS:
+                response = await ollama.chat(messages=messages, tools=OPENAI_TOOLS)
+            else:
+                response = await ollama.chat(messages=messages)
 
-        if not result or len(result.strip()) < 20 or has_error_pattern:
-            # Response is empty, too short, or contains error patterns
-            reason = (
-                "LLM response is empty"
-                if not result
-                else "LLM response too short (< 20 chars)"
-                if len(result.strip()) < 20
-                else "LLM response contains error patterns"
-            )
+            msg = response.get("message", {})
+            content = msg.get("content", "")
+            tool_calls = msg.get("tool_calls", [])
+
+            if tool_calls and iteration < MAX_AGENT_TOOL_ITERATIONS and use_tools:
+                # Append assistant message with tool calls
+                messages.append({"role": "assistant", "content": content or "", "tool_calls": tool_calls})
+                for tc in tool_calls:
+                    fn = tc.get("function", {})
+                    tool_name = fn.get("name", "")
+                    try:
+                        tool_args = json.loads(fn.get("arguments", "{}")) if isinstance(fn.get("arguments"), str) else fn.get("arguments", {})
+                    except (json.JSONDecodeError, TypeError):
+                        tool_args = {}
+                    tools_used.append(tool_name)
+                    logger.info(f"Agent tool call [{iteration}]: {tool_name}({list(tool_args.keys())})")
+                    tool_result = await execute_tool(tool_name, tool_args, project.id, self._agent_id)
+                    messages.append({
+                        "role": "tool",
+                        "tool_call_id": tc.get("id", f"call_{iteration}"),
+                        "content": json.dumps(tool_result) if isinstance(tool_result, dict) else str(tool_result),
+                    })
+            else:
+                result = content
+                break
+
+        # Log tool usage
+        if tools_used:
+            tool_summary = f"[Tools used: {', '.join(tools_used)}]\n\n"
+        else:
+            tool_summary = ""
+
+        # Quality check
+        if not result or len(result.strip()) < 20:
             task.status = TaskStatus.IN_PROGRESS
             task.progress = 0.5
-            task.agent_notes = f"[Verification failed] {reason}\n\n{result}"
+            task.agent_notes = f"{tool_summary}[Verification failed] Response too short or empty\n\n{result}"
             await db.commit()
-
-            await broadcast_task_progress(task.id, 0.5, f"Verification failed: {reason}")
+            await broadcast_task_progress(task.id, 0.5, "Verification failed: response too short")
             await self._persist_agent_state(AgentState.IDLE)
-            await broadcast_agent_status("warning", f"Needs attention: {task.title} — {reason}")
+            await broadcast_agent_status("warning", f"Needs attention: {task.title}")
         else:
             task.status = TaskStatus.IN_REVIEW
             task.progress = 1.0
-            task.agent_notes = result
+            task.agent_notes = f"{tool_summary}{result}"
             await db.commit()
-
             await broadcast_task_progress(task.id, 1.0, "Complete — ready for review.")
             await self._persist_agent_state(AgentState.IDLE)
             await broadcast_agent_status("idle", f"Completed: {task.title}")
@@ -957,13 +1062,15 @@ class AgentOrchestrator:
 
         await db.commit()
 
-        # Route findings to convergent project reports
+        # Route findings to convergent project reports (with consensus score)
         try:
             from app.core.report_manager import report_manager
             all_finding_ids = created_nugget_ids + created_fact_ids + created_insight_ids
             if all_finding_ids and skill:
+                consensus = getattr(task, "consensus_score", None)
                 await report_manager.route_findings(
-                    project_id, skill.name, all_finding_ids, db
+                    project_id, skill.name, all_finding_ids, db,
+                    consensus_score=consensus,
                 )
         except Exception as e:
             logger.warning("Report routing failed: %s", e)
@@ -974,7 +1081,6 @@ class AgentOrchestrator:
             + len(output.insights) + len(output.recommendations)
         )
         if total_findings > 0:
-            # Send one consolidated event per finding type that has results
             if output.nuggets:
                 await broadcast_finding_created("nugget", len(output.nuggets), project_id, task.title)
             if output.insights:
@@ -982,11 +1088,37 @@ class AgentOrchestrator:
             if output.recommendations:
                 await broadcast_finding_created("recommendation", len(output.recommendations), project_id, task.title)
 
-        # Also ingest any text artifacts into the vector store for RAG
+        # Ingest text artifacts into RAG AND create Document records
+        artifact_doc_ids = []
         for filename, content in output.artifacts.items():
             if isinstance(content, str) and len(content) > 50:
                 chunks = [TextChunk(text=content[:2000], source=f"skill:{task.skill_name}:{filename}")]
                 await ingest_chunks(project_id, chunks)
+                # Create a Document record so artifacts appear in Documents view
+                try:
+                    from app.models.document import Document
+                    doc = Document(
+                        id=str(uuid.uuid4()),
+                        project_id=project_id,
+                        title=filename,
+                        file_name=filename,
+                        source="agent_output",
+                        content_preview=content[:500],
+                        status="ready",
+                    )
+                    db.add(doc)
+                    artifact_doc_ids.append(doc.id)
+                except Exception as e:
+                    logger.debug(f"Artifact document creation skipped: {e}")
+
+        # Link artifact documents to task output
+        if artifact_doc_ids:
+            try:
+                existing = json.loads(task.output_document_ids or "[]")
+                task.output_document_ids = json.dumps(existing + artifact_doc_ids)
+                await db.commit()
+            except Exception:
+                pass
 
         logger.info(
             f"Stored findings: {len(output.nuggets)} nuggets, {len(output.facts)} facts, "
@@ -1007,38 +1139,72 @@ class AgentOrchestrator:
 
     # --- Self-Verification ---
 
-    def _self_verify_output(self, output: SkillOutput) -> tuple[bool, str]:
-        """Verify the quality of a skill output before marking tasks as done.
-
-        Returns:
-            A tuple of (verified: bool, reason: str).
-        """
-        # Check explicit failure
+    def _self_verify_output_heuristic(self, output: SkillOutput) -> tuple[bool, str]:
+        """Quick heuristic verification — used as fallback when LLM reflection fails."""
         if not output.success:
             return False, f"Skill reported failure: {output.summary}"
-
-        # Check for errors
         if output.errors:
             return False, f"Skill produced errors: {'; '.join(output.errors)}"
-
-        # Check for error patterns in the summary
         error_patterns = ["No files provided", "Error:", "failed", "could not", "unable to"]
         summary_lower = (output.summary or "").lower()
         for pattern in error_patterns:
             if pattern.lower() in summary_lower:
-                return False, f"Output summary contains error pattern '{pattern}': {output.summary}"
-
-        # Check if output has any actual findings
-        total_findings = (
-            len(output.nuggets)
-            + len(output.facts)
-            + len(output.insights)
-            + len(output.recommendations)
-        )
+                return False, f"Output contains error pattern '{pattern}'"
+        total_findings = len(output.nuggets) + len(output.facts) + len(output.insights) + len(output.recommendations)
         if total_findings == 0:
-            return False, "No findings produced (0 nuggets, facts, insights, or recommendations)"
-
+            return False, "No findings produced"
         return True, "Output verified successfully"
+
+    async def _self_verify_output(self, task: Task, output: SkillOutput) -> tuple[bool, str]:
+        """LLM-based self-reflection on output quality.
+
+        Asks the model to evaluate whether the output addresses the task,
+        has complete evidence chains, and avoids hallucinations. Falls back
+        to heuristic verification if the LLM call fails.
+        """
+        # Quick heuristic gate — if obviously broken, skip expensive LLM call
+        heuristic_ok, heuristic_reason = self._self_verify_output_heuristic(output)
+        if not heuristic_ok:
+            return False, heuristic_reason
+
+        try:
+            total = len(output.nuggets) + len(output.facts) + len(output.insights) + len(output.recommendations)
+            reflection_prompt = (
+                "You are a quality reviewer for UX research outputs.\n\n"
+                f"Task: {task.title}\n"
+                f"Description: {task.description or 'N/A'}\n"
+                f"Instructions: {getattr(task, 'instructions', '') or 'None'}\n\n"
+                f"Generated Output (first 1500 chars):\n{(output.summary or '')[:1500]}\n\n"
+                f"Findings: {len(output.nuggets)} nuggets, {len(output.facts)} facts, "
+                f"{len(output.insights)} insights, {len(output.recommendations)} recommendations "
+                f"({total} total)\n\n"
+                "Evaluate:\n"
+                "1. Does the output address the original task?\n"
+                "2. Are findings specific and evidence-based (not generic)?\n"
+                "3. Is the evidence chain complete (nuggets support facts support insights)?\n"
+                "4. Are there obvious hallucinations or unsupported claims?\n\n"
+                'Respond with EXACTLY one JSON object:\n'
+                '{"verified": true, "confidence": 0.85, "reason": "one sentence"}'
+            )
+            response = await ollama.chat(
+                messages=[{"role": "user", "content": reflection_prompt}],
+                temperature=0.1,
+            )
+            content = response.get("message", {}).get("content", "")
+            # Extract JSON from response (model may wrap in markdown)
+            import re
+            json_match = re.search(r'\{[^{}]*"verified"[^{}]*\}', content)
+            if json_match:
+                result = json.loads(json_match.group())
+                verified = result.get("verified", True)
+                reason = result.get("reason", "LLM reflection passed")
+                logger.info(f"LLM reflection: verified={verified}, confidence={result.get('confidence', '?')}, reason={reason}")
+                return verified, reason
+            # If no JSON found, trust heuristic result
+            return True, "LLM reflection returned non-JSON — heuristic passed"
+        except Exception as e:
+            logger.debug(f"LLM reflection failed ({e}), using heuristic")
+            return True, "Heuristic verification passed (LLM reflection unavailable)"
 
     # --- Manual Skill Execution (from API/Chat) ---
 
@@ -1080,8 +1246,8 @@ class AgentOrchestrator:
             try:
                 output = await skill.execute(skill_input)
 
-                # Self-verify the output quality
-                verified, verify_reason = self._self_verify_output(output)
+                # Self-verify the output quality (heuristic — no task for manual execution)
+                verified, verify_reason = self._self_verify_output_heuristic(output)
 
                 if verified:
                     task_status = TaskStatus.DONE
