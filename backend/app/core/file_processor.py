@@ -117,10 +117,30 @@ _TIMESTAMP_PATTERN = re.compile(r"\[\d{2}:\d{2}")
 def detect_content_type(text: str, suffix: str) -> str:
     """Detect the content type of *text* to choose a chunking strategy.
 
-    Returns one of: ``"interview_transcript"``, ``"csv_data"``,
-    ``"markdown_sections"``, or ``"generic"``.
+    Returns one of: ``"interview_transcript"``, ``"survey_data"``,
+    ``"csv_data"``, ``"markdown_sections"``, or ``"generic"``.
+
+    For CSV files, inspects column headers to distinguish survey data
+    from generic CSVs. Interview detection uses speaker-turn patterns.
     """
     if suffix == ".csv":
+        # Check CSV headers to classify more precisely
+        first_line = text.split("\n")[0].lower() if text else ""
+        survey_signals = [
+            "sus", "nasa", "tlx", "likert", "rating", "score", "scale",
+            "satisfaction", "ease", "usability", "nps", "response",
+            "survey", "participant", "respondent", "questionnaire",
+        ]
+        interview_signals = [
+            "transcript", "interviewer", "interviewee", "moderator",
+            "question", "answer", "speaker", "timestamp", "duration",
+        ]
+        survey_hits = sum(1 for s in survey_signals if s in first_line)
+        interview_hits = sum(1 for s in interview_signals if s in first_line)
+        if interview_hits > survey_hits and interview_hits >= 2:
+            return "interview_transcript"
+        if survey_hits >= 2:
+            return "survey_data"
         return "csv_data"
 
     # Interview transcript: speaker-turn patterns or timestamps, with
