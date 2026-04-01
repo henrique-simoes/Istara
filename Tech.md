@@ -1158,6 +1158,26 @@ System tray application for macOS (menubar) and Windows (system tray). **Manager
 
 **Files:** `frontend/src/components/common/DonateComputeToggle.tsx`
 
+## InteractiveSuggestionBox
+
+Reusable AI suggestion panel with chat session linking. Replaces static text boxes (e.g., Document "Organize" result) with an interactive component.
+
+**Architecture:**
+1. Creates a real chat session via `sessionsApi.create()` with title "Suggestion: {title}"
+2. Streams the AI response via `chatApi.send(projectId, prompt, sessionId)` SSE async generator
+3. Auto-scrolls as new content arrives (`useRef` + `scrollIntoView`)
+4. Shows "Continue in Chat" link — dispatches `istara:navigate` with `{ view: "chat", session_id }`. HomeClient handles this by calling `selectSession(session_id)`.
+5. Quick-reply input sends follow-up to the same session, streaming the response inline
+6. All messages persist in the chat session — user can revisit in the Chat view
+
+**Global Toast API:** Any component can trigger a toast via `window.dispatchEvent(new CustomEvent("istara:toast", { detail: { type, title, message } }))`. `ToastNotification.tsx` listens for these events and calls `addToast()`. Used by Documents Sync, available globally.
+
+**Notification Bell:** Moved from sidebar nav list to sidebar header (next to dark mode toggle). Shows red unread count badge from `useNotificationStore`. Polls every 30s. WCAG: `aria-label` includes count, badge uses `aria-hidden`.
+
+**Error Extraction Fix:** `api.ts` now handles FastAPI validation errors (422) where `detail` is an array of `{ loc, msg, type }` objects. Extracts `msg` fields and joins with semicolons instead of showing `[object Object]`.
+
+**Files:** `frontend/src/components/common/InteractiveSuggestionBox.tsx`, `frontend/src/components/common/ToastNotification.tsx`, `frontend/src/components/layout/Sidebar.tsx`, `frontend/src/lib/api.ts`, `frontend/src/components/documents/DocumentsView.tsx`, `frontend/src/components/layout/HomeClient.tsx`, `frontend/src/components/common/EnsembleHealthView.tsx`
+
 ## Guided Onboarding Tour
 
 Replaces the old modal OnboardingWizard with an in-app guided tour that navigates through real views.

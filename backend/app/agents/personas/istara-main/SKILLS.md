@@ -374,3 +374,10 @@
 - Model inference quality depends on the loaded LLM's capabilities and context window size
 - Channel operations require valid API credentials configured by the user
 - MCP server is OFF by default and requires explicit user activation with security acknowledgment
+
+### InteractiveSuggestionBox & UI Improvements (v2026.04.01)
+- Documents "Organize" now uses an InteractiveSuggestionBox that creates a real chat session. Users see streaming AI response, can ask follow-up questions inline, and click "Continue in Chat" to open the full session in the Chat view.
+- Documents Sync button shows toast feedback: "X new files added from project folder" or "No new files found."
+- Notification bell moved to sidebar header (next to dark mode toggle) with red unread count badge. More visible than a nav item.
+- Error messages from the backend are now human-readable. Validation errors show the specific field issue instead of "[object Object]".
+- Ensemble Health page now scrolls correctly on all screen sizes.
