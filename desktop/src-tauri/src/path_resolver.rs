@@ -6,12 +6,16 @@ use std::process::Command;
 
 /// Find Python 3 — checks venv first, then system locations.
 pub fn find_python(install_dir: &str) -> String {
-    // 1. Venv in install dir
+    // 1. Venv in install dir (check multiple conventions: venv, .venv, backend/venv, backend/.venv)
     for venv_path in &[
         format!("{}/venv/bin/python", install_dir),
-        format!("{}/venv/Scripts/python.exe", install_dir),
+        format!("{}/.venv/bin/python", install_dir),
         format!("{}/backend/venv/bin/python", install_dir),
+        format!("{}/backend/.venv/bin/python", install_dir),
+        format!("{}/venv/Scripts/python.exe", install_dir),
+        format!("{}/.venv/Scripts/python.exe", install_dir),
         format!("{}/backend/venv/Scripts/python.exe", install_dir),
+        format!("{}/backend/.venv/Scripts/python.exe", install_dir),
     ] {
         if Path::new(venv_path).exists() {
             return venv_path.clone();
