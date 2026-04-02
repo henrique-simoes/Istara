@@ -54,6 +54,33 @@ from app.skills.skill_manager import skill_manager
 logger = logging.getLogger(__name__)
 
 
+@dataclass
+class ResearchStep:
+    """A single step in a research plan."""
+    id: str
+    description: str
+    skill_name: str | None = None
+    status: str = "pending"  # pending | executing | completed | failed
+    result: str = ""
+
+
+@dataclass
+class ResearchPlan:
+    """A decomposed research plan with ordered steps."""
+    question: str
+    steps: list[ResearchStep] = field(default_factory=list)
+    past_steps: list[ResearchStep] = field(default_factory=list)
+    status: str = "planning"  # planning | executing | replanning | complete
+
+    def to_dict(self) -> dict:
+        return {
+            "question": self.question,
+            "status": self.status,
+            "steps": [{"id": s.id, "desc": s.description, "skill": s.skill_name, "status": s.status, "result": s.result[:200]} for s in self.steps],
+            "completed": [{"id": s.id, "desc": s.description, "status": s.status} for s in self.past_steps],
+        }
+
+
 class AgentOrchestrator:
     """Autonomous agent that picks tasks and runs skills."""
 
@@ -140,6 +167,13 @@ class AgentOrchestrator:
 
         # Apply throttle if system is under pressure
         await governor.throttle_if_needed()
+
+        # Check LLM availability — don't pick tasks if no LLM is reachable
+        from app.core.compute_registry import compute_registry
+        if not compute_registry.has_available_node():
+            await broadcast_agent_status("paused", "Waiting for LLM — no servers available")
+            await compute_registry.broadcast_llm_status("llm_unavailable", "No LLM servers available. Agent work paused.")
+            return False
 
         async with async_session() as db:
             # 0. Process A2A inbox (collaboration requests from other agents)
@@ -229,9 +263,15 @@ class AgentOrchestrator:
             logger.debug(f"A2A inbox check skipped: {e}")
 
     async def _handle_collaboration(self, db: AsyncSession, msg) -> None:
-        """Respond to a collaboration request from another agent."""
+        """Respond to a collaboration request with full conversation context.
+
+        Uses context_id to maintain multi-turn threads — agents can have
+        back-and-forth exchanges about a task, not just fire-and-forget.
+        """
         try:
-            metadata = msg.metadata if isinstance(msg.metadata, dict) else json.loads(msg.metadata or "{}")
+            metadata = msg.get("metadata", {}) if isinstance(msg, dict) else {}
+            if isinstance(metadata, str):
+                metadata = json.loads(metadata) if metadata else {}
             task_id = metadata.get("task_id")
             if not task_id:
                 return
@@ -240,36 +280,63 @@ class AgentOrchestrator:
             if not task or task.status not in ("backlog", "in_progress"):
                 return
 
-            specialties = metadata.get("specialties_needed", [])
-            context = await retrieve_context(task.project_id, task.title + " " + (task.description or ""))
+            msg_id = msg.get("id", "") if isinstance(msg, dict) else getattr(msg, "id", "")
+            msg_from = msg.get("from_agent_id", "") if isinstance(msg, dict) else getattr(msg, "from_agent_id", "")
+            msg_content = msg.get("content", "") if isinstance(msg, dict) else getattr(msg, "content", "")
 
-            response = await ollama.chat(messages=[
-                {"role": "system", "content": f"You are {self._agent_id}, a specialist in: {', '.join(specialties) if specialties else 'UX research'}. Provide your expert analysis concisely."},
-                {"role": "user", "content": f"Task: {task.title}\nDescription: {task.description or 'N/A'}\nContext: {context.context_text[:1000] if context.has_context else 'No additional context.'}"},
-            ])
+            # Use context_id for multi-turn conversation (or msg_id as first message)
+            context_id = metadata.get("context_id") or msg_id
 
+            # Load conversation thread for multi-turn context
+            from app.services.a2a import get_conversation_thread, send_message
+            thread = await get_conversation_thread(db, context_id)
+
+            # Build LLM messages from conversation history
+            from app.core.agent_identity import get_capability_card
+            card = get_capability_card(self._agent_id)
+            specialties = metadata.get("specialties_needed", card.get("specialties", []))
+            rag = await retrieve_context(task.project_id, task.title + " " + (task.description or ""))
+
+            llm_messages = [
+                {"role": "system", "content": (
+                    f"You are {self._agent_id}, a specialist in: {', '.join(specialties) if specialties else 'UX research'}. "
+                    f"Provide expert analysis. You are collaborating with {msg_from} on task '{task.title}'."
+                )},
+            ]
+            # Add thread history
+            for t in thread:
+                t_from = t.get("from_agent_id", "")
+                role = "assistant" if t_from == self._agent_id else "user"
+                llm_messages.append({"role": role, "content": t.get("content", "")})
+
+            # Add current message if not in thread
+            if not thread or thread[-1].get("id") != msg_id:
+                llm_messages.append({"role": "user", "content": msg_content or f"Task: {task.title}\nDescription: {task.description or 'N/A'}"})
+
+            # Add RAG context
+            if rag.has_context:
+                llm_messages.append({"role": "user", "content": f"[Relevant documents]\n{rag.context_text[:800]}"})
+
+            response = await ollama.chat(messages=llm_messages)
             analysis = response.get("message", {}).get("content", "")
             if not analysis:
                 return
 
-            # Send response back
-            from app.services.a2a import send_message
-            msg_from = msg.get("from_agent_id") if isinstance(msg, dict) else getattr(msg, "from_agent_id", "")
-            msg_id = msg.get("id") if isinstance(msg, dict) else getattr(msg, "id", "")
+            # Send response in same conversation thread
             await send_message(
                 db=db,
                 from_agent_id=self._agent_id,
                 to_agent_id=msg_from,
                 message_type="collaboration_response",
                 content=analysis[:2000],
-                metadata={"task_id": task_id, "responding_to": msg_id},
+                metadata={"task_id": task_id, "context_id": context_id, "responding_to": msg_id},
             )
 
             # Append to task notes
             collab_note = f"\n\n--- {self._agent_id} collaboration ---\n{analysis[:1000]}"
             task.agent_notes = (task.agent_notes or "") + collab_note
             await db.commit()
-            logger.info(f"A2A: {self._agent_id} responded to collaboration for task {task_id}")
+            logger.info(f"A2A: {self._agent_id} responded in thread {context_id[:8]} for task {task_id}")
         except Exception as e:
             logger.debug(f"A2A collaboration handling failed: {e}")
 
@@ -350,10 +417,18 @@ class AgentOrchestrator:
         # Retrieve RAG context before skill selection (gives skills document awareness)
         rag_context = await retrieve_context(project.id, task.title + " " + (task.description or ""), top_k=5)
 
-        # Determine which skill to use
+        # ── Plan-and-Execute: decompose complex tasks before executing ──
+        # If the task has no explicit skill and has a substantive description,
+        # create a research plan first. Simple tasks skip planning.
         skill = await self._select_skill(task)
         if not skill:
-            # No specific skill — use tool-augmented general reasoning
+            # Complex task — create plan, then execute step by step
+            plan = await self._create_research_plan(task, project, rag_context)
+            if plan and len(plan.steps) > 1:
+                await self._execute_planned_task(db, task, project, plan, rag_context)
+                await complete_checkpoint(db, task.id)
+                return
+            # Simple task or planning failed — fall back to ReAct loop
             await self._execute_general_task(db, task, project)
             await complete_checkpoint(db, task.id)
             return
@@ -523,18 +598,38 @@ class AgentOrchestrator:
             skill_manager.record_execution(skill.name, output.success, quality_score)
             try:
                 health = skill_manager.get_skill_health(skill.name)
+                # LLM-based skill improvement when quality is consistently low
                 if health.get("executions", 0) >= 3 and health.get("avg_quality", 1.0) < 0.5:
+                    # Ask LLM to reflect on why the skill is underperforming
+                    improvement_text = ""
+                    try:
+                        reflection = await ollama.chat(messages=[
+                            {"role": "user", "content": (
+                                f"Skill '{skill.name}' has been underperforming "
+                                f"(quality: {health.get('avg_quality', 0):.0%} over {health['executions']} runs).\n"
+                                f"Last task: '{task.title}'\n"
+                                f"Last output (first 300 chars): {(output.summary or '')[:300]}\n"
+                                f"Errors: {output.errors}\n\n"
+                                "How should the skill's execution prompt be improved to produce better results? "
+                                "Be specific and concise (2-3 sentences)."
+                            )},
+                        ], temperature=0.3)
+                        improvement_text = reflection.get("message", {}).get("content", "")
+                    except Exception:
+                        improvement_text = f"Low quality ({health['avg_quality']:.0%}) after {health['executions']} runs"
+
                     skill_def = skill_manager.get(skill.name)
                     skill_manager.propose_improvement(
                         skill_name=skill.name,
                         field="execute_prompt",
                         current_value=(skill_def or {}).get("execute_prompt", "")[:200] if isinstance(skill_def, dict) else "",
-                        proposed_value="",
-                        reason=f"Low quality ({health['avg_quality']:.0%}) after {health['executions']} runs",
+                        proposed_value=improvement_text[:500],
+                        reason=f"LLM reflection: quality {health['avg_quality']:.0%} after {health['executions']} runs",
                         confidence=0.6,
                     )
                     await broadcast_suggestion(
-                        f"Skill '{skill.display_name}' may need tuning (quality: {health['avg_quality']:.0%}). Check pending proposals.",
+                        f"Skill '{skill.display_name}' needs improvement (quality: {health['avg_quality']:.0%}). "
+                        f"An improvement proposal has been created. Check Agents → Skill Proposals.",
                         project.id,
                     )
             except Exception:
@@ -919,6 +1014,120 @@ class AgentOrchestrator:
             await broadcast_task_progress(task.id, 1.0, "Complete — ready for review.")
             await self._persist_agent_state(AgentState.IDLE)
             await broadcast_agent_status("idle", f"Completed: {task.title}")
+
+    # ── Plan-and-Execute Methods ──────────────────────────────────────
+
+    async def _create_research_plan(self, task: Task, project: Project, rag_context) -> ResearchPlan | None:
+        """Ask the LLM to decompose a complex task into ordered research steps."""
+        try:
+            skill_names = [s.name for s in registry.all()[:25]]
+            plan_prompt = (
+                "You are a research planning agent. Decompose this task into 2-5 concrete steps.\n\n"
+                f"Task: {task.title}\n"
+                f"Description: {task.description or 'No description'}\n"
+                f"Instructions: {getattr(task, 'instructions', '') or 'None'}\n"
+                f"Available skills: {', '.join(skill_names)}\n\n"
+                "For each step, provide:\n"
+                "- id: step_1, step_2, etc.\n"
+                "- description: what to do\n"
+                "- skill_name: which skill to use (or null for general reasoning)\n\n"
+                'Respond with JSON: {"steps": [{"id": "step_1", "description": "...", "skill_name": "..."}]}\n'
+                "If this is a simple task that doesn't need decomposition, respond: {\"steps\": []}"
+            )
+            response = await ollama.chat(
+                messages=[{"role": "user", "content": plan_prompt}],
+                temperature=0.3,
+            )
+            content = response.get("message", {}).get("content", "")
+            import re
+            json_match = re.search(r'\{[^{}]*"steps"\s*:\s*\[.*?\]\s*\}', content, re.DOTALL)
+            if json_match:
+                data = json.loads(json_match.group())
+                steps = [
+                    ResearchStep(
+                        id=s.get("id", f"step_{i}"),
+                        description=s.get("description", ""),
+                        skill_name=s.get("skill_name"),
+                    )
+                    for i, s in enumerate(data.get("steps", []))
+                ]
+                if steps:
+                    plan = ResearchPlan(question=task.title, steps=steps)
+                    logger.info(f"Research plan created: {len(steps)} steps for '{task.title}'")
+                    return plan
+        except Exception as e:
+            logger.debug(f"Research planning skipped: {e}")
+        return None
+
+    async def _execute_planned_task(
+        self, db: AsyncSession, task: Task, project: Project, plan: ResearchPlan, rag_context
+    ) -> None:
+        """Execute a research plan step by step with replan checks."""
+        plan.status = "executing"
+        combined_results = []
+        total_steps = len(plan.steps)
+
+        for i, step in enumerate(plan.steps):
+            step.status = "executing"
+            progress = 0.2 + (0.6 * i / total_steps)
+            await broadcast_task_progress(task.id, progress, f"Step {i+1}/{total_steps}: {step.description[:60]}")
+
+            try:
+                if step.skill_name:
+                    # Execute via skill
+                    skill = registry.get(step.skill_name)
+                    if skill:
+                        task_context = step.description
+                        if rag_context.has_context:
+                            task_context += f"\n\n## Relevant Documents\n{rag_context.context_text}"
+                        skill_input = SkillInput(
+                            project_id=project.id,
+                            task_id=task.id,
+                            parameters={"mode": "analyze"},
+                            user_context=task_context,
+                            project_context=project.project_context,
+                            company_context=project.company_context,
+                        )
+                        output = await asyncio.wait_for(skill.execute(skill_input), timeout=300)
+                        step.result = output.summary or ""
+                        if output.success:
+                            await self._store_findings(db, project.id, output, task)
+                    else:
+                        step.result = f"Skill '{step.skill_name}' not found"
+                else:
+                    # Execute via general reasoning (single LLM call for this step)
+                    system_prompt = await context_hierarchy.compose_context(
+                        db, project_id=project.id, task_context=step.description,
+                    )
+                    response = await ollama.chat(messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": f"Research step: {step.description}\n\nContext from previous steps:\n" + "\n".join(f"- {s.description}: {s.result[:200]}" for s in plan.past_steps)},
+                    ])
+                    step.result = response.get("message", {}).get("content", "")
+
+                step.status = "completed"
+            except asyncio.TimeoutError:
+                step.status = "failed"
+                step.result = "Step timed out after 5 minutes"
+            except Exception as e:
+                step.status = "failed"
+                step.result = f"Step failed: {str(e)[:200]}"
+
+            plan.past_steps.append(step)
+
+        # All steps complete — compile results
+        plan.status = "complete"
+        plan_summary = json.dumps(plan.to_dict(), indent=2)
+        compiled = "\n\n".join(f"### Step {i+1}: {s.description}\n{s.result}" for i, s in enumerate(plan.past_steps) if s.result)
+
+        task.status = TaskStatus.IN_REVIEW
+        task.progress = 1.0
+        task.agent_notes = f"[Research Plan]\n{plan_summary}\n\n[Results]\n{compiled}"
+        await db.commit()
+
+        await broadcast_task_progress(task.id, 1.0, f"Plan complete — {len(plan.past_steps)} steps executed.")
+        await self._persist_agent_state(AgentState.IDLE)
+        await broadcast_agent_status("idle", f"Completed plan: {task.title}")
 
     async def _store_findings(
         self, db: AsyncSession, project_id: str, output: SkillOutput, task: Task

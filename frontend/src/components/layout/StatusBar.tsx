@@ -21,6 +21,7 @@ function IstaraVersion() {
 export default function StatusBar() {
   const [agentStatus, setAgentStatus] = useState("Idle");
   const [agentDetail, setAgentDetail] = useState("");
+  const [llmStatus, setLlmStatus] = useState<"ok" | "slow" | "down">("ok");
 
   const handleEvent = (event: WSEvent) => {
     switch (event.type) {
@@ -35,10 +36,19 @@ export default function StatusBar() {
       case "file_processed":
         setAgentStatus("Processed file");
         setAgentDetail(event.data.filename as string || "");
-        setTimeout(() => {
-          setAgentStatus("Idle");
-          setAgentDetail("");
-        }, 3000);
+        setTimeout(() => { setAgentStatus("Idle"); setAgentDetail(""); }, 3000);
+        break;
+      case "llm_unavailable":
+        setLlmStatus("down");
+        break;
+      case "llm_degraded":
+        setLlmStatus("slow");
+        break;
+      case "llm_recovered":
+        setLlmStatus("ok");
+        window.dispatchEvent(new CustomEvent("istara:toast", {
+          detail: { type: "success", title: "LLM Recovered", message: "LLM server is back online." },
+        }));
         break;
     }
   };
@@ -71,6 +81,20 @@ export default function StatusBar() {
             {agentDetail && ` — ${agentDetail}`}
           </span>
         </div>
+
+        {/* LLM health banner */}
+        {llmStatus === "down" && (
+          <div className="flex items-center gap-1.5 px-2 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded font-medium">
+            <WifiOff size={12} />
+            LLM unavailable — agent work paused
+          </div>
+        )}
+        {llmStatus === "slow" && (
+          <div className="flex items-center gap-1.5 px-2 py-0.5 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 rounded">
+            <Wifi size={12} />
+            LLM responding slowly
+          </div>
+        )}
       </div>
 
       <div className="flex items-center gap-4">

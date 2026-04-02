@@ -395,3 +395,48 @@ _(None recorded yet)_
         filepath = persona_dir / filename
         if not filepath.exists():
             filepath.write_text(content, encoding="utf-8")
+
+
+def get_capability_card(agent_id: str) -> dict:
+    """Generate an A2A-style capability card from the agent's persona files.
+
+    Returns a structured JSON-serializable dict describing the agent's
+    identity, skills, specialties, and supported input/output modes.
+    Used for agent discovery and intelligent task routing.
+    """
+    persona_dir = _get_personas_dir() / agent_id
+    card = {
+        "agent_id": agent_id,
+        "name": agent_id,
+        "description": "",
+        "specialties": [],
+        "skills": [],
+        "input_modes": ["text/plain", "application/pdf", "text/csv", "text/markdown"],
+        "output_modes": ["application/json", "text/markdown"],
+    }
+
+    # Extract from CORE.md
+    core_path = persona_dir / "CORE.md"
+    if core_path.exists():
+        core_text = core_path.read_text(encoding="utf-8")
+        # First line after heading is usually the agent name/role
+        lines = [l.strip() for l in core_text.split("\n") if l.strip() and not l.startswith("#")]
+        if lines:
+            card["description"] = lines[0][:200]
+        # Extract specialties from keywords
+        core_lower = core_text.lower()
+        for specialty in ["usability", "accessibility", "devops", "data integrity", "simulation",
+                          "testing", "ux evaluation", "ui audit", "research", "analysis"]:
+            if specialty in core_lower:
+                card["specialties"].append(specialty)
+
+    # Extract skills from SKILLS.md
+    skills_path = persona_dir / "SKILLS.md"
+    if skills_path.exists():
+        skills_text = skills_path.read_text(encoding="utf-8")
+        # Find skill-like headers (## or ### with action verbs)
+        import re
+        headers = re.findall(r'^#{2,3}\s+(.+)', skills_text, re.MULTILINE)
+        card["skills"] = [h.strip() for h in headers[:20]]
+
+    return card

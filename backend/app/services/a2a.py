@@ -135,6 +135,31 @@ async def get_conversation(
     return [m.to_dict() for m in result.scalars().all()]
 
 
+async def get_conversation_thread(
+    db: AsyncSession,
+    context_id: str,
+    limit: int = 20,
+) -> list[dict]:
+    """Get all messages in a conversation thread by context_id.
+
+    context_id groups related A2A messages into a multi-turn thread.
+    Messages are returned in chronological order (oldest first).
+    """
+    # Context ID is stored in extra_data JSON as "context_id"
+    # We query all messages and filter by context_id in extra_data
+    query = select(A2AMessage).order_by(A2AMessage.created_at.asc()).limit(limit * 3)
+    result = await db.execute(query)
+    thread = []
+    for msg in result.scalars().all():
+        try:
+            extra = json.loads(msg.extra_data or "{}") if isinstance(msg.extra_data, str) else (msg.extra_data or {})
+            if extra.get("context_id") == context_id or msg.id == context_id:
+                thread.append(msg.to_dict())
+        except Exception:
+            continue
+    return thread[:limit]
+
+
 async def get_full_log(db: AsyncSession, limit: int = 100) -> list[dict]:
     """Get the full A2A message log."""
     query = select(A2AMessage).order_by(A2AMessage.created_at.desc()).limit(limit)
