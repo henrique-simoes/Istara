@@ -360,11 +360,61 @@ class ReportManager:
             # Assemble full document
             full_doc = f"# {report.title}\n\n" + "\n\n---\n\n".join(sections)
 
+            # ── Iterative refinement loop (max 2 passes) ──
+            # LLM scores each section, identifies the weakest, and re-composes it.
+            # Stops when all sections score ≥7 or after 2 passes.
+            MAX_REFINEMENT_PASSES = 2
+            for pass_num in range(MAX_REFINEMENT_PASSES):
+                try:
+                    score_prompt = (
+                        f"Rate each section of this research report (1-10). "
+                        f"Identify the weakest section and suggest how to improve it.\n\n"
+                        f"{full_doc[:3000]}\n\n"
+                        f'Respond with JSON: {{"scores": {{"section_name": score}}, '
+                        f'"weakest": "section_name", "reason": "...", "suggestion": "..."}}'
+                    )
+                    score_response = await llm_router.chat(
+                        [{"role": "user", "content": score_prompt}], temperature=0.2
+                    )
+                    score_text = score_response.get("message", {}).get("content", "")
+
+                    import re as _re
+                    json_match = _re.search(r'\{.*"weakest".*\}', score_text, _re.DOTALL)
+                    if not json_match:
+                        break
+
+                    score_data = json.loads(json_match.group())
+                    scores = score_data.get("scores", {})
+                    weakest = score_data.get("weakest", "")
+                    suggestion = score_data.get("suggestion", "")
+
+                    # Convergence: all sections ≥7 → stop refining
+                    if scores and all(s >= 7 for s in scores.values() if isinstance(s, (int, float))):
+                        logger.info(f"Report refinement converged at pass {pass_num + 1}")
+                        break
+
+                    # Re-compose weakest section
+                    for i, template in enumerate(self.REPORT_TEMPLATE):
+                        if template["section"].lower() == weakest.lower():
+                            refined = await self._compose_section(
+                                template, findings, report, methodologies, llm_router,
+                                refinement_hint=suggestion,
+                            )
+                            if refined:
+                                sections[i] = f"## {template['section']}\n\n{refined}"
+                                full_doc = f"# {report.title}\n\n" + "\n\n---\n\n".join(sections)
+                                logger.info(f"Report refined: section '{weakest}' (pass {pass_num + 1})")
+                            break
+                except Exception as e:
+                    logger.debug(f"Report refinement pass {pass_num + 1} skipped: {e}")
+                    break
+
             # Store in content_json
             content = json.loads(report.content_json or "{}")
             content["full_document"] = full_doc
             content["sections"] = [t["section"] for t in self.REPORT_TEMPLATE]
             content["generated_at"] = datetime.now(timezone.utc).isoformat()
+            content["refinement_passes"] = min(pass_num + 1, MAX_REFINEMENT_PASSES) if 'pass_num' in dir() else 0
             report.content_json = json.dumps(content)
             report.status = "review"
             await db.commit()
@@ -390,7 +440,7 @@ class ReportManager:
         except Exception as e:
             logger.warning(f"Full report composition failed: {e}")
 
-    async def _compose_section(self, template: dict, findings: dict, report, methodologies: list, llm_router) -> str:
+    async def _compose_section(self, template: dict, findings: dict, report, methodologies: list, llm_router, refinement_hint: str = "") -> str:
         """Compose a single report section from its template definition."""
         source = template["source"]
         fmt = template["format"]
@@ -472,8 +522,10 @@ class ReportManager:
                     "Based on these research insights, identify 2-3 limitations or gaps "
                     "in the analysis that should be noted:\n\n"
                     + "\n".join(f"- {t}" for t in all_texts)
-                    + "\n\nBe specific and concise."
                 )
+                if refinement_hint:
+                    prompt += f"\n\nRefinement guidance: {refinement_hint}"
+                prompt += "\n\nBe specific and concise."
                 response = await llm_router.chat([{"role": "user", "content": prompt}], temperature=0.3)
                 return response.get("message", {}).get("content", "No gaps analysis available.")
             except Exception:

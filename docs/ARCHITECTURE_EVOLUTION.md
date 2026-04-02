@@ -150,13 +150,38 @@ Tracking the progression of Istara's agentic architecture from initial implement
 
 ---
 
-## Remaining Gaps (Post v2026.04.02)
+## v2026.04.02.3 — Final Architecture Gaps Closed
+
+### Changes
+- DAG-parallel step execution in research plans (asyncio.gather for independent steps)
+- Proactive A2A debate: uncertain ensemble consensus (0.4-0.6) triggers inter-agent critique
+- Skill self-verification gate: Voyager-style auto-test before human approval
+- L4 iterative refinement: LLM scores sections, re-composes weakest, converges at quality ≥7
+- Agent progress streaming: broadcast_agent_thinking + broadcast_plan_progress events
+- StatusBar shows real-time step-by-step execution progress
+
+### Before → After
+| Capability | Before | After |
+|-----------|--------|-------|
+| Plan execution | Sequential loop | DAG-parallel (independent steps run concurrently) |
+| A2A debate | Reactive only (respond to requests) | Proactive (initiate debate on uncertain consensus) |
+| Skill creation | Human approval only | Auto-test → human approval (Voyager gate) |
+| L4 report | Single-pass composition | Iterative refinement (max 2 passes, convergence check) |
+| Agent progress UI | Percentage + status text | Step-by-step thinking with plan progress events |
+
+### Industry Standard
+- DAG parallelism: LLMCompiler (ICML 2024) — 3.7x speedup on independent tasks
+- A2A debate: AutoGen (Microsoft, 2024) — multi-agent debate for consensus
+- Skill verification: Voyager (MineDojo) — self-verification before library addition
+- Report refinement: Elicit — iterative extraction with quality scoring
+- Progress streaming: Claude Agent SDK — real-time thinking visibility
+
+## Remaining Gaps (Post v2026.04.02.3)
 
 1. **Cross-project learning** — Intentionally deferred. Projects stay isolated.
 2. **Full MCTS action search** — LATS-style tree search for novel research questions (future)
-3. **Agent-to-agent debate rounds** — Ensemble uses temperature variation, not inter-agent debate (future)
-4. **Full PRISMA workflow** — Medical review methodology, not needed for general UX research
-5. **Multi-region compute routing** — Not needed for local-first architecture
+3. **Full PRISMA workflow** — Medical review methodology, not needed for general UX research
+4. **Multi-region compute routing** — Not needed for local-first architecture
 
 ---
 
