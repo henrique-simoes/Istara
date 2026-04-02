@@ -197,6 +197,57 @@ jobs:
           retention-days: 30
           if-no-files-found: warn
 
+  # ── Linux Build ───────────────────────────────────────────────────
+  build-linux:
+    needs: version
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set version
+        run: |
+          chmod +x scripts/set-version.sh
+          ./scripts/set-version.sh "${{ needs.version.outputs.version }}"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: desktop/src-tauri
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libgtk-3-dev
+
+      - name: Install desktop dependencies
+        working-directory: desktop
+        run: npm install
+
+      - name: Build Tauri app
+        working-directory: desktop
+        run: npx tauri build
+        continue-on-error: true
+
+      - name: Upload Linux artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Istara-Linux-${{ needs.version.outputs.version }}
+          path: |
+            desktop/src-tauri/target/release/bundle/appimage/*.AppImage
+            desktop/src-tauri/target/release/bundle/deb/*.deb
+          retention-days: 30
+          if-no-files-found: warn
+
   # ── Windows Build ──────────────────────────────────────────────────
   build-windows:
     needs: version
@@ -291,7 +342,7 @@ jobs:
   # ── Release (on tag push or manual) ────────────────────────────────
   release:
     if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
-    needs: [version, build-macos, build-windows]
+    needs: [version, build-macos, build-windows, build-linux]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

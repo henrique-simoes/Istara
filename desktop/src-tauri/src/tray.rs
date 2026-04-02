@@ -96,13 +96,19 @@ fn handle_start_stop<R: Runtime>(app: &AppHandle<R>, pm: Arc<Mutex<ProcessManage
     // Run start/stop in a background thread (istara.sh blocks for health checks)
     std::thread::spawn(move || {
         let result = if running {
-            // Stop relay first (fast)
+            // Stop server + relay
             if let Ok(mut guard) = pm.lock() {
-                guard.stop_relay();
+                guard.stop_server()
+            } else {
+                Err("Failed to acquire lock".to_string())
             }
-            ProcessManager::stop_server(&install_dir)
         } else {
-            let res = ProcessManager::start_server(&install_dir);
+            // Start server
+            let res = if let Ok(mut guard) = pm.lock() {
+                guard.start_server(&install_dir)
+            } else {
+                Err("Failed to acquire lock".to_string())
+            };
             // Start relay if donate_compute is enabled
             if res.is_ok() && donate {
                 if let Ok(mut guard) = pm.lock() {
