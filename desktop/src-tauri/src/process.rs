@@ -95,6 +95,13 @@ impl ProcessManager {
             .stdout(Stdio::from(backend_log))
             .stderr(Stdio::from(backend_err));
 
+        // macOS Tahoe: fix Python's platform.mac_ver() returning wrong version
+        backend_cmd.env("SYSTEM_VERSION_COMPAT", "0");
+
+        // Ensure PATH includes common binary locations (GUI apps don't inherit shell PATH)
+        let enriched_path = build_enriched_path();
+        backend_cmd.env("PATH", &enriched_path);
+
         #[cfg(target_os = "windows")]
         {
             use std::os::windows::process::CommandExt;
@@ -138,13 +145,8 @@ impl ProcessManager {
             .stdout(Stdio::from(frontend_log))
             .stderr(Stdio::from(frontend_err));
 
-        // Ensure Node.js is in PATH for npm
-        #[cfg(target_os = "macos")]
-        {
-            let current_path = std::env::var("PATH").unwrap_or_default();
-            let node_dir = Path::new(&npm).parent().map(|p| p.to_string_lossy().to_string()).unwrap_or_default();
-            frontend_cmd.env("PATH", format!("{}:/opt/homebrew/bin:/opt/homebrew/opt/node/bin:/usr/local/bin:{}", node_dir, current_path));
-        }
+        // Ensure Node.js + Python are in PATH for npm (GUI apps don't inherit shell PATH)
+        frontend_cmd.env("PATH", &enriched_path);
 
         #[cfg(target_os = "windows")]
         {
@@ -286,6 +288,72 @@ impl Drop for ProcessManager {
     fn drop(&mut self) {
         self.stop_all();
     }
+}
+
+// ── PATH Resolution for GUI Apps ────────────────────────────────────
+
+/// Build a comprehensive PATH for child processes.
+/// GUI apps (Tauri, Finder-launched) don't inherit the user's shell PATH.
+/// We construct a PATH that includes all common binary locations.
+fn build_enriched_path() -> String {
+    let mut paths: Vec<String> = Vec::new();
+
+    // Homebrew (Apple Silicon + Intel)
+    #[cfg(target_os = "macos")]
+    {
+        paths.push("/opt/homebrew/bin".to_string());
+        paths.push("/opt/homebrew/opt/node/bin".to_string());
+        paths.push("/opt/homebrew/opt/python@3.12/bin".to_string());
+        paths.push("/opt/homebrew/opt/python@3.11/bin".to_string());
+        paths.push("/usr/local/bin".to_string()); // Intel Homebrew
+    }
+
+    // System paths (all platforms)
+    paths.push("/usr/bin".to_string());
+    paths.push("/bin".to_string());
+    paths.push("/usr/sbin".to_string());
+    paths.push("/sbin".to_string());
+
+    // User-specific paths
+    if let Ok(home) = std::env::var("HOME") {
+        // nvm
+        let nvm_default = format!("{}/.nvm/versions/node", home);
+        if Path::new(&nvm_default).exists() {
+            if let Ok(entries) = std::fs::read_dir(&nvm_default) {
+                let mut versions: Vec<_> = entries.flatten().collect();
+                versions.sort_by(|a, b| b.file_name().cmp(&a.file_name()));
+                if let Some(entry) = versions.first() {
+                    paths.push(format!("{}/bin", entry.path().display()));
+                }
+            }
+        }
+        // pyenv
+        paths.push(format!("{}/.pyenv/shims", home));
+        // fnm
+        let fnm_dir = format!("{}/.local/share/fnm/node-versions", home);
+        if Path::new(&fnm_dir).exists() {
+            if let Ok(entries) = std::fs::read_dir(&fnm_dir) {
+                for entry in entries.flatten() {
+                    let bin = entry.path().join("installation/bin");
+                    if bin.exists() {
+                        paths.push(bin.to_string_lossy().to_string());
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    // Inherit existing PATH as fallback
+    if let Ok(existing) = std::env::var("PATH") {
+        for p in existing.split(':') {
+            if !paths.contains(&p.to_string()) {
+                paths.push(p.to_string());
+            }
+        }
+    }
+
+    paths.join(":")
 }
 
 // ── Platform-Specific Port Cleanup ──────────────────────────────────
