@@ -527,13 +527,89 @@ class SkillManager:
         """Return the last N creation proposals."""
         return self._creation_proposals[-limit:]
 
+    async def verify_skill_proposal(self, proposal_id: str) -> dict:
+        """Run automatic verification on a proposed skill before human approval.
+
+        Voyager-style self-verification gate: the skill must produce valid output
+        on a synthetic test case before it can be approved.
+
+        Returns: {"passed": bool, "issues": list[str], "test_output": str}
+        """
+        proposal = next((p for p in self._creation_proposals if p.id == proposal_id), None)
+        if not proposal or proposal.status != "pending":
+            return {"passed": False, "issues": ["Proposal not found or not pending"]}
+
+        defn = proposal.proposed_definition
+        try:
+            # Write temporary skill file for testing
+            self.ensure_definitions_dir()
+            test_path = SKILLS_DIR / f"_test_{defn.get('name', 'unknown')}.json"
+            defn.setdefault("version", "1.0.0")
+            defn.setdefault("enabled", True)
+            atomic_write(test_path, json.dumps(defn, indent=2, ensure_ascii=False))
+
+            # Load and execute with synthetic input
+            loaded = SkillDefinition(test_path)
+            from app.skills.base import SkillInput
+            test_input = SkillInput(
+                project_id="__verification_test__",
+                user_context=f"Verification test for skill: {loaded.display_name}. Generate a minimal sample output demonstrating this skill works.",
+            )
+
+            import asyncio
+            skill = registry.get(loaded.name) if loaded.name in [s.name for s in registry.all()] else None
+            if not skill:
+                # Register temporarily
+                self._definitions[loaded.name] = loaded
+                skill = registry.get(loaded.name)
+
+            if skill:
+                output = await asyncio.wait_for(skill.execute(test_input), timeout=60)
+                issues = await skill.validate_output(output)
+                passed = output.success and len(issues) <= 3
+                result = {
+                    "passed": passed,
+                    "issues": issues[:5] if issues else [],
+                    "test_output": (output.summary or "")[:500],
+                }
+            else:
+                result = {"passed": False, "issues": ["Could not instantiate skill for testing"]}
+
+            # Clean up test file
+            test_path.unlink(missing_ok=True)
+            if loaded.name in self._definitions and self._definitions[loaded.name]._path == test_path:
+                del self._definitions[loaded.name]
+
+            # Store verification result on the proposal
+            proposal.test_result = result
+            self._save_creation_proposals()
+            logger.info(f"Skill verification {'PASSED' if result['passed'] else 'FAILED'}: {defn.get('name')}")
+            return result
+
+        except Exception as e:
+            # Clean up on error
+            test_path = SKILLS_DIR / f"_test_{defn.get('name', 'unknown')}.json"
+            test_path.unlink(missing_ok=True)
+            return {"passed": False, "issues": [f"Verification error: {str(e)[:200]}"]}
+
     def approve_creation_proposal(self, proposal_id: str) -> dict | None:
         """Approve a creation proposal — writes the skill JSON and marks approved.
+
+        If the proposal has a verification result and it failed, the approval
+        is blocked with a warning. Run verify_skill_proposal() first.
 
         Returns the definition dict for registry loading, or None if not found.
         """
         for proposal in self._creation_proposals:
             if proposal.id == proposal_id and proposal.status == "pending":
+                # Check verification gate
+                if hasattr(proposal, "test_result") and isinstance(proposal.test_result, dict):
+                    if not proposal.test_result.get("passed", True):
+                        logger.warning(f"Skill approval blocked — verification failed: {proposal.test_result.get('issues')}")
+                        proposal.status = "testing_failed"
+                        self._save_creation_proposals()
+                        return None
+
                 defn = proposal.proposed_definition
                 defn.setdefault("version", "1.0.0")
                 defn.setdefault("enabled", True)
@@ -541,7 +617,7 @@ class SkillManager:
                 defn.setdefault("changelog", [{
                     "version": "1.0.0",
                     "date": defn["created_at"],
-                    "changes": "Initial creation via autonomous proposal",
+                    "changes": "Initial creation via autonomous proposal (verified)",
                 }])
 
                 # Write to definitions/

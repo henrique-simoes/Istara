@@ -50,6 +50,14 @@ export default function StatusBar() {
           detail: { type: "success", title: "LLM Recovered", message: "LLM server is back online." },
         }));
         break;
+      case "agent_thinking":
+        setAgentStatus("Thinking");
+        setAgentDetail(`Step ${event.data.step}/${event.data.total_steps}: ${((event.data.thought as string) || "").substring(0, 80)}`);
+        break;
+      case "plan_progress":
+        setAgentStatus("Executing Plan");
+        setAgentDetail(`Step ${event.data.plan_step}/${event.data.total_steps}: ${event.data.step_description} [${event.data.step_status}]`);
+        break;
     }
   };
 
