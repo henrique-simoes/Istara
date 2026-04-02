@@ -50,17 +50,17 @@ fn main() {
                 let conn_str = cfg.connection_string.clone();
                 let pm_clone = pm.clone();
 
-                // Run in background thread (istara.sh blocks for health checks)
+                // Run in background thread
                 std::thread::spawn(move || {
-                    match ProcessManager::start_server(&install_dir) {
-                        Ok(_) => eprintln!("[tray] Auto-start server succeeded"),
-                        Err(e) => {
-                            eprintln!("[tray] Auto-start server failed: {}", e);
-                            return;
+                    if let Ok(mut guard) = pm_clone.lock() {
+                        match guard.start_server(&install_dir) {
+                            Ok(_) => eprintln!("[tray] Auto-start server succeeded"),
+                            Err(e) => {
+                                eprintln!("[tray] Auto-start server failed: {}", e);
+                                return;
+                            }
                         }
-                    }
-                    if donate {
-                        if let Ok(mut guard) = pm_clone.lock() {
+                        if donate {
                             if let Err(e) = guard.start_relay(&install_dir, &conn_str) {
                                 eprintln!("[tray] Auto-start relay failed: {}", e);
                             }
