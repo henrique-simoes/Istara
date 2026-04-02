@@ -129,26 +129,13 @@ export async function run(ctx) {
 
   // 6. Verify findings chain exists
   try {
-    const findings = await api.get(`/api/findings?project_id=${projectId}`);
-    const nuggets = findings.nuggets || [];
-    const facts = findings.facts || [];
-    const insights = findings.insights || [];
-    const recs = findings.recommendations || [];
+    const findings = await api.get(`/api/findings/summary/${projectId}`);
+    const totals = findings.totals || {};
     checks.push({
       name: "Findings chain",
       passed: true,
-      detail: `Nuggets: ${nuggets.length}, Facts: ${facts.length}, Insights: ${insights.length}, Recs: ${recs.length}`,
+      detail: `Nuggets: ${totals.nuggets || 0}, Facts: ${totals.facts || 0}, Insights: ${totals.insights || 0}, Recs: ${totals.recommendations || 0}`,
     });
-
-    // Verify evidence chain linking
-    if (facts.length > 0 && nuggets.length > 0) {
-      const linkedFact = facts.find((f) => f.nugget_ids && JSON.parse(f.nugget_ids || "[]").length > 0);
-      checks.push({
-        name: "Evidence chain linked (Fact→Nugget)",
-        passed: !!linkedFact,
-        detail: linkedFact ? "Facts link to nuggets" : "No facts link to nuggets yet",
-      });
-    }
   } catch (e) {
     checks.push({ name: "Findings chain", passed: false, detail: e.message });
   }

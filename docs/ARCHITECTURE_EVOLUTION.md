@@ -185,6 +185,59 @@ Tracking the progression of Istara's agentic architecture from initial implement
 
 ---
 
+## Testing Infrastructure (v2026.04.02.3+)
+
+### Test Coverage Summary
+
+| Component | Scenarios | Custom Checks | Status |
+|-----------|-----------|---------------|--------|
+| Core API & CRUD | 14 scenarios | 5 checks | Comprehensive |
+| Agent System | 14 scenarios (incl. new 71) | 8 checks | Comprehensive |
+| Research Pipeline | 9 scenarios | 3 checks | Good |
+| Circuit Breaker & LLM Health | 1 scenario (new 72) | 2 checks | New |
+| A2A Debate & Reports | 1 scenario (new 73) | 4 checks | New |
+| Multi-Model & Network | 6 scenarios | 3 checks | Good |
+| Security & Auth | 8 scenarios | 4 checks | Good |
+| Installation & CLI | 0 scenarios | 16 checks | Check-based only |
+| **Total** | **70 scenarios** | **45+ checks** | |
+
+### Test Results (v2026.04.02.3, LLM disconnected)
+
+| Scenario | Result | Notes |
+|----------|--------|-------|
+| 01 Health Check | 6/7 PASS | LLM disconnected (expected — no LM Studio running) |
+| 72 Circuit Breaker | 8/8 PASS | Unreachable server detection, health_error, compute nodes all working |
+| 73 A2A & Reports | 11/11 PASS | 5 agents, A2A log, reports endpoint, personas, proposals all accessible |
+| 71 Plan-and-Execute | 3/4 PASS | Plan creation requires LLM (expected failure when disconnected) |
+
+### New Scenarios Added
+- **71-plan-and-execute.mjs**: Verifies ResearchPlan creation, step execution, DAG support, validation fields
+- **72-circuit-breaker-health.mjs**: LLM server health, unreachable detection, health_error, compute nodes
+- **73-a2a-debate-and-reports.mjs**: A2A log, 5 agents, report pipeline, MECE, executive summary, findings chain
+
+### Testing Infrastructure Architecture
+```
+tests/simulation/
+├── run.mjs              — Playwright orchestrator (30KB, production-grade)
+├── scenarios/            — 70 scenario files (~16K lines)
+│   ├── 01-health-check.mjs
+│   ├── ...
+│   ├── 71-plan-and-execute.mjs      (new)
+│   ├── 72-circuit-breaker-health.mjs (new)
+│   └── 73-a2a-debate-and-reports.mjs (new)
+├── evaluators/           — axe-core accessibility, Nielsen's heuristics, performance
+├── lib/                  — api-client, assertions, selectors, browser utils
+└── data/                 — seed-project, fixture generators
+
+scripts/marathon/
+├── config.json           — 13 cycles (A-M), 70 scenarios, 45+ custom checks
+├── run-cycle.mjs         — Cycle executor with JWT auth and reporting
+├── start-marathon.sh     — Launcher with caffeinate
+└── relay-simulator.mjs   — Network relay testing
+```
+
+---
+
 ## Architecture Diagram (Current)
 
 ```
