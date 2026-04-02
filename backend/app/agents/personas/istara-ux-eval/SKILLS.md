@@ -196,3 +196,8 @@
 - File chips: preview before send gives user control (H3: User Control and Freedom). Remove button = undo.
 - Document picker: Recognition Rather Than Recall (H6) — browse and search existing docs instead of remembering names.
 - Ensemble validation: transparent confidence scoring improves Trust (Aesthetic-Usability Effect) and Visibility of System Status (H1).
+
+### Testing & UX Quality (v2026.04.02.4)
+- Circuit breaker notifications: red banner ("LLM unavailable — agent work paused") gives immediate Visibility of System Status (H1). Yellow for slow. Green toast for recovery.
+- Plan-and-Execute progress: step-by-step updates in StatusBar reduce uncertainty (H1) during long-running agent tasks. Users can see "Step 2/5: Analyzing..." instead of just a percentage.
+- Expected test failures when LLM is disconnected: the system correctly communicates the issue, not silent failure. Aligns with H9 (Help Users Recover from Errors).
