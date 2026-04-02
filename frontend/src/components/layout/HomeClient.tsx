@@ -32,6 +32,7 @@ import ErrorBoundary from "@/components/common/ErrorBoundary";
 import KeyboardShortcuts from "@/components/common/KeyboardShortcuts";
 import MobileNav from "@/components/layout/MobileNav";
 import GuidedTour from "@/components/onboarding/GuidedTour";
+import OnboardingWizard from "@/components/onboarding/OnboardingWizard";
 import LoginScreen from "@/components/auth/LoginScreen";
 import { useTourStore, isTourCompleted } from "@/stores/tourStore";
 import { useProjectStore } from "@/stores/projectStore";
@@ -71,6 +72,11 @@ export default function HomeClient() {
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [authenticated, setAuthenticated] = useState<boolean | null>(null);
   const { projects, activeProjectId, fetchProjects } = useProjectStore();
+
+  const tourActive = useTourStore((s) => s.active);
+  const tourStep = useTourStore((s) => s.step);
+  const isOnboarding = useTourStore((s) => s.isOnboarding);
+  const completeOnboarding = useTourStore((s) => s.completeOnboarding);
 
   // Check authentication on mount
   useEffect(() => {
@@ -203,9 +209,6 @@ export default function HomeClient() {
     return () => window.removeEventListener("keydown", handler);
   }, []);
 
-  const tourActive = useTourStore((s) => s.active);
-  const tourStep = useTourStore((s) => s.step);
-
   // Show login screen if not authenticated
   if (authenticated === null) return null; // Loading state
   if (authenticated === false) {
@@ -215,7 +218,13 @@ export default function HomeClient() {
   // While tour check is loading, show nothing (prevents flash of main UI)
   if (!tourReady) return null;
 
-  // If tour is on inline steps (0-1), render ONLY the tour (no sidebar/UI behind)
+  // Show Onboarding Wizard (Initial Setup) if active
+  if (isOnboarding) {
+    return <OnboardingWizard onComplete={completeOnboarding} />;
+  }
+
+  // If tour is on legacy inline steps (0-1) but NOT in Wizard mode, 
+  // render the tour cards (redundancy check)
   if (tourActive && tourStep <= 1) {
     return <GuidedTour setActiveView={setActiveView} currentView={activeView} />;
   }
@@ -302,7 +311,9 @@ export default function HomeClient() {
       <ToastNotification />
       <SearchModal open={searchOpen} onClose={() => setSearchOpen(false)} onNavigate={setActiveView} />
       <KeyboardShortcuts open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
-      <GuidedTour setActiveView={setActiveView} currentView={activeView} />
+      {tourActive && !isOnboarding && (
+        <GuidedTour setActiveView={setActiveView} currentView={activeView} />
+      )}
     </div>
   );
 }
