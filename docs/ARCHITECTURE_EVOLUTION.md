@@ -238,6 +238,27 @@ scripts/marathon/
 
 ---
 
+## Key Learnings Across All Iterations
+
+### Engineering Discipline
+1. **Function signature mismatches are the #1 integration bug** — When `a2a.py` required `db` as first param, 6 call sites were wrong. Always grep for ALL callers when changing a function signature (Rule #10: no semantic search).
+2. **Missing imports crash at load time, not at call time** — The `dataclass` import was removed during cleanup, causing `NameError` on module load. Always verify imports after any refactor.
+3. **Dead code accelerates context decay** — Removing unused `bellRef`, `unreadCount`, and duplicate imports prevents confusion in future edits (Rule #1).
+4. **Type check catches what reading misses** — `npx tsc --noEmit` caught the `Lock` component's missing `title` prop. Always run verification (Rule #4).
+
+### Architecture Decisions
+5. **Shell delegation > direct process management** — The tray app's 18 bugs vanished when we delegated to `istara.sh`. Single source of truth for PID management.
+6. **Circuit breaker must be in the routing path** — Adding `cb_is_available()` to `_select_candidates()` was the correct integration point, not a separate health check loop.
+7. **ReAct loops need iteration limits** — 5 iterations for agent tasks, 8 for chat. Too many → context exhaustion. Too few → incomplete reasoning.
+8. **Ensemble validation is useless without LLM** — The circuit breaker correctly pauses all agent work when no LLM is available. Graceful degradation, not silent failure.
+
+### Testing Insights
+9. **Test infrastructure quality ≠ test execution** — 67 scenarios existed but never ran in CI. Infrastructure is necessary but not sufficient.
+10. **Expected failures are valid test results** — Scenario 71 failing without LLM is correct behavior, not a bug. Tests should document expected vs unexpected failures.
+11. **Auth is the #1 test setup blocker** — Every test run starts with credential configuration. The simulation runner's auth flow is well-designed but requires manual setup.
+
+---
+
 ## Architecture Diagram (Current)
 
 ```

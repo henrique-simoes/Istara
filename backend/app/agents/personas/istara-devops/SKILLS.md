@@ -207,3 +207,9 @@
 - Ensemble validation wired into agent execution loop. Monitor for: validation timeout blocking task completion, Self-MoA temperature variance producing incoherent consensus, AdaptiveSelector returning stale method choices.
 - Task `instructions` field now passed to LLM. Monitor for: prompt length exceeding model context window when instructions + context + user_context are combined.
 - CSV file classification by headers. Monitor for: edge cases where headers don't contain expected keywords, multilingual column names.
+
+### Testing Infrastructure & Production Readiness (v2026.04.02.4)
+- 70 simulation scenarios across 13 marathon cycles. Monitor for: scenario numbering gaps (54, 60, 62, 63), custom check stubs that always pass, hardcoded ports in test runner.
+- Circuit breaker integration verified: unreachable server detection, health_error population, compute node listing. Monitor for: circuit breaker state stuck in OPEN (cooldown timer issue), false positives from slow but not down LLMs.
+- DAG-parallel plan execution verified. Monitor for: asyncio.gather deadlocks when all steps depend on each other, memory growth from parallel skill executions.
+- A2A debate timeout (30s polling). Monitor for: debate responses arriving after timeout window, orphaned debate_request messages.

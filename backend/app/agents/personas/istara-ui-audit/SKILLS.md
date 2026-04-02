@@ -189,3 +189,8 @@
 - Chat markdown: verify prose classes maintain contrast in dark mode. Code blocks must be keyboard-focusable. Tables need proper `<th>` semantics.
 - File chips: verify remove button has aria-label. Chips are keyboard-reachable. Screen reader announces file name.
 - Document picker: verify search input has aria-label. Results are navigable with arrow keys. Selected state announced.
+
+### Testing & Accessibility Validation (v2026.04.02.4)
+- StatusBar LLM health events verified: llm_unavailable, llm_degraded, llm_recovered handlers in StatusBar.tsx. Verify ARIA announcements for status changes.
+- Plan progress events (agent_thinking, plan_progress) display step-by-step execution in StatusBar. Verify screen reader announces step changes.
+- Circuit breaker health_error displayed on LLM server cards. Verify error text contrast meets WCAG 1.4.3.
