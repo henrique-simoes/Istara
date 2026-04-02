@@ -92,6 +92,10 @@ class AgentOrchestrator:
         self._loop_interval = 30  # seconds between task checks
         self._idle_interval = 60  # seconds when no tasks available
 
+    @property
+    def agent_id(self) -> str:
+        return self._agent_id
+
     async def start(self) -> None:
         """Start the autonomous work loop."""
         self._running = True
