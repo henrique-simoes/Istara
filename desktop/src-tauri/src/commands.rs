@@ -30,33 +30,26 @@ pub fn start_server(state: State<'_, AppState>) -> Result<String, String> {
         );
     }
 
-    // Delegate to istara.sh (this blocks until health check passes)
-    ProcessManager::start_server(&cfg.install_dir)?;
+    // Start server via Rust-native process manager
+    let mut pm = state.process_manager.lock().map_err(|e| e.to_string())?;
+    pm.start_server(&cfg.install_dir)?;
 
     // Start relay if donation is enabled
     if cfg.donate_compute {
-        if let Ok(mut pm) = state.process_manager.lock() {
-            if let Err(e) = pm.start_relay(&cfg.install_dir, &cfg.connection_string) {
-                eprintln!("[tray] Relay start failed during server start: {}", e);
-            }
+        if let Err(e) = pm.start_relay(&cfg.install_dir, &cfg.connection_string) {
+            eprintln!("[tray] Relay start failed during server start: {}", e);
         }
     }
-    Ok("Server started".to_string())
+    Ok("Server starting...".to_string())
 }
 
 #[tauri::command]
 pub fn stop_server(state: State<'_, AppState>) -> Result<String, String> {
     let cfg = config::load_config();
 
-    // Stop relay first (managed by us)
-    if let Ok(mut pm) = state.process_manager.lock() {
-        pm.stop_relay();
-    }
-
-    // Delegate stop to istara.sh
-    if !cfg.install_dir.is_empty() {
-        ProcessManager::stop_server(&cfg.install_dir)?;
-    }
+    // Stop all processes (server + relay)
+    let mut pm = state.process_manager.lock().map_err(|e| e.to_string())?;
+    pm.stop_server()?;
     Ok("Server stopped".to_string())
 }
 

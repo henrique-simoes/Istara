@@ -1,9 +1,12 @@
-/// Process management — delegates to istara.sh for backend + frontend.
-/// Relay is managed directly since istara.sh doesn't handle it.
+/// Rust-native process management — cross-platform (macOS, Windows, Linux).
 ///
-/// Architecture: The system tray is a thin GUI layer. istara.sh handles
-/// PID files, process groups, port cleanup, and health waits. This ensures
-/// the CLI and GUI use identical process management logic — one source of truth.
+/// Replaces the previous istara.sh shell delegation with direct Rust process
+/// spawning. Each service (backend, frontend, relay) is a tracked Child process.
+/// Platform-specific port cleanup via #[cfg] blocks.
+///
+/// Architecture: The tray app owns all child processes. On exit, all children
+/// are killed. istara.sh remains as a CLI convenience but the tray app no
+/// longer depends on it.
 
 use crate::path_resolver;
 use std::fs;
@@ -12,6 +15,8 @@ use std::process::{Child, Command, Stdio};
 use std::time::Duration;
 
 pub struct ProcessManager {
+    backend: Option<Child>,
+    frontend: Option<Child>,
     relay: Option<Child>,
     log_dir: PathBuf,
 }
@@ -39,29 +44,6 @@ pub fn is_ollama_running() -> bool {
     check_port(11434)
 }
 
-/// Find istara.sh in the install directory or ~/.istara.
-fn find_istara_script(install_dir: &str) -> Result<PathBuf, String> {
-    // Check install_dir first
-    if !install_dir.is_empty() {
-        let script = PathBuf::from(install_dir).join("istara.sh");
-        if script.exists() {
-            return Ok(script);
-        }
-    }
-
-    // Check ~/.istara/istara.sh
-    if let Some(home) = dirs::home_dir() {
-        let alt = home.join(".istara").join("istara.sh");
-        if alt.exists() {
-            return Ok(alt);
-        }
-    }
-
-    Err(format!(
-        "istara.sh not found. Install Istara first:\n  curl -fsSL https://raw.githubusercontent.com/henrique-simoes/Istara/main/scripts/install-istara.sh | bash"
-    ))
-}
-
 impl ProcessManager {
     pub fn new() -> Self {
         let log_dir = dirs::home_dir()
@@ -70,99 +52,163 @@ impl ProcessManager {
             .join("logs");
         let _ = fs::create_dir_all(&log_dir);
         Self {
+            backend: None,
+            frontend: None,
             relay: None,
             log_dir,
         }
     }
 
-    /// Start backend + frontend via istara.sh.
-    /// BLOCKING: waits for health checks (up to ~35s). Run in a background thread.
-    pub fn start_server(install_dir: &str) -> Result<String, String> {
-        let script = find_istara_script(install_dir)?;
-
-        eprintln!("[tray] Starting server via {}", script.display());
-        let output = Command::new("bash")
-            .arg(script.to_str().unwrap())
-            .arg("start")
-            .current_dir(if install_dir.is_empty() {
-                dirs::home_dir()
-                    .unwrap_or_else(|| PathBuf::from("."))
-                    .join(".istara")
-                    .to_str()
-                    .unwrap_or(".")
-                    .to_string()
-            } else {
-                install_dir.to_string()
-            })
-            .output()
-            .map_err(|e| format!("istara.sh start failed: {}", e))?;
-
-        let stdout = String::from_utf8_lossy(&output.stdout).to_string();
-        let stderr = String::from_utf8_lossy(&output.stderr).to_string();
-        let combined = strip_ansi(&format!("{}{}", stdout, stderr));
-
-        if check_port(8000) || check_port(3000) {
-            eprintln!("[tray] Server started successfully");
-            Ok(combined)
-        } else if output.status.success() {
-            eprintln!("[tray] istara.sh reported success but ports not yet bound");
-            Ok(combined)
-        } else {
-            let msg = combined.trim().to_string();
-            eprintln!("[tray] Server failed to start:\n{}", msg);
-            Err(if msg.is_empty() {
-                "Server failed to start. Check ~/.istara/logs/ for details.".to_string()
-            } else {
-                msg
-            })
+    /// Start backend + frontend as direct child processes.
+    /// Non-blocking: spawns processes and returns immediately.
+    /// Health loop will detect when ports come up.
+    pub fn start_server(&mut self, install_dir: &str) -> Result<String, String> {
+        if install_dir.is_empty() {
+            return Err("No install directory configured.".to_string());
         }
+
+        // Clean up any dead processes first
+        self.cleanup_dead();
+
+        // Kill orphan port holders before starting
+        kill_port_holders(8000);
+        kill_port_holders(3000);
+
+        let backend_dir = PathBuf::from(install_dir).join("backend");
+        if !backend_dir.exists() {
+            return Err(format!("Backend not found at {}", backend_dir.display()));
+        }
+
+        // ── Start Backend (uvicorn) ──
+        let python = path_resolver::find_python(install_dir);
+        eprintln!("[tray] Starting backend with: {}", python);
+
+        let backend_log = fs::File::create(self.log_dir.join("backend.log"))
+            .map_err(|e| format!("Cannot create backend log: {}", e))?;
+        let backend_err = backend_log.try_clone()
+            .map_err(|e| format!("Cannot clone log: {}", e))?;
+
+        let mut backend_cmd = Command::new(&python);
+        backend_cmd
+            .args(["-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--log-level", "info"])
+            .current_dir(&backend_dir)
+            .stdout(Stdio::from(backend_log))
+            .stderr(Stdio::from(backend_err));
+
+        #[cfg(target_os = "windows")]
+        {
+            use std::os::windows::process::CommandExt;
+            backend_cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+        }
+
+        match backend_cmd.spawn() {
+            Ok(child) => {
+                eprintln!("[tray] Backend started (PID: {})", child.id());
+                self.backend = Some(child);
+            }
+            Err(e) => {
+                return Err(format!("Failed to start backend: {}. Python: {}", e, python));
+            }
+        }
+
+        // ── Start Frontend (npm start or npm run dev) ──
+        let frontend_dir = PathBuf::from(install_dir).join("frontend");
+        if !frontend_dir.exists() {
+            eprintln!("[tray] Frontend directory not found, skipping");
+            return Ok("Backend started (no frontend directory)".to_string());
+        }
+
+        let npm = path_resolver::find_npm();
+        eprintln!("[tray] Starting frontend with: {}", npm);
+
+        let frontend_log = fs::File::create(self.log_dir.join("frontend.log"))
+            .map_err(|e| format!("Cannot create frontend log: {}", e))?;
+        let frontend_err = frontend_log.try_clone()
+            .map_err(|e| format!("Cannot clone log: {}", e))?;
+
+        let has_build = frontend_dir.join(".next").exists();
+        let mut frontend_cmd = Command::new(&npm);
+        if has_build {
+            frontend_cmd.args(["start", "--", "--port", "3000"]);
+        } else {
+            frontend_cmd.args(["run", "dev", "--", "--port", "3000"]);
+        }
+        frontend_cmd
+            .current_dir(&frontend_dir)
+            .stdout(Stdio::from(frontend_log))
+            .stderr(Stdio::from(frontend_err));
+
+        // Ensure Node.js is in PATH for npm
+        #[cfg(target_os = "macos")]
+        {
+            let current_path = std::env::var("PATH").unwrap_or_default();
+            let node_dir = Path::new(&npm).parent().map(|p| p.to_string_lossy().to_string()).unwrap_or_default();
+            frontend_cmd.env("PATH", format!("{}:/opt/homebrew/bin:/opt/homebrew/opt/node/bin:/usr/local/bin:{}", node_dir, current_path));
+        }
+
+        #[cfg(target_os = "windows")]
+        {
+            use std::os::windows::process::CommandExt;
+            frontend_cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+        }
+
+        match frontend_cmd.spawn() {
+            Ok(child) => {
+                eprintln!("[tray] Frontend started (PID: {})", child.id());
+                self.frontend = Some(child);
+            }
+            Err(e) => {
+                eprintln!("[tray] Frontend start failed: {}", e);
+            }
+        }
+
+        Ok("Server starting...".to_string())
     }
 
-    /// Stop backend + frontend via istara.sh.
-    /// BLOCKING: run in a background thread.
-    pub fn stop_server(install_dir: &str) -> Result<String, String> {
-        let script = find_istara_script(install_dir)?;
+    /// Stop backend + frontend.
+    pub fn stop_server(&mut self) -> Result<String, String> {
+        // Kill managed children
+        if let Some(ref mut child) = self.backend {
+            eprintln!("[tray] Stopping backend (PID: {})", child.id());
+            let _ = child.kill();
+            let _ = child.wait();
+        }
+        self.backend = None;
 
-        eprintln!("[tray] Stopping server via {}", script.display());
-        let output = Command::new("bash")
-            .arg(script.to_str().unwrap())
-            .arg("stop")
-            .current_dir(if install_dir.is_empty() {
-                dirs::home_dir()
-                    .unwrap_or_else(|| PathBuf::from("."))
-                    .join(".istara")
-                    .to_str()
-                    .unwrap_or(".")
-                    .to_string()
-            } else {
-                install_dir.to_string()
-            })
-            .output()
-            .map_err(|e| format!("istara.sh stop failed: {}", e))?;
+        if let Some(ref mut child) = self.frontend {
+            eprintln!("[tray] Stopping frontend (PID: {})", child.id());
+            let _ = child.kill();
+            let _ = child.wait();
+        }
+        self.frontend = None;
 
-        let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+        // Also kill any orphans on the ports (catches processes started outside the tray)
+        kill_port_holders(8000);
+        kill_port_holders(3000);
+
         eprintln!("[tray] Server stopped");
-        Ok(strip_ansi(&stdout))
+        Ok("Server stopped".to_string())
     }
 
-    /// Start the relay daemon. Managed directly (not part of istara.sh).
+    /// Check if server is running (Child handles + port check).
+    pub fn is_server_running(&mut self) -> bool {
+        self.cleanup_dead();
+        self.backend.is_some() || self.frontend.is_some() || check_port(8000) || check_port(3000)
+    }
+
+    /// Start the relay daemon.
     pub fn start_relay(&mut self, install_dir: &str, connection_string: &str) -> Result<(), String> {
         // Clean up dead relay first
         if let Some(ref mut c) = self.relay {
             match c.try_wait() {
-                Ok(Some(_)) | Err(_) => {
-                    self.relay = None;
-                }
+                Ok(Some(_)) | Err(_) => { self.relay = None; }
                 Ok(None) => return Ok(()), // Already running
             }
         }
 
         let relay_dir = format!("{}/relay", install_dir);
         if !Path::new(&relay_dir).exists() {
-            return Err(
-                "Relay directory not found. Compute donation requires the relay component."
-                    .to_string(),
-            );
+            return Err("Relay directory not found.".to_string());
         }
 
         let node = path_resolver::find_node();
@@ -176,9 +222,8 @@ impl ProcessManager {
 
         let log_file = fs::File::create(self.log_dir.join("relay.log"))
             .map_err(|e| format!("Cannot create relay log: {}", e))?;
-        let err_file = log_file
-            .try_clone()
-            .map_err(|e| format!("Cannot clone log file: {}", e))?;
+        let err_file = log_file.try_clone()
+            .map_err(|e| format!("Cannot clone log: {}", e))?;
 
         let child = cmd
             .current_dir(&relay_dir)
@@ -201,23 +246,38 @@ impl ProcessManager {
         self.relay = None;
     }
 
-    /// Stop relay on drop. Backend/frontend are managed by istara.sh PID files.
     pub fn stop_all(&mut self) {
+        let _ = self.stop_server();
         self.stop_relay();
     }
 
-    /// Check if relay is actually running.
     pub fn is_relay_running(&mut self) -> bool {
         if let Some(ref mut c) = self.relay {
             match c.try_wait() {
-                Ok(Some(_)) | Err(_) => {
-                    self.relay = None;
-                    false
-                }
+                Ok(Some(_)) | Err(_) => { self.relay = None; false }
                 Ok(None) => true,
             }
         } else {
             false
+        }
+    }
+
+    /// Clean up dead child processes (zombie detection via try_wait).
+    fn cleanup_dead(&mut self) {
+        for (name, child) in [
+            ("backend", &mut self.backend),
+            ("frontend", &mut self.frontend),
+        ] {
+            if let Some(ref mut c) = child {
+                match c.try_wait() {
+                    Ok(Some(status)) => {
+                        eprintln!("[tray] {} exited with {}", name, status);
+                        *child = None;
+                    }
+                    Err(_) => { *child = None; }
+                    Ok(None) => {} // still running
+                }
+            }
         }
     }
 }
@@ -228,25 +288,58 @@ impl Drop for ProcessManager {
     }
 }
 
-/// Strip ANSI escape codes from a string (istara.sh output has colors).
-fn strip_ansi(s: &str) -> String {
-    let mut result = String::with_capacity(s.len());
-    let mut chars = s.chars().peekable();
-    while let Some(c) = chars.next() {
-        if c == '\x1b' {
-            // Skip escape sequence: ESC [ ... final_byte
-            if chars.peek() == Some(&'[') {
-                chars.next();
-                while let Some(&next) = chars.peek() {
-                    chars.next();
-                    if next.is_ascii_alphabetic() || next == 'm' {
-                        break;
+// ── Platform-Specific Port Cleanup ──────────────────────────────────
+
+/// Kill any process holding a specific port (cleans up orphans).
+#[cfg(unix)]
+fn kill_port_holders(port: u16) {
+    if let Ok(output) = Command::new("lsof")
+        .args(["-ti", &format!(":{}", port)])
+        .output()
+    {
+        let pids = String::from_utf8_lossy(&output.stdout);
+        for pid in pids.trim().lines() {
+            let pid = pid.trim();
+            if !pid.is_empty() {
+                let _ = Command::new("kill").arg(pid).output();
+            }
+        }
+        // Force kill after brief wait
+        std::thread::sleep(Duration::from_millis(300));
+        if let Ok(output2) = Command::new("lsof")
+            .args(["-ti", &format!(":{}", port)])
+            .output()
+        {
+            let pids2 = String::from_utf8_lossy(&output2.stdout);
+            for pid in pids2.trim().lines() {
+                let pid = pid.trim();
+                if !pid.is_empty() {
+                    let _ = Command::new("kill").args(["-9", pid]).output();
+                }
+            }
+        }
+    }
+}
+
+#[cfg(target_os = "windows")]
+fn kill_port_holders(port: u16) {
+    // Use netstat to find PIDs holding the port, then taskkill
+    if let Ok(output) = Command::new("netstat")
+        .args(["-ano", "-p", "TCP"])
+        .output()
+    {
+        let text = String::from_utf8_lossy(&output.stdout);
+        let port_str = format!(":{}", port);
+        for line in text.lines() {
+            if line.contains(&port_str) && line.contains("LISTENING") {
+                if let Some(pid) = line.split_whitespace().last() {
+                    if pid != "0" {
+                        let _ = Command::new("taskkill")
+                            .args(["/PID", pid, "/F"])
+                            .output();
                     }
                 }
             }
-        } else {
-            result.push(c);
         }
     }
-    result
 }
