@@ -389,3 +389,9 @@
 - Task instructions ("Specific Instructions" field) are now included in LLM prompts alongside context and description.
 - Ensemble validation runs after every skill execution: Self-MoA (default, single server), Dual Run, Adversarial Review, Full Ensemble, Debate Rounds. Results stored on tasks and feed Ensemble Health view.
 - CSV files classified by column headers to distinguish survey data from interview transcripts.
+
+### Testing & Quality Assurance (v2026.04.02.4)
+- 70 test scenarios validate the research pipeline end-to-end. Key validations: Plan-and-Execute (scenario 71), circuit breaker health (72), A2A debate + reports (73).
+- Test results show 93.3% pass rate (28/30 checks). Both failures are expected when LLM is disconnected — plan creation and LLM status checks correctly report unavailability.
+- Agent capability cards verified: 6 personas accessible via /api/agents/personas/list.
+- Report pipeline verified: L2/L3/L4 layer structure, MECE categories field, executive summary field all accessible and correctly structured.

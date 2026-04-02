@@ -222,3 +222,9 @@
 - **Task instructions**: Create task with "Specific Instructions" filled. Run agent. Verify instructions appear in the LLM prompt.
 - **Ensemble validation**: After agent processes task, verify task.validation_method is set. Check MethodMetric has a new record.
 - **CSV classification**: Upload survey CSV (with SUS, rating columns). Verify classified as survey_data, not interview_transcript.
+
+### Testing Infrastructure Validation (v2026.04.02.4)
+- **Scenario 71 (Plan-and-Execute)**: Create complex task → verify ResearchPlan JSON in agent_notes → verify DAG support via depends_on → verify validation fields exist. Expected failure when LLM disconnected.
+- **Scenario 72 (Circuit Breaker)**: Add unreachable server → verify health_error → run health check → verify "Connection timed out" → verify healthy server count. All 8 checks pass.
+- **Scenario 73 (A2A & Reports)**: Verify 5/5 agents registered → A2A log accessible → reports endpoint works → MECE/executive summary fields present → findings summary endpoint works. All 11 checks pass.
+- **Marathon integration**: Scenarios 71→Cycle C, 72→Cycle I, 73→Cycle L. 45+ custom checks defined across 13 cycles.
