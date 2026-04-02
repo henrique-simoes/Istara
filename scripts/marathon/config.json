@@ -131,7 +131,14 @@
         "llm_server_health_error_feedback",
         "tour_waits_for_backend_health",
         "tour_skip_persists_localstorage",
-        "relay_llm_api_key_passthrough"
+        "relay_llm_api_key_passthrough",
+        "rust_native_process_spawn_backend",
+        "rust_native_process_spawn_frontend",
+        "enriched_path_includes_homebrew",
+        "venv_detection_both_conventions",
+        "macos_tahoe_system_version_compat",
+        "port_cleanup_before_start",
+        "zombie_process_detection"
       ]
     }
   ],

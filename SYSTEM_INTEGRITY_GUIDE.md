@@ -2095,6 +2095,21 @@ But if needed:
 | Add Messaging Channel | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | △ | ✓ |
 | Add Integration | ✗ | ✓ | ✓ | ✓ | ✓ | △ | ✓ | ✓ | ✓ |
 | Change Security Policy | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ | ✓ | ✓ |
+| Change Desktop App | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | △ | ✗ | ✓ |
+
+**Desktop App Critical Couplings (v2026.04.02):**
+- `process.rs` spawns Python/Node directly → depends on `path_resolver.rs` for binary discovery
+- `path_resolver.rs` → checks venv/.venv at `{install_dir}/venv/` and `{install_dir}/.venv/`
+- `process.rs build_enriched_path()` → constructs PATH for GUI apps (Homebrew, nvm, pyenv, fnm, system)
+- `tray.rs` → calls `pm.start_server()` / `pm.stop_server()` (instance methods, not static)
+- `commands.rs` → same instance methods via `State<AppState>`
+- `main.rs` → auto-start in background thread, acquires lock on pm
+- `health.rs` → polls ports for menu state, rebuilds menu on change
+- `config.rs` → reads `~/.istara/config.json` for install_dir, mode, donate_compute
+- Circuit breaker: `compute_registry.py cb_*` methods → `has_available_node()` → `agent.py` pauses when false
+- StatusBar.tsx → listens for `llm_unavailable`, `llm_degraded`, `llm_recovered` WebSocket events
+- macOS Tahoe: `SYSTEM_VERSION_COMPAT=0` env var required for correct Python `platform.mac_ver()`
+- Windows: `#[cfg(target_os = "windows")]` for `CREATE_NO_WINDOW` flag + `netstat`-based port cleanup
 
 Legend:
 - ✓ = Must update

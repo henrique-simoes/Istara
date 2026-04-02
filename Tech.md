@@ -1004,12 +1004,18 @@ One string gets a team member both web UI access (JWT) and relay compute donatio
 
 ## Desktop App (Tauri v2)
 
-System tray application for macOS (menubar) and Windows (system tray). **Thin GUI layer** that delegates process management to `istara.sh` for single-source-of-truth reliability. Two modes:
+System tray application for macOS, Windows, and Linux. **Rust-native process management** — spawns Python/Node directly as tracked `Child` processes via `std::process::Command`. No shell script dependency. Cross-platform via `#[cfg(target_os)]` blocks.
 
-- **Server+Client**: Delegates start/stop to `istara.sh`. Menu: Open Browser, Start/Stop Server (with live port-based label), LLM Status (with donation toggle), Compute Donation, Check for Updates, Quit.
+- **Server+Client**: Spawns uvicorn backend + npm frontend directly. Menu: Open Browser, Start/Stop Server (with live port-based label), LLM Status (with donation toggle), Compute Donation, Check for Updates, Quit.
 - **Client-only**: Manages relay daemon only. Menu: Connection Status, Open Browser, Compute Donation, Change Server, Check for Updates, Quit.
 
-Built with Tauri v2 (5-15 MB binary, ~20 MB RAM). Process management via `istara.sh` shell delegation, relay managed directly in Rust, `sysinfo` crate for stats. Config stored at `~/.istara/config.json`.
+Built with Tauri v2 (5-15 MB binary, ~20 MB RAM). Process management via Rust `std::process::Command` with PID tracking, zombie detection (`try_wait()`), and platform-specific port cleanup. Config stored at `~/.istara/config.json`.
+
+**macOS Tahoe (26.x) compatibility**: `SYSTEM_VERSION_COMPAT=0` env var for correct Python version detection. `build_enriched_path()` constructs PATH for GUI apps (Homebrew ARM/Intel, nvm, pyenv, fnm, system). TCC local network privacy prompt handled by keeping app alive during startup.
+
+**Windows**: `CREATE_NO_WINDOW` flag for headless processes. Port cleanup via `netstat -ano` + `taskkill /PID /F`.
+
+**Linux**: AppImage + .deb builds via GitHub Actions CI/CD.
 
 **Files:** `desktop/src-tauri/src/{main,commands,process,tray,health,config,stats,path_resolver}.rs`, `desktop/src/` (HTML stats popover)
 
@@ -1108,19 +1114,23 @@ istara logs     # Tail both log files
 - Health check polling: waits up to 15s for backend, 20s for frontend
 
 ### Desktop App (Tauri v2) — Tray Manager
-System tray application for macOS (menubar) and Windows (system tray). **Manager only — does not install.**
+System tray application for macOS, Windows, and Linux. **Manager only — does not install.**
 
-**Architecture: Shell Delegation** — The tray app is a thin GUI layer over `istara.sh`. Start/Stop operations delegate to the CLI script (single source of truth for PID files, process groups, port cleanup, health waits). This ensures the CLI and GUI use identical process management logic. Only the relay daemon is managed directly by the Rust process (not part of `istara.sh`).
+**Architecture: Rust-Native Process Management** — The tray app owns all child processes (backend, frontend, relay) as Rust `Child` handles via `std::process::Command`. No shell script dependency. `istara.sh` remains as a CLI tool but the tray app operates independently.
 
-- **Start/Stop**: Calls `istara.sh start` / `istara.sh stop` in a background thread (blocking operations take up to 35s for health checks). Menu rebuilds after the operation completes. Errors shown in native dialog with log details.
-- **Menu state**: Always driven by port checks (`127.0.0.1:8000`, `:3000`, `:1234`, `:11434`). Labels show `● Stop Istara Server` when ports are open, `○ Start Istara Server` when down. Green checkmarks for LLM status, circle indicators for donation state.
-- **Compute Donation**: Toggles `donate_compute` in config and saves immediately. Tries to start/stop relay. If relay dir missing, saves config anyway (donation activates when relay becomes available) and shows warning dialog. Every toggle shows confirmation dialog.
-- **LLM Status Click**: If LLM running, shows dialog with provider name + donation status, offers to toggle donation. If not running, offers to open LM Studio.
-- **Check Updates**: Three-tier check: (1) Tauri built-in updater for DMG installs, (2) `git fetch --tags` + version comparison for shell installs, (3) fallback to open GitHub releases. Every path shows a result dialog — no silent failures.
-- **Health loop**: Polls ports every 10s, rebuilds tray menu on state change or every 30s. Tracks backend, frontend, LM Studio, and Ollama port states. Checks for updates via git tags every 6h (no GitHub API rate limit).
-- **Relay management**: Relay `Child` process managed directly with `try_wait()` zombie detection. Log output goes to `~/.istara/logs/relay.log`.
-- **Config resilience**: corrupt `config.json` is backed up to `.json.bak` before resetting to defaults. Logged as warning.
-- `path_resolver.rs` finds Python/Node at real filesystem paths (venv, Homebrew ARM/Intel, pyenv, nvm, fnm, python.org, system). Used only for relay's Node.js path.
+- **Start/Stop**: `ProcessManager.start_server()` spawns Python uvicorn + npm start directly. Returns immediately (non-blocking). Port cleanup via platform-specific `kill_port_holders()`. Menu rebuilds when health loop detects port state change.
+- **Path resolution**: `path_resolver.rs` finds Python/Node at venv (8 paths checked: venv/.venv at install root and backend/), Homebrew ARM/Intel, pyenv, nvm, fnm, python.org, system. `build_enriched_path()` constructs comprehensive PATH for GUI apps that don't inherit shell PATH.
+- **Menu state**: Driven by port checks (`127.0.0.1:8000`, `:3000`, `:1234`, `:11434`). Labels show `● Stop` when running, `○ Start` when down.
+- **Compute Donation**: Config toggle with confirmation dialog. Relay managed as Child process with zombie detection.
+- **LLM Status Click**: Dialog with donation toggle or LM Studio launch.
+- **Check Updates**: Three-tier (Tauri updater, git tags, GitHub releases). Always shows result dialog.
+- **Health loop**: Polls ports every 10s, rebuilds menu on change or every 30s. Checks updates every 6h via git tags.
+- **Zombie detection**: `try_wait()` on all Child handles every cycle. Dead processes cleaned up automatically.
+- **Platform specifics**:
+  - macOS: `SYSTEM_VERSION_COMPAT=0` for Tahoe, PATH includes `/opt/homebrew/bin`
+  - Windows: `CREATE_NO_WINDOW` flag, `netstat`+`taskkill` for port cleanup
+  - Linux: Standard POSIX process management, AppImage distribution
+- **Config resilience**: corrupt `config.json` backed up to `.json.bak` before reset.
 - Auto-start via `~/.istara/config.json` — reads `mode`, `install_dir`, `donate_compute`. Runs `istara.sh start` in background thread. Startup errors are logged (not silently discarded).
 - **ANSI stripping**: `istara.sh` output contains terminal colors; `strip_ansi()` cleans output for error dialogs.
 
