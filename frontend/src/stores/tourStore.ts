@@ -19,6 +19,7 @@ const TEAM_ENABLED_STEPS = new Set([3, 4]);
 
 export interface TourState {
   active: boolean;
+  isOnboarding: boolean; // True when showing the 6-step Wizard
   step: number;
   folderPath: string;
   createdProjectId: string;
@@ -34,6 +35,7 @@ export interface TourState {
   nextStep: () => void;
   goToStep: (step: number) => void;
   skipTour: () => void;
+  completeOnboarding: () => void; // Transition from Wizard to Tour
   completeTour: () => void;
   setFolderPath: (path: string) => void;
   setProjectCreated: (id: string) => void;
@@ -50,7 +52,8 @@ function resolveNextStep(
 ): number {
   let next = current + 1;
   while (next < TOUR_TOTAL_STEPS) {
-    // Skip project setup if projects already exist
+    // Skip project setup if projects already exist OR if we just finished the wizard
+    // (Wizard handles project setup, so we skip steps 0-1 of the tour)
     if (PROJECT_SETUP_STEPS.has(next) && hasProjects) {
       next++;
       continue;
@@ -76,7 +79,7 @@ function resolveFirstStep(role: string, hasProjects: boolean): number {
     if (role === "admin") return 2; // Team mode
     return 5; // Members skip to files
   }
-  return 0; // Start from scratch
+  return 0; // Start with OnboardingWizard (Step 0)
 }
 
 function loadPersistedState(): Partial<TourState> | null {
@@ -93,6 +96,7 @@ function persistState(state: Partial<TourState>) {
       STORAGE_KEY,
       JSON.stringify({
         active: state.active,
+        isOnboarding: state.isOnboarding,
         step: state.step,
         folderPath: state.folderPath,
         createdProjectId: state.createdProjectId,
@@ -118,6 +122,7 @@ export const useTourStore = create<TourState>((set, get) => {
 
   return {
     active: persisted?.active ?? false,
+    isOnboarding: persisted?.isOnboarding ?? false,
     step: persisted?.step ?? 0,
     folderPath: persisted?.folderPath ?? "",
     createdProjectId: persisted?.createdProjectId ?? "",
@@ -132,8 +137,11 @@ export const useTourStore = create<TourState>((set, get) => {
     startTour: (role, hasProjects) => {
       const r = (role === "admin" ? "admin" : role === "viewer" ? "viewer" : "researcher") as TourState["role"];
       const firstStep = resolveFirstStep(r, hasProjects);
+      const showWizard = !hasProjects && firstStep === 0;
+      
       const state = {
         active: true,
+        isOnboarding: showWizard,
         step: firstStep,
         folderPath: "",
         createdProjectId: "",
@@ -167,15 +175,23 @@ export const useTourStore = create<TourState>((set, get) => {
     },
 
     skipTour: () => {
-      set({ active: false, step: 0 });
+      set({ active: false, isOnboarding: false, step: 0 });
       try {
         localStorage.setItem(COMPLETED_KEY, "true");
         localStorage.removeItem(STORAGE_KEY);
       } catch {}
     },
 
+    completeOnboarding: () => {
+      const s = get();
+      // Move from Wizard (Step 0) to next Tour step (Step 2 or 5)
+      const next = resolveNextStep(0, s.role, true, s.teamModeEnabled);
+      set({ isOnboarding: false, step: next, hasExistingProjects: true });
+      persistState({ ...s, isOnboarding: false, step: next, hasExistingProjects: true });
+    },
+
     completeTour: () => {
-      set({ active: false, step: 0 });
+      set({ active: false, isOnboarding: false, step: 0 });
       try {
         localStorage.setItem(COMPLETED_KEY, "true");
         localStorage.removeItem(STORAGE_KEY);

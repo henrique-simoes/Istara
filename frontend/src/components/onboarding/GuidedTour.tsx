@@ -4,7 +4,6 @@ import React, { useEffect, useRef, useState, type ReactNode } from "react";
 import { useTourStore, TOUR_TOTAL_STEPS } from "@/stores/tourStore";
 import { settings as settingsApi } from "@/lib/api";
 import TourPopover from "./TourPopover";
-import TourInlineStep from "./TourInlineStep";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -32,7 +31,7 @@ interface StepDef {
 }
 
 const STEPS: StepDef[] = [
-  // Step 0: Welcome + Folder — rendered by TourInlineStep
+  // Step 0: Welcome + Folder — metadata only, handled by OnboardingWizard
   {
     view: null,
     targetSelector: null,
@@ -41,7 +40,7 @@ const STEPS: StepDef[] = [
     getDescription: (_t, _e) => "",
     getActions: (_t, _e) => [],
   },
-  // Step 1: Create Project — rendered by TourInlineStep
+  // Step 1: Create Project — metadata only, handled by OnboardingWizard
   {
     view: null,
     targetSelector: null,
@@ -340,10 +339,8 @@ export default function GuidedTour({ setActiveView, currentView }: GuidedTourPro
   // Not active — nothing to render
   if (!tour.active) return null;
 
-  // Steps 0-1: inline full-screen cards
-  if (step <= 1) {
-    return <TourInlineStep step={step} />;
-  }
+  // Steps 0-1: handled by OnboardingWizard in HomeClient
+  if (step <= 1) return null;
 
   // Steps 2+: floating popover on real views
 
