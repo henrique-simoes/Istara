@@ -22,6 +22,23 @@
 *Cinco agentes autônomos de IA. Cinquenta e três skills de pesquisa auto-evolutivas. Zero dependência de nuvem.*
 *Todo insight tem base em evidências. Todo agente fica mais inteligente a cada sessão.*
 
+<div align="center">
+  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.37.30.png" width="600" />
+  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.37.34.png" width="600" />
+  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.38.34.png" width="600" />
+  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.38.47.png" width="600" />
+  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.38.54.png" width="600" />
+  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.01.png" width="600" />
+  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.08.png" width="600" />
+  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.11.png" width="600" />
+  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.16.png" width="600" />
+  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.28.png" width="600" />
+  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.36.png" width="600" />
+  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.40.png" width="600" />
+  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.59.png" width="600" />
+  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.40.15.png" width="600" />
+</div>
+
 ---
 
 ## Instalar
