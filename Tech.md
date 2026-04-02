@@ -1235,7 +1235,10 @@ Agents now poll their A2A inbox every work cycle via `_process_a2a_inbox()`. Col
 - **Ensemble confidence → Reports**: `task.consensus_score` flows to report's `content_json.avg_consensus`.
 - **Executive summaries**: Auto-generated via LLM when reports reach 3+ findings.
 - **MECE categorization**: Auto-generated via LLM when reports reach 5+ findings. Populates `mece_categories_json`.
-- **L4 auto-generation**: When L3 synthesis reaches 10+ findings, L4 final report auto-created with executive summary and MECE structure.
+- **L4 auto-generation**: When L3 synthesis reaches 10+ findings, L4 final report auto-created with template-driven document composition.
+- **Template-driven L4 composition** (Elicit-style Extract→Structure→Synthesize→Compose→Cite pipeline): 8-section report template — Executive Summary, Methodology, Key Findings (evidence table), Supporting Evidence (citation table), Recommendations (priority table), MECE Analysis, Confidence & Validation (ensemble metrics), Limitations & Gaps (LLM-generated). Creates a Document record (`final_research_report.md`) visible in Documents view.
+- **Circuit breaker on compute nodes**: Three-state (CLOSED/OPEN/HALF_OPEN). 5 consecutive failures → OPEN (60s cooldown). `_select_candidates()` filters out unavailable nodes. `cb_record_success/failure` called in chat routing. Agent pauses when `has_available_node()` returns false. Frontend StatusBar shows red/yellow/green banners via WebSocket events.
+- **Architecture evolution tracking**: `docs/ARCHITECTURE_EVOLUTION.md` documents every version's changes with before/after tables and industry standard references.
 
 **Complete data flow:**
 ```

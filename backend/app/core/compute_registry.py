@@ -800,8 +800,8 @@ class ComputeRegistry:
         require_vision: bool = False,
         min_context: int = 0,
     ) -> list[ComputeNode]:
-        """Get candidate nodes sorted by score, filtered by capabilities."""
-        candidates = [n for n in self._nodes.values() if n.score() > 0]
+        """Get candidate nodes sorted by score, filtered by capabilities and circuit breaker."""
+        candidates = [n for n in self._nodes.values() if n.score() > 0 and n.cb_is_available()]
 
         if require_tools and candidates:
             tool_capable = [
@@ -915,6 +915,7 @@ class ComputeRegistry:
                     data = resp.json()
                     node.consecutive_failures = 0
                     node.health_state = "ready"
+                    node.cb_record_success()
                     return data
                 else:
                     payload = {
@@ -948,6 +949,7 @@ class ComputeRegistry:
 
                     node.consecutive_failures = 0
                     node.health_state = "ready"
+                    node.cb_record_success()
                     return result
 
             except Exception as e:
@@ -955,6 +957,7 @@ class ComputeRegistry:
                     f"ComputeRegistry: chat failed on {node.name}: {e}"
                 )
                 node.consecutive_failures += 1
+                node.cb_record_failure()
                 if node.consecutive_failures >= 3:
                     node.health_state = "cooldown"
                     node.cooldown_until = time.time() + 60

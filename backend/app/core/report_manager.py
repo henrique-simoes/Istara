@@ -255,7 +255,11 @@ class ReportManager:
             logger.debug(f"MECE categorization skipped: {e}")
 
     async def _generate_l4_report(self, project_id: str, l3_report, db: AsyncSession) -> None:
-        """Auto-generate L4 final report from L3 synthesis."""
+        """Auto-generate L4 final report with template-driven document composition.
+
+        Pipeline: Extract → Structure → Synthesize → Compose → Cite
+        (Elicit/TrialMind pattern adapted for UX research)
+        """
         from app.models.project_report import ProjectReport
 
         # Check if L4 already exists
@@ -266,38 +270,216 @@ class ReportManager:
             )
         )
         existing_l4 = result.scalar_one_or_none()
+
         if existing_l4:
-            # Update existing L4 with latest L3 findings
             existing_l4.finding_ids_json = l3_report.finding_ids_json
             existing_l4.finding_count = l3_report.finding_count
             existing_l4.version += 1
             existing_l4.updated_at = datetime.now(timezone.utc)
-            await db.commit()
-            await self._generate_executive_summary(existing_l4, db)
-            await self._generate_mece_categories(existing_l4, db)
-            logger.info("ReportManager: L4 final report updated (v%d)", existing_l4.version)
-            return
+            l4 = existing_l4
+        else:
+            l4 = ProjectReport(
+                id=str(uuid.uuid4()),
+                project_id=project_id,
+                title="Final Research Report",
+                layer=4,
+                report_type="final_report",
+                scope="Final Report",
+                status="draft",
+                finding_ids_json=l3_report.finding_ids_json,
+                finding_count=l3_report.finding_count,
+            )
+            db.add(l4)
 
-        # Create new L4
-        l4 = ProjectReport(
-            id=str(uuid.uuid4()),
-            project_id=project_id,
-            title="Final Research Report",
-            layer=4,
-            report_type="final_report",
-            scope="Final Report",
-            status="draft",
-            finding_ids_json=l3_report.finding_ids_json,
-            finding_count=l3_report.finding_count,
-        )
-        db.add(l4)
         await db.commit()
-        await db.refresh(l4)
+        if not existing_l4:
+            await db.refresh(l4)
 
-        # Generate content for L4
+        # Generate executive summary and MECE categories
         await self._generate_executive_summary(l4, db)
         await self._generate_mece_categories(l4, db)
-        logger.info("ReportManager: L4 final report created with %d findings", l4.finding_count)
+
+        # Generate full document via template-driven composition
+        await self._compose_full_report(l4, project_id, db)
+
+        logger.info("ReportManager: L4 report %s with %d findings",
+                     "updated" if existing_l4 else "created", l4.finding_count)
+
+    # ── Template-Driven Report Composition ──────────────────────────
+
+    REPORT_TEMPLATE = [
+        {"section": "Executive Summary", "source": "executive_summary", "format": "narrative"},
+        {"section": "Methodology", "source": "skills_used", "format": "list"},
+        {"section": "Key Findings", "source": "insights", "format": "evidence_table"},
+        {"section": "Supporting Evidence", "source": "nuggets_and_facts", "format": "citation_table"},
+        {"section": "Recommendations", "source": "recommendations", "format": "priority_table"},
+        {"section": "Thematic Analysis (MECE)", "source": "mece_categories", "format": "structured"},
+        {"section": "Confidence & Validation", "source": "ensemble_scores", "format": "metrics"},
+        {"section": "Limitations & Gaps", "source": "gaps", "format": "narrative"},
+    ]
+
+    async def _compose_full_report(self, report, project_id: str, db: AsyncSession) -> None:
+        """Compose the full L4 report document from template sections."""
+        try:
+            from app.core.llm_router import llm_router
+            from app.models.finding import Nugget, Fact, Insight, Recommendation
+
+            finding_ids = json.loads(report.finding_ids_json or "[]")[:50]
+
+            # Load all findings by type
+            findings = {"nuggets": [], "facts": [], "insights": [], "recommendations": []}
+            for model_cls, key in [(Nugget, "nuggets"), (Fact, "facts"), (Insight, "insights"), (Recommendation, "recommendations")]:
+                result = await db.execute(select(model_cls).where(model_cls.id.in_(finding_ids)).limit(30))
+                for f in result.scalars().all():
+                    findings[key].append({
+                        "id": f.id,
+                        "text": f.text if hasattr(f, "text") else str(f),
+                        "source": getattr(f, "source", ""),
+                        "confidence": getattr(f, "confidence", 0),
+                        "phase": getattr(f, "phase", ""),
+                    })
+
+            # Get L2 report scopes (methodologies used)
+            from app.models.project_report import ProjectReport
+            l2_result = await db.execute(
+                select(ProjectReport).where(
+                    ProjectReport.project_id == project_id, ProjectReport.layer == 2
+                )
+            )
+            methodologies = [r.scope for r in l2_result.scalars().all()]
+
+            # Compose each section
+            sections = []
+            for template in self.REPORT_TEMPLATE:
+                section_content = await self._compose_section(
+                    template, findings, report, methodologies, llm_router
+                )
+                if section_content:
+                    sections.append(f"## {template['section']}\n\n{section_content}")
+
+            # Assemble full document
+            full_doc = f"# {report.title}\n\n" + "\n\n---\n\n".join(sections)
+
+            # Store in content_json
+            content = json.loads(report.content_json or "{}")
+            content["full_document"] = full_doc
+            content["sections"] = [t["section"] for t in self.REPORT_TEMPLATE]
+            content["generated_at"] = datetime.now(timezone.utc).isoformat()
+            report.content_json = json.dumps(content)
+            report.status = "review"
+            await db.commit()
+
+            # Create a Document record for the report
+            try:
+                from app.models.document import Document
+                doc = Document(
+                    id=str(uuid.uuid4()),
+                    project_id=project_id,
+                    title=f"Final Research Report (v{report.version})",
+                    file_name="final_research_report.md",
+                    source="agent_output",
+                    content_preview=full_doc[:500],
+                    status="ready",
+                )
+                db.add(doc)
+                await db.commit()
+                logger.info("ReportManager: report document created")
+            except Exception as e:
+                logger.debug(f"Report document creation skipped: {e}")
+
+        except Exception as e:
+            logger.warning(f"Full report composition failed: {e}")
+
+    async def _compose_section(self, template: dict, findings: dict, report, methodologies: list, llm_router) -> str:
+        """Compose a single report section from its template definition."""
+        source = template["source"]
+        fmt = template["format"]
+
+        if source == "executive_summary":
+            return report.executive_summary or "No executive summary available."
+
+        if source == "skills_used":
+            if not methodologies:
+                return "No specific research methodologies were applied."
+            return "The following research methods were used:\n\n" + "\n".join(f"- {m}" for m in methodologies)
+
+        if source == "insights":
+            items = findings.get("insights", [])
+            if not items:
+                return "No key insights were generated."
+            if fmt == "evidence_table":
+                rows = ["| # | Insight | Confidence | Phase |", "|---|---------|------------|-------|"]
+                for i, item in enumerate(items, 1):
+                    conf = f"{item.get('confidence', 0):.0%}" if isinstance(item.get('confidence'), (int, float)) else "N/A"
+                    rows.append(f"| {i} | {item['text'][:100]} | {conf} | {item.get('phase', '')} |")
+                return "\n".join(rows)
+            return "\n".join(f"- {item['text']}" for item in items)
+
+        if source == "nuggets_and_facts":
+            nuggets = findings.get("nuggets", [])
+            facts = findings.get("facts", [])
+            if not nuggets and not facts:
+                return "No supporting evidence collected."
+            rows = ["| Type | Evidence | Source |", "|------|----------|--------|"]
+            for n in nuggets[:15]:
+                rows.append(f"| Nugget | {n['text'][:80]} | {n.get('source', 'N/A')[:30]} |")
+            for f in facts[:10]:
+                rows.append(f"| Fact | {f['text'][:80]} | {f.get('source', 'N/A')[:30]} |")
+            return "\n".join(rows)
+
+        if source == "recommendations":
+            items = findings.get("recommendations", [])
+            if not items:
+                return "No recommendations generated."
+            rows = ["| # | Recommendation | Priority |", "|---|---------------|----------|"]
+            for i, item in enumerate(items, 1):
+                rows.append(f"| {i} | {item['text'][:100]} | Medium |")
+            return "\n".join(rows)
+
+        if source == "mece_categories":
+            categories = json.loads(report.mece_categories_json or "[]")
+            if not categories:
+                return "MECE categorization not yet available."
+            parts = []
+            for cat in categories:
+                name = cat.get("name", "Unknown")
+                desc = cat.get("description", "")
+                count = len(cat.get("finding_ids", []))
+                parts.append(f"### {name}\n{desc}\n*{count} findings in this category*")
+            return "\n\n".join(parts)
+
+        if source == "ensemble_scores":
+            content = json.loads(report.content_json or "{}")
+            scores = content.get("consensus_scores", [])
+            if not scores:
+                return "No ensemble validation data available."
+            avg = content.get("avg_consensus", 0)
+            return (
+                f"**Average consensus score**: {avg:.2f}\n"
+                f"**Validation runs**: {len(scores)}\n"
+                f"**Score range**: {min(scores):.2f} – {max(scores):.2f}\n\n"
+                "Consensus is computed using Fleiss' Kappa + cosine similarity across "
+                "multiple model runs (Self-MoA, Dual Run, Adversarial Review)."
+            )
+
+        if source == "gaps":
+            # Ask LLM to identify gaps
+            try:
+                all_texts = [f["text"][:80] for f in findings.get("insights", [])[:10]]
+                if not all_texts:
+                    return "Insufficient findings to identify gaps."
+                prompt = (
+                    "Based on these research insights, identify 2-3 limitations or gaps "
+                    "in the analysis that should be noted:\n\n"
+                    + "\n".join(f"- {t}" for t in all_texts)
+                    + "\n\nBe specific and concise."
+                )
+                response = await llm_router.chat([{"role": "user", "content": prompt}], temperature=0.3)
+                return response.get("message", {}).get("content", "No gaps analysis available.")
+            except Exception:
+                return "Gap analysis could not be generated."
+
+        return ""
 
 
 report_manager = ReportManager()
