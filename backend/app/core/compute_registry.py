@@ -48,6 +48,14 @@ class ComputeNode:
     consecutive_failures: int = 0
     cooldown_until: float = 0
 
+    # Circuit breaker (three-state: closed → open → half_open)
+    cb_state: str = "closed"  # closed | open | half_open
+    cb_failure_count: int = 0
+    cb_last_trip: float = 0
+    cb_cooldown: float = 60  # seconds before probing
+    CB_FAILURE_THRESHOLD: int = 5
+    CB_SLOW_THRESHOLD_MS: float = 10000  # 10s for local models
+
     # Hardware
     ram_total_gb: float = 0
     ram_available_gb: float = 0
@@ -128,6 +136,43 @@ class ComputeNode:
         if self.source == "relay":
             return self.last_heartbeat > 0 and (time.time() - self.last_heartbeat) < timeout
         return self.is_healthy
+
+    # ── Circuit Breaker ──────────────────────────────────────────────
+
+    def cb_record_success(self) -> None:
+        """Record a successful LLM call — reset failure count, close breaker."""
+        self.cb_failure_count = 0
+        if self.cb_state == "half_open":
+            self.cb_state = "closed"
+            self.health_error = ""
+            logger.info(f"Circuit breaker CLOSED for {self.name} — recovered")
+
+    def cb_record_failure(self) -> None:
+        """Record a failed LLM call — increment count, trip if threshold."""
+        self.cb_failure_count += 1
+        if self.cb_failure_count >= self.CB_FAILURE_THRESHOLD:
+            self.cb_state = "open"
+            self.cb_last_trip = time.time()
+            self.health_error = f"Circuit breaker OPEN — {self.cb_failure_count} consecutive failures"
+            logger.warning(f"Circuit breaker OPEN for {self.name} (failures={self.cb_failure_count})")
+
+    def cb_is_available(self) -> bool:
+        """Check if this node can accept requests (circuit breaker check)."""
+        if self.cb_state == "closed":
+            return True
+        if self.cb_state == "open":
+            if time.time() - self.cb_last_trip > self.cb_cooldown:
+                self.cb_state = "half_open"
+                logger.info(f"Circuit breaker HALF_OPEN for {self.name} — probing")
+                return True
+            return False
+        return True  # half_open allows one probe
+
+    def cb_record_slow(self, latency_ms: float) -> None:
+        """Track slow responses — warn but don't trip breaker."""
+        if latency_ms > self.CB_SLOW_THRESHOLD_MS:
+            self.health_state = "slow"
+            self.health_error = f"Slow response: {latency_ms:.0f}ms (threshold: {self.CB_SLOW_THRESHOLD_MS}ms)"
 
     async def _get_client(self) -> httpx.AsyncClient:
         """Get or create an HTTP client for this node."""
@@ -479,6 +524,25 @@ class ComputeRegistry:
         # code like ``llm_router._servers.values()`` keeps working.
         self._servers = self._nodes
         self._health_task: asyncio.Task | None = None
+
+    # ================================================================
+    # LLM Availability (Circuit Breaker Integration)
+    # ================================================================
+
+    def has_available_node(self) -> bool:
+        """Check if at least one compute node is available for LLM calls."""
+        for node in self._nodes.values():
+            if node.is_healthy and node.cb_is_available():
+                return True
+        return False
+
+    async def broadcast_llm_status(self, status: str, detail: str = "") -> None:
+        """Broadcast LLM availability changes to frontend."""
+        try:
+            from app.api.websocket import manager as ws_manager
+            await ws_manager.broadcast(status, {"message": detail})
+        except Exception:
+            pass
 
     # ================================================================
     # Node Management

@@ -317,11 +317,19 @@ class SkillManager:
 
         self._save_stats()
 
-        # Flag low-utility skills after enough executions
+        # Flag low-utility skills and auto-deprecate chronically failing ones
         if stats["executions"] >= 10 and stats["utility_score"] < 0.3:
             try:
                 import asyncio
                 from app.api.websocket import broadcast_suggestion
+
+                # Auto-deprecate if utility is critically low
+                if stats["utility_score"] < 0.2:
+                    defn = self._definitions.get(skill_name)
+                    if defn:
+                        defn._data["lifecycle"] = "deprecated"
+                        self._save_definition(skill_name)
+                        logger.warning(f"Skill '{skill_name}' auto-deprecated (utility={stats['utility_score']:.2f} after {stats['executions']} runs)")
 
                 loop = asyncio.get_event_loop()
                 if loop.is_running():
@@ -329,8 +337,8 @@ class SkillManager:
                         broadcast_suggestion(
                             f"Skill '{skill_name}' has low utility "
                             f"({stats['utility_score']:.0%} after "
-                            f"{stats['executions']} runs). Consider reviewing "
-                            f"or replacing it.",
+                            f"{stats['executions']} runs). "
+                            + ("It has been auto-deprecated." if stats["utility_score"] < 0.2 else "Consider reviewing or replacing it."),
                             "",
                         )
                     )
