@@ -159,6 +159,27 @@ async def broadcast_task_progress(task_id: str, progress: float, notes: str = ""
     })
 
 
+async def broadcast_agent_thinking(agent_id: str, step: int, thought: str, total_steps: int = 0) -> None:
+    """Broadcast agent thinking/reasoning progress for real-time UI updates."""
+    await manager.broadcast("agent_thinking", {
+        "agent_id": agent_id,
+        "step": step,
+        "total_steps": total_steps,
+        "thought": thought,
+    })
+
+
+async def broadcast_plan_progress(task_id: str, plan_step: int, total_steps: int, step_desc: str, step_status: str) -> None:
+    """Broadcast research plan step execution progress."""
+    await manager.broadcast("plan_progress", {
+        "task_id": task_id,
+        "plan_step": plan_step,
+        "total_steps": total_steps,
+        "step_description": step_desc,
+        "step_status": step_status,
+    })
+
+
 async def broadcast_file_processed(filename: str, chunks: int, project_id: str) -> None:
     """Broadcast file processing completion."""
     await manager.broadcast("file_processed", {

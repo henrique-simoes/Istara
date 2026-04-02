@@ -46,6 +46,8 @@ from app.api.websocket import (
     broadcast_suggestion,
     broadcast_task_queue_update,
     broadcast_finding_created,
+    broadcast_agent_thinking,
+    broadcast_plan_progress,
 )
 from app.core.checkpoint import create_checkpoint, update_checkpoint, complete_checkpoint
 from app.skills.registry import registry
@@ -259,8 +261,11 @@ class AgentOrchestrator:
             from app.services.a2a import get_messages, mark_read
             messages = await get_messages(db, self._agent_id, unread_only=True, limit=3)
             for msg in messages:
-                if msg.get("message_type") == "collaboration_request" if isinstance(msg, dict) else getattr(msg, "message_type", "") == "collaboration_request":
+                msg_type = msg.get("message_type", "") if isinstance(msg, dict) else getattr(msg, "message_type", "")
+                if msg_type == "collaboration_request":
                     await self._handle_collaboration(db, msg)
+                elif msg_type == "debate_request":
+                    await self._handle_debate(db, msg)
                 msg_id = msg.get("id") if isinstance(msg, dict) else getattr(msg, "id", "")
                 if msg_id:
                     await mark_read(db, msg_id)
@@ -344,6 +349,78 @@ class AgentOrchestrator:
             logger.info(f"A2A: {self._agent_id} responded in thread {context_id[:8]} for task {task_id}")
         except Exception as e:
             logger.debug(f"A2A collaboration handling failed: {e}")
+
+    async def _initiate_debate(self, db: AsyncSession, task: Task, output: SkillOutput) -> str | None:
+        """Initiate a debate with another agent when consensus is uncertain.
+
+        Sends the output to a collaborator for critical review. Waits up to 30s
+        for a response. Synthesizes both perspectives into a refined output.
+        """
+        try:
+            from app.services.a2a import send_message, get_messages
+            from app.core.agent_identity import get_capability_card
+
+            # Find a collaborator — prefer devops for data quality, ux-eval for UX
+            collaborators = ["istara-devops", "istara-ux-eval", "istara-ui-audit"]
+            target = next((c for c in collaborators if c != self._agent_id), collaborators[0])
+
+            context_id = f"debate-{task.id}-{uuid.uuid4().hex[:8]}"
+            await send_message(
+                db=db, from_agent_id=self._agent_id, to_agent_id=target,
+                message_type="debate_request",
+                content=f"I need a critical review of this analysis.\n\nTask: {task.title}\n\nOutput:\n{output.summary[:1500]}",
+                metadata={"task_id": task.id, "context_id": context_id},
+            )
+            logger.info(f"A2A debate initiated with {target} for task {task.id}")
+
+            # Wait for response (up to 30s, polling every 3s)
+            for _ in range(10):
+                await asyncio.sleep(3)
+                msgs = await get_messages(db, self._agent_id, unread_only=True, limit=5)
+                for msg in msgs:
+                    msg_meta = msg.get("metadata", {}) if isinstance(msg, dict) else {}
+                    if isinstance(msg_meta, str):
+                        msg_meta = json.loads(msg_meta) if msg_meta else {}
+                    if msg_meta.get("context_id") == context_id and msg.get("message_type") == "debate_response":
+                        critique = msg.get("content", "")
+                        # Synthesize both perspectives
+                        synth = await ollama.chat(messages=[
+                            {"role": "system", "content": "Synthesize two perspectives on the same research analysis into a single improved output."},
+                            {"role": "user", "content": f"Original analysis:\n{output.summary[:1000]}\n\nCritique from {target}:\n{critique[:1000]}\n\nProduce a refined analysis that addresses the critique."},
+                        ])
+                        return synth.get("message", {}).get("content", "")
+
+            logger.debug(f"A2A debate timed out — no response from {target}")
+        except Exception as e:
+            logger.debug(f"A2A debate failed: {e}")
+        return None
+
+    async def _handle_debate(self, db: AsyncSession, msg: dict) -> None:
+        """Respond to a debate request with critical analysis."""
+        try:
+            content = msg.get("content", "") if isinstance(msg, dict) else getattr(msg, "content", "")
+            msg_from = msg.get("from_agent_id", "") if isinstance(msg, dict) else getattr(msg, "from_agent_id", "")
+            metadata = msg.get("metadata", {}) if isinstance(msg, dict) else getattr(msg, "metadata", {})
+            if isinstance(metadata, str):
+                metadata = json.loads(metadata) if metadata else {}
+
+            response = await ollama.chat(messages=[
+                {"role": "system", "content": f"You are {self._agent_id}, a critical reviewer. Identify gaps, unsupported claims, missing perspectives, and areas for improvement. Be constructive but rigorous."},
+                {"role": "user", "content": content},
+            ])
+            critique = response.get("message", {}).get("content", "")
+            if not critique:
+                return
+
+            from app.services.a2a import send_message
+            await send_message(
+                db=db, from_agent_id=self._agent_id, to_agent_id=msg_from,
+                message_type="debate_response",
+                content=critique[:2000],
+                metadata={"context_id": metadata.get("context_id", ""), "task_id": metadata.get("task_id", "")},
+            )
+        except Exception as e:
+            logger.debug(f"Debate response failed: {e}")
 
     async def _pick_next_task(self, db: AsyncSession) -> Task | None:
         """Pick the highest priority task assigned to THIS agent.
@@ -545,6 +622,19 @@ class AgentOrchestrator:
                     task.agent_notes = (task.agent_notes or "") + f"\n[Validation: {'; '.join(validation_issues[:3])}]"
             except Exception as e:
                 logger.debug(f"Output validation skipped: {e}")
+
+            # ── A2A Debate for uncertain consensus ──
+            # When ensemble validation produces borderline consensus (0.4-0.6),
+            # initiate a debate with another agent for a second perspective.
+            try:
+                consensus_score = getattr(task, "consensus_score", None)
+                if consensus_score and 0.4 <= consensus_score <= 0.6:
+                    debate_result = await self._initiate_debate(db, task, output)
+                    if debate_result:
+                        output.summary = debate_result
+                        task.agent_notes = (task.agent_notes or "") + "\n[A2A debate refined output]"
+            except Exception as e:
+                logger.debug(f"A2A debate skipped: {e}")
 
             # Store findings in the database
             await self._store_findings(db, project.id, output, task)
@@ -1035,8 +1125,10 @@ class AgentOrchestrator:
                 "For each step, provide:\n"
                 "- id: step_1, step_2, etc.\n"
                 "- description: what to do\n"
-                "- skill_name: which skill to use (or null for general reasoning)\n\n"
-                'Respond with JSON: {"steps": [{"id": "step_1", "description": "...", "skill_name": "..."}]}\n'
+                "- skill_name: which skill to use (or null for general reasoning)\n"
+                "- depends_on: list of step IDs this step depends on (empty [] if independent)\n\n"
+                "Steps with empty depends_on can run in parallel.\n\n"
+                'Respond with JSON: {"steps": [{"id": "step_1", "description": "...", "skill_name": "...", "depends_on": []}]}\n'
                 "If this is a simple task that doesn't need decomposition, respond: {\"steps\": []}"
             )
             response = await ollama.chat(
@@ -1053,6 +1145,7 @@ class AgentOrchestrator:
                         id=s.get("id", f"step_{i}"),
                         description=s.get("description", ""),
                         skill_name=s.get("skill_name"),
+                        depends_on=s.get("depends_on", []),
                     )
                     for i, s in enumerate(data.get("steps", []))
                 ]
@@ -1067,72 +1160,127 @@ class AgentOrchestrator:
     async def _execute_planned_task(
         self, db: AsyncSession, task: Task, project: Project, plan: ResearchPlan, rag_context
     ) -> None:
-        """Execute a research plan step by step with replan checks."""
+        """Execute a research plan with DAG-parallel step execution.
+
+        Steps with no dependencies run in parallel via asyncio.gather().
+        Steps with dependencies wait until all prerequisites complete.
+        This is the LLMCompiler pattern (ICML 2024) adapted for research.
+        """
         plan.status = "executing"
-        combined_results = []
         total_steps = len(plan.steps)
+        remaining = list(plan.steps)
+        executed_ids: set[str] = set()
+        step_num = 0
 
-        for i, step in enumerate(plan.steps):
-            step.status = "executing"
-            progress = 0.2 + (0.6 * i / total_steps)
-            await broadcast_task_progress(task.id, progress, f"Step {i+1}/{total_steps}: {step.description[:60]}")
+        while remaining:
+            # Find steps whose dependencies are all satisfied
+            ready = [s for s in remaining if all(d in executed_ids for d in (s.depends_on or []))]
+            if not ready:
+                # Deadlock: remaining steps have unresolvable dependencies
+                for s in remaining:
+                    s.status = "failed"
+                    s.result = f"Deadlock: depends on {s.depends_on} but they never completed"
+                    plan.past_steps.append(s)
+                break
 
-            try:
-                if step.skill_name:
-                    # Execute via skill
-                    skill = registry.get(step.skill_name)
-                    if skill:
-                        task_context = step.description
-                        if rag_context.has_context:
-                            task_context += f"\n\n## Relevant Documents\n{rag_context.context_text}"
-                        skill_input = SkillInput(
-                            project_id=project.id,
-                            task_id=task.id,
-                            parameters={"mode": "analyze"},
-                            user_context=task_context,
-                            project_context=project.project_context,
-                            company_context=project.company_context,
-                        )
-                        output = await asyncio.wait_for(skill.execute(skill_input), timeout=300)
-                        step.result = output.summary or ""
-                        if output.success:
-                            await self._store_findings(db, project.id, output, task)
-                    else:
-                        step.result = f"Skill '{step.skill_name}' not found"
-                else:
-                    # Execute via general reasoning (single LLM call for this step)
-                    system_prompt = await context_hierarchy.compose_context(
-                        db, project_id=project.id, task_context=step.description,
-                    )
-                    response = await ollama.chat(messages=[
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": f"Research step: {step.description}\n\nContext from previous steps:\n" + "\n".join(f"- {s.description}: {s.result[:200]}" for s in plan.past_steps)},
-                    ])
-                    step.result = response.get("message", {}).get("content", "")
+            parallel_count = len(ready)
+            # Broadcast plan progress for each step
+            for s in ready:
+                await broadcast_plan_progress(task.id, step_num + 1, total_steps, s.description[:80], "executing")
 
-                step.status = "completed"
-            except asyncio.TimeoutError:
-                step.status = "failed"
-                step.result = "Step timed out after 5 minutes"
-            except Exception as e:
-                step.status = "failed"
-                step.result = f"Step failed: {str(e)[:200]}"
+            if parallel_count > 1:
+                await broadcast_agent_thinking(self._agent_id, step_num + 1, f"Running {parallel_count} steps in parallel", total_steps)
+                await broadcast_task_progress(task.id, 0.2 + (0.6 * step_num / total_steps),
+                    f"Running {parallel_count} steps in parallel...")
+            else:
+                await broadcast_agent_thinking(self._agent_id, step_num + 1, ready[0].description[:80], total_steps)
+                await broadcast_task_progress(task.id, 0.2 + (0.6 * step_num / total_steps),
+                    f"Step: {ready[0].description[:60]}")
 
-            plan.past_steps.append(step)
+            # Execute ready steps in parallel
+            results = await asyncio.gather(
+                *[self._execute_single_step(db, task, project, step, rag_context, plan)
+                  for step in ready],
+                return_exceptions=True,
+            )
 
-        # All steps complete — compile results
+            for step, result in zip(ready, results):
+                if isinstance(result, Exception):
+                    step.status = "failed"
+                    step.result = f"Step failed: {str(result)[:200]}"
+                remaining.remove(step)
+                plan.past_steps.append(step)
+                executed_ids.add(step.id)
+                step_num += 1
+                await broadcast_plan_progress(task.id, step_num, total_steps, step.description[:80], step.status)
+
+        # Compile results
         plan.status = "complete"
         plan_summary = json.dumps(plan.to_dict(), indent=2)
-        compiled = "\n\n".join(f"### Step {i+1}: {s.description}\n{s.result}" for i, s in enumerate(plan.past_steps) if s.result)
+        compiled = "\n\n".join(
+            f"### Step {i+1}: {s.description}\n{s.result}"
+            for i, s in enumerate(plan.past_steps) if s.result
+        )
 
         task.status = TaskStatus.IN_REVIEW
         task.progress = 1.0
         task.agent_notes = f"[Research Plan]\n{plan_summary}\n\n[Results]\n{compiled}"
         await db.commit()
 
-        await broadcast_task_progress(task.id, 1.0, f"Plan complete — {len(plan.past_steps)} steps executed.")
+        await broadcast_task_progress(task.id, 1.0, f"Plan complete — {len(plan.past_steps)} steps ({total_steps} planned).")
         await self._persist_agent_state(AgentState.IDLE)
         await broadcast_agent_status("idle", f"Completed plan: {task.title}")
+
+    async def _execute_single_step(
+        self, db: AsyncSession, task: Task, project: Project,
+        step: ResearchStep, rag_context, plan: ResearchPlan,
+    ) -> None:
+        """Execute a single research step (used by DAG-parallel executor)."""
+        step.status = "executing"
+        try:
+            if step.skill_name:
+                skill = registry.get(step.skill_name)
+                if skill:
+                    task_context = step.description
+                    if rag_context.has_context:
+                        task_context += f"\n\n## Relevant Documents\n{rag_context.context_text}"
+                    # Add context from completed steps
+                    if plan.past_steps:
+                        task_context += "\n\nPrevious findings:\n" + "\n".join(
+                            f"- {s.description}: {s.result[:150]}" for s in plan.past_steps if s.result
+                        )
+                    skill_input = SkillInput(
+                        project_id=project.id, task_id=task.id,
+                        parameters={"mode": "analyze"}, user_context=task_context,
+                        project_context=project.project_context, company_context=project.company_context,
+                    )
+                    output = await asyncio.wait_for(skill.execute(skill_input), timeout=300)
+                    step.result = output.summary or ""
+                    if output.success:
+                        await self._store_findings(db, project.id, output, task)
+                else:
+                    step.result = f"Skill '{step.skill_name}' not found"
+            else:
+                system_prompt = await context_hierarchy.compose_context(
+                    db, project_id=project.id, task_context=step.description,
+                )
+                prev_context = "\n".join(
+                    f"- {s.description}: {s.result[:200]}" for s in plan.past_steps if s.result
+                )
+                response = await ollama.chat(messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": f"Research step: {step.description}\n\nContext from previous steps:\n{prev_context}"},
+                ])
+                step.result = response.get("message", {}).get("content", "")
+            step.status = "completed"
+        except asyncio.TimeoutError:
+            step.status = "failed"
+            step.result = "Step timed out after 5 minutes"
+            raise
+        except Exception as e:
+            step.status = "failed"
+            step.result = f"Step failed: {str(e)[:200]}"
+            raise
 
     async def _store_findings(
         self, db: AsyncSession, project_id: str, output: SkillOutput, task: Task
