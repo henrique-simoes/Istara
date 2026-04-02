@@ -24,7 +24,7 @@
       "name": "Agent & Skills",
       "description": "Chat, skill execution, agent identity, self-evolution, content guard, skill creation",
       "requires": ["backend", "llm"],
-      "scenarios": ["05", "06", "10", "11", "13", "14", "20", "21", "27", "28", "40", "41", "42", "59"]
+      "scenarios": ["05", "06", "10", "11", "13", "14", "20", "21", "27", "28", "40", "41", "42", "59", "71"]
     },
     {
       "id": "D",
@@ -68,8 +68,8 @@
       "name": "Database & Infrastructure",
       "description": "DB audit, vector health, finding chains, backup system, process hardening",
       "requires": ["backend"],
-      "scenarios": ["25", "30", "44", "51"],
-      "custom_checks": ["db_integrity", "vector_health", "finding_chain_audit"]
+      "scenarios": ["25", "30", "44", "51", "72"],
+      "custom_checks": ["db_integrity", "vector_health", "finding_chain_audit", "circuit_breaker_state_transitions", "llm_health_notification"]
     },
     {
       "id": "J",
@@ -91,8 +91,8 @@
       "name": "Full Pipeline E2E",
       "description": "Complete research workflow: upload → analyze → findings → insights → recommendations",
       "requires": ["backend", "llm"],
-      "scenarios": ["17", "48"],
-      "custom_checks": ["full_pipeline_validation"]
+      "scenarios": ["17", "48", "73"],
+      "custom_checks": ["full_pipeline_validation", "report_l4_template_sections", "mece_categories_populated", "a2a_debate_messages"]
     },
     {
       "id": "M",
