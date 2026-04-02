@@ -199,6 +199,22 @@ Tracking the progression of Istara's agentic architecture from initial implement
 | Multi-Model & Network | 6 scenarios | 3 checks | Good |
 | Security & Auth | 8 scenarios | 4 checks | Good |
 | Installation & CLI | 0 scenarios | 16 checks | Check-based only |
+
+### v2026.04.02.5 — Rust-Native Desktop App
+
+Replaced shell delegation (`bash istara.sh`) with direct Rust process spawning. Cross-platform support enabled.
+
+| Aspect | Before (Shell Delegation) | After (Rust-Native) |
+|--------|--------------------------|---------------------|
+| Process management | `bash istara.sh start/stop` | `std::process::Command` with `Child` tracking |
+| Windows support | Broken (no bash) | Works (CREATE_NO_WINDOW + netstat) |
+| Linux support | No CI/CD | AppImage + .deb via GitHub Actions |
+| PATH resolution | Shell inherits user PATH | `build_enriched_path()` for GUI apps |
+| macOS Tahoe compat | Not addressed | SYSTEM_VERSION_COMPAT=0, TCC awareness |
+| Start/Stop speed | Blocks 35s (health checks) | Non-blocking (returns immediately) |
+| Venv detection | 4 paths | 8 paths (venv + .venv conventions) |
+
+**Verified on**: macOS 26.2 (Tahoe), arm64 Apple Silicon, Python 3.11.14, Node 25.5.0
 | **Total** | **70 scenarios** | **45+ checks** | |
 
 ### Test Results (v2026.04.02.3, LLM disconnected)
