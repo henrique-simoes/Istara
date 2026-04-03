@@ -38,6 +38,18 @@ export function useViewOnboarding(viewId: string) {
 }
 
 /**
+ * Reset the global guided tour state.
+ * Forces the user back to the first-run onboarding wizard.
+ */
+export function resetGuidedTour() {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.removeItem("istara_tour_completed");
+    localStorage.removeItem("istara_tour_state");
+  } catch {}
+}
+
+/**
  * Reset ALL onboarding hints across all views.
  * Called from Settings > "Reset Onboarding Hints".
  */
@@ -46,5 +58,6 @@ export function resetAllOnboarding() {
   try {
     const keys = Object.keys(localStorage).filter((k) => k.startsWith(PREFIX));
     keys.forEach((k) => localStorage.removeItem(k));
+    resetGuidedTour();
   } catch {}
 }
