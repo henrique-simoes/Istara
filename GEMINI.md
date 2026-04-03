@@ -51,8 +51,8 @@ You operate within a constrained context window. Follow ALL numbered rules below
 14. **TESTING SUITE UPDATE** (design only, no execution): Update simulation agents + CI/CD pipeline. Cover: memory/DB systems, agent protocols, all UI menus. Tests must iterate automatically on failure.
 
 15. **REPO CLEANUP & RELEASE**: Clean version for push — exclude personal configs, local test data, project-specific memory/skills. Include: new agents, core skills, system-wide updates.
-    - **VERSIONING**: Run `git tag -l "vYYYY.MM.DD.*" | sort -V` before any version bump to identify the next sequence `N`. Never assume the sequence.
-    - **CLEANUP**: Review untracked files with `git status`. Utility scripts (e.g., `yes.sh`, `*.tmp`) MUST NOT be committed unless they are permanent core tools.
+    - **PUSH = RELEASE**: Never push to `main` without performing a version bump and creating a corresponding git tag in the same operation. A push without a tag is a "silent release" that breaks CI/CD visibility.
+    - **VERSIONING**: Run `git tag -l "vYYYY.MM.DD.*" | sort -V` before any version bump to identify the next sequence `N`.
     - `run_shell_command` for `./scripts/set-version.sh --bump` (CalVer across 7 files + VERSION).
     - Commit: `release: YYYY.MM.DD.N`
     - Tag: `git tag vYYYY.MM.DD.N && git push origin vYYYY.MM.DD.N`
@@ -60,7 +60,12 @@ You operate within a constrained context window. Follow ALL numbered rules below
 
 16. **DOCUMENTATION SYNC**: Update README, wiki, Tech.md. Remove outdated logic. Add explanations for new changes. Run `python scripts/update_agent_md.py` to regenerate AGENT.md.
 
-17. **COMPLETION SIGNAL**: Once all tasks complete, all agents cease, git push finalized, and environment is verified clean → output: `FINISHED!!!`
+17. **COMPLETION SIGNAL**: A task is ONLY complete when:
+    1. All code changes are verified (Rule #4).
+    2. Version is bumped and tagged (Rule #15).
+    3. Documentation is synced (Rule #16).
+    4. `git push` of both branch and tag is confirmed successful.
+    5. Output: `FINISHED!!!`
 
 ## E. Project Constants
 
