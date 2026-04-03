@@ -1,17 +1,18 @@
-// Istara Desktop — System tray manager for Istara server and relay.
+// Istara Desktop — system tray companion for Istara server and relay.
 //
-// This app does NOT install anything. Installation is handled by:
+// Installation is handled by:
 //   curl -fsSL https://raw.githubusercontent.com/henrique-simoes/Istara/main/scripts/install-istara.sh | bash
 //
-// The tray app reads ~/.istara/config.json to find the install directory,
-// then delegates to istara.sh for start/stop of backend + frontend.
-// Relay is managed directly for compute donation.
+// The desktop app reads ~/.istara/config.json to find the install directory,
+// manages backend/frontend/relay processes directly, and adapts its UX to
+// server or client mode.
 
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod commands;
 mod config;
 mod health;
+mod installer;
 mod path_resolver;
 mod process;
 mod stats;
@@ -104,12 +105,17 @@ fn main() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            installer::detect_dependencies,
+            installer::install_dependency,
             commands::get_stats,
             commands::get_config,
             commands::start_server,
             commands::stop_server,
             commands::toggle_relay,
             commands::set_connection_string,
+            commands::save_setup_config,
+            commands::run_backend_setup,
+            commands::run_frontend_setup,
             commands::open_browser,
             commands::get_server_status,
         ])

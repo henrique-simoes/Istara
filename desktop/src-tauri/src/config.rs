@@ -1,6 +1,7 @@
 /// Configuration for the Istara desktop app.
 /// Stored at ~/.istara/config.json
 /// Handles corrupt configs gracefully with backup + recovery.
+use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
@@ -31,6 +32,13 @@ impl Default for AppConfig {
             install_dir: String::new(),
         }
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ConnectionStringHint {
+    pub server_url: String,
+    pub ws_url: String,
+    pub label: String,
 }
 
 fn config_path() -> PathBuf {
@@ -78,4 +86,63 @@ pub fn save_config(cfg: &AppConfig) -> Result<(), String> {
     }
     let json = serde_json::to_string_pretty(cfg).map_err(|e| e.to_string())?;
     std::fs::write(path, json).map_err(|e| e.to_string())
+}
+
+pub fn decode_connection_string_hint(conn_str: &str) -> Option<ConnectionStringHint> {
+    let trimmed = conn_str.trim();
+    if !trimmed.starts_with("rcl_") {
+        return None;
+    }
+
+    let body = &trimmed["rcl_".len()..];
+    let (payload_b64, _) = body.split_once('.')?;
+    let payload = URL_SAFE_NO_PAD.decode(payload_b64).ok()?;
+    let value: serde_json::Value = serde_json::from_slice(&payload).ok()?;
+
+    Some(ConnectionStringHint {
+        server_url: value
+            .get("server_url")
+            .and_then(|v| v.as_str())
+            .unwrap_or_default()
+            .trim_end_matches('/')
+            .to_string(),
+        ws_url: value
+            .get("ws_url")
+            .and_then(|v| v.as_str())
+            .unwrap_or_default()
+            .to_string(),
+        label: value
+            .get("label")
+            .and_then(|v| v.as_str())
+            .unwrap_or_default()
+            .to_string(),
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn decodes_connection_string_hint_without_signature_verification() {
+        let payload = serde_json::json!({
+            "v": 1,
+            "server_url": "https://team.example.com",
+            "ws_url": "wss://team.example.com/ws/relay",
+            "label": "Design Team"
+        });
+        let payload_b64 = URL_SAFE_NO_PAD.encode(payload.to_string().as_bytes());
+        let conn = format!("rcl_{}.signature", payload_b64);
+
+        let hint = decode_connection_string_hint(&conn).expect("hint should decode");
+        assert_eq!(hint.server_url, "https://team.example.com");
+        assert_eq!(hint.ws_url, "wss://team.example.com/ws/relay");
+        assert_eq!(hint.label, "Design Team");
+    }
+
+    #[test]
+    fn ignores_non_connection_strings() {
+        assert!(decode_connection_string_hint("https://example.com").is_none());
+        assert!(decode_connection_string_hint("rcl_invalid").is_none());
+    }
 }

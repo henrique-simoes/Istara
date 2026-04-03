@@ -1,5 +1,8 @@
 # System Integrity Investigation — Summary Report
 
+> Status: Historical snapshot.
+> Authority: Not a live source of truth. For current development work, start with `AGENT_ENTRYPOINT.md` and use the generated docs plus `SYSTEM_PROMPT.md`, `SYSTEM_CHANGE_MATRIX.md`, `CHANGE_CHECKLIST.md`, `SYSTEM_INTEGRITY_GUIDE.md`, and `Tech.md`.
+
 **Date**: 2026-03-28
 **Investigator**: Claude Code Agent
 **System**: Istara v0.1.0 (Post-ComputeRegistry Unification)

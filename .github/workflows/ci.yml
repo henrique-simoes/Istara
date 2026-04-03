@@ -7,6 +7,35 @@ on:
     branches: [main]
 
 jobs:
+  governance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Check generated docs
+        run: python scripts/update_agent_md.py --check
+
+      - name: Check integrity
+        run: python scripts/check_integrity.py
+
+      - name: Check change obligations
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE="${{ github.event.pull_request.base.sha }}"
+            HEAD="${{ github.event.pull_request.head.sha }}"
+          else
+            BASE="${{ github.event.before }}"
+            HEAD="${{ github.sha }}"
+          fi
+          python scripts/check_change_obligations.py --base "$BASE" --head "$HEAD"
+
   backend:
     runs-on: ubuntu-latest
     defaults:

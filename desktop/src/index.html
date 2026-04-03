@@ -112,7 +112,7 @@
           <div class="radio-dot"></div>
           <div>
             <div class="radio-label">&#x1f4bb; Client (Connect to Server)</div>
-            <div class="radio-desc">Donate compute and access a remote Istara server. Requires a connection string from your admin.</div>
+            <div class="radio-desc">Join an existing Istara workspace using the rcl_ invite from your admin, then optionally donate local compute later.</div>
           </div>
         </label>
       </div>
@@ -136,7 +136,7 @@
     <!-- Step 1b: Connection String (Client mode) -->
     <div class="step" data-step="1b">
       <h2>Connect to Server</h2>
-      <p class="subtitle">Paste the connection string your admin gave you.</p>
+      <p class="subtitle">Paste the one-line rcl_ invite from your admin. It already contains the server address and relay credentials, so you do not need to type URLs manually.</p>
       <div class="input-group">
         <label>Connection String</label>
         <textarea id="conn-str" rows="3" placeholder="rcl_..." style="font-family:monospace; font-size:11px;"></textarea>
@@ -147,20 +147,20 @@
     <!-- Step 2: LLM Provider (Server mode) -->
     <div class="step" data-step="2">
       <h2>LLM Provider</h2>
-      <p class="subtitle">Choose which local AI model server to use. LM Studio is recommended for its GUI.</p>
+      <p class="subtitle">Choose which local AI engine this server machine will use. LM Studio is easiest for first-time setup; Ollama is great for terminal-first or headless workflows.</p>
       <div class="radio-group" id="llm-group">
         <label class="radio-card selected" onclick="selectLLM('lmstudio')">
           <div class="radio-dot"></div>
           <div>
             <div class="radio-label">LM Studio (Recommended)</div>
-            <div class="radio-desc">GUI app for managing models. Easy to use, great model library.</div>
+            <div class="radio-desc">Visual app for browsing, downloading, and loading models. Best if you want the clearest first model setup.</div>
           </div>
         </label>
         <label class="radio-card" onclick="selectLLM('ollama')">
           <div class="radio-dot"></div>
           <div>
             <div class="radio-label">Ollama</div>
-            <div class="radio-desc">CLI-based. Lightweight, fast. Good for headless servers.</div>
+            <div class="radio-desc">Lightweight command-line model runner. Best for terminal users and headless machines.</div>
           </div>
         </label>
       </div>

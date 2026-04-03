@@ -33,6 +33,18 @@ npm install && npm run dev
 - **TypeScript:** ESLint + Prettier, strict mode, no `any` where avoidable
 - **Commits:** Conventional commits (`feat:`, `fix:`, `docs:`, `refactor:`)
 
+## Release Prep
+
+Regular pushes are development flow, not release publishing.
+
+When preparing a release locally, use:
+
+```bash
+./scripts/prepare-release.sh --bump
+```
+
+That syncs generated docs, runs integrity checks, and bumps the version before you commit/tag.
+
 ## Adding a Skill
 
 1. Create `skills/{phase}/{skill-name}/SKILL.md` with YAML frontmatter

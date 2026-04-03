@@ -37,6 +37,7 @@ warn()    { printf "  ${YELLOW}⚠${NC} %s\n" "$*"; }
 fail()    { printf "  ${RED}✗${NC} %s\n" "$*" >&2; }
 header()  { printf "\n${BOLD}${CYAN}%s${NC}\n\n" "$*"; }
 ask()     { printf "  ${BOLD}?${NC} %s" "$*"; }
+note()    { printf "  ${DIM}%s${NC}\n" "$*"; }
 
 prompt_default() {
     local q="$1" d="$2"
@@ -60,6 +61,73 @@ confirm() {
     local r; read -r r </dev/tty
     r="${r:-$d}"
     case "$r" in [Yy]*) return 0 ;; *) return 1 ;; esac
+}
+
+print_mode_summary() {
+    echo ""
+    if [ "$1" = "server" ]; then
+        echo "  ${BOLD}What this machine will become:${NC}"
+        echo "    • An Istara ${BOLD}server${NC} with backend, frontend, and local data"
+        echo "    • A local AI workstation using ${BOLD}LM Studio${NC} or ${BOLD}Ollama${NC}"
+        echo "    • A desktop companion app in ${BOLD}Server mode${NC} for start/stop, donation, and updates"
+        echo ""
+        note "Use this when this computer will host the main Istara workspace."
+    else
+        echo "  ${BOLD}What this machine will become:${NC}"
+        echo "    • An Istara ${BOLD}client${NC} that joins an existing server"
+        echo "    • A desktop companion app in ${BOLD}Client mode${NC}"
+        echo "    • An optional compute donor if you enable local LM Studio or Ollama later"
+        echo ""
+        note "Use this when an admin already gave you an rcl_ connection string."
+    fi
+}
+
+print_homebrew_help() {
+    echo ""
+    echo "  ${BOLD}Homebrew is not installed yet.${NC}"
+    echo "  Homebrew is the standard package manager for macOS."
+    echo "  Istara uses it to install and update tools like Python, Node.js, and Git safely."
+    echo "  You can keep using Istara normally afterward — Homebrew just manages the underlying packages."
+    echo ""
+}
+
+print_llm_provider_help() {
+    echo ""
+    echo "  Istara needs one local AI engine on the ${BOLD}server${NC} machine."
+    echo ""
+    echo "  1) ${BOLD}LM Studio${NC} ${DIM}(recommended for most people)${NC}"
+    echo "     Desktop app with a visual interface for browsing, downloading, and loading models."
+    echo "     Best if you want the clearest first-time setup."
+    echo ""
+    echo "  2) ${BOLD}Ollama${NC}"
+    echo "     Lightweight command-line local model runner."
+    echo "     Best if you prefer terminal workflows or a headless setup."
+    echo ""
+}
+
+print_first_model_steps() {
+    echo ""
+    echo "  ${BOLD}Next step: install your first model${NC}"
+    if [ "$1" = "ollama" ]; then
+        echo "    1. Run ${CYAN}ollama pull qwen3:latest${NC}"
+        echo "    2. If Ollama is not already serving, run ${CYAN}ollama serve${NC}"
+        echo "    3. Start Istara and it will use Ollama at ${CYAN}http://localhost:11434${NC}"
+    else
+        echo "    1. Open ${BOLD}LM Studio${NC}"
+        echo "    2. Download a chat model such as ${BOLD}Qwen 3${NC} from the model library"
+        echo "    3. Start the local server in LM Studio so it listens on ${CYAN}http://localhost:1234${NC}"
+        echo "    4. Start Istara and it will detect the running LM Studio server"
+    fi
+    echo ""
+}
+
+print_client_connection_help() {
+    echo ""
+    echo "  ${BOLD}What to paste here${NC}"
+    echo "  Your server admin should give you a one-line invite that starts with ${BOLD}rcl_${NC}."
+    echo "  That string already contains the server address and relay credentials."
+    echo "  You do ${BOLD}not${NC} need to type URLs or tokens manually."
+    echo ""
 }
 
 # ── OS Detection ─────────────────────────────────────────────────
@@ -181,6 +249,11 @@ detect_ollama() {
 # ── Install missing dependencies ─────────────────────────────────
 ensure_homebrew() {
     detect_brew && return 0
+    print_homebrew_help
+    if ! confirm "Install Homebrew now so Istara can install missing dependencies?" "y"; then
+        fail "Homebrew is required to install missing dependencies on macOS."
+        exit 1
+    fi
     info "Installing Homebrew..."
     /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" </dev/tty
     # Activate in current shell
@@ -288,6 +361,7 @@ case "$MODE_CHOICE" in
     *) MODE="server" ;;
 esac
 ok "Mode: $MODE"
+print_mode_summary "$MODE"
 
 # ── Step 2: Check/install dependencies ───────────────────────────
 header "Step 2: Dependencies"
@@ -300,7 +374,17 @@ if [ "$MODE" = "server" ]; then
 
     # Check for LLM provider
     LLM_PROVIDER=""
-    if detect_lm_studio; then
+    if detect_lm_studio && detect_ollama; then
+        ok "LM Studio and Ollama detected"
+        echo ""
+        echo "  Both local AI providers are available on this machine."
+        ask "Which one should Istara use by default? [1=LM Studio/2=Ollama]: "
+        provider_choice=""; read -r provider_choice </dev/tty
+        case "$provider_choice" in
+            2) LLM_PROVIDER="ollama" ;;
+            *) LLM_PROVIDER="lmstudio" ;;
+        esac
+    elif detect_lm_studio; then
         ok "LM Studio detected"
         LLM_PROVIDER="lmstudio"
     elif detect_ollama; then
@@ -308,23 +392,28 @@ if [ "$MODE" = "server" ]; then
         LLM_PROVIDER="ollama"
     else
         warn "No LLM provider detected"
-        echo ""
-        echo "  Istara needs a local LLM. Install one:"
-        echo "    ${BOLD}a)${NC} LM Studio — ${DIM}https://lmstudio.ai${NC} (GUI, recommended)"
-        echo "    ${BOLD}b)${NC} Ollama    — ${DIM}https://ollama.com${NC} (CLI, lightweight)"
-        echo ""
-        ask "Install now? [a/b/skip]: "
+        print_llm_provider_help
+        ask "Choose your provider [1=LM Studio/2=Ollama/skip]: "
         llm_choice=""; read -r llm_choice </dev/tty
         case "$llm_choice" in
-            a|A) open "https://lmstudio.ai" 2>/dev/null || true; LLM_PROVIDER="lmstudio" ;;
-            b|B)
+            2)
                 info "Installing Ollama..."
                 curl -fsSL https://ollama.com/install.sh | sh
                 ok "Ollama installed"
                 LLM_PROVIDER="ollama"
                 ;;
+            1|"")
+                info "Opening LM Studio download page..."
+                open "https://lmstudio.ai" 2>/dev/null || true
+                LLM_PROVIDER="lmstudio"
+                ;;
             *) warn "Skipped — you can install LM Studio or Ollama later" ;;
         esac
+    fi
+
+    if [ -n "${LLM_PROVIDER:-}" ]; then
+        ok "Default LLM provider: $LLM_PROVIDER"
+        print_first_model_steps "$LLM_PROVIDER"
     fi
 else
     ensure_node
@@ -470,23 +559,27 @@ else
     "$NPM" install --silent 2>/dev/null || true
     ok "Relay installed"
 
-    echo ""
+    print_client_connection_help
     ask "Paste your connection string (from server admin): "
     CONN_STR=""; read -r CONN_STR </dev/tty
+    mkdir -p "$HOME/.istara"
     if [ -n "$CONN_STR" ]; then
-        mkdir -p "$HOME/.istara"
-        cat > "$HOME/.istara/config.json" <<CEOF
+        CLIENT_DONATE="true"
+        ok "Connection string saved for Client mode"
+    else
+        CLIENT_DONATE="false"
+        warn "No connection string saved yet — you can add one later in the desktop app"
+    fi
+    cat > "$HOME/.istara/config.json" <<CEOF
 {
   "mode": "client",
   "server_url": "",
   "ws_url": "",
   "connection_string": "$CONN_STR",
-  "donate_compute": true,
+  "donate_compute": $CLIENT_DONATE,
   "install_dir": "$INSTALL_DIR"
 }
 CEOF
-        ok "Connection string saved"
-    fi
 fi
 
 # ── Step 7: Create launcher script ───────────────────────────────
@@ -532,51 +625,50 @@ if [ "$MODE" = "server" ]; then
 SEOF
 fi
 
-# ── Step 8: Install Desktop Tray App (optional) ────────────
-# This entire section is failure-safe — tray app is optional, errors must not kill the installer.
+# ── Step 8: Install Desktop App Companion ───────────────────
+# This entire section is failure-safe — desktop app install errors must not kill the installer.
 if [ "$PLATFORM" = "macos" ]; then
     if [ ! -d "/Applications/Istara.app" ] && [ ! -d "$HOME/Applications/Istara.app" ]; then
         echo ""
-        header "Desktop Tray App (Optional)"
-        echo "  The Istara tray icon lets you start/stop the server, check status,"
-        echo "  donate compute, and check for updates — all from your menu bar."
+        header "Step 8: Install Istara Desktop App"
+        echo "  Istara Desktop is the companion app that lives in your menu bar."
+        echo "  It reads the mode you chose above and adapts automatically:"
+        echo "    • ${BOLD}Server mode${NC}: start/stop Istara, check local AI status, updates"
+        echo "    • ${BOLD}Client mode${NC}: open the remote workspace, paste/change invites, donate compute"
         echo ""
-        if confirm "Download and install the Istara tray app?" "y"; then
-            # Run in a subshell so set -e doesn't kill the parent on failure
-            (
-                set +e  # Disable exit-on-error for this subshell
-                info "Downloading latest Istara.app..."
-                # Get latest DMG URL from GitHub releases
-                API_RESPONSE=$(curl -sL "https://api.github.com/repos/${REPO}/releases/latest" 2>/dev/null || echo "")
-                LATEST_DMG=$(echo "$API_RESPONSE" | grep -o '"browser_download_url":[[:space:]]*"[^"]*\.dmg"' 2>/dev/null \
-                    | head -1 | sed 's/.*"browser_download_url":[[:space:]]*"//' | sed 's/"$//' 2>/dev/null || echo "")
-                if [ -n "$LATEST_DMG" ]; then
-                    TMPDIR_DMG=$(mktemp -d)
-                    curl -fSL "$LATEST_DMG" -o "$TMPDIR_DMG/Istara.dmg" 2>/dev/null
-                    if [ -f "$TMPDIR_DMG/Istara.dmg" ]; then
-                        hdiutil attach "$TMPDIR_DMG/Istara.dmg" -quiet -nobrowse -mountpoint "$TMPDIR_DMG/mnt" 2>/dev/null
-                        if [ -d "$TMPDIR_DMG/mnt/Istara.app" ]; then
-                            cp -R "$TMPDIR_DMG/mnt/Istara.app" /Applications/ 2>/dev/null || \
-                                cp -R "$TMPDIR_DMG/mnt/Istara.app" "$HOME/Applications/" 2>/dev/null
-                            hdiutil detach "$TMPDIR_DMG/mnt" -quiet 2>/dev/null
-                            ok "Istara.app installed to Applications"
-                            info "Launch it from Applications or Spotlight to get the tray icon."
-                        else
-                            hdiutil detach "$TMPDIR_DMG/mnt" -quiet 2>/dev/null
-                            warn "DMG did not contain Istara.app — you can install it manually later"
-                        fi
+        # Run in a subshell so set -e doesn't kill the parent on failure
+        (
+            set +e  # Disable exit-on-error for this subshell
+            info "Downloading latest Istara.app..."
+            # Get latest DMG URL from GitHub releases
+            API_RESPONSE=$(curl -sL "https://api.github.com/repos/${REPO}/releases/latest" 2>/dev/null || echo "")
+            LATEST_DMG=$(echo "$API_RESPONSE" | grep -o '"browser_download_url":[[:space:]]*"[^"]*\.dmg"' 2>/dev/null \
+                | head -1 | sed 's/.*"browser_download_url":[[:space:]]*"//' | sed 's/"$//' 2>/dev/null || echo "")
+            if [ -n "$LATEST_DMG" ]; then
+                TMPDIR_DMG=$(mktemp -d)
+                curl -fSL "$LATEST_DMG" -o "$TMPDIR_DMG/Istara.dmg" 2>/dev/null
+                if [ -f "$TMPDIR_DMG/Istara.dmg" ]; then
+                    hdiutil attach "$TMPDIR_DMG/Istara.dmg" -quiet -nobrowse -mountpoint "$TMPDIR_DMG/mnt" 2>/dev/null
+                    if [ -d "$TMPDIR_DMG/mnt/Istara.app" ]; then
+                        mkdir -p "$HOME/Applications" 2>/dev/null || true
+                        cp -R "$TMPDIR_DMG/mnt/Istara.app" /Applications/ 2>/dev/null || \
+                            cp -R "$TMPDIR_DMG/mnt/Istara.app" "$HOME/Applications/" 2>/dev/null
+                        hdiutil detach "$TMPDIR_DMG/mnt" -quiet 2>/dev/null
+                        ok "Istara.app installed to Applications"
+                        info "Launch it from Applications or Spotlight — it will open in $MODE mode."
                     else
-                        warn "Download failed — you can install the tray app manually from GitHub Releases"
+                        hdiutil detach "$TMPDIR_DMG/mnt" -quiet 2>/dev/null
+                        warn "DMG did not contain Istara.app — you can install it manually later"
                     fi
-                    rm -rf "$TMPDIR_DMG" 2>/dev/null
                 else
-                    warn "No DMG found in latest release (GitHub API may be rate-limited)."
-                    warn "You can install the tray app later from: https://github.com/${REPO}/releases"
+                    warn "Download failed — you can install the desktop app manually from GitHub Releases"
                 fi
-            ) || true  # Ensure subshell failure doesn't kill the installer
-        else
-            ok "Skipped tray app — you can install it later from GitHub Releases"
-        fi
+                rm -rf "$TMPDIR_DMG" 2>/dev/null
+            else
+                warn "No DMG found in latest release (GitHub API may be rate-limited)."
+                warn "You can install the desktop app later from: https://github.com/${REPO}/releases"
+            fi
+        ) || true  # Ensure subshell failure doesn't kill the installer
     else
         ok "Istara.app already installed"
     fi
@@ -617,8 +709,18 @@ if [ "$MODE" = "server" ]; then
         fi
     fi
 else
-    echo -e "  ${BOLD}Start the relay:${NC}"
-    echo -e "    ${CYAN}istara start-relay${NC}"
+    echo -e "  ${BOLD}Client setup complete:${NC}"
+    if [ -n "${CONN_STR:-}" ]; then
+        echo -e "    ${CYAN}Open Istara Desktop${NC} from Applications or Spotlight"
+        echo -e "    It will use your saved ${BOLD}rcl_${NC} invite and open in ${BOLD}Client mode${NC}."
+    else
+        echo -e "    ${CYAN}Open Istara Desktop${NC}, then choose ${BOLD}Change Server / Invite...${NC}"
+        echo -e "    and paste the ${BOLD}rcl_${NC} invite from your admin."
+    fi
+    echo ""
+    echo -e "  ${BOLD}Need to help your server with local AI compute later?${NC}"
+    echo -e "    Start LM Studio or Ollama on this machine, then turn on ${BOLD}Compute Donation${NC}"
+    echo -e "    from the desktop app."
     echo ""
 fi
 
