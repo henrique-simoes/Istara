@@ -47,6 +47,22 @@ _find_npm() {
     echo "npm"  # last resort
 }
 
+_latest_release_version() {
+    local version=""
+
+    if command -v curl >/dev/null 2>&1; then
+        version=$(curl -fsSL "https://api.github.com/repos/henrique-simoes/Istara/releases/latest" 2>/dev/null \
+            | sed -n 's/.*"tag_name":[[:space:]]*"v\{0,1\}\([^"]*\)".*/\1/p' | head -1 || true)
+    fi
+
+    if [ -z "$version" ]; then
+        version=$(git ls-remote --tags --refs --sort="v:refname" "https://github.com/henrique-simoes/Istara.git" "v*" 2>/dev/null \
+            | tail -1 | sed 's#.*refs/tags/v##')
+    fi
+
+    echo "$version"
+}
+
 # Colors
 GREEN='\033[0;32m'
 RED='\033[0;31m'
@@ -377,13 +393,25 @@ _update() {
     _stop 2>/dev/null
     echo -e "\r  ${GREEN}✓${NC} Services stopped"
 
-    # Pull latest code (discard local changes — update replaces everything)
-    echo -n "  Pulling latest code..."
+    # Sync to latest published release (discard local changes — update replaces everything)
+    echo -n "  Resolving latest published release..."
+    local TARGET_VERSION=$(_latest_release_version)
+    if [ -z "$TARGET_VERSION" ]; then
+        echo -e "\r  ${RED}✗ could not determine the latest published release${NC}"
+        exit 1
+    fi
+    echo -e "\r  ${GREEN}✓${NC} Latest release: $TARGET_VERSION"
+
+    echo -n "  Syncing source to release..."
     cd "$ROOT"
     git checkout -- . 2>/dev/null || true
     git clean -fd 2>/dev/null || true
-    git pull --ff-only 2>/dev/null || git pull 2>/dev/null || {
-        echo -e "\r  ${RED}✗ git pull failed${NC}"
+    git fetch --tags origin 2>/dev/null || {
+        echo -e "\r  ${RED}✗ git fetch failed${NC}"
+        exit 1
+    }
+    git checkout -B "release-$TARGET_VERSION" "tags/v$TARGET_VERSION" >/dev/null 2>&1 || {
+        echo -e "\r  ${RED}✗ release checkout failed${NC}"
         exit 1
     }
     local NEW_VERSION=$(cat "$ROOT/VERSION" 2>/dev/null || echo "unknown")

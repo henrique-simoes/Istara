@@ -226,6 +226,51 @@ detect_npm() {
 
 detect_git() { command -v git >/dev/null 2>&1; }
 
+get_latest_release_version() {
+    local version=""
+
+    if command -v curl >/dev/null 2>&1; then
+        local api_response=""
+        api_response=$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest" 2>/dev/null || true)
+        version=$(printf "%s" "$api_response" | sed -n 's/.*"tag_name":[[:space:]]*"v\{0,1\}\([^"]*\)".*/\1/p' | head -1)
+    fi
+
+    if [ -z "$version" ] && detect_git; then
+        version=$(git ls-remote --tags --refs --sort="v:refname" "https://github.com/${REPO}.git" "v*" 2>/dev/null \
+            | tail -1 | sed 's#.*refs/tags/v##')
+    fi
+
+    printf "%s" "$version"
+}
+
+sync_repo_to_release() {
+    local target_version="$1"
+
+    if [ -z "$target_version" ]; then
+        fail "Could not determine the latest published Istara release."
+        exit 1
+    fi
+
+    if [ -d "$INSTALL_DIR/.git" ]; then
+        info "Existing installation found at $INSTALL_DIR — syncing to release v$target_version..."
+        cd "$INSTALL_DIR"
+        git fetch --tags origin
+        git checkout -- . 2>/dev/null || true
+        git clean -fd 2>/dev/null || true
+    else
+        info "Cloning Istara to $INSTALL_DIR..."
+        git clone "https://github.com/${REPO}.git" "$INSTALL_DIR"
+        cd "$INSTALL_DIR"
+        ok "Cloned to $INSTALL_DIR"
+    fi
+
+    git fetch --tags origin
+    git checkout -B "release-$target_version" "tags/v$target_version" >/dev/null 2>&1 || {
+        fail "Could not check out Istara release v$target_version."
+        exit 1
+    }
+}
+
 detect_brew() {
     command -v brew >/dev/null 2>&1 && return 0
     [ -x "/opt/homebrew/bin/brew" ] && { eval "$(/opt/homebrew/bin/brew shellenv)"; return 0; }
@@ -421,19 +466,9 @@ fi
 
 # ── Step 3: Download Istara ──────────────────────────────────────
 header "Step 3: Installing Istara"
-
-if [ -d "$INSTALL_DIR/.git" ]; then
-    info "Existing installation found at $INSTALL_DIR — updating..."
-    cd "$INSTALL_DIR"
-    git pull --ff-only 2>/dev/null || git pull
-    ok "Updated to latest"
-else
-    info "Cloning Istara to $INSTALL_DIR..."
-    git clone "https://github.com/${REPO}.git" "$INSTALL_DIR"
-    ok "Cloned to $INSTALL_DIR"
-fi
-
-cd "$INSTALL_DIR"
+TARGET_VERSION="$(get_latest_release_version)"
+info "Latest published release: v${TARGET_VERSION:-unknown}"
+sync_repo_to_release "$TARGET_VERSION"
 VERSION=$(cat VERSION 2>/dev/null || echo "dev")
 ok "Version: $VERSION"
 

@@ -326,7 +326,7 @@
 
 ### Installation Methods
 - **Homebrew** (macOS, recommended): `brew install --cask henrique-simoes/istara/istara`. Explain this is the fastest path for macOS users.
-- **Shell one-liner**: `curl -fsSL .../install-istara.sh | bash`. This is the comprehensive installer — handles ALL dependencies (Python 3.12, Node, Git, LLM provider), creates the venv, builds frontend, generates secrets, and creates the `istara` CLI. Guide users through any failures by checking the ERR trap output.
+- **Shell one-liner**: `curl -fsSL .../install-istara.sh | bash`. This is the comprehensive installer — handles ALL dependencies (Python 3.12, Node, Git, LLM provider), syncs the source install to the newest published GitHub Release, creates the venv, builds frontend, generates secrets, and creates the `istara` CLI. Guide users through any failures by checking the ERR trap output.
 - When guiding the shell installer, explain the two modes clearly:
   - **Server**: this machine hosts Istara and runs LM Studio or Ollama locally
   - **Client**: this machine joins an existing server with an `rcl_...` invite and may optionally donate local compute later
@@ -352,12 +352,15 @@
 ### First-Run Login UX
 - **Local mode** (default): Users see "Welcome to Istara" with just a name field and "Get Started" button. No password required. The backend issues an admin JWT for any credentials. Explain: "In single-user mode, your data stays on this machine. Enable Team Mode in Settings for multi-user."
 - **Team mode**: Full login/register/join-server flow. First user automatically becomes admin. Connection strings (`rcl_...`) let team members join instantly.
+- **Bootstrap integrity**: The app must validate the stored JWT before showing the main UI. If a user sees the main app and then gets bounced to login/register, treat that as a regression in the auth bootstrap.
+- **First-run onboarding guarantee**: On a fresh system with no projects, first-time authenticated users should always get the onboarding wizard and follow-up tour, even if the browser has stale localStorage from an older install.
 - **Server unreachable**: If the backend isn't running, users see a dedicated error screen with instructions to run `istara start`. Help them diagnose: check `~/.istara/.istara-backend.log` for errors. Common cause: `NEXT_PUBLIC_*` vars in backend `.env` cause pydantic to crash with "extra inputs not permitted" — these are frontend-only and should not be there. Fix: remove them from `.env` or the backend's `config.py` already has `extra="ignore"` as safety net.
 
 ### CLI Management
 - `istara start` — starts backend (uvicorn via venv Python) + frontend (Next.js production build)
 - `istara stop` — stops both
 - `istara status` — shows running/stopped + LLM connectivity
+- `istara update` — syncs the git-based source install to the newest published release, rebuilds dependencies/frontend, and restarts services
 - `istara restart` / `istara logs` — convenience commands
 - The CLI uses `$ROOT/venv/bin/python` (not bare `python`) and detects npm via keg-only Homebrew paths
 - If startup fails, the CLI shows the last 15 lines of the log — share these with users for debugging

@@ -5,7 +5,7 @@ import { useState, useRef, useEffect } from "react";
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 interface LoginScreenProps {
-  onLogin: () => void;
+  onLogin: () => Promise<boolean | void>;
 }
 
 export default function LoginScreen({ onLogin }: LoginScreenProps) {
@@ -91,7 +91,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
         }
         const data = await res.json();
         localStorage.setItem("istara_token", data.token);
-        onLogin();
+        await onLogin();
       } catch (err) {
         if (err instanceof TypeError && err.message === "Failed to fetch") {
           setError("Cannot connect to the server. Make sure the backend is running.");
@@ -140,7 +140,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
 
       const data = await res.json();
       localStorage.setItem("istara_token", data.token);
-      onLogin();
+      await onLogin();
     } catch (err) {
       if (err instanceof TypeError && err.message === "Failed to fetch") {
         setError("Cannot connect to the Istara server. Make sure the backend is running on port 8000.");

@@ -1,4 +1,6 @@
-from app.api.routes.updates import is_newer
+from types import SimpleNamespace
+
+from app.api.routes.updates import get_latest_release_version_from_git, is_newer
 
 def test_is_newer_numeric():
     # Basic numeric comparison
@@ -19,3 +21,26 @@ def test_is_newer_numeric():
     
     # Text in versions (fallback to string)
     assert is_newer("v2", "v1") is True
+
+
+def test_get_latest_release_version_from_git_parses_newest_tag(monkeypatch):
+    def fake_run(*args, **kwargs):
+        return SimpleNamespace(
+            returncode=0,
+            stdout="\n".join([
+                "sha refs/tags/v2026.04.02.14",
+                "sha refs/tags/v2026.04.03",
+                "sha refs/tags/v2026.04.03.2",
+            ]),
+        )
+
+    monkeypatch.setattr("app.api.routes.updates.subprocess.run", fake_run)
+    assert get_latest_release_version_from_git() == "2026.04.03.2"
+
+
+def test_get_latest_release_version_from_git_handles_failures(monkeypatch):
+    def fake_run(*args, **kwargs):
+        return SimpleNamespace(returncode=1, stdout="")
+
+    monkeypatch.setattr("app.api.routes.updates.subprocess.run", fake_run)
+    assert get_latest_release_version_from_git() == ""

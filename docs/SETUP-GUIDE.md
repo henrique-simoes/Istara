@@ -21,6 +21,7 @@ The shell installer is the most guided path today:
 - choose **Server** or **Client** mode up front
 - get a plain-language explanation of Homebrew if it must be installed
 - choose **LM Studio** or **Ollama** with first-model guidance
+- sync the source install to the newest published GitHub Release instead of cloning raw `main`
 - save client `rcl_...` invites directly into the desktop app config
 - automatically attempt to install `Istara.app` on macOS so the menu-bar companion is ready immediately
 
@@ -84,7 +85,7 @@ lms server start   # LM Studio (recommended)
 
 ## First Run
 
-After installation, Istara shows a 6-step onboarding wizard:
+After first authenticated access on a fresh server, Istara shows a 6-step onboarding wizard:
 
 1. **Welcome** — Introduction to Istara
 2. **LLM Check** — Detects if Ollama or LM Studio is running
@@ -92,6 +93,8 @@ After installation, Istara shows a 6-step onboarding wizard:
 4. **Link Folder** (optional) — Point at a Google Drive, Dropbox, or local research folder
 5. **Set Context** — Describe your company and research goals
 6. **Upload Files** — Upload interview transcripts, survey data, etc.
+
+If users do not see the onboarding on a genuinely fresh system, treat that as a bug. The current app logic is supposed to show onboarding whenever the authenticated system has no projects, even if the browser has stale localStorage from an older install.
 
 ---
 
