@@ -318,7 +318,7 @@
 - The desktop app (Tauri v2) uses Rust-native process management: `process.rs` starts and stops backend, frontend, and relay directly as tracked child processes. Menu state is driven by config plus live port checks. Guide users through tray menu operations — Start/Stop shows actual running state, Client mode opens the configured remote workspace, Donate shows confirmation and blocks if no invite is configured, LLM click shows status dialog, Check Updates shows result.
 - macOS installer ships as a DMG with bundled source, a LaunchAgent for auto-start on login, and a universal binary supporting both Intel and Apple Silicon Macs. Explain to users that Istara will start automatically after install unless they disable the LaunchAgent in System Settings.
 - Windows installer uses an NSIS MUI2 wizard that detects missing dependencies (Python, Node, Ollama), downloads them automatically, offers Server+Client or Client-only install mode selection, sets up the backend venv, and includes an uninstaller that preserves user data by default. Walk users through each wizard page when asked.
-- CI/CD pipeline: GitHub Actions builds macOS DMG and Windows EXE on every push, and creates a GitHub Release with both artifacts on tagged commits. Explain to users where to find the latest release and which artifact matches their platform.
+- CI/CD pipeline: GitHub Actions builds macOS DMG and Windows EXE on pushes to `main`, and that publishing flow creates a GitHub Release with the fresh artifacts. Tag pushes and manual dispatch remain available for explicit release control. Explain to users where to find the latest release and which artifact matches their platform.
 - Setup wizard: an HTML-based 6-step flow rendered in the Tauri webview (mode selection, dependency check, LLM configuration, .env configuration, install progress, completion). Guide users through each step and explain what each configuration choice means.
 - Secret generation: `generate-secrets.sh` now produces JWT_SECRET, DATA_ENCRYPTION_KEY, NETWORK_ACCESS_TOKEN, RELAY_TOKEN, and POSTGRES_PASSWORD. Explain to users that these secrets are generated once at install time and should be backed up securely.
 
@@ -337,11 +337,11 @@
 - **DMG/EXE installers**: Currently experiencing issues — advise users to use Homebrew or the shell one-liner instead.
 
 ### Desktop Tray App
-- The Istara tray app (Tauri v2) is a thin **manager** GUI — it delegates all start/stop to `istara.sh` (single source of truth for PID files, process groups, health waits).
+- The Istara tray app (Tauri v2) is a thin **manager** GUI with Rust-native process management for backend, frontend, and relay. It adapts to Server or Client mode from `~/.istara/config.json`.
 - Available in the macOS menu bar after installing via the shell one-liner (Step 8 offers download) or Homebrew.
 - Menu items and behaviors:
-  - **Open Istara**: Opens browser only if ports are up, shows "Server Not Running" dialog otherwise.
-  - **Start/Stop Server**: Label shows `● Stop` when server running, `○ Start` when down. Runs `istara.sh` in background thread. Shows error dialog on failure with log details.
+  - **Open Istara**: In Server mode, opens browser only if local ports are up. In Client mode, opens the remote server URL saved from the `rcl_...` invite.
+  - **Start/Stop Server**: Label shows `● Stop` when server running, `○ Start` when down. Starts/stops backend and frontend directly via the Rust process manager. Shows error dialog on failure with log details.
   - **LM Studio / Ollama Status**: If LLM running, shows status dialog with option to toggle compute donation. If not, offers to open LM Studio.
   - **Compute Donation**: Toggle with confirmation dialog. Config always saves. Relay failures shown in warning dialog.
   - **Check for Updates**: Three-tier check (Tauri updater, git tags, GitHub releases). Always shows a result dialog — no silent failures.

@@ -539,7 +539,7 @@ def build_agent_document(inventory: dict[str, object]) -> str:
         "- Treat `tests/e2e_test.py` and `tests/simulation/scenarios/` as behavioral contracts for the UI and system flows.",
         "- Update `Tech.md` when architecture, workflow, installer, release, or update behavior changes.",
         "- Update future-facing tests and relevant Istara persona files when a feature changes what Istara's own agents must understand.",
-        "- Use `./scripts/prepare-release.sh --bump` for intentional release preparation; regular pushes are development flow, not release publishing.",
+        "- Use `./scripts/prepare-release.sh --bump` for intentional release preparation, but keep the docs aligned with the actual repo rule that pushes to `main` publish installers/releases.",
         "",
         "## System Snapshot",
         "",

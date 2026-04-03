@@ -35,7 +35,7 @@ npm install && npm run dev
 
 ## Release Prep
 
-Regular pushes are development flow, not release publishing.
+Pushes to `main` publish the installer/release workflow for the repository.
 
 When preparing a release locally, use:
 
@@ -43,7 +43,7 @@ When preparing a release locally, use:
 ./scripts/prepare-release.sh --bump
 ```
 
-That syncs generated docs, runs integrity checks, and bumps the version before you commit/tag.
+That syncs generated docs, runs integrity checks, and bumps the version before you push.
 
 ## Adding a Skill
 
