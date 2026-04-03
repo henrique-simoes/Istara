@@ -1,6 +1,6 @@
-/// System tray — thin GUI layer over istara.sh for process management.
-/// Delegates start/stop to istara.sh (single source of truth).
-/// Manages relay directly. Menu state driven by port checks.
+/// System tray — mode-aware desktop companion for Istara.
+/// Manages backend, frontend, and relay processes directly via ProcessManager.
+/// Menu state is driven by config plus live health checks.
 ///
 /// Fixed in v2026.03.30:
 /// - Start/Stop runs in background thread, menu updates after delay
@@ -61,7 +61,18 @@ pub fn setup_tray<R: Runtime>(
 
 fn handle_open<R: Runtime>(app: &AppHandle<R>) {
     let cfg = crate::config::load_config();
-    if process::check_port(3000) || process::check_port(8000) {
+    if cfg.mode == "client" {
+        if cfg.server_url.is_empty() {
+            show_dialog(
+                app,
+                "Connect to a Server",
+                "This desktop app is in Client mode, but no server invite has been saved yet.\n\nChoose “Change Server...” and paste the rcl_ connection string from your admin.",
+                DialogKind::Warning,
+            );
+        } else {
+            let _ = open::that(&cfg.server_url);
+        }
+    } else if process::check_port(3000) || process::check_port(8000) {
         let _ = open::that(&cfg.server_url);
     } else {
         eprintln!("[tray] Server not running — cannot open browser");
@@ -225,6 +236,17 @@ fn handle_lm_click<R: Runtime>(app: &AppHandle<R>, pm: Arc<Mutex<ProcessManager>
 fn handle_donate<R: Runtime>(app: &AppHandle<R>, pm: Arc<Mutex<ProcessManager>>) {
     let mut cfg = crate::config::load_config();
     let new_state = !cfg.donate_compute;
+
+    if new_state && cfg.mode == "client" && cfg.connection_string.trim().is_empty() {
+        show_dialog(
+            app,
+            "Connection Required",
+            "Compute donation in Client mode needs a server invite first.\n\nChoose “Change Server...” and paste the rcl_ connection string from your admin.",
+            DialogKind::Warning,
+        );
+        return;
+    }
+
     cfg.donate_compute = new_state;
 
     // Always save the config toggle
@@ -397,7 +419,7 @@ fn handle_check_updates<R: Runtime>(app: &AppHandle<R>) {
         }
 
         if !update_info.is_empty() {
-            let _ = handle
+            let open_releases = handle
                 .dialog()
                 .message(&update_info)
                 .title(if update_info.contains("available") {
@@ -421,7 +443,7 @@ fn handle_check_updates<R: Runtime>(app: &AppHandle<R>) {
                 .blocking_show();
             // Note: for OkCancel, if the user clicks "Open Releases",
             // blocking_show returns true
-            if update_info.contains("available") {
+            if update_info.contains("available") && open_releases {
                 let _ = open::that("https://github.com/henrique-simoes/Istara/releases");
             }
         } else {
@@ -551,9 +573,9 @@ fn build_client_menu<R: Runtime>(
     cfg: &AppConfig,
 ) -> Result<Menu<R>, Box<dyn std::error::Error>> {
     let status = if cfg.connection_string.is_empty() {
-        "\u{26A0} Not Connected"
+        "\u{26A0} Client Mode: Add Invite"
     } else {
-        "\u{2713} Connected"
+        "\u{2713} Client Mode: Server Ready"
     };
     let donate_label = if cfg.donate_compute {
         "\u{2713} Compute Donation: On"
@@ -570,7 +592,7 @@ fn build_client_menu<R: Runtime>(
             &MenuItem::with_id(
                 app,
                 "change_server",
-                "Change Server...",
+                "Change Server / Invite...",
                 true,
                 None::<&str>,
             )?,

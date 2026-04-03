@@ -1,5 +1,8 @@
 # Istara Comprehensive Codebase Audit Report
 
+> Status: Historical audit artifact.
+> Authority: Not a live development authority. Use this for dated findings/backlog context only. For current repo workflow, start with `AGENT_ENTRYPOINT.md`.
+
 **Date**: 2026-03-28
 **Scope**: Full codebase — security, code quality, paid platform references, agent system, architecture conflicts, documentation
 

@@ -1,5 +1,8 @@
 # Istara Agentic Architecture — Complete Pipeline Documentation
 
+> Status: Specialized deep dive.
+> Authority: Useful for detailed pipeline understanding, but not the canonical development entrypoint. Start with `AGENT_ENTRYPOINT.md` and treat this file as supporting detail.
+
 ## Overview
 
 Istara's agent system operates through two parallel pipelines: **interactive chat** (user-driven, real-time) and **autonomous work** (background, task-driven). Both share the same tool ecosystem, memory systems, and finding storage.

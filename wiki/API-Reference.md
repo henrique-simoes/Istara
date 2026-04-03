@@ -1,5 +1,8 @@
 # API Reference
 
+> Status: Public/reference API page.
+> Authority: Useful as a wiki-facing reference, but not the canonical internal development source of truth. For live API inventory and change obligations, start with `AGENT_ENTRYPOINT.md`.
+
 Istara exposes a full REST API at `http://localhost:8000/api/` plus a WebSocket endpoint for real-time updates.
 
 All API endpoints (except auth and health) require a valid JWT in the `Authorization: Bearer <token>` header.

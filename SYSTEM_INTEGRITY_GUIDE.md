@@ -4,6 +4,11 @@
 **System Version**: Post-ComputeRegistry unification
 **Coverage**: Complete end-to-end mapping of all subsystems, dependencies, and data flows
 
+Generated companions now exist for faster drift-resistant scanning:
+- `AGENT.md` — compact generated operating map
+- `COMPLETE_SYSTEM.md` — generated architecture and coverage inventory
+- `SYSTEM_PROMPT.md` — shared LLM operating contract
+
 ---
 
 ## TABLE OF CONTENTS
@@ -87,6 +92,7 @@ All models are registered in `backend/app/models/database.py::init_db()`:
 | CodebookVersion | `codebook_versions` | Codebook → codebooks.id | Version history for codebooks |
 | CodeApplication | `code_applications` | Project → projects.id (codebook_version_id optional) | Every code applied with full audit trail (WHO, WHAT, WHERE, WHY, REVIEW) |
 | ProjectReport | `project_reports` | Project → projects.id (codebook_version_id optional) | Four-layer convergence pyramid (L1 artifacts → L4 final) |
+| ProjectMember | `project_members` | Project → projects.id | Per-project access control linking users to projects with admin/member/viewer roles |
 
 #### VECTOR STORE & CONTEXT MODELS
 | Model | Table | Notes |

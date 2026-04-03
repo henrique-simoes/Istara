@@ -1,5 +1,8 @@
 # Istara Setup Guide
 
+> Status: Product/setup reference.
+> Authority: This is not part of the canonical development-governance stack. For development workflow and architecture-preserving changes, start with `AGENT_ENTRYPOINT.md`.
+
 ## Installation Options
 
 ### Option 1: Homebrew (macOS — Recommended)
@@ -14,6 +17,13 @@ brew install --cask henrique-simoes/istara/istara
 curl -fsSL https://raw.githubusercontent.com/henrique-simoes/Istara/main/scripts/install-istara.sh | sh
 ```
 
+The shell installer is the most guided path today:
+- choose **Server** or **Client** mode up front
+- get a plain-language explanation of Homebrew if it must be installed
+- choose **LM Studio** or **Ollama** with first-model guidance
+- save client `rcl_...` invites directly into the desktop app config
+- automatically attempt to install `Istara.app` on macOS so the menu-bar companion is ready immediately
+
 ### Option 3: Native Installer
 
 Download the latest installer from [GitHub Releases](https://github.com/henrique-simoes/Istara/releases):
@@ -21,8 +31,8 @@ Download the latest installer from [GitHub Releases](https://github.com/henrique
 - **Windows**: `Istara_x64-setup.exe` — run installer, choose mode, follow wizard
 
 All installation methods:
-- Set up the system tray icon for easy management
-- Detect and install missing dependencies (Python 3.12, Node.js 20, Ollama)
+- Set up the desktop companion app / system tray icon for easy management
+- Detect and install missing dependencies (Python 3.12, Node.js 20, Git, local LLM tooling)
 - Generate security keys automatically
 - Auto-check for updates on startup
 
@@ -112,7 +122,7 @@ Team members can donate their local LLM compute to the server:
 
 ### Via Desktop App (Recommended)
 - Install Istara in "Client Only" mode
-- Paste connection string in the tray app
+- Paste the `rcl_...` connection string in the desktop app
 - Toggle "Compute Donation" in the tray menu
 
 ### Via Browser

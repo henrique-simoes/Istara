@@ -1,5 +1,8 @@
 # Istara System Overview
 
+> Status: Product-facing feature summary.
+> Authority: Not a canonical development-control document. For live architecture and change obligations, start with `AGENT_ENTRYPOINT.md`.
+
 A complete feature catalog for agents and users to understand all Istara capabilities.
 
 ## Core Philosophy

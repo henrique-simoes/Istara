@@ -1,5 +1,8 @@
 # Istara Features
 
+> Status: Public/reference feature page.
+> Authority: This is not the canonical development-governance document set. For live architecture, workflow, and change-preservation guidance, start with `AGENT_ENTRYPOINT.md`.
+
 Complete reference for all features available in Istara 2026.03.29.
 
 ---

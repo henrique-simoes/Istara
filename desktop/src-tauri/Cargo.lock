@@ -1676,8 +1676,9 @@ dependencies = [
 
 [[package]]
 name = "istara-desktop"
-version = "26.126.12"
+version = "26.126.14"
 dependencies = [
+ "base64 0.22.1",
  "dirs 5.0.1",
  "open",
  "serde",
@@ -1690,6 +1691,7 @@ dependencies = [
  "tauri-plugin-shell",
  "tauri-plugin-updater",
  "tokio",
+ "version-compare",
 ]
 
 [[package]]

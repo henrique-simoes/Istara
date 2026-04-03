@@ -8,6 +8,12 @@ Use this checklist for EVERY change to ensure nothing breaks. Cross-reference wi
 
 Before making ANY change:
 
+- [ ] Read `SYSTEM_PROMPT.md` for the repo-wide agent contract
+- [ ] Read `AGENT_ENTRYPOINT.md` for the canonical reading order
+- [ ] Skim `AGENT.md` or `COMPLETE_SYSTEM.md` for the current generated system map
+- [ ] Read `SYSTEM_CHANGE_MATRIX.md` for dependent surfaces that must move with this change
+- [ ] Decide whether `Tech.md` must change because the architecture/process/release story changed
+- [ ] Decide whether Istara's own agents need persona updates to understand this feature
 - [ ] Read relevant sections in SYSTEM_INTEGRITY_GUIDE.md
 - [ ] Identify all affected subsystems (Database, Routes, Frontend, Agents, Skills, WebSocket)
 - [ ] Check if this change involves cascade deletes
@@ -176,6 +182,7 @@ Before pushing to production:
 - [ ] All tests pass: `pytest tests/`
 - [ ] All E2E tests pass: `pytest tests/e2e_test.py`
 - [ ] Simulation scenarios pass: `node tests/simulation/run.mjs`
+- [ ] Relevant future-facing test coverage was added or updated for the changed behavior
 - [ ] No console errors in browser
 - [ ] No error logs in server
 
@@ -212,6 +219,10 @@ Before pushing to production:
 - [ ] Field encryption working for sensitive fields
 
 ### Documentation
+- [ ] Regenerate architecture docs: `python scripts/update_agent_md.py`
+- [ ] Integrity check passes: `python scripts/check_integrity.py`
+- [ ] `Tech.md` updated if architecture, workflows, or release/update behavior changed
+- [ ] Relevant persona files updated if Istara's own agents need to know about the change
 - [ ] SYSTEM_INTEGRITY_GUIDE.md updated
 - [ ] CHANGE_CHECKLIST.md updated
 - [ ] Code comments added for complex logic
@@ -224,6 +235,12 @@ Before pushing to production:
 - [ ] All env vars documented
 - [ ] Docker image builds successfully (if using)
 - [ ] Docker compose works (if using)
+
+### Release Flow
+- [ ] Regular development pushes are not being treated as releases
+- [ ] Release preparation run via `./scripts/prepare-release.sh --bump` or `./scripts/prepare-release.sh <version>`
+- [ ] Release commit and tag planned together
+- [ ] Tag push is the publishing trigger for installer/release workflow
 
 ### Monitoring
 - [ ] Health check endpoint works

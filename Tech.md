@@ -1032,7 +1032,7 @@ Built with Tauri v2 (5-15 MB binary, ~20 MB RAM). Process management via Rust `s
 ## Versioning & Auto-Updates
 
 ### CalVer Versioning
-Istara uses date-based CalVer: `YYYY.MM.DD` (e.g., `2026.03.29`). Multiple builds in one day use `YYYY.MM.DD.N` (e.g., `2026.03.29.2`). Version is set across 7 files by `scripts/set-version.sh` and stored in a root `VERSION` file.
+Istara uses date-based CalVer: `YYYY.MM.DD` (e.g., `2026.03.29`). Multiple builds in one day use `YYYY.MM.DD.N` (e.g., `2026.03.29.2`). Version is set across 8 files by `scripts/set-version.sh` and stored in a root `VERSION` file.
 
 **Files updated**: `VERSION`, `desktop/src-tauri/tauri.conf.json`, `desktop/package.json`, `desktop/src-tauri/Cargo.toml`, `frontend/package.json`, `relay/package.json`, `backend/pyproject.toml`, `installer/windows/nsis-installer.nsi`
 
@@ -1062,20 +1062,29 @@ Notification types added to EVENT_METADATA: `update_available`, `update_started`
 `health.rs` checks for updates every 6 hours using `git fetch --tags` (no GitHub API rate limit). When a newer version is found, emits `update-available` event to the webview. The tray's "Check for Updates" menu item uses a three-tier approach: Tauri built-in updater, git tag comparison, or GitHub releases fallback — every path shows a native dialog result.
 
 ### CI/CD Release Flow
+Regular development CI and release publishing are separated:
+- `.github/workflows/ci.yml` runs governance + build/test checks for normal development
+- `.github/workflows/build-installers.yml` publishes installers/releases only on tag push (`v*`) or manual dispatch
+
+Recommended local release prep:
+```bash
+./scripts/prepare-release.sh --bump
+```
+
 On tag push (`v*`) or manual dispatch:
 1. `version` job determines CalVer string
 2. `build-macos` + `build-windows` jobs set version, build Tauri + DMG/EXE
 3. `release` job creates GitHub Release with both artifacts and auto-generated release notes
 
-**Files**: `scripts/set-version.sh`, `backend/app/api/routes/updates.py`, `frontend/src/components/settings/UpdateChecker.tsx`, `desktop/src-tauri/src/health.rs`, `.github/workflows/build-installers.yml`
+**Files**: `scripts/set-version.sh`, `scripts/prepare-release.sh`, `backend/app/api/routes/updates.py`, `frontend/src/components/settings/UpdateChecker.tsx`, `desktop/src-tauri/src/health.rs`, `.github/workflows/ci.yml`, `.github/workflows/build-installers.yml`
 
 ## Installation Methods
 
 ### Architecture: Installer vs Manager
 
 Istara separates **installation** from **management**:
-- **Installation** is handled by the shell one-liner (`install-istara.sh`) or Homebrew. This installs all dependencies (Python 3.12, Node 20, LLM provider), clones the repo, creates the venv, builds the frontend, and generates configuration.
-- **Management** is handled by the CLI (`istara start/stop/status/update`) or the desktop tray app (`Istara.app`). The tray app delegates to `istara.sh` for start/stop operations, ensuring the CLI and GUI use identical process management logic (PID files, process groups, health waits).
+- **Installation** is handled by the shell one-liner (`install-istara.sh`) or Homebrew. The shell installer is now explicitly mode-aware: it explains Server vs Client use, explains Homebrew before installing it, helps the user choose LM Studio vs Ollama, gives first-model onboarding steps, writes `~/.istara/config.json`, and always attempts to install the desktop companion app on macOS.
+- **Management** is handled by the CLI (`istara start/stop/status/update`) or the desktop tray app (`Istara.app`). The desktop app adapts to the selected mode: Server mode manages local backend/frontend/relay; Client mode opens the remote workspace from the saved `rcl_...` invite and offers invite changes plus compute donation controls.
 
 > **Note:** The DMG/EXE native installers are currently experiencing issues and should not be used. Use Homebrew or the shell one-liner instead.
 
@@ -1091,14 +1100,14 @@ curl -fsSL https://raw.githubusercontent.com/henrique-simoes/Istara/main/scripts
 ```
 Interactive terminal wizard that:
 1. Asks for mode: **Server** (full install) or **Client** (relay only)
-2. Installs missing dependencies via Homebrew (Python 3.12, Node, Git)
-3. Detects LLM provider (LM Studio / Ollama) or offers to install one
+2. Explains Homebrew if missing, then installs missing dependencies via Homebrew (Python 3.12, Node, Git)
+3. Detects LM Studio / Ollama, lets the user choose the default provider, and gives first-model onboarding guidance
 4. Clones the repo to `~/.istara/`
 5. Creates Python venv, installs pip dependencies
 6. Installs frontend dependencies, builds production Next.js
 7. Generates `.env` with security keys (JWT, encryption, network token)
 8. Creates `istara` CLI command in PATH
-9. Offers to download and install the tray app to `/Applications/`
+9. Automatically attempts to install `Istara.app` to `/Applications/` and uses the saved config to open in Server or Client mode
 10. Offers to start the server immediately
 
 Handles edge cases: keg-only Homebrew formulas, prompts inside `$(...)` write to `/dev/tty`, `set -eo pipefail` (not `-u`), ERR trap for debugging.
@@ -1124,7 +1133,7 @@ istara logs     # Tail both log files
 - Health check polling: waits up to 15s for backend, 20s for frontend
 
 ### Desktop App (Tauri v2) — Tray Manager
-System tray application for macOS, Windows, and Linux. **Manager only — does not install.**
+System tray application for macOS, Windows, and Linux. **Mode-aware manager only — does not replace the shell installer for full setup.**
 
 **Architecture: Rust-Native Process Management** — The tray app owns all child processes (backend, frontend, relay) as Rust `Child` handles via `std::process::Command`. No shell script dependency. `istara.sh` remains as a CLI tool but the tray app operates independently.
 
@@ -1133,7 +1142,9 @@ System tray application for macOS, Windows, and Linux. **Manager only — does n
 - **Menu state**: Driven by port checks (`127.0.0.1:8000`, `:3000`, `:1234`, `:11434`). Labels show `● Stop` when running, `○ Start` when down.
 - **Compute Donation**: Config toggle with confirmation dialog. Relay managed as Child process with zombie detection.
 - **LLM Status Click**: Dialog with donation toggle or LM Studio launch.
-- **Check Updates**: Three-tier (Tauri updater, git tags, GitHub releases). Always shows result dialog.
+- **Client Open Behavior**: In Client mode, "Open Istara" opens the remote `server_url` derived from the saved connection string instead of checking local ports.
+- **Client Donation Guardrail**: Enabling Compute Donation in Client mode requires a saved `rcl_...` invite; otherwise the app explains how to add one.
+- **Check Updates**: Three-tier (Tauri updater, git tags, GitHub releases). Always shows a result dialog and only opens GitHub Releases when the user explicitly confirms.
 - **Health loop**: Polls ports every 10s, rebuilds menu on change or every 30s. Checks updates every 6h via git tags.
 - **Zombie detection**: `try_wait()` on all Child handles every cycle. Dead processes cleaned up automatically.
 - **Platform specifics**:
@@ -1150,10 +1161,15 @@ System tray application for macOS, Windows, and Linux. **Manager only — does n
 - **Server unreachable**: Dedicated error screen showing the API URL and `istara start` command.
 
 ### CI/CD (GitHub Actions)
-`.github/workflows/build-installers.yml` auto-builds on every push to main:
-- macOS: Builds Tauri universal binary, bundles source, creates DMG
-- Windows: Builds Tauri EXE, creates NSIS installer
-- On tag push (v*): creates GitHub Release with both artifacts and auto-generated release notes
+`.github/workflows/build-installers.yml` runs only for the publishing flow:
+- On tag push (`v*`): builds installers and creates GitHub Release
+- On manual dispatch: builds installers/releases on demand
+
+`.github/workflows/ci.yml` enforces repository governance on pushes to `main` and pull requests:
+- Generated docs must be current: `python scripts/update_agent_md.py --check`
+- Integrity stack must be coherent: `python scripts/check_integrity.py`
+- Change obligations must be satisfied: `python scripts/check_change_obligations.py`
+- That governance check fails when architecture/process/release-sensitive code changes without corresponding updates to `Tech.md`, tests, or Istara persona files
 
 ### Secret Generation
 `scripts/generate-secrets.sh` generates ALL production secrets:

@@ -1,5 +1,8 @@
 # Istara Architecture Evolution
 
+> Status: Historical architecture log.
+> Authority: This file records major past changes. It is not the canonical source for current development decisions. Start with `AGENT_ENTRYPOINT.md` for live workflow/architecture guidance.
+
 Tracking the progression of Istara's agentic architecture from initial implementation through successive overhauls. Each version documents what changed, why, the industry standard referenced, and the before/after state.
 
 ---
