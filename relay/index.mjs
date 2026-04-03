@@ -32,21 +32,41 @@ program
 
 const opts = program.opts();
 
-// If connection string provided, decode and override server/token
-if (opts.connectionString) {
-  const decoded = decodeConnectionString(opts.connectionString);
+// Load config from ~/.istara/config.json if it exists
+const configPath = `${process.env.HOME || process.env.USERPROFILE}/.istara/config.json`;
+let config = {};
+if (fs.existsSync(configPath)) {
+  try {
+    config = JSON.parse(fs.readFileSync(configPath, "utf8"));
+  } catch (err) {
+    console.warn(`⚠️  Failed to read config from ${configPath}:`, err.message);
+  }
+}
+
+// Preference order: CLI arg > config.json > default
+const connStr = opts.connectionString || config.connection_string;
+
+// If connection string provided (CLI or config), decode and override
+if (connStr) {
+  const decoded = decodeConnectionString(connStr);
   if (!decoded) {
     console.error("❌ Invalid or expired connection string.");
+    if (!opts.connectionString) process.exit(1);
+    // If it came from config, maybe continue with other opts? 
+    // Usually better to fail if a saved string is broken.
     process.exit(1);
   }
   opts.server = decoded.wsUrl || decoded.serverUrl;
   opts.token = decoded.jwt;
-  // Store network token for X-Access-Token header
   opts.networkToken = decoded.networkToken;
   console.log(`🔗 Istara Relay starting (from connection string)...`);
   console.log(`   Server: ${opts.server}`);
   console.log(`   Label: ${decoded.label || "unnamed"}`);
 } else {
+  // Use config values for individual opts if available
+  if (!opts.server && config.ws_url) opts.server = config.ws_url;
+  if (!opts.token && config.token) opts.token = config.token;
+  
   console.log("🔗 Istara Relay starting...");
   console.log(`   Server: ${opts.server}`);
 }

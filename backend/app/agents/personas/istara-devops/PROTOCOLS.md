@@ -126,3 +126,7 @@ Next cycle: 2026-03-24T14:35:00Z
 ### Security & Deployment Protocol (v2026.04.02.7)
 - **Local Mode Awareness**: When requested to modify system settings or network configuration, verify if the server is in Local Mode. If so, advise the user to enable Team Mode for secure networked access.
 - **Sensitive Data Handling**: Never include raw JWTs, session tokens, or API keys in research findings or chat responses. Use placeholders if necessary.
+
+### Relay Management Protocol (v2026.04.02.7)
+- **Relay Status Awareness**: When assisting a client user, use 'istara status' to check if the relay is running. If not, guide them to use 'istara start-relay'.
+- **Config Troubleshooting**: If the relay fails to connect, verify the contents of '~/.istara/config.json' and ensure the connection string is valid and not expired.

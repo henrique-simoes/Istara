@@ -19,8 +19,10 @@ export PATH="/opt/homebrew/bin:/opt/homebrew/opt/node/bin:/usr/local/bin:$PATH"
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 BACKEND_PID_FILE="$ROOT/.istara-backend.pid"
 FRONTEND_PID_FILE="$ROOT/.istara-frontend.pid"
+RELAY_PID_FILE="$ROOT/.istara-relay.pid"
 BACKEND_LOG="$ROOT/.istara-backend.log"
 FRONTEND_LOG="$ROOT/.istara-frontend.log"
+RELAY_LOG="$ROOT/.istara-relay.log"
 
 BACKEND_PORT=8000
 FRONTEND_PORT=3000
@@ -101,6 +103,13 @@ _status() {
         echo -e "  Frontend: ${GREEN}● running${NC}  (PID $fpid)  http://localhost:$FRONTEND_PORT"
     else
         echo -e "  Frontend: ${RED}○ stopped${NC}"
+    fi
+
+    if _is_running "$RELAY_PID_FILE"; then
+        local rpid=$(cat "$RELAY_PID_FILE")
+        echo -e "  Relay:    ${GREEN}● running${NC}  (PID $rpid)  donating compute"
+    else
+        echo -e "  Relay:    ${RED}○ stopped${NC}"
     fi
 
     # Check LLM servers (informational only — we don't manage these)
@@ -248,6 +257,43 @@ _start() {
     echo ""
 }
 
+_start_relay() {
+    echo ""
+    echo -e "${CYAN}═══ Starting Istara Relay ═══${NC}"
+    echo ""
+
+    if _is_running "$RELAY_PID_FILE"; then
+        echo -e "  Relay:    ${YELLOW}already running${NC} (PID $(cat "$RELAY_PID_FILE"))"
+    else
+        local NPM; NPM=$(_find_npm)
+        # Use node directly to skip npm overhead in PID
+        local NODE=$(dirname "$NPM")/node
+        [ -x "$NODE" ] || NODE="node"
+
+        echo -n "  Relay:    starting..."
+        cd "$ROOT/relay"
+        nohup "$NODE" index.mjs \
+            > "$RELAY_LOG" 2>&1 &
+        local rpid=$!
+        echo "$rpid" > "$RELAY_PID_FILE"
+        cd "$ROOT"
+
+        # Quick check
+        sleep 0.5
+        if ! kill -0 "$rpid" 2>/dev/null; then
+            echo -e "\r  Relay:    ${RED}✗ crashed on startup${NC}"
+            echo ""
+            echo -e "  ${YELLOW}Error from $RELAY_LOG:${NC}"
+            tail -15 "$RELAY_LOG" 2>/dev/null | sed 's/^/    /'
+            echo ""
+            rm -f "$RELAY_PID_FILE"
+            return 1
+        fi
+        echo -e "\r  Relay:    ${GREEN}● started${NC}  (PID $rpid)  donating compute"
+    fi
+    echo ""
+}
+
 _stop() {
     echo ""
     echo -e "${CYAN}═══ Stopping Istara ═══${NC}"
@@ -278,6 +324,22 @@ _stop() {
         echo -e "  Backend:  ${YELLOW}not running${NC}"
     fi
 
+    echo ""
+}
+
+_stop_relay() {
+    echo ""
+    echo -e "${CYAN}═══ Stopping Istara Relay ═══${NC}"
+    echo ""
+
+    if _is_running "$RELAY_PID_FILE"; then
+        local rpid=$(cat "$RELAY_PID_FILE")
+        kill "$rpid" 2>/dev/null || true
+        rm -f "$RELAY_PID_FILE"
+        echo -e "  Relay:    ${RED}○ stopped${NC}"
+    else
+        echo -e "  Relay:    ${YELLOW}not running${NC}"
+    fi
     echo ""
 }
 
@@ -363,12 +425,14 @@ case "${1:-toggle}" in
     start)   _start ;;
     stop)    _stop ;;
     restart) _stop; sleep 1; _start ;;
+    start-relay) _start_relay ;;
+    stop-relay)  _stop_relay ;;
     update)  _update ;;
     status)  _status ;;
     logs)    _logs ;;
     toggle)  _toggle ;;
     *)
-        echo "Usage: $0 {start|stop|restart|update|status|logs}"
+        echo "Usage: $0 {start|stop|restart|start-relay|stop-relay|update|status|logs}"
         echo "       $0          (toggle: start if stopped, stop if running)"
         exit 1
         ;;
