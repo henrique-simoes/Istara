@@ -429,7 +429,7 @@ def render_entrypoint_generated_section(inventory: dict[str, object]) -> str:
         "- Update `Tech.md`",
         "- Update tests if release/update behavior has automated coverage",
         "- Regenerate docs and run integrity checks",
-        "- Make sure the docs describe the same model: normal pushes are development flow, tag/manual flow is release publishing",
+        "- Make sure the docs describe the same model: only release-worthy `main` pushes publish installers/releases, while tag/manual flow remains available for explicit release control",
         "",
         ENTRYPOINT_END,
     ]
@@ -539,7 +539,7 @@ def build_agent_document(inventory: dict[str, object]) -> str:
         "- Treat `tests/e2e_test.py` and `tests/simulation/scenarios/` as behavioral contracts for the UI and system flows.",
         "- Update `Tech.md` when architecture, workflow, installer, release, or update behavior changes.",
         "- Update future-facing tests and relevant Istara persona files when a feature changes what Istara's own agents must understand.",
-        "- Use `./scripts/prepare-release.sh --bump` for intentional release preparation, but keep the docs aligned with the actual repo rule that pushes to `main` publish installers/releases.",
+        "- Use `./scripts/prepare-release.sh --bump` for intentional release preparation, but keep the docs aligned with the actual repo rule that release-worthy pushes to `main` publish installers/releases.",
         "",
         "## System Snapshot",
         "",

@@ -39,8 +39,9 @@ Read these in this order when the change is non-trivial:
 5. When a capability changes in a way Istara's own agents should know, update the relevant persona files in `backend/app/agents/personas/`.
 6. Documentation and persona updates belong in the same change as the implementation, not in a later cleanup.
 7. Release/version/tag behavior must remain internally consistent across scripts, workflows, updater logic, docs, and desktop/server update checks.
-8. GitHub Actions release behavior must match the real repo doctrine: pushes to `main` publish installers and a GitHub Release, while tag/manual flows remain valid for explicit release control.
-9. Before preparing a release intentionally, run the standardized local release sequence via `scripts/prepare-release.sh`.
+8. GitHub Actions release behavior must match the real repo doctrine: release-worthy pushes to `main` publish installers and a GitHub Release, while tag/manual flows remain valid for explicit release control.
+9. Release-worthy changes include product behavior changes in backend/frontend/desktop/relay/install/update surfaces and Compass-critical agent docs or persona knowledge that Istara's internal agents rely on.
+10. Before preparing a release intentionally, run the standardized local release sequence via `scripts/prepare-release.sh`.
 
 ## Required Documentation Workflow
 

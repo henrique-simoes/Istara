@@ -243,10 +243,10 @@ Before pushing to production:
 - [ ] Docker compose works (if using)
 
 ### Release Flow
-- [ ] Regular development pushes are not being treated as releases
+- [ ] Only release-worthy pushes to `main` are being treated as releases
 - [ ] Release preparation run via `./scripts/prepare-release.sh --bump` or `./scripts/prepare-release.sh <version>`
 - [ ] Release commit and tag planned together
-- [ ] Tag push is the publishing trigger for installer/release workflow
+- [ ] Qualifying `main` pushes, tag pushes, and manual dispatch all match the documented publishing model
 
 ### Monitoring
 - [ ] Health check endpoint works

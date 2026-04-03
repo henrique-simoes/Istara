@@ -13,7 +13,7 @@ Generated from the repository on version `2026.04.02.14`. Treat this file as the
 - Treat `tests/e2e_test.py` and `tests/simulation/scenarios/` as behavioral contracts for the UI and system flows.
 - Update `Tech.md` when architecture, workflow, installer, release, or update behavior changes.
 - Update future-facing tests and relevant Istara persona files when a feature changes what Istara's own agents must understand.
-- Use `./scripts/prepare-release.sh --bump` for intentional release preparation, but keep the docs aligned with the actual repo rule that pushes to `main` publish installers/releases.
+- Use `./scripts/prepare-release.sh --bump` for intentional release preparation, but keep the docs aligned with the actual repo rule that release-worthy pushes to `main` publish installers/releases.
 
 ## System Snapshot
 

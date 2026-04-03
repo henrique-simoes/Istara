@@ -17,14 +17,90 @@ env:
   TAURI_CLI_VERSION: "2"
 
 jobs:
+  detect-release:
+    runs-on: ubuntu-latest
+    outputs:
+      should_release: ${{ steps.detect.outputs.should_release }}
+      reason: ${{ steps.detect.outputs.reason }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine whether this push is release-worthy
+        id: detect
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            echo "should_release=true" >> "$GITHUB_OUTPUT"
+            echo "reason=tag push" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
+            echo "should_release=true" >> "$GITHUB_OUTPUT"
+            echo "reason=manual dispatch" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          BEFORE="${{ github.event.before }}"
+          AFTER="${GITHUB_SHA}"
+
+          if [[ -z "$BEFORE" || "$BEFORE" == "0000000000000000000000000000000000000000" ]]; then
+            BEFORE="$(git rev-list --max-parents=0 HEAD | tail -1)"
+          fi
+
+          CHANGED="$(git diff --name-only "$BEFORE" "$AFTER")"
+          echo "Changed files:"
+          printf '%s\n' "$CHANGED"
+
+          SHOULD_RELEASE=false
+          while IFS= read -r file; do
+            [[ -z "$file" ]] && continue
+            case "$file" in
+              backend/*|frontend/*|desktop/*|relay/*)
+                SHOULD_RELEASE=true
+                ;;
+              .github/workflows/*)
+                SHOULD_RELEASE=true
+                ;;
+              istara.sh|scripts/install-istara.sh|scripts/install.sh|scripts/uninstall-istara.sh|scripts/prepare-release.sh|scripts/set-version.sh)
+                SHOULD_RELEASE=true
+                ;;
+              scripts/update_agent_md.py|scripts/check_integrity.py|scripts/check_change_obligations.py)
+                SHOULD_RELEASE=true
+                ;;
+              AGENT_ENTRYPOINT.md|SYSTEM_PROMPT.md|SYSTEM_CHANGE_MATRIX.md|CHANGE_CHECKLIST.md|AGENT.md|COMPLETE_SYSTEM.md|SYSTEM_INTEGRITY_GUIDE.md|Tech.md|CLAUDE.md|GEMINI.md)
+                SHOULD_RELEASE=true
+                ;;
+              backend/app/agents/personas/*)
+                SHOULD_RELEASE=true
+                ;;
+            esac
+            if [[ "$SHOULD_RELEASE" == "true" ]]; then
+              break
+            fi
+          done <<< "$CHANGED"
+
+          echo "should_release=$SHOULD_RELEASE" >> "$GITHUB_OUTPUT"
+          if [[ "$SHOULD_RELEASE" == "true" ]]; then
+            echo "reason=release-worthy main push" >> "$GITHUB_OUTPUT"
+          else
+            echo "reason=no release-worthy files changed" >> "$GITHUB_OUTPUT"
+          fi
+
   # ── Set Version ────────────────────────────────────────────────────
   version:
+    needs: detect-release
+    if: needs.detect-release.outputs.should_release == 'true'
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Determine version
         id: version
@@ -36,11 +112,10 @@ jobs:
           else
             # CalVer: YYYY.MM.DD[.N]
             TODAY=$(date -u +%Y.%m.%d)
-            # Check if VERSION file already has today's date
-            CURRENT=$(cat VERSION 2>/dev/null || echo "")
-            if [[ "$CURRENT" == "$TODAY"* ]]; then
+            LATEST_TAG=$(git ls-remote --tags --refs origin "v*" | awk '{print $2}' | sed 's#refs/tags/v##' | sort -V | tail -1)
+            if [[ "$LATEST_TAG" == "$TODAY"* ]]; then
               # Same day — increment build number
-              BUILD=$(echo "$CURRENT" | awk -F. '{print ($4 ? $4+1 : 2)}')
+              BUILD=$(echo "$LATEST_TAG" | awk -F. '{print ($4 ? $4+1 : 2)}')
               VERSION="${TODAY}.${BUILD}"
             else
               VERSION="$TODAY"
@@ -52,6 +127,7 @@ jobs:
   # ── macOS Build ────────────────────────────────────────────────────
   build-macos:
     needs: version
+    if: needs.version.result == 'success'
     runs-on: macos-latest
     steps:
       - name: Checkout
@@ -200,6 +276,7 @@ jobs:
   # ── Linux Build ───────────────────────────────────────────────────
   build-linux:
     needs: version
+    if: needs.version.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -251,6 +328,7 @@ jobs:
   # ── Windows Build ──────────────────────────────────────────────────
   build-windows:
     needs: version
+    if: needs.version.result == 'success'
     runs-on: windows-latest
     steps:
       - name: Checkout
@@ -339,14 +417,19 @@ jobs:
           retention-days: 30
           if-no-files-found: warn
 
-  # ── Release (on main push, tag push, or manual) ───────────────────
+  # ── Release (on release-worthy main push, tag push, or manual) ────
   release:
-    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
-    needs: [version, build-macos, build-windows, build-linux]
+    if: needs.detect-release.outputs.should_release == 'true'
+    needs: [detect-release, version, build-macos, build-windows, build-linux]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Release summary
+        run: |
+          echo "Release reason: ${{ needs.detect-release.outputs.reason }}"
+          echo "Release version: ${{ needs.version.outputs.version }}"
 
       - name: Download all artifacts
         uses: actions/download-artifact@v4

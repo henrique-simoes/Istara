@@ -200,7 +200,7 @@ These are repo doctrines, not optional suggestions.
 | Persona knowledge must move with capability changes | When the product gains a new capability or workflow meaning, update the relevant persona files so Istara's internal agents inherit that knowledge |
 | Docs must move in the same change | Do not defer prompt, checklist, Tech, or architecture updates to a later commit |
 | Release doctrine must stay coherent | Version scripts, Git tags, build workflows, updater endpoints, desktop checks, and docs must all describe the same release model |
-| Releases must stay coherent with repo reality | If pushes to `main` publish installers/releases, the workflows, updater logic, docs, and prompts must all say so; tag/manual flows may still exist, but they must not contradict the main publishing path |
+| Releases must stay coherent with repo reality | If release-worthy pushes to `main` publish installers/releases, the workflows, updater logic, docs, and prompts must all say so; tag/manual flows may still exist, but they must not contradict the main publishing path |
 
 ### Governance Tuning Reminder
 
