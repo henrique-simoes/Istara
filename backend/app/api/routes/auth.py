@@ -121,6 +121,14 @@ async def login(req: LoginRequest, request: Request, db: AsyncSession = Depends(
 
     # Local mode — issue a local-admin token without DB lookup
     if not settings.team_mode:
+        # Prevent remote login in local mode without a connection string
+        is_localhost = request.client.host in ("127.0.0.1", "::1", "localhost") if request.client else True
+        if not is_localhost:
+            raise HTTPException(
+                status_code=403, 
+                detail="This server is in Local Mode. Remote access requires a connection string or Team Mode."
+            )
+            
         token = create_token("local", req.username or "local", "admin")
         return {
             "token": token,

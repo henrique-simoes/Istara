@@ -35,6 +35,8 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
         // Fresh server with team mode + no users → show register directly
         if (d.team_mode && d.has_users === false) {
           setMode("register");
+        } else if (!d.team_mode && d.insecure) {
+          setMode("join"); // Force join mode for remote users on Local Mode
         }
       })
       .catch(() => {
@@ -187,7 +189,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
   }
 
   // ── Local mode — welcoming first-run experience ───────────
-  if (!teamMode && mode === "login") {
+  if (!teamMode && !insecure && mode === "login") {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950 px-4">
         <div className="w-full max-w-md">
@@ -309,7 +311,9 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
               }
             </h1>
             <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-              {mode === "register" && !hasUsers
+              {!teamMode && insecure
+                ? "This server is in Individual Mode. Enter a connection string to access."
+                : mode === "register" && !hasUsers
                 ? "You'll be the admin for this Istara server."
                 : "Local-first AI agents for UX Research"
               }
@@ -364,7 +368,11 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
                 </p>
                 <p className="text-slate-500 text-xs mt-2">
                   Choose a username and password for your new account.
-                  If your admin already created one for you, <button type="button" onClick={() => { setMode("login"); setError(""); setJoinValidated(null); }} className="text-istara-600 dark:text-istara-400 font-medium hover:underline">go to Sign In</button> instead.
+                  {teamMode && (
+                    <span>
+                      {" "}If your admin already created one for you, <button type="button" onClick={() => { setMode("login"); setError(""); setJoinValidated(null); }} className="text-istara-600 dark:text-istara-400 font-medium hover:underline">go to Sign In</button> instead.
+                    </span>
+                  )}
                 </p>
               </div>
             )}
@@ -470,29 +478,31 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
           </form>
 
           {/* Footer — toggle between login/register/join */}
-          <div className="mt-6 text-center space-y-1">
-            {mode !== "login" && (
-              <p className="text-xs text-slate-400 dark:text-slate-500">
-                Already have an account?{" "}
-                <button type="button" onClick={() => { setMode("login"); setError(""); setJoinValidated(null); }}
-                  className="text-istara-600 dark:text-istara-400 font-medium hover:underline">Sign in</button>
-              </p>
-            )}
-            {mode !== "register" && (
-              <p className="text-xs text-slate-400 dark:text-slate-500">
-                New to this server?{" "}
-                <button type="button" onClick={() => { setMode("register"); setError(""); setJoinValidated(null); }}
-                  className="text-istara-600 dark:text-istara-400 font-medium hover:underline">Create an account</button>
-              </p>
-            )}
-            {mode !== "join" && (
-              <p className="text-xs text-slate-400 dark:text-slate-500">
-                Have a connection string?{" "}
-                <button type="button" onClick={() => { setMode("join"); setError(""); setJoinValidated(null); }}
-                  className="text-istara-600 dark:text-istara-400 font-medium hover:underline">Join Server</button>
-              </p>
-            )}
-          </div>
+          {teamMode && (
+            <div className="mt-6 text-center space-y-1">
+              {mode !== "login" && (
+                <p className="text-xs text-slate-400 dark:text-slate-500">
+                  Already have an account?{" "}
+                  <button type="button" onClick={() => { setMode("login"); setError(""); setJoinValidated(null); }}
+                    className="text-istara-600 dark:text-istara-400 font-medium hover:underline">Sign in</button>
+                </p>
+              )}
+              {mode !== "register" && (
+                <p className="text-xs text-slate-400 dark:text-slate-500">
+                  New to this server?{" "}
+                  <button type="button" onClick={() => { setMode("register"); setError(""); setJoinValidated(null); }}
+                    className="text-istara-600 dark:text-istara-400 font-medium hover:underline">Create an account</button>
+                </p>
+              )}
+              {mode !== "join" && (
+                <p className="text-xs text-slate-400 dark:text-slate-500">
+                  Have a connection string?{" "}
+                  <button type="button" onClick={() => { setMode("join"); setError(""); setJoinValidated(null); }}
+                    className="text-istara-600 dark:text-istara-400 font-medium hover:underline">Join Server</button>
+                </p>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
