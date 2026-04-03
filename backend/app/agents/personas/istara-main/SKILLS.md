@@ -301,7 +301,7 @@
 ## Desktop App, Connection Strings & Installers
 - Connection strings use the `rcl_` prefix and bundle the server URL, network token, and JWT into an HMAC-signed payload. Admins generate them in Settings > Team; new users paste the string on the LoginScreen "Join Server" tab to connect instantly.
 - Guide onboarding: explain that the connection string is a one-step invite — copy from the admin, paste in the app, and the client auto-configures server address and authentication without manual entry. Users should never have to manually type server URLs when they already have an `rcl_...` invite.
-- Desktop app (Tauri v2): a mode-aware desktop companion on macOS and Windows. Server mode manages the local backend/frontend/relay; Client mode opens the remote workspace from the saved connection string and offers "Change Server / Invite..." plus Compute Donation controls. Menu shows live port state for local server mode. LLM Status click offers donation toggle when LM Studio/Ollama is running, or to open LM Studio if not. Compute Donation always shows confirmation dialog. Check for Updates uses a three-tier approach (Tauri updater, git tags, GitHub releases) and only opens releases when the user confirms.
+- Desktop app (Tauri v2): a mode-aware desktop companion on macOS and Windows. Server mode manages the local backend/frontend/relay; Client mode opens the remote workspace from the saved connection string and offers "Change Server / Invite..." plus Compute Donation controls. Menu shows live port state for local server mode. LLM Status click offers donation toggle when LM Studio/Ollama is running, or to open LM Studio if not. Compute Donation always shows confirmation dialog. Check for Updates uses Tauri updater first for packaged installs and GitHub Releases guidance for source installs, and it only opens releases when the user confirms.
 - Cross-platform installers: macOS .dmg and Windows .exe bundles include a dependency checker, an interactive .env wizard for first-run configuration, and the choice between Server+Client or Client-only install modes.
 - Browser compute donation: the DonateComputeToggle in Settings detects a local LLM (LM Studio/Ollama), then opens a WebSocket relay from the browser to share compute with the team — no terminal or extra install required.
 - Relay enhancement: the relay CLI accepts a `--connection-string` flag to bootstrap server discovery. Authenticated relay connections use the X-Access-Token header, and the connection string decoder validates the HMAC signature before extracting credentials.
@@ -311,7 +311,7 @@
 - **Auto-update**: Users click "Update Now" in Settings → Software Updates. The system automatically: creates a backup → runs `git pull` → updates pip dependencies → rebuilds the frontend → restarts the server. The page reloads automatically when the server comes back.
 - **CLI update**: `istara update` does the same from the terminal: stops services → git pull → rebuild → restart.
 - **Startup check**: The backend checks GitHub Releases 15 seconds after startup. If a newer version exists, it broadcasts an `update_available` WebSocket event and creates a notification in the Notifications view.
-- **Notification**: Update notifications appear in the Notifications bell icon with a link to Settings. The tray app checks every 6 hours via `git fetch --tags` (no API rate limit) and emits an `update-available` event.
+- **Notification**: Update notifications appear in the Notifications bell icon with a link to Settings. The tray app checks GitHub Releases every 6 hours and emits an `update-available` event when a newer published release exists.
 - When users report "Current Version: unknown" — the VERSION file path was misconfigured. It should now resolve correctly. If it persists, check that the VERSION file exists at the project root.
 
 ### Production Installer & Desktop App
@@ -326,7 +326,7 @@
 
 ### Installation Methods
 - **Homebrew** (macOS, recommended): `brew install --cask henrique-simoes/istara/istara`. Explain this is the fastest path for macOS users.
-- **Shell one-liner**: `curl -fsSL .../install-istara.sh | bash`. This is the comprehensive installer — handles ALL dependencies (Python 3.12, Node, Git, LLM provider), syncs the source install to the newest published GitHub Release, creates the venv, builds frontend, generates secrets, and creates the `istara` CLI. Guide users through any failures by checking the ERR trap output.
+- **Shell one-liner**: `curl -fsSL .../install-istara.sh | bash`. This is the comprehensive installer — handles ALL dependencies (Python 3.12, Node, Git, LLM provider), syncs the source install from Istara's git checkout, creates the venv, builds frontend, generates secrets, and creates the `istara` CLI. Guide users through any failures by checking the ERR trap output.
 - When guiding the shell installer, explain the two modes clearly:
   - **Server**: this machine hosts Istara and runs LM Studio or Ollama locally
   - **Client**: this machine joins an existing server with an `rcl_...` invite and may optionally donate local compute later
@@ -360,7 +360,7 @@
 - `istara start` — starts backend (uvicorn via venv Python) + frontend (Next.js production build)
 - `istara stop` — stops both
 - `istara status` — shows running/stopped + LLM connectivity
-- `istara update` — syncs the git-based source install to the newest published release, rebuilds dependencies/frontend, and restarts services
+- `istara update` — pulls the git-based source install forward, rebuilds dependencies/frontend, and restarts services
 - `istara restart` / `istara logs` — convenience commands
 - The CLI uses `$ROOT/venv/bin/python` (not bare `python`) and detects npm via keg-only Homebrew paths
 - If startup fails, the CLI shows the last 15 lines of the log — share these with users for debugging

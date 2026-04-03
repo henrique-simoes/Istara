@@ -1059,7 +1059,7 @@ Notification types added to EVENT_METADATA: `update_available`, `update_started`
 - Fallback: if auto-update fails, shows error with suggestion to run `istara update` from terminal
 
 ### Desktop Tray Update Notification
-`health.rs` checks for updates every 6 hours using `git fetch --tags` (no GitHub API rate limit). When a newer version is found, emits `update-available` event to the webview. The tray's "Check for Updates" menu item uses a three-tier approach: Tauri built-in updater, git tag comparison, or GitHub releases fallback — every path shows a native dialog result.
+`health.rs` checks GitHub Releases every 6 hours and emits `update-available` when a newer published release exists. The tray's "Check for Updates" menu item uses Tauri updater first for packaged installs, then GitHub Releases guidance for source installs. The old local `git fetch --tags` path was removed because tag divergence/clobbering made it unreliable in the field.
 
 ### CI/CD Release Flow
 Regular CI and installer publishing are related but distinct:
@@ -1103,7 +1103,7 @@ Interactive terminal wizard that:
 1. Asks for mode: **Server** (full install) or **Client** (relay only)
 2. Explains Homebrew if missing, then installs missing dependencies via Homebrew (Python 3.12, Node, Git)
 3. Detects LM Studio / Ollama, lets the user choose the default provider, and gives first-model onboarding guidance
-4. Resolves the **latest published GitHub Release** and syncs the local source install to that release tag instead of raw `main`
+4. Keeps source installs on the git checkout and updates them with `git pull`
 5. Creates Python venv, installs pip dependencies
 6. Installs frontend dependencies, builds production Next.js
 7. Generates `.env` with security keys (JWT, encryption, network token)
@@ -1111,7 +1111,7 @@ Interactive terminal wizard that:
 9. Automatically attempts to install `Istara.app` to `/Applications/` and uses the saved config to open in Server or Client mode
 10. Offers to start the server immediately
 
-This matters because source installs, the tray updater, Settings → Software Updates, and GitHub Releases must all agree on the same version model. The shell installer and `istara update` now follow the newest published release tag rather than repo HEAD so "installed version" and "latest available version" stay aligned.
+This matters because packaged installs and source installs are different update surfaces. Packaged apps follow GitHub Releases and Tauri updater artifacts. Source installs stay on the git checkout, but Settings still checks against the latest published release before offering backup-first update orchestration.
 
 Handles edge cases: keg-only Homebrew formulas, prompts inside `$(...)` write to `/dev/tty`, `set -eo pipefail` (not `-u`), ERR trap for debugging.
 
@@ -1127,7 +1127,7 @@ istara start    # Start backend + frontend (production mode)
 istara stop     # Stop both
 istara restart  # Stop then start
 istara status   # Show what's running + LLM connectivity
-istara update   # Sync to newest published release, rebuild, restart
+istara update   # Pull latest source, rebuild, restart
 istara logs     # Tail both log files
 ```
 - Uses venv Python (`$ROOT/venv/bin/python`) — not bare `python`
@@ -1135,7 +1135,7 @@ istara logs     # Tail both log files
 - Uses `npm start` (production) when `.next/` build exists, `npm run dev` for development
 - PID verification: checks if process died immediately after spawn, shows log tail on failure
 - Health check polling: waits up to 15s for backend, 20s for frontend
-- `istara update` no longer does a blind `git pull`; it resolves the newest published release and checks out that tag locally before rebuilding. This keeps git-based installs aligned with what GitHub Releases and in-app update checks report.
+- `istara update` uses the original source-update path again: stop services, `git pull`, refresh dependencies, rebuild, restart. The source install remains a git checkout, while packaged app installs remain release-artifact based.
 
 ### First-Run Auth & Onboarding Integrity
 - `HomeClient` no longer treats "token exists in localStorage" as authenticated. It now checks `/api/auth/team-status`, validates the JWT via `/api/auth/me`, and only then enters the main app bootstrap. This prevents the long-standing flash where users briefly saw the main UI before being bounced to login/register.
