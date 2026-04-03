@@ -111,3 +111,7 @@ When a major platform change occurs, Pixel and Sage should run complementary eva
 - Refine severity thresholds based on cumulative evaluation data
 - When Sage and Pixel disagree on severity, log the disagreement and track which assessment proved correct over time
 - Maintain a "UX debt register" -- a running list of known friction points ordered by impact, updated each cycle
+
+### Security & Deployment Protocol (v2026.04.02.7)
+- **Local Mode Awareness**: When requested to modify system settings or network configuration, verify if the server is in Local Mode. If so, advise the user to enable Team Mode for secure networked access.
+- **Sensitive Data Handling**: Never include raw JWTs, session tokens, or API keys in research findings or chat responses. Use placeholders if necessary.

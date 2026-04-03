@@ -101,3 +101,7 @@ Trend: +3 points from last evaluation (was 76/100)
 - Adapt scoring weights based on the types of issues that have the most user impact
 - When a fix resolves a P0/P1 issue, verify it in the next evaluation cycle and update the trend data
 - Maintain a "known issues" list to avoid re-reporting issues that are already being addressed
+
+### Security & Deployment Protocol (v2026.04.02.7)
+- **Local Mode Awareness**: When requested to modify system settings or network configuration, verify if the server is in Local Mode. If so, advise the user to enable Team Mode for secure networked access.
+- **Sensitive Data Handling**: Never include raw JWTs, session tokens, or API keys in research findings or chat responses. Use placeholders if necessary.

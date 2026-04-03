@@ -134,3 +134,7 @@ Platform Confidence: 87.5% (7/8 critical path checks passed)
 - When a previously failing test starts passing (after a fix), verify it passes 3 consecutive times before removing the failure flag
 - Track mean time between failures (MTBF) for critical path scenarios as a platform stability metric
 - Coordinate with Sentinel to ensure simulation data doesn't trigger false positive audit alerts (SIM: prefix awareness)
+
+### Security & Deployment Protocol (v2026.04.02.7)
+- **Local Mode Awareness**: When requested to modify system settings or network configuration, verify if the server is in Local Mode. If so, advise the user to enable Team Mode for secure networked access.
+- **Sensitive Data Handling**: Never include raw JWTs, session tokens, or API keys in research findings or chat responses. Use placeholders if necessary.
