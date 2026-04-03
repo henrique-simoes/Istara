@@ -54,6 +54,31 @@ def get_install_dir() -> Path | None:
     return None
 
 
+def is_newer(latest: str, current: str) -> bool:
+    """Compare two version strings (CalVer format YYYY.MM.DD[.N]).
+    Returns True if latest is strictly newer than current.
+    """
+    if not latest or latest == "unknown":
+        return False
+    if not current or current == "unknown":
+        return True
+
+    try:
+        # Split into components and convert to integers for numeric comparison
+        # Handles v2026.04.02.10 vs v2026.04.02.9 correctly
+        latest_parts = [int(p) for p in latest.split(".") if p.isdigit()]
+        current_parts = [int(p) for p in current.split(".") if p.isdigit()]
+
+        if not latest_parts or not current_parts:
+            return latest > current
+
+        # Compare tuple of integers
+        return latest_parts > current_parts
+    except Exception:
+        # Fallback to string comparison if format is unexpected
+        return latest > current
+
+
 @router.get("/updates/version")
 async def current_version():
     """Return the current Istara version."""
@@ -98,7 +123,7 @@ async def check_for_updates():
                 )
                 if tag_result.returncode == 0 and tag_result.stdout.strip():
                     latest_tag = tag_result.stdout.strip().split("\n")[0].lstrip("v")
-                    update_available = latest_tag > current if latest_tag and current != "unknown" else False
+                    update_available = is_newer(latest_tag, current)
                     return {
                         "update_available": update_available,
                         "current_version": current,
@@ -115,10 +140,7 @@ async def check_for_updates():
     if cached and time.time() - cached["time"] < _CACHE_TTL:
         # Return cached response with fresh current_version
         result = {**cached["data"], "current_version": current}
-        result["update_available"] = (
-            result.get("latest_version", "") > current
-            if current != "unknown" else False
-        )
+        result["update_available"] = is_newer(result.get("latest_version", ""), current)
         return result
 
     try:
@@ -161,7 +183,7 @@ async def check_for_updates():
             published_at = release.get("published_at", "")
             body = release.get("body", "")
             html_url = release.get("html_url", "")
-            update_available = latest_tag > current if latest_tag and current != "unknown" else False
+            update_available = is_newer(latest_tag, current)
 
             assets = release.get("assets", [])
             downloads = {}
