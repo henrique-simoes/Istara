@@ -127,10 +127,19 @@
 ### Onboarding UX & Folder Linking
 - ViewOnboarding banners: non-blocking inline banners on all 21 views. Audit: banners must use `aria-live="polite"` so screen readers announce them without interrupting the current task. Dismiss buttons must be keyboard-reachable (Tab order) and announce "dismissed" to assistive technology. Escape key should dismiss the focused banner.
 - Banner contrast and readability: title, description, and action buttons within onboarding banners must meet WCAG AA contrast ratios (4.5:1 for normal text, 3:1 for large text) in both light and dark themes. Action links must have visible focus indicators distinct from the surrounding banner background.
-- OnboardingWizard focus management: the 6-step wizard must trap focus within the active step, move focus to the first interactive element on step transitions, and return focus to the trigger element on wizard close. Step indicators must use `aria-current="step"` and announce progress (e.g., "Step 3 of 6") to screen readers.
+- OnboardingWizard focus management: the 6-step wizard must trap focus within the active step, move focus to the first interactive element on step transitions, and return focus to the trigger element on wizard close. Once the 6-step Wizard is complete, Istara transitions to the Guided Tour for UI exploration. Step indicators must use `aria-current="step"` and announce progress (e.g., "Step 3 of 6") to screen readers.
 - Folder linking form accessibility: the `POST /projects/{id}/link-folder` UI must have associated `<label>` elements for path input and folder type selector, `aria-describedby` linking to helper text explaining supported providers (Google Drive, Dropbox, local), and validation errors announced via `aria-live` region.
 - Reset Onboarding Hints button: the Settings button that clears all banners must have a descriptive accessible name (not just "Reset"), provide confirmation feedback after activation (toast or inline status), and not cause layout shift on other Settings content.
 - Chat prompt suggestions: onboarding banners include suggested chat prompts. Audit: suggestion chips must be keyboard-navigable, have `role="button"` or be actual `<button>` elements, and announce their label to screen readers (not rely on truncated text alone).
+
+### Guided Onboarding Tour
+- Istara uses a unified onboarding flow: a 6-step **OnboardingWizard** for initial setup, followed by a 10-step **Guided Tour** that walks users through the real app views using floating popovers.
+- The Wizard handles: Welcome → LLM Check → Project Creation → Folder Linking → Context → Data Upload.
+- The Tour handles UI navigation: Team Mode → Invite Members → Connection Strings → Add Files (folder info) → Project Context → Tasks → LLM Status → Chat.
+- Admin path: all 10 steps. Member path: skips project creation (if exists) and team management. Steps 3-4 conditional on team mode being enabled.
+- Step 8 (LLM Check): polls the backend every 3s until LLM is connected. Shows Recommended Model and Available Models sections. Tells user to load a model in LM Studio/Ollama.
+- Tour persists to localStorage — survives page refresh. "Skip tour" available on every step. "Resume Tour" pill appears if user navigates away.
+- When explaining the onboarding to users: "Istara walks you through setup step by step — first with a configuration wizard, then with a guided tour of the interface."
 
 ### Versioning & Auto-Updates
 - UpdateChecker component in Settings: verify version text contrast, update banner accessibility (`aria-live` for update notification), "Backup & Prepare" button focus management, download link opens in new tab with `rel="noopener"`.

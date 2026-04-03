@@ -143,7 +143,16 @@
 - Folder path security: `POST /projects/{id}/link-folder` accepts absolute paths to external directories. Monitor for: path traversal attacks (`../../../etc/passwd`), symlink following into restricted areas, and permission errors when the backend process lacks read access to the linked folder. Validate that only permitted base directories are linkable.
 - ALTER TABLE migration: `init_db()` adds `linked_folder_path` (TEXT, nullable) and `linked_folder_type` (TEXT, nullable, values: `local`, `gdrive`, `dropbox`) to the projects table. ALTERs are wrapped in try/except for idempotency. Monitor for: migration failures on existing databases, null handling in queries that join on folder metadata.
 - ViewOnboarding localStorage persistence: banners are dismissed per-view using localStorage keys. Monitor for: localStorage quota exhaustion on constrained environments, stale keys accumulating after views are renamed or removed, and the Settings "Reset Onboarding Hints" button failing to clear all keys.
-- OnboardingWizard LLM health step: step 2 probes the configured LLM provider. Monitor for: probe timeouts blocking wizard progression, false negatives when LM Studio is healthy but slow to respond, and error messaging that exposes internal endpoint URLs.
+- OnboardingWizard LLM health step: step 2 probes the configured LLM provider. Once the 6-step Wizard is complete, Istara transitions to the Guided Tour for UI exploration. Monitor for: probe timeouts blocking wizard progression, false negatives when LM Studio is healthy but slow to respond, and error messaging that exposes internal endpoint URLs.
+
+### Guided Onboarding Tour
+- Istara uses a unified onboarding flow: a 6-step **OnboardingWizard** for initial setup, followed by a 10-step **Guided Tour** that walks users through the real app views using floating popovers.
+- The Wizard handles: Welcome → LLM Check → Project Creation → Folder Linking → Context → Data Upload.
+- The Tour handles UI navigation: Team Mode → Invite Members → Connection Strings → Add Files (folder info) → Project Context → Tasks → LLM Status → Chat.
+- Admin path: all 10 steps. Member path: skips project creation (if exists) and team management. Steps 3-4 conditional on team mode being enabled.
+- Step 8 (LLM Check): polls the backend every 3s until LLM is connected. Shows Recommended Model and Available Models sections. Tells user to load a model in LM Studio/Ollama.
+- Tour persists to localStorage — survives page refresh. "Skip tour" available on every step. "Resume Tour" pill appears if user navigates away.
+- When explaining the onboarding to users: "Istara walks you through setup step by step — first with a configuration wizard, then with a guided tour of the interface."
 
 ### Versioning & Auto-Updates
 - CalVer `YYYY.MM.DD[.N]` set across 7 files by `scripts/set-version.sh`. CI/CD auto-versions on build. Monitor: VERSION file consistency, CalVer lexicographic comparison correctness, GitHub API rate limits on update checks (60/hr unauthenticated).
