@@ -64,16 +64,8 @@ def is_newer(latest: str, current: str) -> bool:
         return True
 
     try:
-        # Split into components and convert to integers for numeric comparison
-        # Handles v2026.04.02.10 vs v2026.04.02.9 correctly
-        latest_parts = [int(p) for p in latest.split(".") if p.isdigit()]
-        current_parts = [int(p) for p in current.split(".") if p.isdigit()]
-
-        if not latest_parts or not current_parts:
-            return latest > current
-
-        # Compare tuple of integers
-        return latest_parts > current_parts
+        from packaging.version import parse
+        return parse(latest) > parse(current)
     except Exception:
         # Fallback to string comparison if format is unexpected
         return latest > current

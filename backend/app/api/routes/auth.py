@@ -61,6 +61,37 @@ class PreferencesRequest(BaseModel):
     preferences: dict
 
 
+def is_request_local(request: Request) -> bool:
+    """Check if the request truly originates from localhost.
+    
+    Industry standard:
+    1. Verify direct connection is from a local IP.
+    2. If headers like X-Forwarded-For exist, verify the original IP is also local.
+    This prevents remote users from bypassing security via Ngrok/Cloudflare tunnels.
+    """
+    local_ips = ("127.0.0.1", "::1", "localhost")
+    
+    # 1. Check direct connection
+    client_host = request.client.host if request.client else "127.0.0.1"
+    if client_host not in local_ips:
+        return False
+        
+    # 2. Check proxy headers (if direct connection is local, we might be behind a tunnel)
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        # Get the original client IP (first in the list)
+        real_ip = forwarded.split(",")[0].strip()
+        if real_ip not in local_ips:
+            return False
+            
+    real_ip_header = request.headers.get("x-real-ip")
+    if real_ip_header:
+        if real_ip_header.strip() not in local_ips:
+            return False
+            
+    return True
+
+
 @router.post("/auth/register")
 async def register(req: RegisterRequest):
     """Register a new user (team mode only)."""
@@ -122,8 +153,7 @@ async def login(req: LoginRequest, request: Request, db: AsyncSession = Depends(
     # Local mode — issue a local-admin token without DB lookup
     if not settings.team_mode:
         # Prevent remote login in local mode without a connection string
-        is_localhost = request.client.host in ("127.0.0.1", "::1", "localhost") if request.client else True
-        if not is_localhost:
+        if not is_request_local(request):
             raise HTTPException(
                 status_code=403, 
                 detail="This server is in Local Mode. Remote access requires a connection string or Team Mode."
@@ -247,8 +277,7 @@ async def team_status(request: Request):
             has_users = result.scalar_one_or_none() is not None
     
     # Security check: if not in team mode and accessible from network, it's insecure
-    is_localhost = request.client.host in ("127.0.0.1", "::1", "localhost") if request.client else True
-    insecure = not settings.team_mode and not is_localhost
+    insecure = not settings.team_mode and not is_request_local(request)
 
     return {
         "team_mode": settings.team_mode,

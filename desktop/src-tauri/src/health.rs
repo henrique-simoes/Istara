@@ -112,7 +112,7 @@ fn check_for_update() -> Option<UpdateAvailable> {
                     let tags = String::from_utf8_lossy(&tag_out.stdout);
                     if let Some(latest_line) = tags.lines().next() {
                         let tag = latest_line.trim_start_matches('v').to_string();
-                        if !tag.is_empty() && tag > current {
+                        if !tag.is_empty() && is_newer(&tag, &current) {
                             return Some(UpdateAvailable {
                                 current_version: current,
                                 latest_version: tag.clone(),
@@ -200,4 +200,12 @@ fn now_secs() -> u64 {
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap_or_default()
         .as_secs()
+}
+
+pub fn is_newer(latest: &str, current: &str) -> bool {
+    use version_compare::{compare, Cmp};
+    match compare(latest, current) {
+        Ok(Cmp::Gt) => true,
+        _ => false,
+    }
 }
