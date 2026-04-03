@@ -904,13 +904,15 @@ Team mode can be toggled from the Settings UI (previously required `.env` edit):
 - Toggle switch in Settings page with live status display
 - User management via the existing `UserManagement` component
 
-### Security Mode & Insecure Detection (v2026.04.02.7)
+### Security Mode & Insecure Detection (v2026.04.02.10)
 
 Istara implements an automatic security audit for "Local Mode" deployments.
-- **Local Mode** (`TEAM_MODE=false`): Designed for individual use on `localhost`. Authentication is bypassed, and the first user to connect is granted admin privileges.
+- **Local Mode** (`TEAM_MODE=false`): Designed for individual use on `localhost`. Authentication is bypassed for local connections.
+- **Remote Enforcement**: The `/api/auth/login` endpoint explicitly rejects remote connections in Local Mode with a `403 Forbidden` error. Remote access in Local Mode requires a valid **Connection String** redeemed via `/api/connections/redeem`.
 - **Team Mode** (`TEAM_MODE=true`): Full JWT-based authentication. Required for multi-user environments or networked servers.
-- **Insecure Detection**: The `GET /api/auth/team-status` endpoint performs a real-time security check. If the server is in Local Mode AND the request originates from a non-localhost IP, it flags the connection as `insecure: true`.
-- **Frontend Warning**: When `insecure: true` is detected, the `LoginScreen` displays a high-visibility warning banner advising the user to enable Team Mode to protect their research data.
+- **Insecure Detection**: The `GET /api/auth/team-status` endpoint flags connections as `insecure: true` if the server is in Local Mode and accessed from a non-localhost IP.
+- **Frontend Warning & Flow**: When `insecure: true` is detected, the `LoginScreen` hides standard login options and forces the "Join Server" (Connection String) flow to prevent unauthorized access.
+- **Session Consistency**: The `authStore.ts` now handles `401 Unauthorized` responses from `fetchMe()` by broadcasting an `istara:auth-expired` event, ensuring invalid local tokens are cleared and the user is redirected to the login screen immediately.
 
 ### Document Organization
 
