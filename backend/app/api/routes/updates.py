@@ -71,6 +71,20 @@ def is_newer(latest: str, current: str) -> bool:
         return latest > current
 
 
+def get_latest_release_version_from_git() -> str:
+    """Resolve the newest published release tag from git metadata."""
+    result = subprocess.run(
+        ["git", "ls-remote", "--tags", "--refs", "--sort=v:refname", "https://github.com/henrique-simoes/Istara.git", "v*"],
+        capture_output=True,
+        text=True,
+        timeout=15,
+    )
+    if result.returncode != 0 or not result.stdout.strip():
+        return ""
+    latest_ref = result.stdout.strip().splitlines()[-1]
+    return latest_ref.rsplit("refs/tags/v", 1)[-1].strip()
+
+
 @router.get("/updates/version")
 async def current_version():
     """Return the current Istara version."""
@@ -248,11 +262,11 @@ async def prepare_update(request: Request, db: AsyncSession = Depends(get_db)):
 
 @router.post("/updates/apply")
 async def apply_update(request: Request):
-    """Auto-update Istara via git pull + rebuild + restart.
+    """Auto-update Istara via release-tag checkout + rebuild + restart.
 
     For git-based installs (shell one-liner, from source):
       1. Creates a pre-update backup
-      2. Runs git pull in the install directory
+      2. Resolves the latest published release tag and checks it out locally
       3. Updates backend deps (pip install)
       4. Rebuilds frontend (npm install + npm run build)
       5. Restarts services via istara.sh
@@ -287,7 +301,7 @@ async def apply_update(request: Request):
 
 
 async def _run_update(install_dir: Path):
-    """Background task: backup → git pull → rebuild → restart."""
+    """Background task: backup → release sync → rebuild → restart."""
     try:
         # 1. Create pre-update backup
         logger.info("Auto-update: creating backup...")
@@ -335,8 +349,19 @@ fi
 git checkout -- . 2>/dev/null || true
 git clean -fd 2>/dev/null || true
 
-# Pull latest code
-git pull --ff-only 2>/dev/null || git pull
+# Resolve latest published release
+TARGET_VERSION=$(curl -fsSL "https://api.github.com/repos/henrique-simoes/Istara/releases/latest" 2>/dev/null | grep -o '"tag_name":[[:space:]]*"v[^"]*"' | head -1 | cut -d'"' -f4 | sed 's/^v//')
+if [ -z "$TARGET_VERSION" ]; then
+    TARGET_VERSION=$(git ls-remote --tags --refs --sort="v:refname" "https://github.com/henrique-simoes/Istara.git" "v*" 2>/dev/null | tail -1 | sed 's#.*refs/tags/v##')
+fi
+if [ -z "$TARGET_VERSION" ]; then
+    echo "Could not determine latest release" >&2
+    exit 1
+fi
+
+# Sync source to latest published release
+git fetch --tags origin
+git checkout -B "release-$TARGET_VERSION" "tags/v$TARGET_VERSION"
 
 # Update backend deps
 if [ -x "{venv_pip}" ]; then

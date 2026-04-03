@@ -2,6 +2,8 @@
 
 Use this checklist for EVERY change to ensure nothing breaks. Cross-reference with **SYSTEM_INTEGRITY_GUIDE.md** for details.
 
+`Compass` is the name of the full agentic development system behind this checklist: prompts, generated docs, matrices, technical narrative, personas, and test/simulation maintenance. Updating Compass means updating this whole system so future agents inherit the new truth.
+
 ---
 
 ## PRE-CHANGE AUDIT
@@ -12,8 +14,10 @@ Before making ANY change:
 - [ ] Read `AGENT_ENTRYPOINT.md` for the canonical reading order
 - [ ] Skim `AGENT.md` or `COMPLETE_SYSTEM.md` for the current generated system map
 - [ ] Read `SYSTEM_CHANGE_MATRIX.md` for dependent surfaces that must move with this change
+- [ ] Decide which parts of Compass must change so the next agent understands the new reality
 - [ ] Decide whether `Tech.md` must change because the architecture/process/release story changed
 - [ ] Decide whether Istara's own agents need persona updates to understand this feature
+- [ ] Decide whether an existing simulation scenario is enough or whether a new scenario must be added
 - [ ] Read relevant sections in SYSTEM_INTEGRITY_GUIDE.md
 - [ ] Identify all affected subsystems (Database, Routes, Frontend, Agents, Skills, WebSocket)
 - [ ] Check if this change involves cascade deletes
@@ -183,6 +187,7 @@ Before pushing to production:
 - [ ] All E2E tests pass: `pytest tests/e2e_test.py`
 - [ ] Simulation scenarios pass: `node tests/simulation/run.mjs`
 - [ ] Relevant future-facing test coverage was added or updated for the changed behavior
+- [ ] If the changed behavior introduces a new user journey, installer path, onboarding path, release path, or major feature flow, a new simulation scenario was added instead of only stretching unrelated coverage
 - [ ] No console errors in browser
 - [ ] No error logs in server
 
@@ -221,6 +226,7 @@ Before pushing to production:
 ### Documentation
 - [ ] Regenerate architecture docs: `python scripts/update_agent_md.py`
 - [ ] Integrity check passes: `python scripts/check_integrity.py`
+- [ ] Compass was updated anywhere future agents would otherwise be misled
 - [ ] `Tech.md` updated if architecture, workflows, or release/update behavior changed
 - [ ] Relevant persona files updated if Istara's own agents need to know about the change
 - [ ] SYSTEM_INTEGRITY_GUIDE.md updated

@@ -17,13 +17,15 @@ interface AuthState {
   user: User | null;
   token: string | null;
   teamMode: boolean;
+  hasUsers: boolean;
+  insecure: boolean;
   loading: boolean;
 
   login: (username: string, password: string) => Promise<void>;
   register: (username: string, email: string, password: string, displayName?: string) => Promise<void>;
   logout: () => void;
-  checkTeamStatus: () => Promise<void>;
-  fetchMe: () => Promise<void>;
+  checkTeamStatus: () => Promise<{ team_mode: boolean; has_users: boolean; insecure: boolean }>;
+  fetchMe: () => Promise<boolean>;
   updatePreferences: (prefs: Record<string, unknown>) => Promise<void>;
   getAuthHeaders: () => Record<string, string>;
 }
@@ -32,6 +34,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   token: typeof window !== "undefined" ? localStorage.getItem("istara_token") : null,
   teamMode: false,
+  hasUsers: true,
+  insecure: false,
   loading: false,
 
   login: async (username, password) => {
@@ -94,9 +98,21 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       if (_tk) _hd["Authorization"] = `Bearer ${_tk}`;
       const res = await fetch(`${API_BASE}/api/auth/team-status`, { headers: _hd });
       const data = await res.json();
-      set({ teamMode: data.team_mode });
+      const status = {
+        team_mode: Boolean(data.team_mode),
+        has_users: data.has_users !== false,
+        insecure: Boolean(data.insecure),
+      };
+      set({
+        teamMode: status.team_mode,
+        hasUsers: status.has_users,
+        insecure: status.insecure,
+      });
+      return status;
     } catch {
-      set({ teamMode: false });
+      const fallback = { team_mode: false, has_users: true, insecure: false };
+      set({ teamMode: false, hasUsers: true, insecure: false });
+      return fallback;
     }
   },
 
@@ -105,7 +121,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
    *  currentUser.role is always available. */
   fetchMe: async () => {
     const _tk = localStorage.getItem("istara_token");
-    if (!_tk) return;
+    if (!_tk) return false;
     try {
       const res = await fetch(`${API_BASE}/api/auth/me`, {
         headers: { Authorization: `Bearer ${_tk}` },
@@ -123,7 +139,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           },
           teamMode: data.team_mode ?? get().teamMode,
         });
+        return true;
       } else if (res.status === 401) {
+        localStorage.removeItem("istara_token");
+        set({ user: null, token: null });
         if (typeof window !== "undefined") {
           window.dispatchEvent(new Event("istara:auth-expired"));
         }
@@ -131,6 +150,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     } catch {
       // Token invalid or server down — don't touch state
     }
+    return false;
   },
 
   updatePreferences: async (prefs) => {

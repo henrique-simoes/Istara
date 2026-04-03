@@ -71,6 +71,7 @@ export default function HomeClient() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [authenticated, setAuthenticated] = useState<boolean | null>(null);
+  const [tourReady, setTourReady] = useState(false);
   const { projects, activeProjectId, fetchProjects } = useProjectStore();
 
   const tourActive = useTourStore((s) => s.active);
@@ -78,31 +79,77 @@ export default function HomeClient() {
   const isOnboarding = useTourStore((s) => s.isOnboarding);
   const completeOnboarding = useTourStore((s) => s.completeOnboarding);
 
-  // Check authentication on mount
-  useEffect(() => {
+  async function bootstrapAuth() {
+    setTourReady(false);
+    const authStore = useAuthStore.getState();
+    await authStore.checkTeamStatus();
+
     const token = localStorage.getItem("istara_token");
     if (!token) {
       setAuthenticated(false);
-      return;
+      return false;
     }
-    // Token exists — assume valid (middleware will reject if expired or invalid)
-    setAuthenticated(true);
-    // Restore user object from JWT + check team mode status
-    useAuthStore.getState().fetchMe();
-    useAuthStore.getState().checkTeamStatus();
 
-    // Listen for token expiry events from API client
-    const handleExpiry = () => setAuthenticated(false);
+    const valid = await authStore.fetchMe();
+    setAuthenticated(valid);
+    return valid;
+  }
+
+  // Check authentication on mount
+  useEffect(() => {
+    let cancelled = false;
+    const handleExpiry = () => {
+      if (cancelled) return;
+      setAuthenticated(false);
+      setTourReady(false);
+    };
     window.addEventListener("istara:auth-expired", handleExpiry);
-    return () => window.removeEventListener("istara:auth-expired", handleExpiry);
+
+    const initAuth = async () => {
+      try {
+        const authStore = useAuthStore.getState();
+        await authStore.checkTeamStatus();
+
+        const token = localStorage.getItem("istara_token");
+        if (!token) {
+          if (!cancelled) {
+            setAuthenticated(false);
+            setTourReady(false);
+          }
+          return;
+        }
+
+        const valid = await authStore.fetchMe();
+        if (!cancelled) {
+          setAuthenticated(valid);
+          if (!valid) {
+            setTourReady(false);
+          }
+        }
+      } catch {
+        if (!cancelled) {
+          setAuthenticated(false);
+          setTourReady(false);
+        }
+      }
+    };
+
+    initAuth();
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener("istara:auth-expired", handleExpiry);
+    };
   }, []);
 
   // Check if first-run — start guided tour if no projects and tour not completed.
   // Waits for the backend to be healthy before checking projects, preventing
   // false "no projects" state when the backend is still starting.
-  const [tourReady, setTourReady] = useState(false);
   useEffect(() => {
-    if (!authenticated) return;
+    if (!authenticated) {
+      setTourReady(false);
+      return;
+    }
     let cancelled = false;
     const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -128,12 +175,14 @@ export default function HomeClient() {
       if (cancelled) return;
 
       const store = useProjectStore.getState();
-      const tourCompleted = isTourCompleted();
       const tourState = useTourStore.getState();
-      if (!tourCompleted && !tourState.active) {
+      const hasProjects = store.projects.length > 0;
+      const forceFirstRun = !hasProjects;
+      const tourCompleted = isTourCompleted();
+
+      if ((!tourCompleted || forceFirstRun) && !tourState.active) {
         const user = useAuthStore.getState().user;
         const role = user?.role || "admin";
-        const hasProjects = store.projects.length > 0;
         useTourStore.getState().startTour(role, hasProjects);
       }
       setTourReady(true);
@@ -212,7 +261,7 @@ export default function HomeClient() {
   // Show login screen if not authenticated
   if (authenticated === null) return null; // Loading state
   if (authenticated === false) {
-    return <LoginScreen onLogin={() => setAuthenticated(true)} />;
+    return <LoginScreen onLogin={bootstrapAuth} />;
   }
 
   // While tour check is loading, show nothing (prevents flash of main UI)

@@ -2,6 +2,12 @@
 
 You are working inside the Istara repository. Your job is to make safe, architecture-aware changes while keeping the LLM-facing documentation current enough that the next agent can reason from the codebase without guesswork.
 
+## Compass
+
+`Compass` is Istara's name for its complete agentic development system: prompts, entry docs, generated architecture maps, change matrices, checklists, technical narrative, persona knowledge, and the test/simulation expectations that preserve product behavior over time.
+
+When someone says "follow Compass," they mean: use this full documentation-and-testing system to make changes in a way that remains scalable, efficient, and architecture-safe.
+
 ## Primary Sources
 
 Read these in this order when the change is non-trivial:
@@ -17,22 +23,24 @@ Read these in this order when the change is non-trivial:
 
 1. Treat code, tests, and docs as one system. If one changes, check whether the other two should change too.
 2. Treat `tests/e2e_test.py` and `tests/simulation/scenarios/` as behavioral specifications for UI flows, menus, and end-to-end capabilities.
-3. Do not trust memory for architecture. Re-read the current files and generated docs before making structural changes.
-4. Use `SYSTEM_CHANGE_MATRIX.md` to expand every local change into its dependent backend, frontend, UX, test, release, and documentation surfaces.
-5. When adding or changing a route, model, type, store, view, menu item, skill, persona, background workflow, or integration, update the implementation and then regenerate the living docs in the same change.
-6. If the generated docs fail to capture an important architectural fact, improve `scripts/update_agent_md.py` so the fact becomes automatic.
-7. Keep the docs drift-resistant. Avoid one-off manual summaries when the information can be scanned from the repository.
+3. Treat Compass as part of the product's operating system. If the change alters how future agents should understand, verify, navigate, or safely modify Istara, update Compass in the same change.
+4. Do not trust memory for architecture. Re-read the current files and generated docs before making structural changes.
+5. Use `SYSTEM_CHANGE_MATRIX.md` to expand every local change into its dependent backend, frontend, UX, test, release, and documentation surfaces.
+6. When adding or changing a route, model, type, store, view, menu item, skill, persona, background workflow, or integration, update the implementation and then regenerate the living docs in the same change.
+7. If the generated docs fail to capture an important architectural fact, improve `scripts/update_agent_md.py` so the fact becomes automatic.
+8. Keep the docs drift-resistant. Avoid one-off manual summaries when the information can be scanned from the repository.
 
 ## Non-Negotiable Governance Rules
 
 1. If architecture, subsystem boundaries, release/update behavior, installation flow, or operational process changes, update `Tech.md` in the same change.
 2. If a feature, workflow, menu, UX path, or backend capability changes, update the testing surface for future regressions. This usually means `tests/simulation/scenarios/`, `tests/e2e_test.py`, or both.
-3. Success metric for product changes: if Istara's own agents cannot understand the feature, discuss it accurately, route work around it, or use it safely, the change is incomplete.
-4. When a capability changes in a way Istara's own agents should know, update the relevant persona files in `backend/app/agents/personas/`.
-5. Documentation and persona updates belong in the same change as the implementation, not in a later cleanup.
-6. Release/version/tag behavior must remain internally consistent across scripts, workflows, updater logic, docs, and desktop/server update checks.
-7. GitHub Actions release behavior must match the real repo doctrine: pushes to `main` publish installers and a GitHub Release, while tag/manual flows remain valid for explicit release control.
-8. Before preparing a release intentionally, run the standardized local release sequence via `scripts/prepare-release.sh`.
+3. If existing scenarios no longer describe the changed behavior well enough, add a new simulation scenario instead of overloading an unrelated one.
+4. Success metric for product changes: if Istara's own agents cannot understand the feature, discuss it accurately, route work around it, or use it safely, the change is incomplete.
+5. When a capability changes in a way Istara's own agents should know, update the relevant persona files in `backend/app/agents/personas/`.
+6. Documentation and persona updates belong in the same change as the implementation, not in a later cleanup.
+7. Release/version/tag behavior must remain internally consistent across scripts, workflows, updater logic, docs, and desktop/server update checks.
+8. GitHub Actions release behavior must match the real repo doctrine: pushes to `main` publish installers and a GitHub Release, while tag/manual flows remain valid for explicit release control.
+9. Before preparing a release intentionally, run the standardized local release sequence via `scripts/prepare-release.sh`.
 
 ## Required Documentation Workflow
 
@@ -50,6 +58,7 @@ Before editing, ask:
 - Which API surface changes?
 - Which frontend state or mounted views change?
 - Which tests describe or protect this behavior today?
+- Do the current 70+ simulation scenarios already capture this behavior, or does Compass now require a new one?
 - Which entries in `SYSTEM_CHANGE_MATRIX.md` apply?
 - Does `Tech.md` need to change because the architecture or process changed?
 - Do Istara's own agents need persona/prompt updates to understand this feature?

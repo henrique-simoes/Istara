@@ -42,17 +42,45 @@ echo ""
 
 # Clone or update repo
 INSTALL_DIR="${ISTARA_DIR:-$HOME/istara}"
+REPO="henrique-simoes/Istara"
+
+get_latest_release_version() {
+    local version=""
+    version=$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest" 2>/dev/null \
+        | sed -n 's/.*"tag_name":[[:space:]]*"v\{0,1\}\([^"]*\)".*/\1/p' | head -1 || true)
+    if [ -z "$version" ]; then
+        version=$(git ls-remote --tags --refs --sort="v:refname" "https://github.com/${REPO}.git" "v*" 2>/dev/null \
+            | tail -1 | sed 's#.*refs/tags/v##')
+    fi
+    echo "$version"
+}
+
+TARGET_VERSION="$(get_latest_release_version)"
+if [ -z "$TARGET_VERSION" ]; then
+    echo "❌ Could not determine the latest published Istara release."
+    exit 1
+fi
+
+echo "📦 Latest published release: v$TARGET_VERSION"
 
 if [ -d "$INSTALL_DIR" ]; then
     echo "📁 Found existing installation at $INSTALL_DIR"
-    echo "   Pulling latest changes..."
+    echo "   Syncing to latest published release..."
     cd "$INSTALL_DIR"
-    git pull --ff-only 2>/dev/null || echo "   ⚠️  Could not pull (local changes?). Continuing with current version."
+    git fetch --tags origin
+    git checkout -- . 2>/dev/null || true
+    git clean -fd 2>/dev/null || true
 else
     echo "📥 Cloning Istara to $INSTALL_DIR..."
-    git clone https://github.com/henrique-simoes/Istara.git "$INSTALL_DIR"
+    git clone "https://github.com/${REPO}.git" "$INSTALL_DIR"
     cd "$INSTALL_DIR"
 fi
+
+git fetch --tags origin
+git checkout -B "release-$TARGET_VERSION" "tags/v$TARGET_VERSION" >/dev/null 2>&1 || {
+    echo "❌ Could not check out release v$TARGET_VERSION"
+    exit 1
+}
 
 # Create .env if it doesn't exist
 if [ ! -f .env ]; then

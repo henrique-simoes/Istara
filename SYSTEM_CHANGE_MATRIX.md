@@ -2,6 +2,8 @@
 
 This document tells coding agents what else must be inspected, updated, or revalidated when a specific part of the system changes.
 
+`Compass` is the name of the full system this matrix belongs to: entry docs, prompts, generated architecture maps, change matrix, checklists, Tech narrative, persona knowledge, and ongoing test/simulation maintenance.
+
 Use it with:
 - `SYSTEM_PROMPT.md` for repo-wide operating rules
 - `AGENT.md` for the current generated inventory
@@ -31,6 +33,7 @@ For any non-trivial change, check these six surfaces:
 | Background jobs/events | websocket broadcasters, frontend listeners, notification handling, loops/autoresearch views | Async systems fail indirectly |
 | Persona or skill behavior | persona files, skill definitions, routing/recommendation logic, tests, docs | Agent behavior changes without architectural memory |
 | Release/update flow | version script, workflows, updater routes, desktop tray update logic, docs | Shipping/install/update path breaks |
+| Compass doctrine | prompts, checklists, Tech narrative, personas, generated docs, scenarios | Future agents inherit the wrong operating model |
 
 ## Backend Matrix
 
@@ -143,11 +146,13 @@ For any non-trivial change, check these six surfaces:
 | evidence or research pipeline logic | findings chain scenarios, research integrity tests, full-pipeline/e2e flows |
 | navigation or onboarding | navigation search scenario, onboarding scenario, mobile/responsive implications |
 | channels/surveys/MCP/deployments | integration fixtures, scenarios, webhook/auth/security coverage |
+| installer/update/release journey | install scripts, updater logic, release checks, plus dedicated simulation or regression coverage when existing scenarios do not model the journey clearly |
 
 ### Minimum Testing Rule
 
 If a change would confuse a future agent reading the UI or API map, it probably deserves:
 - one direct test or scenario update
+- one new scenario when the behavior creates a new important journey or state transition
 - one generated-doc refresh
 - one prompt/checklist reference if it changes workflow expectations
 
@@ -187,8 +192,10 @@ These are repo doctrines, not optional suggestions.
 
 | Doctrine | What It Means In Practice |
 |---|---|
+| Compass must stay current | If a change alters how agents should understand, navigate, test, release, install, or preserve Istara, update the relevant Compass docs in the same change |
 | Update `Tech.md` when the system meaningfully changes | If architecture, process, versioning, update flow, installer flow, or subsystem behavior changed, the narrative technical reference must change too |
 | Update the testing suite for future changes | Do not only verify the current change manually; extend `tests/e2e_test.py`, `tests/simulation/scenarios/`, fixtures, or assertions so the feature remains protected later |
+| Add scenarios when change scope demands it | If existing simulation coverage no longer describes the changed flow well, add a new scenario instead of forcing the change into unrelated old coverage |
 | Istara-agent comprehension is a success metric | If Cleo/Sentinel/Pixel/Sage/Echo cannot understand, route, discuss, or operate around the new feature, the implementation is incomplete |
 | Persona knowledge must move with capability changes | When the product gains a new capability or workflow meaning, update the relevant persona files so Istara's internal agents inherit that knowledge |
 | Docs must move in the same change | Do not defer prompt, checklist, Tech, or architecture updates to a later commit |
