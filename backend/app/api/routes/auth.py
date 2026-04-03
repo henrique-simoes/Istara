@@ -206,28 +206,26 @@ async def get_me(request: Request):
     if not token:
         token = request.query_params.get("token", "")
 
-    if not settings.team_mode:
-        # Local mode — always admin
-        payload = verify_token(token) if token else None
-        return {
-            "id": "local",
-            "username": payload.get("username", "local") if payload else "local",
-            "email": "local@localhost",
-            "role": "admin",
-            "display_name": payload.get("username", "Local User") if payload else "Local User",
-            "preferences": {},
-            "team_mode": False,
-        }
-
-    # Team mode — decode JWT to get user info
+    # If no token, only allowed in local mode
     if not token:
+        if not settings.team_mode:
+            return {
+                "id": "local",
+                "username": "local",
+                "email": "local@localhost",
+                "role": "admin",
+                "display_name": "Local User",
+                "preferences": {},
+                "team_mode": False,
+            }
         raise HTTPException(status_code=401, detail="Authentication required")
 
+    # Decode JWT to get user identity
     payload = verify_token(token)
     if not payload:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
 
-    # Try to get full user from DB for email/preferences
+    # 1. ALWAYS try to get full user from DB first (preserves roles/preferences in ALL modes)
     from app.models.database import async_session
     from app.models.user import User
     async with async_session() as db:
@@ -241,10 +239,22 @@ async def get_me(request: Request):
                 "role": user.role.value if hasattr(user.role, "value") else str(user.role),
                 "display_name": user.display_name or user.username,
                 "preferences": json.loads(user.preferences) if user.preferences else {},
-                "team_mode": True,
+                "team_mode": settings.team_mode,
             }
 
-    # Fallback to JWT claims if user not in DB
+    # 2. Local mode fallback if user not in DB (e.g. first-run generic token)
+    if not settings.team_mode:
+        return {
+            "id": payload.get("sub", "local"),
+            "username": payload.get("username", "local"),
+            "email": "local@localhost",
+            "role": "admin",
+            "display_name": payload.get("username", "Local User"),
+            "preferences": {},
+            "team_mode": False,
+        }
+
+    # 3. Team mode fallback to JWT claims if user not in DB (e.g. deleted user)
     return {
         "id": payload.get("sub", ""),
         "username": payload.get("username", ""),

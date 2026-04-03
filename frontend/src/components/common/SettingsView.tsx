@@ -347,7 +347,7 @@ export default function SettingsView() {
       {/* Onboarding Hints Reset */}
       <div className="flex items-center gap-4">
         <button
-          onClick={() => { resetAllOnboarding(); alert("Onboarding hints reset. They will reappear on next visit to each view."); }}
+          onClick={() => { resetAllOnboarding(); window.location.reload(); }}
           className="flex items-center gap-2 text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
         >
           <RefreshCw size={14} />

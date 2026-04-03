@@ -81,11 +81,11 @@ export default function HomeClient() {
   // Check authentication on mount
   useEffect(() => {
     const token = localStorage.getItem("istara_token");
-    if (!token || token === "local-mode") {
+    if (!token) {
       setAuthenticated(false);
       return;
     }
-    // Token exists — assume valid (middleware will reject if expired)
+    // Token exists — assume valid (middleware will reject if expired or invalid)
     setAuthenticated(true);
     // Restore user object from JWT + check team mode status
     useAuthStore.getState().fetchMe();
