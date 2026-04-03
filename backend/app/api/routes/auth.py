@@ -228,7 +228,7 @@ async def update_preferences(req: PreferencesRequest):
 
 
 @router.get("/auth/team-status")
-async def team_status():
+async def team_status(request: Request):
     """Check if team mode is enabled and get basic info.
     Includes has_users so fresh installs know to show registration."""
     has_users = False
@@ -237,10 +237,16 @@ async def team_status():
         async with async_session() as db:
             result = await db.execute(select(User).limit(1))
             has_users = result.scalar_one_or_none() is not None
+    
+    # Security check: if not in team mode and accessible from network, it's insecure
+    is_localhost = request.client.host in ("127.0.0.1", "::1", "localhost") if request.client else True
+    insecure = not settings.team_mode and not is_localhost
+
     return {
         "team_mode": settings.team_mode,
         "registration_enabled": settings.team_mode,
         "has_users": has_users,
+        "insecure": insecure,
     }
 
 

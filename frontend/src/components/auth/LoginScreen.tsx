@@ -17,6 +17,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
   const [mode, setMode] = useState<"login" | "register" | "join">("login");
   const [teamMode, setTeamMode] = useState(false);
   const [hasUsers, setHasUsers] = useState(true);
+  const [insecure, setInsecure] = useState(false);
   const [connectionString, setConnectionString] = useState("");
   const [joinValidated, setJoinValidated] = useState<any>(null);
   const [serverReachable, setServerReachable] = useState<boolean | null>(null);
@@ -29,6 +30,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
       .then((d) => {
         setTeamMode(d.team_mode || false);
         setHasUsers(d.has_users !== false);
+        setInsecure(d.insecure || false);
         setServerReachable(true);
         // Fresh server with team mode + no users → show register directly
         if (d.team_mode && d.has_users === false) {
@@ -199,6 +201,29 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
                 Local-first AI agents for UX Research
               </p>
             </div>
+
+            {insecure && (
+              <div className="mb-6 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 p-4">
+                <div className="flex items-start gap-3">
+                  <div className="text-red-600 dark:text-red-400 mt-0.5">⚠️</div>
+                  <div>
+                    <p className="text-sm font-bold text-red-800 dark:text-red-300">
+                      Insecure Mode Detected
+                    </p>
+                    <p className="text-xs text-red-700 dark:text-red-400 mt-1 leading-relaxed">
+                      This server is accessible over the network but has authentication disabled. 
+                      Anyone with the URL can access all research data.
+                    </p>
+                    <div className="mt-3 text-xs text-slate-500 dark:text-slate-400">
+                      <p>To secure your server:</p>
+                      <code className="block bg-white/50 dark:bg-black/20 p-2 rounded mt-1 font-mono">
+                        TEAM_MODE=true
+                      </code>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <form onSubmit={handleSubmit} className="space-y-5">
               <div>

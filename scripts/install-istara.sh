@@ -391,12 +391,29 @@ if [ "$MODE" = "server" ]; then
     mkdir -p data/{uploads,projects,lance_db,backups,channel_audio}
     ok "Data directories created"
 
-    # Generate .env
+# ── Step 6: Configuration ──────────────────────────────────────
     if [ ! -f "$INSTALL_DIR/backend/.env" ]; then
         header "Step 6: Configuration"
 
         BACKEND_PORT=$(prompt_default "Backend API port" "8000")
         FRONTEND_PORT=$(prompt_default "Frontend port" "3000")
+
+        # Team Mode / Security
+        echo ""
+        echo "  ${BOLD}Security Mode:${NC}"
+        echo "  1) ${BOLD}Local${NC} — No login required. Safe only for localhost (your computer)."
+        echo "  2) ${BOLD}Team${NC}  — Username/password required. Essential for servers or networks."
+        echo ""
+        ask "Choose [1/2]: "
+        TEAM_CHOICE=""; read -r TEAM_CHOICE </dev/tty
+        if [ "$TEAM_CHOICE" = "2" ]; then
+            TEAM_MODE="true"
+            ok "Mode: Team (Secure)"
+        else
+            TEAM_MODE="false"
+            warn "Mode: Local (Unauthenticated)"
+            info "Anyone on your network will have full access to Istara."
+        fi
 
         [ -z "${LLM_PROVIDER:-}" ] && LLM_PROVIDER="lmstudio"
 
@@ -422,7 +439,7 @@ DATABASE_URL=sqlite+aiosqlite:///./data/istara.db
 JWT_SECRET=${JWT_SECRET}
 DATA_ENCRYPTION_KEY=${ENCRYPT_KEY}
 NETWORK_ACCESS_TOKEN=${NET_TOKEN}
-TEAM_MODE=false
+TEAM_MODE=${TEAM_MODE}
 
 CORS_ORIGINS=http://localhost:${FRONTEND_PORT}
 
