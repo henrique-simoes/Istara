@@ -4,7 +4,7 @@
 
 **Istara** is a local-first, privacy-first AI agent for UX Research. It runs entirely on the user's machine with local LLMs (via LM Studio or Ollama), ensuring research data never leaves the user's control.
 
-- **Version**: 2026.04.02.12 (CalVer)
+- **Version**: 2026.04.02.13 (CalVer)
 - **License**: MIT, open source
 - **Philosophy**: Local-first, privacy-first, open research methodology
 - **Stack**: Next.js frontend + FastAPI backend + SQLite + LanceDB + WebSocket

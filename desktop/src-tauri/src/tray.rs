@@ -319,7 +319,7 @@ fn handle_check_updates<R: Runtime>(app: &AppHandle<R>) {
                         } else {
                             let _ = handle
                                 .dialog()
-                                .message("Update download failed. Try again later or run:\n  istara update")
+                                .message("Update download failed. Try again later or run:\n  ./istara.sh update")
                                 .title("Update Failed")
                                 .kind(MessageDialogKind::Error)
                                 .buttons(MessageDialogButtons::Ok)
@@ -377,9 +377,9 @@ fn handle_check_updates<R: Runtime>(app: &AppHandle<R>) {
                                         .trim()
                                         .to_string();
 
-                                    if latest_ver > current.as_str() && current != "unknown" {
+                                    if current != "unknown" && crate::health::is_newer(latest_ver, &current) {
                                         update_info = format!(
-                                            "Update available: {} \u{2192} {}\n\nRun in terminal:\n  cd {} && istara update",
+                                            "Update available: {} \u{2192} {}\n\nRun in terminal:\n  cd {} && ./istara.sh update",
                                             current, latest_ver, install_dir
                                         );
                                     } else {
@@ -428,7 +428,7 @@ fn handle_check_updates<R: Runtime>(app: &AppHandle<R>) {
             // Last resort fallback
             let yes = handle
                 .dialog()
-                .message("Could not check for updates automatically.\n\nFor shell-installed Istara, run:\n  istara update\n\nOr check GitHub releases?")
+                .message("Could not check for updates automatically.\n\nFor shell-installed Istara, run:\n  ./istara.sh update\n\nOr check GitHub releases?")
                 .title("Check for Updates")
                 .kind(MessageDialogKind::Info)
                 .buttons(MessageDialogButtons::OkCancelCustom(

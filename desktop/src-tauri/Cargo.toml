@@ -1,6 +1,6 @@
 [package]
 name = "istara-desktop"
-version = "26.126.12"
+version = "26.126.13"
 description = "Istara Desktop — System tray app for managing Istara server and relay"
 authors = ["Istara Team"]
 license = "MIT"
@@ -21,6 +21,7 @@ sysinfo = "0.31"
 tokio = { version = "1", features = ["full"] }
 dirs = "5"
 open = "5"
+version-compare = "0.2"
 
 [features]
 default = ["custom-protocol"]
