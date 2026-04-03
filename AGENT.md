@@ -9,7 +9,7 @@
 - **Philosophy**: Local-first, privacy-first, open research methodology
 - **Stack**: Next.js frontend + FastAPI backend + SQLite + LanceDB + WebSocket
 - **Install**: `curl -fsSL .../install-istara.sh | bash` or `brew install --cask henrique-simoes/istara/istara`
-- **Manage**: Desktop tray app (Tauri v2) or CLI (`istara start/stop/status`)
+- **Manage**: Desktop tray app (Tauri v2) or CLI (`istara start/stop/status` or `istara start-relay/stop-relay`)
 
 ## Architecture
 

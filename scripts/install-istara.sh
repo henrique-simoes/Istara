@@ -618,7 +618,7 @@ if [ "$MODE" = "server" ]; then
     fi
 else
     echo -e "  ${BOLD}Start the relay:${NC}"
-    echo -e "    ${CYAN}cd $INSTALL_DIR/relay && node index.mjs --connection-string '$CONN_STR'${NC}"
+    echo -e "    ${CYAN}istara start-relay${NC}"
     echo ""
 fi
 
