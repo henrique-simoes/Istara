@@ -904,6 +904,14 @@ Team mode can be toggled from the Settings UI (previously required `.env` edit):
 - Toggle switch in Settings page with live status display
 - User management via the existing `UserManagement` component
 
+### Security Mode & Insecure Detection (v2026.04.02.7)
+
+Istara implements an automatic security audit for "Local Mode" deployments.
+- **Local Mode** (`TEAM_MODE=false`): Designed for individual use on `localhost`. Authentication is bypassed, and the first user to connect is granted admin privileges.
+- **Team Mode** (`TEAM_MODE=true`): Full JWT-based authentication. Required for multi-user environments or networked servers.
+- **Insecure Detection**: The `GET /api/auth/team-status` endpoint performs a real-time security check. If the server is in Local Mode AND the request originates from a non-localhost IP, it flags the connection as `insecure: true`.
+- **Frontend Warning**: When `insecure: true` is detected, the `LoginScreen` displays a high-visibility warning banner advising the user to enable Team Mode to protect their research data.
+
 ### Document Organization
 
 Documents view now includes an "Organize Files" function (ported from Interviews):
