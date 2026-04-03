@@ -243,32 +243,22 @@ get_latest_release_version() {
     printf "%s" "$version"
 }
 
-sync_repo_to_release() {
-    local target_version="$1"
-
-    if [ -z "$target_version" ]; then
-        fail "Could not determine the latest published Istara release."
-        exit 1
-    fi
-
+sync_repo_to_main() {
     if [ -d "$INSTALL_DIR/.git" ]; then
-        info "Existing installation found at $INSTALL_DIR — syncing to release v$target_version..."
+        info "Existing installation found at $INSTALL_DIR — syncing source install to main..."
         cd "$INSTALL_DIR"
-        git fetch --tags origin
         git checkout -- . 2>/dev/null || true
         git clean -fd 2>/dev/null || true
+        git pull --ff-only 2>/dev/null || git pull >/dev/null 2>&1 || {
+            fail "Could not update the existing Istara checkout."
+            exit 1
+        }
     else
         info "Cloning Istara to $INSTALL_DIR..."
         git clone "https://github.com/${REPO}.git" "$INSTALL_DIR"
         cd "$INSTALL_DIR"
         ok "Cloned to $INSTALL_DIR"
     fi
-
-    git fetch --tags origin
-    git checkout -B "release-$target_version" "tags/v$target_version" >/dev/null 2>&1 || {
-        fail "Could not check out Istara release v$target_version."
-        exit 1
-    }
 }
 
 detect_brew() {
@@ -468,7 +458,8 @@ fi
 header "Step 3: Installing Istara"
 TARGET_VERSION="$(get_latest_release_version)"
 info "Latest published release: v${TARGET_VERSION:-unknown}"
-sync_repo_to_release "$TARGET_VERSION"
+note "Source installs stay on the Istara git checkout and use backup-first updates later."
+sync_repo_to_main
 VERSION=$(cat VERSION 2>/dev/null || echo "dev")
 ok "Version: $VERSION"
 

@@ -65,22 +65,19 @@ echo "📦 Latest published release: v$TARGET_VERSION"
 
 if [ -d "$INSTALL_DIR" ]; then
     echo "📁 Found existing installation at $INSTALL_DIR"
-    echo "   Syncing to latest published release..."
+    echo "   Updating source checkout from main..."
     cd "$INSTALL_DIR"
-    git fetch --tags origin
     git checkout -- . 2>/dev/null || true
     git clean -fd 2>/dev/null || true
+    git pull --ff-only 2>/dev/null || git pull >/dev/null 2>&1 || {
+        echo "❌ Could not update the existing Istara checkout"
+        exit 1
+    }
 else
     echo "📥 Cloning Istara to $INSTALL_DIR..."
     git clone "https://github.com/${REPO}.git" "$INSTALL_DIR"
     cd "$INSTALL_DIR"
 fi
-
-git fetch --tags origin
-git checkout -B "release-$TARGET_VERSION" "tags/v$TARGET_VERSION" >/dev/null 2>&1 || {
-    echo "❌ Could not check out release v$TARGET_VERSION"
-    exit 1
-}
 
 # Create .env if it doesn't exist
 if [ ! -f .env ]; then

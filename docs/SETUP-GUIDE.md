@@ -21,7 +21,7 @@ The shell installer is the most guided path today:
 - choose **Server** or **Client** mode up front
 - get a plain-language explanation of Homebrew if it must be installed
 - choose **LM Studio** or **Ollama** with first-model guidance
-- sync the source install to the newest published GitHub Release instead of cloning raw `main`
+- clone or update the source install from the Istara git checkout on `main`
 - save client `rcl_...` invites directly into the desktop app config
 - automatically attempt to install `Istara.app` on macOS so the menu-bar companion is ready immediately
 

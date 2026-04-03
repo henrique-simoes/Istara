@@ -367,51 +367,42 @@ fn handle_check_updates<R: Runtime>(app: &AppHandle<R>) {
             }
         }
 
-        // Fallback: for shell-installed Istara, offer git-based update
+        // Fallback: for shell-installed Istara, offer source-update guidance
         let cfg = crate::config::load_config();
         let install_dir = cfg.install_dir.clone();
 
-        // Try git-based version check
+        // Compare the local source install against the newest published release.
         let mut update_info = String::new();
         if !install_dir.is_empty() {
-            let git_dir = std::path::PathBuf::from(&install_dir).join(".git");
-            if git_dir.is_dir() {
-                // Fetch latest tags
-                if let Ok(output) = std::process::Command::new("git")
-                    .args(["fetch", "--tags", "--quiet"])
-                    .current_dir(&install_dir)
-                    .output()
-                {
-                    if output.status.success() {
-                        if let Ok(tag_output) = std::process::Command::new("git")
-                            .args(["tag", "--sort=-v:refname"])
-                            .current_dir(&install_dir)
-                            .output()
-                        {
-                            if tag_output.status.success() {
-                                let tags = String::from_utf8_lossy(&tag_output.stdout);
-                                if let Some(latest) = tags.lines().next() {
-                                    let latest_ver = latest.trim_start_matches('v');
-                                    let current_ver_path =
-                                        std::path::PathBuf::from(&install_dir).join("VERSION");
-                                    let current = std::fs::read_to_string(&current_ver_path)
-                                        .unwrap_or_else(|_| "unknown".to_string())
-                                        .trim()
-                                        .to_string();
+            let current_ver_path = std::path::PathBuf::from(&install_dir).join("VERSION");
+            let current = std::fs::read_to_string(&current_ver_path)
+                .unwrap_or_else(|_| "unknown".to_string())
+                .trim()
+                .to_string();
 
-                                    if current != "unknown" && crate::health::is_newer(latest_ver, &current) {
-                                        update_info = format!(
-                                            "Update available: {} \u{2192} {}\n\nRun in terminal:\n  cd {} && ./istara.sh update",
-                                            current, latest_ver, install_dir
-                                        );
-                                    } else {
-                                        update_info = format!(
-                                            "You're running the latest version ({}).",
-                                            current
-                                        );
-                                    }
-                                }
-                            }
+            if let Ok(output) = std::process::Command::new("curl")
+                .args([
+                    "-sS",
+                    "-H",
+                    "Accept: application/vnd.github.v3+json",
+                    "https://api.github.com/repos/henrique-simoes/Istara/releases/latest",
+                ])
+                .output()
+            {
+                if output.status.success() {
+                    let body = String::from_utf8_lossy(&output.stdout);
+                    if let Some(tag_name) = extract_json_string(&body, "tag_name") {
+                        let latest_ver = tag_name.trim_start_matches('v').to_string();
+                        if current != "unknown" && crate::health::is_newer(&latest_ver, &current) {
+                            update_info = format!(
+                                "Update available: {} \u{2192} {}\n\nRun in terminal:\n  cd {} && ./istara.sh update",
+                                current, latest_ver, install_dir
+                            );
+                        } else if current != "unknown" {
+                            update_info = format!(
+                                "You're running the latest version ({}).",
+                                current
+                            );
                         }
                     }
                 }
@@ -463,6 +454,24 @@ fn handle_check_updates<R: Runtime>(app: &AppHandle<R>) {
             }
         }
     });
+}
+
+fn extract_json_string(json: &str, key: &str) -> Option<String> {
+    let needle = format!("\"{}\"", key);
+    let pos = json.find(&needle)?;
+    let after_key = &json[pos + needle.len()..];
+    let colon_pos = after_key.find(':')?;
+    let after_colon = after_key[colon_pos + 1..].trim_start();
+
+    if after_colon.starts_with('"') {
+        let content = &after_colon[1..];
+        let end_quote = content.find('"')?;
+        Some(content[..end_quote].replace("\\n", "\n").replace("\\\"", "\""))
+    } else if after_colon.starts_with("null") {
+        None
+    } else {
+        None
+    }
 }
 
 fn handle_change_server<R: Runtime>(app: &AppHandle<R>) {

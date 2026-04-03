@@ -43,6 +43,22 @@ def get_current_version() -> str:
     return "unknown"
 
 
+def _run_git(args: list[str], cwd: Path | None = None, timeout: int = 10) -> str:
+    try:
+        result = subprocess.run(
+            ["git", *args],
+            cwd=str(cwd) if cwd else None,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+        )
+        if result.returncode == 0:
+            return result.stdout.strip()
+    except Exception:
+        pass
+    return ""
+
+
 def get_install_dir() -> Path | None:
     """Find the Istara install directory (contains VERSION + backend/ + frontend/)."""
     for p in _CANDIDATES:
@@ -85,6 +101,45 @@ def get_latest_release_version_from_git() -> str:
     return latest_ref.rsplit("refs/tags/v", 1)[-1].strip()
 
 
+def get_remote_release_commit(tag: str, install_dir: Path | None = None) -> str:
+    """Resolve the commit SHA behind a remote release tag without fetching local tags."""
+    if not tag:
+        return ""
+    remote = "origin" if install_dir and (install_dir / ".git").is_dir() else "https://github.com/henrique-simoes/Istara.git"
+    cwd = install_dir if remote == "origin" else None
+    peeled = _run_git(["ls-remote", remote, f"refs/tags/v{tag}^{{}}"], cwd=cwd)
+    if peeled:
+        return peeled.split()[0]
+    direct = _run_git(["ls-remote", remote, f"refs/tags/v{tag}"], cwd=cwd)
+    if direct:
+        return direct.split()[0]
+    return ""
+
+
+def head_includes_release(install_dir: Path, tag: str) -> bool | None:
+    """Return whether local HEAD already includes the latest released commit."""
+    if not tag or not (install_dir / ".git").is_dir():
+        return None
+    head_sha = _run_git(["rev-parse", "HEAD"], cwd=install_dir)
+    if not head_sha:
+        return None
+    release_sha = get_remote_release_commit(tag, install_dir)
+    if not release_sha:
+        return None
+    if head_sha == release_sha:
+        return True
+    try:
+        result = subprocess.run(
+            ["git", "merge-base", "--is-ancestor", release_sha, "HEAD"],
+            cwd=str(install_dir),
+            capture_output=True,
+            timeout=10,
+        )
+        return result.returncode == 0
+    except Exception:
+        return None
+
+
 @router.get("/updates/version")
 async def current_version():
     """Return the current Istara version."""
@@ -97,56 +152,22 @@ async def current_version():
 
 @router.get("/updates/check")
 async def check_for_updates():
-    """Check for a newer version using git (primary) or GitHub API (fallback).
-
-    Strategy:
-    1. Try `git fetch --tags` + compare local VERSION against latest tag (no API needed)
-    2. Fall back to GitHub Releases API (cached 10 min to avoid 403 rate limit)
-    3. If both fail, return current version with error message
-    """
+    """Check GitHub Releases for a newer version, with git-aware source-install fallback."""
     current = get_current_version()
-
-    # ── Method 1: Git-based check (no rate limit, works for shell installs) ──
     install_dir = get_install_dir()
-    if install_dir and (install_dir / ".git").is_dir():
-        try:
-            result = await asyncio.to_thread(
-                subprocess.run,
-                ["git", "fetch", "--tags", "--quiet"],
-                cwd=str(install_dir),
-                capture_output=True,
-                timeout=15,
-            )
-            if result.returncode == 0:
-                # Get the latest tag
-                tag_result = await asyncio.to_thread(
-                    subprocess.run,
-                    ["git", "tag", "--sort=-v:refname"],
-                    cwd=str(install_dir),
-                    capture_output=True,
-                    text=True,
-                    timeout=5,
-                )
-                if tag_result.returncode == 0 and tag_result.stdout.strip():
-                    latest_tag = tag_result.stdout.strip().split("\n")[0].lstrip("v")
-                    update_available = is_newer(latest_tag, current)
-                    return {
-                        "update_available": update_available,
-                        "current_version": current,
-                        "latest_version": latest_tag,
-                        "release_url": f"https://github.com/henrique-simoes/Istara/releases/tag/v{latest_tag}",
-                        "method": "git",
-                    }
-        except Exception as e:
-            logger.debug(f"Git-based update check failed: {e}")
-
-    # ── Method 2: GitHub API (cached to avoid 403 rate limit) ──
     cache_key = "github_release"
     cached = _update_cache.get(cache_key)
     if cached and time.time() - cached["time"] < _CACHE_TTL:
         # Return cached response with fresh current_version
         result = {**cached["data"], "current_version": current}
         result["update_available"] = is_newer(result.get("latest_version", ""), current)
+        if install_dir and (install_dir / ".git").is_dir():
+            source_status = await asyncio.to_thread(head_includes_release, install_dir, result.get("latest_version", ""))
+            if source_status is True:
+                result["update_available"] = False
+                result["current_version"] = result.get("latest_version", current) or current
+            if source_status is not None:
+                result["source_checkout_includes_latest_release"] = source_status
         return result
 
     try:
@@ -190,6 +211,12 @@ async def check_for_updates():
             body = release.get("body", "")
             html_url = release.get("html_url", "")
             update_available = is_newer(latest_tag, current)
+            source_status = None
+            if install_dir and (install_dir / ".git").is_dir():
+                source_status = await asyncio.to_thread(head_includes_release, install_dir, latest_tag)
+                if source_status is True:
+                    update_available = False
+                    current = latest_tag or current
 
             assets = release.get("assets", [])
             downloads = {}
@@ -212,6 +239,8 @@ async def check_for_updates():
                 "downloads": downloads,
                 "method": "github_api",
             }
+            if source_status is not None:
+                result["source_checkout_includes_latest_release"] = source_status
 
             # Cache the result
             _update_cache[cache_key] = {"data": result, "time": time.time()}
@@ -262,11 +291,11 @@ async def prepare_update(request: Request, db: AsyncSession = Depends(get_db)):
 
 @router.post("/updates/apply")
 async def apply_update(request: Request):
-    """Auto-update Istara via release-tag checkout + rebuild + restart.
+    """Auto-update Istara via git pull + rebuild + restart.
 
     For git-based installs (shell one-liner, from source):
       1. Creates a pre-update backup
-      2. Resolves the latest published release tag and checks it out locally
+      2. Pulls the latest source from the repo
       3. Updates backend deps (pip install)
       4. Rebuilds frontend (npm install + npm run build)
       5. Restarts services via istara.sh
@@ -301,7 +330,7 @@ async def apply_update(request: Request):
 
 
 async def _run_update(install_dir: Path):
-    """Background task: backup → release sync → rebuild → restart."""
+    """Background task: backup → git pull → rebuild → restart."""
     try:
         # 1. Create pre-update backup
         logger.info("Auto-update: creating backup...")
@@ -349,19 +378,8 @@ fi
 git checkout -- . 2>/dev/null || true
 git clean -fd 2>/dev/null || true
 
-# Resolve latest published release
-TARGET_VERSION=$(curl -fsSL "https://api.github.com/repos/henrique-simoes/Istara/releases/latest" 2>/dev/null | grep -o '"tag_name":[[:space:]]*"v[^"]*"' | head -1 | cut -d'"' -f4 | sed 's/^v//')
-if [ -z "$TARGET_VERSION" ]; then
-    TARGET_VERSION=$(git ls-remote --tags --refs --sort="v:refname" "https://github.com/henrique-simoes/Istara.git" "v*" 2>/dev/null | tail -1 | sed 's#.*refs/tags/v##')
-fi
-if [ -z "$TARGET_VERSION" ]; then
-    echo "Could not determine latest release" >&2
-    exit 1
-fi
-
-# Sync source to latest published release
-git fetch --tags origin
-git checkout -B "release-$TARGET_VERSION" "tags/v$TARGET_VERSION"
+# Pull latest code
+git pull --ff-only 2>/dev/null || git pull
 
 # Update backend deps
 if [ -x "{venv_pip}" ]; then

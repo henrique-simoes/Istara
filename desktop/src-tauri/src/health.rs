@@ -69,7 +69,7 @@ pub fn health_loop<R: Runtime>(app: AppHandle<R>) {
             prev_ollama = ollama_healthy;
         }
 
-        // Periodic update check (every 6 hours) — git-based, no API rate limit
+        // Periodic update check (every 6 hours)
         if last_update_check.elapsed() >= UPDATE_CHECK_INTERVAL {
             last_update_check = std::time::Instant::now();
 
@@ -80,56 +80,38 @@ pub fn health_loop<R: Runtime>(app: AppHandle<R>) {
     }
 }
 
-/// Check for a newer version using git tags (no GitHub API needed).
+/// Check GitHub Releases for a newer version.
 fn check_for_update() -> Option<UpdateAvailable> {
     let current = read_version_file().unwrap_or_else(|| "unknown".to_string());
     if current == "unknown" {
         return None;
     }
-
-    // Try git-based check (no rate limit)
-    let install_dir = find_install_dir()?;
-    let git_dir = install_dir.join(".git");
-    if !git_dir.is_dir() {
+    let url = "https://api.github.com/repos/henrique-simoes/Istara/releases/latest";
+    let output = std::process::Command::new("curl")
+        .args(["-sS", "-H", "Accept: application/vnd.github.v3+json", url])
+        .output()
+        .ok()?;
+    if !output.status.success() {
         return None;
     }
 
-    // Fetch latest tags
-    let fetch = std::process::Command::new("git")
-        .args(["fetch", "--tags", "--quiet"])
-        .current_dir(&install_dir)
-        .output();
+    let body = String::from_utf8_lossy(&output.stdout);
+    let tag = extract_json_string(&body, "tag_name")
+        .map(|t| t.trim_start_matches('v').to_string())
+        .unwrap_or_default();
+    let html_url = extract_json_string(&body, "html_url").unwrap_or_default();
+    let changelog = extract_json_string(&body, "body").unwrap_or_default();
 
-    if let Ok(output) = fetch {
-        if output.status.success() {
-            let tag_output = std::process::Command::new("git")
-                .args(["tag", "--sort=-v:refname"])
-                .current_dir(&install_dir)
-                .output();
-
-            if let Ok(tag_out) = tag_output {
-                if tag_out.status.success() {
-                    let tags = String::from_utf8_lossy(&tag_out.stdout);
-                    if let Some(latest_line) = tags.lines().next() {
-                        let tag = latest_line.trim_start_matches('v').to_string();
-                        if !tag.is_empty() && is_newer(&tag, &current) {
-                            return Some(UpdateAvailable {
-                                current_version: current,
-                                latest_version: tag.clone(),
-                                release_url: format!(
-                                    "https://github.com/henrique-simoes/Istara/releases/tag/v{}",
-                                    tag
-                                ),
-                                changelog: String::new(),
-                            });
-                        }
-                    }
-                }
-            }
-        }
+    if !tag.is_empty() && is_newer(&tag, &current) {
+        Some(UpdateAvailable {
+            current_version: current,
+            latest_version: tag,
+            release_url: html_url,
+            changelog: changelog.chars().take(200).collect(),
+        })
+    } else {
+        None
     }
-
-    None
 }
 
 fn read_version_file() -> Option<String> {
@@ -174,25 +156,22 @@ fn read_version_file() -> Option<String> {
     None
 }
 
-fn find_install_dir() -> Option<std::path::PathBuf> {
-    // Check config first
-    let cfg = crate::config::load_config();
-    if !cfg.install_dir.is_empty() {
-        let dir = std::path::PathBuf::from(&cfg.install_dir);
-        if dir.exists() {
-            return Some(dir);
-        }
-    }
+fn extract_json_string(json: &str, key: &str) -> Option<String> {
+    let needle = format!("\"{}\"", key);
+    let pos = json.find(&needle)?;
+    let after_key = &json[pos + needle.len()..];
+    let colon_pos = after_key.find(':')?;
+    let after_colon = after_key[colon_pos + 1..].trim_start();
 
-    // Check ~/.istara
-    if let Some(home) = dirs::home_dir() {
-        let dir = home.join(".istara");
-        if dir.exists() {
-            return Some(dir);
-        }
+    if after_colon.starts_with('"') {
+        let content = &after_colon[1..];
+        let end_quote = content.find('"')?;
+        Some(content[..end_quote].replace("\\n", "\n").replace("\\\"", "\""))
+    } else if after_colon.starts_with("null") {
+        None
+    } else {
+        None
     }
-
-    None
 }
 
 fn now_secs() -> u64 {
