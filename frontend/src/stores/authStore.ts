@@ -123,6 +123,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           },
           teamMode: data.team_mode ?? get().teamMode,
         });
+      } else if (res.status === 401) {
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new Event("istara:auth-expired"));
+        }
       }
     } catch {
       // Token invalid or server down — don't touch state
