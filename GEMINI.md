@@ -30,7 +30,7 @@ You operate within a constrained context window. Follow ALL numbered rules below
 
 ## C. Edit Safety (always active)
 
-9. **EDIT INTEGRITY**: Use `read_file` to get fresh context BEFORE every edit. Use `replace` for surgical changes. Re-read AFTER to verify the change was applied correctly. Max 3 edits per file before a verification read.
+9. **EDIT INTEGRITY**: Use `read_file` to get fresh context BEFORE every edit. Use `replace` for surgical changes. Re-read AFTER to verify the change was applied correctly. Max 3 edits per file before a verification read. **RESILIENCE**: If a session was interrupted or crashed, re-read all recently touched files to detect truncated writes or corrupted duplicate lines before proceeding.
 
 10. **NO SEMANTIC SEARCH**: `grep_search` is powerful but not an AST. When renaming/changing any symbol, search separately for: direct calls, type-level refs, string literals, dynamic imports, re-exports/barrel files, test files/mocks. Never assume one search found everything.
 
@@ -51,14 +51,16 @@ You operate within a constrained context window. Follow ALL numbered rules below
 14. **TESTING SUITE UPDATE** (design only, no execution): Update simulation agents + CI/CD pipeline. Cover: memory/DB systems, agent protocols, all UI menus. Tests must iterate automatically on failure.
 
 15. **REPO CLEANUP & RELEASE**: Clean version for push — exclude personal configs, local test data, project-specific memory/skills. Include: new agents, core skills, system-wide updates.
+    - **VERSIONING**: Run `git tag -l "vYYYY.MM.DD.*" | sort -V` before any version bump to identify the next sequence `N`. Never assume the sequence.
+    - **CLEANUP**: Review untracked files with `git status`. Utility scripts (e.g., `yes.sh`, `*.tmp`) MUST NOT be committed unless they are permanent core tools.
     - `run_shell_command` for `./scripts/set-version.sh --bump` (CalVer across 7 files + VERSION).
-    - Commit: `release: YYYY.MM.DD`
-    - Tag: `git tag vYYYY.MM.DD && git push origin vYYYY.MM.DD`
+    - Commit: `release: YYYY.MM.DD.N`
+    - Tag: `git tag vYYYY.MM.DD.N && git push origin vYYYY.MM.DD.N`
     - Push: `git push origin main`
 
 16. **DOCUMENTATION SYNC**: Update README, wiki, Tech.md. Remove outdated logic. Add explanations for new changes. Run `python scripts/update_agent_md.py` to regenerate AGENT.md.
 
-17. **COMPLETION SIGNAL**: Once all tasks complete, all agents cease, git push finalized → output: `FINISHED!!!`
+17. **COMPLETION SIGNAL**: Once all tasks complete, all agents cease, git push finalized, and environment is verified clean → output: `FINISHED!!!`
 
 ## E. Project Constants
 
