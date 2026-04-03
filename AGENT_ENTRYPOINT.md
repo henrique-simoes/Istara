@@ -188,7 +188,7 @@ If you change how Istara is versioned, packaged, released, installed, or updated
 - Update `Tech.md`
 - Update tests if release/update behavior has automated coverage
 - Regenerate docs and run integrity checks
-- Make sure the docs describe the same model: normal pushes are development flow, tag/manual flow is release publishing
+- Make sure the docs describe the same model: only release-worthy `main` pushes publish installers/releases, while tag/manual flow remains available for explicit release control
 
 <!-- ENTRYPOINT_GENERATED_END -->
 
@@ -201,8 +201,8 @@ For meaningful changes, make sure:
 - generated docs are regenerated
 - `Tech.md` is updated when the system story changed
 - persona files are updated when Istara's own agents need to understand the change
-- pushes to `main` publish the expected installer/release artifacts
-- intentional release prep, tags, and manual dispatch remain internally consistent with that main publishing flow
+- release-worthy pushes to `main` publish the expected installer/release artifacts
+- intentional release prep, tags, and manual dispatch remain internally consistent with that qualifying-main-push publishing flow
 
 Run:
 

@@ -160,7 +160,7 @@
 - Tray app checks for updates every 6h via `git fetch --tags` (no GitHub API rate limit). Monitor: git availability on PATH for GUI apps, tag parsing, network failure handling.
 
 ### Production Installer & Desktop App
-- CI/CD pipeline: `.github/workflows/build-installers.yml` builds macOS DMG + Windows EXE and creates a GitHub Release on every push to `main`. Tag pushes (`v*`) and manual dispatch remain supported release paths too. Monitor build times, artifact sizes, and duplicate-publish behavior.
+- CI/CD pipeline: `.github/workflows/build-installers.yml` builds macOS DMG + Windows EXE and creates a GitHub Release on release-worthy pushes to `main`. Tag pushes (`v*`) and manual dispatch remain supported release paths too. Monitor build times, artifact sizes, duplicate-publish behavior, and release-qualification false positives/false negatives.
 - Secret generation: `scripts/generate-secrets.sh` now produces 5 keys (JWT_SECRET, DATA_ENCRYPTION_KEY, NETWORK_ACCESS_TOKEN, RELAY_TOKEN, POSTGRES_PASSWORD). Ensure rotation procedures exist for production deployments.
 - Desktop tray app (Rust/Tauri v2): uses Rust-native process management for backend, frontend, and relay. Monitor for: invalid `install_dir`, missing backend/frontend directories, GUI PATH resolution failures, and ANSI/log formatting leaking into dialogs.
 - NSIS installer downloads Python/Node.js from official sources during install. Verify download URLs stay valid across Python/Node version bumps. Pin to specific versions in the NSIS script.

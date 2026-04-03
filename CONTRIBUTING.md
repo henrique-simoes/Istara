@@ -35,7 +35,12 @@ npm install && npm run dev
 
 ## Release Prep
 
-Pushes to `main` publish the installer/release workflow for the repository.
+Release-worthy pushes to `main` publish the installer/release workflow for the repository.
+
+Release-worthy means:
+- backend/frontend/desktop/relay behavior changed
+- install/update/version/release behavior changed
+- Compass-critical internal agent docs or persona knowledge changed in a way Istara's internal agents rely on
 
 When preparing a release locally, use:
 

@@ -1064,7 +1064,7 @@ Notification types added to EVENT_METADATA: `update_available`, `update_started`
 ### CI/CD Release Flow
 Regular CI and installer publishing are related but distinct:
 - `.github/workflows/ci.yml` runs governance + build/test checks for normal development
-- `.github/workflows/build-installers.yml` publishes installers/releases on pushes to `main`
+- `.github/workflows/build-installers.yml` publishes installers/releases on **release-worthy** pushes to `main`
 - tag pushes (`v*`) and manual dispatch remain available for explicit release control or rebuilds
 
 Recommended local release prep:
@@ -1072,7 +1072,7 @@ Recommended local release prep:
 ./scripts/prepare-release.sh --bump
 ```
 
-On push to `main`, tag push (`v*`), or manual dispatch:
+On a release-worthy push to `main`, tag push (`v*`), or manual dispatch:
 1. `version` job determines CalVer string
 2. `build-macos` + `build-windows` jobs set version, build Tauri + DMG/EXE
 3. `release` job creates GitHub Release with both artifacts and auto-generated release notes
@@ -1172,9 +1172,11 @@ System tray application for macOS, Windows, and Linux. **Mode-aware manager only
 
 ### CI/CD (GitHub Actions)
 `.github/workflows/build-installers.yml` handles publishing:
-- On push to `main`: builds installers and creates GitHub Release
+- On a release-worthy push to `main`: builds installers and creates GitHub Release
 - On tag push (`v*`): builds installers and creates GitHub Release
 - On manual dispatch: builds installers/releases on demand
+- Release-worthiness is determined from changed files, not just branch name. Backend/frontend/desktop/relay/install/update changes qualify, as do Compass-critical internal agent docs and persona changes that materially alter how Istara's internal agents understand the system.
+- CalVer for qualifying `main` pushes is derived from the latest existing release tag, not the committed `VERSION` file. This prevents same-day qualifying pushes from silently colliding on the same release version.
 
 `.github/workflows/ci.yml` enforces repository governance on pushes to `main` and pull requests:
 - Generated docs must be current: `python scripts/update_agent_md.py --check`
