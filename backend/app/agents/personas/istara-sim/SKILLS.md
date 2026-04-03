@@ -168,7 +168,7 @@
 - **macOS DMG bundle integrity**: Build DMG, mount it, verify `Istara.app/Contents/Resources/istara/backend/` exists with all source files. Verify no `__pycache__`, `node_modules`, `.env`, or `data/` directories are included.
 - **Setup wizard flow**: Launch Tauri app with no `~/.istara/config.json`. Verify setup wizard window opens. Complete all 6 steps. Verify config file is created with correct mode, LLM provider, and install dir. Verify services start after completion.
 - **Uninstall data preservation**: Run Windows uninstaller, choose "Keep data" → verify `data/` directory preserved. Run again, choose "Delete" → verify `data/` removed.
-- **CI/CD artifact verification**: Push to main branch, verify GitHub Actions builds both macOS DMG and Windows EXE. Push a `v*` tag, verify GitHub Release is created with both artifacts attached.
+- **CI/CD artifact verification**: Push to main branch, verify GitHub Actions builds both macOS DMG and Windows EXE and creates a GitHub Release for that commit. Push a `v*` tag, verify GitHub Release creation still works for the tag path as well.
 
 ### Auth & Onboarding Simulation Scenarios
 - **Fresh server registration**: Start with an empty database (no users). Call `GET /auth/team-status`, verify `{ team_mode: true, has_users: false }`. Submit a registration request, verify the first user is created with `role: "admin"`. Call team-status again, verify `has_users: true`. Attempt a second registration and verify the form is no longer offered (login mode instead).

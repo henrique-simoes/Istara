@@ -181,8 +181,8 @@ For meaningful changes, make sure:
 - generated docs are regenerated
 - `Tech.md` is updated when the system story changed
 - persona files are updated when Istara's own agents need to understand the change
-- regular pushes stay in the development flow
-- releases are prepared intentionally and published through the tagged/manual release flow
+- pushes to `main` publish the expected installer/release artifacts
+- intentional release prep, tags, and manual dispatch remain internally consistent with that main publishing flow
 
 Run:
 
