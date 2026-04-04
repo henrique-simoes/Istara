@@ -75,7 +75,9 @@ async def get_hardware_info():
                     "vendor": profile.gpu.vendor,
                     "name": profile.gpu.name,
                     "vram_mb": profile.gpu.vram_mb,
-                } if profile.gpu else None,
+                }
+                if profile.gpu
+                else None,
                 "os": f"{profile.os_name} {profile.os_version}",
             },
             "recommendation": {
@@ -115,6 +117,7 @@ async def get_models():
     # For LM Studio, detect the actually loaded model
     if settings.llm_provider == "lmstudio":
         from app.core.lmstudio import LMStudioClient
+
         if isinstance(ollama, LMStudioClient):
             loaded = await ollama.detect_loaded_model()
             if loaded and loaded != active:
@@ -130,6 +133,7 @@ async def get_models():
     # The LLMRouter.list_models() already attaches _server / _server_id;
     # we promote those to public fields and add provider_type.
     from app.core.llm_router import llm_router
+
     server_map = {s.server_id: s for s in llm_router._servers.values()}
     enriched = []
     for m in models:
@@ -191,7 +195,8 @@ async def switch_model(model_name: str, request: Request):
         "status": "switched",
         "model": model_name,
         "persisted": persisted,
-        "message": f"Model switched to {model_name}." + ("" if persisted else f" Update {env_var} in .env to persist."),
+        "message": f"Model switched to {model_name}."
+        + ("" if persisted else f" Update {env_var} in .env to persist."),
     }
 
 
@@ -200,6 +205,7 @@ async def switch_provider(provider: str, request: Request):
     """Switch the LLM provider at runtime (ollama or lmstudio). Admin only."""
     require_admin_from_request(request)
     from fastapi import HTTPException
+
     if provider not in ("ollama", "lmstudio"):
         raise HTTPException(status_code=400, detail="Provider must be 'ollama' or 'lmstudio'")
 
@@ -207,6 +213,7 @@ async def switch_provider(provider: str, request: Request):
 
     # Recreate the LLM client singleton for the new provider
     import app.core.ollama as ollama_module
+
     ollama_module.ollama = ollama_module._create_llm_client()
 
     # Persist to .env
@@ -221,7 +228,8 @@ async def switch_provider(provider: str, request: Request):
         "provider": provider,
         "model": _active_model(),
         "persisted": persisted,
-        "message": f"Provider switched to {provider}." + ("" if persisted else " Update LLM_PROVIDER in .env to persist."),
+        "message": f"Provider switched to {provider}."
+        + ("" if persisted else " Update LLM_PROVIDER in .env to persist."),
     }
 
 
@@ -312,6 +320,7 @@ async def integrations_status():
 async def vector_health():
     """Check embedding dimension consistency across vector stores."""
     from app.core.vector_health import check_embedding_dimensions
+
     return await check_embedding_dimensions()
 
 
@@ -322,6 +331,7 @@ async def vector_health():
 async def check_data_integrity(db: AsyncSession = Depends(get_db)):
     """Run a data integrity check and return health report."""
     from app.core.data_integrity import run_integrity_check
+
     report = await run_integrity_check(db)
     return report
 
@@ -331,6 +341,7 @@ async def export_database(request: Request, db: AsyncSession = Depends(get_db)):
     """Export the entire database to a portable JSON structure. Admin only."""
     require_admin_from_request(request)
     from app.core.data_migration import export_full_database
+
     data = await export_full_database(db)
     return data
 
@@ -344,6 +355,7 @@ async def import_database(
     """Import a previously exported database dump. Admin only."""
     require_admin_from_request(request)
     from app.core.data_migration import import_full_database
+
     summary = await import_full_database(db, data)
     return summary
 
@@ -352,11 +364,15 @@ async def import_database(
 async def system_status():
     """Get overall system status.
 
-    Auto-detects provider if the current one is unreachable.
+    Re-probes the active LLM provider on demand so the status is always fresh,
+    rather than reading the cached health flag from the 60-second background loop.
+    Auto-detects the other provider if the current one is unreachable.
     """
     from app.core.ollama import auto_detect_provider
     import app.core.ollama as ollama_mod
 
+    # Re-probe the active provider so the status is always current
+    await ollama.check_all_health()
     llm_healthy = await ollama.health()
 
     # If current provider is down, try auto-detecting the other
@@ -370,6 +386,7 @@ async def system_status():
     if llm_healthy and settings.llm_provider == "lmstudio":
         import app.core.ollama as ollama_mod
         from app.core.lmstudio import LMStudioClient
+
         client = ollama_mod.ollama
         if isinstance(client, LMStudioClient):
             loaded = await client.detect_loaded_model()
@@ -410,8 +427,12 @@ async def toggle_team_mode(request: Request, db: AsyncSession = Depends(get_db))
             require_admin_from_request(request)
         except Exception:
             from fastapi import HTTPException
+
             raise HTTPException(status_code=403, detail="Admin required to change team mode")
 
     settings.team_mode = enabled
     _persist_env("TEAM_MODE", str(enabled).lower())
-    return {"team_mode": enabled, "message": "Team mode updated. Server restart recommended for full effect."}
+    return {
+        "team_mode": enabled,
+        "message": "Team mode updated. Server restart recommended for full effect.",
+    }
