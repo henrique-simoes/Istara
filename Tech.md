@@ -1678,6 +1678,26 @@ The MetaOrchestrator scales agent count based on available compute:
 - **NAT-friendly**: Backend exposes single port (8000) for both HTTP and WebSocket. Relay uses outbound connections only.
 - **LM Studio access**: `host.docker.internal` mapping for accessing host machine's LM Studio from containers.
 
+### Action Feedback & WCAG 2.2 / Nielsen Heuristics Compliance (April 2026)
+
+Comprehensive audit and fix of all async actions across Documents and Interviews views to meet WCAG 2.2 Level AA and Nielsen's 10 Usability Heuristics:
+
+**WCAG 2.2 4.1.3 Status Messages**: Every async action now dispatches `istara:toast` notifications on success and failure. Users are informed of state changes without needing to find the information themselves. All toasts use semantic types (`success`, `warning`, `info`) with appropriate icons and colors.
+
+**Nielsen H1 — Visibility of System Status**: All actions show loading indicators (spinners, progress text, "Starting..." messages) rather than disappearing or doing nothing. The "Analyze this file" button now shows a spinner with "Analyzing..." text instead of vanishing from the DOM. Upload button shows per-file progress ("Uploading 2/5"). Delete button shows "Deleting..." with spinner.
+
+**Nielsen H5 — Error Prevention**: Tag creation now shows a visible warning toast when the API fails, instead of silently falling back to local-only state (which would lose data on refresh). All empty catch blocks in Quick Actions and Organize Files have been replaced with proper error handling.
+
+**Nielsen H6 — Recognition Rather Than Recall**: SSE `tool_call` events are now displayed inline during analysis ("▸ Running: search_files...") so users see what the agent is doing instead of staring at a blank streaming box. The `done` event triggers a completion toast showing tools used.
+
+**Nielsen H8 — Help Users Recognize, Diagnose, and Recover from Errors**: File preview in Interviews now has an explicit back button (`ArrowLeft` with `aria-label="Back to file list"`), matching the DocumentsView pattern. Preview content fetch failures now show a toast with the error reason instead of silently showing "No preview available."
+
+**Nielsen H3 — User Control and Freedom**: The back button gives users an explicit escape route from the file preview, replacing the previous trap where the only way out was to click a different file tab or navigate to another view.
+
+**Unified stream handler**: All 7 chat-based actions in Interviews (Analyze This File, Analyze All, Organize Files, 4 Quick Actions) now use a shared `handleChatStream()` helper that processes `chunk`, `tool_call`, `error`, and `done` SSE events consistently.
+
+**Files**: `frontend/src/components/interviews/InterviewView.tsx`, `frontend/src/components/documents/DocumentsView.tsx`, `backend/app/api/routes/files.py`
+
 ### UX Bug Fixes & WCAG Compliance (March 2026)
 
 Major UX overhaul addressing WCAG compliance, Nielsen's heuristics violations, and usability issues:
