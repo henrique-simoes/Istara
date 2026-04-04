@@ -20,6 +20,7 @@ from app.models.database import async_session
 from app.models.task import Task, TaskStatus
 from app.models.agent import Agent, AgentState
 from app.api.websocket import broadcast_agent_status, broadcast_task_progress
+from app.core.datetime_utils import ensure_utc
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +52,7 @@ class SubAgentWorker:
         """Check if a task is still within its retry backoff window."""
         if task.last_retry_at and (task.retry_count or 0) > 0:
             backoff = min(5 * (3 ** (task.retry_count - 1)), 120)
-            elapsed = (datetime.now(timezone.utc) - task.last_retry_at).total_seconds()
+            elapsed = (datetime.now(timezone.utc) - ensure_utc(task.last_retry_at)).total_seconds()
             if elapsed < backoff:
                 return True
         return False
@@ -62,18 +63,29 @@ class SubAgentWorker:
             # Process A2A inbox before looking for tasks
             try:
                 from app.services.a2a import get_messages, mark_read
+
                 messages = await get_messages(db, self._agent_id, unread_only=True, limit=3)
                 for msg in messages:
-                    msg_type = msg.get("message_type") if isinstance(msg, dict) else getattr(msg, "message_type", "")
+                    msg_type = (
+                        msg.get("message_type")
+                        if isinstance(msg, dict)
+                        else getattr(msg, "message_type", "")
+                    )
                     if msg_type == "collaboration_request":
-                        metadata = msg.get("metadata", {}) if isinstance(msg, dict) else getattr(msg, "metadata", {})
+                        metadata = (
+                            msg.get("metadata", {})
+                            if isinstance(msg, dict)
+                            else getattr(msg, "metadata", {})
+                        )
                         if isinstance(metadata, str):
                             metadata = json.loads(metadata) if metadata else {}
                         task_id = metadata.get("task_id")
                         if task_id:
                             task_obj = await db.get(Task, task_id)
                             if task_obj:
-                                logger.info(f"SubAgent {self._agent_id} processing A2A for task {task_id}")
+                                logger.info(
+                                    f"SubAgent {self._agent_id} processing A2A for task {task_id}"
+                                )
                     msg_id = msg.get("id") if isinstance(msg, dict) else getattr(msg, "id", "")
                     if msg_id:
                         await mark_read(db, msg_id)
@@ -120,9 +132,7 @@ class SubAgentWorker:
         # Create a temporary orchestrator instance for this agent
         executor = AgentOrchestrator(agent_id=self._agent_id)
 
-        project_result = await db.execute(
-            select(Project).where(Project.id == task.project_id)
-        )
+        project_result = await db.execute(select(Project).where(Project.id == task.project_id))
         project = project_result.scalar_one_or_none()
         if not project:
             logger.warning(f"Project {task.project_id} not found for task {task.id}")
@@ -145,10 +155,10 @@ class SubAgentWorker:
     async def check_collaboration_requests(self) -> list[dict]:
         """Check A2A inbox for collaboration requests."""
         from app.services.a2a import get_messages
+
         async with async_session() as db:
             messages = await get_messages(db, self._agent_id, limit=10, unread_only=True)
             collab_requests = [
-                m for m in messages
-                if m.get("message_type") == "collaboration_request"
+                m for m in messages if m.get("message_type") == "collaboration_request"
             ]
             return collab_requests

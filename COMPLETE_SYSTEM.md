@@ -1,6 +1,6 @@
 # Istara Complete System Architecture & Living Map
 
-Generated from the repository on version `2026.04.04`. This document is meant to be regenerated whenever the implementation changes so LLMs can reason from the current system instead of stale summaries.
+Generated from the repository on version `2026.04.04.2`. This document is meant to be regenerated whenever the implementation changes so LLMs can reason from the current system instead of stale summaries.
 
 ## Purpose
 
@@ -18,7 +18,7 @@ Generated from the repository on version `2026.04.04`. This document is meant to
 
 ## Repository Architecture Snapshot
 
-- FastAPI backend with 36 route modules and 342 detected endpoints.
+- FastAPI backend with 36 route modules and 343 detected endpoints.
 - Next.js frontend with 22 mounted views and 15 Zustand stores.
 - 40 SQLAlchemy models in `backend/app/models`.
 - 6 tracked persona directories and 50 JSON-defined skills.
@@ -45,7 +45,7 @@ Generated from the repository on version `2026.04.04`. This document is meant to
 | `documents.py` | `/` | 10 |
 | `files.py` | `/` | 7 |
 | `findings.py` | `/` | 21 |
-| `interfaces.py` | `/` | 20 |
+| `interfaces.py` | `/` | 21 |
 | `laws.py` | `/laws` | 6 |
 | `llm_servers.py` | `/` | 6 |
 | `loops.py` | `/` | 10 |
@@ -84,7 +84,7 @@ Generated from the repository on version `2026.04.04`. This document is meant to
 - **documents**: `GET /api/documents`, `GET /api/documents/{document_id}`, `POST /api/documents`, `PATCH /api/documents/{document_id}`, `DELETE /api/documents/{document_id}`, `GET /api/documents/{document_id}/content`, `GET /api/documents/search/full`, `GET /api/documents/tags/{project_id}`, `POST /api/documents/sync/{project_id}`, `GET /api/documents/stats/{project_id}`
 - **files**: `POST /api/files/upload/{project_id}`, `GET /api/files/{project_id}`, `POST /api/files/{project_id}/reprocess`, `GET /api/files/{project_id}/stats`, `GET /api/files/{project_id}/content/{filename}`, `POST /api/files/{project_id}/scan`, `GET /api/files/{project_id}/serve/{filename}`
 - **findings**: `GET /api/findings/nuggets`, `POST /api/findings/nuggets`, `DELETE /api/findings/nuggets/{nugget_id}`, `GET /api/findings/facts`, `POST /api/findings/facts`, `DELETE /api/findings/facts/{fact_id}`, `GET /api/findings/insights`, `POST /api/findings/insights`, `DELETE /api/findings/insights/{insight_id}`, `GET /api/findings/recommendations`, `POST /api/findings/recommendations`, `DELETE /api/findings/recommendations/{rec_id}`, `GET /api/findings/search/global`, `GET /api/findings/search/{project_id}`, `GET /api/findings/{finding_type}/{finding_id}/evidence-chain`, `PATCH /api/findings/{finding_type}/{finding_id}/link`, `GET /api/findings/summary/{project_id}`, `GET /api/findings/design-decisions`, `POST /api/findings/design-decisions`, `DELETE /api/findings/design-decisions/{dd_id}`, `GET /api/findings/{finding_type}/{finding_id}/evidence-chain-extended`
-- **interfaces**: `POST /api/interfaces/design-chat`, `GET /api/interfaces/screens`, `GET /api/interfaces/screens/{screen_id}`, `POST /api/interfaces/screens/generate`, `POST /api/interfaces/screens/edit`, `POST /api/interfaces/screens/variant`, `DELETE /api/interfaces/screens/{screen_id}`, `POST /api/interfaces/figma/import`, `POST /api/interfaces/figma/export`, `GET /api/interfaces/figma/design-system/{file_key}`, `GET /api/interfaces/handoff/briefs`, `POST /api/interfaces/handoff/brief`, `POST /api/interfaces/handoff/dev-spec`, `GET /api/interfaces/status`, `POST /api/interfaces/configure/stitch`, `POST /api/interfaces/configure/figma`, `POST /api/interfaces/mock/generate`, `POST /api/interfaces/mock/edit`, `POST /api/interfaces/mock/variants`, `POST /api/interfaces/mock/figma-import`
+- **interfaces**: `GET /api/interfaces/design-chat/{project_id}/history`, `POST /api/interfaces/design-chat`, `GET /api/interfaces/screens`, `GET /api/interfaces/screens/{screen_id}`, `POST /api/interfaces/screens/generate`, `POST /api/interfaces/screens/edit`, `POST /api/interfaces/screens/variant`, `DELETE /api/interfaces/screens/{screen_id}`, `POST /api/interfaces/figma/import`, `POST /api/interfaces/figma/export`, `GET /api/interfaces/figma/design-system/{file_key}`, `GET /api/interfaces/handoff/briefs`, `POST /api/interfaces/handoff/brief`, `POST /api/interfaces/handoff/dev-spec`, `GET /api/interfaces/status`, `POST /api/interfaces/configure/stitch`, `POST /api/interfaces/configure/figma`, `POST /api/interfaces/mock/generate`, `POST /api/interfaces/mock/edit`, `POST /api/interfaces/mock/variants`, `POST /api/interfaces/mock/figma-import`
 - **laws**: `GET /api/laws`, `GET /api/laws/by-heuristic/{heuristic_id}`, `GET /api/laws/match`, `GET /api/laws/compliance/{project_id}`, `GET /api/laws/compliance/{project_id}/radar`, `GET /api/laws/{law_id}`
 - **llm_servers**: `GET /api/llm-servers`, `POST /api/llm-servers`, `POST /api/llm-servers/{server_id}/health-check`, `PATCH /api/llm-servers/{server_id}`, `DELETE /api/llm-servers/{server_id}`, `POST /api/llm-servers/discover`
 - **loops**: `GET /api/loops/overview`, `GET /api/loops/agents`, `GET /api/loops/agents/{agent_id}/config`, `PATCH /api/loops/agents/{agent_id}/config`, `POST /api/loops/agents/{agent_id}/pause`, `POST /api/loops/agents/{agent_id}/resume`, `GET /api/loops/executions`, `GET /api/loops/executions/stats`, `GET /api/loops/health`, `POST /api/loops/custom`

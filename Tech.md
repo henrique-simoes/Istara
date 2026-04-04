@@ -1812,7 +1812,9 @@ Switching between SQLite (local mode) and PostgreSQL (team mode) no longer risks
 
 The Interfaces menu creates a bridge between UX Research and Product Design within Istara. It provides:
 
-- **Design Chat**: An AI design assistant (Design Lead agent) with automatic research context injection via RAG. Uses the same SSE streaming and ReAct tool loop as the main Chat, with design-specific tools (generate_screen, edit_screen, create_variant, search_findings_for_design, create_design_brief, import_from_figma, list_screens).
+- **Design Chat**: An AI design assistant (Design Lead agent) with automatic research context injection via RAG. Uses the same SSE streaming and ReAct tool loop as the main Chat, with design-specific tools (generate_screen, edit_screen, create_variant, search_findings_for_design, create_design_brief, import_from_figma, list_screens). Messages are scoped to a design-specific `ChatSession` (`session_type="design"`) so they never mix with regular chat messages.
+
+- **Session scoping**: Both Chat and Design Chat now create/find their own sessions automatically when `session_id` is not provided. Chat uses the default session; Design Chat creates/reuses a `session_type="design"` session. This prevents cross-contamination where chat messages appeared in the Design Chat history.
 
 - **Screen Generation**: Text-to-UI generation via Google Stitch SDK integration. Supports device types (Mobile/Desktop/Tablet/Agnostic) and AI model selection. Screens can be seeded from research findings for evidence-grounded design.
 

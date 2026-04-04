@@ -158,11 +158,52 @@ use the design tools below. For general design conversation and critique, respon
 """
 
 
+@router.get("/interfaces/design-chat/{project_id}/history")
+async def design_chat_history(project_id: str, db: AsyncSession = Depends(get_db)):
+    """Get message history for the design chat session.
+
+    Finds the design-scoped session for this project and returns its messages.
+    """
+    session_result = await db.execute(
+        select(ChatSession)
+        .where(
+            ChatSession.project_id == project_id,
+            ChatSession.session_type == "design",
+        )
+        .order_by(ChatSession.created_at.desc())
+    )
+    session = session_result.scalar_one_or_none()
+    if not session:
+        return {"messages": [], "session_id": None}
+
+    msg_result = await db.execute(
+        select(Message)
+        .where(Message.project_id == project_id, Message.session_id == session.id)
+        .order_by(Message.created_at.asc())
+        .limit(50)
+    )
+    messages = [
+        {
+            "id": m.id,
+            "role": m.role,
+            "content": m.content,
+            "created_at": m.created_at.isoformat() if m.created_at else None,
+        }
+        for m in msg_result.scalars().all()
+        if m.role in ("user", "assistant")
+    ]
+    return {"messages": messages, "session_id": session.id}
+
+
 @router.post("/interfaces/design-chat")
 async def design_chat(request: DesignChatRequest, db: AsyncSession = Depends(get_db)):
     """Send a message to the Design Lead and get a streaming response with design tools.
 
     The response is streamed as Server-Sent Events (SSE) with a ReAct tool loop.
+
+    Session scoping: If no session_id is provided, a design-specific session is
+    created (or reused) for this project so that design chat messages are
+    isolated from regular chat messages.
     """
     # Verify project exists
     result = await db.execute(select(Project).where(Project.id == request.project_id))
@@ -170,11 +211,40 @@ async def design_chat(request: DesignChatRequest, db: AsyncSession = Depends(get
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
-    # Save user message
+    # Resolve or create a design-scoped session
+    resolved_session_id = request.session_id
+    if not resolved_session_id:
+        # Find existing design session for this project
+        existing = await db.execute(
+            select(ChatSession)
+            .where(
+                ChatSession.project_id == request.project_id,
+                ChatSession.session_type == "design",
+            )
+            .order_by(ChatSession.created_at.desc())
+        )
+        existing_session = existing.scalar_one_or_none()
+        if existing_session:
+            resolved_session_id = existing_session.id
+        else:
+            # Create a new design session
+            new_session = ChatSession(
+                id=str(uuid.uuid4()),
+                project_id=request.project_id,
+                title="Design Chat",
+                session_type="design",
+                agent_id="design-lead",
+            )
+            db.add(new_session)
+            await db.commit()
+            await db.refresh(new_session)
+            resolved_session_id = new_session.id
+
+    # Save user message (scoped to design session)
     user_msg = Message(
         id=str(uuid.uuid4()),
         project_id=request.project_id,
-        session_id=request.session_id,
+        session_id=resolved_session_id,
         role="user",
         content=request.message,
     )
@@ -196,35 +266,30 @@ async def design_chat(request: DesignChatRequest, db: AsyncSession = Depends(get
     llm_model: str | None = None
     session_agent_id: str | None = "design-lead"
 
-    if request.session_id:
-        sess_result = await db.execute(
-            select(ChatSession).where(ChatSession.id == request.session_id)
-        )
-        session = sess_result.scalar_one_or_none()
-        if session:
-            preset_key = session.inference_preset.value if session.inference_preset else "medium"
-            preset = INFERENCE_PRESETS.get(preset_key, INFERENCE_PRESETS["medium"])
+    sess_result = await db.execute(select(ChatSession).where(ChatSession.id == resolved_session_id))
+    session = sess_result.scalar_one_or_none()
+    if session:
+        preset_key = session.inference_preset.value if session.inference_preset else "medium"
+        preset = INFERENCE_PRESETS.get(preset_key, INFERENCE_PRESETS["medium"])
 
-            if preset_key == "custom":
-                llm_temperature = (
-                    session.custom_temperature if session.custom_temperature is not None else 0.7
-                )
-                llm_max_tokens = session.custom_max_tokens
-            else:
-                llm_temperature = (
-                    preset["temperature"] if preset["temperature"] is not None else 0.7
-                )
-                llm_max_tokens = preset["max_tokens"]
+        if preset_key == "custom":
+            llm_temperature = (
+                session.custom_temperature if session.custom_temperature is not None else 0.7
+            )
+            llm_max_tokens = session.custom_max_tokens
+        else:
+            llm_temperature = preset["temperature"] if preset["temperature"] is not None else 0.7
+            llm_max_tokens = preset["max_tokens"]
 
-            if session.model_override:
-                llm_model = session.model_override
+        if session.model_override:
+            llm_model = session.model_override
 
-            session_agent_id = session.agent_id or "design-lead"
+        session_agent_id = session.agent_id or "design-lead"
 
-            # Update session stats
-            session.message_count = (session.message_count or 0) + 1
-            session.last_message_at = user_msg.created_at
-            await db.commit()
+        # Update session stats
+        session.message_count = (session.message_count or 0) + 1
+        session.last_message_at = user_msg.created_at
+        await db.commit()
 
     # Load Design Lead identity via Prompt RAG
     agent_identity_prompt = ""
@@ -301,11 +366,11 @@ async def design_chat(request: DesignChatRequest, db: AsyncSession = Depends(get
             )
             system_prompt += files_context
 
-    # Build message history
+    # Build message history (scoped to design session)
     messages: list[dict[str, str]] = []
-    history_query = select(Message).where(Message.project_id == request.project_id)
-    if request.session_id:
-        history_query = history_query.where(Message.session_id == request.session_id)
+    history_query = select(Message).where(
+        Message.project_id == request.project_id, Message.session_id == resolved_session_id
+    )
     history_result = await db.execute(history_query.order_by(Message.created_at.desc()).limit(20))
     history = list(reversed(history_result.scalars().all()))
 
@@ -469,8 +534,16 @@ async def design_chat(request: DesignChatRequest, db: AsyncSession = Depends(get
             error_data = json.dumps({"type": "error", "message": str(e)})
             yield f"data: {error_data}\n\n"
 
+    async def safe_generate():
+        try:
+            async for event in generate():
+                yield event
+        except Exception as e:
+            error_data = json.dumps({"type": "error", "message": str(e)})
+            yield f"data: {error_data}\n\n"
+
     return StreamingResponse(
-        generate(),
+        safe_generate(),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",

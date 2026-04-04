@@ -50,6 +50,12 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   },
 
   sendMessage: async (projectId, content, sessionId) => {
+    // Cancel any existing stream first
+    const existing = get().abortController;
+    if (existing) {
+      existing.abort();
+    }
+
     // Add user message immediately
     const userMsg: ChatMessage = {
       id: `temp-${Date.now()}`,
@@ -57,6 +63,9 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       content,
       created_at: new Date().toISOString(),
     };
+
+    const controller = new AbortController();
+    set({ abortController: controller });
 
     set((s) => ({
       messages: [...s.messages, userMsg],
@@ -70,7 +79,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       let messageId = "";
       let sources: any[] = [];
 
-      for await (const event of chatApi.send(projectId, content, sessionId)) {
+      for await (const event of chatApi.send(projectId, content, sessionId, controller.signal)) {
         if (event.type === "chunk") {
           fullContent += event.content;
           set({ streamingContent: fullContent });
@@ -78,7 +87,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
           messageId = event.message_id;
           sources = event.sources || [];
         } else if (event.type === "error") {
-          set({ error: event.message, streaming: false });
+          set({ error: event.message, streaming: false, abortController: null });
           return;
         }
       }
@@ -105,9 +114,14 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         messages: [...s.messages, assistantMsg],
         streaming: false,
         streamingContent: "",
+        abortController: null,
       }));
     } catch (e: any) {
-      set({ error: e.message, streaming: false, streamingContent: "" });
+      if (e.name === "AbortError") {
+        set({ streaming: false, streamingContent: "", abortController: null });
+        return;
+      }
+      set({ error: e.message, streaming: false, streamingContent: "", abortController: null });
     }
   },
 

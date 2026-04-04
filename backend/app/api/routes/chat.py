@@ -598,7 +598,8 @@ async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db)):
         path: inject ``build_tools_prompt()`` into the system message and
         parse tool calls out of the LLM text via regex.
 
-        Uses its own DB session to avoid leak when client disconnects.
+        All errors are emitted as SSE ``error`` events so the frontend
+        can display them gracefully instead of getting a "Failed to fetch".
         """
         nonlocal use_native_tools
 
@@ -729,8 +730,17 @@ async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db)):
             error_data = json.dumps({"type": "error", "message": str(e)})
             yield f"data: {error_data}\n\n"
 
+    async def safe_generate():
+        """Wrapper that ensures all errors are emitted as SSE events."""
+        try:
+            async for event in generate():
+                yield event
+        except Exception as e:
+            error_data = json.dumps({"type": "error", "message": str(e)})
+            yield f"data: {error_data}\n\n"
+
     return StreamingResponse(
-        generate(),
+        safe_generate(),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",

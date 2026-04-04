@@ -23,10 +23,19 @@ function DesignAvatar() {
 }
 
 export default function DesignChatTab() {
-  const { designMessages, designStreaming, designStreamingContent, error, sendDesignMessage } = useInterfacesStore();
+  const { designMessages, designStreaming, designStreamingContent, error, sendDesignMessage, fetchDesignHistory } = useInterfacesStore();
   const { activeProjectId } = useProjectStore();
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const hasFetchedRef = useRef(false);
+
+  // Fetch design chat history on mount
+  useEffect(() => {
+    if (activeProjectId && !hasFetchedRef.current) {
+      hasFetchedRef.current = true;
+      fetchDesignHistory(activeProjectId);
+    }
+  }, [activeProjectId, fetchDesignHistory]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
