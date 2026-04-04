@@ -311,32 +311,84 @@ When Prompt RAG alone isn't enough, a **4-phase heuristic compression pipeline**
 
 **Performance:** ~5ms for a 10K-character prompt on typical hardware.
 
-### Strategy 3: Context Window Guard
+### Strategy 3: Dynamic Context Window Management
 
-A **ContextWindowGuard** (`core/token_counter.py`) prevents prompt overflow on every request:
+Istara now detects the loaded model's context window at startup and allocates token budgets dynamically. The hardcoded 8192 default is replaced by a **BudgetCoordinator** that scales budgets based on actual model capabilities.
 
-1. Estimates total tokens: system prompt + message history + reserved reply buffer (512 tokens)
-2. If over budget, trims oldest messages first
-3. Inserts a `[History trimmed for context budget]` note so the model knows context was lost
-4. Works alongside DAG summarization for lossless recovery of trimmed content
+**Detection chain:**
+1. `main.py` startup probes LM Studio/Ollama for the loaded model name
+2. `model_capabilities.py` calls `/v1/models` (LM Studio) or `/api/show` (Ollama) to read `context_length`
+3. `compute_registry.check_all_health()` syncs detected capabilities to `settings.max_context_tokens`
+4. `config.update_context_window()` updates the global budget if the detected value differs >2x from current
 
-### How They Work Together
+**Budget allocation (adaptive, with caps to prevent signal dilution):**
+
+| Component | 8K Model | 80K Model | Rationale |
+|-----------|----------|-----------|-----------|
+| Identity (Prompt RAG) | 2,457 (30%) | 3,000 (~4%) | Caps at 3K — more persona detail isn't better beyond a point |
+| RAG context | 409 (5%) | 4,000 (5%) | More retrieved chunks, compressed question-aware |
+| Reply reserve | 512 | 4,000 | Allows longer outputs on big windows |
+| Buffer | 0 | 4,000 | Overflow protection |
+| History | 4,369 | 65,000+ | The lion's share — what users experience as "remembers more" |
+
+Budget philosophy from industry research:
+- **Liu et al. "Lost in the Middle" (2023)** — LLM accuracy drops 30% when relevant info is in the middle of long contexts. Bigger windows don't solve this; they make it worse. Chroma tested 18 frontier models and found every model's reliability declines as input length increases.
+- **MyEngineeringPath (2026)** — "The skill is not filling the context window. The skill is spending each token where it matters most."
+- **Quadratic attention cost** — Doubling context from 64K to 128K quadruples attention computation. More context = more noise = worse attention.
+
+**Surplus-aware compression:** The system assesses available compute power (RAM, CPU, remote relay nodes) via the existing `ResourceGovernor` and `ComputePool` infrastructure to choose compression strategies:
+
+| Surplus Level | RAG Compression | History Compression | Identity |
+|--------------|-----------------|---------------------|----------|
+| **High** (2+ remote nodes OR 12GB+ RAM) | Full question-aware (LLM scoring) | LLM summarization first | Full Prompt RAG + LLMLingua |
+| **Moderate** (normal load) | Heuristic question-aware | Heuristic first, LLM fallback | Prompt RAG + LLMLingua |
+| **Low** (1 agent, no remotes) | Heuristic only | Heuristic only | Prompt RAG only |
+| **Constrained** (system under pressure) | None (raw, trimmed) | Hard trim only | Minimal anchor |
+
+**Files:** `backend/app/core/budget_coordinator.py`, `backend/app/core/token_counter.py`, `backend/app/core/context_summarizer.py`, `backend/app/core/prompt_compressor.py`, `backend/app/core/compute_registry.py`, `backend/app/config.py`, `backend/app/api/routes/chat.py`, `backend/app/api/routes/interfaces.py`
+
+### Strategy 4: Context Window Guard (Updated)
+
+A **ContextWindowGuard** (`core/token_counter.py`) prevents prompt overflow on every request, now budget-aware:
+
+1. Estimates total tokens: system prompt + message history + reserved reply buffer
+2. Uses `budget.history_tokens` instead of raw `max_tokens` for per-component enforcement
+3. If over budget, trims oldest messages first
+4. Inserts a `[History trimmed for context budget]` note so the model knows context was lost
+5. Works alongside DAG summarization for lossless recovery of trimmed content
+
+### How They Work Together (Updated Pipeline)
 
 ```
 User sends message
   │
-  ├─ Prompt RAG selects relevant persona sections (30-50% savings)
+  ├─ BudgetCoordinator allocates tokens based on detected context window
   │
-  ├─ Context Hierarchy composes 6-level system prompt
+  ├─ Prompt RAG selects relevant persona sections (within identity budget)
   │
   ├─ RAG retrieves relevant document chunks
+  │   └─ compress_rag_chunks() applies question-aware compression
+  │      (LongLLMLingua pattern: reorder most relevant first,
+  │       differentiated compression by rank)
   │
-  ├─ If over budget → LLMLingua compressor reduces further (15-30%)
+  ├─ Context Summarizer applies cost-escalating pipeline:
+  │   1. DAG-based lossless compression (if enabled)
+  │   2. LLMLingua heuristic compression (~5ms, zero LLM cost)
+  │   3. LLM summarization (only if heuristic isn't enough)
+  │   4. Hard trim (last resort)
   │
-  ├─ Context Window Guard trims history if still over
+  ├─ Context Window Guard trims history if still over budget
   │
-  └─ Final prompt sent to local model
+  └─ Final prompt sent to model
 ```
+
+**Academic & Industry References:**
+- **LongLLMLingua** (Microsoft, ACL 2024) — Question-aware fine-grained prompt compression via contrastive perplexity achieves +21.4% accuracy with 4x fewer tokens on NaturalQuestions. LlamaIndex integration: re-rank + compress + subsequence recovery pattern.
+- **Morph FlashCompact** (2026) — Prevention beats compression. Verbatim compaction at 3,300+ tok/s, 50-70% reduction, 98% accuracy, zero hallucination risk. 3-4x longer context life vs threshold-based compression.
+- **Factory.ai 36K message eval** (2026) — Structured summarization scored 3.70/5 but causes re-reading loops (lost file paths, line numbers). Verbatim compaction preserves exact references.
+- **JetBrains SWE-bench** (2026) — Observation masking matched LLM summarization quality at $0 cost. Once the model has acted on information, it doesn't need the raw data in subsequent turns.
+- **OpenAI Codex team** (2026) — Inline compression as default primitive, not emergency fallback. Compress tool outputs before they enter context.
+- **ACON Framework** (Microsoft Research, 2025) — Adaptive context control for tool observations. 26-54% token reduction with 95%+ accuracy across AppWorld, OfficeBench, Multi-obj QA.
 
 ---
 
@@ -1411,10 +1463,13 @@ Istara-main/
 │   │   │   ├── self_evolution.py      # Learning → persona promotion
 │   │   │   ├── prompt_compressor.py   # LLMLingua-style heuristic
 │   │   │   ├── prompt_rag.py          # Query-aware prompt composition
+│   │   │   ├── prompt_compressor.py   # LLMLingua-inspired heuristic compression
 │   │   │   ├── context_hierarchy.py   # 6-level context system
 │   │   │   ├── context_dag.py         # DAG-based lossless summarization
-│   │   │   ├── context_summarizer.py  # LLM-powered message compression
-│   │   │   ├── token_counter.py       # Context window guard
+│   │   │   ├── context_summarizer.py  # Cost-escalating compression pipeline
+│   │   │   ├── budget_coordinator.py  # Dynamic token budget allocation
+│   │   │   ├── token_counter.py       # Budget-aware context window guard
+│   │   │   ├── model_capabilities.py  # Model context window detection
 │   │   │   ├── rag.py                 # Vector store + hybrid retrieval
 │   │   │   ├── embeddings.py          # Local embedding with caching
 │   │   │   ├── self_check.py          # Hallucination detection

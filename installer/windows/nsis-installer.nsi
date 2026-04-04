@@ -14,7 +14,7 @@
 
 ; ── Metadata ──────────────────────────────────────────────────────────
 Name "Istara"
-!define VERSION "2026.04.04"
+!define VERSION "2026.04.04.2"
 OutFile "Istara-Setup-${VERSION}.exe"
 InstallDir "$PROGRAMFILES\Istara"
 RequestExecutionLevel admin
