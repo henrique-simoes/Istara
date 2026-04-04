@@ -246,6 +246,40 @@ export async function run(ctx) {
   }
 
   // ──────────────────────────────────────────────────────────────────
+  // 14b. Sync documents from linked external folder (watch_folder_path)
+  // ──────────────────────────────────────────────────────────────────
+  let linkedFolderPath;
+  try {
+    const fs = await import("fs");
+    const os = await import("os");
+    const path = await import("path");
+
+    linkedFolderPath = path.join(os.tmpdir(), `istara-test-${Date.now()}`);
+    fs.mkdirSync(linkedFolderPath, { recursive: true });
+    fs.writeFileSync(path.join(linkedFolderPath, "external-test.txt"), "External folder test content");
+
+    const linkRes = await api.post(`/api/projects/${projectId}/link-folder`, { folder_path: linkedFolderPath });
+    check(14, "Link external folder succeeds", linkRes.status === "linked", `path=${linkRes.watch_folder_path}`);
+
+    const syncRes = await api.post(`/api/documents/sync/${projectId}`, {});
+    check(14, "Sync finds files in linked external folder",
+      "synced" in syncRes && syncRes.synced >= 1,
+      `synced=${syncRes.synced}, total=${syncRes.total}`);
+
+    // Cleanup: unlink folder
+    await api.post(`/api/projects/${projectId}/unlink-folder`, {});
+    fs.rmSync(linkedFolderPath, { recursive: true, force: true });
+  } catch (e) {
+    check(14, "Sync finds files in linked external folder", false, e.message);
+    if (linkedFolderPath) {
+      try {
+        const fs = await import("fs");
+        fs.rmSync(linkedFolderPath, { recursive: true, force: true });
+      } catch (_) {}
+    }
+  }
+
+  // ──────────────────────────────────────────────────────────────────
   // 15. Filter by source type
   // ──────────────────────────────────────────────────────────────────
   try {

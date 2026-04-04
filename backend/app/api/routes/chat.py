@@ -49,6 +49,13 @@ from app.skills.system_actions import (
     OPENAI_TOOLS,
 )
 
+
+def _resolve_project_folder(project, project_id: str) -> Path:
+    if project and getattr(project, "watch_folder_path", None):
+        return Path(project.watch_folder_path)
+    return Path(settings.upload_dir) / project_id
+
+
 _chat_log = logging.getLogger(__name__)
 
 router = APIRouter()
@@ -139,7 +146,9 @@ async def _generate_native_tools(
                     real_tool_calls.append(tc)
                 else:
                     # Hallucinated tool — extract text from arguments as response
-                    _chat_log.info("Hallucinated tool call '%s' — extracting text from arguments", fn_name)
+                    _chat_log.info(
+                        "Hallucinated tool call '%s' — extracting text from arguments", fn_name
+                    )
                     try:
                         args = json.loads(tc.get("function", {}).get("arguments", "{}"))
                         # Common patterns: {"text": "..."}, {"content": "..."}, {"response": "..."}
@@ -184,20 +193,26 @@ async def _generate_native_tools(
 
                 _chat_log.info(
                     "Native tool call [%d]: %s(%s)",
-                    iteration, tool_name, json.dumps(tool_params)[:200],
+                    iteration,
+                    tool_name,
+                    json.dumps(tool_params)[:200],
                 )
 
                 # Notify client about tool execution
-                tool_event = json.dumps({
-                    "type": "tool_call",
-                    "tool": tool_name,
-                    "params": tool_params,
-                })
+                tool_event = json.dumps(
+                    {
+                        "type": "tool_call",
+                        "tool": tool_name,
+                        "params": tool_params,
+                    }
+                )
                 yield f"data: {tool_event}\n\n"
 
                 # Execute the tool
                 result = await execute_tool(
-                    tool_name, tool_params, request.project_id,
+                    tool_name,
+                    tool_params,
+                    request.project_id,
                     agent_id=session_agent_id or "istara-main",
                 )
 
@@ -211,11 +226,13 @@ async def _generate_native_tools(
                 yield f"data: {result_event}\n\n"
 
                 # Append role:"tool" message for multi-turn tool use
-                conversation.append({
-                    "role": "tool",
-                    "tool_call_id": tc_id,
-                    "content": str(result_text),
-                })
+                conversation.append(
+                    {
+                        "role": "tool",
+                        "tool_call_id": tc_id,
+                        "content": str(result_text),
+                    }
+                )
 
             # Loop back for the model's follow-up
             continue
@@ -262,7 +279,9 @@ async def _generate_text_fallback(
 
             _chat_log.info(
                 "Text fallback tool call [%d]: %s(%s)",
-                iteration, tool_name, json.dumps(tool_params)[:200],
+                iteration,
+                tool_name,
+                json.dumps(tool_params)[:200],
             )
 
             if text_before:
@@ -270,15 +289,19 @@ async def _generate_text_fallback(
                 event_data = json.dumps({"type": "chunk", "content": text_before + "\n\n"})
                 yield f"data: {event_data}\n\n"
 
-            tool_event = json.dumps({
-                "type": "tool_call",
-                "tool": tool_name,
-                "params": tool_params,
-            })
+            tool_event = json.dumps(
+                {
+                    "type": "tool_call",
+                    "tool": tool_name,
+                    "params": tool_params,
+                }
+            )
             yield f"data: {tool_event}\n\n"
 
             result = await execute_tool(
-                tool_name, tool_params, request.project_id,
+                tool_name,
+                tool_params,
+                request.project_id,
                 agent_id=session_agent_id or "istara-main",
             )
 
@@ -291,19 +314,19 @@ async def _generate_text_fallback(
             yield f"data: {result_event}\n\n"
 
             assistant_turn = (
-                text_before + f"\n\n[Tool: {tool_name}]"
-                if text_before
-                else f"[Tool: {tool_name}]"
+                text_before + f"\n\n[Tool: {tool_name}]" if text_before else f"[Tool: {tool_name}]"
             )
             conversation.append({"role": "assistant", "content": assistant_turn})
-            conversation.append({
-                "role": "user",
-                "content": (
-                    f"[Tool result for {tool_name}]:\n{result_text}\n\n"
-                    "Now respond to the user based on this result. "
-                    "Do not call another tool unless necessary."
-                ),
-            })
+            conversation.append(
+                {
+                    "role": "user",
+                    "content": (
+                        f"[Tool result for {tool_name}]:\n{result_text}\n\n"
+                        "Now respond to the user based on this result. "
+                        "Do not call another tool unless necessary."
+                    ),
+                }
+            )
             continue
         else:
             all_text_parts.append(response_text)
@@ -380,10 +403,14 @@ async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db)):
             preset = INFERENCE_PRESETS.get(preset_key, INFERENCE_PRESETS["medium"])
 
             if preset_key == "custom":
-                llm_temperature = session.custom_temperature if session.custom_temperature is not None else 0.7
+                llm_temperature = (
+                    session.custom_temperature if session.custom_temperature is not None else 0.7
+                )
                 llm_max_tokens = session.custom_max_tokens
             else:
-                llm_temperature = preset["temperature"] if preset["temperature"] is not None else 0.7
+                llm_temperature = (
+                    preset["temperature"] if preset["temperature"] is not None else 0.7
+                )
                 llm_max_tokens = preset["max_tokens"]
 
             if session.model_override:
@@ -454,11 +481,10 @@ async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db)):
     use_native_tools = True  # Will be flipped to False on API rejection
 
     # Inject project folder file awareness
-    upload_dir = Path(settings.upload_dir) / request.project_id
-    if upload_dir.exists():
+    folder = _resolve_project_folder(project, request.project_id)
+    if folder.exists():
         project_files = [
-            f.name for f in upload_dir.iterdir()
-            if f.is_file() and not f.name.startswith(".")
+            f.name for f in folder.iterdir() if f.is_file() and not f.name.startswith(".")
         ]
         if project_files:
             files_context = (
@@ -495,6 +521,7 @@ async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db)):
         )
         if ctx_summary:
             import logging as _log
+
             _log.getLogger(__name__).info(
                 "Context summarized: %d msgs, %d -> %d tokens",
                 ctx_summary.messages_summarized,
@@ -505,9 +532,7 @@ async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db)):
         pass  # Fall through to hard trim on summarization failure
 
     # --- Context window guard: trim history if it would overflow ----------
-    messages, trim_summary = context_guard.summarize_if_needed(
-        system_prompt, messages
-    )
+    messages, trim_summary = context_guard.summarize_if_needed(system_prompt, messages)
     if trim_summary:
         # Prepend the trim note so the model knows history was truncated
         messages.insert(0, {"role": "system", "content": trim_summary})
@@ -545,21 +570,30 @@ async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db)):
 
         conversation = list(messages)  # Local copy for the tool loop
         all_text_parts: list[str] = []  # Accumulate text for the full response
-        tool_results: list[dict] = []   # Track executed tools for the response
+        tool_results: list[dict] = []  # Track executed tools for the response
 
         try:
             # ── Attempt native tool calling ──────────────────────────
             if use_native_tools:
                 try:
                     async for event in _generate_native_tools(
-                        conversation, all_text_parts, tool_results, request,
-                        session_agent_id, llm_model, llm_temperature, llm_max_tokens,
+                        conversation,
+                        all_text_parts,
+                        tool_results,
+                        request,
+                        session_agent_id,
+                        llm_model,
+                        llm_temperature,
+                        llm_max_tokens,
                     ):
                         yield event
                 except Exception as native_err:
                     # If the API rejected the tools param (400/422), fall back
                     err_str = str(native_err).lower()
-                    if any(k in err_str for k in ("tools", "400", "422", "unprocessable", "not supported")):
+                    if any(
+                        k in err_str
+                        for k in ("tools", "400", "422", "unprocessable", "not supported")
+                    ):
                         _chat_log.warning(
                             "Native tool calling rejected, falling back to text-based: %s",
                             native_err,
@@ -593,8 +627,14 @@ async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db)):
                     conversation.insert(0, {"role": "system", "content": tools_prompt})
 
                 async for event in _generate_text_fallback(
-                    conversation, all_text_parts, tool_results, request,
-                    session_agent_id, llm_model, llm_temperature, llm_max_tokens,
+                    conversation,
+                    all_text_parts,
+                    tool_results,
+                    request,
+                    session_agent_id,
+                    llm_model,
+                    llm_temperature,
+                    llm_max_tokens,
                 ):
                     yield event
 
@@ -616,6 +656,7 @@ async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db)):
                     try:
                         from app.core.context_dag import context_dag
                         import asyncio as _asyncio
+
                         _asyncio.create_task(context_dag.compact_if_needed(request.session_id))
                     except Exception:
                         pass
@@ -624,12 +665,14 @@ async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db)):
                     {"source": r.source, "score": r.score, "page": r.page}
                     for r in rag_context.retrieved
                 ]
-                done_data = json.dumps({
-                    "type": "done",
-                    "message_id": assistant_msg.id,
-                    "sources": sources,
-                    "tools_used": [t["tool"] for t in tool_results] if tool_results else [],
-                })
+                done_data = json.dumps(
+                    {
+                        "type": "done",
+                        "message_id": assistant_msg.id,
+                        "sources": sources,
+                        "tools_used": [t["tool"] for t in tool_results] if tool_results else [],
+                    }
+                )
                 yield f"data: {done_data}\n\n"
 
         except GeneratorExit:

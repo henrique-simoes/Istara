@@ -34,6 +34,17 @@ from app.models.agent import Agent
 logger = logging.getLogger(__name__)
 
 
+def _resolve_project_folder(project, project_id: str) -> Path:
+    """Resolve the primary folder to scan for project files.
+
+    Returns watch_folder_path if the project has one set, otherwise falls
+    back to the internal uploads directory.
+    """
+    if project and getattr(project, "watch_folder_path", None):
+        return Path(project.watch_folder_path)
+    return Path(settings.upload_dir) / project_id
+
+
 # ── OpenAI-Compatible Tool Definitions ───────────────────────────
 # These are passed via the `tools` parameter for native function calling.
 
@@ -46,14 +57,41 @@ OPENAI_TOOLS: list[dict] = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "title": {"type": "string", "description": "Clear task title describing what to do"},
-                    "description": {"type": "string", "description": "Detailed description of the task"},
-                    "skill_name": {"type": "string", "description": "UXR skill to use (e.g., 'user-interviews', 'competitive-analysis'). Leave empty for auto-detect."},
-                    "priority": {"type": "string", "enum": ["critical", "high", "medium", "low"], "description": "Task priority (default: medium)"},
-                    "instructions": {"type": "string", "description": "Specific instructions for the agent executing this task"},
-                    "input_document_ids": {"type": "array", "items": {"type": "string"}, "description": "List of document IDs to attach as inputs"},
-                    "urls": {"type": "array", "items": {"type": "string"}, "description": "List of URLs for the agent to fetch and analyze"},
-                    "user_context": {"type": "string", "description": "Additional context or constraints"},
+                    "title": {
+                        "type": "string",
+                        "description": "Clear task title describing what to do",
+                    },
+                    "description": {
+                        "type": "string",
+                        "description": "Detailed description of the task",
+                    },
+                    "skill_name": {
+                        "type": "string",
+                        "description": "UXR skill to use (e.g., 'user-interviews', 'competitive-analysis'). Leave empty for auto-detect.",
+                    },
+                    "priority": {
+                        "type": "string",
+                        "enum": ["critical", "high", "medium", "low"],
+                        "description": "Task priority (default: medium)",
+                    },
+                    "instructions": {
+                        "type": "string",
+                        "description": "Specific instructions for the agent executing this task",
+                    },
+                    "input_document_ids": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "List of document IDs to attach as inputs",
+                    },
+                    "urls": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "List of URLs for the agent to fetch and analyze",
+                    },
+                    "user_context": {
+                        "type": "string",
+                        "description": "Additional context or constraints",
+                    },
                 },
                 "required": ["title"],
             },
@@ -67,10 +105,27 @@ OPENAI_TOOLS: list[dict] = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "query": {"type": "string", "description": "Search query (matches title, description, content, tags, file name)"},
-                    "phase": {"type": "string", "enum": ["discover", "define", "develop", "deliver"], "description": "Filter by Double Diamond phase"},
+                    "query": {
+                        "type": "string",
+                        "description": "Search query (matches title, description, content, tags, file name)",
+                    },
+                    "phase": {
+                        "type": "string",
+                        "enum": ["discover", "define", "develop", "deliver"],
+                        "description": "Filter by Double Diamond phase",
+                    },
                     "tag": {"type": "string", "description": "Filter by tag"},
-                    "source": {"type": "string", "enum": ["user_upload", "agent_output", "task_output", "project_file", "external"], "description": "Filter by source"},
+                    "source": {
+                        "type": "string",
+                        "enum": [
+                            "user_upload",
+                            "agent_output",
+                            "task_output",
+                            "project_file",
+                            "external",
+                        ],
+                        "description": "Filter by source",
+                    },
                 },
                 "required": ["query"],
             },
@@ -84,7 +139,11 @@ OPENAI_TOOLS: list[dict] = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "status": {"type": "string", "enum": ["backlog", "in_progress", "in_review", "done"], "description": "Filter by status"},
+                    "status": {
+                        "type": "string",
+                        "enum": ["backlog", "in_progress", "in_review", "done"],
+                        "description": "Filter by status",
+                    },
                 },
                 "required": [],
             },
@@ -99,7 +158,11 @@ OPENAI_TOOLS: list[dict] = [
                 "type": "object",
                 "properties": {
                     "task_id": {"type": "string", "description": "The task ID to move"},
-                    "status": {"type": "string", "enum": ["backlog", "in_progress", "in_review", "done"], "description": "New status"},
+                    "status": {
+                        "type": "string",
+                        "enum": ["backlog", "in_progress", "in_review", "done"],
+                        "description": "New status",
+                    },
                 },
                 "required": ["task_id", "status"],
             },
@@ -115,7 +178,11 @@ OPENAI_TOOLS: list[dict] = [
                 "properties": {
                     "task_id": {"type": "string", "description": "The task ID"},
                     "document_id": {"type": "string", "description": "The document ID to attach"},
-                    "direction": {"type": "string", "enum": ["input", "output"], "description": "Direction: 'input' (source material) or 'output' (produced result). Default: input"},
+                    "direction": {
+                        "type": "string",
+                        "enum": ["input", "output"],
+                        "description": "Direction: 'input' (source material) or 'output' (produced result). Default: input",
+                    },
                 },
                 "required": ["task_id", "document_id"],
             },
@@ -129,9 +196,20 @@ OPENAI_TOOLS: list[dict] = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "query": {"type": "string", "description": "Search text to match against finding content"},
-                    "finding_type": {"type": "string", "enum": ["nugget", "fact", "insight", "recommendation"], "description": "Filter by type"},
-                    "phase": {"type": "string", "enum": ["discover", "define", "develop", "deliver"], "description": "Filter by Double Diamond phase"},
+                    "query": {
+                        "type": "string",
+                        "description": "Search text to match against finding content",
+                    },
+                    "finding_type": {
+                        "type": "string",
+                        "enum": ["nugget", "fact", "insight", "recommendation"],
+                        "description": "Filter by type",
+                    },
+                    "phase": {
+                        "type": "string",
+                        "enum": ["discover", "define", "develop", "deliver"],
+                        "description": "Filter by Double Diamond phase",
+                    },
                 },
                 "required": ["query"],
             },
@@ -158,7 +236,10 @@ OPENAI_TOOLS: list[dict] = [
                 "type": "object",
                 "properties": {
                     "task_id": {"type": "string", "description": "The task to assign"},
-                    "agent_id": {"type": "string", "description": "The agent ID to assign (e.g., 'istara-main')"},
+                    "agent_id": {
+                        "type": "string",
+                        "description": "The agent ID to assign (e.g., 'istara-main')",
+                    },
                 },
                 "required": ["task_id", "agent_id"],
             },
@@ -173,7 +254,11 @@ OPENAI_TOOLS: list[dict] = [
                 "type": "object",
                 "properties": {
                     "to_agent_id": {"type": "string", "description": "Target agent ID"},
-                    "message_type": {"type": "string", "enum": ["request", "report", "alert", "delegate"], "description": "Message type (default: request)"},
+                    "message_type": {
+                        "type": "string",
+                        "enum": ["request", "report", "alert", "delegate"],
+                        "description": "Message type (default: request)",
+                    },
                     "content": {"type": "string", "description": "Message content"},
                 },
                 "required": ["to_agent_id", "content"],
@@ -220,7 +305,11 @@ OPENAI_TOOLS: list[dict] = [
                     "task_id": {"type": "string", "description": "The task ID to update"},
                     "title": {"type": "string", "description": "New title"},
                     "description": {"type": "string", "description": "New description"},
-                    "priority": {"type": "string", "enum": ["critical", "high", "medium", "low"], "description": "New priority"},
+                    "priority": {
+                        "type": "string",
+                        "enum": ["critical", "high", "medium", "low"],
+                        "description": "New priority",
+                    },
                     "instructions": {"type": "string", "description": "New specific instructions"},
                     "skill_name": {"type": "string", "description": "Change the assigned skill"},
                 },
@@ -248,8 +337,14 @@ OPENAI_TOOLS: list[dict] = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "url": {"type": "string", "description": "The URL to fetch (must be http:// or https://)"},
-                    "max_chars": {"type": "integer", "description": "Maximum characters to return (default: 4000)"},
+                    "url": {
+                        "type": "string",
+                        "description": "The URL to fetch (must be http:// or https://)",
+                    },
+                    "max_chars": {
+                        "type": "integer",
+                        "description": "Maximum characters to return (default: 4000)",
+                    },
                 },
                 "required": ["url"],
             },
@@ -264,8 +359,14 @@ OPENAI_TOOLS: list[dict] = [
                 "type": "object",
                 "properties": {
                     "url": {"type": "string", "description": "The starting URL to navigate to"},
-                    "task": {"type": "string", "description": "What to do on the website (e.g., 'Extract the pricing page content', 'Fill out the contact form and check for errors', 'Take a screenshot of the homepage and describe the layout')"},
-                    "max_steps": {"type": "integer", "description": "Maximum browser actions to take (default: 10)"},
+                    "task": {
+                        "type": "string",
+                        "description": "What to do on the website (e.g., 'Extract the pricing page content', 'Fill out the contact form and check for errors', 'Take a screenshot of the homepage and describe the layout')",
+                    },
+                    "max_steps": {
+                        "type": "integer",
+                        "description": "Maximum browser actions to take (default: 10)",
+                    },
                 },
                 "required": ["url", "task"],
             },
@@ -281,31 +382,79 @@ SYSTEM_TOOLS = [
         "name": "create_task",
         "description": "Create a new research task on the Kanban board. Use when the user asks to start work, analyze something, or run a research skill. Ask for missing required fields conversationally.",
         "parameters": {
-            "title": {"type": "string", "required": True, "description": "Clear task title describing what to do"},
-            "description": {"type": "string", "required": False, "description": "Detailed description of the task"},
-            "skill_name": {"type": "string", "required": False, "description": "UXR skill to use (e.g., 'user-interviews', 'competitive-analysis'). Leave empty for auto-detect."},
-            "priority": {"type": "string", "required": False, "description": "critical, high, medium, or low. Default: medium"},
-            "instructions": {"type": "string", "required": False, "description": "Specific instructions for the agent executing this task"},
-            "input_document_ids": {"type": "array", "required": False, "description": "List of document IDs to attach as inputs"},
-            "urls": {"type": "array", "required": False, "description": "List of URLs for the agent to fetch and analyze"},
-            "user_context": {"type": "string", "required": False, "description": "Additional context or constraints"},
+            "title": {
+                "type": "string",
+                "required": True,
+                "description": "Clear task title describing what to do",
+            },
+            "description": {
+                "type": "string",
+                "required": False,
+                "description": "Detailed description of the task",
+            },
+            "skill_name": {
+                "type": "string",
+                "required": False,
+                "description": "UXR skill to use (e.g., 'user-interviews', 'competitive-analysis'). Leave empty for auto-detect.",
+            },
+            "priority": {
+                "type": "string",
+                "required": False,
+                "description": "critical, high, medium, or low. Default: medium",
+            },
+            "instructions": {
+                "type": "string",
+                "required": False,
+                "description": "Specific instructions for the agent executing this task",
+            },
+            "input_document_ids": {
+                "type": "array",
+                "required": False,
+                "description": "List of document IDs to attach as inputs",
+            },
+            "urls": {
+                "type": "array",
+                "required": False,
+                "description": "List of URLs for the agent to fetch and analyze",
+            },
+            "user_context": {
+                "type": "string",
+                "required": False,
+                "description": "Additional context or constraints",
+            },
         },
     },
     {
         "name": "search_documents",
         "description": "Search for documents in the current project by title, content, tags, or phase. Use when the user asks to find, locate, or look up a document or file.",
         "parameters": {
-            "query": {"type": "string", "required": True, "description": "Search query (matches title, description, content, tags, file name)"},
-            "phase": {"type": "string", "required": False, "description": "Filter by Double Diamond phase: discover, define, develop, deliver"},
+            "query": {
+                "type": "string",
+                "required": True,
+                "description": "Search query (matches title, description, content, tags, file name)",
+            },
+            "phase": {
+                "type": "string",
+                "required": False,
+                "description": "Filter by Double Diamond phase: discover, define, develop, deliver",
+            },
             "tag": {"type": "string", "required": False, "description": "Filter by tag"},
-            "source": {"type": "string", "required": False, "description": "Filter by source: user_upload, agent_output, task_output, project_file, external"},
+            "source": {
+                "type": "string",
+                "required": False,
+                "description": "Filter by source: user_upload, agent_output, task_output, project_file, external",
+            },
         },
     },
     {
         "name": "list_tasks",
         "description": "List tasks in the current project, optionally filtered by status. Use when the user asks about task status, what's in progress, or the work queue.",
         "parameters": {
-            "status": {"type": "string", "required": False, "description": "Filter by status: backlog, in_progress, in_review, done"},
+            "status": {
+                "type": "string",
+                "required": False,
+                "description": "Filter by status: backlog, in_progress, in_review, done",
+            },
         },
     },
     {
@@ -313,7 +462,11 @@ SYSTEM_TOOLS = [
         "description": "Move a task to a different Kanban column. Use when the user asks to start, pause, complete, or change a task's status.",
         "parameters": {
             "task_id": {"type": "string", "required": True, "description": "The task ID to move"},
-            "status": {"type": "string", "required": True, "description": "New status: backlog, in_progress, in_review, done"},
+            "status": {
+                "type": "string",
+                "required": True,
+                "description": "New status: backlog, in_progress, in_review, done",
+            },
         },
     },
     {
@@ -321,17 +474,37 @@ SYSTEM_TOOLS = [
         "description": "Attach a document to a task as input or output. Use when the user says to use a specific file for a task, or to link a result to a task.",
         "parameters": {
             "task_id": {"type": "string", "required": True, "description": "The task ID"},
-            "document_id": {"type": "string", "required": True, "description": "The document ID to attach"},
-            "direction": {"type": "string", "required": False, "description": "'input' (source material) or 'output' (produced result). Default: input"},
+            "document_id": {
+                "type": "string",
+                "required": True,
+                "description": "The document ID to attach",
+            },
+            "direction": {
+                "type": "string",
+                "required": False,
+                "description": "'input' (source material) or 'output' (produced result). Default: input",
+            },
         },
     },
     {
         "name": "search_findings",
         "description": "Search research findings (nuggets, facts, insights, recommendations) in the project. Use when the user asks about research results, what was found, key insights, etc.",
         "parameters": {
-            "query": {"type": "string", "required": True, "description": "Search text to match against finding content"},
-            "finding_type": {"type": "string", "required": False, "description": "Filter by type: nugget, fact, insight, recommendation"},
-            "phase": {"type": "string", "required": False, "description": "Filter by Double Diamond phase"},
+            "query": {
+                "type": "string",
+                "required": True,
+                "description": "Search text to match against finding content",
+            },
+            "finding_type": {
+                "type": "string",
+                "required": False,
+                "description": "Filter by type: nugget, fact, insight, recommendation",
+            },
+            "phase": {
+                "type": "string",
+                "required": False,
+                "description": "Filter by Double Diamond phase",
+            },
         },
     },
     {
@@ -344,7 +517,11 @@ SYSTEM_TOOLS = [
         "description": "Assign an agent to a task. Use when the user asks to delegate work or assign a specific agent.",
         "parameters": {
             "task_id": {"type": "string", "required": True, "description": "The task to assign"},
-            "agent_id": {"type": "string", "required": True, "description": "The agent ID to assign (e.g., 'istara-main')"},
+            "agent_id": {
+                "type": "string",
+                "required": True,
+                "description": "The agent ID to assign (e.g., 'istara-main')",
+            },
         },
     },
     {
@@ -352,7 +529,11 @@ SYSTEM_TOOLS = [
         "description": "Send a message to another agent via A2A protocol. Use for delegation, status updates, or inter-agent coordination.",
         "parameters": {
             "to_agent_id": {"type": "string", "required": True, "description": "Target agent ID"},
-            "message_type": {"type": "string", "required": False, "description": "Message type: request, report, alert, delegate. Default: request"},
+            "message_type": {
+                "type": "string",
+                "required": False,
+                "description": "Message type: request, report, alert, delegate. Default: request",
+            },
             "content": {"type": "string", "required": True, "description": "Message content"},
         },
     },
@@ -360,7 +541,11 @@ SYSTEM_TOOLS = [
         "name": "get_document_content",
         "description": "Get the text content of a specific document. Use when the user asks to read, view, or get details from a document.",
         "parameters": {
-            "document_id": {"type": "string", "required": True, "description": "The document ID to read"},
+            "document_id": {
+                "type": "string",
+                "required": True,
+                "description": "The document ID to read",
+            },
         },
     },
     {
@@ -368,7 +553,11 @@ SYSTEM_TOOLS = [
         "description": "Search the project's memory and knowledge base using RAG. Use when the user asks to recall something, find information from past conversations, or query the knowledge base.",
         "parameters": {
             "query": {"type": "string", "required": True, "description": "The search query"},
-            "top_k": {"type": "integer", "required": False, "description": "Number of results (default 5)"},
+            "top_k": {
+                "type": "integer",
+                "required": False,
+                "description": "Number of results (default 5)",
+            },
         },
     },
     {
@@ -378,9 +567,21 @@ SYSTEM_TOOLS = [
             "task_id": {"type": "string", "required": True, "description": "The task ID to update"},
             "title": {"type": "string", "required": False, "description": "New title"},
             "description": {"type": "string", "required": False, "description": "New description"},
-            "priority": {"type": "string", "required": False, "description": "New priority: critical, high, medium, low"},
-            "instructions": {"type": "string", "required": False, "description": "New specific instructions"},
-            "skill_name": {"type": "string", "required": False, "description": "Change the assigned skill"},
+            "priority": {
+                "type": "string",
+                "required": False,
+                "description": "New priority: critical, high, medium, low",
+            },
+            "instructions": {
+                "type": "string",
+                "required": False,
+                "description": "New specific instructions",
+            },
+            "skill_name": {
+                "type": "string",
+                "required": False,
+                "description": "Change the assigned skill",
+            },
         },
     },
     {
@@ -392,17 +593,37 @@ SYSTEM_TOOLS = [
         "name": "web_fetch",
         "description": "Fetch a web page URL and return its content as readable text. Use this to access articles, documentation, competitor websites, or any public URL for research analysis.",
         "parameters": {
-            "url": {"type": "string", "required": True, "description": "The URL to fetch (must be http:// or https://)"},
-            "max_chars": {"type": "integer", "required": False, "description": "Maximum characters to return (default: 4000)"},
+            "url": {
+                "type": "string",
+                "required": True,
+                "description": "The URL to fetch (must be http:// or https://)",
+            },
+            "max_chars": {
+                "type": "integer",
+                "required": False,
+                "description": "Maximum characters to return (default: 4000)",
+            },
         },
     },
     {
         "name": "browse_website",
         "description": "Browse a website using an AI-powered browser agent. The agent can navigate, click, fill forms, and extract content. Use for: competitor analysis, usability evaluation, design critique, content extraction, form testing. Requires browser-use library.",
         "parameters": {
-            "url": {"type": "string", "required": True, "description": "The starting URL to navigate to"},
-            "task": {"type": "string", "required": True, "description": "What to do on the website (e.g., 'Extract the pricing page content', 'Fill out the contact form and check for errors')"},
-            "max_steps": {"type": "integer", "required": False, "description": "Maximum browser actions to take (default: 10)"},
+            "url": {
+                "type": "string",
+                "required": True,
+                "description": "The starting URL to navigate to",
+            },
+            "task": {
+                "type": "string",
+                "required": True,
+                "description": "What to do on the website (e.g., 'Extract the pricing page content', 'Fill out the contact form and check for errors')",
+            },
+            "max_steps": {
+                "type": "integer",
+                "required": False,
+                "description": "Maximum browser actions to take (default: 10)",
+            },
         },
     },
 ]
@@ -525,7 +746,7 @@ async def _exec_search_documents(params: dict, project_id: str, agent_id: str) -
         if params.get("phase"):
             query = query.where(Document.phase == params["phase"])
         if params.get("tag"):
-            query = query.where(Document.tags.ilike(f'%{params["tag"]}%'))
+            query = query.where(Document.tags.ilike(f"%{params['tag']}%"))
         if params.get("source"):
             query = query.where(Document.source == params["source"])
 
@@ -653,11 +874,15 @@ async def _exec_search_findings(params: dict, project_id: str, agent_id: str) ->
 
 
 async def _exec_list_project_files(params: dict, project_id: str, agent_id: str) -> str:
-    upload_dir = Path(settings.upload_dir) / project_id
-    if not upload_dir.exists():
+    async with async_session() as db:
+        project_result = await db.execute(select(Project).where(Project.id == project_id))
+        project = project_result.scalar_one_or_none()
+
+    folder = _resolve_project_folder(project, project_id)
+    if not folder.exists():
         return "No project folder found. Upload files to get started."
 
-    files = [f for f in upload_dir.iterdir() if f.is_file() and not f.name.startswith(".")]
+    files = [f for f in folder.iterdir() if f.is_file() and not f.name.startswith(".")]
     if not files:
         return "The project folder is empty."
 
@@ -682,7 +907,9 @@ async def _exec_assign_agent(params: dict, project_id: str, agent_id: str) -> st
 
         orchestrator.wake()
 
-        return f"Task '{task.title}' assigned to agent '{params['agent_id']}'. Agent woken to process."
+        return (
+            f"Task '{task.title}' assigned to agent '{params['agent_id']}'. Agent woken to process."
+        )
 
 
 async def _exec_send_agent_message(params: dict, project_id: str, agent_id: str) -> str:
@@ -760,13 +987,16 @@ async def _exec_update_task(params: dict, project_id: str, agent_id: str) -> str
 
 async def _exec_sync_project_documents(params: dict, project_id: str, agent_id: str) -> str:
     """Trigger a document sync for the project folder."""
-    upload_dir = Path(settings.upload_dir) / project_id
-    if not upload_dir.exists():
+    async with async_session() as db:
+        project_result = await db.execute(select(Project).where(Project.id == project_id))
+        project = project_result.scalar_one_or_none()
+
+    folder = _resolve_project_folder(project, project_id)
+    if not folder.exists():
         return "No project folder found."
 
     async with async_session() as db:
-        # Find files not yet registered as documents
-        files = [f for f in upload_dir.iterdir() if f.is_file() and not f.name.startswith(".")]
+        files = [f for f in folder.iterdir() if f.is_file() and not f.name.startswith(".")]
 
         existing_result = await db.execute(
             select(Document.file_name).where(Document.project_id == project_id)
@@ -820,7 +1050,9 @@ async def _exec_web_fetch(params: dict, project_id: str, agent_id: str) -> str:
             try:
                 second_octet = int(parts[1])
                 if 16 <= second_octet <= 31:
-                    return json.dumps({"error": "Cannot fetch internal/private network URLs for security"})
+                    return json.dumps(
+                        {"error": "Cannot fetch internal/private network URLs for security"}
+                    )
             except ValueError:
                 pass
         if hostname.startswith("10.") or hostname.startswith("192.168."):
@@ -840,6 +1072,7 @@ async def _exec_web_fetch(params: dict, project_id: str, agent_id: str) -> str:
                 # Convert HTML to readable text
                 try:
                     from html2text import HTML2Text
+
                     h = HTML2Text()
                     h.ignore_links = False
                     h.ignore_images = True
@@ -847,23 +1080,30 @@ async def _exec_web_fetch(params: dict, project_id: str, agent_id: str) -> str:
                     text = h.handle(resp.text)
                 except ImportError:
                     # Fallback: strip tags with regex
-                    text = re.sub(r'<[^>]+>', '', resp.text)
-                    text = re.sub(r'\s+', ' ', text).strip()
+                    text = re.sub(r"<[^>]+>", "", resp.text)
+                    text = re.sub(r"\s+", " ", text).strip()
             else:
                 text = resp.text
 
             # Truncate to max_chars
             if len(text) > max_chars:
-                text = text[:max_chars] + f"\n\n[Truncated -- showing first {max_chars} of {len(text)} characters]"
+                text = (
+                    text[:max_chars]
+                    + f"\n\n[Truncated -- showing first {max_chars} of {len(text)} characters]"
+                )
 
-            return json.dumps({
-                "url": str(resp.url),
-                "status": resp.status_code,
-                "content_length": len(text),
-                "content": text,
-            })
+            return json.dumps(
+                {
+                    "url": str(resp.url),
+                    "status": resp.status_code,
+                    "content_length": len(text),
+                    "content": text,
+                }
+            )
     except _httpx.HTTPStatusError as e:
-        return json.dumps({"error": f"HTTP {e.response.status_code}: {e.response.reason_phrase}", "url": url})
+        return json.dumps(
+            {"error": f"HTTP {e.response.status_code}: {e.response.reason_phrase}", "url": url}
+        )
     except Exception as e:
         return json.dumps({"error": str(e), "url": url})
 
@@ -873,7 +1113,9 @@ async def _exec_browse_website(params: dict, project_id: str, agent_id: str) -> 
     from app.services.browser_service import browse_website, BROWSER_AVAILABLE
 
     if not BROWSER_AVAILABLE:
-        return {"error": "browser-use not installed. Install: pip install browser-use langchain-openai"}
+        return {
+            "error": "browser-use not installed. Install: pip install browser-use langchain-openai"
+        }
 
     url = params.get("url", "")
     task = params.get("task", "")
