@@ -42,6 +42,13 @@ from app.skills.design_tools import (
 _log = logging.getLogger(__name__)
 _guard = ContentGuard()
 
+
+def _resolve_project_folder(project, project_id: str) -> Path:
+    if project and getattr(project, "watch_folder_path", None):
+        return Path(project.watch_folder_path)
+    return Path(settings.upload_dir) / project_id
+
+
 router = APIRouter()
 
 # Maximum tool-call iterations per message (prevents infinite loops)
@@ -199,10 +206,14 @@ async def design_chat(request: DesignChatRequest, db: AsyncSession = Depends(get
             preset = INFERENCE_PRESETS.get(preset_key, INFERENCE_PRESETS["medium"])
 
             if preset_key == "custom":
-                llm_temperature = session.custom_temperature if session.custom_temperature is not None else 0.7
+                llm_temperature = (
+                    session.custom_temperature if session.custom_temperature is not None else 0.7
+                )
                 llm_max_tokens = session.custom_max_tokens
             else:
-                llm_temperature = preset["temperature"] if preset["temperature"] is not None else 0.7
+                llm_temperature = (
+                    preset["temperature"] if preset["temperature"] is not None else 0.7
+                )
                 llm_max_tokens = preset["max_tokens"]
 
             if session.model_override:
@@ -249,11 +260,10 @@ async def design_chat(request: DesignChatRequest, db: AsyncSession = Depends(get
     system_prompt += "\n\n" + tools_prompt
 
     # Inject project folder file awareness
-    upload_dir = Path(settings.upload_dir) / request.project_id
-    if upload_dir.exists():
+    folder = _resolve_project_folder(project, request.project_id)
+    if folder.exists():
         project_files = [
-            f.name for f in upload_dir.iterdir()
-            if f.is_file() and not f.name.startswith(".")
+            f.name for f in folder.iterdir() if f.is_file() and not f.name.startswith(".")
         ]
         if project_files:
             files_context = (
@@ -268,9 +278,7 @@ async def design_chat(request: DesignChatRequest, db: AsyncSession = Depends(get
     history_query = select(Message).where(Message.project_id == request.project_id)
     if request.session_id:
         history_query = history_query.where(Message.session_id == request.session_id)
-    history_result = await db.execute(
-        history_query.order_by(Message.created_at.desc()).limit(20)
-    )
+    history_result = await db.execute(history_query.order_by(Message.created_at.desc()).limit(20))
     history = list(reversed(history_result.scalars().all()))
 
     for msg in history:
@@ -329,15 +337,19 @@ async def design_chat(request: DesignChatRequest, db: AsyncSession = Depends(get
                         event_data = json.dumps({"type": "chunk", "content": text_before + "\n\n"})
                         yield f"data: {event_data}\n\n"
 
-                    tool_event = json.dumps({
-                        "type": "tool_call",
-                        "tool": tool_name,
-                        "params": tool_params,
-                    })
+                    tool_event = json.dumps(
+                        {
+                            "type": "tool_call",
+                            "tool": tool_name,
+                            "params": tool_params,
+                        }
+                    )
                     yield f"data: {tool_event}\n\n"
 
                     result = await execute_design_tool(
-                        tool_name, tool_params, request.project_id,
+                        tool_name,
+                        tool_params,
+                        request.project_id,
                         agent_id=session_agent_id or "design-lead",
                     )
 
@@ -355,14 +367,16 @@ async def design_chat(request: DesignChatRequest, db: AsyncSession = Depends(get
                         else f"[Tool: {tool_name}]"
                     )
                     conversation.append({"role": "assistant", "content": assistant_turn})
-                    conversation.append({
-                        "role": "user",
-                        "content": (
-                            f"[Tool result for {tool_name}]:\n{result_text}\n\n"
-                            "Now respond to the user based on this result. "
-                            "Do not call another tool unless necessary."
-                        ),
-                    })
+                    conversation.append(
+                        {
+                            "role": "user",
+                            "content": (
+                                f"[Tool result for {tool_name}]:\n{result_text}\n\n"
+                                "Now respond to the user based on this result. "
+                                "Do not call another tool unless necessary."
+                            ),
+                        }
+                    )
                     continue
 
                 else:
@@ -388,12 +402,14 @@ async def design_chat(request: DesignChatRequest, db: AsyncSession = Depends(get
                     {"source": r.source, "score": r.score, "page": r.page}
                     for r in rag_context.retrieved
                 ]
-                done_data = json.dumps({
-                    "type": "done",
-                    "message_id": assistant_msg.id,
-                    "sources": sources,
-                    "tools_used": [t["tool"] for t in tool_results] if tool_results else [],
-                })
+                done_data = json.dumps(
+                    {
+                        "type": "done",
+                        "message_id": assistant_msg.id,
+                        "sources": sources,
+                        "tools_used": [t["tool"] for t in tool_results] if tool_results else [],
+                    }
+                )
                 yield f"data: {done_data}\n\n"
 
         except GeneratorExit:
@@ -564,7 +580,9 @@ async def generate_screen(data: GenerateRequest, db: AsyncSession = Depends(get_
             # Download screenshot
             screenshot_path = ""
             screenshot_info = s_data.get("screenshot", {})
-            screenshot_url = screenshot_info.get("downloadUrl", "") if isinstance(screenshot_info, dict) else ""
+            screenshot_url = (
+                screenshot_info.get("downloadUrl", "") if isinstance(screenshot_info, dict) else ""
+            )
             if screenshot_url:
                 try:
                     resp = await http.get(screenshot_url)
@@ -591,11 +609,13 @@ async def generate_screen(data: GenerateRequest, db: AsyncSession = Depends(get_
                 stitch_screen_id=stitch_screen_id,
                 status="ready",
                 source_findings=json.dumps(seed_ids),
-                metadata_json=json.dumps({
-                    "stitch_session_id": stitch_session_id,
-                    "stitch_width": s_data.get("width"),
-                    "stitch_height": s_data.get("height"),
-                }),
+                metadata_json=json.dumps(
+                    {
+                        "stitch_session_id": stitch_session_id,
+                        "stitch_width": s_data.get("width"),
+                        "stitch_height": s_data.get("height"),
+                    }
+                ),
             )
             db.add(screen)
             created_screens.append(screen)
@@ -641,9 +661,7 @@ async def edit_screen(data: EditRequest, db: AsyncSession = Depends(get_db)):
     from app.services.stitch_service import stitch_service
 
     # Resolve parent screen
-    screen_result = await db.execute(
-        select(DesignScreen).where(DesignScreen.id == data.screen_id)
-    )
+    screen_result = await db.execute(select(DesignScreen).where(DesignScreen.id == data.screen_id))
     parent = screen_result.scalar_one_or_none()
     if not parent:
         raise HTTPException(status_code=404, detail="Screen not found")
@@ -707,7 +725,9 @@ async def edit_screen(data: EditRequest, db: AsyncSession = Depends(get_db)):
 
             # Download screenshot
             screenshot_info = s_data.get("screenshot", {})
-            screenshot_url = screenshot_info.get("downloadUrl", "") if isinstance(screenshot_info, dict) else ""
+            screenshot_url = (
+                screenshot_info.get("downloadUrl", "") if isinstance(screenshot_info, dict) else ""
+            )
             if screenshot_url:
                 try:
                     resp = await http.get(screenshot_url)
@@ -754,9 +774,7 @@ async def create_variant(data: VariantRequest, db: AsyncSession = Depends(get_db
     import httpx
     from app.services.stitch_service import stitch_service
 
-    screen_result = await db.execute(
-        select(DesignScreen).where(DesignScreen.id == data.screen_id)
-    )
+    screen_result = await db.execute(select(DesignScreen).where(DesignScreen.id == data.screen_id))
     parent = screen_result.scalar_one_or_none()
     if not parent:
         raise HTTPException(status_code=404, detail="Screen not found")
@@ -827,7 +845,9 @@ async def create_variant(data: VariantRequest, db: AsyncSession = Depends(get_db
             # Download screenshot
             screenshot_path = ""
             screenshot_info = s_data.get("screenshot", {})
-            screenshot_url = screenshot_info.get("downloadUrl", "") if isinstance(screenshot_info, dict) else ""
+            screenshot_url = (
+                screenshot_info.get("downloadUrl", "") if isinstance(screenshot_info, dict) else ""
+            )
             if screenshot_url:
                 try:
                     resp = await http.get(screenshot_url)
@@ -972,9 +992,7 @@ async def figma_import(data: FigmaImportRequest, db: AsyncSession = Depends(get_
 @router.post("/interfaces/figma/export")
 async def figma_export(data: FigmaExportRequest, db: AsyncSession = Depends(get_db)):
     """Export a design screen to Figma."""
-    screen_result = await db.execute(
-        select(DesignScreen).where(DesignScreen.id == data.screen_id)
-    )
+    screen_result = await db.execute(select(DesignScreen).where(DesignScreen.id == data.screen_id))
     screen = screen_result.scalar_one_or_none()
     if not screen:
         raise HTTPException(status_code=404, detail="Screen not found")
@@ -1046,9 +1064,7 @@ async def handoff_brief(data: HandoffBriefRequest, db: AsyncSession = Depends(ge
 @router.post("/interfaces/handoff/dev-spec")
 async def handoff_dev_spec(data: HandoffDevSpecRequest, db: AsyncSession = Depends(get_db)):
     """Generate a developer handoff spec from a design screen."""
-    screen_result = await db.execute(
-        select(DesignScreen).where(DesignScreen.id == data.screen_id)
-    )
+    screen_result = await db.execute(select(DesignScreen).where(DesignScreen.id == data.screen_id))
     screen = screen_result.scalar_one_or_none()
     if not screen:
         raise HTTPException(status_code=404, detail="Screen not found")
@@ -1065,7 +1081,9 @@ async def handoff_dev_spec(data: HandoffDevSpecRequest, db: AsyncSession = Depen
                     r = await db.execute(select(Model).where(Model.id == fid))
                     item = r.scalar_one_or_none()
                     if item:
-                        findings.append({"type": Model.__tablename__, "text": item.text, "id": item.id})
+                        findings.append(
+                            {"type": Model.__tablename__, "text": item.text, "id": item.id}
+                        )
     except Exception:
         pass
 
@@ -1091,17 +1109,14 @@ async def handoff_dev_spec(data: HandoffDevSpecRequest, db: AsyncSession = Depen
 @router.get("/interfaces/status")
 async def interfaces_status(db: AsyncSession = Depends(get_db)):
     """Get the current status of the Interfaces module."""
-    screens_count = await db.execute(
-        select(func.count()).select_from(DesignScreen)
-    )
-    briefs_count = await db.execute(
-        select(func.count()).select_from(DesignBrief)
-    )
+    screens_count = await db.execute(select(func.count()).select_from(DesignScreen))
+    briefs_count = await db.execute(select(func.count()).select_from(DesignBrief))
 
     return {
         "stitch_configured": bool(settings.stitch_api_key),
         "figma_configured": bool(settings.figma_api_token),
-        "onboarding_needed": not bool(settings.stitch_api_key) and not bool(settings.figma_api_token),
+        "onboarding_needed": not bool(settings.stitch_api_key)
+        and not bool(settings.figma_api_token),
         "screens_count": screens_count.scalar() or 0,
         "briefs_count": briefs_count.scalar() or 0,
     }
@@ -1348,9 +1363,7 @@ async def mock_edit_screen(data: MockEditRequest, db: AsyncSession = Depends(get
     """
     # Mock endpoints always available for integration testing
 
-    parent_result = await db.execute(
-        select(DesignScreen).where(DesignScreen.id == data.screen_id)
-    )
+    parent_result = await db.execute(select(DesignScreen).where(DesignScreen.id == data.screen_id))
     parent = parent_result.scalar_one_or_none()
     if not parent:
         raise HTTPException(status_code=404, detail="Screen not found")
@@ -1385,9 +1398,7 @@ async def mock_generate_variants(data: MockVariantRequest, db: AsyncSession = De
     """
     # Mock endpoints always available for integration testing
 
-    parent_result = await db.execute(
-        select(DesignScreen).where(DesignScreen.id == data.screen_id)
-    )
+    parent_result = await db.execute(select(DesignScreen).where(DesignScreen.id == data.screen_id))
     parent = parent_result.scalar_one_or_none()
     if not parent:
         raise HTTPException(status_code=404, detail="Screen not found")
@@ -1443,17 +1454,46 @@ async def mock_figma_import(data: MockFigmaImportRequest, db: AsyncSession = Dep
         "name": "Mock Design System",
         "components": [
             {"name": "Button/Primary", "key": "comp_001", "description": "Primary action button"},
-            {"name": "Button/Secondary", "key": "comp_002", "description": "Secondary action button"},
+            {
+                "name": "Button/Secondary",
+                "key": "comp_002",
+                "description": "Secondary action button",
+            },
             {"name": "Input/Text", "key": "comp_003", "description": "Standard text input field"},
             {"name": "Card/Default", "key": "comp_004", "description": "Content card container"},
             {"name": "NavBar/Top", "key": "comp_005", "description": "Top navigation bar"},
         ],
         "styles": [
-            {"name": "Primary/500", "key": "style_001", "style_type": "FILL", "description": "#2563eb"},
-            {"name": "Neutral/100", "key": "style_002", "style_type": "FILL", "description": "#f3f4f6"},
-            {"name": "Text/Body", "key": "style_003", "style_type": "TEXT", "description": "16px Inter Regular"},
-            {"name": "Text/Heading", "key": "style_004", "style_type": "TEXT", "description": "24px Inter Bold"},
-            {"name": "Shadow/Card", "key": "style_005", "style_type": "EFFECT", "description": "0 2px 8px rgba(0,0,0,0.1)"},
+            {
+                "name": "Primary/500",
+                "key": "style_001",
+                "style_type": "FILL",
+                "description": "#2563eb",
+            },
+            {
+                "name": "Neutral/100",
+                "key": "style_002",
+                "style_type": "FILL",
+                "description": "#f3f4f6",
+            },
+            {
+                "name": "Text/Body",
+                "key": "style_003",
+                "style_type": "TEXT",
+                "description": "16px Inter Regular",
+            },
+            {
+                "name": "Text/Heading",
+                "key": "style_004",
+                "style_type": "TEXT",
+                "description": "24px Inter Bold",
+            },
+            {
+                "name": "Shadow/Card",
+                "key": "style_005",
+                "style_type": "EFFECT",
+                "description": "0 2px 8px rgba(0,0,0,0.1)",
+            },
         ],
         "layout": {
             "grid": "12-column",

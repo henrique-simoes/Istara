@@ -15,8 +15,20 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.models.database import get_db
 from app.models.document import Document, DocumentSource, DocumentStatus
+from app.models.project import Project
 
 router = APIRouter()
+
+
+def _resolve_project_folder(project, project_id: str) -> Path:
+    """Resolve the primary folder to scan for project files.
+
+    Returns watch_folder_path if the project has one set, otherwise falls
+    back to the internal uploads directory.
+    """
+    if project and getattr(project, "watch_folder_path", None):
+        return Path(project.watch_folder_path)
+    return Path(settings.upload_dir) / project_id
 
 
 # --- Request / Response Schemas ---
@@ -185,10 +197,13 @@ async def create_document(data: DocumentCreate, db: AsyncSession = Depends(get_d
     # Broadcast to agents via WebSocket
     try:
         from app.api.websocket import broadcast
-        await broadcast({
-            "type": "document_created",
-            "data": {"document_id": doc_id, "title": data.title, "project_id": data.project_id},
-        })
+
+        await broadcast(
+            {
+                "type": "document_created",
+                "data": {"document_id": doc_id, "title": data.title, "project_id": data.project_id},
+            }
+        )
     except Exception:
         pass
 
@@ -233,10 +248,17 @@ async def update_document(
     # Broadcast update
     try:
         from app.api.websocket import broadcast
-        await broadcast({
-            "type": "document_updated",
-            "data": {"document_id": document_id, "title": doc.title, "project_id": doc.project_id},
-        })
+
+        await broadcast(
+            {
+                "type": "document_updated",
+                "data": {
+                    "document_id": document_id,
+                    "title": doc.title,
+                    "project_id": doc.project_id,
+                },
+            }
+        )
     except Exception:
         pass
 
@@ -282,6 +304,7 @@ async def get_document_content(document_id: str, db: AsyncSession = Depends(get_
                 }
             elif suffix in {".pdf", ".docx"}:
                 from app.core.file_processor import process_file
+
                 result = process_file(file_path)
                 text = "\n\n".join(c.text for c in result.chunks) if result.chunks else ""
                 return {
@@ -350,10 +373,7 @@ async def search_documents(
         conditions.append(Document.tags.contains(f'"{tag}"'))
 
     query = (
-        select(Document)
-        .where(and_(*conditions))
-        .order_by(Document.updated_at.desc())
-        .limit(limit)
+        select(Document).where(and_(*conditions)).order_by(Document.updated_at.desc()).limit(limit)
     )
 
     result = await db.execute(query)
@@ -369,9 +389,7 @@ async def search_documents(
 @router.get("/documents/tags/{project_id}")
 async def get_document_tags(project_id: str, db: AsyncSession = Depends(get_db)):
     """Get all unique tags used across documents in a project."""
-    result = await db.execute(
-        select(Document.tags).where(Document.project_id == project_id)
-    )
+    result = await db.execute(select(Document.tags).where(Document.project_id == project_id))
     all_tags_raw = result.scalars().all()
 
     tag_counts: dict[str, int] = {}
@@ -384,23 +402,41 @@ async def get_document_tags(project_id: str, db: AsyncSession = Depends(get_db))
             pass
 
     return {
-        "tags": [{"name": t, "count": c} for t, c in sorted(tag_counts.items(), key=lambda x: -x[1])],
+        "tags": [
+            {"name": t, "count": c} for t, c in sorted(tag_counts.items(), key=lambda x: -x[1])
+        ],
     }
 
 
 @router.post("/documents/sync/{project_id}")
 async def sync_project_documents(project_id: str, db: AsyncSession = Depends(get_db)):
-    """Scan the project's upload directory and register any untracked files as documents.
+    """Scan the project's folder (external watch folder if linked, otherwise internal uploads)
+    and register any untracked files as documents.
 
     This ensures files placed directly in the project folder instantly appear in the Documents UI.
     """
-    upload_dir = Path(settings.upload_dir) / project_id
-    if not upload_dir.exists():
+    project_result = await db.execute(select(Project).where(Project.id == project_id))
+    project = project_result.scalar_one_or_none()
+
+    scan_dir = _resolve_project_folder(project, project_id)
+    if not scan_dir.exists():
         return {"synced": 0, "total": 0}
 
     from app.core.file_processor import get_supported_extensions
 
-    MEDIA_EXTENSIONS = {".mp3", ".wav", ".m4a", ".ogg", ".mp4", ".webm", ".mov", ".jpg", ".jpeg", ".png", ".gif"}
+    MEDIA_EXTENSIONS = {
+        ".mp3",
+        ".wav",
+        ".m4a",
+        ".ogg",
+        ".mp4",
+        ".webm",
+        ".mov",
+        ".jpg",
+        ".jpeg",
+        ".png",
+        ".gif",
+    }
     supported = set(get_supported_extensions()) | MEDIA_EXTENSIONS
 
     # Get existing document file_paths to avoid duplicates
@@ -410,7 +446,7 @@ async def sync_project_documents(project_id: str, db: AsyncSession = Depends(get
     existing_files = {r for r in existing_result.scalars().all()}
 
     synced = 0
-    for file_path in sorted(upload_dir.iterdir()):
+    for file_path in sorted(scan_dir.iterdir()):
         if not file_path.is_file():
             continue
         if file_path.suffix.lower() not in supported:
@@ -480,7 +516,10 @@ async def document_stats(project_id: str, db: AsyncSession = Depends(get_db)):
         .where(Document.project_id == project_id)
         .group_by(Document.source)
     )
-    by_source = {str(r[0].value) if hasattr(r[0], "value") else str(r[0]): r[1] for r in source_result.fetchall()}
+    by_source = {
+        str(r[0].value) if hasattr(r[0], "value") else str(r[0]): r[1]
+        for r in source_result.fetchall()
+    }
 
     # By phase
     phase_result = await db.execute(
@@ -496,7 +535,10 @@ async def document_stats(project_id: str, db: AsyncSession = Depends(get_db)):
         .where(Document.project_id == project_id)
         .group_by(Document.status)
     )
-    by_status = {str(r[0].value) if hasattr(r[0], "value") else str(r[0]): r[1] for r in status_result.fetchall()}
+    by_status = {
+        str(r[0].value) if hasattr(r[0], "value") else str(r[0]): r[1]
+        for r in status_result.fetchall()
+    }
 
     return {
         "total": total,

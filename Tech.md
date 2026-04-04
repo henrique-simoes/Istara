@@ -1369,10 +1369,16 @@ Projects can point at external folders (Google Drive, Dropbox, OneDrive, or any 
 - **Project model**: `watch_folder_path` field (nullable string)
 - **API**: `POST /projects/{id}/link-folder` and `/unlink-folder`
 - **FileWatcher**: Already supported arbitrary paths; now filters cloud-sync temp files (`.partial`, `.tmp`, `~$*`, `.crdownload`)
-- **Sync**: `/documents/sync/{id}` checks `watch_folder_path` first, falls back to internal uploads dir
-- **Documents**: External files use `DocumentSource.EXTERNAL`, referenced by path (not copied)
+- **Folder resolution**: All file-scanning/listing/injecting code uses `_resolve_project_folder()` — returns `watch_folder_path` if set, falls back to `settings.upload_dir / project_id`
+- **Sync**: `/documents/sync/{id}` uses the resolved folder (external first, internal fallback)
+- **Agent tools**: `list_project_files` and `sync_project_documents` in `system_actions.py` use resolved folder
+- **Chat file injection**: Both `chat.py` and `interfaces.py` inject file lists from resolved folder
+- **Agent skill execution**: `agent.py` passes file list from resolved folder to skill input
+- **Files endpoints**: `GET /files/{id}`, `POST /files/{id}/reprocess`, `POST /files/{id}/scan` use resolved folder
+- **Documents**: External files use `DocumentSource.PROJECT_FILE`, referenced by path (not copied)
+- **Upload/serve endpoints**: `POST /files/upload/{id}`, `GET /files/{id}/serve/{filename}`, `GET /files/{id}/content/{filename}` remain internal-only (correct for explicitly uploaded files)
 
-**Files:** `backend/app/models/project.py`, `backend/app/api/routes/projects.py`, `backend/app/core/file_watcher.py`
+**Files:** `backend/app/models/project.py`, `backend/app/api/routes/projects.py`, `backend/app/core/file_watcher.py`, `backend/app/api/routes/documents.py`, `backend/app/skills/system_actions.py`, `backend/app/api/routes/chat.py`, `backend/app/api/routes/interfaces.py`, `backend/app/core/agent.py`, `backend/app/api/routes/files.py`
 
 ---
 

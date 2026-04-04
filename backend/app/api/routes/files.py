@@ -13,15 +13,38 @@ from app.config import settings
 from app.core.file_processor import get_supported_extensions, process_file
 from app.core.rag import VectorStore, ingest_chunks
 from app.models.database import get_db
+from app.models.project import Project
+from sqlalchemy import select
 
 # Media and image extensions that can be uploaded/served but not text-processed
 MEDIA_EXTENSIONS = {
-    ".mp3", ".wav", ".m4a", ".ogg",
-    ".mp4", ".webm", ".mov",
-    ".jpg", ".jpeg", ".png", ".gif",
+    ".mp3",
+    ".wav",
+    ".m4a",
+    ".ogg",
+    ".mp4",
+    ".webm",
+    ".mov",
+    ".jpg",
+    ".jpeg",
+    ".png",
+    ".gif",
 }
 
 router = APIRouter()
+
+
+async def _resolve_project_folder(db, project_id: str) -> Path:
+    """Resolve the primary folder to scan for project files.
+
+    Returns watch_folder_path if the project has one set, otherwise falls
+    back to the internal uploads directory.
+    """
+    result = await db.execute(select(Project).where(Project.id == project_id))
+    project = result.scalar_one_or_none()
+    if project and getattr(project, "watch_folder_path", None):
+        return Path(project.watch_folder_path)
+    return Path(settings.upload_dir) / project_id
 
 
 @router.post("/files/upload/{project_id}")
@@ -98,9 +121,9 @@ async def upload_file(
 
 
 @router.get("/files/{project_id}")
-async def list_files(project_id: str):
+async def list_files(project_id: str, db: AsyncSession = Depends(get_db)):
     """List all uploaded files for a project."""
-    project_upload_dir = Path(settings.upload_dir) / project_id
+    project_upload_dir = await _resolve_project_folder(db, project_id)
     if not project_upload_dir.exists():
         return {"files": []}
 
@@ -110,20 +133,22 @@ async def list_files(project_id: str):
     for file_path in sorted(project_upload_dir.iterdir()):
         if file_path.is_file() and file_path.suffix.lower() in supported:
             stat = file_path.stat()
-            files.append({
-                "name": file_path.name,
-                "size_bytes": stat.st_size,
-                "modified": stat.st_mtime,
-                "type": file_path.suffix.lower(),
-            })
+            files.append(
+                {
+                    "name": file_path.name,
+                    "size_bytes": stat.st_size,
+                    "modified": stat.st_mtime,
+                    "type": file_path.suffix.lower(),
+                }
+            )
 
     return {"files": files, "count": len(files)}
 
 
 @router.post("/files/{project_id}/reprocess")
-async def reprocess_files(project_id: str):
+async def reprocess_files(project_id: str, db: AsyncSession = Depends(get_db)):
     """Reprocess all files for a project (re-embed and re-index)."""
-    project_upload_dir = Path(settings.upload_dir) / project_id
+    project_upload_dir = await _resolve_project_folder(db, project_id)
     if not project_upload_dir.exists():
         return {"status": "no files", "processed": 0}
 
@@ -195,7 +220,13 @@ async def get_file_content(project_id: str, filename: str):
     if suffix == ".pdf":
         result = process_file(file_path)
         text = "\n\n".join(chunk.text for chunk in result.chunks) if result.chunks else ""
-        return {"filename": filename, "type": suffix, "content": text, "pages": result.pages, "size": len(text)}
+        return {
+            "filename": filename,
+            "type": suffix,
+            "content": text,
+            "pages": result.pages,
+            "size": len(text),
+        }
 
     # DOCX: extract text
     if suffix == ".docx":
@@ -218,21 +249,21 @@ async def get_file_content(project_id: str, filename: str):
 
 
 @router.post("/files/{project_id}/scan")
-async def scan_project_files(project_id: str, request: Request):
-    """Trigger a file watcher scan for the project's upload directory.
+async def scan_project_files(project_id: str, request: Request, db: AsyncSession = Depends(get_db)):
+    """Trigger a file watcher scan for the project's folder.
 
     Used by the seeder script and for manual re-scans that also create
     research tasks based on file classification.
     """
-    upload_dir = str(Path(settings.upload_dir) / project_id)
-    if not Path(upload_dir).exists():
+    scan_dir = await _resolve_project_folder(db, project_id)
+    if not scan_dir.exists():
         return {"status": "no files", "scanned": 0}
 
     file_watcher = getattr(request.app.state, "file_watcher", None)
     if not file_watcher:
         raise HTTPException(status_code=503, detail="File watcher not available")
 
-    results = await file_watcher.scan_directory(upload_dir, project_id)
+    results = await file_watcher.scan_directory(str(scan_dir), project_id)
     return {
         "status": "complete",
         "scanned": len(results),
