@@ -1522,6 +1522,7 @@ A provider-agnostic routing layer that supports Ollama, LM Studio, and any OpenA
 - **LLMRouter**: Same interface as `OllamaClient` (`health()`, `chat()`, `chat_stream()`, `embed()`) — drop-in replacement.
 - **Priority-based routing**: Requests go to the highest-priority healthy server with automatic failover.
 - **Background health checks**: Every 60 seconds across all registered servers.
+- **On-demand health re-probe**: `GET /api/settings/status` calls `check_all_health()` before returning, so the status is always fresh rather than reading the cached 60-second flag.
 - **CRUD API**: `GET/POST/PATCH/DELETE /llm-servers` for managing external endpoints.
 - **LLMServer model**: Stored in DB with provider_type, host, API key, priority, health status, and latency.
 
