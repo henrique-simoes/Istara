@@ -153,8 +153,12 @@ class ComputeNode:
         if self.cb_failure_count >= self.CB_FAILURE_THRESHOLD:
             self.cb_state = "open"
             self.cb_last_trip = time.time()
-            self.health_error = f"Circuit breaker OPEN — {self.cb_failure_count} consecutive failures"
-            logger.warning(f"Circuit breaker OPEN for {self.name} (failures={self.cb_failure_count})")
+            self.health_error = (
+                f"Circuit breaker OPEN — {self.cb_failure_count} consecutive failures"
+            )
+            logger.warning(
+                f"Circuit breaker OPEN for {self.name} (failures={self.cb_failure_count})"
+            )
 
     def cb_is_available(self) -> bool:
         """Check if this node can accept requests (circuit breaker check)."""
@@ -172,7 +176,9 @@ class ComputeNode:
         """Track slow responses — warn but don't trip breaker."""
         if latency_ms > self.CB_SLOW_THRESHOLD_MS:
             self.health_state = "slow"
-            self.health_error = f"Slow response: {latency_ms:.0f}ms (threshold: {self.CB_SLOW_THRESHOLD_MS}ms)"
+            self.health_error = (
+                f"Slow response: {latency_ms:.0f}ms (threshold: {self.CB_SLOW_THRESHOLD_MS}ms)"
+            )
 
     async def _get_client(self) -> httpx.AsyncClient:
         """Get or create an HTTP client for this node."""
@@ -180,9 +186,7 @@ class ComputeNode:
             headers = {}
             if self.api_key:
                 headers["Authorization"] = f"Bearer {self.api_key}"
-            self._client = httpx.AsyncClient(
-                base_url=self.host, timeout=300.0, headers=headers
-            )
+            self._client = httpx.AsyncClient(base_url=self.host, timeout=300.0, headers=headers)
         return self._client
 
     async def close(self) -> None:
@@ -359,9 +363,7 @@ class ComputeNode:
                 "stream": True,
                 "options": options,
             }
-            async with client.stream(
-                "POST", "/api/chat", json=payload, timeout=None
-            ) as resp:
+            async with client.stream("POST", "/api/chat", json=payload, timeout=None) as resp:
                 resp.raise_for_status()
                 async for line in resp.aiter_lines():
                     if line.strip():
@@ -408,11 +410,13 @@ class ComputeNode:
                             for tc_delta in delta["tool_calls"]:
                                 idx = tc_delta.get("index", 0)
                                 while len(accumulated_tool_calls) <= idx:
-                                    accumulated_tool_calls.append({
-                                        "id": "",
-                                        "type": "function",
-                                        "function": {"name": "", "arguments": ""},
-                                    })
+                                    accumulated_tool_calls.append(
+                                        {
+                                            "id": "",
+                                            "type": "function",
+                                            "function": {"name": "", "arguments": ""},
+                                        }
+                                    )
                                 tc = accumulated_tool_calls[idx]
                                 if tc_delta.get("id"):
                                     tc["id"] = tc_delta["id"]
@@ -427,9 +431,7 @@ class ComputeNode:
                         if content:
                             yield content
 
-                        if finish == "tool_calls" or (
-                            finish == "stop" and tool_call_mode
-                        ):
+                        if finish == "tool_calls" or (finish == "stop" and tool_call_mode):
                             break
                     except (json.JSONDecodeError, IndexError, KeyError):
                         continue
@@ -448,42 +450,29 @@ class ComputeNode:
         embed_model = self._resolve_embed_model(model)
 
         if self.provider_type == "ollama":
-            resp = await client.post(
-                "/api/embed", json={"model": embed_model, "input": text}
-            )
+            resp = await client.post("/api/embed", json={"model": embed_model, "input": text})
             resp.raise_for_status()
             embeddings = resp.json().get("embeddings", [])
             return embeddings[0] if embeddings else []
         else:
-            resp = await client.post(
-                "/v1/embeddings", json={"model": embed_model, "input": text}
-            )
+            resp = await client.post("/v1/embeddings", json={"model": embed_model, "input": text})
             resp.raise_for_status()
             items = resp.json().get("data", [])
             return items[0].get("embedding", []) if items else []
 
-    async def embed_batch(
-        self, texts: list[str], model: str | None = None
-    ) -> list[list[float]]:
+    async def embed_batch(self, texts: list[str], model: str | None = None) -> list[list[float]]:
         """Direct batch embedding on this specific node (backward compat)."""
         client = await self._get_client()
         embed_model = self._resolve_embed_model(model)
 
         if self.provider_type == "ollama":
-            resp = await client.post(
-                "/api/embed", json={"model": embed_model, "input": texts}
-            )
+            resp = await client.post("/api/embed", json={"model": embed_model, "input": texts})
             resp.raise_for_status()
             return resp.json().get("embeddings", [])
         else:
-            resp = await client.post(
-                "/v1/embeddings", json={"model": embed_model, "input": texts}
-            )
+            resp = await client.post("/v1/embeddings", json={"model": embed_model, "input": texts})
             resp.raise_for_status()
-            return [
-                item.get("embedding", [])
-                for item in resp.json().get("data", [])
-            ]
+            return [item.get("embedding", []) for item in resp.json().get("data", [])]
 
     def to_dict(self) -> dict:
         return {
@@ -540,6 +529,7 @@ class ComputeRegistry:
         """Broadcast LLM availability changes to frontend."""
         try:
             from app.api.websocket import manager as ws_manager
+
             await ws_manager.broadcast(status, {"message": detail})
         except Exception:
             pass
@@ -555,10 +545,7 @@ class ComputeRegistry:
         if not node.last_heartbeat:
             node.last_heartbeat = time.time()
         self._nodes[node.node_id] = node
-        logger.info(
-            f"ComputeRegistry: registered {node.source} node "
-            f"'{node.name}' ({node.host})"
-        )
+        logger.info(f"ComputeRegistry: registered {node.source} node '{node.name}' ({node.host})")
 
     def register_server(self, entry) -> None:
         """Backward compat: accepts LLMServerEntry-like objects.
@@ -602,6 +589,7 @@ class ComputeRegistry:
         if not relay_node.host:
             return
         from urllib.parse import urlparse
+
         relay_parsed = urlparse(relay_node.host)
         relay_key = (relay_parsed.hostname, relay_parsed.port)
 
@@ -661,21 +649,18 @@ class ComputeRegistry:
                             detect_capabilities_lmstudio,
                             detect_capabilities_ollama,
                         )
+
                         if node.provider_type == "ollama":
                             caps = await detect_capabilities_ollama(node.host)
                         else:
                             caps = await detect_capabilities_lmstudio(node.host)
-                        node.model_capabilities = {
-                            k: v.to_dict() for k, v in caps.items()
-                        }
+                        node.model_capabilities = {k: v.to_dict() for k, v in caps.items()}
                         logger.info(
                             f"Detected capabilities for relay {node.name}: "
                             f"{len(node.model_capabilities)} models"
                         )
                     except Exception as e:
-                        logger.debug(
-                            f"Relay capability detection failed for {node.name}: {e}"
-                        )
+                        logger.debug(f"Relay capability detection failed for {node.name}: {e}")
                 continue
 
             # HTTP-based health check
@@ -689,17 +674,22 @@ class ComputeRegistry:
                         detect_capabilities_lmstudio,
                         detect_capabilities_ollama,
                     )
+
                     if node.provider_type == "ollama":
                         caps = await detect_capabilities_ollama(node.host)
                     else:
                         caps = await detect_capabilities_lmstudio(node.host)
-                    node.model_capabilities = {
-                        k: v.to_dict() for k, v in caps.items()
-                    }
+                    node.model_capabilities = {k: v.to_dict() for k, v in caps.items()}
+
+                    # Sync detected context window to global config
+                    for model_name, cap in caps.items():
+                        if cap.context_length and cap.context_length > 0:
+                            from app.config import settings
+
+                            settings.update_context_window(cap.context_length)
+                            break  # Use first model with a context length
                 except Exception as e:
-                    logger.debug(
-                        f"Model capability detection failed for {node.name}: {e}"
-                    )
+                    logger.debug(f"Model capability detection failed for {node.name}: {e}")
 
         return results
 
@@ -754,37 +744,30 @@ class ComputeRegistry:
         if require_tools:
             # Nodes with detected tool support
             tool_nodes = [
-                s for s in servers
-                if any(
-                    c.get("supports_tools") for c in s.model_capabilities.values()
-                )
+                s
+                for s in servers
+                if any(c.get("supports_tools") for c in s.model_capabilities.values())
             ]
             # Nodes whose capabilities haven't been detected yet —
             # don't exclude them; they may well support tools.
-            unknown_nodes = [
-                s for s in servers
-                if s.is_healthy and not s.model_capabilities
-            ]
-            filtered = tool_nodes + [
-                n for n in unknown_nodes if n not in tool_nodes
-            ]
+            unknown_nodes = [s for s in servers if s.is_healthy and not s.model_capabilities]
+            filtered = tool_nodes + [n for n in unknown_nodes if n not in tool_nodes]
             if filtered:
                 servers = filtered
         if require_vision:
             filtered = [
-                s for s in servers
-                if any(
-                    c.get("supports_vision") for c in s.model_capabilities.values()
-                )
+                s
+                for s in servers
+                if any(c.get("supports_vision") for c in s.model_capabilities.values())
             ]
             if filtered:
                 servers = filtered
         if min_context > 0:
             filtered = [
-                s for s in servers
+                s
+                for s in servers
                 if any(
-                    c.get("context_length", 0) >= min_context
-                    for c in s.model_capabilities.values()
+                    c.get("context_length", 0) >= min_context for c in s.model_capabilities.values()
                 )
             ]
             if filtered:
@@ -805,15 +788,13 @@ class ComputeRegistry:
 
         if require_tools and candidates:
             tool_capable = [
-                n for n in candidates
-                if any(
-                    c.get("supports_tools") for c in n.model_capabilities.values()
-                )
+                n
+                for n in candidates
+                if any(c.get("supports_tools") for c in n.model_capabilities.values())
             ]
             # Include nodes with unknown capabilities (not yet detected)
             unknown_capable = [
-                n for n in candidates
-                if not n.model_capabilities and n not in tool_capable
+                n for n in candidates if not n.model_capabilities and n not in tool_capable
             ]
             combined = tool_capable + unknown_capable
             if combined:
@@ -821,10 +802,9 @@ class ComputeRegistry:
 
         if require_vision and candidates:
             vision_capable = [
-                n for n in candidates
-                if any(
-                    c.get("supports_vision") for c in n.model_capabilities.values()
-                )
+                n
+                for n in candidates
+                if any(c.get("supports_vision") for c in n.model_capabilities.values())
             ]
             if vision_capable:
                 candidates = vision_capable
@@ -893,8 +873,7 @@ class ComputeRegistry:
                 continue
             resolved_model = node._resolve_model(model)
             logger.info(
-                f"ComputeRegistry: routing chat to {node.name} "
-                f"({node.host}) model={resolved_model}"
+                f"ComputeRegistry: routing chat to {node.name} ({node.host}) model={resolved_model}"
             )
             node.active_requests += 1
             try:
@@ -943,9 +922,7 @@ class ComputeRegistry:
                     }
                     if message.get("tool_calls"):
                         result["message"]["tool_calls"] = message["tool_calls"]
-                        result["finish_reason"] = choice.get(
-                            "finish_reason", "tool_calls"
-                        )
+                        result["finish_reason"] = choice.get("finish_reason", "tool_calls")
 
                     node.consecutive_failures = 0
                     node.health_state = "ready"
@@ -953,9 +930,7 @@ class ComputeRegistry:
                     return result
 
             except Exception as e:
-                logger.warning(
-                    f"ComputeRegistry: chat failed on {node.name}: {e}"
-                )
+                logger.warning(f"ComputeRegistry: chat failed on {node.name}: {e}")
                 node.consecutive_failures += 1
                 node.cb_record_failure()
                 if node.consecutive_failures >= 3:
@@ -1072,18 +1047,14 @@ class ComputeRegistry:
                                         if fn.get("name"):
                                             tc["function"]["name"] = fn["name"]
                                         if fn.get("arguments"):
-                                            tc["function"]["arguments"] += fn[
-                                                "arguments"
-                                            ]
+                                            tc["function"]["arguments"] += fn["arguments"]
                                     continue
 
                                 content = delta.get("content", "")
                                 if content:
                                     yield content
 
-                                if finish == "tool_calls" or (
-                                    finish == "stop" and tool_call_mode
-                                ):
+                                if finish == "tool_calls" or (finish == "stop" and tool_call_mode):
                                     break
                             except (json.JSONDecodeError, IndexError, KeyError):
                                 continue
@@ -1101,9 +1072,7 @@ class ComputeRegistry:
                 return
 
             except Exception as e:
-                logger.warning(
-                    f"ComputeRegistry: stream failed on {node.name}: {e}"
-                )
+                logger.warning(f"ComputeRegistry: stream failed on {node.name}: {e}")
                 node.consecutive_failures += 1
                 if node.consecutive_failures >= 3:
                     node.health_state = "cooldown"
@@ -1148,18 +1117,14 @@ class ComputeRegistry:
                     return items[0].get("embedding", []) if items else []
 
             except Exception as e:
-                logger.warning(
-                    f"ComputeRegistry: embed failed on {node.name}: {e}"
-                )
+                logger.warning(f"ComputeRegistry: embed failed on {node.name}: {e}")
                 node.is_healthy = False
             finally:
                 node.active_requests -= 1
 
         raise RuntimeError("No compute nodes available for embedding")
 
-    async def embed_batch(
-        self, texts: list[str], model: str | None = None
-    ) -> list[list[float]]:
+    async def embed_batch(self, texts: list[str], model: str | None = None) -> list[list[float]]:
         """Route a batch embedding request."""
         for node in self._sorted_servers():
             if not node.is_healthy:
@@ -1182,15 +1147,10 @@ class ComputeRegistry:
                         json={"model": embed_model, "input": texts},
                     )
                     resp.raise_for_status()
-                    return [
-                        item.get("embedding", [])
-                        for item in resp.json().get("data", [])
-                    ]
+                    return [item.get("embedding", []) for item in resp.json().get("data", [])]
 
             except Exception as e:
-                logger.warning(
-                    f"ComputeRegistry: embed_batch failed on {node.name}: {e}"
-                )
+                logger.warning(f"ComputeRegistry: embed_batch failed on {node.name}: {e}")
                 node.is_healthy = False
             finally:
                 node.active_requests -= 1
@@ -1212,10 +1172,7 @@ class ComputeRegistry:
                 else:
                     resp = await client.get("/v1/models", timeout=10.0)
                     data = resp.json()
-                    models = [
-                        {"name": m.get("id", ""), **m}
-                        for m in data.get("data", [])
-                    ]
+                    models = [{"name": m.get("id", ""), **m} for m in data.get("data", [])]
                 for m in models:
                     m["_server"] = node.name
                     m["_server_id"] = node.node_id
@@ -1269,10 +1226,7 @@ class ComputeRegistry:
 
     def total_capacity(self) -> int:
         """Total number of alive relay nodes (backward compat with ComputePool)."""
-        return len([
-            n for n in self._nodes.values()
-            if n.source == "relay" and n.is_alive()
-        ])
+        return len([n for n in self._nodes.values() if n.source == "relay" and n.is_alive()])
 
     def available_models_list(self) -> list[str]:
         """All models available across the pool (backward compat)."""
@@ -1285,9 +1239,7 @@ class ComputeRegistry:
         """Select the best node for a given model (backward compat)."""
         candidates = self.alive_nodes()
         if model:
-            candidates = [
-                n for n in candidates if model in n.loaded_models
-            ] or candidates
+            candidates = [n for n in candidates if model in n.loaded_models] or candidates
         if not candidates:
             return None
         return max(candidates, key=lambda n: n.score())
@@ -1374,6 +1326,28 @@ class ComputeRegistry:
                         }
                     )
         return warnings
+
+
+async def check_all_health() -> dict[str, bool]:
+    """Re-probe all registered nodes and sync detected context windows.
+
+    Called on-demand by the settings status endpoint so the health
+    information is always fresh rather than reading the 60-second cached flag.
+    """
+    results = await compute_registry.check_all_health()
+    if results:
+        for node_name, healthy in results.items():
+            if healthy:
+                node = compute_registry._nodes.get(node_name)
+                if node:
+                    for model_name, cap in node.model_capabilities.items():
+                        ctx = cap.get("context_length", 0) if isinstance(cap, dict) else 0
+                        if ctx > 0:
+                            from app.config import settings
+
+                            settings.update_context_window(ctx)
+                            break
+    return results
 
 
 # Singleton

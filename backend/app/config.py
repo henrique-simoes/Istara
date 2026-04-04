@@ -66,6 +66,8 @@ class Settings(BaseSettings):
 
     # Context window
     max_context_tokens: int = 8192
+    _detected_context_tokens: int = 0
+    context_budget_strategy: str = "adaptive"
 
     # General data directory
     data_dir: str = "./data"
@@ -124,7 +126,12 @@ class Settings(BaseSettings):
 
     def ensure_dirs(self) -> None:
         """Create required directories if they don't exist."""
-        for dir_path in [self.upload_dir, self.projects_dir, self.lance_db_path, self.agent_avatars_dir]:
+        for dir_path in [
+            self.upload_dir,
+            self.projects_dir,
+            self.lance_db_path,
+            self.agent_avatars_dir,
+        ]:
             Path(dir_path).mkdir(parents=True, exist_ok=True)
         Path(self.design_screens_dir).mkdir(parents=True, exist_ok=True)
         Path(self.backup_dir).mkdir(parents=True, exist_ok=True)
@@ -135,6 +142,7 @@ class Settings(BaseSettings):
         Persists the generated secret to .env so it survives container restarts.
         """
         import secrets as _secrets
+
         insecure_defaults = {"", "istara-dev-secret-change-in-production"}
         if self.jwt_secret in insecure_defaults:
             self.jwt_secret = _secrets.token_urlsafe(32)
@@ -154,6 +162,24 @@ class Settings(BaseSettings):
                 env_path.write_text("\n".join(lines) + "\n")
             except Exception:
                 pass  # Non-fatal — secret still in memory for this session
+
+    def update_context_window(self, detected_tokens: int) -> None:
+        """Update the context window based on auto-detected model capabilities.
+
+        Only updates if the detected value differs significantly (>2x) from
+        the current setting, to avoid unnecessary churn.
+        """
+        if (
+            detected_tokens > 0
+            and abs(detected_tokens - self.max_context_tokens) > self.max_context_tokens
+        ):
+            logger = __import__("logging").getLogger(__name__)
+            logger.info(
+                f"Auto-detected context window: {detected_tokens} tokens "
+                f"(was {self.max_context_tokens}). Updating budget."
+            )
+            self.max_context_tokens = detected_tokens
+            self._detected_context_tokens = detected_tokens
 
 
 settings = Settings()

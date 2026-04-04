@@ -10,7 +10,28 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.api.routes import agents, audit, auth, channels, chat, codebooks, context_dag as context_dag_routes, documents, files, findings, interfaces, llm_servers, memory, metrics, projects, scheduler as scheduler_routes, sessions, settings, skills, tasks
+from app.api.routes import (
+    agents,
+    audit,
+    auth,
+    channels,
+    chat,
+    codebooks,
+    context_dag as context_dag_routes,
+    documents,
+    files,
+    findings,
+    interfaces,
+    llm_servers,
+    memory,
+    metrics,
+    projects,
+    scheduler as scheduler_routes,
+    sessions,
+    settings,
+    skills,
+    tasks,
+)
 from app.api.routes import backup as backup_routes
 from app.api.routes import compute as compute_routes
 from app.api.routes import deployments as deployment_routes
@@ -33,7 +54,10 @@ from app.agents.ui_audit_agent import ui_audit_agent
 from app.agents.ux_eval_agent import ux_eval_agent
 from app.agents.user_sim_agent import user_sim_agent
 from app.agents.orchestrator import meta_orchestrator
-from app.agents.custom_worker import load_custom_agents_from_db, stop_custom_agent as stop_custom_worker
+from app.agents.custom_worker import (
+    load_custom_agents_from_db,
+    stop_custom_agent as stop_custom_worker,
+)
 from app.config import settings as app_settings
 from app.core.agent import agent as agent_orchestrator
 from app.core.backup_manager import backup_manager
@@ -50,6 +74,7 @@ def _persist_env_startup(key: str, value: str, logger=None) -> None:
     """Persist a key to .env during startup (reuses settings.py logic)."""
     try:
         from app.api.routes.settings import _persist_env
+
         _persist_env(key, value)
         if logger:
             logger.info(f"Auto-persisted {key}={value} to .env")
@@ -73,6 +98,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Ensure data encryption key exists (auto-generated on first run)
     try:
         from app.core.field_encryption import ensure_encryption_key
+
         ensure_encryption_key()
     except Exception as e:
         __import__("logging").getLogger(__name__).warning(f"Encryption key setup: {e}")
@@ -81,6 +107,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     import os
     import stat
     from pathlib import Path
+
     data_path = Path(app_settings.data_dir)
     if data_path.exists():
         try:
@@ -96,11 +123,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         from app.models.user import User
         from app.core.auth import hash_password, create_token
         from sqlalchemy import select, func
+
         async with async_session() as db:
             user_count = await db.execute(select(func.count(User.id)))
             count = user_count.scalar() or 0
             if count == 0:
                 import secrets as _s
+
                 admin_user = app_settings.admin_username or "admin"
                 admin_pass = app_settings.admin_password or _s.token_urlsafe(16)
                 user = User(
@@ -122,6 +151,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                 if not app_settings.admin_password:
                     try:
                         from pathlib import Path
+
                         env_path = Path(__file__).parent.parent / ".env"
                         lines = env_path.read_text().splitlines() if env_path.exists() else []
                         lines.append(f"ADMIN_PASSWORD={admin_pass}")
@@ -140,9 +170,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # Recover incomplete tasks from previous crash
     import logging as _startup_log
+
     _recovery_log = _startup_log.getLogger("startup.recovery")
     try:
         from app.core.checkpoint import recover_incomplete
+
         async with async_session() as db:
             recovered = await recover_incomplete(db)
             if recovered:
@@ -174,27 +206,22 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             # Find orphaned sessions (project_id not in existing projects)
             all_sessions_result = await db.execute(sa_select(ChatSession))
             all_sessions = all_sessions_result.scalars().all()
-            orphaned_session_ids = [
-                s.id for s in all_sessions if s.project_id not in existing_ids
-            ]
+            orphaned_session_ids = [s.id for s in all_sessions if s.project_id not in existing_ids]
 
             # Find orphaned messages (session not in any existing session)
             if orphaned_session_ids:
                 from app.models.context_dag import ContextDAGNode
+
                 await db.execute(
                     sa_delete(ContextDAGNode).where(
                         ContextDAGNode.session_id.in_(orphaned_session_ids)
                     )
                 )
                 await db.execute(
-                    sa_delete(Message).where(
-                        Message.session_id.in_(orphaned_session_ids)
-                    )
+                    sa_delete(Message).where(Message.session_id.in_(orphaned_session_ids))
                 )
                 await db.execute(
-                    sa_delete(ChatSession).where(
-                        ChatSession.id.in_(orphaned_session_ids)
-                    )
+                    sa_delete(ChatSession).where(ChatSession.id.in_(orphaned_session_ids))
                 )
                 await db.commit()
                 _cleanup_log.info(
@@ -206,11 +233,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         _cleanup_log.warning(f"Startup cleanup skipped: {e}")
 
     import logging
+
     _log = logging.getLogger(__name__)
 
     # Load active channel instances from database
     try:
         from app.services.channel_service import load_active_instances
+
         async with async_session() as db:
             loaded = await load_active_instances(db)
         _log.info(f"Loaded {loaded} active channel instance(s)")
@@ -220,7 +249,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Register configured local LLM server FIRST (before discovery)
     try:
         from app.core.compute_registry import compute_registry, ComputeNode
-        local_host = app_settings.lmstudio_host if app_settings.llm_provider == "lmstudio" else app_settings.ollama_host
+
+        local_host = (
+            app_settings.lmstudio_host
+            if app_settings.llm_provider == "lmstudio"
+            else app_settings.ollama_host
+        )
         local_type = app_settings.llm_provider
         # Check if already registered (ollama.py _init_llm_router may have done this)
         existing_hosts = {n.host for n in compute_registry._nodes.values()}
@@ -243,6 +277,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Network discovery: find LLM servers on local network
     try:
         from app.core.network_discovery import discover_and_register
+
         discovered = await discover_and_register()
         if discovered:
             _log.info(f"Auto-discovered {len(discovered)} LLM servers on the network")
@@ -254,6 +289,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Load persisted LLM servers from database
     try:
         from app.core.ollama import load_persisted_servers_async
+
         await load_persisted_servers_async()
     except Exception as e:
         _log.warning(f"Failed to load persisted LLM servers: {e}")
@@ -261,6 +297,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Run health checks on all nodes (populates available_models for each)
     try:
         from app.core.compute_registry import compute_registry
+
         await compute_registry.check_all_health()
         healthy = [n for n in compute_registry._nodes.values() if n.is_healthy]
         _log.info(f"ComputeRegistry: {len(healthy)}/{len(compute_registry._nodes)} nodes healthy")
@@ -269,10 +306,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # Auto-detect LLM provider: try configured first, fall back to the other
     from app.core.ollama import ollama, auto_detect_provider
+
     try:
         await auto_detect_provider()
         # Re-import after potential provider switch
         from app.core import ollama as ollama_mod
+
         current_client = ollama_mod.ollama
         if await current_client.health():
             _log.info(f"LLM provider ({app_settings.llm_provider}) is online.")
@@ -299,7 +338,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                 # The only reliable detection is a minimal chat probe — the
                 # response's 'model' field reveals which model is serving.
                 from app.core.lmstudio import LMStudioClient
-                lms_client = current_client if isinstance(current_client, LMStudioClient) else LMStudioClient()
+
+                lms_client = (
+                    current_client
+                    if isinstance(current_client, LMStudioClient)
+                    else LMStudioClient()
+                )
                 loaded = await lms_client.detect_loaded_model(force=True)
                 if loaded and loaded != app_settings.lmstudio_model:
                     app_settings.lmstudio_model = loaded
@@ -320,6 +364,21 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                         elif model_names:
                             app_settings.lmstudio_model = model_names[0]
                             _persist_env_startup("LMSTUDIO_MODEL", model_names[0], _log)
+
+                # Detect model capabilities (context window) after model is known
+                try:
+                    from app.core.model_capabilities import detect_capabilities_lmstudio
+
+                    caps = await detect_capabilities_lmstudio(app_settings.lmstudio_host)
+                    for model_name, cap in caps.items():
+                        if cap.context_length and cap.context_length > 0:
+                            app_settings.update_context_window(cap.context_length)
+                            _log.info(
+                                f"Detected context window: {cap.context_length} tokens for {model_name}"
+                            )
+                            break
+                except Exception as e:
+                    _log.debug(f"LM Studio capability detection skipped: {e}")
         else:
             _log.warning(f"LLM provider ({app_settings.llm_provider}) is not reachable.")
     except Exception:
@@ -328,6 +387,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Vector store dimension health check
     try:
         from app.core.vector_health import check_embedding_dimensions
+
         dim_check = await check_embedding_dimensions()
         if dim_check["status"] == "mismatch":
             _log.warning(f"Embedding dimension mismatch: {dim_check['message']}")
@@ -339,6 +399,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # ── Data integrity check ──
     try:
         from app.core.data_integrity import run_integrity_check
+
         async with async_session() as _check_db:
             integrity = await run_integrity_check(_check_db)
             if integrity["warnings"]:
@@ -379,6 +440,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Meta-Hyperagent: always load confirmed overrides; conditionally start loop
     try:
         from app.core.meta_hyperagent import meta_hyperagent as mh
+
         mh.load_confirmed_overrides()
         if app_settings.meta_hyperagent_enabled:
             asyncio.create_task(mh.start_observation_loop())
@@ -389,6 +451,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Background update check (non-blocking, 15s delay)
     try:
         from app.api.routes.updates import check_for_updates_on_startup
+
         asyncio.create_task(check_for_updates_on_startup())
         _log.info("Startup update check scheduled.")
     except Exception as e:
@@ -398,6 +461,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # Shutdown
     import logging as _shutdown_log
+
     _sd_log = _shutdown_log.getLogger("shutdown")
     _sd_log.info("Initiating graceful shutdown...")
     _shutting_down = True
@@ -407,6 +471,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     backup_manager.stop()
     try:
         from app.core.meta_hyperagent import meta_hyperagent as mh
+
         mh.stop()
     except Exception:
         pass
@@ -421,6 +486,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # Stop custom agent workers
     from app.agents.custom_worker import get_active_workers
+
     for worker_id in list(get_active_workers().keys()):
         await stop_custom_worker(worker_id)
 
@@ -455,6 +521,7 @@ def _read_version() -> str:
         pass
     return "dev"
 
+
 ISTARA_VERSION = _read_version()
 
 app = FastAPI(
@@ -466,6 +533,7 @@ app = FastAPI(
 
 # Global JWT authentication enforcement — ALL endpoints require auth
 from app.core.security_middleware import SecurityAuthMiddleware
+
 app.add_middleware(SecurityAuthMiddleware)
 
 
@@ -500,8 +568,10 @@ app.add_middleware(
 # Network security — access token for non-localhost connections
 if app_settings.network_access_token:
     from app.core.network_security import NetworkSecurityMiddleware
+
     app.add_middleware(NetworkSecurityMiddleware)
     import logging
+
     logging.getLogger(__name__).info(
         "Network security enabled — non-localhost requests require access token"
     )
@@ -510,9 +580,11 @@ if app_settings.network_access_token:
 if app_settings.rate_limit_enabled:
     try:
         from app.core.rate_limiter import limiter
+
         app.state.limiter = limiter
         from slowapi.errors import RateLimitExceeded
         from slowapi import _rate_limit_exceeded_handler
+
         app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
     except ImportError:
         pass  # slowapi not installed — rate limiting disabled
@@ -567,6 +639,7 @@ async def health_check() -> dict:
 async def list_registered_skills():
     """List all registered skills from the runtime registry."""
     from app.skills.registry import registry
+
     return registry.to_dict()
 
 
@@ -610,7 +683,11 @@ async def a2a_jsonrpc(request: Request):
     except Exception:
         return JSONResponse(
             status_code=400,
-            content={"jsonrpc": "2.0", "error": {"code": -32700, "message": "Parse error"}, "id": None},
+            content={
+                "jsonrpc": "2.0",
+                "error": {"code": -32700, "message": "Parse error"},
+                "id": None,
+            },
         )
 
     method = body.get("method", "")
@@ -621,6 +698,7 @@ async def a2a_jsonrpc(request: Request):
         # Create a task from A2A message
         from app.models.database import async_session as a2a_session
         from app.services import a2a as a2a_svc
+
         async with a2a_session() as db:
             msg = await a2a_svc.send_message(
                 db,
@@ -630,12 +708,17 @@ async def a2a_jsonrpc(request: Request):
                 content=params.get("message", {}).get("text", ""),
                 metadata=params.get("message", {}).get("metadata"),
             )
-            return {"jsonrpc": "2.0", "result": {"id": msg["id"], "status": "submitted"}, "id": req_id}
+            return {
+                "jsonrpc": "2.0",
+                "result": {"id": msg["id"], "status": "submitted"},
+                "id": req_id,
+            }
 
     elif method == "tasks/get":
         task_id = params.get("id")
         from app.models.database import async_session as a2a_session
         from app.services import a2a as a2a_svc
+
         async with a2a_session() as db:
             messages = await a2a_svc.get_full_log(db, limit=200)
             task = next((m for m in messages if m["id"] == task_id), None)
@@ -643,12 +726,17 @@ async def a2a_jsonrpc(request: Request):
                 return {"jsonrpc": "2.0", "result": task, "id": req_id}
             return JSONResponse(
                 status_code=404,
-                content={"jsonrpc": "2.0", "error": {"code": -32001, "message": "Task not found"}, "id": req_id},
+                content={
+                    "jsonrpc": "2.0",
+                    "error": {"code": -32001, "message": "Task not found"},
+                    "id": req_id,
+                },
             )
 
     elif method == "tasks/list":
         from app.models.database import async_session as a2a_session
         from app.services import a2a as a2a_svc
+
         async with a2a_session() as db:
             messages = await a2a_svc.get_full_log(db, limit=params.get("limit", 50))
             return {"jsonrpc": "2.0", "result": {"tasks": messages}, "id": req_id}
@@ -660,6 +748,7 @@ async def a2a_jsonrpc(request: Request):
         # Return list of available agents
         from app.models.database import async_session as a2a_session
         from app.services import agent_service
+
         async with a2a_session() as db:
             agents = await agent_service.list_agents(db)
             return {"jsonrpc": "2.0", "result": {"agents": agents}, "id": req_id}
@@ -667,5 +756,9 @@ async def a2a_jsonrpc(request: Request):
     else:
         return JSONResponse(
             status_code=400,
-            content={"jsonrpc": "2.0", "error": {"code": -32601, "message": f"Method not found: {method}"}, "id": req_id},
+            content={
+                "jsonrpc": "2.0",
+                "error": {"code": -32601, "message": f"Method not found: {method}"},
+                "id": req_id,
+            },
         )

@@ -462,7 +462,35 @@ async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db)):
             agent_identity_prompt = load_agent_identity("istara-main")
 
     # Retrieve context via RAG
-    rag_context = await retrieve_context(request.project_id, request.message)
+    rag_result = await retrieve_context(request.project_id, request.message)
+
+    # Budget-aware pipeline: allocate tokens based on detected context window
+    from app.core.budget_coordinator import budget_coordinator, compute_surplus_level
+    from app.core.prompt_compressor import compress_rag_chunks
+
+    budget = budget_coordinator.allocate(settings.max_context_tokens)
+    surplus = compute_surplus_level()
+
+    # Re-compose agent identity with budget-aware token limit
+    if session_agent_id and agent_identity_prompt:
+        try:
+            agent_identity_prompt = await compose_dynamic_prompt(
+                session_agent_id,
+                query=request.message,
+                max_tokens=budget.identity_tokens,
+                use_embeddings=True,
+            )
+        except Exception:
+            pass  # Keep the previously loaded identity
+
+    # Compress RAG chunks with question-aware scoring within budget
+    rag_context = ""
+    if rag_result and rag_result.retrieved:
+        chunk_texts = [r.text for r in rag_result.retrieved if r.text]
+        compressed_chunks, _ = compress_rag_chunks(
+            chunk_texts, request.message, budget.rag_tokens, surplus
+        )
+        rag_context = "\n---\n".join(compressed_chunks) if compressed_chunks else ""
 
     # Build system prompt with context layers + agent identity
     system_prompt = build_augmented_prompt(
@@ -517,7 +545,10 @@ async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db)):
     # --- DAG-based context summarization: summarize older messages ----------
     try:
         messages, ctx_summary = await context_summarizer.apply_summarization(
-            system_prompt, messages, session_id=request.session_id
+            system_prompt,
+            messages,
+            session_id=request.session_id,
+            budget=budget.history_tokens,
         )
         if ctx_summary:
             import logging as _log
@@ -532,7 +563,10 @@ async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db)):
         pass  # Fall through to hard trim on summarization failure
 
     # --- Context window guard: trim history if it would overflow ----------
-    messages, trim_summary = context_guard.summarize_if_needed(system_prompt, messages)
+    from app.core.token_counter import ContextWindowGuard
+
+    budget_guard = ContextWindowGuard(budget=budget)
+    messages, trim_summary = budget_guard.summarize_if_needed(system_prompt, messages)
     if trim_summary:
         # Prepend the trim note so the model knows history was truncated
         messages.insert(0, {"role": "system", "content": trim_summary})

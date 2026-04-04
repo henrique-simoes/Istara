@@ -92,18 +92,20 @@ class VectorStore:
             source = ec.chunk.source
             file_type = Path(source).suffix.lstrip(".") if source else ""
             chunk_type = getattr(ec.chunk, "chunk_type", "character")
-            records.append({
-                "vector": ec.vector,
-                "text": ec.chunk.text,
-                "source": source,
-                "page": ec.chunk.page or 0,
-                "position": ec.chunk.position,
-                "agent_id": agent_id,
-                "file_type": file_type,
-                "chunk_type": chunk_type,
-                "created_at": now,
-                "confidence": confidence,
-            })
+            records.append(
+                {
+                    "vector": ec.vector,
+                    "text": ec.chunk.text,
+                    "source": source,
+                    "page": ec.chunk.page or 0,
+                    "position": ec.chunk.position,
+                    "agent_id": agent_id,
+                    "file_type": file_type,
+                    "chunk_type": chunk_type,
+                    "created_at": now,
+                    "confidence": confidence,
+                }
+            )
 
         if self._ensure_table():
             table = self.db.open_table(self.table_name)
@@ -173,7 +175,12 @@ class VectorStore:
             # Skip rows with null/empty text (corrupted or incomplete chunks)
             text_val = row.get("text")
             import pandas as pd
-            if text_val is None or (isinstance(text_val, float) and pd.isna(text_val)) or str(text_val).strip() == "":
+
+            if (
+                text_val is None
+                or (isinstance(text_val, float) and pd.isna(text_val))
+                or str(text_val).strip() == ""
+            ):
                 continue
             if score >= threshold:
                 retrieval_results.append(
@@ -183,8 +190,12 @@ class VectorStore:
                         page=int(row["page"]) if row["page"] else None,
                         score=score,
                         agent_id=str(row.get("agent_id", "")) if "agent_id" in row.index else "",
-                        created_at=float(row.get("created_at", 0.0)) if "created_at" in row.index else 0.0,
-                        confidence=float(row.get("confidence", 1.0)) if "confidence" in row.index else 1.0,
+                        created_at=float(row.get("created_at", 0.0))
+                        if "created_at" in row.index
+                        else 0.0,
+                        confidence=float(row.get("confidence", 1.0))
+                        if "confidence" in row.index
+                        else 1.0,
                     )
                 )
 
@@ -217,6 +228,7 @@ class VectorStore:
 # ---------------------------------------------------------------------------
 # Hybrid search helpers
 # ---------------------------------------------------------------------------
+
 
 async def hybrid_search(
     project_id: str,
@@ -289,6 +301,7 @@ async def hybrid_search(
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+
 
 async def ingest_chunks(
     project_id: str,
@@ -363,7 +376,7 @@ async def retrieve_context(
 
 def build_augmented_prompt(
     query: str,
-    rag_context: RAGContext,
+    rag_context: RAGContext | str,
     project_context: str | None = None,
     company_context: str | None = None,
 ) -> str:
@@ -371,7 +384,8 @@ def build_augmented_prompt(
 
     Args:
         query: The user's question.
-        rag_context: Retrieved context from the vector store.
+        rag_context: Retrieved context from the vector store, or a pre-compressed
+            string (used when budget-aware compression has already been applied).
         project_context: Project-level context (research brief, goals, etc.).
         company_context: Company-level context (product, culture, etc.).
 
@@ -393,12 +407,22 @@ def build_augmented_prompt(
         wrapped_project = _guard.wrap_untrusted(project_context, source="project_context")
         parts.append(f"\n## Project Context\n{wrapped_project}")
 
-    if rag_context.has_context:
+    # Support both RAGContext objects and pre-compressed strings
+    has_rag = False
+    rag_text = ""
+    if isinstance(rag_context, str):
+        has_rag = bool(rag_context.strip())
+        rag_text = rag_context
+    elif isinstance(rag_context, RAGContext):
+        has_rag = rag_context.has_context
+        rag_text = rag_context.context_text
+
+    if has_rag:
         parts.append(
             f"\n## Relevant Documents\n"
             f"The following documents were retrieved from the project knowledge base. "
             f"Reference them when relevant to the user's question.\n\n"
-            f"{rag_context.context_text}"
+            f"{rag_text}"
         )
 
     return "\n".join(parts)

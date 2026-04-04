@@ -7,6 +7,9 @@ LLMs (LM Studio / Ollama) that have finite context windows.
 Uses a character-based heuristic (chars / 4) rather than a real
 tokenizer — fast, zero external dependencies, accurate enough for
 guard-rail purposes on models like Qwen, Llama, Mistral, etc.
+
+Now budget-aware: accepts a ``BudgetAllocation`` to enforce per-component
+limits instead of a single monolithic max_tokens value.
 """
 
 import logging
@@ -70,6 +73,7 @@ def estimate_messages_tokens(messages: list[dict]) -> int:
 # ContextWindowGuard
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class TokenBudgetReport:
     """Result of a context-window budget check."""
@@ -85,6 +89,8 @@ class TokenBudgetReport:
 class ContextWindowGuard:
     """Enforces context-window limits for chat completions.
 
+    Now accepts an optional ``budget`` parameter for per-component limits.
+
     Typical usage::
 
         guard = ContextWindowGuard()
@@ -93,14 +99,17 @@ class ContextWindowGuard:
             messages = guard.trim_messages(system_prompt, messages)
     """
 
-    def __init__(self, max_tokens: int | None = None) -> None:
+    def __init__(
+        self,
+        max_tokens: int | None = None,
+        budget: "BudgetAllocation | None" = None,
+    ) -> None:
         self.max_tokens = max_tokens or settings.max_context_tokens
+        self.budget = budget
 
     # -- Public API --------------------------------------------------------
 
-    def check(
-        self, system_prompt: str, messages: list[dict]
-    ) -> tuple[bool, int]:
+    def check(self, system_prompt: str, messages: list[dict]) -> tuple[bool, int]:
         """Check whether the prompt + messages fit within the context window.
 
         Args:
@@ -113,12 +122,11 @@ class ContextWindowGuard:
         sys_tokens = count_tokens(system_prompt) + _MESSAGE_OVERHEAD_TOKENS
         msg_tokens = estimate_messages_tokens(messages)
         total = sys_tokens + msg_tokens + _REPLY_RESERVE_TOKENS
-        fits = total <= self.max_tokens
+        effective_max = self.budget.history_tokens if self.budget else self.max_tokens
+        fits = total <= effective_max
         return fits, total
 
-    def budget_report(
-        self, system_prompt: str, messages: list[dict]
-    ) -> TokenBudgetReport:
+    def budget_report(self, system_prompt: str, messages: list[dict]) -> TokenBudgetReport:
         """Return a detailed breakdown of token budget usage."""
         sys_tokens = count_tokens(system_prompt) + _MESSAGE_OVERHEAD_TOKENS
         msg_tokens = estimate_messages_tokens(messages)
@@ -181,8 +189,7 @@ class ContextWindowGuard:
         trimmed_count = len(messages) - len(kept)
         if trimmed_count > 0:
             logger.info(
-                "Trimmed %d oldest message(s) to fit context window "
-                "(%d / %d tokens used).",
+                "Trimmed %d oldest message(s) to fit context window (%d / %d tokens used).",
                 trimmed_count,
                 sys_tokens + running + _REPLY_RESERVE_TOKENS,
                 budget,

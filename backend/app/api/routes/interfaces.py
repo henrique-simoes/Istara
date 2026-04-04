@@ -242,7 +242,35 @@ async def design_chat(request: DesignChatRequest, db: AsyncSession = Depends(get
         agent_identity_prompt = DESIGN_LEAD_PREAMBLE
 
     # Retrieve RAG context
-    rag_context = await retrieve_context(request.project_id, request.message)
+    rag_result = await retrieve_context(request.project_id, request.message)
+
+    # Budget-aware pipeline
+    from app.core.budget_coordinator import budget_coordinator, compute_surplus_level
+    from app.core.prompt_compressor import compress_rag_chunks
+
+    budget = budget_coordinator.allocate(settings.max_context_tokens)
+    surplus = compute_surplus_level()
+
+    # Re-compose agent identity with budget-aware token limit
+    if agent_identity_prompt:
+        try:
+            agent_identity_prompt = await compose_dynamic_prompt(
+                "design-lead",
+                query=request.message,
+                max_tokens=budget.identity_tokens,
+                use_embeddings=True,
+            )
+        except Exception:
+            pass
+
+    # Compress RAG chunks with question-aware scoring within budget
+    rag_context = ""
+    if rag_result and rag_result.retrieved:
+        chunk_texts = [r.text for r in rag_result.retrieved if r.text]
+        compressed_chunks, _ = compress_rag_chunks(
+            chunk_texts, request.message, budget.rag_tokens, surplus
+        )
+        rag_context = "\n---\n".join(compressed_chunks) if compressed_chunks else ""
 
     # Build system prompt
     system_prompt = build_augmented_prompt(
@@ -292,13 +320,19 @@ async def design_chat(request: DesignChatRequest, db: AsyncSession = Depends(get
     # Context summarization
     try:
         messages, ctx_summary = await context_summarizer.apply_summarization(
-            system_prompt, messages, session_id=request.session_id
+            system_prompt,
+            messages,
+            session_id=request.session_id,
+            budget=budget.history_tokens,
         )
     except Exception:
         pass
 
     # Context window guard
-    messages, trim_summary = context_guard.summarize_if_needed(system_prompt, messages)
+    from app.core.token_counter import ContextWindowGuard
+
+    budget_guard = ContextWindowGuard(budget=budget)
+    messages, trim_summary = budget_guard.summarize_if_needed(system_prompt, messages)
     if trim_summary:
         messages.insert(0, {"role": "system", "content": trim_summary})
 
@@ -398,10 +432,14 @@ async def design_chat(request: DesignChatRequest, db: AsyncSession = Depends(get
                 save_db.add(assistant_msg)
                 await save_db.commit()
 
-                sources = [
-                    {"source": r.source, "score": r.score, "page": r.page}
-                    for r in rag_context.retrieved
-                ]
+                sources = (
+                    [
+                        {"source": r.source, "score": r.score, "page": r.page}
+                        for r in rag_result.retrieved
+                    ]
+                    if rag_result and hasattr(rag_result, "retrieved")
+                    else []
+                )
                 done_data = json.dumps(
                     {
                         "type": "done",
