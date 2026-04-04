@@ -144,6 +144,10 @@ export default function DocumentsView() {
     localStorage.setItem("istara_documents_view_mode", mode);
   }, []);
 
+  const dispatchToast = (type: "success" | "warning" | "info", title: string, message: string) => {
+    window.dispatchEvent(new CustomEvent("istara:toast", { detail: { type, title, message } }));
+  };
+
   // Fetch documents on project change
   useEffect(() => {
     if (activeProjectId) {
@@ -197,8 +201,9 @@ export default function DocumentsView() {
     try {
       const content = await documentsApi.content(doc.id);
       setPreviewContent(content);
-    } catch {
+    } catch (e: any) {
       setPreviewContent(null);
+      dispatchToast("warning", "Preview Failed", `Could not load content: ${e.message}`);
     }
     setLoadingPreview(false);
   };
@@ -209,10 +214,19 @@ export default function DocumentsView() {
     selectDocument(null);
   };
 
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
   const handleDelete = async (id: string) => {
-    await deleteDocument(id);
-    setConfirmDelete(null);
-    if (previewDoc?.id === id) handleClosePreview();
+    setDeletingId(id);
+    try {
+      await deleteDocument(id);
+      setConfirmDelete(null);
+      if (previewDoc?.id === id) handleClosePreview();
+      dispatchToast("success", "Document Deleted", "Document removed successfully");
+    } catch (e: any) {
+      dispatchToast("warning", "Delete Failed", e.message || "Could not delete document");
+    }
+    setDeletingId(null);
   };
 
   const handleSearchKeyDown = useCallback(
@@ -537,9 +551,11 @@ export default function DocumentsView() {
               </button>
               <button
                 onClick={() => handleDelete(confirmDelete)}
-                className="px-3 py-1.5 rounded-lg text-sm bg-red-600 text-white hover:bg-red-700"
+                disabled={deletingId === confirmDelete}
+                className="px-3 py-1.5 rounded-lg text-sm bg-red-600 text-white hover:bg-red-700 disabled:opacity-70 flex items-center gap-1.5"
               >
-                Delete
+                {deletingId === confirmDelete ? <Loader2 size={14} className="animate-spin" /> : null}
+                {deletingId === confirmDelete ? "Deleting..." : "Delete"}
               </button>
             </div>
           </div>

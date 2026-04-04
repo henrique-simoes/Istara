@@ -13,6 +13,9 @@ from app.config import settings
 from app.core.file_processor import get_supported_extensions, process_file
 from app.core.rag import VectorStore, ingest_chunks
 from app.models.database import get_db
+from app.models.document import Document, DocumentSource
+from app.models.project import Project
+from sqlalchemy import select
 from app.models.project import Project
 from sqlalchemy import select
 
@@ -77,6 +80,23 @@ async def upload_file(
 
     # Media files: store only, skip text extraction
     if suffix in MEDIA_EXTENSIONS:
+        doc = Document(
+            id=str(uuid.uuid4()),
+            project_id=project_id,
+            title=(file.filename or "")
+            .rsplit(".", 1)[0]
+            .replace("-", " ")
+            .replace("_", " ")
+            .title(),
+            file_name=file.filename or safe_filename,
+            file_path=str(file_path),
+            file_type=suffix,
+            file_size=len(content),
+            source=DocumentSource.USER_UPLOAD,
+            status="ready",
+        )
+        db.add(doc)
+        await db.commit()
         return {
             "status": "stored",
             "file_id": file_id,
@@ -104,6 +124,21 @@ async def upload_file(
 
     # Ingest chunks into vector store
     chunks_indexed = await ingest_chunks(project_id, result.chunks)
+
+    # Create a Document record so the file appears in Documents view immediately
+    doc = Document(
+        id=str(uuid.uuid4()),
+        project_id=project_id,
+        title=(file.filename or "").rsplit(".", 1)[0].replace("-", " ").replace("_", " ").title(),
+        file_name=file.filename or safe_filename,
+        file_path=str(file_path),
+        file_type=suffix,
+        file_size=len(content),
+        source=DocumentSource.USER_UPLOAD,
+        status="ready",
+    )
+    db.add(doc)
+    await db.commit()
 
     response = {
         "status": "processed",

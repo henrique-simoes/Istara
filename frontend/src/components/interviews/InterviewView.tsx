@@ -26,6 +26,7 @@ import {
   BarChart3,
   PanelRightClose,
   PanelRight,
+  ArrowLeft,
 } from "lucide-react";
 import { useProjectStore } from "@/stores/projectStore";
 import { useAgentStore } from "@/stores/agentStore";
@@ -424,20 +425,43 @@ export default function InterviewView() {
     loadProjectData();
   }, [loadProjectData]);
 
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0 });
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const fileList = e.target.files;
     if (!fileList || !activeProjectId) return;
     setError(null);
 
-    for (const file of Array.from(fileList)) {
+    const files = Array.from(fileList);
+    setUploading(true);
+    setUploadProgress({ current: 0, total: files.length });
+
+    let successCount = 0;
+    let failCount = 0;
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
       try {
         await filesApi.upload(activeProjectId, file);
+        successCount++;
       } catch (err: any) {
-        setError(`Upload failed: ${err.message}`);
+        failCount++;
+        setError(`Upload failed for ${file.name}: ${err.message}`);
       }
+      setUploadProgress({ current: i + 1, total: files.length });
     }
+
     await loadProjectData();
+    setUploading(false);
+    setUploadProgress({ current: 0, total: 0 });
     if (fileInputRef.current) fileInputRef.current.value = "";
+
+    if (successCount > 0) {
+      dispatchToast("success", "Files Uploaded", `${successCount} file(s) uploaded successfully`);
+    }
+    if (failCount > 0) {
+      dispatchToast("warning", "Upload Errors", `${failCount} file(s) failed to upload`);
+    }
   };
 
   const handleFileSelect = (filename: string, type: string) => {
@@ -512,31 +536,67 @@ export default function InterviewView() {
         tags: [tagName],
       });
       await loadProjectData();
+      dispatchToast("success", "Tag Created", `"${tagName}" added to ${selectedFile || "selection"}`);
     } catch (e: any) {
       // Fallback: add the tag locally for UX
       setTags((prev) => ({ ...prev, [tagName]: (prev[tagName] || 0) + 1 }));
+      dispatchToast("warning", "Tag Saved Locally", "Could not sync with server. Tag will be lost on refresh.");
+    }
+  };
+
+  /** Dispatch a toast notification — WCAG 2.2 4.1.3 Status Messages, Nielsen H1: Visibility */
+  const dispatchToast = (type: "success" | "warning" | "info", title: string, message: string) => {
+    window.dispatchEvent(new CustomEvent("istara:toast", { detail: { type, title, message } }));
+  };
+
+  /** Handle SSE stream from chat API with full event processing */
+  const handleChatStream = async (
+    projectId: string,
+    message: string,
+    onChunk: (text: string) => void,
+    onComplete?: (toolsUsed: string[]) => void,
+  ): Promise<{ error: string | null }> => {
+    let result = "";
+    let toolsUsed: string[] = [];
+    try {
+      for await (const event of chatApi.send(projectId, message)) {
+        if (event.type === "chunk") {
+          result += event.content;
+          onChunk(result);
+        } else if (event.type === "tool_call") {
+          toolsUsed.push(event.tool || "unknown");
+          onChunk(result + `\n\n▸ Running: ${event.tool}...`);
+        } else if (event.type === "error") {
+          return { error: event.message };
+        }
+      }
+      onComplete?.(toolsUsed);
+      return { error: null };
+    } catch (e: any) {
+      return { error: e.message || "Request failed" };
     }
   };
 
   const handleAnalyze = async () => {
     if (!activeProjectId || !selectedFile) return;
     setAnalyzing(true);
-    setAnalysisResult("");
+    setAnalysisResult("Starting analysis...");
     setError(null);
 
-    try {
-      let result = "";
-      for await (const event of chatApi.send(activeProjectId, `analyze the interview transcript ${selectedFile}`)) {
-        if (event.type === "chunk") {
-          result += event.content;
-          setAnalysisResult(result);
-        } else if (event.type === "error") {
-          setError(event.message);
-        }
-      }
+    const { error } = await handleChatStream(
+      activeProjectId,
+      `analyze the interview transcript ${selectedFile}`,
+      (text) => setAnalysisResult(text),
+      (tools) => {
+        dispatchToast("success", "Analysis Complete", `Used ${tools.length} tool(s) to analyze ${selectedFile}`);
+      },
+    );
+
+    if (error) {
+      setError(error);
+      dispatchToast("warning", "Analysis Failed", error);
+    } else {
       await loadProjectData();
-    } catch (e: any) {
-      setError(e.message || "Analysis failed");
     }
     setAnalyzing(false);
   };
@@ -544,20 +604,23 @@ export default function InterviewView() {
   const handleBatchAnalyze = async () => {
     if (!activeProjectId || projectFiles.length === 0) return;
     setAnalyzing(true);
-    setAnalysisResult("");
+    setAnalysisResult("Starting batch analysis of all transcripts...");
     setError(null);
 
-    try {
-      let result = "";
-      for await (const event of chatApi.send(activeProjectId, `analyze all interview transcripts in this project`)) {
-        if (event.type === "chunk") {
-          result += event.content;
-          setAnalysisResult(result);
-        }
-      }
+    const { error } = await handleChatStream(
+      activeProjectId,
+      `analyze all interview transcripts in this project`,
+      (text) => setAnalysisResult(text),
+      (tools) => {
+        dispatchToast("success", "Batch Analysis Complete", `Analyzed ${projectFiles.length} file(s) using ${tools.length} tool(s)`);
+      },
+    );
+
+    if (error) {
+      setError(error);
+      dispatchToast("warning", "Batch Analysis Failed", error);
+    } else {
       await loadProjectData();
-    } catch (e: any) {
-      setError(e.message || "Batch analysis failed");
     }
     setAnalyzing(false);
   };
@@ -623,9 +686,12 @@ export default function InterviewView() {
             />
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="flex items-center gap-1 px-3 py-1.5 text-xs bg-istara-600 text-white rounded-lg hover:bg-istara-700"
+              disabled={uploading}
+              className="flex items-center gap-1 px-3 py-1.5 text-xs bg-istara-600 text-white rounded-lg hover:bg-istara-700 disabled:opacity-70"
+              aria-busy={uploading}
             >
-              <Upload size={12} /> Upload
+              {uploading ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}
+              {uploading ? `Uploading ${uploadProgress.current}/${uploadProgress.total}` : "Upload"}
             </button>
           </div>
         </div>
@@ -667,14 +733,19 @@ export default function InterviewView() {
                 onClick={async () => {
                   if (!activeProjectId) return;
                   setAnalyzing(true);
-                  setAnalysisResult("");
-                  try {
-                    let result = "";
-                    for await (const event of chatApi.send(activeProjectId, "organize and rename all files in this project by type and category")) {
-                      if (event.type === "chunk") { result += event.content; setAnalysisResult(result); }
-                    }
+                  setAnalysisResult("Organizing files...");
+                  const { error } = await handleChatStream(
+                    activeProjectId,
+                    "organize and rename all files in this project by type and category",
+                    (text) => setAnalysisResult(text),
+                    () => dispatchToast("success", "Files Organized", "File organization complete"),
+                  );
+                  if (error) {
+                    setError(error);
+                    dispatchToast("warning", "Organize Failed", error);
+                  } else {
                     await loadProjectData();
-                  } catch (e) {}
+                  }
                   setAnalyzing(false);
                 }}
                 disabled={analyzing}
@@ -753,14 +824,17 @@ export default function InterviewView() {
             </div>
           ) : (
             <div>
-              {/* Analyze button */}
-              {selectedFile && !analyzing && !isMedia(selectedFileType) && !isImage(selectedFileType) && (
+              {/* Analyze button — Nielsen H1: Visibility, WCAG 2.2 4.1.3 Status Messages */}
+              {selectedFile && !isMedia(selectedFileType) && !isImage(selectedFileType) && (
                 <div className="p-4 pb-0">
                   <button
                     onClick={handleAnalyze}
-                    className="flex items-center gap-2 px-4 py-2 bg-istara-600 text-white rounded-lg hover:bg-istara-700 text-sm"
+                    disabled={analyzing}
+                    className="flex items-center gap-2 px-4 py-2 bg-istara-600 text-white rounded-lg hover:bg-istara-700 text-sm disabled:opacity-70"
+                    aria-busy={analyzing}
                   >
-                    <Sparkles size={14} /> Analyze this file
+                    {analyzing ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+                    {analyzing ? "Analyzing..." : "Analyze this file"}
                   </button>
                 </div>
               )}
@@ -782,14 +856,25 @@ export default function InterviewView() {
 
               {/* File preview */}
               {activeProjectId && (
-                <FilePreview
-                  projectId={activeProjectId}
-                  filename={selectedFile}
-                  fileType={selectedFileType}
-                  activeTag={activeTag}
-                  highlightText={highlightText}
-                  onTextSelect={handleTextSelect}
-                />
+                <div className="relative">
+                  {/* Back button — WCAG 2.2 2.4.3 Focus Order, Nielsen H8: Back/Close */}
+                  <button
+                    onClick={() => { setSelectedFile(null); setSelectedFileType(""); }}
+                    className="absolute top-2 left-2 z-10 p-2 rounded-lg bg-white/90 dark:bg-slate-800/90 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 shadow-sm border border-slate-200 dark:border-slate-700 transition-colors"
+                    aria-label="Back to file list"
+                    title="Back to file list"
+                  >
+                    <ArrowLeft size={18} />
+                  </button>
+                  <FilePreview
+                    projectId={activeProjectId}
+                    filename={selectedFile}
+                    fileType={selectedFileType}
+                    activeTag={activeTag}
+                    highlightText={highlightText}
+                    onTextSelect={handleTextSelect}
+                  />
+                </div>
               )}
             </div>
           )}
@@ -911,24 +996,29 @@ export default function InterviewView() {
           <h3 className="text-xs font-semibold text-slate-500 uppercase mb-1">Quick Actions</h3>
           <div className="space-y-1">
             {[
-              { label: "Run thematic analysis on nuggets", intent: "run thematic analysis on all nuggets", icon: Sparkles },
-              { label: "Generate affinity map", intent: "create affinity map from findings", icon: FolderOpen },
-              { label: "Intercoder reliability (Kappa)", intent: "run intercoder reliability kappa analysis on all coded data", icon: BarChart3 },
-              { label: "Create synthesis report", intent: "synthesize all findings into a report", icon: FileText },
+              { label: "Run thematic analysis on nuggets", intent: "run thematic analysis on all nuggets", icon: Sparkles, toastTitle: "Thematic Analysis Complete" },
+              { label: "Generate affinity map", intent: "create affinity map from findings", icon: FolderOpen, toastTitle: "Affinity Map Generated" },
+              { label: "Intercoder reliability (Kappa)", intent: "run intercoder reliability kappa analysis on all coded data", icon: BarChart3, toastTitle: "Kappa Analysis Complete" },
+              { label: "Create synthesis report", intent: "synthesize all findings into a report", icon: FileText, toastTitle: "Synthesis Report Created" },
             ].map((action) => (
               <button
                 key={action.label}
                 onClick={async () => {
                   if (!activeProjectId) return;
                   setAnalyzing(true);
-                  setAnalysisResult("");
-                  try {
-                    let result = "";
-                    for await (const event of chatApi.send(activeProjectId, action.intent)) {
-                      if (event.type === "chunk") { result += event.content; setAnalysisResult(result); }
-                    }
+                  setAnalysisResult(`Starting: ${action.label}...`);
+                  const { error } = await handleChatStream(
+                    activeProjectId,
+                    action.intent,
+                    (text) => setAnalysisResult(text),
+                    () => dispatchToast("success", action.toastTitle, "Analysis complete"),
+                  );
+                  if (error) {
+                    setError(error);
+                    dispatchToast("warning", `${action.label} Failed`, error);
+                  } else {
                     await loadProjectData();
-                  } catch (e) {}
+                  }
                   setAnalyzing(false);
                 }}
                 disabled={analyzing}
