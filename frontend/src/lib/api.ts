@@ -116,13 +116,14 @@ export const tasks = {
 // --- Chat ---
 
 export const chat = {
-  send: async function* (projectId: string, message: string, sessionId?: string) {
+  send: async function* (projectId: string, message: string, sessionId?: string, signal?: AbortSignal) {
     const payload: Record<string, unknown> = { message, project_id: projectId };
     if (sessionId) payload.session_id = sessionId;
     const res = await fetch(`${API_BASE}/api/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json", ..._getAuthHeaders() },
       body: JSON.stringify(payload),
+      signal,
     });
 
     if (!res.ok) throw new Error(`Chat error: ${res.status}`);
@@ -132,23 +133,37 @@ export const chat = {
     const decoder = new TextDecoder();
     let buffer = "";
 
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
+    // SSE read timeout: 60 seconds — if no data arrives, abort
+    const timeoutMs = 60_000;
+    let timeout: ReturnType<typeof setTimeout>;
+    const resetTimeout = () => {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => reader.cancel("SSE read timeout"), timeoutMs);
+    };
+    resetTimeout();
 
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split("\n");
-      buffer = lines.pop() || "";
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        resetTimeout();
 
-      for (const line of lines) {
-        if (line.startsWith("data: ")) {
-          try {
-            yield JSON.parse(line.slice(6));
-          } catch {
-            // Skip malformed SSE lines
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          if (line.startsWith("data: ")) {
+            try {
+              yield JSON.parse(line.slice(6));
+            } catch {
+              // Skip malformed SSE lines
+            }
           }
         }
       }
+    } finally {
+      clearTimeout(timeout);
     }
   },
   history: (projectId: string, limit = 50) =>
@@ -581,6 +596,10 @@ export const interfaces = {
   },
 
   designChat: {
+    history: (projectId: string) =>
+      get<{ messages: { id: string; role: string; content: string; created_at: string | null }[]; session_id: string | null }>(
+        `/api/interfaces/design-chat/${projectId}/history`,
+      ),
     send: async function* (projectId: string, message: string, sessionId?: string) {
       const payload: Record<string, unknown> = { message, project_id: projectId };
       if (sessionId) payload.session_id = sessionId;

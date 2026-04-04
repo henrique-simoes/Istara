@@ -30,6 +30,7 @@ interface InterfacesStore {
   dismissOnboarding: () => void;
   acknowledgePrivacy: () => void;
   sendDesignMessage: (projectId: string, content: string, sessionId?: string) => Promise<void>;
+  fetchDesignHistory: (projectId: string) => Promise<void>;
   clearDesignMessages: () => void;
 }
 
@@ -136,4 +137,15 @@ export const useInterfacesStore = create<InterfacesStore>((set, get) => ({
   },
 
   clearDesignMessages: () => set({ designMessages: [], designStreamingContent: "" }),
+
+  fetchDesignHistory: async (projectId) => {
+    try {
+      const data = await interfacesApi.designChat.history(projectId);
+      if (data.messages.length > 0) {
+        set({ designMessages: data.messages });
+      }
+    } catch {
+      // silent — will show empty on first visit
+    }
+  },
 }));

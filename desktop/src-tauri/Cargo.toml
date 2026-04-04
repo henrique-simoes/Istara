@@ -1,6 +1,6 @@
 [package]
 name = "istara-desktop"
-version = "26.128.2"
+version = "26.128.3"
 description = "Istara Desktop — System tray app for managing Istara server and relay"
 authors = ["Istara Team"]
 license = "MIT"

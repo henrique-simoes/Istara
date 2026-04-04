@@ -28,6 +28,7 @@ from sqlalchemy import case, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
+from app.core.datetime_utils import ensure_utc
 from app.core.ollama import ollama
 from app.core.rag import retrieve_context, ingest_chunks
 from app.core.self_check import verify_claim, Confidence
@@ -262,7 +263,7 @@ class AgentOrchestrator:
         if task.last_retry_at and (task.retry_count or 0) > 0:
             # Backoff delays: [5, 15, 45, 120] seconds (capped at 120)
             backoff = min(5 * (3 ** (task.retry_count - 1)), 120)
-            elapsed = (datetime.now(timezone.utc) - task.last_retry_at).total_seconds()
+            elapsed = (datetime.now(timezone.utc) - ensure_utc(task.last_retry_at)).total_seconds()
             if elapsed < backoff:
                 return True
         return False

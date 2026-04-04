@@ -1,6 +1,6 @@
 [project]
 name = "istara-backend"
-version = "2026.04.04.2"
+version = "2026.04.04.3"
 description = "Istara — Local-first AI agent for UX Research"
 license = {text = "MIT"}
 requires-python = ">=3.11"
