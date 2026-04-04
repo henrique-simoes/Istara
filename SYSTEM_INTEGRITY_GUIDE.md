@@ -25,6 +25,8 @@ Generated companions now exist for faster drift-resistant scanning:
 10. [Integration Points](#integration-points)
 11. [Critical Data Flows](#critical-data-flows)
 12. [Cross-Cutting Concerns & Change Impact Matrix](#cross-cutting-concerns--change-impact-matrix)
+13. [Critical Maintenance Checklists](#critical-maintenance-checklists)
+14. [UI & User Flow Change Checklist](#ui--user-flow-change-checklist-wcag-22--nielsen-heuristics)
 
 ---
 
@@ -2102,6 +2104,7 @@ But if needed:
 | Add Integration | ✗ | ✓ | ✓ | ✓ | ✓ | △ | ✓ | ✓ | ✓ |
 | Change Security Policy | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ | ✓ | ✓ |
 | Change Desktop App | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | △ | ✗ | ✓ |
+| Change UI / User Flow | ✗ | ✗ | △ | ✓ | △ | ✓ | △ | ✗ | ✗ |
 
 **Desktop App Critical Couplings (v2026.04.02):**
 - `process.rs` spawns Python/Node directly → depends on `path_resolver.rs` for binary discovery
@@ -2158,6 +2161,60 @@ Legend:
    - [ ] Simulation scenarios updated
 
 ---
+
+### UI & User Flow Change Checklist (WCAG 2.2 + Nielsen Heuristics)
+
+When changing any UI component, user flow, or interaction pattern, agents MUST run through this checklist. The design system knowledge lives in `istara-ui-audit/CORE.md`, `istara-ui-audit/SKILLS.md`, and `skills/definitions/design-system-audit.json` — reference them for token values, component specs, and audit methodology.
+
+#### A. Visibility of System Status (Nielsen H1, WCAG 4.1.3)
+- [ ] Every async action shows a loading state (spinner, disabled button, "Loading..." text)
+- [ ] Success and failure produce visible feedback (toast, inline message, state change)
+- [ ] Background operations show progress indicators when they exceed ~500ms
+- [ ] SSE streaming events (`tool_call`, `done`, `error`) are handled and displayed
+- [ ] Status messages are announced to screen readers (`aria-live="polite"` or `aria-busy`)
+
+#### B. User Control & Freedom (Nielsen H3, WCAG 2.4.3)
+- [ ] Every view/modal/preview has an explicit escape route (back button, close button, Cancel)
+- [ ] The escape route is visually obvious (icon + label, not just a hidden gesture)
+- [ ] Keyboard users can dismiss overlays with Escape key
+- [ ] Browser back button works for navigation changes (or the limitation is documented)
+
+#### C. Error Prevention (Nielsen H5, WCAG 3.3)
+- [ ] Destructive actions require confirmation (delete, overwrite, bulk operations)
+- [ ] Empty catch blocks are forbidden — every error must be handled and communicated
+- [ ] Silent fallbacks that lose user data are forbidden (e.g., local-only tag creation without warning)
+- [ ] Input validation errors are shown inline with the field, not as disappearing toasts
+- [ ] Disabled states prevent invalid submissions before they happen
+
+#### D. Recognition Over Recall (Nielsen H6, WCAG 1.3.1)
+- [ ] Context is visible — users never need to remember info from one part of the UI to use another
+- [ ] Selected/active states are visually distinct (color + icon, not color alone per WCAG 1.4.1)
+- [ ] File previews, document lists, and data tables show enough metadata to identify items without opening them
+- [ ] Navigation breadcrumbs or headers indicate where the user is in the hierarchy
+
+#### E. Accessibility (WCAG 2.2 AA)
+- [ ] All interactive elements have `aria-label` or visible text labels
+- [ ] Focus order is logical (tab order matches visual order, WCAG 2.4.3)
+- [ ] Focus is visible on all interactive elements (WCAG 2.4.7) — no `outline: none` without replacement
+- [ ] Color contrast meets 4.5:1 for normal text, 3:1 for large text (WCAG 1.4.3)
+- [ ] Interactive targets are at least 24×24px (WCAG 2.5.8)
+- [ ] Information is not conveyed by color alone (WCAG 1.4.1) — use text + icon
+- [ ] New buttons/links use design system tokens (`istara-*` palette), not custom colors
+- [ ] Loading/error states are announced to screen readers (`role="status"`, `aria-live`)
+
+#### F. Design System Consistency
+- [ ] New components match existing patterns (button styles, card layouts, spacing scale)
+- [ ] Tailwind classes use design system tokens: `bg-istara-600`, `text-slate-700`, etc.
+- [ ] Spacing uses the established scale (`p-2`, `p-3`, `p-4`, `gap-2`, etc.) — not arbitrary values
+- [ ] Typography follows the hierarchy: `text-xs` for labels, `text-sm` for body, `text-lg` for headings
+- [ ] Icon sizes are consistent: `size={12}` for inline, `size={16}` for buttons, `size={20}` for standalone
+- [ ] Dark mode: all colors have `dark:` variants that maintain contrast ratios
+
+#### G. Agent Persona Updates
+- [ ] If the change affects how agents interact with the UI, update all 5 persona `SKILLS.md` files
+- [ ] If new components/states are added, update `istara-ui-audit/SKILLS.md` with the new evaluation criteria
+- [ ] If new user flows are created, update `istara-ux-eval/PROTOCOLS.md` evaluation scenarios
+- [ ] Run `python scripts/update_agent_md.py` to regenerate AGENT.md, COMPLETE_SYSTEM.md, AGENT_ENTRYPOINT.md
 
 ### Quarterly Data Health Review
 
