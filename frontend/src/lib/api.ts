@@ -135,9 +135,9 @@ export const chat = {
 
     // SSE read timeout: 60 seconds — if no data arrives, abort
     const timeoutMs = 60_000;
-    let timeout: ReturnType<typeof setTimeout>;
+    let timeout: ReturnType<typeof setTimeout> | undefined;
     const resetTimeout = () => {
-      clearTimeout(timeout);
+      if (timeout) clearTimeout(timeout);
       timeout = setTimeout(() => reader.cancel("SSE read timeout"), timeoutMs);
     };
     resetTimeout();
