@@ -17,6 +17,19 @@ interface UpdateInfo {
   error?: string;
 }
 
+/** Strip GitHub release body to just the meaningful changelog.
+ *  Removes install instructions, contributor lists, and other sections
+ *  that aren't relevant for someone already running Istara. */
+function stripReleaseBody(body: string): string {
+  // Cut at common non-changelog section headers
+  for (const marker of ["\n### Installation", "\n## Installation", "\n### Install", "\n### How to Install", "\n---\n\n### ", "\n---\n\n## "]) {
+    const idx = body.indexOf(marker);
+    if (idx !== -1) body = body.slice(0, idx);
+  }
+  // Collapse excessive blank lines
+  return body.replace(/\n{3,}/g, "\n\n").trim();
+}
+
 /**
  * Update checker component for Settings page.
  * Checks GitHub Releases for newer versions.
@@ -180,9 +193,9 @@ export default function UpdateChecker() {
                 </p>
               )}
               {updateInfo.changelog && (
-                <p className="text-xs text-slate-600 dark:text-slate-400 mt-2 line-clamp-3">
-                  {updateInfo.changelog}
-                </p>
+                <pre className="text-xs text-slate-600 dark:text-slate-400 mt-2 line-clamp-3 whitespace-pre-wrap font-sans">
+                  {stripReleaseBody(updateInfo.changelog)}
+                </pre>
               )}
 
               <div className="flex items-center gap-3 mt-3">

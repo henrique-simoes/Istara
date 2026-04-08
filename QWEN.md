@@ -1,0 +1,2 @@
+## Qwen Added Memories
+- Compass is the paramount development process for Istara. All changes must follow the Compass workflow: read entry docs → use change matrix/checklists → implement → update tests/personas/Tech.md → regenerate with `python scripts/update_agent_md.py` → verify with `python scripts/check_integrity.py`. New subsystems must be added to the scanner itself, not hand-documented. The completion standard requires that Compass accurately describes the new reality before any change is considered done.

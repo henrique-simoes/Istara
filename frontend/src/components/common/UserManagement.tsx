@@ -14,6 +14,7 @@ import {
   BookOpen,
   EyeIcon,
   X,
+  RefreshCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { users as usersApi } from "@/lib/api";
@@ -555,7 +556,7 @@ export default function UserManagement() {
       if (err.message?.includes("401") || err.message?.includes("403")) {
         setUserList([]);
       } else {
-        setError("Could not load team members");
+        setError(err.message || "Could not load team members");
       }
     } finally {
       setLoading(false);
@@ -689,7 +690,7 @@ export default function UserManagement() {
           )}
 
           {/* Other users */}
-          {isEmpty && !loading ? (
+          {isEmpty && !loading && !error ? (
             <div className="text-center py-6">
               <p className="text-sm text-slate-500 dark:text-slate-400">
                 You&apos;re the only team member.
@@ -710,6 +711,17 @@ export default function UserManagement() {
                   Invite Member
                 </button>
               )}
+            </div>
+          ) : error && !loading ? (
+            <div className="text-center py-4">
+              <p className="text-sm text-red-600 dark:text-red-400 mb-2">{error}</p>
+              <button
+                onClick={fetchUsers}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg bg-istara-600 hover:bg-istara-700 text-white transition-colors"
+              >
+                <RefreshCw size={14} />
+                Retry
+              </button>
             </div>
           ) : (
             <div className="space-y-1">

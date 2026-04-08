@@ -3,7 +3,17 @@
 import { create } from "zustand";
 
 const STORAGE_KEY = "istara_tour_state";
-const COMPLETED_KEY = "istara_tour_completed";
+const COMPLETED_KEY_PREFIX = "istara_tour_completed_";
+
+function getCompletedKey(): string {
+  if (typeof window === "undefined") return COMPLETED_KEY_PREFIX + "unknown";
+  try {
+    const raw = localStorage.getItem("istara_auth_user_id");
+    return COMPLETED_KEY_PREFIX + (raw || "anonymous");
+  } catch {
+    return COMPLETED_KEY_PREFIX + "anonymous";
+  }
+}
 
 /** Total number of logical steps (some may be skipped based on role/context). */
 export const TOUR_TOTAL_STEPS = 10;
@@ -111,7 +121,7 @@ function persistState(state: Partial<TourState>) {
 
 export function isTourCompleted(): boolean {
   try {
-    return localStorage.getItem(COMPLETED_KEY) === "true";
+    return localStorage.getItem(getCompletedKey()) === "true";
   } catch {
     return false;
   }
@@ -177,7 +187,7 @@ export const useTourStore = create<TourState>((set, get) => {
     skipTour: () => {
       set({ active: false, isOnboarding: false, step: 0 });
       try {
-        localStorage.setItem(COMPLETED_KEY, "true");
+        localStorage.setItem(getCompletedKey(), "true");
         localStorage.removeItem(STORAGE_KEY);
       } catch {}
     },
@@ -193,7 +203,7 @@ export const useTourStore = create<TourState>((set, get) => {
     completeTour: () => {
       set({ active: false, isOnboarding: false, step: 0 });
       try {
-        localStorage.setItem(COMPLETED_KEY, "true");
+        localStorage.setItem(getCompletedKey(), "true");
         localStorage.removeItem(STORAGE_KEY);
       } catch {}
     },
