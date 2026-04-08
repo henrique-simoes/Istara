@@ -421,14 +421,34 @@ function LLMServersSection() {
     try {
       await llmServers.delete(id);
       await fetchServers();
-    } catch {}
+    } catch (err: any) {
+      window.dispatchEvent(
+        new CustomEvent("istara:toast", {
+          detail: {
+            type: "error",
+            title: "Delete Failed",
+            message: err.message || "Failed to remove server",
+          },
+        })
+      );
+    }
   };
 
   const handleHealthCheck = async (id: string) => {
     try {
       await llmServers.healthCheck(id);
       await fetchServers();
-    } catch {}
+    } catch (err: any) {
+      window.dispatchEvent(
+        new CustomEvent("istara:toast", {
+          detail: {
+            type: "error",
+            title: "Health Check Failed",
+            message: err.message || "Could not reach server",
+          },
+        })
+      );
+    }
   };
 
   return (
@@ -509,7 +529,7 @@ function LLMServersSection() {
                 </div>
                 <div className="text-xs text-slate-400 truncate">{s.host} ({s.provider_type})</div>
                 {!s.is_healthy && s.health_error && (
-                  <div className="text-xs text-red-500 mt-0.5">{s.health_error}</div>
+                  <div className="text-xs text-red-500 mt-0.5 truncate" title={s.health_error}>{s.health_error.length > 60 ? s.health_error.slice(0, 60) + "…" : s.health_error}</div>
                 )}
               </div>
               <button
