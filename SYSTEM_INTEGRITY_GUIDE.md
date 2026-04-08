@@ -105,7 +105,8 @@ All models are registered in `backend/app/models/database.py::init_db()`:
 #### OPERATIONAL MODELS
 | Model | Table | Purpose |
 |-------|-------|---------|
-| User | `users` | Authentication; admin/user roles |
+| User | `users` | Authentication; admin/user roles; TOTP 2FA; recovery codes |
+| WebAuthnCredential | `webauthn_credentials` | FIDO2/WebAuthn passkey credentials (passwordless auth) |
 | ChatSession | `chat_sessions` | Conversation grouping with inference presets |
 | Notification | `notifications` | User notifications persisted from WebSocket broadcasts |
 | NotificationPreference | `notification_preferences` | Per-user notification filters |
@@ -195,12 +196,29 @@ Global (independent of Project)
 All routes are registered in `backend/app/main.py::app.include_router()` with `/api` prefix unless noted.
 
 #### Authentication & Users (auth.py)
-- `POST /api/auth/login` — Public, no JWT required. In local mode (team_mode=False), issues JWT without DB lookup
-- `POST /api/auth/register` — Public, no JWT required
-- `POST /api/auth/logout` — Clear token
-- `GET /api/auth/verify` — Verify current JWT
-- `POST /api/auth/refresh` — Refresh expired token
-- `PATCH /api/auth/profile` — Update user profile
+- `POST /api/auth/login` — Public, no JWT required. Supports password-only, password+TOTP, password+recovery code. Returns `requires_2fa: true` if TOTP enabled but no code provided
+- `POST /api/auth/register` — Public, no JWT required. Generates recovery codes, checks password against breach database (Have I Been Pwned k-anonymity)
+- `POST /api/auth/logout` — Clears HttpOnly session cookie
+- `GET /api/auth/me` — Returns current user info (supports Bearer token AND session cookie)
+- `PUT /api/auth/preferences` — Update user preferences (JSON)
+- `GET /api/auth/team-status` — Public, returns team mode and user count
+- `POST /api/auth/totp/setup` — Generate TOTP secret + QR provisioning URI
+- `POST /api/auth/totp/verify` — Verify TOTP code to enable 2FA
+- `POST /api/auth/totp/disable` — Disable TOTP 2FA
+- `POST /api/auth/recovery-codes/generate` — Generate new recovery codes (replaces all)
+- `GET /api/auth/recovery-codes/status` — Count remaining recovery codes
+- `GET /api/auth/users` — List all users (admin only)
+- `POST /api/auth/users` — Create user (admin only, generates recovery codes, breach check)
+- `DELETE /api/auth/users/{user_id}` — Delete user (admin only)
+- `PATCH /api/auth/users/{user_id}/role` — Change user role (admin only)
+
+#### WebAuthn / Passkeys (webauthn_routes.py)
+- `POST /api/webauthn/register/start` — Start passkey registration (returns WebAuthn challenge)
+- `POST /api/webauthn/register/finish` — Complete passkey registration (stores credential)
+- `POST /api/webauthn/authenticate/start` — Start passkey authentication (returns challenge)
+- `POST /api/webauthn/authenticate/finish` — Complete passkey authentication (returns JWT)
+- `GET /api/webauthn/credentials` — List user's registered passkeys
+- `DELETE /api/webauthn/credentials/{credential_id}` — Revoke a passkey
 
 #### Projects (projects.py)
 - `GET /api/projects` — List all projects

@@ -1,6 +1,6 @@
 # Istara — Agent-Readable Operating Map
 
-Generated from the repository on version `2026.04.08`. Treat this file as the fast inventory view after reading `AGENT_ENTRYPOINT.md`, then consult `COMPLETE_SYSTEM.md`, `SYSTEM_CHANGE_MATRIX.md`, `CHANGE_CHECKLIST.md`, and `SYSTEM_PROMPT.md` before structural work.
+Generated from the repository on version `2026.04.08.2`. Treat this file as the fast inventory view after reading `AGENT_ENTRYPOINT.md`, then consult `COMPLETE_SYSTEM.md`, `SYSTEM_CHANGE_MATRIX.md`, `CHANGE_CHECKLIST.md`, and `SYSTEM_PROMPT.md` before structural work.
 
 ## Non-Negotiable Workflow
 
@@ -18,8 +18,8 @@ Generated from the repository on version `2026.04.08`. Treat this file as the fa
 ## System Snapshot
 
 - Frontend: Next.js app with 22 mounted views and 15 Zustand stores.
-- Backend: FastAPI app with 36 route modules and 343 detected endpoints.
-- Data layer: 40 SQLAlchemy models plus LanceDB-backed retrieval/context systems.
+- Backend: FastAPI app with 37 route modules and 355 detected endpoints.
+- Data layer: 41 SQLAlchemy models plus LanceDB-backed retrieval/context systems.
 - Agents/personas: 6 tracked persona directories under `backend/app/agents/personas`.
 - Skills: 50 JSON-defined skills across the Double Diamond phases.
 - Regression map: 70 simulation scenarios plus 12 e2e phases.
@@ -82,7 +82,7 @@ Generated from the repository on version `2026.04.08`. Treat this file as the fa
 |---|---|---|
 | `agents.py` | `/` | 48 |
 | `audit.py` | `/` | 6 |
-| `auth.py` | `/` | 9 |
+| `auth.py` | `/` | 15 |
 | `autoresearch.py` | `/autoresearch` | 9 |
 | `backup.py` | `/` | 9 |
 | `channels.py` | `/` | 11 |
@@ -115,6 +115,7 @@ Generated from the repository on version `2026.04.08`. Treat this file as the fa
 | `surveys.py` | `/` | 9 |
 | `tasks.py` | `/` | 11 |
 | `updates.py` | `/` | 4 |
+| `webauthn.py` | `/` | 6 |
 | `webhooks.py` | `/webhooks` | 3 |
 
 ## Data Model Registry
@@ -161,6 +162,7 @@ Generated from the repository on version `2026.04.08`. Treat this file as the fa
 | `SurveyLink` | `survey_links` | yes | `backend/app/models/survey_integration.py` |
 | `Task` | `tasks` | no | `backend/app/models/task.py` |
 | `User` | `users` | no | `backend/app/models/user.py` |
+| `WebAuthnCredential` | `webauthn_credentials` | no | `backend/app/models/webauthn_credential.py` |
 
 ## Frontend State Stores
 

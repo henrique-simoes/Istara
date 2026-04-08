@@ -51,6 +51,7 @@ async def init_db() -> None:
     from app.models import agent, codebook, document, finding, message, project, session, task  # noqa: F401
     from app.models import user  # noqa: F401
     from app.models import llm_server, method_metric  # noqa: F401
+    from app.models.webauthn_credential import WebAuthnCredential  # noqa: F401
     from app.core.checkpoint import TaskCheckpoint  # noqa: F401
     from app.core.context_hierarchy import ContextDocument  # noqa: F401
     from app.core.scheduler import ScheduledTask  # noqa: F401

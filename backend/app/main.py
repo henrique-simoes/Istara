@@ -47,6 +47,7 @@ from app.api.routes import codebook_versions as codebook_versions_routes
 from app.api.routes import webhooks as webhook_routes
 from app.api.routes import connections as connection_routes
 from app.api.routes import updates as update_routes
+from app.api.routes import webauthn as webauthn_routes
 from app.api.websocket import router as ws_router
 from app.channels.base import channel_router
 from app.agents.devops_agent import devops_agent
@@ -591,6 +592,7 @@ if app_settings.rate_limit_enabled:
 
 # API routes
 app.include_router(auth.router, prefix="/api", tags=["Auth"])
+app.include_router(webauthn_routes.router, prefix="/api", tags=["WebAuthn"])
 app.include_router(chat.router, prefix="/api", tags=["Chat"])
 app.include_router(projects.router, prefix="/api", tags=["Projects"])
 app.include_router(tasks.router, prefix="/api", tags=["Tasks"])
