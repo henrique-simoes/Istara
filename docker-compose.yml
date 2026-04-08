@@ -2,8 +2,10 @@ services:
   ollama:
     image: ollama/ollama:latest
     container_name: istara-ollama
-    ports:
-      - "11434:11434"
+    expose:
+      - "11434"
+    networks:
+      - data-net
     volumes:
       - ollama_data:/root/.ollama
     healthcheck:
@@ -12,6 +14,15 @@ services:
       timeout: 10s
       retries: 10
       start_period: 30s
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETUID
+      - SETGID
+    pids_limit: 100
     # GPU support: uncomment for NVIDIA GPUs, or use docker-compose.gpu.yml override
     # deploy:
     #   resources:
@@ -26,8 +37,10 @@ services:
   postgres:
     image: postgres:16-alpine
     container_name: istara-postgres
-    ports:
-      - "5432:5432"
+    expose:
+      - "5432"
+    networks:
+      - data-net
     environment:
       - POSTGRES_USER=${POSTGRES_USER:-istara}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-istara}
@@ -39,6 +52,21 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:noexec,nosuid,size=100M
+      - /run/postgresql:noexec,nosuid,size=50M
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETUID
+      - SETGID
+      - DAC_OVERRIDE
+      - FOWNER
+    pids_limit: 100
     restart: unless-stopped
     profiles:
       - team  # Only started with: docker compose --profile team up
@@ -48,8 +76,11 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: istara-backend
-    ports:
-      - "8000:8000"
+    expose:
+      - "8000"
+    networks:
+      - backend-net
+      - data-net
     volumes:
       - ./data:/app/data
       - ${WATCH_DIR:-./data/watch}:/app/watch:ro
@@ -73,6 +104,8 @@ services:
       - JWT_EXPIRE_MINUTES=${JWT_EXPIRE_MINUTES:-1440}
       - TEAM_MODE=${TEAM_MODE:-false}
       - RATE_LIMIT_ENABLED=${RATE_LIMIT_ENABLED:-true}
+      # Internal auth keys
+      - OLLAMA_API_KEY=${OLLAMA_API_KEY:-}
       # RAG
       - RAG_CHUNK_SIZE=${RAG_CHUNK_SIZE:-1200}
       - RAG_CHUNK_OVERLAP=${RAG_CHUNK_OVERLAP:-180}
@@ -90,6 +123,25 @@ services:
       timeout: 5s
       retries: 3
       start_period: 60s
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:noexec,nosuid,size=100M
+      - /app/data:size=500M
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETUID
+      - SETGID
+      - DAC_OVERRIDE
+      - NET_BIND_SERVICE
+    pids_limit: 200
+    ulimits:
+      nofile:
+        soft: 1024
+        hard: 2048
     depends_on:
       ollama:
         condition: service_healthy
@@ -112,14 +164,25 @@ services:
         - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000}
         - NEXT_PUBLIC_WS_URL=${NEXT_PUBLIC_WS_URL:-ws://localhost:8000/ws}
     container_name: istara-frontend
-    ports:
-      - "3000:3000"
+    expose:
+      - "3000"
+    networks:
+      - frontend-net
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://localhost:3000').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 30s
       timeout: 5s
       retries: 3
       start_period: 30s
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:noexec,nosuid,size=100M
+      - /.next/cache:noexec,nosuid,size=200M
+    cap_drop:
+      - ALL
+    pids_limit: 100
     depends_on:
       backend:
         condition: service_healthy
@@ -136,10 +199,20 @@ services:
     ports:
       - "80:80"
       - "443:443"
+    networks:
+      - frontend-net
+      - backend-net
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    pids_limit: 50
     depends_on:
       backend:
         condition: service_healthy
@@ -155,11 +228,20 @@ services:
       context: ./relay
       dockerfile: Dockerfile
     container_name: istara-relay
+    expose:
+      - "9000"
+    networks:
+      - backend-net
     environment:
       - ISTARA_SERVER=${ISTARA_SERVER:-ws://backend:8000/ws/relay}
       - LLM_PROVIDER=${LLM_PROVIDER:-ollama}
       - LLM_HOST=${LLM_HOST:-http://ollama:11434}
       - RELAY_TOKEN=${RELAY_TOKEN:-}
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    pids_limit: 50
     depends_on:
       backend:
         condition: service_healthy
@@ -172,3 +254,14 @@ volumes:
   postgres_data:
   caddy_data:
   caddy_config:
+
+networks:
+  frontend-net:
+    driver: bridge
+    internal: false
+  backend-net:
+    driver: bridge
+    internal: true  # No external access
+  data-net:
+    driver: bridge
+    internal: true  # No external access, only backend can reach

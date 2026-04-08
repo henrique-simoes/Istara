@@ -1,4 +1,32 @@
 {$CADDY_DOMAIN:localhost} {
+    # TLS hardening — TLS 1.2/1.3 with strong ciphers only
+    tls {
+        protocols tls1.2 tls1.3
+        ciphers TLS_AES_256_GCM_SHA384 TLS_CHACHA20_POLY1305_SHA256 TLS_AES_128_GCM_SHA256 ECDHE-ECDSA-AES256-GCM-SHA384 ECDHE-RSA-AES256-GCM-SHA384
+        curves X25519 secp256r1 secp384r1
+    }
+
+    # HSTS — 1 year, include subdomains
+    header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+
+    # Content Security Policy — restrict what the browser can do
+    header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://api.github.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+
+    # Anti-clickjacking
+    header X-Frame-Options "DENY"
+
+    # MIME sniffing prevention
+    header X-Content-Type-Options "nosniff"
+
+    # Referrer policy — leak minimal URL info
+    header Referrer-Policy "strict-origin-when-cross-origin"
+
+    # Permissions policy — disable unused browser features
+    header Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()"
+
+    # Remove server identification
+    header -Server
+
     # Backend API
     handle /api/* {
         reverse_proxy backend:8000

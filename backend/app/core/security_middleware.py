@@ -107,7 +107,11 @@ class SecurityAuthMiddleware(BaseHTTPMiddleware):
         if auth_header.startswith("Bearer "):
             token = auth_header[7:]
 
-        # Fallback: query parameter (for non-browser clients)
+        # Fallback 1: HttpOnly session cookie (cookie-based auth)
+        if not token:
+            token = request.cookies.get("istara_session", "")
+
+        # Fallback 2: query parameter (for non-browser clients)
         if not token:
             token = request.query_params.get("token", "")
 

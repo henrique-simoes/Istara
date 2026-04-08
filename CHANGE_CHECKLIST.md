@@ -157,12 +157,22 @@ Before making ANY change:
 
 - [ ] Identify all routes affected
 - [ ] Test 401/403 responses
-- [ ] Verify JWT validation still works
+- [ ] Verify JWT validation still works (Bearer tokens AND session cookies)
+- [ ] Verify HttpOnly cookie auth works (istara_session cookie)
 - [ ] Test network security token if enabled
 - [ ] Check WebSocket authentication
 - [ ] Verify webhook signature validation
-- [ ] Test encrypted field access
+- [ ] Test encrypted field access (ENC: prefix fields)
+- [ ] Test TOTP 2FA flow (if enabled)
+- [ ] Test recovery code generation and verification
+- [ ] Test password breach checking (Have I Been Pwned k-anonymity)
+- [ ] Verify password hash auto-upgrade on login (PBKDF2 → Argon2id)
+- [ ] Test WebAuthn/passkey registration and authentication
 - [ ] Run security audit
+- [ ] Check Docker container security (cap_drop, read_only, no-new-privileges)
+- [ ] Verify TLS/HTTPS configuration (Caddy TLS hardening, HSTS, CSP)
+- [ ] Verify security headers (X-Frame-Options, CSP, X-Content-Type-Options)
+- [ ] Verify network segmentation (Docker networks: frontend-net, backend-net, data-net)
 
 ### Adding an Integration (Survey, Design, etc.)
 
@@ -221,7 +231,18 @@ Before pushing to production:
 - [ ] Network token set if not localhost-only
 - [ ] No sensitive data in logs
 - [ ] Webhook signature validation working
-- [ ] Field encryption working for sensitive fields
+- [ ] Field encryption working for sensitive fields (API keys, tokens)
+- [ ] Password hashing uses Argon2id (check `pip show argon2-cffi`)
+- [ ] Password breach checking enabled (Have I Been Pwned API accessible)
+- [ ] TOTP 2FA available (check `pip show pyotp`)
+- [ ] Recovery codes generated for all users
+- [ ] HttpOnly session cookies configured (Secure flag requires HTTPS)
+- [ ] TLS 1.2+ enforced (Caddy TLS config)
+- [ ] HSTS header present in responses
+- [ ] CSP header restricts script sources
+- [ ] Docker containers hardened (cap_drop, read_only, no-new-privileges)
+- [ ] Docker network segmentation active (internal networks for data/backend)
+- [ ] Database ports not exposed to host (PostgreSQL, Ollama)
 
 ### Documentation
 - [ ] Regenerate architecture docs: `python scripts/update_agent_md.py`
