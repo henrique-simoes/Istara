@@ -287,6 +287,28 @@ def main():
         test("Frontend serves HTML", lambda: (_ for _ in ()).throw(Exception("Frontend not reachable at localhost:3000")))
 
     # =========================================================
+    # PHASE 12: Mid-Execution Steering
+    # =========================================================
+    print("\n🎯 Phase 12: Mid-Execution Steering")
+
+    test("Queue steering message", lambda: assert_ok(client.post("/api/steering/istara-main", json={
+        "message": "E2E test: verify steering endpoint works",
+        "mode": "one-at-a-time",
+    })))
+
+    test("Queue follow-up message", lambda: assert_ok(client.post("/api/steering/istara-main/follow-up", json={
+        "message": "E2E test: verify follow-up endpoint works",
+    })))
+
+    test("Get steering status", lambda: assert_ok(client.get("/api/steering/istara-main/status")))
+
+    test("Get steering queues", lambda: assert_ok(client.get("/api/steering/istara-main/queues")))
+
+    test("Clear steering queues", lambda: assert_ok(client.delete("/api/steering/istara-main/queues")))
+
+    test("Abort agent work", lambda: assert_ok(client.post("/api/steering/istara-main/abort", json={})))
+
+    # =========================================================
     # RESULTS
     # =========================================================
     elapsed = time.time() - start_time

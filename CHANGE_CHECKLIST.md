@@ -23,6 +23,154 @@ Before making ANY change:
 - [ ] Check if this change involves cascade deletes
 - [ ] Verify authentication/authorization impact
 - [ ] Plan database migration strategy (if needed)
+- [ ] **Plan test coverage using the Three-Layer Testing Mandate (see below)**
+
+---
+
+## THREE-LAYER TESTING ARCHITECTURE
+
+Istara uses three complementary test layers. Every meaningful change MUST include tests at the appropriate layers. Code without test coverage is incomplete.
+
+### Layer 1: Unit / Integration Tests (`tests/test_*.py`)
+
+**Purpose**: Test individual components in isolation — services, API routes, infrastructure classes, security mechanisms.
+
+**When to add**:
+- New backend service or utility module
+- New API route or endpoint
+- New security mechanism (auth, encryption, rate limiting)
+- New infrastructure class (steering queues, validators, governors)
+
+**Pattern** (follow `tests/test_auth_security.py` and `tests/test_steering.py`):
+```python
+import pytest
+from httpx import AsyncClient, ASGITransport
+from app.main import app
+from app.config import settings
+
+@pytest.fixture(autouse=True)
+def configure_settings():
+    if not settings.jwt_secret:
+        settings.jwt_secret = "test-secret"
+    settings.team_mode = False
+
+class TestMyFeature:
+    @pytest.mark.asyncio
+    async def test_endpoint_work(self):
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as ac:
+            resp = await ac.post("/api/my-endpoint", json={"data": "test"})
+            assert resp.status_code == 200
+```
+
+**Run**: `pytest tests/`
+
+### Layer 2: E2E Phased Test (`tests/e2e_test.py`)
+
+**Purpose**: Single comprehensive test that runs against a live Istara instance. Organized in numbered phases (0–12+). Each phase tests a complete system area with real data, real skills, real agents.
+
+**When to add**:
+- New API routes or system-wide features
+- Changes to existing system areas covered by an existing phase
+- New system areas (add a new PHASE N section)
+
+**Pattern** (follow existing phase structure):
+```python
+# =========================================================
+# PHASE N: My Feature
+# =========================================================
+print("\n🔧 Phase N: My Feature")
+
+test("My endpoint works", lambda: assert_ok(client.post("/api/my-endpoint", json={
+    "data": "e2e test",
+})))
+
+test("My endpoint returns correct data", lambda: assert_ok(client.get("/api/my-endpoint")))
+```
+
+**Run**: `python tests/e2e_test.py`
+
+### Layer 3: Simulation Scenarios (`tests/simulation/scenarios/*.mjs`)
+
+**Purpose**: Playwright behavioral scenarios that test complete user-facing UX paths with real browser interactions, accessibility evaluation, and heuristic scoring.
+
+**When to add**:
+- New user-facing UI component with interactive behavior
+- New user workflow or UX flow
+- New navigation path or menu item
+- Any feature that a user interacts with through the browser
+
+**Pattern** (follow `tests/simulation/scenarios/01-health-check.mjs` and `70-mid-execution-steering.mjs`):
+```javascript
+/** Scenario NN — My Feature: describe what this tests. */
+
+export const name = "My Feature";
+export const id = "NN-my-feature";
+
+export async function run(ctx) {
+  const { api, page, report } = ctx;
+  const checks = [];
+
+  // API-level checks
+  try {
+    const resp = await api.post("/api/my-endpoint", { data: "test" });
+    checks.push({
+      name: "My endpoint works",
+      passed: resp.status === 200,
+      detail: JSON.stringify(resp),
+    });
+  } catch (e) {
+    checks.push({ name: "My endpoint works", passed: false, detail: e.message });
+  }
+
+  // UI-level checks
+  try {
+    await page.goto("http://localhost:3000", { waitUntil: "networkidle", timeout: 15000 });
+    const elementExists = await page.getByRole("button", { name: /my feature/i })
+      .isVisible({ timeout: 5000 }).catch(() => false);
+    checks.push({
+      name: "My feature visible in UI",
+      passed: elementExists,
+      detail: elementExists ? "Found" : "Not found",
+    });
+  } catch (e) {
+    checks.push({ name: "My feature visible in UI", passed: false, detail: e.message });
+  }
+
+  report(name, checks);
+  return checks;
+}
+```
+
+**CRITICAL**: After creating the scenario file, add it to the `scenarioFiles` array in `tests/simulation/run.mjs`:
+```javascript
+const scenarioFiles = [
+  // ... existing entries ...
+  "NN-my-feature",  // Add your scenario name (without .mjs)
+];
+```
+
+**Run**: `node tests/simulation/run.mjs` (full suite) or `node tests/simulation/run.mjs --scenario NN` (single scenario)
+
+### Test Decision Matrix
+
+| What changed | Layer 1 (pytest) | Layer 2 (e2e) | Layer 3 (simulation) |
+|---|---|---|---|
+| New API route or endpoint | ✅ Route tests | ✅ Add to relevant phase | — |
+| New backend service or utility | ✅ Service tests | — | — |
+| New security mechanism | ✅ Security tests | ✅ Add to relevant phase | — |
+| New user-facing UI component | — | — | ✅ New or updated scenario |
+| New user workflow / UX flow | — | ✅ Add to relevant phase | ✅ New scenario |
+| New system-wide feature | ✅ Infrastructure tests | ✅ New phase | ✅ New scenario |
+| Navigation / menu change | — | ✅ Frontend phase | ✅ Update navigation scenario |
+| Agent behavior change | ✅ Agent tests | ✅ Agent phase | ✅ Agent architecture scenario |
+
+### Non-Negotiable Test Rules
+- [ ] No change ships without tests at the appropriate layers
+- [ ] Don't stretch unrelated scenarios — if existing coverage no longer describes the changed flow well, add a new scenario
+- [ ] Tests belong in the same commit as the implementation, not in a later cleanup commit
+- [ ] Follow existing patterns — don't invent new test architectures
+- [ ] Register new simulation scenarios in `tests/simulation/run.mjs` scenarioFiles array
 
 ---
 

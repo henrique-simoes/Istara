@@ -1,6 +1,6 @@
 # Istara — Agent-Readable Operating Map
 
-Generated from the repository on version `2026.04.08.3`. Treat this file as the fast inventory view after reading `AGENT_ENTRYPOINT.md`, then consult `COMPLETE_SYSTEM.md`, `SYSTEM_CHANGE_MATRIX.md`, `CHANGE_CHECKLIST.md`, and `SYSTEM_PROMPT.md` before structural work.
+Generated from the repository on version `2026.04.10`. Treat this file as the fast inventory view after reading `AGENT_ENTRYPOINT.md`, then consult `COMPLETE_SYSTEM.md`, `SYSTEM_CHANGE_MATRIX.md`, `CHANGE_CHECKLIST.md`, and `SYSTEM_PROMPT.md` before structural work.
 
 ## Non-Negotiable Workflow
 
@@ -22,7 +22,7 @@ Generated from the repository on version `2026.04.08.3`. Treat this file as the 
 - Data layer: 41 SQLAlchemy models plus LanceDB-backed retrieval/context systems.
 - Agents/personas: 6 tracked persona directories under `backend/app/agents/personas`.
 - Skills: 50 JSON-defined skills across the Double Diamond phases.
-- Regression map: 70 simulation scenarios plus 12 e2e phases.
+- Regression map: 71 simulation scenarios plus 13 e2e phases.
 
 ## Change Hotspots
 
@@ -205,6 +205,7 @@ Generated from the repository on version `2026.04.08.3`. Treat this file as the 
   - Skills Registry
   - Agents & Audit
   - Frontend Check
+  - Mid-Execution Steering
 - Simulation scenarios:
   - `01` — Health Check
   - `02` — Onboarding
@@ -272,6 +273,7 @@ Generated from the repository on version `2026.04.08.3`. Treat this file as the 
   - `67` — Auth Enforcement
   - `68` — Data Security
   - `69` — User Management Ui
+  - `70` — Mid Execution Steering
   - `70` — Research Integrity
   - `71` — Plan And Execute
   - `72` — Circuit Breaker Health
