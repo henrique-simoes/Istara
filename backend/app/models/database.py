@@ -89,9 +89,26 @@ async def init_db() -> None:
             "ALTER TABLE agents ADD COLUMN scope VARCHAR(10) NOT NULL DEFAULT 'universal'",
             "ALTER TABLE agents ADD COLUMN project_id VARCHAR(36) NOT NULL DEFAULT ''",
             "ALTER TABLE projects ADD COLUMN watch_folder_path VARCHAR(1000)",
+            # MFA / 2FA columns
+            "ALTER TABLE users ADD COLUMN totp_secret VARCHAR(64)",
+            "ALTER TABLE users ADD COLUMN totp_enabled BOOLEAN NOT NULL DEFAULT 0",
+            "ALTER TABLE users ADD COLUMN recovery_codes_hashed TEXT",
+            "ALTER TABLE users ADD COLUMN passkey_enabled BOOLEAN NOT NULL DEFAULT 0",
+            # Widen password_hash for Argon2id hashes (SQLite ignores this, but needed for PostgreSQL)
+            "ALTER TABLE users ALTER COLUMN password_hash TYPE VARCHAR(512)",
         ]
         for ddl in migrations:
             try:
                 await conn.execute(sa.text(ddl))
+                await conn.commit()
             except Exception:
-                pass  # column already exists — safe to ignore
+                pass  # Column already exists or SQLite doesn't support this DDL
+
+        # Create webauthn_credentials table if it doesn't exist
+        try:
+            from app.models.webauthn_credential import WebAuthnCredential
+            await conn.run_sync(
+                lambda c: WebAuthnCredential.__table__.create(c, checkfirst=True)
+            )
+        except Exception:
+            pass  # Table already exists

@@ -298,6 +298,10 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
               <span className="text-slate-400 dark:text-slate-600">
                 Enable Team Mode in Settings for multi-user collaboration.
               </span>
+              <br />
+              <span className="text-amber-500 dark:text-amber-400">
+                Local mode — no HTTPS. Use production profile for secure connections.
+              </span>
             </p>
           </div>
         </div>
