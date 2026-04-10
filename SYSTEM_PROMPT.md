@@ -96,9 +96,9 @@ python scripts/check_integrity.py
 ## Commit Authorship Rules
 
 - **Never add `Co-authored-by` trailers** to commit messages. Only the human owner should appear as author.
-- **Before pushing**, verify no co-author trailers exist: `git log --grep="Co-authored-by" --oneline`
-- If any are found, strip them: `FILTER_BRANCH_SQUELCH_WARNING=1 git filter-branch -f --msg-filter 'sed "/^Co-authored-by:/d"' HEAD`
-- A pre-push hook (`.git/hooks/pre-push`) blocks pushes with co-author trailers as a safety net.
+- A pre-push hook (`.git/hooks/pre-push`) **automatically rewrites** the author, committer, and commit message before every push to ensure only `henrique-simoes <simoeshz@gmail.com>` appears on GitHub.
+- This hook runs as the **last step before push** — it overrides even the agent's own commits.
+- Manual verification: `git log --all --pretty=format:"%an <%ae>" | sort -u` should only show `henrique-simoes`.
 
 ## Change Awareness
 
