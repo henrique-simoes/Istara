@@ -1,6 +1,6 @@
 # Istara Complete System Architecture & Living Map
 
-Generated from the repository on version `2026.04.08.2`. This document is meant to be regenerated whenever the implementation changes so LLMs can reason from the current system instead of stale summaries.
+Generated from the repository on version `2026.04.08.3`. This document is meant to be regenerated whenever the implementation changes so LLMs can reason from the current system instead of stale summaries.
 
 ## Purpose
 
@@ -18,7 +18,7 @@ Generated from the repository on version `2026.04.08.2`. This document is meant 
 
 ## Repository Architecture Snapshot
 
-- FastAPI backend with 37 route modules and 355 detected endpoints.
+- FastAPI backend with 38 route modules and 363 detected endpoints.
 - Next.js frontend with 22 mounted views and 15 Zustand stores.
 - 41 SQLAlchemy models in `backend/app/models`.
 - 6 tracked persona directories and 50 JSON-defined skills.
@@ -60,6 +60,7 @@ Generated from the repository on version `2026.04.08.2`. This document is meant 
 | `sessions.py` | `/` | 8 |
 | `settings.py` | `/` | 14 |
 | `skills.py` | `/` | 18 |
+| `steering.py` | `/` | 8 |
 | `surveys.py` | `/` | 9 |
 | `tasks.py` | `/` | 11 |
 | `updates.py` | `/` | 4 |
@@ -100,6 +101,7 @@ Generated from the repository on version `2026.04.08.2`. This document is meant 
 - **sessions**: `GET /api/sessions/{project_id}`, `POST /api/sessions`, `GET /api/sessions/detail/{session_id}`, `PATCH /api/sessions/{session_id}`, `DELETE /api/sessions/{session_id}`, `POST /api/sessions/{session_id}/star`, `GET /api/inference-presets`, `GET /api/sessions/{project_id}/ensure-default`
 - **settings**: `GET /api/settings/hardware`, `GET /api/settings/models`, `POST /api/settings/model`, `POST /api/settings/provider`, `POST /api/settings/maintenance/pause`, `POST /api/settings/maintenance/resume`, `GET /api/settings/maintenance`, `GET /api/settings/integrations-status`, `GET /api/settings/vector-health`, `GET /api/settings/data-integrity`, `POST /api/settings/export-database`, `POST /api/settings/import-database`, `GET /api/settings/status`, `POST /api/settings/team-mode`
 - **skills**: `GET /api/skills`, `GET /api/skills/health/all`, `GET /api/skills/proposals/pending`, `GET /api/skills/proposals/all`, `GET /api/skills/creation-proposals/pending`, `GET /api/skills/creation-proposals/all`, `POST /api/skills/creation-proposals/{proposal_id}/approve`, `POST /api/skills/creation-proposals/{proposal_id}/reject`, `GET /api/skills/{name}`, `POST /api/skills`, `PATCH /api/skills/{name}`, `DELETE /api/skills/{name}`, `POST /api/skills/{name}/toggle`, `GET /api/skills/{name}/health`, `POST /api/skills/proposals/{proposal_id}/approve`, `POST /api/skills/proposals/{proposal_id}/reject`, `POST /api/skills/{name}/execute`, `POST /api/skills/{name}/plan`
+- **steering**: `POST /api/steering/{agent_id}`, `POST /api/steering/{agent_id}/follow-up`, `POST /api/steering/{agent_id}/abort`, `GET /api/steering/{agent_id}/status`, `GET /api/steering/{agent_id}/queues`, `DELETE /api/steering/{agent_id}/queues`, `GET /api/steering/{agent_id}/idle`, `GET /api/steering`
 - **surveys**: `GET /api/surveys/integrations`, `POST /api/surveys/integrations`, `DELETE /api/surveys/integrations/{integration_id}`, `GET /api/surveys/integrations/{integration_id}/surveys`, `POST /api/surveys/integrations/{integration_id}/create`, `POST /api/surveys/links`, `GET /api/surveys/links`, `POST /api/surveys/links/{link_id}/sync`, `GET /api/surveys/links/{link_id}/responses`
 - **tasks**: `GET /api/tasks`, `POST /api/tasks`, `GET /api/tasks/{task_id}`, `PATCH /api/tasks/{task_id}`, `POST /api/tasks/{task_id}/move`, `POST /api/tasks/{task_id}/verify`, `POST /api/tasks/{task_id}/attach`, `POST /api/tasks/{task_id}/detach`, `POST /api/tasks/{task_id}/lock`, `POST /api/tasks/{task_id}/unlock`, `DELETE /api/tasks/{task_id}`
 - **updates**: `GET /api/updates/version`, `GET /api/updates/check`, `POST /api/updates/prepare`, `POST /api/updates/apply`
@@ -219,7 +221,7 @@ Generated from the repository on version `2026.04.08.2`. This document is meant 
 
 ## Real-Time and Integration Surface
 
-- WebSocket events: `agent_status`, `agent_thinking`, `autoresearch_complete`, `autoresearch_progress`, `channel_message`, `channel_status`, `deployment_finding`, `deployment_progress`, `deployment_response`, `file_processed`, `finding_created`, `meta_proposal`, `plan_progress`, `resource_throttle`, `suggestion`, `task_progress`, `task_queue_update`.
+- WebSocket events: `agent_idle`, `agent_status`, `agent_thinking`, `autoresearch_complete`, `autoresearch_progress`, `channel_message`, `channel_status`, `deployment_finding`, `deployment_progress`, `deployment_response`, `file_processed`, `finding_created`, `meta_proposal`, `plan_progress`, `resource_throttle`, `steering_message`, `suggestion`, `task_progress`, `task_queue_update`.
 - Channel adapters: `google_chat`, `slack`, `telegram`, `whatsapp`.
 - Survey platform services: `google_forms`, `surveymonkey`, `typeform`.
 - Desktop modules: `backend_setup`, `commands`, `config`, `first_run`, `health`, `installer`, `main`, `path_resolver`, `process`, `stats`, `tray`.

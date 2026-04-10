@@ -40,7 +40,7 @@ Istara is a local-first AI agent for UX research built on a **unified compute re
 - **Skill Layer**: 53 JSON-defined research skills executed through a factory pattern
 - **Compute Layer**: ComputeRegistry unified across local, network, and relay nodes
 - **Frontend Layer**: React/Zustand with 23 major component groups and 14 Zustand stores
-- **Real-Time Layer**: WebSocket server with 16 broadcast event types and notification persistence
+- **Real-Time Layer**: WebSocket server with 18 broadcast event types and notification persistence
 
 ### Critical Design Principles
 
@@ -107,6 +107,7 @@ All models are registered in `backend/app/models/database.py::init_db()`:
 |-------|-------|---------|
 | User | `users` | Authentication; admin/user roles; TOTP 2FA; recovery codes |
 | WebAuthnCredential | `webauthn_credentials` | FIDO2/WebAuthn passkey credentials (passwordless auth) |
+| SteeringQueue | In-memory (not DB-backed) | Mid-execution message injection queues (steering + follow-up) |
 | ChatSession | `chat_sessions` | Conversation grouping with inference presets |
 | Notification | `notifications` | User notifications persisted from WebSocket broadcasts |
 | NotificationPreference | `notification_preferences` | Per-user notification filters |
@@ -219,6 +220,16 @@ All routes are registered in `backend/app/main.py::app.include_router()` with `/
 - `POST /api/webauthn/authenticate/finish` — Complete passkey authentication (returns JWT)
 - `GET /api/webauthn/credentials` — List user's registered passkeys
 - `DELETE /api/webauthn/credentials/{credential_id}` — Revoke a passkey
+
+#### Steering (steering.py)
+- `POST /api/steering/{agent_id}` — Queue steering message (injected after current skill completes)
+- `POST /api/steering/{agent_id}/follow-up` — Queue follow-up message (injected when agent would stop)
+- `POST /api/steering/{agent_id}/abort` — Abort current work, clear steering queues
+- `GET /api/steering/{agent_id}/status` — Get steering queues + agent working state
+- `GET /api/steering/{agent_id}/queues` — Get contents of both steering queues
+- `DELETE /api/steering/{agent_id}/queues` — Clear all queues
+- `GET /api/steering/{agent_id}/idle` — SSE: wait until agent is idle
+- `GET /api/steering` — Get steering status for all agents
 
 #### Projects (projects.py)
 - `GET /api/projects` — List all projects
@@ -1430,6 +1441,8 @@ class ConnectionManager:
 | `channel_message` | `{instance_id: str, author: str, content: str, timestamp: str}` | Channel adapter | ChatView |
 | `autoresearch_progress` | `{iteration: int, total: int, model: str, skill: str, status: str}` | Autoresearch loop | AutoresearchView |
 | `autoresearch_complete` | `{loop_type: str, summary: {success_count, error_count, avg_time}}` | Autoresearch loop | AutoresearchView |
+| `steering_message` | `{agent_id: str, message?: str, response?: str, source: str, direction: "queued"\|"response"}` | Agent orchestrator | AgentsView, SteeringInput |
+| `agent_idle` | `{agent_id: str}` | Agent orchestrator | AgentsView, SteeringInput |
 
 ### Broadcast Functions
 

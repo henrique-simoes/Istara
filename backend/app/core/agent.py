@@ -29,6 +29,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.core.datetime_utils import ensure_utc
+from app.core.steering import steering_manager
 from app.core.ollama import ollama
 from app.core.rag import retrieve_context, ingest_chunks
 from app.core.self_check import verify_claim, Confidence
@@ -181,6 +182,18 @@ class AgentOrchestrator:
 
     async def _work_cycle(self) -> bool:
         """Run one work cycle. Returns True if a task was executed."""
+        # ── Check steering queue FIRST — if there are pending steering
+        # messages, create a steering task and execute it before checking
+        # the normal task queue. This implements pi-mono's steering pattern:
+        # steering messages are injected while the agent is idle or working,
+        # and picked up at the next opportunity.
+        steering_msgs = steering_manager.get_steering(self._agent_id)
+        if steering_msgs:
+            logger.info(f"Steering messages detected for {self._agent_id}: {len(steering_msgs)}")
+            for msg in steering_msgs:
+                await self._execute_steering_message(msg)
+            return True
+
         # Check resource budget before doing work
         can_start, reason = governor.can_start_agent("task-executor")
         if not can_start:
@@ -221,11 +234,13 @@ class AgentOrchestrator:
             # 3. Execute the task (register with governor for concurrent limits)
             governor.register_agent("task-executor")
             self._current_task_id = task.id
+            steering_manager.mark_working(self._agent_id)
             try:
                 await self._execute_task(db, task, project)
             finally:
                 self._current_task_id = None
                 governor.unregister_agent("task-executor")
+                steering_manager.mark_idle(self._agent_id)
 
             # 4. Check queue depth and adapt loop interval
             pending_result = await db.execute(
@@ -256,7 +271,95 @@ class AgentOrchestrator:
                 self._loop_interval = 30  # Back to normal
                 await broadcast_agent_status("idle", "All tasks processed.")
 
+            # ── Check follow-up queue — only processed when agent would
+            # otherwise stop (no more tasks in the pipeline). This matches
+            # pi-mono's followUpQueue pattern.
+            follow_up_msgs = steering_manager.get_follow_up(self._agent_id)
+            if follow_up_msgs:
+                logger.info(f"Follow-up messages for {self._agent_id}: {len(follow_up_msgs)}")
+                for msg in follow_up_msgs:
+                    await self._execute_steering_message(msg)
+                return True
+
             return True
+
+    async def _execute_steering_message(self, msg) -> None:
+        """Execute a steering message as an interim task.
+
+        Steering messages are user-injected mid-execution instructions.
+        They're treated as high-priority tasks that interrupt the normal
+        task queue (but never interrupt a skill that's already running).
+
+        This mirrors pi-mono's pattern where steering messages are
+        delivered after the current turn completes.
+        """
+        from app.core.steering import SteeringMessage
+        from app.models.task import Task, TaskStatus
+        from app.skills.registry import load_skill
+
+        message_text = msg.message if hasattr(msg, "message") else str(msg)
+        source = msg.source if hasattr(msg, "source") else "user"
+        logger.info(f"Executing steering message ({source}): {message_text[:100]}")
+
+        # Broadcast that we're processing a steering message
+        await broadcast_agent_status(
+            "working", f"Processing steering message: {message_text[:80]}..."
+        )
+
+        try:
+            # Create a temporary skill input from the steering message
+            from app.skills.skill_manager import skill_manager
+            from app.skills.registry import SkillInput
+
+            # Try to find an appropriate skill based on the message content
+            skill = None
+            # Check if the message references a specific skill
+            lower_msg = message_text.lower()
+            if any(kw in lower_msg for kw in ["audit", "check", "review", "wcag", "accessibility"]):
+                skill = skill_manager.get_skill("accessibility-audit")
+            elif any(kw in lower_msg for kw in ["ux", "usability", "heuristic"]):
+                skill = skill_manager.get_skill("heuristic-evaluation")
+            elif any(kw in lower_msg for kw in ["analyze", "theme", "insight", "finding"]):
+                skill = skill_manager.get_skill("kappa-thematic-analysis")
+            elif any(kw in lower_msg for kw in ["summarize", "summary", "report"]):
+                skill = skill_manager.get_skill("stakeholder-presentation")
+
+            if skill:
+                # Execute the skill with the steering message as context
+                skill_input = SkillInput(
+                    project_id="",  # Steering messages don't require a project
+                    task_id="",
+                    parameters={"mode": "analyze"},
+                    user_context=message_text,
+                    project_context="",
+                    company_context="",
+                )
+                output = await asyncio.wait_for(skill.execute(skill_input), timeout=120)
+
+                # Broadcast the result
+                await broadcast_agent_status(
+                    "idle",
+                    f"Steering message processed ({skill.display_name}): {output.summary[:120]}..."
+                    if output.summary
+                    else f"Steering message processed ({skill.display_name})"
+                )
+            else:
+                # No matching skill — use the general LLM to respond
+                response = await ollama.chat(messages=[
+                    {"role": "system", "content": "You are Istara's main agent. Respond helpfully to the user's steering message."},
+                    {"role": "user", "content": message_text},
+                ])
+                reply = response.get("message", {}).get("content", "")
+                await broadcast_agent_status(
+                    "idle",
+                    f"Steering response: {reply[:200]}..."
+                )
+        except asyncio.TimeoutError:
+            logger.warning("Steering message execution timed out")
+            await broadcast_agent_status("warning", "Steering message timed out after 2 minutes")
+        except Exception as e:
+            logger.error(f"Steering message execution failed: {e}")
+            await broadcast_agent_status("warning", f"Steering message failed: {str(e)[:100]}")
 
     def _is_in_backoff(self, task: Task) -> bool:
         """Check if a task is still within its retry backoff window."""

@@ -30,9 +30,10 @@ import {
   RotateCcw,
 } from "lucide-react";
 import { useAgentStore } from "@/stores/agentStore";
-import { agents as agentsApi, memory as memoryApi } from "@/lib/api";
+import { agents as agentsApi, memory as memoryApi, steering as steeringApi } from "@/lib/api";
 import { useProjectStore } from "@/stores/projectStore";
 import { useWebSocket } from "@/hooks/useWebSocket";
+import SteeringInput from "@/components/common/SteeringInput";
 import { cn } from "@/lib/utils";
 import ViewOnboarding from "@/components/common/ViewOnboarding";
 import type {
@@ -599,6 +600,11 @@ function AgentDetail({ agent }: { agent: Agent }) {
               <p className="text-[10px] text-slate-500">Heartbeat</p>
             </div>
           </div>
+
+          {/* Mid-execution steering — inject messages while agent is working */}
+          {agent.name === "Istara" && (
+            <SteeringInput agentId={agent.id} isWorking={agent.state === "working"} />
+          )}
 
           {/* Recent Errors section */}
           <RecentErrors agentId={agent.id} />

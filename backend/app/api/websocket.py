@@ -322,3 +322,31 @@ async def broadcast_autoresearch_progress(experiment_data: dict) -> None:
 async def broadcast_autoresearch_complete(loop_type: str, summary: dict) -> None:
     """Broadcast autoresearch loop completion."""
     await manager.broadcast("autoresearch_complete", {"loop_type": loop_type, **summary})
+
+
+# ---------------------------------------------------------------------------
+# Steering events — mid-execution message injection
+# ---------------------------------------------------------------------------
+
+async def broadcast_steering_message(agent_id: str, message: str, source: str = "user") -> None:
+    """Broadcast that a steering message was received and queued."""
+    await manager.broadcast("steering_message", {
+        "agent_id": agent_id,
+        "message": message,
+        "source": source,
+        "direction": "queued",
+    })
+
+
+async def broadcast_steering_response(agent_id: str, response: str) -> None:
+    """Broadcast the agent's response to a steering message."""
+    await manager.broadcast("steering_message", {
+        "agent_id": agent_id,
+        "response": response,
+        "direction": "response",
+    })
+
+
+async def broadcast_agent_idle(agent_id: str) -> None:
+    """Broadcast that an agent has finished all work (steering + follow-up processed)."""
+    await manager.broadcast("agent_idle", {"agent_id": agent_id})

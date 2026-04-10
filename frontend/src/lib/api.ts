@@ -899,3 +899,66 @@ export const codeApplications = {
   bulkApprove: (projectId: string, minConfidence?: number) =>
     post<{ approved_count: number }>(`/api/code-applications/${projectId}/bulk-approve?min_confidence=${minConfidence || 0.9}`, {}),
 };
+
+// --- Steering (mid-execution message injection) ---
+
+export const steering = {
+  /** Queue a steering message to be injected after current skill completes. */
+  send: (agentId: string, message: string, mode: "one-at-a-time" | "all" = "one-at-a-time") =>
+    post<{ status: string; agent_id: string; queue_count: number; message: string }>(
+      `/api/steering/${agentId}`,
+      { message, mode },
+    ),
+
+  /** Queue a follow-up message to be injected when agent finishes all work. */
+  followUp: (agentId: string, message: string, mode: "one-at-a-time" | "all" = "one-at-a-time") =>
+    post<{ status: string; agent_id: string; queue_count: number; message: string }>(
+      `/api/steering/${agentId}/follow-up`,
+      { message, mode },
+    ),
+
+  /** Abort current agent work and clear all queues. */
+  abort: (agentId: string) =>
+    post<{ agent_id: string; cleared_steering_count: number; cleared_follow_up_count: number }>(
+      `/api/steering/${agentId}/abort`,
+      {},
+    ),
+
+  /** Get steering status (working state, queue counts). */
+  getStatus: (agentId: string) =>
+    get<{
+      agent_id: string;
+      is_working: boolean;
+      steering_queue_count: number;
+      follow_up_queue_count: number;
+      steering_mode: string;
+      follow_up_mode: string;
+      has_queued_messages: boolean;
+    }>(`/api/steering/${agentId}/status`),
+
+  /** Get the contents of both steering queues. */
+  getQueues: (agentId: string) =>
+    get<{
+      agent_id: string;
+      steering_queue: { message: string; source: string; timestamp: number }[];
+      follow_up_queue: { message: string; source: string; timestamp: number }[];
+    }>(`/api/steering/${agentId}/queues`),
+
+  /** Clear all steering and follow-up queues. */
+  clear: (agentId: string) =>
+    del(`/api/steering/${agentId}/queues`),
+
+  /** Wait until agent finishes all work (SSE endpoint). */
+  waitForIdle: (agentId: string, signal?: AbortSignal) =>
+    fetch(`${API_BASE}/api/steering/${agentId}/idle`, { signal }),
+
+  /** Get steering status for all agents. */
+  getAllStatus: () =>
+    get<Record<string, {
+      agent_id: string;
+      is_working: boolean;
+      steering_queue_count: number;
+      follow_up_queue_count: number;
+      has_queued_messages: boolean;
+    }>>("/api/steering"),
+};

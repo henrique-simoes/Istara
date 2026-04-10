@@ -1,6 +1,6 @@
 # Istara — Agent-Readable Operating Map
 
-Generated from the repository on version `2026.04.08.2`. Treat this file as the fast inventory view after reading `AGENT_ENTRYPOINT.md`, then consult `COMPLETE_SYSTEM.md`, `SYSTEM_CHANGE_MATRIX.md`, `CHANGE_CHECKLIST.md`, and `SYSTEM_PROMPT.md` before structural work.
+Generated from the repository on version `2026.04.08.3`. Treat this file as the fast inventory view after reading `AGENT_ENTRYPOINT.md`, then consult `COMPLETE_SYSTEM.md`, `SYSTEM_CHANGE_MATRIX.md`, `CHANGE_CHECKLIST.md`, and `SYSTEM_PROMPT.md` before structural work.
 
 ## Non-Negotiable Workflow
 
@@ -18,7 +18,7 @@ Generated from the repository on version `2026.04.08.2`. Treat this file as the 
 ## System Snapshot
 
 - Frontend: Next.js app with 22 mounted views and 15 Zustand stores.
-- Backend: FastAPI app with 37 route modules and 355 detected endpoints.
+- Backend: FastAPI app with 38 route modules and 363 detected endpoints.
 - Data layer: 41 SQLAlchemy models plus LanceDB-backed retrieval/context systems.
 - Agents/personas: 6 tracked persona directories under `backend/app/agents/personas`.
 - Skills: 50 JSON-defined skills across the Double Diamond phases.
@@ -112,6 +112,7 @@ Generated from the repository on version `2026.04.08.2`. Treat this file as the 
 | `sessions.py` | `/` | 8 |
 | `settings.py` | `/` | 14 |
 | `skills.py` | `/` | 18 |
+| `steering.py` | `/` | 8 |
 | `surveys.py` | `/` | 9 |
 | `tasks.py` | `/` | 11 |
 | `updates.py` | `/` | 4 |
@@ -186,7 +187,7 @@ Generated from the repository on version `2026.04.08.2`. Treat this file as the 
 
 ## Real-Time Contract
 
-- WebSocket event types detected: `agent_status`, `agent_thinking`, `autoresearch_complete`, `autoresearch_progress`, `channel_message`, `channel_status`, `deployment_finding`, `deployment_progress`, `deployment_response`, `file_processed`, `finding_created`, `meta_proposal`, `plan_progress`, `resource_throttle`, `suggestion`, `task_progress`, `task_queue_update`.
+- WebSocket event types detected: `agent_idle`, `agent_status`, `agent_thinking`, `autoresearch_complete`, `autoresearch_progress`, `channel_message`, `channel_status`, `deployment_finding`, `deployment_progress`, `deployment_response`, `file_processed`, `finding_created`, `meta_proposal`, `plan_progress`, `resource_throttle`, `steering_message`, `suggestion`, `task_progress`, `task_queue_update`.
 - When adding a new event, update both broadcaster + frontend handler + regression coverage + regenerated docs.
 
 ## Test Coverage Map
