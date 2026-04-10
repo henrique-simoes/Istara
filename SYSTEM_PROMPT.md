@@ -100,7 +100,39 @@ python scripts/check_integrity.py
 - This hook runs as the **last step before push** — it overrides even the agent's own commits.
 - Manual verification: `git log --all --pretty=format:"%an <%ae>" | sort -u` should only show `henrique-simoes`.
 
-## Tech.md Maintenance
+## Branching & Pull Request Workflow
+
+Istara uses a **staging-first** workflow to prevent broken code from reaching `main`:
+
+- **`main`** — production-ready, protected branch. Only merged via PR from `staging`.
+- **`staging`** — integration branch. All feature work lands here first. CI must pass before merging to `main`.
+- **Feature branches** — `feat/feature-name`, `fix/bug-name`, `docs/doc-name`. Created from `staging`, merged back to `staging` via PR.
+
+### Rules:
+- **Direct push to `main` is blocked** — only allowed for version bumps and Compass doc regenerations via automated CI.
+- **Feature work (3+ commits) MUST use a feature branch** → PR → `staging` → PR → `main`.
+- **Trivial changes** (typos, version bumps, doc regenerations) may push directly to `staging`.
+- **Branch protection on `main`** requires CI to pass and PR review before merge.
+- **Squash merge** for clean history — one commit per feature on `main`.
+
+### Typical flow:
+```bash
+# 1. Create feature branch from staging
+git checkout staging && git pull
+git checkout -b feat/new-security-feature
+
+# 2. Work, commit, push
+git add -A && git commit -m "feat: add biometric auth"
+git push origin feat/new-security-feature
+
+# 3. Open PR to staging, wait for CI, merge
+gh pr create --base staging --title "feat: add biometric auth"
+
+# 4. Once staging is green, PR to main
+git checkout staging && git pull
+git checkout -b release/staging-to-main
+gh pr create --base main --title "Merge staging → main"
+```
 
 Tech.md is the **narrative technical source** that describes how Istara works architecturally. Unlike AGENT.md and COMPLETE_SYSTEM.md (which are auto-generated), Tech.md is hand-authored and MUST be updated when:
 

@@ -439,6 +439,7 @@ Before pushing to production:
 - [ ] Release commit and tag planned together
 - [ ] Qualifying `main` pushes, tag pushes, and manual dispatch all match the documented publishing model
 - [ ] No `Co-authored-by` trailers in commit messages — only the human owner should appear as author
+- [ ] Feature work merged through staging branch first — no direct pushes to main for multi-commit changes
 
 ### Monitoring
 - [ ] Health check endpoint works
