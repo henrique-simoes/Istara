@@ -171,6 +171,11 @@ const scenarioFiles = [
 - [ ] Tests belong in the same commit as the implementation, not in a later cleanup commit
 - [ ] Follow existing patterns — don't invent new test architectures
 - [ ] Register new simulation scenarios in `tests/simulation/run.mjs` scenarioFiles array
+- [ ] **API tests must include JWT auth headers** — the `SecurityAuthMiddleware` blocks all non-exempt routes. Use `from app.core.auth import create_token` to generate a valid token
+- [ ] **Clear shared state between tests** — use `@pytest.fixture(autouse=True)` to reset global singletons (like `steering_manager`) before each test
+- [ ] **DB migrations for new columns** — when adding model columns, add `ALTER TABLE` statements to `init_db()` in `backend/app/models/database.py` to handle pre-existing databases
+- [ ] **In-memory features don't need DB validation** — if a feature (like steering queues) is purely in-memory, don't validate against the database. Just validate input format
+- [ ] **Run all existing tests after changes** — `pytest tests/` must pass with 0 failures before committing
 
 ---
 
