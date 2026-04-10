@@ -176,6 +176,10 @@ const scenarioFiles = [
 - [ ] **DB migrations for new columns** — when adding model columns, add `ALTER TABLE` statements to `init_db()` in `backend/app/models/database.py` to handle pre-existing databases
 - [ ] **In-memory features don't need DB validation** — if a feature (like steering queues) is purely in-memory, don't validate against the database. Just validate input format
 - [ ] **Run all existing tests after changes** — `pytest tests/` must pass with 0 failures before committing
+- [ ] **Simulation scenarios must return `{ checks, passed, failed, summary }`** — do NOT call `report()` (it doesn't exist in ctx). Return the object and the runner handles reporting
+- [ ] **E2E tests support `ISTARA_ADMIN_USER` and `ISTARA_ADMIN_PASSWORD` env vars** — use these instead of relying on `.env` file which may have stale auto-generated passwords
+- [ ] **Simulation runner supports `ADMIN_USERNAME` and `ADMIN_PASSWORD` env vars** — set these for `node tests/simulation/run.mjs` to authenticate
+- [ ] **Components that render conditionally should be tested with awareness of their state** — if a component only shows when agent is working, and tests pause agents, document the skip reason
 
 ---
 
