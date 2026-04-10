@@ -100,6 +100,17 @@ python scripts/check_integrity.py
 - This hook runs as the **last step before push** — it overrides even the agent's own commits.
 - Manual verification: `git log --all --pretty=format:"%an <%ae>" | sort -u` should only show `henrique-simoes`.
 
+## Tech.md Maintenance
+
+Tech.md is the **narrative technical source** that describes how Istara works architecturally. Unlike AGENT.md and COMPLETE_SYSTEM.md (which are auto-generated), Tech.md is hand-authored and MUST be updated when:
+
+- New security mechanisms are added (auth, encryption, TLS, container hardening, network segmentation)
+- New agent capabilities are introduced (steering, A2A, skill changes)
+- Architecture or deployment changes (Docker networks, Caddy, installer behavior)
+- New subsystems or services are created
+
+The `check_integrity.py` script includes keyword-based freshness verification. If Tech.md is missing key concepts, the integrity check will flag it. **Never ship a change that triggers a TECH.md integrity warning without updating Tech.md first.**
+
 ## Change Awareness
 
 Before editing, ask:

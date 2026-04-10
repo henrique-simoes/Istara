@@ -17,6 +17,7 @@ from update_agent_md import (
 )
 
 GUIDE = ROOT / "SYSTEM_INTEGRITY_GUIDE.md"
+TECH_MD = ROOT / "Tech.md"
 PROMPT_DOCS = [
     ROOT / "AGENT_ENTRYPOINT.md",
     ROOT / "SYSTEM_PROMPT.md",
@@ -70,6 +71,44 @@ def check_legacy_guide_mentions(issues: list[str]) -> None:
                 issues.append(f"GUIDE: router `{router_name}` is registered in main.py but not mentioned in SYSTEM_INTEGRITY_GUIDE.md")
 
 
+def check_tech_md_freshness(issues: list[str]) -> None:
+    """Verify Tech.md mentions key concepts from recent major changes.
+
+    This is a keyword-based heuristic to catch obvious omissions.
+    When a new major feature is added to the codebase, add its signature
+    keywords here so Tech.md freshness can be verified.
+    """
+    if not TECH_MD.exists():
+        issues.append(f"MISSING: Tech.md does not exist")
+        return
+
+    tech_text = TECH_MD.read_text(encoding="utf-8").lower()
+
+    # Signature keywords for major features that should be documented in Tech.md
+    required_topics = {
+        "argon2": "Argon2id password hashing",
+        "totp": "TOTP two-factor authentication",
+        "webauthn": "WebAuthn/FIDO2 passkeys",
+        "steering": "Mid-execution steering",
+        "cap_drop": "Docker container hardening",
+        "no-new-privileges": "Container security (no-new-privileges)",
+        "frontend-net": "Network segmentation (Docker networks)",
+        "caddy": "Caddy/TLS configuration",
+        "pre-push": "Compass authorship enforcement",
+    }
+
+    missing = []
+    for keyword, description in required_topics.items():
+        if keyword not in tech_text:
+            missing.append(description)
+
+    if missing:
+        issues.append(
+            f"TECH.md: Missing documentation for: {', '.join(missing)}. "
+            f"Update Tech.md to reflect current security architecture."
+        )
+
+
 def main() -> int:
     issues: list[str] = []
 
@@ -84,6 +123,7 @@ def main() -> int:
 
     check_generated_docs(issues)
     check_legacy_guide_mentions(issues)
+    check_tech_md_freshness(issues)
 
     if issues:
         print("Integrity issues detected:")

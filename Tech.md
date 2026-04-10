@@ -966,6 +966,92 @@ Istara implements an automatic security audit for "Local Mode" deployments.
 - **Frontend Warning & Flow**: When `insecure: true` is detected, the `LoginScreen` hides standard login options and forces the "Join Server" (Connection String) flow to prevent unauthorized access.
 - **Session Consistency**: The `authStore.ts` now handles `401 Unauthorized` responses from `fetchMe()` by broadcasting an `istara:auth-expired` event, ensuring invalid local tokens are cleared and the user is redirected to the login screen immediately.
 
+### Cryptographic Access & Transport Security (v2026.04.10)
+
+Istara now implements a comprehensive defense-in-depth security architecture spanning authentication, transport, container isolation, and network segmentation.
+
+#### Authentication — NIST SP 800-63B Rev.4 Compliant
+
+| Layer | Mechanism | Standard |
+|---|---|---|
+| **Password Hashing** | Argon2id (memory-hard, 64 MB, 3 iterations, 4 parallelism) | Password Hashing Competition winner |
+| **Fallback** | PBKDF2-HMAC-SHA256 at 260K iterations (OWASP 2024 minimum) | Legacy compatibility |
+| **Breach Checking** | Have I Been Pwned k-anonymity API — only 5 SHA-1 chars sent, full hash never leaves machine | NIST SP 800-63B Rev.4 |
+| **2FA** | TOTP (RFC 6238) via pyotp — Google/Microsoft Authenticator compatible | RFC 6238 |
+| **Passkeys** | WebAuthn/FIDO2 — device-bound biometric auth (Apple Secure Enclave, Windows Hello) | NIST AAL2/AAL3 phishing-resistant |
+| **Recovery Codes** | 8 cryptographic codes per user, Argon2id hashed, one-time use | GitHub/Google pattern |
+| **JWT** | HMAC-SHA256 with jti (revocation), mfa_verified claim, alg:none protection | RFC 7519 |
+| **Cookies** | HttpOnly, Secure, SameSite=Strict session cookies | OWASP Session Management |
+
+**User model additions:**
+```
+totp_secret: VARCHAR(64)        # TOTP shared secret
+totp_enabled: BOOLEAN           # 2FA active flag
+recovery_codes_hashed: TEXT     # Newline-separated Argon2id hashes
+passkey_enabled: BOOLEAN        # WebAuthn registered
+password_hash: VARCHAR(512)     # Widened from 255 for Argon2id
+```
+
+#### Transport Security — TLS 1.3
+
+Caddyfile hardening (production profile):
+- TLS 1.2/1.3 only with explicit cipher suites: `TLS_AES_256_GCM_SHA384`, `TLS_CHACHA20_POLY1305_SHA256`, `TLS_AES_128_GCM_SHA256`
+- ECDH curves: `X25519`, `secp256r1`, `secp384r1`
+- HSTS with preload: `max-age=31536000; includeSubDomains; preload`
+- Content Security Policy: `default-src 'self'`, `frame-ancestors 'none'`, `connect-src 'self' https://api.github.com`
+- Permissions Policy: camera, microphone, geolocation, payment, USB all disabled
+- X-Frame-Options: DENY, X-Content-Type-Options: nosniff, Referrer-Policy: strict-origin-when-cross-origin
+
+#### Container Security — CIS Docker Benchmark
+
+All containers hardened with:
+- `cap_drop: ALL` — drop all Linux capabilities
+- Minimal `cap_add` — only what's needed (CHOWN, SETUID, NET_BIND_SERVICE)
+- `no-new-privileges: true` — prevents privilege escalation
+- `read_only: true` — root filesystem read-only for backend, frontend, postgres
+- `tmpfs` with `noexec,nosuid` — executable temp space with limited size
+- `pids_limit` — prevents fork bomb attacks (200 backend, 100 frontend/ollama/postgres)
+- Database ports (PostgreSQL 5432, Ollama 11434) **not exposed to host**
+
+#### Network Segmentation — Zero Trust
+
+Three isolated Docker networks:
+| Network | Members | External Access |
+|---|---|---|
+| `frontend-net` | Caddy, Frontend | Yes (ports 80/443) |
+| `backend-net` | Backend, Caddy, Relay | No (internal) |
+| `data-net` | Ollama, PostgreSQL | No (internal) |
+
+Frontend cannot reach database or Ollama directly. Only Caddy bridges frontend↔backend.
+
+#### Mid-Execution Steering (v2026.04.10)
+
+A new real-time communication channel lets users inject messages to agents **while they're working**, inspired by pi-mono's steering pattern.
+
+**Architecture:**
+- `SteeringQueue` — mirrors pi-mono's `PendingMessageQueue`, supports `one-at-a-time` and `all` drain modes
+- `FollowUpQueue` — messages delivered only when agent finishes all work
+- **Deferred execution**: steering messages NEVER interrupt in-progress skills; they wait for current turn to complete
+- **Abort**: clears both queues, signals agent to stop (like pi-mono's Escape)
+- In-memory only — no database persistence needed
+
+**API endpoints:**
+```
+POST /api/steering/{agent_id}              # Queue steering message
+POST /api/steering/{agent_id}/follow-up    # Queue follow-up message
+POST /api/steering/{agent_id}/abort        # Abort current work
+GET  /api/steering/{agent_id}/status       # Get queue counts
+GET  /api/steering/{agent_id}/queues       # Get message contents
+DELETE /api/steering/{agent_id}/queues     # Clear all queues
+GET  /api/steering/{agent_id}/idle         # SSE: wait until agent idle
+```
+
+**Frontend:** `SteeringInput` component renders when `agent.state === 'working'`, shows queue count badge, abort button, and retrieve-queued-messages button.
+
+#### Compass Authorship Enforcement
+
+Pre-push hook (`.git/hooks/pre-push`) automatically rewrites author, committer, and strips `Co-authored-by` trailers before every push. Ensures only `henrique-simoes <simoeshz@gmail.com>` appears on GitHub.
+
 ### Document Organization
 
 Documents view now includes an "Organize Files" function (ported from Interviews):
