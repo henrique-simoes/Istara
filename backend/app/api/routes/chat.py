@@ -698,8 +698,8 @@ async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db)):
 
                 sources = [
                     {"source": r.source, "score": r.score, "page": r.page}
-                    for r in rag_context.retrieved
-                ]
+                    for r in rag_result.retrieved
+                ] if rag_result and rag_result.retrieved else []
                 done_data = json.dumps(
                     {
                         "type": "done",

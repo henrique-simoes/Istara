@@ -72,19 +72,18 @@ class SteeringAbortResponse(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Helper: validate agent exists
+# Helper: validate agent ID format
 # ---------------------------------------------------------------------------
 
-async def _validate_agent(agent_id: str) -> None:
-    """Check that the agent ID is a known agent."""
-    from sqlalchemy import select
-    from app.models.agent import Agent
-    from app.models.database import async_session
+async def _validate_agent_id(agent_id: str) -> None:
+    """Validate that the agent_id is a non-empty string.
 
-    async with async_session() as db:
-        result = await db.execute(select(Agent).where(Agent.id == agent_id))
-        if not result.scalar_one_or_none():
-            raise HTTPException(status_code=404, detail=f"Agent '{agent_id}' not found")
+    Unlike other routes, steering doesn't require the agent to exist
+    in the database — it's a pure in-memory queue keyed by agent_id.
+    The agent orchestrator picks up messages when it checks the queue.
+    """
+    if not agent_id or not agent_id.strip():
+        raise HTTPException(status_code=400, detail="Agent ID is required")
 
 
 # ---------------------------------------------------------------------------
@@ -102,7 +101,7 @@ async def queue_steering_message(agent_id: str, body: SteeringMessageRequest):
     - "one-at-a-time" (default): delivers one message, waits for response
     - "all": delivers all queued messages at once
     """
-    await _validate_agent(agent_id)
+    await _validate_agent_id(agent_id)
     steering_manager.steer(agent_id, body.message, source=body.source)
     return {
         "status": "queued",
@@ -118,7 +117,7 @@ async def queue_follow_up_message(agent_id: str, body: FollowUpMessageRequest):
 
     Follow-up messages are only processed when the agent has no more pending work.
     """
-    await _validate_agent(agent_id)
+    await _validate_agent_id(agent_id)
     steering_manager.follow_up(agent_id, body.message, source=body.source)
     return {
         "status": "queued",
@@ -135,12 +134,12 @@ async def abort_agent_work(agent_id: str):
     This is the programmatic equivalent of pressing Escape in pi-mono.
     Queued messages are returned so the caller can restore them to the editor.
     """
-    await _validate_agent(agent_id)
+    await _validate_agent_id(agent_id)
     cleared = steering_manager.abort(agent_id)
 
     # Also signal the orchestrator to stop current task
     if agent_id == "istara-main":
-        from app.core.agent import agent_orchestrator
+        from app.core.agent import agent as agent_orchestrator
         agent_orchestrator.stop()
 
     return SteeringAbortResponse(
@@ -153,7 +152,7 @@ async def abort_agent_work(agent_id: str):
 @router.get("/steering/{agent_id}/status", response_model=SteeringStatusResponse)
 async def get_steering_status(agent_id: str):
     """Get steering status for an agent."""
-    await _validate_agent(agent_id)
+    await _validate_agent_id(agent_id)
     status = steering_manager.get_status(agent_id)
     return SteeringStatusResponse(**status)
 
@@ -161,7 +160,7 @@ async def get_steering_status(agent_id: str):
 @router.get("/steering/{agent_id}/queues", response_model=SteeringQueuesResponse)
 async def get_steering_queues(agent_id: str):
     """Get the contents of both steering queues."""
-    await _validate_agent(agent_id)
+    await _validate_agent_id(agent_id)
     state = steering_manager._get_or_create(agent_id)
 
     return SteeringQueuesResponse(
@@ -190,7 +189,7 @@ async def get_steering_queues(agent_id: str):
 @router.delete("/steering/{agent_id}/queues", response_model=dict)
 async def clear_steering_queues(agent_id: str):
     """Clear all steering and follow-up queues for an agent."""
-    await _validate_agent(agent_id)
+    await _validate_agent_id(agent_id)
     cleared = steering_manager.clear_all(agent_id)
     return {
         "status": "cleared",
@@ -212,7 +211,7 @@ async def wait_for_agent_idle(agent_id: str):
     from fastapi.responses import StreamingResponse
 
     async def event_stream():
-        await _validate_agent(agent_id)
+        await _validate_agent_id(agent_id)
         result = await steering_manager.wait_for_idle(agent_id, timeout=300.0)
         status = "idle" if result else "timeout"
         yield f"data: {{\"agent_id\": \"{agent_id}\", \"status\": \"{status}\"}}\n\n"
