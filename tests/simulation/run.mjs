@@ -297,6 +297,7 @@ async function loadScenarios() {
     "67-auth-enforcement",
     "68-data-security",
     "69-user-management-ui",
+    "70-mid-execution-steering",
   ];
 
   const scenarios = [];

@@ -43,6 +43,47 @@ Read these in this order when the change is non-trivial:
 9. Release-worthy changes include product behavior changes in backend/frontend/desktop/relay/install/update surfaces and Compass-critical agent docs or persona knowledge that Istara's internal agents rely on.
 10. Before preparing a release intentionally, run the standardized local release sequence via `scripts/prepare-release.sh`.
 
+## Three-Layer Testing Mandate
+
+Istara has three test layers. Every meaningful change must include tests at the appropriate layers:
+
+### Layer 1: Unit / Integration Tests (`tests/test_*.py`)
+- **What**: pytest tests for individual components — auth, security, services, infrastructure classes, API routes.
+- **When**: Always add for new backend services, API routes, security mechanisms, infrastructure classes, or utility modules.
+- **Pattern**: Use `httpx.ASGITransport(app=app)` for API route tests. Use in-memory SQLite with `async_sessionmaker` for model tests. Follow `tests/test_auth_security.py` and `tests/test_steering.py` patterns.
+- **Run**: `pytest tests/`
+
+### Layer 2: E2E Phased Test (`tests/e2e_test.py`)
+- **What**: Single comprehensive test that runs against a live Istara instance. Organized in numbered phases (0–12+). Each phase tests a complete system area with real data, real skills, real agents.
+- **When**: Always add a new phase or test entries when new API routes, endpoints, or system-wide features are added. Add to the appropriate existing phase if it fits, or create a new phase if it's a new system area.
+- **Pattern**: Use the `test("name", lambda: assert_ok(...))` pattern. Each test is independent but phases build on earlier setup (auth → project → files → chat → tasks → etc.).
+- **Run**: `python tests/e2e_test.py`
+
+### Layer 3: Simulation Scenarios (`tests/simulation/scenarios/*.mjs`)
+- **What**: Playwright behavioral scenarios that run in the simulation runner. Each scenario tests a complete user-facing UX path with real browser interactions, accessibility evaluation, and heuristic scoring.
+- **When**: Always add a new scenario for new user-facing workflows, navigation paths, UI components with interactive behavior, or UX flows. Update existing scenarios when they touch the changed behavior.
+- **Pattern**: Number the file sequentially (`70-mid-execution-steering.mjs`). Export `name`, `id`, and `async function run(ctx)` with `{ api, page, report }`. Add the file name (without `.mjs`) to the `scenarioFiles` array in `tests/simulation/run.mjs`. Use `api.get/post/delete()` for API calls and `page.goto()/page.getBy*()` for UI interactions. Report results via `report(name, checks)`.
+- **Run**: `node tests/simulation/run.mjs` (full suite) or `node tests/simulation/run.mjs --scenario 70` (single scenario)
+
+### Test Decision Matrix
+
+| What changed | Layer 1 (pytest) | Layer 2 (e2e_test.py) | Layer 3 (simulation) |
+|---|---|---|---|
+| New API route or endpoint | ✅ Route tests | ✅ Add to relevant phase | — |
+| New backend service or utility | ✅ Service tests | — | — |
+| New security mechanism | ✅ Security tests | ✅ Add to relevant phase | — |
+| New user-facing UI component | — | — | ✅ New or updated scenario |
+| New user workflow / UX flow | — | ✅ Add to relevant phase | ✅ New scenario |
+| New system-wide feature | ✅ Infrastructure tests | ✅ New phase | ✅ New scenario |
+| Navigation / menu change | — | ✅ Frontend phase | ✅ Update navigation scenario |
+| Agent behavior change | ✅ Agent tests | ✅ Agent phase | ✅ Agent architecture scenario |
+
+### Non-Negotiable Test Rules
+- **No change ships without tests.** Code without test coverage is incomplete.
+- **Don't stretch unrelated scenarios.** If existing simulation coverage no longer describes the changed flow well, add a new scenario instead of forcing the change into unrelated old coverage.
+- **Tests belong in the same commit as the implementation.** Not in a later cleanup commit.
+- **Follow existing patterns.** Don't invent new test architectures — use the three-layer structure above.
+
 ## Required Documentation Workflow
 
 Run these after architecture-affecting work:

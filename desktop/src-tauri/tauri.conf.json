@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/nicehash/tauri/refs/tags/tauri-v2.3.1/crates/tauri-cli/schema.json",
   "productName": "Istara",
-  "version": "26.134.0",
+  "version": "26.134.2",
   "identifier": "com.istara.desktop",
   "build": {
     "frontendDist": "../src",
