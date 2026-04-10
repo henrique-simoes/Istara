@@ -174,6 +174,19 @@ Before making ANY change:
 - [ ] Verify security headers (X-Frame-Options, CSP, X-Content-Type-Options)
 - [ ] Verify network segmentation (Docker networks: frontend-net, backend-net, data-net)
 
+### Adding Mid-Execution Steering (Agent Communication)
+
+- [ ] Steering queue uses asyncio.Lock for thread safety
+- [ ] Steering messages never interrupt in-progress skills (deferred execution)
+- [ ] Follow-up messages only processed when agent would otherwise stop
+- [ ] Abort clears both queues and signals agent to stop
+- [ ] WebSocket events: `steering_message`, `agent_idle` broadcast correctly
+- [ ] SteeringInput component shows only when agent is working
+- [ ] Queue count badge updates via polling
+- [ ] Abort button clears queues and stops current work
+- [ ] API routes validate agent existence before queuing
+- [ ] SSE `/api/steering/{agent_id}/idle` endpoint handles timeout correctly
+
 ### Adding an Integration (Survey, Design, etc.)
 
 - [ ] Create adapter/service file
