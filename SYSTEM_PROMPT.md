@@ -104,16 +104,21 @@ python scripts/check_integrity.py
 
 Istara uses a **staging-first** workflow to prevent broken code from reaching `main`:
 
-- **`main`** — production-ready, protected branch. Only merged via PR from `staging`.
+- **`main`** — production-ready, protected branch. **Pull requests required** — no direct pushes.
 - **`staging`** — integration branch. All feature work lands here first. CI must pass before merging to `main`.
 - **Feature branches** — `feat/feature-name`, `fix/bug-name`, `docs/doc-name`. Created from `staging`, merged back to `staging` via PR.
+- **`TESTING.md`** — tracks what's on staging awaiting review. Updated on every push to staging, cleared on merge to main.
 
 ### Rules:
-- **Direct push to `main` is blocked** — only allowed for version bumps and Compass doc regenerations via automated CI.
+- **PR required for ALL merges to `main`** — including staging→main. No direct pushes.
 - **Feature work (3+ commits) MUST use a feature branch** → PR → `staging` → PR → `main`.
 - **Trivial changes** (typos, version bumps, doc regenerations) may push directly to `staging`.
-- **Branch protection on `main`** requires CI to pass and PR review before merge.
+- **Update `TESTING.md`** when pushing to staging — add entry under "Awaiting Review".
+- **Move entry to "Verified"** after testing locally on staging branch.
+- **Clear `TESTING.md` verified entries** after merging to `main`.
+- **Branch protection on `main`** requires CI to pass and PR before merge.
 - **Squash merge** for clean history — one commit per feature on `main`.
+- **Self-review is acceptable** but must be documented in the PR description.
 
 ### Typical flow:
 ```bash
@@ -121,17 +126,24 @@ Istara uses a **staging-first** workflow to prevent broken code from reaching `m
 git checkout staging && git pull
 git checkout -b feat/new-security-feature
 
-# 2. Work, commit, push
+# 2. Work, commit, push to staging
 git add -A && git commit -m "feat: add biometric auth"
-git push origin feat/new-security-feature
+git push origin staging
 
-# 3. Open PR to staging, wait for CI, merge
-gh pr create --base staging --title "feat: add biometric auth"
+# 3. Update TESTING.md
+# Add entry: | #PR | feat: biometric auth | You | Testing locally |
 
-# 4. Once staging is green, PR to main
+# 4. Test on staging
 git checkout staging && git pull
-git checkout -b release/staging-to-main
+./istara.sh start
+# ... verify the change works ...
+
+# 5. Open PR from staging to main
 gh pr create --base main --title "Merge staging → main"
+# Move TESTING.md entry to "Verified" section
+
+# 6. Merge PR → main (CI must pass)
+# Clear verified entries from TESTING.md
 ```
 
 Tech.md is the **narrative technical source** that describes how Istara works architecturally. Unlike AGENT.md and COMPLETE_SYSTEM.md (which are auto-generated), Tech.md is hand-authored and MUST be updated when:

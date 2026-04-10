@@ -433,6 +433,20 @@ Before pushing to production:
 - [ ] Docker image builds successfully (if using)
 - [ ] Docker compose works (if using)
 
+### Testing & Review
+
+- [ ] Changes pushed to staging branch (not directly to main)
+- [ ] TESTING.md updated — entry added under "Awaiting Review"
+- [ ] Changes tested locally on staging (`git checkout staging && ./istara.sh start`)
+- [ ] E2E tests pass: `ISTARA_ADMIN_USER=<user> ISTARA_ADMIN_PASSWORD=<pass> python tests/e2e_test.py`
+- [ ] Unit tests pass: `pytest tests/`
+- [ ] Simulation scenarios pass: `ADMIN_USERNAME=<user> ADMIN_PASSWORD=<pass> node tests/simulation/run.mjs --skip-skills`
+- [ ] TESTING.md entry moved to "Verified & Ready for main"
+- [ ] PR created from staging → main
+- [ ] CI passes on PR (governance + backend checks)
+- [ ] PR reviewed and merged
+- [ ] TESTING.md verified entries cleared after merge
+
 ### Release Flow
 - [ ] Only release-worthy pushes to `main` are being treated as releases
 - [ ] Release preparation run via `./scripts/prepare-release.sh --bump` or `./scripts/prepare-release.sh <version>`

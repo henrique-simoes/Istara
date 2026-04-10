@@ -44,7 +44,7 @@ feature branch → PR → staging → PR → main
 git checkout staging && git pull
 git checkout -b feat/my-feature
 # ... work, commit ...
-git push origin feat/my-feature
+git push origin staging
 gh pr create --base staging --title "feat: my feature"
 ```
 
@@ -53,6 +53,9 @@ gh pr create --base staging --title "feat: my feature"
 git checkout staging && git pull
 # ... change, commit, push directly to staging ...
 ```
+
+### Testing Before Merge
+See [TESTING.md](TESTING.md) for the review queue and instructions to test changes on the staging branch.
 
 ## Code Style
 
