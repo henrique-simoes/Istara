@@ -23,25 +23,40 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
   const [serverReachable, setServerReachable] = useState<boolean | null>(null);
   const usernameRef = useRef<HTMLInputElement>(null);
 
-  // Check team status on mount — determines UI mode
+  // Check team status on mount — determines UI mode.
+  // Retries up to 5 times with 2s backoff to handle backend startup races.
   useEffect(() => {
-    fetch(`${API_BASE}/api/auth/team-status`)
-      .then((r) => r.json())
-      .then((d) => {
-        setTeamMode(d.team_mode || false);
-        setHasUsers(d.has_users !== false);
-        setInsecure(d.insecure || false);
-        setServerReachable(true);
-        // Fresh server with team mode + no users → show register directly
-        if (d.team_mode && d.has_users === false) {
-          setMode("register");
-        } else if (!d.team_mode && d.insecure) {
-          setMode("join"); // Force join mode for remote users on Local Mode
+    let cancelled = false;
+
+    const checkServer = async (attempt = 0): Promise<void> => {
+      try {
+        const res = await fetch(`${API_BASE}/api/auth/team-status`, {
+          signal: AbortSignal.timeout(5000),
+        });
+        const d = await res.json();
+        if (!cancelled) {
+          setTeamMode(d.team_mode || false);
+          setHasUsers(d.has_users !== false);
+          setInsecure(d.insecure || false);
+          setServerReachable(true);
+          if (d.team_mode && d.has_users === false) {
+            setMode("register");
+          } else if (!d.team_mode && d.insecure) {
+            setMode("join");
+          }
         }
-      })
-      .catch(() => {
-        setServerReachable(false);
-      });
+      } catch {
+        if (!cancelled && attempt < 5) {
+          await new Promise((r) => setTimeout(r, 2000));
+          await checkServer(attempt + 1);
+        } else if (!cancelled) {
+          setServerReachable(false);
+        }
+      }
+    };
+
+    checkServer();
+    return () => { cancelled = true; };
   }, []);
 
   // Auto-focus username input
