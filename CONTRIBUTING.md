@@ -27,11 +27,40 @@ npm install && npm run dev
 - `scripts/` — Utility scripts
 - `docs/` — Documentation
 
+## Branching & Pull Requests
+
+Istara uses a **staging-first** workflow:
+
+```
+feature branch → PR → staging → PR → main
+```
+
+- **`main`** — production. Protected — CI must pass, PR required.
+- **`staging`** — integration. All feature work lands here first.
+- **Feature branches** — `feat/`, `fix/`, `docs/` prefixes. Created from `staging`.
+
+### For multi-commit work (3+ commits):
+```bash
+git checkout staging && git pull
+git checkout -b feat/my-feature
+# ... work, commit ...
+git push origin feat/my-feature
+gh pr create --base staging --title "feat: my feature"
+```
+
+### For trivial changes (typos, version bumps):
+```bash
+git checkout staging && git pull
+# ... change, commit, push directly to staging ...
+```
+
 ## Code Style
 
 - **Python:** Ruff for linting/formatting, type hints everywhere, async/await
 - **TypeScript:** ESLint + Prettier, strict mode, no `any` where avoidable
 - **Commits:** Conventional commits (`feat:`, `fix:`, `docs:`, `refactor:`)
+- **Tests:** Run `pytest tests/` — all tests must pass. New features need test coverage.
+- **Compass:** Run `python scripts/update_agent_md.py` and `python scripts/check_integrity.py` after architecture changes.
 
 ## Release Prep
 

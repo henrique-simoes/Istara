@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, staging]
   pull_request:
-    branches: [main]
+    branches: [main, staging]
 
 jobs:
   governance:
@@ -40,7 +40,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add AGENT.md COMPLETE_SYSTEM.md AGENT_ENTRYPOINT.md
           git commit -m "ci: regenerate Compass docs [skip ci]"
-          git push origin HEAD:main || echo "Push failed (token permissions). Update committed docs locally: python scripts/update_agent_md.py"
+          git push origin HEAD:${{ github.ref_name }} || echo "Push failed (token permissions). Update committed docs locally: python scripts/update_agent_md.py"
 
       - name: Check integrity
         run: python scripts/check_integrity.py
@@ -72,15 +72,12 @@ jobs:
 
       - name: Lint
         run: ruff check . --statistics
-        continue-on-error: true  # Existing code has lint warnings — non-blocking
 
       - name: Format check
         run: ruff format --check .
-        continue-on-error: true  # Non-blocking for now
 
       - name: Test
         run: pytest tests/ -v --tb=short
-        continue-on-error: true  # Tests may need Ollama running
 
   frontend:
     runs-on: ubuntu-latest
