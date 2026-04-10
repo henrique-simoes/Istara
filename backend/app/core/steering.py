@@ -45,7 +45,7 @@ import logging
 import time
 from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Literal
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +53,7 @@ logger = logging.getLogger(__name__)
 # Data types
 # ---------------------------------------------------------------------------
 
-SteeringMode = "one-at-a-time" | "all"
+SteeringMode = Literal["one-at-a-time", "all"]
 
 
 @dataclass
