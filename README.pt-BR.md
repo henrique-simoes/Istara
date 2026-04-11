@@ -43,46 +43,46 @@
 | ✅ Saúde do Ensemble | Consenso multi-modelo, revisão adversarial e debates — cada insight sobrevive ao escrutínio |
 
 <div align="center">
-  <p><strong>Chat Inteligente:</strong> Converse com o contexto da sua pesquisa. Pergunte sobre achados, faça brainstorm com os agentes e obtenha respostas instantâneas — cada resposta fundamentada nos seus dados reais, nunca fabricada.</p>
+  <p><strong>Chat Inteligente:</strong> Converse com o contexto da sua pesquisa. Pergunte sobre achados, faça brainstorm com os agentes e obtenha respostas instantâneas baseadas nos seus dados.</p>
   <img src="Screenshots/Screenshot%202026-04-02%20at%2016.37.30.png" width="600" />
-
-  <p><strong>Achados de Pesquisa Atômica:</strong> De nuggets brutos a recomendações acionáveis — cada afirmação rastreada até sua fonte. Sem caixas pretas, sem evidências perdidas, auditabilidade total.</p>
+  
+  <p><strong>Achados de Pesquisa Atômica:</strong> Extraia automaticamente nuggets, fatos, insights e recomendações. Cada afirmação é vinculada à sua fonte original para rastreabilidade total.</p>
   <img src="Screenshots/Screenshot%202026-04-02%20at%2016.37.34.png" width="600" />
-
-  <p><strong>Conformidade com Leis de UX:</strong> 30+ princípios psicológicos e heurísticas de Nielsen auditados automaticamente. Veja exatamente onde seu design brilha e onde está custando usuários.</p>
+  
+  <p><strong>Conformidade com Leis de UX:</strong> Audite seus designs contra mais de 30 princípios psicológicos e heurísticas de Nielsen. Veja exatamente onde sua UI brilha ou precisa melhorar.</p>
   <img src="Screenshots/Screenshot%202026-04-02%20at%2016.38.34.png" width="600" />
-
-  <p><strong>Gestão Autônoma de Tarefas:</strong> Um quadro Kanban que roda sozinho. Agentes assumem tarefas, executam as skills certas e reportam progresso — você só assiste o trabalho acontecer.</p>
+  
+  <p><strong>Gestão Autônoma de Tarefas:</strong> Um poderoso quadro Kanban onde os agentes assumem tarefas, executam skills e reportam o progresso em tempo real.</p>
   <img src="Screenshots/Screenshot%202026-04-02%20at%2016.38.47.png" width="600" />
-
-  <p><strong>Atribuição Multi-Agente:</strong> Direcione cada tarefa para o especialista certo. Pixel destrói sua UI. Sage avalia sua UX. Você foca nas decisões que importam.</p>
+  
+  <p><strong>Atribuição Multi-Agente:</strong> Escolha o melhor agente para o trabalho. Direcione tarefas para especialistas como Pixel para auditorias de UI ou Sage para avaliação de UX.</p>
   <img src="Screenshots/Screenshot%202026-04-02%20at%2016.38.54.png" width="600" />
-
-  <p><strong>Entrevistas e Transcrições:</strong> Envie dezenas de entrevistas de uma vez. Istara transcreve, categoriza, cruza padrões e revela insights que todo o seu grupo de participantes compartilha — numa única passada.</p>
+  
+  <p><strong>Entrevistas e Transcrições:</strong> Istara pode transcrever, categorizar, analisar, relacionar e gerar relatórios de várias entrevistas ao mesmo tempo. Encontre insights compartilhados em todo o seu grupo de participantes!</p>
   <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.01.png" width="600" />
-
-  <p><strong>Motor de Contexto:</strong> Alimente o Istara com a cultura da sua empresa, objetivos do projeto e diretrizes. Quanto mais contexto ele tem, mais afiada a análise — agentes que realmente entendem seu mundo.</p>
+  
+  <p><strong>Motor de Contexto:</strong> Baseie seus agentes na cultura da sua empresa, objetivos do projeto e diretrizes específicas. Quanto mais eles sabem, melhor eles performam.</p>
   <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.08.png" width="600" />
-
-  <p><strong>Catálogo de Skills:</strong> 53 skills de pesquisa, zero configuração. Análise competitiva, card sorting, jornada do usuário, avaliação heurística — seus agentes estão prontos antes de você terminar de ler esta frase.</p>
+  
+  <p><strong>Catálogo de Skills:</strong> Mais de 50 skills de pesquisa prontas para uso. De Análise Competitiva a Card Sorting, seus agentes estão equipados para qualquer desafio de pesquisa.</p>
   <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.11.png" width="600" />
-
-  <p><strong>Enxame Agentic:</strong> Conheça sua equipe — Cleo, Sentinel, Pixel, Sage e Echo. Cinco especialistas que aprendem uns com os outros, debatem entre si e ficam mais afiados a cada tarefa que tocam.</p>
+  
+  <p><strong>Enxame Agentic:</strong> Conheça sua equipe—Cleo, Sentinel, Pixel, Sage e Echo. Cinco agentes especializados que aprendem uns com os outros e evoluem a cada tarefa.</p>
   <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.16.png" width="600" />
-
-  <p><strong>Integração com Design System:</strong> Conecte ao Figma, gere specs de handoff, audite componentes e feche a lacuna entre intenção de design e implementação — tudo num só lugar.</p>
+  
+  <p><strong>Integração com Design System:</strong> Conecte ao Figma e use IA generativa para entregar specs, auditar componentes e fechar a lacuna entre design e desenvolvimento.</p>
   <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.28.png" width="600" />
-
-  <p><strong>Canais de Mensageria:</strong> Encontre seus usuários onde eles já estão. Slack, Telegram, WhatsApp — seus agentes coletam e sintetizam dados de todos os canais, sem ferramentas extras.</p>
+  
+  <p><strong>Canais de Mensageria:</strong> Implante sua pesquisa diretamente no Slack, Telegram ou WhatsApp. Colete dados onde seus usuários estão, gerenciado inteiramente por seus agentes.</p>
   <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.36.png" width="600" />
-
-  <p><strong>Integrações de Pesquisa (Surveys):</strong> SurveyMonkey, Typeform, Google Forms — puxe dados de qualquer plataforma. Agentes detectam bots e sintetizam milhares de respostas em segundos, não horas.</p>
+  
+  <p><strong>Integrações de Pesquisa (Surveys):</strong> Puxe dados do SurveyMonkey, Typeform ou Google Forms. Deixe que os agentes detectem bots de IA e sintetizem milhares de respostas em segundos.</p>
   <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.40.png" width="600" />
-
-  <p><strong>Motor de Autoresearch:</strong> Configure e esqueça. Loops de melhoria contínua onde agentes otimizam seus próprios prompts, parâmetros de RAG e estratégias de pesquisa enquanto você dorme.</p>
+  
+  <p><strong>Motor de Autoresearch:</strong> Ative loops de melhoria contínua. Assista enquanto seus agentes otimizam seus próprios prompts e parâmetros de RAG para melhores resultados.</p>
   <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.59.png" width="600" />
-
-  <p><strong>Saúde do Ensemble:</strong> Confiança através da verificação. Consenso multi-modelo, revisão adversarial e debates estruturados garantem que cada insight sobreviva ao escrutínio antes de chegar até você.</p>
+  
+  <p><strong>Saúde do Ensemble:</strong> Confiança através da verificação. Istara usa consenso multi-modelo, revisão adversarial e rodadas de debate para garantir que cada insight seja sólido como uma rocha.</p>
   <img src="Screenshots/Screenshot%202026-04-02%20at%2016.40.15.png" width="600" />
 </div>
 

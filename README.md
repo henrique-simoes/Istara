@@ -43,48 +43,48 @@
 | ✅ Ensemble Health | Multi-model consensus, adversarial review, debate rounds — every insight rock solid |
 
 <div align="center">
-  <p><strong>Intelligent Chat:</strong> Talk to your research context. Ask about findings, brainstorm with agents, and get instant answers — every response grounded in your actual data, never fabricated.</p>
-  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.37.30.png" width="600" />
+    <p><strong>Multi-Agent Assignment:</strong> Choose the best agent for the job. Route tasks to specialists like Pixel for UI audits or Sage for UX evaluation.</p>
+  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.38.54.png" width="1600" />
 
-  <p><strong>Atomic Research Findings:</strong> From raw nuggets to actionable recommendations — every claim traced back to its source. No black boxes, no lost evidence, full auditability.</p>
-  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.37.34.png" width="600" />
+  <p><strong>Autonomous Task Management:</strong> A powerful Kanban board where agents pick up tasks, execute skills, and report progress in real-time.</p>
+  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.38.47.png" width="1600" />
 
-  <p><strong>Laws of UX Compliance:</strong> 30+ psychological principles and Nielsen heuristics audited automatically. See exactly where your design shines and where it's costing you users.</p>
-  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.38.34.png" width="600" />
+  <p><strong>Skill Catalog:</strong> Over 50 research skills ready to go. From Competitive Analysis to Card Sorting, your agents are equipped for any research challenge.</p>
+  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.11.png" width="1600" />
 
-  <p><strong>Autonomous Task Management:</strong> A Kanban board that runs itself. Agents pick up tasks, execute the right skills, and report progress — you just watch the work happen.</p>
-  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.38.47.png" width="600" />
+  <p><strong>Agentic Swarm:</strong> Meet your team—Cleo, Sentinel, Pixel, Sage, and Echo. Five specialized agents that learn from each other and evolve with every task.</p>
+  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.16.png" width="1600" />
 
-  <p><strong>Multi-Agent Assignment:</strong> Route each task to the specialist who handles it best. Pixel tears apart your UI. Sage evaluates your UX. You focus on the decisions that matter.</p>
-  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.38.54.png" width="600" />
+  <p><strong>Messaging Channels:</strong> Deploy your research directly to Slack, Telegram, or WhatsApp. Collect data where your users are, managed entirely by your agents.</p>
+  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.36.png" width="1600" />
 
-  <p><strong>Interviews & Transcripts:</strong> Upload dozens of interviews. Istara transcribes, tags, cross-relates patterns, and surfaces insights your entire participant pool shares — in one pass.</p>
-  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.01.png" width="600" />
-
-  <p><strong>Context Engine:</strong> Feed Istara your company culture, project goals, and guardrails. The more context it has, the sharper its analysis — agents that actually understand your world.</p>
-  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.08.png" width="600" />
-
-  <p><strong>Skill Catalog:</strong> 53 research skills, zero setup. Competitive analysis, card sorting, journey mapping, heuristic evaluation — your agents are ready before you finish reading this sentence.</p>
-  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.11.png" width="600" />
-
-  <p><strong>Agentic Swarm:</strong> Meet your team — Cleo, Sentinel, Pixel, Sage, and Echo. Five specialists that learn from each other, debate each other, and get sharper with every task they touch.</p>
-  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.16.png" width="600" />
-
-  <p><strong>Design System Integration:</strong> Connect Figma, generate handoff specs, audit components, and close the gap between design intent and dev implementation — all from one place.</p>
-  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.28.png" width="600" />
-
-  <p><strong>Messaging Channels:</strong> Meet your users where they already are. Slack, Telegram, WhatsApp — your agents collect and synthesize data from every channel, no extra tools required.</p>
-  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.36.png" width="600" />
-
-  <p><strong>Survey Integrations:</strong> SurveyMonkey, Typeform, Google Forms — pull data from any platform. Agents detect bot responses and synthesize thousands of answers in seconds, not hours.</p>
-  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.40.png" width="600" />
-
-  <p><strong>Autoresearch Engine:</strong> Set it and forget it. Continuous self-improvement loops where agents optimize their own prompts, RAG parameters, and research strategies while you sleep.</p>
-  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.59.png" width="600" />
-
-  <p><strong>Ensemble Health:</strong> Trust through verification. Multi-model consensus, adversarial review, and structured debate rounds ensure every insight survives scrutiny before it reaches you.</p>
-  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.40.15.png" width="600" />
+  <p><strong>Autoresearch Engine:</strong> Enable continuous self-improvement loops. Watch as your agents optimize their own prompts and RAG parameters for better results.</p>
+  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.59.png" width="1600" />
+  
+  <p><strong>Ensemble Health:</strong> Trust through verification. Istara uses multi-model consensus, adversarial review, and debate rounds to ensure every insight is rock solid.</p>
+  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.40.15.png" width="1600" />
 </div>
+  
+  <p><strong>Intelligent Chat:</strong> Talk to your research context. Ask about findings, brainstorm with agents, and get instant answers grounded in your data.</p>
+  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.37.30.png" width="1600" />
+  
+  <p><strong>Atomic Research Findings:</strong> Automatically extract nuggets, facts, insights, and recommendations. Every claim is linked to its original source for total traceability.</p>
+  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.37.34.png" width="1600" />
+  
+  <p><strong>Laws of UX Compliance:</strong> Audit your designs against 30+ psychological principles and Nielsen heuristics. See exactly where your UI excels or needs improvement.</p>
+  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.38.34.png" width="1600" />
+  
+  <p><strong>Interviews & Transcripts:</strong> Istara can transcribe, tag, analyze, relate, and generate reports from many interviews at once. Find insights shared across your entire participant pool!</p>
+  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.01.png" width="1600" />
+  
+  <p><strong>Context Engine:</strong> Ground your agents in your company culture, project goals, and specific guardrails. The more they know, the better they perform.</p>
+  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.08.png" width="1600" />
+  
+  <p><strong>Design System Integration:</strong> Connect to Figma and use generative AI to hand off specs, audit components, and bridge the gap between design and development.</p>
+  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.28.png" width="1600" />
+  
+  <p><strong>Survey Integrations:</strong> Pull data from SurveyMonkey, Typeform, or Google Forms. Let agents detect AI bots and synthesize thousands of responses in seconds.</p>
+  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.40.png" width="1600" />
 
 ---
 
