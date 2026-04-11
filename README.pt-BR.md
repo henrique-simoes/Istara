@@ -9,13 +9,13 @@
 ### IA local para pesquisa de UX — seus dados nunca saem da sua máquina
 
 [![License: MIT](https://img.shields.io/badge/Licença-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/versão-2026.03.30-brightgreen.svg)](VERSION)
+[![Version](https://img.shields.io/badge/versão-2026.04.10.13-brightgreen.svg)](VERSION)
 [![Python](https://img.shields.io/badge/python-3.12-blue.svg)](backend/)
 [![Node](https://img.shields.io/badge/node-20-green.svg)](frontend/)
 [![Platform](https://img.shields.io/badge/plataforma-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey.svg)](installer/)
 [![GitHub](https://img.shields.io/badge/GitHub-henrique--simoes%2FIstara-181717?logo=github)](https://github.com/henrique-simoes/Istara)
 
-[**Instalar**](#instalar) · [**Arquitetura**](#arquitetura) · [**Skills de Pesquisa**](#53-skills-de-pesquisa) · [**Agentes**](#5-agentes-de-ia) · [**Referências**](#referências-acadêmicas) · [**Contribuir**](CONTRIBUTING.md)
+[**Instalar em 1 Minuto**](#instalar) · [**Arquitetura**](#arquitetura) · [**Skills de Pesquisa**](#53-skills-de-pesquisa) · [**Agentes**](#5-agentes-de-ia) · [**Referências**](#referências-acadêmicas) · [**Contribuir**](CONTRIBUTING.md)
 
 ---
 
@@ -23,47 +23,66 @@
 *Todo insight tem base em evidências. Todo agente fica mais inteligente a cada sessão.*
 *Inteligência em escala: compartilhe poder computacional entre membros da equipe para rodar mais agentes simultaneamente—um time mais inteligente e rápido trabalhando como um enxame agentic.*
 
+### Resumo Rápido
+
+| Recurso | O Que Faz |
+|---|---|
+| 🧠 Chat Inteligente | Conversas fundamentadas nos seus dados de pesquisa — sem alucinações, só respostas com evidências |
+| ⚛️ Achados Atômicos | Nuggets → Fatos → Insights → Recomendações, cada afirmação vinculada à sua fonte original |
+| 📐 Leis de UX | 30+ princípios psicológicos auditados automaticamente nos seus designs com pontuação |
+| 📋 Quadro Kanban | Agentes assumem tarefas, executam skills e reportam progresso em tempo real — totalmente autônomo |
+| 🎯 Roteamento Inteligente | Direcione tarefas para especialistas — Pixel para auditorias de UI, Sage para avaliação de UX |
+| 🎙️ Análise de Entrevistas | Transcreva, categorize, analise e relacione padrões em todo o seu grupo de participantes de uma vez |
+| 🧭 Motor de Contexto | Baseie agentes na cultura da empresa, objetivos e diretrizes — quanto mais contexto, melhor a análise |
+| 🛠️ 53+ Skills de Pesquisa | Análise competitiva, card sorting, jornada do usuário — agentes prontos para qualquer desafio |
+| 🐝 Enxame de Agentes | Cinco especialistas que aprendem uns com os outros, debatem entre si e melhoram a cada tarefa |
+| 🎨 Integração Figma | Specs de handoff com IA generativa, auditoria de componentes, ponte design-dev num só lugar |
+| 💬 Canais de Mensageria | Slack, Telegram, WhatsApp — colete dados onde seus usuários estão, gerenciado pelos agentes |
+| 📊 Sincronização de Surveys | SurveyMonkey, Typeform, Google Forms — sintetize milhares de respostas em segundos, não horas |
+| 🔄 Autoresearch | Melhoria contínua automática — agentes otimizam seus próprios prompts e parâmetros de RAG |
+| ✅ Saúde do Ensemble | Consenso multi-modelo, revisão adversarial e debates — cada insight sobrevive ao escrutínio |
+
 <div align="center">
-  <p><strong>Chat Inteligente:</strong> Converse com o contexto da sua pesquisa. Pergunte sobre achados, faça brainstorm com os agentes e obtenha respostas instantâneas baseadas nos seus dados.</p>
+  <p><strong>Chat Inteligente:</strong> Converse com o contexto da sua pesquisa. Pergunte sobre achados, faça brainstorm com os agentes e obtenha respostas instantâneas — cada resposta fundamentada nos seus dados reais, nunca fabricada.</p>
   <img src="Screenshots/Screenshot%202026-04-02%20at%2016.37.30.png" width="600" />
-  
-  <p><strong>Achados de Pesquisa Atômica:</strong> Extraia automaticamente nuggets, fatos, insights e recomendações. Cada afirmação é vinculada à sua fonte original para rastreabilidade total.</p>
+
+  <p><strong>Achados de Pesquisa Atômica:</strong> De nuggets brutos a recomendações acionáveis — cada afirmação rastreada até sua fonte. Sem caixas pretas, sem evidências perdidas, auditabilidade total.</p>
   <img src="Screenshots/Screenshot%202026-04-02%20at%2016.37.34.png" width="600" />
-  
-  <p><strong>Conformidade com Leis de UX:</strong> Audite seus designs contra mais de 30 princípios psicológicos e heurísticas de Nielsen. Veja exatamente onde sua UI brilha ou precisa melhorar.</p>
+
+  <p><strong>Conformidade com Leis de UX:</strong> 30+ princípios psicológicos e heurísticas de Nielsen auditados automaticamente. Veja exatamente onde seu design brilha e onde está custando usuários.</p>
   <img src="Screenshots/Screenshot%202026-04-02%20at%2016.38.34.png" width="600" />
-  
-  <p><strong>Gestão Autônoma de Tarefas:</strong> Um poderoso quadro Kanban onde os agentes assumem tarefas, executam skills e reportam o progresso em tempo real.</p>
+
+  <p><strong>Gestão Autônoma de Tarefas:</strong> Um quadro Kanban que roda sozinho. Agentes assumem tarefas, executam as skills certas e reportam progresso — você só assiste o trabalho acontecer.</p>
   <img src="Screenshots/Screenshot%202026-04-02%20at%2016.38.47.png" width="600" />
-  
-  <p><strong>Atribuição Multi-Agente:</strong> Escolha o melhor agente para o trabalho. Direcione tarefas para especialistas como Pixel para auditorias de UI ou Sage para avaliação de UX.</p>
+
+  <p><strong>Atribuição Multi-Agente:</strong> Direcione cada tarefa para o especialista certo. Pixel destrói sua UI. Sage avalia sua UX. Você foca nas decisões que importam.</p>
   <img src="Screenshots/Screenshot%202026-04-02%20at%2016.38.54.png" width="600" />
-  
-  <p><strong>Entrevistas e Transcrições:</strong> Istara pode transcrever, categorizar, analisar, relacionar e gerar relatórios de várias entrevistas ao mesmo tempo. Encontre insights compartilhados em todo o seu grupo de participantes!</p>
+
+  <p><strong>Entrevistas e Transcrições:</strong> Envie dezenas de entrevistas de uma vez. Istara transcreve, categoriza, cruza padrões e revela insights que todo o seu grupo de participantes compartilha — numa única passada.</p>
   <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.01.png" width="600" />
-  
-  <p><strong>Motor de Contexto:</strong> Baseie seus agentes na cultura da sua empresa, objetivos do projeto e diretrizes específicas. Quanto mais eles sabem, melhor eles performam.</p>
+
+  <p><strong>Motor de Contexto:</strong> Alimente o Istara com a cultura da sua empresa, objetivos do projeto e diretrizes. Quanto mais contexto ele tem, mais afiada a análise — agentes que realmente entendem seu mundo.</p>
   <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.08.png" width="600" />
-  
-  <p><strong>Catálogo de Skills:</strong> Mais de 50 skills de pesquisa prontas para uso. De Análise Competitiva a Card Sorting, seus agentes estão equipados para qualquer desafio de pesquisa.</p>
+
+  <p><strong>Catálogo de Skills:</strong> 53 skills de pesquisa, zero configuração. Análise competitiva, card sorting, jornada do usuário, avaliação heurística — seus agentes estão prontos antes de você terminar de ler esta frase.</p>
   <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.11.png" width="600" />
-  
-  <p><strong>Enxame Agentic:</strong> Conheça sua equipe—Cleo, Sentinel, Pixel, Sage e Echo. Cinco agentes especializados que aprendem uns com os outros e evoluem a cada tarefa.</p>
+
+  <p><strong>Enxame Agentic:</strong> Conheça sua equipe — Cleo, Sentinel, Pixel, Sage e Echo. Cinco especialistas que aprendem uns com os outros, debatem entre si e ficam mais afiados a cada tarefa que tocam.</p>
   <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.16.png" width="600" />
-  
-  <p><strong>Integração com Design System:</strong> Conecte ao Figma e use IA generativa para entregar specs, auditar componentes e fechar a lacuna entre design e desenvolvimento.</p>
+
+  <p><strong>Integração com Design System:</strong> Conecte ao Figma, gere specs de handoff, audite componentes e feche a lacuna entre intenção de design e implementação — tudo num só lugar.</p>
   <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.28.png" width="600" />
-  
-  <p><strong>Canais de Mensageria:</strong> Implante sua pesquisa diretamente no Slack, Telegram ou WhatsApp. Colete dados onde seus usuários estão, gerenciado inteiramente por seus agentes.</p>
+
+  <p><strong>Canais de Mensageria:</strong> Encontre seus usuários onde eles já estão. Slack, Telegram, WhatsApp — seus agentes coletam e sintetizam dados de todos os canais, sem ferramentas extras.</p>
   <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.36.png" width="600" />
-  
-  <p><strong>Integrações de Pesquisa (Surveys):</strong> Puxe dados do SurveyMonkey, Typeform ou Google Forms. Deixe que os agentes detectem bots de IA e sintetizem milhares de respostas em segundos.</p>
+
+  <p><strong>Integrações de Pesquisa (Surveys):</strong> SurveyMonkey, Typeform, Google Forms — puxe dados de qualquer plataforma. Agentes detectam bots e sintetizam milhares de respostas em segundos, não horas.</p>
   <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.40.png" width="600" />
-  
-  <p><strong>Motor de Autoresearch:</strong> Ative loops de melhoria contínua. Assista enquanto seus agentes otimizam seus próprios prompts e parâmetros de RAG para melhores resultados.</p>
+
+  <p><strong>Motor de Autoresearch:</strong> Configure e esqueça. Loops de melhoria contínua onde agentes otimizam seus próprios prompts, parâmetros de RAG e estratégias de pesquisa enquanto você dorme.</p>
   <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.59.png" width="600" />
-  
-  <p><strong>Saúde do Ensemble:</strong> Confiança através da verificação. Istara usa consenso multi-modelo, revisão adversarial e rodadas de debate para garantir que cada insight seja sólido como uma rocha.</p>
+
+  <p><strong>Saúde do Ensemble:</strong> Confiança através da verificação. Consenso multi-modelo, revisão adversarial e debates estruturados garantem que cada insight sobreviva ao escrutínio antes de chegar até você.</p>
   <img src="Screenshots/Screenshot%202026-04-02%20at%2016.40.15.png" width="600" />
 </div>
 
