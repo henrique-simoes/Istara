@@ -23,6 +23,10 @@
 *Todo insight tem base em evidências. Todo agente fica mais inteligente a cada sessão.*
 *Inteligência em escala: compartilhe poder computacional entre membros da equipe para rodar mais agentes simultaneamente—um time mais inteligente e rápido trabalhando como um enxame agentic.*
 
+<div align="center">
+<video src="Screenshots/istara_1.5.mp4" autoplay loop muted playsinline width="900"></video>
+</div>
+
 ### Resumo Rápido
 
 | Recurso | O Que Faz |
@@ -36,7 +40,7 @@
 | 🧭 Motor de Contexto | Baseie agentes na cultura da empresa, objetivos e diretrizes — quanto mais contexto, melhor a análise |
 | 🛠️ 53+ Skills de Pesquisa | Análise competitiva, card sorting, jornada do usuário — agentes prontos para qualquer desafio |
 | 🐝 Enxame de Agentes | Cinco especialistas que aprendem uns com os outros, debatem entre si e melhoram a cada tarefa |
-| 🎨 Integração Figma | Specs de handoff com IA generativa, auditoria de componentes, ponte design-dev num só lugar |
+| 🎨 Google Stitch e Figma | Geração de telas com IA, specs de handoff, auditoria de componentes — ponte design-dev num só lugar |
 | 💬 Canais de Mensageria | Slack, Telegram, WhatsApp — colete dados onde seus usuários estão, gerenciado pelos agentes |
 | 📊 Sincronização de Surveys | SurveyMonkey, Typeform, Google Forms — sintetize milhares de respostas em segundos, não horas |
 | 🔄 Autoresearch | Melhoria contínua automática — agentes otimizam seus próprios prompts e parâmetros de RAG |
@@ -70,7 +74,7 @@
   <p><strong>Enxame Agentic:</strong> Conheça sua equipe—Cleo, Sentinel, Pixel, Sage e Echo. Cinco agentes especializados que aprendem uns com os outros e evoluem a cada tarefa.</p>
   <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.16.png" width="600" />
   
-  <p><strong>Integração com Design System:</strong> Conecte ao Figma e use IA generativa para entregar specs, auditar componentes e fechar a lacuna entre design e desenvolvimento.</p>
+  <p><strong>Integração Google Stitch & Figma:</strong> Gere telas com IA, conecte ao Figma para specs de handoff, audite componentes e feche a lacuna entre intenção de design e implementação.</p>
   <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.28.png" width="600" />
   
   <p><strong>Canais de Mensageria:</strong> Implante sua pesquisa diretamente no Slack, Telegram ou WhatsApp. Colete dados onde seus usuários estão, gerenciado inteiramente por seus agentes.</p>

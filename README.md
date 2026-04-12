@@ -23,6 +23,10 @@
 *Every insight is evidence-grounded. Every agent gets smarter with every session.*
 *Scale your intelligence: share compute between team members to run more agents simultaneously—a smarter, faster team working as one agentic swarm.*
 
+<div align="center">
+<video src="Screenshots/istara_1.5.mp4" autoplay loop muted playsinline width="900"></video>
+</div>
+
 ### At a Glance
 
 | Feature | What It Does |
@@ -36,7 +40,7 @@
 | 🧭 Context Engine | Ground agents in company culture, project goals and custom guardrails for better performance |
 | 🛠️ 53+ Research Skills | Competitive analysis, card sorting, journey mapping — agents equipped for any challenge |
 | 🐝 Agent Swarm | Five specialized agents that learn from each other and evolve with every single task |
-| 🎨 Figma Integration | Generative AI handoff specs, component audits, design-to-dev bridge built right in |
+| 🎨 Google Stitch & Figma | Generative AI screen design, handoff specs, component audits — design-to-dev bridge built in |
 | 💬 Messaging Channels | Deploy research to Slack, Telegram, WhatsApp — managed entirely by your agents |
 | 📊 Survey Sync | Pull from SurveyMonkey, Typeform, Google Forms — synthesize thousands of responses fast |
 | 🔄 Autoresearch | Continuous self-improvement — agents optimize their own prompts and RAG parameters |
@@ -80,7 +84,7 @@
   <p><strong>Context Engine:</strong> Ground your agents in your company culture, project goals, and specific guardrails. The more they know, the better they perform.</p>
   <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.08.png" width="1600" />
   
-  <p><strong>Design System Integration:</strong> Connect to Figma and use generative AI to hand off specs, audit components, and bridge the gap between design and development.</p>
+  <p><strong>Google Stitch & Figma Integration:</strong> Generate screens with AI, connect Figma for handoff specs, audit components, and close the gap between design intent and dev implementation.</p>
   <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.28.png" width="1600" />
   
   <p><strong>Survey Integrations:</strong> Pull data from SurveyMonkey, Typeform, or Google Forms. Let agents detect AI bots and synthesize thousands of responses in seconds.</p>

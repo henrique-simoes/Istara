@@ -23,6 +23,20 @@ jobs:
       - name: Regenerate docs
         run: python scripts/update_agent_md.py
 
+      - name: Sync README version badges
+        if: github.event_name == 'push'
+        run: |
+          VERSION=$(cat VERSION)
+          # English README
+          sed -i "s|version-[0-9][0-9.]*-brightgreen|version-${VERSION}-brightgreen|g" README.md
+          # Portuguese README
+          sed -i "s|versão-[0-9][0-9.]*-brightgreen|versão-${VERSION}-brightgreen|g" README.pt-BR.md
+          if [ -n "$(git diff -- README.md README.pt-BR.md)" ]; then
+            git add README.md README.pt-BR.md
+            git commit -m "ci: sync README version badges to ${VERSION} [skip ci]" || true
+            git push origin HEAD:${{ github.ref_name }} || echo "Push failed (token permissions)"
+          fi
+
       - name: Check for drift
         id: drift
         run: |
