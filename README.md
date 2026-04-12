@@ -24,7 +24,7 @@
 *Scale your intelligence: share compute between team members to run more agents simultaneously—a smarter, faster team working as one agentic swarm.*
 
 <div align="center">
-<video src="Screenshots/istara_1.5.mp4" autoplay loop muted playsinline width="900"></video>
+<video src="https://github.com/henrique-simoes/Istara/releases/download/v2026.04.12/istara_1.5.mp4" autoplay loop muted playsinline width="900"></video>
 </div>
 
 ### At a Glance

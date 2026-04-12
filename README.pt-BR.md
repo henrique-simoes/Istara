@@ -24,7 +24,7 @@
 *Inteligência em escala: compartilhe poder computacional entre membros da equipe para rodar mais agentes simultaneamente—um time mais inteligente e rápido trabalhando como um enxame agentic.*
 
 <div align="center">
-<video src="Screenshots/istara_1.5.mp4" autoplay loop muted playsinline width="900"></video>
+<video src="https://github.com/henrique-simoes/Istara/releases/download/v2026.04.12/istara_1.5.mp4" autoplay loop muted playsinline width="900"></video>
 </div>
 
 ### Resumo Rápido
