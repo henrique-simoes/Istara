@@ -24,10 +24,7 @@
 *Scale your intelligence: share compute between team members to run more agents simultaneously—a smarter, faster team working as one agentic swarm.*
 
 <div align="center">
-<a href="https://github.com/henrique-simoes/Istara/releases/download/v2026.04.12/istara_1.5.mp4" target="_blank">
-  <img src="https://github.com/henrique-simoes/Istara/releases/download/v2026.04.12/istara_thumbnail.png" width="900" alt="Watch Istara in action — click to play demo video" />
-</a>
-<p><em>Click to watch the full demo — AI agents conducting research, extracting findings, and auditing your designs in real time.</em></p>
+<img src="Screenshots/istara_presentation.gif" width="900" alt="Istara demo — AI agents conducting UX research autonomously" />
 </div>
 
 ### At a Glance

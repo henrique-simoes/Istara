@@ -24,10 +24,7 @@
 *Inteligência em escala: compartilhe poder computacional entre membros da equipe para rodar mais agentes simultaneamente—um time mais inteligente e rápido trabalhando como um enxame agentic.*
 
 <div align="center">
-<a href="https://github.com/henrique-simoes/Istara/releases/download/v2026.04.12/istara_1.5.mp4" target="_blank">
-  <img src="https://github.com/henrique-simoes/Istara/releases/download/v2026.04.12/istara_thumbnail.png" width="900" alt="Veja o Istara em ação — clique para assistir o vídeo demo" />
-</a>
-<p><em>Clique para assistir ao demo completo — agentes de IA conduzindo pesquisas, extraindo achados e auditando seus designs em tempo real.</em></p>
+<img src="Screenshots/istara_presentation.gif" width="900" alt="Demo do Istara — agentes de IA conduzindo pesquisa de UX de forma autônoma" />
 </div>
 
 ### Resumo Rápido
