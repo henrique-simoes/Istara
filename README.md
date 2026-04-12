@@ -25,6 +25,7 @@
 
 <div align="center">
 <img src="Screenshots/istara_presentation.gif" width="900" alt="Istara demo — AI agents conducting UX research autonomously" />
+<img src="Screenshots/istara_chat.gif" width="900" alt="Istara intelligent chat — grounded conversations with your research data" />
 </div>
 
 ### At a Glance
