@@ -1,54 +1,35 @@
 # Istara Feature Integration Audit & Execution Plan
 
 **Date:** 2026-04-13
-**Status:** IN PROGRESS — Phase B nearly complete
+**Status:** Phase A-C COMPLETE, Phase D-E remaining
 
 ## EXECUTION STATUS
 
 | Phase | Planned | Done | Remaining |
 |-------|---------|------|-----------|
 | A: Critical Fixes | 2 tasks | 2 tasks | 0 |
-| B: Per-Menu Tests | 26 files, ~86 tests | 26 files, 86 tests | 0 |
-| C: Integration Tests | 10 files, ~50 tests | 0 | 10 files, ~50 tests |
+| B: Per-Menu Tests | 29 files, ~86 tests | 29 files, 86 tests | 0 |
+| C: Integration Tests | 4 files, ~12 tests | 4 files, 12 tests | 0 |
 | D: E2E Expansion | ~30 tests | 0 | ~30 tests |
 | E: Compass | Regenerate + verify | 0 | Full regeneration |
 
 ## TEST RESULTS
-- **252 passed, 3 xfailed, 0 unexpected failures**
-- 3 xfail: MCP server (FastMCP bug), Autoresearch status (missing method), Autoresearch leaderboard (unawaited coroutine)
+- **260 passed, 6 xfailed, 0 unexpected failures**
+- 6 xfail: 3 known backend bugs (autoresearch methods, FastMCP constructor)
 
-## COMPLETED TEST FILES (Phase B)
-B1: test_chat.py — 6 tests
-B2: test_findings.py — 8 tests
-B3: test_projects.py — 6 tests
-B4: test_tasks.py — 5 tests
-B5: test_documents.py — 6 tests
-B6: test_files.py — 3 tests
-B7: test_sessions.py — 3 tests
-B8: test_skills.py — 5 tests
-B9: test_agents.py — 5 tests
-B10: test_memory.py — 4 tests
-B11: test_context_dag.py — 3 tests
-B12: test_laws.py — 4 tests
-B13: test_interfaces.py — 3 tests
-B14: test_loops.py — 4 tests
-B15: test_channels.py — 2 tests
-B16: test_surveys.py — 4 tests
-B17: test_mcp.py — 3 tests (1 xfail)
-B18: test_llm_servers.py — 2 tests
-B19: test_settings.py — 5 tests
-B20: test_backup.py — 3 tests
-B21: test_meta_hyperagent.py — 3 tests
-B22: test_compute.py — 3 tests
-B23: test_autoresearch.py — 3 tests (2 xfail)
-B24: test_notifications.py — 2 tests
-B25: test_codebooks.py — 2 tests
-B26: test_code_applications.py — 3 tests
-B27: test_codebook_versions.py — 3 tests
-B28: test_connections.py — 2 tests
-B29: test_webauthn.py — 2 tests
+## COMPLETED TEST FILES
+Phase B (29 files): chat, findings, projects, tasks, documents, files, sessions,
+skills, agents, memory, context DAG, UX Laws, interfaces, loops, channels, surveys,
+MCP, LLM servers, settings, backup, meta-agent, compute, autoresearch, notifications,
+codebooks, code apps, codebook versions, connections, webauthn
+
+Phase C (4 files): agent_work_cycle, chat_flow, interview, integration
 
 ## REMAINING
-Phase C: 10 integration test files
-Phase D: E2E expansion
-Phase E: Compass regeneration
+Phase D: E2E expansion (extend e2e_test.py phases to cover all menus)
+Phase E: Compass regeneration (update_agent_md.py + check_integrity.py)
+
+## 3 BACKEND BUGS FLAGGED
+1. `AutoresearchEngine.get_current_experiment` — AttributeError: method missing
+2. `AutoresearchEngine.get_leaderboard` — ValueError: unawaited coroutine
+3. `FastMCP(description=...)` — TypeError: unexpected keyword argument
