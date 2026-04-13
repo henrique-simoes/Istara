@@ -26,7 +26,6 @@ def auth_headers():
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(reason="Backend bug: AutoresearchEngine missing get_current_experiment method")
 async def test_autoresearch_status_returns_response(auth_headers):
     """GET /api/autoresearch/status returns autoresearch status."""
     await init_db()
@@ -48,7 +47,6 @@ async def test_autoresearch_status_requires_auth():
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(reason="Backend bug: get_leaderboard returns unawaited coroutine")
 async def test_autoresearch_leaderboard_returns_response(auth_headers):
     """GET /api/autoresearch/leaderboard returns leaderboard."""
     await init_db()

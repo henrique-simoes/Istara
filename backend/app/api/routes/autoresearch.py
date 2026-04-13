@@ -95,7 +95,7 @@ async def autoresearch_status():
     engine = _get_engine()
     current = engine.get_current_experiment()
     return {
-        "running": engine.is_running(),
+        "running": engine.is_running,
         "enabled": getattr(settings, "autoresearch_enabled", False),
         "current_experiment": current,
     }
@@ -110,7 +110,7 @@ async def list_experiments(
 ):
     """Get paginated experiment history with optional filters."""
     engine = _get_engine()
-    experiments = engine.get_experiments(
+    experiments = await engine.get_experiments(
         loop_type=loop_type,
         kept=kept,
         limit=limit,
@@ -214,7 +214,7 @@ async def update_config(body: ConfigUpdate):
 async def get_leaderboard():
     """Get best model+temperature leaderboard per skill."""
     engine = _get_engine()
-    return engine.get_leaderboard()
+    return await engine.get_leaderboard()
 
 
 @router.post("/toggle")
