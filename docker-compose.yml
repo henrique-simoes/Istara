@@ -128,7 +128,6 @@ services:
     read_only: true
     tmpfs:
       - /tmp:noexec,nosuid,size=100M
-      - /app/data:size=500M
     cap_drop:
       - ALL
     cap_add:

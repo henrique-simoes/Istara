@@ -123,7 +123,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Bootstrap admin user if none exists
     try:
         from app.models.user import User
-        from app.core.auth import hash_password, create_token
+        from app.core.auth import (
+            hash_password, create_token,
+            generate_recovery_codes, hash_recovery_code,
+            is_password_breached,
+        )
         from sqlalchemy import select, func
 
         async with async_session() as db:
@@ -134,11 +138,24 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
                 admin_user = app_settings.admin_username or "admin"
                 admin_pass = app_settings.admin_password or _s.token_urlsafe(16)
+
+                # NIST: breach check for admin password
+                if not app_settings.admin_password and await is_password_breached(admin_pass):
+                    # Auto-generated password was breached — generate a new one
+                    admin_pass = _s.token_urlsafe(16)
+                    _log = __import__("logging").getLogger(__name__)
+                    _log.warning("Auto-generated admin password was found in a breach. Generated a new one.")
+
+                # Generate recovery codes for admin user
+                recovery_codes = generate_recovery_codes()
+                recovery_codes_hashed = "\n".join(hash_recovery_code(c) for c in recovery_codes)
+
                 user = User(
                     id=str(__import__("uuid").uuid4()),
                     username=admin_user,
                     password_hash=hash_password(admin_pass),
                     role="admin",
+                    recovery_codes_hashed=recovery_codes_hashed,
                 )
                 db.add(user)
                 await db.commit()
@@ -147,7 +164,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                 _log.info("  ADMIN USER CREATED (first startup)")
                 _log.info(f"  Username: {admin_user}")
                 _log.info(f"  Password: {admin_pass}")
+                _log.info(f"  Recovery codes: {', '.join(recovery_codes)}")
                 _log.info("  Change this password after first login!")
+                _log.info("  Save these recovery codes — they are shown only once!")
                 _log.info("=" * 60)
                 # Persist to .env if auto-generated
                 if not app_settings.admin_password:
@@ -552,6 +571,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["X-XSS-Protection"] = "1; mode=block"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()"
         return response
 
 
