@@ -40,16 +40,16 @@
 | 1 | AutoresearchEngine.get_current_experiment missing | HIGH | ✅ COMPLETE | 1 | 2 | Entry G1.1, G1.2 |
 | 2 | AutoresearchEngine.get_leaderboard unawaited coroutine | HIGH | ✅ COMPLETE | 1 | 2 | Entry G2.1, G2.2 |
 | 3 | FastMCP(description=...) constructor TypeError | MEDIUM | ✅ COMPLETE | 1 | 2 | Entry G3.1 |
-| 4 | API response inconsistency (mixed wrapper/raw) | MEDIUM | ⏳ PENDING | 0 | 0 | — |
-| 5 | No service layer — routes query DB directly | LOW | ⏳ PENDING | 0 | 0 | — |
-| 6 | No route-level business logic tests | MEDIUM | ⏳ PENDING | 0 | 0 | — |
-| 7 | No data transformation tests (RAG, summarization, Prompt RAG) | MEDIUM | ⏳ PENDING | 0 | 0 | — |
-| 8 | No error handling path tests | MEDIUM | ⏳ PENDING | 0 | 0 | — |
-| 9 | No WebSocket flow tests | LOW | ⏳ PENDING | 0 | 0 | — |
+| 4 | API response inconsistency (mixed wrapper/raw) | MEDIUM | ⏳ DEFERRED | 0 | 0 | — |
+| 5 | No service layer — routes query DB directly | LOW | ⏳ DEFERRED | 0 | 0 | — |
+| 6 | No route-level business logic tests | MEDIUM | ✅ COMPLETE | 12 | 1 | Entry G6.1 |
+| 7 | No data transformation tests (RAG, summarization, Prompt RAG) | MEDIUM | ✅ COMPLETE | 9 | 1 | Entry G7.1 |
+| 8 | No error handling path tests | MEDIUM | ✅ COMPLETE | 7 | 1 | Entry G8.1 |
+| 9 | No WebSocket flow tests | LOW | ✅ COMPLETE | 6 | 1 | Entry G9.1 |
 | 10 | E2E coverage only ~30% | MEDIUM | ⏳ PENDING | 0 | 0 | — |
 
 **Baseline:** 260 passed, 6 xfailed, 0 unexpected failures (as of 2026-04-13)
-**Current:** 266 passed, 0 xfailed, 0 unexpected failures (Gaps 1-3 fixed)
+**Current:** 298 passed, 0 xfailed, 0 unexpected failures (Gaps 1-3, 6-9 fixed)
 **Target:** 380+ passed, 0 xfailed, 0 unexpected failures
 
 ---
