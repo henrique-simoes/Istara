@@ -26,7 +26,6 @@ def auth_headers():
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(reason="Backend bug: FastMCP description param causes TypeError")
 async def test_mcp_server_status_returns_response(auth_headers):
     """GET /api/mcp/server/status returns MCP server status."""
     await init_db()

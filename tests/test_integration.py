@@ -26,7 +26,6 @@ def auth_headers():
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(reason="Backend bug: AutoresearchEngine missing method")
 async def test_autoresearch_integration(auth_headers):
     """Verify autoresearch system endpoints are integrated."""
     await init_db()
@@ -71,7 +70,6 @@ async def test_meta_agent_integration(auth_headers):
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(reason="Backend bug: FastMCP TypeError")
 async def test_mcp_integration(auth_headers):
     """Verify MCP server system is integrated."""
     await init_db()
