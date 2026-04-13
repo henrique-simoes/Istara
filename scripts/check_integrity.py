@@ -95,6 +95,9 @@ def check_tech_md_freshness(issues: list[str]) -> None:
         "frontend-net": "Network segmentation (Docker networks)",
         "caddy": "Caddy/TLS configuration",
         "pre-push": "Compass authorship enforcement",
+        "stitch": "Google Stitch AI screen generation",
+        "interfaces": "Interfaces & Design System",
+        "design-chat": "Design-specific chat with RAG",
     }
 
     missing = []

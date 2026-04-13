@@ -1066,6 +1066,94 @@ Custom loops now use a dropdown populated from the skill registry instead of fre
 - Dropdown shows skill names for selection
 - Description field explains what the loop will do with the selected skill
 
+### Interfaces & Design System
+
+The **Interfaces** menu (sidebar item 10) provides AI-powered design tools integrating Google Stitch, Figma, and automated handoff documentation.
+
+#### Architecture
+
+| Component | File | Purpose |
+|---|---|---|
+| Backend routes | `backend/app/api/routes/interfaces.py` (1615 lines) | Design chat, screen generation, Figma, handoff |
+| Frontend | `frontend/src/components/interfaces/InterfacesView.tsx` | Full UI for all design features |
+| API client | `frontend/src/lib/api.ts` → `interfaces.*` | 13 methods: screens, generate, variants, edit, figma, handoff, configure, designChat |
+| Core service | `backend/app/services/stitch_service.py` | Google Stitch API integration |
+| Design tools | `backend/app/skills/design_tools.py` | Screen generation, variant creation, editing |
+| Figma client | `backend/app/services/figma_service.py` | Figma API integration (import/export/components) |
+| Handoff | `backend/app/services/handoff_service.py` | Design briefs and dev spec generation |
+
+#### Google Stitch (Generative AI Screen Design)
+
+- **`POST /api/interfaces/screens/generate`**: Generate UI screens from text description using Stitch API
+- **`POST /api/interfaces/screens/edit`**: Edit existing screens with natural language instructions
+- **`POST /api/interfaces/screens/variant`**: Generate alternative design variants
+- **`GET /api/interfaces/screens`**: List all generated screens
+- **`DELETE /api/interfaces/screens/{screen_id}`**: Delete a screen
+- Screens stored with: id, project_id, prompt, image_url, metadata (timestamps, model used)
+- Screens appear in the Interfaces > Screens tab with thumbnail grid
+
+#### Design Chat
+
+- **`POST /api/interfaces/design-chat`**: Chat with AI about design decisions (uses RAG with project context)
+- **`GET /api/interfaces/design-chat/{project_id}/history`**: Retrieve design conversation history
+- Design chat uses same architecture as main chat: RAG retrieval, agent identity, budget-aware token allocation
+- Pixel agent can be selected for design-specific conversations
+
+#### Figma Integration
+
+- **`POST /api/interfaces/figma/import`**: Import Figma designs (components, styles, frames)
+- **`POST /api/interfaces/figma/export`**: Export designs back to Figma
+- **`GET /api/interfaces/figma/design-system/{file_key}`**: Get design system info from Figma file
+- **`GET /api/interfaces/figma/components/{file_key}`**: List components from Figma file
+- Figma token stored encrypted via field encryption (`ENC:` prefix)
+- Token configured via `POST /api/interfaces/configure/figma`
+
+#### Handoff Documentation
+
+- **`POST /api/interfaces/handoff/brief`**: Generate design brief with UX law references and evidence
+- **`POST /api/interfaces/handoff/dev-spec`**: Generate developer specification document
+- **`GET /api/interfaces/handoff/briefs`**: List all handoff briefs for a project
+- Design briefs include: UX laws referenced (pill badges), source findings (evidence cards), recommendations with attributions
+- Handoff bridges design intent to development implementation
+
+#### Screen Generation Flow
+
+1. User describes desired screen in Interfaces > Generate tab
+2. Backend calls Stitch API (Google) or design_tools.py (local generation)
+3. Generated screen stored with metadata (prompt, timestamp, model)
+4. Screen appears in thumbnail grid with full-screen preview
+5. User can edit screen with natural language ("make the button blue")
+6. User can generate variants for A/B testing
+
+#### Figma Import/Export Flow
+
+1. User provides Figma file key and personal access token
+2. Backend calls Figma API to fetch components, styles, frames
+3. Imported components stored in project context
+4. User can edit components and export changes back to Figma
+5. Design system sync keeps local and remote in sync
+
+#### Agent Integration
+
+- **Pixel** (UI audit agent) uses `design_tools.py` for screen analysis
+- **Cleo** (primary researcher) can execute design skills via task routing
+- Design chat uses same agent identity system as main chat
+- Screen generation triggers RAG retrieval for project-specific design context
+
+#### Data Models
+
+| Model | Table | Fields |
+|---|---|---|
+| Screen | `screens` | id, project_id, prompt, image_url, metadata, created_at, updated_at |
+| Design Brief | `design_briefs` | id, project_id, content, ux_laws, source_findings, created_at |
+| Handoff Spec | `handoff_specs` | id, project_id, content, dev_notes, created_at |
+
+#### Configuration
+
+- Google Stitch API key: `STITCH_API_KEY` in `.env` or via `POST /api/interfaces/configure/stitch`
+- Figma token: `FIGMA_API_TOKEN` in `.env` or via `POST /api/interfaces/configure/figma`
+- Design screens directory: `settings.design_screens_dir` (default: `./data/design_screens`)
+
 ### Google Stitch (Generative AI) Configuration
 
 The Interfaces > Figma tab now includes Google Stitch API key configuration:
