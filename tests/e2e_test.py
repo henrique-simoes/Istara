@@ -316,6 +316,153 @@ def main():
     test("Abort agent work", lambda: assert_ok(client.post("/api/steering/istara-main/abort", json={})))
 
     # =========================================================
+    # PHASE 13: Chat Flow
+    # =========================================================
+    print("\n💬 Phase 13: Chat Flow")
+
+    if project_id:
+        test("Chat history exists", lambda: assert_ok(client.get(f"/api/chat/history/{project_id}")))
+        # Note: Full streaming chat test requires running LLM — verify endpoint works at minimum
+        test("Chat endpoint accessible", lambda: assert_ok(client.get(f"/api/chat/history/{project_id}?limit=10")))
+
+    # =========================================================
+    # PHASE 14: Findings CRUD
+    # =========================================================
+    print("\n🔍 Phase 14: Findings CRUD")
+
+    if project_id:
+        nugget = test("Create nugget", lambda: assert_ok(client.post("/api/findings/nuggets", json={
+            "project_id": project_id,
+            "text": "E2E test nugget: Users struggle with phone verification",
+            "source": "e2e-test",
+        })))
+        if nugget:
+            test("Delete nugget", lambda: assert_ok(client.delete(f"/api/findings/nuggets/{nugget['id']}")))
+
+        fact = test("Create fact", lambda: assert_ok(client.post("/api/findings/facts", json={
+            "project_id": project_id,
+            "text": "E2E test fact: 40% drop-off at phone verification step",
+            "source": "e2e-test",
+        })))
+        if fact:
+            test("Delete fact", lambda: assert_ok(client.delete(f"/api/findings/facts/{fact['id']}")))
+
+        test("Evidence chain accessible", lambda: assert_ok(client.get("/api/findings/nuggets/0/evidence-chain")))
+        test("Design decisions accessible", lambda: assert_ok(client.get("/api/findings/design-decisions")))
+
+    # =========================================================
+    # PHASE 15: Project Management
+    # =========================================================
+    print("\n📁 Phase 15: Project Management")
+
+    new_project = test("Create new project", lambda: assert_ok(client.post("/api/projects", json={
+        "name": "E2E Test Project",
+        "description": "Created by e2e test suite",
+    })))
+    if new_project:
+        e2e_proj_id = new_project.get("id")
+        test("Get new project", lambda: assert_ok(client.get(f"/api/projects/{e2e_proj_id}")))
+        test("Pause new project", lambda: assert_ok(client.post(f"/api/projects/{e2e_proj_id}/pause")))
+        test("Resume new project", lambda: assert_ok(client.post(f"/api/projects/{e2e_proj_id}/resume")))
+        test("Delete new project", lambda: assert_ok(client.delete(f"/api/projects/{e2e_proj_id}")))
+
+    test("List all projects", lambda: assert_ok(client.get("/api/projects")))
+
+    # =========================================================
+    # PHASE 16: Task Management
+    # =========================================================
+    print("\n📋 Phase 16: Task Management")
+
+    if project_id:
+        task = test("Create e2e task", lambda: assert_ok(client.post("/api/tasks", json={
+            "project_id": project_id,
+            "title": "E2E test task",
+            "description": "Created by e2e test suite",
+        })))
+        if task:
+            task_id = task["id"]
+            test("Move e2e task", lambda: assert_ok(client.post(f"/api/tasks/{task_id}/move?status=in_progress")))
+            test("Delete e2e task", lambda: assert_ok(client.delete(f"/api/tasks/{task_id}")))
+
+        test("Lock task", lambda: assert_ok(client.post(f"/api/tasks/{task_id}/lock")))
+        test("Unlock task", lambda: assert_ok(client.post(f"/api/tasks/{task_id}/unlock")))
+
+    # =========================================================
+    # PHASE 17: Skills Deep Dive
+    # =========================================================
+    print("\n🧩 Phase 17: Skills Deep Dive")
+
+    test("Get single skill", lambda: assert_ok(client.get("/api/skills/card-sorting")))
+    test("Toggle skill", lambda: assert_ok(client.post("/api/skills/card-sorting/toggle")))
+    test("Skill proposals", lambda: assert_ok(client.get("/api/skills/proposals/pending")))
+    test("Creation proposals", lambda: assert_ok(client.get("/api/skills/creation-proposals/pending")))
+
+    # =========================================================
+    # PHASE 18: Documents Deep Dive
+    # =========================================================
+    print("\n📄 Phase 18: Documents Deep Dive")
+
+    if project_id:
+        test("Document search", lambda: assert_ok(client.get(f"/api/documents/search/full?query=test&project_id={project_id}")))
+        test("Document tags", lambda: assert_ok(client.get(f"/api/documents/tags/{project_id}")))
+        test("Document stats", lambda: assert_ok(client.get(f"/api/documents/stats/{project_id}")))
+        test("File list", lambda: assert_ok(client.get(f"/api/files/{project_id}")))
+        test("File stats", lambda: assert_ok(client.get(f"/api/files/{project_id}/stats")))
+
+    # =========================================================
+    # PHASE 19: Sessions Deep Dive
+    # =========================================================
+    print("\n🗣️ Phase 19: Sessions Deep Dive")
+
+    if project_id:
+        test("List sessions", lambda: assert_ok(client.get(f"/api/sessions/{project_id}")))
+        test("Ensure default sessions", lambda: assert_ok(client.get(f"/api/sessions/{project_id}/ensure-default")))
+        test("Inference presets", lambda: assert_ok(client.get("/api/inference-presets")))
+
+    # =========================================================
+    # PHASE 20: Settings Deep Dive
+    # =========================================================
+    print("\n⚙️ Phase 20: Settings Deep Dive")
+
+    test("Hardware info", lambda: assert_ok(client.get("/api/settings/hardware")))
+    test("Maintenance status", lambda: assert_ok(client.get("/api/settings/maintenance")))
+    test("Vector health", lambda: assert_ok(client.get("/api/settings/vector-health")))
+    test("Integrations status", lambda: assert_ok(client.get("/api/settings/integrations-status")))
+
+    # =========================================================
+    # PHASE 21: Backup Deep Dive
+    # =========================================================
+    print("\n💾 Phase 21: Backup Deep Dive")
+
+    test("Backup estimate", lambda: assert_ok(client.get("/api/backups/estimate")))
+
+    # =========================================================
+    # PHASE 22: Meta-Agent Deep Dive
+    # =========================================================
+    print("\n🧬 Phase 22: Meta-Agent Deep Dive")
+
+    test("Meta-agent proposals", lambda: assert_ok(client.get("/api/meta-hyperagent/proposals")))
+    test("Meta-agent variants", lambda: assert_ok(client.get("/api/meta-hyperagent/variants")))
+    test("Meta-agent observations", lambda: assert_ok(client.get("/api/meta-hyperagent/observations")))
+
+    # =========================================================
+    # PHASE 23: Interfaces Deep Dive
+    # =========================================================
+    print("\n🎨 Phase 23: Interfaces Deep Dive")
+
+    test("Interface screens", lambda: assert_ok(client.get("/api/interfaces/screens")))
+    test("Interface status", lambda: assert_ok(client.get("/api/interfaces/status")))
+    test("Interface handoff briefs", lambda: assert_ok(client.get("/api/interfaces/handoff/briefs")))
+
+    # =========================================================
+    # PHASE 24: Loops Deep Dive
+    # =========================================================
+    print("\n🔁 Phase 24: Loops Deep Dive")
+
+    test("Loops agents", lambda: assert_ok(client.get("/api/loops/agents")))
+    test("Execution stats", lambda: assert_ok(client.get("/api/loops/executions/stats")))
+
+    # =========================================================
     # RESULTS
     # =========================================================
     elapsed = time.time() - start_time
