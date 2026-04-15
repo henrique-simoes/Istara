@@ -21,8 +21,8 @@ Generated from the repository on version `2026.04.10.13`. Treat this file as the
 - Backend: FastAPI app with 38 route modules and 363 detected endpoints.
 - Data layer: 41 SQLAlchemy models plus LanceDB-backed retrieval/context systems.
 - Agents/personas: 6 tracked persona directories under `backend/app/agents/personas`.
-- Skills: 50 JSON-defined skills across the Double Diamond phases.
-- Regression map: 71 simulation scenarios plus 25 e2e phases.
+- Skills: 51 JSON-defined skills across the Double Diamond phases.
+- Regression map: 71 simulation scenarios plus 26 e2e phases.
 
 ## Change Hotspots
 
@@ -74,7 +74,7 @@ Generated from the repository on version `2026.04.10.13`. Treat this file as the
 - **Define** (12): Affinity Mapping, Empathy Mapping, Problem Statements / HMW, Journey Mapping, Jobs-to-be-Done Analysis, Kappa Intercoder Thematic Analysis, Persona Creation, Prioritization Matrix, Research Synthesis Report, Taxonomy Generator, Thematic Analysis, User Flow Mapping
 - **Deliver** (11): Handoff Documentation, Longitudinal Study Tracking, NPS Analysis, Regression / Impact Analysis, Research Repository Curation, Research Ops Retrospective, Stakeholder Presentation, Design System Synthesis, HTML to React Components, SUS / UMUX Scoring, Task Analysis (Quantitative)
 - **Develop** (14): A/B Test Analysis, Card Sorting Analysis, Cognitive Walkthrough, Concept Testing, Design Critique / Expert Review, Design System Audit, Heuristic Evaluation, Prototype Feedback Analysis, Stitch Design Generation, Design Prompt Enhancement, Tree Testing Analysis, Usability Testing, UX Law Compliance Audit, Workshop Facilitation
-- **Discover** (13): Accessibility Audit, Analytics Review, Competitive Analysis, Contextual Inquiry, Literature / Desk Research, Diary Studies, Field Studies / Ethnography, Interview Question Generator, Stakeholder Interviews, Survey AI Response Detection, Survey Design & Analysis, Survey Generator, User Interviews
+- **Discover** (14): Accessibility Audit, Analytics Review, Competitive Analysis, Contextual Inquiry, Literature / Desk Research, Diary Studies, Field Studies / Ethnography, Interview Question Generator, Stakeholder Interviews, Survey AI Response Detection, Survey Design & Analysis, Survey Generator, Audio Transcription & Analysis, User Interviews
 
 ## Backend Route Modules
 
@@ -218,6 +218,7 @@ Generated from the repository on version `2026.04.10.13`. Treat this file as the
   - Meta-Agent Deep Dive
   - Interfaces Deep Dive
   - Loops Deep Dive
+  - Voice Transcription
 - Simulation scenarios:
   - `01` — Health Check
   - `02` — Onboarding

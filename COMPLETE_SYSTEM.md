@@ -21,8 +21,8 @@ Generated from the repository on version `2026.04.10.13`. This document is meant
 - FastAPI backend with 38 route modules and 363 detected endpoints.
 - Next.js frontend with 22 mounted views and 15 Zustand stores.
 - 41 SQLAlchemy models in `backend/app/models`.
-- 6 tracked persona directories and 50 JSON-defined skills.
-- 71 Playwright simulation scenarios plus 25 Python e2e phases.
+- 6 tracked persona directories and 51 JSON-defined skills.
+- 71 Playwright simulation scenarios plus 26 Python e2e phases.
 
 ## Backend Route Inventory
 
@@ -217,7 +217,7 @@ Generated from the repository on version `2026.04.10.13`. This document is meant
 - **Define** (12): Affinity Mapping, Empathy Mapping, Problem Statements / HMW, Journey Mapping, Jobs-to-be-Done Analysis, Kappa Intercoder Thematic Analysis, Persona Creation, Prioritization Matrix, Research Synthesis Report, Taxonomy Generator, Thematic Analysis, User Flow Mapping
 - **Deliver** (11): Handoff Documentation, Longitudinal Study Tracking, NPS Analysis, Regression / Impact Analysis, Research Repository Curation, Research Ops Retrospective, Stakeholder Presentation, Design System Synthesis, HTML to React Components, SUS / UMUX Scoring, Task Analysis (Quantitative)
 - **Develop** (14): A/B Test Analysis, Card Sorting Analysis, Cognitive Walkthrough, Concept Testing, Design Critique / Expert Review, Design System Audit, Heuristic Evaluation, Prototype Feedback Analysis, Stitch Design Generation, Design Prompt Enhancement, Tree Testing Analysis, Usability Testing, UX Law Compliance Audit, Workshop Facilitation
-- **Discover** (13): Accessibility Audit, Analytics Review, Competitive Analysis, Contextual Inquiry, Literature / Desk Research, Diary Studies, Field Studies / Ethnography, Interview Question Generator, Stakeholder Interviews, Survey AI Response Detection, Survey Design & Analysis, Survey Generator, User Interviews
+- **Discover** (14): Accessibility Audit, Analytics Review, Competitive Analysis, Contextual Inquiry, Literature / Desk Research, Diary Studies, Field Studies / Ethnography, Interview Question Generator, Stakeholder Interviews, Survey AI Response Detection, Survey Design & Analysis, Survey Generator, Audio Transcription & Analysis, User Interviews
 
 ## Real-Time and Integration Surface
 
@@ -256,6 +256,7 @@ Generated from the repository on version `2026.04.10.13`. This document is meant
 - Meta-Agent Deep Dive
 - Interfaces Deep Dive
 - Loops Deep Dive
+- Voice Transcription
 
 ### Simulation Scenario Matrix
 
