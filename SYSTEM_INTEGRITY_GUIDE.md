@@ -113,6 +113,7 @@ All models are registered in `backend/app/models/database.py::init_db()`:
 | NotificationPreference | `notification_preferences` | Per-user notification filters |
 | LLMServer | `llm_servers` | Persisted LLM server configs (for network discovery) |
 | MethodMetric | `method_metrics` | Research method performance tracking |
+| TelemetrySpan | `telemetry_spans` | Metadata-only execution traces (no user content) |
 
 #### ADVANCED FEATURES MODELS
 | Model | Table | Purpose |
@@ -175,6 +176,7 @@ Global (independent of Project)
 ├─ AgentLoopConfig
 ├─ BackupRecord
 ├─ ModelSkillStats
+├─ TelemetrySpan
 ├─ Notification → NotificationPreference
 ├─ ScheduledTask
 ├─ ContextDocument (LanceDB, indexed by project+session)
@@ -372,9 +374,18 @@ All routes are registered in `backend/app/main.py::app.include_router()` with `/
 - `GET /api/settings/status` — Public health check
 - `GET /api/settings` — Get all settings
 - `PATCH /api/settings` — Update settings (persists to .env)
+- `GET /api/settings/telemetry/status` — Get telemetry config and stats
+- `POST /api/settings/telemetry/toggle` — Toggle telemetry recording (Admin)
+- `POST /api/settings/telemetry/export` — Export telemetry to local JSON
+- `GET /api/settings/telemetry/healing` — Evaluate self-healing rules
 - `GET /api/settings/data-integrity` — Run data integrity check
 - `POST /api/settings/import-database` — Import data from another database
 - `POST /api/settings/export` — Export all data as JSON
+
+#### Metrics (metrics.py)
+- `GET /api/metrics/{project_id}` — Get quantitative research progress
+- `GET /api/metrics/{project_id}/validation` — Get method stats + recent validations
+- `GET /api/metrics/{project_id}/model-intelligence` — Get performance, reliability, and latency data
 
 #### Audit (audit.py)
 - `GET /api/audit/logs` — List audit events
@@ -1876,6 +1887,29 @@ broadcast_autoresearch_complete()
 Frontend displays leaderboard (model × skill matrix)
 ```
 
+### Flow 7: Telemetry & Self-Healing
+
+```
+Agent execution fires lifecycle hooks (agent_hooks.py)
+    ↓
+Hooks check if settings.telemetry_enabled is True
+    ↓
+telemetry_recorder.record_span()
+    ↓
+TelemetrySpan record created (metadata only)
+    ↓
+ModelSkillStats updated for skill leaderboard
+    ↓
+DevOps Agent audit cycle triggers self_healing.evaluate_all(project_id)
+    ↓
+Telemetry spans analyzed for error rates, latency, tool failures
+    ↓
+If thresholds breached:
+  ├─ Self-healing issues added to audit report
+  ├─ broadcast_agent_status() with warning
+  └─ UI displays "Self-Healing Signals" in EnsembleHealthView
+```
+
 ---
 
 ## CROSS-CUTTING CONCERNS & CHANGE IMPACT MATRIX
@@ -2318,11 +2352,11 @@ If migrating from older Istara version:
 
 ### All 51+ Database Models (Alphabetical)
 
-A2AMessage, Agent, AgentLoopConfig, AutoresearchExperiment, BackupRecord, ChannelConversation, ChannelInstance, ChannelMessage, ChatSession, Codebook, CodebookVersion, CodeApplication, ContextDAGNode, ContextDocument, DesignBrief, DesignDecision, DesignScreen, Document, Fact, Insight, LoopExecution, MCPAccessPolicy, MCPAuditEntry, MCPServerConfig, Message, MethodMetric, ModelSkillStats, Notification, NotificationPreference, Nugget, Project, ProjectReport, Recommendation, ResearchDeployment, ScheduledTask, SurveyIntegration, SurveyLink, Task, TaskCheckpoint, User
+A2AMessage, Agent, AgentLoopConfig, AutoresearchExperiment, BackupRecord, ChannelConversation, ChannelInstance, ChannelMessage, ChatSession, Codebook, CodebookVersion, CodeApplication, ContextDAGNode, ContextDocument, DesignBrief, DesignDecision, DesignScreen, Document, Fact, Insight, LoopExecution, MCPAccessPolicy, MCPAuditEntry, MCPServerConfig, Message, MethodMetric, ModelSkillStats, Notification, NotificationPreference, Nugget, Project, ProjectReport, Recommendation, ResearchDeployment, ScheduledTask, SurveyIntegration, SurveyLink, Task, TaskCheckpoint, TelemetrySpan, User
 
-### All 35 API Route Modules
+### All 38 API Route Modules
 
-agents, audit, auth, autoresearch, backup, channels, chat, code_applications, codebook_versions, codebooks, compute, context_dag, deployments, documents, files, findings, interfaces, laws, llm_servers, loops, mcp, memory, meta_hyperagent, metrics, notifications, projects, reports, scheduler, sessions, settings, skills, surveys, tasks, webhooks
+agents, audit, auth, autoresearch, backup, channels, chat, code_applications, codebook_versions, codebooks, compute, connections, context_dag, deployments, documents, files, findings, interfaces, laws, llm_servers, loops, mcp, memory, meta_hyperagent, metrics, notifications, projects, reports, scheduler, sessions, settings, skills, surveys, tasks, updates, webhooks
 
 ### All 16 WebSocket Event Types
 

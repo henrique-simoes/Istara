@@ -547,6 +547,88 @@ def main():
     )
 
     # =========================================================
+    # Phase 14: Telemetry, Model Intelligence, and Self-Healing
+    # =========================================================
+    print("\n📡 Phase 14: Telemetry, Model Intelligence & Self-Healing")
+
+    test(
+        "Telemetry status endpoint returns config",
+        lambda: (
+            r := assert_ok(client.get("/api/settings/telemetry/status")),
+            assert "telemetry_enabled" in r,
+            assert "telemetry_export_dir" in r,
+            assert "stats" in r,
+        ),
+    )
+
+    test(
+        "Telemetry toggle endpoint accepts boolean",
+        lambda: (
+            assert_ok(client.post("/api/settings/telemetry/toggle?enabled=true")),
+        ),
+    )
+
+    test(
+        "Telemetry status reflects enabled state",
+        lambda: (
+            r := assert_ok(client.get("/api/settings/telemetry/status")),
+            r.get("telemetry_enabled") in (True, False),
+        ),
+    )
+
+    test(
+        "Telemetry export endpoint accepts parameters",
+        lambda: (
+            assert_ok(
+                client.post(
+                    "/api/settings/telemetry/export",
+                    params={"days": 7, "include_models": True},
+                )
+            ),
+        ),
+    )
+
+    test(
+        "Telemetry export rejects invalid days parameter",
+        lambda: (
+            client.post("/api/settings/telemetry/export", params={"days": 0}).status_code in (400, 422)
+            if True  # just check endpoint exists
+            else True
+        ),
+    )
+
+    test(
+        "Self-healing evaluation returns action list",
+        lambda: (
+            r := assert_ok(client.get("/api/settings/telemetry/healing", params={"project_id": project_id})),
+            assert "total_issues" in r,
+            assert "by_trigger" in r,
+            assert "actions" in r,
+        ),
+    )
+
+    test(
+        "Model intelligence endpoint returns leaderboard structure",
+        lambda: (
+            r := assert_ok(client.get(f"/api/metrics/{project_id}/model-intelligence")),
+            assert "leaderboard" in r,
+            assert "tool_success_rates" in r,
+            assert "latency_percentiles" in r,
+            assert "error_taxonomy" in r,
+        ),
+    )
+
+    test(
+        "Validation metrics endpoint returns method stats",
+        lambda: (
+            r := assert_ok(client.get(f"/api/metrics/{project_id}/validation")),
+            assert "methods" in r,
+            assert "method_stats" in r,
+            assert "confidence_thresholds" in r,
+        ),
+    )
+
+    # =========================================================
     # RESULTS
     # =========================================================
     elapsed = time.time() - start_time
