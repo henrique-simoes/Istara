@@ -34,6 +34,13 @@
 - Alert on transcription error rates exceeding threshold (> 10% failures = high severity)
 - Verify audio file cleanup after transcription (temp file garbage collection)
 
+### Browser Skill Monitoring
+- Monitor browse_website tool availability (browser-use package)
+- Track browser skill execution success rates and timeouts (> 5 min alert)
+- Verify task URLs are being passed to skills correctly through the SkillInput pipeline
+- Alert on browser skill failures due to missing URLs or unreachable sites
+- Track Playwright MCP server health if configured
+
 ### Vector Store Health
 - Check per-project vector store table existence and accessibility
 - Monitor embedding count and growth rate per project

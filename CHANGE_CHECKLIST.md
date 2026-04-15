@@ -376,6 +376,20 @@ const scenarioFiles = [
 - [ ] Add to integrations view in frontend
 - [ ] Write end-to-end test
 
+### Adding Browser UX Research Skills
+
+- [ ] Skill definitions are valid JSON in `backend/app/skills/definitions/`
+- [ ] Skill `execute_prompt` includes `{urls_section}` or `{urls}` placeholder for target URLs
+- [ ] Skill `plan_prompt` includes `{urls}` placeholder
+- [ ] `SkillInput.urls` field passes task URLs to the skill execution pipeline
+- [ ] `report_manager.py` SCOPE_MAP updated with new skill → report section mapping
+- [ ] `task_router.py` SPECIALTY_KEYWORDS updated for browser-related skill routing
+- [ ] `agent.py` alias map updated (`ux audit` → `browser-ux-audit`, etc.)
+- [ ] Agent uses `browse_website` system action when executing browser skills
+- [ ] Task `urls` field propagated through `SkillInput` in `_execute_task()`
+- [ ] Skill `output_schema` includes nuggets, facts, insights, recommendations (Atomic Research chain)
+- [ ] Unit tests validate skill loading, URL template substitution, and SCOPE_MAP entries
+
 ---
 
 ## DEPLOYMENT CHECKLIST
