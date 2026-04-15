@@ -390,6 +390,20 @@ const scenarioFiles = [
 - [ ] Skill `output_schema` includes nuggets, facts, insights, recommendations (Atomic Research chain)
 - [ ] Unit tests validate skill loading, URL template substitution, and SCOPE_MAP entries
 
+### Adding Research Quality Evaluation (LLM-as-Judge Formalization)
+
+- [ ] `research-quality-evaluation.json` skill definition in `backend/app/skills/definitions/`
+- [ ] Skill invokes existing validation pipeline (AdaptiveSelector, ValidationExecutor, consensus engine)
+- [ ] SCOPE_MAP updated: `research-quality-evaluation` → `Quality Evaluation`
+- [ ] Task routing aliases added (`evaluate quality`, `quality evaluation`, `llm as judge`)
+- [ ] `GET /api/metrics/{project_id}/validation` endpoint returns method stats + recent validations
+- [ ] EnsembleHealthView fetches real data from validation endpoint instead of stub
+- [ ] Recent validations section added to EnsembleHealthView
+- [ ] Task type in `frontend/src/lib/types.ts` updated with `validation_method` and `consensus_score`
+- [ ] KanbanBoard shows consensus badge on task cards with color-coded score
+- [ ] `validation.metrics(projectId)` API client method added to `frontend/src/lib/api.ts`
+- [ ] Persona files updated (istara-main: Research Quality Evaluation)
+
 ---
 
 ## DEPLOYMENT CHECKLIST

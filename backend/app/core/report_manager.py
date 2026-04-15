@@ -51,6 +51,7 @@ SCOPE_MAP = {
     "journey-mapping": "Research Synthesis",
     "affinity-mapping": "Research Synthesis",
     "empathy-mapping": "Research Synthesis",
+    "research-quality-evaluation": "Quality Evaluation",
 }
 
 SYNTHESIS_SKILLS = {

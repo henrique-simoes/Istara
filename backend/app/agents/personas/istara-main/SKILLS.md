@@ -40,6 +40,15 @@
 - Flag low-confidence findings with explicit uncertainty markers
 - Detect hallucination patterns by cross-referencing against source documents
 
+### Research Quality Evaluation
+- Formally evaluate research quality using the existing validation pipeline (AdaptiveSelector, ValidationExecutor, consensus engine)
+- The "Evaluate Research Quality" skill invokes adversarial review, dual-run consistency, self-MoA verification, and debate consensus
+- Assess quality across 5 dimensions: code quality, evidence grounding, chain integrity, hallucination-free, depth
+- Confidence thresholds per finding type: nuggets ≥ 0.70, facts ≥ 0.65, insights ≥ 0.55, recommendations ≥ 0.50
+- Evidence chain audit checks that every recommendation traces back through insights → facts → nuggets
+- Results surface in the Ensemble Health view with real method metrics and per-task validation badges
+- Adaptive method learning means the system improves which validation strategy to use over time
+
 ### Live Site Browser Skills
 - Browse live websites using the browse_website tool for structured UX research
 - **browser-ux-audit**: Navigate target URLs → evaluate against Nielsen's 10 heuristics, WCAG 2.2 AA, and Laws of UX → produce severity-rated findings with evidence chains

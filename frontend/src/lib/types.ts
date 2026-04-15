@@ -35,6 +35,8 @@ export interface Task {
   output_document_ids: string[];
   urls: string[];
   instructions: string;
+  validation_method: string | null;
+  consensus_score: number | null;
   created_at: string;
   updated_at: string;
 }
