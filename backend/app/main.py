@@ -538,6 +538,11 @@ from app.core.security_middleware import SecurityAuthMiddleware
 
 app.add_middleware(SecurityAuthMiddleware)
 
+# Audit log middleware — persistent trail of all API requests
+from app.core.audit_middleware import AuditLogMiddleware
+
+app.add_middleware(AuditLogMiddleware)
+
 
 # Security headers — prevent clickjacking, MIME sniffing, and XSS
 from starlette.middleware.base import BaseHTTPMiddleware

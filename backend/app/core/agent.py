@@ -1102,6 +1102,8 @@ class AgentOrchestrator:
             "quality evaluation": "research-quality-evaluation",
             "evaluate quality": "research-quality-evaluation",
             "llm as judge": "research-quality-evaluation",
+            "participant simulation": "participant-simulation",
+            "game theory": "participant-simulation",
             "card sort": "card-sorting",
             "tree test": "tree-testing",
             "a/b test": "ab-test-analysis",
