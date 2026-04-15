@@ -341,19 +341,21 @@ class AgentOrchestrator:
                     "idle",
                     f"Steering message processed ({skill.display_name}): {output.summary[:120]}..."
                     if output.summary
-                    else f"Steering message processed ({skill.display_name})"
+                    else f"Steering message processed ({skill.display_name})",
                 )
             else:
                 # No matching skill — use the general LLM to respond
-                response = await ollama.chat(messages=[
-                    {"role": "system", "content": "You are Istara's main agent. Respond helpfully to the user's steering message."},
-                    {"role": "user", "content": message_text},
-                ])
-                reply = response.get("message", {}).get("content", "")
-                await broadcast_agent_status(
-                    "idle",
-                    f"Steering response: {reply[:200]}..."
+                response = await ollama.chat(
+                    messages=[
+                        {
+                            "role": "system",
+                            "content": "You are Istara's main agent. Respond helpfully to the user's steering message.",
+                        },
+                        {"role": "user", "content": message_text},
+                    ]
                 )
+                reply = response.get("message", {}).get("content", "")
+                await broadcast_agent_status("idle", f"Steering response: {reply[:200]}...")
         except asyncio.TimeoutError:
             logger.warning("Steering message execution timed out")
             await broadcast_agent_status("warning", "Steering message timed out after 2 minutes")
@@ -717,6 +719,7 @@ class AgentOrchestrator:
         skill_input = SkillInput(
             project_id=project.id,
             task_id=task.id,
+            urls=task.get_urls() if hasattr(task, "get_urls") else [],
             parameters={"mode": "analyze"},
             user_context=task_context,
             project_context=project.project_context,
@@ -1089,6 +1092,13 @@ class AgentOrchestrator:
             "thematic": "thematic-analysis",
             "usability": "usability-testing",
             "heuristic": "heuristic-evaluation",
+            "ux audit": "browser-ux-audit",
+            "site audit": "browser-ux-audit",
+            "accessibility check": "browser-accessibility-check",
+            "wcag": "browser-accessibility-check",
+            "a11y": "browser-accessibility-check",
+            "competitive benchmark": "browser-competitive-benchmark",
+            "competitor audit": "browser-competitive-benchmark",
             "card sort": "card-sorting",
             "tree test": "tree-testing",
             "a/b test": "ab-test-analysis",
@@ -1516,6 +1526,7 @@ class AgentOrchestrator:
                     skill_input = SkillInput(
                         project_id=project.id,
                         task_id=task.id,
+                        urls=task.get_urls() if hasattr(task, "get_urls") else [],
                         parameters={"mode": "analyze"},
                         user_context=task_context,
                         project_context=project.project_context,

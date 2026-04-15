@@ -1932,6 +1932,21 @@ Istara now supports voice input across the entire platform with automatic transc
 
 **Dependencies:** `openai-whisper>=20240930`, `pydub>=0.25.1`, `ffmpeg` (system, preferred) or pydub fallback.
 
+### Browser UX Research Skills (v2026.04.15)
+
+Three skill definitions that wrap the existing `browse_website` system action into structured UX research workflows. When a user creates a task with URLs, those URLs are passed through the `SkillInput.urls` field to the skill's prompt templates.
+
+**Skills:**
+- `browser-ux-audit` (develop/mixed) — Navigate target URLs → evaluate against Nielsen's 10 heuristics, WCAG 2.2 AA, and Laws of UX → produce severity-rated findings with evidence chains
+- `browser-competitive-benchmark` (discover/mixed) — Browse 2-5 competitor URLs → capture UX patterns, heuristic scores, feature matrices → produce gap-opportunity analysis with Blue Ocean Strategy canvas
+- `browser-accessibility-check` (develop/quantitative) — Navigate target site → systematic WCAG 2.2 criterion-by-criterion check → severity classification → prioritized remediation plan
+
+**Architecture:** Skills use `{urls}` and `{urls_section}` template placeholders. The skill factory (`skill_factory.py`) substitutes these from `SkillInput.urls`, which is populated from `task.get_urls()` in the agent's `_execute_task()`. The agent uses `browse_website` system action at execution time.
+
+**SCOPE_MAP entries:** `browser-ux-audit` → Usability Study, `browser-accessibility-check` → Usability Study, `browser-competitive-benchmark` → Competitive Analysis
+
+**Task routing aliases:** `ux audit` → `browser-ux-audit`, `site audit` → `browser-ux-audit`, `accessibility check` → `browser-accessibility-check`, `wcag` / `a11y` → `browser-accessibility-check`, `competitive benchmark` / `competitor audit` → `browser-competitive-benchmark`
+
 ### Interfaces Menu & Research→Design Bridge
 
 The Interfaces menu creates a bridge between UX Research and Product Design within Istara. It provides:

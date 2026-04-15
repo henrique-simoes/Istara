@@ -40,6 +40,14 @@
 - Flag low-confidence findings with explicit uncertainty markers
 - Detect hallucination patterns by cross-referencing against source documents
 
+### Live Site Browser Skills
+- Browse live websites using the browse_website tool for structured UX research
+- **browser-ux-audit**: Navigate target URLs → evaluate against Nielsen's 10 heuristics, WCAG 2.2 AA, and Laws of UX → produce severity-rated findings with evidence chains
+- **browser-competitive-benchmark**: Browse 2-5 competitor URLs → capture UX patterns, heuristic scores, feature matrices → produce gap-opportunity analysis with Blue Ocean Strategy canvas
+- **browser-accessibility-check**: Navigate target site → systematic WCAG 2.2 criterion-by-criterion check → severity classification (critical/serious/moderate/minor) → prioritized remediation plan
+- All browser skills use task URLs (`urls` field) as primary input; attach URLs to tasks for targeted evaluation
+- When no URLs are provided, ask the user for target sites before proceeding
+
 ## Skill Invocation Examples & Chain Patterns
 
 ### Common Skill Chains
