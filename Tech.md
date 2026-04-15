@@ -263,6 +263,36 @@ When users create a custom agent, the system auto-generates all four persona fil
 
 ---
 
+## Local Telemetry & Model Intelligence
+
+Istara includes a **local-first, zero-trust observability system** that tracks model performance without ever sending data to the cloud.
+
+### 1. Telemetry Spans & Agent Hooks
+
+The agent execution loop is instrumented with lifecycle hooks (`agent_hooks.py`) that fire at every stage: `pre_task`, `post_task`, `post_validation`, `on_error`, and `on_completion`. When telemetry is enabled, these hooks record metadata-only **Telemetry Spans** to the local database.
+
+- **Zero-Trust**: No user content, prompts, or responses are recorded in telemetry spans — only metadata (duration, tokens, status, error types, model/skill name).
+- **Opt-in Only**: Users must explicitly enable telemetry in Settings to activate recording.
+
+### 2. Model Intelligence Dashboard
+
+The frontend **Ensemble Health** view features a Model Intelligence section that aggregates telemetry data into actionable insights:
+
+- **Model Leaderboard**: Ranks model × skill combinations by quality EMA (Exponential Moving Average) and success rate.
+- **Latency Percentiles**: Tracks P50, P90, and P99 latency across different models to detect hardware bottlenecks.
+- **Tool Success Rates**: Monitors the reliability of MCP tools and system actions.
+- **Error Taxonomy**: Categorizes failures (hallucination, timeout, tool error) to help users refine their model selection.
+
+### 3. Self-Healing DevOps Architecture
+
+The DevOps Agent (`Sentinel`) uses telemetry signals to perform automated remediation via **Self-Healing Rules**:
+
+- **Circuit Breaker**: If a model × skill combination reaches a >30% error rate, the DevOps agent flags it as "Degraded" and suggests a model switch.
+- **Auto-Remediation**: Transient errors (e.g., context window overflows) trigger automatic parameter adjustments (e.g., tighter compression) for the next attempt.
+- **Local Export**: Users can export their telemetry data to portable JSON for deep inspection or sharing with the community.
+
+---
+
 ## Prompt Management for Local Models
 
 Running on local models (1.5B to 14B parameters) with limited context windows (2K to 8K tokens) requires careful prompt engineering. Istara implements three complementary strategies.

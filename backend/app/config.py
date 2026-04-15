@@ -122,6 +122,10 @@ class Settings(BaseSettings):
     autoresearch_max_experiments_per_run: int = 20
     autoresearch_max_daily_experiments: int = 200
 
+    # Telemetry (local-first, zero-trust — OFF for sharing by default)
+    telemetry_enabled: bool = False
+    telemetry_export_dir: str = "./data/telemetry_exports"
+
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
 
     def ensure_dirs(self) -> None:
@@ -180,6 +184,10 @@ class Settings(BaseSettings):
             )
             self.max_context_tokens = detected_tokens
             self._detected_context_tokens = detected_tokens
+
+    def ensure_telemetry_dir(self) -> None:
+        """Create telemetry export directory."""
+        Path(self.telemetry_export_dir).mkdir(parents=True, exist_ok=True)
 
 
 settings = Settings()

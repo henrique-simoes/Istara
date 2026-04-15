@@ -194,6 +194,43 @@ export const chat = {
 
 // --- Validation Metrics ---
 
+export const telemetry = {
+  status: () => request<{
+    telemetry_enabled: boolean;
+    telemetry_export_dir: string;
+    stats: { total_spans: number; total_model_entries: number; spans_last_24h: number };
+  }>("/api/settings/telemetry/status"),
+  toggle: (enabled: boolean) =>
+    request<{ telemetry_enabled: boolean; message: string }>(
+      `/api/settings/telemetry/toggle?enabled=${enabled}`,
+      { method: "POST" }
+    ),
+  export: (projectId?: string, days = 7, includeModels = true) =>
+    request<{
+      exported: boolean;
+      span_count: number;
+      files: { summary: string; spans: string };
+      export_dir: string;
+    }>(
+      `/api/settings/telemetry/export?days=${days}&include_models=${includeModels}${
+        projectId ? `&project_id=${projectId}` : ""
+      }`,
+      { method: "POST" }
+    ),
+  selfHealing: (projectId: string) =>
+    request<{
+      project_id: string;
+      total_issues: number;
+      by_trigger: Record<string, number>;
+      actions: Array<{
+        trigger: string;
+        severity: string;
+        message: string;
+        auto_action: string;
+      }>;
+    }>(`/api/settings/telemetry/healing?project_id=${projectId}`),
+};
+
 export const validation = {
   metrics: async (projectId: string): Promise<{
     project_id: string;
@@ -223,6 +260,36 @@ export const validation = {
   }> => {
     return request(`/api/metrics/${projectId}/validation`);
   },
+  modelIntelligence: (projectId: string, limit = 50) =>
+    request<{
+      project_id: string;
+      leaderboard: Array<{
+        skill_name: string;
+        model_name: string;
+        temperature: number;
+        quality_ema: number;
+        best_quality: number;
+        executions: number;
+        source: string;
+      }>;
+      error_taxonomy: Record<string, Array<{ skill_name: string; model_name: string; duration_ms: number }>>;
+      tool_success_rates: Array<{
+        tool: string;
+        success_rate: number;
+        total_calls: number;
+        avg_duration_ms: number;
+        p50_duration_ms: number;
+        p90_duration_ms: number;
+        error_types: Record<string, number>;
+      }>;
+      latency_percentiles: Array<{
+        model: string;
+        p50_ms: number;
+        p90_ms: number;
+        p99_ms: number;
+        samples: number;
+      }>;
+    }>(`/api/metrics/${projectId}/model-intelligence?limit=${limit}`),
 };
 
 // --- Findings ---
