@@ -1,6 +1,6 @@
 # Istara — Agent-Readable Operating Map
 
-Generated from the repository on version `2026.04.10.5`. Treat this file as the fast inventory view after reading `AGENT_ENTRYPOINT.md`, then consult `COMPLETE_SYSTEM.md`, `SYSTEM_CHANGE_MATRIX.md`, `CHANGE_CHECKLIST.md`, and `SYSTEM_PROMPT.md` before structural work.
+Generated from the repository on version `2026.04.10.6`. Treat this file as the fast inventory view after reading `AGENT_ENTRYPOINT.md`, then consult `COMPLETE_SYSTEM.md`, `SYSTEM_CHANGE_MATRIX.md`, `CHANGE_CHECKLIST.md`, and `SYSTEM_PROMPT.md` before structural work.
 
 ## Non-Negotiable Workflow
 
@@ -18,11 +18,11 @@ Generated from the repository on version `2026.04.10.5`. Treat this file as the 
 ## System Snapshot
 
 - Frontend: Next.js app with 22 mounted views and 15 Zustand stores.
-- Backend: FastAPI app with 38 route modules and 363 detected endpoints.
+- Backend: FastAPI app with 38 route modules and 364 detected endpoints.
 - Data layer: 41 SQLAlchemy models plus LanceDB-backed retrieval/context systems.
 - Agents/personas: 6 tracked persona directories under `backend/app/agents/personas`.
 - Skills: 50 JSON-defined skills across the Double Diamond phases.
-- Regression map: 71 simulation scenarios plus 13 e2e phases.
+- Regression map: 72 simulation scenarios plus 14 e2e phases.
 
 ## Change Hotspots
 
@@ -86,7 +86,7 @@ Generated from the repository on version `2026.04.10.5`. Treat this file as the 
 | `autoresearch.py` | `/autoresearch` | 9 |
 | `backup.py` | `/` | 9 |
 | `channels.py` | `/` | 11 |
-| `chat.py` | `/` | 2 |
+| `chat.py` | `/` | 3 |
 | `code_applications.py` | `/code-applications` | 4 |
 | `codebook_versions.py` | `/codebook-versions` | 4 |
 | `codebooks.py` | `/` | 8 |
@@ -206,6 +206,7 @@ Generated from the repository on version `2026.04.10.5`. Treat this file as the 
   - Agents & Audit
   - Frontend Check
   - Mid-Execution Steering
+  - Voice Transcription
 - Simulation scenarios:
   - `01` — Health Check
   - `02` — Onboarding
@@ -278,6 +279,7 @@ Generated from the repository on version `2026.04.10.5`. Treat this file as the 
   - `71` — Plan And Execute
   - `72` — Circuit Breaker Health
   - `73` — A2A Debate And Reports
+  - `74` — Voice Transcription
 
 ## Documentation Contract
 

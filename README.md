@@ -39,7 +39,7 @@
   <p><strong>Multi-Agent Assignment:</strong> Choose the best agent for the job. Route tasks to specialists like Pixel for UI audits or Sage for UX evaluation.</p>
   <img src="Screenshots/Screenshot%202026-04-02%20at%2016.38.54.png" width="600" />
   
-  <p><strong>Interviews & Transcripts:</strong> Istara can transcribe, tag, analyze, relate, and generate reports from many interviews at once. Find insights shared across your entire participant pool!</p>
+  <p><strong>Interviews & Transcripts:</strong> Istara can transcribe, tag, analyze, relate, and generate reports from many interviews at once — including voice messages from WhatsApp and Telegram with automatic Whisper transcription and inter-coder reliability scoring. Find insights shared across your entire participant pool!</p>
   <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.01.png" width="600" />
   
   <p><strong>Context Engine:</strong> Ground your agents in your company culture, project goals, and specific guardrails. The more they know, the better they perform.</p>

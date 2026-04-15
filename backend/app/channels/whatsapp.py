@@ -208,11 +208,14 @@ class WhatsAppAdapter(ChannelAdapter):
         if msg_type == "text":
             text = wa_msg.get("text", {}).get("body", "")
         elif msg_type == "audio":
-            text = "[audio message]"
+            # Auto-transcribe audio messages
+            text = "[Audio message — transcription pending]"
             content_type = "audio"
             media_id = wa_msg.get("audio", {}).get("id", "")
             if media_id:
                 attachments.append(f"whatsapp:media:{media_id}")
+                # Note: Actual transcription happens in the interview pipeline
+                # when the audio file is downloaded and processed
         elif msg_type == "image":
             text = wa_msg.get("image", {}).get("caption", "") or "[image]"
             content_type = "image"

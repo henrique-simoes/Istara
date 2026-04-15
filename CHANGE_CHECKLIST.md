@@ -344,6 +344,26 @@ const scenarioFiles = [
 - [ ] API routes validate agent existence before queuing
 - [ ] SSE `/api/steering/{agent_id}/idle` endpoint handles timeout correctly
 
+### Adding Voice Transcription Pipeline
+
+- [ ] `backend/app/core/transcription.py` handles Whisper loading gracefully (no crash if Whisper missing)
+- [ ] `POST /api/chat/voice` endpoint registered in `chat.py` and tested
+- [ ] Audio format conversion handles OGG/MP3/M4A/FLAC → WAV (ffmpeg preferred, pydub fallback)
+- [ ] ICR consensus computed between primary and alternative transcriptions
+- [ ] Auto-tagging generates research-relevant categories (pain-point, usability, etc.)
+- [ ] Low-confidence transcriptions flagged with `needs_review: true`
+- [ ] Telegram channel auto-transcribes voice messages
+- [ ] WhatsApp channel auto-transcribes audio messages
+- [ ] Mic button in ChatView.tsx with proper aria-label and disabled states
+- [ ] `chat.transcribeVoice()` in api.ts handles file upload and response
+- [ ] `openai-whisper` and `pydub` listed in requirements.txt
+- [ ] Unit tests in `tests/test_transcription.py` cover: module import, fallback, ICR, auto-tagging, audio conversion
+- [ ] Simulation scenario for mic button accessibility (aria-label, keyboard focus, disabled state)
+- [ ] Persona files updated (istara-main, istara-devops) to understand transcription capability
+- [ ] Tech.md updated with transcription pipeline architecture
+- [ ] `SYSTEM_CHANGE_MATRIX.md` "Documents/Interviews/Context" row updated for voice input
+- [ ] Run `python scripts/update_agent_md.py` and `python scripts/check_integrity.py`
+
 ### Adding an Integration (Survey, Design, etc.)
 
 - [ ] Create adapter/service file
