@@ -1,0 +1,32 @@
+{
+  "name": "participant-simulation",
+  "display_name": "Participant Simulation (Game Theory)",
+  "description": "Simulate research participant behavior using game-theory strategies (Prisoner's Dilemma, Stag Hunt, bounded rationality, satisficing, social desirability bias). Generates diverse participant cohorts, runs multi-round simulations, and produces behavioral analysis with strategic pattern identification.",
+  "phase": "define",
+  "skill_type": "mixed",
+  "version": "1.0.0",
+  "enabled": true,
+  "plan_prompt": "Design a participant simulation study using game-theory behavioral models.\n\nContext: {context}\nUser request: {user_context}\n\n1. **Research context** — What research question or UX scenario is being simulated?\n2. **Game scenario** — Which game-theory model fits: Prisoner's Dilemma (cooperation vs. self-interest), Stag Hunt (coordination vs. safety), or custom payoff matrix\n3. **Cohort composition** — How many participants, strategy mix (cooperative, selfish, reciprocating, satisficing, social desirability biased, adversarial), demographic variation\n4. **Simulation parameters** — Number of rounds, whether participants learn from previous rounds, noise injection\n5. **Response analysis** — What behavioral patterns to look for: honest vs. strategic vs. biased responses, engagement decay, conformity effects\n\nIf target URLs are provided, plan to also browse real competitor interfaces for context.",
+  "execute_prompt": "You are running a participant simulation using game-theory behavioral models. This skill simulates how different participant archetypes would behave in a UX research scenario.\n\nContext: {context}\nContent/Source data: {content}\n{urls_section}\n\n## Simulation Framework\nUse Istara's participant_simulation module to generate cohorts and run rounds:\n- **Strategies**: cooperative, selfish, reciprocating, random, satisficing, social_desirability, adversarial\n- **Games**: Prisoner's Dilemma (Nash 1950), Stag Hunt (Rousseau/Skyrms 2004), custom\n- **Behavioral traits**: patience, honesty_bias, social_desirability_bias, tech_savviness, engagement_level, risk_aversion, satisficing_threshold\n\n## Phase 1: Scenario Design\n- Define the UX scenario as a game (e.g., Will participants disclose usability issues honestly or socially desirably?)\n- Map research questions to game-theory constructs\n- Choose payoff matrix that models the real incentive structure\n\n## Phase 2: Cohort Generation\n- Generate diverse participant profiles using generate_participant_cohort()\n- Vary strategy distributions based on research context (adversarial for stress testing, cooperative for ideal users)\n- Ensure demographic variation in behavioral traits\n\n## Phase 3: Multi-Round Simulation\n- Run simulation rounds using run_simulation_round() with iterated interactions\n- Track how strategies evolve across rounds (reciprocating agents learn, satisficing agents stop early)\n- Monitor engagement decay (1 - round/max_rounds * patience)\n- Record response modes: honest, strategic, biased, withheld, exaggerated\n\n## Phase 4: Behavioral Analysis\n- Aggregate results by strategy type\n- Compute Nash equilibrium for comparison\n- Identify response biases (social desirability, satisficing, engagement decay)\n- Map simulation findings to real UX research implications\n\n## Phase 5: Research Implications\n- Which participant archetypes are underrepresented in real research?\n- How do strategic behaviors affect data quality?\n- What safeguards mitigate biased responses (social desirability, satisficing)?\n- Produce evidence-chain findings connecting simulation results to research recommendations",
+  "output_schema": "{\n  \"scenario\": {\n    \"name\": \"string\",\n    \"game_type\": \"prisoners_dilemma|stag_hunt|custom\",\n    \"rounds\": 10,\n    \"description\": \"string\"\n  },\n  \"cohort\": {\n    \"size\": 0,\n    \"strategy_distribution\": {\"cooperative\": 0, \"selfish\": 0, \"reciprocating\": 0, \"satisficing\": 0, \"social_desirability\": 0, \"adversarial\": 0},\n    \"avg_traits\": {\"patience\": 0, \"honesty_bias\": 0, \"social_desirability_bias\": 0, \"tech_savviness\": 0, \"engagement_level\": 0}\n  },\n  \"simulation_results\": {\n    \"total_decisions\": 0,\n    \"by_strategy\": [{\"strategy\": \"string\", \"avg_payoff\": 0, \"cooperation_rate\": 0, \"honest_response_rate\": 0}],\n    \"response_mode_distribution\": {\"honest\": 0, \"strategic\": 0, \"biased\": 0, \"withheld\": 0, \"exaggerated\": 0},\n    \"engagement_decay\": [{\"round\": 0, \"avg_engagement\": 0}]\n  },\n  \"behavioral_insights\": [{\n    \"pattern\": \"string\",\n    \"affected_strategies\": [\"string\"],\n    \"research_implication\": \"string\",\n    \"mitigation\": \"string\"\n  }],\n  \"nash_equilibrium\": {\"exists\": true, \"strategies\": [\"string\"], \"expected_payoff\": 0},\n  \"nuggets\": [{\"text\": \"string\", \"source\": \"string\", \"tags\": [\"string\"]}],\n  \"facts\": [{\"text\": \"string\"}],\n  \"insights\": [{\"text\": \"string\", \"confidence\": \"low|medium|high\"}],\n  \"recommendations\": [{\"text\": \"string\", \"priority\": \"critical|high|medium|low\"}],\n  \"summary\": \"string\"\n}",
+  "created_at": "2026-04-15T00:00:00Z",
+  "updated_at": "2026-04-15T00:00:00Z",
+  "metadata": {
+    "author": "Istara",
+    "tags": ["define", "mixed", "simulation", "game-theory", "participants"],
+    "references": [
+      "Nash 1950 (Equilibrium Points)",
+      "Simon 1956 (Bounded Rationality / Satisficing)",
+      "Kahneman & Tversky 1979 (Prospect Theory)",
+      "Rapoport & Chammah 1965 (Prisoner's Dilemma)",
+      "Skyrms 2004 (Stag Hunt and Evolution of Social Structure)"
+    ]
+  },
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-04-15",
+      "changes": "Initial creation — game-theory participant simulation with bounded rationality, satisficing, and social desirability bias"
+    }
+  ]
+}

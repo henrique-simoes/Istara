@@ -2137,6 +2137,8 @@ But if needed:
 | Change Desktop App | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | △ | ✗ | ✓ |
 | Change UI / User Flow | ✗ | ✗ | △ | ✓ | △ | ✓ | △ | ✗ | ✗ |
 | Add Voice Transcription | ✗ | ✗ | ✓ | ✓ | ✓ | △ | ✗ | ✗ | ✓ (Whisper/pydub) |
+| Add Audit Middleware | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ | ✗ |
+| Add Participant Simulation | ✗ | ✗ | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ |
 
 **Desktop App Critical Couplings (v2026.04.02):**
 - `process.rs` spawns Python/Node directly → depends on `path_resolver.rs` for binary discovery
