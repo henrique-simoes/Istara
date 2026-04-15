@@ -1878,7 +1878,36 @@ Frontend displays leaderboard (model × skill matrix)
 
 ---
 
-## CROSS-CUTTING CONCERNS & CHANGE IMPACT MATRIX
+## VERIFICATION & QUALITY ASSURANCE
+
+Istara enforces a **Three-Layer Testing Architecture** to preserve product behavior across local hardware variations and model changes.
+
+### 1. Layer 1: Unit & Integration Tests (`tests/test_*.py`)
+- **Focus**: Backend logic, services, security middleware, and API routes.
+- **Tools**: `pytest`, `httpx.ASGITransport`, in-memory SQLite.
+- **Requirement**: Mandatory for every new service or route.
+
+### 2. Layer 2: E2E Phased Test (`tests/e2e_test.py`)
+- **Focus**: The "Sarah journey" — complete user lifecycle from auth to project reports.
+- **Structure**: 15 sequential phases covering every major system area.
+- **Run**: `python tests/e2e_test.py` against a live instance.
+
+### 3. Layer 3: Simulation Agent (`tests/simulation/`)
+- **Focus**: UI regression, UX heuristics, and systemic robustness under load.
+- **Capability**: 70+ scenarios covering 800+ automated checks.
+- **Evaluators**:
+  - **Accessibility**: axe-core (WCAG 2.1 Level A/AA)
+  - **Heuristics**: Nielsen usability scoring
+  - **Performance**: Resource usage and latency thresholds
+- **Tools**: Playwright, Node.js.
+
+### Maintenance Mode & LLM Isolation
+To ensure test reliability on RAM-constrained machines (8GB), Istara implements a **Maintenance Mode** (`resource_governor.py`):
+1. Test runner calls `POST /api/settings/maintenance/pause`.
+2. All background agent work and non-test LLM calls are halted.
+3. Test suite has exclusive access to the model.
+4. Runner calls `POST /api/settings/maintenance/resume` upon completion (or crash).
+
 
 ### Scenario 1: Adding a New Model
 
