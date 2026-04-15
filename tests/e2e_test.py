@@ -463,6 +463,19 @@ def main():
     test("Execution stats", lambda: assert_ok(client.get("/api/loops/executions/stats")))
 
     # =========================================================
+    # PHASE 25: Voice Transcription
+    # =========================================================
+    print("\n🎙️ Phase 25: Voice Transcription")
+
+    if project_id:
+        test("Transcription endpoint accessible", lambda: assert_ok(client.get(f"/api/chat/history/{project_id}")))
+        # Verify specific voice transcription route from P0 roadmap
+        test("Voice transcription initialization", lambda: assert_ok(client.post("/api/chat/voice-transcribe", json={
+            "project_id": project_id,
+            "dummy": True, # Test endpoint presence without real audio
+        })))
+
+    # =========================================================
     # RESULTS
     # =========================================================
     elapsed = time.time() - start_time

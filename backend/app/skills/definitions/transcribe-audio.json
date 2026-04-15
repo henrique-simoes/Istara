@@ -1,0 +1,19 @@
+{
+  "name": "transcribe-audio",
+  "display_name": "Audio Transcription & Analysis",
+  "description": "Transcribe research audio (interviews, field notes) using local models, perform auto-tagging, and integrate into the Atomic Research chain.",
+  "phase": "discover",
+  "skill_type": "transformation",
+  "version": "1.0.0",
+  "enabled": true,
+  "plan_prompt": "You are a research operations specialist. Plan the transcription and initial coding of the provided research audio data.\n\nContext: {context}\n\n## Methodology\nYour plan must follow these quality standards:\n- **Verbatim Accuracy**: Ensure exact quotes are preserved for the Atomic Research chain.\n- **Speaker Identification**: Identify different participants where possible.\n- **Initial Coding**: Identify key UX themes (usability, pain points, feature requests) to feed the auto-tagger.\n- **Consensus Strategy**: Describe how multiple transcription passes will be compared using Inter-Coder Reliability (Kappa).",
+  "execute_prompt": "You are an expert research analyst. Process the provided transcription data into a structured research document.\n\nContext: {context}\nTranscription Data: {content}\n\n## Requirements\n1. **Structured Transcript**: Format the text into clear speaker turns with timestamps.\n2. **Atomic Nuggets**: Extract exact verbatim quotes as 'nuggets'.\n3. **Initial Tags**: Apply relevant UX tags (e.g., #usability, #friction) to each nugget.\n4. **Confidence Scoring**: Rate the transcription clarity and coding accuracy.\n\nEvery nugget must be traceable back to the source transcription segment.",
+  "output_schema": "{\"transcript\": [{\"speaker\": \"...\", \"text\": \"...\", \"timestamp\": \"...\"}], \"nuggets\": [{\"text\": \"...\", \"tags\": [\"...\"], \"confidence\": 0.0, \"source_segment\": \"...\"}], \"summary\": \"...\", \"metadata\": {\"model\": \"...\", \"duration_seconds\": 0}}",
+  "created_at": "2026-04-15T00:00:00Z",
+  "updated_at": "2026-04-15T00:00:00Z",
+  "metadata": {
+    "author": "Istara",
+    "tags": ["discover", "voice", "interviews"],
+    "references": ["Braun & Clarke (2006) Reflexive Thematic Analysis"]
+  }
+}

@@ -35,8 +35,8 @@
 ## Skill Invocation Examples & Chain Patterns
 
 ### Common Skill Chains
-- **Discovery chain**: `document_ingestion` -> `thematic_analysis` -> `affinity_mapping` -> `opportunity_mapping`
-- **Interview pipeline**: `interview_analysis` -> `thematic_analysis` -> `persona_creation` -> `journey_mapping`
+- **Discovery chain**: `document_ingestion` -> `transcribe_audio` -> `thematic_analysis` -> `affinity_mapping` -> `opportunity_mapping`
+- **Interview pipeline**: `transcribe_audio` -> `interview_analysis` -> `thematic_analysis` -> `persona_creation` -> `journey_mapping`
 - **Evaluation chain**: `heuristic_evaluation` -> `usability_scoring` -> `competitive_analysis` -> `recommendation_synthesis`
 - **Survey pipeline**: `survey_analysis` -> `statistical_summary` -> `insight_extraction` -> `report_generation`
 - **Strategic chain**: `competitive_analysis` -> `jtbd_analysis` -> `opportunity_mapping` -> `stakeholder_presentation`

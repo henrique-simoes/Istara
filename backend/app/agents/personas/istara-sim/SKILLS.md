@@ -35,6 +35,7 @@
 
 ### Integration Testing
 - Test the full cycle: project creation -> file upload -> skill execution -> findings review
+- Test voice transcription: upload audio -> verify ICR-validated transcript -> check auto-tagging
 - Verify cross-feature data flow: chat messages reference correct project context
 - Test agent coordination: main agent picks up tasks, DevOps audits detect issues
 - Verify WebSocket updates propagate correctly for task progress and agent status
