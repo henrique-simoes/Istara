@@ -168,6 +168,28 @@ export const chat = {
   },
   history: (projectId: string, limit = 50) =>
     request<any[]>(`/api/chat/history/${projectId}?limit=${limit}`),
+  transcribeVoice: async (audioFile: File, language?: string): Promise<{
+    text: string;
+    language: string;
+    confidence: number;
+    icr_kappa: number;
+    icr_confidence: string;
+    needs_review: boolean;
+    tags: string[];
+  }> => {
+    const formData = new FormData();
+    formData.append("audio", audioFile);
+    if (language) formData.append("language", language);
+
+    const res = await fetch(`${API_BASE}/api/chat/voice`, {
+      method: "POST",
+      headers: _getAuthHeaders(),
+      body: formData,
+    });
+
+    if (!res.ok) throw new Error(`Voice transcription error: ${res.status}`);
+    return res.json();
+  },
 };
 
 // --- Findings ---

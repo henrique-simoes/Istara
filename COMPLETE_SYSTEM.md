@@ -1,6 +1,6 @@
 # Istara Complete System Architecture & Living Map
 
-Generated from the repository on version `2026.04.10.5`. This document is meant to be regenerated whenever the implementation changes so LLMs can reason from the current system instead of stale summaries.
+Generated from the repository on version `2026.04.10.6`. This document is meant to be regenerated whenever the implementation changes so LLMs can reason from the current system instead of stale summaries.
 
 ## Purpose
 
@@ -18,11 +18,11 @@ Generated from the repository on version `2026.04.10.5`. This document is meant 
 
 ## Repository Architecture Snapshot
 
-- FastAPI backend with 38 route modules and 363 detected endpoints.
+- FastAPI backend with 38 route modules and 364 detected endpoints.
 - Next.js frontend with 22 mounted views and 15 Zustand stores.
 - 41 SQLAlchemy models in `backend/app/models`.
 - 6 tracked persona directories and 50 JSON-defined skills.
-- 71 Playwright simulation scenarios plus 13 Python e2e phases.
+- 72 Playwright simulation scenarios plus 14 Python e2e phases.
 
 ## Backend Route Inventory
 
@@ -34,7 +34,7 @@ Generated from the repository on version `2026.04.10.5`. This document is meant 
 | `autoresearch.py` | `/autoresearch` | 9 |
 | `backup.py` | `/` | 9 |
 | `channels.py` | `/` | 11 |
-| `chat.py` | `/` | 2 |
+| `chat.py` | `/` | 3 |
 | `code_applications.py` | `/code-applications` | 4 |
 | `codebook_versions.py` | `/codebook-versions` | 4 |
 | `codebooks.py` | `/` | 8 |
@@ -75,7 +75,7 @@ Generated from the repository on version `2026.04.10.5`. This document is meant 
 - **autoresearch**: `GET /api/autoresearch/status`, `GET /api/autoresearch/experiments`, `GET /api/autoresearch/experiments/{experiment_id}`, `POST /api/autoresearch/start`, `POST /api/autoresearch/stop`, `GET /api/autoresearch/config`, `PATCH /api/autoresearch/config`, `GET /api/autoresearch/leaderboard`, `POST /api/autoresearch/toggle`
 - **backup**: `GET /api/backups`, `POST /api/backups/create`, `POST /api/backups/{backup_id}/restore`, `POST /api/backups/{backup_id}/verify`, `DELETE /api/backups/{backup_id}`, `GET /api/backups/config`, `POST /api/backups/config`, `GET /api/backups/estimate`, `GET /api/backups/{backup_id}/download`
 - **channels**: `GET /api/channels`, `POST /api/channels`, `GET /api/channels/{instance_id}`, `PATCH /api/channels/{instance_id}`, `DELETE /api/channels/{instance_id}`, `POST /api/channels/{instance_id}/start`, `POST /api/channels/{instance_id}/stop`, `GET /api/channels/{instance_id}/health`, `GET /api/channels/{instance_id}/messages`, `GET /api/channels/{instance_id}/conversations`, `POST /api/channels/{instance_id}/send`
-- **chat**: `POST /api/chat`, `GET /api/chat/history/{project_id}`
+- **chat**: `POST /api/chat`, `GET /api/chat/history/{project_id}`, `POST /api/chat/voice`
 - **code_applications**: `GET /api/code-applications/{project_id}`, `GET /api/code-applications/{project_id}/pending`, `PATCH /api/code-applications/{application_id}/review`, `POST /api/code-applications/{project_id}/bulk-approve`
 - **codebook_versions**: `GET /api/codebook-versions/{project_id}`, `GET /api/codebook-versions/{project_id}/latest`, `POST /api/codebook-versions`, `GET /api/codebook-versions/detail/{version_id}`
 - **codebooks**: `GET /api/codebooks`, `POST /api/codebooks`, `GET /api/codebooks/{codebook_id}`, `PATCH /api/codebooks/{codebook_id}`, `DELETE /api/codebooks/{codebook_id}`, `POST /api/codes`, `PATCH /api/codes/{code_id}`, `DELETE /api/codes/{code_id}`
@@ -244,6 +244,7 @@ Generated from the repository on version `2026.04.10.5`. This document is meant 
 - Agents & Audit
 - Frontend Check
 - Mid-Execution Steering
+- Voice Transcription
 
 ### Simulation Scenario Matrix
 
@@ -318,6 +319,7 @@ Generated from the repository on version `2026.04.10.5`. This document is meant 
 - `71` — Plan And Execute
 - `72` — Circuit Breaker Health
 - `73` — A2A Debate And Reports
+- `74` — Voice Transcription
 
 ## What Agents Must Check Before Editing
 

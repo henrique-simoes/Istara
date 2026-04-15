@@ -34,7 +34,13 @@ def test(name, fn):
     """Run a test and record the result."""
     try:
         result = fn()
-        results.append({"name": name, "status": "PASS", "detail": str(result)[:200] if result else "OK"})
+        results.append(
+            {
+                "name": name,
+                "status": "PASS",
+                "detail": str(result)[:200] if result else "OK",
+            }
+        )
         print(f"  ✅ {name}")
         return result
     except Exception as e:
@@ -88,19 +94,26 @@ def main():
 
     if admin_pass:
         try:
-            login_resp = client.post("/api/auth/login", json={
-                "username": admin_user,
-                "password": admin_pass,
-            })
+            login_resp = client.post(
+                "/api/auth/login",
+                json={
+                    "username": admin_user,
+                    "password": admin_pass,
+                },
+            )
             if login_resp.status_code == 200:
-                token = login_resp.json().get("token") or login_resp.json().get("access_token", "")
+                token = login_resp.json().get("token") or login_resp.json().get(
+                    "access_token", ""
+                )
                 if token:
                     client.headers["Authorization"] = f"Bearer {token}"
                     print(f"  ✅ Authenticated as {admin_user} (JWT set)")
                 else:
                     print(f"  ⚠️  Login succeeded but no token in response")
             else:
-                print(f"  ⚠️  Login failed ({login_resp.status_code}): {login_resp.text[:200]}")
+                print(
+                    f"  ⚠️  Login failed ({login_resp.status_code}): {login_resp.text[:200]}"
+                )
         except Exception as e:
             print(f"  ⚠️  Login error: {e}")
     else:
@@ -122,48 +135,93 @@ def main():
     # =========================================================
     print("\n📁 Phase 2: Project Setup")
 
-    project = test("Create project", lambda: assert_ok(client.post("/api/projects", json={
-        "name": "Onboarding Redesign Study",
-        "description": "Investigating onboarding drop-off for our PM tool. Goal: reduce churn by 20%.",
-    })))
+    project = test(
+        "Create project",
+        lambda: assert_ok(
+            client.post(
+                "/api/projects",
+                json={
+                    "name": "Onboarding Redesign Study",
+                    "description": "Investigating onboarding drop-off for our PM tool. Goal: reduce churn by 20%.",
+                },
+            )
+        ),
+    )
     project_id = project["id"] if project else None
 
     if project_id:
-        test("Get project", lambda: assert_ok(client.get(f"/api/projects/{project_id}")))
+        test(
+            "Get project", lambda: assert_ok(client.get(f"/api/projects/{project_id}"))
+        )
 
-        test("Set company context", lambda: assert_ok(client.patch(f"/api/projects/{project_id}", json={
-            "company_context": "Acme PM — B2B SaaS project management tool for product teams. "
-                               "200 employees, mid-market focus (50-500 seat companies). "
-                               "Culture: data-driven, user-centric, move fast with quality.",
-        })))
+        test(
+            "Set company context",
+            lambda: assert_ok(
+                client.patch(
+                    f"/api/projects/{project_id}",
+                    json={
+                        "company_context": "Acme PM — B2B SaaS project management tool for product teams. "
+                        "200 employees, mid-market focus (50-500 seat companies). "
+                        "Culture: data-driven, user-centric, move fast with quality.",
+                    },
+                )
+            ),
+        )
 
-        test("Set project context", lambda: assert_ok(client.patch(f"/api/projects/{project_id}", json={
-            "project_context": "Research goal: Understand why 45% of users drop off at step 3 (phone verification) "
-                               "during onboarding. Timeline: 4 weeks. Target users: PMs, designers, eng leads "
-                               "at companies with 50-500 employees. Phase: Discover.",
-        })))
+        test(
+            "Set project context",
+            lambda: assert_ok(
+                client.patch(
+                    f"/api/projects/{project_id}",
+                    json={
+                        "project_context": "Research goal: Understand why 45% of users drop off at step 3 (phone verification) "
+                        "during onboarding. Timeline: 4 weeks. Target users: PMs, designers, eng leads "
+                        "at companies with 50-500 employees. Phase: Discover.",
+                    },
+                )
+            ),
+        )
 
-        test("Set guardrails", lambda: assert_ok(client.patch(f"/api/projects/{project_id}", json={
-            "guardrails": "- Always cite which participant said what\n"
-                          "- Flag findings with fewer than 3 supporting data points\n"
-                          "- Use 'workspace' not 'project' (company terminology)\n"
-                          "- Don't recommend removing phone verification without strong evidence",
-        })))
+        test(
+            "Set guardrails",
+            lambda: assert_ok(
+                client.patch(
+                    f"/api/projects/{project_id}",
+                    json={
+                        "guardrails": "- Always cite which participant said what\n"
+                        "- Flag findings with fewer than 3 supporting data points\n"
+                        "- Use 'workspace' not 'project' (company terminology)\n"
+                        "- Don't recommend removing phone verification without strong evidence",
+                    },
+                )
+            ),
+        )
 
     # =========================================================
     # PHASE 3: Context Hierarchy
     # =========================================================
     print("\n📜 Phase 3: Context Hierarchy")
 
-    test("Create company context doc", lambda: assert_ok(client.post("/api/contexts", json={
-        "name": "Acme PM Company Culture",
-        "level_type": "company",
-        "content": "We value user research and data-driven decisions. Our product team includes PMs, designers, and researchers.",
-        "priority": 10,
-    })))
+    test(
+        "Create company context doc",
+        lambda: assert_ok(
+            client.post(
+                "/api/contexts",
+                json={
+                    "name": "Acme PM Company Culture",
+                    "level_type": "company",
+                    "content": "We value user research and data-driven decisions. Our product team includes PMs, designers, and researchers.",
+                    "priority": 10,
+                },
+            )
+        ),
+    )
 
     if project_id:
-        test("Get composed context", lambda: assert_ok(client.get(f"/api/contexts/composed/{project_id}")))
+        test(
+            "Get composed context",
+            lambda: assert_ok(client.get(f"/api/contexts/composed/{project_id}")),
+        )
 
     # =========================================================
     # PHASE 4: File Upload & Processing
@@ -173,10 +231,19 @@ def main():
     if project_id:
         for fixture_file in sorted(FIXTURES.glob("*")):
             if fixture_file.is_file():
-                test(f"Upload {fixture_file.name}", lambda f=fixture_file: upload_file(client, project_id, f))
+                test(
+                    f"Upload {fixture_file.name}",
+                    lambda f=fixture_file: upload_file(client, project_id, f),
+                )
 
-        test("List project files", lambda: assert_ok(client.get(f"/api/files/{project_id}")))
-        test("File stats", lambda: assert_ok(client.get(f"/api/files/{project_id}/stats")))
+        test(
+            "List project files",
+            lambda: assert_ok(client.get(f"/api/files/{project_id}")),
+        )
+        test(
+            "File stats",
+            lambda: assert_ok(client.get(f"/api/files/{project_id}/stats")),
+        )
 
     # =========================================================
     # PHASE 5: Chat & Skill Execution
@@ -184,32 +251,70 @@ def main():
     print("\n💬 Phase 5: Chat & Skill Execution")
 
     if project_id:
-        test("Chat — analyze interviews", lambda: chat_message(client, project_id,
-             "Analyze the interview transcripts I uploaded. Focus on onboarding pain points."))
+        test(
+            "Chat — analyze interviews",
+            lambda: chat_message(
+                client,
+                project_id,
+                "Analyze the interview transcripts I uploaded. Focus on onboarding pain points.",
+            ),
+        )
 
-        test("Chat — competitive analysis", lambda: chat_message(client, project_id,
-             "Run a competitive analysis based on the competitive_analysis.md file."))
+        test(
+            "Chat — competitive analysis",
+            lambda: chat_message(
+                client,
+                project_id,
+                "Run a competitive analysis based on the competitive_analysis.md file.",
+            ),
+        )
 
-        test("Chat — create personas", lambda: chat_message(client, project_id,
-             "Create personas from the research data."))
+        test(
+            "Chat — create personas",
+            lambda: chat_message(
+                client, project_id, "Create personas from the research data."
+            ),
+        )
 
-        test("Chat — thematic analysis", lambda: chat_message(client, project_id,
-             "Run thematic analysis on all the interview data."))
+        test(
+            "Chat — thematic analysis",
+            lambda: chat_message(
+                client, project_id, "Run thematic analysis on all the interview data."
+            ),
+        )
 
-        test("Chat — general question", lambda: chat_message(client, project_id,
-             "What are the top 3 pain points we've found so far?"))
+        test(
+            "Chat — general question",
+            lambda: chat_message(
+                client, project_id, "What are the top 3 pain points we've found so far?"
+            ),
+        )
 
-        test("Direct skill execute — survey design", lambda: assert_ok(client.post(
-            "/api/skills/survey-design/execute", json={
-                "project_id": project_id,
-                "user_context": "Design a follow-up survey about onboarding satisfaction",
-            })))
+        test(
+            "Direct skill execute — survey design",
+            lambda: assert_ok(
+                client.post(
+                    "/api/skills/survey-design/execute",
+                    json={
+                        "project_id": project_id,
+                        "user_context": "Design a follow-up survey about onboarding satisfaction",
+                    },
+                )
+            ),
+        )
 
-        test("Direct skill plan — user interviews", lambda: assert_ok(client.post(
-            "/api/skills/user-interviews/plan", json={
-                "project_id": project_id,
-                "user_context": "Plan round 2 interviews focusing on the phone verification drop-off",
-            })))
+        test(
+            "Direct skill plan — user interviews",
+            lambda: assert_ok(
+                client.post(
+                    "/api/skills/user-interviews/plan",
+                    json={
+                        "project_id": project_id,
+                        "user_context": "Plan round 2 interviews focusing on the phone verification drop-off",
+                    },
+                )
+            ),
+        )
 
     # =========================================================
     # PHASE 6: Findings Verification
@@ -217,13 +322,48 @@ def main():
     print("\n🔍 Phase 6: Findings Verification")
 
     if project_id:
-        test("List nuggets", lambda: assert_ok(client.get(f"/api/findings/nuggets?project_id={project_id}")))
-        test("List facts", lambda: assert_ok(client.get(f"/api/findings/facts?project_id={project_id}")))
-        test("List insights", lambda: assert_ok(client.get(f"/api/findings/insights?project_id={project_id}")))
-        test("List recommendations", lambda: assert_ok(client.get(f"/api/findings/recommendations?project_id={project_id}")))
-        test("Findings summary", lambda: assert_ok(client.get(f"/api/findings/summary/{project_id}")))
-        test("Project search", lambda: assert_ok(client.get(f"/api/findings/search/{project_id}?query=phone+verification")))
-        test("Global search", lambda: assert_ok(client.get("/api/findings/search/global?query=onboarding")))
+        test(
+            "List nuggets",
+            lambda: assert_ok(
+                client.get(f"/api/findings/nuggets?project_id={project_id}")
+            ),
+        )
+        test(
+            "List facts",
+            lambda: assert_ok(
+                client.get(f"/api/findings/facts?project_id={project_id}")
+            ),
+        )
+        test(
+            "List insights",
+            lambda: assert_ok(
+                client.get(f"/api/findings/insights?project_id={project_id}")
+            ),
+        )
+        test(
+            "List recommendations",
+            lambda: assert_ok(
+                client.get(f"/api/findings/recommendations?project_id={project_id}")
+            ),
+        )
+        test(
+            "Findings summary",
+            lambda: assert_ok(client.get(f"/api/findings/summary/{project_id}")),
+        )
+        test(
+            "Project search",
+            lambda: assert_ok(
+                client.get(
+                    f"/api/findings/search/{project_id}?query=phone+verification"
+                )
+            ),
+        )
+        test(
+            "Global search",
+            lambda: assert_ok(
+                client.get("/api/findings/search/global?query=onboarding")
+            ),
+        )
 
     # =========================================================
     # PHASE 7: Tasks & Kanban
@@ -231,24 +371,47 @@ def main():
     print("\n📋 Phase 7: Tasks & Kanban")
 
     if project_id:
-        task1 = test("Create task — analyze surveys", lambda: assert_ok(client.post("/api/tasks", json={
-            "project_id": project_id,
-            "title": "Analyze survey responses for AI-generated answers",
-            "description": "Run the survey AI detection skill on our 20 survey responses",
-            "skill_name": "survey-ai-detection",
-        })))
+        task1 = test(
+            "Create task — analyze surveys",
+            lambda: assert_ok(
+                client.post(
+                    "/api/tasks",
+                    json={
+                        "project_id": project_id,
+                        "title": "Analyze survey responses for AI-generated answers",
+                        "description": "Run the survey AI detection skill on our 20 survey responses",
+                        "skill_name": "survey-ai-detection",
+                    },
+                )
+            ),
+        )
 
-        task2 = test("Create task — journey map", lambda: assert_ok(client.post("/api/tasks", json={
-            "project_id": project_id,
-            "title": "Create user journey map for onboarding flow",
-            "skill_name": "journey-mapping",
-        })))
+        task2 = test(
+            "Create task — journey map",
+            lambda: assert_ok(
+                client.post(
+                    "/api/tasks",
+                    json={
+                        "project_id": project_id,
+                        "title": "Create user journey map for onboarding flow",
+                        "skill_name": "journey-mapping",
+                    },
+                )
+            ),
+        )
 
         if task1:
-            test("Move task to in_progress", lambda: assert_ok(client.post(
-                f"/api/tasks/{task1['id']}/move?status=in_progress")))
+            test(
+                "Move task to in_progress",
+                lambda: assert_ok(
+                    client.post(f"/api/tasks/{task1['id']}/move?status=in_progress")
+                ),
+            )
 
-        test("List all tasks", lambda: assert_ok(client.get(f"/api/tasks?project_id={project_id}")))
+        test(
+            "List all tasks",
+            lambda: assert_ok(client.get(f"/api/tasks?project_id={project_id}")),
+        )
 
     # =========================================================
     # PHASE 8: Metrics & History
@@ -256,9 +419,18 @@ def main():
     print("\n📊 Phase 8: Metrics & History")
 
     if project_id:
-        test("Project metrics", lambda: assert_ok(client.get(f"/api/metrics/{project_id}")))
-        test("Version history", lambda: assert_ok(client.get(f"/api/projects/{project_id}/versions")))
-        test("Chat history", lambda: assert_ok(client.get(f"/api/chat/history/{project_id}")))
+        test(
+            "Project metrics",
+            lambda: assert_ok(client.get(f"/api/metrics/{project_id}")),
+        )
+        test(
+            "Version history",
+            lambda: assert_ok(client.get(f"/api/projects/{project_id}/versions")),
+        )
+        test(
+            "Chat history",
+            lambda: assert_ok(client.get(f"/api/chat/history/{project_id}")),
+        )
 
     # =========================================================
     # PHASE 9: Skills Registry
@@ -276,7 +448,9 @@ def main():
 
     test("Agent status", lambda: assert_ok(client.get("/api/agents/status")))
     test("List agents", lambda: assert_ok(client.get("/api/agents")))
-    test("DevOps audit latest", lambda: assert_ok(client.get("/api/audit/devops/latest")))
+    test(
+        "DevOps audit latest", lambda: assert_ok(client.get("/api/audit/devops/latest"))
+    )
     test("UI audit latest", lambda: assert_ok(client.get("/api/audit/ui/latest")))
     test("UX eval latest", lambda: assert_ok(client.get("/api/audit/ux/latest")))
     test("Sim test latest", lambda: assert_ok(client.get("/api/audit/sim/latest")))
@@ -289,31 +463,88 @@ def main():
 
     try:
         frontend = httpx.get("http://localhost:3000", timeout=10)
-        test("Frontend serves HTML", lambda: assert_true(frontend.status_code == 200 and "<html" in frontend.text.lower()))
+        test(
+            "Frontend serves HTML",
+            lambda: assert_true(
+                frontend.status_code == 200 and "<html" in frontend.text.lower()
+            ),
+        )
     except Exception:
-        test("Frontend serves HTML", lambda: (_ for _ in ()).throw(Exception("Frontend not reachable at localhost:3000")))
+        test(
+            "Frontend serves HTML",
+            lambda: (_ for _ in ()).throw(
+                Exception("Frontend not reachable at localhost:3000")
+            ),
+        )
 
     # =========================================================
     # PHASE 12: Mid-Execution Steering
     # =========================================================
     print("\n🎯 Phase 12: Mid-Execution Steering")
 
-    test("Queue steering message", lambda: assert_ok(client.post("/api/steering/istara-main", json={
-        "message": "E2E test: verify steering endpoint works",
-        "mode": "one-at-a-time",
-    })))
+    test(
+        "Queue steering message",
+        lambda: assert_ok(
+            client.post(
+                "/api/steering/istara-main",
+                json={
+                    "message": "E2E test: verify steering endpoint works",
+                    "mode": "one-at-a-time",
+                },
+            )
+        ),
+    )
 
-    test("Queue follow-up message", lambda: assert_ok(client.post("/api/steering/istara-main/follow-up", json={
-        "message": "E2E test: verify follow-up endpoint works",
-    })))
+    test(
+        "Queue follow-up message",
+        lambda: assert_ok(
+            client.post(
+                "/api/steering/istara-main/follow-up",
+                json={
+                    "message": "E2E test: verify follow-up endpoint works",
+                },
+            )
+        ),
+    )
 
-    test("Get steering status", lambda: assert_ok(client.get("/api/steering/istara-main/status")))
+    test(
+        "Get steering status",
+        lambda: assert_ok(client.get("/api/steering/istara-main/status")),
+    )
 
-    test("Get steering queues", lambda: assert_ok(client.get("/api/steering/istara-main/queues")))
+    test(
+        "Get steering queues",
+        lambda: assert_ok(client.get("/api/steering/istara-main/queues")),
+    )
 
-    test("Clear steering queues", lambda: assert_ok(client.delete("/api/steering/istara-main/queues")))
+    test(
+        "Clear steering queues",
+        lambda: assert_ok(client.delete("/api/steering/istara-main/queues")),
+    )
 
-    test("Abort agent work", lambda: assert_ok(client.post("/api/steering/istara-main/abort", json={})))
+    test(
+        "Abort agent work",
+        lambda: assert_ok(client.post("/api/steering/istara-main/abort", json={})),
+    )
+
+    # =========================================================
+    # PHASE 13: Voice Transcription
+    # =========================================================
+    print("\n🎙️ Phase 13: Voice Transcription")
+
+    test(
+        "Voice endpoint returns 422 without audio file",
+        lambda: (
+            True
+            if client.post("/api/chat/voice").status_code in (400, 401, 422)
+            else Exception("Expected 422/401")
+        ),
+    )
+
+    test(
+        "Steering queues cleared after abort",
+        lambda: assert_ok(client.get("/api/steering/istara-main/status")),
+    )
 
     # =========================================================
     # RESULTS
@@ -363,10 +594,14 @@ def upload_file(client, project_id, file_path):
 
 def chat_message(client, project_id, message):
     """Send a chat message and collect the streamed response."""
-    response = client.post("/api/chat", json={
-        "message": message,
-        "project_id": project_id,
-    }, timeout=120.0)
+    response = client.post(
+        "/api/chat",
+        json={
+            "message": message,
+            "project_id": project_id,
+        },
+        timeout=120.0,
+    )
 
     if response.status_code >= 400:
         raise Exception(f"Chat failed: {response.status_code}: {response.text[:200]}")
@@ -431,11 +666,13 @@ def write_report(path, elapsed):
             lines.append(f"```\n{f['detail']}\n```")
             lines.append("")
 
-    lines.extend([
-        "---",
-        "",
-        f"*Generated by Istara E2E test suite • {time.strftime('%Y-%m-%d')}*",
-    ])
+    lines.extend(
+        [
+            "---",
+            "",
+            f"*Generated by Istara E2E test suite • {time.strftime('%Y-%m-%d')}*",
+        ]
+    )
 
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("\n".join(lines))

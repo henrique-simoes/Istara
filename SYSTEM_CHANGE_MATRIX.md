@@ -120,7 +120,7 @@ For any non-trivial change, check these six surfaces:
 | Chat | sessions, agents, RAG/context attachments, streaming behavior, evidence links, auth expiry flow |
 | Findings | evidence chain integrity, deletion/linking rules, codebook/code application/report views, Laws/Interfaces consumers |
 | Tasks/Kanban | agent assignment, locking, verification, document attachment, websocket progress |
-| Documents/Interviews/Context | upload pipeline, file previews, browser/audio support, memory/RAG indexing |
+| Documents/Interviews/Context | upload pipeline, file previews, browser/audio support, memory/RAG indexing, voice transcription pipeline |
 | Interfaces | Figma/Stitch config, findings seeding, generated screens, handoff contracts |
 | Integrations | messaging, surveys, deployments, MCP policy/security, setup wizards |
 | Loops/Autoresearch | scheduler, configs, experiment history, notifications |

@@ -39,7 +39,7 @@
   <p><strong>Atribuição Multi-Agente:</strong> Escolha o melhor agente para o trabalho. Direcione tarefas para especialistas como Pixel para auditorias de UI ou Sage para avaliação de UX.</p>
   <img src="Screenshots/Screenshot%202026-04-02%20at%2016.38.54.png" width="600" />
   
-  <p><strong>Entrevistas e Transcrições:</strong> Istara pode transcrever, categorizar, analisar, relacionar e gerar relatórios de várias entrevistas ao mesmo tempo. Encontre insights compartilhados em todo o seu grupo de participantes!</p>
+  <p><strong>Entrevistas e Transcrições:</strong> Istara pode transcrever, categorizar, analisar, relacionar e gerar relatórios de várias entrevistas ao mesmo tempo — incluindo mensagens de voz do WhatsApp e Telegram com transcrição automática Whisper e scoring de confiabilidade inter-codificador. Encontre insights compartilhados em todo o seu grupo de participantes!</p>
   <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.01.png" width="600" />
   
   <p><strong>Motor de Contexto:</strong> Baseie seus agentes na cultura da sua empresa, objetivos do projeto e diretrizes específicas. Quanto mais eles sabem, melhor eles performam.</p>

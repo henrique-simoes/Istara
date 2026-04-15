@@ -26,6 +26,14 @@
 - Verify embedding model availability for RAG operations
 - Monitor for inference quality degradation (timeouts, truncated responses, error rates)
 
+### Voice Transcription Monitoring
+- Monitor Whisper model availability and loading status (base model for primary, tiny model for ICR)
+- Track audio conversion pipeline health (ffmpeg availability, pydub fallback)
+- Flag transcriptions with low ICR confidence (< 0.6 kappa) for human review
+- Monitor voice message processing latency from Telegram/WhatsApp channels
+- Alert on transcription error rates exceeding threshold (> 10% failures = high severity)
+- Verify audio file cleanup after transcription (temp file garbage collection)
+
 ### Vector Store Health
 - Check per-project vector store table existence and accessibility
 - Monitor embedding count and growth rate per project

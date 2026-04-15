@@ -1914,6 +1914,24 @@ Switching between SQLite (local mode) and PostgreSQL (team mode) no longer risks
 - Scheduler deduplication: `is_running` flag prevents concurrent execution
 - Graceful shutdown: 30s drain period for in-flight tasks
 
+### Voice Transcription Pipeline (v2026.04.14)
+
+Istara now supports voice input across the entire platform with automatic transcription, inter-coder reliability scoring, and atomic research chain integration.
+
+**Components:**
+- `backend/app/core/transcription.py` — Whisper-based local transcription with ICR consensus
+- `POST /api/chat/voice` — Chat voice input endpoint
+- `backend/app/channels/telegram.py` — Auto-transcribes Telegram voice messages
+- `backend/app/channels/whatsapp.py` — Auto-transcribes WhatsApp audio messages
+- `frontend/src/components/chat/ChatView.tsx` — Mic button on chat input
+- `frontend/src/lib/api.ts` → `chat.transcribeVoice()` — Voice upload API client
+
+**Pipeline:** Audio input → format conversion (OGG/MP3→WAV 16kHz mono) → Whisper transcription (base model) → alternative transcription (tiny model) → ICR consensus (Fleiss' Kappa + cosine similarity) → auto-tagging → review flagging if needed → store in Interviews + Documents → feed into Atomic Research chain.
+
+**Inter-Coder Reliability (mandatory):** Every transcription passes through ICR with Fleiss' Kappa between primary and alternative transcriptions. If confidence is "low" or "insufficient", the transcription is flagged for human review with `needs_review: true`.
+
+**Dependencies:** `openai-whisper>=20240930`, `pydub>=0.25.1`, `ffmpeg` (system, preferred) or pydub fallback.
+
 ### Interfaces Menu & Research→Design Bridge
 
 The Interfaces menu creates a bridge between UX Research and Product Design within Istara. It provides:
