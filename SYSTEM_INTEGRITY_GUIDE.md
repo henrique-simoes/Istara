@@ -2137,6 +2137,8 @@ But if needed:
 | Change Desktop App | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | △ | ✗ | ✓ |
 | Change UI / User Flow | ✗ | ✗ | △ | ✓ | △ | ✓ | △ | ✗ | ✗ |
 | Add Voice Transcription | ✗ | ✗ | ✓ | ✓ | ✓ | △ | ✗ | ✗ | ✓ (Whisper/pydub) |
+| Add Browser UX Research Skills | ✗ | ✗ | ✗ | ✓ | ✓ | △ | ✗ | ✗ | ✗ |
+| Add Research Quality Evaluation | ✗ | ✗ | ✗ | ✓ | △ | △ | ✗ | ✗ | ✗ |
 | Add Audit Middleware | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ | ✗ |
 | Add Participant Simulation | ✗ | ✗ | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ |
 | Add Telemetry Spans | ✗ | ✗ | ✗ | ✓ | ✗ | △ | ✗ | ✗ | ✓ |

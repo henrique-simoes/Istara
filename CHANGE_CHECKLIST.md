@@ -404,6 +404,26 @@ const scenarioFiles = [
 - [ ] `validation.metrics(projectId)` API client method added to `frontend/src/lib/api.ts`
 - [ ] Persona files updated (istara-main: Research Quality Evaluation)
 
+### Adding Game-Theory Participant Simulation
+
+- [ ] `backend/app/core/participant_simulation.py` implements 7 strategies (cooperative, selfish, reciprocating, random, satisficing, social_desirability, adversarial)
+- [ ] Payoff matrices for Prisoner's Dilemma and Stag Hunt with Nash equilibrium conditions
+- [ ] `backend/app/skills/definitions/participant-simulation.json` skill definition (define/mixed)
+- [ ] SCOPE_MAP updated: `participant-simulation` → `Simulation Analysis`
+- [ ] Task routing aliases added (`participant simulation`, `game theory`, `simulation`)
+- [ ] Simulation scenario: `75-participant-simulation.mjs`
+- [ ] Unit tests cover strategies, payoffs, profiles, validation, simulation rounds
+- [ ] istara-sim persona updated with game-theory simulation capabilities
+
+### Adding Audit Log Middleware
+
+- [ ] `backend/app/core/audit_middleware.py` AuditLog model + AuditLogMiddleware
+- [ ] Skips health/docs/static/OPTIONS/MCP routes
+- [ ] `GET /api/audit/logs` endpoint with filtering and pagination
+- [ ] Registered in `database.py` init_db() for table creation
+- [ ] Registered in `main.py` middleware stack
+- [ ] Unit tests for model, skip paths, table name
+
 ### Adding Observability — Telemetry Spans & Agent Hooks
 
 - [ ] `backend/app/models/telemetry_span.py` defines TelemetrySpan model (no user content, only metadata)

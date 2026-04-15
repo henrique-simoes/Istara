@@ -119,8 +119,12 @@ For any non-trivial change, check these six surfaces:
 |---|---|
 | Chat | sessions, agents, RAG/context attachments, streaming behavior, evidence links, auth expiry flow |
 | Findings | evidence chain integrity, deletion/linking rules, codebook/code application/report views, Laws/Interfaces consumers |
-| Tasks/Kanban | agent assignment, locking, verification, document attachment, websocket progress |
+| Tasks/Kanban | agent assignment, locking, verification, document attachment, websocket progress, validation_method/consensus_score badges |
 | Documents/Interviews/Context | upload pipeline, file previews, browser/audio support, memory/RAG indexing, voice transcription pipeline |
+| Skills/Browser UX | browse_website system action, task URL pipeline (SkillInput.urls), Playwright MCP, heuristic/accessibility/benchmark skill definitions |
+| Validation/Quality | consensus engine, adaptive validation selector, validation_executor, ensemble health view, quality evaluation skill, model intelligence dashboard |
+| Simulation/Participants | participant_simulation module, game-theory strategies, istara-sim persona, simulation scenarios, payoff matrices |
+| Observability/Telemetry | telemetry_spans table, agent_hooks system, ModelSkillStats production path, model-intelligence API, audit_log table, devops monitoring |
 | Interfaces | Figma/Stitch config, findings seeding, generated screens, handoff contracts |
 | Integrations | messaging, surveys, deployments, MCP policy/security, setup wizards |
 | Loops/Autoresearch | scheduler, configs, experiment history, notifications |
