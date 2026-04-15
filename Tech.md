@@ -1947,7 +1947,25 @@ Three skill definitions that wrap the existing `browse_website` system action in
 
 **Task routing aliases:** `ux audit` → `browser-ux-audit`, `site audit` → `browser-ux-audit`, `accessibility check` → `browser-accessibility-check`, `wcag` / `a11y` → `browser-accessibility-check`, `competitive benchmark` / `competitor audit` → `browser-competitive-benchmark`
 
-### Interfaces Menu & Research→Design Bridge
+### Research Quality Evaluation (v2026.04.15)
+
+Formalizes Istara's existing LLM-as-Judge validation pipeline (AdaptiveSelector, ValidationExecutor, Fleiss' Kappa consensus) into a callable user-facing skill and visible metrics.
+
+**Skill: `research-quality-evaluation`** (deliver/mixed)
+- Invokes the existing validation pipeline: adversarial review (5-dimension rubric), dual-run consistency, self-MoA RAG verification, debate consensus
+- Assesses chain integrity (nuggets → facts → insights → recommendations), completeness, methodology quality
+- Uses adaptive method selection via `AdaptiveSelector` — the system learns which validation strategy works best per project/skill/agent
+- SCOPE_MAP: `research-quality-evaluation` → `Quality Evaluation`
+
+**API: `GET /api/metrics/{project_id}/validation`**
+- Returns per-method adaptive validation stats from `MethodMetric` model (success_rate, avg_consensus_score, weight, last_used)
+- Returns recent per-task validations (validation_method, consensus_score, skill_name)
+- Returns confidence thresholds by finding type (nugget 0.70, fact 0.65, insight 0.55, rec 0.50)
+
+**Frontend visibility:**
+- EnsembleHealthView: wired to real `/api/metrics/{id}/validation` data instead of stub
+- KanbanBoard task cards: color-coded consensus badge (green ≥ 70%, yellow ≥ 50%, orange ≥ 30%, red < 30%) with tooltip showing validation method + κ score
+- Task type in `types.ts`: added `validation_method` and `consensus_score` fields
 
 The Interfaces menu creates a bridge between UX Research and Product Design within Istara. It provides:
 

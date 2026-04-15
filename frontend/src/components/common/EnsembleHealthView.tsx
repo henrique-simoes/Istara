@@ -13,10 +13,42 @@ import {
   HelpCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { validation } from "@/lib/api";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-interface MethodStats {
+interface MethodStatRow {
+  method: string;
+  skill_name: string;
+  agent_id: string;
+  total_runs: number;
+  success_count: number;
+  fail_count: number;
+  avg_consensus_score: number;
+  success_rate: number;
+  last_used: string | null;
+  weight: number;
+}
+
+interface RecentValidation {
+  task_id: string;
+  task_title: string;
+  skill_name: string;
+  validation_method: string;
+  consensus_score: number | null;
+  status: string;
+  updated_at: string | null;
+}
+
+interface ValidationData {
+  project_id: string;
+  methods: { id: string; name: string; description: string }[];
+  method_stats: MethodStatRow[];
+  recent_validations: RecentValidation[];
+  confidence_thresholds: Record<string, number>;
+}
+
+interface MethodStat {
   method: string;
   skill_name: string;
   agent_id: string;
@@ -87,9 +119,11 @@ function MetricLabel({ label, tooltip }: { label: string; tooltip: string }) {
 
 export default function EnsembleHealthView() {
   const [projectId, setProjectId] = useState<string | null>(null);
-  const [methods, setMethods] = useState<MethodStats[]>([]);
+  const [methods, setMethods] = useState<MethodStat[]>([]);
   const [loading, setLoading] = useState(false);
   const [expandedMethod, setExpandedMethod] = useState<string | null>(null);
+  const [thresholds, setThresholds] = useState<Record<string, number>>({ nugget: 0.70, fact: 0.65, insight: 0.55, recommendation: 0.50 });
+  const [recentValidations, setRecentValidations] = useState<RecentValidation[]>([]);
 
   useEffect(() => {
     // Get active project from store
@@ -103,17 +137,26 @@ export default function EnsembleHealthView() {
   useEffect(() => {
     if (!projectId) return;
     setLoading(true);
-    // Fetch adaptive learning stats
-    const _token = localStorage.getItem("istara_token");
-    const _headers: Record<string, string> = {};
-    if (_token) _headers["Authorization"] = `Bearer ${_token}`;
-    fetch(`${API_BASE}/api/compute/stats`, { headers: _headers })
-      .then((r) => r.json())
-      .then((data) => {
-        // For now, show compute stats + method overview
+    validation.metrics(projectId)
+      .then((data: ValidationData) => {
+        const stats: MethodStat[] = data.method_stats.map((s) => ({
+          method: s.method,
+          skill_name: s.skill_name,
+          agent_id: s.agent_id,
+          total_runs: s.total_runs,
+          success_rate: s.success_rate,
+          avg_consensus_score: s.avg_consensus_score,
+          last_used: s.last_used || "",
+          recency_weight: s.weight,
+        }));
+        setMethods(stats);
+        setThresholds(data.confidence_thresholds);
+        setRecentValidations(data.recent_validations);
         setLoading(false);
       })
-      .catch(() => setLoading(false));
+      .catch(() => {
+        setLoading(false);
+      });
   }, [projectId]);
 
   const VALIDATION_METHODS = [
@@ -192,10 +235,10 @@ export default function EnsembleHealthView() {
         </h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {[
-            { type: "Nuggets", threshold: 0.70, color: "bg-purple-100 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300" },
-            { type: "Facts", threshold: 0.65, color: "bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300" },
-            { type: "Insights", threshold: 0.55, color: "bg-amber-100 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300" },
-            { type: "Recommendations", threshold: 0.50, color: "bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-300" },
+            { type: "Nuggets", threshold: thresholds.nugget || 0.70, color: "bg-purple-100 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300" },
+            { type: "Facts", threshold: thresholds.fact || 0.65, color: "bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300" },
+            { type: "Insights", threshold: thresholds.insight || 0.55, color: "bg-amber-100 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300" },
+            { type: "Recommendations", threshold: thresholds.recommendation || 0.50, color: "bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-300" },
           ].map((item) => (
             <div key={item.type} className={cn("rounded-lg p-3 text-center", item.color)}>
               <div className="text-sm font-medium">{item.type}</div>
@@ -335,6 +378,29 @@ export default function EnsembleHealthView() {
           );
         })}
       </div>
+
+      {/* Recent Validations */}
+      {recentValidations.length > 0 && (
+        <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4">
+          <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
+            Recent Validations
+          </h3>
+          <div className="space-y-2 max-h-48 overflow-y-auto">
+            {recentValidations.slice(0, 10).map((v) => {
+              const score = v.consensus_score || 0;
+              return (
+                <div key={v.task_id} className="flex items-center gap-3 text-xs">
+                  <span className={cn("font-mono px-1.5 py-0.5 rounded", score >= 0.7 ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300" : score >= 0.5 ? "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300" : score >= 0.3 ? "bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300" : "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300")}>
+                    {score > 0 ? `${Math.round(score * 100)}%` : "—"}
+                  </span>
+                  <span className="flex-1 truncate text-slate-700 dark:text-slate-300">{v.task_title || v.task_id.slice(0, 8)}</span>
+                  <span className="text-slate-400 dark:text-slate-500 shrink-0">{v.validation_method?.replace("_", " ")}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Adaptive Learning Info */}
       <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
