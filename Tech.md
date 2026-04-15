@@ -1967,6 +1967,34 @@ Formalizes Istara's existing LLM-as-Judge validation pipeline (AdaptiveSelector,
 - KanbanBoard task cards: color-coded consensus badge (green ≥ 70%, yellow ≥ 50%, orange ≥ 30%, red < 30%) with tooltip showing validation method + κ score
 - Task type in `types.ts`: added `validation_method` and `consensus_score` fields
 
+### Game-Theory Participant Simulation (v2026.04.15)
+
+Enhances the `istara-sim` (Echo) persona with game-theory behavioral models for simulating participant behavior in UX research scenarios.
+
+**Architecture:** `backend/app/core/participant_simulation.py` provides:
+- 7 behavioral strategies: cooperative, selfish, reciprocating, random, satisficing (Simon 1956), social_desirability, adversarial
+- Prisoner's Dilemma payoff matrix (T > R > P > S, 2R > T + S)
+- Stag Hunt payoff matrix (Rousseau/Skyrms 2004 coordination game)
+- `ParticipantProfile` dataclass with behavioral traits: patience, honesty_bias, social_desirability_bias, tech_savviness, engagement_level, risk_aversion, satisficing_threshold
+- `choose_action()` implements bounded rationality — noise proportional to `(1 - engagement) × (1 - patience)`
+- `simulate_response_mode()` determines how a participant responds: honest, strategic, biased, withheld, exaggerated
+- `generate_participant_cohort()` creates diverse cohorts with configurable strategy distributions
+
+**Skill:** `participant-simulation` (define/mixed) maps game-theory constructs to UX research implications — Nash equilibrium analysis, satisficing behavior detection, social desirability bias identification, engagement decay tracking.
+
+**SCOPE_MAP:** `participant-simulation` → `Simulation Analysis`
+**Task routing aliases:** `participant simulation`, `game theory`, `simulation`
+
+### Audit Log Middleware (v2026.04.15)
+
+General-purpose audit trail for all API requests. Fills the gap where only MCP tool calls had logging (`mcp_audit_log`).
+
+**Model:** `AuditLog` (SQLite `audit_log` table) captures: `user_id`, `method`, `path`, `status_code`, `duration_ms`, `ip_address`, `project_id`, `timestamp`. No user content stored.
+
+**Middleware:** `AuditLogMiddleware` registered in `main.py` as FastAPI middleware. Skips `/docs`, `/health`, `/openapi.json`, OPTIONS requests, and MCP server paths.
+
+**API:** `GET /api/audit/logs?limit=100&offset=0&user_id=&project_id=&method=&path_prefix=` returns paginated, filterable audit entries.
+
 ### Observability: Telemetry Spans & Agent Hooks (v2026.04.15)
 
 Local-first, zero-trust observability system. **No phone-home by default.** All telemetry data stays on the user's machine.
