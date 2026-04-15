@@ -54,6 +54,7 @@ from app.api.websocket import (
 from app.core.checkpoint import create_checkpoint, update_checkpoint, complete_checkpoint
 from app.skills.registry import registry
 from app.skills.base import SkillInput, SkillOutput
+from app.core.agent_hooks import agent_hooks
 from app.skills.skill_manager import skill_manager
 
 logger = logging.getLogger(__name__)
@@ -737,7 +738,22 @@ class AgentOrchestrator:
 
         await broadcast_task_progress(task.id, 0.3, f"Running {skill.display_name}...")
 
+        trace_id = __import__("uuid").uuid4().hex[:36]
+
         try:
+            await agent_hooks.fire(
+                "pre_task",
+                {
+                    "trace_id": trace_id,
+                    "skill_name": skill.name,
+                    "model_name": getattr(self, "model_name", ""),
+                    "agent_id": self.agent_id,
+                    "project_id": project.id,
+                    "task_id": task.id,
+                    "temperature": 0.3,
+                },
+            )
+
             # Checkpoint: executing
             await update_checkpoint(db, task.id, "executing")
 
@@ -749,6 +765,21 @@ class AgentOrchestrator:
                     success=False, summary="Skill timed out after 5 minutes.", errors=["timeout"]
                 )
                 logger.warning(f"Skill {skill.name} timed out for task {task.id}")
+
+            await agent_hooks.fire(
+                "post_task",
+                {
+                    "trace_id": trace_id,
+                    "skill_name": skill.name,
+                    "model_name": getattr(self, "model_name", ""),
+                    "agent_id": self.agent_id,
+                    "project_id": project.id,
+                    "task_id": task.id,
+                    "temperature": 0.3,
+                    "success": output.success,
+                    "quality_score": getattr(output, "quality_score", None),
+                },
+            )
 
             # ── Ensemble validation (if available) ──
             # Validates findings using multi-perspective methods before storing.
@@ -812,6 +843,22 @@ class AgentOrchestrator:
                         )
                         logger.info(
                             f"Validation [{method}]: score={val_result.consensus.agreement_score:.2f}"
+                        )
+
+                        await agent_hooks.fire(
+                            "post_validation",
+                            {
+                                "trace_id": trace_id,
+                                "skill_name": skill.name,
+                                "model_name": getattr(self, "model_name", ""),
+                                "agent_id": self.agent_id,
+                                "project_id": project.id,
+                                "task_id": task.id,
+                                "validation_method": method,
+                                "validation_passed": val_result.consensus.agreement_score >= 0.5,
+                                "consensus_score": val_result.consensus.agreement_score,
+                                "validation_quality": val_result.consensus.agreement_score,
+                            },
                         )
             except Exception as e:
                 logger.debug(f"Ensemble validation skipped: {e}")
@@ -883,6 +930,21 @@ class AgentOrchestrator:
                 task.progress = 1.0
                 task.agent_notes = output.summary
                 await db.commit()
+
+                await agent_hooks.fire(
+                    "on_completion",
+                    {
+                        "trace_id": trace_id,
+                        "skill_name": skill.name,
+                        "model_name": getattr(self, "model_name", ""),
+                        "agent_id": self.agent_id,
+                        "project_id": project.id,
+                        "task_id": task.id,
+                        "success": True,
+                        "final_quality": quality_score,
+                        "total_duration_ms": 0,
+                    },
+                )
 
                 await broadcast_task_progress(task.id, 1.0, "Complete — ready for review.")
                 await self._persist_agent_state(AgentState.IDLE)
@@ -972,6 +1034,23 @@ class AgentOrchestrator:
         except Exception as e:
             error_msg = str(e)
             logger.error(f"Skill execution failed for task {task.id}: {error_msg}")
+
+            await agent_hooks.fire(
+                "on_error",
+                {
+                    "trace_id": trace_id
+                    if "trace_id" in dir()
+                    else __import__("uuid").uuid4().hex[:36],
+                    "skill_name": skill.name,
+                    "model_name": getattr(self, "model_name", ""),
+                    "agent_id": self.agent_id,
+                    "project_id": project.id,
+                    "task_id": task.id,
+                    "operation": "skill_execute",
+                    "error_type": type(e).__name__,
+                    "error_message": error_msg[:500],
+                },
+            )
 
             # Check if we have a known resolution for this error type
             resolution_hint = ""

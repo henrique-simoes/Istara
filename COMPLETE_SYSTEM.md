@@ -18,9 +18,9 @@ Generated from the repository on version `2026.04.10.6`. This document is meant 
 
 ## Repository Architecture Snapshot
 
-- FastAPI backend with 38 route modules and 366 detected endpoints.
+- FastAPI backend with 38 route modules and 367 detected endpoints.
 - Next.js frontend with 22 mounted views and 15 Zustand stores.
-- 41 SQLAlchemy models in `backend/app/models`.
+- 42 SQLAlchemy models in `backend/app/models`.
 - 6 tracked persona directories and 55 JSON-defined skills.
 - 73 Playwright simulation scenarios plus 14 Python e2e phases.
 
@@ -52,7 +52,7 @@ Generated from the repository on version `2026.04.10.6`. This document is meant 
 | `mcp.py` | `/` | 17 |
 | `memory.py` | `/` | 5 |
 | `meta_hyperagent.py` | `/` | 9 |
-| `metrics.py` | `/` | 2 |
+| `metrics.py` | `/` | 3 |
 | `notifications.py` | `/` | 7 |
 | `projects.py` | `/` | 15 |
 | `reports.py` | `/reports` | 1 |
@@ -93,7 +93,7 @@ Generated from the repository on version `2026.04.10.6`. This document is meant 
 - **mcp**: `GET /api/mcp/server/status`, `POST /api/mcp/server/toggle`, `GET /api/mcp/server/policy`, `PATCH /api/mcp/server/policy`, `GET /api/mcp/server/audit`, `GET /api/mcp/server/exposure`, `GET /api/mcp/clients`, `POST /api/mcp/clients`, `GET /api/mcp/clients/tools`, `DELETE /api/mcp/clients/{server_id}`, `POST /api/mcp/clients/{server_id}/discover`, `GET /api/mcp/clients/{server_id}/tools`, `POST /api/mcp/clients/{server_id}/call`, `GET /api/mcp/clients/{server_id}/health`, `GET /api/mcp/featured`, `GET /api/mcp/featured/{server_id}`, `POST /api/mcp/featured/{server_id}/connect`
 - **memory**: `GET /api/memory/{project_id}`, `GET /api/memory/{project_id}/search`, `GET /api/memory/{project_id}/stats`, `GET /api/memory/{project_id}/agent/{agent_id}/notes`, `DELETE /api/memory/{project_id}/source/{source_name:path}`
 - **meta_hyperagent**: `GET /api/meta-hyperagent/status`, `GET /api/meta-hyperagent/proposals`, `POST /api/meta-hyperagent/proposals/{proposal_id}/approve`, `POST /api/meta-hyperagent/proposals/{proposal_id}/reject`, `GET /api/meta-hyperagent/variants`, `POST /api/meta-hyperagent/variants/{variant_id}/revert`, `POST /api/meta-hyperagent/variants/{variant_id}/confirm`, `GET /api/meta-hyperagent/observations`, `POST /api/meta-hyperagent/toggle`
-- **metrics**: `GET /api/metrics/{project_id}`, `GET /api/metrics/{project_id}/validation`
+- **metrics**: `GET /api/metrics/{project_id}`, `GET /api/metrics/{project_id}/validation`, `GET /api/metrics/{project_id}/model-intelligence`
 - **notifications**: `GET /api/notifications`, `GET /api/notifications/unread-count`, `POST /api/notifications/{notification_id}/read`, `POST /api/notifications/read-all`, `DELETE /api/notifications/{notification_id}`, `GET /api/notifications/preferences`, `PUT /api/notifications/preferences`
 - **projects**: `GET /api/projects`, `POST /api/projects`, `GET /api/projects/{project_id}`, `PATCH /api/projects/{project_id}`, `POST /api/projects/{project_id}/pause`, `POST /api/projects/{project_id}/resume`, `POST /api/projects/{project_id}/link-folder`, `POST /api/projects/{project_id}/unlink-folder`, `DELETE /api/projects/{project_id}`, `GET /api/projects/{project_id}/versions`, `POST /api/projects/{project_id}/export`, `GET /api/projects/{project_id}/members`, `POST /api/projects/{project_id}/members`, `DELETE /api/projects/{project_id}/members/{user_id}`, `PATCH /api/projects/{project_id}/members/{user_id}`
 - **reports**: `GET /api/reports/{project_id}`
@@ -151,6 +151,7 @@ Generated from the repository on version `2026.04.10.6`. This document is meant 
 | `SurveyIntegration` | `survey_integrations` | yes | `backend/app/models/survey_integration.py` |
 | `SurveyLink` | `survey_links` | yes | `backend/app/models/survey_integration.py` |
 | `Task` | `tasks` | no | `backend/app/models/task.py` |
+| `TelemetrySpan` | `telemetry_spans` | no | `backend/app/models/telemetry_span.py` |
 | `User` | `users` | no | `backend/app/models/user.py` |
 | `WebAuthnCredential` | `webauthn_credentials` | no | `backend/app/models/webauthn_credential.py` |
 

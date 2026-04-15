@@ -41,6 +41,15 @@
 - Alert on browser skill failures due to missing URLs or unreachable sites
 - Track Playwright MCP server health if configured
 
+### Telemetry & Model Intelligence Monitoring
+- Query `telemetry_spans` table to detect error patterns per model (json_parse, timeout, hallucination)
+- Monitor model quality scores from `model_skill_stats` (production + autoresearch source)
+- Alert when a model's quality_ema drops below threshold for 3+ consecutive tasks
+- Track tool success rates (browse_website, RAG, transcription) from telemetry spans
+- Suggest model switches when a model fails consistently on specific skills
+- Monitor latency percentiles (P50/P90/P99) per model and flag degradations
+- Verify telemetry is recording correctly (telemetry_spans being written per task)
+
 ### Vector Store Health
 - Check per-project vector store table existence and accessibility
 - Monitor embedding count and growth rate per project

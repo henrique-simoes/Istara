@@ -220,3 +220,15 @@ async def get_validation_metrics(project_id: str, db: AsyncSession = Depends(get
             "recommendation": 0.50,
         },
     }
+
+
+@router.get("/metrics/{project_id}/model-intelligence")
+async def get_model_intelligence(project_id: str, limit: int = 50):
+    """Get model intelligence data: leaderboard, error taxonomy, tool success, latency.
+
+    Aggregates data from ModelSkillStats (production + autoresearch) and
+    TelemetrySpan (operational traces) to help users choose the best models
+    for each skill and understand error patterns.
+    """
+    from app.core.telemetry import telemetry_recorder
+    return await telemetry_recorder.get_model_intelligence(project_id, limit=limit)
