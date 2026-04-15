@@ -404,6 +404,20 @@ const scenarioFiles = [
 - [ ] `validation.metrics(projectId)` API client method added to `frontend/src/lib/api.ts`
 - [ ] Persona files updated (istara-main: Research Quality Evaluation)
 
+### Adding Observability — Telemetry Spans & Agent Hooks
+
+- [ ] `backend/app/models/telemetry_span.py` defines TelemetrySpan model (no user content, only metadata)
+- [ ] `backend/app/core/agent_hooks.py` provides composable async lifecycle hooks (pre_task, post_task, post_validation, on_error, on_completion)
+- [ ] `backend/app/core/telemetry.py` TelemetryRecorder writes spans to local SQLite and ModelSkillStats from production path
+- [ ] `backend/app/core/agent.py` fires hooks at 5 lifecycle points in `_execute_task()`
+- [ ] `backend/app/main.py` calls `register_builtin_hooks()` on startup
+- [ ] `backend/app/models/database.py` registers `TelemetrySpan` in `init_db()`
+- [ ] `GET /api/metrics/{project_id}/model-intelligence` returns leaderboard, error taxonomy, tool success, latency
+- [ ] `TELEMETRY_ENABLED=false` by default — no phone-home, local-first data only
+- [ ] No prompts, responses, user content, or project data stored in telemetry spans
+- [ ] Persona files updated (istara-devops: Telemetry Monitoring)
+- [ ] Tech.md and SYSTEM_INTEGRITY_GUIDE.md updated for telemetry
+
 ---
 
 ## DEPLOYMENT CHECKLIST

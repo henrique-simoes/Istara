@@ -543,6 +543,11 @@ from app.core.audit_middleware import AuditLogMiddleware
 
 app.add_middleware(AuditLogMiddleware)
 
+# Agent lifecycle hooks — telemetry and model performance tracking
+from app.core.agent_hooks import register_builtin_hooks
+
+register_builtin_hooks()
+
 
 # Security headers — prevent clickjacking, MIME sniffing, and XSS
 from starlette.middleware.base import BaseHTTPMiddleware

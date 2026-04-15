@@ -74,6 +74,7 @@ async def init_db() -> None:
     from app.models.codebook_version import CodebookVersion  # noqa: F401
     from app.models.code_application import CodeApplication  # noqa: F401
     from app.core.audit_middleware import AuditLog  # noqa: F401
+    from app.models.telemetry_span import TelemetrySpan  # noqa: F401
     from app.models.project_report import ProjectReport  # noqa: F401
     from app.models.project_member import ProjectMember  # noqa: F401
 

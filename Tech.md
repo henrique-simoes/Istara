@@ -1967,6 +1967,31 @@ Formalizes Istara's existing LLM-as-Judge validation pipeline (AdaptiveSelector,
 - KanbanBoard task cards: color-coded consensus badge (green ≥ 70%, yellow ≥ 50%, orange ≥ 30%, red < 30%) with tooltip showing validation method + κ score
 - Task type in `types.ts`: added `validation_method` and `consensus_score` fields
 
+### Observability: Telemetry Spans & Agent Hooks (v2026.04.15)
+
+Local-first, zero-trust observability system. **No phone-home by default.** All telemetry data stays on the user's machine.
+
+**Architecture:**
+- `TelemetrySpan` model (SQLite): stores operational metadata per span — operation, skill, model, timing, status, quality score, consensus score, error type. **No prompts, responses, user content, or files.**
+- `AgentHooks`: composable async lifecycle hooks (pre_task, post_task, post_validation, on_error, on_completion) — fire-and-forget via `asyncio.create_task()`. Built-in hooks for telemetry and model performance recording.
+- `TelemetryRecorder`: writes spans to `telemetry_spans` table and upserts `ModelSkillStats` from production path (previously only written by autoresearch)
+
+**Model Intelligence Production Path:**
+Every skill execution now creates a `ModelSkillStats` row with `source="production"` alongside the existing autoresearch `source="autoresearch"`. This means the autoresearch leaderboard shows both real-world usage data and experiment data.
+
+**API: `GET /api/metrics/{project_id}/model-intelligence`**
+- Leaderboard: best model+temperature per skill from both production and autoresearch
+- Error taxonomy: structured error types per model and skill
+- Tool success rates: per-tool success rate, average duration, P50/P90 latency
+- Latency percentiles: P50/P90/P99 response time per model
+
+**Agent lifecycle instrumentation in `_execute_task()`:**
+- `pre_task`: records start timestamp and creates initial span
+- `post_task`: records skill execution outcome and writes ModelSkillStats
+- `post_validation`: records validation method, consensus score
+- `on_error`: records structured error type and truncated message
+- `on_completion`: records final quality score and total duration
+
 The Interfaces menu creates a bridge between UX Research and Product Design within Istara. It provides:
 
 - **Design Chat**: An AI design assistant (Design Lead agent) with automatic research context injection via RAG. Uses the same SSE streaming and ReAct tool loop as the main Chat, with design-specific tools (generate_screen, edit_screen, create_variant, search_findings_for_design, create_design_brief, import_from_figma, list_screens). Messages are scoped to a design-specific `ChatSession` (`session_type="design"`) so they never mix with regular chat messages.
