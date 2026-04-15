@@ -1031,6 +1031,7 @@ A new real-time communication channel lets users inject messages to agents **whi
 **Architecture:**
 - `SteeringQueue` — mirrors pi-mono's `PendingMessageQueue`, supports `one-at-a-time` and `all` drain modes
 - `FollowUpQueue` — messages delivered only when agent finishes all work
+- **Thread-Safety**: Uses `asyncio.Lock` per agent state to synchronize API requests and the agent work loop.
 - **Deferred execution**: steering messages NEVER interrupt in-progress skills; they wait for current turn to complete
 - **Abort**: clears both queues, signals agent to stop (like pi-mono's Escape)
 - In-memory only — no database persistence needed
