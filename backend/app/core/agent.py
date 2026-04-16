@@ -1181,6 +1181,7 @@ class AgentOrchestrator:
             "quality evaluation": "research-quality-evaluation",
             "evaluate quality": "research-quality-evaluation",
             "llm as judge": "research-quality-evaluation",
+            "game theory participant simulation": "participant-simulation",
             "participant simulation": "participant-simulation",
             "game theory": "participant-simulation",
             "card sort": "card-sorting",

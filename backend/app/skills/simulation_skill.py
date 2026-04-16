@@ -22,7 +22,7 @@ class SimulationSkill(BaseSkill):
     @property
     def name(self) -> str: return "simulate-participant"
     @property
-    def display_name(self) -> str: return "Simulate Participant Response"
+    def display_name(self) -> str: return "Game Theory Participant Simulation"
     @property
     def description(self) -> str: return "Test research designs against game-theory personas (Skeptic, Satisficer, etc.)."
     @property

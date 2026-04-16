@@ -78,6 +78,7 @@ class TaskResponse(BaseModel):
     validation_method: str | None = None
     validation_result: str | None = None
     consensus_score: float | None = None
+    health: dict | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -118,7 +119,13 @@ async def list_tasks(
         query = query.where(Task.status == status)
 
     result = await db.execute(query)
-    return result.scalars().all()
+    tasks = result.scalars().all()
+    
+    from app.core.telemetry import telemetry_recorder
+    for task in tasks:
+        task.health = await telemetry_recorder.get_task_health(task.id)
+        
+    return tasks
 
 
 @router.post("/tasks", response_model=TaskResponse, status_code=201)
@@ -183,6 +190,10 @@ async def get_task(task_id: str, db: AsyncSession = Depends(get_db)):
     task = result.scalar_one_or_none()
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
+    
+    from app.core.telemetry import telemetry_recorder
+    task.health = await telemetry_recorder.get_task_health(task.id)
+    
     return task
 
 

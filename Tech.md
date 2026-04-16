@@ -2611,7 +2611,7 @@ Istara wraps raw browser automation (`browser-use`) in structured UXR methodolog
 ### 2. Formal Evaluation Framework (LLM-as-Judge)
 The `evaluate-research` skill provides a standalone rigor benchmark. It utilizes multi-model adversarial review (Du et al., 2024) and full-ensemble scoring with Fleiss' Kappa reliability to grade research outputs against academic standards.
 
-### 3. Strategic Simulation Personas
+### 3. Game Theory Participant Simulation
 Participant simulations are enhanced with game-theory strategies (`SimulationStrategy`). Personas like 'The Satisficer' (low effort) and 'The Skeptic' (adversarial) allow researchers to stress-test their instruments against realistic behavioral biases.
 
 ### 4. Local-First OpenTelemetry & Tracing
