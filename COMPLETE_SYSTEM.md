@@ -22,7 +22,7 @@ Generated from the repository on version `2026.04.10.6`. This document is meant 
 - Next.js frontend with 22 mounted views and 15 Zustand stores.
 - 42 SQLAlchemy models in `backend/app/models`.
 - 6 tracked persona directories and 55 JSON-defined skills.
-- 73 Playwright simulation scenarios plus 14 Python e2e phases.
+- 73 Playwright simulation scenarios plus 15 Python e2e phases.
 
 ## Backend Route Inventory
 
@@ -246,6 +246,7 @@ Generated from the repository on version `2026.04.10.6`. This document is meant 
 - Frontend Check
 - Mid-Execution Steering
 - Voice Transcription
+- Browser Research & Formal Evaluation
 
 ### Simulation Scenario Matrix
 

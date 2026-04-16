@@ -22,7 +22,7 @@ Generated from the repository on version `2026.04.10.6`. Treat this file as the 
 - Data layer: 42 SQLAlchemy models plus LanceDB-backed retrieval/context systems.
 - Agents/personas: 6 tracked persona directories under `backend/app/agents/personas`.
 - Skills: 55 JSON-defined skills across the Double Diamond phases.
-- Regression map: 73 simulation scenarios plus 14 e2e phases.
+- Regression map: 73 simulation scenarios plus 15 e2e phases.
 
 ## Change Hotspots
 
@@ -208,6 +208,7 @@ Generated from the repository on version `2026.04.10.6`. Treat this file as the 
   - Frontend Check
   - Mid-Execution Steering
   - Voice Transcription
+  - Browser Research & Formal Evaluation
 - Simulation scenarios:
   - `01` — Health Check
   - `02` — Onboarding
