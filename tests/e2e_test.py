@@ -547,6 +547,31 @@ def main():
     )
 
     # =========================================================
+    # PHASE 14: Browser Research & Formal Evaluation
+    # =========================================================
+    print("\n🌐 Phase 14: Browser Research & Formal Evaluation")
+
+    test(
+        "Automated Browser Skill registered",
+        lambda: assert_true(
+            any(
+                s["name"] == "competitive-analysis"
+                for s in assert_ok(client.get("/api/skills"))
+            )
+        ),
+    )
+
+    test(
+        "Formal Evaluation Skill registered",
+        lambda: assert_true(
+            any(
+                s["name"] == "evaluate-research"
+                for s in assert_ok(client.get("/api/skills"))
+            )
+        ),
+    )
+
+    # =========================================================
     # RESULTS
     # =========================================================
     elapsed = time.time() - start_time

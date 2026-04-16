@@ -1,72 +1,41 @@
-"""Tests for research quality evaluation skill and validation metrics API."""
+"""Tests for Formal Evaluation Skill (LLM-as-Judge)."""
 
-import json
 import pytest
-from pathlib import Path
+from unittest.mock import AsyncMock, patch, MagicMock
+from app.skills.evaluation_skill import EvaluationSkill
+from app.skills.base import SkillInput
 
-SKILLS_DIR = Path(__file__).parent.parent / "backend" / "app" / "skills" / "definitions"
-
-
-def test_evaluation_skill_definition_exists():
-    path = SKILLS_DIR / "research-quality-evaluation.json"
-    assert path.exists(), f"Skill definition not found: {path}"
-
-
-def test_evaluation_skill_definition_is_valid_json():
-    path = SKILLS_DIR / "research-quality-evaluation.json"
-    with open(path) as f:
-        data = json.load(f)
-    assert data["name"] == "research-quality-evaluation"
-    assert data["phase"] == "deliver"
-    assert data["skill_type"] == "mixed"
-    assert data["enabled"] is True
-    assert "plan_prompt" in data
-    assert "execute_prompt" in data
-    assert "output_schema" in data
-
-
-def test_evaluation_skill_has_validation_dimensions():
-    path = SKILLS_DIR / "research-quality-evaluation.json"
-    with open(path) as f:
-        data = json.load(f)
-    execute = data["execute_prompt"]
-    assert "adversarial" in execute.lower()
-    assert "dual" in execute.lower()
-    assert "self_moa" in execute.lower().replace("-", "_") or "Self-MoA" in execute
-    assert "consensus" in execute.lower()
-    assert "kappa" in execute.lower() or "0.70" in execute
-
-
-def test_evaluation_skill_has_chain_integrity():
-    path = SKILLS_DIR / "research-quality-evaluation.json"
-    with open(path) as f:
-        data = json.load(f)
-    execute = data["execute_prompt"]
-    assert "chain" in execute.lower()
-    assert "nugget" in execute.lower()
-    assert "fact" in execute.lower()
-    assert "insight" in execute.lower()
-    assert "recommendation" in execute.lower()
-
-
-def test_evaluation_skill_scope_map_entry():
-    from app.core.report_manager import SCOPE_MAP
-
-    assert "research-quality-evaluation" in SCOPE_MAP
-    assert SCOPE_MAP["research-quality-evaluation"] == "Quality Evaluation"
-
-
-def test_metrics_routes_import():
-    from app.api.routes.metrics import router
-
-    routes = [r.path for r in router.routes]
-    assert any("validation" in r for r in routes), (
-        f"Validation route not found in {routes}"
+@pytest.mark.asyncio
+async def test_evaluation_skill_triggers_multi_model_validation():
+    skill = EvaluationSkill()
+    skill_input = SkillInput(
+        project_id="test",
+        user_context="Some research output to evaluate"
     )
-
-
-def test_task_type_has_validation_fields():
-    from app.models.task import Task
-
-    assert hasattr(Task, "validation_method"), "Task model missing validation_method"
-    assert hasattr(Task, "consensus_score"), "Task model missing consensus_score"
+    
+    # Mock validation methods
+    with patch("app.core.validation.adversarial_review", new_callable=AsyncMock) as mock_adv:
+        with patch("app.core.validation.full_ensemble", new_callable=AsyncMock) as mock_ens:
+            
+            # Setup mock returns
+            mock_adv.return_value = MagicMock(metadata={"review_text": "Critical feedback"})
+            
+            ens_res = MagicMock()
+            ens_res.consensus.agreement_score = 0.85
+            ens_res.consensus.kappa = 0.72
+            ens_res.responses = ["Resp 1", "Resp 2"]
+            ens_res.best_response = "Best synthesis"
+            mock_ens.return_value = ens_res
+            
+            output = await skill.execute(skill_input)
+            
+            # Should have called both validation strategies
+            assert output.success is True
+            mock_adv.assert_called_once()
+            mock_ens.assert_called_once()
+            
+            # Artifact should contain the combined report
+            report = output.artifacts["evaluation_report.md"]
+            assert "## Quality Audit Report" in report
+            assert "0.85" in report
+            assert "Critical feedback" in report
