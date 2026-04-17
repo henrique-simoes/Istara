@@ -213,6 +213,18 @@ function TaskCard({
     >
       <div className="flex items-start gap-2">
         <GripVertical size={14} className="text-slate-300 mt-0.5 shrink-0" />
+        {/* Health Indicator Dot */}
+        {task.health && (
+          <div 
+            className={cn(
+              "w-2 h-2 rounded-full mt-1.5 shrink-0",
+              task.health.status === "healthy" ? "bg-green-500" :
+              task.health.status === "degraded" ? "bg-yellow-500" :
+              task.health.status === "critical" ? "bg-red-500" : "bg-slate-300"
+            )}
+            title={`Ensemble Health: ${task.health.status}\nErrors: ${task.health.error_count}\nAvg Quality: ${task.health.avg_quality || 'N/A'}`}
+          />
+        )}
         <div className="flex-1 min-w-0">
           {/* Title row with agent avatar */}
           <div className="flex items-start justify-between gap-1">

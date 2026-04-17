@@ -37,6 +37,12 @@ export interface Task {
   instructions: string;
   validation_method: string | null;
   consensus_score: number | null;
+  health?: {
+    status: "healthy" | "degraded" | "critical" | "unknown";
+    error_count: number;
+    avg_quality: number | null;
+    span_count: number;
+  };
   created_at: string;
   updated_at: string;
 }

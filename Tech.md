@@ -2691,4 +2691,20 @@ The `model_skill_stats` table tracks quality per (skill, model, temperature). Lo
 
 ---
 
+## ADVANCED CAPABILITIES (v2026.04.15)
+
+### 1. Synthetic Browser Research
+Istara wraps raw browser automation (`browser-use`) in structured UXR methodologies. The `competitive-analysis`, `accessibility-audit`, and `heuristic-evaluation` skills now support automated data collection from live URLs before synthesis.
+
+### 2. Formal Evaluation Framework (LLM-as-Judge)
+The `evaluate-research` skill provides a standalone rigor benchmark. It utilizes multi-model adversarial review (Du et al., 2024) and full-ensemble scoring with Fleiss' Kappa reliability to grade research outputs against academic standards.
+
+### 3. Game Theory Participant Simulation
+Participant simulations are enhanced with game-theory strategies (`SimulationStrategy`). Personas like 'The Satisficer' (low effort) and 'The Skeptic' (adversarial) allow researchers to stress-test their instruments against realistic behavioral biases.
+
+### 4. Local-First OpenTelemetry & Tracing
+For high-compliance environments, Istara supports local-only OTLP tracing via a bundled `otel-collector` and `jaeger` instance. This allows full lifecycle tracing of research tasks (Request -> RAG -> Skill -> Verification) with zero cloud dependency.
+
+---
+
 *Istara is open-source and built for researchers who believe AI should work for them — on their machine, on their terms.*

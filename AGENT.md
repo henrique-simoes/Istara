@@ -18,11 +18,11 @@ Generated from the repository on version `2026.04.17.1`. Treat this file as the 
 ## System Snapshot
 
 - Frontend: Next.js app with 22 mounted views and 15 Zustand stores.
-- Backend: FastAPI app with 38 route modules and 367 detected endpoints.
+- Backend: FastAPI app with 39 route modules and 369 detected endpoints.
 - Data layer: 42 SQLAlchemy models plus LanceDB-backed retrieval/context systems.
 - Agents/personas: 6 tracked persona directories under `backend/app/agents/personas`.
 - Skills: 56 JSON-defined skills across the Double Diamond phases.
-- Regression map: 73 simulation scenarios plus 27 e2e phases.
+- Regression map: 73 simulation scenarios plus 10 e2e phases.
 
 ## Change Hotspots
 
@@ -71,7 +71,7 @@ Generated from the repository on version `2026.04.17.1`. Treat this file as the 
 
 ## Skills By Phase
 
-- **Define** (13): Affinity Mapping, Empathy Mapping, Problem Statements / HMW, Journey Mapping, Jobs-to-be-Done Analysis, Kappa Intercoder Thematic Analysis, Participant Simulation (Game Theory), Persona Creation, Prioritization Matrix, Research Synthesis Report, Taxonomy Generator, Thematic Analysis, User Flow Mapping
+- **Define** (13): Affinity Mapping, Empathy Mapping, Problem Statements / HMW, Journey Mapping, Jobs-to-be-Done Analysis, Kappa Intercoder Thematic Analysis, Game Theory Participant Simulation, Persona Creation, Prioritization Matrix, Research Synthesis Report, Taxonomy Generator, Thematic Analysis, User Flow Mapping
 - **Deliver** (12): Handoff Documentation, Longitudinal Study Tracking, NPS Analysis, Regression / Impact Analysis, Research Repository Curation, Evaluate Research Quality, Research Ops Retrospective, Stakeholder Presentation, Design System Synthesis, HTML to React Components, SUS / UMUX Scoring, Task Analysis (Quantitative)
 - **Develop** (16): A/B Test Analysis, Live Site Accessibility Audit, Live Site UX Audit, Card Sorting Analysis, Cognitive Walkthrough, Concept Testing, Design Critique / Expert Review, Design System Audit, Heuristic Evaluation, Prototype Feedback Analysis, Stitch Design Generation, Design Prompt Enhancement, Tree Testing Analysis, Usability Testing, UX Law Compliance Audit, Workshop Facilitation
 - **Discover** (15): Accessibility Audit, Analytics Review, Competitor UX Benchmarking, Competitive Analysis, Contextual Inquiry, Literature / Desk Research, Diary Studies, Field Studies / Ethnography, Interview Question Generator, Stakeholder Interviews, Survey AI Response Detection, Survey Design & Analysis, Survey Generator, Audio Transcription & Analysis, User Interviews
@@ -86,7 +86,8 @@ Generated from the repository on version `2026.04.17.1`. Treat this file as the 
 | `autoresearch.py` | `/autoresearch` | 9 |
 | `backup.py` | `/` | 9 |
 | `channels.py` | `/` | 11 |
-| `chat.py` | `/` | 3 |
+| `chat.py` | `/` | 4 |
+| `chat_voice.py` | `/` | 1 |
 | `code_applications.py` | `/code-applications` | 4 |
 | `codebook_versions.py` | `/codebook-versions` | 4 |
 | `codebooks.py` | `/` | 8 |
@@ -196,31 +197,14 @@ Generated from the repository on version `2026.04.17.1`. Treat this file as the 
 - E2E phases:
   - Authentication
   - System Health
-  - Project Setup (Sarah creates her project)
+  - Project Setup
   - Context Hierarchy
-  - File Upload & Processing
+  - File Upload
   - Chat & Skill Execution
-  - Findings Verification
-  - Tasks & Kanban
-  - Metrics & History
-  - Skills Registry
-  - Agents & Audit
-  - Frontend Check
-  - Mid-Execution Steering
-  - Chat Flow
-  - Findings CRUD
-  - Project Management
-  - Task Management
-  - Skills Deep Dive
-  - Documents Deep Dive
-  - Sessions Deep Dive
-  - Settings Deep Dive
-  - Backup Deep Dive
-  - Meta-Agent Deep Dive
-  - Interfaces Deep Dive
-  - Loops Deep Dive
+  - Steering
+  - Findings
   - Voice Transcription
-  - Voice Transcription
+  - Browser Research & Formal Evaluation
 - Simulation scenarios:
   - `01` — Health Check
   - `02` — Onboarding

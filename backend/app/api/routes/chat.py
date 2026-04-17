@@ -820,3 +820,16 @@ async def transcribe_voice(
     except Exception as e:
         logger.error(f"Voice transcription failed: {e}")
         raise HTTPException(status_code=500, detail=f"Transcription failed: {str(e)}")
+
+class VoiceTranscribeRequest(BaseModel):
+    project_id: str
+    dummy: bool = False
+
+@router.post("/chat/voice-transcribe")
+async def voice_transcribe(request: VoiceTranscribeRequest):
+    """Voice transcription endpoint (Phase Alpha)."""
+    if request.dummy:
+        return {"status": "success", "text": "Mock transcription"}
+    
+    # Real transcription logic would go here
+    return {"status": "error", "message": "No audio file provided"}

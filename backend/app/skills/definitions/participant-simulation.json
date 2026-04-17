@@ -1,6 +1,6 @@
 {
   "name": "participant-simulation",
-  "display_name": "Participant Simulation (Game Theory)",
+  "display_name": "Game Theory Participant Simulation",
   "description": "Simulate research participant behavior using game-theory strategies (Prisoner's Dilemma, Stag Hunt, bounded rationality, satisficing, social desirability bias). Generates diverse participant cohorts, runs multi-round simulations, and produces behavioral analysis with strategic pattern identification.",
   "phase": "define",
   "skill_type": "mixed",
