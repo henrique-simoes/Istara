@@ -30,7 +30,7 @@ from app.skills.simulation_skill import SimulationSkill as ParticipantSimulation
 # DISCOVER PHASE (10 core + extras)
 # =====================================================================
 
-CompetitiveAnalysisSkill = BrowserCompetitiveAnalysisSkill()
+CompetitiveAnalysisSkill = BrowserCompetitiveAnalysisSkill
 
 StakeholderInterviewsSkill = create_skill(
     skill_name="stakeholder-interviews",
@@ -175,7 +175,7 @@ artifacts and tools used, rituals and routines, unexpected discoveries.""",
 "summary": "..."}}""",
 )
 
-AccessibilityAuditSkill = BrowserAccessibilityAuditSkill()
+AccessibilityAuditSkill = BrowserAccessibilityAuditSkill
 
 # =====================================================================
 # DEFINE PHASE (10 skills)
@@ -447,7 +447,7 @@ Identify: usability issues (severity rated), patterns across participants, desig
 "summary": "..."}}""",
 )
 
-HeuristicEvaluationSkill = BrowserHeuristicEvaluationSkill()
+HeuristicEvaluationSkill = BrowserHeuristicEvaluationSkill
 
 ABTestAnalysisSkill = create_skill(
     skill_name="ab-test-analysis",
@@ -832,7 +832,7 @@ regressions, correlations between metrics, anomalies, forecasts.""",
 "summary": "..."}}""",
 )
 
-EvaluateResearchQualitySkill = FormalEvaluationSkill()
+EvaluateResearchQualitySkill = FormalEvaluationSkill
 
 # =====================================================================
 # SPECIALIZED SKILLS (new additions)
@@ -1066,7 +1066,7 @@ For each level:
 "summary": "..."}}""",
 )
 
-SimulateParticipantSkill = ParticipantSimulationSkill()
+SimulateParticipantSkill = ParticipantSimulationSkill
 
 
 # =====================================================================# REGISTRATION

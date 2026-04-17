@@ -1,0 +1,12 @@
+{
+  "name": "evaluate-research",
+  "display_name": "Evaluate Research Quality",
+  "description": "LLM-as-Judge framework benchmarking research outputs for rigor and clarity using multi-model consensus.",
+  "phase": "deliver",
+  "skill_type": "mixed",
+  "version": "1.0.0",
+  "enabled": true,
+  "plan_prompt": "Plan a quality audit of research output.",
+  "execute_prompt": "Perform a quality audit using LLM-as-judge benchmarking.",
+  "output_schema": "{\"scores\": {}, \"report\": \"...\"}"
+}
