@@ -159,10 +159,10 @@ def main():
     print("\n🌐 Phase 14: Browser Research & Formal Evaluation")
 
     run_test_step("Automated Browser Skill registered", lambda: assert_true(
-        any(s["name"] == "competitive-analysis" for s in assert_ok(client.get("/api/skills")))
+        any(s["name"] == "competitive-analysis" for s in assert_ok(client.get("/api/skills"))["skills"])
     ))
     run_test_step("Formal Evaluation Skill registered", lambda: assert_true(
-        any(s["name"] == "evaluate-research" for s in assert_ok(client.get("/api/skills")))
+        any(s["name"] == "evaluate-research" for s in assert_ok(client.get("/api/skills"))["skills"])
     ))
 
     # =========================================================
