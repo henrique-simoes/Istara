@@ -260,6 +260,24 @@ function TaskCard({
                 {task.skill_name}
               </span>
             )}
+            {task.consensus_score != null && task.consensus_score > 0 && (
+              <span
+                className={cn(
+                  "inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded",
+                  task.consensus_score >= 0.7
+                    ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300"
+                    : task.consensus_score >= 0.5
+                    ? "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300"
+                    : task.consensus_score >= 0.3
+                    ? "bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300"
+                    : "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300"
+                )}
+                title={`Validation: ${task.validation_method || "unknown"} — κ ${task.consensus_score.toFixed(2)}`}
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-current opacity-60" />
+                {task.validation_method?.replace(/_/g, " ") || "validated"} {Math.round(task.consensus_score * 100)}%
+              </span>
+            )}
             <div className="relative">
               <button
                 onClick={(e) => {

@@ -168,6 +168,61 @@ export const chat = {
   },
   history: (projectId: string, limit = 50) =>
     request<any[]>(`/api/chat/history/${projectId}?limit=${limit}`),
+  transcribeVoice: async (audioFile: File, language?: string): Promise<{
+    text: string;
+    language: string;
+    confidence: number;
+    icr_kappa: number;
+    icr_confidence: string;
+    needs_review: boolean;
+    tags: string[];
+  }> => {
+    const formData = new FormData();
+    formData.append("audio", audioFile);
+    if (language) formData.append("language", language);
+
+    const res = await fetch(`${API_BASE}/api/chat/voice`, {
+      method: "POST",
+      headers: _getAuthHeaders(),
+      body: formData,
+    });
+
+    if (!res.ok) throw new Error(`Voice transcription error: ${res.status}`);
+    return res.json();
+  },
+};
+
+// --- Validation Metrics ---
+
+export const validation = {
+  metrics: async (projectId: string): Promise<{
+    project_id: string;
+    methods: { id: string; name: string; description: string }[];
+    method_stats: {
+      method: string;
+      skill_name: string;
+      agent_id: string;
+      total_runs: number;
+      success_count: number;
+      fail_count: number;
+      avg_consensus_score: number;
+      success_rate: number;
+      last_used: string | null;
+      weight: number;
+    }[];
+    recent_validations: {
+      task_id: string;
+      task_title: string;
+      skill_name: string;
+      validation_method: string;
+      consensus_score: number | null;
+      status: string;
+      updated_at: string | null;
+    }[];
+    confidence_thresholds: Record<string, number>;
+  }> => {
+    return request(`/api/metrics/${projectId}/validation`);
+  },
 };
 
 // --- Findings ---

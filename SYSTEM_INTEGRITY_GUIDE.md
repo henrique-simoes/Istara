@@ -2136,6 +2136,12 @@ But if needed:
 | Change Security Policy | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ | ✓ | ✓ |
 | Change Desktop App | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | △ | ✗ | ✓ |
 | Change UI / User Flow | ✗ | ✗ | △ | ✓ | △ | ✓ | △ | ✗ | ✗ |
+| Add Voice Transcription | ✗ | ✗ | ✓ | ✓ | ✓ | △ | ✗ | ✗ | ✓ (Whisper/pydub) |
+| Add Browser UX Research Skills | ✗ | ✗ | ✗ | ✓ | ✓ | △ | ✗ | ✗ | ✗ |
+| Add Research Quality Evaluation | ✗ | ✗ | ✗ | ✓ | △ | △ | ✗ | ✗ | ✗ |
+| Add Audit Middleware | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ | ✗ |
+| Add Participant Simulation | ✗ | ✗ | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ |
+| Add Telemetry Spans | ✗ | ✗ | ✗ | ✓ | ✗ | △ | ✗ | ✗ | ✓ |
 
 **Desktop App Critical Couplings (v2026.04.02):**
 - `process.rs` spawns Python/Node directly → depends on `path_resolver.rs` for binary discovery

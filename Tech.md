@@ -2002,7 +2002,111 @@ Switching between SQLite (local mode) and PostgreSQL (team mode) no longer risks
 - Scheduler deduplication: `is_running` flag prevents concurrent execution
 - Graceful shutdown: 30s drain period for in-flight tasks
 
-### Interfaces Menu & Research→Design Bridge
+### Voice Transcription Pipeline (v2026.04.14)
+
+Istara now supports voice input across the entire platform with automatic transcription, inter-coder reliability scoring, and atomic research chain integration.
+
+**Components:**
+- `backend/app/core/transcription.py` — Whisper-based local transcription with ICR consensus
+- `POST /api/chat/voice` — Chat voice input endpoint
+- `backend/app/channels/telegram.py` — Auto-transcribes Telegram voice messages
+- `backend/app/channels/whatsapp.py` — Auto-transcribes WhatsApp audio messages
+- `frontend/src/components/chat/ChatView.tsx` — Mic button on chat input
+- `frontend/src/lib/api.ts` → `chat.transcribeVoice()` — Voice upload API client
+
+**Pipeline:** Audio input → format conversion (OGG/MP3→WAV 16kHz mono) → Whisper transcription (base model) → alternative transcription (tiny model) → ICR consensus (Fleiss' Kappa + cosine similarity) → auto-tagging → review flagging if needed → store in Interviews + Documents → feed into Atomic Research chain.
+
+**Inter-Coder Reliability (mandatory):** Every transcription passes through ICR with Fleiss' Kappa between primary and alternative transcriptions. If confidence is "low" or "insufficient", the transcription is flagged for human review with `needs_review: true`.
+
+**Dependencies:** `openai-whisper>=20240930`, `pydub>=0.25.1`, `ffmpeg` (system, preferred) or pydub fallback.
+
+### Browser UX Research Skills (v2026.04.15)
+
+Three skill definitions that wrap the existing `browse_website` system action into structured UX research workflows. When a user creates a task with URLs, those URLs are passed through the `SkillInput.urls` field to the skill's prompt templates.
+
+**Skills:**
+- `browser-ux-audit` (develop/mixed) — Navigate target URLs → evaluate against Nielsen's 10 heuristics, WCAG 2.2 AA, and Laws of UX → produce severity-rated findings with evidence chains
+- `browser-competitive-benchmark` (discover/mixed) — Browse 2-5 competitor URLs → capture UX patterns, heuristic scores, feature matrices → produce gap-opportunity analysis with Blue Ocean Strategy canvas
+- `browser-accessibility-check` (develop/quantitative) — Navigate target site → systematic WCAG 2.2 criterion-by-criterion check → severity classification → prioritized remediation plan
+
+**Architecture:** Skills use `{urls}` and `{urls_section}` template placeholders. The skill factory (`skill_factory.py`) substitutes these from `SkillInput.urls`, which is populated from `task.get_urls()` in the agent's `_execute_task()`. The agent uses `browse_website` system action at execution time.
+
+**SCOPE_MAP entries:** `browser-ux-audit` → Usability Study, `browser-accessibility-check` → Usability Study, `browser-competitive-benchmark` → Competitive Analysis
+
+**Task routing aliases:** `ux audit` → `browser-ux-audit`, `site audit` → `browser-ux-audit`, `accessibility check` → `browser-accessibility-check`, `wcag` / `a11y` → `browser-accessibility-check`, `competitive benchmark` / `competitor audit` → `browser-competitive-benchmark`
+
+### Research Quality Evaluation (v2026.04.15)
+
+Formalizes Istara's existing LLM-as-Judge validation pipeline (AdaptiveSelector, ValidationExecutor, Fleiss' Kappa consensus) into a callable user-facing skill and visible metrics.
+
+**Skill: `research-quality-evaluation`** (deliver/mixed)
+- Invokes the existing validation pipeline: adversarial review (5-dimension rubric), dual-run consistency, self-MoA RAG verification, debate consensus
+- Assesses chain integrity (nuggets → facts → insights → recommendations), completeness, methodology quality
+- Uses adaptive method selection via `AdaptiveSelector` — the system learns which validation strategy works best per project/skill/agent
+- SCOPE_MAP: `research-quality-evaluation` → `Quality Evaluation`
+
+**API: `GET /api/metrics/{project_id}/validation`**
+- Returns per-method adaptive validation stats from `MethodMetric` model (success_rate, avg_consensus_score, weight, last_used)
+- Returns recent per-task validations (validation_method, consensus_score, skill_name)
+- Returns confidence thresholds by finding type (nugget 0.70, fact 0.65, insight 0.55, rec 0.50)
+
+**Frontend visibility:**
+- EnsembleHealthView: wired to real `/api/metrics/{id}/validation` data instead of stub
+- KanbanBoard task cards: color-coded consensus badge (green ≥ 70%, yellow ≥ 50%, orange ≥ 30%, red < 30%) with tooltip showing validation method + κ score
+- Task type in `types.ts`: added `validation_method` and `consensus_score` fields
+
+### Game-Theory Participant Simulation (v2026.04.15)
+
+Enhances the `istara-sim` (Echo) persona with game-theory behavioral models for simulating participant behavior in UX research scenarios.
+
+**Architecture:** `backend/app/core/participant_simulation.py` provides:
+- 7 behavioral strategies: cooperative, selfish, reciprocating, random, satisficing (Simon 1956), social_desirability, adversarial
+- Prisoner's Dilemma payoff matrix (T > R > P > S, 2R > T + S)
+- Stag Hunt payoff matrix (Rousseau/Skyrms 2004 coordination game)
+- `ParticipantProfile` dataclass with behavioral traits: patience, honesty_bias, social_desirability_bias, tech_savviness, engagement_level, risk_aversion, satisficing_threshold
+- `choose_action()` implements bounded rationality — noise proportional to `(1 - engagement) × (1 - patience)`
+- `simulate_response_mode()` determines how a participant responds: honest, strategic, biased, withheld, exaggerated
+- `generate_participant_cohort()` creates diverse cohorts with configurable strategy distributions
+
+**Skill:** `participant-simulation` (define/mixed) maps game-theory constructs to UX research implications — Nash equilibrium analysis, satisficing behavior detection, social desirability bias identification, engagement decay tracking.
+
+**SCOPE_MAP:** `participant-simulation` → `Simulation Analysis`
+**Task routing aliases:** `participant simulation`, `game theory`, `simulation`
+
+### Audit Log Middleware (v2026.04.15)
+
+General-purpose audit trail for all API requests. Fills the gap where only MCP tool calls had logging (`mcp_audit_log`).
+
+**Model:** `AuditLog` (SQLite `audit_log` table) captures: `user_id`, `method`, `path`, `status_code`, `duration_ms`, `ip_address`, `project_id`, `timestamp`. No user content stored.
+
+**Middleware:** `AuditLogMiddleware` registered in `main.py` as FastAPI middleware. Skips `/docs`, `/health`, `/openapi.json`, OPTIONS requests, and MCP server paths.
+
+**API:** `GET /api/audit/logs?limit=100&offset=0&user_id=&project_id=&method=&path_prefix=` returns paginated, filterable audit entries.
+
+### Observability: Telemetry Spans & Agent Hooks (v2026.04.15)
+
+Local-first, zero-trust observability system. **No phone-home by default.** All telemetry data stays on the user's machine.
+
+**Architecture:**
+- `TelemetrySpan` model (SQLite): stores operational metadata per span — operation, skill, model, timing, status, quality score, consensus score, error type. **No prompts, responses, user content, or files.**
+- `AgentHooks`: composable async lifecycle hooks (pre_task, post_task, post_validation, on_error, on_completion) — fire-and-forget via `asyncio.create_task()`. Built-in hooks for telemetry and model performance recording.
+- `TelemetryRecorder`: writes spans to `telemetry_spans` table and upserts `ModelSkillStats` from production path (previously only written by autoresearch)
+
+**Model Intelligence Production Path:**
+Every skill execution now creates a `ModelSkillStats` row with `source="production"` alongside the existing autoresearch `source="autoresearch"`. This means the autoresearch leaderboard shows both real-world usage data and experiment data.
+
+**API: `GET /api/metrics/{project_id}/model-intelligence`**
+- Leaderboard: best model+temperature per skill from both production and autoresearch
+- Error taxonomy: structured error types per model and skill
+- Tool success rates: per-tool success rate, average duration, P50/P90 latency
+- Latency percentiles: P50/P90/P99 response time per model
+
+**Agent lifecycle instrumentation in `_execute_task()`:**
+- `pre_task`: records start timestamp and creates initial span
+- `post_task`: records skill execution outcome and writes ModelSkillStats
+- `post_validation`: records validation method, consensus score
+- `on_error`: records structured error type and truncated message
+- `on_completion`: records final quality score and total duration
 
 The Interfaces menu creates a bridge between UX Research and Product Design within Istara. It provides:
 
