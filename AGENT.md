@@ -17,7 +17,7 @@ Generated from the repository on version `2026.04.17.1`. Treat this file as the 
 
 ## System Snapshot
 
-- Frontend: Next.js app with 22 mounted views and 15 Zustand stores.
+- Frontend: Next.js app with 23 mounted views and 15 Zustand stores.
 - Backend: FastAPI app with 39 route modules and 373 detected endpoints.
 - Data layer: 42 SQLAlchemy models plus LanceDB-backed retrieval/context systems.
 - Agents/personas: 6 tracked persona directories under `backend/app/agents/personas`.
@@ -54,6 +54,7 @@ Generated from the repository on version `2026.04.17.1`. Treat this file as the 
 | Secondary | `meta-hyperagent` | Meta-Agent | `MetaHyperagentView` |
 | Secondary | `compute` | Compute Pool | `ComputePoolView` |
 | Secondary | `ensemble` | Ensemble Health | `EnsembleHealthView` |
+| Secondary | `quality` | Quality Dashboard | `QualityView` |
 | Secondary | `project-settings` | Project Settings | `ProjectSettingsView` |
 | Secondary | `history` | History | `VersionHistory` |
 | Utility | `notifications` | Notifications | `NotificationsView` |

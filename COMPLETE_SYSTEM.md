@@ -19,7 +19,7 @@ Generated from the repository on version `2026.04.17.1`. This document is meant 
 ## Repository Architecture Snapshot
 
 - FastAPI backend with 39 route modules and 373 detected endpoints.
-- Next.js frontend with 22 mounted views and 15 Zustand stores.
+- Next.js frontend with 23 mounted views and 15 Zustand stores.
 - 42 SQLAlchemy models in `backend/app/models`.
 - 6 tracked persona directories and 57 JSON-defined skills.
 - 73 Playwright simulation scenarios plus 9 Python e2e phases.
@@ -180,6 +180,7 @@ Generated from the repository on version `2026.04.17.1`. This document is meant 
 | Secondary | `meta-hyperagent` | Meta-Agent | `MetaHyperagentView` |
 | Secondary | `compute` | Compute Pool | `ComputePoolView` |
 | Secondary | `ensemble` | Ensemble Health | `EnsembleHealthView` |
+| Secondary | `quality` | Quality Dashboard | `QualityView` |
 | Secondary | `project-settings` | Project Settings | `ProjectSettingsView` |
 | Secondary | `history` | History | `VersionHistory` |
 | Utility | `notifications` | Notifications | `NotificationsView` |

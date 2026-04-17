@@ -73,7 +73,7 @@ Together, these documents are Compass.
 
 - Version: `2026.04.17.1`
 - Backend route modules: 39 with 373 detected endpoints
-- Frontend mounted views: 22
+- Frontend mounted views: 23
 - Frontend stores: 15
 - Data models: 42
 - Personas: 6 (`design-lead`, `istara-devops`, `istara-main`, `istara-sim`, `istara-ui-audit`, `istara-ux-eval`)
@@ -82,7 +82,7 @@ Together, these documents are Compass.
 ## Current Product Surface
 
 - Primary navigation: Chat, Findings, UX Laws, Tasks, Interviews, Documents, Context, Skills, Agents, Memory, Interfaces, Integrations, Loops, Settings
-- Secondary navigation: Autoresearch, Backup, Meta-Agent, Compute Pool, Ensemble Health, Project Settings, History
+- Secondary navigation: Autoresearch, Backup, Meta-Agent, Compute Pool, Ensemble Health, Quality Dashboard, Project Settings, History
 - WebSocket events: `agent_idle`, `agent_status`, `agent_thinking`, `autoresearch_complete`, `autoresearch_progress`, `channel_message`, `channel_status`, `deployment_finding`, `deployment_progress`, `deployment_response`, `file_processed`, `finding_created`, `meta_proposal`, `plan_progress`, `resource_throttle`, `steering_message`, `suggestion`, `task_progress`, `task_queue_update`
 - Channel adapters: `google_chat`, `slack`, `telegram`, `whatsapp`
 - Survey platforms: `google_forms`, `surveymonkey`, `typeform`
