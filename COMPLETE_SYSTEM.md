@@ -18,11 +18,11 @@ Generated from the repository on version `2026.04.17.1`. This document is meant 
 
 ## Repository Architecture Snapshot
 
-- FastAPI backend with 39 route modules and 369 detected endpoints.
+- FastAPI backend with 39 route modules and 373 detected endpoints.
 - Next.js frontend with 22 mounted views and 15 Zustand stores.
 - 42 SQLAlchemy models in `backend/app/models`.
-- 6 tracked persona directories and 56 JSON-defined skills.
-- 73 Playwright simulation scenarios plus 10 Python e2e phases.
+- 6 tracked persona directories and 57 JSON-defined skills.
+- 73 Playwright simulation scenarios plus 9 Python e2e phases.
 
 ## Backend Route Inventory
 
@@ -59,7 +59,7 @@ Generated from the repository on version `2026.04.17.1`. This document is meant 
 | `reports.py` | `/reports` | 1 |
 | `scheduler.py` | `/` | 5 |
 | `sessions.py` | `/` | 8 |
-| `settings.py` | `/` | 14 |
+| `settings.py` | `/` | 18 |
 | `skills.py` | `/` | 18 |
 | `steering.py` | `/` | 8 |
 | `surveys.py` | `/` | 9 |
@@ -101,7 +101,7 @@ Generated from the repository on version `2026.04.17.1`. This document is meant 
 - **reports**: `GET /api/reports/{project_id}`
 - **scheduler**: `POST /api/schedules`, `GET /api/schedules`, `GET /api/schedules/{schedule_id}`, `PATCH /api/schedules/{schedule_id}`, `DELETE /api/schedules/{schedule_id}`
 - **sessions**: `GET /api/sessions/{project_id}`, `POST /api/sessions`, `GET /api/sessions/detail/{session_id}`, `PATCH /api/sessions/{session_id}`, `DELETE /api/sessions/{session_id}`, `POST /api/sessions/{session_id}/star`, `GET /api/inference-presets`, `GET /api/sessions/{project_id}/ensure-default`
-- **settings**: `GET /api/settings/hardware`, `GET /api/settings/models`, `POST /api/settings/model`, `POST /api/settings/provider`, `POST /api/settings/maintenance/pause`, `POST /api/settings/maintenance/resume`, `GET /api/settings/maintenance`, `GET /api/settings/integrations-status`, `GET /api/settings/vector-health`, `GET /api/settings/data-integrity`, `POST /api/settings/export-database`, `POST /api/settings/import-database`, `GET /api/settings/status`, `POST /api/settings/team-mode`
+- **settings**: `GET /api/settings/hardware`, `GET /api/settings/models`, `POST /api/settings/model`, `POST /api/settings/provider`, `POST /api/settings/maintenance/pause`, `POST /api/settings/maintenance/resume`, `GET /api/settings/maintenance`, `GET /api/settings/integrations-status`, `GET /api/settings/vector-health`, `GET /api/settings/data-integrity`, `POST /api/settings/export-database`, `POST /api/settings/import-database`, `GET /api/settings/status`, `GET /api/settings/telemetry/status`, `POST /api/settings/telemetry/export`, `POST /api/settings/telemetry/toggle`, `GET /api/settings/telemetry/healing`, `POST /api/settings/team-mode`
 - **skills**: `GET /api/skills`, `GET /api/skills/health/all`, `GET /api/skills/proposals/pending`, `GET /api/skills/proposals/all`, `GET /api/skills/creation-proposals/pending`, `GET /api/skills/creation-proposals/all`, `POST /api/skills/creation-proposals/{proposal_id}/approve`, `POST /api/skills/creation-proposals/{proposal_id}/reject`, `GET /api/skills/{name}`, `POST /api/skills`, `PATCH /api/skills/{name}`, `DELETE /api/skills/{name}`, `POST /api/skills/{name}/toggle`, `GET /api/skills/{name}/health`, `POST /api/skills/proposals/{proposal_id}/approve`, `POST /api/skills/proposals/{proposal_id}/reject`, `POST /api/skills/{name}/execute`, `POST /api/skills/{name}/plan`
 - **steering**: `POST /api/steering/{agent_id}`, `POST /api/steering/{agent_id}/follow-up`, `POST /api/steering/{agent_id}/abort`, `GET /api/steering/{agent_id}/status`, `GET /api/steering/{agent_id}/queues`, `DELETE /api/steering/{agent_id}/queues`, `GET /api/steering/{agent_id}/idle`, `GET /api/steering`
 - **surveys**: `GET /api/surveys/integrations`, `POST /api/surveys/integrations`, `DELETE /api/surveys/integrations/{integration_id}`, `GET /api/surveys/integrations/{integration_id}/surveys`, `POST /api/surveys/integrations/{integration_id}/create`, `POST /api/surveys/links`, `GET /api/surveys/links`, `POST /api/surveys/links/{link_id}/sync`, `GET /api/surveys/links/{link_id}/responses`
@@ -218,9 +218,9 @@ Generated from the repository on version `2026.04.17.1`. This document is meant 
 ### Skills By Phase
 
 - **Define** (13): Affinity Mapping, Empathy Mapping, Problem Statements / HMW, Journey Mapping, Jobs-to-be-Done Analysis, Kappa Intercoder Thematic Analysis, Game Theory Participant Simulation, Persona Creation, Prioritization Matrix, Research Synthesis Report, Taxonomy Generator, Thematic Analysis, User Flow Mapping
-- **Deliver** (12): Handoff Documentation, Longitudinal Study Tracking, NPS Analysis, Regression / Impact Analysis, Research Repository Curation, Evaluate Research Quality, Research Ops Retrospective, Stakeholder Presentation, Design System Synthesis, HTML to React Components, SUS / UMUX Scoring, Task Analysis (Quantitative)
+- **Deliver** (13): Evaluate Research Quality, Handoff Documentation, Longitudinal Study Tracking, NPS Analysis, Regression / Impact Analysis, Research Repository Curation, Evaluate Research Quality, Research Ops Retrospective, Stakeholder Presentation, Design System Synthesis, HTML to React Components, SUS / UMUX Scoring, Task Analysis (Quantitative)
 - **Develop** (16): A/B Test Analysis, Live Site Accessibility Audit, Live Site UX Audit, Card Sorting Analysis, Cognitive Walkthrough, Concept Testing, Design Critique / Expert Review, Design System Audit, Heuristic Evaluation, Prototype Feedback Analysis, Stitch Design Generation, Design Prompt Enhancement, Tree Testing Analysis, Usability Testing, UX Law Compliance Audit, Workshop Facilitation
-- **Discover** (15): Accessibility Audit, Analytics Review, Competitor UX Benchmarking, Competitive Analysis, Contextual Inquiry, Literature / Desk Research, Diary Studies, Field Studies / Ethnography, Interview Question Generator, Stakeholder Interviews, Survey AI Response Detection, Survey Design & Analysis, Survey Generator, Audio Transcription & Analysis, User Interviews
+- **Discover** (15): Accessibility Audit, Analytics Review, Competitor UX Benchmarking, Competitive Analysis (Automated), Contextual Inquiry, Literature / Desk Research, Diary Studies, Field Studies / Ethnography, Interview Question Generator, Stakeholder Interviews, Survey AI Response Detection, Survey Design & Analysis, Survey Generator, Audio Transcription & Analysis, User Interviews
 
 ## Real-Time and Integration Surface
 
@@ -241,9 +241,8 @@ Generated from the repository on version `2026.04.17.1`. This document is meant 
 - File Upload
 - Chat & Skill Execution
 - Steering
-- Findings
-- Voice Transcription
 - Browser Research & Formal Evaluation
+- Voice Transcription
 
 ### Simulation Scenario Matrix
 

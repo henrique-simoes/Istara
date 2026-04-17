@@ -73,6 +73,13 @@
 - Verify that confidence scores are calibrated (not all HIGH, not all LOW)
 - Flag findings with broken references to deleted source documents
 
+### Automated Self-Healing (Telemetry-Driven)
+- Monitor local telemetry spans to detect and remediate performance regressions in real-time.
+- **Circuit Breaker:** Detect high error rates (>30%) for specific skills and flag them for intervention.
+- **Latency Monitoring:** Alert on executions exceeding 120s that may indicate model overload or stuck processes.
+- **Tool Reliability:** Detect failure spikes in specific MCP tools and suggest configuration reviews.
+- **Pattern Matching:** Use telemetry history to identify recurring transient errors and suggest parameter adjustments.
+
 ## Audit Decision Tree
 1. **Critical path first**: Always run LLM health check and database connectivity before other checks. If these fail, remaining checks may produce false positives.
 2. **Data integrity before quality**: Verify that records exist and are structurally sound before evaluating content quality.

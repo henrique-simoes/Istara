@@ -123,6 +123,39 @@ class TestTelemetryRecorder:
             assert "latency_percentiles" in result
             assert result["project_id"] == "proj-123"
 
+    @pytest.mark.asyncio
+    async def test_telemetry_opt_in_respects_flag(self):
+        from app.core.agent_hooks import register_builtin_hooks, agent_hooks
+        from app.config import settings
+
+        # Clear existing hooks to avoid double-registration during test
+        agent_hooks._hooks.clear()
+        register_builtin_hooks()
+
+        context = {"_start_time": 0, "skill_name": "test"}
+        
+        with patch("app.core.telemetry.telemetry_recorder.record_span", new_callable=AsyncMock) as mock_record:
+            # 1. Test disabled (default)
+            with patch.object(settings, "telemetry_enabled", False):
+                await agent_hooks.fire("pre_task", context)
+                await agent_hooks.fire("post_task", context)
+                # Wait a bit
+                import asyncio
+                await asyncio.sleep(0.01)
+                # Should not record spans if disabled
+                assert mock_record.call_count == 0
+
+            # Reset mock for phase 2
+            mock_record.reset_mock()
+
+            # 2. Test enabled
+            with patch.object(settings, "telemetry_enabled", True):
+                await agent_hooks.fire("pre_task", context)
+                # Wait for the async task to run
+                await asyncio.sleep(0.01)
+                # Should record span if enabled
+                assert mock_record.call_count == 1
+
 
 class TestModelIntelligenceEndpoint:
     def test_model_intelligence_route_exists(self):
