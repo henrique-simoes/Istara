@@ -58,10 +58,14 @@ agent_hooks = AgentHooks()
 
 def register_builtin_hooks() -> None:
     """Register built-in telemetry hooks on module import."""
+    from app.config import settings
     from app.core.telemetry import telemetry_recorder
 
     async def _pre_task_hook(context: dict) -> None:
-        """Record span at task start."""
+        """Record span at task start (opt-in)."""
+        if not settings.telemetry_enabled:
+            context["_start_time"] = time.monotonic()
+            return
         context["_start_time"] = time.monotonic()
         await telemetry_recorder.record_span(
             trace_id=context.get("trace_id", uuid.uuid4().hex[:36]),
@@ -77,7 +81,9 @@ def register_builtin_hooks() -> None:
         )
 
     async def _post_task_hook(context: dict) -> None:
-        """Record span after skill execution, write ModelSkillStats."""
+        """Record span after skill execution, write ModelSkillStats (opt-in)."""
+        if not settings.telemetry_enabled:
+            return
         start = context.pop("_start_time", None)
         duration = (time.monotonic() - start) * 1000 if start else 0.0
         success = context.get("success", False)
@@ -107,7 +113,9 @@ def register_builtin_hooks() -> None:
         )
 
     async def _post_validation_hook(context: dict) -> None:
-        """Record validation outcome span."""
+        """Record validation outcome span (opt-in)."""
+        if not settings.telemetry_enabled:
+            return
         await telemetry_recorder.record_span(
             trace_id=context.get("trace_id", uuid.uuid4().hex[:36]),
             operation="validation",
@@ -124,7 +132,9 @@ def register_builtin_hooks() -> None:
         )
 
     async def _on_error_hook(context: dict) -> None:
-        """Record error span."""
+        """Record error span (opt-in)."""
+        if not settings.telemetry_enabled:
+            return
         await telemetry_recorder.record_span(
             trace_id=context.get("trace_id", uuid.uuid4().hex[:36]),
             operation=context.get("operation", "skill_execute"),
@@ -140,7 +150,9 @@ def register_builtin_hooks() -> None:
         )
 
     async def _on_completion_hook(context: dict) -> None:
-        """Record completion span."""
+        """Record completion span (opt-in)."""
+        if not settings.telemetry_enabled:
+            return
         duration = context.get("total_duration_ms", 0)
         await telemetry_recorder.record_span(
             trace_id=context.get("trace_id", uuid.uuid4().hex[:36]),
