@@ -188,7 +188,7 @@ class AgentOrchestrator:
         # the normal task queue. This implements pi-mono's steering pattern:
         # steering messages are injected while the agent is idle or working,
         # and picked up at the next opportunity.
-        steering_msgs = steering_manager.get_steering(self._agent_id)
+        steering_msgs = await steering_manager.get_steering(self._agent_id)
         if steering_msgs:
             logger.info(f"Steering messages detected for {self._agent_id}: {len(steering_msgs)}")
             for msg in steering_msgs:
@@ -235,13 +235,13 @@ class AgentOrchestrator:
             # 3. Execute the task (register with governor for concurrent limits)
             governor.register_agent("task-executor")
             self._current_task_id = task.id
-            steering_manager.mark_working(self._agent_id)
+            await steering_manager.mark_working(self._agent_id)
             try:
                 await self._execute_task(db, task, project)
             finally:
                 self._current_task_id = None
                 governor.unregister_agent("task-executor")
-                steering_manager.mark_idle(self._agent_id)
+                await steering_manager.mark_idle(self._agent_id)
 
             # 4. Check queue depth and adapt loop interval
             pending_result = await db.execute(
@@ -275,7 +275,7 @@ class AgentOrchestrator:
             # ── Check follow-up queue — only processed when agent would
             # otherwise stop (no more tasks in the pipeline). This matches
             # pi-mono's followUpQueue pattern.
-            follow_up_msgs = steering_manager.get_follow_up(self._agent_id)
+            follow_up_msgs = await steering_manager.get_follow_up(self._agent_id)
             if follow_up_msgs:
                 logger.info(f"Follow-up messages for {self._agent_id}: {len(follow_up_msgs)}")
                 for msg in follow_up_msgs:

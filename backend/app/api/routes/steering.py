@@ -92,17 +92,9 @@ async def _validate_agent_id(agent_id: str) -> None:
 
 @router.post("/steering/{agent_id}", response_model=dict)
 async def queue_steering_message(agent_id: str, body: SteeringMessageRequest):
-    """Queue a steering message to be injected after the current skill execution.
-
-    Steering messages are NEVER injected mid-skill — they wait for the
-    current turn to finish (deferred execution).
-
-    Mode controls delivery:
-    - "one-at-a-time" (default): delivers one message, waits for response
-    - "all": delivers all queued messages at once
-    """
+    """Queue a steering message to be injected after the current skill execution."""
     await _validate_agent_id(agent_id)
-    steering_manager.steer(agent_id, body.message, source=body.source)
+    await steering_manager.steer(agent_id, body.message, source=body.source)
     return {
         "status": "queued",
         "agent_id": agent_id,
@@ -118,7 +110,7 @@ async def queue_follow_up_message(agent_id: str, body: FollowUpMessageRequest):
     Follow-up messages are only processed when the agent has no more pending work.
     """
     await _validate_agent_id(agent_id)
-    steering_manager.follow_up(agent_id, body.message, source=body.source)
+    await steering_manager.follow_up(agent_id, body.message, source=body.source)
     return {
         "status": "queued",
         "agent_id": agent_id,
@@ -135,7 +127,7 @@ async def abort_agent_work(agent_id: str):
     Queued messages are returned so the caller can restore them to the editor.
     """
     await _validate_agent_id(agent_id)
-    cleared = steering_manager.abort(agent_id)
+    cleared = await steering_manager.abort(agent_id)
 
     # Also signal the orchestrator to stop current task
     if agent_id == "istara-main":
@@ -190,7 +182,7 @@ async def get_steering_queues(agent_id: str):
 async def clear_steering_queues(agent_id: str):
     """Clear all steering and follow-up queues for an agent."""
     await _validate_agent_id(agent_id)
-    cleared = steering_manager.clear_all(agent_id)
+    cleared = await steering_manager.clear_all(agent_id)
     return {
         "status": "cleared",
         "agent_id": agent_id,
