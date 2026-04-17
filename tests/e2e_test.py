@@ -30,7 +30,7 @@ results = []
 start_time = time.time()
 
 
-def test(name, fn):
+def run_test_step(name, fn):
     """Run a test and record the result."""
     try:
         result = fn()
@@ -111,39 +111,39 @@ def main():
     # =========================================================
     print("\n📡 Phase 1: System Health")
 
-    test("Health check", lambda: assert_ok(client.get("/api/health")))
-    test("System status", lambda: assert_ok(client.get("/api/settings/status")))
-    test("Hardware info", lambda: assert_ok(client.get("/api/settings/hardware")))
-    test("Available models", lambda: assert_ok(client.get("/api/settings/models")))
-    test("Resource governor", lambda: assert_ok(client.get("/api/resources")))
+    run_test_step("Health check", lambda: assert_ok(client.get("/api/health")))
+    run_test_step("System status", lambda: assert_ok(client.get("/api/settings/status")))
+    run_test_step("Hardware info", lambda: assert_ok(client.get("/api/settings/hardware")))
+    run_test_step("Available models", lambda: assert_ok(client.get("/api/settings/models")))
+    run_test_step("Resource governor", lambda: assert_ok(client.get("/api/resources")))
 
     # =========================================================
     # PHASE 2: Project Setup (Sarah creates her project)
     # =========================================================
     print("\n📁 Phase 2: Project Setup")
 
-    project = test("Create project", lambda: assert_ok(client.post("/api/projects", json={
+    project = run_test_step("Create project", lambda: assert_ok(client.post("/api/projects", json={
         "name": "Onboarding Redesign Study",
         "description": "Investigating onboarding drop-off for our PM tool. Goal: reduce churn by 20%.",
     })))
     project_id = project["id"] if project else None
 
     if project_id:
-        test("Get project", lambda: assert_ok(client.get(f"/api/projects/{project_id}")))
+        run_test_step("Get project", lambda: assert_ok(client.get(f"/api/projects/{project_id}")))
 
-        test("Set company context", lambda: assert_ok(client.patch(f"/api/projects/{project_id}", json={
+        run_test_step("Set company context", lambda: assert_ok(client.patch(f"/api/projects/{project_id}", json={
             "company_context": "Acme PM — B2B SaaS project management tool for product teams. "
                                "200 employees, mid-market focus (50-500 seat companies). "
                                "Culture: data-driven, user-centric, move fast with quality.",
         })))
 
-        test("Set project context", lambda: assert_ok(client.patch(f"/api/projects/{project_id}", json={
+        run_test_step("Set project context", lambda: assert_ok(client.patch(f"/api/projects/{project_id}", json={
             "project_context": "Research goal: Understand why 45% of users drop off at step 3 (phone verification) "
                                "during onboarding. Timeline: 4 weeks. Target users: PMs, designers, eng leads "
                                "at companies with 50-500 employees. Phase: Discover.",
         })))
 
-        test("Set guardrails", lambda: assert_ok(client.patch(f"/api/projects/{project_id}", json={
+        run_test_step("Set guardrails", lambda: assert_ok(client.patch(f"/api/projects/{project_id}", json={
             "guardrails": "- Always cite which participant said what\n"
                           "- Flag findings with fewer than 3 supporting data points\n"
                           "- Use 'workspace' not 'project' (company terminology)\n"
@@ -155,7 +155,7 @@ def main():
     # =========================================================
     print("\n📜 Phase 3: Context Hierarchy")
 
-    test("Create company context doc", lambda: assert_ok(client.post("/api/contexts", json={
+    run_test_step("Create company context doc", lambda: assert_ok(client.post("/api/contexts", json={
         "name": "Acme PM Company Culture",
         "level_type": "company",
         "content": "We value user research and data-driven decisions. Our product team includes PMs, designers, and researchers.",
@@ -163,7 +163,7 @@ def main():
     })))
 
     if project_id:
-        test("Get composed context", lambda: assert_ok(client.get(f"/api/contexts/composed/{project_id}")))
+        run_test_step("Get composed context", lambda: assert_ok(client.get(f"/api/contexts/composed/{project_id}")))
 
     # =========================================================
     # PHASE 4: File Upload & Processing
@@ -173,10 +173,10 @@ def main():
     if project_id:
         for fixture_file in sorted(FIXTURES.glob("*")):
             if fixture_file.is_file():
-                test(f"Upload {fixture_file.name}", lambda f=fixture_file: upload_file(client, project_id, f))
+                run_test_step(f"Upload {fixture_file.name}", lambda f=fixture_file: upload_file(client, project_id, f))
 
-        test("List project files", lambda: assert_ok(client.get(f"/api/files/{project_id}")))
-        test("File stats", lambda: assert_ok(client.get(f"/api/files/{project_id}/stats")))
+        run_test_step("List project files", lambda: assert_ok(client.get(f"/api/files/{project_id}")))
+        run_test_step("File stats", lambda: assert_ok(client.get(f"/api/files/{project_id}/stats")))
 
     # =========================================================
     # PHASE 5: Chat & Skill Execution
@@ -184,28 +184,28 @@ def main():
     print("\n💬 Phase 5: Chat & Skill Execution")
 
     if project_id:
-        test("Chat — analyze interviews", lambda: chat_message(client, project_id,
+        run_test_step("Chat — analyze interviews", lambda: chat_message(client, project_id,
              "Analyze the interview transcripts I uploaded. Focus on onboarding pain points."))
 
-        test("Chat — competitive analysis", lambda: chat_message(client, project_id,
+        run_test_step("Chat — competitive analysis", lambda: chat_message(client, project_id,
              "Run a competitive analysis based on the competitive_analysis.md file."))
 
-        test("Chat — create personas", lambda: chat_message(client, project_id,
+        run_test_step("Chat — create personas", lambda: chat_message(client, project_id,
              "Create personas from the research data."))
 
-        test("Chat — thematic analysis", lambda: chat_message(client, project_id,
+        run_test_step("Chat — thematic analysis", lambda: chat_message(client, project_id,
              "Run thematic analysis on all the interview data."))
 
-        test("Chat — general question", lambda: chat_message(client, project_id,
+        run_test_step("Chat — general question", lambda: chat_message(client, project_id,
              "What are the top 3 pain points we've found so far?"))
 
-        test("Direct skill execute — survey design", lambda: assert_ok(client.post(
+        run_test_step("Direct skill execute — survey design", lambda: assert_ok(client.post(
             "/api/skills/survey-design/execute", json={
                 "project_id": project_id,
                 "user_context": "Design a follow-up survey about onboarding satisfaction",
             })))
 
-        test("Direct skill plan — user interviews", lambda: assert_ok(client.post(
+        run_test_step("Direct skill plan — user interviews", lambda: assert_ok(client.post(
             "/api/skills/user-interviews/plan", json={
                 "project_id": project_id,
                 "user_context": "Plan round 2 interviews focusing on the phone verification drop-off",
@@ -217,13 +217,13 @@ def main():
     print("\n🔍 Phase 6: Findings Verification")
 
     if project_id:
-        test("List nuggets", lambda: assert_ok(client.get(f"/api/findings/nuggets?project_id={project_id}")))
-        test("List facts", lambda: assert_ok(client.get(f"/api/findings/facts?project_id={project_id}")))
-        test("List insights", lambda: assert_ok(client.get(f"/api/findings/insights?project_id={project_id}")))
-        test("List recommendations", lambda: assert_ok(client.get(f"/api/findings/recommendations?project_id={project_id}")))
-        test("Findings summary", lambda: assert_ok(client.get(f"/api/findings/summary/{project_id}")))
-        test("Project search", lambda: assert_ok(client.get(f"/api/findings/search/{project_id}?query=phone+verification")))
-        test("Global search", lambda: assert_ok(client.get("/api/findings/search/global?query=onboarding")))
+        run_test_step("List nuggets", lambda: assert_ok(client.get(f"/api/findings/nuggets?project_id={project_id}")))
+        run_test_step("List facts", lambda: assert_ok(client.get(f"/api/findings/facts?project_id={project_id}")))
+        run_test_step("List insights", lambda: assert_ok(client.get(f"/api/findings/insights?project_id={project_id}")))
+        run_test_step("List recommendations", lambda: assert_ok(client.get(f"/api/findings/recommendations?project_id={project_id}")))
+        run_test_step("Findings summary", lambda: assert_ok(client.get(f"/api/findings/summary/{project_id}")))
+        run_test_step("Project search", lambda: assert_ok(client.get(f"/api/findings/search/{project_id}?query=phone+verification")))
+        run_test_step("Global search", lambda: assert_ok(client.get("/api/findings/search/global?query=onboarding")))
 
     # =========================================================
     # PHASE 7: Tasks & Kanban
@@ -231,24 +231,24 @@ def main():
     print("\n📋 Phase 7: Tasks & Kanban")
 
     if project_id:
-        task1 = test("Create task — analyze surveys", lambda: assert_ok(client.post("/api/tasks", json={
+        task1 = run_test_step("Create task — analyze surveys", lambda: assert_ok(client.post("/api/tasks", json={
             "project_id": project_id,
             "title": "Analyze survey responses for AI-generated answers",
             "description": "Run the survey AI detection skill on our 20 survey responses",
             "skill_name": "survey-ai-detection",
         })))
 
-        task2 = test("Create task — journey map", lambda: assert_ok(client.post("/api/tasks", json={
+        task2 = run_test_step("Create task — journey map", lambda: assert_ok(client.post("/api/tasks", json={
             "project_id": project_id,
             "title": "Create user journey map for onboarding flow",
             "skill_name": "journey-mapping",
         })))
 
         if task1:
-            test("Move task to in_progress", lambda: assert_ok(client.post(
+            run_test_step("Move task to in_progress", lambda: assert_ok(client.post(
                 f"/api/tasks/{task1['id']}/move?status=in_progress")))
 
-        test("List all tasks", lambda: assert_ok(client.get(f"/api/tasks?project_id={project_id}")))
+        run_test_step("List all tasks", lambda: assert_ok(client.get(f"/api/tasks?project_id={project_id}")))
 
     # =========================================================
     # PHASE 8: Metrics & History
@@ -256,31 +256,31 @@ def main():
     print("\n📊 Phase 8: Metrics & History")
 
     if project_id:
-        test("Project metrics", lambda: assert_ok(client.get(f"/api/metrics/{project_id}")))
-        test("Version history", lambda: assert_ok(client.get(f"/api/projects/{project_id}/versions")))
-        test("Chat history", lambda: assert_ok(client.get(f"/api/chat/history/{project_id}")))
+        run_test_step("Project metrics", lambda: assert_ok(client.get(f"/api/metrics/{project_id}")))
+        run_test_step("Version history", lambda: assert_ok(client.get(f"/api/projects/{project_id}/versions")))
+        run_test_step("Chat history", lambda: assert_ok(client.get(f"/api/chat/history/{project_id}")))
 
     # =========================================================
     # PHASE 9: Skills Registry
     # =========================================================
     print("\n🧩 Phase 9: Skills")
 
-    test("List all skills", lambda: assert_ok(client.get("/api/skills")))
-    test("Skill registry", lambda: assert_ok(client.get("/api/skill-registry")))
-    test("Skill health", lambda: assert_ok(client.get("/api/skills/health/all")))
+    run_test_step("List all skills", lambda: assert_ok(client.get("/api/skills")))
+    run_test_step("Skill registry", lambda: assert_ok(client.get("/api/skill-registry")))
+    run_test_step("Skill health", lambda: assert_ok(client.get("/api/skills/health/all")))
 
     # =========================================================
     # PHASE 10: Agents & Audit
     # =========================================================
     print("\n🤖 Phase 10: Agents & Audit")
 
-    test("Agent status", lambda: assert_ok(client.get("/api/agents/status")))
-    test("List agents", lambda: assert_ok(client.get("/api/agents")))
-    test("DevOps audit latest", lambda: assert_ok(client.get("/api/audit/devops/latest")))
-    test("UI audit latest", lambda: assert_ok(client.get("/api/audit/ui/latest")))
-    test("UX eval latest", lambda: assert_ok(client.get("/api/audit/ux/latest")))
-    test("Sim test latest", lambda: assert_ok(client.get("/api/audit/sim/latest")))
-    test("Context documents", lambda: assert_ok(client.get("/api/contexts")))
+    run_test_step("Agent status", lambda: assert_ok(client.get("/api/agents/status")))
+    run_test_step("List agents", lambda: assert_ok(client.get("/api/agents")))
+    run_test_step("DevOps audit latest", lambda: assert_ok(client.get("/api/audit/devops/latest")))
+    run_test_step("UI audit latest", lambda: assert_ok(client.get("/api/audit/ui/latest")))
+    run_test_step("UX eval latest", lambda: assert_ok(client.get("/api/audit/ux/latest")))
+    run_test_step("Sim test latest", lambda: assert_ok(client.get("/api/audit/sim/latest")))
+    run_test_step("Context documents", lambda: assert_ok(client.get("/api/contexts")))
 
     # =========================================================
     # PHASE 11: Frontend Check
@@ -289,31 +289,31 @@ def main():
 
     try:
         frontend = httpx.get("http://localhost:3000", timeout=10)
-        test("Frontend serves HTML", lambda: assert_true(frontend.status_code == 200 and "<html" in frontend.text.lower()))
+        run_test_step("Frontend serves HTML", lambda: assert_true(frontend.status_code == 200 and "<html" in frontend.text.lower()))
     except Exception:
-        test("Frontend serves HTML", lambda: (_ for _ in ()).throw(Exception("Frontend not reachable at localhost:3000")))
+        run_test_step("Frontend serves HTML", lambda: (_ for _ in ()).throw(Exception("Frontend not reachable at localhost:3000")))
 
     # =========================================================
     # PHASE 12: Mid-Execution Steering
     # =========================================================
     print("\n🎯 Phase 12: Mid-Execution Steering")
 
-    test("Queue steering message", lambda: assert_ok(client.post("/api/steering/istara-main", json={
+    run_test_step("Queue steering message", lambda: assert_ok(client.post("/api/steering/istara-main", json={
         "message": "E2E test: verify steering endpoint works",
         "mode": "one-at-a-time",
     })))
 
-    test("Queue follow-up message", lambda: assert_ok(client.post("/api/steering/istara-main/follow-up", json={
+    run_test_step("Queue follow-up message", lambda: assert_ok(client.post("/api/steering/istara-main/follow-up", json={
         "message": "E2E test: verify follow-up endpoint works",
     })))
 
-    test("Get steering status", lambda: assert_ok(client.get("/api/steering/istara-main/status")))
+    run_test_step("Get steering status", lambda: assert_ok(client.get("/api/steering/istara-main/status")))
 
-    test("Get steering queues", lambda: assert_ok(client.get("/api/steering/istara-main/queues")))
+    run_test_step("Get steering queues", lambda: assert_ok(client.get("/api/steering/istara-main/queues")))
 
-    test("Clear steering queues", lambda: assert_ok(client.delete("/api/steering/istara-main/queues")))
+    run_test_step("Clear steering queues", lambda: assert_ok(client.delete("/api/steering/istara-main/queues")))
 
-    test("Abort agent work", lambda: assert_ok(client.post("/api/steering/istara-main/abort", json={})))
+    run_test_step("Abort agent work", lambda: assert_ok(client.post("/api/steering/istara-main/abort", json={})))
 
     # =========================================================
     # PHASE 13: Chat Flow
@@ -321,9 +321,9 @@ def main():
     print("\n💬 Phase 13: Chat Flow")
 
     if project_id:
-        test("Chat history exists", lambda: assert_ok(client.get(f"/api/chat/history/{project_id}")))
+        run_test_step("Chat history exists", lambda: assert_ok(client.get(f"/api/chat/history/{project_id}")))
         # Note: Full streaming chat test requires running LLM — verify endpoint works at minimum
-        test("Chat endpoint accessible", lambda: assert_ok(client.get(f"/api/chat/history/{project_id}?limit=10")))
+        run_test_step("Chat endpoint accessible", lambda: assert_ok(client.get(f"/api/chat/history/{project_id}?limit=10")))
 
     # =========================================================
     # PHASE 14: Findings CRUD
@@ -331,42 +331,43 @@ def main():
     print("\n🔍 Phase 14: Findings CRUD")
 
     if project_id:
-        nugget = test("Create nugget", lambda: assert_ok(client.post("/api/findings/nuggets", json={
+        nugget = run_test_step("Create nugget", lambda: assert_ok(client.post("/api/findings/nuggets", json={
             "project_id": project_id,
             "text": "E2E test nugget: Users struggle with phone verification",
             "source": "e2e-test",
         })))
+        
         if nugget:
-            test("Delete nugget", lambda: assert_ok(client.delete(f"/api/findings/nuggets/{nugget['id']}")))
+            run_test_step("Evidence chain accessible", lambda: assert_ok(client.get(f"/api/findings/nugget/{nugget['id']}/evidence-chain")))
+            run_test_step("Delete nugget", lambda: assert_ok(client.delete(f"/api/findings/nuggets/{nugget['id']}")))
 
-        fact = test("Create fact", lambda: assert_ok(client.post("/api/findings/facts", json={
+        fact = run_test_step("Create fact", lambda: assert_ok(client.post("/api/findings/facts", json={
             "project_id": project_id,
             "text": "E2E test fact: 40% drop-off at phone verification step",
             "source": "e2e-test",
         })))
         if fact:
-            test("Delete fact", lambda: assert_ok(client.delete(f"/api/findings/facts/{fact['id']}")))
+            run_test_step("Delete fact", lambda: assert_ok(client.delete(f"/api/findings/facts/{fact['id']}")))
 
-        test("Evidence chain accessible", lambda: assert_ok(client.get("/api/findings/nuggets/0/evidence-chain")))
-        test("Design decisions accessible", lambda: assert_ok(client.get("/api/findings/design-decisions")))
+        run_test_step("Design decisions accessible", lambda: assert_ok(client.get("/api/findings/design-decisions")))
 
     # =========================================================
     # PHASE 15: Project Management
     # =========================================================
     print("\n📁 Phase 15: Project Management")
 
-    new_project = test("Create new project", lambda: assert_ok(client.post("/api/projects", json={
+    new_project = run_test_step("Create new project", lambda: assert_ok(client.post("/api/projects", json={
         "name": "E2E Test Project",
         "description": "Created by e2e test suite",
     })))
     if new_project:
         e2e_proj_id = new_project.get("id")
-        test("Get new project", lambda: assert_ok(client.get(f"/api/projects/{e2e_proj_id}")))
-        test("Pause new project", lambda: assert_ok(client.post(f"/api/projects/{e2e_proj_id}/pause")))
-        test("Resume new project", lambda: assert_ok(client.post(f"/api/projects/{e2e_proj_id}/resume")))
-        test("Delete new project", lambda: assert_ok(client.delete(f"/api/projects/{e2e_proj_id}")))
+        run_test_step("Get new project", lambda: assert_ok(client.get(f"/api/projects/{e2e_proj_id}")))
+        run_test_step("Pause new project", lambda: assert_ok(client.post(f"/api/projects/{e2e_proj_id}/pause")))
+        run_test_step("Resume new project", lambda: assert_ok(client.post(f"/api/projects/{e2e_proj_id}/resume")))
+        run_test_step("Delete new project", lambda: assert_ok(client.delete(f"/api/projects/{e2e_proj_id}")))
 
-    test("List all projects", lambda: assert_ok(client.get("/api/projects")))
+    run_test_step("List all projects", lambda: assert_ok(client.get("/api/projects")))
 
     # =========================================================
     # PHASE 16: Task Management
@@ -374,28 +375,27 @@ def main():
     print("\n📋 Phase 16: Task Management")
 
     if project_id:
-        task = test("Create e2e task", lambda: assert_ok(client.post("/api/tasks", json={
+        task = run_test_step("Create e2e task", lambda: assert_ok(client.post("/api/tasks", json={
             "project_id": project_id,
             "title": "E2E test task",
             "description": "Created by e2e test suite",
         })))
         if task:
             task_id = task["id"]
-            test("Move e2e task", lambda: assert_ok(client.post(f"/api/tasks/{task_id}/move?status=in_progress")))
-            test("Delete e2e task", lambda: assert_ok(client.delete(f"/api/tasks/{task_id}")))
-
-        test("Lock task", lambda: assert_ok(client.post(f"/api/tasks/{task_id}/lock")))
-        test("Unlock task", lambda: assert_ok(client.post(f"/api/tasks/{task_id}/unlock")))
+            run_test_step("Move e2e task", lambda: assert_ok(client.post(f"/api/tasks/{task_id}/move?status=in_progress")))
+            run_test_step("Lock task", lambda: assert_ok(client.post(f"/api/tasks/{task_id}/lock")))
+            run_test_step("Unlock task", lambda: assert_ok(client.post(f"/api/tasks/{task_id}/unlock")))
+            run_test_step("Delete e2e task", lambda: assert_ok(client.delete(f"/api/tasks/{task_id}")))
 
     # =========================================================
     # PHASE 17: Skills Deep Dive
     # =========================================================
     print("\n🧩 Phase 17: Skills Deep Dive")
 
-    test("Get single skill", lambda: assert_ok(client.get("/api/skills/card-sorting")))
-    test("Toggle skill", lambda: assert_ok(client.post("/api/skills/card-sorting/toggle")))
-    test("Skill proposals", lambda: assert_ok(client.get("/api/skills/proposals/pending")))
-    test("Creation proposals", lambda: assert_ok(client.get("/api/skills/creation-proposals/pending")))
+    run_test_step("Get single skill", lambda: assert_ok(client.get("/api/skills/card-sorting")))
+    run_test_step("Toggle skill", lambda: assert_ok(client.post("/api/skills/card-sorting/toggle")))
+    run_test_step("Skill proposals", lambda: assert_ok(client.get("/api/skills/proposals/pending")))
+    run_test_step("Creation proposals", lambda: assert_ok(client.get("/api/skills/creation-proposals/pending")))
 
     # =========================================================
     # PHASE 18: Documents Deep Dive
@@ -403,11 +403,11 @@ def main():
     print("\n📄 Phase 18: Documents Deep Dive")
 
     if project_id:
-        test("Document search", lambda: assert_ok(client.get(f"/api/documents/search/full?query=test&project_id={project_id}")))
-        test("Document tags", lambda: assert_ok(client.get(f"/api/documents/tags/{project_id}")))
-        test("Document stats", lambda: assert_ok(client.get(f"/api/documents/stats/{project_id}")))
-        test("File list", lambda: assert_ok(client.get(f"/api/files/{project_id}")))
-        test("File stats", lambda: assert_ok(client.get(f"/api/files/{project_id}/stats")))
+        run_test_step("Document search", lambda: assert_ok(client.get(f"/api/documents/search/full?q=test&project_id={project_id}")))
+        run_test_step("Document tags", lambda: assert_ok(client.get(f"/api/documents/tags/{project_id}")))
+        run_test_step("Document stats", lambda: assert_ok(client.get(f"/api/documents/stats/{project_id}")))
+        run_test_step("File list", lambda: assert_ok(client.get(f"/api/files/{project_id}")))
+        run_test_step("File stats", lambda: assert_ok(client.get(f"/api/files/{project_id}/stats")))
 
     # =========================================================
     # PHASE 19: Sessions Deep Dive
@@ -415,52 +415,52 @@ def main():
     print("\n🗣️ Phase 19: Sessions Deep Dive")
 
     if project_id:
-        test("List sessions", lambda: assert_ok(client.get(f"/api/sessions/{project_id}")))
-        test("Ensure default sessions", lambda: assert_ok(client.get(f"/api/sessions/{project_id}/ensure-default")))
-        test("Inference presets", lambda: assert_ok(client.get("/api/inference-presets")))
+        run_test_step("List sessions", lambda: assert_ok(client.get(f"/api/sessions/{project_id}")))
+        run_test_step("Ensure default sessions", lambda: assert_ok(client.get(f"/api/sessions/{project_id}/ensure-default")))
+        run_test_step("Inference presets", lambda: assert_ok(client.get("/api/inference-presets")))
 
     # =========================================================
     # PHASE 20: Settings Deep Dive
     # =========================================================
     print("\n⚙️ Phase 20: Settings Deep Dive")
 
-    test("Hardware info", lambda: assert_ok(client.get("/api/settings/hardware")))
-    test("Maintenance status", lambda: assert_ok(client.get("/api/settings/maintenance")))
-    test("Vector health", lambda: assert_ok(client.get("/api/settings/vector-health")))
-    test("Integrations status", lambda: assert_ok(client.get("/api/settings/integrations-status")))
+    run_test_step("Hardware info", lambda: assert_ok(client.get("/api/settings/hardware")))
+    run_test_step("Maintenance status", lambda: assert_ok(client.get("/api/settings/maintenance")))
+    run_test_step("Vector health", lambda: assert_ok(client.get("/api/settings/vector-health")))
+    run_test_step("Integrations status", lambda: assert_ok(client.get("/api/settings/integrations-status")))
 
     # =========================================================
     # PHASE 21: Backup Deep Dive
     # =========================================================
     print("\n💾 Phase 21: Backup Deep Dive")
 
-    test("Backup estimate", lambda: assert_ok(client.get("/api/backups/estimate")))
+    run_test_step("Backup estimate", lambda: assert_ok(client.get("/api/backups/estimate")))
 
     # =========================================================
     # PHASE 22: Meta-Agent Deep Dive
     # =========================================================
     print("\n🧬 Phase 22: Meta-Agent Deep Dive")
 
-    test("Meta-agent proposals", lambda: assert_ok(client.get("/api/meta-hyperagent/proposals")))
-    test("Meta-agent variants", lambda: assert_ok(client.get("/api/meta-hyperagent/variants")))
-    test("Meta-agent observations", lambda: assert_ok(client.get("/api/meta-hyperagent/observations")))
+    run_test_step("Meta-agent proposals", lambda: assert_ok(client.get("/api/meta-hyperagent/proposals")))
+    run_test_step("Meta-agent variants", lambda: assert_ok(client.get("/api/meta-hyperagent/variants")))
+    run_test_step("Meta-agent observations", lambda: assert_ok(client.get("/api/meta-hyperagent/observations")))
 
     # =========================================================
     # PHASE 23: Interfaces Deep Dive
     # =========================================================
     print("\n🎨 Phase 23: Interfaces Deep Dive")
 
-    test("Interface screens", lambda: assert_ok(client.get("/api/interfaces/screens")))
-    test("Interface status", lambda: assert_ok(client.get("/api/interfaces/status")))
-    test("Interface handoff briefs", lambda: assert_ok(client.get("/api/interfaces/handoff/briefs")))
+    run_test_step("Interface screens", lambda: assert_ok(client.get("/api/interfaces/screens")))
+    run_test_step("Interface status", lambda: assert_ok(client.get("/api/interfaces/status")))
+    run_test_step("Interface handoff briefs", lambda: assert_ok(client.get("/api/interfaces/handoff/briefs")))
 
     # =========================================================
     # PHASE 24: Loops Deep Dive
     # =========================================================
     print("\n🔁 Phase 24: Loops Deep Dive")
 
-    test("Loops agents", lambda: assert_ok(client.get("/api/loops/agents")))
-    test("Execution stats", lambda: assert_ok(client.get("/api/loops/executions/stats")))
+    run_test_step("Loops agents", lambda: assert_ok(client.get("/api/loops/agents")))
+    run_test_step("Execution stats", lambda: assert_ok(client.get("/api/loops/executions/stats")))
 
     # =========================================================
     # PHASE 25: Voice Transcription
@@ -468,9 +468,9 @@ def main():
     print("\n🎙️ Phase 25: Voice Transcription")
 
     if project_id:
-        test("Transcription endpoint accessible", lambda: assert_ok(client.get(f"/api/chat/history/{project_id}")))
+        run_test_step("Transcription endpoint accessible", lambda: assert_ok(client.get(f"/api/chat/history/{project_id}")))
         # Verify specific voice transcription route from P0 roadmap
-        test("Voice transcription initialization", lambda: assert_ok(client.post("/api/chat/voice-transcribe", json={
+        run_test_step("Voice transcription initialization", lambda: assert_ok(client.post("/api/chat/voice-transcribe", json={
             "project_id": project_id,
             "dummy": True, # Test endpoint presence without real audio
         })))
@@ -500,7 +500,12 @@ def assert_ok(response):
     """Assert HTTP response is successful and return JSON."""
     if response.status_code >= 400:
         raise Exception(f"HTTP {response.status_code}: {response.text[:200]}")
-    return response.json()
+    if response.status_code == 204:
+        return None
+    try:
+        return response.json()
+    except Exception:
+        return None
 
 
 def assert_true(condition):

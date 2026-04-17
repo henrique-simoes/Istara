@@ -153,6 +153,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                 user = User(
                     id=str(__import__("uuid").uuid4()),
                     username=admin_user,
+                    email=f"{admin_user}@istara.local",
                     password_hash=hash_password(admin_pass),
                     role="admin",
                     recovery_codes_hashed=recovery_codes_hashed,
