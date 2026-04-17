@@ -285,4 +285,41 @@ class TelemetryRecorder:
             }
 
 
+    async def get_task_health(self, task_id: str) -> dict:
+        """Get aggregated health status for a specific task based on its spans."""
+        try:
+            async with async_session() as session:
+                stmt = (
+                    select(TelemetrySpan)
+                    .where(TelemetrySpan.task_id == task_id)
+                    .order_by(TelemetrySpan.created_at.desc())
+                )
+                result = await session.execute(stmt)
+                spans = result.scalars().all()
+
+                if not spans:
+                    return {"status": "unknown", "error_count": 0, "avg_quality": None}
+
+                error_count = sum(1 for s in spans if s.status == "error")
+                qualities = [s.quality_score for s in spans if s.quality_score is not None]
+                avg_quality = sum(qualities) / len(qualities) if qualities else None
+                
+                # Determine status
+                status = "healthy"
+                if error_count > 0:
+                    status = "degraded"
+                if error_count > 2 or (avg_quality is not None and avg_quality < 0.4):
+                    status = "critical"
+                
+                return {
+                    "status": status,
+                    "error_count": error_count,
+                    "avg_quality": round(avg_quality, 2) if avg_quality is not None else None,
+                    "span_count": len(spans)
+                }
+        except Exception as e:
+            logger.debug(f"Task health query failed: {e}")
+            return {"status": "unknown", "error_count": 0, "avg_quality": None}
+
+
 telemetry_recorder = TelemetryRecorder()

@@ -18,11 +18,11 @@ Generated from the repository on version `2026.04.17.1`. This document is meant 
 
 ## Repository Architecture Snapshot
 
-- FastAPI backend with 38 route modules and 367 detected endpoints.
+- FastAPI backend with 39 route modules and 369 detected endpoints.
 - Next.js frontend with 22 mounted views and 15 Zustand stores.
 - 42 SQLAlchemy models in `backend/app/models`.
 - 6 tracked persona directories and 56 JSON-defined skills.
-- 73 Playwright simulation scenarios plus 27 Python e2e phases.
+- 73 Playwright simulation scenarios plus 10 Python e2e phases.
 
 ## Backend Route Inventory
 
@@ -34,7 +34,8 @@ Generated from the repository on version `2026.04.17.1`. This document is meant 
 | `autoresearch.py` | `/autoresearch` | 9 |
 | `backup.py` | `/` | 9 |
 | `channels.py` | `/` | 11 |
-| `chat.py` | `/` | 3 |
+| `chat.py` | `/` | 4 |
+| `chat_voice.py` | `/` | 1 |
 | `code_applications.py` | `/code-applications` | 4 |
 | `codebook_versions.py` | `/codebook-versions` | 4 |
 | `codebooks.py` | `/` | 8 |
@@ -75,7 +76,8 @@ Generated from the repository on version `2026.04.17.1`. This document is meant 
 - **autoresearch**: `GET /api/autoresearch/status`, `GET /api/autoresearch/experiments`, `GET /api/autoresearch/experiments/{experiment_id}`, `POST /api/autoresearch/start`, `POST /api/autoresearch/stop`, `GET /api/autoresearch/config`, `PATCH /api/autoresearch/config`, `GET /api/autoresearch/leaderboard`, `POST /api/autoresearch/toggle`
 - **backup**: `GET /api/backups`, `POST /api/backups/create`, `POST /api/backups/{backup_id}/restore`, `POST /api/backups/{backup_id}/verify`, `DELETE /api/backups/{backup_id}`, `GET /api/backups/config`, `POST /api/backups/config`, `GET /api/backups/estimate`, `GET /api/backups/{backup_id}/download`
 - **channels**: `GET /api/channels`, `POST /api/channels`, `GET /api/channels/{instance_id}`, `PATCH /api/channels/{instance_id}`, `DELETE /api/channels/{instance_id}`, `POST /api/channels/{instance_id}/start`, `POST /api/channels/{instance_id}/stop`, `GET /api/channels/{instance_id}/health`, `GET /api/channels/{instance_id}/messages`, `GET /api/channels/{instance_id}/conversations`, `POST /api/channels/{instance_id}/send`
-- **chat**: `POST /api/chat`, `GET /api/chat/history/{project_id}`, `POST /api/chat/voice`
+- **chat**: `POST /api/chat`, `GET /api/chat/history/{project_id}`, `POST /api/chat/voice`, `POST /api/chat/voice-transcribe`
+- **chat_voice**: `POST /api/chat/voice-transcribe`
 - **code_applications**: `GET /api/code-applications/{project_id}`, `GET /api/code-applications/{project_id}/pending`, `PATCH /api/code-applications/{application_id}/review`, `POST /api/code-applications/{project_id}/bulk-approve`
 - **codebook_versions**: `GET /api/codebook-versions/{project_id}`, `GET /api/codebook-versions/{project_id}/latest`, `POST /api/codebook-versions`, `GET /api/codebook-versions/detail/{version_id}`
 - **codebooks**: `GET /api/codebooks`, `POST /api/codebooks`, `GET /api/codebooks/{codebook_id}`, `PATCH /api/codebooks/{codebook_id}`, `DELETE /api/codebooks/{codebook_id}`, `POST /api/codes`, `PATCH /api/codes/{code_id}`, `DELETE /api/codes/{code_id}`
@@ -215,7 +217,7 @@ Generated from the repository on version `2026.04.17.1`. This document is meant 
 
 ### Skills By Phase
 
-- **Define** (13): Affinity Mapping, Empathy Mapping, Problem Statements / HMW, Journey Mapping, Jobs-to-be-Done Analysis, Kappa Intercoder Thematic Analysis, Participant Simulation (Game Theory), Persona Creation, Prioritization Matrix, Research Synthesis Report, Taxonomy Generator, Thematic Analysis, User Flow Mapping
+- **Define** (13): Affinity Mapping, Empathy Mapping, Problem Statements / HMW, Journey Mapping, Jobs-to-be-Done Analysis, Kappa Intercoder Thematic Analysis, Game Theory Participant Simulation, Persona Creation, Prioritization Matrix, Research Synthesis Report, Taxonomy Generator, Thematic Analysis, User Flow Mapping
 - **Deliver** (12): Handoff Documentation, Longitudinal Study Tracking, NPS Analysis, Regression / Impact Analysis, Research Repository Curation, Evaluate Research Quality, Research Ops Retrospective, Stakeholder Presentation, Design System Synthesis, HTML to React Components, SUS / UMUX Scoring, Task Analysis (Quantitative)
 - **Develop** (16): A/B Test Analysis, Live Site Accessibility Audit, Live Site UX Audit, Card Sorting Analysis, Cognitive Walkthrough, Concept Testing, Design Critique / Expert Review, Design System Audit, Heuristic Evaluation, Prototype Feedback Analysis, Stitch Design Generation, Design Prompt Enhancement, Tree Testing Analysis, Usability Testing, UX Law Compliance Audit, Workshop Facilitation
 - **Discover** (15): Accessibility Audit, Analytics Review, Competitor UX Benchmarking, Competitive Analysis, Contextual Inquiry, Literature / Desk Research, Diary Studies, Field Studies / Ethnography, Interview Question Generator, Stakeholder Interviews, Survey AI Response Detection, Survey Design & Analysis, Survey Generator, Audio Transcription & Analysis, User Interviews
@@ -234,31 +236,14 @@ Generated from the repository on version `2026.04.17.1`. This document is meant 
 
 - Authentication
 - System Health
-- Project Setup (Sarah creates her project)
+- Project Setup
 - Context Hierarchy
-- File Upload & Processing
+- File Upload
 - Chat & Skill Execution
-- Findings Verification
-- Tasks & Kanban
-- Metrics & History
-- Skills Registry
-- Agents & Audit
-- Frontend Check
-- Mid-Execution Steering
-- Chat Flow
-- Findings CRUD
-- Project Management
-- Task Management
-- Skills Deep Dive
-- Documents Deep Dive
-- Sessions Deep Dive
-- Settings Deep Dive
-- Backup Deep Dive
-- Meta-Agent Deep Dive
-- Interfaces Deep Dive
-- Loops Deep Dive
+- Steering
+- Findings
 - Voice Transcription
-- Voice Transcription
+- Browser Research & Formal Evaluation
 
 ### Simulation Scenario Matrix
 
