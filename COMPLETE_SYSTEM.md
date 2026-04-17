@@ -1,6 +1,6 @@
 # Istara Complete System Architecture & Living Map
 
-Generated from the repository on version `2026.04.10.13`. This document is meant to be regenerated whenever the implementation changes so LLMs can reason from the current system instead of stale summaries.
+Generated from the repository on version `2026.04.17.1`. This document is meant to be regenerated whenever the implementation changes so LLMs can reason from the current system instead of stale summaries.
 
 ## Purpose
 
@@ -18,23 +18,23 @@ Generated from the repository on version `2026.04.10.13`. This document is meant
 
 ## Repository Architecture Snapshot
 
-- FastAPI backend with 38 route modules and 363 detected endpoints.
+- FastAPI backend with 38 route modules and 367 detected endpoints.
 - Next.js frontend with 22 mounted views and 15 Zustand stores.
-- 41 SQLAlchemy models in `backend/app/models`.
-- 6 tracked persona directories and 51 JSON-defined skills.
-- 71 Playwright simulation scenarios plus 26 Python e2e phases.
+- 42 SQLAlchemy models in `backend/app/models`.
+- 6 tracked persona directories and 56 JSON-defined skills.
+- 73 Playwright simulation scenarios plus 27 Python e2e phases.
 
 ## Backend Route Inventory
 
 | Route Module | Prefix | Endpoints |
 |---|---|---|
 | `agents.py` | `/` | 48 |
-| `audit.py` | `/` | 6 |
+| `audit.py` | `/` | 7 |
 | `auth.py` | `/` | 15 |
 | `autoresearch.py` | `/autoresearch` | 9 |
 | `backup.py` | `/` | 9 |
 | `channels.py` | `/` | 11 |
-| `chat.py` | `/` | 2 |
+| `chat.py` | `/` | 3 |
 | `code_applications.py` | `/code-applications` | 4 |
 | `codebook_versions.py` | `/codebook-versions` | 4 |
 | `codebooks.py` | `/` | 8 |
@@ -52,7 +52,7 @@ Generated from the repository on version `2026.04.10.13`. This document is meant
 | `mcp.py` | `/` | 17 |
 | `memory.py` | `/` | 5 |
 | `meta_hyperagent.py` | `/` | 9 |
-| `metrics.py` | `/` | 1 |
+| `metrics.py` | `/` | 3 |
 | `notifications.py` | `/` | 7 |
 | `projects.py` | `/` | 15 |
 | `reports.py` | `/reports` | 1 |
@@ -70,12 +70,12 @@ Generated from the repository on version `2026.04.10.13`. This document is meant
 ### Endpoint Coverage
 
 - **agents**: `GET /api/agents`, `GET /api/agents/capacity`, `GET /api/agents/heartbeat/status`, `GET /api/agents/a2a/log`, `GET /api/agents/status`, `GET /api/agents/log/recent`, `POST /api/agents`, `GET /api/agents/{agent_id}`, `PATCH /api/agents/{agent_id}`, `DELETE /api/agents/{agent_id}`, `POST /api/agents/{agent_id}/pause`, `POST /api/agents/{agent_id}/resume`, `POST /api/agents/{agent_id}/restart`, `POST /api/agents/{agent_id}/set-scope`, `POST /api/agents/{agent_id}/request-promotion`, `POST /api/agents/{agent_id}/avatar`, `GET /api/agents/{agent_id}/avatar`, `GET /api/agents/{agent_id}/identity`, `PUT /api/agents/{agent_id}/identity`, `GET /api/agents/personas/list`, `GET /api/agents/{agent_id}/learnings`, `GET /api/agents/{agent_id}/evolution/candidates`, `POST /api/agents/{agent_id}/evolution/promote/{learning_id}`, `POST /api/agents/{agent_id}/evolution/auto`, `GET /api/agents/evolution/scan`, `GET /api/agents/creation-proposals/pending`, `GET /api/agents/creation-proposals/all`, `POST /api/agents/creation-proposals/{proposal_id}/approve`, `POST /api/agents/creation-proposals/{proposal_id}/reject`, `GET /api/agents/{agent_id}/prompt/stats`, `POST /api/agents/{agent_id}/prompt/compose`, `GET /api/agents/{agent_id}/memory`, `PATCH /api/agents/{agent_id}/memory`, `GET /api/agents/{agent_id}/messages`, `POST /api/agents/{agent_id}/messages`, `GET /api/audit/ux/latest`, `POST /api/audit/ux/run`, `GET /api/audit/sim/latest`, `POST /api/audit/sim/run`, `GET /api/agents/{agent_id}/export`, `POST /api/agents/import`, `GET /api/resources`, `GET /api/contexts`, `POST /api/contexts`, `GET /api/contexts/{doc_id}`, `PATCH /api/contexts/{doc_id}`, `DELETE /api/contexts/{doc_id}`, `GET /api/contexts/composed/{project_id}`
-- **audit**: `GET /api/audit/devops/latest`, `GET /api/audit/devops/history`, `POST /api/audit/devops/run`, `GET /api/audit/ui/latest`, `GET /api/audit/ui/history`, `POST /api/audit/ui/run`
+- **audit**: `GET /api/audit/devops/latest`, `GET /api/audit/devops/history`, `POST /api/audit/devops/run`, `GET /api/audit/ui/latest`, `GET /api/audit/ui/history`, `POST /api/audit/ui/run`, `GET /api/audit/logs`
 - **auth**: `POST /api/auth/register`, `POST /api/auth/login`, `POST /api/auth/logout`, `POST /api/auth/totp/setup`, `POST /api/auth/totp/verify`, `POST /api/auth/totp/disable`, `POST /api/auth/recovery-codes/generate`, `GET /api/auth/recovery-codes/status`, `GET /api/auth/me`, `PUT /api/auth/preferences`, `GET /api/auth/team-status`, `GET /api/auth/users`, `POST /api/auth/users`, `DELETE /api/auth/users/{user_id}`, `PATCH /api/auth/users/{user_id}/role`
 - **autoresearch**: `GET /api/autoresearch/status`, `GET /api/autoresearch/experiments`, `GET /api/autoresearch/experiments/{experiment_id}`, `POST /api/autoresearch/start`, `POST /api/autoresearch/stop`, `GET /api/autoresearch/config`, `PATCH /api/autoresearch/config`, `GET /api/autoresearch/leaderboard`, `POST /api/autoresearch/toggle`
 - **backup**: `GET /api/backups`, `POST /api/backups/create`, `POST /api/backups/{backup_id}/restore`, `POST /api/backups/{backup_id}/verify`, `DELETE /api/backups/{backup_id}`, `GET /api/backups/config`, `POST /api/backups/config`, `GET /api/backups/estimate`, `GET /api/backups/{backup_id}/download`
 - **channels**: `GET /api/channels`, `POST /api/channels`, `GET /api/channels/{instance_id}`, `PATCH /api/channels/{instance_id}`, `DELETE /api/channels/{instance_id}`, `POST /api/channels/{instance_id}/start`, `POST /api/channels/{instance_id}/stop`, `GET /api/channels/{instance_id}/health`, `GET /api/channels/{instance_id}/messages`, `GET /api/channels/{instance_id}/conversations`, `POST /api/channels/{instance_id}/send`
-- **chat**: `POST /api/chat`, `GET /api/chat/history/{project_id}`
+- **chat**: `POST /api/chat`, `GET /api/chat/history/{project_id}`, `POST /api/chat/voice`
 - **code_applications**: `GET /api/code-applications/{project_id}`, `GET /api/code-applications/{project_id}/pending`, `PATCH /api/code-applications/{application_id}/review`, `POST /api/code-applications/{project_id}/bulk-approve`
 - **codebook_versions**: `GET /api/codebook-versions/{project_id}`, `GET /api/codebook-versions/{project_id}/latest`, `POST /api/codebook-versions`, `GET /api/codebook-versions/detail/{version_id}`
 - **codebooks**: `GET /api/codebooks`, `POST /api/codebooks`, `GET /api/codebooks/{codebook_id}`, `PATCH /api/codebooks/{codebook_id}`, `DELETE /api/codebooks/{codebook_id}`, `POST /api/codes`, `PATCH /api/codes/{code_id}`, `DELETE /api/codes/{code_id}`
@@ -93,7 +93,7 @@ Generated from the repository on version `2026.04.10.13`. This document is meant
 - **mcp**: `GET /api/mcp/server/status`, `POST /api/mcp/server/toggle`, `GET /api/mcp/server/policy`, `PATCH /api/mcp/server/policy`, `GET /api/mcp/server/audit`, `GET /api/mcp/server/exposure`, `GET /api/mcp/clients`, `POST /api/mcp/clients`, `GET /api/mcp/clients/tools`, `DELETE /api/mcp/clients/{server_id}`, `POST /api/mcp/clients/{server_id}/discover`, `GET /api/mcp/clients/{server_id}/tools`, `POST /api/mcp/clients/{server_id}/call`, `GET /api/mcp/clients/{server_id}/health`, `GET /api/mcp/featured`, `GET /api/mcp/featured/{server_id}`, `POST /api/mcp/featured/{server_id}/connect`
 - **memory**: `GET /api/memory/{project_id}`, `GET /api/memory/{project_id}/search`, `GET /api/memory/{project_id}/stats`, `GET /api/memory/{project_id}/agent/{agent_id}/notes`, `DELETE /api/memory/{project_id}/source/{source_name:path}`
 - **meta_hyperagent**: `GET /api/meta-hyperagent/status`, `GET /api/meta-hyperagent/proposals`, `POST /api/meta-hyperagent/proposals/{proposal_id}/approve`, `POST /api/meta-hyperagent/proposals/{proposal_id}/reject`, `GET /api/meta-hyperagent/variants`, `POST /api/meta-hyperagent/variants/{variant_id}/revert`, `POST /api/meta-hyperagent/variants/{variant_id}/confirm`, `GET /api/meta-hyperagent/observations`, `POST /api/meta-hyperagent/toggle`
-- **metrics**: `GET /api/metrics/{project_id}`
+- **metrics**: `GET /api/metrics/{project_id}`, `GET /api/metrics/{project_id}/validation`, `GET /api/metrics/{project_id}/model-intelligence`
 - **notifications**: `GET /api/notifications`, `GET /api/notifications/unread-count`, `POST /api/notifications/{notification_id}/read`, `POST /api/notifications/read-all`, `DELETE /api/notifications/{notification_id}`, `GET /api/notifications/preferences`, `PUT /api/notifications/preferences`
 - **projects**: `GET /api/projects`, `POST /api/projects`, `GET /api/projects/{project_id}`, `PATCH /api/projects/{project_id}`, `POST /api/projects/{project_id}/pause`, `POST /api/projects/{project_id}/resume`, `POST /api/projects/{project_id}/link-folder`, `POST /api/projects/{project_id}/unlink-folder`, `DELETE /api/projects/{project_id}`, `GET /api/projects/{project_id}/versions`, `POST /api/projects/{project_id}/export`, `GET /api/projects/{project_id}/members`, `POST /api/projects/{project_id}/members`, `DELETE /api/projects/{project_id}/members/{user_id}`, `PATCH /api/projects/{project_id}/members/{user_id}`
 - **reports**: `GET /api/reports/{project_id}`
@@ -151,6 +151,7 @@ Generated from the repository on version `2026.04.10.13`. This document is meant
 | `SurveyIntegration` | `survey_integrations` | yes | `backend/app/models/survey_integration.py` |
 | `SurveyLink` | `survey_links` | yes | `backend/app/models/survey_integration.py` |
 | `Task` | `tasks` | no | `backend/app/models/task.py` |
+| `TelemetrySpan` | `telemetry_spans` | no | `backend/app/models/telemetry_span.py` |
 | `User` | `users` | no | `backend/app/models/user.py` |
 | `WebAuthnCredential` | `webauthn_credentials` | no | `backend/app/models/webauthn_credential.py` |
 
@@ -214,10 +215,10 @@ Generated from the repository on version `2026.04.10.13`. This document is meant
 
 ### Skills By Phase
 
-- **Define** (12): Affinity Mapping, Empathy Mapping, Problem Statements / HMW, Journey Mapping, Jobs-to-be-Done Analysis, Kappa Intercoder Thematic Analysis, Persona Creation, Prioritization Matrix, Research Synthesis Report, Taxonomy Generator, Thematic Analysis, User Flow Mapping
-- **Deliver** (11): Handoff Documentation, Longitudinal Study Tracking, NPS Analysis, Regression / Impact Analysis, Research Repository Curation, Research Ops Retrospective, Stakeholder Presentation, Design System Synthesis, HTML to React Components, SUS / UMUX Scoring, Task Analysis (Quantitative)
-- **Develop** (14): A/B Test Analysis, Card Sorting Analysis, Cognitive Walkthrough, Concept Testing, Design Critique / Expert Review, Design System Audit, Heuristic Evaluation, Prototype Feedback Analysis, Stitch Design Generation, Design Prompt Enhancement, Tree Testing Analysis, Usability Testing, UX Law Compliance Audit, Workshop Facilitation
-- **Discover** (14): Accessibility Audit, Analytics Review, Competitive Analysis, Contextual Inquiry, Literature / Desk Research, Diary Studies, Field Studies / Ethnography, Interview Question Generator, Stakeholder Interviews, Survey AI Response Detection, Survey Design & Analysis, Survey Generator, Audio Transcription & Analysis, User Interviews
+- **Define** (13): Affinity Mapping, Empathy Mapping, Problem Statements / HMW, Journey Mapping, Jobs-to-be-Done Analysis, Kappa Intercoder Thematic Analysis, Participant Simulation (Game Theory), Persona Creation, Prioritization Matrix, Research Synthesis Report, Taxonomy Generator, Thematic Analysis, User Flow Mapping
+- **Deliver** (12): Handoff Documentation, Longitudinal Study Tracking, NPS Analysis, Regression / Impact Analysis, Research Repository Curation, Evaluate Research Quality, Research Ops Retrospective, Stakeholder Presentation, Design System Synthesis, HTML to React Components, SUS / UMUX Scoring, Task Analysis (Quantitative)
+- **Develop** (16): A/B Test Analysis, Live Site Accessibility Audit, Live Site UX Audit, Card Sorting Analysis, Cognitive Walkthrough, Concept Testing, Design Critique / Expert Review, Design System Audit, Heuristic Evaluation, Prototype Feedback Analysis, Stitch Design Generation, Design Prompt Enhancement, Tree Testing Analysis, Usability Testing, UX Law Compliance Audit, Workshop Facilitation
+- **Discover** (15): Accessibility Audit, Analytics Review, Competitor UX Benchmarking, Competitive Analysis, Contextual Inquiry, Literature / Desk Research, Diary Studies, Field Studies / Ethnography, Interview Question Generator, Stakeholder Interviews, Survey AI Response Detection, Survey Design & Analysis, Survey Generator, Audio Transcription & Analysis, User Interviews
 
 ## Real-Time and Integration Surface
 
@@ -256,6 +257,7 @@ Generated from the repository on version `2026.04.10.13`. This document is meant
 - Meta-Agent Deep Dive
 - Interfaces Deep Dive
 - Loops Deep Dive
+- Voice Transcription
 - Voice Transcription
 
 ### Simulation Scenario Matrix
@@ -331,6 +333,8 @@ Generated from the repository on version `2026.04.10.13`. This document is meant
 - `71` — Plan And Execute
 - `72` — Circuit Breaker Health
 - `73` — A2A Debate And Reports
+- `74` — Voice Transcription
+- `75` — Participant Simulation
 
 ## What Agents Must Check Before Editing
 

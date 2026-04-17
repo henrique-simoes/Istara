@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Send, Paperclip, Loader2, StopCircle, Upload, User, Settings2, Bot, Zap, ChevronDown, HelpCircle, X, AlertTriangle, FolderOpen, FileText } from "lucide-react";
+import { Send, Paperclip, Loader2, StopCircle, Upload, User, Settings2, Bot, Zap, ChevronDown, HelpCircle, X, AlertTriangle, FolderOpen, FileText, Mic } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useChatStore } from "@/stores/chatStore";
@@ -727,6 +727,22 @@ export default function ChatView() {
                   style={{ minHeight: "44px", maxHeight: "120px" }}
                 />
               </div>
+
+              {/* Voice recording button */}
+              <button
+                onClick={() => {/* TODO: trigger voice recording modal */}}
+                disabled={streaming}
+                aria-label="Record voice message"
+                className={cn(
+                  "p-2.5 rounded-lg transition-colors",
+                  !streaming
+                    ? "bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600"
+                    : "bg-slate-100 dark:bg-slate-800 text-slate-300 cursor-not-allowed"
+                )}
+                title="Voice input"
+              >
+                <Mic size={20} />
+              </button>
 
               <button
                 onClick={handleSend}

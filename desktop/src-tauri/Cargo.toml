@@ -1,6 +1,10 @@
 [package]
 name = "istara-desktop"
+<<<<<<< HEAD
 version = "26.134.7"
+=======
+version = "26.134.6"
+>>>>>>> feat/voice-transcription
 description = "Istara Desktop — System tray app for managing Istara server and relay"
 authors = ["Istara Team"]
 license = "MIT"

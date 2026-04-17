@@ -69,37 +69,76 @@ def create_skill(
 
     class GeneratedSkill(BaseSkill):
         @property
-        def name(self) -> str: return skill_name
+        def name(self) -> str:
+            return skill_name
+
         @property
-        def display_name(self) -> str: return display
+        def display_name(self) -> str:
+            return display
+
         @property
-        def description(self) -> str: return desc
+        def description(self) -> str:
+            return desc
+
         @property
-        def phase(self) -> SkillPhase: return phase
+        def phase(self) -> SkillPhase:
+            return phase
+
         @property
-        def skill_type(self) -> SkillType: return skill_type
+        def skill_type(self) -> SkillType:
+            return skill_type
 
         async def plan(self, skill_input: SkillInput) -> dict:
             ctx = skill_input.project_context or skill_input.user_context or "General UX research"
-            prompt = plan_prompt.format(context=ctx, user_context=skill_input.user_context or "")
-            resp = await ollama.chat(messages=[{"role": "user", "content": prompt}], temperature=0.7)
+            urls_str = ", ".join(skill_input.urls) if skill_input.urls else ""
+            prompt = plan_prompt.format(
+                context=ctx, user_context=skill_input.user_context or "", urls=urls_str
+            )
+            resp = await ollama.chat(
+                messages=[{"role": "user", "content": prompt}], temperature=0.7
+            )
             return {"skill": self.name, "plan": resp.get("message", {}).get("content", "")}
 
         async def execute(self, skill_input: SkillInput) -> SkillOutput:
             content = _extract_text_from_files(skill_input.files) if skill_input.files else ""
-            if not content and not skill_input.user_context:
-                return SkillOutput(success=False, summary="No input provided.", errors=["Provide files or context."])
+            if not content and not skill_input.user_context and not skill_input.urls:
+                return SkillOutput(
+                    success=False,
+                    summary="No input provided.",
+                    errors=["Provide files, context, or URLs."],
+                )
 
-            # Build source attribution from actual file names
             file_sources = [Path(f).name for f in skill_input.files] if skill_input.files else []
             source_label = ", ".join(file_sources[:3]) if file_sources else self.name
 
-            ctx = "\n".join(filter(None, [skill_input.company_context, skill_input.project_context, skill_input.user_context]))
+            urls_section = ""
+            if skill_input.urls:
+                urls_section = "\n\n## Target URLs\n" + "\n".join(
+                    f"- {u}" for u in skill_input.urls
+                )
+
+            ctx = "\n".join(
+                filter(
+                    None,
+                    [
+                        skill_input.company_context,
+                        skill_input.project_context,
+                        skill_input.user_context,
+                    ],
+                )
+            )
             data_content = content or (skill_input.user_context or "N/A")[:4000]
-            full_prompt = execute_prompt.format(context=(ctx or "N/A")[:2000], content=data_content)
+            full_prompt = execute_prompt.format(
+                context=(ctx or "N/A")[:2000],
+                content=data_content,
+                urls=", ".join(skill_input.urls) if skill_input.urls else "",
+                urls_section=urls_section,
+            )
             full_prompt += f"\n\nRespond in JSON:\n{output_schema}"
 
-            resp = await ollama.chat(messages=[{"role": "user", "content": full_prompt}], temperature=0.3)
+            resp = await ollama.chat(
+                messages=[{"role": "user", "content": full_prompt}], temperature=0.3
+            )
             data = _parse_json_response(resp.get("message", {}).get("content", ""))
 
             # Normalize findings — handle both dict and string items from LLM
@@ -107,18 +146,37 @@ def create_skill(
                 return item if isinstance(item, dict) else {default_key: str(item)}
 
             # Use source from LLM if provided, fall back to file name(s), then skill name
-            nuggets = [{"text": _as_dict(n).get("text", str(n)), "source": _as_dict(n).get("source", source_label), "tags": _as_dict(n).get("tags", [])}
-                       for n in data.get("nuggets", [])]
+            nuggets = [
+                {
+                    "text": _as_dict(n).get("text", str(n)),
+                    "source": _as_dict(n).get("source", source_label),
+                    "tags": _as_dict(n).get("tags", []),
+                }
+                for n in data.get("nuggets", [])
+            ]
             facts = [{"text": _as_dict(f).get("text", str(f))} for f in data.get("facts", [])]
-            insights = [{"text": _as_dict(i).get("text", str(i)), "confidence": _as_dict(i).get("confidence", "medium")}
-                        for i in data.get("insights", [])]
-            recommendations = [{"text": _as_dict(r).get("text", str(r)), "priority": _as_dict(r).get("priority", "medium")}
-                               for r in data.get("recommendations", [])]
+            insights = [
+                {
+                    "text": _as_dict(i).get("text", str(i)),
+                    "confidence": _as_dict(i).get("confidence", "medium"),
+                }
+                for i in data.get("insights", [])
+            ]
+            recommendations = [
+                {
+                    "text": _as_dict(r).get("text", str(r)),
+                    "priority": _as_dict(r).get("priority", "medium"),
+                }
+                for r in data.get("recommendations", [])
+            ]
 
             return SkillOutput(
                 success=True,
                 summary=data.get("summary", f"Completed {display} analysis."),
-                nuggets=nuggets, facts=facts, insights=insights, recommendations=recommendations,
+                nuggets=nuggets,
+                facts=facts,
+                insights=insights,
+                recommendations=recommendations,
                 artifacts={f"{skill_name}_analysis.json": json.dumps(data, indent=2)},
                 suggestions=data.get("suggestions", []),
             )

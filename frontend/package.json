@@ -1,6 +1,10 @@
 {
   "name": "istara-frontend",
+<<<<<<< HEAD
   "version": "2026.04.10.7",
+=======
+  "version": "2026.04.10.6",
+>>>>>>> feat/voice-transcription
   "private": true,
   "scripts": {
     "dev": "next dev",

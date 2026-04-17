@@ -344,6 +344,26 @@ const scenarioFiles = [
 - [ ] API routes validate agent existence before queuing
 - [ ] SSE `/api/steering/{agent_id}/idle` endpoint handles timeout correctly
 
+### Adding Voice Transcription Pipeline
+
+- [ ] `backend/app/core/transcription.py` handles Whisper loading gracefully (no crash if Whisper missing)
+- [ ] `POST /api/chat/voice` endpoint registered in `chat.py` and tested
+- [ ] Audio format conversion handles OGG/MP3/M4A/FLAC → WAV (ffmpeg preferred, pydub fallback)
+- [ ] ICR consensus computed between primary and alternative transcriptions
+- [ ] Auto-tagging generates research-relevant categories (pain-point, usability, etc.)
+- [ ] Low-confidence transcriptions flagged with `needs_review: true`
+- [ ] Telegram channel auto-transcribes voice messages
+- [ ] WhatsApp channel auto-transcribes audio messages
+- [ ] Mic button in ChatView.tsx with proper aria-label and disabled states
+- [ ] `chat.transcribeVoice()` in api.ts handles file upload and response
+- [ ] `openai-whisper` and `pydub` listed in requirements.txt
+- [ ] Unit tests in `tests/test_transcription.py` cover: module import, fallback, ICR, auto-tagging, audio conversion
+- [ ] Simulation scenario for mic button accessibility (aria-label, keyboard focus, disabled state)
+- [ ] Persona files updated (istara-main, istara-devops) to understand transcription capability
+- [ ] Tech.md updated with transcription pipeline architecture
+- [ ] `SYSTEM_CHANGE_MATRIX.md` "Documents/Interviews/Context" row updated for voice input
+- [ ] Run `python scripts/update_agent_md.py` and `python scripts/check_integrity.py`
+
 ### Adding an Integration (Survey, Design, etc.)
 
 - [ ] Create adapter/service file
@@ -355,6 +375,68 @@ const scenarioFiles = [
 - [ ] Test error handling (bad credentials, rate limits, etc.)
 - [ ] Add to integrations view in frontend
 - [ ] Write end-to-end test
+
+### Adding Browser UX Research Skills
+
+- [ ] Skill definitions are valid JSON in `backend/app/skills/definitions/`
+- [ ] Skill `execute_prompt` includes `{urls_section}` or `{urls}` placeholder for target URLs
+- [ ] Skill `plan_prompt` includes `{urls}` placeholder
+- [ ] `SkillInput.urls` field passes task URLs to the skill execution pipeline
+- [ ] `report_manager.py` SCOPE_MAP updated with new skill → report section mapping
+- [ ] `task_router.py` SPECIALTY_KEYWORDS updated for browser-related skill routing
+- [ ] `agent.py` alias map updated (`ux audit` → `browser-ux-audit`, etc.)
+- [ ] Agent uses `browse_website` system action when executing browser skills
+- [ ] Task `urls` field propagated through `SkillInput` in `_execute_task()`
+- [ ] Skill `output_schema` includes nuggets, facts, insights, recommendations (Atomic Research chain)
+- [ ] Unit tests validate skill loading, URL template substitution, and SCOPE_MAP entries
+
+### Adding Research Quality Evaluation (LLM-as-Judge Formalization)
+
+- [ ] `research-quality-evaluation.json` skill definition in `backend/app/skills/definitions/`
+- [ ] Skill invokes existing validation pipeline (AdaptiveSelector, ValidationExecutor, consensus engine)
+- [ ] SCOPE_MAP updated: `research-quality-evaluation` → `Quality Evaluation`
+- [ ] Task routing aliases added (`evaluate quality`, `quality evaluation`, `llm as judge`)
+- [ ] `GET /api/metrics/{project_id}/validation` endpoint returns method stats + recent validations
+- [ ] EnsembleHealthView fetches real data from validation endpoint instead of stub
+- [ ] Recent validations section added to EnsembleHealthView
+- [ ] Task type in `frontend/src/lib/types.ts` updated with `validation_method` and `consensus_score`
+- [ ] KanbanBoard shows consensus badge on task cards with color-coded score
+- [ ] `validation.metrics(projectId)` API client method added to `frontend/src/lib/api.ts`
+- [ ] Persona files updated (istara-main: Research Quality Evaluation)
+
+### Adding Game-Theory Participant Simulation
+
+- [ ] `backend/app/core/participant_simulation.py` implements 7 strategies (cooperative, selfish, reciprocating, random, satisficing, social_desirability, adversarial)
+- [ ] Payoff matrices for Prisoner's Dilemma and Stag Hunt with Nash equilibrium conditions
+- [ ] `backend/app/skills/definitions/participant-simulation.json` skill definition (define/mixed)
+- [ ] SCOPE_MAP updated: `participant-simulation` → `Simulation Analysis`
+- [ ] Task routing aliases added (`participant simulation`, `game theory`, `simulation`)
+- [ ] Simulation scenario: `75-participant-simulation.mjs`
+- [ ] Unit tests cover strategies, payoffs, profiles, validation, simulation rounds
+- [ ] istara-sim persona updated with game-theory simulation capabilities
+
+### Adding Audit Log Middleware
+
+- [ ] `backend/app/core/audit_middleware.py` AuditLog model + AuditLogMiddleware
+- [ ] Skips health/docs/static/OPTIONS/MCP routes
+- [ ] `GET /api/audit/logs` endpoint with filtering and pagination
+- [ ] Registered in `database.py` init_db() for table creation
+- [ ] Registered in `main.py` middleware stack
+- [ ] Unit tests for model, skip paths, table name
+
+### Adding Observability — Telemetry Spans & Agent Hooks
+
+- [ ] `backend/app/models/telemetry_span.py` defines TelemetrySpan model (no user content, only metadata)
+- [ ] `backend/app/core/agent_hooks.py` provides composable async lifecycle hooks (pre_task, post_task, post_validation, on_error, on_completion)
+- [ ] `backend/app/core/telemetry.py` TelemetryRecorder writes spans to local SQLite and ModelSkillStats from production path
+- [ ] `backend/app/core/agent.py` fires hooks at 5 lifecycle points in `_execute_task()`
+- [ ] `backend/app/main.py` calls `register_builtin_hooks()` on startup
+- [ ] `backend/app/models/database.py` registers `TelemetrySpan` in `init_db()`
+- [ ] `GET /api/metrics/{project_id}/model-intelligence` returns leaderboard, error taxonomy, tool success, latency
+- [ ] `TELEMETRY_ENABLED=false` by default — no phone-home, local-first data only
+- [ ] No prompts, responses, user content, or project data stored in telemetry spans
+- [ ] Persona files updated (istara-devops: Telemetry Monitoring)
+- [ ] Tech.md and SYSTEM_INTEGRITY_GUIDE.md updated for telemetry
 
 ---
 

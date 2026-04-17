@@ -1,6 +1,10 @@
 {
   "name": "istara-desktop",
+<<<<<<< HEAD
   "version": "2026.04.10.7",
+=======
+  "version": "2026.04.10.6",
+>>>>>>> feat/voice-transcription
   "private": true,
   "description": "Istara Desktop — System tray app and setup wizard",
   "scripts": {

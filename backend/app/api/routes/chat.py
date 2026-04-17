@@ -15,11 +15,12 @@ by the provider (e.g. models without function-calling support).
 import json
 import logging
 import re
+import tempfile
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -773,3 +774,49 @@ async def get_chat_history(
         )
         for msg in messages
     ]
+
+
+@router.post("/chat/voice")
+async def transcribe_voice(
+    audio: UploadFile = File(...),
+    language: str | None = None,
+):
+    """Transcribe voice input from chat mic button.
+
+    Accepts audio files (wav, mp3, ogg, m4a, flac) and returns
+    transcribed text with ICR confidence scores.
+    """
+    try:
+        # Save uploaded audio to temp file
+        suffix = Path(audio.filename).suffix if audio.filename else ".ogg"
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+            content = await audio.read()
+            tmp.write(content)
+            tmp_path = tmp.name
+
+        # Convert and transcribe
+        from app.core.transcription import transcribe_audio, convert_audio_to_wav
+        wav_path = convert_audio_to_wav(tmp_path)
+        result = transcribe_audio(wav_path, language=language)
+
+        # Clean up temp files
+        try:
+            Path(tmp_path).unlink(missing_ok=True)
+            if wav_path != tmp_path:
+                Path(wav_path).unlink(missing_ok=True)
+        except Exception:
+            pass
+
+        return {
+            "text": result.text,
+            "language": result.language,
+            "confidence": result.confidence,
+            "icr_kappa": result.icr_kappa,
+            "icr_confidence": result.icr_confidence,
+            "needs_review": result.needs_review,
+            "tags": result.tags,
+        }
+
+    except Exception as e:
+        logger.error(f"Voice transcription failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Transcription failed: {str(e)}")

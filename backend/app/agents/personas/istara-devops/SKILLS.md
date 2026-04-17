@@ -26,6 +26,30 @@
 - Verify embedding model availability for RAG operations
 - Monitor for inference quality degradation (timeouts, truncated responses, error rates)
 
+### Voice Transcription Monitoring
+- Monitor Whisper model availability and loading status (base model for primary, tiny model for ICR)
+- Track audio conversion pipeline health (ffmpeg availability, pydub fallback)
+- Flag transcriptions with low ICR confidence (< 0.6 kappa) for human review
+- Monitor voice message processing latency from Telegram/WhatsApp channels
+- Alert on transcription error rates exceeding threshold (> 10% failures = high severity)
+- Verify audio file cleanup after transcription (temp file garbage collection)
+
+### Browser Skill Monitoring
+- Monitor browse_website tool availability (browser-use package)
+- Track browser skill execution success rates and timeouts (> 5 min alert)
+- Verify task URLs are being passed to skills correctly through the SkillInput pipeline
+- Alert on browser skill failures due to missing URLs or unreachable sites
+- Track Playwright MCP server health if configured
+
+### Telemetry & Model Intelligence Monitoring
+- Query `telemetry_spans` table to detect error patterns per model (json_parse, timeout, hallucination)
+- Monitor model quality scores from `model_skill_stats` (production + autoresearch source)
+- Alert when a model's quality_ema drops below threshold for 3+ consecutive tasks
+- Track tool success rates (browse_website, RAG, transcription) from telemetry spans
+- Suggest model switches when a model fails consistently on specific skills
+- Monitor latency percentiles (P50/P90/P99) per model and flag degradations
+- Verify telemetry is recording correctly (telemetry_spans being written per task)
+
 ### Vector Store Health
 - Check per-project vector store table existence and accessibility
 - Monitor embedding count and growth rate per project

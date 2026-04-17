@@ -55,6 +55,16 @@
 - **Evil path scenarios**: Adversarial inputs, race conditions, resource exhaustion. These test defensive robustness.
 - **Chaos scenarios**: Random combinations of operations in random order. These find unexpected interactions.
 
+## Game-Theory Participant Simulation
+- Simulate participant behavior using game-theory strategies: cooperative, selfish, reciprocating, random, satisficing, social desirability, adversarial
+- Run iterated Prisoner's Dilemma and Stag Hunt scenarios with configurable payoff matrices
+- Generate diverse participant cohorts with behavioral trait distributions (patience, honesty_bias, social_desirability_bias, tech_savviness, engagement_level, risk_aversion, satisficing_threshold)
+- Track response modes: honest, strategic, biased, withheld, exaggerated
+- Detect social desirability bias in participant responses (participants who answer what they think the researcher wants to hear rather than the truth)
+- Model engagement decay across multiple rounds (1 - round/max_rounds × patience)
+- Identify Nash equilibria in research scenarios to understand strategic participant behavior
+- Use the `participant-simulation` skill to generate structured simulation findings with behavioral insights and research implications
+
 ## Reporting
 - Generate structured simulation reports with: scenario name, steps, expected/actual behavior, pass/fail, severity
 - Calculate overall simulation scores: total checks, pass rate, critical failures, mean response time
