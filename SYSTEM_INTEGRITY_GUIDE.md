@@ -180,7 +180,74 @@ Global (independent of Project)
 ├─ Notification → NotificationPreference
 ├─ ScheduledTask
 ├─ ContextDocument (LanceDB, indexed by project+session)
-├─ ContextDAGNode
+└─ ContextDAGNode
+
+---
+
+## SYSTEM METRICS & PERFORMANCE PILLARS
+
+Istara tracks its own health and efficacy across four functional pillars. All metrics are local-only and surfaced via the `QualityView`.
+
+### Pillar 1: Orchestration & Logic
+- **`json_parse_success_rate`**: (Target > 95%) % of LLM turns producing valid, schema-compliant JSON.
+- **`consensus_score` (κ)**: (Target > 0.65) Inter-rater agreement (Fleiss' Kappa) across multi-model validation.
+- **`dag_compaction_ratio`**: % character reduction achieved via Context DAG lossless summarization.
+- **`validation_weight`**: Relative importance of a validation method based on historical success.
+
+### Pillar 2: Research Rigor & Methodology
+- **`avg_quality_ema`**: Self-reflected quality score (0-1) weighted by exponential moving average.
+- **`evidence_chain_integrity`**: (Target 100%) Verification of valid Nugget → Fact → Insight lineage.
+- **`methodological_lift`**: Measurement of grounding in cited academic UXR frameworks.
+- **`transcription_confidence`**: Word Error Rate (WER) and confidence score for audio processing.
+- **`icr_score`**: Inter-Coder Reliability score for qualitative thematic coding.
+
+### Pillar 3: Hardware & Execution
+- **`latency_p90_ms`**: 90th percentile response time for inference and skill execution.
+- **`vram_usage_pct`**: GPU memory saturation level monitored by the Resource Governor.
+- **`cpu_load_pct`**: System-wide CPU utilization across all cores.
+- **`active_agent_count`**: Real-time count of active autonomous worker threads.
+
+### Pillar 4: Ecosystem & Self-Healing
+- **`tool_success_rate`**: Reliability of MCP and System Action tool calls.
+- **`rag_hit_rate`**: Retrieval accuracy of the context ingestion pipeline.
+- **`prompt_similarity_score`**: Vector distance between query and retrieved context chunks.
+- **`self_evolution_count`**: Maturity level of agents (promoted learnings).
+
+---
+
+## PROTECTED PROMPT ARCHITECTURE
+
+Implemented in Phase Epsilon to ensure critical instructions survive context window pressure.
+
+### 1. Structural XML Protocol
+All research skill prompts must utilize the following XML tags for structural isolation:
+- `<skill_context>`: Core identity and phase.
+- `<research_methodology>`: Academic citations and procedural steps.
+- `<instructions>`: Chain-of-Thought (CoT) and output format rules.
+- `<thinking>`: Mandatory reasoning block for the model.
+- `<research_data>`: Raw data source (target for aggressive compression).
+
+### 2. LLMLingua Protection Layer
+The `prompt_compressor.py` is configured with a **Protected Region Registry**. Any content inside the tags above is temporarily replaced with UUID placeholders during heuristic pruning, ensuring instructions remain at 1.0 importance (un-compressed).
+
+### 3. Native Structured Outputs
+- **LM Studio**: OpenAI `json_schema` mode (strict) is enabled by default.
+- **Ollama**: Native JSON `format` parameter is injected into the payload.
+- **Benefit**: Reduces "Conversational Filler" hallucinations that break standard regex parsers.
+
+### 4. Tool Output Protection (Phase Zeta)
+To prevent the orchestrator from "forgetting" critical retrieved data during multi-step reasoning:
+- **Tag**: `<tool_output>`
+- **Logic**: Content inside this tag is permanently protected from compression in `prompt_compressor.py`.
+- **Usage**: Automatically applied to data-gathering tool results (e.g., `get_document_content`).
+
+### 5. Dynamic JSON Schema Translation (Phase Zeta)
+Standard for all skill definitions to ensure strict model compliance with easy-to-write examples:
+- **Standard**: `output_schema` can be an example JSON object (e.g. `{"summary": "..."}`).
+- **Automation**: `skill_factory.py` recursively translates example objects into valid JSON Schema objects.
+- **Enforcement**: Forces `additionalProperties: false` and `required` arrays for all nested structures.
+- **Standardization**: This is the mandatory path for both built-in and user-created skills.
+
 ```
 
 ### Database-Level Constraints
@@ -1934,6 +2001,17 @@ Istara enforces a **Three-Layer Testing Architecture** to preserve product behav
   - **Heuristics**: Nielsen usability scoring
   - **Performance**: Resource usage and latency thresholds
 - **Tools**: Playwright, Node.js.
+
+### 4. Layer 4: Orchestration Benchmarks (`tests/benchmarks/`)
+- **Focus**: Strategic performance against industry standards (LangGraph, Anthropic, Swarm, Qwen).
+- **Academic Metrics**: 
+    - **Memento (Zhou et al. 2026)**: Agent Factory efficacy and recursive self-modification.
+    - **DeepPlanning**: Global constrained optimization in research plans.
+    - **Claw-Eval Pass^3**: Trajectory-aware consistency and audit trace reliability.
+    - **SkillsBench Avg5**: Methodology-lift provided by specialized research skills.
+- **Metric**: Orchestration Scorecard (v2.0).
+- **Run**: `python tests/benchmarks/run_benchmarks.py`.
+- **Requirement**: Mandatory for changes to `AgentOrchestrator`, `A2A`, or `steering_manager`.
 
 ### Maintenance Mode & LLM Isolation
 To ensure test reliability on RAM-constrained machines (8GB), Istara implements a **Maintenance Mode** (`resource_governor.py`):

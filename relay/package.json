@@ -1,10 +1,6 @@
 {
   "name": "istara-relay",
-<<<<<<< HEAD
-  "version": "2026.04.10.7",
-=======
-  "version": "2026.04.10.6",
->>>>>>> feat/voice-transcription
+  "version": "2026.04.18",
   "description": "Istara Relay — donate LLM compute to the Istara network",
   "type": "module",
   "main": "index.mjs",

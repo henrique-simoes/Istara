@@ -14,11 +14,7 @@
 
 ; ── Metadata ──────────────────────────────────────────────────────────
 Name "Istara"
-<<<<<<< HEAD
-!define VERSION "2026.04.10.7"
-=======
-!define VERSION "2026.04.10.6"
->>>>>>> feat/voice-transcription
+!define VERSION "2026.04.18"
 OutFile "Istara-Setup-${VERSION}.exe"
 InstallDir "$PROGRAMFILES\Istara"
 RequestExecutionLevel admin
