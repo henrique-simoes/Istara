@@ -104,6 +104,20 @@ Istara runs five coordinated agents managed by a **MetaOrchestrator**. Each agen
 
 **Custom agents** created by users are full participants in this system — they get auto-generated persona files and join the same evolution pipeline.
 
+## Orchestration Audit: Istara vs. Industry Standards
+
+Istara’s orchestration architecture is designed for **Academic Rigor** and **Local Resilience**, differing from generic frameworks in several key ways:
+
+| Dimension | LangGraph / CrewAI | OpenAI Swarm | Anthropic Computer Use | Istara (Sentinel/Cleo) |
+|-----------|-------------------|--------------|------------------------|-----------------------|
+| **Planning** | Deterministic Graphs | Loose Handoffs | Multi-turn thinking | **Decomposed DAGs** |
+| **Logic** | Fixed nodes/edges | dynamic routing | ReAct (XML tags) | **ReAct + Regex Fallback** |
+| **Consensus** | Optional | None (one model) | None | **Mandatory (Fleiss' Kappa)** |
+| **Steering** | Restart/Pause | none | Manual intervention | **Thread-safe Queues** |
+| **Execution** | Cloud-first | Cloud-first | Cloud-first | **Hardware-aware (Local)** |
+
+---
+
 ### Agent Work Loop
 
 The core agent loop (`backend/app/core/agent.py`) runs continuously:
@@ -808,7 +822,83 @@ Istara trades compression ratio for **zero dependencies** and **instant speed** 
 
 ---
 
-## Testing & Quality Assurance
+## Phase Epsilon: Resilience, Rigor, and Context Mastery
+
+### 1. Protected Prompt Architecture
+Istara uses a SOTA structural prompting protocol to ensure that critical research methodology and instructions survive context compression and RAG injection.
+
+**Protected XML Tags**:
+- `<skill_context>`: Identity and phase information.
+- `<research_methodology>`: Academic citations and procedural steps.
+- `<instructions>`: Chain-of-Thought requirements and format rules.
+- `<thinking>`: Mandatory reasoning block before JSON output.
+- `<research_data>`: Raw data source (where compression is most aggressive).
+
+**LLMLingua Protection Layer**:
+The prompt compressor (`core/prompt_compressor.py`) implements a "Protected Region" mechanism. Any content wrapped in protected tags is temporarily replaced with UUID placeholders during the heuristic pruning phase, ensuring a 1.0 importance score for critical instructions.
+
+### 2. Native Structured Outputs (JSON Schema)
+To eliminate hallucination and formatting errors, Istara leverages native schema enforcement at the LLM engine level without forcing model reloads.
+
+- **LM Studio**: Injects `response_format: { "type": "json_schema", ... }` into the OpenAI-compatible payload.
+- **Ollama**: Passes the JSON schema directly to the `format` parameter in the `/api/chat` payload.
+
+## Phase Zeta: Context Mastery and Orchestration Refinement
+
+### 1. Tool Output Context Protection
+To prevent aggressive compression from "forgetting" critical retrieved data during multi-step reasoning, Istara implements a dedicated protection layer for tool results.
+
+- **Protected Tag**: `<tool_output>`
+- **Behavior**: The prompt compressor (`core/prompt_compressor.py`) detects this tag and preserves the enclosed content at 100% fidelity.
+- **Application**: Automatically applied to data-gathering tools like `get_document_content`, `search_documents`, and `web_fetch`.
+
+### 2. Automated JSON Schema Translation
+Istara maintains an "Ease of Use" standard for skill creation by allowing `output_schema` to be defined as simple example JSON objects. A dynamic translator in `skill_factory.py` automatically converts these into strict JSON Schemas.
+
+- **Standard**: Converts `{"key": "value"}` → `{"type": "object", "properties": {"key": {"type": "string"}}, ...}`.
+- **Strictness**: Enforces `additionalProperties: false` and `required` arrays for all nested objects.
+- **Compatibility**: Guaranteed 100% adherence for LM Studio (strict mode) and Ollama without manual schema authoring.
+
+---
+
+## System Metrics & Observability
+
+Istara tracks its own performance across four functional categories. Metrics are recorded to the local database and surfaced via the **Ensemble Health** dashboard.
+
+### 1. Orchestration & Logic Metrics
+| Metric | Category | Description | Target |
+|--------|----------|-------------|--------|
+| `json_parse_success_rate` | Reliability | % of agent turns that produced valid, schema-compliant JSON. | > 95% |
+| `consensus_score` (κ) | Quality | Inter-rater agreement (Fleiss' Kappa) between multiple models. | > 0.65 |
+| `dag_compaction_ratio` | Context | % reduction in history size achieved via lossless summarization. | > 60% |
+| `validation_weight` | Adaptive | Relative importance of a validation method based on historical success. | Dynamic |
+
+### 2. Research & Skill Metrics
+| Metric | Category | Description | Target |
+|--------|----------|-------------|--------|
+| `avg_quality_ema` | Accuracy | Exponential moving average of LLM-reflected quality scores. | > 0.70 |
+| `evidence_chain_integrity` | Rigor | % of findings with valid Nugget → Fact → Insight lineage. | 100% |
+| `methodological_lift` | Academic | % of skills successfully grounding responses in cited frameworks. | > 80% |
+| `transcription_confidence` | Accuracy | Word Error Rate (WER) and confidence score for audio processing. | > 0.85 |
+| `icr_score` | Reliability | Inter-Coder Reliability score for qualitative thematic coding. | > 0.70 |
+
+### 3. Compute & Hardware Metrics
+| Metric | Category | Description | Target |
+|--------|----------|-------------|--------|
+| `latency_p90_ms` | Performance | 90th percentile response time for chat and skill execution. | < 15s |
+| `vram_usage_pct` | Hardware | GPU memory saturation monitored by the Resource Governor. | < 85% |
+| `cpu_load_pct` | Hardware | System CPU saturation across all cores. | < 70% |
+| `active_agent_count` | Load | Number of concurrent agent threads active in the system. | < 10 |
+
+### 4. Tool & Integration Metrics
+| Metric | Category | Description | Target |
+|--------|----------|-------------|--------|
+| `tool_success_rate` | Functionality | % of MCP and System Action calls that executed without error. | > 98% |
+| `rag_hit_rate` | Retrieval | % of queries where the retrieved context contained the answer. | > 75% |
+| `prompt_similarity_score`| Context | Vector distance between query and retrieved context chunks. | > 0.80 |
+| `self_evolution_count` | Maturity | Number of patterns promoted from AgentLearning to Persona files. | N/A |
+
+---
 
 ### Simulation Framework
 
@@ -2735,6 +2825,24 @@ Participant simulations are enhanced with game-theory strategies (`SimulationStr
 
 ### 4. Local-First OpenTelemetry & Tracing
 For high-compliance environments, Istara supports local-only OTLP tracing via a bundled `otel-collector` and `jaeger` instance. This allows full lifecycle tracing of research tasks (Request -> RAG -> Skill -> Verification) with zero cloud dependency.
+
+---
+
+## Orchestration Benchmarks & Academic Lineage (v2026.04.17)
+
+Istara is evaluated against the 2026 **SOTA Agentic Benchmarks** to ensure its orchestration logic meets global standards for autonomous systems.
+
+| Benchmark | Focus Area | Istara Implementation |
+| :--- | :--- | :--- |
+| **DeepPlanning** | Global Optimization | Evaluated in Layer 4 via DAG decomposition logic (`AgentOrchestrator`). |
+| **Claw-Eval** | Trajectory Consistency | Evaluated via `Pass^3` consensus variance across audit traces. |
+| **SkillsBench** | Modular Proficiency | Measures the success "lift" provided by the 53 domain-specific skills. |
+| **Memento** | Self-Evolution | Tests the efficacy of the Agent Factory in proposing valid specialized personas. |
+| **NL2Repo** | Workspace Seeding | Measures the ability to generate complex research project structures from briefs. |
+| **TAU3-Bench** | Policy Reasoning | Evaluates reasoning over the **30 Laws of UX** policy document tree. |
+| **MCP-Atlas** | Tool Coordination | Tests the simultaneous orchestration of multiple independent MCP servers. |
+
+These benchmarks are automated in the **Layer 4: Orchestration Suite** (`tests/benchmarks/run_benchmarks.py`).
 
 ---
 

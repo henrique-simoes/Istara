@@ -78,12 +78,45 @@ export default function ComputePoolView() {
   const { stats, loading, fetchStats } = useComputeStore();
   const [warnings, setWarnings] = useState<ModelWarning[]>([]);
   const [showWarnings, setShowWarnings] = useState(false);
+  const [strictRouting, setStrictRouting] = useState(false);
 
   useEffect(() => {
     fetchStats();
     const interval = setInterval(fetchStats, 15000);
+    
+    // Fetch initial routing state
+    const token = localStorage.getItem("istara_token");
+    const headers: Record<string, string> = {};
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+    fetch(`${API_BASE}/api/settings/status`, { headers })
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.strict_auto_routing !== undefined) {
+          setStrictRouting(d.strict_auto_routing);
+        }
+      })
+      .catch(() => {});
+      
     return () => clearInterval(interval);
   }, [fetchStats]);
+
+  const toggleStrictRouting = async () => {
+    const newVal = !strictRouting;
+    setStrictRouting(newVal);
+    const token = localStorage.getItem("istara_token");
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+    try {
+      await fetch(`${API_BASE}/api/settings/strict-routing`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ enabled: newVal }),
+      });
+    } catch (e) {
+      console.error(e);
+      setStrictRouting(!newVal);
+    }
+  };
 
   useEffect(() => {
     const token = localStorage.getItem("istara_token");
@@ -212,6 +245,36 @@ export default function ComputePoolView() {
           value={stats?.available_models?.length || 0}
           sub="across pool"
         />
+      </div>
+      
+      {/* Strict Auto-Routing Toggle */}
+      <div className="p-4 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 flex items-center justify-between">
+        <div>
+          <h3 className="font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+            <Radio size={16} className="text-istara-600" />
+            Strict Auto-Routing
+          </h3>
+          <p className="text-sm text-slate-500 mt-1 max-w-xl">
+            When enabled, Istara dynamically unloads and loads the absolute best model for each specific task based on telemetry.
+            Only enable this if you have the hardware to handle high-frequency model swapping (fast SSD, large VRAM). By default, Istara respects your manual selection.
+          </p>
+        </div>
+        <button
+          onClick={toggleStrictRouting}
+          className={cn(
+            "relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-istara-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900 shrink-0",
+            strictRouting ? "bg-istara-600" : "bg-slate-200 dark:bg-slate-700"
+          )}
+          role="switch"
+          aria-checked={strictRouting}
+        >
+          <span
+            className={cn(
+              "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
+              strictRouting ? "translate-x-6" : "translate-x-1"
+            )}
+          />
+        </button>
       </div>
 
       {/* Available Models */}

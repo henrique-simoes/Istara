@@ -1,11 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/nicehash/tauri/refs/tags/tauri-v2.3.1/crates/tauri-cli/schema.json",
   "productName": "Istara",
-<<<<<<< HEAD
-  "version": "26.134.7",
-=======
-  "version": "26.134.6",
->>>>>>> feat/voice-transcription
+  "version": "26.142.0",
   "identifier": "com.istara.desktop",
   "build": {
     "frontendDist": "../src",

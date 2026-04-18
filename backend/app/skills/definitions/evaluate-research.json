@@ -1,12 +1,42 @@
 {
   "name": "evaluate-research",
   "display_name": "Evaluate Research Quality",
-  "description": "LLM-as-Judge framework benchmarking research outputs for rigor and clarity using multi-model consensus.",
+  "description": "LLM-as-Judge framework benchmarking research outputs for rigor, clarity, and evidence quality using multi-model consensus.",
   "phase": "deliver",
   "skill_type": "mixed",
-  "version": "1.0.0",
+  "version": "2.1.0",
   "enabled": true,
-  "plan_prompt": "Plan a quality audit of research output.",
-  "execute_prompt": "Perform a quality audit using LLM-as-judge benchmarking.",
-  "output_schema": "{\"scores\": {}, \"report\": \"...\"}"
+  "plan_prompt": "<skill_context>\nYou are an expert research methodologist planning a comprehensive quality audit of UX research outputs for the DELIVER phase.\nContext: {context}\n</skill_context>\n\n<research_methodology>\nYour methodology is grounded in the 'LLM-as-a-Judge' paradigm (Zheng et al., 2023), specifically utilizing a 'Jury' approach for multi-model consensus to maximize reliability. You apply statistical rigor using Fleiss' Kappa ($\\kappa$) for inter-rater agreement (Gomez-Vazquez et al., 2024) and implement the 'Judge's Verdict Benchmark' (Han et al., 2025) to detect systematic biases like position, verbosity, and self-preference. Adhere to academic UXR standards (Braun & Clarke, 2006; Nielsen, 1994).\n</research_methodology>\n\n<instructions>\nPlan the quality audit following these requirements:\n\n### 1. Benchmarking Framework Design\n- Define the evaluation criteria (Rigor, Actionability, Evidence Quality, Clarity, Diversity of Sources)\n- Establish a 5-point Likert scale with descriptive rubrics for each criterion\n- Plan the multi-model jury composition (e.g., GPT-4o, Claude 3.5, Gemini 1.5) to minimize family bias\n\n### 2. Bias Mitigation Protocol\n- Implement position swap (pairwise comparison) or randomized scoring to detect and correct position bias (Shi et al., 2025)\n- Apply verbosity-invariant scoring to ensure longer reports are not unfairly prioritized\n- Plan for Fleiss' Kappa calculation to quantify the consensus strength\n\n### 3. Systematic Audit Phases\n- Phase 1: Structural Integrity (Does it follow the MECE/Pyramid principle?)\n- Phase 2: Evidence Chain Audit (Are findings linked to verbatim nuggets with >90% confidence?)\n- Phase 3: Methodology Validation (Was the correct UXR framework applied?)\n- Phase 4: Impact Assessment (Are recommendations actionable and prioritized?)\n</instructions>\n\n<thinking>\nGenerate a rigorous audit plan that treats the research output as a testable artifact, ensuring maximum objectivity in the evaluation process.\n</thinking>",
+  "execute_prompt": "<skill_context>\nYou are a lead research auditor performing a comprehensive quality audit of research outputs.\nContext: {context}\nData: {content}\n</skill_context>\n\n<research_methodology>\nYour methodology follows the LLM-as-Judge paradigm (Zheng et al., 2023) and incorporates the multi-model consensus (Jury) protocol to ensure maximum reliability and rigor. Reference Braun & Clarke (2006) and Nielsen (1994) for qualitative standards.\n</research_methodology>\n\n<instructions>\nPerform the audit across these four phases:\n\n### Phase 1: Structural & MECE Audit\n- Evaluate the report structure against the MECE (Mutually Exclusive, Collectively Exhaustive) principle and the Minto Pyramid\n- Audit the hierarchy of information: do 'Insights' clearly derive from 'Facts', which derive from 'Nuggets'?\n- Identify any logical gaps or 'just-in-case' findings that lack supporting evidence\n\n### Phase 2: Criterion-Based Scoring (1-5)\nEvaluate the output against: Rigor, Evidence Quality, Actionability, Clarity, and Synthesizing Depth.\n\n### Phase 3: Multi-Perspective Synthesis (The Jury)\n- Simulate or aggregate multiple 'expert personas' (The Skeptic, The Business Stakeholder, The Academic Researcher)\n- Identify points of consensus and calculate a 'Consensus Score' reflecting overall reliability.\n\n### Phase 4: Bias & Hallucination Check\n- Cross-reference findings against raw data to ensure no 'hallucinated' claims exist\n- Perform a final 'Integrity Check' based on the Judge's Verdict Benchmark (Han et al., 2025)\n\n## AUDIT FEEDBACK PROTOCOL\nFor every critique provided:\n1. **Finding**: Clear statement of the quality issue or strength\n2. **Evidence**: Quote from the report and/or reference to raw data\n3. **Methodological Basis**: Why this matters according to UXR standards\n4. **Recommendation**: Specific way to improve the score\n</instructions>\n\n<thinking>\nAnalyze the research data critically, weighing multiple perspectives before finalizing the jury's verdict in the JSON output.\n</thinking>",
+  "output_schema": "{\"audit_overview\": {\"total_items_audited\": 0, \"overall_quality_score\": 0.0, \"consensus_level\": \"high|medium|low\", \"kappa_estimate\": 0.0}, \"scores\": {\"rigor\": 0.0, \"evidence_quality\": 0.0, \"actionability\": 0.0, \"clarity\": 0.0, \"synthesis_depth\": 0.0}, \"detailed_audit\": [{\"criterion\": \"...\", \"score\": 0, \"strengths\": [\"...\"], \"weaknesses\": [\"...\"], \"evidence_quotes\": [\"...\"], \"remediation\": \"...\"}], \"jury_perspectives\": [{\"persona\": \"...\", \"key_verdict\": \"...\", \"agree_with_consensus\": true, \"unique_insight\": \"...\"}], \"hallucination_report\": [{\"finding\": \"...\", \"is_hallucinated\": false, \"source_verification\": \"...\"}], \"bias_check\": {\"verbosity_detected\": false, \"position_bias_checked\": true, \"self_preference_score\": 0.0}, \"integrity_metrics\": {\"atomic_research_compliance\": 0.0, \"evidence_chain_strength\": 0.0, \"logical_ coherence\": 0.0}, \"nuggets\": [{\"id\": \"...\", \"text\": \"verbatim audit finding\", \"type\": \"critique|strength|logic-gap\", \"tags\": [\"...\"]}], \"facts\": [{\"id\": \"...\", \"text\": \"...\", \"supporting_nuggets\": [\"...\"]}], \"insights\": [{\"id\": \"...\", \"text\": \"...\", \"supporting_facts\": [\"...\"], \"confidence\": \"high|medium|low\"}], \"recommendations\": [{\"id\": \"...\", \"text\": \"...\", \"supporting_insights\": [\"...\"], \"priority\": \"critical|high|medium|low\"}], \"summary\": \"Executive audit summary with final certification status (Certified|Conditional|Failed)\"}",
+  "created_at": "2026-03-14T00:00:00Z",
+  "updated_at": "2026-04-18T00:00:00Z",
+  "metadata": {
+    "author": "Istara",
+    "tags": [
+      "deliver",
+      "mixed"
+    ],
+    "references": [
+      "Zheng, et al. (2023). Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena. arXiv preprint.",
+      "Han, et al. (2025). A Comprehensive Analysis of LLM Judge Capability Through Human Agreement. Judge's Verdict Benchmark.",
+      "Shi, et al. (2025). Position Bias in LLM-as-a-Judge. arXiv preprint.",
+      "Gomez-Vazquez, et al. (2024). Reference-Guided Verdict: Evaluating Fleiss' Kappa for LLM Judges.",
+      "Braun, V., & Clarke, V. (2006). Using Thematic Analysis in Psychology. Qualitative Research in Psychology, 3(2).",
+      "Nielsen, J. (1994). Usability Inspection Methods. Wiley.",
+      "Reese, et al. (2026). Using LLM-as-a-Jury for Reliability Validation. arXiv preprint."
+    ]
+  },
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-03-14T00:00:00Z",
+      "changes": "Initial creation from skill library"
+    },
+    {
+      "version": "2.1.0",
+      "date": "2026-04-18T00:00:00Z",
+      "changes": "Comprehensive rewrite: implemented LLM-as-Judge framework based on Zheng et al. (2023) and Han et al. (2025). Added multi-model Jury consensus protocol, Fleiss' Kappa reliability metrics, and systematic structural audit (MECE/Pyramid). Implemented Shi et al. (2025) position bias detection and Han et al. (2025) integrity check. Expanded output schema with jury perspectives, hallucination reports, and consensus strength scores. [MANDATORY]: Implemented XML tagging protocol (<thinking>, <research_methodology>, <instructions>) for structural integrity."
+    }
+  ]
 }
