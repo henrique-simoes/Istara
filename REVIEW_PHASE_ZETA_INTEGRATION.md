@@ -600,3 +600,84 @@ Tests run: check_integrity.py ✅, update_agent_md.py ✅, functional tests for 
 Branch state: Clean, ready for review and merge to main after Phases 3-5
 ```
 
+
+---
+
+## Part II: Phase 3 Execution Results (Enhancement Plan Integration)
+
+### Phase 3a — Orphaned Chat Fix ✅
+**File:** `backend/app/api/routes/chat.py`  
+**Change:** Auto-create `ChatSession` when `session_id` is null/missing in incoming messages.  
+**Why it matters:** Previously, sending a message without an active session created floating/orphaned messages with no session linkage. Now a new ChatSession is automatically created and linked to the project.
+
+### Phase 3b — Installation Port Overrides ✅
+**File:** `scripts/install-istara.sh`  
+**Change:** Write `BACKEND_PORT` and `FRONTEND_PORT` to `.env` during installation so port choices persist across restarts.  
+**Why it matters:** Previously, port overrides chosen during onboarding were used only for the current install session but not persisted — restarting would lose custom ports.
+
+### Phase 3c — LM Studio Detection via Backend Proxy ✅
+**File:** `frontend/src/components/onboarding/LLMCheckStep.tsx`  
+**Change:** Replace direct `http://localhost:1234/v1/models` fetch with proxy through `/api/settings/models`.  
+**Why it matters:** Direct frontend-to-LLM calls caused CORS errors in production builds. Proxying through the backend eliminates CORS issues entirely.
+
+### Phase 3e — Documents "Organize" Streaming Controls ✅
+**File:** `frontend/src/components/common/InteractiveSuggestionBox.tsx`  
+**Change:** Add AbortController + Stop button during streaming, mirroring ChatView's behavior.  
+**Why it matters:** Users had no way to stop long-running AI suggestions in the Documents view. Now they can click "Stop" to cancel streaming mid-execution.
+
+### Phase 3f — Task Lifecycle: Review → Approve → Learn ✅
+**Files:** `backend/app/api/routes/tasks.py`, `backend/app/core/agent.py`  
+**Changes:**
+- Tasks already transition to `IN_REVIEW` on completion (existing behavior)
+- Added `_trigger_mece_reporting()` method to orchestrator agent
+- Enhanced `/tasks/{task_id}/verify` endpoint to trigger MECE report generation when task moves from IN_REVIEW → DONE
+
+**Why it matters:** This creates the full "Review Pipeline": Agent completes task → Task goes to IN_REVIEW → User verifies/approves → Task marked DONE + MECE reporting triggered.
+
+### Phase 3g — Autonomous MECE Reporting Sub-Agent ⚠️ Partial
+**Files:** `backend/app/api/routes/tasks.py`, `backend/app/core/agent.py`  
+**Status:** Trigger infrastructure added (A2A message sent to report_manager). The actual report generation logic already exists in `report_manager.py` via `_generate_mece_categories()` and related methods. Full end-to-end integration would require adding an A2A handler for `mece_report_request` messages, which is beyond the scope of this phase but the trigger is in place.
+
+---
+
+### Phase 3 Summary Table
+
+| Step | Description | Status | Files Changed |
+|------|-------------|--------|---------------|
+| 1 | Orphaned Chat Fix | ✅ Complete | `chat.py` (+40 lines) |
+| 2 | Port Overrides | ✅ Complete | `install-istara.sh` (+4 lines) |
+| 3 | LM Studio Proxy | ✅ Complete | `LLMCheckStep.tsx` (rewrite) |
+| 4a/b | Agent Queue UI + Tool Pills | ✅ Already merged in Zeta Step A | — |
+| 5 | Documents Streaming Controls | ✅ Complete | `InteractiveSuggestionBox.tsx` (+20 lines) |
+| 6 | Task Lifecycle IN_REVIEW | ✅ Complete | `tasks.py`, `agent.py` (+70 lines) |
+| 7 | MECE Reporting Sub-Agent | ⚠️ Partial (trigger only) | A2A trigger added, report gen exists in `report_manager.py` |
+
+---
+
+### Updated Branch State Summary
+
+```
+Current branch: review/phase-zeta-context-mastery
+Commits since main divergence: 14 total
+
+Phase 0-1 commits (critical fixes):
+- 0a58a01 fix(ci): resolve merge conflict markers in ci.yml
+- a561059 fix(version): proper CalVer bump via set-version.sh --bump
+- d280c0e fix(epsilon): integrate context protection into prompt_compressor.py
+
+Phase 2 commits (integration):
+- ba77117 cherry-pick: integrate legitimate working directory fixes
+- 9775c35 docs: regenerate agent persona docs via update_agent_md.py
+- c26b0ae docs: append Phase 0-2 execution results to integration review
+
+Phase 3 commits (Enhancement Plan):
+- 3bb5c94 fix(install): write BACKEND_PORT/FRONTEND_PORT to .env for port override persistence
+- 5cafd0b fix(onboarding): proxy LLM detection through backend API to avoid CORS issues
+- bd0c682 feat(docs): add streaming stop button to InteractiveSuggestionBox for Documents Organize
+- 2bb5ceb feat(tasks): enhance verify_task with MECE reporting trigger and memory learning hook
+
+Integrity checks:
+- check_integrity.py: PASSED (all tracked architecture docs in sync)
+- update_agent_md.py: PASSED (regenerated 3 agent persona docs)
+```
+
