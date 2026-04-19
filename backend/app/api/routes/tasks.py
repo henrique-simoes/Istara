@@ -120,11 +120,12 @@ async def list_tasks(
 
     result = await db.execute(query)
     tasks = result.scalars().all()
-    
+
     from app.core.telemetry import telemetry_recorder
+
     for task in tasks:
         task.health = await telemetry_recorder.get_task_health(task.id)
-        
+
     return tasks
 
 
@@ -147,6 +148,7 @@ async def create_task(data: TaskCreate, db: AsyncSession = Depends(get_db)):
     if not agent_id:
         try:
             from app.core.task_router import route_task
+
             routing = await route_task(
                 db,
                 data.title,
@@ -190,10 +192,11 @@ async def get_task(task_id: str, db: AsyncSession = Depends(get_db)):
     task = result.scalar_one_or_none()
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
-    
+
     from app.core.telemetry import telemetry_recorder
+
     task.health = await telemetry_recorder.get_task_health(task.id)
-    
+
     return task
 
 
@@ -251,7 +254,12 @@ async def move_task(
 
 @router.post("/tasks/{task_id}/verify")
 async def verify_task(task_id: str, db: AsyncSession = Depends(get_db)):
-    """Verify a task's output quality before marking as done."""
+    """Verify a task's output quality before marking as done.
+
+    On successful verification (IN_REVIEW → DONE):
+    1. Triggers autonomous MECE reporting sub-agent via A2A messaging
+    2. Extracts user preferences from chat history for memory learning
+    """
     task = (await db.execute(select(Task).where(Task.id == task_id))).scalar_one_or_none()
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
@@ -271,6 +279,15 @@ async def verify_task(task_id: str, db: AsyncSession = Depends(get_db)):
     if verified and task.status == TaskStatus.IN_REVIEW:
         task.status = TaskStatus.DONE
         await db.commit()
+
+        # Trigger MECE reporting sub-agent (Enhancement Plan Step 7)
+        try:
+            import asyncio as _asyncio
+            from app.core.agent import agent as orchestrator
+
+            _asyncio.create_task(orchestrator._trigger_mece_reporting(task.id, task.project_id))
+        except Exception:
+            pass  # Non-blocking — report generation failure doesn't affect verification
 
     return {
         "task_id": task_id,
@@ -306,7 +323,12 @@ async def attach_document(
 
     await db.commit()
     await db.refresh(task)
-    return {"task_id": task_id, "document_id": document_id, "direction": direction, "attached": True}
+    return {
+        "task_id": task_id,
+        "document_id": document_id,
+        "direction": direction,
+        "attached": True,
+    }
 
 
 @router.post("/tasks/{task_id}/detach")
@@ -334,7 +356,12 @@ async def detach_document(
             task.set_input_document_ids(ids)
 
     await db.commit()
-    return {"task_id": task_id, "document_id": document_id, "direction": direction, "detached": True}
+    return {
+        "task_id": task_id,
+        "document_id": document_id,
+        "direction": direction,
+        "detached": True,
+    }
 
 
 @router.post("/tasks/{task_id}/lock")
