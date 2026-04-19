@@ -1,6 +1,6 @@
 # Istara — Agent-Readable Operating Map
 
-Generated from the repository on version `2026.04.17.1`. Treat this file as the fast inventory view after reading `AGENT_ENTRYPOINT.md`, then consult `COMPLETE_SYSTEM.md`, `SYSTEM_CHANGE_MATRIX.md`, `CHANGE_CHECKLIST.md`, and `SYSTEM_PROMPT.md` before structural work.
+Generated from the repository on version `2026.04.19`. Treat this file as the fast inventory view after reading `AGENT_ENTRYPOINT.md`, then consult `COMPLETE_SYSTEM.md`, `SYSTEM_CHANGE_MATRIX.md`, `CHANGE_CHECKLIST.md`, and `SYSTEM_PROMPT.md` before structural work.
 
 ## Non-Negotiable Workflow
 
@@ -22,7 +22,7 @@ Generated from the repository on version `2026.04.17.1`. Treat this file as the 
 - Data layer: 42 SQLAlchemy models plus LanceDB-backed retrieval/context systems.
 - Agents/personas: 6 tracked persona directories under `backend/app/agents/personas`.
 - Skills: 57 JSON-defined skills across the Double Diamond phases.
-- Regression map: 73 simulation scenarios plus 9 e2e phases.
+- Regression map: 74 simulation scenarios plus 9 e2e phases.
 
 ## Change Hotspots
 
@@ -279,6 +279,7 @@ Generated from the repository on version `2026.04.17.1`. Treat this file as the 
   - `73` — A2A Debate And Reports
   - `74` — Voice Transcription
   - `75` — Participant Simulation
+  - `76` — Long Horizon Trajectory
 
 ## Documentation Contract
 
