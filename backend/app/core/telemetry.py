@@ -74,6 +74,32 @@ class TelemetryRecorder:
         except Exception as e:
             logger.debug(f"Telemetry span write failed: {e}")
 
+    async def record_json_parse(
+        self,
+        trace_id: str,
+        model_name: str = "",
+        success: bool = True,
+        error_type: str | None = None,
+        error_message: str | None = None,
+        agent_id: str = "",
+        project_id: str = "",
+    ) -> None:
+        """Record whether an LLM response was successfully parsed as JSON.
+
+        Used to track model reliability with structured outputs — models that
+        frequently fail JSON parsing should be flagged in the compatibility UI.
+        """
+        await self.record_span(
+            trace_id=trace_id,
+            operation="json_parse",
+            model_name=model_name,
+            agent_id=agent_id,
+            project_id=project_id,
+            status="success" if success else "error",
+            error_type=error_type,
+            error_message=(error_message or "")[:500] if error_message else None,
+        )
+
     async def record_model_performance(
         self,
         skill_name: str,
@@ -266,11 +292,45 @@ class TelemetryRecorder:
                         }
                     )
 
+                # Compute JSON parse success rates per model (Phase Epsilon Step 2)
+                json_parse_stmt = (
+                    select(TelemetrySpan)
+                    .where(
+                        TelemetrySpan.project_id == project_id,
+                        TelemetrySpan.operation == "json_parse",
+                    )
+                    .order_by(TelemetrySpan.created_at.desc())
+                    .limit(500)
+                )
+                json_result = await session.execute(json_parse_stmt)
+                json_spans = json_result.scalars().all()
+
+                model_json_stats: dict[str, dict] = {}
+                for s in json_spans:
+                    mn = s.model_name or "unknown"
+                    if mn not in model_json_stats:
+                        model_json_stats[mn] = {"total": 0, "success": 0}
+                    model_json_stats[mn]["total"] += 1
+                    if s.status == "success":
+                        model_json_stats[mn]["success"] += 1
+
+                json_parse_success_rates = []
+                for mn, stats in model_json_stats.items():
+                    total = max(stats["total"], 1)
+                    json_parse_success_rates.append(
+                        {
+                            "model": mn,
+                            "json_parse_success_rate": round(stats["success"] / total, 3),
+                            "total_parses": stats["total"],
+                        }
+                    )
+
                 return {
                     "project_id": project_id,
                     "leaderboard": leaderboard,
                     "error_taxonomy": error_taxonomy,
                     "tool_success_rates": tool_success_rates,
+                    "json_parse_success_rates": json_parse_success_rates,
                     "latency_percentiles": latency_percentiles,
                 }
 
@@ -281,9 +341,9 @@ class TelemetryRecorder:
                 "leaderboard": [],
                 "error_taxonomy": {},
                 "tool_success_rates": [],
+                "json_parse_success_rates": [],
                 "latency_percentiles": [],
             }
-
 
     async def get_task_health(self, task_id: str) -> dict:
         """Get aggregated health status for a specific task based on its spans."""
@@ -303,19 +363,19 @@ class TelemetryRecorder:
                 error_count = sum(1 for s in spans if s.status == "error")
                 qualities = [s.quality_score for s in spans if s.quality_score is not None]
                 avg_quality = sum(qualities) / len(qualities) if qualities else None
-                
+
                 # Determine status
                 status = "healthy"
                 if error_count > 0:
                     status = "degraded"
                 if error_count > 2 or (avg_quality is not None and avg_quality < 0.4):
                     status = "critical"
-                
+
                 return {
                     "status": status,
                     "error_count": error_count,
                     "avg_quality": round(avg_quality, 2) if avg_quality is not None else None,
-                    "span_count": len(spans)
+                    "span_count": len(spans),
                 }
         except Exception as e:
             logger.debug(f"Task health query failed: {e}")
