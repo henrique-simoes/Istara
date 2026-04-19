@@ -37,6 +37,7 @@ from app.core.file_processor import process_file
 from app.core.embeddings import TextChunk
 from app.core.context_hierarchy import context_hierarchy
 from app.core.resource_governor import governor
+from app.core.telemetry import telemetry_recorder
 from app.models.database import async_session
 from app.models.project import Project
 from app.models.task import Task, TaskStatus
@@ -1389,8 +1390,31 @@ class AgentOrchestrator:
                             if isinstance(fn.get("arguments"), str)
                             else fn.get("arguments", {})
                         )
-                    except (json.JSONDecodeError, TypeError):
+                        # Record successful JSON parse for telemetry tracking
+                        asyncio.create_task(
+                            telemetry_recorder.record_json_parse(
+                                trace_id=trace_id,
+                                model_name="",  # Model name not available at this scope
+                                success=True,
+                                agent_id=self._agent_id,
+                                project_id=project.id,
+                            )
+                        )
+                    except (json.JSONDecodeError, TypeError) as e:
                         tool_args = {}
+                        # Record failed JSON parse for telemetry tracking
+                        asyncio.create_task(
+                            telemetry_recorder.record_json_parse(
+                                trace_id=trace_id,
+                                model_name="",
+                                success=False,
+                                error_type="JSONDecodeError",
+                                error_message=str(e)[:200],
+                                agent_id=self._agent_id,
+                                project_id=project.id,
+                            )
+                        )
+                        )
                     tools_used.append(tool_name)
                     logger.info(
                         f"Agent tool call [{iteration}]: {tool_name}({list(tool_args.keys())})"
