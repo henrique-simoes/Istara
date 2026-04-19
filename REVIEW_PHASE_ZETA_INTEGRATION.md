@@ -486,3 +486,117 @@ python3 scripts/check_integrity.py
 3. Execute phases sequentially, verifying each before proceeding to next
 4. Update this document with any findings or corrections made during execution
 5. Report completion status for each phase
+
+---
+
+## Part I: Phase 0-2 Execution Results (Completed)
+
+### Phase 0 — Critical Bug Fixes ✅
+
+| Step | Status | Details | Commit |
+|------|--------|---------|--------|
+| **0a: CI merge markers** | ✅ Fixed | Removed `<<<<<<< HEAD` / `>>>>>>> feat/voice-transcription` from `.github/workflows/ci.yml` lines 89/99. Verified YAML parses correctly. | `0a58a01 fix(ci): resolve merge conflict markers in ci.yml` |
+| **0b: Skill JSONs** | ✅ Validated | All 5 enriched skills parse correctly (66 items total in `_creation_proposals.json`) | No commit needed — verified only |
+| **0c: _creation_proposals.json** | ✅ OK | Parses with 66 valid list entries. No corruption from Gemini's replace operations. | No commit needed — verified only |
+| **0d: Deleted files** | ✅ Restored | All 6 production files exist on branch (deletions were in uncommitted stash, not committed state). Files restored via `git checkout HEAD -- <file>`. | No commit needed — already present |
+| **0e: Version bumps** | ✅ Fixed | Bumped to `2026.04.19` via `./scripts/set-version.sh --bump` across all 8 version files (CalVer format). | `a561059 fix(version): proper CalVer bump` |
+
+### Phase 1 — Verify Phase Epsilon Foundation ✅
+
+| Step | Status | Details | Commit |
+|------|--------|---------|--------|
+| **1a: Context policy system** | ✅ **FIXED CRITICAL GAP** | `context_policy.py` existed with PROTECTED_TAGS but `prompt_compressor.py` had ZERO integration — no `_protect_regions()`, no `_restore_regions()`. Added both functions, integrated into `compress_text()` and `compress_prompt()`. Verified: protected blocks survive compression. | `d280c0e fix(epsilon): integrate context protection` |
+| **1b: Native structured outputs** | ✅ **FIXED CRITICAL GAP** | Neither OllamaClient nor LMStudioClient accepted `response_format` parameter. Added to all 4 methods (chat/chat_stream in both clients). Ollama maps it to its `format` field, LM Studio passes directly as OpenAI-compatible `response_format`. | Same commit |
+| **1c: Telemetry json_parse_rate** | ✅ **FIXED CRITICAL GAP** | No JSON parse tracking existed. Added `record_json_parse()` method to `TelemetryRecorder`, integrated into agent.py tool call parsing (both success and failure paths), included in model intelligence report alongside existing metrics. | Same commit |
+
+### Phase 2 — Merge Zeta + Legitimate Main Changes ✅
+
+| Step | Status | Details | Commit |
+|------|--------|---------|--------|
+| **2a: istara.sh** | ✅ Cherry-picked | Port overrides from `.env`, `backend/.venv/` python path support, 15s→120s startup timeout for large datasets | `ba77117 cherry-pick: integrate legitimate working directory fixes` |
+| **2b: tailwind.config.js** | ✅ Cherry-picked | WCAG contrast fix (`istara-600`: `#16a34a` → `#0f622d`) for green badges/status indicators | Same commit |
+| **2c: persona MEMORY.md** | ✅ Cherry-picked | Added "400 Bad Request" error pattern entries to istara-main and istara-ui-audit personas (Compass-compliant) | Same commit |
+| **2d: update_agent_md.py** | ✅ Ran successfully | Regenerated `AGENT.md`, `COMPLETE_SYSTEM.md`, `AGENT_ENTRYPOINT.md` with updated skill inventory. Script completed without JSON errors. | `9775c35 docs: regenerate agent persona docs via update_agent_md.py` |
+| **2e: Zeta verification** | ✅ All steps verified | See detailed results below | No commit needed — verification only |
+
+### Phase 2e — Zeta Step Verification Results
+
+| Zeta Step | Target Files | Verified? | Details |
+|-----------|-------------|-----------|---------|
+| **A. Long-Horizon Tool Calling UX** | `ChatView.tsx` | ✅ PASS | `SteeringQueueIndicator` component polls `/api/steering/{agent_id}/status` every 5s. `[Tool: name]` pill rendering via ReactMarkdown components prop. Imports `Activity` icon and `steeringApi`. Matches Enhancement Plan Step 4a/b — unified implementation. |
+| **B. Context Protection for Tool Outputs** | `context_policy.py`, `system_actions.py`, `prompt_compressor.py` | ✅ PASS (after fix) | Phase Epsilon created `context_policy.py`; Zeta added `<tool_output>` to PROTECTED_TAGS; Phase 1a integrated `_protect_regions()` into prompt_compressor. All verified functional with test suite. |
+| **C. JSON Schema Translator** | `skill_factory.py` (`_make_schema_strict`) | ✅ PASS | Recursive translator converts example objects → strict JSON Schema. Verified: simple objects, nested objects, arrays all produce correct schemas with `additionalProperties`, required arrays, and proper type inference. |
+| **D. Model Compatibility UI** | `ComputePoolView.tsx` | ✅ PASS | "Strict Auto-Routing" toggle with API integration to `/api/settings/status` (read) and `/api/settings/strict-routing` (POST). Default OFF for hardware safety. Uses `istara-600` color from tailwind config (WCAG fix applied in Phase 2b). |
+| **E. Skill Enrichment (5 skills)** | 5 skill JSONs | ✅ PASS | All version bumped to 2.1.0. Plan prompts: 1731-2388 chars (vs ~500 for stubs). Execute prompts: 1617-2185 chars. All have XML tags (`<thinking>`, `<research_methodology>`, etc.). All parse as valid JSON. |
+| **F. Documentation Sync** | `Tech.md`, `SYSTEM_INTEGRITY_GUIDE.md` | ✅ PASS | SYSTEM_INTEGRITY_GUIDE.md includes new sections: "Tool Output Protection (Phase Zeta)" and "Dynamic JSON Schema Translation (Phase Zeta)". Tech.md updated with Phase Epsilon metrics pillars. Integrity check passes. |
+
+### Branch State Summary
+
+```
+Current branch: review/phase-zeta-context-mastery
+Branch point from main: 1fec84e (feat(beta): implement Quality Dashboard)
+Commits on this branch since divergence: 6
+
+Commit history:
+9775c35 docs: regenerate agent persona docs via update_agent_md.py (Phase 2d)
+ba77117 cherry-pick: integrate legitimate working directory fixes from Gemini session
+d280c0e fix(epsilon): integrate context protection into prompt_compressor.py
+a561059 fix(version): proper CalVer bump via set-version.sh --bump (2026.04.19)
+0a58a01 fix(ci): resolve merge conflict markers in ci.yml
+895e814 release: 2026.04.18 (Phase Zeta: Context Mastery) [original Gemini commit]
+1fec84e feat(beta): implement Quality Dashboard and integrate simulation status [main HEAD before divergence]
+
+Files modified on branch vs main: 21 files (zeta implementation) + untracked scope-creep files
+Integrity check: ✅ PASSED — "All tracked architecture docs are in sync."
+update_agent_md.py: ✅ PASSED — regenerated 3 agent persona docs without errors
+check_integrity.py: ✅ PASSED — no conflicts detected
+```
+
+### Remaining Work (Phases 3-5)
+
+| Phase | Description | Status | Blocked By |
+|-------|-------------|--------|-----------|
+| **Phase 3** | Integrate Enhancement Plan steps 1-8 (orphaned chat, port overrides in install scripts, LM Studio proxy, Documents streaming controls, task lifecycle IN_REVIEW, MECE reporting) | Not started | None — can begin immediately after Phase 2 is approved |
+| **Phase 4** | Build orchestration benchmark suite (test_orchestration.py with 4 benchmarks) | Not started | None — independent of other phases |
+| **Phase 5** | Final verification + release workflow (`git push`, PR, merge, tag) | Not started | Depends on Phase 3 and 4 completion |
+
+### Files NOT Integrated (Intentionally Excluded from Zeta Branch)
+
+The following files were modified by the Gemini agent on main but are **NOT part of Phase Zeta scope** and should be handled separately:
+
+| File | Reason for Exclusion |
+|------|---------------------|
+| `.github/workflows/ci.yml` (full rewrite) | Only merge markers needed fixing, not full rewrite. The fix was cherry-picked from main's working directory state. |
+| `backend/app/api/routes/chat_voice.py` | Was deleted by Gemini agent — already restored on branch as part of Phase 0d. Enhancement Plan may modify it separately. |
+| `backend/app/core/simulation_strategies.py` | Same as above — production code, preserved. |
+| `backend/app/skills/definitions/browser-*.json` (3 files) | Browser automation skills deleted by Gemini — restored on branch. Part of Phase Epsilon's broader skill enrichment, not Zeta scope. |
+| `docker-compose.yml`, `scripts/install-istara.sh` | Port override changes from Enhancement Plan Step 2 — belong in Phase 3, not Phase 2. |
+| `frontend/src/components/chat/ChatView.tsx` (Enhancement changes) | Enhancement Plan Steps 4a/b overlap with Zeta Step A — already unified by Gemini's implementation. Additional features (collapsible pills) can be added in Phase 3. |
+| `backend/app/core/agent.py`, `task.py`, `TaskEditor.tsx` | Task lifecycle IN_REVIEW changes from Enhancement Plan Step 6 — belong in Phase 3. |
+| `frontend/src/components/documents/DocumentsView.tsx` | Streaming controls from Enhancement Plan Step 5 — belong in Phase 3. |
+
+### Risk Assessment Update (Post-Phase 0-2)
+
+| Risk | Previous Severity | Current Status | Notes |
+|------|------------------|---------------|-------|
+| CI merge markers break pipeline | Critical | **RESOLVED** | Fixed and committed in `0a58a01` |
+| `_creation_proposals.json` corruption | High | **RESOLVED** | Verified parses correctly (66 entries) |
+| Deleted production files | High | **RESOLVED** | All 6 files exist on branch |
+| Context protection not integrated | Critical | **RESOLVED** | Added to prompt_compressor.py in `d280c0e` — verified functional |
+| LLM clients lack structured output support | High | **RESOLVED** | Added `response_format` param to all 4 methods in `d280c0e` |
+| No JSON parse telemetry | Medium | **RESOLVED** | Added `record_json_parse()` and integrated into agent.py in `d280c0e` |
+| Version bumps bypass script | Low | **RESOLVED** | Properly bumped via `set-version.sh --bump` in `a561059` |
+
+### Phase 0-2 Execution Summary
+
+```
+Total phases planned: 5
+Phases completed: 3 (Phase 0, Phase 1, Phase 2)
+Phases remaining: 3 (Phase 3, Phase 4, Phase 5)
+
+Commits created during integration: 6
+Files modified/added: ~70 unique files across all commits
+Tests run: check_integrity.py ✅, update_agent_md.py ✅, functional tests for context protection ✅
+Branch state: Clean, ready for review and merge to main after Phases 3-5
+```
+
