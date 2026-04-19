@@ -1,6 +1,6 @@
 # Istara Complete System Architecture & Living Map
 
-Generated from the repository on version `2026.04.17.1`. This document is meant to be regenerated whenever the implementation changes so LLMs can reason from the current system instead of stale summaries.
+Generated from the repository on version `2026.04.19`. This document is meant to be regenerated whenever the implementation changes so LLMs can reason from the current system instead of stale summaries.
 
 ## Purpose
 
@@ -22,7 +22,7 @@ Generated from the repository on version `2026.04.17.1`. This document is meant 
 - Next.js frontend with 23 mounted views and 15 Zustand stores.
 - 42 SQLAlchemy models in `backend/app/models`.
 - 6 tracked persona directories and 57 JSON-defined skills.
-- 73 Playwright simulation scenarios plus 9 Python e2e phases.
+- 74 Playwright simulation scenarios plus 9 Python e2e phases.
 
 ## Backend Route Inventory
 
@@ -320,6 +320,7 @@ Generated from the repository on version `2026.04.17.1`. This document is meant 
 - `73` — A2A Debate And Reports
 - `74` — Voice Transcription
 - `75` — Participant Simulation
+- `76` — Long Horizon Trajectory
 
 ## What Agents Must Check Before Editing
 
