@@ -30,3 +30,6 @@ _Tracked per evaluation cycle._
 
 ### Error Patterns & Resolutions
 - When encountering 'No compute nodes available for chat', resolve by: Returned task to backlog for retry
+- When encountering 'No compute nodes available for chat', resolve by: Returned task to backlog for retry
+- When encountering 'Client error '400 Bad Request' for url 'http://localhost:1234/v1/chat/completions'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/400', resolve by: Returned task to backlog for retry

@@ -15,6 +15,8 @@ _This file is automatically updated as the agent learns from interactions, error
 - When encountering '(sqlite3.OperationalError) no such column: tasks.input_document_ids
 [SQL: SELECT tasks.id, tasks.project_id, tasks.agent_id, tasks.title, tasks.description, tasks.status, tasks.skill_name, tasks.agent', resolve by: Caught in work loop, retrying next cycle
 - When encountering 'can't subtract offset-naive and offset-aware datetimes', resolve by: Caught in work loop, retrying next cycle
+- When encountering 'Client error '400 Bad Request' for url 'http://localhost:1234/v1/chat/completions'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/400', resolve by: Returned task to backlog for retry
 ### Workflow Patterns
 - Users frequently run interview analysis followed by thematic analysis followed by persona creation. Consider suggesting this pipeline proactively.
 - Survey-based tasks benefit from AI detection pre-screening to filter out bot responses before analysis.
