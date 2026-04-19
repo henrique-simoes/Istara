@@ -86,17 +86,11 @@ jobs:
 
       - name: Lint
         run: ruff check . --statistics
-<<<<<<< HEAD
         continue-on-error: true  # TODO: fix 1159 existing lint errors, then make blocking
 
       - name: Format check
         run: ruff format --check .
         continue-on-error: true  # TODO: fix 146 files needing reformat, then make blocking
-=======
-
-      - name: Format check
-        run: ruff format --check .
->>>>>>> feat/voice-transcription
 
       - name: Test
         run: pytest tests/ -v --tb=short
