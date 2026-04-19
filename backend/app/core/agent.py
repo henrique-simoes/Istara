@@ -604,6 +604,44 @@ class AgentOrchestrator:
         except Exception as e:
             logger.debug(f"Debate response failed: {e}")
 
+    async def _trigger_mece_reporting(self, task_id: str, project_id: str) -> None:
+        """Trigger autonomous MECE reporting sub-agent when a task is verified → DONE.
+
+        This creates an A2A message to the report_manager agent that will:
+        1. Draft Layer 2/3/4 reports using Pyramid/MECE logic
+        2. Send via A2A messaging for user review
+        """
+        try:
+            from app.api.websocket import broadcast_task_progress
+            from app.services.a2a import send_message as a2a_send
+
+            async with async_session() as db:
+                task = (await db.execute(select(Task).where(Task.id == task_id))).scalar_one_or_none()
+                if not task or task.status != TaskStatus.DONE:
+                    return
+
+                report_msg = {
+                    "type": "mece_report_request",
+                    "task_id": task_id,
+                    "project_id": project_id,
+                    "task_title": task.title,
+                    "agent_notes": getattr(task, 'agent_notes', '') or '',
+                    "skill_name": getattr(task, 'skill_name', ''),
+                }
+
+                await a2a_send(
+                    db=db,
+                    from_agent_id=self._agent_id,
+                    to_agent_id="istara-main",
+                    message_type="delegate",
+                    content=json.dumps(report_msg),
+                    metadata={"project_id": project_id},
+                )
+
+            logger.info(f"MECE report triggered for task {task_id}")
+        except Exception as e:
+            logger.warning(f"Failed to trigger MECE reporting for task {task_id}: {e}")
+
     async def _pick_next_task(self, db: AsyncSession) -> Task | None:
         """Pick the highest priority task assigned to THIS agent.
 
