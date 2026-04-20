@@ -124,6 +124,19 @@ function MetricLabel({ label, tooltip }: { label: string; tooltip: string }) {
   );
 }
 
+const confidenceColor = (score: number) => {
+  if (score >= 0.7) return "text-green-600 dark:text-green-400";
+  if (score >= 0.5) return "text-yellow-600 dark:text-yellow-400";
+  if (score >= 0.3) return "text-orange-600 dark:text-orange-400";
+  return "text-red-600 dark:text-red-400";
+};
+
+const confidenceIcon = (score: number) => {
+  if (score >= 0.7) return CheckCircle;
+  if (score >= 0.5) return AlertTriangle;
+  return XCircle;
+};
+
 export default function EnsembleHealthView() {
   const [projectId, setProjectId] = useState<string | null>(null);
   const [methods, setMethods] = useState<MethodStat[]>([]);
@@ -208,19 +221,6 @@ export default function EnsembleHealthView() {
       icon: Activity,
     },
   ];
-
-  const confidenceColor = (score: number) => {
-    if (score >= 0.7) return "text-green-600 dark:text-green-400";
-    if (score >= 0.5) return "text-yellow-600 dark:text-yellow-400";
-    if (score >= 0.3) return "text-orange-600 dark:text-orange-400";
-    return "text-red-600 dark:text-red-400";
-  };
-
-  const confidenceIcon = (score: number) => {
-    if (score >= 0.7) return CheckCircle;
-    if (score >= 0.5) return AlertTriangle;
-    return XCircle;
-  };
 
   const toggleMethod = (id: string) => {
     setExpandedMethod((prev) => (prev === id ? null : id));

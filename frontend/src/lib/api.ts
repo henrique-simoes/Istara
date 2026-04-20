@@ -996,6 +996,16 @@ export const reports = {
   list: (projectId: string) => get<ProjectReport[]>(`/api/reports/${projectId}`),
 };
 
+export const presentation = {
+  slideInstructions: (reportId: string) =>
+    get<{
+      report_id: string;
+      title: string;
+      instructions: string;
+      methodology: string;
+    }>(`/api/presentation/reports/${reportId}/slide-instructions`),
+};
+
 export const codebookVersions = {
   list: (projectId: string) => get<CodebookVersionType[]>(`/api/codebook-versions/${projectId}`),
   latest: (projectId: string) => get<CodebookVersionType>(`/api/codebook-versions/${projectId}/latest`),

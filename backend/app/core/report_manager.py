@@ -213,9 +213,11 @@ class ReportManager:
             if not findings_text:
                 return
             summary_prompt = (
-                f"Write a 2-3 sentence executive summary of these {len(findings_text)} "
-                f"UX research findings for the '{report.scope}' study:\n\n"
-                + "\n".join(f"- {t[:100]}" for t in findings_text[:15])
+                f"Create a professional consulting-grade executive summary for the '{report.scope}' study using the SCR (Situation-Complication-Resolution) framework.\n\n"
+                f"Context: {len(findings_text)} key findings extracted.\n"
+                "Findings:\n"
+                + "\n".join(f"- {t[:200]}" for t in findings_text[:15])
+                + "\n\nFormat the summary with clear headings: SITUATION, COMPLICATION, and RESOLUTION. Ensure it addresses executive stakeholders with high clarity and academic rigor."
             )
             response = await llm_router.chat(
                 [{"role": "user", "content": summary_prompt}], temperature=0.3
@@ -253,11 +255,15 @@ class ReportManager:
             if len(findings_text) < 3:
                 return
             mece_prompt = (
-                f"Categorize these {len(findings_text)} research findings into 3-7 MECE "
-                "(Mutually Exclusive, Collectively Exhaustive) categories.\n\n"
+                f"You are a top-tier management consultant. Categorize these {len(findings_text)} research findings into 3-5 MECE "
+                "(Mutually Exclusive, Collectively Exhaustive) categories using the Minto Pyramid Principle.\n\n"
+                "Constraints:\n"
+                "1. Each category MUST have an 'Action Title' — a full sentence that states a conclusion (e.g., 'Users struggle with X because of Y').\n"
+                "2. Provide a 'So-What' description for each category explaining the business/UX impact.\n"
+                "3. Ensure categories do not overlap.\n\n"
                 "Findings:\n"
                 + "\n".join(f"- [{f['id'][:8]}] {f['text']}" for f in findings_text)
-                + '\n\nRespond with a JSON array: [{"name": "Category Name", "description": "...", "finding_ids": ["id1", "id2"]}]'
+                + '\n\nRespond with a JSON array: [{"name": "Action Title Sentence", "description": "So-What explanation...", "finding_ids": ["id1", "id2"]}]'
             )
             response = await llm_router.chat(
                 [{"role": "user", "content": mece_prompt}], temperature=0.3
@@ -335,22 +341,14 @@ class ReportManager:
     # ── Template-Driven Report Composition ──────────────────────────
 
     REPORT_TEMPLATE = [
-        {"section": "Executive Summary", "source": "executive_summary", "format": "narrative"},
-        {"section": "Methodology", "source": "skills_used", "format": "list"},
-        {"section": "Key Findings", "source": "insights", "format": "evidence_table"},
-        {
-            "section": "Supporting Evidence",
-            "source": "nuggets_and_facts",
-            "format": "citation_table",
-        },
-        {"section": "Recommendations", "source": "recommendations", "format": "priority_table"},
-        {
-            "section": "Thematic Analysis (MECE)",
-            "source": "mece_categories",
-            "format": "structured",
-        },
-        {"section": "Confidence & Validation", "source": "ensemble_scores", "format": "metrics"},
-        {"section": "Limitations & Gaps", "source": "gaps", "format": "narrative"},
+        {"section": "I. Executive Summary (SCR)", "source": "executive_summary", "format": "narrative"},
+        {"section": "II. Research Methodology & Rigor", "source": "skills_used", "format": "list"},
+        {"section": "III. Strategic Thematic Analysis (MECE)", "source": "mece_categories", "format": "structured"},
+        {"section": "IV. Detailed Insights & Evidence Chain", "source": "insights", "format": "detailed_narrative"},
+        {"section": "V. Supporting Evidence (Nuggets & Facts)", "source": "nuggets_and_facts", "format": "citation_table"},
+        {"section": "VI. Actionable Recommendations (Pyramid Top)", "source": "recommendations", "format": "priority_table"},
+        {"section": "VII. Validation & Consensus Metrics", "source": "ensemble_scores", "format": "metrics"},
+        {"section": "VIII. Analysis Gaps & Next Steps", "source": "gaps", "format": "narrative"},
     ]
 
     async def _compose_full_report(self, report, project_id: str, db: AsyncSession) -> None:
@@ -524,6 +522,25 @@ class ReportManager:
             items = findings.get("insights", [])
             if not items:
                 return "No key insights were generated."
+            
+            if fmt == "detailed_narrative":
+                prompt = (
+                    f"You are a management consultant. Expand these {len(items)} insights into a "
+                    "detailed, professional research section (~800 words).\n\n"
+                    "Instructions:\n"
+                    "1. For each insight, explain the underlying pattern, provide examples, and "
+                    "contextualize it within the study's scope.\n"
+                    "2. Use professional, objective language.\n"
+                    "3. Connect insights where relationships exist.\n\n"
+                    "Insights:\n"
+                    + "\n".join(f"- {i['text']}" for i in items)
+                )
+                try:
+                    response = await llm_router.chat([{"role": "user", "content": prompt}], temperature=0.3)
+                    return response.get("message", {}).get("content", "Detailed narrative generation failed.")
+                except Exception:
+                    fmt = "evidence_table"  # Fallback
+
             if fmt == "evidence_table":
                 rows = [
                     "| # | Insight | Confidence | Phase |",
@@ -556,22 +573,44 @@ class ReportManager:
         if source == "recommendations":
             items = findings.get("recommendations", [])
             if not items:
-                return "No recommendations generated."
-            rows = ["| # | Recommendation | Priority |", "|---|---------------|----------|"]
-            for i, item in enumerate(items, 1):
-                rows.append(f"| {i} | {item['text'][:100]} | Medium |")
-            return "\n".join(rows)
+                return "No actionable recommendations generated."
+            
+            prompt = (
+                f"You are a management consultant. For each of these {len(items)} research recommendations, "
+                "develop a professional, multi-paragraph justification (~500 words total).\n\n"
+                "Constraints:\n"
+                "1. State the recommendation clearly (The 'Pyramid Top').\n"
+                "2. Provide 2-3 logical supporting reasons based on research findings.\n"
+                "3. Suggest immediate next steps for implementation.\n\n"
+                "Recommendations:\n"
+                + "\n".join(f"- {r['text']}" for r in items)
+            )
+            try:
+                response = await llm_router.chat([{"role": "user", "content": prompt}], temperature=0.3)
+                return response.get("message", {}).get("content", "Recommendation detail generation failed.")
+            except Exception:
+                rows = ["| # | Recommendation | Priority |", "|---|---------------|----------|"]
+                for i, item in enumerate(items, 1):
+                    rows.append(f"| {i} | {item['text'][:100]} | Medium |")
+                return "\n".join(rows)
 
         if source == "mece_categories":
             categories = json.loads(report.mece_categories_json or "[]")
             if not categories:
-                return "MECE categorization not yet available."
+                return "Strategic thematic analysis (MECE) not yet available."
+            
             parts = []
             for cat in categories:
-                name = cat.get("name", "Unknown")
-                desc = cat.get("description", "")
+                name = cat.get("name", "Unknown Conclusion")
+                desc = cat.get("description", "No supporting argument provided.")
                 count = len(cat.get("finding_ids", []))
-                parts.append(f"### {name}\n{desc}\n*{count} findings in this category*")
+                
+                # Deeper analysis for each MECE category
+                parts.append(
+                    f"### {name}\n"
+                    f"**Strategic Takeaway**: {desc}\n\n"
+                    f"*Evidence density: This conclusion is supported by {count} distinct research findings.*"
+                )
             return "\n\n".join(parts)
 
         if source == "ensemble_scores":

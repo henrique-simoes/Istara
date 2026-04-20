@@ -387,6 +387,19 @@ async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db)):
             user_scan.threats,
         )
 
+    # --- Auto-create ChatSession when session_id is missing/null (Enhancement Plan Step 1) ---
+    if not request.session_id:
+        new_session = ChatSession(
+            id=str(uuid.uuid4()),
+            project_id=request.project_id,
+            title=f"Chat — {request.message[:50].replace(chr(10), ' ').strip()}",
+            message_count=0,
+            last_message_at=user_msg.created_at,
+        )
+        db.add(new_session)
+        await db.commit()
+        request.session_id = new_session.id
+
     # --- Resolve session-specific inference settings ---
     llm_temperature = 0.7
     llm_max_tokens: int | None = None
@@ -697,10 +710,14 @@ async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db)):
                     except Exception:
                         pass
 
-                sources = [
-                    {"source": r.source, "score": r.score, "page": r.page}
-                    for r in rag_result.retrieved
-                ] if rag_result and rag_result.retrieved else []
+                sources = (
+                    [
+                        {"source": r.source, "score": r.score, "page": r.page}
+                        for r in rag_result.retrieved
+                    ]
+                    if rag_result and rag_result.retrieved
+                    else []
+                )
                 done_data = json.dumps(
                     {
                         "type": "done",
@@ -796,6 +813,7 @@ async def transcribe_voice(
 
         # Convert and transcribe
         from app.core.transcription import transcribe_audio, convert_audio_to_wav
+
         wav_path = convert_audio_to_wav(tmp_path)
         result = transcribe_audio(wav_path, language=language)
 
@@ -821,15 +839,17 @@ async def transcribe_voice(
         logger.error(f"Voice transcription failed: {e}")
         raise HTTPException(status_code=500, detail=f"Transcription failed: {str(e)}")
 
+
 class VoiceTranscribeRequest(BaseModel):
     project_id: str
     dummy: bool = False
+
 
 @router.post("/chat/voice-transcribe")
 async def voice_transcribe(request: VoiceTranscribeRequest):
     """Voice transcription endpoint (Phase Alpha)."""
     if request.dummy:
         return {"status": "success", "text": "Mock transcription"}
-    
+
     # Real transcription logic would go here
     return {"status": "error", "message": "No audio file provided"}

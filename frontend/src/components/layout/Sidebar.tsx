@@ -30,6 +30,7 @@ import {
   MessageSquare,
   FlaskConical,
   BookOpen,
+  CheckCircle,
 } from "lucide-react";
 import { useProjectStore } from "@/stores/projectStore";
 import { useNotificationStore } from "@/stores/notificationStore";

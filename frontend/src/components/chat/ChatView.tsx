@@ -454,6 +454,13 @@ export default function ChatView() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
+  /** Dispatch a toast notification — WCAG 2.2 4.1.3 Status Messages */
+  const dispatchToast = (type: "success" | "warning" | "info" | "agent" | "file", title: string, message: string) => {
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("istara:toast", { detail: { type, title, message } }));
+    }
+  };
+
   const removePendingFile = (index: number) => {
     setPendingFiles((prev) => prev.filter((_, i) => i !== index));
   };
@@ -799,7 +806,7 @@ export default function ChatView() {
 
               {/* Voice recording button */}
               <button
-                onClick={() => {/* TODO: trigger voice recording modal */}}
+                onClick={() => dispatchToast("info", "Coming Soon", "Voice recording is currently in development.")}
                 disabled={streaming}
                 aria-label="Record voice message"
                 className={cn(

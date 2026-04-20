@@ -18,7 +18,7 @@ Generated from the repository on version `2026.04.19`. This document is meant to
 
 ## Repository Architecture Snapshot
 
-- FastAPI backend with 39 route modules and 373 detected endpoints.
+- FastAPI backend with 40 route modules and 374 detected endpoints.
 - Next.js frontend with 23 mounted views and 15 Zustand stores.
 - 42 SQLAlchemy models in `backend/app/models`.
 - 6 tracked persona directories and 57 JSON-defined skills.
@@ -55,6 +55,7 @@ Generated from the repository on version `2026.04.19`. This document is meant to
 | `meta_hyperagent.py` | `/` | 9 |
 | `metrics.py` | `/` | 3 |
 | `notifications.py` | `/` | 7 |
+| `presentation.py` | `/presentation` | 1 |
 | `projects.py` | `/` | 15 |
 | `reports.py` | `/reports` | 1 |
 | `scheduler.py` | `/` | 5 |
@@ -97,6 +98,7 @@ Generated from the repository on version `2026.04.19`. This document is meant to
 - **meta_hyperagent**: `GET /api/meta-hyperagent/status`, `GET /api/meta-hyperagent/proposals`, `POST /api/meta-hyperagent/proposals/{proposal_id}/approve`, `POST /api/meta-hyperagent/proposals/{proposal_id}/reject`, `GET /api/meta-hyperagent/variants`, `POST /api/meta-hyperagent/variants/{variant_id}/revert`, `POST /api/meta-hyperagent/variants/{variant_id}/confirm`, `GET /api/meta-hyperagent/observations`, `POST /api/meta-hyperagent/toggle`
 - **metrics**: `GET /api/metrics/{project_id}`, `GET /api/metrics/{project_id}/validation`, `GET /api/metrics/{project_id}/model-intelligence`
 - **notifications**: `GET /api/notifications`, `GET /api/notifications/unread-count`, `POST /api/notifications/{notification_id}/read`, `POST /api/notifications/read-all`, `DELETE /api/notifications/{notification_id}`, `GET /api/notifications/preferences`, `PUT /api/notifications/preferences`
+- **presentation**: `GET /api/presentation/reports/{report_id}/slide-instructions`
 - **projects**: `GET /api/projects`, `POST /api/projects`, `GET /api/projects/{project_id}`, `PATCH /api/projects/{project_id}`, `POST /api/projects/{project_id}/pause`, `POST /api/projects/{project_id}/resume`, `POST /api/projects/{project_id}/link-folder`, `POST /api/projects/{project_id}/unlink-folder`, `DELETE /api/projects/{project_id}`, `GET /api/projects/{project_id}/versions`, `POST /api/projects/{project_id}/export`, `GET /api/projects/{project_id}/members`, `POST /api/projects/{project_id}/members`, `DELETE /api/projects/{project_id}/members/{user_id}`, `PATCH /api/projects/{project_id}/members/{user_id}`
 - **reports**: `GET /api/reports/{project_id}`
 - **scheduler**: `POST /api/schedules`, `GET /api/schedules`, `GET /api/schedules/{schedule_id}`, `PATCH /api/schedules/{schedule_id}`, `DELETE /api/schedules/{schedule_id}`

@@ -681,7 +681,7 @@ Loaded from database at startup (`backend/app/agents/custom_worker.py`):
 
 **A2A (Agent-to-Agent) Messages**:
 - Model: `A2AMessage` (table: `a2a_messages`)
-- Types: `consult`, `finding`, `status`, `request`, `response`
+- Types: `consult`, `report`, `alert`, `delegate`, `debate_request`, `debate_response`, `collaboration_request`, `collaboration_response`
 - Flow: `from_agent_id` → `to_agent_id` (null = broadcast)
 - Persisted in database for audit trail
 - Accessed via `POST /a2a` JSON-RPC endpoint
@@ -2010,8 +2010,29 @@ Istara enforces a **Three-Layer Testing Architecture** to preserve product behav
     - **Claw-Eval Pass^3**: Trajectory-aware consistency and audit trace reliability.
     - **SkillsBench Avg5**: Methodology-lift provided by specialized research skills.
 - **Metric**: Orchestration Scorecard (v2.0).
-- **Run**: `python tests/benchmarks/run_benchmarks.py`.
+- **Run**: `python tests/benchmarks/run_benchmarks.py` or `pytest tests/benchmarks/test_orchestration.py -v`.
 - **Requirement**: Mandatory for changes to `AgentOrchestrator`, `A2A`, or `steering_manager`.
+
+### 5. Layer 5: Real-World Agentic Integration (`tests/integration/test_llm_orchestration_real.py`)
+- **Focus**: Zero-mock validation of the full agentic loop against live network LLM servers.
+- **Validates**:
+  - **DAG Decomposition**: Complex task planning and execution.
+  - **Tool Selection Quality (TSQ)**: Real-world skill matching.
+  - **Finding Extraction**: End-to-end evidence chain generation.
+- **Requirement**: Mandatory for major orchestration logic shifts or systemic skill definition updates.
+
+#### Benchmark Suite Details (Phase Zeta — Context Mastery)
+
+| Benchmark | File | Tests | Validates |
+|-----------|------|-------|-----------|
+| Long-Horizon DAG Decomposition | `test_orchestration.py::test_long_horizon_dag_decomposition` | 1 | No circular dependencies, valid topological ordering, context retention across 10-step research plan |
+| Tool-Calling Accuracy & Resilience | `test_orchestration.py::test_tool_calling_accuracy_resilience` | 5 | Schema compliance (strict JSON), regex fallback for non-tool-call models, hallucination filtering, MAX_ITERATION enforcement |
+| A2A Mathematical Consensus | `test_orchestration.py::test_a2a_mathematical_consensus` | 5 | Fleiss' Kappa ≥0.6 on clear cases, <0.6 on ambiguous cases (triggers IN_REVIEW), cosine similarity on embeddings, consensus routing logic |
+| Async Steering Responsiveness | `test_orchestration.py::test_async_steering_responsiveness` | 1 | Atomic queue lock under concurrent injection, steering reflected in output without state corruption, follow-up message queuing |
+
+**Consensus Engine**: All mathematical benchmarks use Istara's production consensus engine (`backend/app/core/consensus.py`) — `fleiss_kappa()`, `cosine_similarity()`, and `compute_consensus()` — NOT reimplemented algorithms.
+
+**Test Data Format**: Fleiss' Kappa input is an N×k ratings matrix where N = number of items, k = categories, each cell = count of raters assigning that category to that item. All rows must sum to the same n (number of raters per item).
 
 ### Maintenance Mode & LLM Isolation
 To ensure test reliability on RAM-constrained machines (8GB), Istara implements a **Maintenance Mode** (`resource_governor.py`):
@@ -2461,9 +2482,9 @@ If migrating from older Istara version:
 
 A2AMessage, Agent, AgentLoopConfig, AutoresearchExperiment, BackupRecord, ChannelConversation, ChannelInstance, ChannelMessage, ChatSession, Codebook, CodebookVersion, CodeApplication, ContextDAGNode, ContextDocument, DesignBrief, DesignDecision, DesignScreen, Document, Fact, Insight, LoopExecution, MCPAccessPolicy, MCPAuditEntry, MCPServerConfig, Message, MethodMetric, ModelSkillStats, Notification, NotificationPreference, Nugget, Project, ProjectReport, Recommendation, ResearchDeployment, ScheduledTask, SurveyIntegration, SurveyLink, Task, TaskCheckpoint, TelemetrySpan, User
 
-### All 38 API Route Modules
+### All 39 API Route Modules
 
-agents, audit, auth, autoresearch, backup, channels, chat, code_applications, codebook_versions, codebooks, compute, connections, context_dag, deployments, documents, files, findings, interfaces, laws, llm_servers, loops, mcp, memory, meta_hyperagent, metrics, notifications, projects, reports, scheduler, sessions, settings, skills, surveys, tasks, updates, webhooks
+agents, audit, auth, autoresearch, backup, channels, chat, code_applications, codebook_versions, codebooks, compute, connections, context_dag, deployments, documents, files, findings, interfaces, laws, llm_servers, loops, mcp, memory, meta_hyperagent, metrics, notifications, presentation, projects, reports, scheduler, sessions, settings, skills, surveys, tasks, updates, webhooks
 
 ### All 16 WebSocket Event Types
 
