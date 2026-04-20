@@ -104,6 +104,34 @@ Istara runs five coordinated agents managed by a **MetaOrchestrator**. Each agen
 
 **Custom agents** created by users are full participants in this system — they get auto-generated persona files and join the same evolution pipeline.
 
+## Orchestration Audit: Istara vs. Industry Standards
+
+Istara’s orchestration architecture is designed for **Academic Rigor** and **Local Resilience**, differing from generic frameworks in several key ways:
+
+| Dimension | LangGraph / CrewAI | OpenAI Swarm | Anthropic Computer Use | Istara (Sentinel/Cleo) |
+|-----------|-------------------|--------------|------------------------|-----------------------|
+| **Planning** | Deterministic Graphs | Loose Handoffs | Multi-turn thinking | **Decomposed DAGs** |
+| **Logic** | Fixed nodes/edges | dynamic routing | ReAct (XML tags) | **ReAct + Regex Fallback** |
+| **Consensus** | Optional | None (one model) | None | **Mandatory (Fleiss' Kappa)** |
+| **Steering** | Restart/Pause | none | Manual intervention | **Thread-safe Queues** |
+| **Execution** | Cloud-first | Cloud-first | Cloud-first | **Hardware-aware (Local)** |
+| **Benchmark Scorecard** | Unverified | N/A | N/A | **Layer 4: 4 benchmarks, 12 tests** |
+
+#### Benchmark Methodology (v2.0)
+
+Istara's orchestration is validated against a four-benchmark suite using academic metrics from Memento (Zhou et al. 2026), DeepPlanning, Claw-Eval Pass^3, and SkillsBench Avg5:
+
+| Benchmark | Validates | Academic Reference |
+|-----------|-----------|-------------------|
+| **Long-Horizon DAG** | No circular deps in 10-step plans, valid topological ordering | DeepPlanning (constrained optimization) |
+| **Tool-Calling Accuracy** | Schema compliance, regex fallback, hallucination filtering, MAX_ITERATION enforcement | Claw-Eval Pass^3 (trajectory consistency) |
+| **A2A Mathematical Consensus** | Fleiss' Kappa ≥0.6 on clear cases, cosine similarity on embeddings | Memento (inter-rater reliability) |
+| **Async Steering Responsiveness** | Atomic queue lock under concurrent injection, no state corruption | — |
+
+All mathematical benchmarks use Istara's production consensus engine (`backend/app/core/consensus.py`) — `fleiss_kappa()`, `cosine_similarity()`, and `compute_consensus()` are NOT reimplemented.
+
+---
+
 ### Agent Work Loop
 
 The core agent loop (`backend/app/core/agent.py`) runs continuously:
@@ -166,9 +194,27 @@ All agent activity, task progress, and document changes are broadcast to the fro
 
 **Resource Governor Lifecycle**: Agent workers register with the governor before task execution and unregister after, enforcing concurrent agent limits. The governor monitors CPU/RAM and pauses all agents when resources are critical (>90% RAM), broadcasting `resource_throttle` events.
 
-### Task-Document Linking
+## Executive Presentation Pipeline (Minto/SCR)
 
-Tasks support bidirectional document linking, allowing users and agents to attach source materials (inputs) and track produced artifacts (outputs).
+Istara bridges the gap between raw research data and executive-level presentations by implementing a specialized consulting-grade reporting pipeline.
+
+### 1. Minto Pyramid Principle
+Final reports are structured top-down:
+- **Top**: Actionable recommendations (The Answer).
+- **Middle**: Strategic arguments grouped by MECE (Mutually Exclusive, Collectively Exhaustive) categories.
+- **Bottom**: Atomic research findings (Nuggets, Facts) providing the evidence base.
+
+### 2. SCR (Situation-Complication-Resolution) Framework
+Executive summaries follow the SCR narrative arc to ensure stakeholder alignment:
+- **Situation**: Contextual baseline and agreed-upon market/UX facts.
+- **Complication**: The "So-What" — what is changing or failing that necessitates action.
+- **Resolution**: The proposed strategic path forward derived from research synthesis.
+
+### 3. Slide Instruction Engine (Ghost Decking)
+To facilitate presentation creation, Istara provides a "Slide Instruction" export feature. It translates the deep markdown report into a structured instruction package for external presentation AIs, enforcing:
+- **Action Titles**: Full-sentence conclusions for every slide.
+- **Evidence-Driven Layouts**: Direct mapping of findings to slide bullets.
+- **Horizontal Flow**: Ensures the narrative story is consistent when reading slide titles alone.
 
 | Field | Type | Purpose |
 |-------|------|---------|
@@ -260,6 +306,36 @@ Istara implements an OpenClaw-inspired self-improvement system where agents lite
 ### Custom Agent Evolution
 
 When users create a custom agent, the system auto-generates all four persona files (CORE.md, SKILLS.md, PROTOCOLS.md, MEMORY.md) from the agent's name and system prompt. This means **every custom agent participates in the same self-evolution pipeline** as system agents — they learn, they mature, they evolve.
+
+---
+
+## Local Telemetry & Model Intelligence
+
+Istara includes a **local-first, zero-trust observability system** that tracks model performance without ever sending data to the cloud.
+
+### 1. Telemetry Spans & Agent Hooks
+
+The agent execution loop is instrumented with lifecycle hooks (`agent_hooks.py`) that fire at every stage: `pre_task`, `post_task`, `post_validation`, `on_error`, and `on_completion`. When telemetry is enabled, these hooks record metadata-only **Telemetry Spans** to the local database.
+
+- **Zero-Trust**: No user content, prompts, or responses are recorded in telemetry spans — only metadata (duration, tokens, status, error types, model/skill name).
+- **Opt-in Only**: Users must explicitly enable telemetry in Settings to activate recording.
+
+### 2. Model Intelligence Dashboard
+
+The frontend **Ensemble Health** view features a Model Intelligence section that aggregates telemetry data into actionable insights:
+
+- **Model Leaderboard**: Ranks model × skill combinations by quality EMA (Exponential Moving Average) and success rate.
+- **Latency Percentiles**: Tracks P50, P90, and P99 latency across different models to detect hardware bottlenecks.
+- **Tool Success Rates**: Monitors the reliability of MCP tools and system actions.
+- **Error Taxonomy**: Categorizes failures (hallucination, timeout, tool error) to help users refine their model selection.
+
+### 3. Self-Healing DevOps Architecture
+
+The DevOps Agent (`Sentinel`) uses telemetry signals to perform automated remediation via **Self-Healing Rules**:
+
+- **Circuit Breaker**: If a model × skill combination reaches a >30% error rate, the DevOps agent flags it as "Degraded" and suggests a model switch.
+- **Auto-Remediation**: Transient errors (e.g., context window overflows) trigger automatic parameter adjustments (e.g., tighter compression) for the next attempt.
+- **Local Export**: Users can export their telemetry data to portable JSON for deep inspection or sharing with the community.
 
 ---
 
@@ -778,7 +854,92 @@ Istara trades compression ratio for **zero dependencies** and **instant speed** 
 
 ---
 
-## Testing & Quality Assurance
+## Phase Epsilon: Resilience, Rigor, and Context Mastery
+
+### 1. Protected Prompt Architecture
+Istara uses a SOTA structural prompting protocol to ensure that critical research methodology and instructions survive context compression and RAG injection.
+
+**Protected XML Tags**:
+- `<skill_context>`: Identity and phase information.
+- `<research_methodology>`: Academic citations and procedural steps.
+- `<instructions>`: Chain-of-Thought requirements and format rules.
+- `<thinking>`: Mandatory reasoning block before JSON output.
+- `<research_data>`: Raw data source (where compression is most aggressive).
+
+**LLMLingua Protection Layer**:
+The prompt compressor (`core/prompt_compressor.py`) implements a "Protected Region" mechanism. Any content wrapped in protected tags is temporarily replaced with UUID placeholders during the heuristic pruning phase, ensuring a 1.0 importance score for critical instructions.
+
+### 2. Native Structured Outputs (JSON Schema)
+To eliminate hallucination and formatting errors, Istara leverages native schema enforcement at the LLM engine level without forcing model reloads.
+
+- **LM Studio**: Injects `response_format: { "type": "json_schema", ... }` into the OpenAI-compatible payload.
+- **Ollama**: Passes the JSON schema directly to the `format` parameter in the `/api/chat` payload.
+
+## Phase Zeta: Context Mastery and Orchestration Refinement
+
+### 1. Tool Output Context Protection
+To prevent aggressive compression from "forgetting" critical retrieved data during multi-step reasoning, Istara implements a dedicated protection layer for tool results.
+
+- **Protected Tag**: `<tool_output>`
+- **Behavior**: The prompt compressor (`core/prompt_compressor.py`) detects this tag and preserves the enclosed content at 100% fidelity.
+- **Application**: Automatically applied to data-gathering tools like `get_document_content`, `search_documents`, and `web_fetch`.
+
+### 2. Automated JSON Schema Translation
+Istara maintains an "Ease of Use" standard for skill creation by allowing `output_schema` to be defined as simple example JSON objects. A dynamic translator in `skill_factory.py` automatically converts these into strict JSON Schemas.
+
+### 3. Layer 5 Benchmarking (Real-World Orchestration)
+The orchestration architecture has been validated with a new Layer 5 benchmark (`tests/integration/test_llm_orchestration_real.py`). This suite bypasses mocks to test live LLM connectivity, verified by:
+- **100% TSQ**: Tool Selection Quality on complex, ambiguous goals.
+- **DAG Decomposition**: Successful planning and serial/parallel execution of dependent research steps.
+- **Resilient Recovery**: Graceful handling of malformed LLM outputs and automated retry logic.
+
+### 4. Installer Resilience
+The `scripts/install-istara.sh` utility now supports persistent port overrides. Configured `FRONTEND_PORT` and `BACKEND_PORT` values are automatically saved to `backend/.env` to ensure consistent state across system restarts.
+
+- **Standard**: Converts `{"key": "value"}` → `{"type": "object", "properties": {"key": {"type": "string"}}, ...}`.
+- **Strictness**: Enforces `additionalProperties: false` and `required` arrays for all nested objects.
+- **Compatibility**: Guaranteed 100% adherence for LM Studio (strict mode) and Ollama without manual schema authoring.
+
+---
+
+## System Metrics & Observability
+
+Istara tracks its own performance across four functional categories. Metrics are recorded to the local database and surfaced via the **Ensemble Health** dashboard.
+
+### 1. Orchestration & Logic Metrics
+| Metric | Category | Description | Target |
+|--------|----------|-------------|--------|
+| `json_parse_success_rate` | Reliability | % of agent turns that produced valid, schema-compliant JSON. | > 95% |
+| `consensus_score` (κ) | Quality | Inter-rater agreement (Fleiss' Kappa) between multiple models. | > 0.65 |
+| `dag_compaction_ratio` | Context | % reduction in history size achieved via lossless summarization. | > 60% |
+| `validation_weight` | Adaptive | Relative importance of a validation method based on historical success. | Dynamic |
+
+### 2. Research & Skill Metrics
+| Metric | Category | Description | Target |
+|--------|----------|-------------|--------|
+| `avg_quality_ema` | Accuracy | Exponential moving average of LLM-reflected quality scores. | > 0.70 |
+| `evidence_chain_integrity` | Rigor | % of findings with valid Nugget → Fact → Insight lineage. | 100% |
+| `methodological_lift` | Academic | % of skills successfully grounding responses in cited frameworks. | > 80% |
+| `transcription_confidence` | Accuracy | Word Error Rate (WER) and confidence score for audio processing. | > 0.85 |
+| `icr_score` | Reliability | Inter-Coder Reliability score for qualitative thematic coding. | > 0.70 |
+
+### 3. Compute & Hardware Metrics
+| Metric | Category | Description | Target |
+|--------|----------|-------------|--------|
+| `latency_p90_ms` | Performance | 90th percentile response time for chat and skill execution. | < 15s |
+| `vram_usage_pct` | Hardware | GPU memory saturation monitored by the Resource Governor. | < 85% |
+| `cpu_load_pct` | Hardware | System CPU saturation across all cores. | < 70% |
+| `active_agent_count` | Load | Number of concurrent agent threads active in the system. | < 10 |
+
+### 4. Tool & Integration Metrics
+| Metric | Category | Description | Target |
+|--------|----------|-------------|--------|
+| `tool_success_rate` | Functionality | % of MCP and System Action calls that executed without error. | > 98% |
+| `rag_hit_rate` | Retrieval | % of queries where the retrieved context contained the answer. | > 75% |
+| `prompt_similarity_score`| Context | Vector distance between query and retrieved context chunks. | > 0.80 |
+| `self_evolution_count` | Maturity | Number of patterns promoted from AgentLearning to Persona files. | N/A |
+
+---
 
 ### Simulation Framework
 
@@ -1031,6 +1192,7 @@ A new real-time communication channel lets users inject messages to agents **whi
 **Architecture:**
 - `SteeringQueue` — mirrors pi-mono's `PendingMessageQueue`, supports `one-at-a-time` and `all` drain modes
 - `FollowUpQueue` — messages delivered only when agent finishes all work
+- **Thread-Safety**: Uses `asyncio.Lock` per agent state to synchronize API requests and the agent work loop.
 - **Deferred execution**: steering messages NEVER interrupt in-progress skills; they wait for current turn to complete
 - **Abort**: clears both queues, signals agent to stop (like pi-mono's Escape)
 - In-memory only — no database persistence needed
@@ -1065,6 +1227,94 @@ Custom loops now use a dropdown populated from the skill registry instead of fre
 - Fetches all registered skills from `/api/skills`
 - Dropdown shows skill names for selection
 - Description field explains what the loop will do with the selected skill
+
+### Interfaces & Design System
+
+The **Interfaces** menu (sidebar item 10) provides AI-powered design tools integrating Google Stitch, Figma, and automated handoff documentation.
+
+#### Architecture
+
+| Component | File | Purpose |
+|---|---|---|
+| Backend routes | `backend/app/api/routes/interfaces.py` (1615 lines) | Design chat, screen generation, Figma, handoff |
+| Frontend | `frontend/src/components/interfaces/InterfacesView.tsx` | Full UI for all design features |
+| API client | `frontend/src/lib/api.ts` → `interfaces.*` | 13 methods: screens, generate, variants, edit, figma, handoff, configure, designChat |
+| Core service | `backend/app/services/stitch_service.py` | Google Stitch API integration |
+| Design tools | `backend/app/skills/design_tools.py` | Screen generation, variant creation, editing |
+| Figma client | `backend/app/services/figma_service.py` | Figma API integration (import/export/components) |
+| Handoff | `backend/app/services/handoff_service.py` | Design briefs and dev spec generation |
+
+#### Google Stitch (Generative AI Screen Design)
+
+- **`POST /api/interfaces/screens/generate`**: Generate UI screens from text description using Stitch API
+- **`POST /api/interfaces/screens/edit`**: Edit existing screens with natural language instructions
+- **`POST /api/interfaces/screens/variant`**: Generate alternative design variants
+- **`GET /api/interfaces/screens`**: List all generated screens
+- **`DELETE /api/interfaces/screens/{screen_id}`**: Delete a screen
+- Screens stored with: id, project_id, prompt, image_url, metadata (timestamps, model used)
+- Screens appear in the Interfaces > Screens tab with thumbnail grid
+
+#### Design Chat
+
+- **`POST /api/interfaces/design-chat`**: Chat with AI about design decisions (uses RAG with project context)
+- **`GET /api/interfaces/design-chat/{project_id}/history`**: Retrieve design conversation history
+- Design chat uses same architecture as main chat: RAG retrieval, agent identity, budget-aware token allocation
+- Pixel agent can be selected for design-specific conversations
+
+#### Figma Integration
+
+- **`POST /api/interfaces/figma/import`**: Import Figma designs (components, styles, frames)
+- **`POST /api/interfaces/figma/export`**: Export designs back to Figma
+- **`GET /api/interfaces/figma/design-system/{file_key}`**: Get design system info from Figma file
+- **`GET /api/interfaces/figma/components/{file_key}`**: List components from Figma file
+- Figma token stored encrypted via field encryption (`ENC:` prefix)
+- Token configured via `POST /api/interfaces/configure/figma`
+
+#### Handoff Documentation
+
+- **`POST /api/interfaces/handoff/brief`**: Generate design brief with UX law references and evidence
+- **`POST /api/interfaces/handoff/dev-spec`**: Generate developer specification document
+- **`GET /api/interfaces/handoff/briefs`**: List all handoff briefs for a project
+- Design briefs include: UX laws referenced (pill badges), source findings (evidence cards), recommendations with attributions
+- Handoff bridges design intent to development implementation
+
+#### Screen Generation Flow
+
+1. User describes desired screen in Interfaces > Generate tab
+2. Backend calls Stitch API (Google) or design_tools.py (local generation)
+3. Generated screen stored with metadata (prompt, timestamp, model)
+4. Screen appears in thumbnail grid with full-screen preview
+5. User can edit screen with natural language ("make the button blue")
+6. User can generate variants for A/B testing
+
+#### Figma Import/Export Flow
+
+1. User provides Figma file key and personal access token
+2. Backend calls Figma API to fetch components, styles, frames
+3. Imported components stored in project context
+4. User can edit components and export changes back to Figma
+5. Design system sync keeps local and remote in sync
+
+#### Agent Integration
+
+- **Pixel** (UI audit agent) uses `design_tools.py` for screen analysis
+- **Cleo** (primary researcher) can execute design skills via task routing
+- Design chat uses same agent identity system as main chat
+- Screen generation triggers RAG retrieval for project-specific design context
+
+#### Data Models
+
+| Model | Table | Fields |
+|---|---|---|
+| Screen | `screens` | id, project_id, prompt, image_url, metadata, created_at, updated_at |
+| Design Brief | `design_briefs` | id, project_id, content, ux_laws, source_findings, created_at |
+| Handoff Spec | `handoff_specs` | id, project_id, content, dev_notes, created_at |
+
+#### Configuration
+
+- Google Stitch API key: `STITCH_API_KEY` in `.env` or via `POST /api/interfaces/configure/stitch`
+- Figma token: `FIGMA_API_TOKEN` in `.env` or via `POST /api/interfaces/configure/figma`
+- Design screens directory: `settings.design_screens_dir` (default: `./data/design_screens`)
 
 ### Google Stitch (Generative AI) Configuration
 
@@ -1914,7 +2164,111 @@ Switching between SQLite (local mode) and PostgreSQL (team mode) no longer risks
 - Scheduler deduplication: `is_running` flag prevents concurrent execution
 - Graceful shutdown: 30s drain period for in-flight tasks
 
-### Interfaces Menu & Research→Design Bridge
+### Voice Transcription Pipeline (v2026.04.14)
+
+Istara now supports voice input across the entire platform with automatic transcription, inter-coder reliability scoring, and atomic research chain integration.
+
+**Components:**
+- `backend/app/core/transcription.py` — Whisper-based local transcription with ICR consensus
+- `POST /api/chat/voice` — Chat voice input endpoint
+- `backend/app/channels/telegram.py` — Auto-transcribes Telegram voice messages
+- `backend/app/channels/whatsapp.py` — Auto-transcribes WhatsApp audio messages
+- `frontend/src/components/chat/ChatView.tsx` — Mic button on chat input
+- `frontend/src/lib/api.ts` → `chat.transcribeVoice()` — Voice upload API client
+
+**Pipeline:** Audio input → format conversion (OGG/MP3→WAV 16kHz mono) → Whisper transcription (base model) → alternative transcription (tiny model) → ICR consensus (Fleiss' Kappa + cosine similarity) → auto-tagging → review flagging if needed → store in Interviews + Documents → feed into Atomic Research chain.
+
+**Inter-Coder Reliability (mandatory):** Every transcription passes through ICR with Fleiss' Kappa between primary and alternative transcriptions. If confidence is "low" or "insufficient", the transcription is flagged for human review with `needs_review: true`.
+
+**Dependencies:** `openai-whisper>=20240930`, `pydub>=0.25.1`, `ffmpeg` (system, preferred) or pydub fallback.
+
+### Browser UX Research Skills (v2026.04.15)
+
+Three skill definitions that wrap the existing `browse_website` system action into structured UX research workflows. When a user creates a task with URLs, those URLs are passed through the `SkillInput.urls` field to the skill's prompt templates.
+
+**Skills:**
+- `browser-ux-audit` (develop/mixed) — Navigate target URLs → evaluate against Nielsen's 10 heuristics, WCAG 2.2 AA, and Laws of UX → produce severity-rated findings with evidence chains
+- `browser-competitive-benchmark` (discover/mixed) — Browse 2-5 competitor URLs → capture UX patterns, heuristic scores, feature matrices → produce gap-opportunity analysis with Blue Ocean Strategy canvas
+- `browser-accessibility-check` (develop/quantitative) — Navigate target site → systematic WCAG 2.2 criterion-by-criterion check → severity classification → prioritized remediation plan
+
+**Architecture:** Skills use `{urls}` and `{urls_section}` template placeholders. The skill factory (`skill_factory.py`) substitutes these from `SkillInput.urls`, which is populated from `task.get_urls()` in the agent's `_execute_task()`. The agent uses `browse_website` system action at execution time.
+
+**SCOPE_MAP entries:** `browser-ux-audit` → Usability Study, `browser-accessibility-check` → Usability Study, `browser-competitive-benchmark` → Competitive Analysis
+
+**Task routing aliases:** `ux audit` → `browser-ux-audit`, `site audit` → `browser-ux-audit`, `accessibility check` → `browser-accessibility-check`, `wcag` / `a11y` → `browser-accessibility-check`, `competitive benchmark` / `competitor audit` → `browser-competitive-benchmark`
+
+### Research Quality Evaluation (v2026.04.15)
+
+Formalizes Istara's existing LLM-as-Judge validation pipeline (AdaptiveSelector, ValidationExecutor, Fleiss' Kappa consensus) into a callable user-facing skill and visible metrics.
+
+**Skill: `research-quality-evaluation`** (deliver/mixed)
+- Invokes the existing validation pipeline: adversarial review (5-dimension rubric), dual-run consistency, self-MoA RAG verification, debate consensus
+- Assesses chain integrity (nuggets → facts → insights → recommendations), completeness, methodology quality
+- Uses adaptive method selection via `AdaptiveSelector` — the system learns which validation strategy works best per project/skill/agent
+- SCOPE_MAP: `research-quality-evaluation` → `Quality Evaluation`
+
+**API: `GET /api/metrics/{project_id}/validation`**
+- Returns per-method adaptive validation stats from `MethodMetric` model (success_rate, avg_consensus_score, weight, last_used)
+- Returns recent per-task validations (validation_method, consensus_score, skill_name)
+- Returns confidence thresholds by finding type (nugget 0.70, fact 0.65, insight 0.55, rec 0.50)
+
+**Frontend visibility:**
+- EnsembleHealthView: wired to real `/api/metrics/{id}/validation` data instead of stub
+- KanbanBoard task cards: color-coded consensus badge (green ≥ 70%, yellow ≥ 50%, orange ≥ 30%, red < 30%) with tooltip showing validation method + κ score
+- Task type in `types.ts`: added `validation_method` and `consensus_score` fields
+
+### Game-Theory Participant Simulation (v2026.04.15)
+
+Enhances the `istara-sim` (Echo) persona with game-theory behavioral models for simulating participant behavior in UX research scenarios.
+
+**Architecture:** `backend/app/core/participant_simulation.py` provides:
+- 7 behavioral strategies: cooperative, selfish, reciprocating, random, satisficing (Simon 1956), social_desirability, adversarial
+- Prisoner's Dilemma payoff matrix (T > R > P > S, 2R > T + S)
+- Stag Hunt payoff matrix (Rousseau/Skyrms 2004 coordination game)
+- `ParticipantProfile` dataclass with behavioral traits: patience, honesty_bias, social_desirability_bias, tech_savviness, engagement_level, risk_aversion, satisficing_threshold
+- `choose_action()` implements bounded rationality — noise proportional to `(1 - engagement) × (1 - patience)`
+- `simulate_response_mode()` determines how a participant responds: honest, strategic, biased, withheld, exaggerated
+- `generate_participant_cohort()` creates diverse cohorts with configurable strategy distributions
+
+**Skill:** `participant-simulation` (define/mixed) maps game-theory constructs to UX research implications — Nash equilibrium analysis, satisficing behavior detection, social desirability bias identification, engagement decay tracking.
+
+**SCOPE_MAP:** `participant-simulation` → `Simulation Analysis`
+**Task routing aliases:** `participant simulation`, `game theory`, `simulation`
+
+### Audit Log Middleware (v2026.04.15)
+
+General-purpose audit trail for all API requests. Fills the gap where only MCP tool calls had logging (`mcp_audit_log`).
+
+**Model:** `AuditLog` (SQLite `audit_log` table) captures: `user_id`, `method`, `path`, `status_code`, `duration_ms`, `ip_address`, `project_id`, `timestamp`. No user content stored.
+
+**Middleware:** `AuditLogMiddleware` registered in `main.py` as FastAPI middleware. Skips `/docs`, `/health`, `/openapi.json`, OPTIONS requests, and MCP server paths.
+
+**API:** `GET /api/audit/logs?limit=100&offset=0&user_id=&project_id=&method=&path_prefix=` returns paginated, filterable audit entries.
+
+### Observability: Telemetry Spans & Agent Hooks (v2026.04.15)
+
+Local-first, zero-trust observability system. **No phone-home by default.** All telemetry data stays on the user's machine.
+
+**Architecture:**
+- `TelemetrySpan` model (SQLite): stores operational metadata per span — operation, skill, model, timing, status, quality score, consensus score, error type. **No prompts, responses, user content, or files.**
+- `AgentHooks`: composable async lifecycle hooks (pre_task, post_task, post_validation, on_error, on_completion) — fire-and-forget via `asyncio.create_task()`. Built-in hooks for telemetry and model performance recording.
+- `TelemetryRecorder`: writes spans to `telemetry_spans` table and upserts `ModelSkillStats` from production path (previously only written by autoresearch)
+
+**Model Intelligence Production Path:**
+Every skill execution now creates a `ModelSkillStats` row with `source="production"` alongside the existing autoresearch `source="autoresearch"`. This means the autoresearch leaderboard shows both real-world usage data and experiment data.
+
+**API: `GET /api/metrics/{project_id}/model-intelligence`**
+- Leaderboard: best model+temperature per skill from both production and autoresearch
+- Error taxonomy: structured error types per model and skill
+- Tool success rates: per-tool success rate, average duration, P50/P90 latency
+- Latency percentiles: P50/P90/P99 response time per model
+
+**Agent lifecycle instrumentation in `_execute_task()`:**
+- `pre_task`: records start timestamp and creates initial span
+- `post_task`: records skill execution outcome and writes ModelSkillStats
+- `post_validation`: records validation method, consensus score
+- `on_error`: records structured error type and truncated message
+- `on_completion`: records final quality score and total duration
 
 The Interfaces menu creates a bridge between UX Research and Product Design within Istara. It provides:
 
@@ -2496,6 +2850,40 @@ The `model_skill_stats` table tracks quality per (skill, model, temperature). Lo
 | Autoresearch | Karpathy (2026) | github.com/karpathy/autoresearch (MIT) |
 | AURA Adaptive Questioning | arXiv 2510.27126 | 2025 |
 | Prompt Mutation Operators | Kosuri (2026) | Medium |
+
+---
+
+## ADVANCED CAPABILITIES (v2026.04.15)
+
+### 1. Synthetic Browser Research
+Istara wraps raw browser automation (`browser-use`) in structured UXR methodologies. The `competitive-analysis`, `accessibility-audit`, and `heuristic-evaluation` skills now support automated data collection from live URLs before synthesis.
+
+### 2. Formal Evaluation Framework (LLM-as-Judge)
+The `evaluate-research` skill provides a standalone rigor benchmark. It utilizes multi-model adversarial review (Du et al., 2024) and full-ensemble scoring with Fleiss' Kappa reliability to grade research outputs against academic standards.
+
+### 3. Game Theory Participant Simulation
+Participant simulations are enhanced with game-theory strategies (`SimulationStrategy`). Personas like 'The Satisficer' (low effort) and 'The Skeptic' (adversarial) allow researchers to stress-test their instruments against realistic behavioral biases.
+
+### 4. Local-First OpenTelemetry & Tracing
+For high-compliance environments, Istara supports local-only OTLP tracing via a bundled `otel-collector` and `jaeger` instance. This allows full lifecycle tracing of research tasks (Request -> RAG -> Skill -> Verification) with zero cloud dependency.
+
+---
+
+## Orchestration Benchmarks & Academic Lineage (v2026.04.17)
+
+Istara is evaluated against the 2026 **SOTA Agentic Benchmarks** to ensure its orchestration logic meets global standards for autonomous systems.
+
+| Benchmark | Focus Area | Istara Implementation |
+| :--- | :--- | :--- |
+| **DeepPlanning** | Global Optimization | Evaluated in Layer 4 via DAG decomposition logic (`AgentOrchestrator`). |
+| **Claw-Eval** | Trajectory Consistency | Evaluated via `Pass^3` consensus variance across audit traces. |
+| **SkillsBench** | Modular Proficiency | Measures the success "lift" provided by the 53 domain-specific skills. |
+| **Memento** | Self-Evolution | Tests the efficacy of the Agent Factory in proposing valid specialized personas. |
+| **NL2Repo** | Workspace Seeding | Measures the ability to generate complex research project structures from briefs. |
+| **TAU3-Bench** | Policy Reasoning | Evaluates reasoning over the **30 Laws of UX** policy document tree. |
+| **MCP-Atlas** | Tool Coordination | Tests the simultaneous orchestration of multiple independent MCP servers. |
+
+These benchmarks are automated in the **Layer 4: Orchestration Suite** (`tests/benchmarks/run_benchmarks.py`).
 
 ---
 

@@ -35,6 +35,10 @@ class AutoresearchEngine:
     def current_experiment(self) -> dict | None:
         return self._current_experiment
 
+    def get_current_experiment(self) -> dict | None:
+        """Return the currently running experiment, or None."""
+        return self._current_experiment
+
     def request_stop(self):
         """Signal the running loop to stop after the current iteration."""
         self._stop_requested = True

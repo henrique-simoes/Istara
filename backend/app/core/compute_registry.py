@@ -863,6 +863,7 @@ class ComputeRegistry:
         temperature: float = 0.7,
         max_tokens: int | None = None,
         tools: list[dict] | None = None,
+        response_format: dict | None = None,
     ) -> dict:
         """Route a chat request to the best available node."""
         msgs = list(messages)
@@ -932,7 +933,10 @@ class ComputeRegistry:
                     return result
 
             except Exception as e:
-                logger.warning(f"ComputeRegistry: chat failed on {node.name}: {e}")
+                if hasattr(e, "response") and hasattr(e.response, "text"):
+                    logger.warning(f"ComputeRegistry: chat failed on {node.name}: {e} | Body: {e.response.text}")
+                else:
+                    logger.warning(f"ComputeRegistry: chat failed on {node.name}: {e}")
                 node.consecutive_failures += 1
                 node.cb_record_failure()
                 if node.consecutive_failures >= 3:
@@ -1119,7 +1123,10 @@ class ComputeRegistry:
                     return items[0].get("embedding", []) if items else []
 
             except Exception as e:
-                logger.warning(f"ComputeRegistry: embed failed on {node.name}: {e}")
+                if hasattr(e, "response") and hasattr(e.response, "text"):
+                    logger.warning(f"ComputeRegistry: embed failed on {node.name}: {e} | Body: {e.response.text}")
+                else:
+                    logger.warning(f"ComputeRegistry: embed failed on {node.name}: {e}")
                 node.is_healthy = False
             finally:
                 node.active_requests -= 1
@@ -1152,7 +1159,10 @@ class ComputeRegistry:
                     return [item.get("embedding", []) for item in resp.json().get("data", [])]
 
             except Exception as e:
-                logger.warning(f"ComputeRegistry: embed_batch failed on {node.name}: {e}")
+                if hasattr(e, "response") and hasattr(e.response, "text"):
+                    logger.warning(f"ComputeRegistry: embed_batch failed on {node.name}: {e} | Body: {e.response.text}")
+                else:
+                    logger.warning(f"ComputeRegistry: embed_batch failed on {node.name}: {e}")
                 node.is_healthy = False
             finally:
                 node.active_requests -= 1

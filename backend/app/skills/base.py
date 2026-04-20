@@ -30,12 +30,13 @@ class SkillInput:
     project_id: str
     task_id: str | None = None
     files: list[str] = field(default_factory=list)
+    urls: list[str] = field(default_factory=list)
     parameters: dict[str, Any] = field(default_factory=dict)
     user_context: str = ""
     project_context: str = ""
     company_context: str = ""
-    model: str | None = None  # Override LLM model for this execution
-    temperature: float | None = None  # Override temperature for this execution
+    model: str | None = None
+    temperature: float | None = None
 
 
 @dataclass
@@ -51,6 +52,7 @@ class SkillOutput:
     artifacts: dict[str, str] = field(default_factory=dict)  # filename → content
     suggestions: list[str] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
+    json_success: bool = True  # Track if LLM output was valid JSON
 
 
 class BaseSkill(ABC):
@@ -155,9 +157,13 @@ class BaseSkill(ABC):
 
         # Evidence chain integrity
         if output.insights and not output.facts and not output.nuggets:
-            warnings.append("Insights generated without supporting nuggets or facts (broken evidence chain).")
+            warnings.append(
+                "Insights generated without supporting nuggets or facts (broken evidence chain)."
+            )
         if output.recommendations and not output.insights:
-            warnings.append("Recommendations generated without supporting insights (broken evidence chain).")
+            warnings.append(
+                "Recommendations generated without supporting insights (broken evidence chain)."
+            )
 
         # Confidence score bounds
         for finding_type in ["nuggets", "facts", "insights", "recommendations"]:
@@ -165,12 +171,16 @@ class BaseSkill(ABC):
                 conf = f.get("confidence")
                 if conf is not None and isinstance(conf, (int, float)):
                     if conf < 0 or conf > 1:
-                        warnings.append(f"{finding_type} has invalid confidence {conf} (must be 0-1): '{f.get('text', '')[:40]}...'")
+                        warnings.append(
+                            f"{finding_type} has invalid confidence {conf} (must be 0-1): '{f.get('text', '')[:40]}...'"
+                        )
 
         # Source attribution on facts and insights
         for fact in output.facts:
             if not fact.get("nugget_ids") and not fact.get("source"):
-                warnings.append(f"Fact has no source or nugget link: '{fact.get('text', '')[:50]}...'")
+                warnings.append(
+                    f"Fact has no source or nugget link: '{fact.get('text', '')[:50]}...'"
+                )
 
         return warnings
 

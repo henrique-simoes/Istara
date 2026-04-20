@@ -95,6 +95,16 @@ def check_tech_md_freshness(issues: list[str]) -> None:
         "frontend-net": "Network segmentation (Docker networks)",
         "caddy": "Caddy/TLS configuration",
         "pre-push": "Compass authorship enforcement",
+        "stitch": "Google Stitch AI screen generation",
+        "interfaces": "Interfaces & Design System",
+        "design-chat": "Design-specific chat with RAG",
+        "transcription": "Voice transcription pipeline",
+        "playwright": "Playwright-based browser skills",
+        "evaluate-research": "LLM-as-Judge evaluation framework",
+        "game theory": "Game Theory participant simulation",
+        "audit log middleware": "Audit Log Middleware",
+        "opentelemetry": "Local-First OpenTelemetry & Tracing",
+        "agent hooks": "Agent Hooks lifecycle interception"
     }
 
     missing = []

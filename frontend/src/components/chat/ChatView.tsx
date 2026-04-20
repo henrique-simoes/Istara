@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Send, Paperclip, Loader2, StopCircle, Upload, User, Settings2, Bot, Zap, ChevronDown, HelpCircle, X, AlertTriangle, FolderOpen, FileText } from "lucide-react";
+import { Send, Paperclip, Loader2, StopCircle, Upload, User, Settings2, Bot, Zap, ChevronDown, HelpCircle, X, AlertTriangle, FolderOpen, FileText, Mic, Activity } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useChatStore } from "@/stores/chatStore";
@@ -9,7 +9,7 @@ import { useProjectStore } from "@/stores/projectStore";
 import { useSessionStore } from "@/stores/sessionStore";
 import { useAgentStore } from "@/stores/agentStore";
 import { cn, formatDate } from "@/lib/utils";
-import { files as filesApi, documents as documentsApi } from "@/lib/api";
+import { files as filesApi, documents as documentsApi, steering as steeringApi } from "@/lib/api";
 import { ChatSkeleton } from "@/components/common/LoadingSkeleton";
 import ViewOnboarding from "@/components/common/ViewOnboarding";
 import ChatSessionsSidebar from "./ChatSessionsSidebar";
@@ -331,6 +331,36 @@ function ChatToolbar({
   );
 }
 
+function SteeringQueueIndicator({ agentId }: { agentId: string | null }) {
+  const [status, setStatus] = useState<any>(null);
+
+  useEffect(() => {
+    if (!agentId) return;
+    const fetchStatus = async () => {
+      try {
+        const res = await steeringApi.getAllStatus();
+        setStatus(res[agentId]);
+      } catch {}
+    };
+    fetchStatus();
+    const interval = setInterval(fetchStatus, 5000);
+    return () => clearInterval(interval);
+  }, [agentId]);
+
+  if (!status || (!status.steering_queue_count && !status.follow_up_queue_count)) return null;
+
+  return (
+    <div className="flex items-center gap-2 px-3 py-1.5 bg-purple-50 dark:bg-purple-900/20 border border-purple-100 dark:border-purple-800 rounded-lg text-[10px] text-purple-700 dark:text-purple-400 font-medium animate-pulse mb-2">
+      <Activity size={10} />
+      <span>
+        {status.steering_queue_count > 0 && `${status.steering_queue_count} steering message(s) pending`}
+        {status.steering_queue_count > 0 && status.follow_up_queue_count > 0 && " • "}
+        {status.follow_up_queue_count > 0 && `${status.follow_up_queue_count} follow-up(s) queued`}
+      </span>
+    </div>
+  );
+}
+
 export default function ChatView() {
   const { messages, streaming, streamingContent, error, sendMessage, fetchHistory, cancelStreaming } = useChatStore();
   const { activeProjectId } = useProjectStore();
@@ -422,6 +452,13 @@ export default function ChatView() {
     if (!files) return;
     setPendingFiles((prev) => [...prev, ...Array.from(files)]);
     if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  /** Dispatch a toast notification — WCAG 2.2 4.1.3 Status Messages */
+  const dispatchToast = (type: "success" | "warning" | "info" | "agent" | "file", title: string, message: string) => {
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("istara:toast", { detail: { type, title, message } }));
+    }
   };
 
   const removePendingFile = (index: number) => {
@@ -574,9 +611,26 @@ export default function ChatView() {
                   {msg.role === "user" ? (
                     <div className="whitespace-pre-wrap text-sm">{msg.content}</div>
                   ) : (
-                    <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5 prose-pre:my-2 prose-code:text-xs">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
-                    </div>
+                      <ReactMarkdown 
+                        remarkPlugins={[remarkGfm]}
+                        components={{
+                          p: ({ children }) => {
+                            const text = String(children);
+                            if (text.startsWith("[Tool:") && text.endsWith("]")) {
+                              const toolName = text.slice(7, -1);
+                              return (
+                                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 my-1 rounded-full bg-slate-200 dark:bg-slate-700 text-xs font-medium text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-600">
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-500"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                                  <span>Ran: <span className="font-bold">{toolName}</span></span>
+                                </div>
+                              );
+                            }
+                            return <p className="my-1">{children}</p>;
+                          }
+                        }}
+                      >
+                        {msg.content}
+                      </ReactMarkdown>
                   )}
                   {msg.sources && msg.sources.length > 0 && (
                     <div className="mt-2 pt-2 border-t border-slate-200 dark:border-slate-700">
@@ -610,8 +664,27 @@ export default function ChatView() {
               <div className="flex-1 min-w-0">
                 <p className="text-xs text-slate-500 dark:text-slate-400 mb-1 px-1 font-medium">{streamAgentName}</p>
                 <div className="rounded-2xl rounded-bl-md px-4 py-3 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100">
-                  <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5 prose-pre:my-2 prose-code:text-xs streaming-cursor">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{streamingContent}</ReactMarkdown>
+                  <div className="streaming-cursor">
+                    <ReactMarkdown 
+                      remarkPlugins={[remarkGfm]}
+                      components={{
+                        p: ({ children }) => {
+                          const text = String(children);
+                          if (text.startsWith("[Tool:") && text.endsWith("]")) {
+                            const toolName = text.slice(7, -1);
+                            return (
+                              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 my-1 rounded-full bg-istara-100 dark:bg-istara-900/40 text-xs font-medium text-istara-700 dark:text-istara-300 border border-istara-200 dark:border-istara-800">
+                                <Loader2 size={12} className="animate-spin text-istara-600 dark:text-istara-400" />
+                                <span>⚡ Running: <span className="font-bold">{toolName}</span></span>
+                              </div>
+                            );
+                          }
+                          return <p className="my-1">{children}</p>;
+                        }
+                      }}
+                    >
+                      {streamingContent}
+                    </ReactMarkdown>
                   </div>
                 </div>
               </div>
@@ -665,6 +738,9 @@ export default function ChatView() {
         {/* Input */}
         <div className="border-t border-slate-200 dark:border-slate-800 p-4">
           <div className="max-w-3xl mx-auto">
+            {/* Queue status */}
+            <SteeringQueueIndicator agentId={activeSession?.agent_id || "istara-main"} />
+            
             {/* Pending file chips */}
             {(pendingFiles.length > 0 || pendingDocRefs.length > 0) && (
               <div className="flex flex-wrap gap-1.5 mb-2">
@@ -727,6 +803,22 @@ export default function ChatView() {
                   style={{ minHeight: "44px", maxHeight: "120px" }}
                 />
               </div>
+
+              {/* Voice recording button */}
+              <button
+                onClick={() => dispatchToast("info", "Coming Soon", "Voice recording is currently in development.")}
+                disabled={streaming}
+                aria-label="Record voice message"
+                className={cn(
+                  "p-2.5 rounded-lg transition-colors",
+                  !streaming
+                    ? "bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600"
+                    : "bg-slate-100 dark:bg-slate-800 text-slate-300 cursor-not-allowed"
+                )}
+                title="Voice input"
+              >
+                <Mic size={20} />
+              </button>
 
               <button
                 onClick={handleSend}

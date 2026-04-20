@@ -62,7 +62,11 @@ class LMStudioClient:
         Pass ``force=True`` to bypass the cache (e.g. on startup).
         """
         # Return cached result if still fresh
-        if not force and self._detected_model and (time.time() - self._detected_at) < self._detect_cache_ttl:
+        if (
+            not force
+            and self._detected_model
+            and (time.time() - self._detected_at) < self._detect_cache_ttl
+        ):
             return self._detected_model
 
         try:
@@ -143,6 +147,7 @@ class LMStudioClient:
         temperature: float = 0.7,
         max_tokens: int | None = None,
         tools: list[dict] | None = None,
+        response_format: dict | None = None,
     ) -> dict:
         """Non-streaming chat completion.
 
@@ -165,6 +170,8 @@ class LMStudioClient:
             payload["max_tokens"] = max_tokens
         if tools:
             payload["tools"] = tools
+        if response_format:
+            payload["response_format"] = response_format
 
         client = await self._get_client()
         resp = await client.post("/v1/chat/completions", json=payload)
@@ -196,6 +203,7 @@ class LMStudioClient:
         temperature: float = 0.7,
         max_tokens: int | None = None,
         tools: list[dict] | None = None,
+        response_format: dict | None = None,
     ) -> AsyncGenerator[str | dict, None]:
         """Streaming chat completion — yields content chunks (str).
 
@@ -219,6 +227,8 @@ class LMStudioClient:
             payload["max_tokens"] = max_tokens
         if tools:
             payload["tools"] = tools
+        if response_format:
+            payload["response_format"] = response_format
 
         client = await self._get_client()
 
@@ -227,7 +237,9 @@ class LMStudioClient:
         accumulated_tool_calls: list[dict] = []
         tool_call_mode = False
 
-        async with client.stream("POST", "/v1/chat/completions", json=payload, timeout=None) as resp:
+        async with client.stream(
+            "POST", "/v1/chat/completions", json=payload, timeout=None
+        ) as resp:
             resp.raise_for_status()
             async for line in resp.aiter_lines():
                 line = line.strip()
@@ -249,11 +261,13 @@ class LMStudioClient:
                             idx = tc_delta.get("index", 0)
                             # Grow the list to accommodate the index
                             while len(accumulated_tool_calls) <= idx:
-                                accumulated_tool_calls.append({
-                                    "id": "",
-                                    "type": "function",
-                                    "function": {"name": "", "arguments": ""},
-                                })
+                                accumulated_tool_calls.append(
+                                    {
+                                        "id": "",
+                                        "type": "function",
+                                        "function": {"name": "", "arguments": ""},
+                                    }
+                                )
                             tc = accumulated_tool_calls[idx]
                             if tc_delta.get("id"):
                                 tc["id"] = tc_delta["id"]

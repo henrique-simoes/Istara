@@ -24,13 +24,22 @@ BACKEND_LOG="$ROOT/.istara-backend.log"
 FRONTEND_LOG="$ROOT/.istara-frontend.log"
 RELAY_LOG="$ROOT/.istara-relay.log"
 
-BACKEND_PORT=8000
-FRONTEND_PORT=3000
+# Load environment variables (ports, etc.)
+if [ -f "$ROOT/backend/.env" ]; then
+    # Parse simple KEY=VALUE without comments
+    BACKEND_PORT=$(grep "^BACKEND_PORT=" "$ROOT/backend/.env" | cut -d'=' -f2 || true)
+    FRONTEND_PORT=$(grep "^FRONTEND_PORT=" "$ROOT/backend/.env" | cut -d'=' -f2 || true)
+fi
+
+BACKEND_PORT=${BACKEND_PORT:-8000}
+FRONTEND_PORT=${FRONTEND_PORT:-3000}
 
 # Find the correct Python — prefer venv, then Homebrew, then system
 _find_python() {
     [ -x "$ROOT/venv/bin/python" ] && { echo "$ROOT/venv/bin/python"; return; }
     [ -x "$ROOT/venv/bin/python3" ] && { echo "$ROOT/venv/bin/python3"; return; }
+    [ -x "$ROOT/backend/.venv/bin/python" ] && { echo "$ROOT/backend/.venv/bin/python"; return; }
+    [ -x "$ROOT/backend/.venv/bin/python3" ] && { echo "$ROOT/backend/.venv/bin/python3"; return; }
     command -v python3 >/dev/null 2>&1 && { echo "python3"; return; }
     [ -x "/opt/homebrew/bin/python3.12" ] && { echo "/opt/homebrew/bin/python3.12"; return; }
     [ -x "/opt/homebrew/bin/python3" ] && { echo "/opt/homebrew/bin/python3"; return; }
@@ -139,7 +148,7 @@ _start() {
             _free_port $BACKEND_PORT
         fi
         local PYTHON; PYTHON=$(_find_python)
-        if [ ! -x "$ROOT/venv/bin/python" ] && [ ! -x "$ROOT/venv/bin/python3" ]; then
+        if [ ! -x "$ROOT/venv/bin/python" ] && [ ! -x "$ROOT/venv/bin/python3" ] && [ ! -x "$ROOT/backend/.venv/bin/python" ] && [ ! -x "$ROOT/backend/.venv/bin/python3" ]; then
             echo -e "\r  Backend:  ${RED}✗ venv not found${NC}  — run the installer first"
             echo -e "           ${YELLOW}curl -fsSL https://raw.githubusercontent.com/henrique-simoes/Istara/main/scripts/install-istara.sh | bash${NC}"
             return 1
@@ -167,9 +176,10 @@ _start() {
             return 1
         fi
 
-        # Wait for backend to be ready (up to 15s)
+        # Wait for backend to be ready (up to 120s). Large local datasets can
+        # make startup integrity scans take longer than the old 15s window.
         local attempts=0
-        while [ $attempts -lt 30 ]; do
+        while [ $attempts -lt 240 ]; do
             if curl -s --connect-timeout 1 "http://localhost:$BACKEND_PORT/api/health" >/dev/null 2>&1; then
                 echo -e "\r  Backend:  ${GREEN}● started${NC}  (PID $bpid)  http://localhost:$BACKEND_PORT"
                 break
@@ -177,7 +187,7 @@ _start() {
             sleep 0.5
             attempts=$((attempts + 1))
         done
-        if [ $attempts -ge 30 ]; then
+        if [ $attempts -ge 240 ]; then
             # Check if process actually died
             if ! kill -0 "$bpid" 2>/dev/null; then
                 echo -e "\r  Backend:  ${RED}✗ failed to start${NC}"
@@ -203,8 +213,8 @@ _start() {
         local NPM; NPM=$(_find_npm)
         echo -n "  Frontend: starting..."
         cd "$ROOT/frontend"
-        # Use production server if built, otherwise fall back to dev
-        if [ -d ".next" ]; then
+        # Use production server if fully built, otherwise fall back to dev
+        if [ -f ".next/BUILD_ID" ]; then
             nohup "$NPM" start -- --port $FRONTEND_PORT \
                 > "$FRONTEND_LOG" 2>&1 &
         else

@@ -1,0 +1,38 @@
+{
+  "name": "transcribe-audio",
+  "display_name": "Audio Transcription & Analysis",
+  "description": "Transcribe research audio (interviews, field notes) using local models, perform auto-tagging, and integrate into the Atomic Research chain.",
+  "phase": "discover",
+  "skill_type": "transformation",
+  "version": "2.1.0",
+  "enabled": true,
+  "plan_prompt": "<skill_context>\nYou are a lead research operations specialist planning a systematic audio transcription and coding project for the DISCOVER phase.\nContext: {context}\n</skill_context>\n\n<research_methodology>\nYour methodology is grounded in Poland's (1995) 'Trustworthiness in Transcripts' framework, McLellan et al.'s (2003) technical preparation protocol, and the 'Denaturalized Transcription' approach (Oliver et al., 2005; Davidson, 2009).\n\nTranscription is not a neutral, mechanical task but an interpretive, theoretical process (Davidson, 2009). Following Poland (1995), we treat transcription quality as a core aspect of research rigor, systematically auditing for sentence structure changes and omissions. We employ a 'Denaturalized' approach (Oliver et al., 2005) for UX research, focusing on informational content and meaning while maintaining verbatim accuracy for 'Atomic Research' nuggets (Braun & Clarke, 2006).\n</research_methodology>\n\n<instructions>\nPlan the transcription protocol following these requirements:\n\n### 1. Transcription Protocol Design\n- Define the technical standard for speaker identification (McLellan et al., 2003).\n- Establish timestamping frequency.\n- Specify the 'Denaturalization' rules: remove stutters for readability while preserving non-verbal cues like long pauses or laughter.\n\n### 2. Initial Coding & Tagging Strategy\n- Map the 'Verbatim Transcription Protocol' to the target UX themes.\n- Define the 'Atomic Nugget' extraction criteria.\n- Plan for Inter-Coder Reliability (Kappa) analysis.\n\n### 3. Quality Assurance\n- Plan a 10% manual audit against the raw audio to verify 'Poland Rigor'.\n</instructions>\n\n<thinking>\nEnsure the plan maximizes readability for thematic analysis without losing the critical verbatim nuances required for evidence-chain traceability.\n</thinking>",
+  "execute_prompt": "<skill_context>\nYou are an expert research analyst performing audio transcription and initial thematic coding.\nContext: {context}\nTranscription Data: {content}\n</skill_context>\n\n<research_methodology>\nYour methodology follows the McLellan et al. (2003) technical protocol and Oliver et al. (2005) denaturalized transcription standards. Reference Poland (1995) for rigor typology.\n</research_methodology>\n\n<instructions>\nExecute the transcription across these four phases:\n\n### Phase 1: Denaturalized Transcription\n- Format the provided data into clear, timestamped speaker turns.\n- Apply denaturalization: preserve full informational content while removing stutters (Oliver et al., 2005).\n\n### Phase 2: Atomic Nugget Extraction\n- Identify 'Atomic Nuggets': verbatim text quotes linked to exact timestamps.\n- Assign a 'Rigor Score' (1-5) based on snippet completeness (Poland, 1995).\n\n### Phase 3: Initial Thematic Tagging\n- Apply UX tags based on the Braun & Clarke (2006) framework.\n- Add 'Coding Reasoning' for each nugget category.\n\n### Phase 4: Metadata & Confidence Analysis\n- Rate the overall 'Transcript Trustworthiness' based on the Poland (1995) error typology.\n\n## RIGOR CITATION PROTOCOL\nFor every extracted nugget:\n1. **Verbatim Text**: \"[Exact speaker quote]\"\n2. **Location**: [Speaker ID] | [Timestamp]\n3. **Rigor Note**: Reference to Poland (1995) or McLellan (2003) if applicable.\n4. **Confidence**: High|Medium|Low\n</instructions>\n\n<thinking>\nProcess the audio data into high-fidelity speaker segments, extracting nuggets that will serve as the foundation for subsequent synthesis phases.\n</thinking>",
+  "output_schema": "{\"transcript\": [{\"speaker_id\": \"...\", \"text\": \"...\", \"timestamp_start\": \"...\", \"timestamp_end\": \"...\", \"confidence\": 0.0}], \"nuggets\": [{\"id\": \"...\", \"text\": \"verbatim quote\", \"speaker\": \"...\", \"timestamp\": \"...\", \"tags\": [\"...\"], \"coding_reasoning\": \"...\", \"rigor_score\": 0}], \"thematic_summary\": [{\"theme\": \"...\", \"prevalence\": \"high|medium|low\", \"representative_nuggets\": [\"...\"]}], \"metadata\": {\"model_id\": \"...\", \"processing_time_sec\": 0, \"transcription_std\": \"denaturalized|naturalized\", \"trustworthiness_rating\": 0.0, \"audit_required\": false}, \"summary\": \"Executive summary of the transcription session and key findings\"}",
+  "created_at": "2026-04-15T00:00:00Z",
+  "updated_at": "2026-04-18T00:00:00Z",
+  "metadata": {
+    "author": "Istara",
+    "tags": ["discover", "voice", "interviews"],
+    "references": [
+      "Poland, B. D. (1995). Transcription quality as an aspect of rigor in qualitative research. Qualitative Inquiry.",
+      "McLellan, E., MacQueen, K. M., & Neidig, J. L. (2003). Beyond the qualitative interview: Data preparation and transcription. Field Methods.",
+      "Oliver, D. G., Serovich, J. M., & Mason, T. L. (2005). Constraints and opportunities with interview transcription. Social Forces.",
+      "Davidson, C. (2009). Transcription: Imperatives for qualitative research. International Journal of Qualitative Methods.",
+      "Braun, V., & Clarke, V. (2006). Using thematic analysis in psychology. Qualitative Research in Psychology.",
+      "Nielsen, J. (1994). Usability Inspection Methods. Wiley."
+    ]
+  },
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-04-15T00:00:00Z",
+      "changes": "Initial creation from skill library"
+    },
+    {
+      "version": "2.1.0",
+      "date": "2026-04-18T00:00:00Z",
+      "changes": "Comprehensive rewrite: added theoretical foundation citing Poland (1995), McLellan (2003), and Oliver et al. (2005). Implemented Denaturalized Transcription protocol. Added Phase 2 'Atomic Nugget Extraction' with Rigor Scoring. Expanded output schema with thematic prevalence, trustworthiness ratings, and detailed speaker metadata. [MANDATORY]: Implemented XML tagging protocol (<thinking>, <research_methodology>, <instructions>) for structural integrity."
+    }
+  ]
+}

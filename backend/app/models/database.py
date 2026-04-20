@@ -74,6 +74,8 @@ async def init_db() -> None:
     from app.models.codebook_version import CodebookVersion  # noqa: F401
     from app.models.code_application import CodeApplication  # noqa: F401
     from app.models.connection_string import ConnectionString  # noqa: F401
+    from app.core.audit_middleware import AuditLog  # noqa: F401
+    from app.models.telemetry_span import TelemetrySpan  # noqa: F401
     from app.models.project_report import ProjectReport  # noqa: F401
     from app.models.project_member import ProjectMember  # noqa: F401
 
@@ -84,6 +86,7 @@ async def init_db() -> None:
         # won't add to pre-existing tables.  Each ALTER is wrapped in a
         # try/except so it's a no-op once the column exists.
         import sqlalchemy as sa
+
         migrations = [
             "ALTER TABLE projects ADD COLUMN is_paused BOOLEAN NOT NULL DEFAULT 0",
             "ALTER TABLE projects ADD COLUMN owner_id VARCHAR(36) NOT NULL DEFAULT ''",
@@ -108,8 +111,7 @@ async def init_db() -> None:
         # Create webauthn_credentials table if it doesn't exist
         try:
             from app.models.webauthn_credential import WebAuthnCredential
-            await conn.run_sync(
-                lambda c: WebAuthnCredential.__table__.create(c, checkfirst=True)
-            )
+
+            await conn.run_sync(lambda c: WebAuthnCredential.__table__.create(c, checkfirst=True))
         except Exception:
             pass  # Table already exists
