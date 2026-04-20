@@ -2500,3 +2500,23 @@ The `model_skill_stats` table tracks quality per (skill, model, temperature). Lo
 ---
 
 *Istara is open-source and built for researchers who believe AI should work for them — on their machine, on their terms.*
+
+---
+
+## Phase Zeta: Orchestration Refinement (April 2026)
+
+Phase Zeta focuses on reaching **Layer 5 Orchestration Maturity** through real-world behavioral validation and architectural unification of the compute layer.
+
+### 1. Layer 5 Benchmarking (Real-World Orchestration)
+The orchestration architecture is validated with a zero-mock integration suite (`tests/integration/test_llm_orchestration_real.py`). This ensures:
+- **100% TSQ**: Tool Selection Quality on complex, multi-stage research goals.
+- **DAG Decomposition**: Successful planning and execution of serial/parallel dependent steps.
+- **Resilient Recovery**: Graceful handling of malformed LLM outputs via automated retry and re-planning logic.
+
+### 2. Unified Compute Registry & Empirical Probing
+Istara consolidates all LLM management into a single `ComputeRegistry`, replacing fragmented routing and pool systems.
+- **RFC 3986 Compliance**: Strict URI normalization ensures consistent routing to generic OpenAI-compatible providers, eliminating 404 errors on varied `base_url` formats.
+- **Empirical Evaluation**: Instead of relying on brittle metadata, Istara uses **Dynamic Probing** (Berkeley Function Calling Leaderboard pattern) to actively verify model capabilities like tool-calling and streaming support using standardized test payloads.
+
+### 3. Installer Resilience
+The `scripts/install-istara.sh` utility supports persistent port overrides. Configured `FRONTEND_PORT` and `BACKEND_PORT` values are automatically saved to `backend/.env` to ensure consistent state across system updates and restarts.

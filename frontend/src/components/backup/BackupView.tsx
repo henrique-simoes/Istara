@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import {
   Archive,
   Download,
@@ -13,6 +13,7 @@ import {
   ChevronDown,
   ChevronUp,
   Plus,
+  Upload,
 } from "lucide-react";
 import { backups as backupsApi } from "@/lib/api";
 import type { BackupRecord, BackupConfig } from "@/lib/types";
@@ -54,6 +55,8 @@ export default function BackupView() {
   const [configForm, setConfigForm] = useState<Partial<BackupConfig>>({});
   const [savingConfig, setSavingConfig] = useState(false);
   const [actionLoading, setActionLoading] = useState<Record<string, boolean>>({});
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [restoring, setRestoring] = useState(false);
 
   const fetchAll = async () => {
     setLoading(true);
@@ -99,14 +102,54 @@ export default function BackupView() {
   };
 
   const handleRestore = async (id: string) => {
+    if (!window.confirm("Restore from this backup? All current data will be overwritten and the server will restart.")) return;
     setActionLoading((prev) => ({ ...prev, [`restore-${id}`]: true }));
     try {
       await backupsApi.restore(id);
-      await fetchAll();
+      // Give server time to restart
+      setTimeout(() => window.location.reload(), 5000);
     } catch (e) {
       console.error("Failed to restore:", e);
     }
     setActionLoading((prev) => ({ ...prev, [`restore-${id}`]: false }));
+  };
+
+  const handleUploadAndRestore = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!window.confirm("Upload and restore from this backup file? All current data will be overwritten and the server will restart.")) {
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+
+    setRestoring(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      
+      const token = localStorage.getItem("istara_token");
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+      
+      const res = await fetch(`${API_BASE}/api/backups/upload-restore`, {
+        method: "POST",
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: formData,
+      });
+
+      if (!res.ok) throw new Error("Upload failed");
+      
+      // Success - server is restarting
+      setTimeout(() => window.location.reload(), 5000);
+    } catch (err) {
+      console.error("Restore failed", err);
+      alert("Restore failed. Check server logs.");
+    } finally {
+      setRestoring(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
   };
 
   const handleVerify = async (id: string) => {
@@ -234,6 +277,26 @@ export default function BackupView() {
         >
           <HardDrive size={16} />
           Estimate Size
+        </button>
+
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleUploadAndRestore}
+          accept=".tar.gz"
+          className="hidden"
+        />
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          disabled={restoring}
+          className={cn(
+            "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors",
+            "border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300",
+            "hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50"
+          )}
+        >
+          {restoring ? <RefreshCw size={16} className="animate-spin" /> : <Upload size={16} />}
+          Restore from File
         </button>
       </div>
 

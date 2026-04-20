@@ -156,6 +156,48 @@ async def get_backup_estimate():
     return backup_manager.get_backup_size_estimate()
 
 
+@router.post("/backups/upload-restore")
+async def upload_and_restore_backup(request: Request):
+    """Upload a .tar.gz backup and restore the system from it. Admin only."""
+    require_admin_from_request(request)
+    
+    from fastapi import UploadFile, File
+    form = await request.form()
+    file = form.get("file")
+    if not isinstance(file, UploadFile):
+        raise HTTPException(status_code=400, detail="No backup file provided")
+
+    if not file.filename.endswith(".tar.gz"):
+        raise HTTPException(status_code=400, detail="Invalid file format. Must be .tar.gz")
+
+    # Save to temp location
+    temp_path = Path(settings.backup_dir) / f"upload_{int(time.time())}.tar.gz"
+    try:
+        with open(temp_path, "wb") as f:
+            shutil.copyfileobj(file.file, f)
+        
+        # Initiate restore
+        success = await backup_manager.restore_backup(temp_path)
+        if not success:
+            raise HTTPException(status_code=500, detail="Restoration failed during extraction")
+            
+        # Trigger async restart
+        asyncio.create_task(_delayed_restart())
+        
+        return {"status": "restoring", "message": "Restoration started. Server will restart in 5 seconds."}
+        
+    finally:
+        # Cleanup temp file is handled by restore_backup or here if failed
+        if temp_path.exists():
+            temp_path.unlink()
+
+async def _delayed_restart():
+    """Give the API time to return before killing the server."""
+    await asyncio.sleep(5)
+    # The install-istara.sh systemd/launchd will auto-restart the process
+    os._exit(0)
+
+
 @router.get("/backups/{backup_id}/download")
 async def download_backup(backup_id: str, request: Request):
     """Stream the backup tar.gz archive as a download. Admin only."""

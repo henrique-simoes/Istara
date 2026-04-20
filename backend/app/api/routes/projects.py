@@ -233,8 +233,11 @@ async def unlink_folder(project_id: str, request: Request, db: AsyncSession = De
 
 
 @router.delete("/projects/{project_id}", status_code=204)
-async def delete_project(project_id: str, db: AsyncSession = Depends(get_db)):
-    """Delete a project and all its data."""
+async def delete_project(project_id: str, request: Request, db: AsyncSession = Depends(get_db)):
+    """Delete a project and all its data. Admin only."""
+    from app.core.security_middleware import require_admin_from_request
+
+    require_admin_from_request(request)
     result = await db.execute(select(Project).where(Project.id == project_id))
     project = result.scalar_one_or_none()
     if not project:

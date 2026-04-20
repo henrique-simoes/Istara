@@ -1,6 +1,6 @@
 # Istara Complete System Architecture & Living Map
 
-Generated from the repository on version `2026.04.10.5`. This document is meant to be regenerated whenever the implementation changes so LLMs can reason from the current system instead of stale summaries.
+Generated from the repository on version `2026.04.10.6`. This document is meant to be regenerated whenever the implementation changes so LLMs can reason from the current system instead of stale summaries.
 
 ## Purpose
 
@@ -18,9 +18,9 @@ Generated from the repository on version `2026.04.10.5`. This document is meant 
 
 ## Repository Architecture Snapshot
 
-- FastAPI backend with 38 route modules and 363 detected endpoints.
+- FastAPI backend with 38 route modules and 366 detected endpoints.
 - Next.js frontend with 22 mounted views and 15 Zustand stores.
-- 41 SQLAlchemy models in `backend/app/models`.
+- 42 SQLAlchemy models in `backend/app/models`.
 - 6 tracked persona directories and 50 JSON-defined skills.
 - 71 Playwright simulation scenarios plus 13 Python e2e phases.
 
@@ -32,14 +32,14 @@ Generated from the repository on version `2026.04.10.5`. This document is meant 
 | `audit.py` | `/` | 6 |
 | `auth.py` | `/` | 15 |
 | `autoresearch.py` | `/autoresearch` | 9 |
-| `backup.py` | `/` | 9 |
+| `backup.py` | `/` | 10 |
 | `channels.py` | `/` | 11 |
 | `chat.py` | `/` | 2 |
 | `code_applications.py` | `/code-applications` | 4 |
 | `codebook_versions.py` | `/codebook-versions` | 4 |
 | `codebooks.py` | `/` | 8 |
 | `compute.py` | `/` | 3 |
-| `connections.py` | `/` | 4 |
+| `connections.py` | `/` | 6 |
 | `context_dag.py` | `/` | 6 |
 | `deployments.py` | `/` | 12 |
 | `documents.py` | `/` | 10 |
@@ -73,14 +73,14 @@ Generated from the repository on version `2026.04.10.5`. This document is meant 
 - **audit**: `GET /api/audit/devops/latest`, `GET /api/audit/devops/history`, `POST /api/audit/devops/run`, `GET /api/audit/ui/latest`, `GET /api/audit/ui/history`, `POST /api/audit/ui/run`
 - **auth**: `POST /api/auth/register`, `POST /api/auth/login`, `POST /api/auth/logout`, `POST /api/auth/totp/setup`, `POST /api/auth/totp/verify`, `POST /api/auth/totp/disable`, `POST /api/auth/recovery-codes/generate`, `GET /api/auth/recovery-codes/status`, `GET /api/auth/me`, `PUT /api/auth/preferences`, `GET /api/auth/team-status`, `GET /api/auth/users`, `POST /api/auth/users`, `DELETE /api/auth/users/{user_id}`, `PATCH /api/auth/users/{user_id}/role`
 - **autoresearch**: `GET /api/autoresearch/status`, `GET /api/autoresearch/experiments`, `GET /api/autoresearch/experiments/{experiment_id}`, `POST /api/autoresearch/start`, `POST /api/autoresearch/stop`, `GET /api/autoresearch/config`, `PATCH /api/autoresearch/config`, `GET /api/autoresearch/leaderboard`, `POST /api/autoresearch/toggle`
-- **backup**: `GET /api/backups`, `POST /api/backups/create`, `POST /api/backups/{backup_id}/restore`, `POST /api/backups/{backup_id}/verify`, `DELETE /api/backups/{backup_id}`, `GET /api/backups/config`, `POST /api/backups/config`, `GET /api/backups/estimate`, `GET /api/backups/{backup_id}/download`
+- **backup**: `GET /api/backups`, `POST /api/backups/create`, `POST /api/backups/{backup_id}/restore`, `POST /api/backups/{backup_id}/verify`, `DELETE /api/backups/{backup_id}`, `GET /api/backups/config`, `POST /api/backups/config`, `GET /api/backups/estimate`, `POST /api/backups/upload-restore`, `GET /api/backups/{backup_id}/download`
 - **channels**: `GET /api/channels`, `POST /api/channels`, `GET /api/channels/{instance_id}`, `PATCH /api/channels/{instance_id}`, `DELETE /api/channels/{instance_id}`, `POST /api/channels/{instance_id}/start`, `POST /api/channels/{instance_id}/stop`, `GET /api/channels/{instance_id}/health`, `GET /api/channels/{instance_id}/messages`, `GET /api/channels/{instance_id}/conversations`, `POST /api/channels/{instance_id}/send`
 - **chat**: `POST /api/chat`, `GET /api/chat/history/{project_id}`
 - **code_applications**: `GET /api/code-applications/{project_id}`, `GET /api/code-applications/{project_id}/pending`, `PATCH /api/code-applications/{application_id}/review`, `POST /api/code-applications/{project_id}/bulk-approve`
 - **codebook_versions**: `GET /api/codebook-versions/{project_id}`, `GET /api/codebook-versions/{project_id}/latest`, `POST /api/codebook-versions`, `GET /api/codebook-versions/detail/{version_id}`
 - **codebooks**: `GET /api/codebooks`, `POST /api/codebooks`, `GET /api/codebooks/{codebook_id}`, `PATCH /api/codebooks/{codebook_id}`, `DELETE /api/codebooks/{codebook_id}`, `POST /api/codes`, `PATCH /api/codes/{code_id}`, `DELETE /api/codes/{code_id}`
 - **compute**: `GET /api/compute/nodes`, `GET /api/compute/stats`, `GET /api/compute/model-warnings`
-- **connections**: `POST /api/connections/generate`, `POST /api/connections/validate`, `POST /api/connections/redeem`, `POST /api/connections/rotate-network-token`
+- **connections**: `POST /api/connections/generate`, `GET /api/connections`, `DELETE /api/connections/{conn_id}`, `POST /api/connections/validate`, `POST /api/connections/redeem`, `POST /api/connections/rotate-network-token`
 - **context_dag**: `GET /api/context-dag/{session_id}`, `GET /api/context-dag/{session_id}/health`, `POST /api/context-dag/{session_id}/expand`, `POST /api/context-dag/{session_id}/grep`, `GET /api/context-dag/{session_id}/node/{node_id}`, `POST /api/context-dag/{session_id}/compact`
 - **deployments**: `POST /api/deployments`, `GET /api/deployments`, `GET /api/deployments/overview`, `GET /api/deployments/{deployment_id}`, `GET /api/deployments/{deployment_id}/analytics`, `POST /api/deployments/{deployment_id}/activate`, `POST /api/deployments/{deployment_id}/pause`, `POST /api/deployments/{deployment_id}/complete`, `POST /api/deployments/{deployment_id}/respond`, `GET /api/deployments/{deployment_id}/conversations`, `GET /api/deployments/{deployment_id}/conversations/{conversation_id}`, `GET /api/deployments/{deployment_id}/conversations/{conversation_id}/transcript`
 - **documents**: `GET /api/documents`, `GET /api/documents/{document_id}`, `POST /api/documents`, `PATCH /api/documents/{document_id}`, `DELETE /api/documents/{document_id}`, `GET /api/documents/{document_id}/content`, `GET /api/documents/search/full`, `GET /api/documents/tags/{project_id}`, `POST /api/documents/sync/{project_id}`, `GET /api/documents/stats/{project_id}`
@@ -124,6 +124,7 @@ Generated from the repository on version `2026.04.10.5`. This document is meant 
 | `Codebook` | `codebooks` | yes | `backend/app/models/codebook.py` |
 | `Code` | `codes` | yes | `backend/app/models/codebook.py` |
 | `CodebookVersion` | `codebook_versions` | yes | `backend/app/models/codebook_version.py` |
+| `ConnectionString` | `connection_strings` | yes | `backend/app/models/connection_string.py` |
 | `ContextDAGNode` | `context_dag_nodes` | no | `backend/app/models/context_dag.py` |
 | `DesignScreen` | `design_screens` | yes | `backend/app/models/design_screen.py` |
 | `DesignBrief` | `design_briefs` | yes | `backend/app/models/design_screen.py` |
