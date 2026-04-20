@@ -23,6 +23,7 @@
 *Every insight is evidence-grounded. Every agent gets smarter with every session.*
 *Scale your intelligence: share compute between team members to run more agents simultaneously—a smarter, faster team working as one agentic swarm.*
 
+![](https://istara.goatcounter.com/count?p=/count-top)
 <div align="center">
 <img src="Screenshots/istara_presentation.gif" width="900" alt="Istara demo — AI agents conducting UX research autonomously" />
 <img src="Screenshots/istara_chat.gif" width="900" alt="Istara intelligent chat — grounded conversations with your research data" />
@@ -106,7 +107,7 @@
   <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.40.png" width="1600" />
 
 ---
-
+![](https://istara.goatcounter.com/count?p=/count-install)
 ## Install
 
 ### Homebrew (macOS — Recommended)
@@ -188,7 +189,7 @@ Istara runs entirely on your hardware. It ships with five specialized AI agents,
 | Price | Free, open source, MIT licensed | $X,XXX/year SaaS |
 
 ---
-
+![](https://istara.goatcounter.com/count?p=/count-features)
 ## 1. 🧠 Agents That Create Agents
 
 > *"Let Agents Design Agents"* — Zhou et al. (2026)
@@ -427,7 +428,7 @@ This means Istara finds semantically similar content ("participant struggled wit
 > **References:** Lewis et al. (2020) "Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks" NeurIPS 2020; Cormack et al. (2009) "Reciprocal rank fusion outperforms condorcet and individual rank learning methods" SIGIR 2009; Robertson & Zaragoza (2009) "The Probabilistic Relevance Framework: BM25 and Beyond" *Foundations and Trends in Information Retrieval* 3(4)
 
 ---
-
+![](https://istara.goatcounter.com/count?p=/count-features-middle)
 ## 8. 📱 Deploy Surveys & Interviews on WhatsApp and Telegram
 
 > *"AURA: Adaptive User Research Assistant"* — arXiv:2510.27126
@@ -615,7 +616,7 @@ Istara is **zero-trust by default**:
 | Installers | macOS DMG · Windows NSIS EXE · Linux AppImage |
 
 ---
-
+![](https://istara.goatcounter.com/count?p=/count-features-middle2)
 ## Quick Start
 
 See [**Install**](#install) above for all installation methods. Prerequisites:
@@ -820,7 +821,7 @@ python scripts/update_agent_md.py
 See [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions, code style guide, and the change checklist.
 
 ---
-
+![](https://istara.goatcounter.com/count?p=/count-features-bottom)
 ## Academic References
 
 <details>
