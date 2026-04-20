@@ -513,6 +513,11 @@ if [ "$MODE" = "server" ]; then
         BACKEND_PORT=$(prompt_default "Backend API port" "8000")
         FRONTEND_PORT=$(prompt_default "Frontend port" "3000")
 
+        cat <<EOF > "$INSTALL_DIR/backend/.env"
+BACKEND_PORT=$BACKEND_PORT
+FRONTEND_PORT=$FRONTEND_PORT
+EOF
+
         # Team Mode / Security
         echo ""
         echo "  ${BOLD}Security Mode:${NC}"

@@ -18,7 +18,7 @@ Generated from the repository on version `2026.04.19`. Treat this file as the fa
 ## System Snapshot
 
 - Frontend: Next.js app with 23 mounted views and 15 Zustand stores.
-- Backend: FastAPI app with 39 route modules and 373 detected endpoints.
+- Backend: FastAPI app with 40 route modules and 374 detected endpoints.
 - Data layer: 42 SQLAlchemy models plus LanceDB-backed retrieval/context systems.
 - Agents/personas: 6 tracked persona directories under `backend/app/agents/personas`.
 - Skills: 57 JSON-defined skills across the Double Diamond phases.
@@ -108,6 +108,7 @@ Generated from the repository on version `2026.04.19`. Treat this file as the fa
 | `meta_hyperagent.py` | `/` | 9 |
 | `metrics.py` | `/` | 3 |
 | `notifications.py` | `/` | 7 |
+| `presentation.py` | `/presentation` | 1 |
 | `projects.py` | `/` | 15 |
 | `reports.py` | `/reports` | 1 |
 | `scheduler.py` | `/` | 5 |

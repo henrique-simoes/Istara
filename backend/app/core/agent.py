@@ -76,6 +76,7 @@ class ResearchStep:
     skill_name: str | None = None
     status: str = "pending"  # pending | executing | completed | failed
     result: str = ""
+    depends_on: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -98,6 +99,7 @@ class ResearchPlan:
                     "skill": s.skill_name,
                     "status": s.status,
                     "result": s.result[:200],
+                    "depends_on": s.depends_on,
                 }
                 for s in self.steps
             ],
@@ -391,11 +393,67 @@ class AgentOrchestrator:
                     await self._handle_collaboration(db, msg)
                 elif msg_type == "debate_request":
                     await self._handle_debate(db, msg)
+                elif msg_type == "delegate":
+                    await self._handle_delegate(db, msg)
                 msg_id = msg.get("id") if isinstance(msg, dict) else getattr(msg, "id", "")
                 if msg_id:
                     await mark_read(db, msg_id)
         except Exception as e:
             logger.debug(f"A2A inbox check skipped: {e}")
+
+    async def _handle_delegate(self, db: AsyncSession, msg) -> None:
+        """Handle delegated tasks from other agents (e.g. MECE reporting)."""
+        try:
+            content_str = (
+                msg.get("content", "") if isinstance(msg, dict) else getattr(msg, "content", "")
+            )
+            if not content_str:
+                return
+            data = json.loads(content_str)
+
+            if data.get("type") == "mece_report_request":
+                from app.core.report_manager import report_manager
+                from app.models.project_report import ProjectReport
+
+                project_id = data.get("project_id")
+                task_id = data.get("task_id")
+
+                # 1. Ensure MECE categorization on all eligible L2/L3 reports
+                result = await db.execute(
+                    select(ProjectReport).where(
+                        ProjectReport.project_id == project_id,
+                        ProjectReport.finding_count >= 3,  # Minimum findings for meaningful MECE
+                    )
+                )
+                reports = result.scalars().all()
+                updated_count = 0
+                for report in reports:
+                    # Force update to consulting-grade MECE
+                    await report_manager._generate_mece_categories(report, db)
+                    updated_count += 1
+
+                # 2. Trigger/Update L4 Final Report (Consulting Grade)
+                # This now uses the upgraded Minto/SCR pipeline
+                await report_manager._check_synthesis_trigger(project_id, db)
+
+                # 3. Send A2A confirmation
+                from app.services.a2a import send_message as a2a_send
+
+                msg_from = (
+                    msg.get("from_agent_id", "")
+                    if isinstance(msg, dict)
+                    else getattr(msg, "from_agent_id", "")
+                )
+                await a2a_send(
+                    db=db,
+                    from_agent_id=self._agent_id,
+                    to_agent_id=msg_from,
+                    message_type="report",
+                    content=f"Consulting-grade MECE reporting completed for project {project_id}. Updated {updated_count} reports.",
+                    metadata={"project_id": project_id, "task_id": task_id},
+                )
+        except Exception as e:
+            logger.error(f"Delegate handling failed: {e}", exc_info=True)
 
     async def _handle_collaboration(self, db: AsyncSession, msg) -> None:
         """Respond to a collaboration request with full conversation context.
@@ -616,7 +674,9 @@ class AgentOrchestrator:
             from app.services.a2a import send_message as a2a_send
 
             async with async_session() as db:
-                task = (await db.execute(select(Task).where(Task.id == task_id))).scalar_one_or_none()
+                task = (
+                    await db.execute(select(Task).where(Task.id == task_id))
+                ).scalar_one_or_none()
                 if not task or task.status != TaskStatus.DONE:
                     return
 
@@ -625,8 +685,8 @@ class AgentOrchestrator:
                     "task_id": task_id,
                     "project_id": project_id,
                     "task_title": task.title,
-                    "agent_notes": getattr(task, 'agent_notes', '') or '',
-                    "skill_name": getattr(task, 'skill_name', ''),
+                    "agent_notes": getattr(task, "agent_notes", "") or "",
+                    "skill_name": getattr(task, "skill_name", ""),
                 }
 
                 await a2a_send(
@@ -798,10 +858,10 @@ class AgentOrchestrator:
 
             # Execute the skill (with timeout protection)
             try:
-                output = await asyncio.wait_for(skill.execute(skill_input), timeout=300)
+                output = await asyncio.wait_for(skill.execute(skill_input), timeout=600)
             except asyncio.TimeoutError:
                 output = SkillOutput(
-                    success=False, summary="Skill timed out after 5 minutes.", errors=["timeout"]
+                    success=False, summary="Skill timed out after 10 minutes.", errors=["timeout"]
                 )
                 logger.warning(f"Skill {skill.name} timed out for task {task.id}")
 
@@ -1262,12 +1322,13 @@ class AgentOrchestrator:
             "ai detect": "survey-ai-detection",
             "bot detect": "survey-ai-detection",
         }
-
         for keyword, skill_name in skill_keywords.items():
             if keyword in title_lower:
                 skill = registry.get(skill_name)
                 if skill:
                     return skill
+
+        return None
 
         # Semantic matching fallback: embed task text and compare against skills
         try:
@@ -1368,6 +1429,7 @@ class AgentOrchestrator:
 
     async def _execute_general_task(self, db: AsyncSession, task: Task, project: Project) -> None:
         """Handle tasks without a specific skill — use general LLM reasoning."""
+        trace_id = __import__("uuid").uuid4().hex[:36]
         context = await retrieve_context(project.id, task.title + " " + task.description)
 
         # Use the full context hierarchy as system prompt
@@ -1452,7 +1514,6 @@ class AgentOrchestrator:
                                 project_id=project.id,
                             )
                         )
-                        )
                     tools_used.append(tool_name)
                     logger.info(
                         f"Agent tool call [{iteration}]: {tool_name}({list(tool_args.keys())})"
@@ -1506,7 +1567,7 @@ class AgentOrchestrator:
     ) -> ResearchPlan | None:
         """Ask the LLM to decompose a complex task into ordered research steps."""
         try:
-            skill_names = [s.name for s in registry.all()[:25]]
+            skill_names = [s.name for s in registry.list_all()[:25]]
             plan_prompt = (
                 "You are a research planning agent. Decompose this task into 2-5 concrete steps.\n\n"
                 f"Task: {task.title}\n"
@@ -1527,11 +1588,12 @@ class AgentOrchestrator:
                 temperature=0.3,
             )
             content = response.get("message", {}).get("content", "")
+            logger.info(f"Research plan raw content: {content}")
             import re
 
-            json_match = re.search(r'\{[^{}]*"steps"\s*:\s*\[.*?\]\s*\}', content, re.DOTALL)
+            json_match = re.search(r'(\{.*"steps"\s*:\s*\[.*\]\s*\})', content, re.DOTALL)
             if json_match:
-                data = json.loads(json_match.group())
+                data = json.loads(json_match.group(1))
                 steps = [
                     ResearchStep(
                         id=s.get("id", f"step_{i}"),

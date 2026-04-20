@@ -297,7 +297,7 @@ def create_skill(
                 for r in data.get("recommendations", [])
             ]
 
-            return SkillOutput(
+            out = SkillOutput(
                 success=True,
                 summary=data.get("summary", f"Completed {display} analysis."),
                 nuggets=nuggets,
@@ -306,8 +306,10 @@ def create_skill(
                 recommendations=recommendations,
                 artifacts={f"{skill_name}_analysis.json": json.dumps(data, indent=2)},
                 suggestions=data.get("suggestions", []),
-                json_success=json_success,
             )
+            # Set json_success manually since __init__ may fail in some environments
+            out.json_success = json_success
+            return out
 
     # Set a unique class name for debugging
     GeneratedSkill.__name__ = f"{display.replace(' ', '')}Skill"

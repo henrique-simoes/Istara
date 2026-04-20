@@ -7,8 +7,11 @@ import {
   Layers,
   TriangleAlert,
   ArrowUpRight,
+  Presentation,
+  ClipboardCopy,
+  Check,
 } from "lucide-react";
-import { reports as reportsApi } from "@/lib/api";
+import { reports as reportsApi, presentation as presentationApi } from "@/lib/api";
 import type { ProjectReport } from "@/lib/types";
 import { cn, formatDate } from "@/lib/utils";
 
@@ -76,6 +79,9 @@ export default function ProjectReportsView({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
+  const [slideInstructions, setSlideInstructions] = useState<{title: string, content: string} | null>(null);
+  const [loadingSlides, setLoadingSlides] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const loadReports = useCallback(async () => {
     setLoading(true);
@@ -94,6 +100,27 @@ export default function ProjectReportsView({
   useEffect(() => {
     loadReports();
   }, [loadReports]);
+
+  const fetchSlideInstructions = async (reportId: string) => {
+    setLoadingSlides(true);
+    try {
+      const data = await presentationApi.slideInstructions(reportId);
+      setSlideInstructions({
+        title: data.title,
+        content: data.instructions,
+      });
+    } catch (err) {
+      console.error("Failed to fetch slide instructions:", err);
+    }
+    setLoadingSlides(false);
+  };
+
+  const copyToClipboard = () => {
+    if (!slideInstructions) return;
+    navigator.clipboard.writeText(slideInstructions.content);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   // Group reports by layer
   const l2Reports = allReports.filter((r) => r.layer === 2);
@@ -353,15 +380,82 @@ export default function ProjectReportsView({
 
               {/* Scope */}
               {report.scope && (
-                <div>
+                <div className="mb-6">
                   <h4 className="text-xs font-semibold uppercase text-slate-500 mb-1">Scope</h4>
                   <p className="text-xs text-slate-600 dark:text-slate-400">{report.scope}</p>
                 </div>
               )}
+
+              {/* Presentation Feature */}
+              <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-center">
+                <button
+                  onClick={() => fetchSlideInstructions(report.id)}
+                  disabled={loadingSlides}
+                  className="flex items-center gap-2 px-4 py-2 bg-istara-600 hover:bg-istara-700 text-white rounded-lg text-sm font-medium transition-all shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loadingSlides ? (
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <Presentation size={18} />
+                  )}
+                  {loadingSlides ? "Generating..." : "Instructions to create slides"}
+                </button>
+              </div>
             </div>
           );
         })()}
       </div>
+
+      {/* Slide Instructions Modal */}
+      {slideInstructions && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800 flex flex-col max-h-[85vh]">
+            <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Presentation className="text-istara-600" size={20} />
+                <h3 className="font-bold text-slate-900 dark:text-white truncate max-w-[400px]">
+                  {slideInstructions.title}
+                </h3>
+              </div>
+              <button 
+                onClick={() => setSlideInstructions(null)}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+              >
+                Close
+              </button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto bg-slate-50 dark:bg-slate-950 flex-1">
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  Minto Pyramid / Action Titles / SCR Instructions
+                </span>
+                <button
+                  onClick={copyToClipboard}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all",
+                    copied 
+                      ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                      : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-istara-500"
+                  )}
+                >
+                  {copied ? <Check size={14} /> : <ClipboardCopy size={14} />}
+                  {copied ? "Copied!" : "Copy Instructions"}
+                </button>
+              </div>
+              <pre className="text-sm text-slate-800 dark:text-slate-300 whitespace-pre-wrap font-sans leading-relaxed">
+                {slideInstructions.content}
+              </pre>
+            </div>
+            
+            <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 text-center">
+              <p className="text-[11px] text-slate-400">
+                Paste these instructions into another AI to generate a professional executive slide deck.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -52,6 +52,7 @@ class SkillOutput:
     artifacts: dict[str, str] = field(default_factory=dict)  # filename → content
     suggestions: list[str] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
+    json_success: bool = True  # Track if LLM output was valid JSON
 
 
 class BaseSkill(ABC):

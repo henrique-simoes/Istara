@@ -47,6 +47,7 @@ from app.api.routes import codebook_versions as codebook_versions_routes
 from app.api.routes import webhooks as webhook_routes
 from app.api.routes import connections as connection_routes
 from app.api.routes import updates as update_routes
+from app.api.routes import presentation as presentation_routes
 from app.api.routes import webauthn as webauthn_routes
 from app.api.routes import steering as steering_routes
 from app.api.websocket import router as ws_router
@@ -655,6 +656,7 @@ app.include_router(survey_routes.router, prefix="/api", tags=["Surveys"])
 app.include_router(mcp_routes.router, prefix="/api", tags=["MCP"])
 app.include_router(autoresearch_routes.router, prefix="/api", tags=["Autoresearch"])
 app.include_router(reports_routes.router, prefix="/api", tags=["Reports"])
+app.include_router(presentation_routes.router, prefix="/api", tags=["Presentation"])
 app.include_router(code_applications_routes.router, prefix="/api", tags=["Code Applications"])
 app.include_router(codebook_versions_routes.router, prefix="/api", tags=["Codebook Versions"])
 app.include_router(laws_routes.router, prefix="/api", tags=["Laws of UX"])
