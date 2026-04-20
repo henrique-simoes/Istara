@@ -128,7 +128,6 @@ services:
     read_only: true
     tmpfs:
       - /tmp:noexec,nosuid,size=100M
-      - /app/data:size=500M
     cap_drop:
       - ALL
     cap_add:
@@ -248,6 +247,27 @@ services:
     restart: unless-stopped
     profiles:
       - relay  # Only started with: docker compose --profile relay up
+
+  # Local OpenTelemetry Collector — zero-trust observability
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    container_name: istara-otel-collector
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./infra/otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
+    networks:
+      - backend-net
+    profiles:
+      - observability
+
+  # Jaeger — local trace visualization
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: istara-jaeger
+    networks:
+      - backend-net
+    profiles:
+      - observability
 
 volumes:
   ollama_data:

@@ -150,63 +150,70 @@ class TestSteeringQueue:
 class TestSteeringManager:
     """Tests for the global SteeringManager singleton."""
 
-    def test_steer_and_get_steering(self, manager, agent_id):
-        manager.steer(agent_id, "Check accessibility")
-        manager.steer(agent_id, "Also run UX audit")
-        msgs = manager.get_steering(agent_id)
+    @pytest.mark.asyncio
+    async def test_steer_and_get_steering(self, manager, agent_id):
+        await manager.steer(agent_id, "Check accessibility")
+        await manager.steer(agent_id, "Also run UX audit")
+        msgs = await manager.get_steering(agent_id)
         # Default mode is one-at-a-time
         assert len(msgs) == 1
         assert msgs[0].message == "Check accessibility"
 
-    def test_follow_up_and_get_follow_up(self, manager, agent_id):
-        manager.follow_up(agent_id, "Run a final review")
-        manager.follow_up(agent_id, "Then generate report")
-        msgs = manager.get_follow_up(agent_id)
+    @pytest.mark.asyncio
+    async def test_follow_up_and_get_follow_up(self, manager, agent_id):
+        await manager.follow_up(agent_id, "Run a final review")
+        await manager.follow_up(agent_id, "Then generate report")
+        msgs = await manager.get_follow_up(agent_id)
         assert len(msgs) == 1
         assert msgs[0].message == "Run a final review"
 
-    def test_clear_steering(self, manager, agent_id):
-        manager.steer(agent_id, "a")
-        manager.steer(agent_id, "b")
-        cleared = manager.clear_steering(agent_id)
+    @pytest.mark.asyncio
+    async def test_clear_steering(self, manager, agent_id):
+        await manager.steer(agent_id, "a")
+        await manager.steer(agent_id, "b")
+        cleared = await manager.clear_steering(agent_id)
         assert len(cleared) == 2
-        assert manager.get_steering(agent_id) == []
+        assert await manager.get_steering(agent_id) == []
 
-    def test_clear_follow_up(self, manager, agent_id):
-        manager.follow_up(agent_id, "x")
-        cleared = manager.clear_follow_up(agent_id)
+    @pytest.mark.asyncio
+    async def test_clear_follow_up(self, manager, agent_id):
+        await manager.follow_up(agent_id, "x")
+        cleared = await manager.clear_follow_up(agent_id)
         assert len(cleared) == 1
 
-    def test_clear_all(self, manager, agent_id):
-        manager.steer(agent_id, "s1")
-        manager.follow_up(agent_id, "f1")
-        cleared = manager.clear_all(agent_id)
+    @pytest.mark.asyncio
+    async def test_clear_all(self, manager, agent_id):
+        await manager.steer(agent_id, "s1")
+        await manager.follow_up(agent_id, "f1")
+        cleared = await manager.clear_all(agent_id)
         assert len(cleared["steering"]) == 1
         assert len(cleared["follow_up"]) == 1
 
-    def test_mark_working_and_is_working(self, manager, agent_id):
+    @pytest.mark.asyncio
+    async def test_mark_working_and_is_working(self, manager, agent_id):
         assert manager.is_working(agent_id) is False
-        manager.mark_working(agent_id)
+        await manager.mark_working(agent_id)
         assert manager.is_working(agent_id) is True
 
-    def test_mark_idle(self, manager, agent_id):
-        manager.mark_working(agent_id)
-        manager.mark_idle(agent_id)
+    @pytest.mark.asyncio
+    async def test_mark_idle(self, manager, agent_id):
+        await manager.mark_working(agent_id)
+        await manager.mark_idle(agent_id)
         assert manager.is_working(agent_id) is False
 
     @pytest.mark.asyncio
     async def test_wait_for_idle_returns_true_when_already_idle(self, manager, agent_id):
-        manager.mark_idle(agent_id)
+        await manager.mark_idle(agent_id)
         result = await manager.wait_for_idle(agent_id, timeout=1.0)
         assert result is True
 
     @pytest.mark.asyncio
     async def test_wait_for_idle_waits_for_working_agent(self, manager, agent_id):
-        manager.mark_working(agent_id)
+        await manager.mark_working(agent_id)
 
         async def idle_after_delay():
             await asyncio.sleep(0.1)
-            manager.mark_idle(agent_id)
+            await manager.mark_idle(agent_id)
 
         task = asyncio.create_task(idle_after_delay())
         result = await manager.wait_for_idle(agent_id, timeout=2.0)
@@ -215,24 +222,26 @@ class TestSteeringManager:
 
     @pytest.mark.asyncio
     async def test_wait_for_idle_times_out(self, manager, agent_id):
-        manager.mark_working(agent_id)
+        await manager.mark_working(agent_id)
         result = await manager.wait_for_idle(agent_id, timeout=0.1)
         assert result is False
 
-    def test_abort_clears_queues_and_resets_state(self, manager, agent_id):
-        manager.steer(agent_id, "s1")
-        manager.follow_up(agent_id, "f1")
-        manager.mark_working(agent_id)
+    @pytest.mark.asyncio
+    async def test_abort_clears_queues_and_resets_state(self, manager, agent_id):
+        await manager.steer(agent_id, "s1")
+        await manager.follow_up(agent_id, "f1")
+        await manager.mark_working(agent_id)
 
-        cleared = manager.abort(agent_id)
+        cleared = await manager.abort(agent_id)
         assert len(cleared["steering"]) == 1
         assert len(cleared["follow_up"]) == 1
         assert manager.is_working(agent_id) is False
 
-    def test_get_status(self, manager, agent_id):
-        manager.steer(agent_id, "test")
-        manager.follow_up(agent_id, "follow")
-        manager.mark_working(agent_id)
+    @pytest.mark.asyncio
+    async def test_get_status(self, manager, agent_id):
+        await manager.steer(agent_id, "test")
+        await manager.follow_up(agent_id, "follow")
+        await manager.mark_working(agent_id)
 
         status = manager.get_status(agent_id)
         assert status["agent_id"] == agent_id
@@ -241,21 +250,24 @@ class TestSteeringManager:
         assert status["follow_up_queue_count"] == 1
         assert status["has_queued_messages"] is True
 
-    def test_get_all_status(self, manager):
-        manager.steer("agent-a", "msg1")
-        manager.steer("agent-b", "msg2")
+    @pytest.mark.asyncio
+    async def test_get_all_status(self, manager):
+        await manager.steer("agent-a", "msg1")
+        await manager.steer("agent-b", "msg2")
         all_status = manager.get_all_status()
         assert "agent-a" in all_status
         assert "agent-b" in all_status
         assert all_status["agent-a"]["steering_queue_count"] == 1
 
-    def test_auto_creates_state_for_unknown_agent(self, manager):
-        msgs = manager.get_steering("brand-new-agent")
+    @pytest.mark.asyncio
+    async def test_auto_creates_state_for_unknown_agent(self, manager):
+        msgs = await manager.get_steering("brand-new-agent")
         assert msgs == []
 
-    def test_steer_with_metadata(self, manager, agent_id):
-        manager.steer(agent_id, "test", source="extension", metadata={"ext": "mcp"})
-        msgs = manager.get_steering(agent_id)
+    @pytest.mark.asyncio
+    async def test_steer_with_metadata(self, manager, agent_id):
+        await manager.steer(agent_id, "test", source="extension", metadata={"ext": "mcp"})
+        msgs = await manager.get_steering(agent_id)
         assert msgs[0].source == "extension"
         assert msgs[0].metadata == {"ext": "mcp"}
 
@@ -268,11 +280,11 @@ class TestSteeringAPI:
     """HTTP endpoint tests using httpx ASGITransport."""
 
     @pytest.fixture(autouse=True)
-    def clear_queues(self):
+    async def clear_queues(self):
         """Clear all steering queues before each test."""
         from app.core.steering import steering_manager
         for agent_id in list(steering_manager._agents.keys()):
-            steering_manager.clear_all(agent_id)
+            await steering_manager.clear_all(agent_id)
 
     @pytest.mark.asyncio
     async def test_queue_steering_message(self, auth_headers, clear_queues):

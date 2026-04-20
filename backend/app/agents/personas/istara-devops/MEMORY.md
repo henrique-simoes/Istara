@@ -34,3 +34,4 @@ _Track normal operating ranges to detect anomalies._
 [SQL: SELECT tasks.id, tasks.project_id, tasks.agent_id, tasks.title, tasks.description, tasks.status, tasks.skill_name, tasks.agent', resolve by: Caught in audit loop, will retry next cycle
 - When encountering '(sqlite3.OperationalError) no such column: projects.is_paused
 [SQL: SELECT projects.id, projects.name, projects.description, projects.phase, projects.company_context, projects.project_context, project', resolve by: Caught in audit loop, will retry next cycle
+- When encountering 'name 'db' is not defined', resolve by: Caught in audit loop, will retry next cycle

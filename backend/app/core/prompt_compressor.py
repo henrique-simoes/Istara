@@ -27,9 +27,52 @@ Performance: ~5ms for a 10K-character prompt on typical hardware.
 from __future__ import annotations
 
 import re
+import uuid
 import logging
 
+from app.core.context_policy import get_protected_blocks, PROTECTED_TAGS
+
 logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Protection logic — swaps tags for UUIDs to bypass heuristic pruning
+# ---------------------------------------------------------------------------
+
+
+def _protect_regions(text: str) -> tuple[str, dict[str, str]]:
+    """Swap protected blocks for placeholders before compression.
+
+    Scans text for any content between PROTECTED_TAGS pairs and replaces each
+    matched block with a unique UUID placeholder. The original content is saved
+    in a mapping so it can be restored after compression.
+
+    Returns:
+        (text_with_placeholders, {placeholder: original_content, ...})
+    """
+    protected_map = {}
+    blocks = get_protected_blocks(text)
+
+    # Work from end to beginning to preserve indices
+    result = text
+    for start, end, content in reversed(blocks):
+        placeholder = f"[[PROTECTED_{uuid.uuid4().hex[:8]}]]"
+        protected_map[placeholder] = content
+        result = result[:start] + placeholder + result[end:]
+
+    return result, protected_map
+
+
+def _restore_regions(text: str, protected_map: dict[str, str]) -> str:
+    """Re-inject original protected blocks back into compressed text.
+
+    Replaces each UUID placeholder with its original content from the map.
+    """
+    result = text
+    for placeholder, content in protected_map.items():
+        result = result.replace(placeholder, content)
+    return result
+
 
 # ---------------------------------------------------------------------------
 # Filler words and patterns that can be safely removed
@@ -406,15 +449,18 @@ def compress_text(
     original_len = len(text)
     target_len = int(original_len * effective_ratio)
 
+    # Protect regions before compression (swap protected blocks for UUIDs)
+    compressed_text, protected_map = _protect_regions(text)
+
     # Phase 1: Structural compression (always applied)
-    result = _structural_compress(text)
+    result = _structural_compress(compressed_text)
 
     # Phase 2: Redundant qualifier removal
     result = _remove_redundant_qualifiers(result)
 
     # If we're already within budget, stop here
     if len(result) <= target_len:
-        return result
+        return _restore_regions(result, protected_map)
 
     # Phase 3: Sentence-level compression (remove lowest-importance sentences)
     result = _sentence_level_compress(result, target_len)
@@ -423,7 +469,7 @@ def compress_text(
     if len(result) > target_len:
         result = _word_level_compress(result, target_len)
 
-    return result
+    return _restore_regions(result, protected_map)
 
 
 def compress_prompt(
@@ -450,10 +496,13 @@ def compress_prompt(
     if not max_chars or len(prompt) <= max_chars:
         return prompt
 
-    target_ratio = max_chars / len(prompt)
+    # Protect regions before section splitting (handles blocks spanning sections)
+    compressed_prompt, protected_map = _protect_regions(prompt)
+
+    target_ratio = max_chars / len(compressed_prompt)
 
     # Split into sections by markdown headers
-    sections = re.split(r"\n(?=#{1,3}\s)", prompt)
+    sections = re.split(r"\n(?=#{1,3}\s)", compressed_prompt)
 
     compressed_parts: list[str] = []
     total_budget = max_chars
@@ -464,7 +513,7 @@ def compress_prompt(
         section_type = _detect_section_type(first_line, section)
 
         # Allocate budget proportionally
-        section_fraction = len(section) / len(prompt)
+        section_fraction = len(section) / len(compressed_prompt)
         section_budget = int(total_budget * section_fraction)
 
         # Get the compression budget for this section type
@@ -479,6 +528,9 @@ def compress_prompt(
             compressed_parts.append(compressed)
 
     result = "\n".join(compressed_parts)
+
+    # Restore protected regions after compression
+    result = _restore_regions(result, protected_map)
 
     # Final trim if still over budget
     if len(result) > max_chars:

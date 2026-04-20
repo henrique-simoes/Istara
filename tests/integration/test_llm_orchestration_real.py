@@ -26,6 +26,15 @@ async def setup_db():
     load_default_skills()
     # Critical: load real network compute nodes from the database into the registry
     await load_persisted_servers_async()
+    
+    from app.core.compute_registry import compute_registry
+    nodes = compute_registry.list_servers()
+    logger.info(f"Registered Compute Nodes: {json.dumps(nodes, indent=2)}")
+    
+    # Force health check on all nodes to ensure they are ready
+    await compute_registry.check_all_health()
+    nodes_after = compute_registry.list_servers()
+    logger.info(f"Compute Nodes after health check: {json.dumps(nodes_after, indent=2)}")
 
 
 @pytest.mark.asyncio
@@ -103,8 +112,7 @@ async def test_real_llm_orchestration_benchmark():
         print(f"Agent {orchestrator.agent_id} picking up task: {task.title}")
         
         cycle_start = time.monotonic()
-        # Using a long timeout for real LLM inference
-        executed = await asyncio.wait_for(orchestrator._work_cycle(), timeout=600.0) 
+        executed = await asyncio.wait_for(orchestrator._work_cycle(), timeout=600.0) # 10 minutes
         cycle_time = time.monotonic() - cycle_start
         bench_results["latency_metrics"].append({"op": "work_cycle", "time": cycle_time})
         
@@ -141,6 +149,8 @@ async def test_real_llm_orchestration_benchmark():
                 else:
                     bench_results["tsq_score"] = 20.0
                     print("❌ No advanced orchestration (DAG/ReAct) detected in output.")
+                    if task.agent_notes:
+                        print(f"RAW AGENT NOTES: {task.agent_notes[:500]}...")
 
             # Reasoning Check: Does the summary address the multi-step goal?
             if task.status == TaskStatus.IN_REVIEW or task.status == TaskStatus.DONE:
@@ -154,6 +164,7 @@ async def test_real_llm_orchestration_benchmark():
             # Overall Status
             total_elapsed = time.monotonic() - start_time
             if task.status in (TaskStatus.IN_REVIEW, TaskStatus.DONE) and bench_results["findings_count"] >= 1:
+                # Reduced finding count requirement for now as browser skills might fail
                 bench_results["status"] = "PASS"
             
             # Log final report

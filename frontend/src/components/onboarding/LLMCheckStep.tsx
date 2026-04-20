@@ -14,20 +14,22 @@ export default function LLMCheckStep() {
 
   useEffect(() => {
     async function detect() {
-      // Try LM Studio first
+      // Proxy through backend to avoid CORS issues (Enhancement Plan Step 3)
       try {
-        const res = await fetch("http://localhost:1234/v1/models", { signal: AbortSignal.timeout(3000) });
+        const res = await fetch("/api/settings/models", { signal: AbortSignal.timeout(5000) });
         if (res.ok) {
           const data = await res.json();
-          setProvider("lmstudio");
-          setModelCount((data.data || []).length);
-          setChecking(false);
-          return;
+          if (data.status === "online" && data.models.length > 0) {
+            setProvider(data.provider || "lmstudio");
+            setModelCount(data.models.length);
+            setChecking(false);
+            return;
+          }
         }
       } catch {}
-      // Try Ollama
+      // Fallback: try direct Ollama detection if backend is unavailable
       try {
-        const res = await fetch("http://localhost:11434/api/tags", { signal: AbortSignal.timeout(3000) });
+        const res = await fetch("http://localhost:11434/api/tags", { signal: AbortSignal.timeout(2000) });
         if (res.ok) {
           const data = await res.json();
           setProvider("ollama");

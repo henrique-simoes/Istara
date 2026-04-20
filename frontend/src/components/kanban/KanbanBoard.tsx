@@ -213,6 +213,18 @@ function TaskCard({
     >
       <div className="flex items-start gap-2">
         <GripVertical size={14} className="text-slate-300 mt-0.5 shrink-0" />
+        {/* Health Indicator Dot */}
+        {task.health && (
+          <div 
+            className={cn(
+              "w-2 h-2 rounded-full mt-1.5 shrink-0",
+              task.health.status === "healthy" ? "bg-green-500" :
+              task.health.status === "degraded" ? "bg-yellow-500" :
+              task.health.status === "critical" ? "bg-red-500" : "bg-slate-300"
+            )}
+            title={`Ensemble Health: ${task.health.status}\nErrors: ${task.health.error_count}\nAvg Quality: ${task.health.avg_quality || 'N/A'}`}
+          />
+        )}
         <div className="flex-1 min-w-0">
           {/* Title row with agent avatar */}
           <div className="flex items-start justify-between gap-1">
@@ -258,6 +270,24 @@ function TaskCard({
             {task.skill_name && (
               <span className="inline-block text-[10px] bg-istara-100 dark:bg-istara-900/30 text-istara-700 dark:text-istara-400 rounded px-1.5 py-0.5">
                 {task.skill_name}
+              </span>
+            )}
+            {task.consensus_score != null && task.consensus_score > 0 && (
+              <span
+                className={cn(
+                  "inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded",
+                  task.consensus_score >= 0.7
+                    ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300"
+                    : task.consensus_score >= 0.5
+                    ? "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300"
+                    : task.consensus_score >= 0.3
+                    ? "bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300"
+                    : "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300"
+                )}
+                title={`Validation: ${task.validation_method || "unknown"} — κ ${task.consensus_score.toFixed(2)}`}
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-current opacity-60" />
+                {task.validation_method?.replace(/_/g, " ") || "validated"} {Math.round(task.consensus_score * 100)}%
               </span>
             )}
             <div className="relative">

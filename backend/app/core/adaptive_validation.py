@@ -22,7 +22,8 @@ HALF_LIFE_DAYS = 30
 
 def _recency_weight(last_used: datetime) -> float:
     """Exponential decay weight based on recency (half-life = 30 days)."""
-    days_ago = (datetime.now(timezone.utc) - last_used).total_seconds() / 86400
+    from app.core.datetime_utils import ensure_utc
+    days_ago = (datetime.now(timezone.utc) - ensure_utc(last_used)).total_seconds() / 86400
     return math.exp(-0.693 * days_ago / HALF_LIFE_DAYS)
 
 

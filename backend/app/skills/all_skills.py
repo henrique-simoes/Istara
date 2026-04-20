@@ -18,43 +18,19 @@ Plus specialized skills:
 
 from app.skills.base import SkillPhase, SkillType
 from app.skills.skill_factory import create_skill
+from app.skills.browser_skills import (
+    CompetitiveAnalysisSkill as BrowserCompetitiveAnalysisSkill,
+    AccessibilityAuditSkill as BrowserAccessibilityAuditSkill,
+    HeuristicEvaluationSkill as BrowserHeuristicEvaluationSkill
+)
+from app.skills.evaluation_skill import EvaluationSkill as FormalEvaluationSkill
+from app.skills.simulation_skill import SimulationSkill as ParticipantSimulationSkill
 
 # =====================================================================
 # DISCOVER PHASE (10 core + extras)
 # =====================================================================
 
-CompetitiveAnalysisSkill = create_skill(
-    skill_name="competitive-analysis",
-    display="Competitive Analysis",
-    desc="Research competitors, create feature matrices, identify UX patterns, gaps, and opportunities.",
-    phase=SkillPhase.DISCOVER,
-    skill_type=SkillType.MIXED,
-    plan_prompt="""Create a competitive analysis plan for UX research.
-Context: {context}
-Include: competitor selection criteria, evaluation dimensions (features, UX patterns, IA, onboarding, pricing),
-data collection methods, comparison matrix template, analysis framework. Format as Markdown.""",
-    execute_prompt="""Analyze this competitive research data for UX insights.
-Context: {context}
-
-Data:
-{content}
-
-Extract:
-1. Feature comparison matrix (our product vs competitors)
-2. UX pattern analysis (what competitors do well/poorly)
-3. Gap analysis (what competitors offer that we don't, and vice versa)
-4. Design pattern library (reusable patterns from competitors)
-5. Differentiation opportunities
-6. Key nuggets and insights""",
-    output_schema="""{{"competitors": [{{"name": "...", "strengths": ["..."], "weaknesses": ["..."]}}],
-"feature_matrix": [{{"feature": "...", "our_product": "yes|no|partial", "competitor_a": "..."}}],
-"ux_patterns": [{{"pattern": "...", "used_by": ["..."], "quality": "good|average|poor"}}],
-"gaps": [{{"gap": "...", "type": "we_lack|they_lack", "priority": "low|medium|high"}}],
-"nuggets": [{{"text": "...", "tags": ["..."]}}],
-"insights": [{{"text": "...", "confidence": "high|medium|low"}}],
-"recommendations": [{{"text": "...", "priority": "low|medium|high"}}],
-"summary": "..."}}""",
-)
+CompetitiveAnalysisSkill = BrowserCompetitiveAnalysisSkill
 
 StakeholderInterviewsSkill = create_skill(
     skill_name="stakeholder-interviews",
@@ -199,31 +175,7 @@ artifacts and tools used, rituals and routines, unexpected discoveries.""",
 "summary": "..."}}""",
 )
 
-AccessibilityAuditSkill = create_skill(
-    skill_name="accessibility-audit",
-    display="Accessibility Audit",
-    desc="Review against WCAG guidelines, identify violations, prioritize by impact, suggest fixes.",
-    phase=SkillPhase.DISCOVER,
-    skill_type=SkillType.MIXED,
-    plan_prompt="""Create an accessibility audit plan.
-Context: {context}
-Include: WCAG conformance level target (A/AA/AAA), audit scope, testing tools,
-assistive technology testing plan, prioritization framework. Format as Markdown.""",
-    execute_prompt="""Perform an accessibility audit analysis.
-Context: {context}
-
-Audit data / content:
-{content}
-
-Evaluate against WCAG 2.2 guidelines: perceivable, operable, understandable, robust.
-Identify violations, severity, affected users, and remediation steps.""",
-    output_schema="""{{"violations": [{{"criterion": "...", "level": "A|AA|AAA", "severity": "critical|major|minor",
-"description": "...", "affected_users": "...", "remediation": "..."}}],
-"compliance_score": {{"level_a": 0, "level_aa": 0, "level_aaa": 0}},
-"nuggets": [{{"text": "...", "tags": ["..."]}}],
-"recommendations": [{{"text": "...", "priority": "critical|high|medium|low", "effort": "low|medium|high"}}],
-"summary": "..."}}""",
-)
+AccessibilityAuditSkill = BrowserAccessibilityAuditSkill
 
 # =====================================================================
 # DEFINE PHASE (10 skills)
@@ -495,28 +447,7 @@ Identify: usability issues (severity rated), patterns across participants, desig
 "summary": "..."}}""",
 )
 
-HeuristicEvaluationSkill = create_skill(
-    skill_name="heuristic-evaluation",
-    display="Heuristic Evaluation",
-    desc="Evaluate against Nielsen's 10 heuristics (or custom set), severity ratings, prioritized findings.",
-    phase=SkillPhase.DEVELOP,
-    skill_type=SkillType.QUALITATIVE,
-    plan_prompt="""Plan a heuristic evaluation. Context: {context}
-Include: heuristic set (Nielsen's 10 or custom), evaluation scope, evaluator instructions,
-severity rating scale (0-4), reporting template. Markdown.""",
-    execute_prompt="""Perform a heuristic evaluation. Context: {context}
-Data: {content}
-Evaluate against Nielsen's 10 heuristics: visibility, match, control, consistency,
-error prevention, recognition, flexibility, aesthetics, error recovery, help/documentation.
-Rate severity 0-4 for each issue found.""",
-    output_schema="""{{"heuristics": [{{"heuristic": "...", "issues": [{{"description": "...",
-"severity": 0, "location": "...", "recommendation": "..."}}], "score": 0}}],
-"overall_score": 0,
-"critical_issues": [{{"description": "...", "heuristic": "...", "severity": 4}}],
-"nuggets": [{{"text": "...", "tags": ["..."]}}],
-"recommendations": [{{"text": "...", "priority": "critical|high|medium|low"}}],
-"summary": "..."}}""",
-)
+HeuristicEvaluationSkill = BrowserHeuristicEvaluationSkill
 
 ABTestAnalysisSkill = create_skill(
     skill_name="ab-test-analysis",
@@ -901,6 +832,8 @@ regressions, correlations between metrics, anomalies, forecasts.""",
 "summary": "..."}}""",
 )
 
+EvaluateResearchQualitySkill = FormalEvaluationSkill
+
 # =====================================================================
 # SPECIALIZED SKILLS (new additions)
 # =====================================================================
@@ -1133,9 +1066,10 @@ For each level:
 "summary": "..."}}""",
 )
 
+SimulateParticipantSkill = ParticipantSimulationSkill
 
-# =====================================================================
-# REGISTRATION
+
+# =====================================================================# REGISTRATION
 # =====================================================================
 
 ALL_FACTORY_SKILLS = [
@@ -1163,6 +1097,7 @@ ALL_FACTORY_SKILLS = [
     PrioritizationMatrixSkill,
     KappaThematicAnalysisSkill,
     TaxonomyGeneratorSkill,
+    SimulateParticipantSkill,
     # Develop
     UsabilityTestingSkill,
     HeuristicEvaluationSkill,
@@ -1185,4 +1120,5 @@ ALL_FACTORY_SKILLS = [
     StakeholderPresentationSkill,
     ResearchRetroSkill,
     LongitudinalTrackingSkill,
+    EvaluateResearchQualitySkill,
 ]

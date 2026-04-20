@@ -168,6 +168,128 @@ export const chat = {
   },
   history: (projectId: string, limit = 50) =>
     request<any[]>(`/api/chat/history/${projectId}?limit=${limit}`),
+  transcribeVoice: async (audioFile: File, language?: string): Promise<{
+    text: string;
+    language: string;
+    confidence: number;
+    icr_kappa: number;
+    icr_confidence: string;
+    needs_review: boolean;
+    tags: string[];
+  }> => {
+    const formData = new FormData();
+    formData.append("audio", audioFile);
+    if (language) formData.append("language", language);
+
+    const res = await fetch(`${API_BASE}/api/chat/voice`, {
+      method: "POST",
+      headers: _getAuthHeaders(),
+      body: formData,
+    });
+
+    if (!res.ok) throw new Error(`Voice transcription error: ${res.status}`);
+    return res.json();
+  },
+};
+
+// --- Validation Metrics ---
+
+export const telemetry = {
+  status: () => request<{
+    telemetry_enabled: boolean;
+    telemetry_export_dir: string;
+    stats: { total_spans: number; total_model_entries: number; spans_last_24h: number };
+  }>("/api/settings/telemetry/status"),
+  toggle: (enabled: boolean) =>
+    request<{ telemetry_enabled: boolean; message: string }>(
+      `/api/settings/telemetry/toggle?enabled=${enabled}`,
+      { method: "POST" }
+    ),
+  export: (projectId?: string, days = 7, includeModels = true) =>
+    request<{
+      exported: boolean;
+      span_count: number;
+      files: { summary: string; spans: string };
+      export_dir: string;
+    }>(
+      `/api/settings/telemetry/export?days=${days}&include_models=${includeModels}${
+        projectId ? `&project_id=${projectId}` : ""
+      }`,
+      { method: "POST" }
+    ),
+  selfHealing: (projectId: string) =>
+    request<{
+      project_id: string;
+      total_issues: number;
+      by_trigger: Record<string, number>;
+      actions: Array<{
+        trigger: string;
+        severity: string;
+        message: string;
+        auto_action: string;
+      }>;
+    }>(`/api/settings/telemetry/healing?project_id=${projectId}`),
+};
+
+export const validation = {
+  metrics: async (projectId: string): Promise<{
+    project_id: string;
+    methods: { id: string; name: string; description: string }[];
+    method_stats: {
+      method: string;
+      skill_name: string;
+      agent_id: string;
+      total_runs: number;
+      success_count: number;
+      fail_count: number;
+      avg_consensus_score: number;
+      success_rate: number;
+      last_used: string | null;
+      weight: number;
+    }[];
+    recent_validations: {
+      task_id: string;
+      task_title: string;
+      skill_name: string;
+      validation_method: string;
+      consensus_score: number | null;
+      status: string;
+      updated_at: string | null;
+    }[];
+    confidence_thresholds: Record<string, number>;
+  }> => {
+    return request(`/api/metrics/${projectId}/validation`);
+  },
+  modelIntelligence: (projectId: string, limit = 50) =>
+    request<{
+      project_id: string;
+      leaderboard: Array<{
+        skill_name: string;
+        model_name: string;
+        temperature: number;
+        quality_ema: number;
+        best_quality: number;
+        executions: number;
+        source: string;
+      }>;
+      error_taxonomy: Record<string, Array<{ skill_name: string; model_name: string; duration_ms: number }>>;
+      tool_success_rates: Array<{
+        tool: string;
+        success_rate: number;
+        total_calls: number;
+        avg_duration_ms: number;
+        p50_duration_ms: number;
+        p90_duration_ms: number;
+        error_types: Record<string, number>;
+      }>;
+      latency_percentiles: Array<{
+        model: string;
+        p50_ms: number;
+        p90_ms: number;
+        p99_ms: number;
+        samples: number;
+      }>;
+    }>(`/api/metrics/${projectId}/model-intelligence?limit=${limit}`),
 };
 
 // --- Findings ---
@@ -884,6 +1006,16 @@ export const users = {
 
 export const reports = {
   list: (projectId: string) => get<ProjectReport[]>(`/api/reports/${projectId}`),
+};
+
+export const presentation = {
+  slideInstructions: (reportId: string) =>
+    get<{
+      report_id: string;
+      title: string;
+      instructions: string;
+      methodology: string;
+    }>(`/api/presentation/reports/${reportId}/slide-instructions`),
 };
 
 export const codebookVersions = {

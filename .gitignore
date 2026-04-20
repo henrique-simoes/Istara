@@ -89,3 +89,11 @@ data/_skill_model_config.json
 
 # Rust build output
 desktop/src-tauri/target/
+
+# Session context and code exports
+session-ses_*.md
+qwen-code-export-*.json
+opencode-*.md
+INVESTIGATION_SUMMARY.md
+INTEGRITY_INDEX.md
+session-*.md

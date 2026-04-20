@@ -32,12 +32,15 @@ SCOPE_MAP = {
     "heuristic-evaluation": "Usability Study",
     "ux-law-compliance": "Usability Study",
     "cognitive-walkthrough": "Usability Study",
+    "browser-ux-audit": "Usability Study",
+    "browser-accessibility-check": "Usability Study",
     "survey-design": "Survey Analysis",
     "survey-generator": "Survey Analysis",
     "nps-analysis": "Survey Analysis",
     "sus-umux-scoring": "Survey Analysis",
     "ab-test-analysis": "A/B Test Analysis",
     "competitive-analysis": "Competitive Analysis",
+    "browser-competitive-benchmark": "Competitive Analysis",
     "desk-research": "Desk Research",
     "diary-studies": "Diary Study Analysis",
     "analytics-review": "Analytics Analysis",
@@ -48,20 +51,30 @@ SCOPE_MAP = {
     "journey-mapping": "Research Synthesis",
     "affinity-mapping": "Research Synthesis",
     "empathy-mapping": "Research Synthesis",
+    "research-quality-evaluation": "Quality Evaluation",
+    "participant-simulation": "Simulation Analysis",
 }
 
 SYNTHESIS_SKILLS = {
-    "research-synthesis", "persona-creation", "journey-mapping",
-    "affinity-mapping", "empathy-mapping",
+    "research-synthesis",
+    "persona-creation",
+    "journey-mapping",
+    "affinity-mapping",
+    "empathy-mapping",
 }
 
 
 class ReportManager:
     """Manages progressive refinement of project reports."""
 
-    async def route_findings(self, project_id: str, skill_name: str,
-                            finding_ids: list[str], db: AsyncSession,
-                            consensus_score: float | None = None) -> None:
+    async def route_findings(
+        self,
+        project_id: str,
+        skill_name: str,
+        finding_ids: list[str],
+        db: AsyncSession,
+        consensus_score: float | None = None,
+    ) -> None:
         """Route new findings to the correct report (find or create)."""
         scope = SCOPE_MAP.get(skill_name, "General Analysis")
         layer = 3 if skill_name in SYNTHESIS_SKILLS else 2
@@ -92,7 +105,10 @@ class ReportManager:
 
         logger.info(
             "ReportManager: routed %d findings to '%s' (v%d, total=%d)",
-            len(finding_ids), report.title, report.version, report.finding_count,
+            len(finding_ids),
+            report.title,
+            report.version,
+            report.finding_count,
         )
 
         # Generate executive summary when report has enough findings
@@ -103,8 +119,9 @@ class ReportManager:
 
         await self._check_synthesis_trigger(project_id, db)
 
-    async def _find_or_create_report(self, project_id: str, scope: str,
-                                      layer: int, db: AsyncSession):
+    async def _find_or_create_report(
+        self, project_id: str, scope: str, layer: int, db: AsyncSession
+    ):
         from app.models.project_report import ProjectReport
 
         result = await db.execute(
@@ -145,9 +162,7 @@ class ReportManager:
         l2_reports = result.scalars().all()
 
         if len(l2_reports) >= 2:
-            synth = await self._find_or_create_report(
-                project_id, "Research Synthesis", 3, db
-            )
+            synth = await self._find_or_create_report(project_id, "Research Synthesis", 3, db)
             all_ids = []
             for r in l2_reports:
                 ids = json.loads(r.finding_ids_json or "[]")
@@ -159,7 +174,8 @@ class ReportManager:
             await db.commit()
             logger.info(
                 "ReportManager: synthesis updated with %d findings from %d L2 reports",
-                len(all_ids), len(l2_reports),
+                len(all_ids),
+                len(l2_reports),
             )
 
             # Auto-generate L4 final report when L3 has 10+ findings
@@ -170,9 +186,9 @@ class ReportManager:
         from app.models.project_report import ProjectReport
 
         result = await db.execute(
-            select(ProjectReport).where(
-                ProjectReport.project_id == project_id
-            ).order_by(ProjectReport.layer.desc(), ProjectReport.updated_at.desc())
+            select(ProjectReport)
+            .where(ProjectReport.project_id == project_id)
+            .order_by(ProjectReport.layer.desc(), ProjectReport.updated_at.desc())
         )
         return [r.to_dict() for r in result.scalars().all()]
 
@@ -182,9 +198,11 @@ class ReportManager:
             return
         try:
             from app.core.llm_router import llm_router
+
             finding_ids = json.loads(report.finding_ids_json or "[]")[:20]
             # Load finding texts
             from app.models.finding import Nugget, Fact, Insight
+
             findings_text = []
             for model_cls in [Insight, Fact, Nugget]:
                 result = await db.execute(
@@ -195,9 +213,11 @@ class ReportManager:
             if not findings_text:
                 return
             summary_prompt = (
-                f"Write a 2-3 sentence executive summary of these {len(findings_text)} "
-                f"UX research findings for the '{report.scope}' study:\n\n"
-                + "\n".join(f"- {t[:100]}" for t in findings_text[:15])
+                f"Create a professional consulting-grade executive summary for the '{report.scope}' study using the SCR (Situation-Complication-Resolution) framework.\n\n"
+                f"Context: {len(findings_text)} key findings extracted.\n"
+                "Findings:\n"
+                + "\n".join(f"- {t[:200]}" for t in findings_text[:15])
+                + "\n\nFormat the summary with clear headings: SITUATION, COMPLICATION, and RESOLUTION. Ensure it addresses executive stakeholders with high clarity and academic rigor."
             )
             response = await llm_router.chat(
                 [{"role": "user", "content": summary_prompt}], temperature=0.3
@@ -221,6 +241,7 @@ class ReportManager:
         try:
             from app.core.llm_router import llm_router
             from app.models.finding import Nugget, Fact, Insight
+
             finding_ids = json.loads(report.finding_ids_json or "[]")[:20]
             findings_text = []
             for model_cls in [Insight, Fact, Nugget]:
@@ -234,23 +255,32 @@ class ReportManager:
             if len(findings_text) < 3:
                 return
             mece_prompt = (
-                f"Categorize these {len(findings_text)} research findings into 3-7 MECE "
-                "(Mutually Exclusive, Collectively Exhaustive) categories.\n\n"
+                f"You are a top-tier management consultant. Categorize these {len(findings_text)} research findings into 3-5 MECE "
+                "(Mutually Exclusive, Collectively Exhaustive) categories using the Minto Pyramid Principle.\n\n"
+                "Constraints:\n"
+                "1. Each category MUST have an 'Action Title' — a full sentence that states a conclusion (e.g., 'Users struggle with X because of Y').\n"
+                "2. Provide a 'So-What' description for each category explaining the business/UX impact.\n"
+                "3. Ensure categories do not overlap.\n\n"
                 "Findings:\n"
                 + "\n".join(f"- [{f['id'][:8]}] {f['text']}" for f in findings_text)
-                + '\n\nRespond with a JSON array: [{"name": "Category Name", "description": "...", "finding_ids": ["id1", "id2"]}]'
+                + '\n\nRespond with a JSON array: [{"name": "Action Title Sentence", "description": "So-What explanation...", "finding_ids": ["id1", "id2"]}]'
             )
             response = await llm_router.chat(
                 [{"role": "user", "content": mece_prompt}], temperature=0.3
             )
             content = response.get("message", {}).get("content", "")
             import re
-            json_match = re.search(r'\[.*\]', content, re.DOTALL)
+
+            json_match = re.search(r"\[.*\]", content, re.DOTALL)
             if json_match:
                 categories = json.loads(json_match.group())
                 report.mece_categories_json = json.dumps(categories)
                 await db.commit()
-                logger.info("ReportManager: MECE categories generated for '%s' (%d categories)", report.title, len(categories))
+                logger.info(
+                    "ReportManager: MECE categories generated for '%s' (%d categories)",
+                    report.title,
+                    len(categories),
+                )
         except Exception as e:
             logger.debug(f"MECE categorization skipped: {e}")
 
@@ -302,20 +332,23 @@ class ReportManager:
         # Generate full document via template-driven composition
         await self._compose_full_report(l4, project_id, db)
 
-        logger.info("ReportManager: L4 report %s with %d findings",
-                     "updated" if existing_l4 else "created", l4.finding_count)
+        logger.info(
+            "ReportManager: L4 report %s with %d findings",
+            "updated" if existing_l4 else "created",
+            l4.finding_count,
+        )
 
     # ── Template-Driven Report Composition ──────────────────────────
 
     REPORT_TEMPLATE = [
-        {"section": "Executive Summary", "source": "executive_summary", "format": "narrative"},
-        {"section": "Methodology", "source": "skills_used", "format": "list"},
-        {"section": "Key Findings", "source": "insights", "format": "evidence_table"},
-        {"section": "Supporting Evidence", "source": "nuggets_and_facts", "format": "citation_table"},
-        {"section": "Recommendations", "source": "recommendations", "format": "priority_table"},
-        {"section": "Thematic Analysis (MECE)", "source": "mece_categories", "format": "structured"},
-        {"section": "Confidence & Validation", "source": "ensemble_scores", "format": "metrics"},
-        {"section": "Limitations & Gaps", "source": "gaps", "format": "narrative"},
+        {"section": "I. Executive Summary (SCR)", "source": "executive_summary", "format": "narrative"},
+        {"section": "II. Research Methodology & Rigor", "source": "skills_used", "format": "list"},
+        {"section": "III. Strategic Thematic Analysis (MECE)", "source": "mece_categories", "format": "structured"},
+        {"section": "IV. Detailed Insights & Evidence Chain", "source": "insights", "format": "detailed_narrative"},
+        {"section": "V. Supporting Evidence (Nuggets & Facts)", "source": "nuggets_and_facts", "format": "citation_table"},
+        {"section": "VI. Actionable Recommendations (Pyramid Top)", "source": "recommendations", "format": "priority_table"},
+        {"section": "VII. Validation & Consensus Metrics", "source": "ensemble_scores", "format": "metrics"},
+        {"section": "VIII. Analysis Gaps & Next Steps", "source": "gaps", "format": "narrative"},
     ]
 
     async def _compose_full_report(self, report, project_id: str, db: AsyncSession) -> None:
@@ -328,19 +361,29 @@ class ReportManager:
 
             # Load all findings by type
             findings = {"nuggets": [], "facts": [], "insights": [], "recommendations": []}
-            for model_cls, key in [(Nugget, "nuggets"), (Fact, "facts"), (Insight, "insights"), (Recommendation, "recommendations")]:
-                result = await db.execute(select(model_cls).where(model_cls.id.in_(finding_ids)).limit(30))
+            for model_cls, key in [
+                (Nugget, "nuggets"),
+                (Fact, "facts"),
+                (Insight, "insights"),
+                (Recommendation, "recommendations"),
+            ]:
+                result = await db.execute(
+                    select(model_cls).where(model_cls.id.in_(finding_ids)).limit(30)
+                )
                 for f in result.scalars().all():
-                    findings[key].append({
-                        "id": f.id,
-                        "text": f.text if hasattr(f, "text") else str(f),
-                        "source": getattr(f, "source", ""),
-                        "confidence": getattr(f, "confidence", 0),
-                        "phase": getattr(f, "phase", ""),
-                    })
+                    findings[key].append(
+                        {
+                            "id": f.id,
+                            "text": f.text if hasattr(f, "text") else str(f),
+                            "source": getattr(f, "source", ""),
+                            "confidence": getattr(f, "confidence", 0),
+                            "phase": getattr(f, "phase", ""),
+                        }
+                    )
 
             # Get L2 report scopes (methodologies used)
             from app.models.project_report import ProjectReport
+
             l2_result = await db.execute(
                 select(ProjectReport).where(
                     ProjectReport.project_id == project_id, ProjectReport.layer == 2
@@ -379,6 +422,7 @@ class ReportManager:
                     score_text = score_response.get("message", {}).get("content", "")
 
                     import re as _re
+
                     json_match = _re.search(r'\{.*"weakest".*\}', score_text, _re.DOTALL)
                     if not json_match:
                         break
@@ -389,7 +433,9 @@ class ReportManager:
                     suggestion = score_data.get("suggestion", "")
 
                     # Convergence: all sections ≥7 → stop refining
-                    if scores and all(s >= 7 for s in scores.values() if isinstance(s, (int, float))):
+                    if scores and all(
+                        s >= 7 for s in scores.values() if isinstance(s, (int, float))
+                    ):
                         logger.info(f"Report refinement converged at pass {pass_num + 1}")
                         break
 
@@ -397,13 +443,19 @@ class ReportManager:
                     for i, template in enumerate(self.REPORT_TEMPLATE):
                         if template["section"].lower() == weakest.lower():
                             refined = await self._compose_section(
-                                template, findings, report, methodologies, llm_router,
+                                template,
+                                findings,
+                                report,
+                                methodologies,
+                                llm_router,
                                 refinement_hint=suggestion,
                             )
                             if refined:
                                 sections[i] = f"## {template['section']}\n\n{refined}"
                                 full_doc = f"# {report.title}\n\n" + "\n\n---\n\n".join(sections)
-                                logger.info(f"Report refined: section '{weakest}' (pass {pass_num + 1})")
+                                logger.info(
+                                    f"Report refined: section '{weakest}' (pass {pass_num + 1})"
+                                )
                             break
                 except Exception as e:
                     logger.debug(f"Report refinement pass {pass_num + 1} skipped: {e}")
@@ -414,7 +466,9 @@ class ReportManager:
             content["full_document"] = full_doc
             content["sections"] = [t["section"] for t in self.REPORT_TEMPLATE]
             content["generated_at"] = datetime.now(timezone.utc).isoformat()
-            content["refinement_passes"] = min(pass_num + 1, MAX_REFINEMENT_PASSES) if 'pass_num' in dir() else 0
+            content["refinement_passes"] = (
+                min(pass_num + 1, MAX_REFINEMENT_PASSES) if "pass_num" in dir() else 0
+            )
             report.content_json = json.dumps(content)
             report.status = "review"
             await db.commit()
@@ -422,6 +476,7 @@ class ReportManager:
             # Create a Document record for the report
             try:
                 from app.models.document import Document
+
                 doc = Document(
                     id=str(uuid.uuid4()),
                     project_id=project_id,
@@ -440,7 +495,15 @@ class ReportManager:
         except Exception as e:
             logger.warning(f"Full report composition failed: {e}")
 
-    async def _compose_section(self, template: dict, findings: dict, report, methodologies: list, llm_router, refinement_hint: str = "") -> str:
+    async def _compose_section(
+        self,
+        template: dict,
+        findings: dict,
+        report,
+        methodologies: list,
+        llm_router,
+        refinement_hint: str = "",
+    ) -> str:
         """Compose a single report section from its template definition."""
         source = template["source"]
         fmt = template["format"]
@@ -451,17 +514,47 @@ class ReportManager:
         if source == "skills_used":
             if not methodologies:
                 return "No specific research methodologies were applied."
-            return "The following research methods were used:\n\n" + "\n".join(f"- {m}" for m in methodologies)
+            return "The following research methods were used:\n\n" + "\n".join(
+                f"- {m}" for m in methodologies
+            )
 
         if source == "insights":
             items = findings.get("insights", [])
             if not items:
                 return "No key insights were generated."
+            
+            if fmt == "detailed_narrative":
+                prompt = (
+                    f"You are a management consultant. Expand these {len(items)} insights into a "
+                    "detailed, professional research section (~800 words).\n\n"
+                    "Instructions:\n"
+                    "1. For each insight, explain the underlying pattern, provide examples, and "
+                    "contextualize it within the study's scope.\n"
+                    "2. Use professional, objective language.\n"
+                    "3. Connect insights where relationships exist.\n\n"
+                    "Insights:\n"
+                    + "\n".join(f"- {i['text']}" for i in items)
+                )
+                try:
+                    response = await llm_router.chat([{"role": "user", "content": prompt}], temperature=0.3)
+                    return response.get("message", {}).get("content", "Detailed narrative generation failed.")
+                except Exception:
+                    fmt = "evidence_table"  # Fallback
+
             if fmt == "evidence_table":
-                rows = ["| # | Insight | Confidence | Phase |", "|---|---------|------------|-------|"]
+                rows = [
+                    "| # | Insight | Confidence | Phase |",
+                    "|---|---------|------------|-------|",
+                ]
                 for i, item in enumerate(items, 1):
-                    conf = f"{item.get('confidence', 0):.0%}" if isinstance(item.get('confidence'), (int, float)) else "N/A"
-                    rows.append(f"| {i} | {item['text'][:100]} | {conf} | {item.get('phase', '')} |")
+                    conf = (
+                        f"{item.get('confidence', 0):.0%}"
+                        if isinstance(item.get("confidence"), (int, float))
+                        else "N/A"
+                    )
+                    rows.append(
+                        f"| {i} | {item['text'][:100]} | {conf} | {item.get('phase', '')} |"
+                    )
                 return "\n".join(rows)
             return "\n".join(f"- {item['text']}" for item in items)
 
@@ -480,22 +573,44 @@ class ReportManager:
         if source == "recommendations":
             items = findings.get("recommendations", [])
             if not items:
-                return "No recommendations generated."
-            rows = ["| # | Recommendation | Priority |", "|---|---------------|----------|"]
-            for i, item in enumerate(items, 1):
-                rows.append(f"| {i} | {item['text'][:100]} | Medium |")
-            return "\n".join(rows)
+                return "No actionable recommendations generated."
+            
+            prompt = (
+                f"You are a management consultant. For each of these {len(items)} research recommendations, "
+                "develop a professional, multi-paragraph justification (~500 words total).\n\n"
+                "Constraints:\n"
+                "1. State the recommendation clearly (The 'Pyramid Top').\n"
+                "2. Provide 2-3 logical supporting reasons based on research findings.\n"
+                "3. Suggest immediate next steps for implementation.\n\n"
+                "Recommendations:\n"
+                + "\n".join(f"- {r['text']}" for r in items)
+            )
+            try:
+                response = await llm_router.chat([{"role": "user", "content": prompt}], temperature=0.3)
+                return response.get("message", {}).get("content", "Recommendation detail generation failed.")
+            except Exception:
+                rows = ["| # | Recommendation | Priority |", "|---|---------------|----------|"]
+                for i, item in enumerate(items, 1):
+                    rows.append(f"| {i} | {item['text'][:100]} | Medium |")
+                return "\n".join(rows)
 
         if source == "mece_categories":
             categories = json.loads(report.mece_categories_json or "[]")
             if not categories:
-                return "MECE categorization not yet available."
+                return "Strategic thematic analysis (MECE) not yet available."
+            
             parts = []
             for cat in categories:
-                name = cat.get("name", "Unknown")
-                desc = cat.get("description", "")
+                name = cat.get("name", "Unknown Conclusion")
+                desc = cat.get("description", "No supporting argument provided.")
                 count = len(cat.get("finding_ids", []))
-                parts.append(f"### {name}\n{desc}\n*{count} findings in this category*")
+                
+                # Deeper analysis for each MECE category
+                parts.append(
+                    f"### {name}\n"
+                    f"**Strategic Takeaway**: {desc}\n\n"
+                    f"*Evidence density: This conclusion is supported by {count} distinct research findings.*"
+                )
             return "\n\n".join(parts)
 
         if source == "ensemble_scores":
@@ -526,7 +641,9 @@ class ReportManager:
                 if refinement_hint:
                     prompt += f"\n\nRefinement guidance: {refinement_hint}"
                 prompt += "\n\nBe specific and concise."
-                response = await llm_router.chat([{"role": "user", "content": prompt}], temperature=0.3)
+                response = await llm_router.chat(
+                    [{"role": "user", "content": prompt}], temperature=0.3
+                )
                 return response.get("message", {}).get("content", "No gaps analysis available.")
             except Exception:
                 return "Gap analysis could not be generated."
