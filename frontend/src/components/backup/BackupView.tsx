@@ -125,21 +125,7 @@ export default function BackupView() {
 
     setRestoring(true);
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      
-      const token = localStorage.getItem("istara_token");
-      const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-      
-      const res = await fetch(`${API_BASE}/api/backups/upload-restore`, {
-        method: "POST",
-        headers: {
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: formData,
-      });
-
-      if (!res.ok) throw new Error("Upload failed");
+      await backupsApi.uploadRestore(file);
       
       // Success - server is restarting
       setTimeout(() => window.location.reload(), 5000);

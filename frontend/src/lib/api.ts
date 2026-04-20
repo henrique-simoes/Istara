@@ -699,6 +699,18 @@ export const backups = {
   updateConfig: (data: Partial<BackupConfig>) =>
     request<any>("/api/backups/config", { method: "POST", body: JSON.stringify(data) }),
   estimate: () => request<any>("/api/backups/estimate"),
+  uploadRestore: (file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return fetch(`${API_BASE}/api/backups/upload-restore`, {
+      method: "POST",
+      headers: _getAuthHeaders(),
+      body: formData,
+    }).then((r) => {
+      if (!r.ok) throw new Error("Upload failed");
+      return r.json();
+    });
+  },
 };
 
 // --- Meta-Hyperagent ---
