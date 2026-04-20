@@ -90,13 +90,16 @@ def detect_from_name(model_name: str) -> ModelCapability:
     return cap
 
 
-async def detect_capabilities_generic(host: str, api_key: str = "", provider_type: str = "openai_compat") -> dict[str, ModelCapability]:
+async def detect_capabilities_generic(host: str | None, api_key: str = "", provider_type: str = "openai_compat") -> dict[str, ModelCapability]:
     """Empirically detect model capabilities from any OpenAI-compatible API.
     
     Follows Berkeley Function Calling Leaderboard (BFCL) patterns:
     1. Metadata discovery (GET /v1/models)
     2. Dynamic probing (test chat completion with dummy tool)
     """
+    if not host:
+        return {}
+        
     import httpx
     result: dict[str, ModelCapability] = {}
     

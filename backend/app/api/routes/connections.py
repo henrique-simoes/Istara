@@ -1,6 +1,5 @@
 """Connection string API routes — generate, validate, and redeem connection strings."""
 
-import json
 import logging
 import secrets
 import uuid
