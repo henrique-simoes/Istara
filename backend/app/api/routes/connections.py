@@ -15,6 +15,7 @@ from app.core.auth import create_token, hash_password
 from app.core.connection_string import create_connection_string, decode_connection_string
 from app.core.security_middleware import require_admin_from_request
 from app.models.database import get_db
+from app.models.connection_string import ConnectionString
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -42,6 +43,7 @@ class RedeemRequest(BaseModel):
 async def generate_connection_string(
     data: GenerateRequest,
     request: Request,
+    db: AsyncSession = Depends(get_db)
 ):
     """Generate a connection string for inviting team members.
     Admin only. Bundles server URL, network token, and a pre-minted JWT."""
@@ -61,12 +63,47 @@ async def generate_connection_string(
         expires_hours=data.expires_hours,
     )
 
+    # Persist to database
+    from datetime import datetime, timedelta, timezone
+    new_conn = ConnectionString(
+        id=str(uuid.uuid4()),
+        connection_string=conn_str,
+        label=data.label,
+        server_url=data.server_url,
+        expires_at=datetime.now(timezone.utc) + timedelta(hours=data.expires_hours)
+    )
+    db.add(new_conn)
+    await db.commit()
+
     return {
+        "id": new_conn.id,
         "connection_string": conn_str,
         "server_url": data.server_url,
         "label": data.label,
-        "expires_hours": data.expires_hours,
+        "expires_at": new_conn.expires_at.isoformat(),
     }
+
+
+@router.get("/connections")
+async def list_connection_strings(request: Request, db: AsyncSession = Depends(get_db)):
+    """List all generated connection strings. Admin only."""
+    require_admin_from_request(request)
+    result = await db.execute(select(ConnectionString).order_by(ConnectionString.created_at.desc()))
+    conns = result.scalars().all()
+    return [c.to_dict() for c in conns]
+
+
+@router.delete("/connections/{conn_id}")
+async def revoke_connection_string(conn_id: str, request: Request, db: AsyncSession = Depends(get_db)):
+    """Revoke a connection string. Admin only."""
+    require_admin_from_request(request)
+    conn = await db.get(ConnectionString, conn_id)
+    if not conn:
+        raise HTTPException(status_code=404, detail="Connection string not found")
+    
+    await db.delete(conn)
+    await db.commit()
+    return {"status": "revoked"}
 
 
 @router.post("/connections/validate")

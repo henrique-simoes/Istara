@@ -822,19 +822,22 @@ Tracks:
 ---
 
 ## COMPUTE & LLM INTEGRATION
-
 ### ComputeRegistry: Single Source of Truth
 
 **Location**: `backend/app/core/compute_registry.py`
 
-**Architecture**: Unified registry for ALL LLM compute resources (replaces old LLMRouter + ComputePool).
+**Architecture**: Unified single-source-of-truth for ALL LLM compute resources (local, network, relay).
 
-```python
-class ComputeRegistry:
-    _nodes: dict[str, ComputeNode]  # node_id → ComputeNode
+#### 1. Empirical Capability Evaluation
+Instead of relying on brittle metadata or name heuristics, Istara implements **Dynamic Probing** based on the Berkeley Function Calling Leaderboard (BFCL) pattern.
+- **Verification**: New nodes undergo a standardized tool-calling probe (`chat/completions` with a dummy function) to verify actual support before being accepted into the pool.
+- **Mandate**: Mandatory for all `openai_compat` providers that do not provide explicit capability headers.
 
-    def register_node(node: ComputeNode) -> None
-    def remove_node(node_id: str) -> None
+#### 2. RFC 3986 URL Normalization
+To ensure 100% generic compatibility with all LLM servers, Istara enforces strict URI reference resolution.
+- **Pattern**: `ComputeNode._get_client` ensures `base_url` always ends with a trailing slash.
+- **Standard**: Follows RFC 3986 algorithms used by the official OpenAI client library to prevent path-joining errors and 404s.
+
     def remove_duplicate_network_nodes(relay_node: ComputeNode) -> None  # dedup on relay register
     def update_heartbeat(node_id: str, stats: dict) -> None
     async def check_all_health() -> dict[str, bool]  # also detects relay capabilities

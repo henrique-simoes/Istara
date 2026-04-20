@@ -1,6 +1,6 @@
 # Istara — Agent-Readable Operating Map
 
-Generated from the repository on version `2026.04.10.5`. Treat this file as the fast inventory view after reading `AGENT_ENTRYPOINT.md`, then consult `COMPLETE_SYSTEM.md`, `SYSTEM_CHANGE_MATRIX.md`, `CHANGE_CHECKLIST.md`, and `SYSTEM_PROMPT.md` before structural work.
+Generated from the repository on version `2026.04.10.6`. Treat this file as the fast inventory view after reading `AGENT_ENTRYPOINT.md`, then consult `COMPLETE_SYSTEM.md`, `SYSTEM_CHANGE_MATRIX.md`, `CHANGE_CHECKLIST.md`, and `SYSTEM_PROMPT.md` before structural work.
 
 ## Non-Negotiable Workflow
 
@@ -18,8 +18,8 @@ Generated from the repository on version `2026.04.10.5`. Treat this file as the 
 ## System Snapshot
 
 - Frontend: Next.js app with 22 mounted views and 15 Zustand stores.
-- Backend: FastAPI app with 38 route modules and 363 detected endpoints.
-- Data layer: 41 SQLAlchemy models plus LanceDB-backed retrieval/context systems.
+- Backend: FastAPI app with 38 route modules and 366 detected endpoints.
+- Data layer: 42 SQLAlchemy models plus LanceDB-backed retrieval/context systems.
 - Agents/personas: 6 tracked persona directories under `backend/app/agents/personas`.
 - Skills: 50 JSON-defined skills across the Double Diamond phases.
 - Regression map: 71 simulation scenarios plus 13 e2e phases.
@@ -84,14 +84,14 @@ Generated from the repository on version `2026.04.10.5`. Treat this file as the 
 | `audit.py` | `/` | 6 |
 | `auth.py` | `/` | 15 |
 | `autoresearch.py` | `/autoresearch` | 9 |
-| `backup.py` | `/` | 9 |
+| `backup.py` | `/` | 10 |
 | `channels.py` | `/` | 11 |
 | `chat.py` | `/` | 2 |
 | `code_applications.py` | `/code-applications` | 4 |
 | `codebook_versions.py` | `/codebook-versions` | 4 |
 | `codebooks.py` | `/` | 8 |
 | `compute.py` | `/` | 3 |
-| `connections.py` | `/` | 4 |
+| `connections.py` | `/` | 6 |
 | `context_dag.py` | `/` | 6 |
 | `deployments.py` | `/` | 12 |
 | `documents.py` | `/` | 10 |
@@ -135,6 +135,7 @@ Generated from the repository on version `2026.04.10.5`. Treat this file as the 
 | `Codebook` | `codebooks` | yes | `backend/app/models/codebook.py` |
 | `Code` | `codes` | yes | `backend/app/models/codebook.py` |
 | `CodebookVersion` | `codebook_versions` | yes | `backend/app/models/codebook_version.py` |
+| `ConnectionString` | `connection_strings` | yes | `backend/app/models/connection_string.py` |
 | `ContextDAGNode` | `context_dag_nodes` | no | `backend/app/models/context_dag.py` |
 | `DesignScreen` | `design_screens` | yes | `backend/app/models/design_screen.py` |
 | `DesignBrief` | `design_briefs` | yes | `backend/app/models/design_screen.py` |

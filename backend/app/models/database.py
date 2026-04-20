@@ -73,6 +73,7 @@ async def init_db() -> None:
     from app.models.autoresearch_experiment import AutoresearchExperiment  # noqa: F401
     from app.models.codebook_version import CodebookVersion  # noqa: F401
     from app.models.code_application import CodeApplication  # noqa: F401
+    from app.models.connection_string import ConnectionString  # noqa: F401
     from app.models.project_report import ProjectReport  # noqa: F401
     from app.models.project_member import ProjectMember  # noqa: F401
 

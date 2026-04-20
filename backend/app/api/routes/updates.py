@@ -374,15 +374,23 @@ if [ -f istara.sh ]; then
     ./istara.sh stop 2>/dev/null || true
 fi
 
-# Discard local changes (update replaces everything)
-git checkout -- . 2>/dev/null || true
+# Discard or stash local changes
+git stash 2>/dev/null || true
 git clean -fd 2>/dev/null || true
 
 # Pull latest code
+echo "Auto-update: pulling latest source..."
 git pull --ff-only 2>/dev/null || git pull
+
+# Ensure npm and node are available in the path
+export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+[ -s "$HOME/.nvm/nvm.sh" ] && \. "$HOME/.nvm/nvm.sh"
+[ -s "$HOME/.bashrc" ] && source "$HOME/.bashrc"
+[ -s "$HOME/.zshrc" ] && source "$HOME/.zshrc"
 
 # Update backend deps
 if [ -x "{venv_pip}" ]; then
+    echo "Auto-update: installing dependencies..."
     "{venv_pip}" install -r backend/requirements.txt --quiet 2>/dev/null || true
 fi
 

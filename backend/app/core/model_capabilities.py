@@ -90,73 +90,84 @@ def detect_from_name(model_name: str) -> ModelCapability:
     return cap
 
 
-async def detect_capabilities_lmstudio(host: str) -> dict[str, ModelCapability]:
-    """Detect model capabilities from LM Studio API."""
+async def detect_capabilities_generic(host: str, api_key: str = "", provider_type: str = "openai_compat") -> dict[str, ModelCapability]:
+    """Empirically detect model capabilities from any OpenAI-compatible API.
+    
+    Follows Berkeley Function Calling Leaderboard (BFCL) patterns:
+    1. Metadata discovery (GET /v1/models)
+    2. Dynamic probing (test chat completion with dummy tool)
+    """
     import httpx
-
     result: dict[str, ModelCapability] = {}
-    try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            resp = await client.get(f"{host}/v1/models")
+    
+    # RFC 3986 Normalization for detection client
+    if not host.endswith("/"):
+        host += "/"
+        
+    headers = {}
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+        
+    async with httpx.AsyncClient(timeout=10.0, headers=headers) as client:
+        # 1. Metadata Discovery
+        try:
+            models_path = "api/tags" if provider_type == "ollama" else "v1/models"
+            resp = await client.get(f"{host}{models_path}")
             if resp.status_code == 200:
                 data = resp.json()
-                for model in data.get("data", []):
-                    model_id = model.get("id", "")
+                models = data.get("models", []) if provider_type == "ollama" else data.get("data", [])
+                
+                for m in models:
+                    model_id = m.get("name" if provider_type == "ollama" else "id", "")
+                    if not model_id:
+                        continue
+                    
                     cap = detect_from_name(model_id)
-                    cap.source = "lmstudio"
-                    # LM Studio may include max_tokens
-                    if model.get("max_tokens"):
-                        cap.context_length = model["max_tokens"]
+                    cap.source = provider_type
+                    
+                    # Metadata context length
+                    if m.get("max_tokens"):
+                        cap.context_length = m["max_tokens"]
+                    
                     result[model_id] = cap
-    except Exception as e:
-        logger.debug(f"LM Studio capability detection failed for {host}: {e}")
-    return result
+        except Exception as e:
+            logger.debug(f"Metadata discovery failed for {host}: {e}")
 
-
-async def detect_capabilities_ollama(host: str) -> dict[str, ModelCapability]:
-    """Detect model capabilities from Ollama API."""
-    import httpx
-
-    result: dict[str, ModelCapability] = {}
-    try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            # List models
-            resp = await client.get(f"{host}/api/tags")
-            if resp.status_code != 200:
-                return result
-            models = resp.json().get("models", [])
-
-            for model in models:
-                name = model.get("name", "")
-                cap = detect_from_name(name)
-                cap.source = "ollama"
-
-                # Get detailed info from the tags response itself
-                details = model.get("details", {})
-                if details.get("parameter_size"):
-                    cap.parameter_count = details["parameter_size"]
-                if details.get("quantization_level"):
-                    cap.quantization = details["quantization_level"]
-
-                # Try /api/show for context length
-                try:
-                    show_resp = await client.post(
-                        f"{host}/api/show",
-                        json={"name": name},
-                        timeout=3.0,
-                    )
-                    if show_resp.status_code == 200:
-                        show_data = show_resp.json()
-                        model_info = show_data.get("model_info", {})
-                        # Look for context length in various fields
-                        for key in model_info:
-                            if "context_length" in key.lower():
-                                cap.context_length = int(model_info[key])
-                                break
-                except Exception:
-                    pass
-
-                result[name] = cap
-    except Exception as e:
-        logger.debug(f"Ollama capability detection failed for {host}: {e}")
+        # 2. Dynamic Probing (Active Verification)
+        # Select the most likely primary model to probe
+        if not result:
+            return result
+            
+        probe_model = list(result.keys())[0]
+        try:
+            # Standardized probe payload for tool support verification
+            probe_payload = {
+                "model": probe_model,
+                "messages": [{"role": "user", "content": "Respond 'ok'."}],
+                "tools": [{
+                    "type": "function",
+                    "function": {
+                        "name": "probe_tool",
+                        "description": "A dummy tool to verify tool-calling support.",
+                        "parameters": {"type": "object", "properties": {}}
+                    }
+                }],
+                "max_tokens": 5
+            }
+            
+            chat_path = "api/chat" if provider_type == "ollama" else "v1/chat/completions"
+            probe_resp = await client.post(f"{host}{chat_path}", json=probe_payload)
+            
+            # If the server accepts the tools parameter without error, mark tool support
+            if probe_resp.status_code == 200:
+                for cap in result.values():
+                    cap.supports_tools = True
+            elif probe_resp.status_code == 400:
+                # Most servers return 400 if 'tools' is unknown/unsupported
+                for cap in result.values():
+                    cap.supports_tools = False
+                    
+        except Exception as e:
+            logger.debug(f"Dynamic tool probe failed for {host}: {e}")
+            
     return result

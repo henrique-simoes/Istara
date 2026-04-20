@@ -610,8 +610,20 @@ async def team_status(request: Request):
 
 @router.get("/auth/users")
 async def list_users(request: Request, db: AsyncSession = Depends(get_db)):
-    """List all users. Admin only."""
-    require_admin_from_request(request)
+    """List all users. Authenticated users only."""
+    # Ensure user is at least logged in
+    auth_header = request.headers.get("Authorization", "")
+    token_str = auth_header.removeprefix("Bearer ").strip() if auth_header.startswith("Bearer ") else ""
+    if not token_str:
+        token_str = request.cookies.get("istara_session", "")
+    if not token_str:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    from app.core.auth import verify_token
+    payload = verify_token(token_str)
+    if not payload:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
     result = await db.execute(select(User).order_by(User.created_at.desc()))
     users = result.scalars().all()
     return [
