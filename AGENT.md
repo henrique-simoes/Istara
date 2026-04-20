@@ -1,6 +1,6 @@
 # Istara — Agent-Readable Operating Map
 
-Generated from the repository on version `2026.04.10.6`. Treat this file as the fast inventory view after reading `AGENT_ENTRYPOINT.md`, then consult `COMPLETE_SYSTEM.md`, `SYSTEM_CHANGE_MATRIX.md`, `CHANGE_CHECKLIST.md`, and `SYSTEM_PROMPT.md` before structural work.
+Generated from the repository on version `2026.04.20`. Treat this file as the fast inventory view after reading `AGENT_ENTRYPOINT.md`, then consult `COMPLETE_SYSTEM.md`, `SYSTEM_CHANGE_MATRIX.md`, `CHANGE_CHECKLIST.md`, and `SYSTEM_PROMPT.md` before structural work.
 
 ## Non-Negotiable Workflow
 
@@ -17,12 +17,12 @@ Generated from the repository on version `2026.04.10.6`. Treat this file as the 
 
 ## System Snapshot
 
-- Frontend: Next.js app with 22 mounted views and 15 Zustand stores.
-- Backend: FastAPI app with 38 route modules and 366 detected endpoints.
-- Data layer: 42 SQLAlchemy models plus LanceDB-backed retrieval/context systems.
+- Frontend: Next.js app with 23 mounted views and 15 Zustand stores.
+- Backend: FastAPI app with 40 route modules and 377 detected endpoints.
+- Data layer: 43 SQLAlchemy models plus LanceDB-backed retrieval/context systems.
 - Agents/personas: 6 tracked persona directories under `backend/app/agents/personas`.
-- Skills: 50 JSON-defined skills across the Double Diamond phases.
-- Regression map: 71 simulation scenarios plus 13 e2e phases.
+- Skills: 57 JSON-defined skills across the Double Diamond phases.
+- Regression map: 74 simulation scenarios plus 9 e2e phases.
 
 ## Change Hotspots
 
@@ -54,6 +54,7 @@ Generated from the repository on version `2026.04.10.6`. Treat this file as the 
 | Secondary | `meta-hyperagent` | Meta-Agent | `MetaHyperagentView` |
 | Secondary | `compute` | Compute Pool | `ComputePoolView` |
 | Secondary | `ensemble` | Ensemble Health | `EnsembleHealthView` |
+| Secondary | `quality` | Quality Dashboard | `QualityView` |
 | Secondary | `project-settings` | Project Settings | `ProjectSettingsView` |
 | Secondary | `history` | History | `VersionHistory` |
 | Utility | `notifications` | Notifications | `NotificationsView` |
@@ -71,22 +72,23 @@ Generated from the repository on version `2026.04.10.6`. Treat this file as the 
 
 ## Skills By Phase
 
-- **Define** (12): Affinity Mapping, Empathy Mapping, Problem Statements / HMW, Journey Mapping, Jobs-to-be-Done Analysis, Kappa Intercoder Thematic Analysis, Persona Creation, Prioritization Matrix, Research Synthesis Report, Taxonomy Generator, Thematic Analysis, User Flow Mapping
-- **Deliver** (11): Handoff Documentation, Longitudinal Study Tracking, NPS Analysis, Regression / Impact Analysis, Research Repository Curation, Research Ops Retrospective, Stakeholder Presentation, Design System Synthesis, HTML to React Components, SUS / UMUX Scoring, Task Analysis (Quantitative)
-- **Develop** (14): A/B Test Analysis, Card Sorting Analysis, Cognitive Walkthrough, Concept Testing, Design Critique / Expert Review, Design System Audit, Heuristic Evaluation, Prototype Feedback Analysis, Stitch Design Generation, Design Prompt Enhancement, Tree Testing Analysis, Usability Testing, UX Law Compliance Audit, Workshop Facilitation
-- **Discover** (13): Accessibility Audit, Analytics Review, Competitive Analysis, Contextual Inquiry, Literature / Desk Research, Diary Studies, Field Studies / Ethnography, Interview Question Generator, Stakeholder Interviews, Survey AI Response Detection, Survey Design & Analysis, Survey Generator, User Interviews
+- **Define** (13): Affinity Mapping, Empathy Mapping, Problem Statements / HMW, Journey Mapping, Jobs-to-be-Done Analysis, Kappa Intercoder Thematic Analysis, Game Theory Participant Simulation, Persona Creation, Prioritization Matrix, Research Synthesis Report, Taxonomy Generator, Thematic Analysis, User Flow Mapping
+- **Deliver** (13): Evaluate Research Quality, Handoff Documentation, Longitudinal Study Tracking, NPS Analysis, Regression / Impact Analysis, Research Repository Curation, Evaluate Research Quality, Research Ops Retrospective, Stakeholder Presentation, Design System Synthesis, HTML to React Components, SUS / UMUX Scoring, Task Analysis (Quantitative)
+- **Develop** (16): A/B Test Analysis, Live Site Accessibility Audit, Live Site UX Audit, Card Sorting Analysis, Cognitive Walkthrough, Concept Testing, Design Critique / Expert Review, Design System Audit, Heuristic Evaluation, Prototype Feedback Analysis, Stitch Design Generation, Design Prompt Enhancement, Tree Testing Analysis, Usability Testing, UX Law Compliance Audit, Workshop Facilitation
+- **Discover** (15): Accessibility Audit, Analytics Review, Competitor UX Benchmarking, Competitive Analysis (Automated), Contextual Inquiry, Literature / Desk Research, Diary Studies, Field Studies / Ethnography, Interview Question Generator, Stakeholder Interviews, Survey AI Response Detection, Survey Design & Analysis, Survey Generator, Audio Transcription & Analysis, User Interviews
 
 ## Backend Route Modules
 
 | Route Module | Prefix | Endpoints |
 |---|---|---|
 | `agents.py` | `/` | 48 |
-| `audit.py` | `/` | 6 |
+| `audit.py` | `/` | 7 |
 | `auth.py` | `/` | 15 |
 | `autoresearch.py` | `/autoresearch` | 9 |
 | `backup.py` | `/` | 10 |
 | `channels.py` | `/` | 11 |
-| `chat.py` | `/` | 2 |
+| `chat.py` | `/` | 4 |
+| `chat_voice.py` | `/` | 1 |
 | `code_applications.py` | `/code-applications` | 4 |
 | `codebook_versions.py` | `/codebook-versions` | 4 |
 | `codebooks.py` | `/` | 8 |
@@ -104,13 +106,14 @@ Generated from the repository on version `2026.04.10.6`. Treat this file as the 
 | `mcp.py` | `/` | 17 |
 | `memory.py` | `/` | 5 |
 | `meta_hyperagent.py` | `/` | 9 |
-| `metrics.py` | `/` | 1 |
+| `metrics.py` | `/` | 3 |
 | `notifications.py` | `/` | 7 |
+| `presentation.py` | `/presentation` | 1 |
 | `projects.py` | `/` | 15 |
 | `reports.py` | `/reports` | 1 |
 | `scheduler.py` | `/` | 5 |
 | `sessions.py` | `/` | 8 |
-| `settings.py` | `/` | 14 |
+| `settings.py` | `/` | 18 |
 | `skills.py` | `/` | 18 |
 | `steering.py` | `/` | 8 |
 | `surveys.py` | `/` | 9 |
@@ -163,6 +166,7 @@ Generated from the repository on version `2026.04.10.6`. Treat this file as the 
 | `SurveyIntegration` | `survey_integrations` | yes | `backend/app/models/survey_integration.py` |
 | `SurveyLink` | `survey_links` | yes | `backend/app/models/survey_integration.py` |
 | `Task` | `tasks` | no | `backend/app/models/task.py` |
+| `TelemetrySpan` | `telemetry_spans` | no | `backend/app/models/telemetry_span.py` |
 | `User` | `users` | no | `backend/app/models/user.py` |
 | `WebAuthnCredential` | `webauthn_credentials` | no | `backend/app/models/webauthn_credential.py` |
 
@@ -196,17 +200,13 @@ Generated from the repository on version `2026.04.10.6`. Treat this file as the 
 - E2E phases:
   - Authentication
   - System Health
-  - Project Setup (Sarah creates her project)
+  - Project Setup
   - Context Hierarchy
-  - File Upload & Processing
+  - File Upload
   - Chat & Skill Execution
-  - Findings Verification
-  - Tasks & Kanban
-  - Metrics & History
-  - Skills Registry
-  - Agents & Audit
-  - Frontend Check
-  - Mid-Execution Steering
+  - Steering
+  - Browser Research & Formal Evaluation
+  - Voice Transcription
 - Simulation scenarios:
   - `01` — Health Check
   - `02` — Onboarding
@@ -279,6 +279,9 @@ Generated from the repository on version `2026.04.10.6`. Treat this file as the 
   - `71` — Plan And Execute
   - `72` — Circuit Breaker Health
   - `73` — A2A Debate And Reports
+  - `74` — Voice Transcription
+  - `75` — Participant Simulation
+  - `76` — Long Horizon Trajectory
 
 ## Documentation Contract
 
