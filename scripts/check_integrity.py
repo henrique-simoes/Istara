@@ -18,17 +18,25 @@ from update_agent_md import (
 
 GUIDE = ROOT / "SYSTEM_INTEGRITY_GUIDE.md"
 TECH_MD = ROOT / "Tech.md"
+
+# Dynamically discover prompt and governance docs (strictly uppercase in root)
 PROMPT_DOCS = [
-    ROOT / "AGENT_ENTRYPOINT.md",
-    ROOT / "SYSTEM_PROMPT.md",
-    ROOT / "SYSTEM_CHANGE_MATRIX.md",
-    ROOT / "CLAUDE.md",
-    ROOT / "GEMINI.md",
+    p for p in ROOT.glob("*.md")
+    if p.stem.isupper() and p.name not in {
+        "README.md", "CHANGELOG.md", "CONTRIBUTING.md", "TESTING.md",
+        "AGENT.md", "COMPLETE_SYSTEM.md", "SYSTEM_INTEGRITY_GUIDE.md"
+    }
 ]
 
 
 def check_exists(issues: list[str]) -> None:
     required = [AGENT_MD, COMPLETE_SYSTEM_MD, GUIDE, *PROMPT_DOCS]
+    # Ensure baseline docs exist even if dynamic discovery misses them
+    baseline = ["AGENT_ENTRYPOINT.md", "SYSTEM_PROMPT.md", "CHANGE_CHECKLIST.md"]
+    for name in baseline:
+        if not (ROOT / name).exists():
+            issues.append(f"MISSING: Baseline doc {name} does not exist")
+            
     for path in required:
         if not path.exists():
             issues.append(f"MISSING: {path.name} does not exist")
@@ -104,7 +112,12 @@ def check_tech_md_freshness(issues: list[str]) -> None:
         "game theory": "Game Theory participant simulation",
         "audit log middleware": "Audit Log Middleware",
         "opentelemetry": "Local-First OpenTelemetry & Tracing",
-        "agent hooks": "Agent Hooks lifecycle interception"
+        "agent hooks": "Agent Hooks lifecycle interception",
+        "compute registry": "Unified ComputeRegistry architecture",
+        "rfc 3986": "RFC 3986 URI normalization",
+        "layer 5": "Layer 5 Real-World Orchestration benchmarks",
+        "minto": "Minto Pyramid and SCR framework for presentations",
+        "connection string": "Connection string lifecycle and relay management"
     }
 
     missing = []
