@@ -162,6 +162,13 @@ class DevOpsAuditAgent:
         if evolution_results:
             checks_passed.append("self_evolution")
 
+        # 8. Self-healing rule evaluation from telemetry
+        healing_issues = await self._check_self_healing()
+        if healing_issues:
+            issues.extend(healing_issues)
+        else:
+            checks_passed.append("telemetry_health")
+
         return {
             "timestamp": timestamp,
             "status": "issues_found" if issues else "clean",
@@ -390,6 +397,30 @@ class DevOpsAuditAgent:
     def get_reports(self, limit: int = 10) -> list[dict]:
         """Get recent audit reports."""
         return self._audit_log[-limit:]
+
+    async def _check_self_healing(self) -> list[dict]:
+        """Evaluate telemetry-based self-healing rules across projects."""
+        from app.core.self_healing_rules import self_healing
+
+        issues = []
+        async with async_session() as db:
+            result = await db.execute(select(Project))
+            for project in result.scalars().all():
+                try:
+                    evaluation = await self_healing.evaluate_all(project.id)
+                    for action in evaluation.get("actions", []):
+                        issues.append(
+                            {
+                                "type": f"telemetry_signal:{action['trigger']}",
+                                "severity": action.get("severity", "medium"),
+                                "project_id": project.id,
+                                "project_name": project.name,
+                                "message": f"[{project.name}] {action['message']}",
+                            }
+                        )
+                except Exception:
+                    pass  # Self-healing evaluation failure should not crash audit
+        return issues
 
 
 # Singleton

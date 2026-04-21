@@ -9,19 +9,43 @@
 ### IA local para pesquisa de UX — seus dados nunca saem da sua máquina
 
 [![License: MIT](https://img.shields.io/badge/Licença-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/versão-2026.03.30-brightgreen.svg)](VERSION)
+[![Version](https://img.shields.io/badge/versão-2026.04.10.13-brightgreen.svg)](VERSION)
 [![Python](https://img.shields.io/badge/python-3.12-blue.svg)](backend/)
 [![Node](https://img.shields.io/badge/node-20-green.svg)](frontend/)
 [![Platform](https://img.shields.io/badge/plataforma-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey.svg)](installer/)
 [![GitHub](https://img.shields.io/badge/GitHub-henrique--simoes%2FIstara-181717?logo=github)](https://github.com/henrique-simoes/Istara)
 
-[**Instalar**](#instalar) · [**Arquitetura**](#arquitetura) · [**Skills de Pesquisa**](#53-skills-de-pesquisa) · [**Agentes**](#5-agentes-de-ia) · [**Referências**](#referências-acadêmicas) · [**Contribuir**](CONTRIBUTING.md)
+[**Instalar em 1 Minuto**](#instalar) · [**Arquitetura**](#arquitetura) · [**Skills de Pesquisa**](#53-skills-de-pesquisa) · [**Agentes**](#5-agentes-de-ia) · [**Referências**](#referências-acadêmicas) · [**Contribuir**](CONTRIBUTING.md)
 
 ---
 
 *Cinco agentes autônomos de IA. Cinquenta e três skills de pesquisa auto-evolutivas. Zero dependência de nuvem.*
 *Todo insight tem base em evidências. Todo agente fica mais inteligente a cada sessão.*
 *Inteligência em escala: compartilhe poder computacional entre membros da equipe para rodar mais agentes simultaneamente—um time mais inteligente e rápido trabalhando como um enxame agentic.*
+
+<div align="center">
+<img src="Screenshots/istara_presentation.gif" width="900" alt="Demo do Istara — agentes de IA conduzindo pesquisa de UX de forma autônoma" />
+<img src="Screenshots/istara_chat.gif" width="900" alt="Chat inteligente do Istara — conversas fundamentadas com seus dados de pesquisa" />
+</div>
+
+### Resumo Rápido
+
+| Recurso | O Que Faz |
+|---|---|
+| 🧠 Chat Inteligente | Conversas fundamentadas nos seus dados de pesquisa — sem alucinações, só respostas com evidências |
+| ⚛️ Achados Atômicos | Nuggets → Fatos → Insights → Recomendações, cada afirmação vinculada à sua fonte original |
+| 📐 Leis de UX | 30+ princípios psicológicos auditados automaticamente nos seus designs com pontuação |
+| 📋 Quadro Kanban | Agentes assumem tarefas, executam skills e reportam progresso em tempo real — totalmente autônomo |
+| 🎯 Roteamento Inteligente | Direcione tarefas para especialistas — Pixel para auditorias de UI, Sage para avaliação de UX |
+| 🎙️ Análise de Entrevistas | Transcreva, categorize, analise e relacione padrões em todo o seu grupo de participantes de uma vez |
+| 🧭 Motor de Contexto | Baseie agentes na cultura da empresa, objetivos e diretrizes — quanto mais contexto, melhor a análise |
+| 🛠️ 53+ Skills de Pesquisa | Análise competitiva, card sorting, jornada do usuário — agentes prontos para qualquer desafio |
+| 🐝 Enxame de Agentes | Cinco especialistas que aprendem uns com os outros, debatem entre si e melhoram a cada tarefa |
+| 🎨 Google Stitch e Figma | Geração de telas com IA, specs de handoff, auditoria de componentes — ponte design-dev num só lugar |
+| 💬 Canais de Mensageria | Slack, Telegram, WhatsApp — colete dados onde seus usuários estão, gerenciado pelos agentes |
+| 📊 Sincronização de Surveys | SurveyMonkey, Typeform, Google Forms — sintetize milhares de respostas em segundos, não horas |
+| 🔄 Autoresearch | Melhoria contínua automática — agentes otimizam seus próprios prompts e parâmetros de RAG |
+| ✅ Saúde do Ensemble | Consenso multi-modelo, revisão adversarial e debates — cada insight sobrevive ao escrutínio |
 
 <div align="center">
   <p><strong>Chat Inteligente:</strong> Converse com o contexto da sua pesquisa. Pergunte sobre achados, faça brainstorm com os agentes e obtenha respostas instantâneas baseadas nos seus dados.</p>
@@ -39,7 +63,7 @@
   <p><strong>Atribuição Multi-Agente:</strong> Escolha o melhor agente para o trabalho. Direcione tarefas para especialistas como Pixel para auditorias de UI ou Sage para avaliação de UX.</p>
   <img src="Screenshots/Screenshot%202026-04-02%20at%2016.38.54.png" width="600" />
   
-  <p><strong>Entrevistas e Transcrições:</strong> Istara pode transcrever, categorizar, analisar, relacionar e gerar relatórios de várias entrevistas ao mesmo tempo. Encontre insights compartilhados em todo o seu grupo de participantes!</p>
+  <p><strong>Entrevistas e Transcrições:</strong> Istara pode transcrever, categorizar, analisar, relacionar e gerar relatórios de várias entrevistas ao mesmo tempo — incluindo mensagens de voz do WhatsApp e Telegram com transcrição automática Whisper e scoring de confiabilidade inter-codificador. Encontre insights compartilhados em todo o seu grupo de participantes!</p>
   <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.01.png" width="600" />
   
   <p><strong>Motor de Contexto:</strong> Baseie seus agentes na cultura da sua empresa, objetivos do projeto e diretrizes específicas. Quanto mais eles sabem, melhor eles performam.</p>
@@ -51,7 +75,7 @@
   <p><strong>Enxame Agentic:</strong> Conheça sua equipe—Cleo, Sentinel, Pixel, Sage e Echo. Cinco agentes especializados que aprendem uns com os outros e evoluem a cada tarefa.</p>
   <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.16.png" width="600" />
   
-  <p><strong>Integração com Design System:</strong> Conecte ao Figma e use IA generativa para entregar specs, auditar componentes e fechar a lacuna entre design e desenvolvimento.</p>
+  <p><strong>Integração Google Stitch & Figma:</strong> Gere telas com IA, conecte ao Figma para specs de handoff, audite componentes e feche a lacuna entre intenção de design e implementação.</p>
   <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.28.png" width="600" />
   
   <p><strong>Canais de Mensageria:</strong> Implante sua pesquisa diretamente no Slack, Telegram ou WhatsApp. Colete dados onde seus usuários estão, gerenciado inteiramente por seus agentes.</p>

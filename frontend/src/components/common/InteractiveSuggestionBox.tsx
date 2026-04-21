@@ -1,15 +1,7 @@
 "use client";
 
-/**
- * InteractiveSuggestionBox — reusable AI suggestion panel with chat session linking.
- *
- * Creates a real chat session, streams the AI response with auto-scroll,
- * provides a "Continue in Chat" link, and a quick-reply input.
- * Used across Documents, Interviews, and any view that generates AI suggestions.
- */
-
 import { useEffect, useRef, useState, useCallback } from "react";
-import { X, Send, Loader2, ExternalLink } from "lucide-react";
+import { X, Send, Loader2, ExternalLink, StopCircle } from "lucide-react";
 import { chat as chatApi, sessions as sessionsApi } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
@@ -46,6 +38,7 @@ export default function InteractiveSuggestionBox({
   const contentEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const initializedRef = useRef(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   // Auto-scroll to bottom as content streams in
   const scrollToBottom = useCallback(() => {
@@ -72,6 +65,8 @@ export default function InteractiveSuggestionBox({
 
       try {
         let accumulated = "";
+        abortControllerRef.current = new AbortController();
+        
         for await (const event of chatApi.send(projectId, content, sid)) {
           if (event.type === "chunk" && event.content) {
             accumulated += event.content;
@@ -83,13 +78,23 @@ export default function InteractiveSuggestionBox({
           }
         }
       } catch (e: any) {
-        setError(e.message || "Failed to get AI response");
+        if (e.name !== "AbortError" && e.message !== "aborted") {
+          setError(e.message || "Failed to get AI response");
+        }
       }
 
       setStreaming(false);
     },
     [projectId]
   );
+
+  // Stop streaming
+  const stopStreaming = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    setStreaming(false);
+  }, []);
 
   // Initialize: create session and send the initial prompt
   useEffect(() => {
@@ -150,6 +155,16 @@ export default function InteractiveSuggestionBox({
             >
               Continue in Chat
               <ExternalLink size={12} />
+            </button>
+          )}
+          {streaming && (
+            <button
+              onClick={stopStreaming}
+              className="flex items-center gap-1 text-xs text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 px-2 py-0.5 rounded transition-colors"
+              aria-label="Stop streaming"
+            >
+              <StopCircle size={12} />
+              Stop
             </button>
           )}
           <button

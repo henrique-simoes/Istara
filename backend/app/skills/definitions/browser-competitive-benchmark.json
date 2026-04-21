@@ -1,0 +1,31 @@
+{
+  "name": "browser-competitive-benchmark",
+  "display_name": "Competitor UX Benchmarking",
+  "description": "Browse competitor websites using browser automation, systematically capture UX patterns, features, and heuristics, then build a comparative feature matrix with quality ratings and opportunity gap analysis. Integrates Porter's Five Forces with Nielsen's heuristics for UX-grounded competitive intelligence.",
+  "phase": "discover",
+  "skill_type": "mixed",
+  "version": "1.0.0",
+  "enabled": true,
+  "plan_prompt": "Design a competitor UX benchmarking plan.\n\nContext: {context}\nUser request: {user_context}\nTarget URLs: {urls}\n\n1. **Competitor identification** — List all competitor URLs provided. If URLs aren't provided, ask for them.\n2. **Dimension selection** — Define comparison dimensions: navigation, search, onboarding, mobile, accessibility, visual hierarchy, interaction patterns\n3. **Browsing strategy** — Plan which pages and flows to test on each competitor site using the browse_website tool\n4. **Heuristic scoring criteria** — Define rubric for consistent cross-competitor evaluation (5-point scale per heuristic)\n5. **Output plan** — Feature matrix, UX pattern catalog, gap-opportunity mapping, differentiation strategy\n\nIf URLs are provided, plan to systematically browse each one. If only one URL is given, evaluate it deeply and identify competitors to add.",
+  "execute_prompt": "You are conducting a systematic UX benchmarking of competitor websites. You have access to the browse_website tool to navigate and analyze live websites.\n\nContext: {context}\nContent/Source data: {content}\n{urls_section}\n\n## Phase 1: Site Inventory & Navigation\n- Browse each target URL using the browse_website tool\n- For each site: inventory pages, navigation structure, onboarding flow, search functionality\n- Note layout patterns, visual hierarchy, typography, color palette, interaction patterns\n- Capture key user flows: homepage → product page, search, form submission, error states\n\n## Phase 2: UX Pattern & Feature Extraction\nFor each competitor, catalog:\n- **Navigation patterns**: mega-menu, hamburger, sticky nav, breadcrumb usage\n- **Search patterns**: autocomplete, filters, results layout\n- **Onboarding patterns**: walkthrough, tooltip tours, progressive disclosure\n- **Mobile responsiveness**: responsive breakpoints, touch targets, gesture support\n- **Accessibility patterns**: alt text presence, ARIA usage, keyboard navigation, contrast ratios\n- **Interaction patterns**: button states, loading indicators, error handling, form validation\n- **Content strategy**: tone, CTAs, content hierarchy, progressive disclosure\n\n## Phase 3: Heuristic Scoring\nRate each competitor against Nielsen's 10 heuristics (1-5 scale):\n1 = Major violations, 2 = Significant problems, 3 = Partial compliance, 4 = Minor issues, 5 = Exemplary\nCalculate overall UX score per competitor.\n\n## Phase 4: Feature & Pattern Matrix\nBuild a structured comparison:\n- Feature completeness (full / partial / absent / superior)\n- UX pattern quality (best practice / adequate / poor / missing)\n- Table-stakes vs. differentiator classification\n- Innovation score (novel patterns, unique interactions)\n\n## Phase 5: Opportunity Gap Analysis\n- Map which UX patterns no competitor does well\n- Identify underserved user needs across all competitors\n- Score opportunities by: user impact × competition gap × implementation feasibility\n- Build a Blue Ocean Strategy canvas (eliminate / reduce / raise / create)\n\n## Phase 6: Evidence Chain\nFor each competitive insight:\n- Create nuggets referencing the specific competitor and page URL\n- Build facts about UX patterns observed\n- Generate insights about competitive positioning\n- Produce recommendations for differentiation",
+  "output_schema": "{\n  \"competitors\": [{\n    \"name\": \"string\",\n    \"url\": \"string\",\n    \"pages_reviewed\": [\"string\"],\n    \"ux_patterns\": [{\"pattern\": \"string\", \"quality\": \"best_practice|adequate|poor|missing\", \"trend\": \"emerging|established|declining\"}],\n    \"heuristic_scores\": [{\"heuristic\": \"string\", \"score\": \"1-5\", \"notes\": \"string\"}],\n    \"strengths\": [\"string\"],\n    \"weaknesses\": [\"string\"],\n    \"accessibility_score\": 0-100\n  }],\n  \"feature_matrix\": [{\n    \"feature\": \"string\",\n    \"category\": \"navigation|search|onboarding|mobile|accessibility|interaction\",\n    \"competitors\": {\"name\": \"full|partial|absent|superior\"},\n    \"is_table_stakes\": true,\n    \"is_differentiator\": true\n  }],\n  \"ux_patterns\": [{\n    \"pattern\": \"string\",\n    \"description\": \"string\",\n    \"quality\": \"best_practice|adequate|poor\",\n    \"trend\": \"emerging|established|declining\",\n    \"competitors_using\": [\"string\"]\n  }],\n  \"opportunity_gaps\": [{\n    \"gap\": \"string\",\n    \"user_impact\": \"high|medium|low\",\n    \"competition_gap\": \"high|medium|low\",\n    \"feasibility\": \"high|medium|low\",\n    \"priority\": \"critical|high|medium|low\"\n  }],\n  \"strategy_canvas\": {\n    \"competing_factors\": [\"string\"],\n    \"value_curves\": {\"competitor_name\": [0-5]},\n    \"eliminate\": [\"string\"],\n    \"reduce\": [\"string\"],\n    \"raise\": [\"string\"],\n    \"create\": [\"string\"]\n  },\n  \"nuggets\": [{\"text\": \"string\", \"source\": \"string\", \"tags\": [\"string\"]}],\n  \"facts\": [{\"text\": \"string\"}],\n  \"insights\": [{\"text\": \"string\", \"confidence\": \"low|medium|high\"}],\n  \"recommendations\": [{\"text\": \"string\", \"priority\": \"critical|high|medium|low\"}],\n  \"summary\": \"string\"\n}",
+  "created_at": "2026-04-15T00:00:00Z",
+  "updated_at": "2026-04-15T00:00:00Z",
+  "metadata": {
+    "author": "Istara",
+    "tags": ["discover", "mixed", "competitive", "browser", "benchmarking"],
+    "references": [
+      "Nielsen 1994 (Competitive Usability Evaluations)",
+      "Porter 1980/2008 (Five Forces)",
+      "Kim & Mauborgne 2015 (Blue Ocean Strategy)",
+      "Gothelf & Seiden 2016 (Lean UX)"
+    ]
+  },
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-04-15",
+      "changes": "Initial creation — competitor UX benchmarking with browser automation, heuristic scoring, and opportunity gap analysis"
+    }
+  ]
+}

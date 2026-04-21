@@ -207,7 +207,7 @@ class TelegramAdapter(ChannelAdapter):
     async def _handle_voice(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
     ) -> None:
-        """Handle voice messages -- download and save audio file."""
+        """Handle voice messages -- download, transcribe, and dispatch."""
         try:
             voice = update.message.voice
             tg_file = await voice.get_file()
@@ -222,12 +222,31 @@ class TelegramAdapter(ChannelAdapter):
             buf.seek(0)
             audio_path.write_bytes(buf.read())
 
+            # Auto-transcribe voice message
+            transcription_text = "[Voice message — transcription unavailable]"
+            transcription_tags = []
+            try:
+                from app.core.transcription import transcribe_audio, convert_audio_to_wav
+                wav_path = convert_audio_to_wav(str(audio_path))
+                result = transcribe_audio(wav_path)
+                transcription_text = result.text
+                transcription_tags = result.tags
+                if result.needs_review:
+                    transcription_text += "\n\n[⚠️ Transcription may need review]"
+            except Exception:
+                logger.exception("Voice transcription failed on %s", self.name)
+
             msg = self._build_incoming(
                 update,
-                text="[voice message]",
+                text=transcription_text,
                 content_type="audio",
                 attachments=[str(audio_path)],
             )
+            # Add transcription metadata for interview pipeline
+            msg.metadata["transcription"] = transcription_text
+            msg.metadata["transcription_tags"] = transcription_tags
+            msg.metadata["original_text"] = "[voice message]"
+
             await self._dispatch(msg)
         except Exception:
             logger.exception("Error handling voice message on %s", self.name)

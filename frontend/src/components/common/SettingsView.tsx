@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Cpu, HardDrive, Monitor, Wifi, WifiOff, RefreshCw, Plus, Server, Trash2, Users, Lock } from "lucide-react";
-import { settings as settingsApi, llmServers } from "@/lib/api";
+import { Cpu, HardDrive, Monitor, Wifi, WifiOff, RefreshCw, Plus, Server, Trash2, Users, Lock, Gauge, Download, ToggleLeft, ToggleRight } from "lucide-react";
+import { settings as settingsApi, llmServers, telemetry as telemetryApi } from "@/lib/api";
 import type { HardwareInfo, ModelRecommendation } from "@/lib/types";
 import { useAuthStore } from "@/stores/authStore";
 import UserManagement from "./UserManagement";
@@ -288,6 +288,9 @@ export default function SettingsView() {
       {/* LLM Servers */}
       <LLMServersSection />
 
+      {/* Telemetry (Local-first, No phone-home) */}
+      <TelemetrySection />
+
       {/* Team Mode */}
       <div id="tour-target-team-mode" className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
         <h3 className="font-medium text-slate-900 dark:text-white mb-3 flex items-center gap-2">
@@ -360,6 +363,122 @@ export default function SettingsView() {
           <RefreshCw size={14} />
           Refresh
         </button>
+      </div>
+    </div>
+  );
+}
+
+function TelemetrySection() {
+  const [telemetryEnabled, setTelemetryEnabled] = useState(false);
+  const [telemetryStats, setTelemetryStats] = useState<{
+    total_spans: number;
+    total_model_entries: number;
+    spans_last_24h: number;
+  } | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const [exportResult, setExportResult] = useState<string | null>(null);
+
+  const fetchTelemetryStatus = async () => {
+    try {
+      const data = await telemetryApi.status();
+      setTelemetryEnabled(data.telemetry_enabled);
+      setTelemetryStats(data.stats);
+    } catch {}
+  };
+
+  useEffect(() => {
+    fetchTelemetryStatus();
+  }, []);
+
+  const handleToggle = async () => {
+    try {
+      const result = await telemetryApi.toggle(!telemetryEnabled);
+      setTelemetryEnabled(result.telemetry_enabled);
+    } catch {}
+  };
+
+  const handleExport = async () => {
+    setExporting(true);
+    setExportResult(null);
+    try {
+      const result = await telemetryApi.export(undefined, 7, true);
+      setExportResult(`Exported ${result.span_count} spans to ${result.export_dir}`);
+    } catch (e: any) {
+      setExportResult(`Export failed: ${e.message}`);
+    }
+    setExporting(false);
+  };
+
+  return (
+    <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="font-medium text-slate-900 dark:text-white flex items-center gap-2">
+          <Gauge size={18} />
+          Local Telemetry
+        </h3>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleExport}
+            disabled={exporting || !telemetryEnabled}
+            className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            <Download size={12} />
+            {exporting ? "Exporting..." : "Export"}
+          </button>
+          <button
+            onClick={handleToggle}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+              telemetryEnabled ? "bg-istara-600" : "bg-slate-300 dark:bg-slate-600"
+            }`}
+            role="switch"
+            aria-checked={telemetryEnabled}
+          >
+            <span
+              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                telemetryEnabled ? "translate-x-6" : "translate-x-1"
+              }`}
+            />
+          </button>
+        </div>
+      </div>
+
+      <p className="text-sm text-slate-500 mb-3">
+        Record model performance, latency, and tool success rates to enable the Model Intelligence dashboard.
+        <strong> No data ever leaves your machine</strong> unless you manually export and share it.
+      </p>
+
+      <div className="grid grid-cols-3 gap-4 mb-3">
+        <div className="bg-slate-50 dark:bg-slate-900 rounded-lg p-3 text-center">
+          <div className="text-xs text-slate-400 mb-1">Total Spans</div>
+          <div className="text-lg font-bold text-slate-700 dark:text-slate-200">
+            {telemetryStats?.total_spans.toLocaleString() || 0}
+          </div>
+        </div>
+        <div className="bg-slate-50 dark:bg-slate-900 rounded-lg p-3 text-center">
+          <div className="text-xs text-slate-400 mb-1">Model Stats</div>
+          <div className="text-lg font-bold text-slate-700 dark:text-slate-200">
+            {telemetryStats?.total_model_entries.toLocaleString() || 0}
+          </div>
+        </div>
+        <div className="bg-slate-50 dark:bg-slate-900 rounded-lg p-3 text-center">
+          <div className="text-xs text-slate-400 mb-1">Last 24h</div>
+          <div className="text-lg font-bold text-istara-600">
+            {telemetryStats?.spans_last_24h.toLocaleString() || 0}
+          </div>
+        </div>
+      </div>
+
+      {exportResult && (
+        <div className="mb-3 text-xs p-2 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded border border-blue-100 dark:border-blue-800 break-all font-mono">
+          {exportResult}
+        </div>
+      )}
+
+      <div className="text-xs text-slate-400">
+        Status: <span className={telemetryEnabled ? "text-green-500 font-medium" : "text-slate-500"}>
+          {telemetryEnabled ? "Recording active" : "Recording paused"}
+        </span>
+        {telemetryEnabled && " • Data stored locally in SQLite."}
       </div>
     </div>
   );

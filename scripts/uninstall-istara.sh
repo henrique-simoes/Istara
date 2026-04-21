@@ -135,19 +135,33 @@ if [ "$PLATFORM" = "macos" ]; then
         DESKTOP_APP="$HOME/Applications/Istara.app"
         FOUND_ANYTHING=true
     fi
+elif [ "$PLATFORM" = "linux" ]; then
+    if [ -f "$HOME/.local/share/applications/istara.desktop" ]; then
+        info "Linux desktop entry: $HOME/.local/share/applications/istara.desktop"
+        FOUND_ANYTHING=true
+    fi
 fi
 
-# LaunchAgent
+# LaunchAgent / Systemd
 LAUNCHAGENT="$HOME/Library/LaunchAgents/com.istara.server.plist"
+SYSTEMD_SERVICE="$HOME/.config/systemd/user/istara.service"
 if [ -f "$LAUNCHAGENT" ]; then
     info "LaunchAgent: $LAUNCHAGENT"
     FOUND_ANYTHING=true
 fi
+if [ -f "$SYSTEMD_SERVICE" ]; then
+    info "Systemd service: $SYSTEMD_SERVICE"
+    FOUND_ANYTHING=true
+fi
 
-# Application Support (Tauri data dir)
+# Application Support / Local Data (Tauri data dir)
 TAURI_DATA=""
 if [ "$PLATFORM" = "macos" ] && [ -d "$HOME/Library/Application Support/com.istara.desktop" ]; then
     TAURI_DATA="$HOME/Library/Application Support/com.istara.desktop"
+    info "Tauri app data: $TAURI_DATA"
+    FOUND_ANYTHING=true
+elif [ "$PLATFORM" = "linux" ] && [ -d "$HOME/.local/share/com.istara.desktop" ]; then
+    TAURI_DATA="$HOME/.local/share/com.istara.desktop"
     info "Tauri app data: $TAURI_DATA"
     FOUND_ANYTHING=true
 fi
@@ -256,7 +270,7 @@ if [ "$PLATFORM" = "macos" ] && pgrep -x "Istara" >/dev/null 2>&1; then
 fi
 
 # ═══════════════════════════════════════════════════════════════════
-# REMOVE LAUNCHAGENT
+# REMOVE AUTO-START
 # ═══════════════════════════════════════════════════════════════════
 header "Step 2: Removing auto-start"
 
@@ -265,8 +279,15 @@ if [ -f "$LAUNCHAGENT" ]; then
     launchctl unload "$LAUNCHAGENT" 2>/dev/null || true
     rm -f "$LAUNCHAGENT"
     ok "LaunchAgent removed"
+elif [ -f "$SYSTEMD_SERVICE" ]; then
+    info "Stopping and removing systemd service..."
+    systemctl --user stop istara.service 2>/dev/null || true
+    systemctl --user disable istara.service 2>/dev/null || true
+    rm -f "$SYSTEMD_SERVICE"
+    systemctl --user daemon-reload
+    ok "Systemd service removed"
 else
-    ok "No LaunchAgent found"
+    ok "No auto-start service found"
 fi
 
 # ═══════════════════════════════════════════════════════════════════
@@ -283,6 +304,10 @@ elif [ -n "$DESKTOP_APP" ] && [ -d "$DESKTOP_APP" ]; then
     info "Removing $DESKTOP_APP..."
     rm -rf "$DESKTOP_APP"
     ok "Desktop app removed"
+elif [ "$PLATFORM" = "linux" ] && [ -f "$HOME/.local/share/applications/istara.desktop" ]; then
+    info "Removing Linux desktop entry..."
+    rm -f "$HOME/.local/share/applications/istara.desktop"
+    ok "Linux desktop entry removed"
 else
     ok "No desktop app found"
 fi

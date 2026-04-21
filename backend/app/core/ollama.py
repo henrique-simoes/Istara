@@ -89,6 +89,7 @@ class OllamaClient:
         temperature: float = 0.7,
         max_tokens: int | None = None,
         tools: list[dict] | None = None,
+        response_format: dict | None = None,
     ) -> dict:
         """Non-streaming chat completion."""
         msgs = list(messages)
@@ -108,6 +109,9 @@ class OllamaClient:
         }
         if tools:
             payload["tools"] = tools
+        if response_format:
+            # Ollama uses 'format' (JSON schema) instead of OpenAI's 'response_format'
+            payload["format"] = response_format.get("json_schema", response_format)
 
         client = await self._get_client()
         resp = await client.post("/api/chat", json=payload)
@@ -122,6 +126,7 @@ class OllamaClient:
         temperature: float = 0.7,
         max_tokens: int | None = None,
         tools: list[dict] | None = None,
+        response_format: dict | None = None,
     ) -> AsyncGenerator[str, None]:
         """Streaming chat completion — yields content chunks."""
         msgs = list(messages)
@@ -141,6 +146,9 @@ class OllamaClient:
         }
         if tools:
             payload["tools"] = tools
+        if response_format:
+            # Ollama uses 'format' (JSON schema) instead of OpenAI's 'response_format'
+            payload["format"] = response_format.get("json_schema", response_format)
 
         client = await self._get_client()
         async with client.stream("POST", "/api/chat", json=payload, timeout=None) as resp:
@@ -205,6 +213,7 @@ def _create_llm_client():
     """Create the LLM client based on config."""
     if settings.llm_provider == "lmstudio":
         from app.core.lmstudio import LMStudioClient
+
         return LMStudioClient()
     return OllamaClient()
 
@@ -320,6 +329,7 @@ async def auto_detect_provider() -> None:
 
     # Try local providers directly as last resort
     from app.core.lmstudio import LMStudioClient
+
     for name, client_cls, host in [
         ("lmstudio", LMStudioClient, settings.lmstudio_host),
         ("ollama", OllamaClient, settings.ollama_host),
@@ -331,6 +341,7 @@ async def auto_detect_provider() -> None:
                 print(f"Auto-detected LLM provider: {name}")
                 try:
                     from app.api.routes.settings import _persist_env
+
                     _persist_env("LLM_PROVIDER", name)
                 except Exception:
                     pass

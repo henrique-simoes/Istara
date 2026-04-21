@@ -37,6 +37,7 @@ from app.core.file_processor import process_file
 from app.core.embeddings import TextChunk
 from app.core.context_hierarchy import context_hierarchy
 from app.core.resource_governor import governor
+from app.core.telemetry import telemetry_recorder
 from app.models.database import async_session
 from app.models.project import Project
 from app.models.task import Task, TaskStatus
@@ -54,6 +55,7 @@ from app.api.websocket import (
 from app.core.checkpoint import create_checkpoint, update_checkpoint, complete_checkpoint
 from app.skills.registry import registry
 from app.skills.base import SkillInput, SkillOutput
+from app.core.agent_hooks import agent_hooks
 from app.skills.skill_manager import skill_manager
 
 logger = logging.getLogger(__name__)
@@ -74,6 +76,7 @@ class ResearchStep:
     skill_name: str | None = None
     status: str = "pending"  # pending | executing | completed | failed
     result: str = ""
+    depends_on: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -96,6 +99,7 @@ class ResearchPlan:
                     "skill": s.skill_name,
                     "status": s.status,
                     "result": s.result[:200],
+                    "depends_on": s.depends_on,
                 }
                 for s in self.steps
             ],
@@ -187,7 +191,7 @@ class AgentOrchestrator:
         # the normal task queue. This implements pi-mono's steering pattern:
         # steering messages are injected while the agent is idle or working,
         # and picked up at the next opportunity.
-        steering_msgs = steering_manager.get_steering(self._agent_id)
+        steering_msgs = await steering_manager.get_steering(self._agent_id)
         if steering_msgs:
             logger.info(f"Steering messages detected for {self._agent_id}: {len(steering_msgs)}")
             for msg in steering_msgs:
@@ -234,13 +238,13 @@ class AgentOrchestrator:
             # 3. Execute the task (register with governor for concurrent limits)
             governor.register_agent("task-executor")
             self._current_task_id = task.id
-            steering_manager.mark_working(self._agent_id)
+            await steering_manager.mark_working(self._agent_id)
             try:
                 await self._execute_task(db, task, project)
             finally:
                 self._current_task_id = None
                 governor.unregister_agent("task-executor")
-                steering_manager.mark_idle(self._agent_id)
+                await steering_manager.mark_idle(self._agent_id)
 
             # 4. Check queue depth and adapt loop interval
             pending_result = await db.execute(
@@ -274,7 +278,7 @@ class AgentOrchestrator:
             # ── Check follow-up queue — only processed when agent would
             # otherwise stop (no more tasks in the pipeline). This matches
             # pi-mono's followUpQueue pattern.
-            follow_up_msgs = steering_manager.get_follow_up(self._agent_id)
+            follow_up_msgs = await steering_manager.get_follow_up(self._agent_id)
             if follow_up_msgs:
                 logger.info(f"Follow-up messages for {self._agent_id}: {len(follow_up_msgs)}")
                 for msg in follow_up_msgs:
@@ -341,19 +345,21 @@ class AgentOrchestrator:
                     "idle",
                     f"Steering message processed ({skill.display_name}): {output.summary[:120]}..."
                     if output.summary
-                    else f"Steering message processed ({skill.display_name})"
+                    else f"Steering message processed ({skill.display_name})",
                 )
             else:
                 # No matching skill — use the general LLM to respond
-                response = await ollama.chat(messages=[
-                    {"role": "system", "content": "You are Istara's main agent. Respond helpfully to the user's steering message."},
-                    {"role": "user", "content": message_text},
-                ])
-                reply = response.get("message", {}).get("content", "")
-                await broadcast_agent_status(
-                    "idle",
-                    f"Steering response: {reply[:200]}..."
+                response = await ollama.chat(
+                    messages=[
+                        {
+                            "role": "system",
+                            "content": "You are Istara's main agent. Respond helpfully to the user's steering message.",
+                        },
+                        {"role": "user", "content": message_text},
+                    ]
                 )
+                reply = response.get("message", {}).get("content", "")
+                await broadcast_agent_status("idle", f"Steering response: {reply[:200]}...")
         except asyncio.TimeoutError:
             logger.warning("Steering message execution timed out")
             await broadcast_agent_status("warning", "Steering message timed out after 2 minutes")
@@ -387,11 +393,67 @@ class AgentOrchestrator:
                     await self._handle_collaboration(db, msg)
                 elif msg_type == "debate_request":
                     await self._handle_debate(db, msg)
+                elif msg_type == "delegate":
+                    await self._handle_delegate(db, msg)
                 msg_id = msg.get("id") if isinstance(msg, dict) else getattr(msg, "id", "")
                 if msg_id:
                     await mark_read(db, msg_id)
         except Exception as e:
             logger.debug(f"A2A inbox check skipped: {e}")
+
+    async def _handle_delegate(self, db: AsyncSession, msg) -> None:
+        """Handle delegated tasks from other agents (e.g. MECE reporting)."""
+        try:
+            content_str = (
+                msg.get("content", "") if isinstance(msg, dict) else getattr(msg, "content", "")
+            )
+            if not content_str:
+                return
+            data = json.loads(content_str)
+
+            if data.get("type") == "mece_report_request":
+                from app.core.report_manager import report_manager
+                from app.models.project_report import ProjectReport
+
+                project_id = data.get("project_id")
+                task_id = data.get("task_id")
+
+                # 1. Ensure MECE categorization on all eligible L2/L3 reports
+                result = await db.execute(
+                    select(ProjectReport).where(
+                        ProjectReport.project_id == project_id,
+                        ProjectReport.finding_count >= 3,  # Minimum findings for meaningful MECE
+                    )
+                )
+                reports = result.scalars().all()
+                updated_count = 0
+                for report in reports:
+                    # Force update to consulting-grade MECE
+                    await report_manager._generate_mece_categories(report, db)
+                    updated_count += 1
+
+                # 2. Trigger/Update L4 Final Report (Consulting Grade)
+                # This now uses the upgraded Minto/SCR pipeline
+                await report_manager._check_synthesis_trigger(project_id, db)
+
+                # 3. Send A2A confirmation
+                from app.services.a2a import send_message as a2a_send
+
+                msg_from = (
+                    msg.get("from_agent_id", "")
+                    if isinstance(msg, dict)
+                    else getattr(msg, "from_agent_id", "")
+                )
+                await a2a_send(
+                    db=db,
+                    from_agent_id=self._agent_id,
+                    to_agent_id=msg_from,
+                    message_type="report",
+                    content=f"Consulting-grade MECE reporting completed for project {project_id}. Updated {updated_count} reports.",
+                    metadata={"project_id": project_id, "task_id": task_id},
+                )
+        except Exception as e:
+            logger.error(f"Delegate handling failed: {e}", exc_info=True)
 
     async def _handle_collaboration(self, db: AsyncSession, msg) -> None:
         """Respond to a collaboration request with full conversation context.
@@ -600,6 +662,46 @@ class AgentOrchestrator:
         except Exception as e:
             logger.debug(f"Debate response failed: {e}")
 
+    async def _trigger_mece_reporting(self, task_id: str, project_id: str) -> None:
+        """Trigger autonomous MECE reporting sub-agent when a task is verified → DONE.
+
+        This creates an A2A message to the report_manager agent that will:
+        1. Draft Layer 2/3/4 reports using Pyramid/MECE logic
+        2. Send via A2A messaging for user review
+        """
+        try:
+            from app.api.websocket import broadcast_task_progress
+            from app.services.a2a import send_message as a2a_send
+
+            async with async_session() as db:
+                task = (
+                    await db.execute(select(Task).where(Task.id == task_id))
+                ).scalar_one_or_none()
+                if not task or task.status != TaskStatus.DONE:
+                    return
+
+                report_msg = {
+                    "type": "mece_report_request",
+                    "task_id": task_id,
+                    "project_id": project_id,
+                    "task_title": task.title,
+                    "agent_notes": getattr(task, "agent_notes", "") or "",
+                    "skill_name": getattr(task, "skill_name", ""),
+                }
+
+                await a2a_send(
+                    db=db,
+                    from_agent_id=self._agent_id,
+                    to_agent_id="istara-main",
+                    message_type="delegate",
+                    content=json.dumps(report_msg),
+                    metadata={"project_id": project_id},
+                )
+
+            logger.info(f"MECE report triggered for task {task_id}")
+        except Exception as e:
+            logger.warning(f"Failed to trigger MECE reporting for task {task_id}: {e}")
+
     async def _pick_next_task(self, db: AsyncSession) -> Task | None:
         """Pick the highest priority task assigned to THIS agent.
 
@@ -717,6 +819,7 @@ class AgentOrchestrator:
         skill_input = SkillInput(
             project_id=project.id,
             task_id=task.id,
+            urls=task.get_urls() if hasattr(task, "get_urls") else [],
             parameters={"mode": "analyze"},
             user_context=task_context,
             project_context=project.project_context,
@@ -734,18 +837,48 @@ class AgentOrchestrator:
 
         await broadcast_task_progress(task.id, 0.3, f"Running {skill.display_name}...")
 
+        trace_id = __import__("uuid").uuid4().hex[:36]
+
         try:
+            await agent_hooks.fire(
+                "pre_task",
+                {
+                    "trace_id": trace_id,
+                    "skill_name": skill.name,
+                    "model_name": getattr(self, "model_name", ""),
+                    "agent_id": self.agent_id,
+                    "project_id": project.id,
+                    "task_id": task.id,
+                    "temperature": 0.3,
+                },
+            )
+
             # Checkpoint: executing
             await update_checkpoint(db, task.id, "executing")
 
             # Execute the skill (with timeout protection)
             try:
-                output = await asyncio.wait_for(skill.execute(skill_input), timeout=300)
+                output = await asyncio.wait_for(skill.execute(skill_input), timeout=600)
             except asyncio.TimeoutError:
                 output = SkillOutput(
-                    success=False, summary="Skill timed out after 5 minutes.", errors=["timeout"]
+                    success=False, summary="Skill timed out after 10 minutes.", errors=["timeout"]
                 )
                 logger.warning(f"Skill {skill.name} timed out for task {task.id}")
+
+            await agent_hooks.fire(
+                "post_task",
+                {
+                    "trace_id": trace_id,
+                    "skill_name": skill.name,
+                    "model_name": getattr(self, "model_name", ""),
+                    "agent_id": self.agent_id,
+                    "project_id": project.id,
+                    "task_id": task.id,
+                    "temperature": 0.3,
+                    "success": output.success,
+                    "quality_score": getattr(output, "quality_score", None),
+                },
+            )
 
             # ── Ensemble validation (if available) ──
             # Validates findings using multi-perspective methods before storing.
@@ -809,6 +942,22 @@ class AgentOrchestrator:
                         )
                         logger.info(
                             f"Validation [{method}]: score={val_result.consensus.agreement_score:.2f}"
+                        )
+
+                        await agent_hooks.fire(
+                            "post_validation",
+                            {
+                                "trace_id": trace_id,
+                                "skill_name": skill.name,
+                                "model_name": getattr(self, "model_name", ""),
+                                "agent_id": self.agent_id,
+                                "project_id": project.id,
+                                "task_id": task.id,
+                                "validation_method": method,
+                                "validation_passed": val_result.consensus.agreement_score >= 0.5,
+                                "consensus_score": val_result.consensus.agreement_score,
+                                "validation_quality": val_result.consensus.agreement_score,
+                            },
                         )
             except Exception as e:
                 logger.debug(f"Ensemble validation skipped: {e}")
@@ -880,6 +1029,21 @@ class AgentOrchestrator:
                 task.progress = 1.0
                 task.agent_notes = output.summary
                 await db.commit()
+
+                await agent_hooks.fire(
+                    "on_completion",
+                    {
+                        "trace_id": trace_id,
+                        "skill_name": skill.name,
+                        "model_name": getattr(self, "model_name", ""),
+                        "agent_id": self.agent_id,
+                        "project_id": project.id,
+                        "task_id": task.id,
+                        "success": True,
+                        "final_quality": quality_score,
+                        "total_duration_ms": 0,
+                    },
+                )
 
                 await broadcast_task_progress(task.id, 1.0, "Complete — ready for review.")
                 await self._persist_agent_state(AgentState.IDLE)
@@ -969,6 +1133,23 @@ class AgentOrchestrator:
         except Exception as e:
             error_msg = str(e)
             logger.error(f"Skill execution failed for task {task.id}: {error_msg}")
+
+            await agent_hooks.fire(
+                "on_error",
+                {
+                    "trace_id": trace_id
+                    if "trace_id" in dir()
+                    else __import__("uuid").uuid4().hex[:36],
+                    "skill_name": skill.name,
+                    "model_name": getattr(self, "model_name", ""),
+                    "agent_id": self.agent_id,
+                    "project_id": project.id,
+                    "task_id": task.id,
+                    "operation": "skill_execute",
+                    "error_type": type(e).__name__,
+                    "error_message": error_msg[:500],
+                },
+            )
 
             # Check if we have a known resolution for this error type
             resolution_hint = ""
@@ -1089,6 +1270,19 @@ class AgentOrchestrator:
             "thematic": "thematic-analysis",
             "usability": "usability-testing",
             "heuristic": "heuristic-evaluation",
+            "ux audit": "browser-ux-audit",
+            "site audit": "browser-ux-audit",
+            "accessibility check": "browser-accessibility-check",
+            "wcag": "browser-accessibility-check",
+            "a11y": "browser-accessibility-check",
+            "competitive benchmark": "browser-competitive-benchmark",
+            "competitor audit": "browser-competitive-benchmark",
+            "quality evaluation": "research-quality-evaluation",
+            "evaluate quality": "research-quality-evaluation",
+            "llm as judge": "research-quality-evaluation",
+            "game theory participant simulation": "participant-simulation",
+            "participant simulation": "participant-simulation",
+            "game theory": "participant-simulation",
             "card sort": "card-sorting",
             "tree test": "tree-testing",
             "a/b test": "ab-test-analysis",
@@ -1128,12 +1322,13 @@ class AgentOrchestrator:
             "ai detect": "survey-ai-detection",
             "bot detect": "survey-ai-detection",
         }
-
         for keyword, skill_name in skill_keywords.items():
             if keyword in title_lower:
                 skill = registry.get(skill_name)
                 if skill:
                     return skill
+
+        return None
 
         # Semantic matching fallback: embed task text and compare against skills
         try:
@@ -1234,6 +1429,7 @@ class AgentOrchestrator:
 
     async def _execute_general_task(self, db: AsyncSession, task: Task, project: Project) -> None:
         """Handle tasks without a specific skill — use general LLM reasoning."""
+        trace_id = __import__("uuid").uuid4().hex[:36]
         context = await retrieve_context(project.id, task.title + " " + task.description)
 
         # Use the full context hierarchy as system prompt
@@ -1294,8 +1490,30 @@ class AgentOrchestrator:
                             if isinstance(fn.get("arguments"), str)
                             else fn.get("arguments", {})
                         )
-                    except (json.JSONDecodeError, TypeError):
+                        # Record successful JSON parse for telemetry tracking
+                        asyncio.create_task(
+                            telemetry_recorder.record_json_parse(
+                                trace_id=trace_id,
+                                model_name="",  # Model name not available at this scope
+                                success=True,
+                                agent_id=self._agent_id,
+                                project_id=project.id,
+                            )
+                        )
+                    except (json.JSONDecodeError, TypeError) as e:
                         tool_args = {}
+                        # Record failed JSON parse for telemetry tracking
+                        asyncio.create_task(
+                            telemetry_recorder.record_json_parse(
+                                trace_id=trace_id,
+                                model_name="",
+                                success=False,
+                                error_type="JSONDecodeError",
+                                error_message=str(e)[:200],
+                                agent_id=self._agent_id,
+                                project_id=project.id,
+                            )
+                        )
                     tools_used.append(tool_name)
                     logger.info(
                         f"Agent tool call [{iteration}]: {tool_name}({list(tool_args.keys())})"
@@ -1349,7 +1567,7 @@ class AgentOrchestrator:
     ) -> ResearchPlan | None:
         """Ask the LLM to decompose a complex task into ordered research steps."""
         try:
-            skill_names = [s.name for s in registry.all()[:25]]
+            skill_names = [s.name for s in registry.list_all()[:25]]
             plan_prompt = (
                 "You are a research planning agent. Decompose this task into 2-5 concrete steps.\n\n"
                 f"Task: {task.title}\n"
@@ -1370,11 +1588,12 @@ class AgentOrchestrator:
                 temperature=0.3,
             )
             content = response.get("message", {}).get("content", "")
+            logger.info(f"Research plan raw content: {content}")
             import re
 
-            json_match = re.search(r'\{[^{}]*"steps"\s*:\s*\[.*?\]\s*\}', content, re.DOTALL)
+            json_match = re.search(r'(\{.*"steps"\s*:\s*\[.*\]\s*\})', content, re.DOTALL)
             if json_match:
-                data = json.loads(json_match.group())
+                data = json.loads(json_match.group(1))
                 steps = [
                     ResearchStep(
                         id=s.get("id", f"step_{i}"),
@@ -1516,6 +1735,7 @@ class AgentOrchestrator:
                     skill_input = SkillInput(
                         project_id=project.id,
                         task_id=task.id,
+                        urls=task.get_urls() if hasattr(task, "get_urls") else [],
                         parameters={"mode": "analyze"},
                         user_context=task_context,
                         project_context=project.project_context,

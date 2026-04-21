@@ -157,7 +157,7 @@ class SteeringManager:
     # Steering message queueing
     # -----------------------------------------------------------------------
 
-    def steer(
+    async def steer(
         self,
         agent_id: str,
         message: str,
@@ -166,11 +166,12 @@ class SteeringManager:
     ) -> None:
         """Queue a steering message to be injected after current skill execution."""
         state = self._get_or_create(agent_id)
-        msg = SteeringMessage(message=message, source=source, metadata=metadata or {})
-        state.steering_queue.append(msg)
-        logger.info(f"Steering queued for {agent_id}: {message[:80]}...")
+        async with state.lock:
+            msg = SteeringMessage(message=message, source=source, metadata=metadata or {})
+            state.steering_queue.append(msg)
+            logger.info(f"Steering queued for {agent_id}: {message[:80]}...")
 
-    def follow_up(
+    async def follow_up(
         self,
         agent_id: str,
         message: str,
@@ -179,72 +180,82 @@ class SteeringManager:
     ) -> None:
         """Queue a follow-up message to be injected when agent would otherwise stop."""
         state = self._get_or_create(agent_id)
-        msg = SteeringMessage(message=message, source=source, metadata=metadata or {})
-        state.follow_up_queue.append(msg)
-        logger.info(f"Follow-up queued for {agent_id}: {message[:80]}...")
+        async with state.lock:
+            msg = SteeringMessage(message=message, source=source, metadata=metadata or {})
+            state.follow_up_queue.append(msg)
+            logger.info(f"Follow-up queued for {agent_id}: {message[:80]}...")
 
     # -----------------------------------------------------------------------
     # Steering message retrieval (called by agent work cycle)
     # -----------------------------------------------------------------------
 
-    def get_steering(self, agent_id: str) -> list[SteeringMessage]:
-        """Drain steering queue. Called by agent after each skill execution completes.
-
-        Steering messages are NEVER injected mid-skill — they wait for the
-        current turn to finish (deferred execution).
-        """
+    async def get_steering(self, agent_id: str) -> list[SteeringMessage]:
+        """Drain steering queue. Called by agent after each skill execution completes."""
         state = self._get_or_create(agent_id)
-        sq = SteeringQueue(state.steering_mode)
-        sq._messages = state.steering_queue  # Direct access, caller manages lock
-        return sq.drain()
+        async with state.lock:
+            sq = SteeringQueue(state.steering_mode)
+            sq._messages = state.steering_queue
+            drained = sq.drain()
+            # If we drained the whole queue, update the reference
+            if state.steering_mode == "all":
+                state.steering_queue = []
+            return drained
 
-    def get_follow_up(self, agent_id: str) -> list[SteeringMessage]:
+    async def get_follow_up(self, agent_id: str) -> list[SteeringMessage]:
         """Drain follow-up queue. Called when agent would otherwise stop working."""
         state = self._get_or_create(agent_id)
-        fq = SteeringQueue(state.follow_up_mode)
-        fq._messages = state.follow_up_queue
-        return fq.drain()
+        async with state.lock:
+            fq = SteeringQueue(state.follow_up_mode)
+            fq._messages = state.follow_up_queue
+            drained = fq.drain()
+            if state.follow_up_mode == "all":
+                state.follow_up_queue = []
+            return drained
 
     # -----------------------------------------------------------------------
     # Queue management
     # -----------------------------------------------------------------------
 
-    def clear_steering(self, agent_id: str) -> list[SteeringMessage]:
+    async def clear_steering(self, agent_id: str) -> list[SteeringMessage]:
         """Clear and return all queued steering messages."""
         state = self._get_or_create(agent_id)
-        messages = state.steering_queue[:]
-        state.steering_queue.clear()
-        return messages
+        async with state.lock:
+            messages = state.steering_queue[:]
+            state.steering_queue.clear()
+            return messages
 
-    def clear_follow_up(self, agent_id: str) -> list[SteeringMessage]:
+    async def clear_follow_up(self, agent_id: str) -> list[SteeringMessage]:
         """Clear and return all queued follow-up messages."""
         state = self._get_or_create(agent_id)
-        messages = state.follow_up_queue[:]
-        state.follow_up_queue.clear()
-        return messages
+        async with state.lock:
+            messages = state.follow_up_queue[:]
+            state.follow_up_queue.clear()
+            return messages
 
-    def clear_all(self, agent_id: str) -> dict[str, list[SteeringMessage]]:
+    async def clear_all(self, agent_id: str) -> dict[str, list[SteeringMessage]]:
         """Clear both queues and return the cleared messages."""
         return {
-            "steering": self.clear_steering(agent_id),
-            "follow_up": self.clear_follow_up(agent_id),
+            "steering": await self.clear_steering(agent_id),
+            "follow_up": await self.clear_follow_up(agent_id),
         }
 
     # -----------------------------------------------------------------------
     # Agent state management
     # -----------------------------------------------------------------------
 
-    def mark_working(self, agent_id: str) -> None:
+    async def mark_working(self, agent_id: str) -> None:
         """Mark agent as currently working (starting a task/skill)."""
         state = self._get_or_create(agent_id)
-        state.is_working = True
-        state.work_complete_event.clear()
+        async with state.lock:
+            state.is_working = True
+            state.work_complete_event.clear()
 
-    def mark_idle(self, agent_id: str) -> None:
+    async def mark_idle(self, agent_id: str) -> None:
         """Mark agent as idle (finished all work)."""
         state = self._get_or_create(agent_id)
-        state.is_working = False
-        state.work_complete_event.set()
+        async with state.lock:
+            state.is_working = False
+            state.work_complete_event.set()
 
     def is_working(self, agent_id: str) -> bool:
         """Check if agent is currently working."""
@@ -252,11 +263,7 @@ class SteeringManager:
         return state.is_working
 
     async def wait_for_idle(self, agent_id: str, timeout: float = 300.0) -> bool:
-        """Wait until agent finishes all work (steering + follow-up processed).
-
-        Returns True if agent became idle, False if timeout.
-        Mirrors pi-mono's waitForIdle().
-        """
+        """Wait until agent finishes all work (steering + follow-up processed)."""
         state = self._get_or_create(agent_id)
         try:
             await asyncio.wait_for(state.work_complete_event.wait(), timeout=timeout)
@@ -290,16 +297,23 @@ class SteeringManager:
     # Abort
     # -----------------------------------------------------------------------
 
-    def abort(self, agent_id: str) -> dict[str, list[SteeringMessage]]:
+    async def abort(self, agent_id: str) -> dict[str, list[SteeringMessage]]:
         """Abort current work and clear steering queues.
 
         Returns cleared messages so caller can restore them to editor
         (like pi-mono's Escape behavior).
         """
         state = self._get_or_create(agent_id)
-        state.is_working = False
-        state.work_complete_event.set()
-        return self.clear_all(agent_id)
+        async with state.lock:
+            state.is_working = False
+            state.work_complete_event.set()
+            res = {
+                "steering": state.steering_queue[:],
+                "follow_up": state.follow_up_queue[:],
+            }
+            state.steering_queue.clear()
+            state.follow_up_queue.clear()
+            return res
 
 
 # ---------------------------------------------------------------------------

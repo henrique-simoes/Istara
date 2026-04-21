@@ -44,7 +44,7 @@ slack-bolt[async]>=1.20.0
 # MCP (Model Context Protocol)
 fastmcp>=2.0.0
 
-# Browser automation (optional — for browse_website tool)
-# pip install browser-use langchain-openai
-# browser-use>=0.3.0
-# langchain-openai>=0.3.0
+# Voice transcription (Whisper for local audio-to-text)
+openai-whisper>=20240930
+pydub>=0.25.1  # Audio format conversion (ogg/m4a/mp3 → wav)
+

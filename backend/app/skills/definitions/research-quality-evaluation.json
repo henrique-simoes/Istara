@@ -1,0 +1,32 @@
+{
+  "name": "research-quality-evaluation",
+  "display_name": "Evaluate Research Quality",
+  "description": "Formal LLM-as-Judge evaluation of research output quality. Runs adversarial review, dual-run consistency, self-MoA verification, and debate consensus against existing findings. Produces per-dimension scores, chain integrity audit, and overall quality assessment with explicit improvement suggestions.",
+  "phase": "deliver",
+  "skill_type": "mixed",
+  "version": "1.0.0",
+  "enabled": true,
+  "plan_prompt": "Design a research quality evaluation plan.\n\nContext: {context}\nUser request: {user_context}\n\n1. **Scope** — Which findings to evaluate (all, recent, or specific phase)\n2. **Dimensions** — Evidence chain integrity, coding quality, hallucination check, depth, consistency\n3. **Validation methods** — Which to apply: adversarial review, dual-run consistency, self-MoA (RAG verification), or full ensemble\n4. **Threshold** — What confidence level constitutes passing (per finding type: nugget 0.70, fact 0.65, insight 0.55, recommendation 0.50)\n5. **Improvement loop** — Whether to re-run skills that produce low-confidence findings\n\nIf no specific scope, evaluate all findings in the current project.",
+  "execute_prompt": "You are conducting a formal research quality evaluation. This skill invokes Istara's built-in validation pipeline (AdaptiveSelector, ValidationExecutor, consensus engine) to assess the quality and reliability of research output.\n\nContext: {context}\nContent/Source data: {content}\n{urls_section}\n\n## Phase 1: Evidence Chain Audit\nEvaluate the completeness and integrity of the Atomic Research chain:\n- Nuggets → Facts: Does every fact trace to at least one nugget?\n- Facts → Insights: Does every insight reference supporting facts?\n- Insights → Recommendations: Are recommendations grounded in insights?\n- Check for orphan findings (nuggets with no derived facts, facts with no insights)\n- Check for circular reasoning (insights that only reference each other)\n\n## Phase 2: Multi-Model Verification\nFor each major finding, assess agreement across validation methods:\n- **Adversarial review (Zheng et al., 2023)**: One model critiques another's output across 5 dimensions: code quality, evidence grounding, chain integrity, hallucination-free, depth. Pass threshold: overall >= 3/5.\n- **Dual-run consistency**: Check tag overlap between adjacent findings (Jaccard similarity). Pass threshold: avg >= 0.15.\n- **Self-MoA (RAG verification)**: Check whether insights can be verified against the project's knowledge base. Pass threshold: >= 30% verified.\n- **Debate consensus**: Check for internal consistency across findings.\n\n## Phase 3: Completeness Assessment\nCheck for research gaps:\n- Are all research questions addressed?\n- Are all participant segments represented?\n- Are contradictory findings acknowledged and reconciled?\n- Are confidence levels appropriate (not all \"high\" without justification)?\n- Is saturation reached (diminishing returns from additional data)?\n\n## Phase 4: Methodology Quality\nScore the research methodology against rigor criteria:\n- Sample size and representativeness\n- Method triangulation (multiple methods used)\n- Inter-coder reliability (for coding tasks)\n- Saturation evidence\n- Bias awareness and mitigation\n\n## Phase 5: Confidence Synthesis\nProduce an overall quality score:\n- Per-dimension scores (1-5 scale)\n- Composite quality score (weighted average)\n- Primary concern (weakest dimension)\n- Improvement suggestions ranked by impact\n- Whether the research passes quality thresholds for stakeholder reporting\n\nUse the confidence thresholds from Istara's consensus engine:\n- Nuggets: kappa >= 0.70 (substantial agreement)\n- Facts: kappa >= 0.65\n- Insights: kappa >= 0.55\n- Recommendations: kappa >= 0.50 (moderate agreement acceptable)",
+  "output_schema": "{\n  \"evaluation_scope\": {\n    \"project_id\": \"string\",\n    \"findings_evaluated\": 0,\n    \"method_used\": \"adversarial_review|dual_run|self_moa|full_ensemble\",\n    \"evaluation_date\": \"ISO date\"\n  },\n  \"dimensions\": [{\n    \"name\": \"evidence_chain|coding_quality|hallucination_free|depth|consistency\",\n    \"score\": \"1-5\",\n    \"threshold\": \"number\",\n    \"passed\": true,\n    \"evidence\": [\"string\"],\n    \"improvement_suggestions\": [\"string\"]\n  }],\n  \"overall_quality\": {\n    \"score\": \"0-100\",\n    \"confidence\": \"low|medium|high\",\n    \"primary_concern\": \"string\"\n  },\n  \"chain_integrity\": {\n    \"complete_chains\": 0,\n    \"broken_chains\": 0,\n    \"avg_depth\": \"number\"\n  },\n  \"validation\": {\n    \"method\": \"string\",\n    \"consensus_score\": 0.0,\n    \"kappa\": 0.0,\n    \"per_finding_scores\": [{\"finding_id\": \"string\", \"score\": 0.0}]\n  },\n  \"completeness\": {\n    \"research_questions_addressed\": 0,\n    \"segments_represented\": 0,\n    \"contradictions_acknowledged\": true,\n    \"saturation_reached\": true\n  },\n  \"nuggets\": [{\"text\": \"string\", \"source\": \"string\", \"tags\": [\"string\"]}],\n  \"facts\": [{\"text\": \"string\"}],\n  \"insights\": [{\"text\": \"string\", \"confidence\": \"low|medium|high\"}],\n  \"recommendations\": [{\"text\": \"string\", \"priority\": \"critical|high|medium|low\"}],\n  \"summary\": \"string\"\n}",
+  "created_at": "2026-04-15T00:00:00Z",
+  "updated_at": "2026-04-15T00:00:00Z",
+  "metadata": {
+    "author": "Istara",
+    "tags": ["deliver", "mixed", "evaluation", "quality", "validation"],
+    "references": [
+      "Zheng et al., 2023 (LLM-as-Judge)",
+      "Du et al., 2024 (Multi-Agent Debate)",
+      "Li et al., 2025 (Self-MoA)",
+      "Wang et al., 2025 (Full Ensemble / Fleiss' Kappa)",
+      "Fleiss 1971 (Inter-Rater Reliability)"
+    ]
+  },
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-04-15",
+      "changes": "Initial creation — formal research quality evaluation skill leveraging existing validation pipeline"
+    }
+  ]
+}

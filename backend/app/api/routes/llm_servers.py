@@ -78,8 +78,24 @@ async def list_llm_servers(db: AsyncSession = Depends(get_db)):
 
 @router.post("/llm-servers")
 async def add_llm_server(data: LLMServerCreate, request: Request, db: AsyncSession = Depends(get_db)):
-    """Add a new external LLM server."""
-    require_admin_from_request(request)
+    """Add a new external LLM server. Admin required for remote servers; local servers allowed for all authenticated users."""
+    # RBAC: Only admin can add non-local (remote) servers. 
+    # Local servers can be added by anyone to donate compute.
+    if not data.is_local:
+        require_admin_from_request(request)
+    else:
+        # Still ensure the user is authenticated
+        auth_header = request.headers.get("Authorization", "")
+        token_str = auth_header.removeprefix("Bearer ").strip() if auth_header.startswith("Bearer ") else ""
+        if not token_str:
+            token_str = request.cookies.get("istara_session", "")
+        if not token_str:
+            raise HTTPException(status_code=401, detail="Authentication required")
+            
+        from app.core.auth import verify_token
+        if not verify_token(token_str):
+            raise HTTPException(status_code=401, detail="Invalid token")
+
     server = LLMServer(
         id=str(uuid.uuid4()),
         name=data.name,

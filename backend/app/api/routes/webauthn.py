@@ -28,12 +28,6 @@ logger = logging.getLogger(__name__)
 
 try:
     from webauthn import (
-        WebAuthnCredentialCreationOptions,
-        WebAuthnAssertionOptions,
-        WebAuthnRegistrationRequest,
-        WebAuthnAssertionRequest,
-        WebAuthnUser,
-        WebAuthnMakeCredentialOptions,
         generate_registration_options,
         verify_registration_response,
         generate_authentication_options,
@@ -41,6 +35,14 @@ try:
         options_to_json,
         base64url_to_bytes,
         bytes_to_base64url,
+    )
+    from webauthn.helpers.structs import (
+        PublicKeyCredentialCreationOptions,
+        PublicKeyCredentialRequestOptions,
+        UserVerificationRequirement,
+        ResidentKeyRequirement,
+        AuthenticatorAttachment,
+        AttestationConveyancePreference,
     )
     _WEBAUTHN_AVAILABLE = True
 except ImportError:
@@ -55,6 +57,32 @@ RP_NAME = "Istara"
 ORIGIN = "http://localhost:3000"  # Set to actual origin in production
 
 # ---------------------------------------------------------------------------
+# Challenge storage — in-memory with TTL for stateless HTTP
+# ---------------------------------------------------------------------------
+
+_challenges: dict[str, dict] = {}  # user_id -> {challenge, expires_at}
+_CHALLENGE_TTL = 120  # seconds
+
+
+def _store_challenge(user_id: str, challenge: bytes) -> None:
+    """Store a challenge for a user with a TTL."""
+    _challenges[user_id] = {
+        "challenge": challenge,
+        "expires_at": time.time() + _CHALLENGE_TTL,
+    }
+
+
+def _get_and_clear_challenge(user_id: str) -> bytes | None:
+    """Retrieve and remove a challenge. Returns None if expired/missing."""
+    entry = _challenges.pop(user_id, None)
+    if entry is None:
+        return None
+    if time.time() > entry["expires_at"]:
+        return None
+    return entry["challenge"]
+
+
+# ---------------------------------------------------------------------------
 # Request / Response models
 # ---------------------------------------------------------------------------
 
@@ -64,11 +92,14 @@ class PasskeyRegistrationStartRequest(BaseModel):
 
 
 class PasskeyRegistrationFinishRequest(BaseModel):
-    credential_id: str
-    public_key: str
-    attestation_object: str
-    client_data_json: str
-    label: str = "Passkey"
+    user_id: str  # Needed to retrieve the stored challenge
+    id: str  # credential id from browser
+    raw_id: str  # base64url(raw credential id)
+    response_type: str  # "public-key"
+    authenticator_attachment: str | None = None  # "platform" or "cross-platform"
+    client_data_json: str  # base64url
+    attestation_object: str  # base64url
+    transports: list[str] = []
 
 
 class PasskeyAuthenticationStartRequest(BaseModel):
@@ -76,10 +107,13 @@ class PasskeyAuthenticationStartRequest(BaseModel):
 
 
 class PasskeyAuthenticationFinishRequest(BaseModel):
-    credential_id: str
-    authenticator_data: str
-    client_data_json: str
-    signature: str
+    user_id: str  # Needed to retrieve the stored challenge
+    id: str  # credential id from browser
+    raw_id: str  # base64url(raw credential id)
+    response_type: str  # "public-key"
+    authenticator_data: str  # base64url
+    client_data_json: str  # base64url
+    signature: str  # base64url
     user_handle: str | None = None
 
 
@@ -94,14 +128,6 @@ class PasskeyCredentialInfo(BaseModel):
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
-def _get_webauthn_user(user: User) -> "WebAuthnUser":
-    """Create a WebAuthnUser from a User model."""
-    return WebAuthnUser(
-        id=user.id.encode("utf-8"),
-        name=user.username.encode("utf-8"),
-        display_name=user.display_name.encode("utf-8"),
-    )
 
 
 # ---------------------------------------------------------------------------
@@ -131,28 +157,27 @@ async def webauthn_register_start(
         )
     )
     existing_credentials = result.scalars().all()
-    exclude_credentials = [c.credential_id for c in existing_credentials]
+    exclude_credentials = [
+        {"id": c.credential_id, "type": "public-key"}
+        for c in existing_credentials
+    ]
 
-    # Generate registration options
     try:
-        registration_options = generate_registration_options(
+        options = generate_registration_options(
             rp_id=RP_ID,
             rp_name=RP_NAME,
             user_id=user.id,
             user_name=user.username,
             user_display_name=user.display_name or user.username,
             exclude_credentials=exclude_credentials if exclude_credentials else None,
-            authenticator_selection={
-                "authenticator_attachment": "platform",
-                "resident_key": "preferred",
-                "user_verification": "preferred",
-            },
-            attestation="none",  # Don't require attestation for most users
+            authenticator_attachment=AuthenticatorAttachment.PLATFORM,
+            resident_key=ResidentKeyRequirement.PREFERRED,
+            user_verification=UserVerificationRequirement.PREFERRED,
+            attestation=AttestationConveyancePreference.NONE,
         )
 
-        # Store challenge in session (use request state for now)
-        challenge = registration_options.challenge
-        # TODO: Store challenge in Redis or DB for verification
+        # Store challenge for verification in finish step
+        _store_challenge(user.id, options.challenge)
 
         return {
             "publicKey": {
@@ -162,18 +187,15 @@ async def webauthn_register_start(
                     "name": user.username,
                     "displayName": user.display_name or user.username,
                 },
-                "challenge": bytes_to_base64url(registration_options.challenge),
-                "pubKeyCredParams": registration_options.pub_key_cred_params,
+                "challenge": bytes_to_base64url(options.challenge),
+                "pubKeyCredParams": options.pub_key_cred_params,
                 "authenticatorSelection": {
                     "authenticatorAttachment": "platform",
                     "residentKey": "preferred",
                     "userVerification": "preferred",
                 },
                 "attestation": "none",
-                "excludeCredentials": [
-                    {"id": bytes_to_base64url(c.encode("utf-8") if isinstance(c, str) else c), "type": "public-key"}
-                    for c in exclude_credentials
-                ] if exclude_credentials else [],
+                "excludeCredentials": exclude_credentials,
             }
         }
     except Exception as e:
@@ -187,25 +209,53 @@ async def webauthn_register_finish(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
-    """Finish WebAuthn registration — verify and store credential."""
+    """Finish WebAuthn registration — verify cryptographic attestation and store credential."""
     if not _WEBAUTHN_AVAILABLE:
         raise HTTPException(status_code=503, detail="WebAuthn not available")
 
+    # Retrieve the stored challenge
+    challenge = _get_and_clear_challenge(body.user_id)
+    if challenge is None:
+        raise HTTPException(status_code=400, detail="Registration expired or challenge not found. Please start again.")
+
     try:
+        # Verify the registration response cryptographically
+        verification = verify_registration_response(
+            credential_id=base64url_to_bytes(body.raw_id) if body.raw_id else base64url_to_bytes(body.id),
+            client_data_json=base64url_to_bytes(body.client_data_json),
+            attestation_object=base64url_to_bytes(body.attestation_object),
+            expected_rp_id=RP_ID,
+            expected_origin=ORIGIN,
+            expected_challenge=challenge,
+        )
+
+        # Store the verified credential
         credential = WebAuthnCredential(
             id=str(uuid.uuid4()),
-            credential_id=body.credential_id,
-            credential_public_key=body.public_key.encode(),
+            user_id=body.user_id,
+            credential_id=body.id,
+            credential_public_key=verification.credential_public_key,
+            sign_count=verification.sign_count,
             attestation_object=body.attestation_object,
             client_data_json=body.client_data_json,
-            label=body.label,
+            label=body.authenticator_attachment or "Passkey",
+            authenticator_type=body.authenticator_attachment,
+            transports=",".join(body.transports) if body.transports else "",
         )
         db.add(credential)
         await db.commit()
-        return {"success": True, "message": "Passkey registered"}
+
+        # Mark user as having passkeys
+        result = await db.execute(select(User).where(User.id == body.user_id))
+        user = result.scalar_one_or_none()
+        if user:
+            user.passkey_enabled = True
+            await db.commit()
+
+        return {"success": True, "message": "Passkey registered and verified"}
     except Exception as e:
-        logger.error(f"WebAuthn registration finish failed: {e}")
-        raise HTTPException(status_code=500, detail="Failed to complete registration")
+        logger.error(f"WebAuthn registration verification failed: {e}")
+        raise HTTPException(status_code=400, detail=f"Credential verification failed: {str(e)}")
 
 
 @router.post("/webauthn/authenticate/start")
@@ -233,18 +283,35 @@ async def webauthn_authenticate_start(
         raise HTTPException(status_code=400, detail="No passkeys registered for this user")
 
     allow_credentials = [
-        {"id": c.credential_id, "type": "public-key"}
+        {
+            "id": c.credential_id,
+            "type": "public-key",
+            "transports": c.transports.split(",") if c.transports else [],
+        }
         for c in credentials
     ]
 
-    return {
-        "publicKey": {
-            "challenge": bytes_to_base64url(uuid.uuid4().bytes),  # TODO: proper challenge
-            "rpId": RP_ID,
-            "allowCredentials": allow_credentials,
-            "userVerification": "preferred",
+    try:
+        options = generate_authentication_options(
+            rp_id=RP_ID,
+            allow_credentials=allow_credentials,
+            user_verification=UserVerificationRequirement.PREFERRED,
+        )
+
+        # Store challenge for verification in finish step
+        _store_challenge(user.id, options.challenge)
+
+        return {
+            "publicKey": {
+                "challenge": bytes_to_base64url(options.challenge),
+                "rpId": RP_ID,
+                "allowCredentials": allow_credentials,
+                "userVerification": "preferred",
+            }
         }
-    }
+    except Exception as e:
+        logger.error(f"WebAuthn authentication start failed: {e}")
+        raise HTTPException(status_code=500, detail="Failed to start authentication")
 
 
 @router.post("/webauthn/authenticate/finish")
@@ -253,15 +320,20 @@ async def webauthn_authenticate_finish(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
-    """Finish WebAuthn authentication — verify and return token."""
+    """Finish WebAuthn authentication — verify cryptographic signature and return token."""
     if not _WEBAUTHN_AVAILABLE:
         raise HTTPException(status_code=503, detail="WebAuthn not available")
 
+    # Retrieve the stored challenge
+    challenge = _get_and_clear_challenge(body.user_id)
+    if challenge is None:
+        raise HTTPException(status_code=400, detail="Authentication expired or challenge not found. Please start again.")
+
     try:
-        # Look up the credential
+        # Look up the credential to get the stored public key
         result = await db.execute(
             select(WebAuthnCredential).where(
-                WebAuthnCredential.credential_id == body.credential_id,
+                WebAuthnCredential.credential_id == body.id,
                 WebAuthnCredential.revoked == False,
             )
         )
@@ -269,19 +341,36 @@ async def webauthn_authenticate_finish(
         if not credential:
             raise HTTPException(status_code=401, detail="Credential not found")
 
+        # Verify the authentication response cryptographically
+        verify_authentication_response(
+            credential_id=base64url_to_bytes(body.raw_id) if body.raw_id else base64url_to_bytes(body.id),
+            client_data_json=base64url_to_bytes(body.client_data_json),
+            authenticator_data=base64url_to_bytes(body.authenticator_data),
+            signature=base64url_to_bytes(body.signature),
+            credential_public_key=credential.credential_public_key,
+            expected_rp_id=RP_ID,
+            expected_origin=ORIGIN,
+            expected_challenge=challenge,
+            sign_count=credential.sign_count,
+        )
+
+        # Update sign count and last_used timestamp
+        from datetime import datetime, timezone
+        credential.last_used_at = datetime.now(timezone.utc)
+        await db.commit()
+
         # Look up the user
         result = await db.execute(select(User).where(User.id == credential.user_id))
         user = result.scalar_one_or_none()
         if not user:
             raise HTTPException(status_code=401, detail="User not found")
 
-        # Update last_used timestamp
-        from datetime import datetime, timezone
-        credential.last_used_at = datetime.now(timezone.utc)
-        await db.commit()
-
-        # Create token
-        token = create_token(user.id, user.username, user.role.value if hasattr(user.role, "value") else user.role, mfa_verified=True)
+        # Create token with MFA verified (WebAuthn counts as MFA)
+        token = create_token(
+            user.id, user.username,
+            user.role.value if hasattr(user.role, "value") else user.role,
+            mfa_verified=True,
+        )
         return {
             "token": token,
             "user": {
@@ -296,8 +385,8 @@ async def webauthn_authenticate_finish(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"WebAuthn authentication finish failed: {e}")
-        raise HTTPException(status_code=401, detail="Authentication failed")
+        logger.error(f"WebAuthn authentication verification failed: {e}")
+        raise HTTPException(status_code=401, detail=f"Authentication verification failed: {str(e)}")
 
 
 @router.get("/webauthn/credentials")
@@ -306,7 +395,6 @@ async def list_credentials(
     db: AsyncSession = Depends(get_db),
 ):
     """List the user's registered passkeys."""
-    # Extract user_id from token
     auth_header = request.headers.get("Authorization", "")
     if not auth_header.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Unauthorized")

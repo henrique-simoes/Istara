@@ -14,6 +14,7 @@ import VersionHistory from "@/components/common/VersionHistory";
 import SettingsView from "@/components/common/SettingsView";
 import ComputePoolView from "@/components/common/ComputePoolView";
 import EnsembleHealthView from "@/components/common/EnsembleHealthView";
+import QualityView from "@/components/common/QualityView";
 import SkillsView from "@/components/skills/SkillsView";
 import AgentsView from "@/components/agents/AgentsView";
 import MemoryView from "@/components/memory/MemoryView";
@@ -49,7 +50,7 @@ const VIEW_NAMES: Record<string, string> = {
   interfaces: "Interfaces", integrations: "Integrations", loops: "Loops",
   notifications: "Notifications", backup: "Backup", "meta-hyperagent": "Meta-Agent",
   autoresearch: "AutoResearch", history: "History", compute: "Compute Pool",
-  ensemble: "Ensemble Health", settings: "Settings",
+  ensemble: "Ensemble Health", quality: "Quality Dashboard", settings: "Settings",
 };
 
 function getSavedView(): string {
@@ -323,6 +324,7 @@ export default function HomeClient() {
       case "history": return <VersionHistory />;
       case "compute": return <ComputePoolView />;
       case "ensemble": return <EnsembleHealthView />;
+      case "quality": return <QualityView />;
       case "settings": return <SettingsView />;
       default: return <ChatView />;
     }

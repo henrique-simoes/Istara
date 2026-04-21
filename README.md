@@ -9,13 +9,13 @@
 ### Local-first AI agents for UX Research — your data never leaves your machine
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-2026.03.30-brightgreen.svg)](VERSION)
+[![Version](https://img.shields.io/badge/version-2026.04.10.13-brightgreen.svg)](VERSION)
 [![Python](https://img.shields.io/badge/python-3.12-blue.svg)](backend/)
 [![Node](https://img.shields.io/badge/node-20-green.svg)](frontend/)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey.svg)](installer/)
 [![GitHub](https://img.shields.io/badge/GitHub-henrique--simoes%2FIstara-181717?logo=github)](https://github.com/henrique-simoes/Istara)
 
-[**Install**](#install) · [**Architecture**](#architecture) · [**Research Skills**](#53-research-skills) · [**Agents**](#5-ai-agents) · [**References**](#academic-references) · [**Contributing**](CONTRIBUTING.md)
+[**Install in 1 Minute**](#install) · [**Architecture**](#architecture) · [**Research Skills**](#53-research-skills) · [**Agents**](#5-ai-agents) · [**References**](#academic-references) · [**Contributing**](CONTRIBUTING.md)
 
 ---
 
@@ -23,52 +23,91 @@
 *Every insight is evidence-grounded. Every agent gets smarter with every session.*
 *Scale your intelligence: share compute between team members to run more agents simultaneously—a smarter, faster team working as one agentic swarm.*
 
+![](https://istara.goatcounter.com/count?p=/count-top)
 <div align="center">
-  <p><strong>Intelligent Chat:</strong> Talk to your research context. Ask about findings, brainstorm with agents, and get instant answers grounded in your data.</p>
-  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.37.30.png" width="600" />
-  
-  <p><strong>Atomic Research Findings:</strong> Automatically extract nuggets, facts, insights, and recommendations. Every claim is linked to its original source for total traceability.</p>
-  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.37.34.png" width="600" />
-  
-  <p><strong>Laws of UX Compliance:</strong> Audit your designs against 30+ psychological principles and Nielsen heuristics. See exactly where your UI excels or needs improvement.</p>
-  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.38.34.png" width="600" />
-  
+<img src="Screenshots/istara_presentation.gif" width="900" alt="Istara demo — AI agents conducting UX research autonomously" />
+<img src="Screenshots/istara_chat.gif" width="900" alt="Istara intelligent chat — grounded conversations with your research data" />
+</div>
+
+### At a Glance
+
+| Feature | What It Does |
+|---|---|
+| 🧠 Intelligent Chat | Grounded conversations with your research data — no hallucinations, just evidence-backed answers |
+| ⚛️ Atomic Findings | Nuggets → Facts → Insights → Recommendations, every claim linked to its original source |
+| 📐 Laws of UX | 30+ psychological principles audited automatically against your designs with scoring |
+| 📋 Kanban Board | Agents pick up tasks, execute skills, and report progress in real time — fully autonomous |
+| 🎯 Smart Routing | Match tasks to specialists — Pixel for UI audits, Sage for UX eval, Echo for simulations |
+| 🎙️ Interview Analysis | Transcribe, tag, analyze, relate and generate reports across your entire participant pool |
+| 🧭 Context Engine | Ground agents in company culture, project goals and custom guardrails for better performance |
+| 🛠️ 53+ Research Skills | Competitive analysis, card sorting, journey mapping — agents equipped for any challenge |
+| 🐝 Agent Swarm | Five specialized agents that learn from each other and evolve with every single task |
+| 🎨 Google Stitch & Figma | Generative AI screen design, handoff specs, component audits — design-to-dev bridge built in |
+| 💬 Messaging Channels | Deploy research to Slack, Telegram, WhatsApp — managed entirely by your agents |
+| 📊 Survey Sync | Pull from SurveyMonkey, Typeform, Google Forms — synthesize thousands of responses fast |
+| 🔄 Autoresearch | Continuous self-improvement — agents optimize their own prompts and RAG parameters |
+| ✅ Ensemble Health | Multi-model consensus, adversarial review, debate rounds — every insight rock solid |
+
+<div align="center">
+    <p><strong>Multi-Agent Assignment:</strong> Choose the best agent for the job. Route tasks to specialists like Pixel for UI audits or Sage for UX evaluation.</p>
+  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.38.54.png" width="1600" />
+
   <p><strong>Autonomous Task Management:</strong> A powerful Kanban board where agents pick up tasks, execute skills, and report progress in real-time.</p>
+<<<<<<< HEAD
+  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.38.47.png" width="1600" />
+
+=======
   <img src="Screenshots/Screenshot%202026-04-02%20at%2016.38.47.png" width="600" />
   
   <p><strong>Multi-Agent Assignment:</strong> Choose the best agent for the job. Route tasks to specialists like Pixel for UI audits or Sage for UX evaluation.</p>
   <img src="Screenshots/Screenshot%202026-04-02%20at%2016.38.54.png" width="600" />
   
-  <p><strong>Interviews & Transcripts:</strong> Istara can transcribe, tag, analyze, relate, and generate reports from many interviews at once. Find insights shared across your entire participant pool!</p>
+  <p><strong>Interviews & Transcripts:</strong> Istara can transcribe, tag, analyze, relate, and generate reports from many interviews at once — including voice messages from WhatsApp and Telegram with automatic Whisper transcription and inter-coder reliability scoring. Find insights shared across your entire participant pool!</p>
   <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.01.png" width="600" />
   
   <p><strong>Context Engine:</strong> Ground your agents in your company culture, project goals, and specific guardrails. The more they know, the better they perform.</p>
   <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.08.png" width="600" />
   
+>>>>>>> feat/voice-transcription
   <p><strong>Skill Catalog:</strong> Over 50 research skills ready to go. From Competitive Analysis to Card Sorting, your agents are equipped for any research challenge.</p>
-  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.11.png" width="600" />
-  
+  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.11.png" width="1600" />
+
   <p><strong>Agentic Swarm:</strong> Meet your team—Cleo, Sentinel, Pixel, Sage, and Echo. Five specialized agents that learn from each other and evolve with every task.</p>
-  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.16.png" width="600" />
-  
-  <p><strong>Design System Integration:</strong> Connect to Figma and use generative AI to hand off specs, audit components, and bridge the gap between design and development.</p>
-  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.28.png" width="600" />
-  
+  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.16.png" width="1600" />
+
   <p><strong>Messaging Channels:</strong> Deploy your research directly to Slack, Telegram, or WhatsApp. Collect data where your users are, managed entirely by your agents.</p>
-  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.36.png" width="600" />
-  
-  <p><strong>Survey Integrations:</strong> Pull data from SurveyMonkey, Typeform, or Google Forms. Let agents detect AI bots and synthesize thousands of responses in seconds.</p>
-  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.40.png" width="600" />
-  
+  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.36.png" width="1600" />
+
   <p><strong>Autoresearch Engine:</strong> Enable continuous self-improvement loops. Watch as your agents optimize their own prompts and RAG parameters for better results.</p>
-  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.59.png" width="600" />
+  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.59.png" width="1600" />
   
   <p><strong>Ensemble Health:</strong> Trust through verification. Istara uses multi-model consensus, adversarial review, and debate rounds to ensure every insight is rock solid.</p>
-  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.40.15.png" width="600" />
+  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.40.15.png" width="1600" />
 </div>
+  
+  <p><strong>Intelligent Chat:</strong> Talk to your research context. Ask about findings, brainstorm with agents, and get instant answers grounded in your data.</p>
+  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.37.30.png" width="1600" />
+  
+  <p><strong>Atomic Research Findings:</strong> Automatically extract nuggets, facts, insights, and recommendations. Every claim is linked to its original source for total traceability.</p>
+  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.37.34.png" width="1600" />
+  
+  <p><strong>Laws of UX Compliance:</strong> Audit your designs against 30+ psychological principles and Nielsen heuristics. See exactly where your UI excels or needs improvement.</p>
+  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.38.34.png" width="1600" />
+  
+  <p><strong>Interviews & Transcripts:</strong> Istara can transcribe, tag, analyze, relate, and generate reports from many interviews at once. Find insights shared across your entire participant pool!</p>
+  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.01.png" width="1600" />
+  
+  <p><strong>Context Engine:</strong> Ground your agents in your company culture, project goals, and specific guardrails. The more they know, the better they perform.</p>
+  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.08.png" width="1600" />
+  
+  <p><strong>Google Stitch & Figma Integration:</strong> Generate screens with AI, connect Figma for handoff specs, audit components, and close the gap between design intent and dev implementation.</p>
+  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.28.png" width="1600" />
+  
+  <p><strong>Survey Integrations:</strong> Pull data from SurveyMonkey, Typeform, or Google Forms. Let agents detect AI bots and synthesize thousands of responses in seconds.</p>
+  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.40.png" width="1600" />
 
 ---
-
+![](https://istara.goatcounter.com/count?p=/count-install)
 ## Install
 
 ### Homebrew (macOS — Recommended)
@@ -150,7 +189,7 @@ Istara runs entirely on your hardware. It ships with five specialized AI agents,
 | Price | Free, open source, MIT licensed | $X,XXX/year SaaS |
 
 ---
-
+![](https://istara.goatcounter.com/count?p=/count-features)
 ## 1. 🧠 Agents That Create Agents
 
 > *"Let Agents Design Agents"* — Zhou et al. (2026)
@@ -389,7 +428,7 @@ This means Istara finds semantically similar content ("participant struggled wit
 > **References:** Lewis et al. (2020) "Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks" NeurIPS 2020; Cormack et al. (2009) "Reciprocal rank fusion outperforms condorcet and individual rank learning methods" SIGIR 2009; Robertson & Zaragoza (2009) "The Probabilistic Relevance Framework: BM25 and Beyond" *Foundations and Trends in Information Retrieval* 3(4)
 
 ---
-
+![](https://istara.goatcounter.com/count?p=/count-features-middle)
 ## 8. 📱 Deploy Surveys & Interviews on WhatsApp and Telegram
 
 > *"AURA: Adaptive User Research Assistant"* — arXiv:2510.27126
@@ -577,7 +616,7 @@ Istara is **zero-trust by default**:
 | Installers | macOS DMG · Windows NSIS EXE · Linux AppImage |
 
 ---
-
+![](https://istara.goatcounter.com/count?p=/count-features-middle2)
 ## Quick Start
 
 See [**Install**](#install) above for all installation methods. Prerequisites:
@@ -782,7 +821,7 @@ python scripts/update_agent_md.py
 See [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions, code style guide, and the change checklist.
 
 ---
-
+![](https://istara.goatcounter.com/count?p=/count-features-bottom)
 ## Academic References
 
 <details>

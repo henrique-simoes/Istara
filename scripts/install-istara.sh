@@ -513,6 +513,11 @@ if [ "$MODE" = "server" ]; then
         BACKEND_PORT=$(prompt_default "Backend API port" "8000")
         FRONTEND_PORT=$(prompt_default "Frontend port" "3000")
 
+        cat <<EOF > "$INSTALL_DIR/backend/.env"
+BACKEND_PORT=$BACKEND_PORT
+FRONTEND_PORT=$FRONTEND_PORT
+EOF
+
         # Team Mode / Security
         echo ""
         echo "  ${BOLD}Security Mode:${NC}"
@@ -564,6 +569,10 @@ RAG_TOP_K=6
 RAG_SCORE_THRESHOLD=0.35
 RESOURCE_RESERVE_RAM_GB=4
 RESOURCE_RESERVE_CPU_PERCENT=30
+
+# Port configuration (used by istara.sh startup script)
+BACKEND_PORT=${BACKEND_PORT:-8000}
+FRONTEND_PORT=${FRONTEND_PORT:-3000}
 ENVEOF
 
         chmod 600 "$INSTALL_DIR/backend/.env"
