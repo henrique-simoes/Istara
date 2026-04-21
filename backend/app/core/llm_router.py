@@ -9,12 +9,12 @@ The ``LLMServerEntry`` class is still needed for startup registration code
 in ``ollama.py``, ``network_discovery.py``, and ``llm_servers.py``.  When
 passed to ``llm_router.register_server(entry)``, it gets converted to a
 ``ComputeNode`` internally.
+
 """
 
 from dataclasses import dataclass, field
 
 from app.core.compute_registry import compute_registry
-
 
 @dataclass
 class LLMServerEntry:
@@ -64,8 +64,8 @@ class LLMServerEntry:
         if node:
             await node.close()
 
-
 # The router IS the registry — all methods (chat, chat_stream, embed,
 # check_all_health, register_server, _servers, health, etc.) are
 # provided by ComputeRegistry.
 llm_router = compute_registry
+
