@@ -9,6 +9,8 @@ jobs:
     name: Sync Staging Branch
     runs-on: ubuntu-latest
     if: github.repository == 'henrique-simoes/Istara'
+    permissions:
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
