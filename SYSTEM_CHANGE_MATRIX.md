@@ -2,7 +2,7 @@
 
 This document tells coding agents what else must be inspected, updated, or revalidated when a specific part of the system changes.
 
-`Compass` is the name of the full system this matrix belongs to: entry docs, prompts, generated architecture maps, change matrix, checklists, Tech narrative, persona knowledge, and ongoing test/simulation maintenance.
+`Compass` is the name of the full system this matrix belongs to: entry docs, prompts, generated architecture maps, change matrix, checklists, changelog, Tech narrative, persona knowledge, and ongoing test/simulation maintenance.
 
 Use it with:
 - `SYSTEM_PROMPT.md` for repo-wide operating rules
@@ -119,8 +119,12 @@ For any non-trivial change, check these six surfaces:
 |---|---|
 | Chat | sessions, agents, RAG/context attachments, streaming behavior, evidence links, auth expiry flow |
 | Findings | evidence chain integrity, deletion/linking rules, codebook/code application/report views, Laws/Interfaces consumers |
-| Tasks/Kanban | agent assignment, locking, verification, document attachment, websocket progress |
-| Documents/Interviews/Context | upload pipeline, file previews, browser/audio support, memory/RAG indexing |
+| Tasks/Kanban | agent assignment, locking, verification, document attachment, websocket progress, validation_method/consensus_score badges |
+| Documents/Interviews/Context | upload pipeline, file previews, browser/audio support, memory/RAG indexing, voice transcription pipeline |
+| Skills/Browser UX | browse_website system action, task URL pipeline (SkillInput.urls), Playwright MCP, heuristic/accessibility/benchmark skill definitions |
+| Validation/Quality | consensus engine, adaptive validation selector, validation_executor, ensemble health view, quality evaluation skill, model intelligence dashboard |
+| Simulation/Participants | participant_simulation module, game-theory strategies, istara-sim persona, simulation scenarios, payoff matrices |
+| Observability/Telemetry | telemetry_spans table, agent_hooks system, ModelSkillStats production path, model-intelligence API, audit_log table, devops monitoring |
 | Interfaces | Figma/Stitch config, findings seeding, generated screens, handoff contracts |
 | Integrations | messaging, surveys, deployments, MCP policy/security, setup wizards |
 | Loops/Autoresearch | scheduler, configs, experiment history, notifications |
@@ -179,9 +183,9 @@ python scripts/check_integrity.py
 
 | If You Change | Must Also Inspect |
 |---|---|
-| versioning format | `scripts/set-version.sh`, `scripts/prepare-release.sh`, `VERSION`, updater logic, desktop tag checks, release workflow |
-| release workflow | `.github/workflows/build-installers.yml`, artifact naming, updater `latest.json`, release notes assumptions |
-| release preparation | `scripts/prepare-release.sh`, integrity/doc regeneration flow, release commit/tag sequence |
+| versioning format | `scripts/set-version.sh`, `scripts/prepare-release.sh`, `VERSION`, `CHANGELOG.md`, updater logic, desktop tag checks, release workflow |
+| release workflow | `.github/workflows/build-installers.yml`, artifact naming, updater `latest.json`, release notes assumptions, `CHANGELOG.md` |
+| release preparation | `scripts/prepare-release.sh`, `CHANGELOG.md`, integrity/doc regeneration flow, release commit/tag sequence |
 | CI enforcement | `.github/workflows/ci.yml`, required checks, docs/checker steps, contributor workflow |
 | runtime update behavior | `backend/app/api/routes/updates.py`, `desktop/src-tauri/src/health.rs`, settings update UI, backup/update docs |
 | installer packaging | desktop build, bundled resources, source inclusion/exclusion, install docs |

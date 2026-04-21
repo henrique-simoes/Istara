@@ -181,12 +181,22 @@ class ComputeNode:
             )
 
     async def _get_client(self) -> httpx.AsyncClient:
-        """Get or create an HTTP client for this node."""
+        """Get or create an HTTP client for this node.
+        
+        Enforces RFC 3986 trailing-slash normalization for base_url to ensure
+        OpenAI-compatible relative path joining.
+        """
         if self._client is None or self._client.is_closed:
             headers = {}
             if self.api_key:
                 headers["Authorization"] = f"Bearer {self.api_key}"
-            self._client = httpx.AsyncClient(base_url=self.host, timeout=300.0, headers=headers)
+            
+            # RFC 3986: Ensure base_url ends with slash for correct relative joining
+            normalized_host = self.host
+            if not normalized_host.endswith("/"):
+                normalized_host += "/"
+                
+            self._client = httpx.AsyncClient(base_url=normalized_host, timeout=300.0, headers=headers)
         return self._client
 
     async def close(self) -> None:
@@ -645,15 +655,11 @@ class ComputeRegistry:
                 # to their resolved provider address.
                 if node.is_healthy and not node.model_capabilities and node.host:
                     try:
-                        from app.core.model_capabilities import (
-                            detect_capabilities_lmstudio,
-                            detect_capabilities_ollama,
-                        )
+                        from app.core.model_capabilities import detect_capabilities_generic
 
-                        if node.provider_type == "ollama":
-                            caps = await detect_capabilities_ollama(node.host)
-                        else:
-                            caps = await detect_capabilities_lmstudio(node.host)
+                        caps = await detect_capabilities_generic(
+                            node.host, api_key=node.api_key, provider_type=node.provider_type
+                        )
                         node.model_capabilities = {k: v.to_dict() for k, v in caps.items()}
                         logger.info(
                             f"Detected capabilities for relay {node.name}: "
@@ -670,15 +676,11 @@ class ComputeRegistry:
             # Detect capabilities for healthy nodes
             if healthy:
                 try:
-                    from app.core.model_capabilities import (
-                        detect_capabilities_lmstudio,
-                        detect_capabilities_ollama,
-                    )
+                    from app.core.model_capabilities import detect_capabilities_generic
 
-                    if node.provider_type == "ollama":
-                        caps = await detect_capabilities_ollama(node.host)
-                    else:
-                        caps = await detect_capabilities_lmstudio(node.host)
+                    caps = await detect_capabilities_generic(
+                        node.host, api_key=node.api_key, provider_type=node.provider_type
+                    )
                     node.model_capabilities = {k: v.to_dict() for k, v in caps.items()}
 
                     # Sync detected context window to global config
@@ -861,6 +863,7 @@ class ComputeRegistry:
         temperature: float = 0.7,
         max_tokens: int | None = None,
         tools: list[dict] | None = None,
+        response_format: dict | None = None,
     ) -> dict:
         """Route a chat request to the best available node."""
         msgs = list(messages)
@@ -930,7 +933,10 @@ class ComputeRegistry:
                     return result
 
             except Exception as e:
-                logger.warning(f"ComputeRegistry: chat failed on {node.name}: {e}")
+                if hasattr(e, "response") and hasattr(e.response, "text"):
+                    logger.warning(f"ComputeRegistry: chat failed on {node.name}: {e} | Body: {e.response.text}")
+                else:
+                    logger.warning(f"ComputeRegistry: chat failed on {node.name}: {e}")
                 node.consecutive_failures += 1
                 node.cb_record_failure()
                 if node.consecutive_failures >= 3:
@@ -1117,7 +1123,10 @@ class ComputeRegistry:
                     return items[0].get("embedding", []) if items else []
 
             except Exception as e:
-                logger.warning(f"ComputeRegistry: embed failed on {node.name}: {e}")
+                if hasattr(e, "response") and hasattr(e.response, "text"):
+                    logger.warning(f"ComputeRegistry: embed failed on {node.name}: {e} | Body: {e.response.text}")
+                else:
+                    logger.warning(f"ComputeRegistry: embed failed on {node.name}: {e}")
                 node.is_healthy = False
             finally:
                 node.active_requests -= 1
@@ -1150,7 +1159,10 @@ class ComputeRegistry:
                     return [item.get("embedding", []) for item in resp.json().get("data", [])]
 
             except Exception as e:
-                logger.warning(f"ComputeRegistry: embed_batch failed on {node.name}: {e}")
+                if hasattr(e, "response") and hasattr(e.response, "text"):
+                    logger.warning(f"ComputeRegistry: embed_batch failed on {node.name}: {e} | Body: {e.response.text}")
+                else:
+                    logger.warning(f"ComputeRegistry: embed_batch failed on {node.name}: {e}")
                 node.is_healthy = False
             finally:
                 node.active_requests -= 1

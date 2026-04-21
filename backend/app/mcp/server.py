@@ -96,7 +96,7 @@ async def _gated_call(tool_name: str, arguments: dict | None, handler):
 # ---------------------------------------------------------------------------
 
 if MCP_AVAILABLE:
-    mcp = FastMCP("Istara", description="Local-first AI agent for UX Research")
+    mcp = FastMCP("Istara", instructions="Local-first AI agent for UX Research")
 
     # ---- Low-risk tools ---------------------------------------------------
 

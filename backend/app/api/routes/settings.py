@@ -1,6 +1,7 @@
 """Settings and system info API routes."""
 
 import logging
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, Request
@@ -413,6 +414,84 @@ async def system_status():
             "rag_top_k": settings.rag_top_k,
         },
     }
+
+
+@router.get("/settings/telemetry/status")
+async def telemetry_status():
+    """Get telemetry configuration and stats."""
+    from app.core.telemetry_export import export_telemetry
+    from app.models.database import async_session
+    from sqlalchemy import select, func
+    from app.models.telemetry_span import TelemetrySpan
+    from app.models.model_skill_stats import ModelSkillStats
+
+    try:
+        async with async_session() as session:
+            total_spans = await session.scalar(select(func.count(TelemetrySpan.id)))
+            total_models = await session.scalar(select(func.count(ModelSkillStats.id)))
+            recent_cutoff = datetime.now(timezone.utc) - timedelta(days=1)
+            from sqlalchemy import cast, DateTime
+
+            recent_spans = await session.scalar(
+                select(func.count(TelemetrySpan.id)).where(
+                    TelemetrySpan.created_at >= recent_cutoff
+                )
+            )
+    except Exception:
+        total_spans = 0
+        total_models = 0
+        recent_spans = 0
+
+    return {
+        "telemetry_enabled": settings.telemetry_enabled,
+        "telemetry_export_dir": settings.telemetry_export_dir,
+        "stats": {
+            "total_spans": total_spans or 0,
+            "total_model_entries": total_models or 0,
+            "spans_last_24h": recent_spans or 0,
+        },
+    }
+
+
+@router.post("/settings/telemetry/export")
+async def export_telemetry_data(
+    project_id: str | None = None,
+    days: int = 7,
+    include_models: bool = True,
+):
+    """Export telemetry data to local JSON files. No phone-home."""
+    from app.core.telemetry_export import export_telemetry
+
+    if days < 1 or days > 90:
+        from fastapi import HTTPException
+
+        raise HTTPException(status_code=400, detail="days must be between 1 and 90")
+
+    return await export_telemetry(
+        project_id=project_id,
+        days=days,
+        include_models=include_models,
+    )
+
+
+@router.post("/settings/telemetry/toggle")
+async def toggle_telemetry(request: Request, enabled: bool):
+    """Toggle telemetry recording on/off. Admin only."""
+    require_admin_from_request(request)
+    settings.telemetry_enabled = enabled
+    _persist_env("TELEMETRY_ENABLED", str(enabled).lower())
+    return {
+        "telemetry_enabled": enabled,
+        "message": f"Telemetry {'enabled' if enabled else 'disabled'}.",
+    }
+
+
+@router.get("/settings/telemetry/healing")
+async def get_self_healing_evaluation(project_id: str):
+    """Evaluate recent telemetry to detect self-healing rule violations."""
+    from app.core.self_healing_rules import self_healing
+
+    return await self_healing.evaluate_all(project_id)
 
 
 @router.post("/settings/team-mode")

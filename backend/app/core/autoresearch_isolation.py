@@ -4,6 +4,11 @@
 Uses Python contextvars to create a coroutine-local flag. When active, all learning,
 skill recording, and observation methods in existing subsystems become no-ops.
 
+Integration with ResearchDeployment:
+Experiments running under this isolation layer should be tracked as temporary
+deployments of type "experiment" rather than polluting the regular research pipeline.
+This ensures experimental data is collected but not automatically merged into codebooks.
+
 Usage:
     async with autoresearch_context():
         # All code here is isolated from self-improvement systems
@@ -35,6 +40,9 @@ async def autoresearch_context():
     - skill_manager.record_execution() returns early (no stats polluted)
     - self_evolution.scan_for_promotions() filters out [autoresearch] learnings
     - meta_hyperagent.observe_cycle() filters out autoresearch-tagged stats
+    
+    The experiment's findings are still captured but not automatically merged
+    into permanent knowledge graphs until promoted via the ResearchDeployment workflow.
     """
     token = _autoresearch_active.set(True)
     try:

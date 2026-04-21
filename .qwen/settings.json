@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "WebFetch(github.com)",
-      "WebFetch(raw.githubusercontent.com)"
+      "WebFetch(raw.githubusercontent.com)",
+      "Bash(eof)",
+      "Bash(git commit *)"
     ]
   },
   "$version": 3

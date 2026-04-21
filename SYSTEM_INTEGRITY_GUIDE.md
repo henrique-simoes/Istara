@@ -113,6 +113,7 @@ All models are registered in `backend/app/models/database.py::init_db()`:
 | NotificationPreference | `notification_preferences` | Per-user notification filters |
 | LLMServer | `llm_servers` | Persisted LLM server configs (for network discovery) |
 | MethodMetric | `method_metrics` | Research method performance tracking |
+| TelemetrySpan | `telemetry_spans` | Metadata-only execution traces (no user content) |
 
 #### ADVANCED FEATURES MODELS
 | Model | Table | Purpose |
@@ -175,10 +176,78 @@ Global (independent of Project)
 ├─ AgentLoopConfig
 ├─ BackupRecord
 ├─ ModelSkillStats
+├─ TelemetrySpan
 ├─ Notification → NotificationPreference
 ├─ ScheduledTask
 ├─ ContextDocument (LanceDB, indexed by project+session)
-├─ ContextDAGNode
+└─ ContextDAGNode
+
+---
+
+## SYSTEM METRICS & PERFORMANCE PILLARS
+
+Istara tracks its own health and efficacy across four functional pillars. All metrics are local-only and surfaced via the `QualityView`.
+
+### Pillar 1: Orchestration & Logic
+- **`json_parse_success_rate`**: (Target > 95%) % of LLM turns producing valid, schema-compliant JSON.
+- **`consensus_score` (κ)**: (Target > 0.65) Inter-rater agreement (Fleiss' Kappa) across multi-model validation.
+- **`dag_compaction_ratio`**: % character reduction achieved via Context DAG lossless summarization.
+- **`validation_weight`**: Relative importance of a validation method based on historical success.
+
+### Pillar 2: Research Rigor & Methodology
+- **`avg_quality_ema`**: Self-reflected quality score (0-1) weighted by exponential moving average.
+- **`evidence_chain_integrity`**: (Target 100%) Verification of valid Nugget → Fact → Insight lineage.
+- **`methodological_lift`**: Measurement of grounding in cited academic UXR frameworks.
+- **`transcription_confidence`**: Word Error Rate (WER) and confidence score for audio processing.
+- **`icr_score`**: Inter-Coder Reliability score for qualitative thematic coding.
+
+### Pillar 3: Hardware & Execution
+- **`latency_p90_ms`**: 90th percentile response time for inference and skill execution.
+- **`vram_usage_pct`**: GPU memory saturation level monitored by the Resource Governor.
+- **`cpu_load_pct`**: System-wide CPU utilization across all cores.
+- **`active_agent_count`**: Real-time count of active autonomous worker threads.
+
+### Pillar 4: Ecosystem & Self-Healing
+- **`tool_success_rate`**: Reliability of MCP and System Action tool calls.
+- **`rag_hit_rate`**: Retrieval accuracy of the context ingestion pipeline.
+- **`prompt_similarity_score`**: Vector distance between query and retrieved context chunks.
+- **`self_evolution_count`**: Maturity level of agents (promoted learnings).
+
+---
+
+## PROTECTED PROMPT ARCHITECTURE
+
+Implemented in Phase Epsilon to ensure critical instructions survive context window pressure.
+
+### 1. Structural XML Protocol
+All research skill prompts must utilize the following XML tags for structural isolation:
+- `<skill_context>`: Core identity and phase.
+- `<research_methodology>`: Academic citations and procedural steps.
+- `<instructions>`: Chain-of-Thought (CoT) and output format rules.
+- `<thinking>`: Mandatory reasoning block for the model.
+- `<research_data>`: Raw data source (target for aggressive compression).
+
+### 2. LLMLingua Protection Layer
+The `prompt_compressor.py` is configured with a **Protected Region Registry**. Any content inside the tags above is temporarily replaced with UUID placeholders during heuristic pruning, ensuring instructions remain at 1.0 importance (un-compressed).
+
+### 3. Native Structured Outputs
+- **LM Studio**: OpenAI `json_schema` mode (strict) is enabled by default.
+- **Ollama**: Native JSON `format` parameter is injected into the payload.
+- **Benefit**: Reduces "Conversational Filler" hallucinations that break standard regex parsers.
+
+### 4. Tool Output Protection (Phase Zeta)
+To prevent the orchestrator from "forgetting" critical retrieved data during multi-step reasoning:
+- **Tag**: `<tool_output>`
+- **Logic**: Content inside this tag is permanently protected from compression in `prompt_compressor.py`.
+- **Usage**: Automatically applied to data-gathering tool results (e.g., `get_document_content`).
+
+### 5. Dynamic JSON Schema Translation (Phase Zeta)
+Standard for all skill definitions to ensure strict model compliance with easy-to-write examples:
+- **Standard**: `output_schema` can be an example JSON object (e.g. `{"summary": "..."}`).
+- **Automation**: `skill_factory.py` recursively translates example objects into valid JSON Schema objects.
+- **Enforcement**: Forces `additionalProperties: false` and `required` arrays for all nested structures.
+- **Standardization**: This is the mandatory path for both built-in and user-created skills.
+
 ```
 
 ### Database-Level Constraints
@@ -372,9 +441,18 @@ All routes are registered in `backend/app/main.py::app.include_router()` with `/
 - `GET /api/settings/status` — Public health check
 - `GET /api/settings` — Get all settings
 - `PATCH /api/settings` — Update settings (persists to .env)
+- `GET /api/settings/telemetry/status` — Get telemetry config and stats
+- `POST /api/settings/telemetry/toggle` — Toggle telemetry recording (Admin)
+- `POST /api/settings/telemetry/export` — Export telemetry to local JSON
+- `GET /api/settings/telemetry/healing` — Evaluate self-healing rules
 - `GET /api/settings/data-integrity` — Run data integrity check
 - `POST /api/settings/import-database` — Import data from another database
 - `POST /api/settings/export` — Export all data as JSON
+
+#### Metrics (metrics.py)
+- `GET /api/metrics/{project_id}` — Get quantitative research progress
+- `GET /api/metrics/{project_id}/validation` — Get method stats + recent validations
+- `GET /api/metrics/{project_id}/model-intelligence` — Get performance, reliability, and latency data
 
 #### Audit (audit.py)
 - `GET /api/audit/logs` — List audit events
@@ -603,7 +681,7 @@ Loaded from database at startup (`backend/app/agents/custom_worker.py`):
 
 **A2A (Agent-to-Agent) Messages**:
 - Model: `A2AMessage` (table: `a2a_messages`)
-- Types: `consult`, `finding`, `status`, `request`, `response`
+- Types: `consult`, `report`, `alert`, `delegate`, `debate_request`, `debate_response`, `collaboration_request`, `collaboration_response`
 - Flow: `from_agent_id` → `to_agent_id` (null = broadcast)
 - Persisted in database for audit trail
 - Accessed via `POST /a2a` JSON-RPC endpoint
@@ -822,19 +900,22 @@ Tracks:
 ---
 
 ## COMPUTE & LLM INTEGRATION
-
 ### ComputeRegistry: Single Source of Truth
 
 **Location**: `backend/app/core/compute_registry.py`
 
-**Architecture**: Unified registry for ALL LLM compute resources (replaces old LLMRouter + ComputePool).
+**Architecture**: Unified single-source-of-truth for ALL LLM compute resources (local, network, relay).
 
-```python
-class ComputeRegistry:
-    _nodes: dict[str, ComputeNode]  # node_id → ComputeNode
+#### 1. Empirical Capability Evaluation
+Instead of relying on brittle metadata or name heuristics, Istara implements **Dynamic Probing** based on the Berkeley Function Calling Leaderboard (BFCL) pattern.
+- **Verification**: New nodes undergo a standardized tool-calling probe (`chat/completions` with a dummy function) to verify actual support before being accepted into the pool.
+- **Mandate**: Mandatory for all `openai_compat` providers that do not provide explicit capability headers.
 
-    def register_node(node: ComputeNode) -> None
-    def remove_node(node_id: str) -> None
+#### 2. RFC 3986 URL Normalization
+To ensure 100% generic compatibility with all LLM servers, Istara enforces strict URI reference resolution.
+- **Pattern**: `ComputeNode._get_client` ensures `base_url` always ends with a trailing slash.
+- **Standard**: Follows RFC 3986 algorithms used by the official OpenAI client library to prevent path-joining errors and 404s.
+
     def remove_duplicate_network_nodes(relay_node: ComputeNode) -> None  # dedup on relay register
     def update_heartbeat(node_id: str, stats: dict) -> None
     async def check_all_health() -> dict[str, bool]  # also detects relay capabilities
@@ -1876,9 +1957,93 @@ broadcast_autoresearch_complete()
 Frontend displays leaderboard (model × skill matrix)
 ```
 
+### Flow 7: Telemetry & Self-Healing
+
+```
+Agent execution fires lifecycle hooks (agent_hooks.py)
+    ↓
+Hooks check if settings.telemetry_enabled is True
+    ↓
+telemetry_recorder.record_span()
+    ↓
+TelemetrySpan record created (metadata only)
+    ↓
+ModelSkillStats updated for skill leaderboard
+    ↓
+DevOps Agent audit cycle triggers self_healing.evaluate_all(project_id)
+    ↓
+Telemetry spans analyzed for error rates, latency, tool failures
+    ↓
+If thresholds breached:
+  ├─ Self-healing issues added to audit report
+  ├─ broadcast_agent_status() with warning
+  └─ UI displays "Self-Healing Signals" in EnsembleHealthView
+```
+
 ---
 
-## CROSS-CUTTING CONCERNS & CHANGE IMPACT MATRIX
+## VERIFICATION & QUALITY ASSURANCE
+
+Istara enforces a **Three-Layer Testing Architecture** to preserve product behavior across local hardware variations and model changes.
+
+### 1. Layer 1: Unit & Integration Tests (`tests/test_*.py`)
+- **Focus**: Backend logic, services, security middleware, and API routes.
+- **Tools**: `pytest`, `httpx.ASGITransport`, in-memory SQLite.
+- **Requirement**: Mandatory for every new service or route.
+
+### 2. Layer 2: E2E Phased Test (`tests/e2e_test.py`)
+- **Focus**: The "Sarah journey" — complete user lifecycle from auth to project reports.
+- **Structure**: 15 sequential phases covering every major system area.
+- **Run**: `python tests/e2e_test.py` against a live instance.
+
+### 3. Layer 3: Simulation Agent (`tests/simulation/`)
+- **Focus**: UI regression, UX heuristics, and systemic robustness under load.
+- **Capability**: 70+ scenarios covering 800+ automated checks.
+- **Evaluators**:
+  - **Accessibility**: axe-core (WCAG 2.1 Level A/AA)
+  - **Heuristics**: Nielsen usability scoring
+  - **Performance**: Resource usage and latency thresholds
+- **Tools**: Playwright, Node.js.
+
+### 4. Layer 4: Orchestration Benchmarks (`tests/benchmarks/`)
+- **Focus**: Strategic performance against industry standards (LangGraph, Anthropic, Swarm, Qwen).
+- **Academic Metrics**: 
+    - **Memento (Zhou et al. 2026)**: Agent Factory efficacy and recursive self-modification.
+    - **DeepPlanning**: Global constrained optimization in research plans.
+    - **Claw-Eval Pass^3**: Trajectory-aware consistency and audit trace reliability.
+    - **SkillsBench Avg5**: Methodology-lift provided by specialized research skills.
+- **Metric**: Orchestration Scorecard (v2.0).
+- **Run**: `python tests/benchmarks/run_benchmarks.py` or `pytest tests/benchmarks/test_orchestration.py -v`.
+- **Requirement**: Mandatory for changes to `AgentOrchestrator`, `A2A`, or `steering_manager`.
+
+### 5. Layer 5: Real-World Agentic Integration (`tests/integration/test_llm_orchestration_real.py`)
+- **Focus**: Zero-mock validation of the full agentic loop against live network LLM servers.
+- **Validates**:
+  - **DAG Decomposition**: Complex task planning and execution.
+  - **Tool Selection Quality (TSQ)**: Real-world skill matching.
+  - **Finding Extraction**: End-to-end evidence chain generation.
+- **Requirement**: Mandatory for major orchestration logic shifts or systemic skill definition updates.
+
+#### Benchmark Suite Details (Phase Zeta — Context Mastery)
+
+| Benchmark | File | Tests | Validates |
+|-----------|------|-------|-----------|
+| Long-Horizon DAG Decomposition | `test_orchestration.py::test_long_horizon_dag_decomposition` | 1 | No circular dependencies, valid topological ordering, context retention across 10-step research plan |
+| Tool-Calling Accuracy & Resilience | `test_orchestration.py::test_tool_calling_accuracy_resilience` | 5 | Schema compliance (strict JSON), regex fallback for non-tool-call models, hallucination filtering, MAX_ITERATION enforcement |
+| A2A Mathematical Consensus | `test_orchestration.py::test_a2a_mathematical_consensus` | 5 | Fleiss' Kappa ≥0.6 on clear cases, <0.6 on ambiguous cases (triggers IN_REVIEW), cosine similarity on embeddings, consensus routing logic |
+| Async Steering Responsiveness | `test_orchestration.py::test_async_steering_responsiveness` | 1 | Atomic queue lock under concurrent injection, steering reflected in output without state corruption, follow-up message queuing |
+
+**Consensus Engine**: All mathematical benchmarks use Istara's production consensus engine (`backend/app/core/consensus.py`) — `fleiss_kappa()`, `cosine_similarity()`, and `compute_consensus()` — NOT reimplemented algorithms.
+
+**Test Data Format**: Fleiss' Kappa input is an N×k ratings matrix where N = number of items, k = categories, each cell = count of raters assigning that category to that item. All rows must sum to the same n (number of raters per item).
+
+### Maintenance Mode & LLM Isolation
+To ensure test reliability on RAM-constrained machines (8GB), Istara implements a **Maintenance Mode** (`resource_governor.py`):
+1. Test runner calls `POST /api/settings/maintenance/pause`.
+2. All background agent work and non-test LLM calls are halted.
+3. Test suite has exclusive access to the model.
+4. Runner calls `POST /api/settings/maintenance/resume` upon completion (or crash).
+
 
 ### Scenario 1: Adding a New Model
 
@@ -2136,6 +2301,12 @@ But if needed:
 | Change Security Policy | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ | ✓ | ✓ |
 | Change Desktop App | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | △ | ✗ | ✓ |
 | Change UI / User Flow | ✗ | ✗ | △ | ✓ | △ | ✓ | △ | ✗ | ✗ |
+| Add Voice Transcription | ✗ | ✗ | ✓ | ✓ | ✓ | △ | ✗ | ✗ | ✓ (Whisper/pydub) |
+| Add Browser UX Research Skills | ✗ | ✗ | ✗ | ✓ | ✓ | △ | ✗ | ✗ | ✗ |
+| Add Research Quality Evaluation | ✗ | ✗ | ✗ | ✓ | △ | △ | ✗ | ✗ | ✗ |
+| Add Audit Middleware | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ | ✗ |
+| Add Participant Simulation | ✗ | ✗ | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ |
+| Add Telemetry Spans | ✗ | ✗ | ✗ | ✓ | ✗ | △ | ✗ | ✗ | ✓ |
 
 **Desktop App Critical Couplings (v2026.04.02):**
 - `process.rs` spawns Python/Node directly → depends on `path_resolver.rs` for binary discovery
@@ -2312,11 +2483,11 @@ If migrating from older Istara version:
 
 ### All 51+ Database Models (Alphabetical)
 
-A2AMessage, Agent, AgentLoopConfig, AutoresearchExperiment, BackupRecord, ChannelConversation, ChannelInstance, ChannelMessage, ChatSession, Codebook, CodebookVersion, CodeApplication, ContextDAGNode, ContextDocument, DesignBrief, DesignDecision, DesignScreen, Document, Fact, Insight, LoopExecution, MCPAccessPolicy, MCPAuditEntry, MCPServerConfig, Message, MethodMetric, ModelSkillStats, Notification, NotificationPreference, Nugget, Project, ProjectReport, Recommendation, ResearchDeployment, ScheduledTask, SurveyIntegration, SurveyLink, Task, TaskCheckpoint, User
+A2AMessage, Agent, AgentLoopConfig, AutoresearchExperiment, BackupRecord, ChannelConversation, ChannelInstance, ChannelMessage, ChatSession, Codebook, CodebookVersion, CodeApplication, ContextDAGNode, ContextDocument, DesignBrief, DesignDecision, DesignScreen, Document, Fact, Insight, LoopExecution, MCPAccessPolicy, MCPAuditEntry, MCPServerConfig, Message, MethodMetric, ModelSkillStats, Notification, NotificationPreference, Nugget, Project, ProjectReport, Recommendation, ResearchDeployment, ScheduledTask, SurveyIntegration, SurveyLink, Task, TaskCheckpoint, TelemetrySpan, User
 
-### All 35 API Route Modules
+### All 39 API Route Modules
 
-agents, audit, auth, autoresearch, backup, channels, chat, code_applications, codebook_versions, codebooks, compute, context_dag, deployments, documents, files, findings, interfaces, laws, llm_servers, loops, mcp, memory, meta_hyperagent, metrics, notifications, projects, reports, scheduler, sessions, settings, skills, surveys, tasks, webhooks
+agents, audit, auth, autoresearch, backup, channels, chat, code_applications, codebook_versions, codebooks, compute, connections, context_dag, deployments, documents, files, findings, interfaces, laws, llm_servers, loops, mcp, memory, meta_hyperagent, metrics, notifications, presentation, projects, reports, scheduler, sessions, settings, skills, surveys, tasks, updates, webhooks
 
 ### All 16 WebSocket Event Types
 

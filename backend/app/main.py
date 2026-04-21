@@ -47,6 +47,7 @@ from app.api.routes import codebook_versions as codebook_versions_routes
 from app.api.routes import webhooks as webhook_routes
 from app.api.routes import connections as connection_routes
 from app.api.routes import updates as update_routes
+from app.api.routes import presentation as presentation_routes
 from app.api.routes import webauthn as webauthn_routes
 from app.api.routes import steering as steering_routes
 from app.api.websocket import router as ws_router
@@ -123,7 +124,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Bootstrap admin user if none exists
     try:
         from app.models.user import User
-        from app.core.auth import hash_password, create_token
+        from app.core.auth import (
+            hash_password, create_token,
+            generate_recovery_codes, hash_recovery_code,
+            is_password_breached,
+        )
         from sqlalchemy import select, func
 
         async with async_session() as db:
@@ -134,11 +139,25 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
                 admin_user = app_settings.admin_username or "admin"
                 admin_pass = app_settings.admin_password or _s.token_urlsafe(16)
+
+                # NIST: breach check for admin password
+                if not app_settings.admin_password and await is_password_breached(admin_pass):
+                    # Auto-generated password was breached — generate a new one
+                    admin_pass = _s.token_urlsafe(16)
+                    _log = __import__("logging").getLogger(__name__)
+                    _log.warning("Auto-generated admin password was found in a breach. Generated a new one.")
+
+                # Generate recovery codes for admin user
+                recovery_codes = generate_recovery_codes()
+                recovery_codes_hashed = "\n".join(hash_recovery_code(c) for c in recovery_codes)
+
                 user = User(
                     id=str(__import__("uuid").uuid4()),
                     username=admin_user,
+                    email=f"{admin_user}@istara.local",
                     password_hash=hash_password(admin_pass),
                     role="admin",
+                    recovery_codes_hashed=recovery_codes_hashed,
                 )
                 db.add(user)
                 await db.commit()
@@ -147,7 +166,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                 _log.info("  ADMIN USER CREATED (first startup)")
                 _log.info(f"  Username: {admin_user}")
                 _log.info(f"  Password: {admin_pass}")
+                _log.info(f"  Recovery codes: {', '.join(recovery_codes)}")
                 _log.info("  Change this password after first login!")
+                _log.info("  Save these recovery codes — they are shown only once!")
                 _log.info("=" * 60)
                 # Persist to .env if auto-generated
                 if not app_settings.admin_password:
@@ -538,6 +559,16 @@ from app.core.security_middleware import SecurityAuthMiddleware
 
 app.add_middleware(SecurityAuthMiddleware)
 
+# Audit log middleware — persistent trail of all API requests
+from app.core.audit_middleware import AuditLogMiddleware
+
+app.add_middleware(AuditLogMiddleware)
+
+# Agent lifecycle hooks — telemetry and model performance tracking
+from app.core.agent_hooks import register_builtin_hooks
+
+register_builtin_hooks()
+
 
 # Security headers — prevent clickjacking, MIME sniffing, and XSS
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -552,6 +583,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["X-XSS-Protection"] = "1; mode=block"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()"
         return response
 
 
@@ -624,6 +656,7 @@ app.include_router(survey_routes.router, prefix="/api", tags=["Surveys"])
 app.include_router(mcp_routes.router, prefix="/api", tags=["MCP"])
 app.include_router(autoresearch_routes.router, prefix="/api", tags=["Autoresearch"])
 app.include_router(reports_routes.router, prefix="/api", tags=["Reports"])
+app.include_router(presentation_routes.router, prefix="/api", tags=["Presentation"])
 app.include_router(code_applications_routes.router, prefix="/api", tags=["Code Applications"])
 app.include_router(codebook_versions_routes.router, prefix="/api", tags=["Codebook Versions"])
 app.include_router(laws_routes.router, prefix="/api", tags=["Laws of UX"])

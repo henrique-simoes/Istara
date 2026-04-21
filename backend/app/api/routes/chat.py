@@ -15,11 +15,12 @@ by the provider (e.g. models without function-calling support).
 import json
 import logging
 import re
+import tempfile
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -386,6 +387,19 @@ async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db)):
             user_scan.threats,
         )
 
+    # --- Auto-create ChatSession when session_id is missing/null (Enhancement Plan Step 1) ---
+    if not request.session_id:
+        new_session = ChatSession(
+            id=str(uuid.uuid4()),
+            project_id=request.project_id,
+            title=f"Chat — {request.message[:50].replace(chr(10), ' ').strip()}",
+            message_count=0,
+            last_message_at=user_msg.created_at,
+        )
+        db.add(new_session)
+        await db.commit()
+        request.session_id = new_session.id
+
     # --- Resolve session-specific inference settings ---
     llm_temperature = 0.7
     llm_max_tokens: int | None = None
@@ -696,10 +710,14 @@ async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db)):
                     except Exception:
                         pass
 
-                sources = [
-                    {"source": r.source, "score": r.score, "page": r.page}
-                    for r in rag_result.retrieved
-                ] if rag_result and rag_result.retrieved else []
+                sources = (
+                    [
+                        {"source": r.source, "score": r.score, "page": r.page}
+                        for r in rag_result.retrieved
+                    ]
+                    if rag_result and rag_result.retrieved
+                    else []
+                )
                 done_data = json.dumps(
                     {
                         "type": "done",
@@ -773,3 +791,65 @@ async def get_chat_history(
         )
         for msg in messages
     ]
+
+
+@router.post("/chat/voice")
+async def transcribe_voice(
+    audio: UploadFile = File(...),
+    language: str | None = None,
+):
+    """Transcribe voice input from chat mic button.
+
+    Accepts audio files (wav, mp3, ogg, m4a, flac) and returns
+    transcribed text with ICR confidence scores.
+    """
+    try:
+        # Save uploaded audio to temp file
+        suffix = Path(audio.filename).suffix if audio.filename else ".ogg"
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+            content = await audio.read()
+            tmp.write(content)
+            tmp_path = tmp.name
+
+        # Convert and transcribe
+        from app.core.transcription import transcribe_audio, convert_audio_to_wav
+
+        wav_path = convert_audio_to_wav(tmp_path)
+        result = transcribe_audio(wav_path, language=language)
+
+        # Clean up temp files
+        try:
+            Path(tmp_path).unlink(missing_ok=True)
+            if wav_path != tmp_path:
+                Path(wav_path).unlink(missing_ok=True)
+        except Exception:
+            pass
+
+        return {
+            "text": result.text,
+            "language": result.language,
+            "confidence": result.confidence,
+            "icr_kappa": result.icr_kappa,
+            "icr_confidence": result.icr_confidence,
+            "needs_review": result.needs_review,
+            "tags": result.tags,
+        }
+
+    except Exception as e:
+        logger.error(f"Voice transcription failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Transcription failed: {str(e)}")
+
+
+class VoiceTranscribeRequest(BaseModel):
+    project_id: str
+    dummy: bool = False
+
+
+@router.post("/chat/voice-transcribe")
+async def voice_transcribe(request: VoiceTranscribeRequest):
+    """Voice transcription endpoint (Phase Alpha)."""
+    if request.dummy:
+        return {"status": "success", "text": "Mock transcription"}
+
+    # Real transcription logic would go here
+    return {"status": "error", "message": "No audio file provided"}

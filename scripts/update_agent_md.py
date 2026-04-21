@@ -27,13 +27,12 @@ VERSION_FILE = ROOT / "VERSION"
 
 BACKEND = ROOT / "backend" / "app"
 FRONTEND = ROOT / "frontend" / "src"
+TESTS_ROOT = ROOT / "tests"
 SKILL_DEFINITIONS = BACKEND / "skills" / "definitions"
 PERSONAS = BACKEND / "agents" / "personas"
 ROUTES = BACKEND / "api" / "routes"
 MODELS = BACKEND / "models"
 STORES = FRONTEND / "stores"
-SIM_SCENARIOS = ROOT / "tests" / "simulation" / "scenarios"
-E2E_TEST = ROOT / "tests" / "e2e_test.py"
 WEBSOCKET_FILE = BACKEND / "api" / "websocket.py"
 DESKTOP_SRC = ROOT / "desktop" / "src-tauri" / "src"
 RELAY_ROOT = ROOT / "relay"
@@ -53,6 +52,36 @@ def read_version() -> str:
     if VERSION_FILE.exists():
         return read_text(VERSION_FILE).strip()
     return "unknown"
+
+
+def scan_test_layers() -> dict[str, list[str]]:
+    """Dynamically discover testing layers from the tests/ directory.
+    
+    Categorizes subdirectories (e.g. simulation, benchmarks, integration)
+    and root-level files (e.g. e2e_test.py).
+    """
+    layers = defaultdict(list)
+    if not TESTS_ROOT.exists():
+        return layers
+
+    # 1. Scan subdirectories for specific patterns
+    for path in sorted(TESTS_ROOT.iterdir()):
+        if path.is_dir() and not path.name.startswith(("_", ".")):
+            # Label based on directory name
+            label = f"Layer: {titleize(path.name)}"
+            # Find all test files in this layer
+            test_files = sorted([p.name for p in path.glob("test_*.py")])
+            test_files += sorted([p.name for p in path.glob("*.mjs")])
+            if test_files:
+                layers[label] = test_files
+
+    # 2. Scan root-level test files (Journeys)
+    root_tests = sorted([p.name for p in TESTS_ROOT.glob("test_*.py")])
+    root_tests += sorted([p.name for p in TESTS_ROOT.glob("*_test.py")])
+    if root_tests:
+        layers["Test Journeys"] = root_tests
+
+    return dict(layers)
 
 
 def scan_routes() -> list[dict[str, object]]:
@@ -222,32 +251,6 @@ def scan_websocket_events() -> list[str]:
     return sorted(set(re.findall(r'broadcast\("([^"]+)"', content)))
 
 
-def scan_simulation_scenarios() -> list[dict[str, str]]:
-    scenarios: list[dict[str, str]] = []
-    if not SIM_SCENARIOS.exists():
-        return scenarios
-
-    for path in sorted(SIM_SCENARIOS.glob("*.mjs")):
-        match = re.match(r"(\d+)-(.+)\.mjs", path.name)
-        if not match:
-            continue
-        scenarios.append(
-            {
-                "id": match.group(1),
-                "slug": match.group(2),
-                "title": titleize(match.group(2)),
-            }
-        )
-    return scenarios
-
-
-def scan_e2e_phases() -> list[str]:
-    if not E2E_TEST.exists():
-        return []
-    content = read_text(E2E_TEST)
-    return re.findall(r"# PHASE \d+:\s+([^\n]+)", content)
-
-
 def scan_simple_module_names(directory: Path, suffixes: tuple[str, ...]) -> list[str]:
     if not directory.exists():
         return []
@@ -275,8 +278,7 @@ def build_inventory() -> dict[str, object]:
         "views": scan_views(),
         "stores": scan_stores(),
         "websocket_events": scan_websocket_events(),
-        "simulation_scenarios": scan_simulation_scenarios(),
-        "e2e_phases": scan_e2e_phases(),
+        "test_layers": scan_test_layers(),
         "desktop_modules": scan_simple_module_names(DESKTOP_SRC, (".rs",)),
         "relay_modules": scan_simple_module_names(RELAY_ROOT / "lib", (".mjs",)),
         "channel_adapters": [
@@ -305,6 +307,7 @@ def render_entrypoint_generated_section(inventory: dict[str, object]) -> str:
     survey_platforms = ", ".join(f"`{name}`" for name in inventory["survey_platforms"])
     desktop_modules = ", ".join(f"`{name}`" for name in inventory["desktop_modules"])
     relay_modules = ", ".join(f"`{name}`" for name in inventory["relay_modules"])
+    total_test_files = sum(len(files) for files in inventory["test_layers"].values()) # type: ignore[attr-defined]
 
     lines = [
         ENTRYPOINT_START,
@@ -318,7 +321,7 @@ def render_entrypoint_generated_section(inventory: dict[str, object]) -> str:
         f"- Frontend stores: {len(inventory['stores'])}",
         f"- Data models: {len(inventory['models'])}",
         f"- Personas: {len(inventory['personas'])} ({personas})",
-        f"- Simulation scenarios: {len(inventory['simulation_scenarios'])}",
+        f"- Active test files: {total_test_files} across {len(inventory['test_layers'])} layers", # type: ignore[attr-defined]
         "",
         "## Current Product Surface",
         "",
@@ -514,6 +517,14 @@ def render_scenarios(scenarios: list[dict[str, str]]) -> list[str]:
     return [f"- `{scenario['id']}` — {scenario['title']}" for scenario in scenarios]
 
 
+def render_test_layers(test_layers: dict[str, list[str]]) -> list[str]:
+    lines = []
+    for label, files in test_layers.items():
+        joined = ", ".join(f"`{f}`" for f in files)
+        lines.append(f"- **{label}**: {joined}")
+    return lines
+
+
 def build_agent_document(inventory: dict[str, object]) -> str:
     total_skills = len(inventory["skills"])  # type: ignore[arg-type]
     total_models = len(inventory["models"])  # type: ignore[arg-type]
@@ -521,7 +532,7 @@ def build_agent_document(inventory: dict[str, object]) -> str:
     total_stores = len(inventory["stores"])  # type: ignore[arg-type]
     total_routes = len(inventory["routes"])  # type: ignore[arg-type]
     total_personas = len(inventory["personas"])  # type: ignore[arg-type]
-    total_scenarios = len(inventory["simulation_scenarios"])  # type: ignore[arg-type]
+    total_test_files = sum(len(files) for files in inventory["test_layers"].values()) # type: ignore[attr-defined]
 
     lines = [
         "# Istara — Agent-Readable Operating Map",
@@ -548,7 +559,7 @@ def build_agent_document(inventory: dict[str, object]) -> str:
         f"- Data layer: {total_models} SQLAlchemy models plus LanceDB-backed retrieval/context systems.",
         f"- Agents/personas: {total_personas} tracked persona directories under `backend/app/agents/personas`.",
         f"- Skills: {total_skills} JSON-defined skills across the Double Diamond phases.",
-        f"- Regression map: {total_scenarios} simulation scenarios plus {len(inventory['e2e_phases'])} e2e phases.",
+        f"- Regression map: {total_test_files} active test files across {len(inventory['test_layers'])} layers.", # type: ignore[attr-defined]
         "",
         "## Change Hotspots",
         "",
@@ -588,10 +599,7 @@ def build_agent_document(inventory: dict[str, object]) -> str:
         "",
         "## Test Coverage Map",
         "",
-        "- E2E phases:",
-        *[f"  - {phase}" for phase in inventory["e2e_phases"]],  # type: ignore[index]
-        "- Simulation scenarios:",
-        *[f"  - `{scenario['id']}` — {scenario['title']}" for scenario in inventory["simulation_scenarios"]],  # type: ignore[index]
+        *render_test_layers(inventory["test_layers"]), # type: ignore[arg-type]
         "",
         "## Documentation Contract",
         "",
@@ -607,6 +615,7 @@ def build_agent_document(inventory: dict[str, object]) -> str:
 
 
 def build_complete_system_document(inventory: dict[str, object]) -> str:
+    total_test_files = sum(len(files) for files in inventory["test_layers"].values()) # type: ignore[attr-defined]
     lines = [
         "# Istara Complete System Architecture & Living Map",
         "",
@@ -632,7 +641,7 @@ def build_complete_system_document(inventory: dict[str, object]) -> str:
         f"- Next.js frontend with {len(inventory['views'])} mounted views and {len(inventory['stores'])} Zustand stores.",
         f"- {len(inventory['models'])} SQLAlchemy models in `backend/app/models`.",
         f"- {len(inventory['personas'])} tracked persona directories and {len(inventory['skills'])} JSON-defined skills.",
-        f"- {len(inventory['simulation_scenarios'])} Playwright simulation scenarios plus {len(inventory['e2e_phases'])} Python e2e phases.",
+        f"- {total_test_files} active test files across {len(inventory['test_layers'])} regression layers.", # type: ignore[attr-defined]
         "",
         "## Backend Route Inventory",
         "",
@@ -672,13 +681,7 @@ def build_complete_system_document(inventory: dict[str, object]) -> str:
         "",
         "## Behavioral Coverage from Tests",
         "",
-        "### Python E2E Journey",
-        "",
-        *[f"- {phase}" for phase in inventory["e2e_phases"]],  # type: ignore[index]
-        "",
-        "### Simulation Scenario Matrix",
-        "",
-        *render_scenarios(inventory["simulation_scenarios"]),  # type: ignore[arg-type]
+        *render_test_layers(inventory["test_layers"]), # type: ignore[arg-type]
         "",
         "## What Agents Must Check Before Editing",
         "",
