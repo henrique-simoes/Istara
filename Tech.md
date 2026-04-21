@@ -1151,17 +1151,36 @@ totp_enabled: BOOLEAN           # 2FA active flag
 recovery_codes_hashed: TEXT     # Newline-separated Argon2id hashes
 passkey_enabled: BOOLEAN        # WebAuthn registered
 password_hash: VARCHAR(512)     # Widened from 255 for Argon2id
+email: EncryptedType            # Fernet-encrypted PII
+email_hash: VARCHAR(64)         # SHA-256 for uniqueness/search
 ```
 
-#### Transport Security — TLS 1.3
+**2FA Login Flow (End-to-End):**
+The frontend now fully supports the 2FA login flow:
+1. `LoginScreen.tsx` detects `requires_2fa: true` from `/api/auth/login`
+2. Displays a conditional TOTP input panel (6 digits) with recovery code fallback
+3. `authStore.ts` provides `verify2FA()` to complete authentication with TOTP or recovery code
+4. Backend correctly withholds the JWT token until 2FA verification succeeds
+
+**Passkey Integration (End-to-End):**
+- `@simplewebauthn/browser` handles browser-side WebAuthn API calls
+- `LoginScreen.tsx` shows "Sign in with Passkey" button in team mode
+- `authStore.ts` provides `loginWithPasskey()`, `registerPasskey()`, `listPasskeys()`, `deletePasskey()`
+- `SettingsView` includes `PasskeyManager` for registering and revoking passkeys
+- Backend `/api/webauthn/*` routes are fully wired: register/start, register/finish, authenticate/start, authenticate/finish, credentials list/revoke
+
+#### Transport Security — TLS 1.3 + HTTP Security Headers
 
 Caddyfile hardening (production profile):
 - TLS 1.2/1.3 only with explicit cipher suites: `TLS_AES_256_GCM_SHA384`, `TLS_CHACHA20_POLY1305_SHA256`, `TLS_AES_128_GCM_SHA256`
 - ECDH curves: `X25519`, `secp256r1`, `secp384r1`
+
+Backend `SecurityHeadersMiddleware` enforces on every response:
 - HSTS with preload: `max-age=31536000; includeSubDomains; preload`
-- Content Security Policy: `default-src 'self'`, `frame-ancestors 'none'`, `connect-src 'self' https://api.github.com`
+- Content Security Policy: `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; font-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'`
 - Permissions Policy: camera, microphone, geolocation, payment, USB all disabled
-- X-Frame-Options: DENY, X-Content-Type-Options: nosniff, Referrer-Policy: strict-origin-when-cross-origin
+- X-Frame-Options: DENY, X-Content-Type-Options: nosniff, X-XSS-Protection: 1; mode=block
+- Referrer-Policy: strict-origin-when-cross-origin
 
 #### Container Security — CIS Docker Benchmark
 
@@ -1173,6 +1192,16 @@ All containers hardened with:
 - `tmpfs` with `noexec,nosuid` — executable temp space with limited size
 - `pids_limit` — prevents fork bomb attacks (200 backend, 100 frontend/ollama/postgres)
 - Database ports (PostgreSQL 5432, Ollama 11434) **not exposed to host**
+
+#### Field-Level Encryption
+
+Sensitive data at rest is encrypted using Fernet (AES-128-CBC + HMAC-SHA256):
+- `ChannelInstance.config_json` — Telegram/Slack/WhatsApp tokens
+- `SurveyIntegration.config_json` — OAuth tokens, API keys
+- `MCPServerConfig.headers_json` — Authentication headers
+- `User.email` — PII (encrypted value + SHA-256 hash for uniqueness/search)
+
+The `EncryptedType` SQLAlchemy type decorator transparently encrypts on write and decrypts on read. For fields requiring uniqueness constraints (e.g., email), a companion `email_hash` column stores a deterministic SHA-256 hash for equality lookups while the plaintext remains encrypted.
 
 #### Network Segmentation — Zero Trust
 
