@@ -2,7 +2,7 @@
 
 Use this checklist for EVERY change to ensure nothing breaks. Cross-reference with **SYSTEM_INTEGRITY_GUIDE.md** for details.
 
-`Compass` is the name of the full agentic development system behind this checklist: prompts, generated docs, matrices, technical narrative, personas, and test/simulation maintenance. Updating Compass means updating this whole system so future agents inherit the new truth.
+`Compass` is the name of the full agentic development system behind this checklist: prompts, generated docs, matrices, checklists, changelogs, technical narrative, personas, and test/simulation maintenance. Updating Compass means updating this whole system so future agents inherit the new truth.
 
 ---
 
@@ -14,6 +14,7 @@ Before making ANY change:
 - [ ] Read `AGENT_ENTRYPOINT.md` for the canonical reading order
 - [ ] Skim `AGENT.md` or `COMPLETE_SYSTEM.md` for the current generated system map
 - [ ] Read `SYSTEM_CHANGE_MATRIX.md` for dependent surfaces that must move with this change
+- [ ] Read `CHANGELOG.md` to understand recent system evolution
 - [ ] Decide which parts of Compass must change so the next agent understands the new reality
 - [ ] Decide whether `Tech.md` must change because the architecture/process/release story changed
 - [ ] Decide whether Istara's own agents need persona updates to understand this feature
@@ -532,6 +533,7 @@ Before pushing to production:
 ### Release Flow
 - [ ] Only release-worthy pushes to `main` are being treated as releases
 - [ ] Release preparation run via `./scripts/prepare-release.sh --bump` or `./scripts/prepare-release.sh <version>`
+- [ ] **`CHANGELOG.md` updated with human-readable release notes categorizing new features, changes, and fixes**
 - [ ] Release commit and tag planned together
 - [ ] Qualifying `main` pushes, tag pushes, and manual dispatch all match the documented publishing model
 - [ ] No `Co-authored-by` trailers in commit messages — only the human owner should appear as author

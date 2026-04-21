@@ -4,6 +4,31 @@ All notable changes to Istara are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). Versions use [CalVer](https://calver.org/) in the format `YYYY.MM.DD`.
 
+**Note:** As of April 2026, `CHANGELOG.md` is a core Compass document. Agents MUST update this file for all releases and major feature shipments to maintain human-readable system history.
+
+---
+
+## [2026.04.20.2] — Phase Zeta & Compute Pool Overhaul
+
+### Added
+- **Layer 5 Orchestration Benchmarks**: Real-world integration benchmarking against live LLM servers (LM Studio/Ollama) with 100% Tool Selection Quality (TSQ) and true DAG decomposition.
+- **Connection String Lifecycle Management**: Admins can now generate, list, and revoke connection strings for team members and compute donation, complete with a new Settings UI (`ConnectionStringPanel.tsx`).
+- **Backup Restoration UI**: Full pipeline for re-importing system backups via the UI, including atomic directory replacement and automated server restart.
+- **Consulting-Grade Reporting Engine**: Upgraded MECE reporting to use the Minto Pyramid Principle and SCR (Situation-Complication-Resolution) framework.
+- **Instructions to Create Slides**: New Presentation API and UI feature that translates deep research reports into "Ghost Deck" structures for external AIs.
+
+### Changed
+- **ComputeRegistry Unification**: Centralized all LLM routing. Replaced brittle heuristics with a **BFCL-pattern dynamic probe** to actively verify `tool_calls` support.
+- **RFC 3986 URL Normalization**: Enforced trailing-slash normalization in `ComputeRegistry` to eliminate 404 errors on generic OpenAI-compatible providers.
+- **Five-Layer Testing Architecture**: Expanded from three layers to explicitly include Orchestration Benchmarks (Layer 4) and Real-World Integration (Layer 5).
+- **Dynamic Documentation Scripts**: `check_integrity.py` and `update_agent_md.py` are now dynamically self-maintaining, automatically discovering new test layers and wrapper docs.
+
+### Fixed
+- **RBAC Security Reinforcements**: Restricted project deletion to admins only; allowed non-admins to contribute local compute power.
+- **Team Transparency**: Authenticated researchers can now view the team member list.
+- **Update Process Reliability**: Hardened the auto-update script to use `git stash` instead of destructive resets.
+- **Uninstall Script Completeness**: Ensured complete purge of macOS app bundles, Linux desktop entries, and Tauri local data.
+
 ---
 
 ## [2026.03.29] — Initial Public Release
