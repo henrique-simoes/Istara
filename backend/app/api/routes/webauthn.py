@@ -302,6 +302,7 @@ async def webauthn_authenticate_start(
         _store_challenge(user.id, options.challenge)
 
         return {
+            "user_id": user.id,
             "publicKey": {
                 "challenge": bytes_to_base64url(options.challenge),
                 "rpId": RP_ID,

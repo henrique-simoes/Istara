@@ -28,6 +28,9 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
   const [totpCode, setTotpCode] = useState("");
   const [useRecoveryCode, setUseRecoveryCode] = useState(false);
 
+  // Passkey state
+  const [passkeyLoading, setPasskeyLoading] = useState(false);
+
   const usernameRef = useRef<HTMLInputElement>(null);
 
   // Check team status on mount — determines UI mode.
@@ -75,6 +78,61 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
     setMfaMethods([]);
     setTotpCode("");
     setUseRecoveryCode(false);
+  };
+
+  const handlePasskeyLogin = async () => {
+    if (!username.trim()) {
+      setError("Enter your username to sign in with a passkey.");
+      return;
+    }
+    setPasskeyLoading(true);
+    setError("");
+    try {
+      const { startAuthentication } = await import("@simplewebauthn/browser");
+
+      const startRes = await fetch(`${API_BASE}/api/webauthn/authenticate/start`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: username.trim() }),
+      });
+      if (!startRes.ok) {
+        const err = await startRes.json().catch(() => ({ detail: "Passkey auth failed" }));
+        throw new Error(err.detail || "Passkey auth failed");
+      }
+      const startData = await startRes.json();
+
+      const assertion = await startAuthentication({ optionsJSON: startData.publicKey });
+
+      const finishRes = await fetch(`${API_BASE}/api/webauthn/authenticate/finish`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_id: startData.user_id,
+          id: assertion.id,
+          raw_id: assertion.rawId,
+          response_type: assertion.type,
+          authenticator_data: assertion.response.authenticatorData,
+          client_data_json: assertion.response.clientDataJSON,
+          signature: assertion.response.signature,
+          user_handle: assertion.response.userHandle,
+        }),
+      });
+      if (!finishRes.ok) {
+        const err = await finishRes.json().catch(() => ({ detail: "Passkey verification failed" }));
+        throw new Error(err.detail || "Passkey verification failed");
+      }
+      const data = await finishRes.json();
+      localStorage.setItem("istara_token", data.token);
+      await onLogin();
+    } catch (err) {
+      if (err instanceof TypeError && err.message === "Failed to fetch") {
+        setError("Cannot connect to the Istara server.");
+      } else {
+        setError(err instanceof Error ? err.message : "Passkey sign-in failed.");
+      }
+    } finally {
+      setPasskeyLoading(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -644,6 +702,44 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
                   : "Sign In"
               )}
             </button>
+
+            {/* Passkey login option */}
+            {mode === "login" && loginStep === "credentials" && teamMode && (
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-slate-200 dark:border-slate-700" />
+                </div>
+                <div className="relative flex justify-center text-xs">
+                  <span className="bg-white dark:bg-slate-900 px-2 text-slate-400 dark:text-slate-500">or</span>
+                </div>
+              </div>
+            )}
+
+            {mode === "login" && loginStep === "credentials" && teamMode && (
+              <button
+                type="button"
+                onClick={handlePasskeyLogin}
+                disabled={passkeyLoading}
+                className="w-full py-2.5 px-4 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium hover:bg-slate-50 dark:hover:bg-slate-700 transition focus:outline-none focus:ring-2 focus:ring-istara-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {passkeyLoading ? (
+                  <span className="inline-flex items-center gap-2">
+                    <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    Authenticating...
+                  </span>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z" fill="currentColor"/>
+                    </svg>
+                    Sign in with Passkey
+                  </>
+                )}
+              </button>
+            )}
           </form>
 
           {/* Footer — toggle between login/register/join */}
