@@ -8,21 +8,25 @@ Fields encrypted:
 - ChannelInstance.config_json (Telegram tokens, Slack secrets, WhatsApp tokens)
 - SurveyIntegration.config_json (OAuth tokens, API keys)
 - MCPServerConfig.headers_json (auth headers)
-- User.email (PII)
+- User.email (PII) — encrypted value; equality checks use email_hash
 
 Usage:
-    from app.core.field_encryption import encrypt_field, decrypt_field
+    from app.core.field_encryption import encrypt_field, decrypt_field, hash_field
 
     # Encrypt before storing
     encrypted = encrypt_field("my-secret-api-key")
 
     # Decrypt after reading
     plaintext = decrypt_field(encrypted)
+
+    # Hash for uniqueness/search (one-way, deterministic)
+    hashed = hash_field("user@example.com")
 """
 
 from __future__ import annotations
 
 import base64
+import hashlib
 import logging
 import os
 
@@ -117,6 +121,43 @@ def decrypt_field(ciphertext: str) -> str:
     except Exception:
         logger.warning("Field decryption failed — returning ciphertext")
         return ciphertext
+
+
+def hash_field(value: str) -> str:
+    """Create a deterministic one-way hash of a value.
+
+    Used for fields that need uniqueness constraints or equality lookups
+    (e.g., email) while the plaintext is stored encrypted.
+
+    Returns a SHA-256 hex digest. If the input is empty, returns empty.
+    """
+    if not value:
+        return ""
+    return hashlib.sha256(value.strip().lower().encode()).hexdigest()
+
+
+# ---------------------------------------------------------------------------
+# SQLAlchemy Encrypted Type
+# ---------------------------------------------------------------------------
+
+from sqlalchemy import TypeDecorator, Text
+
+
+class EncryptedType(TypeDecorator):
+    """SQLAlchemy column type that transparently encrypts/decrypts string values."""
+
+    impl = Text
+    cache_ok = True
+
+    def process_bind_param(self, value, dialect):
+        if value is None:
+            return None
+        return encrypt_field(str(value))
+
+    def process_result_value(self, value, dialect):
+        if value is None:
+            return None
+        return decrypt_field(str(value))
 
 
 def ensure_encryption_key() -> str:
