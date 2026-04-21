@@ -535,6 +535,7 @@ Before pushing to production:
 - [ ] Release preparation run via `./scripts/prepare-release.sh --bump` or `./scripts/prepare-release.sh <version>`
 - [ ] **`CHANGELOG.md` updated with human-readable release notes categorizing new features, changes, and fixes**
 - [ ] Release commit and tag planned together
+- [ ] **`staging` branch fast-forwarded to match `main` (automatically handled by CI or manual sync)**
 - [ ] Qualifying `main` pushes, tag pushes, and manual dispatch all match the documented publishing model
 - [ ] No `Co-authored-by` trailers in commit messages — only the human owner should appear as author
 - [ ] Feature work merged through staging branch first — no direct pushes to main for multi-commit changes

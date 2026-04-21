@@ -2906,5 +2906,5 @@ Istara consolidates all LLM management into a single `ComputeRegistry`, replacin
 - **RFC 3986 Compliance**: Strict URI normalization ensures consistent routing to generic OpenAI-compatible providers, eliminating 404 errors on varied `base_url` formats.
 - **Empirical Evaluation**: Instead of relying on brittle metadata, Istara uses **Dynamic Probing** (Berkeley Function Calling Leaderboard pattern) to actively verify model capabilities like tool-calling and streaming support using standardized test payloads.
 
-### 3. Installer Resilience
-The `scripts/install-istara.sh` utility supports persistent port overrides. Configured `FRONTEND_PORT` and `BACKEND_PORT` values are automatically saved to `backend/.env` to ensure consistent state across system updates and restarts.
+### 3. Automated Staging Synchronization
+To prevent architectural drift and the "stale staging" problem, Istara implements automated branch synchronization. Whenever a commit is pushed to the `main` branch (including release merges), a GitHub Action (`.github/workflows/sync-staging.yml`) forcefully fast-forwards the `staging` branch to match `main`. This ensures that all new feature branches starting from `staging` always begin with the latest production baseline.
