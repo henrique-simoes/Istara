@@ -115,6 +115,7 @@ Istara uses a **staging-first** workflow to prevent broken code from reaching `m
 - **Trivial changes** (typos, version bumps, doc regenerations) may push directly to `staging`.
 - **Update `TESTING.md`** when pushing to staging — add entry under "Awaiting Review".
 - **Staging Synchronization:** After any merge to `main` or release tag, `staging` MUST be fast-forwarded to match `main` (automatically handled by CI).
+- **Remote Audit Rule:** When auditing branch status or unmerged commits, agents MUST base their analysis on remote tracking branches (e.g., `origin/main`, `origin/staging`) after running `git fetch`. Local branch pointers may be stale and do not reflect the true state of the CI/CD pipeline.
 - **Move entry to "Verified"** after testing locally on staging branch.
 - **Clear `TESTING.md` verified entries** after merging to `main`.
 - **Branch protection on `main`** requires CI to pass and PR before merge.
