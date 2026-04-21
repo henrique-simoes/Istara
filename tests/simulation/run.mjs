@@ -300,6 +300,7 @@ async function loadScenarios() {
     "70-mid-execution-steering",
     "74-voice-transcription",
     "75-participant-simulation",
+    "74-2fa-login-flow",
   ];
 
   const scenarios = [];
