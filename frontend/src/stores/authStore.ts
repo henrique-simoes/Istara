@@ -13,6 +13,13 @@ interface User {
   preferences: Record<string, unknown>;
 }
 
+interface LoginResult {
+  requires_2fa?: boolean;
+  methods?: string[];
+  token?: string;
+  user?: User;
+}
+
 interface AuthState {
   user: User | null;
   token: string | null;
@@ -21,7 +28,8 @@ interface AuthState {
   insecure: boolean;
   loading: boolean;
 
-  login: (username: string, password: string) => Promise<void>;
+  login: (username: string, password: string) => Promise<LoginResult>;
+  verify2FA: (username: string, password: string, code: string, method: "totp" | "recovery_code") => Promise<void>;
   register: (username: string, email: string, password: string, displayName?: string) => Promise<void>;
   logout: () => void;
   checkTeamStatus: () => Promise<{ team_mode: boolean; has_users: boolean; insecure: boolean }>;
@@ -51,10 +59,43 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         throw new Error(err.detail || "Login failed");
       }
       const data = await res.json();
+      if (data.requires_2fa) {
+        set({ loading: false });
+        return { requires_2fa: true, methods: data.methods || ["totp", "recovery_code"] };
+      }
       localStorage.setItem("istara_token", data.token);
       if (data.user?.id) localStorage.setItem("istara_auth_user_id", data.user.id);
       set({ user: data.user, token: data.token, loading: false });
-      // Check team status after login so UserManagement renders correctly
+      get().checkTeamStatus();
+      return { token: data.token, user: data.user };
+    } catch (e) {
+      set({ loading: false });
+      throw e;
+    }
+  },
+
+  verify2FA: async (username, password, code, method) => {
+    set({ loading: true });
+    try {
+      const body: Record<string, string> = { username, password };
+      if (method === "totp") {
+        body.totp_code = code;
+      } else {
+        body.recovery_code = code;
+      }
+      const res = await fetch(`${API_BASE}/api/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: "Verification failed" }));
+        throw new Error(err.detail || "Verification failed");
+      }
+      const data = await res.json();
+      localStorage.setItem("istara_token", data.token);
+      if (data.user?.id) localStorage.setItem("istara_auth_user_id", data.user.id);
+      set({ user: data.user, token: data.token, loading: false });
       get().checkTeamStatus();
     } catch (e) {
       set({ loading: false });
@@ -119,9 +160,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
-  /** Restore user object from JWT token via /auth/me.
-   *  Called on app mount and after team mode changes so that
-   *  currentUser.role is always available. */
   fetchMe: async () => {
     const _tk = localStorage.getItem("istara_token");
     if (!_tk) return false;
