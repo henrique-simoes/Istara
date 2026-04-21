@@ -44,8 +44,9 @@ Read these in order before non-trivial work:
 3. `COMPLETE_SYSTEM.md`
 4. `SYSTEM_CHANGE_MATRIX.md`
 5. `CHANGE_CHECKLIST.md`
-6. `SYSTEM_INTEGRITY_GUIDE.md` when you need deeper reference detail
-7. `Tech.md` when architecture, workflows, release behavior, install/update behavior, or operational logic are relevant
+6. `CHANGELOG.md`
+7. `SYSTEM_INTEGRITY_GUIDE.md` when you need deeper reference detail
+8. `Tech.md` when architecture, workflows, release behavior, install/update behavior, or operational logic are relevant
 
 ## What Each Document Is For
 
@@ -59,6 +60,8 @@ Read these in order before non-trivial work:
   "If X changes, also inspect W/Y/Z."
 - `CHANGE_CHECKLIST.md`
   Execution checklist for making and shipping changes safely.
+- `CHANGELOG.md`
+  The human-readable history of system evolution and releases.
 - `SYSTEM_INTEGRITY_GUIDE.md`
   Deep legacy reference manual.
 - `Tech.md`
