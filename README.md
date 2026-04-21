@@ -14,6 +14,7 @@
 [![Node](https://img.shields.io/badge/node-20-green.svg)](frontend/)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey.svg)](installer/)
 [![GitHub](https://img.shields.io/badge/GitHub-henrique--simoes%2FIstara-181717?logo=github)](https://github.com/henrique-simoes/Istara)
+[![SafeSkill 50/100](https://img.shields.io/badge/SafeSkill-50%2F100_Use%20with%20Caution-orange)](https://safeskill.dev/scan/henrique-simoes-istara)
 
 [**Install in 1 Minute**](#install) · [**Architecture**](#architecture) · [**Research Skills**](#53-research-skills) · [**Agents**](#5-ai-agents) · [**References**](#academic-references) · [**Contributing**](CONTRIBUTING.md)
 
