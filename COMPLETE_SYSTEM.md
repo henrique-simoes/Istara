@@ -1,6 +1,6 @@
 # Istara Complete System Architecture & Living Map
 
-Generated from the repository on version `2026.04.20.2`. This document is meant to be regenerated whenever the implementation changes so LLMs can reason from the current system instead of stale summaries.
+Generated from the repository on version `2026.04.20`. This document is meant to be regenerated whenever the implementation changes so LLMs can reason from the current system instead of stale summaries.
 
 ## Purpose
 
@@ -22,7 +22,7 @@ Generated from the repository on version `2026.04.20.2`. This document is meant 
 - Next.js frontend with 23 mounted views and 15 Zustand stores.
 - 43 SQLAlchemy models in `backend/app/models`.
 - 6 tracked persona directories and 57 JSON-defined skills.
-- 58 active test files across 4 regression layers.
+- 74 Playwright simulation scenarios plus 9 Python e2e phases.
 
 ## Backend Route Inventory
 
@@ -236,10 +236,94 @@ Generated from the repository on version `2026.04.20.2`. This document is meant 
 
 ## Behavioral Coverage from Tests
 
-- **Layer: Benchmarks**: `test_orchestration.py`
-- **Layer: Integration**: `test_llm_orchestration_real.py`
-- **Layer: Simulation**: `run.mjs`
-- **Test Journeys**: `test_agents.py`, `test_auth_security.py`, `test_autoresearch.py`, `test_backup.py`, `test_browser_skills.py`, `test_business_logic.py`, `test_channels.py`, `test_chat.py`, `test_code_applications.py`, `test_codebook_versions.py`, `test_codebooks.py`, `test_compute.py`, `test_connections.py`, `test_content_guard.py`, `test_context_dag.py`, `test_data_transformations.py`, `test_documents.py`, `test_error_handling.py`, `test_evaluation_skill.py`, `test_field_encryption.py`, `test_files.py`, `test_findings.py`, `test_integration.py`, `test_integration_agent_work_cycle.py`, `test_integration_chat_flow.py`, `test_integration_interview.py`, `test_interfaces.py`, `test_laws.py`, `test_llm_servers.py`, `test_loops.py`, `test_mcp.py`, `test_memory.py`, `test_meta_hyperagent.py`, `test_network_security.py`, `test_notifications.py`, `test_participant_simulation.py`, `test_projects.py`, `test_proxy_security.py`, `test_rate_limiter.py`, `test_research_integrity.py`, `test_self_healing_rules.py`, `test_sessions.py`, `test_settings.py`, `test_skills.py`, `test_steering.py`, `test_surveys.py`, `test_tasks.py`, `test_telemetry.py`, `test_telemetry_export.py`, `test_transcription.py`, `test_transport_headers.py`, `test_version_comparison.py`, `test_webauthn.py`, `test_websocket.py`, `e2e_test.py`
+### Python E2E Journey
+
+- Authentication
+- System Health
+- Project Setup
+- Context Hierarchy
+- File Upload
+- Chat & Skill Execution
+- Steering
+- Browser Research & Formal Evaluation
+- Voice Transcription
+
+### Simulation Scenario Matrix
+
+- `01` — Health Check
+- `02` — Onboarding
+- `03` — Project Setup
+- `04` — File Upload
+- `05` — Chat Interaction
+- `06` — Skill Execution
+- `07` — Findings Chain
+- `08` — Kanban Workflow
+- `09` — Navigation Search
+- `10` — Agent Architecture
+- `10` — Settings Models
+- `11` — Agents System
+- `12` — Chat Sessions
+- `13` — Task Agent Assignment
+- `14` — Agent Communication
+- `15` — Vector Db
+- `16` — Findings Population
+- `17` — Full Pipeline
+- `18` — Task Verification
+- `19` — File Preview
+- `20` — All Skills Comprehensive
+- `21` — Agent Work Simulation
+- `22` — Architecture Evaluation
+- `23` — Memory View
+- `24` — Context Dag
+- `25` — Systemic Robustness
+- `26` — Model Session Persistence
+- `27` — Agent Identity System
+- `28` — Self Evolution Prompt Compression
+- `29` — Documents System
+- `30` — Event Wiring Audit
+- `31` — Task Documents Tools
+- `32` — Auth Flow
+- `33` — Task Locking
+- `34` — Compute Pool
+- `35` — Ensemble Validation
+- `36` — Llm Servers
+- `37` — Ensemble Health View
+- `38` — Task Routing
+- `39` — Data Migration
+- `40` — Agent Identity Editing
+- `41` — Skill Creation
+- `42` — Content Guard
+- `43` — Process Hardening
+- `44` — Agent Factory
+- `45` — Interfaces Menu
+- `46` — Stitch Figma Integration
+- `47` — Atomic Research Design
+- `48` — Real User Simulation
+- `49` — Loops Schedule
+- `50` — Notifications
+- `51` — Backup System
+- `52` — Meta Hyperagent
+- `53` — Channel Lifecycle
+- `55` — Survey Integration
+- `56` — Mcp Server Security
+- `57` — Mcp Client Registry
+- `58` — Research Deployment
+- `59` — Agent Integration Knowledge
+- `61` — Autoresearch Isolation
+- `64` — Docker Security
+- `65` — Laws Of Ux
+- `66` — Featured Mcp Servers
+- `67` — Auth Enforcement
+- `68` — Data Security
+- `69` — User Management Ui
+- `70` — Mid Execution Steering
+- `70` — Research Integrity
+- `71` — Plan And Execute
+- `72` — Circuit Breaker Health
+- `73` — A2A Debate And Reports
+- `74` — Voice Transcription
+- `75` — Participant Simulation
+- `76` — Long Horizon Trajectory
 
 ## What Agents Must Check Before Editing
 

@@ -44,9 +44,8 @@ Read these in order before non-trivial work:
 3. `COMPLETE_SYSTEM.md`
 4. `SYSTEM_CHANGE_MATRIX.md`
 5. `CHANGE_CHECKLIST.md`
-6. `CHANGELOG.md`
-7. `SYSTEM_INTEGRITY_GUIDE.md` when you need deeper reference detail
-8. `Tech.md` when architecture, workflows, release behavior, install/update behavior, or operational logic are relevant
+6. `SYSTEM_INTEGRITY_GUIDE.md` when you need deeper reference detail
+7. `Tech.md` when architecture, workflows, release behavior, install/update behavior, or operational logic are relevant
 
 ## What Each Document Is For
 
@@ -60,8 +59,6 @@ Read these in order before non-trivial work:
   "If X changes, also inspect W/Y/Z."
 - `CHANGE_CHECKLIST.md`
   Execution checklist for making and shipping changes safely.
-- `CHANGELOG.md`
-  The human-readable history of system evolution and releases.
 - `SYSTEM_INTEGRITY_GUIDE.md`
   Deep legacy reference manual.
 - `Tech.md`
@@ -74,13 +71,13 @@ Together, these documents are Compass.
 
 ## Live Snapshot
 
-- Version: `2026.04.20.2`
+- Version: `2026.04.20`
 - Backend route modules: 40 with 377 detected endpoints
 - Frontend mounted views: 23
 - Frontend stores: 15
 - Data models: 43
 - Personas: 6 (`design-lead`, `istara-devops`, `istara-main`, `istara-sim`, `istara-ui-audit`, `istara-ux-eval`)
-- Active test files: 58 across 4 layers
+- Simulation scenarios: 74
 
 ## Current Product Surface
 
