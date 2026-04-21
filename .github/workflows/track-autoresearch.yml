@@ -5,6 +5,9 @@ on:
     - cron: '17 9 * * 1'  # Weekly Monday 9:17am UTC
   workflow_dispatch:
 
+permissions:
+  issues: write
+
 jobs:
   check-upstream:
     runs-on: ubuntu-latest
