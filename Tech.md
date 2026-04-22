@@ -2937,3 +2937,36 @@ Istara consolidates all LLM management into a single `ComputeRegistry`, replacin
 
 ### 3. Installer Resilience
 The `scripts/install-istara.sh` utility supports persistent port overrides. Configured `FRONTEND_PORT` and `BACKEND_PORT` values are automatically saved to `backend/.env` to ensure consistent state across system updates and restarts.
+
+---
+
+## Integration Surface Area & Resilience (April 2026)
+
+Istara's Integrations menu connects research workflows to external messaging, survey, and MCP platforms. Every integration follows a uniform resilience pattern.
+
+### Messaging Channels
+| Platform | Adapter | Transport | Resilience |
+|---|---|---|---|
+| **Telegram** | `TelegramAdapter` | python-telegram-bot v22+ async polling | Retry + circuit breaker |
+| **WhatsApp** | `WhatsAppAdapter` | Meta Graph API v22.0 webhook | Retry + circuit breaker + webhook idempotency |
+| **Slack** | `SlackAdapter` | slack-bolt Socket Mode / HTTP | Retry + circuit breaker |
+| **Google Chat** | `GoogleChatAdapter` | Webhook / service account | Retry + circuit breaker |
+
+### Resilience Patterns
+All outbound channel calls are protected by:
+- **Exponential backoff retry** (3 retries, 1s base, full jitter) — recovers from transient API failures.
+- **Circuit breaker** (5 failures / 60s recovery) — prevents cascading overload to degraded upstream APIs.
+- **Webhook idempotency** (WhatsApp) — deduplicates retried webhook deliveries by `external_message_id`, capping cache at 10K entries.
+
+### Survey Platforms
+| Platform | Module | Status |
+|---|---|---|
+| **Google Forms** | `services/survey_platforms/google_forms.py` | Active |
+| **SurveyMonkey** | `services/survey_platforms/surveymonkey.py` | Active |
+| **Typeform** | `services/survey_platforms/typeform.py` | Active |
+
+### MCP (Model Context Protocol)
+- **Server exposure**: Configurable via `MCPAccessPolicy` with risk-level gating (low / sensitive / high).
+- **Audit logging**: Every tool invocation recorded in `MCPAuditEntry` with arguments, caller, policy, and duration.
+- **Rate limiting**: High-risk tools (`execute_skill`, `create_project`, `deploy_research`) capped per hour.
+- **Client registry**: External MCP servers registered with encrypted headers (`encrypt_field`).
