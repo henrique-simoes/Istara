@@ -21,10 +21,19 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
   const [connectionString, setConnectionString] = useState("");
   const [joinValidated, setJoinValidated] = useState<any>(null);
   const [serverReachable, setServerReachable] = useState<boolean | null>(null);
+
+  // 2FA state
+  const [loginStep, setLoginStep] = useState<"credentials" | "2fa">("credentials");
+  const [mfaMethods, setMfaMethods] = useState<string[]>([]);
+  const [totpCode, setTotpCode] = useState("");
+  const [useRecoveryCode, setUseRecoveryCode] = useState(false);
+
+  // Passkey state
+  const [passkeyLoading, setPasskeyLoading] = useState(false);
+
   const usernameRef = useRef<HTMLInputElement>(null);
 
   // Check team status on mount — determines UI mode.
-  // Retries up to 5 times with 2s backoff to handle backend startup races.
   useEffect(() => {
     let cancelled = false;
 
@@ -63,6 +72,68 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
   useEffect(() => {
     usernameRef.current?.focus();
   }, [mode]);
+
+  const reset2FA = () => {
+    setLoginStep("credentials");
+    setMfaMethods([]);
+    setTotpCode("");
+    setUseRecoveryCode(false);
+  };
+
+  const handlePasskeyLogin = async () => {
+    if (!username.trim()) {
+      setError("Enter your username to sign in with a passkey.");
+      return;
+    }
+    setPasskeyLoading(true);
+    setError("");
+    try {
+      const { startAuthentication } = await import("@simplewebauthn/browser");
+
+      const startRes = await fetch(`${API_BASE}/api/webauthn/authenticate/start`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: username.trim() }),
+      });
+      if (!startRes.ok) {
+        const err = await startRes.json().catch(() => ({ detail: "Passkey auth failed" }));
+        throw new Error(err.detail || "Passkey auth failed");
+      }
+      const startData = await startRes.json();
+
+      const assertion = await startAuthentication({ optionsJSON: startData.publicKey });
+
+      const finishRes = await fetch(`${API_BASE}/api/webauthn/authenticate/finish`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_id: startData.user_id,
+          id: assertion.id,
+          raw_id: assertion.rawId,
+          response_type: assertion.type,
+          authenticator_data: assertion.response.authenticatorData,
+          client_data_json: assertion.response.clientDataJSON,
+          signature: assertion.response.signature,
+          user_handle: assertion.response.userHandle,
+        }),
+      });
+      if (!finishRes.ok) {
+        const err = await finishRes.json().catch(() => ({ detail: "Passkey verification failed" }));
+        throw new Error(err.detail || "Passkey verification failed");
+      }
+      const data = await finishRes.json();
+      localStorage.setItem("istara_token", data.token);
+      await onLogin();
+    } catch (err) {
+      if (err instanceof TypeError && err.message === "Failed to fetch") {
+        setError("Cannot connect to the Istara server.");
+      } else {
+        setError(err instanceof Error ? err.message : "Passkey sign-in failed.");
+      }
+    } finally {
+      setPasskeyLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -135,35 +206,115 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
       }
     }
 
-    setLoading(true);
-    try {
-      const endpoint = mode === "register" ? "/api/auth/register" : "/api/auth/login";
-      const body = mode === "register"
-        ? { username: username.trim(), password, email: email.trim(), display_name: username.trim() }
-        : { username: username.trim(), password: password || "local" };
+    // Registration flow
+    if (mode === "register") {
+      setLoading(true);
+      try {
+        const res = await fetch(`${API_BASE}/api/auth/register`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            username: username.trim(),
+            password,
+            email: email.trim(),
+            display_name: username.trim(),
+          }),
+        });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({ detail: "Registration failed" }));
+          throw new Error(data.detail || "Registration failed");
+        }
+        const data = await res.json();
+        localStorage.setItem("istara_token", data.token);
+        await onLogin();
+      } catch (err) {
+        if (err instanceof TypeError && err.message === "Failed to fetch") {
+          setError("Cannot connect to the Istara server. Make sure the backend is running on port 8000.");
+        } else {
+          setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+        }
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
 
-      const res = await fetch(`${API_BASE}${endpoint}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({ detail: `${mode === "register" ? "Registration" : "Login"} failed` }));
-        throw new Error(data.detail || `Failed (${res.status})`);
+    // Login flow — with 2FA support
+    if (mode === "login") {
+      // Step 1: credentials
+      if (loginStep === "credentials") {
+        setLoading(true);
+        try {
+          const res = await fetch(`${API_BASE}/api/auth/login`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username: username.trim(), password }),
+          });
+          if (!res.ok) {
+            const data = await res.json().catch(() => ({ detail: "Login failed" }));
+            throw new Error(data.detail || "Login failed");
+          }
+          const data = await res.json();
+          if (data.requires_2fa) {
+            setLoginStep("2fa");
+            setMfaMethods(data.methods || ["totp", "recovery_code"]);
+            setLoading(false);
+            return;
+          }
+          localStorage.setItem("istara_token", data.token);
+          await onLogin();
+        } catch (err) {
+          if (err instanceof TypeError && err.message === "Failed to fetch") {
+            setError("Cannot connect to the Istara server. Make sure the backend is running on port 8000.");
+          } else {
+            setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+          }
+        } finally {
+          setLoading(false);
+        }
+        return;
       }
 
-      const data = await res.json();
-      localStorage.setItem("istara_token", data.token);
-      await onLogin();
-    } catch (err) {
-      if (err instanceof TypeError && err.message === "Failed to fetch") {
-        setError("Cannot connect to the Istara server. Make sure the backend is running on port 8000.");
-      } else {
-        setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+      // Step 2: 2FA verification
+      if (loginStep === "2fa") {
+        if (!totpCode.trim()) {
+          setError(useRecoveryCode ? "Enter a recovery code." : "Enter a 6-digit TOTP code.");
+          return;
+        }
+        setLoading(true);
+        try {
+          const body: Record<string, string> = {
+            username: username.trim(),
+            password,
+          };
+          if (useRecoveryCode) {
+            body.recovery_code = totpCode.trim();
+          } else {
+            body.totp_code = totpCode.trim();
+          }
+          const res = await fetch(`${API_BASE}/api/auth/login`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          });
+          if (!res.ok) {
+            const data = await res.json().catch(() => ({ detail: "Verification failed" }));
+            throw new Error(data.detail || "Verification failed");
+          }
+          const data = await res.json();
+          localStorage.setItem("istara_token", data.token);
+          await onLogin();
+        } catch (err) {
+          if (err instanceof TypeError && err.message === "Failed to fetch") {
+            setError("Cannot connect to the Istara server. Make sure the backend is running on port 8000.");
+          } else {
+            setError(err instanceof Error ? err.message : "Verification failed. Please try again.");
+          }
+        } finally {
+          setLoading(false);
+        }
+        return;
       }
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -228,7 +379,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
                       Insecure Mode Detected
                     </p>
                     <p className="text-xs text-red-700 dark:text-red-400 mt-1 leading-relaxed">
-                      This server is accessible over the network but has authentication disabled. 
+                      This server is accessible over the network but has authentication disabled.
                       Anyone with the URL can access all research data.
                     </p>
                     <div className="mt-3 text-xs text-slate-500 dark:text-slate-400">
@@ -326,6 +477,8 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
                 ? "Create Account"
                 : mode === "join"
                 ? "Join Server"
+                : loginStep === "2fa"
+                ? "Two-Factor Authentication"
                 : "Sign In"
               }
             </h1>
@@ -334,13 +487,15 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
                 ? "This server is in Individual Mode. Enter a connection string to access."
                 : mode === "register" && !hasUsers
                 ? "You'll be the admin for this Istara server."
+                : loginStep === "2fa"
+                ? "Enter your verification code to continue."
                 : "Local-first AI agents for UX Research"
               }
             </p>
           </div>
 
           {/* Banner for members who have a connection string */}
-          {mode === "login" && (
+          {mode === "login" && loginStep === "credentials" && (
             <div className="mb-4 rounded-lg bg-istara-50 dark:bg-istara-900/20 border border-istara-200 dark:border-istara-800 px-4 py-3 text-center">
               <p className="text-xs text-istara-700 dark:text-istara-400">
                 Got a connection string from your admin?{" "}
@@ -396,8 +551,59 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
               </div>
             )}
 
+            {/* 2FA Step */}
+            {mode === "login" && loginStep === "2fa" && (
+              <div className="space-y-4">
+                <div>
+                  <label
+                    htmlFor="totp-code"
+                    className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5"
+                  >
+                    {useRecoveryCode ? "Recovery Code" : "TOTP Code"}
+                  </label>
+                  <input
+                    id="totp-code"
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    maxLength={useRecoveryCode ? 32 : 6}
+                    value={totpCode}
+                    onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, ""))}
+                    disabled={loading}
+                    className="w-full px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-istara-500 focus:border-transparent transition disabled:opacity-50 tracking-widest text-center text-lg"
+                    placeholder={useRecoveryCode ? "XXXX-XXXX-XXXX-XXXX" : "000000"}
+                  />
+                  {!useRecoveryCode && (
+                    <p className="text-xs text-slate-400 dark:text-slate-500 mt-1 text-center">
+                      Enter the 6-digit code from your authenticator app
+                    </p>
+                  )}
+                </div>
+
+                {mfaMethods.includes("recovery_code") && (
+                  <div className="text-center">
+                    <button
+                      type="button"
+                      onClick={() => { setUseRecoveryCode(!useRecoveryCode); setTotpCode(""); }}
+                      className="text-xs text-istara-600 dark:text-istara-400 hover:underline"
+                    >
+                      {useRecoveryCode ? "Use TOTP code instead" : "Didn't get a code? Use recovery code"}
+                    </button>
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={reset2FA}
+                  className="text-xs text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"
+                >
+                  ← Back to sign in
+                </button>
+              </div>
+            )}
+
             {/* Username — shown for login, register, and join (after validation) */}
-            {(mode !== "join" || joinValidated) && (
+            {loginStep !== "2fa" && (mode !== "join" || joinValidated) && (
             <div>
               <label
                 htmlFor="login-username"
@@ -420,7 +626,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
             </div>
             )}
 
-            {(mode === "register" || (mode === "join" && joinValidated)) && (
+            {loginStep !== "2fa" && (mode === "register" || (mode === "join" && joinValidated)) && (
               <div>
                 <label
                   htmlFor="login-email"
@@ -443,7 +649,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
             )}
 
             {/* Password — only in team mode */}
-            {(mode !== "join" || joinValidated) && (
+            {loginStep !== "2fa" && (mode !== "join" || joinValidated) && (
             <div>
               <label
                 htmlFor="login-password"
@@ -486,18 +692,58 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                   </svg>
-                  {mode === "register" ? "Creating account..." : mode === "join" ? "Connecting..." : "Signing in..."}
+                  {mode === "register" ? "Creating account..." : mode === "join" ? "Connecting..." : loginStep === "2fa" ? "Verifying..." : "Signing in..."}
                 </span>
               ) : (
                 mode === "join"
                   ? (joinValidated ? "Create Account & Connect" : "Verify Connection")
-                  : mode === "register" ? "Create Account" : "Sign In"
+                  : mode === "register" ? "Create Account"
+                  : loginStep === "2fa" ? "Verify"
+                  : "Sign In"
               )}
             </button>
+
+            {/* Passkey login option */}
+            {mode === "login" && loginStep === "credentials" && teamMode && (
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-slate-200 dark:border-slate-700" />
+                </div>
+                <div className="relative flex justify-center text-xs">
+                  <span className="bg-white dark:bg-slate-900 px-2 text-slate-400 dark:text-slate-500">or</span>
+                </div>
+              </div>
+            )}
+
+            {mode === "login" && loginStep === "credentials" && teamMode && (
+              <button
+                type="button"
+                onClick={handlePasskeyLogin}
+                disabled={passkeyLoading}
+                className="w-full py-2.5 px-4 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium hover:bg-slate-50 dark:hover:bg-slate-700 transition focus:outline-none focus:ring-2 focus:ring-istara-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {passkeyLoading ? (
+                  <span className="inline-flex items-center gap-2">
+                    <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    Authenticating...
+                  </span>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z" fill="currentColor"/>
+                    </svg>
+                    Sign in with Passkey
+                  </>
+                )}
+              </button>
+            )}
           </form>
 
           {/* Footer — toggle between login/register/join */}
-          {teamMode && (
+          {teamMode && loginStep === "credentials" && (
             <div className="mt-6 text-center space-y-1">
               {mode !== "login" && (
                 <p className="text-xs text-slate-400 dark:text-slate-500">

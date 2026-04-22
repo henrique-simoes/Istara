@@ -4,6 +4,7 @@ from pathlib import Path
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.pool import NullPool
 
 from app.config import settings
 
@@ -22,6 +23,9 @@ if _is_sqlite:
     db_path = settings.database_url.replace("sqlite+aiosqlite:///", "")
     Path(db_path).parent.mkdir(parents=True, exist_ok=True)
     _engine_kwargs["connect_args"] = {"check_same_thread": False}
+    # NullPool prevents "database is locked" and "Event loop is closed" issues
+    # across tests by closing connections immediately.
+    _engine_kwargs["poolclass"] = NullPool
 else:
     # PostgreSQL: prefer SSL for connections (does not break local dev)
     import ssl as _ssl
@@ -100,6 +104,8 @@ async def init_db() -> None:
             "ALTER TABLE users ADD COLUMN passkey_enabled BOOLEAN NOT NULL DEFAULT 0",
             # Widen password_hash for Argon2id hashes (SQLite ignores this, but needed for PostgreSQL)
             "ALTER TABLE users ALTER COLUMN password_hash TYPE VARCHAR(512)",
+            # Email encryption support
+            "ALTER TABLE users ADD COLUMN email_hash VARCHAR(64)",
         ]
         for ddl in migrations:
             try:
