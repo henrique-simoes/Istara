@@ -1,6 +1,6 @@
 # Istara — Agent-Readable Operating Map
 
-Generated from the repository on version `2026.04.10.6`. Treat this file as the fast inventory view after reading `AGENT_ENTRYPOINT.md`, then consult `COMPLETE_SYSTEM.md`, `SYSTEM_CHANGE_MATRIX.md`, `CHANGE_CHECKLIST.md`, and `SYSTEM_PROMPT.md` before structural work.
+Generated from the repository on version `2026.04.20.2`. Treat this file as the fast inventory view after reading `AGENT_ENTRYPOINT.md`, then consult `COMPLETE_SYSTEM.md`, `SYSTEM_CHANGE_MATRIX.md`, `CHANGE_CHECKLIST.md`, and `SYSTEM_PROMPT.md` before structural work.
 
 ## Non-Negotiable Workflow
 
@@ -17,12 +17,12 @@ Generated from the repository on version `2026.04.10.6`. Treat this file as the 
 
 ## System Snapshot
 
-- Frontend: Next.js app with 22 mounted views and 15 Zustand stores.
-- Backend: FastAPI app with 38 route modules and 363 detected endpoints.
-- Data layer: 41 SQLAlchemy models plus LanceDB-backed retrieval/context systems.
+- Frontend: Next.js app with 23 mounted views and 15 Zustand stores.
+- Backend: FastAPI app with 40 route modules and 377 detected endpoints.
+- Data layer: 43 SQLAlchemy models plus LanceDB-backed retrieval/context systems.
 - Agents/personas: 6 tracked persona directories under `backend/app/agents/personas`.
-- Skills: 50 JSON-defined skills across the Double Diamond phases.
-- Regression map: 71 simulation scenarios plus 13 e2e phases.
+- Skills: 57 JSON-defined skills across the Double Diamond phases.
+- Regression map: 58 active test files across 4 layers.
 
 ## Change Hotspots
 
@@ -54,6 +54,7 @@ Generated from the repository on version `2026.04.10.6`. Treat this file as the 
 | Secondary | `meta-hyperagent` | Meta-Agent | `MetaHyperagentView` |
 | Secondary | `compute` | Compute Pool | `ComputePoolView` |
 | Secondary | `ensemble` | Ensemble Health | `EnsembleHealthView` |
+| Secondary | `quality` | Quality Dashboard | `QualityView` |
 | Secondary | `project-settings` | Project Settings | `ProjectSettingsView` |
 | Secondary | `history` | History | `VersionHistory` |
 | Utility | `notifications` | Notifications | `NotificationsView` |
@@ -71,27 +72,28 @@ Generated from the repository on version `2026.04.10.6`. Treat this file as the 
 
 ## Skills By Phase
 
-- **Define** (12): Affinity Mapping, Empathy Mapping, Problem Statements / HMW, Journey Mapping, Jobs-to-be-Done Analysis, Kappa Intercoder Thematic Analysis, Persona Creation, Prioritization Matrix, Research Synthesis Report, Taxonomy Generator, Thematic Analysis, User Flow Mapping
-- **Deliver** (11): Handoff Documentation, Longitudinal Study Tracking, NPS Analysis, Regression / Impact Analysis, Research Repository Curation, Research Ops Retrospective, Stakeholder Presentation, Design System Synthesis, HTML to React Components, SUS / UMUX Scoring, Task Analysis (Quantitative)
-- **Develop** (14): A/B Test Analysis, Card Sorting Analysis, Cognitive Walkthrough, Concept Testing, Design Critique / Expert Review, Design System Audit, Heuristic Evaluation, Prototype Feedback Analysis, Stitch Design Generation, Design Prompt Enhancement, Tree Testing Analysis, Usability Testing, UX Law Compliance Audit, Workshop Facilitation
-- **Discover** (13): Accessibility Audit, Analytics Review, Competitive Analysis, Contextual Inquiry, Literature / Desk Research, Diary Studies, Field Studies / Ethnography, Interview Question Generator, Stakeholder Interviews, Survey AI Response Detection, Survey Design & Analysis, Survey Generator, User Interviews
+- **Define** (13): Affinity Mapping, Empathy Mapping, Problem Statements / HMW, Journey Mapping, Jobs-to-be-Done Analysis, Kappa Intercoder Thematic Analysis, Game Theory Participant Simulation, Persona Creation, Prioritization Matrix, Research Synthesis Report, Taxonomy Generator, Thematic Analysis, User Flow Mapping
+- **Deliver** (13): Evaluate Research Quality, Handoff Documentation, Longitudinal Study Tracking, NPS Analysis, Regression / Impact Analysis, Research Repository Curation, Evaluate Research Quality, Research Ops Retrospective, Stakeholder Presentation, Design System Synthesis, HTML to React Components, SUS / UMUX Scoring, Task Analysis (Quantitative)
+- **Develop** (16): A/B Test Analysis, Live Site Accessibility Audit, Live Site UX Audit, Card Sorting Analysis, Cognitive Walkthrough, Concept Testing, Design Critique / Expert Review, Design System Audit, Heuristic Evaluation, Prototype Feedback Analysis, Stitch Design Generation, Design Prompt Enhancement, Tree Testing Analysis, Usability Testing, UX Law Compliance Audit, Workshop Facilitation
+- **Discover** (15): Accessibility Audit, Analytics Review, Competitor UX Benchmarking, Competitive Analysis (Automated), Contextual Inquiry, Literature / Desk Research, Diary Studies, Field Studies / Ethnography, Interview Question Generator, Stakeholder Interviews, Survey AI Response Detection, Survey Design & Analysis, Survey Generator, Audio Transcription & Analysis, User Interviews
 
 ## Backend Route Modules
 
 | Route Module | Prefix | Endpoints |
 |---|---|---|
 | `agents.py` | `/` | 48 |
-| `audit.py` | `/` | 6 |
+| `audit.py` | `/` | 7 |
 | `auth.py` | `/` | 15 |
 | `autoresearch.py` | `/autoresearch` | 9 |
-| `backup.py` | `/` | 9 |
+| `backup.py` | `/` | 10 |
 | `channels.py` | `/` | 11 |
-| `chat.py` | `/` | 2 |
+| `chat.py` | `/` | 4 |
+| `chat_voice.py` | `/` | 1 |
 | `code_applications.py` | `/code-applications` | 4 |
 | `codebook_versions.py` | `/codebook-versions` | 4 |
 | `codebooks.py` | `/` | 8 |
 | `compute.py` | `/` | 3 |
-| `connections.py` | `/` | 4 |
+| `connections.py` | `/` | 6 |
 | `context_dag.py` | `/` | 6 |
 | `deployments.py` | `/` | 12 |
 | `documents.py` | `/` | 10 |
@@ -104,13 +106,14 @@ Generated from the repository on version `2026.04.10.6`. Treat this file as the 
 | `mcp.py` | `/` | 17 |
 | `memory.py` | `/` | 5 |
 | `meta_hyperagent.py` | `/` | 9 |
-| `metrics.py` | `/` | 1 |
+| `metrics.py` | `/` | 3 |
 | `notifications.py` | `/` | 7 |
+| `presentation.py` | `/presentation` | 1 |
 | `projects.py` | `/` | 15 |
 | `reports.py` | `/reports` | 1 |
 | `scheduler.py` | `/` | 5 |
 | `sessions.py` | `/` | 8 |
-| `settings.py` | `/` | 14 |
+| `settings.py` | `/` | 18 |
 | `skills.py` | `/` | 18 |
 | `steering.py` | `/` | 8 |
 | `surveys.py` | `/` | 9 |
@@ -135,6 +138,7 @@ Generated from the repository on version `2026.04.10.6`. Treat this file as the 
 | `Codebook` | `codebooks` | yes | `backend/app/models/codebook.py` |
 | `Code` | `codes` | yes | `backend/app/models/codebook.py` |
 | `CodebookVersion` | `codebook_versions` | yes | `backend/app/models/codebook_version.py` |
+| `ConnectionString` | `connection_strings` | yes | `backend/app/models/connection_string.py` |
 | `ContextDAGNode` | `context_dag_nodes` | no | `backend/app/models/context_dag.py` |
 | `DesignScreen` | `design_screens` | yes | `backend/app/models/design_screen.py` |
 | `DesignBrief` | `design_briefs` | yes | `backend/app/models/design_screen.py` |
@@ -162,6 +166,7 @@ Generated from the repository on version `2026.04.10.6`. Treat this file as the 
 | `SurveyIntegration` | `survey_integrations` | yes | `backend/app/models/survey_integration.py` |
 | `SurveyLink` | `survey_links` | yes | `backend/app/models/survey_integration.py` |
 | `Task` | `tasks` | no | `backend/app/models/task.py` |
+| `TelemetrySpan` | `telemetry_spans` | no | `backend/app/models/telemetry_span.py` |
 | `User` | `users` | no | `backend/app/models/user.py` |
 | `WebAuthnCredential` | `webauthn_credentials` | no | `backend/app/models/webauthn_credential.py` |
 
@@ -192,92 +197,10 @@ Generated from the repository on version `2026.04.10.6`. Treat this file as the 
 
 ## Test Coverage Map
 
-- E2E phases:
-  - Authentication
-  - System Health
-  - Project Setup (Sarah creates her project)
-  - Context Hierarchy
-  - File Upload & Processing
-  - Chat & Skill Execution
-  - Findings Verification
-  - Tasks & Kanban
-  - Metrics & History
-  - Skills Registry
-  - Agents & Audit
-  - Frontend Check
-  - Mid-Execution Steering
-- Simulation scenarios:
-  - `01` — Health Check
-  - `02` — Onboarding
-  - `03` — Project Setup
-  - `04` — File Upload
-  - `05` — Chat Interaction
-  - `06` — Skill Execution
-  - `07` — Findings Chain
-  - `08` — Kanban Workflow
-  - `09` — Navigation Search
-  - `10` — Agent Architecture
-  - `10` — Settings Models
-  - `11` — Agents System
-  - `12` — Chat Sessions
-  - `13` — Task Agent Assignment
-  - `14` — Agent Communication
-  - `15` — Vector Db
-  - `16` — Findings Population
-  - `17` — Full Pipeline
-  - `18` — Task Verification
-  - `19` — File Preview
-  - `20` — All Skills Comprehensive
-  - `21` — Agent Work Simulation
-  - `22` — Architecture Evaluation
-  - `23` — Memory View
-  - `24` — Context Dag
-  - `25` — Systemic Robustness
-  - `26` — Model Session Persistence
-  - `27` — Agent Identity System
-  - `28` — Self Evolution Prompt Compression
-  - `29` — Documents System
-  - `30` — Event Wiring Audit
-  - `31` — Task Documents Tools
-  - `32` — Auth Flow
-  - `33` — Task Locking
-  - `34` — Compute Pool
-  - `35` — Ensemble Validation
-  - `36` — Llm Servers
-  - `37` — Ensemble Health View
-  - `38` — Task Routing
-  - `39` — Data Migration
-  - `40` — Agent Identity Editing
-  - `41` — Skill Creation
-  - `42` — Content Guard
-  - `43` — Process Hardening
-  - `44` — Agent Factory
-  - `45` — Interfaces Menu
-  - `46` — Stitch Figma Integration
-  - `47` — Atomic Research Design
-  - `48` — Real User Simulation
-  - `49` — Loops Schedule
-  - `50` — Notifications
-  - `51` — Backup System
-  - `52` — Meta Hyperagent
-  - `53` — Channel Lifecycle
-  - `55` — Survey Integration
-  - `56` — Mcp Server Security
-  - `57` — Mcp Client Registry
-  - `58` — Research Deployment
-  - `59` — Agent Integration Knowledge
-  - `61` — Autoresearch Isolation
-  - `64` — Docker Security
-  - `65` — Laws Of Ux
-  - `66` — Featured Mcp Servers
-  - `67` — Auth Enforcement
-  - `68` — Data Security
-  - `69` — User Management Ui
-  - `70` — Mid Execution Steering
-  - `70` — Research Integrity
-  - `71` — Plan And Execute
-  - `72` — Circuit Breaker Health
-  - `73` — A2A Debate And Reports
+- **Layer: Benchmarks**: `test_orchestration.py`
+- **Layer: Integration**: `test_llm_orchestration_real.py`
+- **Layer: Simulation**: `run.mjs`
+- **Test Journeys**: `test_agents.py`, `test_auth_security.py`, `test_autoresearch.py`, `test_backup.py`, `test_browser_skills.py`, `test_business_logic.py`, `test_channels.py`, `test_chat.py`, `test_code_applications.py`, `test_codebook_versions.py`, `test_codebooks.py`, `test_compute.py`, `test_connections.py`, `test_content_guard.py`, `test_context_dag.py`, `test_data_transformations.py`, `test_documents.py`, `test_error_handling.py`, `test_evaluation_skill.py`, `test_field_encryption.py`, `test_files.py`, `test_findings.py`, `test_integration.py`, `test_integration_agent_work_cycle.py`, `test_integration_chat_flow.py`, `test_integration_interview.py`, `test_interfaces.py`, `test_laws.py`, `test_llm_servers.py`, `test_loops.py`, `test_mcp.py`, `test_memory.py`, `test_meta_hyperagent.py`, `test_network_security.py`, `test_notifications.py`, `test_participant_simulation.py`, `test_projects.py`, `test_proxy_security.py`, `test_rate_limiter.py`, `test_research_integrity.py`, `test_self_healing_rules.py`, `test_sessions.py`, `test_settings.py`, `test_skills.py`, `test_steering.py`, `test_surveys.py`, `test_tasks.py`, `test_telemetry.py`, `test_telemetry_export.py`, `test_transcription.py`, `test_transport_headers.py`, `test_version_comparison.py`, `test_webauthn.py`, `test_websocket.py`, `e2e_test.py`
 
 ## Documentation Contract
 

@@ -100,6 +100,8 @@ async def init_db() -> None:
             "ALTER TABLE users ADD COLUMN passkey_enabled BOOLEAN NOT NULL DEFAULT 0",
             # Widen password_hash for Argon2id hashes (SQLite ignores this, but needed for PostgreSQL)
             "ALTER TABLE users ALTER COLUMN password_hash TYPE VARCHAR(512)",
+            # Email encryption support
+            "ALTER TABLE users ADD COLUMN email_hash VARCHAR(64)",
         ]
         for ddl in migrations:
             try:

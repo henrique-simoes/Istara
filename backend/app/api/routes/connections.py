@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.core.auth import create_token, hash_password
+from app.core.field_encryption import hash_field
 from app.core.connection_string import create_connection_string, decode_connection_string
 from app.core.security_middleware import require_admin_from_request
 from app.models.database import get_db
@@ -157,17 +158,19 @@ async def redeem_connection_string(data: RedeemRequest, db: AsyncSession = Depen
     # Team mode — create a real user
     from app.models.user import User, UserRole
 
-    # Check for existing username
+    email = data.email.strip() or f"{data.username.strip()}@istara.local"
+    email_hash = hash_field(email)
     existing = await db.execute(
-        select(User).where(User.username == data.username.strip())
+        select(User).where((User.username == data.username.strip()) | (User.email_hash == email_hash))
     )
     if existing.scalar_one_or_none():
-        raise HTTPException(status_code=409, detail="Username already exists")
+        raise HTTPException(status_code=409, detail="Username or email already exists")
 
     user = User(
         id=str(uuid.uuid4()),
         username=data.username.strip(),
-        email=data.email.strip() or f"{data.username.strip()}@istara.local",
+        email=email,
+        email_hash=email_hash,
         password_hash=hash_password(data.password),
         role=UserRole.RESEARCHER,
         display_name=data.display_name.strip() or data.username.strip(),

@@ -175,3 +175,117 @@ async def test_logout_requires_auth():
         token = create_token("local", "tester", "admin")
         response = await ac.post("/api/auth/logout", headers={"Authorization": f"Bearer {token}"})
         assert response.status_code == 200
+
+
+# ---------------------------------------------------------------------------
+# 2FA / MFA tests
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_login_returns_requires_2fa_when_totp_enabled():
+    """Verify that login returns requires_2fa when TOTP is enabled and no code provided."""
+    await init_db()
+    settings.team_mode = True
+    if not settings.jwt_secret:
+        settings.jwt_secret = "test-secret"
+
+    import uuid
+    username = f"mfauser_{uuid.uuid4().hex[:8]}"
+    email = f"mfa_{uuid.uuid4().hex[:8]}@example.com"
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        # Register a user
+        reg = await ac.post("/api/auth/register", json={
+            "username": username,
+            "email": email,
+            "password": "xK9#mP2$vL7nQ4@wR1!",
+        })
+        assert reg.status_code == 200
+        token = reg.json()["token"]
+
+        # Setup TOTP
+        totp_setup = await ac.post("/api/auth/totp/setup", headers={"Authorization": f"Bearer {token}"})
+        assert totp_setup.status_code == 200
+        secret = totp_setup.json()["secret"]
+
+        # Verify TOTP to enable it
+        import pyotp
+        code = pyotp.TOTP(secret).now()
+        totp_verify = await ac.post("/api/auth/totp/verify", json={"totp_code": code}, headers={"Authorization": f"Bearer {token}"})
+        assert totp_verify.status_code == 200
+
+        # Log out (clear token)
+        await ac.post("/api/auth/logout", headers={"Authorization": f"Bearer {token}"})
+
+        # Login WITHOUT TOTP code — should return requires_2fa
+        login = await ac.post("/api/auth/login", json={"username": username, "password": "xK9#mP2$vL7nQ4@wR1!"})
+        assert login.status_code == 200
+        data = login.json()
+        assert data.get("requires_2fa") is True
+        assert "token" not in data
+        assert "methods" in data
+
+
+@pytest.mark.asyncio
+async def test_login_with_totp_code_succeeds():
+    """Verify that login with correct TOTP code returns token."""
+    await init_db()
+    settings.team_mode = True
+    if not settings.jwt_secret:
+        settings.jwt_secret = "test-secret"
+
+    import uuid
+    username = f"mfauser2_{uuid.uuid4().hex[:8]}"
+    email = f"mfa2_{uuid.uuid4().hex[:8]}@example.com"
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        # Register and setup TOTP
+        reg = await ac.post("/api/auth/register", json={
+            "username": username,
+            "email": email,
+            "password": "xK9#mP2$vL7nQ4@wR1!",
+        })
+        token = reg.json()["token"]
+
+        totp_setup = await ac.post("/api/auth/totp/setup", headers={"Authorization": f"Bearer {token}"})
+        secret = totp_setup.json()["secret"]
+
+        import pyotp
+        code = pyotp.TOTP(secret).now()
+        await ac.post("/api/auth/totp/verify", json={"totp_code": code}, headers={"Authorization": f"Bearer {token}"})
+        await ac.post("/api/auth/logout", headers={"Authorization": f"Bearer {token}"})
+
+        # Login WITH TOTP code
+        login = await ac.post("/api/auth/login", json={
+            "username": username,
+            "password": "xK9#mP2$vL7nQ4@wR1!",
+            "totp_code": pyotp.TOTP(secret).now(),
+        })
+        assert login.status_code == 200
+        data = login.json()
+        assert "token" in data
+        assert data.get("requires_2fa") is not True
+
+
+# ---------------------------------------------------------------------------
+# Security headers tests
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_security_headers_present():
+    """Verify that security headers are present on responses."""
+    await init_db()
+    if not settings.jwt_secret:
+        settings.jwt_secret = "test-secret"
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.get("/api/auth/team-status")
+        assert response.status_code == 200
+        headers = response.headers
+        assert headers.get("x-content-type-options") == "nosniff"
+        assert headers.get("x-frame-options") == "DENY"
+        assert "strict-transport-security" in headers
+        assert "content-security-policy" in headers
