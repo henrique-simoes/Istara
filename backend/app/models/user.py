@@ -7,6 +7,7 @@ from sqlalchemy import DateTime, Enum, Integer, String, Text, Boolean
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.database import Base
+from app.core.field_encryption import EncryptedType
 
 
 class UserRole(str, enum.Enum):
@@ -22,7 +23,8 @@ class User(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     username: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
-    email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    email: Mapped[str] = mapped_column(EncryptedType, nullable=False)
+    email_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
     password_hash: Mapped[str] = mapped_column(String(512), nullable=False)
     role: Mapped[UserRole] = mapped_column(Enum(UserRole), default=UserRole.RESEARCHER)
     display_name: Mapped[str] = mapped_column(String(200), default="")

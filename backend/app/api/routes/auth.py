@@ -33,6 +33,7 @@ from app.core.auth import (
     verify_totp,
     is_password_breached,
 )
+from app.core.field_encryption import hash_field
 from app.core.security_middleware import require_admin_from_request
 from app.models.database import async_session, get_db
 from app.models.user import User
@@ -180,8 +181,9 @@ async def register(req: RegisterRequest, response: Response):
         )
 
     async with async_session() as db:
+        email_hash = hash_field(req.email)
         existing = await db.execute(
-            select(User).where((User.username == req.username) | (User.email == req.email))
+            select(User).where((User.username == req.username) | (User.email_hash == email_hash))
         )
         if existing.scalars().first():
             raise HTTPException(status_code=409, detail="Username or email already exists.")
@@ -197,6 +199,7 @@ async def register(req: RegisterRequest, response: Response):
             id=str(uuid.uuid4()),
             username=req.username,
             email=req.email,
+            email_hash=email_hash,
             password_hash=hash_password(req.password),
             role="admin" if is_first else "researcher",
             display_name=req.display_name or req.username,
@@ -662,9 +665,12 @@ async def create_user(
             detail="This password has appeared in a known data breach.",
         )
 
-    existing = await db.execute(select(User).where(User.username == body.username))
+    email_hash = hash_field(body.email)
+    existing = await db.execute(
+        select(User).where((User.username == body.username) | (User.email_hash == email_hash))
+    )
     if existing.scalar_one_or_none():
-        raise HTTPException(status_code=409, detail="Username already exists")
+        raise HTTPException(status_code=409, detail="Username or email already exists")
 
     # Generate recovery codes for the new user
     recovery_codes = generate_recovery_codes()
@@ -674,6 +680,7 @@ async def create_user(
         id=str(uuid.uuid4()),
         username=body.username,
         email=body.email,
+        email_hash=email_hash,
         password_hash=hash_password(body.password),
         role="researcher",
         display_name=body.display_name or body.username,
