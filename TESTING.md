@@ -6,7 +6,7 @@ Changes that are on `staging` and awaiting review before merging to `main`.
 
 | PR | Change | Added | Notes |
 |---|---|---|---|
-| - | - | - | - |
+| feat/system-audit-and-integration-check | NullPool + engine.dispose() for test stability; Compass resync | 2026-04-21 | Fixes `test_task_create_and_list` HTTP 500 (SQLite locking). All 354 tests pass. |
 
 ## Verified & Ready for `main`
 
