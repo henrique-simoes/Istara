@@ -9,7 +9,7 @@
 ### Local-first AI agents for UX Research — your data never leaves your machine
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-2026.04.10.13-brightgreen.svg)](VERSION)
+[![Version](https://img.shields.io/badge/version-2026.04.20.2-brightgreen.svg)](VERSION)
 [![Python](https://img.shields.io/badge/python-3.12-blue.svg)](backend/)
 [![Node](https://img.shields.io/badge/node-20-green.svg)](frontend/)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey.svg)](installer/)
