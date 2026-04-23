@@ -119,3 +119,21 @@ Benchmarks can be run against various local models by configuring `LLM_PROVIDER`
 | Gemma 3 (4B/12B) | LM Studio/Ollama | Configure model name in respective settings |
 
 The benchmarks are **model-agnostic** — they test orchestration logic, not model quality. Results should be consistent regardless of which local model is configured.
+
+---
+
+## Dataset Generator Validation
+
+The Istara SFT dataset generator is validated as a local, credential-free generation path by default.
+
+```bash
+python -m py_compile datasest-json-generator.py
+python datasest-json-generator.py --out-dir /tmp/istara_dataset_check --samples-per-skill 2
+python scripts/check_integrity.py
+```
+
+Expected result:
+- all live skill definitions under `backend/app/skills/definitions/*.json` are discovered
+- generated `istara_sft_messages.jsonl`, `istara_sft_alpaca.jsonl`, and `istara_sft_full.jsonl` parse as JSONL
+- `dataset_info.json` reports no omitted live skills
+- upload is skipped unless `--upload` is explicitly passed
