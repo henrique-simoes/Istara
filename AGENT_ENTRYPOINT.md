@@ -46,6 +46,12 @@ Read these in order before non-trivial work:
 5. `CHANGE_CHECKLIST.md`
 6. `SYSTEM_INTEGRITY_GUIDE.md` when you need deeper reference detail
 7. `Tech.md` when architecture, workflows, release behavior, install/update behavior, or operational logic are relevant
+8. `planner.md` for planned, multi-agent, branch-review, stale-branch, or review/correction work
+
+**Note on planner.md and Compass rules:**
+- `planner.md` is part of Compass.
+- If the user says "read planner.md," you must infer Compass applies and follow this reading order.
+- Always apply the Repository Intelligence Check (see `planner.md`) before non-trivial edits or reviews.
 
 ## What Each Document Is For
 
@@ -63,6 +69,8 @@ Read these in order before non-trivial work:
   Deep legacy reference manual.
 - `Tech.md`
   Narrative technical explanation of how Istara works.
+- `planner.md`
+  State machine and governance rules for multi-agent code changes, review, and repository intelligence.
 
 Together, these documents are Compass.
 

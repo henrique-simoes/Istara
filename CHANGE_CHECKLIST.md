@@ -26,6 +26,18 @@ Before making ANY change:
 - [ ] Plan database migration strategy (if needed)
 - [ ] **Plan test coverage using the Three-Layer Testing Mandate (see below)**
 
+### Compass Swarm and Repository Intelligence
+
+- [ ] Role, branch, base branch, touched surfaces, and handoff target declared
+- [ ] Branch divergence and stale-branch risk checked
+- [ ] Protected Compass files preserved
+- [ ] Deleted/resurrected files reviewed for stale branch damage
+- [ ] Generated-doc drift considered
+- [ ] Relevant architectural decisions checked
+- [ ] Tests and docs affected by the change identified
+- [ ] Correction/re-review loop used if review finds a real defect
+- [ ] Final user teaching report written when the work changes a workflow, feature, command, output, or process
+
 ---
 
 ## THREE-LAYER TESTING ARCHITECTURE
