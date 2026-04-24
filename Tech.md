@@ -85,6 +85,7 @@ Istara runs a **meta-orchestrator** coordinating five specialized agents — a t
 | LLM | LM Studio / Ollama | Local inference, OpenAI-compatible APIs |
 | Real-time | WebSocket (FastAPI) | 9 event types: agent status, task progress, findings, documents, queue, throttle |
 | Testing | Playwright + Node.js simulation | E2E, accessibility (WCAG), Nielsen's heuristics |
+| Fine-Tuning | Custom Python pipeline (`Model_Finetuning/`) | Adapters → merged nugget bank → SFT JSONL → MLX/CUDA trainers |
 
 ---
 
@@ -1847,7 +1848,7 @@ Istara-main/
 │   │   │   ├── base.py                # BaseSkill, SkillInput, SkillOutput
 │   │   │   ├── registry.py            # Skill discovery + registration
 │   │   │   ├── skill_manager.py       # Health monitoring + proposals
-│   │   │   └── definitions/           # 45+ skill definitions
+│   │   │   └── definitions/           # Canonical 50+ JSON skill definitions
 │   │   ├── models/
 │   │   │   ├── project.py             # Projects with Double Diamond phases
 │   │   │   ├── task.py                # Kanban tasks with priority

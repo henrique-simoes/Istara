@@ -1,0 +1,208 @@
+MOBILE APP USABILITY INTERVIEWS - TRANSCRIPT EXCERPTS
+Study: Mobile Banking App Redesign
+Method: Moderated usability testing with think-aloud protocol
+Duration: 45-60 minutes per session
+Date: March 2024
+
+================================================================================
+PARTICIPANT 001 - Age: 28, Role: Marketing Professional, Experience: Intermediate
+================================================================================
+
+[Task: Transfer money to a friend]
+
+"I'm looking for... where do I send money? Okay, I see a 'Pay' button at the bottom. Let me tap that. Hmm, it's asking me to add a recipient first. But I just want to send money to Sarah, she's already in my contacts. Why can't I just... oh wait, maybe I need to go to transfers? Let me check the menu. There's a lot of options here. Transfers, Payments, Send Money... they all sound the same to me. I'm not sure which one I need. I'll try Send Money. Okay, now I can search for Sarah. Good. But why wasn't this the first option? I feel like I'm clicking through too many screens just to do something simple."
+
+[Task: Check account balance]
+
+"This is easy, I can see it right on the home screen. But... is this my checking or savings? It just says 'Balance: $2,450'. Which account is that? I have three accounts with this bank. I need to tap to see more details, I guess. Oh, there it is. But I wish I could see all my balances at once without having to tap into each account. Like, a summary view would be nice."
+
+[Task: Find transaction history]
+
+"I'm looking for my recent transactions. Let me check... I don't see a clear 'Transactions' or 'History' button. Maybe it's in the account details? Let me tap on my checking account. Yeah, there it is. But it took me two taps to get there. I feel like this should be more prominent. I check my transaction history all the time, so it should be easier to find."
+
+[Overall reflection]
+
+"The app works, but it's not intuitive. I have to think too hard about where things are. I want to just... do things, you know? Not navigate through menus and figure out which button does what. It feels like it was designed by someone who already knows how banking apps work, not by someone who's trying to use it for the first time."
+
+================================================================================
+PARTICIPANT 002 - Age: 42, Role: Small Business Owner, Experience: Beginner
+================================================================================
+
+[Task: Transfer money to a friend]
+
+"Okay, I need to send money. Let me look around... I see a lot of icons but I'm not sure what they mean. This one looks like it might be for payments? [taps] Oh no, that's not right. That took me to bill pay. Let me go back. I'm looking for... I think I need to find my contacts or something? Actually, wait, can I just type in a phone number? I don't know. This is confusing. I'm used to [competitor app] where you just tap 'Send' and type a name. This is more complicated."
+
+[Task: Check account balance]
+
+"I can see a number on the screen, but I'm not sure if that's right. It seems low. Let me check... oh, I need to refresh? Why doesn't it update automatically? And there's a loading spinner that takes forever. Is my internet slow or is the app slow? I can't tell."
+
+[Task: Find transaction history]
+
+"I want to see what I spent money on. Let me look... I don't see anything obvious. Maybe it's in settings? No, that doesn't make sense. Let me try tapping on the account balance. Oh, there it is! But I never would have guessed to tap there. That's not obvious at all."
+
+[Overall reflection]
+
+"I'm not very tech-savvy, so maybe that's my problem. But I feel like a banking app should be simple enough that anyone can use it. Right now, I'm afraid I'll tap the wrong thing and send money to the wrong person or something. I need more confidence that I'm doing things right."
+
+================================================================================
+PARTICIPANT 003 - Age: 35, Role: Software Engineer, Experience: Advanced
+================================================================================
+
+[Task: Transfer money to a friend]
+
+"The navigation is... interesting. It's using a bottom tab bar, which is standard, but the organization is off. 'Pay' should probably be 'Send' or 'Transfer', and it should be more prominent. The current hierarchy doesn't match user mental models. Also, the recipient selection flow is clunky - why do I need to add them before I can send? That's an extra step that doesn't need to exist. I can see they're trying to prevent errors, but it's creating friction."
+
+[Task: Check account balance]
+
+"The balance display is clean, but the information architecture is questionable. Why is the primary balance shown but not the account type? That's critical information. And the way you access account details is inconsistent with iOS design patterns. The tap target is too small, and there's no visual affordance that it's tappable."
+
+[Task: Find transaction history]
+
+"Transaction history is buried. It should be a primary action, not secondary. Users check their history frequently - it's a core use case. The current placement suggests it's not important, but it absolutely is. Also, the search functionality within transactions is weak. No filters, no date range selection, just a basic search that probably doesn't work well."
+
+[Overall reflection]
+
+"From a technical perspective, the app is functional. But from a UX perspective, it's missing the mark. The information architecture doesn't prioritize user goals, and the interaction patterns don't follow platform conventions. It feels like it was designed in a vacuum without considering how people actually use banking apps."
+
+================================================================================
+PARTICIPANT 004 - Age: 24, Role: Graduate Student, Experience: Intermediate
+================================================================================
+
+[Task: Transfer money to a friend]
+
+"I use Venmo a lot, so I'm comparing this to that. Venmo is super simple - you just open it and the first thing you see is 'Pay or Request'. This app makes me work harder. I have to figure out which button to tap, then add a recipient, then confirm... it's too many steps. I know security is important, but there's got to be a way to make this faster for people I send money to regularly."
+
+[Task: Check account balance]
+
+"The balance is right there, which is good. But I wish I could see all my accounts in one view. Right now I have to remember which account I'm looking at. And the numbers are small - I have to squint to read them. Can we make the font bigger? Or at least make it easier to see?"
+
+[Task: Find transaction history]
+
+"I'm looking for a specific transaction from last week. Let me check the history... okay, I can see recent transactions, but I can't scroll back very far. And there's no search. So if I'm looking for something from a month ago, I'm out of luck. That's frustrating. I know the transaction is there, but I can't find it."
+
+[Overall reflection]
+
+"It's okay, but it's not great. I'll use it because I have to - it's my bank's app. But I'm not excited about it. It feels like it was designed five years ago and never updated. Like, where's the modern UX? Where's the delight? It's just... functional. And that's not enough anymore."
+
+================================================================================
+PARTICIPANT 005 - Age: 51, Role: Retired Teacher, Experience: Beginner
+================================================================================
+
+[Task: Transfer money to a friend]
+
+"I'm not very comfortable with this. I'm worried I'll make a mistake. Let me see... I need to send money to my daughter. Where do I do that? I see a lot of buttons but I'm not sure what they do. Maybe I should call the bank instead? But they said I could do it in the app, so let me try. Okay, I see 'Send Money'. Let me tap that. Now it's asking for an email or phone number. But I just want to send it to my daughter - she's in my contacts. Why can't I just pick her name? This is more complicated than I thought."
+
+[Task: Check account balance]
+
+"I can see my balance, which is good. But I'm not sure if this is up to date. Does it update automatically? Or do I need to do something? I see a refresh button, so maybe I need to tap that? Let me try... okay, it's loading. Is that normal? How long does this take? I'm waiting... okay, it updated. But I wish it would just show me the current balance without me having to refresh."
+
+[Task: Find transaction history]
+
+"I want to see what I spent money on recently. Let me look around... I don't see anything that says 'Transactions' or 'History'. Maybe it's in my account? Let me tap on the balance. Oh, there it is! But I never would have thought to tap there. That's not obvious at all. I think there should be a button that says 'View Transactions' or something like that."
+
+[Overall reflection]
+
+"I'm trying to learn, but it's not easy. Everything feels hidden. I wish there were more labels and explanations. Like, what does this button do? What happens if I tap that? I'm afraid I'll do something wrong. I think I'll stick to using the website on my computer - at least there I can see everything at once and I'm not worried about tapping the wrong thing."
+
+================================================================================
+PARTICIPANT 006 - Age: 30, Role: Freelance Designer, Experience: Advanced
+================================================================================
+
+[Task: Transfer money to a friend]
+
+"The micro-interactions are nice - smooth animations, good feedback. But the macro flow is problematic. The recipient management is over-engineered. I get that they want to prevent errors, but the current flow creates unnecessary friction. Also, the 'Pay' button in the bottom nav is confusing - pay who? Pay what? It's too generic. Should be 'Send' or 'Transfer'."
+
+[Task: Check account balance]
+
+"Visual hierarchy is off. The balance is prominent, which is good, but the account context is missing. Is this checking? Savings? Credit? That information should be equally prominent. And the way you drill down into account details feels inconsistent - sometimes it's a tap, sometimes it's a swipe, and there's no clear pattern."
+
+[Task: Find transaction history]
+
+"Transaction history is a secondary action when it should be primary. Users check their history constantly - it's a core use case. The current placement in the account details screen means it's two taps away from the home screen, which is too many. Also, the transaction list itself needs work - no grouping by date, no quick filters, no search. It's just a long list."
+
+[Overall reflection]
+
+"The app has good bones - the visual design is clean, the performance is solid. But the UX needs work. It feels like features were added without considering the overall user journey. The information architecture doesn't prioritize user goals, and the interaction patterns are inconsistent. It's functional, but not delightful."
+
+================================================================================
+PARTICIPANT 007 - Age: 19, Role: College Student, Experience: Intermediate
+================================================================================
+
+[Task: Transfer money to a friend]
+
+"This is way more complicated than it needs to be. I'm used to Cash App where you just tap a button and send. This makes me do way too much. Like, why do I need to add a recipient first? Can't I just type their name or number and send? And why are there so many confirmation screens? I know what I'm doing, just let me do it."
+
+[Task: Check account balance]
+
+"The balance is right there, which is fine. But I wish I could see it bigger, or maybe have it update in real-time. Right now I have to refresh to see the latest balance, which is annoying. And I can't see all my accounts at once - I have to switch between them, which is extra taps."
+
+[Task: Find transaction history]
+
+"I'm trying to find a transaction from like two weeks ago. Let me scroll... okay, I can only see the last few days. How do I see older transactions? There's no 'Load More' button or anything. And I can't search. So if I'm looking for something specific, I'm basically out of luck unless it's recent."
+
+[Overall reflection]
+
+"It's not terrible, but it's not great either. It feels outdated. Like, where are the modern features? Where's the quick actions? Where's the smart suggestions? It's just... basic. I'll use it because I have to, but I'm not going to enjoy it. And that's a problem, right? Apps should be enjoyable to use."
+
+================================================================================
+PARTICIPANT 008 - Age: 38, Role: Financial Advisor, Experience: Advanced
+================================================================================
+
+[Task: Transfer money to a friend]
+
+"From a security perspective, I appreciate the multiple confirmation steps. But from a usability perspective, it's too much friction. There's a balance to strike, and this leans too far toward security at the expense of usability. The recipient management is also problematic - why can't I just send to someone in my contacts without adding them first? That's an unnecessary step."
+
+[Task: Check account balance]
+
+"The balance display is functional but lacks context. Which account am I looking at? What's the available balance versus pending transactions? These are critical pieces of information that should be immediately visible. The current design requires too much cognitive load to understand my financial position."
+
+[Task: Find transaction history]
+
+"Transaction history is a core feature, but it's buried. It should be accessible from the home screen, not hidden in account details. Also, the transaction list needs better organization - grouping by date, filtering options, search functionality. Right now it's just a chronological list, which isn't helpful for analysis."
+
+[Overall reflection]
+
+"The app prioritizes security and compliance over user experience, which is understandable for a banking app, but it goes too far. There are ways to maintain security while improving usability, and this app isn't taking advantage of those opportunities. The result is an app that's safe but frustrating to use."
+
+================================================================================
+PARTICIPANT 009 - Age: 27, Role: Social Media Manager, Experience: Intermediate
+================================================================================
+
+[Task: Transfer money to a friend]
+
+"I'm comparing this to other apps I use, and this one feels clunky. Like, why can't I just swipe to send money? Or have quick actions for people I send to regularly? Right now it's too many taps. And the recipient selection is confusing - do I add them first, or can I just type their info? I'm not sure, and I don't want to mess it up."
+
+[Task: Check account balance]
+
+"The balance is visible, which is good. But I wish I could customize the home screen. Like, maybe I want to see my savings account first instead of checking? Or maybe I want to see both at once? Right now I'm stuck with whatever default they chose, and it's not what I need."
+
+[Task: Find transaction history]
+
+"I check my transaction history all the time - like, multiple times a day. So it should be super easy to access. Right now it's buried, which is annoying. And when I do find it, I can't search or filter, so if I'm looking for something specific, I have to scroll through everything. That's not efficient."
+
+[Overall reflection]
+
+"It's functional, but it's not optimized for how I actually use it. It feels like it was designed for occasional use, not daily use. But I use my banking app every day, so I need it to be fast and efficient. Right now it's neither."
+
+================================================================================
+PARTICIPANT 010 - Age: 45, Role: Nurse, Experience: Beginner
+================================================================================
+
+[Task: Transfer money to a friend]
+
+"I'm not very good with technology, so this is stressful for me. I need to send money to my son for his rent, but I'm worried I'll do something wrong. Let me see... I think I need to find a 'Send' button or something. I see a lot of options, but I'm not sure which one is right. Maybe I should just do a bank transfer from my computer instead? But they said the app is easier, so let me try. Okay, I see 'Send Money'. Let me tap that. Now it's asking for information I'm not sure about. Do I need my son's account number? Or can I just use his phone number? I'm confused."
+
+[Task: Check account balance]
+
+"I can see my balance, which is helpful. But I'm not sure if this is the right amount. I just got paid, so it should be higher. Maybe I need to refresh? Let me try tapping the refresh button. It's loading... is this normal? I'm waiting. Okay, it updated. Good. But I wish it would just show me the current balance automatically without me having to refresh."
+
+[Task: Find transaction history]
+
+"I want to make sure a payment went through. Let me look for my transactions... I don't see anything obvious. Maybe it's in my account details? Let me tap on the balance. Oh, there it is! But I never would have thought to tap there. I think there should be a clearer button or menu item for transactions."
+
+[Overall reflection]
+
+"I'm trying to learn how to use this, but it's not intuitive for me. Everything feels hidden, and I'm worried I'll make a mistake. I think I'll stick to using the bank's website on my computer - at least there I can see everything clearly and I'm not worried about tapping the wrong thing on a small screen."
+
+================================================================================
+END OF TRANSCRIPT EXCERPTS

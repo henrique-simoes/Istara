@@ -10,6 +10,18 @@ from app.skills.base import BaseSkill, SkillPhase, SkillType
 logger = logging.getLogger(__name__)
 
 
+def _definition_skill_type(value: str) -> SkillType:
+    """Map definition taxonomy into the runtime qual/quant/mixed enum."""
+    try:
+        return SkillType(value)
+    except ValueError:
+        logger.warning(
+            "Skill definition type %r is not a runtime SkillType; registering as mixed.",
+            value,
+        )
+        return SkillType.MIXED
+
+
 class SkillRegistry:
     """Central registry for all UXR skills."""
 
@@ -70,7 +82,7 @@ class SkillRegistry:
             display=defn.data["display_name"],
             desc=defn.data["description"],
             phase=SkillPhase(defn.data["phase"]),
-            skill_type=SkillType(defn.data["skill_type"]),
+            skill_type=_definition_skill_type(defn.data["skill_type"]),
             plan_prompt=defn.data["plan_prompt"],
             execute_prompt=defn.data["execute_prompt"],
             output_schema=defn.data["output_schema"],
@@ -99,14 +111,26 @@ def load_default_skills() -> None:
     registry.register(ChannelResearchDeploymentSkill)
     registry.register(KappaIntercoderSkill)
 
-    # Factory-generated skills (standard pattern)
-    from app.skills.all_skills import ALL_FACTORY_SKILLS
+    hand_crafted = {
+        "user-interviews",
+        "contextual-inquiry",
+        "diary-studies",
+        "channel-research-deployment",
+        "kappa-thematic-analysis",
+    }
 
-    for skill_class in ALL_FACTORY_SKILLS:
-        # Skip factory kappa — replaced by hand-written KappaIntercoderSkill
-        if skill_class().name == "kappa-thematic-analysis":
+    # Factory-generated skills (standard pattern)
+    from app.skills.skill_manager import SKILLS_DIR
+
+    for path in sorted(SKILLS_DIR.glob("*.json")):
+        if path.name.startswith("_"):
             continue
-        registry.register(skill_class)
+
+        name = path.stem
+        if name in hand_crafted:
+            continue
+            
+        registry.register_from_definition(name)
 
     logger.info(f"Loaded {len(registry.list_all())} skills total.")
     for phase in SkillPhase:

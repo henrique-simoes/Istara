@@ -1,0 +1,231 @@
+{
+  "survey_metadata": {
+    "survey_name": "Product Feature Request Survey",
+    "method": "Post-task open-ended survey",
+    "date_range": "March 2024",
+    "total_responses": 75,
+    "context": "Users were asked to suggest features after completing core product tasks"
+  },
+  "responses": [
+    {
+      "response_id": "FR001",
+      "user_id": "U3001",
+      "timestamp": "2024-03-15T10:23:45Z",
+      "user_role": "Designer",
+      "experience_level": "Advanced",
+      "question": "What feature would make this product most valuable to you?",
+      "response_text": "I really need a way to collaborate in real-time with my team. Right now I have to export files and send them via email or Slack, which is clunky. If I could just share a link and have people comment or edit directly, that would be a game-changer. Like Figma but for this tool.",
+      "feature_category": "Collaboration",
+      "urgency": "High"
+    },
+    {
+      "response_id": "FR002",
+      "user_id": "U3002",
+      "timestamp": "2024-03-15T11:12:33Z",
+      "user_role": "Project Manager",
+      "experience_level": "Intermediate",
+      "question": "What feature would make this product most valuable to you?",
+      "response_text": "Better reporting and analytics. I want to see how my projects are performing over time, not just current status. Dashboards with charts, trends, that kind of thing. Right now I have to export data and make my own reports in Excel, which is tedious.",
+      "feature_category": "Analytics",
+      "urgency": "Medium"
+    },
+    {
+      "response_id": "FR003",
+      "user_id": "U3003",
+      "timestamp": "2024-03-15T12:45:21Z",
+      "user_role": "Developer",
+      "experience_level": "Advanced",
+      "question": "What feature would make this product most valuable to you?",
+      "response_text": "API access. I need to integrate this with other tools I use. Right now everything is manual, which doesn't scale. If I could pull data via API or trigger actions programmatically, I could automate a lot of my workflow.",
+      "feature_category": "Integration",
+      "urgency": "High"
+    },
+    {
+      "response_id": "FR004",
+      "user_id": "U3004",
+      "timestamp": "2024-03-15T13:23:56Z",
+      "user_role": "Marketing Manager",
+      "experience_level": "Intermediate",
+      "question": "What feature would make this product most valuable to you?",
+      "response_text": "Templates. I do similar projects all the time, and I have to recreate everything from scratch each time. If I could save a project as a template and reuse it, that would save me hours. Even better if there were pre-made templates for common use cases.",
+      "feature_category": "Productivity",
+      "urgency": "High"
+    },
+    {
+      "response_id": "FR005",
+      "user_id": "U3005",
+      "timestamp": "2024-03-15T14:12:44Z",
+      "user_role": "Content Creator",
+      "experience_level": "Beginner",
+      "question": "What feature would make this product most valuable to you?",
+      "response_text": "A mobile app. I'm always on the go, and I can't always access the web version. If I could check things or make quick edits from my phone, that would be really helpful. Even if it's just basic features, that's better than nothing.",
+      "feature_category": "Mobile",
+      "urgency": "Medium"
+    },
+    {
+      "response_id": "FR006",
+      "user_id": "U3006",
+      "timestamp": "2024-03-15T15:34:12Z",
+      "user_role": "Analyst",
+      "experience_level": "Advanced",
+      "question": "What feature would make this product most valuable to you?",
+      "response_text": "Better search functionality. I have hundreds of projects, and finding the right one is a pain. The current search is too basic - I need filters, tags, date ranges, that kind of thing. Maybe even saved searches or smart folders.",
+      "feature_category": "Search",
+      "urgency": "High"
+    },
+    {
+      "response_id": "FR007",
+      "user_id": "U3007",
+      "timestamp": "2024-03-15T16:23:45Z",
+      "user_role": "Designer",
+      "experience_level": "Intermediate",
+      "question": "What feature would make this product most valuable to you?",
+      "response_text": "Version history. I make a lot of changes, and sometimes I want to go back to an earlier version. Right now I have to manually save copies, which is messy. If there was automatic versioning like Google Docs, that would be perfect.",
+      "feature_category": "Version Control",
+      "urgency": "Medium"
+    },
+    {
+      "response_id": "FR008",
+      "user_id": "U3008",
+      "timestamp": "2024-03-15T17:12:33Z",
+      "user_role": "Product Manager",
+      "experience_level": "Advanced",
+      "question": "What feature would make this product most valuable to you?",
+      "response_text": "Custom fields and workflows. Every team works differently, and the current structure is too rigid. I need to be able to add custom fields, create my own workflows, set up automation rules. Basically, make it work the way my team works, not the other way around.",
+      "feature_category": "Customization",
+      "urgency": "High"
+    },
+    {
+      "response_id": "FR009",
+      "user_id": "U3009",
+      "timestamp": "2024-03-15T18:45:21Z",
+      "user_role": "Manager",
+      "experience_level": "Intermediate",
+      "question": "What feature would make this product most valuable to you?",
+      "response_text": "Better notifications. I need to know when things happen, but right now I either get too many notifications or not enough. I want to customize what I'm notified about and how. Email, push, in-app - let me choose what works for me.",
+      "feature_category": "Notifications",
+      "urgency": "Medium"
+    },
+    {
+      "response_id": "FR010",
+      "user_id": "U3010",
+      "timestamp": "2024-03-15T19:23:56Z",
+      "user_role": "Developer",
+      "experience_level": "Advanced",
+      "question": "What feature would make this product most valuable to you?",
+      "response_text": "Bulk operations. I often need to update or delete multiple items at once, but I have to do them one by one. That's fine for a few items, but when I have 50 or 100, it's a nightmare. Let me select multiple items and apply actions to all of them.",
+      "feature_category": "Productivity",
+      "urgency": "High"
+    },
+    {
+      "response_id": "FR011",
+      "user_id": "U3011",
+      "timestamp": "2024-03-16T09:12:44Z",
+      "user_role": "Designer",
+      "experience_level": "Intermediate",
+      "question": "What feature would make this product most valuable to you?",
+      "response_text": "Keyboard shortcuts. I use this tool all day, and I'm constantly clicking around. If I could use keyboard shortcuts for common actions, I'd be so much faster. Even basic ones like Cmd+S to save, Cmd+N for new, that kind of thing.",
+      "feature_category": "Productivity",
+      "urgency": "Medium"
+    },
+    {
+      "response_id": "FR012",
+      "user_id": "U3012",
+      "timestamp": "2024-03-16T10:34:12Z",
+      "user_role": "Marketing Manager",
+      "experience_level": "Intermediate",
+      "question": "What feature would make this product most valuable to you?",
+      "response_text": "Integration with Slack. My team uses Slack for everything, and I want to get notifications there. Also, it would be cool if I could create or update things directly from Slack, like with slash commands or something.",
+      "feature_category": "Integration",
+      "urgency": "Medium"
+    },
+    {
+      "response_id": "FR013",
+      "user_id": "U3013",
+      "timestamp": "2024-03-16T11:23:45Z",
+      "user_role": "Analyst",
+      "experience_level": "Advanced",
+      "question": "What feature would make this product most valuable to you?",
+      "response_text": "Export options. I need to export data in different formats - CSV, Excel, PDF, JSON. Right now the export options are limited, and the formatting is always off. I end up having to reformat everything manually, which defeats the purpose.",
+      "feature_category": "Export",
+      "urgency": "High"
+    },
+    {
+      "response_id": "FR014",
+      "user_id": "U3014",
+      "timestamp": "2024-03-16T12:12:33Z",
+      "user_role": "Project Manager",
+      "experience_level": "Intermediate",
+      "question": "What feature would make this product most valuable to you?",
+      "response_text": "Calendar integration. I want to see my deadlines and milestones in my calendar app. Right now I have to manually add them, which is annoying. If it synced automatically, that would be amazing. Google Calendar, Outlook, whatever.",
+      "feature_category": "Integration",
+      "urgency": "Medium"
+    },
+    {
+      "response_id": "FR015",
+      "user_id": "U3015",
+      "timestamp": "2024-03-16T13:45:21Z",
+      "user_role": "Content Creator",
+      "experience_level": "Beginner",
+      "question": "What feature would make this product most valuable to you?",
+      "response_text": "Better help and documentation. When I'm stuck, I don't know where to look. The help center is hard to search, and the documentation is outdated. I want contextual help - like tooltips or inline guides that show me what to do right when I need it.",
+      "feature_category": "Documentation",
+      "urgency": "Medium"
+    },
+    {
+      "response_id": "FR016",
+      "user_id": "U3016",
+      "timestamp": "2024-03-16T14:23:56Z",
+      "user_role": "Developer",
+      "experience_level": "Advanced",
+      "question": "What feature would make this product most valuable to you?",
+      "response_text": "Webhooks. I need to know when things change so I can trigger actions in other systems. If I could set up webhooks for events like 'project created' or 'status changed', I could automate a lot of my workflow.",
+      "feature_category": "Integration",
+      "urgency": "High"
+    },
+    {
+      "response_id": "FR017",
+      "user_id": "U3017",
+      "timestamp": "2024-03-16T15:12:44Z",
+      "user_role": "Designer",
+      "experience_level": "Advanced",
+      "question": "What feature would make this product most valuable to you?",
+      "response_text": "Dark mode. I use this tool all day, and the bright white background is hard on my eyes. I know it's a small thing, but it would make a big difference for my comfort. Plus, it just looks cooler.",
+      "feature_category": "UI/UX",
+      "urgency": "Low"
+    },
+    {
+      "response_id": "FR018",
+      "user_id": "U3018",
+      "timestamp": "2024-03-16T16:34:12Z",
+      "user_role": "Product Manager",
+      "experience_level": "Advanced",
+      "question": "What feature would make this product most valuable to you?",
+      "response_text": "Better permissions and roles. I need fine-grained control over who can see and edit what. Right now it's too all-or-nothing. I want to be able to set permissions at the project level, item level, field level. That kind of granularity.",
+      "feature_category": "Permissions",
+      "urgency": "High"
+    },
+    {
+      "response_id": "FR019",
+      "user_id": "U3019",
+      "timestamp": "2024-03-16T17:23:45Z",
+      "user_role": "Manager",
+      "experience_level": "Intermediate",
+      "question": "What feature would make this product most valuable to you?",
+      "response_text": "Activity feed. I want to see what's happening across all my projects in one place. Who's doing what, when things are updated, comments, changes - all in a timeline view. Right now I have to check each project individually.",
+      "feature_category": "Activity",
+      "urgency": "Medium"
+    },
+    {
+      "response_id": "FR020",
+      "user_id": "U3020",
+      "timestamp": "2024-03-16T18:12:33Z",
+      "user_role": "Analyst",
+      "experience_level": "Advanced",
+      "question": "What feature would make this product most valuable to you?",
+      "response_text": "Formulas and calculations. I need to do math on my data - sums, averages, percentages, that kind of thing. Right now I have to export to Excel, do the calculations, then import back. If I could do it directly in the tool, that would save so much time.",
+      "feature_category": "Calculations",
+      "urgency": "High"
+    }
+  ]
+}

@@ -55,6 +55,7 @@
 - **browser-competitive-benchmark**: Browse 2-5 competitor URLs → capture UX patterns, heuristic scores, feature matrices → produce gap-opportunity analysis with Blue Ocean Strategy canvas
 - **browser-accessibility-check**: Navigate target site → systematic WCAG 2.2 criterion-by-criterion check → severity classification (critical/serious/moderate/minor) → prioritized remediation plan
 - All browser skills use task URLs (`urls` field) as primary input; attach URLs to tasks for targeted evaluation
+- All skill outputs are strictly validated against their canonical JSON definitions (e.g., `browser-accessibility-check.json`) to ensure schema integrity.
 - When no URLs are provided, ask the user for target sites before proceeding
 
 ## Skill Invocation Examples & Chain Patterns

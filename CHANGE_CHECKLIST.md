@@ -221,11 +221,13 @@ const scenarioFiles = [
 
 ### Adding a New Skill Definition
 
+- [ ] Treat `backend/app/skills/definitions/*.json` as the canonical skill source. Removed legacy generator/export modules must not be reintroduced as sources of truth.
 - [ ] Create `backend/app/skills/definitions/{skill_name}.json` with:
   - name, display_name, description
   - phase (discover/define/develop/deliver)
   - skill_type (analysis/generation/retrieval/validation/transformation)
   - plan_prompt, execute_prompt, output_schema
+- [ ] Validate definitions with `python scripts/validate_skills.py`
 - [ ] Load at startup via `load_default_skills()` (auto-loaded)
   - OR manually via `POST /api/skills/register?name={skill_name}`
 - [ ] Skill auto-registers with no code changes
