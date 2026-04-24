@@ -44,11 +44,7 @@ feature branch → PR → staging → PR → main
 git checkout staging && git pull
 git checkout -b feat/my-feature
 # ... work, commit ...
-<<<<<<< HEAD
-git push origin staging
-=======
 git push origin feat/my-feature
->>>>>>> feat/voice-transcription
 gh pr create --base staging --title "feat: my feature"
 ```
 
@@ -58,12 +54,9 @@ git checkout staging && git pull
 # ... change, commit, push directly to staging ...
 ```
 
-<<<<<<< HEAD
 ### Testing Before Merge
-See [TESTING.md](TESTING.md) for the review queue and instructions to test changes on the staging branch.
+See [TESTING.md](TESTING.md) for the review queue, recently integrated mainline work, and branch testing instructions.
 
-=======
->>>>>>> feat/voice-transcription
 ## Code Style
 
 - **Python:** Ruff for linting/formatting, type hints everywhere, async/await

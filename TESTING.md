@@ -1,14 +1,12 @@
 # Testing Queue
 
-Changes that are on `staging` and awaiting review before merging to `main`.
+Changes that are awaiting review before merging to `main`, plus the most recent integration state.
 
-## Awaiting Review (on staging)
+## Awaiting Review
 
 | PR | Change | Added | Notes |
 |---|---|---|---|
-| feat/system-audit-and-integration-check | NullPool + engine.dispose() for test stability; Compass resync | 2026-04-21 | Fixes `test_task_create_and_list` HTTP 500 (SQLite locking). All 354 tests pass. |
-| feat/integrations-audit | Channel resilience (retry + circuit breaker + webhook idempotency); 8 new tests; Tech.md integration surface area | 2026-04-22 | All 364 tests pass. No breaking changes. |
-| feat/compass-swarm-repository-intelligence | Documentation-first Compass Upgrade: Swarm Discipline, Repository Intelligence, Correction Loops | 2026-04-24 | Regenerated AGENT.md/COMPLETE_SYSTEM.md. No runtime changes. |
+| - | - | - | - |
 
 ## Verified & Ready for `main`
 
@@ -16,14 +14,25 @@ Changes that are on `staging` and awaiting review before merging to `main`.
 |---|---|---|---|
 | - | - | - | - |
 
+## Recently Integrated into `main`
+
+| Change | Integrated | Notes |
+|---|---|---|
+| `feat/dataset-generator-upgrade` | 2026-04-24 | Merged dataset generator and fine-tuning source support after resolving review findings. |
+| `feat/security-remediation-2fa-passkey` | 2026-04-24 | Merged passkey ownership and security hardening. |
+| `feat/skill-methodology-audit-clean` | 2026-04-24 | Merged JSON-first skill registry cleanup and stale legacy skill file removal. |
+| `feat/compute-pool-audit-and-upgrades` | 2026-04-24 | Merged connection string lifecycle hardening. |
+| `feat/integrations-audit` | 2026-04-24 | Integrated retry semantics hardening into `main`; stale branch should not be merged wholesale. |
+| `feat/compass-swarm-repository-intelligence` | 2026-04-24 | Merged Compass planner, repository intelligence, correction loop, and user handoff process updates. |
+
 ---
 
 ### How to Use This File
 
-1. **Push to staging** → Add an entry under "Awaiting Review"
-2. **Test locally** → Check out `staging`, run `./istara.sh start`, verify the change works
+1. **Push the review branch** → Add an entry under "Awaiting Review"
+2. **Test locally** → Check out the review branch or integration branch, run `./istara.sh start`, verify the change works
 3. **Mark verified** → Move the entry to "Verified & Ready for `main`"
-4. **Merge to main** → PR from staging → main, clear the verified entries
+4. **Merge to main** → merge only reviewed, current code; clear the verified entries and update "Recently Integrated into `main`"
 
 ### How to Test Staging Locally
 
@@ -129,8 +138,8 @@ The benchmarks are **model-agnostic** — they test orchestration logic, not mod
 The Istara SFT dataset generator is validated as a local, credential-free generation path by default.
 
 ```bash
-python -m py_compile datasest-json-generator.py
-python datasest-json-generator.py --out-dir /tmp/istara_dataset_check --samples-per-skill 2
+python -m py_compile Model_Finetuning/dataset-json-generator.py
+python Model_Finetuning/dataset-json-generator.py --out-dir /tmp/istara_dataset_check --samples-per-skill 2
 python scripts/check_integrity.py
 ```
 

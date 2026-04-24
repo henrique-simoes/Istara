@@ -8,6 +8,20 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). Ver
 
 ---
 
+## [Unreleased] — Post-Zeta Mainline Integration & Compass Governance
+
+### Added
+- **Compass Planner Governance**: `planner.md` is now tracked as part of Compass, covering multi-agent planning, repository intelligence checks, correction/re-review loops, protected Compass files, and final user handoff reports.
+
+### Changed
+- **Mainline Integration State**: Dataset generation, passkey security hardening, skill registry cleanup, compute connection lifecycle hardening, integration retry semantics, and Compass swarm process updates have been integrated into `main`.
+- **Review Queue Documentation**: `TESTING.md` now separates pending review work from recently integrated mainline work so stale branches are not treated as merge-ready by default.
+
+### Fixed
+- **README Merge Artifact**: Removed stale conflict markers left by the voice transcription documentation merge.
+
+---
+
 ## [2026.04.20.2] — Phase Zeta & Compute Pool Overhaul
 
 ### Added

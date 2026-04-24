@@ -9,6 +9,7 @@ Use it with:
 - `AGENT.md` for the current generated inventory
 - `COMPLETE_SYSTEM.md` for the broader generated architecture map
 - `CHANGE_CHECKLIST.md` for step-by-step execution
+- `planner.md` for planned, multi-agent, branch-review, stale-branch, or review/correction workflows
 
 The rule is simple: no change is local unless proven otherwise.
 
@@ -33,7 +34,7 @@ For any non-trivial change, check these six surfaces:
 | Background jobs/events | websocket broadcasters, frontend listeners, notification handling, loops/autoresearch views | Async systems fail indirectly |
 | Persona or skill behavior | persona files, skill definitions, routing/recommendation logic, tests, docs | Agent behavior changes without architectural memory |
 | Release/update flow | version script, workflows, updater routes, desktop tray update logic, docs | Shipping/install/update path breaks |
-| Compass doctrine | prompts, checklists, Tech narrative, personas, generated docs, scenarios | Future agents inherit the wrong operating model |
+| Compass doctrine | prompts, `planner.md`, checklists, Tech narrative, personas, generated docs, scenarios | Future agents inherit the wrong operating model |
 
 ## Backend Matrix
 
@@ -139,7 +140,7 @@ For any non-trivial change, check these six surfaces:
 | persona files in `backend/app/agents/personas/*` | any docs/prompts that describe agent behavior, tests/simulations that rely on that persona, generated docs if tracked inventory changes |
 | skill definition JSON | skills API/routes, planning/execution flows, reports, recommendation logic, `scripts/validate_skills.py`, simulation/e2e coverage |
 | removed legacy skill generator/export modules | do not reintroduce them as sources of truth; keep `definitions/*.json` canonical; run `python scripts/validate_skills.py` |
-| system prompt / repo instructions | `SYSTEM_PROMPT.md`, wrappers (`CLAUDE.md`, `GEMINI.md`), checklist references, docs describing the workflow |
+| system prompt / repo instructions | `SYSTEM_PROMPT.md`, `AGENT_ENTRYPOINT.md`, `planner.md`, wrappers (`CLAUDE.md`, `GEMINI.md`), checklist references, docs describing the workflow |
 | agent orchestration/routing | task routing keywords, specialty assumptions, chat/session creation, audit behavior |
 
 ## Testing Matrix
@@ -166,7 +167,7 @@ If a change would confuse a future agent reading the UI or API map, it probably 
 | If You Change | Must Also Inspect |
 |---|---|
 | architecture shape | `AGENT.md`, `COMPLETE_SYSTEM.md`, `SYSTEM_INTEGRITY_GUIDE.md`, `Tech.md` if the narrative architecture changed |
-| workflow/process expectations | `SYSTEM_PROMPT.md`, `CHANGE_CHECKLIST.md`, model wrappers, contributor docs |
+| workflow/process expectations | `SYSTEM_PROMPT.md`, `AGENT_ENTRYPOINT.md`, `planner.md`, `CHANGE_CHECKLIST.md`, model wrappers, contributor docs |
 | release/update behavior | `Tech.md`, release workflow docs, updater descriptions, versioning script references |
 | user-facing capabilities | README/wiki/docs feature docs where applicable |
 | Istara-agent understanding of a feature | relevant persona files in `backend/app/agents/personas/`, prompt/process docs, generated docs if inventory changed |
@@ -198,6 +199,7 @@ These are repo doctrines, not optional suggestions.
 | Doctrine | What It Means In Practice |
 |---|---|
 | Compass must stay current | If a change alters how agents should understand, navigate, test, release, install, or preserve Istara, update the relevant Compass docs in the same change |
+| Planner is Compass context | If work uses planned, multi-agent, branch-review, stale-branch, or correction flow, `planner.md` must be read and preserved with the rest of Compass |
 | Update `Tech.md` when the system meaningfully changes | If architecture, process, versioning, update flow, installer flow, or subsystem behavior changed, the narrative technical reference must change too |
 | Update the testing suite for future changes | Do not only verify the current change manually; extend `tests/e2e_test.py`, `tests/simulation/scenarios/`, fixtures, or assertions so the feature remains protected later |
 | Add scenarios when change scope demands it | If existing simulation coverage no longer describes the changed flow well, add a new scenario instead of forcing the change into unrelated old coverage |

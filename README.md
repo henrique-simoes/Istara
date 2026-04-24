@@ -53,22 +53,14 @@
   <img src="Screenshots/Screenshot%202026-04-02%20at%2016.38.54.png" width="1600" />
 
   <p><strong>Autonomous Task Management:</strong> A powerful Kanban board where agents pick up tasks, execute skills, and report progress in real-time.</p>
-<<<<<<< HEAD
   <img src="Screenshots/Screenshot%202026-04-02%20at%2016.38.47.png" width="1600" />
 
-=======
-  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.38.47.png" width="600" />
-  
-  <p><strong>Multi-Agent Assignment:</strong> Choose the best agent for the job. Route tasks to specialists like Pixel for UI audits or Sage for UX evaluation.</p>
-  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.38.54.png" width="600" />
-  
   <p><strong>Interviews & Transcripts:</strong> Istara can transcribe, tag, analyze, relate, and generate reports from many interviews at once — including voice messages from WhatsApp and Telegram with automatic Whisper transcription and inter-coder reliability scoring. Find insights shared across your entire participant pool!</p>
-  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.01.png" width="600" />
+  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.01.png" width="1600" />
   
   <p><strong>Context Engine:</strong> Ground your agents in your company culture, project goals, and specific guardrails. The more they know, the better they perform.</p>
-  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.08.png" width="600" />
+  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.08.png" width="1600" />
   
->>>>>>> feat/voice-transcription
   <p><strong>Skill Catalog:</strong> Over 50 research skills ready to go. From Competitive Analysis to Card Sorting, your agents are equipped for any research challenge.</p>
   <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.11.png" width="1600" />
 

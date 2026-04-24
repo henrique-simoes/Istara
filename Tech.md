@@ -2540,6 +2540,10 @@ Connect external MCP servers to augment Istara's capabilities. Discover tools, c
 
 Root-level file any AI agent can discover and parse. Contains system identity, architecture, capabilities catalog (auto-generated), agent interaction guide, security boundaries.
 
+### Planner.md — Compass Workflow Control
+
+`planner.md` is tracked as part of Compass. Agents use it for planned, multi-agent, branch-review, stale-branch, and correction workflows. It requires role declaration, repository intelligence checks, protected Compass file preservation, correction/re-review loops when real defects are found, and a final user teaching report when the completed work changes a feature, command, output, or process.
+
 ### Auto-Update Script
 
 `scripts/update_agent_md.py` regenerates the Capabilities Catalog by scanning API routes, skills, agents, menus, models, and MCP tools. Run after every feature addition.

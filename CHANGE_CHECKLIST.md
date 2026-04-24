@@ -12,6 +12,7 @@ Before making ANY change:
 
 - [ ] Read `SYSTEM_PROMPT.md` for the repo-wide agent contract
 - [ ] Read `AGENT_ENTRYPOINT.md` for the canonical reading order
+- [ ] Read `planner.md` for planned, multi-agent, branch-review, stale-branch, or review/correction work
 - [ ] Skim `AGENT.md` or `COMPLETE_SYSTEM.md` for the current generated system map
 - [ ] Read `SYSTEM_CHANGE_MATRIX.md` for dependent surfaces that must move with this change
 - [ ] Read `CHANGELOG.md` to understand recent system evolution
