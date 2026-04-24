@@ -116,27 +116,37 @@ class TelegramAdapter(ChannelAdapter):
 
         from app.core.channel_resilience import retry_with_backoff
 
-        async def _do_send() -> None:
-            chat_id = int(message.channel_id)
-            metadata = message.metadata or {}
+        chat_id = int(message.channel_id)
+        metadata = message.metadata or {}
 
-            # Handle attachments
-            if message.attachments:
-                for file_path in message.attachments:
-                    await self._app.bot.send_document(
-                        chat_id=chat_id, document=open(file_path, "rb")
+        # Handle attachments one at a time so a text-send failure does not resend files.
+        if message.attachments:
+            for file_path in message.attachments:
+
+                async def _send_document(path: str = file_path) -> None:
+                    with open(path, "rb") as document:
+                        await self._app.bot.send_document(
+                            chat_id=chat_id, document=document
+                        )
+
+                await self._breaker.call(
+                    lambda: retry_with_backoff(
+                        _send_document, max_retries=3, base_delay=1.0
                     )
+                )
 
-            # Build optional reply markup
-            reply_markup = None
-            if "reply_markup" in metadata:
-                try:
-                    reply_markup = InlineKeyboardMarkup(metadata["reply_markup"])
-                except Exception:
-                    logger.warning("Invalid reply_markup in metadata, ignoring.")
+        # Build optional reply markup
+        reply_markup = None
+        if "reply_markup" in metadata:
+            try:
+                reply_markup = InlineKeyboardMarkup(metadata["reply_markup"])
+            except Exception:
+                logger.warning("Invalid reply_markup in metadata, ignoring.")
 
-            # Send text message
-            if message.text:
+        # Send text message
+        if message.text:
+
+            async def _send_text() -> None:
                 try:
                     await self._app.bot.send_message(
                         chat_id=chat_id,
@@ -152,9 +162,9 @@ class TelegramAdapter(ChannelAdapter):
                         reply_markup=reply_markup,
                     )
 
-        await self._breaker.call(
-            lambda: retry_with_backoff(_do_send, max_retries=3, base_delay=1.0)
-        )
+            await self._breaker.call(
+                lambda: retry_with_backoff(_send_text, max_retries=3, base_delay=1.0)
+            )
 
     async def health_check(self) -> dict:
         """Check Telegram bot connection health."""

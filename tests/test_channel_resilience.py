@@ -110,7 +110,12 @@ async def test_whatsapp_webhook_idempotency():
     """WhatsApp adapter should deduplicate webhook messages by external_message_id."""
     from app.channels.whatsapp import WhatsAppAdapter
 
-    adapter = WhatsAppAdapter("test-instance", {"phone_number_id": "123", "access_token": "abc"})
+    adapter = WhatsAppAdapter(
+        "test-instance", {"phone_number_id": "123", "access_token": "abc"}
+    )
+    adapter._running = True
+    callback = AsyncMock(return_value=None)
+    adapter.on_message(callback)
 
     msg1 = {
         "id": "msg-id-001",
@@ -125,8 +130,41 @@ async def test_whatsapp_webhook_idempotency():
         "text": {"body": "Hello duplicate"},
     }
 
-    # Mark first message as seen
-    adapter._seen_message_ids.add("msg-id-001")
+    await adapter._process_webhook_message(msg1, {"1234567890": "Ada"})
+    await adapter._process_webhook_message(msg2, {"1234567890": "Ada"})
 
-    # Second message with same ID should be ignored
+    assert callback.call_count == 1
     assert "msg-id-001" in adapter._seen_message_ids
+
+
+@pytest.mark.asyncio
+async def test_whatsapp_webhook_missing_id_is_not_globally_deduplicated():
+    """WhatsApp messages without IDs should still be processed independently."""
+    from app.channels.whatsapp import WhatsAppAdapter
+
+    adapter = WhatsAppAdapter(
+        "test-instance", {"phone_number_id": "123", "access_token": "abc"}
+    )
+    adapter._running = True
+    callback = AsyncMock(return_value=None)
+    adapter.on_message(callback)
+
+    await adapter._process_webhook_message(
+        {
+            "type": "text",
+            "from": "1234567890",
+            "text": {"body": "First"},
+        },
+        {"1234567890": "Ada"},
+    )
+    await adapter._process_webhook_message(
+        {
+            "type": "text",
+            "from": "1234567890",
+            "text": {"body": "Second"},
+        },
+        {"1234567890": "Ada"},
+    )
+
+    assert callback.call_count == 2
+    assert "" not in adapter._seen_message_ids

@@ -142,37 +142,46 @@ class SlackAdapter(ChannelAdapter):
 
         from app.core.channel_resilience import retry_with_backoff
 
-        async def _do_send() -> None:
-            metadata = message.metadata or {}
-            kwargs: dict = {
-                "channel": message.channel_id,
-                "text": message.text,
-            }
+        metadata = message.metadata or {}
+        kwargs: dict = {
+            "channel": message.channel_id,
+            "text": message.text,
+        }
 
-            # Support thread replies
-            thread_ts = metadata.get("thread_ts")
-            if thread_ts:
-                kwargs["thread_ts"] = thread_ts
+        # Support thread replies
+        thread_ts = metadata.get("thread_ts")
+        if thread_ts:
+            kwargs["thread_ts"] = thread_ts
 
-            # Support Block Kit
-            blocks = metadata.get("blocks")
-            if blocks:
-                kwargs["blocks"] = blocks
+        # Support Block Kit
+        blocks = metadata.get("blocks")
+        if blocks:
+            kwargs["blocks"] = blocks
 
+        async def _send_text() -> None:
             await self._client.chat_postMessage(**kwargs)
 
-            # Handle file attachments via files_upload_v2
-            if message.attachments:
-                for file_path in message.attachments:
+        await self._breaker.call(
+            lambda: retry_with_backoff(_send_text, max_retries=3, base_delay=1.0)
+        )
+
+        # Retry each attachment independently so a later upload failure does not
+        # resend already-delivered text or previous files.
+        if message.attachments:
+            for file_path in message.attachments:
+
+                async def _upload_file(path: str = file_path) -> None:
                     await self._client.files_upload_v2(
                         channel=message.channel_id,
-                        file=file_path,
+                        file=path,
                         thread_ts=thread_ts,
                     )
 
-        await self._breaker.call(
-            lambda: retry_with_backoff(_do_send, max_retries=3, base_delay=1.0)
-        )
+                await self._breaker.call(
+                    lambda: retry_with_backoff(
+                        _upload_file, max_retries=3, base_delay=1.0
+                    )
+                )
 
     async def health_check(self) -> dict:
         """Check Slack connection health."""

@@ -16,7 +16,7 @@ import os
 import time
 
 from app.channels.base import ChannelAdapter, IncomingMessage, OutgoingMessage
-from app.core.channel_resilience import CircuitBreaker, resilient_send
+from app.core.channel_resilience import CircuitBreaker
 
 logger = logging.getLogger(__name__)
 
@@ -203,13 +203,14 @@ class WhatsAppAdapter(ChannelAdapter):
         Idempotent: duplicate deliveries (same external_message_id) are ignored.
         """
         msg_id = wa_msg.get("id", "")
-        if msg_id in self._seen_message_ids:
-            logger.debug("Deduplicating WhatsApp message %s", msg_id)
-            return
-        self._seen_message_ids.add(msg_id)
-        # Prevent unbounded growth — cap cache size
-        if len(self._seen_message_ids) > 10_000:
-            self._seen_message_ids = set(list(self._seen_message_ids)[-5_000:])
+        if msg_id:
+            if msg_id in self._seen_message_ids:
+                logger.debug("Deduplicating WhatsApp message %s", msg_id)
+                return
+            self._seen_message_ids.add(msg_id)
+            # Prevent unbounded growth — cap cache size
+            if len(self._seen_message_ids) > 10_000:
+                self._seen_message_ids = set(list(self._seen_message_ids)[-5_000:])
 
         msg_type = wa_msg.get("type", "text")
         sender = wa_msg.get("from", "")
