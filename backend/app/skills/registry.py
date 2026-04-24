@@ -99,14 +99,26 @@ def load_default_skills() -> None:
     registry.register(ChannelResearchDeploymentSkill)
     registry.register(KappaIntercoderSkill)
 
-    # Factory-generated skills (standard pattern)
-    from app.skills.all_skills import ALL_FACTORY_SKILLS
+    hand_crafted = {
+        "user-interviews",
+        "contextual-inquiry",
+        "diary-studies",
+        "channel-research-deployment",
+        "kappa-thematic-analysis",
+    }
 
-    for skill_class in ALL_FACTORY_SKILLS:
-        # Skip factory kappa — replaced by hand-written KappaIntercoderSkill
-        if skill_class().name == "kappa-thematic-analysis":
+    # Factory-generated skills (standard pattern)
+    from app.skills.skill_manager import SKILLS_DIR
+
+    for path in sorted(SKILLS_DIR.glob("*.json")):
+        if path.name.startswith("_"):
             continue
-        registry.register(skill_class)
+
+        name = path.stem
+        if name in hand_crafted:
+            continue
+            
+        registry.register_from_definition(name)
 
     logger.info(f"Loaded {len(registry.list_all())} skills total.")
     for phase in SkillPhase:

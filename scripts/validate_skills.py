@@ -20,7 +20,6 @@ from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFINITIONS_DIR = REPO_ROOT / "backend" / "app" / "skills" / "definitions"
-ALL_SKILLS_FILE = REPO_ROOT / "backend" / "app" / "skills" / "all_skills.py"
 
 
 @dataclass
@@ -62,34 +61,9 @@ def _validate_output_schema(path: Path, data: dict[str, Any], result: Validation
     )
 
 
-def _skill_names_from_all_skills() -> set[str]:
-    if not ALL_SKILLS_FILE.exists():
-        return set()
-
-    source = ALL_SKILLS_FILE.read_text(encoding="utf-8")
-    names: set[str] = set()
-
-    for match in re.finditer(r"skill_name\s*=\s*(['\"])(?P<name>[^'\"]+)\1", source):
-        names.add(match.group("name"))
-
-    try:
-        tree = ast.parse(source)
-    except SyntaxError:
-        return names
-
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Call):
-            for keyword in node.keywords:
-                if keyword.arg == "skill_name" and isinstance(keyword.value, ast.Constant):
-                    if isinstance(keyword.value.value, str):
-                        names.add(keyword.value.value)
-
-    return names
-
 
 def validate_skill_definitions(
     definitions_dir: Path = DEFINITIONS_DIR,
-    warn_on_drift: bool = True,
 ) -> ValidationResult:
     result = ValidationResult()
 
@@ -129,27 +103,14 @@ def validate_skill_definitions(
 
         _validate_output_schema(path, data, result)
 
-    if warn_on_drift:
-        legacy_names = _skill_names_from_all_skills()
-        missing = sorted(legacy_names - definition_names)
-        if missing:
-            result.warnings.append(
-                "all_skills.py defines skills missing from definitions/: " + ", ".join(missing)
-            )
-
     return result
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--no-drift-warning",
-        action="store_true",
-        help="Skip warnings about skills present in all_skills.py but missing from definitions/.",
-    )
     args = parser.parse_args()
 
-    result = validate_skill_definitions(warn_on_drift=not args.no_drift_warning)
+    result = validate_skill_definitions()
 
     print(f"Checked {result.checked} skill definition files")
     for warning in result.warnings:
