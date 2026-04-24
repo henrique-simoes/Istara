@@ -7,7 +7,7 @@ This directory contains the data pipeline and training scripts for fine-tuning l
 1. **Source Adapters** — Parse raw external datasets into normalized nuggets.
 2. **Merge** — Deduplicate and compile all nuggets into a single bank.
 3. **Dataset Generator** — Sample from the bank and skill definitions to produce SFT JSONL.
-4. **Trainer** — Fine-tune the model using MLX or CUDA.
+4. **Trainer** — Fine-tune the model using Apple MPS or CUDA.
 
 ## Files
 
@@ -19,7 +19,7 @@ This directory contains the data pipeline and training scripts for fine-tuning l
 | `merge_datasets.py` | Combines legacy + new nuggets, deduplicates, writes `consolidated_bank.py` |
 | `consolidated_bank.py` | Unified nugget bank imported by the generator |
 | `dataset-json-generator.py` | Generates `istara_sft_*.jsonl` from skills + nuggets |
-| `trainer_Gemma4_MLX.py` | MLX fine-tuning script for Apple Silicon |
+| `trainer_Gemma4_MPS.py` | PyTorch MPS fine-tuning script for Apple Silicon |
 | `trainer_Gemma4_CUDA.py` | CUDA fine-tuning script for NVIDIA GPUs |
 | `cleaned_nuggets.py` | Legacy nugget bank (retained for reference) |
 

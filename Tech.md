@@ -85,7 +85,7 @@ Istara runs a **meta-orchestrator** coordinating five specialized agents — a t
 | LLM | LM Studio / Ollama | Local inference, OpenAI-compatible APIs |
 | Real-time | WebSocket (FastAPI) | 9 event types: agent status, task progress, findings, documents, queue, throttle |
 | Testing | Playwright + Node.js simulation | E2E, accessibility (WCAG), Nielsen's heuristics |
-| Fine-Tuning | Custom Python pipeline (`Model_Finetuning/`) | Adapters → merged nugget bank → SFT JSONL → MLX/CUDA trainers |
+| Fine-Tuning | Custom Python pipeline (`Model_Finetuning/`) | Adapters → merged nugget bank → SFT JSONL → Apple MPS/CUDA trainers |
 
 ---
 
