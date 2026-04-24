@@ -14,7 +14,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.auth import create_token
+from app.core.auth import create_token, verify_token
 from app.models.database import get_db
 from app.models.user import User
 from app.models.webauthn_credential import WebAuthnCredential
@@ -129,6 +129,18 @@ class PasskeyCredentialInfo(BaseModel):
 # Helpers
 # ---------------------------------------------------------------------------
 
+def _token_from_request(request: Request) -> dict:
+    auth_header = request.headers.get("Authorization", "")
+    token = auth_header.removeprefix("Bearer ").strip() if auth_header.startswith("Bearer ") else ""
+    if not token:
+        token = request.cookies.get("istara_session", "")
+    if not token:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    token_data = verify_token(token)
+    if not token_data:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    return token_data
+
 
 # ---------------------------------------------------------------------------
 # Routes
@@ -137,17 +149,21 @@ class PasskeyCredentialInfo(BaseModel):
 @router.post("/webauthn/register/start")
 async def webauthn_register_start(
     body: PasskeyRegistrationStartRequest,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
     """Start WebAuthn registration — returns challenge options for the browser."""
     if not _WEBAUTHN_AVAILABLE:
         raise HTTPException(status_code=503, detail="WebAuthn not available")
+    token_data = _token_from_request(request)
 
     # Check if user exists
     result = await db.execute(select(User).where(User.username == body.username))
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+    if token_data.get("sub") != user.id:
+        raise HTTPException(status_code=403, detail="Cannot register a passkey for another user")
 
     # Check for existing credentials
     result = await db.execute(
@@ -212,6 +228,9 @@ async def webauthn_register_finish(
     """Finish WebAuthn registration — verify cryptographic attestation and store credential."""
     if not _WEBAUTHN_AVAILABLE:
         raise HTTPException(status_code=503, detail="WebAuthn not available")
+    token_data = _token_from_request(request)
+    if token_data.get("sub") != body.user_id:
+        raise HTTPException(status_code=403, detail="Cannot register a passkey for another user")
 
     # Retrieve the stored challenge
     challenge = _get_and_clear_challenge(body.user_id)
@@ -341,6 +360,8 @@ async def webauthn_authenticate_finish(
         credential = result.scalar_one_or_none()
         if not credential:
             raise HTTPException(status_code=401, detail="Credential not found")
+        if credential.user_id != body.user_id:
+            raise HTTPException(status_code=401, detail="Credential does not match challenge user")
 
         # Verify the authentication response cryptographically
         verify_authentication_response(
@@ -396,14 +417,7 @@ async def list_credentials(
     db: AsyncSession = Depends(get_db),
 ):
     """List the user's registered passkeys."""
-    auth_header = request.headers.get("Authorization", "")
-    if not auth_header.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Unauthorized")
-
-    from app.core.auth import verify_token
-    token_data = verify_token(auth_header[7:])
-    if not token_data:
-        raise HTTPException(status_code=401, detail="Invalid token")
+    token_data = _token_from_request(request)
 
     user_id = token_data.get("sub")
     result = await db.execute(
@@ -433,18 +447,12 @@ async def revoke_credential(
     db: AsyncSession = Depends(get_db),
 ):
     """Revoke a passkey."""
-    auth_header = request.headers.get("Authorization", "")
-    if not auth_header.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Unauthorized")
-
-    from app.core.auth import verify_token
-    token_data = verify_token(auth_header[7:])
-    if not token_data:
-        raise HTTPException(status_code=401, detail="Invalid token")
+    token_data = _token_from_request(request)
 
     result = await db.execute(
         select(WebAuthnCredential).where(
             WebAuthnCredential.id == credential_id,
+            WebAuthnCredential.user_id == token_data.get("sub"),
             WebAuthnCredential.revoked == False,
         )
     )

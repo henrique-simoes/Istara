@@ -258,6 +258,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           user_id: startData.user_id,
+          id: assertion.id,
           raw_id: assertion.rawId,
           response_type: assertion.type,
           authenticator_data: assertion.response.authenticatorData,
