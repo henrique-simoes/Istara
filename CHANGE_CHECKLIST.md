@@ -533,14 +533,14 @@ Before pushing to production:
 
 ### Testing & Review
 
-- [ ] Changes pushed to staging branch (not directly to main)
+- [ ] Changes pushed to the correct review target: `staging` by default, or a review/integration branch for stale/divergent work
 - [ ] TESTING.md updated — entry added under "Awaiting Review"
-- [ ] Changes tested locally on staging (`git checkout staging && ./istara.sh start`)
+- [ ] Changes tested locally on the branch that contains the proposed change (`git checkout <branch> && ./istara.sh start`)
 - [ ] E2E tests pass: `ISTARA_ADMIN_USER=<user> ISTARA_ADMIN_PASSWORD=<pass> python tests/e2e_test.py`
 - [ ] Unit tests pass: `pytest tests/`
 - [ ] Simulation scenarios pass: `ADMIN_USERNAME=<user> ADMIN_PASSWORD=<pass> node tests/simulation/run.mjs --skip-skills`
 - [ ] TESTING.md entry moved to "Verified & Ready for main"
-- [ ] PR created from staging → main
+- [ ] PR created from the reviewed integration path → main
 - [ ] CI passes on PR (governance + backend checks)
 - [ ] PR reviewed and merged
 - [ ] TESTING.md verified entries cleared after merge

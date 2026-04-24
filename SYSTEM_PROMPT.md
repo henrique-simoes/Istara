@@ -102,21 +102,23 @@ python scripts/check_integrity.py
 
 ## Branching & Pull Request Workflow
 
-Istara uses a **staging-first** workflow to prevent broken code from reaching `main`:
+Istara uses a **staging-first by default** workflow to prevent broken code from reaching `main`, with an explicit review-branch exception for stale, divergent, or already-partly-integrated work:
 
 - **`main`** — production-ready, protected branch. **Pull requests required** — no direct pushes.
-- **`staging`** — integration branch. All feature work lands here first. CI must pass before merging to `main`.
-- **Feature branches** — `feat/feature-name`, `fix/bug-name`, `docs/doc-name`. Created from `staging`, merged back to `staging` via PR.
-- **`TESTING.md`** — tracks what's on staging awaiting review. Updated on every push to staging, cleared on merge to main.
+- **`staging`** — default integration branch for current feature work. CI must pass before merging to `main`.
+- **Feature branches** — `feat/feature-name`, `fix/bug-name`, `docs/doc-name`. Created from the correct current base, normally `staging`, then merged back through the review path.
+- **Review/integration branches** — used when old branches are stale, contain partially integrated work, or would damage `main` if merged wholesale. Review the delta, cherry-pick or reimplement only the current useful pieces, then document the decision.
+- **`TESTING.md`** — tracks pending review work, verified work, and recently integrated mainline work. Update it whenever review state changes.
 
 ### Rules:
 - **PR required for ALL merges to `main`** — including staging→main. No direct pushes.
-- **Feature work (3+ commits) MUST use a feature branch** → PR → `staging` → PR → `main`.
+- **Feature work (3+ commits) MUST use a feature branch** → review → `staging` by default → PR → `main`.
+- **Stale or divergent branches MUST NOT be merged wholesale by default.** Compare against `origin/main`, inspect deleted/resurrected files, and cherry-pick or reimplement only current useful work.
 - **Trivial changes** (typos, version bumps, doc regenerations) may push directly to `staging`.
-- **Update `TESTING.md`** when pushing to staging — add entry under "Awaiting Review".
+- **Update `TESTING.md`** when pushing to staging or opening a review/integration branch — add entry under "Awaiting Review".
 - **Staging Synchronization:** After any merge to `main` or release tag, `staging` MUST be fast-forwarded to match `main` (automatically handled by CI).
 - **Remote Audit Rule:** When auditing branch status or unmerged commits, agents MUST base their analysis on remote tracking branches (e.g., `origin/main`, `origin/staging`) after running `git fetch`. Local branch pointers may be stale and do not reflect the true state of the CI/CD pipeline.
-- **Move entry to "Verified"** after testing locally on staging branch.
+- **Move entry to "Verified"** after testing locally on the staging, review, or integration branch that actually contains the proposed change.
 - **Clear `TESTING.md` verified entries** after merging to `main`.
 - **Branch protection on `main`** requires CI to pass and PR before merge.
 - **Squash merge** for clean history — one commit per feature on `main`.
@@ -127,20 +129,20 @@ Istara uses a **staging-first** workflow to prevent broken code from reaching `m
 # 1. Create feature branch from staging
 git checkout staging && git pull
 git checkout -b feat/new-security-feature
-# 2. Work, commit, push to staging
+# 2. Work, commit, push the feature branch
 git add -A && git commit -m "feat: add biometric auth"
-git push origin staging
+git push origin feat/new-security-feature
 
 # 3. Update TESTING.md
 # Add entry: | #PR | feat: biometric auth | You | Testing locally |
 
-# 4. Test on staging
-git checkout staging && git pull
+# 4. Test the reviewed branch, or staging after integration
+git checkout feat/new-security-feature && git pull
 ./istara.sh start
 # ... verify the change works ...
 
-# 5. Open PR from staging to main
-gh pr create --base main --title "Merge staging → main"
+# 5. Open PR through the chosen review path
+gh pr create --base main --title "Merge reviewed feature"
 # Move TESTING.md entry to "Verified" section
 
 # 6. Merge PR → main (CI must pass)
