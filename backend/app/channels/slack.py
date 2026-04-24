@@ -16,6 +16,7 @@ import logging
 import os
 
 from app.channels.base import ChannelAdapter, IncomingMessage, OutgoingMessage
+from app.core.channel_resilience import CircuitBreaker
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +53,7 @@ class SlackAdapter(ChannelAdapter):
         self._client: AsyncWebClient | None = None
         self._socket_handler = None
         self._bg_task: asyncio.Task | None = None
+        self._breaker = CircuitBreaker(failure_threshold=5, recovery_timeout=60.0)
 
     # -- ChannelAdapter interface ---------------------------------------------
 
@@ -133,49 +135,44 @@ class SlackAdapter(ChannelAdapter):
         logger.info("Slack adapter stopped (instance=%s).", self.name)
 
     async def send(self, message: OutgoingMessage) -> None:
-        """Send a message to a Slack channel or thread."""
+        """Send a message to a Slack channel or thread (with retry + circuit breaker)."""
         if self._client is None or not self._running:
             logger.warning("SlackAdapter.send() called while not running.")
             return
 
-        metadata = message.metadata or {}
-        kwargs: dict = {
-            "channel": message.channel_id,
-            "text": message.text,
-        }
+        from app.core.channel_resilience import retry_with_backoff
 
-        # Support thread replies
-        thread_ts = metadata.get("thread_ts")
-        if thread_ts:
-            kwargs["thread_ts"] = thread_ts
+        async def _do_send() -> None:
+            metadata = message.metadata or {}
+            kwargs: dict = {
+                "channel": message.channel_id,
+                "text": message.text,
+            }
 
-        # Support Block Kit
-        blocks = metadata.get("blocks")
-        if blocks:
-            kwargs["blocks"] = blocks
+            # Support thread replies
+            thread_ts = metadata.get("thread_ts")
+            if thread_ts:
+                kwargs["thread_ts"] = thread_ts
 
-        try:
+            # Support Block Kit
+            blocks = metadata.get("blocks")
+            if blocks:
+                kwargs["blocks"] = blocks
+
             await self._client.chat_postMessage(**kwargs)
-        except Exception:
-            logger.exception(
-                "Failed to send Slack message to channel %s", message.channel_id
-            )
 
-        # Handle file attachments via files_upload_v2
-        if message.attachments:
-            for file_path in message.attachments:
-                try:
+            # Handle file attachments via files_upload_v2
+            if message.attachments:
+                for file_path in message.attachments:
                     await self._client.files_upload_v2(
                         channel=message.channel_id,
                         file=file_path,
                         thread_ts=thread_ts,
                     )
-                except Exception:
-                    logger.exception(
-                        "Failed to upload attachment %s to Slack channel %s",
-                        file_path,
-                        message.channel_id,
-                    )
+
+        await self._breaker.call(
+            lambda: retry_with_backoff(_do_send, max_retries=3, base_delay=1.0)
+        )
 
     async def health_check(self) -> dict:
         """Check Slack connection health."""
