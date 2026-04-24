@@ -20,6 +20,7 @@ HUB_MODEL_ID = "henrique-simoes/gemma-4-e2b-istara-ux"
 REPO_ID = "henrique-simoes/ux-research-strategy-dataset"
 ROOT = Path(__file__).resolve().parent
 DEFAULT_LOCAL_SFT = ROOT / "generated_datasets" / "istara_sft_messages.jsonl"
+HUB_SFT_MESSAGES = f"hf://datasets/{REPO_ID}/istara_sft/istara_sft_messages.jsonl"
 
 # Mac Studio M4 Max settings — conservative to avoid OOM
 BATCH_SIZE = 1        # Keep at 1 for 36GB
@@ -65,7 +66,7 @@ def load_training_dataset(args: argparse.Namespace):
     ux = ux_raw.map(to_messages, remove_columns=ux_raw.column_names)
 
     if args.use_hub_sft:
-        istara_raw = load_dataset(REPO_ID, data_files="istara_sft/istara_sft_messages.jsonl", split="train")
+        istara_raw = load_dataset("json", data_files=HUB_SFT_MESSAGES, split="train")
     else:
         if not args.local_sft.exists():
             raise FileNotFoundError(f"Local SFT dataset not found: {args.local_sft}")

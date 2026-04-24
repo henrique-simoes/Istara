@@ -10,6 +10,7 @@ from peft import LoraConfig, TaskType
 MODEL_ID = "google/gemma-4-E2B-it"
 HUB_MODEL_ID = "henrique-simoes/gemma-4-e2b-istara-ux"
 REPO_ID = "henrique-simoes/ux-research-strategy-dataset"
+HUB_SFT_MESSAGES = f"hf://datasets/{REPO_ID}/istara_sft/istara_sft_messages.jsonl"
 
 BATCH_SIZE = 2      # 24GB GPU
 GRAD_ACCUM = 16     # effective batch = 32
@@ -24,7 +25,7 @@ def to_messages(ex):
     ]}
 ux = ux_raw.map(to_messages, remove_columns=ux_raw.column_names)
 
-istara = load_dataset(REPO_ID, data_files="istara_sft/istara_sft_messages.jsonl", split="train")
+istara = load_dataset("json", data_files=HUB_SFT_MESSAGES, split="train")
 
 dataset = concatenate_datasets([ux, istara]).shuffle(seed=42)
 print(f"  Combined: {len(dataset)} examples")
