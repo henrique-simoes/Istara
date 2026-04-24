@@ -1,0 +1,312 @@
+#!/usr/bin/env python3
+"""Istara SFT Dataset Generator. Run: python generate.py"""
+
+import json, random, os
+from huggingface_hub import HfApi
+from collections import Counter
+
+random.seed(42)
+api = HfApi()
+REPO_ID = "ninquewylia/ux-research-strategy-dataset"
+
+print("=== Istara SFT Dataset Generator ===")
+
+SYSTEM_PROMPT = """You are an expert UX Research Agent operating within the Istara platform.
+Your primary directive is methodological rigor. You do not hallucinate summaries; you synthesize evidence.
+CORE DOCTRINE:
+1. Atomic Research Hierarchy: All analysis must flow from verbatim 'Nuggets' -> 'Facts' -> 'Insights'.
+2. Evidence Chain: Every claim you make MUST be backed by an exact, verbatim quote (3-30 words) from the provided context.
+3. Methodological Transparency: You must explicitly state the academic or industry framework you are applying inside a <research_methodology> tag before outputting data.
+4. Schema Compliance: Your final output must be perfectly valid JSON matching the requested tool schema exactly. Do not prepend markdown blocks or conversational filler.
+5. No additionalProperties: Only output keys explicitly defined in the schema. Never invent new fields."""
+
+def make_tool(name, desc, params):
+    return {"type": "function", "function": {"name": name, "description": desc, "parameters": params}}
+
+SKILLS = {
+    "competitive-analysis": make_tool("competitive-analysis", "Analyze competitors against UX heuristics and feature parity criteria.", {"type": "object", "properties": {"competitors": {"type": "array", "items": {"type": "string"}}, "evaluation_axes": {"type": "array", "items": {"type": "string"}}, "findings": {"type": "array", "items": {"type": "object", "properties": {"competitor": {"type": "string"}, "axis": {"type": "string"}, "score": {"type": "number"}, "nugget": {"type": "string"}, "source_url": {"type": "string"}}, "required": ["competitor", "axis", "score", "nugget"], "additionalProperties": False}}, "strategic_recommendation": {"type": "string"}}, "required": ["competitors", "evaluation_axes", "findings", "strategic_recommendation"], "additionalProperties": False}),
+    "heuristic-evaluation": make_tool("heuristic-evaluation", "Perform a systematic heuristic evaluation using Nielsen's 10 heuristics.", {"type": "object", "properties": {"evaluator_profile": {"type": "string"}, "heuristics": {"type": "array", "items": {"type": "string"}}, "violations": {"type": "array", "items": {"type": "object", "properties": {"heuristic": {"type": "string"}, "severity": {"enum": ["Cosmetic", "Minor", "Major", "Catastrophic"]}, "description": {"type": "string"}, "nugget": {"type": "string"}, "recommendation": {"type": "string"}}, "required": ["heuristic", "severity", "description", "nugget", "recommendation"], "additionalProperties": False}}, "overall_score": {"type": "number"}}, "required": ["evaluator_profile", "heuristics", "violations"], "additionalProperties": False}),
+    "research-synthesis": make_tool("research-synthesis", "Synthesize multiple research artifacts into a MECE-structured report with evidence chains.", {"type": "object", "properties": {"executive_summary": {"type": "string"}, "methodology": {"type": "object", "properties": {"objectives": {"type": "array", "items": {"type": "string"}}, "synthesis_approach": {"type": "string"}}, "required": ["objectives", "synthesis_approach"], "additionalProperties": False}, "findings": {"type": "array", "items": {"type": "object", "properties": {"theme": {"type": "string"}, "statement": {"type": "string"}, "evidence": {"type": "array", "items": {"type": "object", "properties": {"nugget": {"type": "string"}, "source": {"type": "string"}}, "required": ["nugget", "source"], "additionalProperties": False}}}, "required": ["theme", "statement", "evidence"], "additionalProperties": False}}}, "required": ["executive_summary", "methodology", "findings"], "additionalProperties": False}),
+    "thematic-analysis": make_tool("thematic-analysis", "Apply Braun & Clarke reflexive thematic analysis to generate a rigorous codebook.", {"type": "object", "properties": {"codebook": {"type": "array", "items": {"type": "object", "properties": {"code": {"type": "string"}, "definition": {"type": "string"}, "inclusion_criteria": {"type": "string"}, "example": {"type": "string"}, "frequency": {"type": "integer"}}, "required": ["code", "definition", "inclusion_criteria", "example", "frequency"], "additionalProperties": False}}, "nuggets": {"type": "array", "items": {"type": "object", "properties": {"text": {"type": "string"}, "source": {"type": "string"}, "tags": {"type": "array", "items": {"type": "string"}}, "coding_reasoning": {"type": "string"}, "confidence": {"enum": ["low", "medium", "high"]}}, "required": ["text", "source", "tags", "coding_reasoning", "confidence"], "additionalProperties": False}}}, "required": ["codebook", "nuggets"], "additionalProperties": False}),
+    "jtbd-analysis": make_tool("jtbd-analysis", "Apply Jobs-to-be-Done framework to uncover functional, emotional, and social jobs.", {"type": "object", "properties": {"jobs": {"type": "array", "items": {"type": "object", "properties": {"job_statement": {"type": "string"}, "type": {"enum": ["functional", "emotional", "social"]}, "motivation_nuggets": {"type": "array", "items": {"type": "string"}}, "desired_outcome_metrics": {"type": "array", "items": {"type": "string"}}}, "required": ["job_statement", "type", "motivation_nuggets"], "additionalProperties": False}}, "hiring_criteria": {"type": "array", "items": {"type": "string"}}}, "required": ["jobs"], "additionalProperties": False}),
+    "usability-test-plan": make_tool("usability-test-plan", "Generate a structured usability test plan.", {"type": "object", "properties": {"study_objective": {"type": "string"}, "methodology": {"enum": ["moderated-remote", "moderated-in-person", "unmoderated-remote"]}, "participant_criteria": {"type": "object", "properties": {"count": {"type": "integer"}, "screener_questions": {"type": "array", "items": {"type": "string"}}, "demographics": {"type": "string"}}, "required": ["count", "screener_questions"], "additionalProperties": False}, "tasks": {"type": "array", "items": {"type": "object", "properties": {"task_description": {"type": "string"}, "success_criteria": {"type": "string"}, "time_limit_seconds": {"type": "integer"}}, "required": ["task_description", "success_criteria"], "additionalProperties": False}}, "metrics": {"type": "array", "items": {"type": "string"}}}, "required": ["study_objective", "methodology", "participant_criteria", "tasks", "metrics"], "additionalProperties": False}),
+    "persona-generation": make_tool("persona-generation", "Generate evidence-based user personas grounded in research nuggets.", {"type": "object", "properties": {"personas": {"type": "array", "items": {"type": "object", "properties": {"name": {"type": "string"}, "role": {"type": "string"}, "goals": {"type": "array", "items": {"type": "string"}}, "frustrations": {"type": "array", "items": {"type": "string"}}, "behaviors": {"type": "array", "items": {"type": "string"}}, "supporting_nuggets": {"type": "array", "items": {"type": "string"}}}, "required": ["name", "role", "goals", "frustrations", "behaviors", "supporting_nuggets"], "additionalProperties": False}}}, "required": ["personas"], "additionalProperties": False}),
+    "journey-mapping": make_tool("journey-mapping", "Create a user journey map with phases, touchpoints, emotions, and opportunities.", {"type": "object", "properties": {"journey_title": {"type": "string"}, "persona": {"type": "string"}, "phases": {"type": "array", "items": {"type": "object", "properties": {"phase_name": {"type": "string"}, "actions": {"type": "array", "items": {"type": "string"}}, "touchpoints": {"type": "array", "items": {"type": "string"}}, "emotion": {"enum": ["frustrated", "neutral", "satisfied", "delighted"]}, "pain_points": {"type": "array", "items": {"type": "string"}}, "opportunities": {"type": "array", "items": {"type": "string"}}}, "required": ["phase_name", "actions", "touchpoints", "emotion", "pain_points", "opportunities"], "additionalProperties": False}}}, "required": ["journey_title", "persona", "phases"], "additionalProperties": False}),
+    "survey-analysis": make_tool("survey-analysis", "Analyze survey responses with statistical summaries and open-ended coding.", {"type": "object", "properties": {"sample_size": {"type": "integer"}, "quantitative_summary": {"type": "array", "items": {"type": "object", "properties": {"question": {"type": "string"}, "metric": {"type": "string"}, "value": {"type": "number"}, "interpretation": {"type": "string"}}, "required": ["question", "metric", "value", "interpretation"], "additionalProperties": False}}, "qualitative_themes": {"type": "array", "items": {"type": "object", "properties": {"theme": {"type": "string"}, "frequency": {"type": "integer"}, "representative_nugget": {"type": "string"}}, "required": ["theme", "frequency", "representative_nugget"], "additionalProperties": False}}}, "required": ["sample_size", "quantitative_summary", "qualitative_themes"], "additionalProperties": False}),
+    "ia-audit": make_tool("information-architecture-audit", "Audit the information architecture.", {"type": "object", "properties": {"current_structure_issues": {"type": "array", "items": {"type": "object", "properties": {"issue": {"type": "string"}, "severity": {"enum": ["low", "medium", "high", "critical"]}, "nugget": {"type": "string"}, "recommendation": {"type": "string"}}, "required": ["issue", "severity", "nugget", "recommendation"], "additionalProperties": False}}, "proposed_taxonomy": {"type": "array", "items": {"type": "object", "properties": {"category": {"type": "string"}, "subcategories": {"type": "array", "items": {"type": "string"}}}, "required": ["category", "subcategories"], "additionalProperties": False}}}, "required": ["current_structure_issues", "proposed_taxonomy"], "additionalProperties": False}),
+    "accessibility-audit": make_tool("accessibility-audit", "Perform a WCAG 2.1/2.2 accessibility audit.", {"type": "object", "properties": {"wcag_version": {"enum": ["2.1", "2.2"]}, "conformance_level": {"enum": ["A", "AA", "AAA"]}, "violations": {"type": "array", "items": {"type": "object", "properties": {"criterion": {"type": "string"}, "level": {"enum": ["A", "AA", "AAA"]}, "description": {"type": "string"}, "impact": {"enum": ["minor", "moderate", "serious", "critical"]}, "remediation": {"type": "string"}}, "required": ["criterion", "level", "description", "impact", "remediation"], "additionalProperties": False}}, "overall_compliance_score": {"type": "number"}}, "required": ["wcag_version", "conformance_level", "violations"], "additionalProperties": False}),
+    "_create_research_plan": make_tool("_create_research_plan", "Decompose a complex research request into a DAG of skill invocations.", {"type": "object", "properties": {"steps": {"type": "array", "items": {"type": "object", "properties": {"id": {"type": "string"}, "description": {"type": "string"}, "skill_name": {"type": "string"}, "depends_on": {"type": "array", "items": {"type": "string"}}}, "required": ["id", "description", "skill_name", "depends_on"], "additionalProperties": False}}}, "required": ["steps"], "additionalProperties": False}),
+}
+
+ALL_TOOLS = list(SKILLS.values())
+
+# === DATA BANKS ===
+NUGGETS = [
+    ("I couldn't find the export button anywhere", "Interview_P01"),
+    ("the dashboard feels overwhelming with all these charts", "Interview_P02"),
+    ("I just want to see my tasks for today, nothing else", "Interview_P03"),
+    ("every time I click save it takes me to a different page", "Interview_P04"),
+    ("I didn't realize there was a search function until someone showed me", "Interview_P05"),
+    ("the mobile version is basically unusable for editing", "Interview_P06"),
+    ("I keep losing my work because there's no autosave", "Interview_P07"),
+    ("the onboarding tutorial was way too long and I skipped it", "Interview_P08"),
+    ("I wish I could customize which notifications I receive", "Interview_P09"),
+    ("the color coding helps me prioritize but the labels are confusing", "Interview_P10"),
+    ("I have to click five times just to create a new project", "Interview_P11"),
+    ("sharing files with my team is more complicated than email", "Interview_P12"),
+    ("the loading time after login is unacceptable during deadlines", "Interview_P13"),
+    ("I can never remember where the settings page is hidden", "Interview_P14"),
+    ("the keyboard shortcuts are a lifesaver once you learn them", "Interview_P15"),
+    ("why does the filter reset every time I navigate away", "Interview_P16"),
+    ("I expected drag and drop to work but it doesn't", "Interview_P17"),
+    ("the error messages don't tell me what I did wrong", "Interview_P18"),
+    ("I feel anxious when I see the red notification badge constantly", "Interview_P19"),
+    ("my manager won't adopt it because the reporting is too basic", "Interview_P20"),
+    ("I tried the free trial but couldn't figure out the value in time", "Interview_P21"),
+    ("the integration with Slack is the only reason we stayed", "Interview_P22"),
+    ("I need to see project timelines at a glance not buried in menus", "Interview_P23"),
+    ("switching between views takes too many clicks", "Interview_P24"),
+    ("the dark mode is missing and I work late at night", "Interview_P25"),
+    ("permissions are confusing I accidentally shared confidential data", "Interview_P26"),
+    ("I abandoned the checkout when it asked for too much information", "Interview_P27"),
+    ("the comparison table helped me decide which plan to choose", "Interview_P28"),
+    ("I trust apps more when I can see other users reviews inline", "Interview_P29"),
+    ("the progress bar during upload reduced my anxiety significantly", "Interview_P30"),
+]
+COMPETITORS = ["linear.app", "asana.com", "notion.so", "figma.com", "miro.com", "jira.atlassian.com", "monday.com", "clickup.com", "trello.com", "airtable.com", "basecamp.com", "todoist.com", "height.app", "shortcut.com"]
+AXES = ["Information Architecture", "Navigation Clarity", "Onboarding Flow", "Task Completion Efficiency", "Error Handling", "Visual Hierarchy", "Mobile Responsiveness", "Accessibility Compliance", "Search Functionality", "Collaboration Features", "Notification Management", "Customization Options", "Performance", "Data Export", "Integration Ecosystem"]
+HEURISTICS = ["Visibility of system status", "Match between system and real world", "User control and freedom", "Consistency and standards", "Error prevention", "Recognition rather than recall", "Flexibility and efficiency of use", "Aesthetic and minimalist design", "Help users recognize and recover from errors", "Help and documentation"]
+SEVERITIES = ["Cosmetic", "Minor", "Major", "Catastrophic"]
+EMOTIONS = ["frustrated", "neutral", "satisfied", "delighted"]
+JOB_TYPES = ["functional", "emotional", "social"]
+CONFIDENCES = ["low", "medium", "high"]
+WCAG_CRITERIA = ["1.1.1 Non-text Content", "1.3.1 Info and Relationships", "1.4.1 Use of Color", "1.4.3 Contrast Minimum", "1.4.4 Resize Text", "2.1.1 Keyboard", "2.4.1 Bypass Blocks", "2.4.3 Focus Order", "2.4.4 Link Purpose", "2.4.7 Focus Visible", "3.1.1 Language of Page", "3.3.1 Error Identification", "3.3.2 Labels or Instructions", "4.1.1 Parsing", "4.1.2 Name Role Value"]
+IMPACTS = ["minor", "moderate", "serious", "critical"]
+METHODS = ["Braun & Clarke reflexive thematic analysis", "Grounded Theory (Strauss & Corbin)", "Framework Analysis (Ritchie & Spencer)", "Content Analysis (Krippendorff)"]
+SYNTHESIS_APPROACHES = ["Minto Pyramid Principle", "MECE structuring", "Affinity mapping", "Cross-case synthesis", "Meta-ethnographic translation", "Thematic network analysis"]
+PRODUCTS = ["task management dashboard", "project planning tool", "design collaboration platform", "customer feedback portal", "analytics dashboard", "e-commerce checkout flow", "employee onboarding system", "content management system", "healthcare patient portal", "financial trading interface", "learning management system", "social media scheduler", "real estate listing platform", "food delivery app", "fitness tracking application"]
+RESEARCH_CONTEXTS = ["We conducted 12 semi-structured interviews with project managers at mid-size SaaS companies.", "Our team ran 8 contextual inquiry sessions observing designers using the prototype.", "We collected 200 survey responses from enterprise users about their onboarding experience.", "5 moderated usability tests were conducted with first-time users of the mobile app.", "We analyzed 500 customer support tickets from the last quarter.", "15 diary study entries were collected over 2 weeks from power users.", "We ran an unmoderated A/B test with 1200 participants comparing two checkout flows.", "Card sorting sessions with 20 participants revealed navigation structure preferences.", "We conducted 6 stakeholder interviews with product leads and engineering managers.", "Tree testing with 30 participants evaluated findability across 15 key tasks."]
+
+def pick_nuggets(n=3):
+    return random.sample(NUGGETS, min(n, len(NUGGETS)))
+
+def make_context(nugget_list):
+    lines = ["Here are the relevant research excerpts:\n"]
+    for text, src in nugget_list:
+        lines.append(f'[{src}]: "{text}"')
+    return "\n".join(lines)
+
+entries = []
+print("Generating...")
+
+# =====================================================================
+# COMPETENCY 1: SCHEMA COMPLIANCE (1,700 examples)
+# =====================================================================
+
+# competitive-analysis (200)
+for i in range(200):
+    comps = random.sample(COMPETITORS, random.randint(2, 4))
+    axes = random.sample(AXES, random.randint(2, 4))
+    nug = pick_nuggets(len(comps) * len(axes))
+    findings, idx = [], 0
+    for c in comps:
+        for a in axes:
+            if idx < len(nug):
+                findings.append({"competitor": c, "axis": a, "score": round(random.uniform(3.0, 9.5), 1), "nugget": nug[idx][0], "source_url": f"https://{c}"})
+                idx += 1
+    output = json.dumps({"competitors": comps, "evaluation_axes": axes, "findings": findings, "strategic_recommendation": f"Prioritize {random.choice(axes).lower()} improvements based on {comps[0]} gaps."}, indent=2)
+    entries.append({"messages": [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": f"Competitive analysis of {', '.join(comps)} on {', '.join(axes)}.\n\n{make_context(nug)}"}, {"role": "assistant", "content": f"<thinking>\nCompetitive analysis: {len(comps)} competitors, {len(axes)} axes.\n</thinking>\n<research_methodology>\nPorter's Competitive Analysis + UX heuristic scoring (1-10).\n</research_methodology>\n{output}"}], "tools": [SKILLS["competitive-analysis"]], "competency": "schema_compliance", "skill": "competitive-analysis"})
+print("  competitive-analysis: 200")
+
+# heuristic-evaluation (200)
+for i in range(200):
+    product = random.choice(PRODUCTS)
+    heurs = random.sample(HEURISTICS, random.randint(4, 10))
+    nug = pick_nuggets(random.randint(3, 6))
+    violations = [{"heuristic": random.choice(heurs), "severity": random.choice(SEVERITIES), "description": f"{n[0][:50]} indicates a violation.", "nugget": n[0], "recommendation": f"Redesign the {random.choice(['layout', 'flow', 'feedback', 'navigation', 'labeling'])}."} for n in nug]
+    output = json.dumps({"evaluator_profile": "Senior UX Researcher, 8+ years heuristic evaluation", "heuristics": heurs, "violations": violations, "overall_score": round(random.uniform(35.0, 85.0), 1)}, indent=2)
+    entries.append({"messages": [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": f"Evaluate {product} against Nielsen's heuristics.\n\n{make_context(nug)}"}, {"role": "assistant", "content": f"<thinking>\nEvaluating {product} against {len(heurs)} heuristics.\n</thinking>\n<research_methodology>\nNielsen's (1994) Heuristic Evaluation, 4-level severity.\n</research_methodology>\n{output}"}], "tools": [SKILLS["heuristic-evaluation"]], "competency": "schema_compliance", "skill": "heuristic-evaluation"})
+print("  heuristic-evaluation: 200")
+
+# research-synthesis (200)
+for i in range(200):
+    nug = pick_nuggets(random.randint(4, 8))
+    ctx = random.choice(RESEARCH_CONTEXTS)
+    approach = random.choice(SYNTHESIS_APPROACHES)
+    themes = {}
+    for text, src in nug:
+        t = random.choice(["Navigation & Discoverability", "Efficiency & Workflow", "Trust & Confidence", "Customization & Control", "Performance & Reliability"])
+        if t not in themes: themes[t] = []
+        themes[t].append({"nugget": text, "source": src})
+    findings = [{"theme": t, "statement": f"Users report {t.lower()} challenges ({len(e)} data points).", "evidence": e} for t, e in themes.items()]
+    output = json.dumps({"executive_summary": f"{len(nug)} nuggets, {len(findings)} themes. {ctx.split('.')[0]}.", "methodology": {"objectives": [f"Identify patterns across {len(nug)} data points", "Synthesize into themes"], "synthesis_approach": approach}, "findings": findings}, indent=2)
+    entries.append({"messages": [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": f"Synthesize findings.\n\nContext: {ctx}\n\n{make_context(nug)}"}, {"role": "assistant", "content": f"<thinking>\nSynthesizing {len(nug)} nuggets via {approach}.\n</thinking>\n<research_methodology>\n{approach}. All claims grounded in verbatim quotes.\n</research_methodology>\n{output}"}], "tools": [SKILLS["research-synthesis"]], "competency": "schema_compliance", "skill": "research-synthesis"})
+print("  research-synthesis: 200")
+
+# thematic-analysis (200)
+for i in range(200):
+    nug = pick_nuggets(random.randint(4, 8))
+    method = random.choice(METHODS)
+    codes = random.sample(["Navigation Friction", "Feature Discoverability", "Workflow Interruption", "Emotional Response", "Performance Anxiety", "Customization Need", "Trust Deficit", "Learning Curve"], random.randint(2, 5))
+    codebook = [{"code": c, "definition": f"User expresses {c.lower()} concerns.", "inclusion_criteria": f"Mentions of {c.lower().split()[0]}-related issues.", "example": random.choice(nug)[0], "frequency": random.randint(1, 8)} for c in codes]
+    nuggets_out = [{"text": t, "source": s, "tags": random.sample(codes, min(random.randint(1, 2), len(codes))), "coding_reasoning": f"Quote maps to {random.choice(codes)}.", "confidence": random.choice(CONFIDENCES)} for t, s in nug]
+    output = json.dumps({"codebook": codebook, "nuggets": nuggets_out}, indent=2)
+    entries.append({"messages": [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": f"Thematic analysis using {method}.\n\n{make_context(nug)}"}, {"role": "assistant", "content": f"<thinking>\n{method} on {len(nug)} segments.\n</thinking>\n<research_methodology>\n{method}. Phase 2: Initial Coding.\n</research_methodology>\n{output}"}], "tools": [SKILLS["thematic-analysis"]], "competency": "schema_compliance", "skill": "thematic-analysis"})
+print("  thematic-analysis: 200")
+
+# jtbd-analysis (200)
+for i in range(200):
+    nug = pick_nuggets(random.randint(3, 6))
+    product = random.choice(PRODUCTS)
+    jobs = []
+    for _ in range(random.randint(2, 4)):
+        jt = random.choice(JOB_TYPES)
+        jobs.append({"job_statement": {"functional": f"Manage tasks efficiently with {product}", "emotional": f"Feel confident using {product}", "social": f"Demonstrate competence via {product}"}[jt], "type": jt, "motivation_nuggets": [n[0] for n in random.sample(nug, min(2, len(nug)))], "desired_outcome_metrics": [f"Minimize {random.choice(['navigation time', 'setup time', 'errors'])}", f"Maximize {random.choice(['completion rate', 'satisfaction', 'adoption'])}"]})
+    output = json.dumps({"jobs": jobs, "hiring_criteria": [f"Ease of {random.choice(['setup', 'integration', 'collaboration'])}", f"Speed of {random.choice(['task creation', 'reports', 'onboarding'])}", "Reliability"]}, indent=2)
+    entries.append({"messages": [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": f"JTBD analysis for {product}.\n\n{make_context(nug)}"}, {"role": "assistant", "content": f"<thinking>\nChristensen's JTBD for {product}.\n</thinking>\n<research_methodology>\nChristensen's JTBD framework (2016).\n</research_methodology>\n{output}"}], "tools": [SKILLS["jtbd-analysis"]], "competency": "schema_compliance", "skill": "jtbd-analysis"})
+print("  jtbd-analysis: 200")
+
+# usability-test-plan (150)
+for i in range(150):
+    product = random.choice(PRODUCTS)
+    method = random.choice(["moderated-remote", "moderated-in-person", "unmoderated-remote"])
+    tasks = random.sample([("Complete sign-up and create project", "Done within 3 min"), ("Find and export report", "Within 2 clicks"), ("Invite member and assign task", "No errors"), ("Customize notifications", "Within 90s"), ("Search with filters", "Item found")], random.randint(3, 5))
+    output = json.dumps({"study_objective": f"Evaluate usability of {product}.", "methodology": method, "participant_criteria": {"count": random.choice([5, 6, 7, 8]), "screener_questions": ["How often do you use similar tools?", "What is your role?"], "demographics": "Novice + experienced, ages 25-55"}, "tasks": [{"task_description": t[0], "success_criteria": t[1], "time_limit_seconds": random.choice([90, 120, 180, 240])} for t in tasks], "metrics": ["Task completion rate", "Time on task", "Error rate", "SUS score", "SEQ"]}, indent=2)
+    entries.append({"messages": [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": f"Usability test plan for {product}."}, {"role": "assistant", "content": f"<thinking>\n{method} test plan for {product}.\n</thinking>\n<research_methodology>\nISO 25062. SUS (Brooke, 1996).\n</research_methodology>\n{output}"}], "tools": [SKILLS["usability-test-plan"]], "competency": "schema_compliance", "skill": "usability-test-plan"})
+print("  usability-test-plan: 150")
+
+# persona-generation (150)
+for i in range(150):
+    nug = pick_nuggets(random.randint(4, 8))
+    product = random.choice(PRODUCTS)
+    chosen = random.sample([("Sarah Chen", "Senior PM"), ("Marcus Johnson", "Junior Designer"), ("Elena Volkov", "Consultant"), ("David Park", "Eng Lead"), ("Aisha Rahman", "Product Owner"), ("Tom Bradley", "Marketing Dir")], random.randint(2, 3))
+    personas = [{"name": n, "role": r, "goals": [f"Streamline {random.choice(['workflows', 'coordination', 'tracking'])}", f"Reduce {random.choice(['admin time', 'context switching'])}"], "frustrations": [random.choice(nug)[0][:60], f"Difficulty with {random.choice(['onboarding', 'features', 'mobile'])}"], "behaviors": [f"Uses tool {random.choice(['daily', '3x/week', 'sporadically'])}", f"Prefers {random.choice(['keyboard', 'visual', 'mobile'])} workflow"], "supporting_nuggets": [x[0] for x in random.sample(nug, min(2, len(nug)))]} for n, r in chosen]
+    output = json.dumps({"personas": personas}, indent=2)
+    entries.append({"messages": [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": f"Generate personas for {product}.\n\n{make_context(nug)}"}, {"role": "assistant", "content": f"<thinking>\n{len(personas)} evidence-based personas.\n</thinking>\n<research_methodology>\nCooper's (1999) Goal-Directed Design.\n</research_methodology>\n{output}"}], "tools": [SKILLS["persona-generation"]], "competency": "schema_compliance", "skill": "persona-generation"})
+print("  persona-generation: 150")
+
+# journey-mapping (100)
+for i in range(100):
+    product = random.choice(PRODUCTS)
+    nug = pick_nuggets(4)
+    persona = random.choice(["Sarah the PM", "Marcus the Designer", "Elena the Consultant"])
+    chosen = random.sample([("Awareness", ["Hears about tool", "Reads reviews"], ["Word of mouth", "Reviews"]), ("Onboarding", ["Creates account", "Setup wizard"], ["Sign-up", "Wizard"]), ("First Use", ["Creates project", "Explores"], ["Dashboard", "Project view"]), ("Regular Use", ["Daily tasks", "Reports"], ["Task board", "Reports"]), ("Power Use", ["Automations", "Integrations"], ["Settings", "API"])], random.randint(3, 5))
+    phases = [{"phase_name": p[0], "actions": p[1], "touchpoints": p[2], "emotion": random.choice(EMOTIONS), "pain_points": [random.choice(nug)[0]] if random.random() > 0.3 else [], "opportunities": [f"Improve {random.choice(['discoverability', 'feedback', 'guidance'])} in {p[0].lower()}"]} for p in chosen]
+    output = json.dumps({"journey_title": f"{persona} - {product.title()} Journey", "persona": persona, "phases": phases}, indent=2)
+    entries.append({"messages": [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": f"Journey map for {persona} using {product}.\n\n{make_context(nug)}"}, {"role": "assistant", "content": f"<thinking>\nMapping {len(phases)} phases.\n</thinking>\n<research_methodology>\nKalbach's (2016) Experience Mapping.\n</research_methodology>\n{output}"}], "tools": [SKILLS["journey-mapping"]], "competency": "schema_compliance", "skill": "journey-mapping"})
+print("  journey-mapping: 100")
+
+# survey-analysis (100)
+for i in range(100):
+    product = random.choice(PRODUCTS)
+    nug = pick_nuggets(3)
+    ss = random.choice([50, 100, 200, 300, 500])
+    output = json.dumps({"sample_size": ss, "quantitative_summary": [{"question": "Overall satisfaction?", "metric": "Mean (1-7)", "value": round(random.uniform(3.0, 6.5), 2), "interpretation": "Moderate satisfaction"}, {"question": "Recommend?", "metric": "NPS", "value": round(random.uniform(-20, 60)), "interpretation": "Improvement needed"}, {"question": "Task ease?", "metric": "CES (1-7)", "value": round(random.uniform(3.5, 6.0), 2), "interpretation": "Correlates with retention"}], "qualitative_themes": [{"theme": "Navigation Complexity", "frequency": random.randint(10, 50), "representative_nugget": random.choice(nug)[0]}, {"theme": "Customization Requests", "frequency": random.randint(5, 30), "representative_nugget": random.choice(nug)[0]}]}, indent=2)
+    entries.append({"messages": [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": f"Survey analysis for {product}.\n\n{make_context(nug)}"}, {"role": "assistant", "content": f"<thinking>\n{ss} respondents.\n</thinking>\n<research_methodology>\nLikert means, NPS (Reichheld, 2003), CES (Dixon et al., 2010).\n</research_methodology>\n{output}"}], "tools": [SKILLS["survey-analysis"]], "competency": "schema_compliance", "skill": "survey-analysis"})
+print("  survey-analysis: 100")
+
+# accessibility-audit (100)
+for i in range(100):
+    product = random.choice(PRODUCTS)
+    wv, lv = random.choice(["2.1", "2.2"]), random.choice(["A", "AA", "AAA"])
+    viols = [{"criterion": random.choice(WCAG_CRITERIA), "level": random.choice(["A", "AA"]), "description": f"{random.choice(['Form field', 'Button', 'Nav menu', 'Modal', 'Image'])} {random.choice(['lacks ARIA labels', 'insufficient contrast', 'not keyboard accessible', 'missing focus indicator'])}", "impact": random.choice(IMPACTS), "remediation": f"Add {random.choice(['aria-label', 'contrast 4.5:1', 'keyboard handlers', 'focus styles'])}"} for _ in range(random.randint(3, 7))]
+    output = json.dumps({"wcag_version": wv, "conformance_level": lv, "violations": viols, "overall_compliance_score": round(random.uniform(40, 90), 1)}, indent=2)
+    entries.append({"messages": [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": f"WCAG {wv} Level {lv} audit of {product}."}, {"role": "assistant", "content": f"<thinking>\nWCAG {wv} Level {lv} evaluation.\n</thinking>\n<research_methodology>\nWCAG {wv} (W3C), Level {lv}. WCAG-EM 1.0.\n</research_methodology>\n{output}"}], "tools": [SKILLS["accessibility-audit"]], "competency": "schema_compliance", "skill": "accessibility-audit"})
+print("  accessibility-audit: 100")
+
+# =====================================================================
+# COMPETENCY 2: TOOL INVOCATION (600 examples)
+# =====================================================================
+print("\n--- Competency 2: Tool Invocation ---")
+
+dag_templates = [
+    {"user": "Comprehensive competitive audit of {c1} and {c2} on task management UX.", "thinking": "Complex request. Decompose: competitive-analysis, heuristic-evaluation, research-synthesis.", "steps": [{"id": "step_1", "description": "Competitive analysis of {c1} and {c2}.", "skill_name": "competitive-analysis", "depends_on": []}, {"id": "step_2", "description": "Heuristic evaluation of both.", "skill_name": "heuristic-evaluation", "depends_on": []}, {"id": "step_3", "description": "Synthesize all data.", "skill_name": "research-synthesis", "depends_on": ["step_1", "step_2"]}]},
+    {"user": "Full discovery cycle for {product} redesign.", "thinking": "Discovery: thematic analysis -> personas -> journey maps -> synthesis.", "steps": [{"id": "step_1", "description": "Thematic analysis.", "skill_name": "thematic-analysis", "depends_on": []}, {"id": "step_2", "description": "Generate personas.", "skill_name": "persona-generation", "depends_on": ["step_1"]}, {"id": "step_3", "description": "Journey maps.", "skill_name": "journey-mapping", "depends_on": ["step_2"]}, {"id": "step_4", "description": "Synthesize.", "skill_name": "research-synthesis", "depends_on": ["step_1", "step_2", "step_3"]}]},
+    {"user": "Evaluate accessibility and usability of {product}.", "thinking": "Parallel: accessibility audit + heuristic eval, then synthesize.", "steps": [{"id": "step_1", "description": "WCAG 2.2 audit.", "skill_name": "accessibility-audit", "depends_on": []}, {"id": "step_2", "description": "Heuristic evaluation.", "skill_name": "heuristic-evaluation", "depends_on": []}, {"id": "step_3", "description": "Synthesize.", "skill_name": "research-synthesis", "depends_on": ["step_1", "step_2"]}]},
+    {"user": "Why are users leaving {product}?", "thinking": "Churn: JTBD + survey analysis -> synthesis.", "steps": [{"id": "step_1", "description": "JTBD analysis.", "skill_name": "jtbd-analysis", "depends_on": []}, {"id": "step_2", "description": "Exit survey.", "skill_name": "survey-analysis", "depends_on": []}, {"id": "step_3", "description": "Retention strategy.", "skill_name": "research-synthesis", "depends_on": ["step_1", "step_2"]}]},
+    {"user": "Plan usability study for {product}.", "thinking": "Personas first, then test plan.", "steps": [{"id": "step_1", "description": "Generate personas.", "skill_name": "persona-generation", "depends_on": []}, {"id": "step_2", "description": "Test plan.", "skill_name": "usability-test-plan", "depends_on": ["step_1"]}]},
+    {"user": "{product} navigation is confusing. Fix it.", "thinking": "IA audit + thematic analysis -> synthesis.", "steps": [{"id": "step_1", "description": "IA audit.", "skill_name": "information-architecture-audit", "depends_on": []}, {"id": "step_2", "description": "Thematic analysis of feedback.", "skill_name": "thematic-analysis", "depends_on": []}, {"id": "step_3", "description": "Redesign recs.", "skill_name": "research-synthesis", "depends_on": ["step_1", "step_2"]}]},
+    {"user": "Benchmark {product} vs {c1}, {c2}, {c3}.", "thinking": "Full benchmark: competitive + heuristic + JTBD -> synthesis.", "steps": [{"id": "step_1", "description": "Competitive analysis.", "skill_name": "competitive-analysis", "depends_on": []}, {"id": "step_2", "description": "Heuristic eval.", "skill_name": "heuristic-evaluation", "depends_on": []}, {"id": "step_3", "description": "JTBD switching.", "skill_name": "jtbd-analysis", "depends_on": []}, {"id": "step_4", "description": "Strategic synthesis.", "skill_name": "research-synthesis", "depends_on": ["step_1", "step_2", "step_3"]}]},
+]
+
+for i in range(300):
+    t = random.choice(dag_templates)
+    c1, c2, c3 = random.sample(COMPETITORS, 3)
+    product = random.choice(PRODUCTS)
+    user_text = t["user"].format(c1=c1, c2=c2, c3=c3, product=product)
+    steps = [{"id": s["id"], "description": s["description"].format(c1=c1, c2=c2, c3=c3, product=product), "skill_name": s["skill_name"], "depends_on": s["depends_on"]} for s in t["steps"]]
+    entries.append({"messages": [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": user_text}, {"role": "assistant", "content": f"<thinking>\n{t['thinking'].format(c1=c1, c2=c2, c3=c3, product=product)}\n</thinking>\n<tool_call>\n{json.dumps({'steps': steps}, indent=2)}\n</tool_call>"}], "tools": ALL_TOOLS, "competency": "tool_invocation", "skill": "_create_research_plan"})
+print("  DAG: 300")
+
+single_reqs = [("Analyze interview data for patterns.", "thematic-analysis"), ("Compare {c1} and {c2} on navigation.", "competitive-analysis"), ("Evaluate checkout usability.", "heuristic-evaluation"), ("JTBD for {product}.", "jtbd-analysis"), ("Test plan for dashboard.", "usability-test-plan"), ("Build personas.", "persona-generation"), ("Map onboarding journey.", "journey-mapping"), ("Analyze survey.", "survey-analysis"), ("WCAG check {product}.", "accessibility-audit"), ("Audit IA.", "information-architecture-audit"), ("Synthesize quarterly research.", "research-synthesis")]
+for i in range(300):
+    req, skill = random.choice(single_reqs)
+    c1, c2 = random.sample(COMPETITORS, 2)
+    product = random.choice(PRODUCTS)
+    ut = req.format(c1=c1, c2=c2, product=product)
+    entries.append({"messages": [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": ut}, {"role": "assistant", "content": f"<thinking>\nSingle skill: '{skill}'.\n</thinking>\n<tool_call>\n{json.dumps({'name': skill, 'arguments': {'request': ut}}, indent=2)}\n</tool_call>"}], "tools": ALL_TOOLS, "competency": "tool_invocation", "skill": skill})
+print("  Single-skill: 300")
+
+# =====================================================================
+# COMPETENCY 3: ANTI-PATTERNS + EVIDENCE CHAIN (400 examples)
+# =====================================================================
+print("\n--- Competency 3 ---")
+
+for i in range(100):
+    entries.append({"messages": [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": random.choice(["Can you help me analyze some user feedback?", "What do you think about our onboarding?", "I have interview data, can you look at it?", "Run a quick competitive analysis?", "What's your opinion on our dashboard?"])}, {"role": "assistant", "content": "<thinking>\nVague request. No context or skill specified. Must NOT produce chatty filler.\n</thinking>\nI need:\n1. **Skill**: Which analysis? (thematic-analysis, competitive-analysis, etc.)\n2. **Context**: Research data.\n3. **Scope**: Focus areas.\n\nProvide these so I can invoke the appropriate skill."}], "tools": ALL_TOOLS, "competency": "anti_pattern", "skill": "clarification"})
+print("  Clarification: 100")
+
+for i in range(100):
+    nug = pick_nuggets(3)
+    cb = [{"code": "Navigation Friction", "definition": "Difficulty finding features.", "inclusion_criteria": "Mentions of getting lost, clicks.", "example": nug[0][0], "frequency": 2}]
+    nd = [{"text": n[0], "source": n[1], "tags": ["Navigation Friction"], "coding_reasoning": "Verbatim quote = navigation frustration.", "confidence": "high"} for n in nug[:2]]
+    entries.append({"messages": [{"role": "system", "content": SYSTEM_PROMPT + "\n\nCRITICAL WRONG PATTERN:\nHere is my analysis:\nUsers struggle with navigation.\n1. Nav friction\n2. Feature discoverability\n\nNEVER output free-text. JSON only."}, {"role": "user", "content": f"Analyze for patterns.\n\n{make_context(nug)}"}, {"role": "assistant", "content": f"<thinking>\nJSON only. thematic-analysis schema.\n</thinking>\n<research_methodology>\nBraun & Clarke (2006).\n</research_methodology>\n{json.dumps({'codebook': cb, 'nuggets': nd}, indent=2)}"}], "tools": [SKILLS["thematic-analysis"]], "competency": "anti_pattern", "skill": "schema_correction"})
+print("  Schema correction: 100")
+
+for i in range(200):
+    nug = pick_nuggets(random.randint(5, 10))
+    ctx = random.choice(RESEARCH_CONTEXTS)
+    approach = random.choice(SYNTHESIS_APPROACHES)
+    tm = {}
+    for text, src in nug:
+        t = random.choice(["Navigation & Discoverability", "Efficiency & Workflow", "Trust & Confidence", "Customization & Control", "Performance & Reliability", "Onboarding & Learning"])
+        if t not in tm: tm[t] = []
+        tm[t].append({"nugget": text, "source": src})
+    findings = [{"theme": t, "statement": f"{len(e)} data points: {t.lower()} = Fact.", "evidence": e} for t, e in tm.items()]
+    output = json.dumps({"executive_summary": f"Atomic synthesis: {len(nug)} nuggets, {len(findings)} facts. {ctx.split('.')[0]}.", "methodology": {"objectives": [f"Extract Nuggets from {len(nug)} segments", "Aggregate Facts", "Synthesize Insights"], "synthesis_approach": f"Atomic Research ({approach})"}, "findings": findings}, indent=2)
+    entries.append({"messages": [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": f"Atomic Research Hierarchy synthesis.\n\nContext: {ctx}\n\n{make_context(nug)}"}, {"role": "assistant", "content": f"<thinking>\n{len(nug)} data points. Atomic Research:\n- Nuggets: verbatim (3-30 words)\n- Facts: patterns\n- Insights: actions\n</thinking>\n<research_methodology>\nAtomic Research Hierarchy + {approach}.\n</research_methodology>\n{output}"}], "tools": [SKILLS["research-synthesis"]], "competency": "evidence_chain", "skill": "atomic-research"})
+print("  Evidence chain: 200")
+
+# =====================================================================
+# SAVE AND PUSH
+# =====================================================================
+random.shuffle(entries)
+total = len(entries)
+comp_counts = Counter(e["competency"] for e in entries)
+skill_counts = Counter(e["skill"] for e in entries)
+print(f"\n=== TOTAL: {total} ===")
+print(f"Competencies: {dict(comp_counts)}")
+print(f"Skills: {dict(skill_counts)}")
+
+out1 = "/tmp/istara_sft_dataset.jsonl"
+with open(out1, "w") as f:
+    for e in entries:
+        f.write(json.dumps({"messages": e["messages"], "tools": e["tools"]}) + "\n")
+print(f"Saved: {out1} ({os.path.getsize(out1)/1024/1024:.1f}MB)")
+
+out2 = "/tmp/istara_sft_full.jsonl"
+with open(out2, "w") as f:
+    for e in entries:
+        f.write(json.dumps(e) + "\n")
+
+print("Pushing to Hub...")
+api.upload_file(path_or_fileobj=out1, path_in_repo="istara_sft/istara_sft_dataset.jsonl", repo_id=REPO_ID, repo_type="dataset", commit_message=f"Add Istara SFT dataset: {total} examples, 12 skills, 3 competencies")
+api.upload_file(path_or_fileobj=out2, path_in_repo="istara_sft/istara_sft_dataset_full.jsonl", repo_id=REPO_ID, repo_type="dataset", commit_message=f"Add Istara SFT full dataset: {total} entries with metadata")
+
+info = {"total_entries": total, "competencies": dict(comp_counts), "skills": dict(skill_counts), "num_skills": len(SKILLS), "skill_names": list(SKILLS.keys()), "format": "TRL SFTTrainer (messages + tools)", "system_prompt": SYSTEM_PROMPT}
+with open("/tmp/info.json", "w") as f:
+    json.dump(info, f, indent=2)
+api.upload_file(path_or_fileobj="/tmp/info.json", path_in_repo="istara_sft/dataset_info.json", repo_id=REPO_ID, repo_type="dataset", commit_message="Add dataset info")
+
+print(f"\n=== DONE ===")
+print(f"https://huggingface.co/datasets/{REPO_ID}/tree/main/istara_sft")

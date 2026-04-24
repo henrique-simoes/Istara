@@ -137,7 +137,8 @@ For any non-trivial change, check these six surfaces:
 | If You Change | Must Also Inspect |
 |---|---|
 | persona files in `backend/app/agents/personas/*` | any docs/prompts that describe agent behavior, tests/simulations that rely on that persona, generated docs if tracked inventory changes |
-| skill definition JSON | skills API/routes, planning/execution flows, reports, recommendation logic, simulation/e2e coverage |
+| skill definition JSON | skills API/routes, planning/execution flows, reports, recommendation logic, `scripts/validate_skills.py`, simulation/e2e coverage |
+| `backend/app/skills/all_skills.py` | treat as legacy/bootstrap reference only; do not overwrite existing JSON definitions from it; run `python scripts/validate_skills.py` |
 | system prompt / repo instructions | `SYSTEM_PROMPT.md`, wrappers (`CLAUDE.md`, `GEMINI.md`), checklist references, docs describing the workflow |
 | agent orchestration/routing | task routing keywords, specialty assumptions, chat/session creation, audit behavior |
 

@@ -750,6 +750,15 @@ class SkillOutput:
 ### All 50+ Registered Skills
 
 **Skill Definitions** stored in `backend/app/skills/definitions/` as JSON files (hyphenated filenames).
+This directory is the canonical source of truth for runtime skills, dataset generation, prompts, schemas, and enriched metadata.
+
+`backend/app/skills/all_skills.py` is a legacy/bootstrap reference only. Do not use it to overwrite existing definition files.
+
+Validate definitions with:
+
+```bash
+python scripts/validate_skills.py
+```
 
 Loaded at startup via `backend/app/skills/registry.py::load_default_skills()`.
 

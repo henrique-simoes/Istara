@@ -1,4 +1,15 @@
-"""All 40+ Istara UXR skills — defined using the skill factory.
+"""LEGACY BOOTSTRAP REFERENCE ONLY.
+
+Canonical skill definitions live in backend/app/skills/definitions/*.json.
+Those JSON files are loaded by the runtime skill registry, used by dataset
+generation, and may contain richer prompts, schemas, references, and metadata
+than this file.
+
+Do not treat this module as the source of truth and do not regenerate existing
+definition files from it. Use generate_definitions.py only to scaffold missing
+JSON definitions for newly introduced legacy skills.
+
+All 40+ Istara UXR skills — defined using the skill factory.
 
 Hand-written skills (more complex logic):
 - user_interviews (discover)
