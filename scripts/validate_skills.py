@@ -9,9 +9,7 @@ output_schema field is parseable when represented as a JSON string.
 from __future__ import annotations
 
 import argparse
-import ast
 import json
-import re
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -20,6 +18,18 @@ from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFINITIONS_DIR = REPO_ROOT / "backend" / "app" / "skills" / "definitions"
+VALID_PHASES = {"discover", "define", "develop", "deliver"}
+VALID_SKILL_TYPES = {
+    "qualitative",
+    "quantitative",
+    "mixed",
+    "analysis",
+    "generation",
+    "retrieval",
+    "validation",
+    "transformation",
+}
+RUNTIME_SKILL_TYPES = {"qualitative", "quantitative", "mixed"}
 
 
 @dataclass
@@ -60,6 +70,23 @@ def _validate_output_schema(path: Path, data: dict[str, Any], result: Validation
         f"{path}: output_schema must be a JSON string, object, array, or empty value; got {type(schema).__name__}"
     )
 
+
+def _validate_taxonomy(path: Path, data: dict[str, Any], result: ValidationResult) -> None:
+    phase = data.get("phase")
+    if phase not in VALID_PHASES:
+        result.failures.append(
+            f"{path}: phase must be one of {sorted(VALID_PHASES)}; got {phase!r}"
+        )
+
+    skill_type = data.get("skill_type")
+    if skill_type not in VALID_SKILL_TYPES:
+        result.failures.append(
+            f"{path}: skill_type must be one of {sorted(VALID_SKILL_TYPES)}; got {skill_type!r}"
+        )
+    elif skill_type not in RUNTIME_SKILL_TYPES:
+        result.warnings.append(
+            f"{path}: skill_type {skill_type!r} is valid definition metadata but maps to runtime SkillType.MIXED"
+        )
 
 
 def validate_skill_definitions(
@@ -102,6 +129,7 @@ def validate_skill_definitions(
                 result.warnings.append(f"{path}: filename does not match skill name '{name}'")
 
         _validate_output_schema(path, data, result)
+        _validate_taxonomy(path, data, result)
 
     return result
 

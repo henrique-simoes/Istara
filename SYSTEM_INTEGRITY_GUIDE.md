@@ -752,7 +752,7 @@ class SkillOutput:
 **Skill Definitions** stored in `backend/app/skills/definitions/` as JSON files (hyphenated filenames).
 This directory is the canonical source of truth for runtime skills, dataset generation, prompts, schemas, and enriched metadata.
 
-`backend/app/skills/all_skills.py` is a legacy/bootstrap reference only. Do not use it to overwrite existing definition files.
+Legacy skill generator/export modules were removed from the runtime source-of-truth path. Do not reintroduce them to overwrite existing definition files.
 
 Validate definitions with:
 

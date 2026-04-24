@@ -400,6 +400,166 @@
     ]
   ],
   [
+    "I really need a way to collaborate in real-time with my team. Right now I have to export files and send them via email or Slack, which is clunky. If I could just share a link and have people comment or edit directly, that would be a game-changer. Like Figma but for this tool.",
+    "feature_request_survey.json",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "Better reporting and analytics. I want to see how my projects are performing over time, not just current status. Dashboards with charts, trends, that kind of thing. Right now I have to export data and make my own reports in Excel, which is tedious.",
+    "feature_request_survey.json",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "API access. I need to integrate this with other tools I use. Right now everything is manual, which doesn't scale. If I could pull data via API or trigger actions programmatically, I could automate a lot of my workflow.",
+    "feature_request_survey.json",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "Templates. I do similar projects all the time, and I have to recreate everything from scratch each time. If I could save a project as a template and reuse it, that would save me hours. Even better if there were pre-made templates for common use cases.",
+    "feature_request_survey.json",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "A mobile app. I'm always on the go, and I can't always access the web version. If I could check things or make quick edits from my phone, that would be really helpful. Even if it's just basic features, that's better than nothing.",
+    "feature_request_survey.json",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "Better search functionality. I have hundreds of projects, and finding the right one is a pain. The current search is too basic - I need filters, tags, date ranges, that kind of thing. Maybe even saved searches or smart folders.",
+    "feature_request_survey.json",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "Version history. I make a lot of changes, and sometimes I want to go back to an earlier version. Right now I have to manually save copies, which is messy. If there was automatic versioning like Google Docs, that would be perfect.",
+    "feature_request_survey.json",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "Custom fields and workflows. Every team works differently, and the current structure is too rigid. I need to be able to add custom fields, create my own workflows, set up automation rules. Basically, make it work the way my team works, not the other way around.",
+    "feature_request_survey.json",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "Better notifications. I need to know when things happen, but right now I either get too many notifications or not enough. I want to customize what I'm notified about and how. Email, push, in-app - let me choose what works for me.",
+    "feature_request_survey.json",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "Bulk operations. I often need to update or delete multiple items at once, but I have to do them one by one. That's fine for a few items, but when I have 50 or 100, it's a nightmare. Let me select multiple items and apply actions to all of them.",
+    "feature_request_survey.json",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "Keyboard shortcuts. I use this tool all day, and I'm constantly clicking around. If I could use keyboard shortcuts for common actions, I'd be so much faster. Even basic ones like Cmd+S to save, Cmd+N for new, that kind of thing.",
+    "feature_request_survey.json",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "Integration with Slack. My team uses Slack for everything, and I want to get notifications there. Also, it would be cool if I could create or update things directly from Slack, like with slash commands or something.",
+    "feature_request_survey.json",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "Export options. I need to export data in different formats - CSV, Excel, PDF, JSON. Right now the export options are limited, and the formatting is always off. I end up having to reformat everything manually, which defeats the purpose.",
+    "feature_request_survey.json",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "Calendar integration. I want to see my deadlines and milestones in my calendar app. Right now I have to manually add them, which is annoying. If it synced automatically, that would be amazing. Google Calendar, Outlook, whatever.",
+    "feature_request_survey.json",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "Better help and documentation. When I'm stuck, I don't know where to look. The help center is hard to search, and the documentation is outdated. I want contextual help - like tooltips or inline guides that show me what to do right when I need it.",
+    "feature_request_survey.json",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "Webhooks. I need to know when things change so I can trigger actions in other systems. If I could set up webhooks for events like 'project created' or 'status changed', I could automate a lot of my workflow.",
+    "feature_request_survey.json",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "Dark mode. I use this tool all day, and the bright white background is hard on my eyes. I know it's a small thing, but it would make a big difference for my comfort. Plus, it just looks cooler.",
+    "feature_request_survey.json",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "Better permissions and roles. I need fine-grained control over who can see and edit what. Right now it's too all-or-nothing. I want to be able to set permissions at the project level, item level, field level. That kind of granularity.",
+    "feature_request_survey.json",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "Activity feed. I want to see what's happening across all my projects in one place. Who's doing what, when things are updated, comments, changes - all in a timeline view. Right now I have to check each project individually.",
+    "feature_request_survey.json",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "Formulas and calculations. I need to do math on my data - sums, averages, percentages, that kind of thing. Right now I have to export to Excel, do the calculations, then import back. If I could do it directly in the tool, that would save so much time.",
+    "feature_request_survey.json",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
     "The shipping address form was annoying. It kept asking me to verify my address even though I've used it before. And the autocomplete didn't work properly - it suggested addresses that weren't even close to mine. I had to type everything manually, which took forever.",
     "ecommerce_checkout_feedback.csv",
     [
@@ -824,14 +984,6 @@
     ]
   ],
   [
-    "[Task: Check account balance]",
-    "mobile_app_usability_interviews.txt",
-    [
-      "user_interviews",
-      "qualitative"
-    ]
-  ],
-  [
     "\"This is easy, I can see it right on the home screen. But... is this my checking or savings? It just says 'Balance: $2,450'. Which account is that? I have three accounts with this bank. I need to tap to see more details, I guess. Oh, there it is. But I wish I could see all my balances at once without having to tap into each account. Like, a summary view would be nice.\"",
     "mobile_app_usability_interviews.txt",
     [
@@ -849,14 +1001,6 @@
   ],
   [
     "\"I'm looking for my recent transactions. Let me check... I don't see a clear 'Transactions' or 'History' button. Maybe it's in the account details? Let me tap on my checking account. Yeah, there it is. But it took me two taps to get there. I feel like this should be more prominent. I check my transaction history all the time, so it should be easier to find.\"",
-    "mobile_app_usability_interviews.txt",
-    [
-      "user_interviews",
-      "qualitative"
-    ]
-  ],
-  [
-    "[Overall reflection]",
     "mobile_app_usability_interviews.txt",
     [
       "user_interviews",
@@ -888,14 +1032,6 @@
     ]
   ],
   [
-    "[Task: Check account balance]",
-    "mobile_app_usability_interviews.txt",
-    [
-      "user_interviews",
-      "qualitative"
-    ]
-  ],
-  [
     "\"I can see a number on the screen, but I'm not sure if that's right. It seems low. Let me check... oh, I need to refresh? Why doesn't it update automatically? And there's a loading spinner that takes forever. Is my internet slow or is the app slow? I can't tell.\"",
     "mobile_app_usability_interviews.txt",
     [
@@ -913,14 +1049,6 @@
   ],
   [
     "\"I want to see what I spent money on. Let me look... I don't see anything obvious. Maybe it's in settings? No, that doesn't make sense. Let me try tapping on the account balance. Oh, there it is! But I never would have guessed to tap there. That's not obvious at all.\"",
-    "mobile_app_usability_interviews.txt",
-    [
-      "user_interviews",
-      "qualitative"
-    ]
-  ],
-  [
-    "[Overall reflection]",
     "mobile_app_usability_interviews.txt",
     [
       "user_interviews",
@@ -952,14 +1080,6 @@
     ]
   ],
   [
-    "[Task: Check account balance]",
-    "mobile_app_usability_interviews.txt",
-    [
-      "user_interviews",
-      "qualitative"
-    ]
-  ],
-  [
     "\"The balance display is clean, but the information architecture is questionable. Why is the primary balance shown but not the account type? That's critical information. And the way you access account details is inconsistent with iOS design patterns. The tap target is too small, and there's no visual affordance that it's tappable.\"",
     "mobile_app_usability_interviews.txt",
     [
@@ -977,14 +1097,6 @@
   ],
   [
     "\"Transaction history is buried. It should be a primary action, not secondary. Users check their history frequently - it's a core use case. The current placement suggests it's not important, but it absolutely is. Also, the search functionality within transactions is weak. No filters, no date range selection, just a basic search that probably doesn't work well.\"",
-    "mobile_app_usability_interviews.txt",
-    [
-      "user_interviews",
-      "qualitative"
-    ]
-  ],
-  [
-    "[Overall reflection]",
     "mobile_app_usability_interviews.txt",
     [
       "user_interviews",
@@ -1016,14 +1128,6 @@
     ]
   ],
   [
-    "[Task: Check account balance]",
-    "mobile_app_usability_interviews.txt",
-    [
-      "user_interviews",
-      "qualitative"
-    ]
-  ],
-  [
     "\"The balance is right there, which is good. But I wish I could see all my accounts in one view. Right now I have to remember which account I'm looking at. And the numbers are small - I have to squint to read them. Can we make the font bigger? Or at least make it easier to see?\"",
     "mobile_app_usability_interviews.txt",
     [
@@ -1041,14 +1145,6 @@
   ],
   [
     "\"I'm looking for a specific transaction from last week. Let me check the history... okay, I can see recent transactions, but I can't scroll back very far. And there's no search. So if I'm looking for something from a month ago, I'm out of luck. That's frustrating. I know the transaction is there, but I can't find it.\"",
-    "mobile_app_usability_interviews.txt",
-    [
-      "user_interviews",
-      "qualitative"
-    ]
-  ],
-  [
-    "[Overall reflection]",
     "mobile_app_usability_interviews.txt",
     [
       "user_interviews",
@@ -1080,14 +1176,6 @@
     ]
   ],
   [
-    "[Task: Check account balance]",
-    "mobile_app_usability_interviews.txt",
-    [
-      "user_interviews",
-      "qualitative"
-    ]
-  ],
-  [
     "\"I can see my balance, which is good. But I'm not sure if this is up to date. Does it update automatically? Or do I need to do something? I see a refresh button, so maybe I need to tap that? Let me try... okay, it's loading. Is that normal? How long does this take? I'm waiting... okay, it updated. But I wish it would just show me the current balance without me having to refresh.\"",
     "mobile_app_usability_interviews.txt",
     [
@@ -1105,14 +1193,6 @@
   ],
   [
     "\"I want to see what I spent money on recently. Let me look around... I don't see anything that says 'Transactions' or 'History'. Maybe it's in my account? Let me tap on the balance. Oh, there it is! But I never would have thought to tap there. That's not obvious at all. I think there should be a button that says 'View Transactions' or something like that.\"",
-    "mobile_app_usability_interviews.txt",
-    [
-      "user_interviews",
-      "qualitative"
-    ]
-  ],
-  [
-    "[Overall reflection]",
     "mobile_app_usability_interviews.txt",
     [
       "user_interviews",
@@ -1144,14 +1224,6 @@
     ]
   ],
   [
-    "[Task: Check account balance]",
-    "mobile_app_usability_interviews.txt",
-    [
-      "user_interviews",
-      "qualitative"
-    ]
-  ],
-  [
     "\"Visual hierarchy is off. The balance is prominent, which is good, but the account context is missing. Is this checking? Savings? Credit? That information should be equally prominent. And the way you drill down into account details feels inconsistent - sometimes it's a tap, sometimes it's a swipe, and there's no clear pattern.\"",
     "mobile_app_usability_interviews.txt",
     [
@@ -1169,14 +1241,6 @@
   ],
   [
     "\"Transaction history is a secondary action when it should be primary. Users check their history constantly - it's a core use case. The current placement in the account details screen means it's two taps away from the home screen, which is too many. Also, the transaction list itself needs work - no grouping by date, no quick filters, no search. It's just a long list.\"",
-    "mobile_app_usability_interviews.txt",
-    [
-      "user_interviews",
-      "qualitative"
-    ]
-  ],
-  [
-    "[Overall reflection]",
     "mobile_app_usability_interviews.txt",
     [
       "user_interviews",
@@ -1208,14 +1272,6 @@
     ]
   ],
   [
-    "[Task: Check account balance]",
-    "mobile_app_usability_interviews.txt",
-    [
-      "user_interviews",
-      "qualitative"
-    ]
-  ],
-  [
     "\"The balance is right there, which is fine. But I wish I could see it bigger, or maybe have it update in real-time. Right now I have to refresh to see the latest balance, which is annoying. And I can't see all my accounts at once - I have to switch between them, which is extra taps.\"",
     "mobile_app_usability_interviews.txt",
     [
@@ -1233,14 +1289,6 @@
   ],
   [
     "\"I'm trying to find a transaction from like two weeks ago. Let me scroll... okay, I can only see the last few days. How do I see older transactions? There's no 'Load More' button or anything. And I can't search. So if I'm looking for something specific, I'm basically out of luck unless it's recent.\"",
-    "mobile_app_usability_interviews.txt",
-    [
-      "user_interviews",
-      "qualitative"
-    ]
-  ],
-  [
-    "[Overall reflection]",
     "mobile_app_usability_interviews.txt",
     [
       "user_interviews",
@@ -1272,14 +1320,6 @@
     ]
   ],
   [
-    "[Task: Check account balance]",
-    "mobile_app_usability_interviews.txt",
-    [
-      "user_interviews",
-      "qualitative"
-    ]
-  ],
-  [
     "\"The balance display is functional but lacks context. Which account am I looking at? What's the available balance versus pending transactions? These are critical pieces of information that should be immediately visible. The current design requires too much cognitive load to understand my financial position.\"",
     "mobile_app_usability_interviews.txt",
     [
@@ -1297,14 +1337,6 @@
   ],
   [
     "\"Transaction history is a core feature, but it's buried. It should be accessible from the home screen, not hidden in account details. Also, the transaction list needs better organization - grouping by date, filtering options, search functionality. Right now it's just a chronological list, which isn't helpful for analysis.\"",
-    "mobile_app_usability_interviews.txt",
-    [
-      "user_interviews",
-      "qualitative"
-    ]
-  ],
-  [
-    "[Overall reflection]",
     "mobile_app_usability_interviews.txt",
     [
       "user_interviews",
@@ -1336,14 +1368,6 @@
     ]
   ],
   [
-    "[Task: Check account balance]",
-    "mobile_app_usability_interviews.txt",
-    [
-      "user_interviews",
-      "qualitative"
-    ]
-  ],
-  [
     "\"The balance is visible, which is good. But I wish I could customize the home screen. Like, maybe I want to see my savings account first instead of checking? Or maybe I want to see both at once? Right now I'm stuck with whatever default they chose, and it's not what I need.\"",
     "mobile_app_usability_interviews.txt",
     [
@@ -1361,14 +1385,6 @@
   ],
   [
     "\"I check my transaction history all the time - like, multiple times a day. So it should be super easy to access. Right now it's buried, which is annoying. And when I do find it, I can't search or filter, so if I'm looking for something specific, I have to scroll through everything. That's not efficient.\"",
-    "mobile_app_usability_interviews.txt",
-    [
-      "user_interviews",
-      "qualitative"
-    ]
-  ],
-  [
-    "[Overall reflection]",
     "mobile_app_usability_interviews.txt",
     [
       "user_interviews",
@@ -1400,14 +1416,6 @@
     ]
   ],
   [
-    "[Task: Check account balance]",
-    "mobile_app_usability_interviews.txt",
-    [
-      "user_interviews",
-      "qualitative"
-    ]
-  ],
-  [
     "\"I can see my balance, which is helpful. But I'm not sure if this is the right amount. I just got paid, so it should be higher. Maybe I need to refresh? Let me try tapping the refresh button. It's loading... is this normal? I'm waiting. Okay, it updated. Good. But I wish it would just show me the current balance automatically without me having to refresh.\"",
     "mobile_app_usability_interviews.txt",
     [
@@ -1425,14 +1433,6 @@
   ],
   [
     "\"I want to make sure a payment went through. Let me look for my transactions... I don't see anything obvious. Maybe it's in my account details? Let me tap on the balance. Oh, there it is! But I never would have thought to tap there. I think there should be a clearer button or menu item for transactions.\"",
-    "mobile_app_usability_interviews.txt",
-    [
-      "user_interviews",
-      "qualitative"
-    ]
-  ],
-  [
-    "[Overall reflection]",
     "mobile_app_usability_interviews.txt",
     [
       "user_interviews",
@@ -2248,6 +2248,166 @@
     ]
   ],
   [
+    "I'm struggling with a stakeholder who keeps asking for changes that don't make sense from a UX perspective. They want to add more features, make buttons bigger, add more colors - basically everything that goes against best practices. I've tried explaining the reasoning, showing research, but they don't listen. How do you handle this situation? I'm getting frustrated and starting to feel like I'm not doing my job well.",
+    "ux_forum_threads.json",
+    [
+      "community_forums",
+      "qualitative"
+    ]
+  ],
+  [
+    "This is so common. What's worked for me is framing things in business terms rather than UX terms. Instead of 'this violates UX best practices,' try 'this will reduce conversion by X% based on industry benchmarks.' Stakeholders care about business outcomes, not UX theory.",
+    "ux_forum_threads.json",
+    [
+      "community_forums",
+      "qualitative"
+    ]
+  ],
+  [
+    "I've found that showing real user data helps. Do a quick usability test with 5 users and show them the results. When stakeholders see actual people struggling with their suggestions, they usually back down. It's harder to argue with real user behavior than with principles.",
+    "ux_forum_threads.json",
+    [
+      "community_forums",
+      "qualitative"
+    ]
+  ],
+  [
+    "Sometimes you have to pick your battles. Not every design decision is worth fighting over. I try to identify what's truly important (accessibility, conversion, user safety) and stand firm on those, but compromise on less critical things. It's about building trust over time.",
+    "ux_forum_threads.json",
+    [
+      "community_forums",
+      "qualitative"
+    ]
+  ],
+  [
+    "I'm new to UX research and I'm overwhelmed by all the tools available. There's UserTesting, Maze, Hotjar, Dovetail, Optimal Workshop... the list goes on. What tools do you actually use day-to-day? Which ones are worth the money? I'm on a budget, so I need to be strategic about what I invest in.",
+    "ux_forum_threads.json",
+    [
+      "community_forums",
+      "qualitative"
+    ]
+  ],
+  [
+    "Start with free tools. Google Forms for surveys, Zoom for interviews, Miro for affinity mapping, Excel for analysis. You don't need expensive tools to do good research. Once you understand the methods, then consider paid tools if they save you significant time.",
+    "ux_forum_threads.json",
+    [
+      "community_forums",
+      "qualitative"
+    ]
+  ],
+  [
+    "It depends on what you're doing. For usability testing, I use UserTesting or Maze. For analytics, Hotjar or FullStory. For synthesis, Dovetail is amazing but expensive. For surveys, Typeform or SurveyMonkey. Don't try to use everything - pick 2-3 that cover your main needs.",
+    "ux_forum_threads.json",
+    [
+      "community_forums",
+      "qualitative"
+    ]
+  ],
+  [
+    "The tool doesn't matter as much as the method. Focus on learning research methods first - interviews, surveys, usability testing, card sorting. Once you know the methods, you can use almost any tool. Don't let tool choice become a barrier to doing research.",
+    "ux_forum_threads.json",
+    [
+      "community_forums",
+      "qualitative"
+    ]
+  ],
+  [
+    "I'm trying to convince leadership to invest more in UX, but they keep asking for metrics. How do you measure UX success? What KPIs do you track? I know about NPS and task completion rates, but what else? I need something that will resonate with executives who care about ROI.",
+    "ux_forum_threads.json",
+    [
+      "community_forums",
+      "qualitative"
+    ]
+  ],
+  [
+    "I track a combination of quantitative and qualitative metrics. Quantitative: task completion rate, time on task, error rate, conversion rate, retention. Qualitative: user satisfaction scores, ease of use ratings, feature adoption. The key is showing how UX improvements lead to business outcomes.",
+    "ux_forum_threads.json",
+    [
+      "community_forums",
+      "qualitative"
+    ]
+  ],
+  [
+    "Frame it in business terms. Instead of 'improved UX,' say 'reduced support tickets by 30%' or 'increased conversion by 15%.' Show the cost savings or revenue impact. Executives care about money, so show them how UX saves or makes money.",
+    "ux_forum_threads.json",
+    [
+      "community_forums",
+      "qualitative"
+    ]
+  ],
+  [
+    "Don't forget about leading indicators. Task completion and conversion are lagging indicators. Leading indicators like user confidence, perceived ease of use, and intent to recommend can predict future success. Track both to show both current performance and future potential.",
+    "ux_forum_threads.json",
+    [
+      "community_forums",
+      "qualitative"
+    ]
+  ],
+  [
+    "I've been in UX for 2 years now, but I still feel like I don't know what I'm doing. Everyone around me seems so confident and knowledgeable, and I'm constantly second-guessing myself. I worry that I'm not good enough, that I'll be found out. How do you deal with this? Does it ever go away?",
+    "ux_forum_threads.json",
+    [
+      "community_forums",
+      "qualitative"
+    ]
+  ],
+  [
+    "I've been doing this for 10 years and I still feel imposter syndrome sometimes. It's normal, especially in a field that's constantly evolving. The key is recognizing that everyone feels this way sometimes, even the people who seem confident. You're not alone.",
+    "ux_forum_threads.json",
+    [
+      "community_forums",
+      "qualitative"
+    ]
+  ],
+  [
+    "What helped me was focusing on what I do know rather than what I don't. Make a list of your skills and accomplishments. When imposter syndrome hits, look at that list. Also, remember that UX is a team sport - you don't have to know everything, you just need to know how to find answers.",
+    "ux_forum_threads.json",
+    [
+      "community_forums",
+      "qualitative"
+    ]
+  ],
+  [
+    "Find a mentor or community. Having people to talk to who understand what you're going through is huge. Also, remember that learning is part of the job. If you're not learning, you're not growing. Embrace the uncertainty - it means you're pushing yourself.",
+    "ux_forum_threads.json",
+    [
+      "community_forums",
+      "qualitative"
+    ]
+  ],
+  [
+    "I just finished a big usability study and I need to present the findings to stakeholders. I have tons of data - interview transcripts, survey results, task completion rates, quotes, video clips. How do I organize all of this into a presentation that's actually useful? I don't want to overwhelm them with data, but I also don't want to oversimplify.",
+    "ux_forum_threads.json",
+    [
+      "community_forums",
+      "qualitative"
+    ]
+  ],
+  [
+    "Start with the key insights, not the data. What did you learn? What should they do about it? Then support those insights with data. Use the 3-5-7 rule: 3 main insights, 5 supporting points, 7 minutes max. Stakeholders don't need to see everything, they need to see what matters.",
+    "ux_forum_threads.json",
+    [
+      "community_forums",
+      "qualitative"
+    ]
+  ],
+  [
+    "Tell a story. Start with the problem, show user quotes or video clips to make it real, then present your findings as the solution. Use visuals - charts, graphs, journey maps. Make it engaging, not just a data dump. People remember stories, not statistics.",
+    "ux_forum_threads.json",
+    [
+      "community_forums",
+      "qualitative"
+    ]
+  ],
+  [
+    "Create an executive summary (1 page) with key findings and recommendations. Then have detailed slides as backup. Most stakeholders will only read the summary, but having details available shows you did thorough work. Also, prioritize findings by impact - what will have the biggest effect?",
+    "ux_forum_threads.json",
+    [
+      "community_forums",
+      "qualitative"
+    ]
+  ],
+  [
     "REDDIT POSTS - PRODUCT DESIGN SUBREDDIT\nSubreddit: r/productdesign\nDate Range: March 2024\nFormat: Post titles and top comments",
     "product_reddit_posts.txt",
     [
@@ -2281,14 +2441,6 @@
   ],
   [
     "How do you convince product teams that UX improvements are just as important as new features? I'm losing this battle constantly.\"",
-    "product_reddit_posts.txt",
-    [
-      "community_forums",
-      "qualitative"
-    ]
-  ],
-  [
-    "Top Comments:",
     "product_reddit_posts.txt",
     [
       "community_forums",
@@ -2352,14 +2504,6 @@
     ]
   ],
   [
-    "Top Comments:",
-    "product_reddit_posts.txt",
-    [
-      "community_forums",
-      "qualitative"
-    ]
-  ],
-  [
     "u/UXMentor: \"You don't need to learn to code, but understanding how things work technically helps. Focus on: 1) Design fundamentals (typography, color, layout), 2) UX methods (research, testing, prototyping), 3) Tools (Figma, Miro, etc.), 4) Build a portfolio with real projects. Bootcamps can be good, but they're expensive. Start with free resources, then invest if you need structure.\"",
     "product_reddit_posts.txt",
     [
@@ -2409,14 +2553,6 @@
   ],
   [
     "How do you handle this? Do you just do what they ask even if it doesn't make sense? Or do you push back? I'm worried about seeming difficult, but I also don't want to make bad design decisions.\"",
-    "product_reddit_posts.txt",
-    [
-      "community_forums",
-      "qualitative"
-    ]
-  ],
-  [
-    "Top Comments:",
     "product_reddit_posts.txt",
     [
       "community_forums",
@@ -2480,14 +2616,6 @@
     ]
   ],
   [
-    "Top Comments:",
-    "product_reddit_posts.txt",
-    [
-      "community_forums",
-      "qualitative"
-    ]
-  ],
-  [
     "u/ResearchLead: \"Bad research confirms what you already know. Good research surprises you. If your research isn't revealing new insights, you're probably asking the wrong questions or testing the wrong things. Try: 1) Testing assumptions, not features, 2) Observing behavior, not asking opinions, 3) Testing early, before you've invested too much.\"",
     "product_reddit_posts.txt",
     [
@@ -2544,14 +2672,6 @@
     ]
   ],
   [
-    "Top Comments:",
-    "product_reddit_posts.txt",
-    [
-      "community_forums",
-      "qualitative"
-    ]
-  ],
-  [
     "u/CreativeDirector: \"This is burnout, and it's normal. What helps: 1) Side projects - work on something completely different, 2) Learn new skills - try a new tool or method, 3) Teach others - mentoring can reignite your passion, 4) Take breaks - sometimes you just need time away, 5) Find new challenges - ask for different types of projects or switch teams.\"",
     "product_reddit_posts.txt",
     [
@@ -2578,6 +2698,246 @@
   [
     "CHATBOT CONVERSATIONS - CUSTOMER SUPPORT LOGS\nSource: E-commerce Website Support Chatbot\nDate Range: March 2024\nFormat: User messages and bot responses",
     "chatbot_conversations.txt",
+    [
+      "customer_feedback",
+      "qualitative"
+    ]
+  ],
+  [
+    "I've been trying to reset my password for 2 days now. I click 'Forgot Password', enter my email, but I never receive the reset link. I've checked my spam folder, tried multiple times, nothing works. I need to access my account urgently for work. Please help!",
+    "support_tickets.json",
+    [
+      "customer_feedback",
+      "qualitative"
+    ]
+  ],
+  [
+    "We've identified an issue with our email delivery system. I've manually reset your password and sent it to your email. You should be able to log in now. We're working on fixing the automated system.",
+    "support_tickets.json",
+    [
+      "customer_feedback",
+      "qualitative"
+    ]
+  ],
+  [
+    "I need to export my project data to Excel for reporting, but the current export only supports CSV. CSV doesn't preserve formatting, and I have to manually reformat everything. Can you add Excel export? This would save me hours every week.",
+    "support_tickets.json",
+    [
+      "customer_feedback",
+      "qualitative"
+    ]
+  ],
+  [
+    "Thank you for the feedback. We've added Excel export to our roadmap and will prioritize it for a future release. In the meantime, you can use Excel to open CSV files and apply formatting.",
+    "support_tickets.json",
+    [
+      "customer_feedback",
+      "qualitative"
+    ]
+  ],
+  [
+    "Every time I try to upload a file larger than 50MB, the app crashes. This happens on both web and mobile. I've tried different file types, different browsers, nothing works. I need to upload large files for my work. This is blocking me.",
+    "support_tickets.json",
+    [
+      "customer_feedback",
+      "qualitative"
+    ]
+  ],
+  [
+    "We've identified a memory issue when handling large file uploads. We've deployed a fix that should resolve this. Please try uploading again and let us know if you still experience issues.",
+    "support_tickets.json",
+    [
+      "customer_feedback",
+      "qualitative"
+    ]
+  ],
+  [
+    "I want to share a project with a client, but they don't have an account. Is there a way to share it with them without requiring them to sign up? I don't want to force them to create an account just to view something.",
+    "support_tickets.json",
+    [
+      "customer_feedback",
+      "qualitative"
+    ]
+  ],
+  [
+    "Currently, all collaborators need to have an account. However, you can export the project as a PDF and share that. We're working on a guest access feature that will be available in a future release.",
+    "support_tickets.json",
+    [
+      "customer_feedback",
+      "qualitative"
+    ]
+  ],
+  [
+    "I was charged twice for my monthly subscription this month. I only have one account, so this shouldn't have happened. I've checked my bank statement, and there are definitely two charges. Please refund one of them immediately.",
+    "support_tickets.json",
+    [
+      "customer_feedback",
+      "qualitative"
+    ]
+  ],
+  [
+    "We apologize for the error. We've identified a duplicate charge issue and refunded the second charge. The refund should appear in your account within 3-5 business days. We've also fixed the underlying issue to prevent this from happening again.",
+    "support_tickets.json",
+    [
+      "customer_feedback",
+      "qualitative"
+    ]
+  ],
+  [
+    "I use this app all day, and the bright white background is hard on my eyes. Can you add a dark mode? This would make such a difference for my comfort. I know it's not a critical feature, but it would really improve my experience.",
+    "support_tickets.json",
+    [
+      "customer_feedback",
+      "qualitative"
+    ]
+  ],
+  [
+    "Thank you for the suggestion! Dark mode is on our roadmap and we're planning to release it in the next major update. We'll notify you when it's available.",
+    "support_tickets.json",
+    [
+      "customer_feedback",
+      "qualitative"
+    ]
+  ],
+  [
+    "I made changes to a project on my laptop, but when I opened it on my phone, the changes weren't there. I've tried refreshing, logging out and back in, nothing works. The sync is completely broken. I've lost work because of this.",
+    "support_tickets.json",
+    [
+      "customer_feedback",
+      "qualitative"
+    ]
+  ],
+  [
+    "We've identified a sync issue affecting some users. We've deployed a fix and your changes should now sync properly. Please try making a change and let us know if you still experience issues.",
+    "support_tickets.json",
+    [
+      "customer_feedback",
+      "qualitative"
+    ]
+  ],
+  [
+    "I have hundreds of old items I want to delete, but I have to delete them one by one, which takes forever. Is there a way to select multiple items and delete them all at once? This would save me so much time.",
+    "support_tickets.json",
+    [
+      "customer_feedback",
+      "qualitative"
+    ]
+  ],
+  [
+    "Currently, bulk delete is not available, but it's a feature we're planning to add. In the meantime, you can use our API to bulk delete items programmatically. I can send you documentation if you're interested.",
+    "support_tickets.json",
+    [
+      "customer_feedback",
+      "qualitative"
+    ]
+  ],
+  [
+    "I've set up notifications for important events, but I never receive them. I've checked all my settings, everything is enabled, but still nothing. I'm missing important updates because of this. Please fix this ASAP.",
+    "support_tickets.json",
+    [
+      "customer_feedback",
+      "qualitative"
+    ]
+  ],
+  [
+    "We've identified an issue with our notification system. We've fixed it and you should now receive notifications properly. You may need to re-enable notifications in your settings.",
+    "support_tickets.json",
+    [
+      "customer_feedback",
+      "qualitative"
+    ]
+  ],
+  [
+    "I use this app all day, and I'm constantly clicking around. If I could use keyboard shortcuts for common actions, I'd be so much faster. Even basic ones like Cmd+S to save, Cmd+N for new, that kind of thing.",
+    "support_tickets.json",
+    [
+      "customer_feedback",
+      "qualitative"
+    ]
+  ],
+  [
+    "Great suggestion! Keyboard shortcuts are available - you can see them by pressing Cmd+? (or Ctrl+? on Windows). We're also planning to add more shortcuts in future updates.",
+    "support_tickets.json",
+    [
+      "customer_feedback",
+      "qualitative"
+    ]
+  ],
+  [
+    "I tried to log in today and got a message saying my account has been suspended. I have no idea why - I haven't done anything wrong. I need access to my account for work. This is urgent. Please help!",
+    "support_tickets.json",
+    [
+      "customer_feedback",
+      "qualitative"
+    ]
+  ],
+  [
+    "We apologize for the error. Your account was incorrectly flagged by our automated system. We've restored your access and you should be able to log in now. We're reviewing our system to prevent this from happening again.",
+    "support_tickets.json",
+    [
+      "customer_feedback",
+      "qualitative"
+    ]
+  ],
+  [
+    "I want to be able to customize my dashboard to show what's important to me. Right now it shows everything, but I only care about a few things. Can you add the ability to customize the layout?",
+    "support_tickets.json",
+    [
+      "customer_feedback",
+      "qualitative"
+    ]
+  ],
+  [
+    "Thank you for the feedback. Dashboard customization is on our roadmap. In the meantime, you can use filters to focus on what's important to you.",
+    "support_tickets.json",
+    [
+      "customer_feedback",
+      "qualitative"
+    ]
+  ],
+  [
+    "After the latest update, I lost all my data. Everything is gone - projects, settings, everything. I've tried restoring from backup, but the backup is also empty. This is catastrophic. I've lost months of work. Please help!",
+    "support_tickets.json",
+    [
+      "customer_feedback",
+      "qualitative"
+    ]
+  ],
+  [
+    "We're very sorry about this. We've identified a critical bug in the update that affected some users. We've restored your data from our servers. You should see all your data now. We're also providing you with 3 months of free service as compensation.",
+    "support_tickets.json",
+    [
+      "customer_feedback",
+      "qualitative"
+    ]
+  ],
+  [
+    "I want to get notifications in Slack when things happen in the app. Is there a way to integrate with Slack? I saw something about integrations but I'm not sure how to set it up.",
+    "support_tickets.json",
+    [
+      "customer_feedback",
+      "qualitative"
+    ]
+  ],
+  [
+    "Yes, we have a Slack integration! You can set it up by going to Settings > Integrations > Slack. There's a step-by-step guide there. If you need help, let me know.",
+    "support_tickets.json",
+    [
+      "customer_feedback",
+      "qualitative"
+    ]
+  ],
+  [
+    "The app has become extremely slow over the past week. It takes 30+ seconds to load pages, and actions are delayed. This is making it unusable. I've tried different browsers, cleared cache, nothing helps. Please fix this.",
+    "support_tickets.json",
+    [
+      "customer_feedback",
+      "qualitative"
+    ]
+  ],
+  [
+    "We've identified a performance issue affecting some users. We've optimized our servers and deployed a fix. The app should be much faster now. Please try again and let us know if you still experience slowness.",
+    "support_tickets.json",
     [
       "customer_feedback",
       "qualitative"
@@ -3922,6 +4282,342 @@
   [
     "Moderator: \"Thank you all for your time and insights. This has been really helpful.\"",
     "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "First thing I noticed - the login screen is clean, which is good. But then I logged in and there's just... a lot going on. Like, where do I start? There's no clear hierarchy.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "I agree. It's visually appealing, but I'm not sure what I'm supposed to do first. Is my balance the most important thing? Recent transactions? Quick actions? It's all competing for attention.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "For me, the first thing I want to see is my account balance. That should be front and center. But it's buried in the middle of the screen, and I had to scroll to see it clearly.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "I'm confused about what this app does differently from my regular bank app. Like, why would I switch? I don't see anything that's obviously better.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "The design is modern, which I like. But modern doesn't always mean usable. I'm having trouble figuring out the navigation. The bottom tabs aren't labeled clearly.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "I'm not very good with technology, so I'm already feeling overwhelmed. There are so many buttons and options, and I'm worried I'll tap the wrong thing and mess something up.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "This should be the easiest task, but it took me a few seconds to find my balance. It's on the home screen, but it's not prominent enough. I had to look around to find it.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "I have multiple accounts, and I can't see all my balances at once. I have to tap into each account individually, which is annoying. I want a summary view.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "The balance is there, but I can't tell if it's my checking or savings account. The labels are too small, and I have to tap to see which account I'm looking at.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "I'm not sure if the balance is up to date. Is this my current balance? Available balance? Pending transactions? It's not clear.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "The balance display is fine, but I wish I could see it bigger. Sometimes I'm in a hurry and I just want to quickly check my balance without having to squint.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "I found my balance, but I'm not confident it's correct. I wish there was a way to refresh it or see when it was last updated. I'm always worried about whether the information is current.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "The transfer flow is confusing. There are too many steps, and I'm not sure why. Like, why do I need to confirm my identity again if I just logged in? That's redundant.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "I couldn't find where to transfer money at first. I looked for a 'Transfer' button, but it's called 'Send Money' which is different. The terminology is inconsistent.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "I want to transfer money to my business account, but I can't find it in my contacts. I have to manually enter the account number every time, which is annoying and error-prone.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "The recipient selection is weird. It's asking for email or phone number, but I just want to send to someone in my contacts. Why can't I just pick a name?",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "I like that there are security checks, but they're too frequent. I'm transferring $20 to a friend, and it's asking me to verify my identity three times. That's overkill.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "I'm afraid to transfer money because I'm worried I'll send it to the wrong person. The confirmation screen doesn't show enough information for me to be confident I'm doing it right.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Transaction history is buried. It should be a primary action, not hidden in account details. Users check their history all the time - it should be easier to access.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "I can see recent transactions, but I can't filter or search. If I'm looking for a specific transaction from last month, I have to scroll through everything. That's not efficient.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "The transactions aren't grouped by date, which makes it hard to scan. I want to see 'Today', 'Yesterday', 'This Week', 'This Month' - that kind of grouping.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "I can't see pending transactions clearly. They're mixed in with completed transactions, and I can't tell which is which. I want to see what's pending separately.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "The transaction descriptions are truncated, so I can't see the full merchant name or description. I have to tap each transaction to see the details, which is tedious.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "I'm looking for a transaction from two weeks ago, but I can only see the last few days. How do I see older transactions? There's no 'Load More' button or way to go back further.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "The security measures are good - two-factor authentication, biometric login. But the UI doesn't communicate that well. I want to see more indicators that my data is secure.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "I'm not sure if this app is legitimate. The branding is modern, but I don't recognize the company. I want to see more trust signals - security badges, certifications, that kind of thing.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "For business banking, security is critical. I need to know that my money is safe. The app doesn't do enough to communicate its security features or make me feel confident.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "I'm worried about fraud. If someone gets into my account, what happens? The app doesn't explain its fraud protection or what I should do if something goes wrong.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "The login process is secure, which is good. But once I'm in, I don't see any indicators that I'm still in a secure session. I want to know that my connection is encrypted.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "I'm not comfortable putting my banking information in an app I don't know. I need more reassurance that this is safe and legitimate. Maybe testimonials or security information would help.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "The app is functional, but it's not great. The UX needs work - better information architecture, clearer navigation, more intuitive flows. It works, but it's frustrating to use.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "I'm not sure I would switch from my current bank app. This one doesn't offer enough advantages to justify the switching cost. It needs to be significantly better, not just different.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "For business use, this isn't sufficient. I need more features - invoicing, expense tracking, tax reporting. This feels like it's designed for personal use, not business.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "It's okay, but it's not exciting. I'm used to apps that are delightful to use, and this one is just... functional. I want something that makes banking easier and more enjoyable.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "The design is nice, but the usability is lacking. It feels like it was designed by people who already know how banking apps work, not by people who are trying to use it for the first time.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "I'm probably not the target audience. This feels like it's designed for younger, tech-savvy people. I need something simpler and more straightforward. I'll stick with my regular bank app.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Simplify the navigation. Make the primary actions more obvious. Reduce the number of steps for common tasks. And improve the information architecture - things are organized in a way that doesn't match user mental models.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Add more personalization. Let me customize the home screen to show what's important to me. And improve the visual hierarchy - not everything can be equally important.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Add business features. If you want business customers, you need business features. Invoicing, expense tracking, multi-user access, that kind of thing.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Make it more intuitive. I shouldn't have to think about where things are or how to do things - it should be obvious. Reduce cognitive load.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Improve the transaction history. Better filtering, search, grouping. And make it easier to access - it's a core feature that's currently buried.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Make it simpler. Not everyone is tech-savvy. Add more help, more explanations, more guidance. And make sure it works for people who aren't comfortable with technology.",
+    "fintech_app_focus_group.json",
     [
       "focus_groups",
       "qualitative"

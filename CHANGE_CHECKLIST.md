@@ -221,7 +221,7 @@ const scenarioFiles = [
 
 ### Adding a New Skill Definition
 
-- [ ] Treat `backend/app/skills/definitions/*.json` as the canonical skill source. `backend/app/skills/all_skills.py` is legacy/bootstrap reference only.
+- [ ] Treat `backend/app/skills/definitions/*.json` as the canonical skill source. Removed legacy generator/export modules must not be reintroduced as sources of truth.
 - [ ] Create `backend/app/skills/definitions/{skill_name}.json` with:
   - name, display_name, description
   - phase (discover/define/develop/deliver)
