@@ -10,6 +10,18 @@ from app.skills.base import BaseSkill, SkillPhase, SkillType
 logger = logging.getLogger(__name__)
 
 
+def _definition_skill_type(value: str) -> SkillType:
+    """Map JSON definition taxonomy to runtime skill types."""
+    try:
+        return SkillType(value)
+    except ValueError:
+        logger.warning(
+            "Skill definition uses non-runtime skill_type %r; registering as mixed",
+            value,
+        )
+        return SkillType.MIXED
+
+
 class SkillRegistry:
     """Central registry for all UXR skills."""
 
@@ -70,7 +82,7 @@ class SkillRegistry:
             display=defn.data["display_name"],
             desc=defn.data["description"],
             phase=SkillPhase(defn.data["phase"]),
-            skill_type=SkillType(defn.data["skill_type"]),
+            skill_type=_definition_skill_type(defn.data["skill_type"]),
             plan_prompt=defn.data["plan_prompt"],
             execute_prompt=defn.data["execute_prompt"],
             output_schema=defn.data["output_schema"],
