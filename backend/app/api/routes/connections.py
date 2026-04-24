@@ -3,6 +3,7 @@
 import logging
 import secrets
 import uuid
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
@@ -43,7 +44,7 @@ class RedeemRequest(BaseModel):
 async def generate_connection_string(
     data: GenerateRequest,
     request: Request,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """Generate a connection string for inviting team members.
     Admin only. Bundles server URL, network token, and a pre-minted JWT."""
@@ -63,14 +64,12 @@ async def generate_connection_string(
         expires_hours=data.expires_hours,
     )
 
-    # Persist to database
-    from datetime import datetime, timedelta, timezone
     new_conn = ConnectionString(
         id=str(uuid.uuid4()),
         connection_string=conn_str,
         label=data.label,
         server_url=data.server_url,
-        expires_at=datetime.now(timezone.utc) + timedelta(hours=data.expires_hours)
+        expires_at=datetime.now(timezone.utc) + timedelta(hours=data.expires_hours),
     )
     db.add(new_conn)
     await db.commit()
@@ -100,19 +99,23 @@ async def revoke_connection_string(conn_id: str, request: Request, db: AsyncSess
     conn = await db.get(ConnectionString, conn_id)
     if not conn:
         raise HTTPException(status_code=404, detail="Connection string not found")
-    
+
     await db.delete(conn)
     await db.commit()
     return {"status": "revoked"}
 
 
 @router.post("/connections/validate")
-async def validate_connection_string(data: ValidateRequest):
+async def validate_connection_string(data: ValidateRequest, db: AsyncSession = Depends(get_db)):
     """Validate a connection string without redeeming it.
     Public endpoint — used by clients to preview connection info."""
     payload = decode_connection_string(data.connection_string)
     if not payload:
         return {"valid": False, "error": "Invalid or expired connection string"}
+
+    conn = await _get_redeemable_connection_string(db, data.connection_string)
+    if conn is None:
+        return {"valid": False, "error": "Connection string has been revoked, redeemed, or expired"}
 
     return {
         "valid": True,
@@ -131,16 +134,21 @@ async def redeem_connection_string(data: RedeemRequest, db: AsyncSession = Depen
     payload = decode_connection_string(data.connection_string)
     if not payload:
         raise HTTPException(status_code=400, detail="Invalid or expired connection string")
+    conn = await _get_redeemable_connection_string(db, data.connection_string)
+    if conn is None:
+        raise HTTPException(status_code=400, detail="Connection string has been revoked, redeemed, or expired")
 
     if not data.username.strip():
         raise HTTPException(status_code=400, detail="Username is required")
-    if not data.password or len(data.password) < 6:
-        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+    if not data.password or len(data.password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
 
     # Create user account (team mode must be enabled for this)
     if not settings.team_mode:
         # In local mode, just return a local-admin token + network token
         token = create_token("local", data.username.strip(), "admin")
+        conn.is_redeemed = True
+        await db.commit()
         return {
             "token": token,
             "network_token": payload.get("network_token", ""),
@@ -161,7 +169,9 @@ async def redeem_connection_string(data: RedeemRequest, db: AsyncSession = Depen
     email = data.email.strip() or f"{data.username.strip()}@istara.local"
     email_hash = hash_field(email)
     existing = await db.execute(
-        select(User).where((User.username == data.username.strip()) | (User.email_hash == email_hash))
+        select(User).where(
+            (User.username == data.username.strip()) | (User.email_hash == email_hash)
+        )
     )
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=409, detail="Username or email already exists")
@@ -176,6 +186,7 @@ async def redeem_connection_string(data: RedeemRequest, db: AsyncSession = Depen
         display_name=data.display_name.strip() or data.username.strip(),
     )
     db.add(user)
+    conn.is_redeemed = True
     await db.commit()
 
     token = create_token(user.id, user.username, user.role.value)
@@ -197,7 +208,7 @@ async def redeem_connection_string(data: RedeemRequest, db: AsyncSession = Depen
 
 
 @router.post("/connections/rotate-network-token")
-async def rotate_network_token(request: Request):
+async def rotate_network_token(request: Request, db: AsyncSession = Depends(get_db)):
     """Generate a new NETWORK_ACCESS_TOKEN. Admin only.
     Invalidates all existing connection strings that bundled the old token."""
     if settings.team_mode:
@@ -212,6 +223,11 @@ async def rotate_network_token(request: Request):
     # Persist to .env
     from app.api.routes.settings import _persist_env
     _persist_env("NETWORK_ACCESS_TOKEN", new_token)
+
+    result = await db.execute(select(ConnectionString).where(ConnectionString.is_active.is_(True)))
+    for conn in result.scalars().all():
+        conn.is_active = False
+    await db.commit()
 
     # Broadcast to connected relays so they know the token changed
     try:
@@ -230,3 +246,21 @@ async def rotate_network_token(request: Request):
 
     logger.info("Network access token rotated")
     return {"status": "rotated", "token_preview": new_token[:8] + "..."}
+
+
+async def _get_redeemable_connection_string(
+    db: AsyncSession,
+    connection_string: str,
+) -> ConnectionString | None:
+    result = await db.execute(
+        select(ConnectionString).where(ConnectionString.connection_string == connection_string)
+    )
+    conn = result.scalar_one_or_none()
+    if not conn or not conn.is_active or conn.is_redeemed:
+        return None
+    expires_at = conn.expires_at
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    if expires_at < datetime.now(timezone.utc):
+        return None
+    return conn
