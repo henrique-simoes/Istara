@@ -16,6 +16,7 @@ import os
 import time
 
 from app.channels.base import ChannelAdapter, IncomingMessage, OutgoingMessage
+from app.core.channel_resilience import CircuitBreaker, resilient_send
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +51,10 @@ class WhatsAppAdapter(ChannelAdapter):
         self._http: httpx.AsyncClient | None = None
         # Track last inbound timestamp per chat_id for 24-hour window
         self._last_inbound_at: dict[str, float] = {}
+        # Circuit breaker for outbound Graph API calls
+        self._breaker = CircuitBreaker(failure_threshold=5, recovery_timeout=60.0)
+        # Webhook idempotency — deduplicate by external message id
+        self._seen_message_ids: set[str] = set()
 
     # -- ChannelAdapter interface ---------------------------------------------
 
@@ -88,48 +93,49 @@ class WhatsAppAdapter(ChannelAdapter):
         logger.info("WhatsApp adapter stopped (instance=%s).", self.name)
 
     async def send(self, message: OutgoingMessage) -> None:
-        """Send a message via WhatsApp Cloud API."""
+        """Send a message via WhatsApp Cloud API (with retry + circuit breaker)."""
         if self._http is None or not self._running:
             logger.warning("WhatsAppAdapter.send() called while not running.")
             return
 
-        url = f"{GRAPH_API_BASE}/{self._phone_number_id}/messages"
-        metadata = message.metadata or {}
+        from app.core.channel_resilience import retry_with_backoff
 
-        # Check 24-hour conversation window
-        recipient = message.channel_id
-        last_inbound = self._last_inbound_at.get(recipient, 0)
-        if time.time() - last_inbound > _CONVERSATION_WINDOW_SECONDS:
-            logger.warning(
-                "WhatsApp 24-hour window may have expired for %s. "
-                "Message may require a template.",
-                recipient,
-            )
+        async def _do_send() -> None:
+            url = f"{GRAPH_API_BASE}/{self._phone_number_id}/messages"
+            metadata = message.metadata or {}
 
-        # Build payload
-        if metadata.get("type") == "template":
-            # Template message (for outside 24-hour window)
-            payload = {
-                "messaging_product": "whatsapp",
-                "to": recipient,
-                "type": "template",
-                "template": metadata.get("template", {}),
-            }
-        else:
-            payload = {
-                "messaging_product": "whatsapp",
-                "to": recipient,
-                "type": "text",
-                "text": {"body": message.text},
-            }
+            # Check 24-hour conversation window
+            recipient = message.channel_id
+            last_inbound = self._last_inbound_at.get(recipient, 0)
+            if time.time() - last_inbound > _CONVERSATION_WINDOW_SECONDS:
+                logger.warning(
+                    "WhatsApp 24-hour window may have expired for %s. "
+                    "Message may require a template.",
+                    recipient,
+                )
 
-        try:
+            # Build payload
+            if metadata.get("type") == "template":
+                payload = {
+                    "messaging_product": "whatsapp",
+                    "to": recipient,
+                    "type": "template",
+                    "template": metadata.get("template", {}),
+                }
+            else:
+                payload = {
+                    "messaging_product": "whatsapp",
+                    "to": recipient,
+                    "type": "text",
+                    "text": {"body": message.text},
+                }
+
             resp = await self._http.post(url, json=payload)
             resp.raise_for_status()
-        except Exception:
-            logger.exception(
-                "Failed to send WhatsApp message to %s", recipient
-            )
+
+        await self._breaker.call(
+            lambda: retry_with_backoff(_do_send, max_retries=3, base_delay=1.0)
+        )
 
     async def health_check(self) -> dict:
         """Check WhatsApp connection by querying the phone number info."""
@@ -192,11 +198,22 @@ class WhatsAppAdapter(ChannelAdapter):
     async def _process_webhook_message(
         self, wa_msg: dict, contact_map: dict[str, str]
     ) -> None:
-        """Process a single WhatsApp message from webhook payload."""
+        """Process a single WhatsApp message from webhook payload.
+
+        Idempotent: duplicate deliveries (same external_message_id) are ignored.
+        """
+        msg_id = wa_msg.get("id", "")
+        if msg_id in self._seen_message_ids:
+            logger.debug("Deduplicating WhatsApp message %s", msg_id)
+            return
+        self._seen_message_ids.add(msg_id)
+        # Prevent unbounded growth — cap cache size
+        if len(self._seen_message_ids) > 10_000:
+            self._seen_message_ids = set(list(self._seen_message_ids)[-5_000:])
+
         msg_type = wa_msg.get("type", "text")
         sender = wa_msg.get("from", "")
         sender_name = contact_map.get(sender, "")
-        msg_id = wa_msg.get("id", "")
 
         # Track inbound timestamp for conversation window
         self._last_inbound_at[sender] = time.time()

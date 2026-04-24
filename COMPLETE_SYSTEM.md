@@ -22,7 +22,7 @@ Generated from the repository on version `2026.04.20.2`. This document is meant 
 - Next.js frontend with 23 mounted views and 15 Zustand stores.
 - 43 SQLAlchemy models in `backend/app/models`.
 - 6 tracked persona directories and 57 JSON-defined skills.
-- 58 active test files across 4 regression layers.
+- 59 active test files across 4 regression layers.
 
 ## Backend Route Inventory
 
@@ -239,7 +239,7 @@ Generated from the repository on version `2026.04.20.2`. This document is meant 
 - **Layer: Benchmarks**: `test_orchestration.py`
 - **Layer: Integration**: `test_llm_orchestration_real.py`
 - **Layer: Simulation**: `run.mjs`
-- **Test Journeys**: `test_agents.py`, `test_auth_security.py`, `test_autoresearch.py`, `test_backup.py`, `test_browser_skills.py`, `test_business_logic.py`, `test_channels.py`, `test_chat.py`, `test_code_applications.py`, `test_codebook_versions.py`, `test_codebooks.py`, `test_compute.py`, `test_connections.py`, `test_content_guard.py`, `test_context_dag.py`, `test_data_transformations.py`, `test_documents.py`, `test_error_handling.py`, `test_evaluation_skill.py`, `test_field_encryption.py`, `test_files.py`, `test_findings.py`, `test_integration.py`, `test_integration_agent_work_cycle.py`, `test_integration_chat_flow.py`, `test_integration_interview.py`, `test_interfaces.py`, `test_laws.py`, `test_llm_servers.py`, `test_loops.py`, `test_mcp.py`, `test_memory.py`, `test_meta_hyperagent.py`, `test_network_security.py`, `test_notifications.py`, `test_participant_simulation.py`, `test_projects.py`, `test_proxy_security.py`, `test_rate_limiter.py`, `test_research_integrity.py`, `test_self_healing_rules.py`, `test_sessions.py`, `test_settings.py`, `test_skills.py`, `test_steering.py`, `test_surveys.py`, `test_tasks.py`, `test_telemetry.py`, `test_telemetry_export.py`, `test_transcription.py`, `test_transport_headers.py`, `test_version_comparison.py`, `test_webauthn.py`, `test_websocket.py`, `e2e_test.py`
+- **Test Journeys**: `test_agents.py`, `test_auth_security.py`, `test_autoresearch.py`, `test_backup.py`, `test_browser_skills.py`, `test_business_logic.py`, `test_channel_resilience.py`, `test_channels.py`, `test_chat.py`, `test_code_applications.py`, `test_codebook_versions.py`, `test_codebooks.py`, `test_compute.py`, `test_connections.py`, `test_content_guard.py`, `test_context_dag.py`, `test_data_transformations.py`, `test_documents.py`, `test_error_handling.py`, `test_evaluation_skill.py`, `test_field_encryption.py`, `test_files.py`, `test_findings.py`, `test_integration.py`, `test_integration_agent_work_cycle.py`, `test_integration_chat_flow.py`, `test_integration_interview.py`, `test_interfaces.py`, `test_laws.py`, `test_llm_servers.py`, `test_loops.py`, `test_mcp.py`, `test_memory.py`, `test_meta_hyperagent.py`, `test_network_security.py`, `test_notifications.py`, `test_participant_simulation.py`, `test_projects.py`, `test_proxy_security.py`, `test_rate_limiter.py`, `test_research_integrity.py`, `test_self_healing_rules.py`, `test_sessions.py`, `test_settings.py`, `test_skills.py`, `test_steering.py`, `test_surveys.py`, `test_tasks.py`, `test_telemetry.py`, `test_telemetry_export.py`, `test_transcription.py`, `test_transport_headers.py`, `test_version_comparison.py`, `test_webauthn.py`, `test_websocket.py`, `e2e_test.py`
 
 ## What Agents Must Check Before Editing
 
