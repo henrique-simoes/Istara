@@ -12,7 +12,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from sqlalchemy import select
-from app.core.field_encryption import encrypt_field, hash_field
+from app.core.field_encryption import hash_field
 from app.models.database import async_session
 from app.models.user import User
 
@@ -36,9 +36,9 @@ async def migrate():
                     skipped += 1
                 continue
 
-            # Plaintext email — encrypt and hash
+            # Plaintext email — assign through EncryptedType so it encrypts once on bind.
             plaintext = user.email or ""
-            user.email = encrypt_field(plaintext)
+            user.email = plaintext
             user.email_hash = hash_field(plaintext)
             migrated += 1
 
