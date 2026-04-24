@@ -15,6 +15,7 @@ import os
 from pathlib import Path
 
 from app.channels.base import ChannelAdapter, IncomingMessage, OutgoingMessage
+from app.core.channel_resilience import CircuitBreaker
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +47,7 @@ class TelegramAdapter(ChannelAdapter):
             "TELEGRAM_BOT_TOKEN", ""
         )
         self._app = None  # telegram.ext.Application instance
+        self._breaker = CircuitBreaker(failure_threshold=5, recovery_timeout=60.0)
 
     # -- ChannelAdapter interface ---------------------------------------------
 
@@ -107,55 +109,52 @@ class TelegramAdapter(ChannelAdapter):
         logger.info("Telegram adapter stopped (instance=%s).", self.name)
 
     async def send(self, message: OutgoingMessage) -> None:
-        """Send a message to a Telegram chat."""
+        """Send a message to a Telegram chat (with retry + circuit breaker)."""
         if self._app is None or not self._running:
             logger.warning("TelegramAdapter.send() called while not running.")
             return
 
-        chat_id = int(message.channel_id)
-        metadata = message.metadata or {}
+        from app.core.channel_resilience import retry_with_backoff
 
-        # Handle attachments
-        if message.attachments:
-            for file_path in message.attachments:
-                try:
+        async def _do_send() -> None:
+            chat_id = int(message.channel_id)
+            metadata = message.metadata or {}
+
+            # Handle attachments
+            if message.attachments:
+                for file_path in message.attachments:
                     await self._app.bot.send_document(
                         chat_id=chat_id, document=open(file_path, "rb")
                     )
-                except Exception:
-                    logger.exception(
-                        "Failed to send attachment %s to chat %s", file_path, chat_id
-                    )
 
-        # Build optional reply markup
-        reply_markup = None
-        if "reply_markup" in metadata:
-            try:
-                reply_markup = InlineKeyboardMarkup(metadata["reply_markup"])
-            except Exception:
-                logger.warning("Invalid reply_markup in metadata, ignoring.")
-
-        # Send text message
-        if message.text:
-            try:
-                await self._app.bot.send_message(
-                    chat_id=chat_id,
-                    text=message.text,
-                    parse_mode="Markdown",
-                    reply_markup=reply_markup,
-                )
-            except Exception:
-                # Retry without Markdown if parsing fails
+            # Build optional reply markup
+            reply_markup = None
+            if "reply_markup" in metadata:
                 try:
+                    reply_markup = InlineKeyboardMarkup(metadata["reply_markup"])
+                except Exception:
+                    logger.warning("Invalid reply_markup in metadata, ignoring.")
+
+            # Send text message
+            if message.text:
+                try:
+                    await self._app.bot.send_message(
+                        chat_id=chat_id,
+                        text=message.text,
+                        parse_mode="Markdown",
+                        reply_markup=reply_markup,
+                    )
+                except Exception:
+                    # Retry without Markdown if parsing fails
                     await self._app.bot.send_message(
                         chat_id=chat_id,
                         text=message.text,
                         reply_markup=reply_markup,
                     )
-                except Exception:
-                    logger.exception(
-                        "Failed to send message to chat %s", chat_id
-                    )
+
+        await self._breaker.call(
+            lambda: retry_with_backoff(_do_send, max_retries=3, base_delay=1.0)
+        )
 
     async def health_check(self) -> dict:
         """Check Telegram bot connection health."""
