@@ -7,7 +7,8 @@ Changes that are on `staging` and awaiting review before merging to `main`.
 | PR | Change | Added | Notes |
 |---|---|---|---|
 | feat/system-audit-and-integration-check | NullPool + engine.dispose() for test stability; Compass resync | 2026-04-21 | Fixes `test_task_create_and_list` HTTP 500 (SQLite locking). All 354 tests pass. |
-| feat/integrations-audit | Channel resilience (retry + circuit breaker + webhook idempotency); 8 new tests; Tech.md integration surface area | 2026-04-22 | All 364 tests pass. No breaking changes.
+| feat/integrations-audit | Channel resilience (retry + circuit breaker + webhook idempotency); 8 new tests; Tech.md integration surface area | 2026-04-22 | All 364 tests pass. No breaking changes. |
+| feat/compass-swarm-repository-intelligence | Documentation-first Compass Upgrade: Swarm Discipline, Repository Intelligence, Correction Loops | 2026-04-24 | Regenerated AGENT.md/COMPLETE_SYSTEM.md. No runtime changes. |
 
 ## Verified & Ready for `main`
 

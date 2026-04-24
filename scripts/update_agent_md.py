@@ -611,7 +611,7 @@ def build_agent_document(inventory: dict[str, object]) -> str:
         "- `Tech.md`: narrative technical source that must move with architecture/process/release changes.",
         "",
     ]
-    return "\n".join(lines) + "\n"
+    return "\n".join(lines).rstrip() + "\n"
 
 
 def build_complete_system_document(inventory: dict[str, object]) -> str:
@@ -699,7 +699,7 @@ def build_complete_system_document(inventory: dict[str, object]) -> str:
         "5. If the generated docs still miss something important, improve the generator instead of patching around it manually.",
         "",
     ]
-    return "\n".join(lines) + "\n"
+    return "\n".join(lines).rstrip() + "\n"
 
 
 def write_if_changed(path: Path, content: str) -> bool:

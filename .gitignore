@@ -99,7 +99,6 @@ INTEGRITY_INDEX.md
 session-*.md
 
 # Planner protocol files
-planner.md
 current_plans.md
 old_plans.md
 .rtk/
