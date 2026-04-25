@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Fine-tune Gemma-4-E2B-it on combined UX + Istara dataset."""
 
+from pathlib import Path
+
 import torch
 from datasets import load_dataset, concatenate_datasets
 from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -10,6 +12,7 @@ from peft import LoraConfig, TaskType
 MODEL_ID = "google/gemma-4-E2B-it"
 HUB_MODEL_ID = "henrique-simoes/gemma-4-e2b-istara-ux"
 REPO_ID = "henrique-simoes/ux-research-strategy-dataset"
+ROOT = Path(__file__).resolve().parent
 HUB_SFT_MESSAGES = f"hf://datasets/{REPO_ID}/istara_sft/istara_sft_messages.jsonl"
 
 BATCH_SIZE = 2      # 24GB GPU
@@ -56,7 +59,7 @@ print("[4/4] Training...")
 trainer = SFTTrainer(
     model=model,
     args=SFTConfig(
-        output_dir="gemma-4-istara-ux",
+        output_dir=str(ROOT.parent / "LLMs" / "gemma-4-istara-ux"),
         num_train_epochs=3,
         per_device_train_batch_size=BATCH_SIZE,
         gradient_accumulation_steps=GRAD_ACCUM,

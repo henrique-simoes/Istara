@@ -32,7 +32,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--model-id", default=MODEL_ID)
     parser.add_argument("--hub-model-id", default=HUB_MODEL_ID)
-    parser.add_argument("--output-dir", default="gemma-4-istara-ux")
+    parser.add_argument("--output-dir", default=str(ROOT.parent / "LLMs" / "gemma-4-istara-ux"))
     parser.add_argument("--local-sft", type=Path, default=DEFAULT_LOCAL_SFT)
     parser.add_argument(
         "--use-hub-sft",
