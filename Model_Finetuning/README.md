@@ -59,6 +59,8 @@ The release builder publishes four user-facing model formats when all stages are
 - MLX F16 for Apple Silicon
 - MLX 4-bit for Apple Silicon
 
+For Gemma 4 bases, the builder also copies `processor_config.json` into the merged model and attempts to include a compatible `mmproj-*.gguf` projector in the GGUF folder. You can override this with `--mmproj-repo`. MLX Gemma 4 exports also materialize shared K/V tensors so stricter downstream loaders, including LM Studio's bundled MLX loader, can load the model without missing-parameter errors. Gemma 4 runtime support is still version-sensitive, so use current LM Studio, llama.cpp, Ollama, MLX, vLLM, and SGLang builds when testing released artifacts.
+
 For non-Gemma architectures, use `--target-modules all-linear` unless the model needs a specific PEFT target list.
 
 Local training and release artifacts are written under `LLMs/`, which is intentionally ignored by git. Keep source scripts, Compass docs, planner files, and dataset-generation code outside `LLMs/` so they remain tracked and merge-safe.

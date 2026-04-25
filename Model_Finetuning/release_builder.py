@@ -235,6 +235,7 @@ def merge_adapter(base_model: str, adapter_dir: Path, merged_dir: Path, release_
     model = model.merge_and_unload()
     model.save_pretrained(merged_dir, safe_serialization=True, max_shard_size="4GB")
     tokenizer.save_pretrained(merged_dir)
+    copy_hf_file_if_exists(base_model, "processor_config.json", merged_dir / "processor_config.json")
     write_readme(
         merged_dir / "README.md",
         title=release_name,
@@ -245,6 +246,18 @@ def merge_adapter(base_model: str, adapter_dir: Path, merged_dir: Path, release_
         ),
     )
     return merged_dir
+
+
+def copy_hf_file_if_exists(repo_id: str, filename: str, destination: Path) -> bool:
+    try:
+        from huggingface_hub import hf_hub_download
+
+        source = Path(hf_hub_download(repo_id, filename))
+    except Exception:
+        return False
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(source, destination)
+    return True
 
 
 def ensure_llama_cpp(path: Path) -> tuple[Path, Path]:
@@ -262,19 +275,69 @@ def ensure_llama_cpp(path: Path) -> tuple[Path, Path]:
     return converter, quantize
 
 
-def build_gguf(merged_dir: Path, output_dir: Path, release_name: str, llama_cpp: Path, qtype: str) -> tuple[Path, Path]:
+def build_gguf(
+    merged_dir: Path,
+    output_dir: Path,
+    release_name: str,
+    llama_cpp: Path,
+    qtype: str,
+    mmproj_repo: str | None = None,
+) -> tuple[Path, Path]:
     converter, quantize = ensure_llama_cpp(llama_cpp)
     output_dir.mkdir(parents=True, exist_ok=True)
     f16 = output_dir / f"{release_name}-f16.gguf"
     q4 = output_dir / f"{release_name}-{qtype}.gguf"
     run([sys.executable, str(converter), str(merged_dir), "--outfile", str(f16), "--outtype", "f16", "--model-name", release_name])
     run([str(quantize), str(f16), str(q4), qtype])
+    mmproj_line = ""
+    if mmproj_repo:
+        mmproj_file = copy_first_mmproj(mmproj_repo, output_dir)
+        if mmproj_file:
+            mmproj_line = f"- `{mmproj_file.name}`: base multimodal projector copied from `{mmproj_repo}`.\n"
     write_readme(
         output_dir / "README.md",
         title=f"{release_name} GGUF",
-        body=f"GGUF artifacts for `{release_name}`.\n\n- `{q4.name}`: {qtype} quantized build.\n",
+        body=(
+            f"GGUF artifacts for `{release_name}`.\n\n"
+            f"- `{q4.name}`: {qtype} quantized build.\n"
+            f"- `{f16.name}`: F16 build.\n"
+            f"{mmproj_line}"
+        ),
     )
     return f16, q4
+
+
+def infer_mmproj_repo(base_model: str) -> str | None:
+    if not base_model.startswith("google/gemma-4-"):
+        return None
+    return f"lmstudio-community/{base_model.split('/')[-1]}-GGUF"
+
+
+def copy_first_mmproj(repo_id: str, output_dir: Path) -> Path | None:
+    require_python_module("huggingface_hub")
+    from huggingface_hub import HfApi, hf_hub_download
+
+    try:
+        info = HfApi().model_info(repo_id)
+    except Exception as exc:
+        print(f"[WARN] Could not inspect mmproj repo {repo_id}: {exc}")
+        return None
+
+    candidates = sorted(
+        sibling.rfilename
+        for sibling in info.siblings
+        if sibling.rfilename.startswith("mmproj-") and sibling.rfilename.endswith(".gguf")
+    )
+    if not candidates:
+        print(f"[WARN] No mmproj GGUF found in {repo_id}")
+        return None
+
+    # Prefer BF16/F16 projectors, then fall back to the first projector.
+    selected = next((c for c in candidates if "BF16" in c.upper() or "F16" in c.upper()), candidates[0])
+    source = Path(hf_hub_download(repo_id, selected))
+    destination = output_dir / Path(selected).name
+    shutil.copy2(source, destination)
+    return destination
 
 
 def build_mlx(merged_dir: Path, mlx_root: Path, release_name: str) -> tuple[Path, Path]:
@@ -313,7 +376,105 @@ def build_mlx(merged_dir: Path, mlx_root: Path, release_name: str) -> tuple[Path
         body=f"Apple MLX 4-bit conversion of `{release_name}`.\n",
         library="mlx",
     )
+    materialize_gemma4_mlx_shared_kv(f16_dir)
+    materialize_gemma4_mlx_shared_kv(q4_dir)
     return f16_dir, q4_dir
+
+
+def materialize_gemma4_mlx_shared_kv(model_dir: Path) -> None:
+    """Backfill Gemma 4 shared K/V tensors for stricter MLX loaders.
+
+    MLX-LM 0.31.3 can load Gemma 4 models whose shared-KV layers omit
+    duplicate K/V tensors. Some downstream apps bundle stricter MLX loaders and
+    still expect those tensors to exist. Public mlx-community Gemma 4 releases
+    materialize them, so we do the same for portability.
+    """
+
+    config_path = model_dir / "config.json"
+    if not config_path.exists():
+        return
+
+    config = json.loads(config_path.read_text(encoding="utf-8"))
+    text_config = config.get("text_config") or {}
+    if config.get("model_type") != "gemma4" or not text_config.get("num_kv_shared_layers"):
+        return
+
+    require_python_module("torch")
+    require_python_module("safetensors")
+    from huggingface_hub.serialization import save_torch_state_dict
+    from safetensors.torch import load_file, save_file
+
+    weight_files = sorted(model_dir.glob("model*.safetensors"))
+    if not weight_files:
+        return
+
+    state = {}
+    for weight_file in weight_files:
+        state.update(load_file(str(weight_file)))
+
+    layer_types = text_config["layer_types"]
+    first_shared = text_config["num_hidden_layers"] - text_config["num_kv_shared_layers"]
+    kvs_by_type: dict[str, int] = {}
+    for layer_idx in range(first_shared):
+        kvs_by_type[layer_types[layer_idx]] = layer_idx
+
+    suffixes = (
+        "self_attn.k_norm.weight",
+        "self_attn.k_proj.weight",
+        "self_attn.k_proj.scales",
+        "self_attn.k_proj.biases",
+        "self_attn.v_proj.weight",
+        "self_attn.v_proj.scales",
+        "self_attn.v_proj.biases",
+    )
+
+    added = 0
+    for target_idx in range(first_shared, text_config["num_hidden_layers"]):
+        source_idx = kvs_by_type[layer_types[target_idx]]
+        for suffix in suffixes:
+            source_key = f"language_model.model.layers.{source_idx}.{suffix}"
+            target_key = f"language_model.model.layers.{target_idx}.{suffix}"
+            if target_key not in state and source_key in state:
+                state[target_key] = state[source_key].clone()
+                added += 1
+
+    if not added:
+        return
+
+    def clear_existing_weights() -> None:
+        for weight_file in model_dir.glob("model*.safetensors"):
+            weight_file.unlink()
+        index_file = model_dir / "model.safetensors.index.json"
+        if index_file.exists():
+            index_file.unlink()
+
+    has_uint32 = any(str(t.dtype).endswith("uint32") for t in state.values())
+    clear_existing_weights()
+    if has_uint32:
+        # huggingface_hub's torch sharder does not currently know uint32 tensor
+        # sizes, but safetensors itself can store them. Quantized MLX models use
+        # uint32 packed weights, so write a single safetensors file plus a small
+        # index for strict loaders.
+        model_file = model_dir / "model.safetensors"
+        save_file(state, str(model_file))
+        total_size = sum(t.numel() * t.element_size() for t in state.values())
+        index = {
+            "metadata": {"total_size": total_size},
+            "weight_map": {key: model_file.name for key in sorted(state)},
+        }
+        (model_dir / "model.safetensors.index.json").write_text(
+            json.dumps(index, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+    else:
+        save_torch_state_dict(
+            state,
+            model_dir,
+            max_shard_size="4GB",
+            safe_serialization=True,
+            filename_pattern="model{suffix}.safetensors",
+        )
+    print(f"[INFO] Materialized {added} Gemma 4 shared-KV MLX tensors in {model_dir}")
 
 
 def write_readme(path: Path, title: str, body: str, library: str | None = None) -> None:
@@ -373,6 +534,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--gguf-dir", type=Path)
     parser.add_argument("--mlx-dir", type=Path, default=LLM_DIR / "mlx_models")
     parser.add_argument("--llama-cpp", type=Path, default=DEFAULT_LLAMA_CPP)
+    parser.add_argument(
+        "--mmproj-repo",
+        default=None,
+        help="Optional Hugging Face GGUF repo containing a compatible mmproj-*.gguf. Defaults to lmstudio-community/<Gemma-4-base>-GGUF for google/gemma-4-* bases.",
+    )
     parser.add_argument("--target-modules", default="gemma4", help="'gemma4', 'all-linear', or a comma-separated PEFT target module list.")
     parser.add_argument("--epochs", type=float, default=3.0)
     parser.add_argument("--max-length", type=int, default=1024)
@@ -407,6 +573,8 @@ def complete_args(args: argparse.Namespace) -> argparse.Namespace:
         raise SystemExit("--base-model is required when --yes is used")
     if not args.release_name:
         args.release_name = default_slug(args.base_model)
+    if args.mmproj_repo is None:
+        args.mmproj_repo = infer_mmproj_repo(args.base_model)
 
     args.adapter_dir = args.adapter_dir or LLM_DIR / f"{args.release_name}-adapter"
     args.merged_dir = args.merged_dir or LLM_DIR / "merged_models" / args.release_name
@@ -429,7 +597,14 @@ def main() -> int:
 
     gguf_q4 = None
     if not args.skip_gguf:
-        _gguf_f16, gguf_q4 = build_gguf(args.merged_dir, args.gguf_dir, args.release_name, args.llama_cpp, args.qtype)
+        _gguf_f16, gguf_q4 = build_gguf(
+            args.merged_dir,
+            args.gguf_dir,
+            args.release_name,
+            args.llama_cpp,
+            args.qtype,
+            args.mmproj_repo,
+        )
 
     mlx_f16 = mlx_q4 = None
     if not args.skip_mlx:
