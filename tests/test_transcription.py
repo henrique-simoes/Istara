@@ -1,7 +1,7 @@
 """Tests for voice transcription pipeline — Whisper, ICR, auto-tagging."""
 
 import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 
 # ---------------------------------------------------------------------------
@@ -38,17 +38,48 @@ def test_transcription_result_dataclass():
 
 def test_transcription_unavailable_fallback():
     """When Whisper is unavailable, returns error transcription."""
+    import builtins
+    import tempfile
     from app.core import transcription
+
     original_available = transcription._WHISPER_AVAILABLE
+    original_model = transcription._WHISPER_MODEL
+    original_error = transcription._WHISPER_LOAD_ERROR
+
+    real_import = builtins.__import__
+
+    def fake_import(name, *args, **kwargs):
+        if name == "whisper":
+            raise ImportError("simulated missing whisper")
+        return real_import(name, *args, **kwargs)
 
     transcription._WHISPER_AVAILABLE = False
-    result = transcription.transcribe_audio("/fake/path.ogg")
+    transcription._WHISPER_MODEL = None
+    transcription._WHISPER_LOAD_ERROR = None
+
+    with tempfile.NamedTemporaryFile(suffix=".wav") as audio_file, patch("builtins.__import__", side_effect=fake_import):
+        result = transcription.transcribe_audio(audio_file.name)
 
     assert "Transcription unavailable" in result.text
+    assert result.metadata["error_type"] == "transcription_engine_unavailable"
     assert result.needs_review is True
     assert "transcription-error" in result.tags
 
     transcription._WHISPER_AVAILABLE = original_available
+    transcription._WHISPER_MODEL = original_model
+    transcription._WHISPER_LOAD_ERROR = original_error
+
+
+def test_transcription_missing_audio_file():
+    """Missing audio paths return a specific file-not-found transcription result."""
+    from app.core import transcription
+
+    result = transcription.transcribe_audio("/fake/path.ogg")
+
+    assert "audio file not found" in result.text
+    assert result.metadata["error_type"] == "audio_file_missing"
+    assert result.needs_review is True
+    assert "audio-file-missing" in result.tags
 
 
 # ---------------------------------------------------------------------------

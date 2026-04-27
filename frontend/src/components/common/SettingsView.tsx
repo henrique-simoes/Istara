@@ -10,6 +10,7 @@ import ConnectionStringPanel from "@/components/settings/ConnectionStringPanel";
 import UpdateChecker from "@/components/settings/UpdateChecker";
 import DonateComputeToggle from "@/components/common/DonateComputeToggle";
 import PasskeyManager from "@/components/settings/PasskeyManager";
+import TOTPManager from "@/components/settings/TOTPManager";
 import { resetAllOnboarding } from "@/hooks/useViewOnboarding";
 
 export default function SettingsView() {
@@ -73,6 +74,9 @@ export default function SettingsView() {
 
       {/* Passkey Management */}
       <PasskeyManager />
+
+      {/* Two-Factor Authentication */}
+      <TOTPManager />
 
       {/* System Status */}
       <div id="tour-target-system-status" className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
