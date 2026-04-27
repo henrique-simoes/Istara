@@ -15,6 +15,7 @@ All transcriptions are auto-tagged with inter-coder reliability scoring.
 
 import logging
 import os
+import shutil
 import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -44,24 +45,35 @@ class TranscriptionResult:
 
 _WHISPER_AVAILABLE = False
 _WHISPER_MODEL = None
+_WHISPER_LOAD_ERROR: str | None = None
 
 
-def _load_whisper_model(model_size: str = "base"):
+def _load_whisper_model(model_size: str = "base") -> bool:
     """Load Whisper model for transcription."""
-    global _WHISPER_AVAILABLE, _WHISPER_MODEL
+    global _WHISPER_AVAILABLE, _WHISPER_MODEL, _WHISPER_LOAD_ERROR
+
+    if _WHISPER_MODEL is not None:
+        _WHISPER_AVAILABLE = True
+        return True
 
     try:
         import whisper
         _WHISPER_MODEL = whisper.load_model(model_size)
         _WHISPER_AVAILABLE = True
+        _WHISPER_LOAD_ERROR = None
         logger.info(f"Whisper model '{model_size}' loaded successfully")
+        return True
     except ImportError:
+        _WHISPER_LOAD_ERROR = "openai-whisper is not installed"
         logger.warning(
             "openai-whisper not installed — transcription disabled. "
             "Install with: pip install openai-whisper"
         )
     except Exception as e:
+        _WHISPER_LOAD_ERROR = str(e)
         logger.warning(f"Failed to load Whisper model: {e}")
+    _WHISPER_AVAILABLE = False
+    return False
 
 
 def transcribe_audio(
@@ -79,12 +91,37 @@ def transcribe_audio(
     Returns:
         TranscriptionResult with text, confidence, and ICR scores
     """
-    if not _WHISPER_AVAILABLE:
-        _load_whisper_model(model_size)
-
-    if not _WHISPER_AVAILABLE:
+    path = Path(audio_path)
+    if not path.exists():
         return TranscriptionResult(
-            text="[Transcription unavailable — Whisper not installed]",
+            text=f"[Transcription failed: audio file not found at {audio_path}]",
+            language="unknown",
+            confidence=0.0,
+            icr_kappa=0.0,
+            icr_confidence="insufficient",
+            needs_review=True,
+            original_audio_path=audio_path,
+            tags=["transcription-error", "audio-file-missing"],
+            metadata={"error_type": "audio_file_missing"},
+        )
+
+    if path.suffix.lower() != ".wav" and shutil.which("ffmpeg") is None:
+        return TranscriptionResult(
+            text="[Transcription unavailable: ffmpeg is required to convert this audio format. Install ffmpeg or upload a WAV file.]",
+            language="unknown",
+            confidence=0.0,
+            icr_kappa=0.0,
+            icr_confidence="insufficient",
+            needs_review=True,
+            original_audio_path=audio_path,
+            tags=["transcription-error", "audio-conversion-unavailable"],
+            metadata={"error_type": "audio_conversion_unavailable"},
+        )
+
+    if not _WHISPER_AVAILABLE and not _load_whisper_model(model_size):
+        detail = _WHISPER_LOAD_ERROR or "Whisper could not be loaded"
+        return TranscriptionResult(
+            text=f"[Transcription unavailable: {detail}]",
             language="unknown",
             confidence=0.0,
             icr_kappa=0.0,
@@ -92,6 +129,7 @@ def transcribe_audio(
             needs_review=True,
             original_audio_path=audio_path,
             tags=["transcription-error"],
+            metadata={"error_type": "transcription_engine_unavailable", "error": detail},
         )
 
     try:
@@ -137,6 +175,7 @@ def transcribe_audio(
             needs_review=True,
             original_audio_path=audio_path,
             tags=["transcription-error"],
+            metadata={"error_type": "transcription_runtime_failure", "error": str(e)[:500]},
         )
 
 

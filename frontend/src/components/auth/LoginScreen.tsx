@@ -30,6 +30,9 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
 
   // Passkey state
   const [passkeyLoading, setPasskeyLoading] = useState(false);
+  const [recoveryCodes, setRecoveryCodes] = useState<string[]>([]);
+  const [onboardingStep, setOnboardingStep] = useState<"none" | "recovery" | "passkey">("none");
+  const [recoveryCodesConfirmed, setRecoveryCodesConfirmed] = useState(false);
 
   const usernameRef = useRef<HTMLInputElement>(null);
 
@@ -135,6 +138,69 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
     }
   };
 
+  const handlePasskeySetup = async () => {
+    setPasskeyLoading(true);
+    setError("");
+    try {
+      if (typeof window !== "undefined" && !window.PublicKeyCredential) {
+        throw new Error("This browser does not support passkeys. You can set one up later from Settings on a supported browser.");
+      }
+      const token = localStorage.getItem("istara_token");
+      const userId = localStorage.getItem("istara_auth_user_id");
+      if (!token || !userId || !username.trim()) {
+        throw new Error("Your session is not ready for passkey setup. You can set one up later from Settings.");
+      }
+      const { startRegistration } = await import("@simplewebauthn/browser");
+
+      const startRes = await fetch(`${API_BASE}/api/webauthn/register/start`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ username: username.trim(), display_name: username.trim() }),
+      });
+      if (!startRes.ok) {
+        const err = await startRes.json().catch(() => ({ detail: "Passkey registration failed" }));
+        throw new Error(err.detail || "Passkey registration failed");
+      }
+      const startData = await startRes.json();
+      const attestation = await startRegistration({ optionsJSON: startData.publicKey });
+
+      const finishRes = await fetch(`${API_BASE}/api/webauthn/register/finish`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          user_id: userId,
+          id: attestation.id,
+          raw_id: attestation.rawId,
+          response_type: attestation.type,
+          authenticator_attachment: attestation.authenticatorAttachment,
+          client_data_json: attestation.response.clientDataJSON,
+          attestation_object: attestation.response.attestationObject,
+          transports: attestation.response.transports || [],
+        }),
+      });
+      if (!finishRes.ok) {
+        const err = await finishRes.json().catch(() => ({ detail: "Passkey registration failed" }));
+        throw new Error(err.detail || "Passkey registration failed");
+      }
+      await onLogin();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Passkey setup failed. You can continue and set it up later from Settings.");
+    } finally {
+      setPasskeyLoading(false);
+    }
+  };
+
+  const finishOnboarding = async () => {
+    setOnboardingStep("none");
+    await onLogin();
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -177,7 +243,10 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
         }
         const data = await res.json();
         localStorage.setItem("istara_token", data.token);
-        await onLogin();
+        if (data.user?.id) localStorage.setItem("istara_auth_user_id", data.user.id);
+        setRecoveryCodes(data.recovery_codes || []);
+        setRecoveryCodesConfirmed(false);
+        setOnboardingStep("recovery");
       } catch (err) {
         if (err instanceof TypeError && err.message === "Failed to fetch") {
           setError("Cannot connect to the server. Make sure the backend is running.");
@@ -347,6 +416,81 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
               className="mt-4 w-full py-2 px-4 rounded-lg border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition"
             >
               Retry Connection
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (onboardingStep === "recovery") {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950 px-4">
+        <div className="w-full max-w-lg">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 p-8">
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Save your recovery codes</h1>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">
+              These codes are shown once. They let you get back into Istara if two-factor authentication is enabled and your authenticator is unavailable.
+            </p>
+            <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {recoveryCodes.map((code) => (
+                <code key={code} className="rounded-lg bg-slate-100 dark:bg-slate-800 px-3 py-2 text-sm text-slate-800 dark:text-slate-100 text-center">
+                  {code}
+                </code>
+              ))}
+            </div>
+            <label className="mt-5 flex items-start gap-2 text-sm text-slate-600 dark:text-slate-300">
+              <input
+                type="checkbox"
+                checked={recoveryCodesConfirmed}
+                onChange={(e) => setRecoveryCodesConfirmed(e.target.checked)}
+                className="mt-1"
+              />
+              <span>I saved these codes somewhere private.</span>
+            </label>
+            <button
+              type="button"
+              disabled={!recoveryCodesConfirmed}
+              onClick={() => setOnboardingStep("passkey")}
+              className="mt-5 w-full py-2.5 px-4 rounded-lg bg-istara-600 hover:bg-istara-700 text-white font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Continue
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (onboardingStep === "passkey") {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950 px-4">
+        <div className="w-full max-w-md">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 p-8">
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Add a passkey</h1>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">
+              A passkey lets you sign in with your device lock, fingerprint, or face ID without typing a password.
+            </p>
+            {error && (
+              <div role="alert" className="mt-4 text-sm text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg px-3 py-2">
+                {error}
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={handlePasskeySetup}
+              disabled={passkeyLoading}
+              className="mt-5 w-full py-2.5 px-4 rounded-lg bg-istara-600 hover:bg-istara-700 text-white font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {passkeyLoading ? "Setting up passkey..." : "Set up passkey"}
+            </button>
+            <button
+              type="button"
+              onClick={finishOnboarding}
+              disabled={passkeyLoading}
+              className="mt-3 w-full py-2.5 px-4 rounded-lg border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition disabled:opacity-50"
+            >
+              Do this later
             </button>
           </div>
         </div>
@@ -568,7 +712,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
                     autoComplete="one-time-code"
                     maxLength={useRecoveryCode ? 32 : 6}
                     value={totpCode}
-                    onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, ""))}
+                    onChange={(e) => setTotpCode(useRecoveryCode ? e.target.value : e.target.value.replace(/\D/g, ""))}
                     disabled={loading}
                     className="w-full px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-istara-500 focus:border-transparent transition disabled:opacity-50 tracking-widest text-center text-lg"
                     placeholder={useRecoveryCode ? "XXXX-XXXX-XXXX-XXXX" : "000000"}

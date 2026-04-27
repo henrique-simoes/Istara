@@ -107,6 +107,12 @@ Enable multi-user collaboration:
 3. Admin generates connection strings in Settings → Connection Strings
 4. Team members paste the connection string on the login page ("Join Server")
 
+### Security Expectations
+
+Local development uses `http://localhost:3000` and `http://localhost:8000`, so Chrome may label the connection "Not secure." That warning is expected for local HTTP and does not mean Istara exposed the server to the network. For shared or production use, run Team Mode behind Caddy or another reverse proxy with TLS, use an HTTPS frontend/API origin, and keep `NETWORK_ACCESS_TOKEN` enabled for non-localhost access.
+
+New Team Mode accounts receive one-time recovery codes during sign-up. Users should save them before entering the app. Passkeys can be added during onboarding or later from Settings, and TOTP two-factor authentication is available from Settings.
+
 ### Connection Strings
 
 Admin generates a `rcl_...` connection string that bundles:
