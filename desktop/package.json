@@ -1,6 +1,6 @@
 {
   "name": "istara-desktop",
-  "version": "2026.04.20.2",
+  "version": "2026.04.27",
   "private": true,
   "description": "Istara Desktop — System tray app and setup wizard",
   "scripts": {

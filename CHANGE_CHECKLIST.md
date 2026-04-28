@@ -764,6 +764,6 @@ curl http://localhost:8000/api/compute/nodes \
 
 ---
 
-**Last Updated**: 2026-03-28
+**Last Updated**: 2026.04.27
 **Maintainer**: Development Team
-**Version**: 0.1.0
+**Version**: 2026.04.27
