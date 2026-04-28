@@ -8,6 +8,7 @@ import { useChatStore } from "@/stores/chatStore";
 import { useProjectStore } from "@/stores/projectStore";
 import { useSessionStore } from "@/stores/sessionStore";
 import { useAgentStore } from "@/stores/agentStore";
+import { useVoiceRecorder } from "@/hooks/useVoiceRecorder";
 import { cn, formatDate } from "@/lib/utils";
 import { files as filesApi, documents as documentsApi, steering as steeringApi } from "@/lib/api";
 import { ChatSkeleton } from "@/components/common/LoadingSkeleton";
@@ -367,6 +368,7 @@ export default function ChatView() {
   const { activeSessionId, ensureDefault, updateSession, pendingPrefill, setPendingPrefill, fetchSessions } = useSessionStore();
   const { agents, fetchAgents } = useAgentStore();
   const activeSession = useSessionStore((s) => s.activeSession());
+  const { isRecording, isTranscribing, startRecording, stopRecording, cancelRecording, error: voiceError } = useVoiceRecorder();
   const [input, setInput] = useState("");
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [dragOver, setDragOver] = useState(false);
@@ -507,6 +509,23 @@ export default function ChatView() {
     setShowDocPicker(false);
     setPickerSearch("");
   };
+
+  const handleVoiceToggle = async () => {
+    if (isRecording) {
+      const transcribedText = await stopRecording();
+      if (transcribedText) {
+        setInput((prev) => (prev ? `${prev} ${transcribedText}` : transcribedText));
+      }
+    } else {
+      await startRecording();
+    }
+  };
+
+  useEffect(() => {
+    if (voiceError) {
+      dispatchToast("warning", "Voice Error", voiceError);
+    }
+  }, [voiceError]);
 
   if (!activeProjectId) {
     return (
@@ -789,7 +808,7 @@ export default function ChatView() {
 
               <div className="flex-1 relative">
                 <textarea
-                  value={input}
+                  value={isRecording ? "Recording voice..." : isTranscribing ? "Transcribing..." : input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) {
@@ -797,27 +816,46 @@ export default function ChatView() {
                       handleSend();
                     }
                   }}
+                  disabled={isRecording || isTranscribing}
                   placeholder="Ask about your research, or drop files here..."
                   rows={1}
-                  className="w-full resize-none rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-istara-500 focus:border-transparent"
+                  className={cn(
+                    "w-full resize-none rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-istara-500 focus:border-transparent",
+                    (isRecording || isTranscribing) && "italic text-slate-500 bg-slate-50 dark:bg-slate-900"
+                  )}
                   style={{ minHeight: "44px", maxHeight: "120px" }}
                 />
+                {isRecording && (
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                    <button 
+                      onClick={cancelRecording}
+                      className="text-xs text-slate-400 hover:text-red-500"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Voice recording button */}
               <button
-                onClick={() => dispatchToast("info", "Coming Soon", "Voice recording is currently in development.")}
-                disabled={streaming}
-                aria-label="Record voice message"
+                onClick={handleVoiceToggle}
+                disabled={streaming || isTranscribing}
+                aria-label={isRecording ? "Stop recording" : "Start recording"}
                 className={cn(
                   "p-2.5 rounded-lg transition-colors",
-                  !streaming
+                  isRecording 
+                    ? "bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 animate-pulse"
+                    : isTranscribing
+                    ? "bg-slate-100 dark:bg-slate-800 text-slate-300 cursor-not-allowed"
+                    : !streaming
                     ? "bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600"
                     : "bg-slate-100 dark:bg-slate-800 text-slate-300 cursor-not-allowed"
                 )}
-                title="Voice input"
+                title={isRecording ? "Stop and Transcribe" : "Voice input"}
               >
-                <Mic size={20} />
+                {isTranscribing ? <Loader2 size={20} className="animate-spin" /> : <Mic size={20} />}
               </button>
 
               <button

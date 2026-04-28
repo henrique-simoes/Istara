@@ -2201,13 +2201,11 @@ Istara supports voice input across the entire platform with automatic transcript
 **Components:**
 - `backend/app/core/transcription.py` — Whisper-based local transcription with ICR consensus.
 - `backend/app/api/routes/files.py` — Background processing for audio uploads via `BackgroundTasks`.
-- `backend/app/core/file_processor.py` — Integrated `process_audio` processor with content-aware chunking (detects interview turns).
-- `POST /api/chat/voice` — Chat voice input endpoint.
-- `backend/app/channels/telegram.py` — Auto-transcribes Telegram voice messages.
-- `backend/app/channels/whatsapp.py` — Auto-transcribes WhatsApp audio messages.
-- `frontend/src/components/chat/ChatView.tsx` — Mic button on chat input.
-- `frontend/src/components/interviews/InterviewView.tsx` — Audio player + transcription preview.
-- `frontend/src/components/documents/DocumentsView.tsx` — Transcription preview for audio documents.
+- `backend/app/core/file_processor.py` — Integrated `process_audio` processor with content-aware chunking.
+- `POST /api/chat/voice` — Real-time chat voice input endpoint.
+- `frontend/src/hooks/useVoiceRecorder.ts` — Reusable React hook for `MediaRecorder` audio capture.
+- `frontend/src/components/chat/ChatView.tsx` — Real-time mic recording in main chat.
+- `frontend/src/components/interfaces/DesignChatTab.tsx` — Real-time mic recording in design tools.
 
 **Pipeline:** Audio input (Upload/Chat/Channel) → format conversion (OGG/MP3/M4A/FLAC → WAV 16kHz mono) → Whisper transcription (base model) → alternative transcription (tiny model) → ICR consensus (Fleiss' Kappa + cosine similarity) → auto-tagging → content-aware chunking → store in Interviews + Documents → feed into Atomic Research chain.
 

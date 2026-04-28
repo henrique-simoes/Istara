@@ -64,6 +64,10 @@ export async function run(ctx) {
     checks.push({ name: "Security headers check", passed: false, detail: e.message });
   }
 
-  report(name, checks);
-  return checks;
+  return {
+    checks,
+    passed: checks.filter(c => c.passed).length,
+    failed: checks.filter(c => !c.passed).length,
+    summary: `2FA Login Flow: ${checks.filter(c => c.passed).length}/${checks.length} passed`
+  };
 }

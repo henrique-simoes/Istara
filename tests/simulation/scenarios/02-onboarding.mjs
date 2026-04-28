@@ -15,7 +15,7 @@ export async function run(ctx) {
   });
 
   // Navigate to home
-  await page.goto("http://localhost:3000", { waitUntil: "networkidle", timeout: 15000 });
+  await page.goto("http://localhost:3000", { waitUntil: "load", timeout: 15000 });
   await page.waitForTimeout(3000);
 
   // Check if onboarding wizard appeared (only shows when no projects exist)
@@ -46,7 +46,7 @@ export async function run(ctx) {
   });
 
   // Verify project appears in sidebar
-  await page.goto("http://localhost:3000", { waitUntil: "networkidle" });
+  await page.goto("http://localhost:3000", { waitUntil: "load" });
   await page.waitForTimeout(1500);
   await screenshot("02-project-in-sidebar");
 

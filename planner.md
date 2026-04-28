@@ -98,6 +98,48 @@ If the file is in the wrong state, the agent must restore the correct state rath
    - If TWO OR MORE `plan:::` blocks exist and NO `verdict:::` → **You are Evaluator (Phase 2)**
    - If a `verdict:::` exists and NO `completion:::` → **You are Executor (Phase 3)**
    - If a `completion:::` exists and NO `review:::` → **You are Reviewer (Phase 4)**
+
+## Active Plans
+
+### [2026.04.28] — Voice Recording in Chat & Interfaces
+
+**Goal:** Implement real-time voice recording in the main Chat and Design Chat interfaces with automatic Whisper transcription and seamless integration into the messaging flow.
+
+**Phase 1: Research & Component Design**
+- Research `MediaRecorder` API for cross-browser audio capture (Chrome, Safari, Firefox).
+- Design a reusable `VoiceRecorder` hook or component that handles state: idle, recording, processing, error.
+- Define UX for recording: tap-to-start, visual waveform/timer, tap-to-stop/send.
+- verify: component design matches Istara's design system (Tailwind + Lucide).
+
+**Phase 2: Core Logic Implementation**
+- Implement `useVoiceRecorder` hook in `frontend/src/hooks/useVoiceRecorder.ts`.
+- Add audio blob to WAV/OGG conversion helper if needed for backend compatibility.
+- Wire the hook to `chat.transcribeVoice()` API client.
+- verify: hook correctly captures audio and receives transcription from backend.
+
+**Phase 3: UI Integration (Chat & Interfaces)**
+- Replace the "Coming Soon" toast in `ChatView.tsx` with the real recorder.
+- Add Mic button and recording UI to `DesignChatTab.tsx`.
+- Implement "Transcribing..." loading states to the message inputs.
+- verify: user can record and send messages via voice in both views.
+
+**Phase 4: Compass Documentation & Validation**
+- Update `Tech.md` with the new real-time voice capability.
+- Update agent personas (`istara-main`, `istara-ui-audit`) to explain they can now receive voice input directly.
+- Add simulation scenario `78-real-time-voice.mjs` to verify the UI flow.
+- Regenerate living docs with `scripts/update_agent_md.py`.
+- verify: all docs are in sync and simulation passes.
+
+plan:::
+1. Create `frontend/src/hooks/useVoiceRecorder.ts` -> verify: captured blob length > 0.
+2. Integrate in `ChatView.tsx` -> verify: transcription appears in input/sends.
+3. Integrate in `DesignChatTab.tsx` -> verify: works in Interfaces view.
+4. Update `Tech.md` and personas -> verify: docs regenerated.
+:::
+
+verdict:::
+The plan is sound. Implementing a reusable hook `useVoiceRecorder` is the most modular approach for synchronizing Chat and Interfaces views. Using the existing `chat.transcribeVoice()` API ensures consistency with the verified Whisper pipeline. Phase 4 updates to personas and simulation tests fulfill Compass obligations. Proceeding as Executor.
+:::
    - If a `review:::` exists → **Check if archive is already done.** If `old_plans.md` was updated and `current_plans.md` is empty, STOP — the lifecycle is complete. If not, the Reviewer from Phase 4 should also perform Phase 5 (archiving) in the same session.
 3. Perform ONLY that role.
 4. STOP. The next agent will read `current_plans.md` and continue.

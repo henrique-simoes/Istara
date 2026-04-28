@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Send, Loader2, Palette, User } from "lucide-react";
+import { Send, Loader2, Palette, User, Mic } from "lucide-react";
 import { useInterfacesStore } from "@/stores/interfacesStore";
 import { useProjectStore } from "@/stores/projectStore";
+import { useVoiceRecorder } from "@/hooks/useVoiceRecorder";
 import { cn, formatDate } from "@/lib/utils";
 
 function UserAvatar() {
@@ -25,6 +26,7 @@ function DesignAvatar() {
 export default function DesignChatTab() {
   const { designMessages, designStreaming, designStreamingContent, error, sendDesignMessage, fetchDesignHistory } = useInterfacesStore();
   const { activeProjectId } = useProjectStore();
+  const { isRecording, isTranscribing, startRecording, stopRecording, cancelRecording, error: voiceError } = useVoiceRecorder();
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const hasFetchedRef = useRef(false);
@@ -46,6 +48,30 @@ export default function DesignChatTab() {
     sendDesignMessage(activeProjectId, input.trim());
     setInput("");
   };
+
+  const handleVoiceToggle = async () => {
+    if (isRecording) {
+      const transcribedText = await stopRecording();
+      if (transcribedText) {
+        setInput((prev) => (prev ? `${prev} ${transcribedText}` : transcribedText));
+      }
+    } else {
+      await startRecording();
+    }
+  };
+
+  /** Dispatch a toast notification — WCAG 2.2 4.1.3 Status Messages */
+  const dispatchToast = (type: "success" | "warning" | "info" | "agent" | "file", title: string, message: string) => {
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("istara:toast", { detail: { type, title, message } }));
+    }
+  };
+
+  useEffect(() => {
+    if (voiceError) {
+      dispatchToast("warning", "Voice Error", voiceError);
+    }
+  }, [voiceError]);
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
@@ -136,7 +162,7 @@ export default function DesignChatTab() {
         <div className="flex items-end gap-2 max-w-3xl mx-auto">
           <div className="flex-1 relative">
             <textarea
-              value={input}
+              value={isRecording ? "Recording voice..." : isTranscribing ? "Transcribing..." : input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
@@ -144,12 +170,48 @@ export default function DesignChatTab() {
                   handleSend();
                 }
               }}
+              disabled={isRecording || isTranscribing}
               placeholder="Ask about design decisions, generate screens, or discuss UI patterns..."
               rows={1}
-              className="w-full resize-none rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-istara-500 focus:border-transparent"
+              className={cn(
+                "w-full resize-none rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-istara-500 focus:border-transparent",
+                (isRecording || isTranscribing) && "italic text-slate-500 bg-slate-50 dark:bg-slate-900"
+              )}
               style={{ minHeight: "44px", maxHeight: "120px" }}
             />
+            {isRecording && (
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                <button 
+                  onClick={cancelRecording}
+                  className="text-xs text-slate-400 hover:text-red-500"
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
           </div>
+
+          {/* Voice recording button */}
+          <button
+            onClick={handleVoiceToggle}
+            disabled={designStreaming || isTranscribing}
+            aria-label={isRecording ? "Stop recording" : "Start recording"}
+            className={cn(
+              "p-2.5 rounded-lg transition-colors",
+              isRecording 
+                ? "bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 animate-pulse"
+                : isTranscribing
+                ? "bg-slate-100 dark:bg-slate-800 text-slate-300 cursor-not-allowed"
+                : !designStreaming
+                ? "bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600"
+                : "bg-slate-100 dark:bg-slate-800 text-slate-300 cursor-not-allowed"
+            )}
+            title={isRecording ? "Stop and Transcribe" : "Voice input"}
+          >
+            {isTranscribing ? <Loader2 size={20} className="animate-spin" /> : <Mic size={20} />}
+          </button>
+
           <button
             onClick={handleSend}
             disabled={!input.trim() || designStreaming}

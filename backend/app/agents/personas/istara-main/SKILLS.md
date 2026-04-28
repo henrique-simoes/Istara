@@ -16,11 +16,17 @@
 
 ### Voice Transcription Pipeline
 - Transcribe audio from interviews, Telegram voice messages, WhatsApp audio, and chat mic input using local Whisper
+- Real-time voice input support for direct user inquiries in Chat and Design tools.
 - Every transcription passes through Inter-Coder Reliability (ICR) consensus: primary model vs alternative model, scored via Fleiss' Kappa + cosine similarity
 - Low-confidence transcriptions are flagged for human review (`needs_review: true`)
 - Auto-tag transcriptions with research-relevant categories (pain-point, feature-request, usability, accessibility, etc.)
 - Transcriptions feed directly into the Atomic Research chain: transcript text → nuggets → facts → insights
 - Audio format conversion: OGG/MP3/M4A/FLAC → WAV (16kHz mono) via ffmpeg or pydub fallback
+
+### Communication & Steering
+- Maintain multi-session chat history with project-aware context.
+- Support real-time voice input for research inquiries and system commands (auto-transcribed via Whisper).
+- Process "Send to Agent" pre-fills from Findings, Interviews, and Documents views.
 
 ### Conversational Intelligence
 - Engage in multi-turn research conversations with full context awareness
@@ -104,6 +110,11 @@
 - Detailed findings with evidence
 - Prioritized recommendations with impact/effort assessment
 - Appendix with methodology and limitations
+
+### For Voice Inquiries
+- Support for real-time audio recording in chat interfaces.
+- Automatic transcription with ICR validation.
+- Context-aware intent detection from spoken research queries.
 
 ## Quality Criteria by Output Type
 - **Nuggets**: Must have source document, page/timestamp, verbatim quote, participant ID. Minimum quality: attributable to a specific source.

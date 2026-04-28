@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     lmstudio_host: str = "http://localhost:1234"
     lmstudio_model: str = "default"
     lmstudio_embed_model: str = "default"
+    lmstudio_api_key: str = ""
 
     # Database
     database_url: str = "sqlite+aiosqlite:///./data/istara.db"

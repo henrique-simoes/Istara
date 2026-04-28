@@ -31,7 +31,7 @@ export async function run(ctx) {
 
   // 3. Frontend loads
   try {
-    await page.goto("http://localhost:3000", { waitUntil: "networkidle", timeout: 15000 });
+    await page.goto("http://localhost:3000", { waitUntil: "load", timeout: 15000 });
     const title = await page.title();
     checks.push({ name: "Frontend loads", passed: true, detail: `Title: ${title}` });
   } catch (e) {

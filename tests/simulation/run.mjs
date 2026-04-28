@@ -298,7 +298,8 @@ async function loadScenarios() {
     "68-data-security",
     "69-user-management-ui",
     "70-mid-execution-steering",
-    "74-voice-transcription",
+    "77-voice-transcription",
+    "78-real-time-voice",
     "75-participant-simulation",
     "74-2fa-login-flow",
   ];
