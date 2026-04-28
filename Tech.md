@@ -2196,17 +2196,22 @@ Switching between SQLite (local mode) and PostgreSQL (team mode) no longer risks
 
 ### Voice Transcription Pipeline (v2026.04.14)
 
-Istara now supports voice input across the entire platform with automatic transcription, inter-coder reliability scoring, and atomic research chain integration.
+Istara supports voice input across the entire platform with automatic transcription, inter-coder reliability scoring, and atomic research chain integration.
 
 **Components:**
-- `backend/app/core/transcription.py` — Whisper-based local transcription with ICR consensus
-- `POST /api/chat/voice` — Chat voice input endpoint
-- `backend/app/channels/telegram.py` — Auto-transcribes Telegram voice messages
-- `backend/app/channels/whatsapp.py` — Auto-transcribes WhatsApp audio messages
-- `frontend/src/components/chat/ChatView.tsx` — Mic button on chat input
-- `frontend/src/lib/api.ts` → `chat.transcribeVoice()` — Voice upload API client
+- `backend/app/core/transcription.py` — Whisper-based local transcription with ICR consensus.
+- `backend/app/api/routes/files.py` — Background processing for audio uploads via `BackgroundTasks`.
+- `backend/app/core/file_processor.py` — Integrated `process_audio` processor with content-aware chunking (detects interview turns).
+- `POST /api/chat/voice` — Chat voice input endpoint.
+- `backend/app/channels/telegram.py` — Auto-transcribes Telegram voice messages.
+- `backend/app/channels/whatsapp.py` — Auto-transcribes WhatsApp audio messages.
+- `frontend/src/components/chat/ChatView.tsx` — Mic button on chat input.
+- `frontend/src/components/interviews/InterviewView.tsx` — Audio player + transcription preview.
+- `frontend/src/components/documents/DocumentsView.tsx` — Transcription preview for audio documents.
 
-**Pipeline:** Audio input → format conversion (OGG/MP3→WAV 16kHz mono) → Whisper transcription (base model) → alternative transcription (tiny model) → ICR consensus (Fleiss' Kappa + cosine similarity) → auto-tagging → review flagging if needed → store in Interviews + Documents → feed into Atomic Research chain.
+**Pipeline:** Audio input (Upload/Chat/Channel) → format conversion (OGG/MP3/M4A/FLAC → WAV 16kHz mono) → Whisper transcription (base model) → alternative transcription (tiny model) → ICR consensus (Fleiss' Kappa + cosine similarity) → auto-tagging → content-aware chunking → store in Interviews + Documents → feed into Atomic Research chain.
+
+**Background Processing:** Audio uploads are processed asynchronously. The system creates a document with `status="processing"`, triggers a Whisper background task, and updates to `status="ready"` with the full transcript and vector chunks once complete.
 
 **Inter-Coder Reliability (mandatory):** Every transcription passes through ICR with Fleiss' Kappa between primary and alternative transcriptions. If confidence is "low" or "insufficient", the transcription is flagged for human review with `needs_review: true`.
 

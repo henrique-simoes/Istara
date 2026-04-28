@@ -832,7 +832,10 @@ class AgentOrchestrator:
             skill_input.files = [
                 str(f)
                 for f in folder.iterdir()
-                if f.is_file() and f.suffix.lower() in {".txt", ".md", ".pdf", ".docx", ".csv"}
+                if f.is_file() and f.suffix.lower() in {
+                    ".txt", ".md", ".pdf", ".docx", ".csv",
+                    ".mp3", ".wav", ".m4a", ".ogg"
+                }
             ]
 
         await broadcast_task_progress(task.id, 0.3, f"Running {skill.display_name}...")

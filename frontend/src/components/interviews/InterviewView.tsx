@@ -201,7 +201,7 @@ function FilePreview({
   // Audio files
   if ([".mp3", ".wav", ".m4a", ".ogg"].includes(fileType)) {
     return (
-      <div className="p-4">
+      <div className="p-4 space-y-4">
         <div className="bg-slate-100 dark:bg-slate-800 rounded-xl p-4">
           <div className="flex items-center gap-2 mb-3">
             <Volume2 size={16} className="text-istara-600" />
@@ -213,6 +213,19 @@ function FilePreview({
             src={`${API_BASE}/api/files/${projectId}/serve/${encodeURIComponent(filename)}`}
           />
         </div>
+        
+        {content && (
+          <div className="space-y-2">
+            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-1">Transcription</h3>
+            <pre
+              ref={preRef}
+              onMouseUp={handleMouseUp}
+              className="text-sm text-slate-600 dark:text-slate-400 whitespace-pre-wrap font-mono leading-relaxed p-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 select-text cursor-text"
+            >
+              {content}
+            </pre>
+          </div>
+        )}
       </div>
     );
   }
@@ -825,7 +838,7 @@ export default function InterviewView() {
           ) : (
             <div>
               {/* Analyze button — Nielsen H1: Visibility, WCAG 2.2 4.1.3 Status Messages */}
-              {selectedFile && !isMedia(selectedFileType) && !isImage(selectedFileType) && (
+              {selectedFile && !isImage(selectedFileType) && (
                 <div className="p-4 pb-0">
                   <button
                     onClick={handleAnalyze}
