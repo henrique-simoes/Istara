@@ -85,7 +85,7 @@ Together, these documents are Compass.
 - Frontend stores: 15
 - Data models: 43
 - Personas: 6 (`design-lead`, `istara-devops`, `istara-main`, `istara-sim`, `istara-ui-audit`, `istara-ux-eval`)
-- Active test files: 61 across 4 layers
+- Active test files: 60 across 4 layers
 
 ## Current Product Surface
 
