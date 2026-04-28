@@ -30,7 +30,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). Ver
 ### Changed
 - **File Processor**: Enhanced `process_audio` with content-aware chunking for interview turn detection.
 - **Login Experience**: Redesigned login screen with support for 2FA flows and recovery code entry.
-- **Mainline Integration State**: Dataset generation, passkey security hardening, skill registry cleanup, compute connection lifecycle hardening, integration retry semantics, and Compass swarm process updates have been integrated into `main`.
+- **Mainline Integration State**: Dataset generation, passkey security hardening, skill registry cleanup, compute connection lifecycle hardening, integration retry semantics, Compass swarm process updates, and real-time voice recording have been integrated into `main`.
+- **Branch Hygiene (2026-04-28)**: Canonical list of deprecated/stale branches added to `planner.md`. Legacy branches (`feat/voice-transcription`, `review/p*`, `fix-ci-validation`, etc.) are 46–124 commits behind `main` and must not be merged wholesale.
 
 ---
 

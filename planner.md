@@ -35,6 +35,25 @@
 8. Stale branches must not be merged to `main` wholesale. They may only contribute by cherry-pick, rebase, or targeted extraction after explicit review.
 9. A branch may be promoted to a `main` PR only when its changes are novel, current, and compatible with the present base.
 
+### Deprecated Branches (DO NOT MERGE)
+
+As of 2026-04-28, the following local branches exist but are **presumed stale and must not be merged into `main` or `staging` without explicit user approval**:
+
+- `codex/main-stabilization-security-transcription` — already merged; 9 commits behind `main`
+- `feat/beta-browser-evaluation` — 124 commits behind `main`
+- `feat/high-quality-uxr-finetuning-datasets` — **MERGED into `main` on 2026-04-28**
+- `feat/skill-methodology-audit` — 47 commits behind `main`
+- `feat/system-audit-and-integration-check` — 46 commits behind `main`
+- `feat/voice-transcription` — 124 commits behind `main`
+- `fix-ci-validation` — 124 commits behind `main`
+- `review/p0-infra` — 124 commits behind `main`
+- `review/p1-steering` — 124 commits behind `main`
+- `review/p2-testing` — 103 commits behind `main`
+- `review/p3-observability` — 124 commits behind `main`
+- `review/phase-zeta-context-mastery` — 103 commits behind `main`
+
+**Agent rule:** If any plan references one of these branches as a merge candidate, the agent must STOP and ask the user for explicit confirmation before proceeding. These branches are salvage-only (cherry-pick or targeted extraction) and must be treated as historical artifacts, not integration paths.
+
 ## PR Reliability Rules
 
 1. Open a PR to `main` only from a branch that has been checked against the current base branch and overlap set.

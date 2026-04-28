@@ -36,8 +36,12 @@ feature branch → PR → staging → PR → main
 ```
 
 - **`main`** — production. Protected — CI must pass, PR required.
-- **`staging`** — integration. All feature work lands here first.
+- **`staging`** — integration. All feature work lands here first. Auto-synced to `main` after merges.
 - **Feature branches** — `feat/`, `fix/`, `docs/` prefixes. Created from `staging`.
+
+### ⚠️ Stale Branch Notice (2026-04-28)
+
+Multiple legacy branches exist locally (e.g., `feat/voice-transcription`, `review/p*`, `fix-ci-validation`) but are **significantly behind `main` (46–124 commits)** and must not be merged wholesale. See `planner.md` "Deprecated Branches" for the full list. Treat them as historical artifacts only — salvage by cherry-pick or create fresh branches from `staging` if any work is still needed.
 
 ### For multi-commit work (3+ commits):
 ```bash

@@ -534,6 +534,7 @@ Before pushing to production:
 ### Testing & Review
 
 - [ ] Changes pushed to the correct review target: `staging` by default, or a review/integration branch for stale/divergent work
+- [ ] **Stale branch check:** Verify the branch is not on the `planner.md` deprecated list before treating it as a merge candidate
 - [ ] TESTING.md updated — entry added under "Awaiting Review"
 - [ ] Changes tested locally on the branch that contains the proposed change (`git checkout <branch> && ./istara.sh start`)
 - [ ] E2E tests pass: `ISTARA_ADMIN_USER=<user> ISTARA_ADMIN_PASSWORD=<pass> python tests/e2e_test.py`
@@ -764,6 +765,6 @@ curl http://localhost:8000/api/compute/nodes \
 
 ---
 
-**Last Updated**: 2026.04.27
+**Last Updated**: 2026.04.28
 **Maintainer**: Development Team
-**Version**: 2026.04.27
+**Version**: 2026.04.28

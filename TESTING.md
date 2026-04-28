@@ -2,6 +2,8 @@
 
 Changes that are awaiting review before merging to `main`, plus the most recent integration state.
 
+> **Branch hygiene note (2026-04-28):** Multiple legacy branches (`feat/voice-transcription`, `review/p*`, `fix-ci-validation`, etc.) are 46–124 commits behind `main` and must not be merged. See `planner.md` "Deprecated Branches" for the canonical list.
+
 ## Awaiting Review
 
 | PR | Change | Added | Notes |
@@ -18,6 +20,7 @@ Changes that are awaiting review before merging to `main`, plus the most recent 
 
 | Change | Integrated | Notes |
 |---|---|---|
+| `feat/high-quality-uxr-finetuning-datasets` | 2026-04-28 | Merged real-time voice recording in Chat and Design Tools. |
 | `feat/dataset-generator-upgrade` | 2026-04-24 | Merged dataset generator and fine-tuning source support after resolving review findings. |
 | `feat/security-remediation-2fa-passkey` | 2026-04-24 | Merged passkey ownership and security hardening. |
 | `feat/skill-methodology-audit-clean` | 2026-04-24 | Merged JSON-first skill registry cleanup and stale legacy skill file removal. |
