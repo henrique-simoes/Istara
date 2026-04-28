@@ -5,18 +5,17 @@ import uuid
 from pathlib import Path
 
 import aiofiles
-from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.core.file_processor import get_supported_extensions, process_file
 from app.core.rag import VectorStore, ingest_chunks
-from app.models.database import get_db
-from app.models.document import Document, DocumentSource
+from app.models.database import get_db, async_session
+from app.models.document import Document, DocumentSource, DocumentStatus
 from app.models.project import Project
 from sqlalchemy import select
-from app.models.project import Project
 from sqlalchemy import select
 
 # Media and image extensions that can be uploaded/served but not text-processed
@@ -33,6 +32,9 @@ MEDIA_EXTENSIONS = {
     ".png",
     ".gif",
 }
+
+# Audio extensions that we can transcribe
+AUDIO_EXTENSIONS = {".mp3", ".wav", ".m4a", ".ogg"}
 
 router = APIRouter()
 
@@ -54,6 +56,7 @@ async def _resolve_project_folder(db, project_id: str) -> Path:
 async def upload_file(
     project_id: str,
     file: UploadFile,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
 ):
     """Upload a file and process it into the project's knowledge base."""
@@ -78,8 +81,8 @@ async def upload_file(
         content = await file.read()
         await f.write(content)
 
-    # Media files: store only, skip text extraction
-    if suffix in MEDIA_EXTENSIONS:
+    # Media files (Images/Video): store only, skip text extraction
+    if suffix in MEDIA_EXTENSIONS and suffix not in AUDIO_EXTENSIONS:
         doc = Document(
             id=str(uuid.uuid4()),
             project_id=project_id,
@@ -93,7 +96,7 @@ async def upload_file(
             file_type=suffix,
             file_size=len(content),
             source=DocumentSource.USER_UPLOAD,
-            status="ready",
+            status=DocumentStatus.READY,
         )
         db.add(doc)
         await db.commit()
@@ -107,7 +110,43 @@ async def upload_file(
             "chunks_indexed": 0,
         }
 
-    # Process the file
+    # Audio files: trigger background transcription
+    if suffix in AUDIO_EXTENSIONS:
+        doc_id = str(uuid.uuid4())
+        doc = Document(
+            id=doc_id,
+            project_id=project_id,
+            title=(file.filename or "")
+            .rsplit(".", 1)[0]
+            .replace("-", " ")
+            .replace("_", " ")
+            .title(),
+            file_name=file.filename or safe_filename,
+            file_path=str(file_path),
+            file_type=suffix,
+            file_size=len(content),
+            source=DocumentSource.USER_UPLOAD,
+            status=DocumentStatus.PROCESSING,
+        )
+        db.add(doc)
+        await db.commit()
+
+        background_tasks.add_task(
+            _process_audio_background,
+            project_id=project_id,
+            doc_id=doc_id,
+            file_path=file_path,
+        )
+
+        return {
+            "status": "processing",
+            "file_id": file_id,
+            "doc_id": doc_id,
+            "filename": file.filename,
+            "saved_as": safe_filename,
+        }
+
+    # Text-based files: Process the file synchronously (usually fast)
     result = process_file(file_path)
 
     if result.error:
@@ -135,7 +174,7 @@ async def upload_file(
         file_type=suffix,
         file_size=len(content),
         source=DocumentSource.USER_UPLOAD,
-        status="ready",
+        status=DocumentStatus.READY,
     )
     db.add(doc)
     await db.commit()
@@ -153,6 +192,45 @@ async def upload_file(
     if result.threats:
         response["threats"] = result.threats
     return response
+
+
+async def _process_audio_background(project_id: str, doc_id: str, file_path: Path):
+    """Background task to transcribe audio and index results."""
+    from app.core.file_processor import process_file
+
+    try:
+        # 1. Transcribe and chunk
+        result = process_file(file_path)
+
+        async with async_session() as db:
+            doc = await db.get(Document, doc_id)
+            if not doc:
+                return
+
+            if result.error:
+                doc.status = DocumentStatus.ERROR
+                doc.description = f"Transcription error: {result.error}"
+                await db.commit()
+                return
+
+            # 2. Ingest chunks into vector store
+            await ingest_chunks(project_id, result.chunks)
+
+            # 3. Update document record
+            doc.content_text = "\n\n".join(c.text for c in result.chunks)
+            doc.content_preview = doc.content_text[:2000]
+            doc.status = DocumentStatus.READY
+            await db.commit()
+
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"Background audio processing failed for {file_path}: {e}")
+        async with async_session() as db:
+            doc = await db.get(Document, doc_id)
+            if doc:
+                doc.status = DocumentStatus.ERROR
+                doc.description = f"Fatal processing error: {e}"
+                await db.commit()
 
 
 @router.get("/files/{project_id}")

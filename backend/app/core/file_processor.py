@@ -303,7 +303,51 @@ def process_docx(file_path: Path) -> ProcessedFile:
             pages=1,
         )
     except Exception as e:
-        return ProcessedFile(source=str(file_path), error=str(e))
+        return ProcessedFile(source=str(file_path), error=f"DOCX error: {e}")
+
+
+def process_audio(file_path: Path) -> ProcessedFile:
+    """Process an audio file — transcribe and chunk."""
+    try:
+        from app.core.transcription import convert_audio_to_wav, transcribe_audio
+
+        # 1. Convert to WAV (16kHz mono) if needed
+        wav_path = convert_audio_to_wav(str(file_path))
+
+        # 2. Transcribe
+        result = transcribe_audio(wav_path)
+
+        # 3. Detect content type (e.g. interview transcript) for specialized chunking
+        content_type = detect_content_type(result.text, file_path.suffix.lower())
+
+        if content_type == "interview_transcript":
+            chunks = chunk_by_speaker_turn(result.text, source=str(file_path))
+        else:
+            chunks = chunk_text(result.text, source=str(file_path))
+
+        # Add transcription metadata to chunks
+        for chunk in chunks:
+            if chunk.metadata is None:
+                chunk.metadata = {}
+            chunk.metadata.update(
+                {
+                    "transcription_confidence": result.confidence,
+                    "icr_kappa": result.icr_kappa,
+                    "icr_confidence": result.icr_confidence,
+                    "language": result.language,
+                }
+            )
+
+        return ProcessedFile(
+            source=str(file_path),
+            chunks=chunks,
+            total_chars=len(result.text),
+            pages=1,
+            threat_level="none",  # Audio is safe
+        )
+    except Exception as e:
+        logger.error(f"Audio processing failed for {file_path}: {e}")
+        return ProcessedFile(source=str(file_path), error=f"Audio error: {e}")
 
 
 def process_csv(file_path: Path) -> ProcessedFile:
@@ -336,6 +380,10 @@ PROCESSORS = {
     ".pdf": process_pdf,
     ".docx": process_docx,
     ".csv": process_csv,
+    ".mp3": process_audio,
+    ".wav": process_audio,
+    ".m4a": process_audio,
+    ".ogg": process_audio,
 }
 
 

@@ -911,26 +911,46 @@ function DocumentPreview({
               <Loader2 size={20} className="animate-spin text-istara-600" />
               <span className="ml-2 text-sm text-slate-500">Loading content...</span>
             </div>
-          ) : content?.content ? (
-            <pre className="whitespace-pre-wrap text-sm text-slate-800 dark:text-slate-200 font-mono leading-relaxed bg-slate-50 dark:bg-slate-900 rounded-lg p-4 border border-slate-200 dark:border-slate-700">
-              {content.content}
-            </pre>
-          ) : content?.media_url ? (
-            <div className="flex items-center justify-center py-8">
-              {content.type && [".jpg", ".jpeg", ".png", ".gif"].includes(content.type) ? (
-                <img src={`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}${content.media_url}`} alt={doc.title} className="max-h-96 rounded-lg" />
-              ) : content.type && [".mp3", ".wav", ".m4a", ".ogg"].includes(content.type) ? (
-                <audio controls src={`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}${content.media_url}`} className="w-full max-w-lg" />
-              ) : content.type && [".mp4", ".webm", ".mov"].includes(content.type) ? (
-                <video controls src={`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}${content.media_url}`} className="max-h-96 rounded-lg" />
-              ) : (
-                <p className="text-sm text-slate-500">Preview not available for this file type.</p>
-              )}
-            </div>
           ) : (
-            <div className="text-center py-12">
-              <FileText size={40} className="mx-auto text-slate-300 dark:text-slate-600 mb-3" />
-              <p className="text-sm text-slate-500">No preview available.</p>
+            <div className="space-y-6">
+              {/* Media Player (if available) */}
+              {content?.media_url && (
+                <div className="flex flex-col items-center justify-center py-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800">
+                  {content.type && [".jpg", ".jpeg", ".png", ".gif"].includes(content.type) ? (
+                    <img src={`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}${content.media_url}`} alt={doc.title} className="max-h-96 rounded-lg" />
+                  ) : content.type && [".mp3", ".wav", ".m4a", ".ogg"].includes(content.type) ? (
+                    <audio controls src={`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}${content.media_url}`} className="w-full max-w-lg" />
+                  ) : content.type && [".mp4", ".webm", ".mov"].includes(content.type) ? (
+                    <video controls src={`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}${content.media_url}`} className="max-h-96 rounded-lg" />
+                  ) : null}
+                  <p className="text-[10px] text-slate-400 mt-2">Original Media File</p>
+                </div>
+              )}
+
+              {/* Text Content / Transcript */}
+              {content?.content ? (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                      {content.type && [".mp3", ".wav", ".m4a", ".ogg"].includes(content.type) ? "Transcription" : "Document Content"}
+                    </h3>
+                  </div>
+                  <pre className="whitespace-pre-wrap text-sm text-slate-800 dark:text-slate-200 font-mono leading-relaxed bg-slate-50 dark:bg-slate-900 rounded-lg p-4 border border-slate-200 dark:border-slate-700">
+                    {content.content}
+                  </pre>
+                </div>
+              ) : !content?.media_url ? (
+                <div className="text-center py-12">
+                  <FileText size={40} className="mx-auto text-slate-300 dark:text-slate-600 mb-3" />
+                  <p className="text-sm text-slate-500">No preview available.</p>
+                </div>
+              ) : doc.status === "processing" ? (
+                <div className="flex flex-col items-center justify-center py-12 text-slate-500">
+                  <Loader2 size={24} className="animate-spin mb-3 text-istara-500" />
+                  <p className="text-sm font-medium">Transcribing audio...</p>
+                  <p className="text-xs opacity-70 mt-1">This may take a minute for larger files.</p>
+                </div>
+              ) : null}
             </div>
           )}
         </div>

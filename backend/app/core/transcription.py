@@ -45,35 +45,42 @@ class TranscriptionResult:
 
 _WHISPER_AVAILABLE = False
 _WHISPER_MODEL = None
-_WHISPER_LOAD_ERROR: str | None = None
+_WHISPER_TINY_MODEL = None  # Cache for ICR
 
 
-def _load_whisper_model(model_size: str = "base") -> bool:
-    """Load Whisper model for transcription."""
-    global _WHISPER_AVAILABLE, _WHISPER_MODEL, _WHISPER_LOAD_ERROR
+def _load_whisper_model(model_size: str = "base"):
+    """Load Whisper model for transcription and cache it."""
+    global _WHISPER_AVAILABLE, _WHISPER_MODEL, _WHISPER_TINY_MODEL
 
-    if _WHISPER_MODEL is not None:
-        _WHISPER_AVAILABLE = True
-        return True
+    # Return cached if already loaded
+    if model_size == "tiny" and _WHISPER_TINY_MODEL is not None:
+        return _WHISPER_TINY_MODEL
+    if model_size != "tiny" and _WHISPER_MODEL is not None:
+        # Note: if model_size changed, we currently keep the old one
+        # to avoid memory bloat. Future: support multiple cached sizes?
+        return _WHISPER_MODEL
 
     try:
         import whisper
-        _WHISPER_MODEL = whisper.load_model(model_size)
+        model = whisper.load_model(model_size)
         _WHISPER_AVAILABLE = True
-        _WHISPER_LOAD_ERROR = None
+
+        if model_size == "tiny":
+            _WHISPER_TINY_MODEL = model
+        else:
+            _WHISPER_MODEL = model
+
         logger.info(f"Whisper model '{model_size}' loaded successfully")
-        return True
+        return model
     except ImportError:
-        _WHISPER_LOAD_ERROR = "openai-whisper is not installed"
         logger.warning(
             "openai-whisper not installed — transcription disabled. "
             "Install with: pip install openai-whisper"
         )
     except Exception as e:
-        _WHISPER_LOAD_ERROR = str(e)
-        logger.warning(f"Failed to load Whisper model: {e}")
-    _WHISPER_AVAILABLE = False
-    return False
+        logger.warning(f"Failed to load Whisper model '{model_size}': {e}")
+    
+    return None
 
 
 def transcribe_audio(
@@ -118,10 +125,11 @@ def transcribe_audio(
             metadata={"error_type": "audio_conversion_unavailable"},
         )
 
-    if not _WHISPER_AVAILABLE and not _load_whisper_model(model_size):
-        detail = _WHISPER_LOAD_ERROR or "Whisper could not be loaded"
+    model = _load_whisper_model(model_size)
+
+    if not _WHISPER_AVAILABLE or model is None:
         return TranscriptionResult(
-            text=f"[Transcription unavailable: {detail}]",
+            text="[Transcription unavailable — Whisper not installed]",
             language="unknown",
             confidence=0.0,
             icr_kappa=0.0,
@@ -129,11 +137,11 @@ def transcribe_audio(
             needs_review=True,
             original_audio_path=audio_path,
             tags=["transcription-error"],
-            metadata={"error_type": "transcription_engine_unavailable", "error": detail},
+            metadata={"error_type": "transcription_engine_unavailable"},
         )
 
     try:
-        result = _WHISPER_MODEL.transcribe(
+        result = model.transcribe(
             audio_path,
             language=language,
             task="transcribe",
@@ -200,10 +208,12 @@ def _compute_transcription_icr(text: str, audio_path: str):
 
     # Try to get alternative transcription (different model size)
     try:
-        import whisper
-        alt_model = whisper.load_model("tiny")
-        alt_result = alt_model.transcribe(audio_path)
-        responses.append(alt_result.get("text", ""))
+        alt_model = _load_whisper_model("tiny")
+        if alt_model:
+            alt_result = alt_model.transcribe(audio_path)
+            responses.append(alt_result.get("text", ""))
+        else:
+            responses.append(_perturb_transcription(text))
     except Exception:
         # If alternative model unavailable, use semantic self-consistency
         responses.append(_perturb_transcription(text))
