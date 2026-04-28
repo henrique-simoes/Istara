@@ -79,7 +79,7 @@ Together, these documents are Compass.
 
 ## Live Snapshot
 
-- Version: `2026.04.20.2`
+- Version: `2026.04.27`
 - Backend route modules: 40 with 377 detected endpoints
 - Frontend mounted views: 23
 - Frontend stores: 15
