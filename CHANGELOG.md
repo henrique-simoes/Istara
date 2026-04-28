@@ -8,17 +8,29 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). Ver
 
 ---
 
-## [Unreleased] — Post-Zeta Mainline Integration & Compass Governance
+## [2026.04.27] — Voice Transcription & Security Hardening
 
 ### Added
+- **Voice Transcription Pipeline**: Fully asynchronous background processing for audio uploads.
+- **Whisper Model Caching**: Improved performance with lazy loading and caching of primary (base) and ICR (tiny) Whisper models.
+- **Embedded Audio Player**: Native players in Documents and Interviews views for direct media playback.
+- **Transcription Previews**: Mono-spaced, high-readability transcription previews with auto-tagging.
+- **2FA (TOTP)**: Support for authenticator-based two-factor authentication for team accounts.
+- **Passkey Integration**: Support for biometric/device-based login via WebAuthn API.
+- **Security Onboarding**: Mandatory recovery code generation and optional passkey setup during first team login.
+- **Security Headers**: HSTS, CSP, X-Frame-Options, and Referrer-Policy protection on all API responses.
 - **Compass Planner Governance**: `planner.md` is now tracked as part of Compass, covering multi-agent planning, repository intelligence checks, correction/re-review loops, protected Compass files, and final user handoff reports.
 
-### Changed
-- **Mainline Integration State**: Dataset generation, passkey security hardening, skill registry cleanup, compute connection lifecycle hardening, integration retry semantics, and Compass swarm process updates have been integrated into `main`.
-- **Review Queue Documentation**: `TESTING.md` now separates pending review work from recently integrated mainline work so stale branches are not treated as merge-ready by default.
-
 ### Fixed
-- **README Merge Artifact**: Removed stale conflict markers left by the voice transcription documentation merge.
+- **Transcription Stability**: Resolved race conditions in Whisper model loading and fixed ICR consensus logic.
+- **Test Integrity**: Standardized transcription unit tests to use reliable mocking and temporary file paths.
+- **Gemma4 Compatibility**: Improved release packaging and Apple Metal (MPS) trainer stability.
+- **ESLint Migration**: Modernized frontend linting configuration with `eslint.config.mjs`.
+
+### Changed
+- **File Processor**: Enhanced `process_audio` with content-aware chunking for interview turn detection.
+- **Login Experience**: Redesigned login screen with support for 2FA flows and recovery code entry.
+- **Mainline Integration State**: Dataset generation, passkey security hardening, skill registry cleanup, compute connection lifecycle hardening, integration retry semantics, and Compass swarm process updates have been integrated into `main`.
 
 ---
 
