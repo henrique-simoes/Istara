@@ -121,6 +121,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         except OSError:
             pass  # May fail on some filesystems
 
+    await init_db()
+
     # Bootstrap admin user if none exists
     try:
         from app.models.user import User
@@ -183,7 +185,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                         pass
     except Exception as e:
         __import__("logging").getLogger(__name__).warning(f"Admin bootstrap skipped: {e}")
-    await init_db()
     load_default_skills()
 
     # Seed default system agents

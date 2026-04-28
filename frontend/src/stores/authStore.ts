@@ -11,6 +11,8 @@ interface User {
   role: string;
   display_name: string;
   preferences: Record<string, unknown>;
+  totp_enabled?: boolean;
+  passkey_enabled?: boolean;
 }
 
 interface LoginResult {
@@ -18,6 +20,12 @@ interface LoginResult {
   methods?: string[];
   token?: string;
   user?: User;
+}
+
+interface RegisterResult {
+  token: string;
+  user: User;
+  recovery_codes: string[];
 }
 
 interface AuthState {
@@ -30,7 +38,7 @@ interface AuthState {
 
   login: (username: string, password: string) => Promise<LoginResult>;
   verify2FA: (username: string, password: string, code: string, method: "totp" | "recovery_code") => Promise<void>;
-  register: (username: string, email: string, password: string, displayName?: string) => Promise<void>;
+  register: (username: string, email: string, password: string, displayName?: string) => Promise<RegisterResult>;
   logout: () => void;
   checkTeamStatus: () => Promise<{ team_mode: boolean; has_users: boolean; insecure: boolean }>;
   fetchMe: () => Promise<boolean>;
@@ -126,6 +134,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       if (data.user?.id) localStorage.setItem("istara_auth_user_id", data.user.id);
       set({ user: data.user, token: data.token, loading: false });
       get().checkTeamStatus();
+      return {
+        token: data.token,
+        user: data.user,
+        recovery_codes: data.recovery_codes || [],
+      };
     } catch (e) {
       set({ loading: false });
       throw e;
@@ -184,6 +197,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             role: data.role,
             display_name: data.display_name || data.username,
             preferences: data.preferences || {},
+            totp_enabled: Boolean(data.totp_enabled),
+            passkey_enabled: Boolean(data.passkey_enabled),
           },
           teamMode: data.team_mode ?? get().teamMode,
         });

@@ -15,6 +15,7 @@ All transcriptions are auto-tagged with inter-coder reliability scoring.
 
 import logging
 import os
+import shutil
 import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -97,6 +98,33 @@ def transcribe_audio(
     Returns:
         TranscriptionResult with text, confidence, and ICR scores
     """
+    path = Path(audio_path)
+    if not path.exists():
+        return TranscriptionResult(
+            text=f"[Transcription failed: audio file not found at {audio_path}]",
+            language="unknown",
+            confidence=0.0,
+            icr_kappa=0.0,
+            icr_confidence="insufficient",
+            needs_review=True,
+            original_audio_path=audio_path,
+            tags=["transcription-error", "audio-file-missing"],
+            metadata={"error_type": "audio_file_missing"},
+        )
+
+    if path.suffix.lower() != ".wav" and shutil.which("ffmpeg") is None:
+        return TranscriptionResult(
+            text="[Transcription unavailable: ffmpeg is required to convert this audio format. Install ffmpeg or upload a WAV file.]",
+            language="unknown",
+            confidence=0.0,
+            icr_kappa=0.0,
+            icr_confidence="insufficient",
+            needs_review=True,
+            original_audio_path=audio_path,
+            tags=["transcription-error", "audio-conversion-unavailable"],
+            metadata={"error_type": "audio_conversion_unavailable"},
+        )
+
     model = _load_whisper_model(model_size)
 
     if not _WHISPER_AVAILABLE or model is None:
@@ -109,6 +137,7 @@ def transcribe_audio(
             needs_review=True,
             original_audio_path=audio_path,
             tags=["transcription-error"],
+            metadata={"error_type": "transcription_engine_unavailable"},
         )
 
     try:
@@ -154,6 +183,7 @@ def transcribe_audio(
             needs_review=True,
             original_audio_path=audio_path,
             tags=["transcription-error"],
+            metadata={"error_type": "transcription_runtime_failure", "error": str(e)[:500]},
         )
 
 

@@ -1,7 +1,7 @@
 """Tests for voice transcription pipeline — Whisper, ICR, auto-tagging."""
 
 import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 
 # ---------------------------------------------------------------------------
@@ -39,16 +39,26 @@ def test_transcription_result_dataclass():
 def test_transcription_unavailable_fallback():
     """When Whisper is unavailable, returns error transcription."""
     from app.core import transcription
-    original_available = transcription._WHISPER_AVAILABLE
+    import tempfile
+    
+    with tempfile.NamedTemporaryFile(suffix=".wav") as tmp:
+        with patch("app.core.transcription._load_whisper_model", return_value=None):
+            result = transcription.transcribe_audio(tmp.name)
+            assert "[Transcription unavailable" in result.text
+            assert result.needs_review is True
+            assert "transcription-error" in result.tags
 
-    transcription._WHISPER_AVAILABLE = False
+
+def test_transcription_missing_audio_file():
+    """Missing audio paths return a specific file-not-found transcription result."""
+    from app.core import transcription
+
     result = transcription.transcribe_audio("/fake/path.ogg")
 
-    assert "Transcription unavailable" in result.text
+    assert "audio file not found" in result.text
+    assert result.metadata["error_type"] == "audio_file_missing"
     assert result.needs_review is True
-    assert "transcription-error" in result.tags
-
-    transcription._WHISPER_AVAILABLE = original_available
+    assert "audio-file-missing" in result.tags
 
 
 # ---------------------------------------------------------------------------

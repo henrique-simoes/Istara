@@ -525,6 +525,14 @@ async function main() {
   // Authenticate the API client — all endpoints now require JWT
   await apiClient.authenticate();
 
+  let settingsStatus = null;
+  try {
+    settingsStatus = await apiClient.get("/api/settings/status");
+    console.log(`  LLM: ${settingsStatus?.services?.llm || "unknown"}`);
+  } catch (e) {
+    console.log(`  LLM status unavailable: ${e.message}`);
+  }
+
   // Keep the computer awake for the entire test run
   startCaffeinate();
 
@@ -645,7 +653,7 @@ async function main() {
     screenshot: screenshotFn,
     generators,
     projectId: simProjectId,
-    llmConnected: false,
+    llmConnected: settingsStatus?.services?.llm === "connected",
   };
 
   // ── Run ALL scenarios — never skip, never bail early ──────
