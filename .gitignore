@@ -103,5 +103,6 @@ current_plans.md
 old_plans.md
 .rtk/
 
-# Local model training and release artifacts
+# Local model training and release artifacts — NEVER TRACK THESE IN GIT
+# Protected by pre-commit hook. If you need to share models, use releases/artifacts.
 /LLMs/

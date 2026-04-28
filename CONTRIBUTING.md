@@ -93,6 +93,16 @@ That syncs generated docs, runs integrity checks, and bumps the version before y
 3. For complex skills, add Python implementation in `backend/app/skills/{phase}/`
 4. Register in `backend/app/skills/registry.py`
 
+## ⚠️ Critical: LLMs/ Folder Is Local-Only
+
+The `LLMs/` directory contains large model artifacts (fine-tuned weights, merged models, quantized exports). **It must NEVER be committed to git.**
+
+- It is listed in `.gitignore` (`/LLMs/`)
+- A pre-commit hook blocks any attempt to stage files under `LLMs/`
+- If you need to share model artifacts, use GitHub Releases or external artifact storage — never git
+
+If the pre-commit hook blocks you, unstage with `git reset HEAD LLMs/...`
+
 ## License
 
 By contributing, you agree that your contributions will be licensed under the MIT License.
