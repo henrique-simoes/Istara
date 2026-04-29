@@ -420,6 +420,18 @@ const scenarioFiles = [
 - [ ] `validation.metrics(projectId)` API client method added to `frontend/src/lib/api.ts`
 - [ ] Persona files updated (istara-main: Research Quality Evaluation)
 
+### Changing Task Review And Agent Completion Semantics
+
+- [ ] Agents stop successful task attempts in `In Review`; no autonomous path writes `Done`
+- [ ] Human approval endpoint is the only normal path from `In Review` to `Done`
+- [ ] Negative review from `In Review` or `Done` requires What to Review and returns to `Backlog` or `In Progress`
+- [ ] `TaskReviewEvent` records approval, rejection, reopen, and system failure outcomes
+- [ ] Review events feed telemetry, model/skill stats, agent learning, and skill health
+- [ ] System action tools refuse `move_task(..., done)` for agents
+- [ ] Task cards and modal expose labels, review state, failure streak, concise quality metrics, atomic path, and Done-to-Report
+- [ ] Backend tests cover approval, Done reopen, invalid revision target, and agent/tool Done restrictions
+- [ ] Compass/persona docs explain that Done is human-approved, not agent-completed
+
 ### Adding Game-Theory Participant Simulation
 
 - [ ] `backend/app/core/participant_simulation.py` implements 7 strategies (cooperative, selfish, reciprocating, random, satisficing, social_desirability, adversarial)

@@ -123,6 +123,7 @@
 
 ### Task Document Attachments Testing
 - Simulate creating tasks and attaching documents. Verify attachment indicators appear on task cards. Test: attach multiple documents, detach a document, verify TaskEditor shows correct attachment list, verify detached documents are no longer linked, edge case of attaching the same document twice.
+- Simulate the task review feedback loop: create a task, force or wait for In Review, approve it to Done, mark the Done task Not Successful with What to Review, choose Backlog, verify the card leaves Done, then choose In Progress on a second rejection. Confirm review badges, labels, atomic path counts, quality metrics, and Done-to-Report appear only in the appropriate states.
 
 ### Settings Navigation Testing
 - Verify Settings appears in primary nav without clicking "More". Simulate navigation to Settings from any view. Test: Settings active state displays correctly, keyboard navigation reaches Settings in the expected tab order, Settings route works after page refresh.

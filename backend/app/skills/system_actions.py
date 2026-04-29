@@ -153,15 +153,15 @@ OPENAI_TOOLS: list[dict] = [
         "type": "function",
         "function": {
             "name": "move_task",
-            "description": "[Tool: move_task] Move a task to a different Kanban column. Use when the user asks to start, pause, complete, or change a task's status.",
+            "description": "[Tool: move_task] Move a task between agent-actionable columns. Agents must send finished work to in_review; only a human review action can approve Done.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "task_id": {"type": "string", "description": "The task ID to move"},
                     "status": {
                         "type": "string",
-                        "enum": ["backlog", "in_progress", "in_review", "done"],
-                        "description": "New status",
+                        "enum": ["backlog", "in_progress", "in_review"],
+                        "description": "New status. Use in_review when work is ready for human approval.",
                     },
                 },
                 "required": ["task_id", "status"],
@@ -487,13 +487,13 @@ SYSTEM_TOOLS = [
     },
     {
         "name": "move_task",
-        "description": "[Tool: move_task] Move a task to a different Kanban column. Use when the user asks to start, pause, complete, or change a task's status.",
+        "description": "[Tool: move_task] Move a task between agent-actionable columns. Agents must send finished work to in_review; only a human review action can approve Done.",
         "parameters": {
             "task_id": {"type": "string", "required": True, "description": "The task ID to move"},
             "status": {
                 "type": "string",
                 "required": True,
-                "description": "New status: backlog, in_progress, in_review, done",
+                "description": "New status: backlog, in_progress, in_review. Use in_review when work is ready for human approval.",
             },
         },
     },
@@ -867,8 +867,17 @@ async def _exec_move_task(params: dict, project_id: str, agent_id: str) -> str:
         if not task:
             return f"Task not found: {params['task_id']}"
 
+        if params["status"] == "done":
+            return (
+                "Agents cannot mark tasks Done. Move the task to in_review and wait for "
+                "human approval, or ask the user to approve it in the Tasks review flow."
+            )
+
         old_status = task.status.value
         task.status = TaskStatus(params["status"])
+        if task.status == TaskStatus.IN_REVIEW:
+            task.review_state = "awaiting_review"
+            task.next_agent_action = None
         await db.commit()
         return f"Task '{task.title}' moved from {old_status} to {params['status']}."
 

@@ -139,21 +139,51 @@ The core agent loop (`backend/app/core/agent.py`) runs continuously:
 
 ```
 ┌─────────────────────────────────────────────────┐
-│  1. Check resources (governor.can_start_agent()) │
-│  2. Pick highest-priority task                   │
-│  3. Load project context (6-level hierarchy)     │
-│  4. Select skill (explicit or keyword-inferred)  │
-│  5. Execute skill → SkillOutput                  │
-│  6. Store findings (Nugget→Fact→Insight→Rec)     │
-│  7. Self-verify output (check_findings)          │
-│  8. Ingest artifacts into vector store           │
-│  9. Record learnings if errors occurred          │
-│  10. Update task status, broadcast progress      │
-│  11. Sleep → repeat                              │
+│  1. Process pending steering messages            │
+│  2. Check resources and LLM availability         │
+│  3. Process A2A collaboration inbox              │
+│  4. Pick assigned task by priority/position       │
+│  5. Load project and retrieve RAG context         │
+│  6. Select skill or create a research plan        │
+│  7. Execute skill/general/plan path               │
+│  8. Validate, self-verify, store findings         │
+│  9. Update task status, broadcast progress        │
+│  10. Emit queue update and process follow-ups     │
+│  11. Sleep or wake immediately on assignment      │
 └─────────────────────────────────────────────────┘
 ```
 
-Task selection uses priority ordering: `critical > high > medium > low`, with agent-assigned tasks taking precedence over unassigned ones. After completing a task, the agent checks queue depth and adjusts its sleep interval (5s when busy, 30s when idle).
+Task selection uses priority ordering: `critical > high > medium > low`, then Kanban `position`, then creation time. Each agent first picks tasks explicitly assigned to itself; only `istara-main` falls back to unassigned backlog/in-progress tasks to avoid sub-agent contention. Tasks in retry backoff are skipped until their backoff window expires. After completing a task attempt, the agent checks queue depth, broadcasts `task_queue_update`, and adjusts its sleep interval (5s when busy, 30s normal, 60s idle wait). `PATCH /api/tasks/{id}` wakes `istara-main` immediately when an agent is assigned; sub-agents wake on their own 30-second worker checks.
+
+Agents do **not** mark tasks `done`. Successful agent attempts end in `in_review` with `review_state="awaiting_review"`. Self-verification failure, retry exhaustion, sub-agent retry exhaustion, or orphaned project failures are surfaced as review-visible `in_review` tasks with `review_state="system_failed"` or `blocked`; they no longer hide in Done. Only human approval through the review API moves an `in_review` task to `done`.
+
+There are three execution paths after RAG context retrieval:
+- **Skilled task**: explicit or keyword-inferred `skill_name` resolves to a registered skill. The orchestrator executes `skill.execute()` directly with task description, user context, specific instructions, URLs, project/company context, RAG context, and eligible project files. It does not call the skill's separate `plan()` method in this path. Although `_semantic_skill_match()` exists, it is currently unreachable after the keyword pass returns `None`.
+- **Planned task**: no skill resolves and the task appears complex. The orchestrator asks the LLM for a 2-5 step research plan and executes dependency-ready steps in parallel when possible, broadcasting `plan_progress`.
+- **General task**: no skill resolves and planning is unnecessary or fails. The orchestrator runs a ReAct tool loop with system action tools, then places the task in review if the response passes the minimum quality check.
+
+### Task Review, Feedback, And Learning Loop
+
+Tasks now separate operational Kanban state from human success judgment:
+
+- `backlog` and `in_progress` are agent-actionable states.
+- `in_review` means agents wait while a human inspects the attempt.
+- `done` means a human approved the work.
+
+The `Task` model carries fast-rendered review summary fields: `labels`, `review_state`, `what_to_review`, `review_cycle_count`, `failure_streak`, `approval_streak`, `last_review_outcome`, `last_reviewed_by`, `last_reviewed_at`, `last_review_feedback`, `next_agent_action`, `human_feedback_score`, `review_severity`, and `review_failure_category`. The durable ledger is `TaskReviewEvent`, which stores status transitions, review outcome, What to Review text, compact task context, an atomic-path snapshot, validation/consensus scores, failure category/severity, human score, review cycle counters, and deterministic diagnosis.
+
+Review endpoints:
+
+- `POST /api/tasks/{task_id}/review/approve`: allowed from `in_review`; records an `approved` event and moves the task to `done`.
+- `POST /api/tasks/{task_id}/review/request-revision`: allowed from `in_review` or `done`; requires What to Review and moves the task to `backlog` or `in_progress`, never `in_review`.
+- `GET /api/tasks/{task_id}/review-events`: returns review/reward history.
+- `GET /api/tasks/{task_id}/atomic-path`: returns compact documents, nuggets, facts, insights, recommendations, and reports involved in the task.
+- `GET /api/tasks/{task_id}/quality-summary`: returns concise validation, ensemble, review-cycle, and feedback metrics for card/modal display.
+- `POST /api/tasks/{task_id}/reports`: creates a draft Findings report from a human-approved Done task.
+
+Review events are immediately used as production learning signals. The service records telemetry spans (`task_review_approved`, `task_review_rejected`, `task_reopened_after_done`, `task_system_failed`), updates model/skill production quality, records negative human feedback into agent learning, and informs skill health through `skill_manager.record_execution()`. Raw What to Review text stays in the local `TaskReviewEvent`; telemetry receives category, severity, score, status, task, skill, agent, model, and consensus metadata.
+
+The ReAct system action tool `move_task` refuses `done`. Agents may move work to `in_review`, but human review must approve Done. When a rejected/reopened task returns to `backlog` or `in_progress`, the next agent prompt includes compact review context: What to Review, last feedback, labels, failure category, and failure streak.
 
 ### Agent Identity System
 
@@ -1686,13 +1716,13 @@ The agent orchestrator now has tool-calling intelligence for general tasks (no m
 Before skill selection, the agent retrieves relevant documents via `retrieve_context()`. RAG context is injected into SkillInput.user_context so skills have document awareness without loading all files.
 
 ### Timeout Protection
-`skill.execute()` wrapped in `asyncio.wait_for(timeout=300)`. Skills that take >5 minutes produce a timeout SkillOutput.
+`skill.execute()` is wrapped in `asyncio.wait_for(timeout=600)` for autonomous task execution. Skills that take more than 10 minutes produce a timeout `SkillOutput`.
 
 ### LLM Self-Reflection
 Replaced heuristic `_self_verify_output()` with `_llm_reflect_on_output()`. Sends task + output to LLM with structured evaluation prompt. Checks: addresses task, evidence-based, chain complete, no hallucinations. Returns `{verified, confidence, reason}` JSON. Falls back to heuristic on failure.
 
 ### A2A Collaboration Activated
-Agents now poll their A2A inbox every work cycle via `_process_a2a_inbox()`. Collaboration requests trigger expert analysis (LLM call with agent-specific system prompt + RAG context) and send `collaboration_response` back. Responses are merged into task context by the orchestrator before the primary agent processes the task. SubAgentWorker also polls A2A.
+Agents now poll their A2A inbox every work cycle via `_process_a2a_inbox()`. Collaboration requests trigger expert analysis (LLM call with agent-specific system prompt + RAG context), append a collaboration note to the task, and send `collaboration_response` back. The meta-orchestrator merges matching collaboration responses into task context when it is distributing unassigned backlog tasks. SubAgentWorker currently polls A2A messages, marks collaboration requests read, and delegates assigned task execution to the main pipeline; primary collaboration response generation lives in `AgentOrchestrator._handle_collaboration()`.
 
 ### Structured Output Validation
 `base.py validate_output()` checks evidence chain integrity (insights without facts, recommendations without insights), confidence score bounds (0-1), and source attribution on facts. Warnings logged in `task.agent_notes` before storing.

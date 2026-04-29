@@ -18,8 +18,8 @@ Generated from the repository on version `2026.04.27`. Treat this file as the fa
 ## System Snapshot
 
 - Frontend: Next.js app with 23 mounted views and 15 Zustand stores.
-- Backend: FastAPI app with 40 route modules and 377 detected endpoints.
-- Data layer: 43 SQLAlchemy models plus LanceDB-backed retrieval/context systems.
+- Backend: FastAPI app with 40 route modules and 383 detected endpoints.
+- Data layer: 44 SQLAlchemy models plus LanceDB-backed retrieval/context systems.
 - Agents/personas: 6 tracked persona directories under `backend/app/agents/personas`.
 - Skills: 57 JSON-defined skills across the Double Diamond phases.
 - Regression map: 60 active test files across 4 layers.
@@ -117,7 +117,7 @@ Generated from the repository on version `2026.04.27`. Treat this file as the fa
 | `skills.py` | `/` | 18 |
 | `steering.py` | `/` | 8 |
 | `surveys.py` | `/` | 9 |
-| `tasks.py` | `/` | 11 |
+| `tasks.py` | `/` | 17 |
 | `updates.py` | `/` | 4 |
 | `webauthn.py` | `/` | 6 |
 | `webhooks.py` | `/webhooks` | 3 |
@@ -166,6 +166,7 @@ Generated from the repository on version `2026.04.27`. Treat this file as the fa
 | `SurveyIntegration` | `survey_integrations` | yes | `backend/app/models/survey_integration.py` |
 | `SurveyLink` | `survey_links` | yes | `backend/app/models/survey_integration.py` |
 | `Task` | `tasks` | no | `backend/app/models/task.py` |
+| `TaskReviewEvent` | `task_review_events` | yes | `backend/app/models/task_review.py` |
 | `TelemetrySpan` | `telemetry_spans` | no | `backend/app/models/telemetry_span.py` |
 | `User` | `users` | no | `backend/app/models/user.py` |
 | `WebAuthnCredential` | `webauthn_credentials` | no | `backend/app/models/webauthn_credential.py` |

@@ -315,6 +315,12 @@ All routes are registered in `backend/app/main.py::app.include_router()` with `/
 - `PATCH /api/tasks/{id}` — Update task
 - `DELETE /api/tasks/{id}` — Delete task
 - `POST /api/tasks/{id}/move?status={status}` — Move task in Kanban
+- `POST /api/tasks/{id}/review/approve` — Human approval from In Review to Done, recording a review event
+- `POST /api/tasks/{id}/review/request-revision` — Human rejection/reopen from In Review or Done to Backlog/In Progress with What to Review
+- `GET /api/tasks/{id}/review-events` — Review/reward event history
+- `GET /api/tasks/{id}/atomic-path` — Compact task-specific documents/findings/report path
+- `GET /api/tasks/{id}/quality-summary` — Concise review, validation, and ensemble metrics
+- `POST /api/tasks/{id}/reports` — Create a Findings report from an approved Done task
 - `POST /api/tasks/{id}/attach?document_id={}&direction=input|output` — Attach document
 - `POST /api/tasks/{id}/detach?document_id={}&direction=input|output` — Detach document
 - `POST /api/tasks/{id}/lock` — Lock task for editing
@@ -852,29 +858,33 @@ These represent older naming conventions that should be migrated to hyphenated f
 
 ### Skill Execution Flow
 
-1. **Task Selection**: Main orchestrator picks task from backlog
+1. **Task Selection**: Assigned agent worker picks a backlog/in-progress task by priority, position, and retry backoff
 2. **Skill Lookup**: Get skill by `Task.skill_name`
 3. **Input Preparation**:
    - Fetch Task metadata (context, instructions)
-   - Fetch input documents by IDs
+   - Use task URLs and eligible project files
    - Run RAG to get relevant context
    - Build `SkillInput` object
-4. **Planning Phase**:
-   - Call `skill.plan(input)`
-   - LLM generates execution plan using `plan_prompt`
-5. **Execution Phase**:
+4. **Execution Phase**:
    - Call `skill.execute(input)`
    - LLM executes using `execute_prompt`
    - Validate output against `output_schema`
+5. **Validation Phase**:
+   - Run adaptive ensemble validation when selected
+   - Validate output structure
+   - Run self-verification before handoff to review
 6. **Result Processing**:
    - Parse findings from `SkillOutput.findings`
    - Create Nugget/Fact/Insight/Recommendation records
    - Create Document records for outputs
    - Broadcast `finding_created` WebSocket event
 7. **Task Completion**:
-   - Move task to IN_REVIEW or DONE
+   - Move successful autonomous task work to IN_REVIEW
+   - `POST /api/tasks/{id}/verify` promotes IN_REVIEW tasks to DONE after quality checks
    - Update `Task.progress`
    - Broadcast `task_progress` WebSocket event
+
+The separate `skill.plan(input)` method exists for skill APIs, but the autonomous skilled task path in `backend/app/core/agent.py` does not call it before `skill.execute()`. Planning is used for no-skill complex tasks, where the orchestrator creates a multi-step research plan and may execute dependency-ready steps in parallel.
 
 ### Skill Factory
 
@@ -1155,7 +1165,8 @@ All frontend types are defined in a single file for consistency:
 | Type | Usage |
 |------|-------|
 | `Project` | Project metadata (id, name, phase) |
-| `Task` | Task in Kanban (title, status, skill_name, progress) |
+| `Task` | Task in Kanban (title, status, skill_name, progress, labels, review summary fields) |
+| `TaskReviewEvent` | Durable human/system review event ledger for task approval, rejection, reopen, and system failure |
 | `ChatMessage` | Message in chat (role, content, sources) |
 | `ChatSession` | Chat conversation group (project_id, model_override, inference_preset) |
 | `Document` | Project output (title, file_path, status, tags, atomic_path) |
@@ -1820,21 +1831,19 @@ POST /api/tasks
     ↓
 Task record created (status=backlog)
     ↓
-Main orchestrator picks task
+Task record is auto-routed unless explicitly assigned
     ↓
-Get Skill by Task.skill_name
+Meta-orchestrator may distribute unassigned backlog tasks and send A2A collaboration requests
     ↓
-Fetch input documents (from Task.input_document_ids[])
+Assigned agent worker picks task by priority/position after resource and LLM checks
     ↓
-RAG: Retrieve context
+Retrieve RAG context and select explicit/keyword-inferred skill, planned path, or general ReAct path
     ↓
-Build SkillInput
-    ↓
-skill.plan() → LLM generates plan
-    ↓
-skill.execute() → LLM executes
+For skilled tasks: build SkillInput with context, instructions, URLs, RAG, project/company context, eligible files
     ↓
 Validate output against output_schema
+    ↓
+Run adaptive validation and self-verification
     ↓
 Parse findings from SkillOutput
     ↓
@@ -1845,12 +1854,18 @@ For each finding:
     ↓
 Create Document record for outputs
     ↓
-Move Task to in_review or done
+Move Task to in_review with review_state awaiting_review
+    ↓
+Human review approves task → done
+    ↓
+Or human review flags task as not successful with What to Review → backlog or in_progress
     ↓
 broadcast_task_progress() WebSocket event
     ↓
 Frontend updates Kanban board, displays findings
 ```
+
+**Task review invariant:** Agents and system tools cannot mark tasks Done. Done is a human approval state. Agent success, self-verification failure, retry exhaustion, and orphaned-project handling all surface as review-visible tasks in `in_review`, with `TaskReviewEvent` preserving the event and telemetry/learning hooks consuming the outcome. Negative human review from either `in_review` or `done` must choose `backlog` or `in_progress`; sending it back to `in_review` would strand the task because agents intentionally wait there.
 
 ### Flow 3: File Upload → Processing → Indexing
 

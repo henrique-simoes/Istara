@@ -80,10 +80,10 @@ Together, these documents are Compass.
 ## Live Snapshot
 
 - Version: `2026.04.27`
-- Backend route modules: 40 with 377 detected endpoints
+- Backend route modules: 40 with 383 detected endpoints
 - Frontend mounted views: 23
 - Frontend stores: 15
-- Data models: 43
+- Data models: 44
 - Personas: 6 (`design-lead`, `istara-devops`, `istara-main`, `istara-sim`, `istara-ui-audit`, `istara-ux-eval`)
 - Active test files: 60 across 4 layers
 

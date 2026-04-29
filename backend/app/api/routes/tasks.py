@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.database import get_db
 from app.models.task import Task, TaskStatus
+from app.models.task_review import TaskReviewEvent
 from app.core.agent import agent as agent_orchestrator
 
 LOCK_EXPIRY_MINUTES = 30
@@ -51,6 +52,8 @@ class TaskUpdate(BaseModel):
     output_document_ids: list[str] | None = None
     urls: list[str] | None = None
     instructions: str | None = None
+    labels: list[dict | str] | None = None
+    what_to_review: str | None = None
 
 
 class TaskResponse(BaseModel):
@@ -72,6 +75,20 @@ class TaskResponse(BaseModel):
     output_document_ids: list[str] = []
     urls: list[str] = []
     instructions: str = ""
+    labels: list[dict | str] = []
+    review_state: str = "none"
+    what_to_review: str = ""
+    review_cycle_count: int = 0
+    failure_streak: int = 0
+    approval_streak: int = 0
+    last_review_outcome: str | None = None
+    last_reviewed_by: str | None = None
+    last_reviewed_at: datetime | None = None
+    last_review_feedback: str = ""
+    next_agent_action: str | None = None
+    human_feedback_score: float | None = None
+    review_severity: str | None = None
+    review_failure_category: str | None = None
     locked_by: str | None = None
     locked_at: datetime | None = None
     lock_expires_at: datetime | None = None
@@ -90,7 +107,7 @@ class TaskResponse(BaseModel):
         """Parse JSON string fields from ORM model."""
         import json as _json
 
-        for field in ("input_document_ids", "output_document_ids", "urls"):
+        for field in ("input_document_ids", "output_document_ids", "urls", "labels"):
             val = getattr(data, field, None) if hasattr(data, "__dict__") else data.get(field)
             if isinstance(val, str):
                 try:
@@ -102,6 +119,57 @@ class TaskResponse(BaseModel):
                 else:
                     data[field] = parsed
         return data
+
+
+class ReviewApproveRequest(BaseModel):
+    """Human approval request for moving a task to Done."""
+
+    reviewed_by: str = "local"
+    note: str = ""
+
+
+class ReviewRevisionRequest(BaseModel):
+    """Human request to send reviewed work back to agents."""
+
+    what_to_review: str
+    next_status: TaskStatus = TaskStatus.BACKLOG
+    reviewed_by: str = "local"
+    severity: str | None = None
+    failure_category: str | None = None
+    labels: list[dict | str] | None = None
+    skill_name: str | None = None
+    input_document_ids: list[str] | None = None
+    urls: list[str] | None = None
+
+
+async def _get_task_or_404(db: AsyncSession, task_id: str) -> Task:
+    result = await db.execute(select(Task).where(Task.id == task_id))
+    task = result.scalar_one_or_none()
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    return task
+
+
+async def _approve_task(
+    db: AsyncSession,
+    task: Task,
+    reviewed_by: str = "local",
+    note: str = "",
+) -> TaskReviewEvent:
+    from app.core.task_review import APPROVED, diagnose_review_event, record_task_review_event
+
+    event = await record_task_review_event(
+        db,
+        task,
+        outcome=APPROVED,
+        next_status=TaskStatus.DONE,
+        next_review_state="approved",
+        what_to_review=note,
+        created_by=reviewed_by,
+        quality_score=1.0,
+    )
+    await diagnose_review_event(db, event.id)
+    return event
 
 
 @router.get("/tasks", response_model=list[TaskResponse])
@@ -213,8 +281,13 @@ async def update_task(
         raise HTTPException(status_code=404, detail="Task not found")
 
     update_data = data.model_dump(exclude_unset=True)
+    if update_data.get("status") == TaskStatus.DONE:
+        raise HTTPException(
+            status_code=409,
+            detail="Use the human review approval endpoint to mark tasks done.",
+        )
     # Serialize list fields to JSON strings for the ORM
-    for json_field in ("input_document_ids", "output_document_ids", "urls"):
+    for json_field in ("input_document_ids", "output_document_ids", "urls", "labels"):
         if json_field in update_data and isinstance(update_data[json_field], list):
             update_data[json_field] = json.dumps(update_data[json_field])
     for field, value in update_data.items():
@@ -243,9 +316,29 @@ async def move_task(
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
 
+    if status == TaskStatus.DONE:
+        if task.status != TaskStatus.IN_REVIEW:
+            raise HTTPException(status_code=409, detail="Only tasks in review can be approved as done.")
+        event = await _approve_task(db, task, reviewed_by="local", note="Approved via Kanban move.")
+        if position is not None:
+            task.position = position
+        await db.commit()
+        await db.refresh(task)
+        return task
+
+    if task.status == TaskStatus.DONE and status != TaskStatus.DONE:
+        raise HTTPException(
+            status_code=409,
+            detail="Flag Done work as not successful before sending it back to agents.",
+        )
+
     task.status = status
     if position is not None:
         task.position = position
+    if status == TaskStatus.IN_REVIEW and task.review_state in ("none", ""):
+        task.review_state = "awaiting_review"
+    if status in (TaskStatus.BACKLOG, TaskStatus.IN_PROGRESS) and task.review_state in ("needs_revision", "system_failed"):
+        task.next_agent_action = "resume_in_progress" if status == TaskStatus.IN_PROGRESS else "return_to_backlog"
 
     await db.commit()
     await db.refresh(task)
@@ -276,25 +369,178 @@ async def verify_task(task_id: str, db: AsyncSession = Depends(get_db)):
 
     verified = len(issues) == 0
 
+    event = None
     if verified and task.status == TaskStatus.IN_REVIEW:
-        task.status = TaskStatus.DONE
+        event = await _approve_task(db, task, reviewed_by="local", note="Approved via legacy verify endpoint.")
         await db.commit()
-
-        # Trigger MECE reporting sub-agent (Enhancement Plan Step 7)
-        try:
-            import asyncio as _asyncio
-            from app.core.agent import agent as orchestrator
-
-            _asyncio.create_task(orchestrator._trigger_mece_reporting(task.id, task.project_id))
-        except Exception:
-            pass  # Non-blocking — report generation failure doesn't affect verification
 
     return {
         "task_id": task_id,
         "verified": verified,
         "issues": issues,
         "status": task.status.value,
+        "review_state": task.review_state,
+        "review_event_id": event.id if event else None,
     }
+
+
+@router.post("/tasks/{task_id}/review/approve")
+async def approve_task_review(
+    task_id: str,
+    data: ReviewApproveRequest | None = None,
+    db: AsyncSession = Depends(get_db),
+):
+    """Human approval: move an IN_REVIEW task to DONE and record reward signal."""
+    task = await _get_task_or_404(db, task_id)
+    if task.status != TaskStatus.IN_REVIEW:
+        raise HTTPException(status_code=409, detail="Only tasks in review can be approved as done.")
+    body = data or ReviewApproveRequest()
+    event = await _approve_task(db, task, body.reviewed_by, body.note)
+    await db.commit()
+    await db.refresh(task)
+    return {"task": TaskResponse.model_validate(task).model_dump(mode="json"), "event": event.to_dict()}
+
+
+@router.post("/tasks/{task_id}/review/request-revision")
+async def request_task_revision(
+    task_id: str,
+    data: ReviewRevisionRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Human rejection/reopen: send reviewed work back to backlog or in progress."""
+    task = await _get_task_or_404(db, task_id)
+    if task.status not in (TaskStatus.IN_REVIEW, TaskStatus.DONE):
+        raise HTTPException(status_code=409, detail="Only tasks in review or done can be flagged for revision.")
+    if data.next_status not in (TaskStatus.BACKLOG, TaskStatus.IN_PROGRESS):
+        raise HTTPException(status_code=422, detail="Rejected work must go to backlog or in progress.")
+    if not data.what_to_review.strip() and not data.failure_category:
+        raise HTTPException(status_code=422, detail="What to Review is required when requesting revision.")
+
+    if data.labels is not None:
+        task.set_labels(data.labels)
+    if data.skill_name is not None:
+        task.skill_name = data.skill_name
+    if data.input_document_ids is not None:
+        task.set_input_document_ids(data.input_document_ids)
+    if data.urls is not None:
+        task.set_urls(data.urls)
+
+    previous_status = task.status
+    next_review_state = "rejected_after_done" if previous_status == TaskStatus.DONE else "needs_revision"
+
+    from app.core.task_review import record_task_review_event, diagnose_review_event
+
+    event = await record_task_review_event(
+        db,
+        task,
+        outcome=next_review_state,
+        next_status=data.next_status,
+        next_review_state=next_review_state,
+        what_to_review=data.what_to_review,
+        created_by=data.reviewed_by,
+        failure_category=data.failure_category,
+        severity=data.severity,
+    )
+    await diagnose_review_event(db, event.id)
+    await db.commit()
+    await db.refresh(task)
+    if data.next_status == TaskStatus.IN_PROGRESS or task.agent_id == "istara-main":
+        agent_orchestrator.wake()
+    return {"task": TaskResponse.model_validate(task).model_dump(mode="json"), "event": event.to_dict()}
+
+
+@router.get("/tasks/{task_id}/review-events")
+async def get_task_review_events(task_id: str, db: AsyncSession = Depends(get_db)):
+    """List review/reward events for a task."""
+    await _get_task_or_404(db, task_id)
+    result = await db.execute(
+        select(TaskReviewEvent)
+        .where(TaskReviewEvent.task_id == task_id)
+        .order_by(TaskReviewEvent.created_at.desc())
+    )
+    return {"events": [event.to_dict() for event in result.scalars().all()]}
+
+
+@router.get("/tasks/{task_id}/atomic-path")
+async def get_task_atomic_path(task_id: str, db: AsyncSession = Depends(get_db)):
+    """Return the task's compact atomic research path."""
+    task = await _get_task_or_404(db, task_id)
+    from app.core.task_review import build_atomic_snapshot
+
+    return await build_atomic_snapshot(db, task)
+
+
+@router.get("/tasks/{task_id}/quality-summary")
+async def get_task_quality_summary(task_id: str, db: AsyncSession = Depends(get_db)):
+    """Return concise task quality and review metrics for cards/modals."""
+    task = await _get_task_or_404(db, task_id)
+    validation = {}
+    if task.validation_result:
+        try:
+            validation = json.loads(task.validation_result)
+        except Exception:
+            validation = {}
+    result = await db.execute(
+        select(TaskReviewEvent)
+        .where(TaskReviewEvent.task_id == task_id)
+        .order_by(TaskReviewEvent.created_at.desc())
+        .limit(5)
+    )
+    events = [event.to_dict() for event in result.scalars().all()]
+    return {
+        "task_id": task.id,
+        "status": task.status.value,
+        "review_state": task.review_state,
+        "review_cycle_count": task.review_cycle_count,
+        "failure_streak": task.failure_streak,
+        "approval_streak": task.approval_streak,
+        "human_feedback_score": task.human_feedback_score,
+        "review_failure_category": task.review_failure_category,
+        "review_severity": task.review_severity,
+        "validation_method": task.validation_method,
+        "consensus_score": task.consensus_score,
+        "validation": validation,
+        "recent_review_events": events,
+    }
+
+
+@router.post("/tasks/{task_id}/reports")
+async def create_report_from_task(task_id: str, db: AsyncSession = Depends(get_db)):
+    """Create a lightweight report record from a human-approved Done task."""
+    task = await _get_task_or_404(db, task_id)
+    if task.status != TaskStatus.DONE or task.review_state != "approved":
+        raise HTTPException(status_code=409, detail="Only human-approved Done tasks can be sent to Reports.")
+
+    from app.core.task_review import build_atomic_snapshot
+    from app.models.project_report import ProjectReport
+
+    snapshot = await build_atomic_snapshot(db, task)
+    finding_ids: list[str] = []
+    for key in ("nuggets", "facts", "insights", "recommendations"):
+        finding_ids.extend([item["id"] for item in snapshot.get(key, {}).get("items", [])])
+
+    report = ProjectReport(
+        id=str(uuid.uuid4()),
+        project_id=task.project_id,
+        title=f"Task Report: {task.title[:240]}",
+        layer=2,
+        report_type="task_review",
+        scope=task.id,
+        content_json=json.dumps({
+            "task_id": task.id,
+            "task_title": task.title,
+            "agent_notes": task.agent_notes,
+            "atomic_path": snapshot,
+            "review_state": task.review_state,
+        }),
+        executive_summary=(task.agent_notes or task.description or task.title)[:2000],
+        finding_ids_json=json.dumps(finding_ids),
+        source_document_ids_json=json.dumps(task.get_output_document_ids()),
+        status="draft",
+    )
+    db.add(report)
+    await db.commit()
+    return {"report": report.to_dict()}
 
 
 @router.post("/tasks/{task_id}/attach")

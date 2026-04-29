@@ -246,6 +246,7 @@
 - File upload shows chips before sending. Monitor for: memory leaks from large pending files, upload failures leaving orphaned chips, concurrent uploads.
 - Ensemble validation wired into agent execution loop. Monitor for: validation timeout blocking task completion, Self-MoA temperature variance producing incoherent consensus, AdaptiveSelector returning stale method choices.
 - Task `instructions` field now passed to LLM. Monitor for: prompt length exceeding model context window when instructions + context + user_context are combined.
+- Task review feedback loop: agents must not write `DONE`; successful attempts stop at `IN_REVIEW`, human approval creates `TaskReviewEvent(outcome=approved)`, and failed/reopened tasks return to `BACKLOG` or `IN_PROGRESS` with What to Review. Monitor for: any autonomous `DONE` writes, review events missing telemetry, failure streaks rising across the same agent/skill/model, and validation false positives that humans repeatedly reject.
 - CSV file classification by headers. Monitor for: edge cases where headers don't contain expected keywords, multilingual column names.
 
 ### Testing Infrastructure & Production Readiness (v2026.04.02.4)

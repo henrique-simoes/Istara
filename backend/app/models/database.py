@@ -82,6 +82,7 @@ async def init_db() -> None:
     from app.models.telemetry_span import TelemetrySpan  # noqa: F401
     from app.models.project_report import ProjectReport  # noqa: F401
     from app.models.project_member import ProjectMember  # noqa: F401
+    from app.models.task_review import TaskReviewEvent  # noqa: F401
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
@@ -106,11 +107,25 @@ async def init_db() -> None:
             "ALTER TABLE users ALTER COLUMN password_hash TYPE VARCHAR(512)",
             # Email encryption support
             "ALTER TABLE users ADD COLUMN email_hash VARCHAR(64)",
+            # Task review/reward state
+            "ALTER TABLE tasks ADD COLUMN labels TEXT NOT NULL DEFAULT '[]'",
+            "ALTER TABLE tasks ADD COLUMN review_state VARCHAR(30) NOT NULL DEFAULT 'none'",
+            "ALTER TABLE tasks ADD COLUMN what_to_review TEXT NOT NULL DEFAULT ''",
+            "ALTER TABLE tasks ADD COLUMN review_cycle_count INTEGER NOT NULL DEFAULT 0",
+            "ALTER TABLE tasks ADD COLUMN failure_streak INTEGER NOT NULL DEFAULT 0",
+            "ALTER TABLE tasks ADD COLUMN approval_streak INTEGER NOT NULL DEFAULT 0",
+            "ALTER TABLE tasks ADD COLUMN last_review_outcome VARCHAR(50)",
+            "ALTER TABLE tasks ADD COLUMN last_reviewed_by VARCHAR(36)",
+            "ALTER TABLE tasks ADD COLUMN last_reviewed_at DATETIME",
+            "ALTER TABLE tasks ADD COLUMN last_review_feedback TEXT NOT NULL DEFAULT ''",
+            "ALTER TABLE tasks ADD COLUMN next_agent_action VARCHAR(30)",
+            "ALTER TABLE tasks ADD COLUMN human_feedback_score FLOAT",
+            "ALTER TABLE tasks ADD COLUMN review_severity VARCHAR(20)",
+            "ALTER TABLE tasks ADD COLUMN review_failure_category VARCHAR(60)",
         ]
         for ddl in migrations:
             try:
                 await conn.execute(sa.text(ddl))
-                await conn.commit()
             except Exception:
                 pass  # Column already exists or SQLite doesn't support this DDL
 
@@ -119,5 +134,12 @@ async def init_db() -> None:
             from app.models.webauthn_credential import WebAuthnCredential
 
             await conn.run_sync(lambda c: WebAuthnCredential.__table__.create(c, checkfirst=True))
+        except Exception:
+            pass  # Table already exists
+
+        try:
+            from app.models.task_review import TaskReviewEvent
+
+            await conn.run_sync(lambda c: TaskReviewEvent.__table__.create(c, checkfirst=True))
         except Exception:
             pass  # Table already exists

@@ -18,9 +18,9 @@ Generated from the repository on version `2026.04.27`. This document is meant to
 
 ## Repository Architecture Snapshot
 
-- FastAPI backend with 40 route modules and 377 detected endpoints.
+- FastAPI backend with 40 route modules and 383 detected endpoints.
 - Next.js frontend with 23 mounted views and 15 Zustand stores.
-- 43 SQLAlchemy models in `backend/app/models`.
+- 44 SQLAlchemy models in `backend/app/models`.
 - 6 tracked persona directories and 57 JSON-defined skills.
 - 60 active test files across 4 regression layers.
 
@@ -64,7 +64,7 @@ Generated from the repository on version `2026.04.27`. This document is meant to
 | `skills.py` | `/` | 18 |
 | `steering.py` | `/` | 8 |
 | `surveys.py` | `/` | 9 |
-| `tasks.py` | `/` | 11 |
+| `tasks.py` | `/` | 17 |
 | `updates.py` | `/` | 4 |
 | `webauthn.py` | `/` | 6 |
 | `webhooks.py` | `/webhooks` | 3 |
@@ -107,7 +107,7 @@ Generated from the repository on version `2026.04.27`. This document is meant to
 - **skills**: `GET /api/skills`, `GET /api/skills/health/all`, `GET /api/skills/proposals/pending`, `GET /api/skills/proposals/all`, `GET /api/skills/creation-proposals/pending`, `GET /api/skills/creation-proposals/all`, `POST /api/skills/creation-proposals/{proposal_id}/approve`, `POST /api/skills/creation-proposals/{proposal_id}/reject`, `GET /api/skills/{name}`, `POST /api/skills`, `PATCH /api/skills/{name}`, `DELETE /api/skills/{name}`, `POST /api/skills/{name}/toggle`, `GET /api/skills/{name}/health`, `POST /api/skills/proposals/{proposal_id}/approve`, `POST /api/skills/proposals/{proposal_id}/reject`, `POST /api/skills/{name}/execute`, `POST /api/skills/{name}/plan`
 - **steering**: `POST /api/steering/{agent_id}`, `POST /api/steering/{agent_id}/follow-up`, `POST /api/steering/{agent_id}/abort`, `GET /api/steering/{agent_id}/status`, `GET /api/steering/{agent_id}/queues`, `DELETE /api/steering/{agent_id}/queues`, `GET /api/steering/{agent_id}/idle`, `GET /api/steering`
 - **surveys**: `GET /api/surveys/integrations`, `POST /api/surveys/integrations`, `DELETE /api/surveys/integrations/{integration_id}`, `GET /api/surveys/integrations/{integration_id}/surveys`, `POST /api/surveys/integrations/{integration_id}/create`, `POST /api/surveys/links`, `GET /api/surveys/links`, `POST /api/surveys/links/{link_id}/sync`, `GET /api/surveys/links/{link_id}/responses`
-- **tasks**: `GET /api/tasks`, `POST /api/tasks`, `GET /api/tasks/{task_id}`, `PATCH /api/tasks/{task_id}`, `POST /api/tasks/{task_id}/move`, `POST /api/tasks/{task_id}/verify`, `POST /api/tasks/{task_id}/attach`, `POST /api/tasks/{task_id}/detach`, `POST /api/tasks/{task_id}/lock`, `POST /api/tasks/{task_id}/unlock`, `DELETE /api/tasks/{task_id}`
+- **tasks**: `GET /api/tasks`, `POST /api/tasks`, `GET /api/tasks/{task_id}`, `PATCH /api/tasks/{task_id}`, `POST /api/tasks/{task_id}/move`, `POST /api/tasks/{task_id}/verify`, `POST /api/tasks/{task_id}/review/approve`, `POST /api/tasks/{task_id}/review/request-revision`, `GET /api/tasks/{task_id}/review-events`, `GET /api/tasks/{task_id}/atomic-path`, `GET /api/tasks/{task_id}/quality-summary`, `POST /api/tasks/{task_id}/reports`, `POST /api/tasks/{task_id}/attach`, `POST /api/tasks/{task_id}/detach`, `POST /api/tasks/{task_id}/lock`, `POST /api/tasks/{task_id}/unlock`, `DELETE /api/tasks/{task_id}`
 - **updates**: `GET /api/updates/version`, `GET /api/updates/check`, `POST /api/updates/prepare`, `POST /api/updates/apply`
 - **webauthn**: `POST /api/webauthn/register/start`, `POST /api/webauthn/register/finish`, `POST /api/webauthn/authenticate/start`, `POST /api/webauthn/authenticate/finish`, `GET /api/webauthn/credentials`, `DELETE /api/webauthn/credentials/{credential_id}`
 - **webhooks**: `GET /api/webhooks/whatsapp/{instance_id}`, `POST /api/webhooks/whatsapp/{instance_id}`, `POST /api/webhooks/google-chat/{instance_id}`
@@ -156,6 +156,7 @@ Generated from the repository on version `2026.04.27`. This document is meant to
 | `SurveyIntegration` | `survey_integrations` | yes | `backend/app/models/survey_integration.py` |
 | `SurveyLink` | `survey_links` | yes | `backend/app/models/survey_integration.py` |
 | `Task` | `tasks` | no | `backend/app/models/task.py` |
+| `TaskReviewEvent` | `task_review_events` | yes | `backend/app/models/task_review.py` |
 | `TelemetrySpan` | `telemetry_spans` | no | `backend/app/models/telemetry_span.py` |
 | `User` | `users` | no | `backend/app/models/user.py` |
 | `WebAuthnCredential` | `webauthn_credentials` | no | `backend/app/models/webauthn_credential.py` |

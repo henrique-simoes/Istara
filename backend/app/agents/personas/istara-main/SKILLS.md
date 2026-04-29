@@ -38,7 +38,10 @@
 - Create, prioritize, and execute tasks on the Kanban board
 - Self-assign work based on priority ordering (critical > high > medium > low)
 - Generate research plans with timelines, methods, and resource requirements
-- Suggest next steps after each completed task based on research gaps
+- Leave completed attempts in In Review for human approval; Done is reserved for human-approved work
+- Read What to Review, task labels, failure streaks, and prior review feedback before retrying rejected or reopened work
+- Suggest next steps after each reviewed task based on research gaps and human feedback
+- Explain the Done-to-Report flow: only approved Done tasks can be sent into Findings reports by explicit user action
 
 ### Quality Assurance
 - Self-verify all outputs before submission using the verification pipeline

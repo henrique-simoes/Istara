@@ -35,6 +35,20 @@ export interface Task {
   output_document_ids: string[];
   urls: string[];
   instructions: string;
+  labels: Array<string | { name: string; color?: string; kind?: string }>;
+  review_state: string;
+  what_to_review: string;
+  review_cycle_count: number;
+  failure_streak: number;
+  approval_streak: number;
+  last_review_outcome: string | null;
+  last_reviewed_by: string | null;
+  last_reviewed_at: string | null;
+  last_review_feedback: string;
+  next_agent_action: string | null;
+  human_feedback_score: number | null;
+  review_severity: string | null;
+  review_failure_category: string | null;
   validation_method: string | null;
   consensus_score: number | null;
   health?: {
@@ -45,6 +59,53 @@ export interface Task {
   };
   created_at: string;
   updated_at: string;
+}
+
+export interface TaskReviewEvent {
+  id: string;
+  task_id: string;
+  outcome: string;
+  previous_status: string;
+  next_status: string;
+  previous_review_state: string;
+  next_review_state: string;
+  what_to_review: string;
+  feedback_summary: string;
+  failure_category: string | null;
+  severity: string | null;
+  quality_score: number | null;
+  human_feedback_score: number | null;
+  failure_streak_after: number;
+  review_cycle_after: number;
+  diagnosis_status: string;
+  diagnosis: Record<string, unknown>;
+  created_by: string;
+  created_at: string;
+}
+
+export interface TaskAtomicPath {
+  documents: { count: number; items: Array<{ id: string; title?: string; text?: string }> };
+  nuggets: { count: number; items: Array<{ id: string; text: string }> };
+  facts: { count: number; items: Array<{ id: string; text: string }> };
+  insights: { count: number; items: Array<{ id: string; text: string }> };
+  recommendations: { count: number; items: Array<{ id: string; text: string }> };
+  reports: { count: number; items: Array<{ id: string; title: string }> };
+}
+
+export interface TaskQualitySummary {
+  task_id: string;
+  status: TaskStatus;
+  review_state: string;
+  review_cycle_count: number;
+  failure_streak: number;
+  approval_streak: number;
+  human_feedback_score: number | null;
+  review_failure_category: string | null;
+  review_severity: string | null;
+  validation_method: string | null;
+  consensus_score: number | null;
+  validation: Record<string, unknown>;
+  recent_review_events: TaskReviewEvent[];
 }
 
 export interface ChatMessage {

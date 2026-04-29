@@ -1,6 +1,6 @@
 /** API client for Istara backend. */
 
-import type { ChatSession, ChatMessage, InferencePresetConfig, DAGNode, DAGHealth, DAGExpandResult, DAGGrepResult, ReclawDocument, DocumentContent, DocumentTag, DocumentStats, InterfacesStatus, BackupRecord, BackupConfig, MetaProposal, MetaVariant, MetaHyperagentStatus, ChannelInstance, ChannelMessage, ChannelConversation, ResearchDeployment, DeploymentAnalytics, SurveyIntegration, SurveyLink, MCPServerConfig, MCPAccessPolicy, MCPAuditEntry, AutoresearchStatus, AutoresearchExperiment, AutoresearchConfig, ModelSkillLeaderboard, UXLaw, LawMatch, ComplianceProfile, RadarChartData, FeaturedMCPServer, ReclawUser, ProjectReport, CodebookVersionType, CodeApplicationType } from "@/lib/types";
+import type { ChatSession, ChatMessage, InferencePresetConfig, DAGNode, DAGHealth, DAGExpandResult, DAGGrepResult, ReclawDocument, DocumentContent, DocumentTag, DocumentStats, InterfacesStatus, BackupRecord, BackupConfig, MetaProposal, MetaVariant, MetaHyperagentStatus, ChannelInstance, ChannelMessage, ChannelConversation, ResearchDeployment, DeploymentAnalytics, SurveyIntegration, SurveyLink, MCPServerConfig, MCPAccessPolicy, MCPAuditEntry, AutoresearchStatus, AutoresearchExperiment, AutoresearchConfig, ModelSkillLeaderboard, UXLaw, LawMatch, ComplianceProfile, RadarChartData, FeaturedMCPServer, ReclawUser, ProjectReport, CodebookVersionType, CodeApplicationType, Task, TaskStatus, TaskAtomicPath, TaskQualitySummary, TaskReviewEvent } from "@/lib/types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -98,6 +98,7 @@ export const tasks = {
     input_document_ids?: string[];
     output_document_ids?: string[];
     urls?: string[];
+    labels?: Array<string | { name: string; color?: string; kind?: string }>;
     user_context?: string;
     agent_id?: string;
   }) => request<any>("/api/tasks", { method: "POST", body: JSON.stringify(data) }),
@@ -111,6 +112,27 @@ export const tasks = {
     post<{ attached: boolean }>(`/api/tasks/${taskId}/attach?document_id=${documentId}&direction=${direction}`, {}),
   detach: (taskId: string, documentId: string, direction: "input" | "output" = "input") =>
     post<{ detached: boolean }>(`/api/tasks/${taskId}/detach?document_id=${documentId}&direction=${direction}`, {}),
+  approve: (taskId: string, data: { reviewed_by?: string; note?: string } = {}) =>
+    post<{ task: Task; event: TaskReviewEvent }>(`/api/tasks/${taskId}/review/approve`, data),
+  requestRevision: (taskId: string, data: {
+    what_to_review: string;
+    next_status: Extract<TaskStatus, "backlog" | "in_progress">;
+    reviewed_by?: string;
+    severity?: string | null;
+    failure_category?: string | null;
+    labels?: Array<string | { name: string; color?: string; kind?: string }>;
+    skill_name?: string | null;
+    input_document_ids?: string[];
+    urls?: string[];
+  }) => post<{ task: Task; event: TaskReviewEvent }>(`/api/tasks/${taskId}/review/request-revision`, data),
+  reviewEvents: (taskId: string) =>
+    get<{ events: TaskReviewEvent[] }>(`/api/tasks/${taskId}/review-events`),
+  atomicPath: (taskId: string) =>
+    get<TaskAtomicPath>(`/api/tasks/${taskId}/atomic-path`),
+  qualitySummary: (taskId: string) =>
+    get<TaskQualitySummary>(`/api/tasks/${taskId}/quality-summary`),
+  createReport: (taskId: string) =>
+    post<{ report: ProjectReport }>(`/api/tasks/${taskId}/reports`, {}),
 };
 
 // --- Chat ---

@@ -99,6 +99,8 @@
 
 ### Task Document Attachments
 - Task cards show document attachment indicators. TaskEditor has attach/detach controls. Audit: attachment indicators use icon+text (not icon-only), attach/detach buttons have accessible names, document list in TaskEditor is keyboard-navigable, and detach action has a confirmation or undo mechanism (H3 — User Control and Freedom).
+- Task card click now opens the large TaskEditor modal instead of inline expansion. Audit: card keyboard activation opens the modal, Escape/outside click autosaves and closes, focus order follows title -> description -> skill/labels -> instructions/context -> review actions -> atomic path, review buttons have descriptive labels, and labels/review/quality badges are not color-only.
+- The review panel appears for In Review and Done tasks. Audit: What to Review has enough space for multi-paragraph feedback, Not Successful is disabled until feedback exists, rejected tasks can only choose Backlog or In Progress, and Done-to-Report is visible only for human-approved Done tasks.
 
 ### Settings in Primary Nav
 - Settings moved from secondary nav to primary nav. Audit: navigation order is logical, Settings item has proper active state indication, keyboard navigation (Tab/Arrow keys) works correctly in the updated nav structure, and no landmark region changes break screen reader navigation.
