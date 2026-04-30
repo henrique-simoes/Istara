@@ -24,6 +24,7 @@ PREFIX = "rcl_"
 
 def create_connection_string(
     server_url: str,
+    ws_url: str | None = None,
     label: str = "",
     expires_hours: int = 168,  # 7 days
     role: str = "researcher",
@@ -41,9 +42,9 @@ def create_connection_string(
     expires_at = int(time.time()) + (expires_hours * 3600)
 
     # Derive WebSocket URL from server URL
-    ws_url = server_url.replace("https://", "wss://").replace("http://", "ws://")
-    if not ws_url.endswith("/ws/relay"):
-        ws_url = ws_url.rstrip("/") + "/ws/relay"
+    relay_ws_url = ws_url or server_url.replace("https://", "wss://").replace("http://", "ws://")
+    if not relay_ws_url.endswith("/ws/relay"):
+        relay_ws_url = relay_ws_url.rstrip("/") + "/ws/relay"
 
     # Mint a JWT for the invited user (pre-auth)
     # The JWT sub is "invite-<timestamp>" — redeemed when user registers
@@ -56,7 +57,7 @@ def create_connection_string(
     payload = {
         "v": 1,
         "server_url": server_url.rstrip("/"),
-        "ws_url": ws_url,
+        "ws_url": relay_ws_url,
         "network_token": settings.network_access_token or "",
         "jwt": jwt_token,
         "expires_at": expires_at,

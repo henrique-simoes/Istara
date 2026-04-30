@@ -4,6 +4,7 @@ import json
 import logging
 import uuid
 from datetime import datetime, timezone
+from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
@@ -34,6 +35,12 @@ class LLMServerUpdate(BaseModel):
     api_key: str | None = None
     priority: int | None = None
     is_local: bool | None = None
+
+
+def _is_local_host(host: str) -> bool:
+    parsed = urlparse(host if "://" in host else f"http://{host}")
+    hostname = (parsed.hostname or "").lower()
+    return hostname in {"localhost", "127.0.0.1", "::1"}
 
 
 @router.get("/llm-servers")
@@ -79,9 +86,10 @@ async def list_llm_servers(db: AsyncSession = Depends(get_db)):
 @router.post("/llm-servers")
 async def add_llm_server(data: LLMServerCreate, request: Request, db: AsyncSession = Depends(get_db)):
     """Add a new external LLM server. Admin required for remote servers; local servers allowed for all authenticated users."""
-    # RBAC: Only admin can add non-local (remote) servers. 
+    inferred_is_local = data.is_local and _is_local_host(data.host)
+    # RBAC: Only admin can add non-local (remote) servers.
     # Local servers can be added by anyone to donate compute.
-    if not data.is_local:
+    if not inferred_is_local:
         require_admin_from_request(request)
     else:
         # Still ensure the user is authenticated
@@ -102,7 +110,7 @@ async def add_llm_server(data: LLMServerCreate, request: Request, db: AsyncSessi
         provider_type=data.provider_type,
         host=data.host.rstrip("/"),
         api_key=encrypt_field(data.api_key) if data.api_key else "",
-        is_local=data.is_local,
+        is_local=inferred_is_local,
         priority=data.priority,
     )
     db.add(server)
@@ -219,8 +227,9 @@ async def delete_llm_server(server_id: str, request: Request, db: AsyncSession =
 
 
 @router.post("/llm-servers/discover")
-async def discover_network_llm_servers():
+async def discover_network_llm_servers(request: Request):
     """Scan local network for LLM servers (LM Studio, Ollama, OpenAI-compatible)."""
+    require_admin_from_request(request)
     from app.core.network_discovery import discover_and_register
     discovered = await discover_and_register()
     return {

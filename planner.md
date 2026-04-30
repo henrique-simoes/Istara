@@ -218,6 +218,7 @@ The following files are protected system memory:
 - Stale branches are salvage-only.
 - JSON skill definitions are canonical.
 - Generated Compass docs must match current code.
+- `current_plans.md` and `old_plans.md` are protected operational ledgers, but this workspace keeps them gitignored by default; when a branch needs durable planner handoff, mirror the summary into tracked Compass docs, branch docs, or the PR body instead of force-adding local plan files.
 - Review-discovered defects require correction and independent re-review.
 - Final agents must explain new capabilities/processes to the user.
 

@@ -104,15 +104,18 @@ async def get_models():
     For LM Studio, probes the actually loaded model via a minimal chat request
     since /v1/models returns all downloaded (not just loaded) models.
     """
+    from app.core.compute_registry import compute_registry
+
     healthy = await ollama.health()
-    if not healthy:
+    registry_models = await compute_registry.list_models()
+    if not healthy and not registry_models:
         return {
             "status": "offline",
             "models": [],
             "active_model": _active_model(),
         }
 
-    models = await ollama.list_models()
+    models = registry_models or await ollama.list_models()
     active = _active_model()
 
     # For LM Studio, detect the actually loaded model
@@ -133,9 +136,7 @@ async def get_models():
     # Enrich each model with provider info from the router.
     # The LLMRouter.list_models() already attaches _server / _server_id;
     # we promote those to public fields and add provider_type.
-    from app.core.llm_router import llm_router
-
-    server_map = {s.server_id: s for s in llm_router._servers.values()}
+    server_map = {s.node_id: s for s in compute_registry._nodes.values()}
     enriched = []
     for m in models:
         server_id = m.pop("_server_id", None)

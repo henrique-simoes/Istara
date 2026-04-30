@@ -3,7 +3,7 @@ import { Copy, Check, Key, RefreshCw, Loader2, Shield, Trash2, Clock, Globe } fr
 import { useAuthStore } from "@/stores/authStore";
 import { cn, formatDate } from "@/lib/utils";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+import { API_BASE, WS_BASE } from "@/lib/runtimeConfig";
 
 interface ActiveConnectionString {
   id: string;
@@ -11,6 +11,11 @@ interface ActiveConnectionString {
   connection_string: string;
   expires_at: string;
   is_expired: boolean;
+  is_active: boolean;
+  is_redeemed: boolean;
+  redeemed_username?: string | null;
+  redeemed_at?: string | null;
+  last_validated_at?: string | null;
 }
 
 export default function ConnectionStringPanel() {
@@ -57,7 +62,7 @@ export default function ConnectionStringPanel() {
     setConnectionString("");
     try {
       const token = localStorage.getItem("istara_token");
-      const serverUrl = window.location.origin.replace(":3000", ":8000");
+      const serverUrl = window.location.origin;
       const res = await fetch(`${API_BASE}/api/connections/generate`, {
         method: "POST",
         headers: {
@@ -66,6 +71,7 @@ export default function ConnectionStringPanel() {
         },
         body: JSON.stringify({
           server_url: serverUrl,
+          ws_url: `${WS_BASE}/ws/relay`,
           label: label.trim() || "Team Member",
           expires_hours: expiryHours,
         }),
@@ -195,8 +201,17 @@ export default function ConnectionStringPanel() {
                 <span className="font-bold text-slate-700 dark:text-slate-200 truncate">{str.label}</span>
                 <div className="flex items-center gap-2 text-slate-400">
                   <span className="flex items-center gap-0.5"><Clock size={10} /> Exp: {formatDate(str.expires_at)}</span>
+                  {str.is_redeemed && <span className="text-green-600 dark:text-green-400 font-medium">Redeemed</span>}
+                  {!str.is_active && <span className="text-red-500 font-medium">Revoked</span>}
                   {str.is_expired && <span className="text-red-500 font-medium">Expired</span>}
                 </div>
+                {(str.redeemed_username || str.last_validated_at) && (
+                  <div className="text-slate-400">
+                    {str.redeemed_username
+                      ? `User: ${str.redeemed_username}${str.redeemed_at ? ` on ${formatDate(str.redeemed_at)}` : ""}`
+                      : `Last checked: ${formatDate(str.last_validated_at || "")}`}
+                  </div>
+                )}
               </div>
               <div className="flex items-center gap-1">
                 <button

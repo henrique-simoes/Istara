@@ -50,19 +50,26 @@ async def relay_websocket(ws: WebSocket):
     - Otherwise: JWT required via Authorization header or ?token= query param
     - No unauthenticated relay connections permitted
     """
-    # Always authenticate relay connections — regardless of team_mode.
-    # First check the network access token (covers non-localhost clients).
-    from app.core.network_security import check_websocket_network_token
-    if not check_websocket_network_token(ws):
-        # No valid network token — fall back to JWT authentication
-        from app.core.auth import verify_token
-        auth_header = ws.headers.get("authorization", "")
-        token = auth_header.removeprefix("Bearer ").strip()
-        if not token:
-            token = ws.query_params.get("token", "")
-        if not token or verify_token(token) is None:
-            await ws.close(code=4001, reason="Authentication required for relay connections")
-            return
+    # Always authenticate relay connections — regardless of team_mode or localhost.
+    # A relay/browser node can provide either the network access token from an
+    # invite string or a valid user JWT from an authenticated browser session.
+    from app.config import settings
+    from app.core.auth import verify_token
+
+    network_token = ws.headers.get("x-access-token", "") or ws.query_params.get("access_token", "")
+    auth_header = ws.headers.get("authorization", "")
+    jwt_token = auth_header.removeprefix("Bearer ").strip() if auth_header.startswith("Bearer ") else ""
+    if not jwt_token:
+        jwt_token = ws.query_params.get("token", "")
+
+    has_valid_network_token = bool(
+        settings.network_access_token and network_token == settings.network_access_token
+    )
+    jwt_payload = verify_token(jwt_token) if jwt_token else None
+    if not has_valid_network_token and jwt_payload is None:
+        await ws.close(code=4001, reason="Authentication required for relay connections")
+        return
+    authenticated_user_id = str(jwt_payload.get("sub", "")) if jwt_payload else ""
 
     await ws.accept()
     node_id = str(uuid.uuid4())
@@ -79,11 +86,11 @@ async def relay_websocket(ws: WebSocket):
             msg_type = msg.get("type", "")
 
             if msg_type == "register":
-                # Resolve provider_host: relay reports "localhost" which
-                # is unreachable from the backend. Replace with the
-                # relay's actual IP so HTTP streaming works directly.
+                # Resolve provider_host for optional provider metadata probes.
+                # Chat execution itself uses the relay WebSocket so remote
+                # donors do not need inbound provider ports.
                 provider_host = msg.get("provider_host", "")
-                ip_addr = msg.get("ip_address", "")
+                ip_addr = msg.get("ip_address", "") or (ws.client.host if ws.client else "")
                 resolved_host = provider_host
                 if ip_addr and provider_host:
                     from urllib.parse import urlparse, urlunparse
@@ -99,14 +106,14 @@ async def relay_websocket(ws: WebSocket):
                     node_id=node_id,
                     name=f"Relay: {msg.get('hostname', 'unknown')}",
                     host=resolved_host,
-                    source="relay",
+                    source="browser" if msg.get("user_id") == "browser" else "relay",
                     provider_type=msg.get("provider_type", "ollama"),
                     is_relay=True,
                     is_healthy=True,
                     health_state="ready",
                     priority=20,
                     websocket=ws,
-                    user_id=msg.get("user_id", "anonymous"),
+                    user_id=authenticated_user_id or msg.get("user_id", "anonymous"),
                     ip_address=ip_addr,
                     provider_host=provider_host,
                     ram_total_gb=msg.get("ram_total_gb", 0),
@@ -152,15 +159,21 @@ async def relay_websocket(ws: WebSocket):
                 stats = msg.get("stats", {})
                 compute_registry.update_heartbeat(node_id, stats)
 
-            elif msg_type == "llm_response":
-                # Response to a forwarded LLM request — dispatch to waiting handler
-                pass  # TODO: implement request/response matching for relay LLM calls
+            elif msg_type in ("llm_response", "embed_response"):
+                # Response to a forwarded donor request — dispatch to waiting handler
+                request_id = msg.get("request_id", "")
+                if node and request_id:
+                    future = node.pending_requests.pop(request_id, None)
+                    if future and not future.done():
+                        future.set_result(msg)
 
     except WebSocketDisconnect:
         if node:
+            node.fail_pending_requests("Relay disconnected before responding")
             compute_registry.remove_node(node_id)
             logger.info(f"Relay node disconnected: {node.name}")
     except Exception as e:
         logger.error(f"Relay WebSocket error: {e}")
         if node:
+            node.fail_pending_requests(f"Relay websocket error: {e}")
             compute_registry.remove_node(node_id)

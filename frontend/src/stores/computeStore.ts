@@ -2,7 +2,7 @@
 
 import { create } from "zustand";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+import { API_BASE } from "@/lib/runtimeConfig";
 
 interface ModelCapability {
   supports_tools: boolean;
@@ -21,8 +21,12 @@ interface ComputeNode {
   score: number;
   latency_ms: number;
   alive: boolean;
-  source?: "local" | "network" | "relay";
+  source?: "local" | "network" | "relay" | "browser";
   host?: string;
+  health_error?: string;
+  serving_state?: string;
+  capability_probe_status?: "available" | "unavailable" | "not_applicable";
+  model_list_stale?: boolean;
   model_capabilities?: Record<string, ModelCapability>;
 }
 

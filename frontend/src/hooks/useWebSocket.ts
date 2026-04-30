@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useCallback, useState } from "react";
 import type { WSEvent } from "@/lib/types";
+import { WS_BASE } from "@/lib/runtimeConfig";
 
-const WS_URL = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8000/ws";
+const WS_URL = `${WS_BASE}/ws`;
 
 export function useWebSocket(onEvent?: (event: WSEvent) => void) {
   const wsRef = useRef<WebSocket | null>(null);

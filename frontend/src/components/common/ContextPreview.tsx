@@ -5,7 +5,7 @@ import { Eye, EyeOff, Loader2, Brain, ChevronDown, ChevronRight } from "lucide-r
 import { useProjectStore } from "@/stores/projectStore";
 import { cn } from "@/lib/utils";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+import { API_BASE } from "@/lib/runtimeConfig";
 
 /**
  * "What I know" preview — shows the composed context the agent sees.

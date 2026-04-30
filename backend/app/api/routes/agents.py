@@ -347,9 +347,8 @@ async def get_identity(agent_id: str):
     from app.core.agent_identity import (
         load_agent_identity,
         get_agent_display_name,
-        list_agent_personas,
-        PERSONAS_DIR,
         IDENTITY_FILES,
+        persona_file_path,
     )
 
     display_name = get_agent_display_name(agent_id)
@@ -358,7 +357,7 @@ async def get_identity(agent_id: str):
     # Load individual files for display
     files = {}
     for filename in IDENTITY_FILES:
-        filepath = PERSONAS_DIR / agent_id / filename
+        filepath = persona_file_path(agent_id, filename)
         if filepath.exists():
             files[filename] = filepath.read_text(encoding="utf-8")
 
@@ -373,11 +372,12 @@ async def get_identity(agent_id: str):
 
 @router.put("/agents/{agent_id}/identity")
 async def update_identity(agent_id: str, data: dict):
-    """Update an agent's persona MD files."""
+    """Update an agent's local persona overlay files."""
     from app.core.agent_identity import (
-        PERSONAS_DIR,
         IDENTITY_FILES,
         load_agent_identity,
+        persona_file_path,
+        writeable_persona_path,
     )
 
     files = data.get("files", {})
@@ -392,12 +392,14 @@ async def update_identity(agent_id: str, data: dict):
                 detail=f"Invalid file: {filename}. Allowed: {IDENTITY_FILES}",
             )
 
-    # Write files
-    persona_dir = PERSONAS_DIR / agent_id
-    persona_dir.mkdir(parents=True, exist_ok=True)
+    source_write = bool(data.get("source", False))
 
     for filename, content in files.items():
-        filepath = persona_dir / filename
+        try:
+            filepath = writeable_persona_path(agent_id, filename, source=source_write)
+        except PermissionError as exc:
+            raise HTTPException(status_code=403, detail=str(exc))
+        filepath.parent.mkdir(parents=True, exist_ok=True)
         filepath.write_text(content, encoding="utf-8")
 
     # Clear cache so changes take effect immediately
@@ -410,12 +412,13 @@ async def update_identity(agent_id: str, data: dict):
     identity = load_agent_identity(agent_id)
     updated_files = {}
     for filename in IDENTITY_FILES:
-        filepath = persona_dir / filename
+        filepath = persona_file_path(agent_id, filename)
         if filepath.exists():
             updated_files[filename] = filepath.read_text(encoding="utf-8")
 
     return {
         "agent_id": agent_id,
+        "write_scope": "source" if source_write else "runtime_overlay",
         "has_persona": bool(identity),
         "identity_length": len(identity),
         "files": updated_files,

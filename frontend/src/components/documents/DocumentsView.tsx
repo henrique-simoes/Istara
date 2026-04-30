@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useMemo } from "react";
+import { API_BASE } from "@/lib/runtimeConfig";
 import {
   FileText,
   Search,
@@ -917,11 +918,11 @@ function DocumentPreview({
               {content?.media_url && (
                 <div className="flex flex-col items-center justify-center py-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800">
                   {content.type && [".jpg", ".jpeg", ".png", ".gif"].includes(content.type) ? (
-                    <img src={`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}${content.media_url}`} alt={doc.title} className="max-h-96 rounded-lg" />
+                    <img src={`${API_BASE}${content.media_url}`} alt={doc.title} className="max-h-96 rounded-lg" />
                   ) : content.type && [".mp3", ".wav", ".m4a", ".ogg"].includes(content.type) ? (
-                    <audio controls src={`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}${content.media_url}`} className="w-full max-w-lg" />
+                    <audio controls src={`${API_BASE}${content.media_url}`} className="w-full max-w-lg" />
                   ) : content.type && [".mp4", ".webm", ".mov"].includes(content.type) ? (
-                    <video controls src={`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}${content.media_url}`} className="max-h-96 rounded-lg" />
+                    <video controls src={`${API_BASE}${content.media_url}`} className="max-h-96 rounded-lg" />
                   ) : null}
                   <p className="text-[10px] text-slate-400 mt-2">Original Media File</p>
                 </div>

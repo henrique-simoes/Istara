@@ -15,6 +15,7 @@ import asyncio
 import json
 import logging
 import time
+import uuid
 from dataclasses import dataclass, field
 from typing import Any, AsyncGenerator
 
@@ -77,7 +78,9 @@ class ComputeNode:
 
     # Connection (relay nodes)
     websocket: Any = None
+    pending_requests: dict = field(default_factory=dict)
     last_heartbeat: float = 0
+    relay_request_timeout_s: float = 300
 
     # Relay-specific fields (backward compat with RelayNode)
     user_id: str = ""
@@ -204,6 +207,43 @@ class ComputeNode:
         if self._client and not self._client.is_closed:
             await self._client.aclose()
 
+    def fail_pending_requests(self, reason: str) -> None:
+        """Fail in-flight relay/browser requests when the websocket disappears."""
+        for request_id, future in list(self.pending_requests.items()):
+            if future and not future.done():
+                future.set_exception(RuntimeError(reason))
+            self.pending_requests.pop(request_id, None)
+
+    async def _request_over_websocket(self, request_type: str, payload: dict) -> dict:
+        """Send a request to a relay/browser donor over its outbound websocket."""
+        if self.source not in ("relay", "browser") or not self.websocket:
+            raise RuntimeError("Node is not connected over relay websocket")
+
+        request_id = f"relay-{uuid.uuid4()}"
+        loop = asyncio.get_running_loop()
+        future = loop.create_future()
+        self.pending_requests[request_id] = future
+        await self.websocket.send_json(
+            {
+                "type": request_type,
+                "request_id": request_id,
+                **payload,
+            }
+        )
+        try:
+            response = await asyncio.wait_for(future, timeout=self.relay_request_timeout_s)
+        except asyncio.TimeoutError as exc:
+            self.health_error = f"Relay request timed out after {self.relay_request_timeout_s:.0f}s"
+            raise RuntimeError(self.health_error) from exc
+        finally:
+            self.pending_requests.pop(request_id, None)
+
+        if response.get("error"):
+            self.health_error = str(response["error"])
+            raise RuntimeError(self.health_error)
+        self.health_error = ""
+        return response
+
     async def check_health(self) -> bool:
         """Probe the server health endpoint and discover available models.
 
@@ -299,11 +339,26 @@ class ComputeNode:
         temperature: float = 0.7,
         max_tokens: int | None = None,
         tools: list[dict] | None = None,
+        response_format: dict | None = None,
     ) -> dict:
         """Direct chat on this specific node (backward compat with LLMServerEntry.chat)."""
         msgs = list(messages)
         if system:
             msgs = [{"role": "system", "content": system}, *msgs]
+
+        if self.source in ("relay", "browser") and self.websocket:
+            response = await self._request_over_websocket(
+                "llm_request",
+                {
+                    "messages": msgs,
+                    "model": self._resolve_model(model),
+                    "temperature": temperature,
+                    "max_tokens": max_tokens,
+                    "tools": tools,
+                    "response_format": response_format,
+                }
+            )
+            return response.get("result", {})
 
         client = await self._get_client()
 
@@ -360,6 +415,20 @@ class ComputeNode:
         msgs = list(messages)
         if system:
             msgs = [{"role": "system", "content": system}, *msgs]
+
+        if self.source in ("relay", "browser") and self.websocket:
+            result = await self.chat(
+                messages,
+                model=model,
+                system=system,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                tools=tools,
+            )
+            content = result.get("message", {}).get("content", "")
+            if content:
+                yield content
+            return
 
         client = await self._get_client()
 
@@ -456,6 +525,17 @@ class ComputeNode:
 
     async def embed(self, text: str, model: str | None = None) -> list[float]:
         """Direct embedding on this specific node (backward compat)."""
+        if self.source in ("relay", "browser") and self.websocket:
+            response = await self._request_over_websocket(
+                "embed_request",
+                {
+                    "input": text,
+                    "model": self._resolve_embed_model(model),
+                },
+            )
+            result = response.get("result", [])
+            return result if isinstance(result, list) else []
+
         client = await self._get_client()
         embed_model = self._resolve_embed_model(model)
 
@@ -472,6 +552,17 @@ class ComputeNode:
 
     async def embed_batch(self, texts: list[str], model: str | None = None) -> list[list[float]]:
         """Direct batch embedding on this specific node (backward compat)."""
+        if self.source in ("relay", "browser") and self.websocket:
+            response = await self._request_over_websocket(
+                "embed_request",
+                {
+                    "input": texts,
+                    "model": self._resolve_embed_model(model),
+                },
+            )
+            result = response.get("result", [])
+            return result if isinstance(result, list) else []
+
         client = await self._get_client()
         embed_model = self._resolve_embed_model(model)
 
@@ -485,6 +576,16 @@ class ComputeNode:
             return [item.get("embedding", []) for item in resp.json().get("data", [])]
 
     def to_dict(self) -> dict:
+        capability_probe_status = "not_applicable"
+        if self.source in ("relay", "browser"):
+            capability_probe_status = "available" if self.model_capabilities else "unavailable"
+        elif self.model_capabilities:
+            capability_probe_status = "available"
+        model_list_stale = bool(
+            self.source in ("relay", "browser")
+            and self.last_heartbeat
+            and (time.time() - self.last_heartbeat) > 60
+        )
         return {
             "node_id": self.node_id,
             "hostname": self.name,
@@ -493,6 +594,11 @@ class ComputeNode:
             "source": self.source,
             "provider_type": self.provider_type,
             "state": self.health_state,
+            "serving_state": "serving" if self.is_healthy and self.websocket else self.health_state,
+            "health_error": self.health_error,
+            "capability_probe_status": capability_probe_status,
+            "model_list_stale": model_list_stale,
+            "last_heartbeat": self.last_heartbeat,
             "is_healthy": self.is_healthy,
             "is_local": self.is_local,
             "priority": self.priority,
@@ -645,15 +751,22 @@ class ComputeRegistry:
         """
         results: dict[str, bool] = {}
         for nid, node in list(self._nodes.items()):
-            if node.source == "relay":
-                # Relay health is based on heartbeat timeout
+            if node.source in ("relay", "browser"):
+                # Relay/browser health is based on heartbeat timeout. Browser
+                # donors are not reachable by backend HTTP, so cached models and
+                # websocket liveness are the source of truth.
                 if node.last_heartbeat and (time.time() - node.last_heartbeat) > 90:
                     node.is_healthy = False
                     node.health_state = "unhealthy"
                 results[nid] = node.is_healthy
                 # Detect capabilities for healthy relay nodes via HTTP
                 # to their resolved provider address.
-                if node.is_healthy and not node.model_capabilities and node.host:
+                if (
+                    node.source == "relay"
+                    and node.is_healthy
+                    and not node.model_capabilities
+                    and node.host
+                ):
                     try:
                         from app.core.model_capabilities import detect_capabilities_generic
 
@@ -880,6 +993,20 @@ class ComputeRegistry:
             )
             node.active_requests += 1
             try:
+                if node.source in ("relay", "browser") and node.websocket:
+                    data = await node.chat(
+                        msgs,
+                        model=resolved_model,
+                        temperature=temperature,
+                        max_tokens=max_tokens,
+                        tools=tools,
+                        response_format=response_format,
+                    )
+                    node.consecutive_failures = 0
+                    node.health_state = "ready"
+                    node.cb_record_success()
+                    return data
+
                 client = await node._get_client()
 
                 if node.provider_type == "ollama":
@@ -975,6 +1102,21 @@ class ComputeRegistry:
             )
             node.active_requests += 1
             try:
+                if node.source in ("relay", "browser") and node.websocket:
+                    data = await node.chat(
+                        msgs,
+                        model=resolved_model,
+                        temperature=temperature,
+                        max_tokens=max_tokens,
+                        tools=tools,
+                    )
+                    content = data.get("message", {}).get("content", "")
+                    if content:
+                        yield content
+                    node.consecutive_failures = 0
+                    node.health_state = "ready"
+                    return
+
                 client = await node._get_client()
 
                 if node.provider_type == "ollama":
@@ -1098,6 +1240,13 @@ class ComputeRegistry:
                 continue
             node.active_requests += 1
             try:
+                if node.source in ("relay", "browser") and node.websocket:
+                    result = await node.embed(text, model=model)
+                    node.consecutive_failures = 0
+                    node.health_state = "ready"
+                    node.cb_record_success()
+                    return result
+
                 client = await node._get_client()
                 embed_model = node._resolve_embed_model(model)
 
@@ -1140,6 +1289,13 @@ class ComputeRegistry:
                 continue
             node.active_requests += 1
             try:
+                if node.source in ("relay", "browser") and node.websocket:
+                    result = await node.embed_batch(texts, model=model)
+                    node.consecutive_failures = 0
+                    node.health_state = "ready"
+                    node.cb_record_success()
+                    return result
+
                 client = await node._get_client()
                 embed_model = node._resolve_embed_model(model)
 
@@ -1176,6 +1332,18 @@ class ComputeRegistry:
             if not node.is_healthy:
                 continue
             try:
+                if node.source in ("relay", "browser"):
+                    for name in node.loaded_models:
+                        all_models.append(
+                            {
+                                "name": name,
+                                "id": name,
+                                "_server": node.name,
+                                "_server_id": node.node_id,
+                            }
+                        )
+                    continue
+
                 client = await node._get_client()
                 if node.provider_type == "ollama":
                     resp = await client.get("/api/tags", timeout=10.0)
@@ -1237,8 +1405,8 @@ class ComputeRegistry:
         return [n for n in self._nodes.values() if n.is_alive()]
 
     def total_capacity(self) -> int:
-        """Total number of alive relay nodes (backward compat with ComputePool)."""
-        return len([n for n in self._nodes.values() if n.source == "relay" and n.is_alive()])
+        """Total number of alive donated compute nodes (relay/browser)."""
+        return len([n for n in self._nodes.values() if n.source in ("relay", "browser") and n.is_alive()])
 
     def available_models_list(self) -> list[str]:
         """All models available across the pool (backward compat)."""

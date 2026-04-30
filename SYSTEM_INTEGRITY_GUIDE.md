@@ -35,7 +35,7 @@ Generated companions now exist for faster drift-resistant scanning:
 Istara is a local-first AI agent for UX research built on a **unified compute registry** that serves as the single source of truth for all LLM compute resources. The system is organized into clear layers:
 
 - **Database Layer**: 51+ SQLAlchemy models with cascade-delete relationships anchored in Project entity
-- **API Layer**: 35 route modules covering 200+ endpoints with global JWT authentication
+- **API Layer**: 35 route modules covering 200+ endpoints with global JWT authentication in Team Mode and an explicit built-in local admin identity in Local Mode
 - **Agent Layer**: 6 autonomous agents + orchestrators coordinating via A2A messages
 - **Skill Layer**: 53 JSON-defined research skills executed through a factory pattern
 - **Compute Layer**: ComputeRegistry unified across local, network, and relay nodes
@@ -934,6 +934,30 @@ Instead of relying on brittle metadata or name heuristics, Istara implements **D
 To ensure 100% generic compatibility with all LLM servers, Istara enforces strict URI reference resolution.
 - **Pattern**: `ComputeNode._get_client` ensures `base_url` always ends with a trailing slash.
 - **Standard**: Follows RFC 3986 algorithms used by the official OpenAI client library to prevent path-joining errors and 404s.
+
+#### 3. Remote Client API Origin Rule
+The installed frontend must not bake `http://localhost:8000` into production builds. When `NEXT_PUBLIC_API_URL` / `NEXT_PUBLIC_WS_URL` are unset, `frontend/src/lib/runtimeConfig.ts` derives the backend and WebSocket origins from the browser hostname on port 8000. This keeps `http://server-ip:3000` clients talking to `http://server-ip:8000`; otherwise invite validation silently calls the client machine's localhost and the server sees no connection.
+
+#### 4. Invite-First Access Rule
+Remote client setup must use an `rcl_...` connection string. The desktop client and tray setup reject raw `http://`, `ws://`, and `wss://` server addresses so users cannot enter an IP and fall into a partial username-only flow that bypasses invite validation. Admin visibility is anchored in the `connection_strings` table, which tracks active/revoked state, expiration, last validation, and redemption username/time.
+
+### Public Source / Runtime Data Boundary
+
+Istara separates shipped defaults from user/runtime state:
+
+- Public source personas live in `backend/app/agents/personas/` and are treated as product defaults.
+- Runtime persona overlays live in ignored `backend/data/personas/` and are where identity editing, custom-agent scaffolding, self-evolution, and persona autoresearch write by default.
+- Canonical skills live in `backend/app/skills/definitions/`.
+- Runtime/custom skills, skill proposals, and usage stats live in ignored `backend/data/skills/`.
+- Local databases, uploads, exported projects, generated model datasets, local tool settings, and media artifacts must never be committed to the public application repository.
+
+`scripts/check_public_tree_clean.py` enforces this boundary for staged or branch changes. Source persona mutation requires `ALLOW_SOURCE_PERSONA_MUTATION=true`; source skill mutation requires `ALLOW_SOURCE_SKILL_MUTATION=true`. Those flags are for deliberate product-default changes only.
+
+#### 5. Relay Compute Execution Rule
+Relay/browser compute nodes must be able to execute through the WebSocket they used to register. The `/ws/relay` route dispatches `llm_response` and `embed_response` messages back to pending registry requests; relay nodes must not depend on backend-to-client HTTP reachability for chat, streaming, or embeddings. Direct HTTP probing may still enrich health/capability metadata when the provider host is reachable, but serving health is separate from capability probe health. Timeouts and disconnects must fail and clear pending requests.
+
+#### 6. Connection String URL Split
+Connection string payloads distinguish `server_url` (the web UI URL clients should open) from `ws_url` (the backend `/ws/relay` URL used for compute donation). For direct LAN installs this normally means `server_url=http://server:3000` and `ws_url=ws://server:8000/ws/relay`. Do not place the backend API URL in `server_url`, or the desktop app opens the wrong surface.
 
     def remove_duplicate_network_nodes(relay_node: ComputeNode) -> None  # dedup on relay register
     def update_heartbeat(node_id: str, stats: dict) -> None

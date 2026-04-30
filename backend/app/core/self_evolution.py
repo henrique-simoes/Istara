@@ -33,11 +33,12 @@ from sqlalchemy import select, func, distinct
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.agent_identity import (
-    PERSONAS_DIR,
     IDENTITY_FILES,
     _load_persona_file,
     save_agent_memory,
     load_agent_memory,
+    runtime_personas_dir,
+    writeable_persona_path,
 )
 from app.models.database import async_session
 
@@ -307,7 +308,7 @@ class SelfEvolutionEngine:
 
         This gives custom agents the same evolution capabilities as system agents.
         """
-        persona_dir = PERSONAS_DIR / agent_id
+        persona_dir = runtime_personas_dir() / agent_id
         if persona_dir.exists():
             return True  # Already has persona files
 
@@ -493,7 +494,11 @@ def _append_to_persona_file(
     text: str,
 ) -> bool:
     """Append a promotion entry to a specific section of a persona file."""
-    filepath = PERSONAS_DIR / agent_id / filename
+    try:
+        filepath = writeable_persona_path(agent_id, filename)
+    except PermissionError as e:
+        logger.error(str(e))
+        return False
     if not filepath.exists():
         # Create the file with the section
         try:

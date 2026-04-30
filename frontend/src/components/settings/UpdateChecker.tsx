@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Download, CheckCircle2, AlertTriangle, Loader2, Shield, RefreshCw, Rocket } from "lucide-react";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+import { API_BASE } from "@/lib/runtimeConfig";
 
 interface UpdateInfo {
   update_available: boolean;

@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+import { API_BASE } from "@/lib/runtimeConfig";
 
 interface LoginScreenProps {
   onLogin: () => Promise<boolean | void>;
@@ -55,6 +55,15 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
             setMode("register");
           } else if (!d.team_mode && d.insecure) {
             setMode("join");
+          } else if (!d.team_mode && !d.insecure) {
+            // Auto-login for local mode (bypasses Your Name screen if HomeClient lost the race)
+            try {
+              const { useAuthStore } = await import("@/stores/authStore");
+              await useAuthStore.getState().login("local", "");
+              if (!cancelled) await onLogin();
+            } catch (err) {
+              if (!cancelled) setError("Failed to start local mode.");
+            }
           }
         }
       } catch {
@@ -498,106 +507,23 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
     );
   }
 
-  // ── Local mode — welcoming first-run experience ───────────
+  // ── Local mode — auto-login screen ───────────
   if (!teamMode && !insecure && mode === "login") {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950 px-4">
         <div className="w-full max-w-md">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 p-8">
-            <div className="text-center mb-6">
-              <div className="text-5xl mb-3" role="img" aria-label="Istara logo">🐾</div>
-              <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-                Welcome to Istara
-              </h1>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                Local-first AI agents for UX Research
-              </p>
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 p-8 flex flex-col items-center">
+            <div className="text-5xl mb-6" role="img" aria-label="Istara logo">🐾</div>
+            <div className="flex items-center gap-3 text-slate-500 dark:text-slate-400">
+              <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+              <span className="text-sm font-medium">Connecting to Istara...</span>
             </div>
-
-            {insecure && (
-              <div className="mb-6 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 p-4">
-                <div className="flex items-start gap-3">
-                  <div className="text-red-600 dark:text-red-400 mt-0.5">⚠️</div>
-                  <div>
-                    <p className="text-sm font-bold text-red-800 dark:text-red-300">
-                      Insecure Mode Detected
-                    </p>
-                    <p className="text-xs text-red-700 dark:text-red-400 mt-1 leading-relaxed">
-                      This server is accessible over the network but has authentication disabled.
-                      Anyone with the URL can access all research data.
-                    </p>
-                    <div className="mt-3 text-xs text-slate-500 dark:text-slate-400">
-                      <p>To secure your server:</p>
-                      <code className="block bg-white/50 dark:bg-black/20 p-2 rounded mt-1 font-mono">
-                        TEAM_MODE=true
-                      </code>
-                    </div>
-                  </div>
-                </div>
-              </div>
+            {error && (
+              <p className="mt-4 text-xs text-red-500">{error}</p>
             )}
-
-            <form onSubmit={handleSubmit} className="space-y-5">
-              <div>
-                <label
-                  htmlFor="login-username"
-                  className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5"
-                >
-                  Your Name
-                </label>
-                <input
-                  ref={usernameRef}
-                  id="login-username"
-                  type="text"
-                  aria-label="Your name"
-                  autoComplete="username"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  disabled={loading}
-                  className="w-full px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-istara-500 focus:border-transparent transition disabled:opacity-50"
-                  placeholder="e.g. Sarah, John, Research Team"
-                />
-              </div>
-
-              {error && (
-                <div
-                  role="alert"
-                  className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg px-3 py-2"
-                >
-                  {error}
-                </div>
-              )}
-
-              <button
-                type="submit"
-                disabled={loading || !username.trim()}
-                className="w-full py-2.5 px-4 rounded-lg bg-istara-600 hover:bg-istara-700 active:bg-istara-800 text-white font-medium transition focus:outline-none focus:ring-2 focus:ring-istara-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loading ? (
-                  <span className="inline-flex items-center gap-2">
-                    <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                    </svg>
-                    Getting started...
-                  </span>
-                ) : (
-                  "Get Started"
-                )}
-              </button>
-            </form>
-
-            <p className="mt-6 text-center text-xs text-slate-400 dark:text-slate-500">
-              Single-user mode. Your data stays on this machine.
-              <br />
-              <span className="text-slate-400 dark:text-slate-600">
-                Enable Team Mode in Settings for multi-user collaboration.
-              </span>
-              <br />
-              <span className="text-amber-500 dark:text-amber-400">
-                Local mode — no HTTPS. Use production profile for secure connections.
-              </span>
-            </p>
           </div>
         </div>
       </div>

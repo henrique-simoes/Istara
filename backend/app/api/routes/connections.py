@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.core.auth import create_token, hash_password
+from app.core.client_identity import BoundedWindowRateLimiter, get_client_ip
 from app.core.field_encryption import hash_field
 from app.core.connection_string import create_connection_string, decode_connection_string
 from app.core.security_middleware import require_admin_from_request
@@ -20,10 +21,14 @@ from app.models.connection_string import ConnectionString
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+_validation_limiter = BoundedWindowRateLimiter()
+VALIDATION_RATE_LIMIT = 30
+VALIDATION_RATE_WINDOW_S = 60
 
 
 class GenerateRequest(BaseModel):
     server_url: str
+    ws_url: str = ""
     label: str = ""
     expires_hours: int = 168  # 7 days
 
@@ -60,6 +65,7 @@ async def generate_connection_string(
 
     conn_str = create_connection_string(
         server_url=data.server_url,
+        ws_url=data.ws_url or None,
         label=data.label,
         expires_hours=data.expires_hours,
     )
@@ -100,22 +106,32 @@ async def revoke_connection_string(conn_id: str, request: Request, db: AsyncSess
     if not conn:
         raise HTTPException(status_code=404, detail="Connection string not found")
 
-    await db.delete(conn)
+    conn.is_active = False
     await db.commit()
     return {"status": "revoked"}
 
 
 @router.post("/connections/validate")
-async def validate_connection_string(data: ValidateRequest, db: AsyncSession = Depends(get_db)):
+async def validate_connection_string(
+    data: ValidateRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
     """Validate a connection string without redeeming it.
     Public endpoint — used by clients to preview connection info."""
+    client_id = get_client_ip(request, settings.trusted_proxy_hosts)
+    if _is_validation_rate_limited(client_id):
+        return {"valid": False, "error": "Too many validation attempts. Try again shortly."}
+
     payload = decode_connection_string(data.connection_string)
     if not payload:
         return {"valid": False, "error": "Invalid or expired connection string"}
 
-    conn = await _get_redeemable_connection_string(db, data.connection_string)
+    conn, reason = await _get_connection_string_status(db, data.connection_string)
     if conn is None:
-        return {"valid": False, "error": "Connection string has been revoked, redeemed, or expired"}
+        return {"valid": False, "error": _connection_error_message(reason)}
+    conn.last_validated_at = datetime.now(timezone.utc)
+    await db.commit()
 
     return {
         "valid": True,
@@ -134,9 +150,9 @@ async def redeem_connection_string(data: RedeemRequest, db: AsyncSession = Depen
     payload = decode_connection_string(data.connection_string)
     if not payload:
         raise HTTPException(status_code=400, detail="Invalid or expired connection string")
-    conn = await _get_redeemable_connection_string(db, data.connection_string)
+    conn, reason = await _get_connection_string_status(db, data.connection_string)
     if conn is None:
-        raise HTTPException(status_code=400, detail="Connection string has been revoked, redeemed, or expired")
+        raise HTTPException(status_code=400, detail=_connection_error_message(reason))
 
     if not data.username.strip():
         raise HTTPException(status_code=400, detail="Username is required")
@@ -148,6 +164,9 @@ async def redeem_connection_string(data: RedeemRequest, db: AsyncSession = Depen
         # In local mode, just return a local-admin token + network token
         token = create_token("local", data.username.strip(), "admin")
         conn.is_redeemed = True
+        conn.redeemed_by_user_id = "local"
+        conn.redeemed_username = data.username.strip()
+        conn.redeemed_at = datetime.now(timezone.utc)
         await db.commit()
         return {
             "token": token,
@@ -187,6 +206,9 @@ async def redeem_connection_string(data: RedeemRequest, db: AsyncSession = Depen
     )
     db.add(user)
     conn.is_redeemed = True
+    conn.redeemed_by_user_id = user.id
+    conn.redeemed_username = user.username
+    conn.redeemed_at = datetime.now(timezone.utc)
     await db.commit()
 
     token = create_token(user.id, user.username, user.role.value)
@@ -264,3 +286,42 @@ async def _get_redeemable_connection_string(
     if expires_at < datetime.now(timezone.utc):
         return None
     return conn
+
+
+def _is_validation_rate_limited(client_id: str) -> bool:
+    return _validation_limiter.is_limited(
+        client_id,
+        limit=VALIDATION_RATE_LIMIT,
+        window_seconds=VALIDATION_RATE_WINDOW_S,
+    )
+
+
+async def _get_connection_string_status(
+    db: AsyncSession,
+    connection_string: str,
+) -> tuple[ConnectionString | None, str]:
+    result = await db.execute(
+        select(ConnectionString).where(ConnectionString.connection_string == connection_string)
+    )
+    conn = result.scalar_one_or_none()
+    if not conn:
+        return None, "missing"
+    if not conn.is_active:
+        return None, "revoked"
+    if conn.is_redeemed:
+        return None, "redeemed"
+    expires_at = conn.expires_at
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    if expires_at < datetime.now(timezone.utc):
+        return None, "expired"
+    return conn, "ok"
+
+
+def _connection_error_message(reason: str) -> str:
+    return {
+        "missing": "Connection string was not issued by this server",
+        "revoked": "Connection string has been revoked",
+        "redeemed": "Connection string has already been redeemed",
+        "expired": "Connection string has expired",
+    }.get(reason, "Connection string is not valid")

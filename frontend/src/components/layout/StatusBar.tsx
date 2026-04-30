@@ -5,7 +5,7 @@ import { Wifi, WifiOff, Cpu, HardDrive } from "lucide-react";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import type { WSEvent } from "@/lib/types";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+import { API_BASE } from "@/lib/runtimeConfig";
 
 function IstaraVersion() {
   const [version, setVersion] = useState("...");

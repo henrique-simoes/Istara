@@ -6,6 +6,7 @@ from app.main import app
 from app.config import settings
 from app.models.database import init_db
 from app.core.auth import create_token
+from app.api.routes.llm_servers import _is_local_host
 
 
 @pytest.fixture(autouse=True)
@@ -22,6 +23,14 @@ def auth_headers():
     if not settings.jwt_secret:
         settings.jwt_secret = "test-secret"
     token = create_token("user1", "testuser", "admin")
+    return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture
+def researcher_headers():
+    if not settings.jwt_secret:
+        settings.jwt_secret = "test-secret"
+    token = create_token("user2", "researcher", "researcher")
     return {"Authorization": f"Bearer {token}"}
 
 
@@ -45,3 +54,37 @@ async def test_llm_servers_list_requires_auth():
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         response = await ac.get("/api/llm-servers")
         assert response.status_code == 401
+
+
+def test_local_server_detection_rejects_remote_hosts_marked_local():
+    assert _is_local_host("http://localhost:11434")
+    assert _is_local_host("127.0.0.1:1234")
+    assert not _is_local_host("http://192.168.1.25:11434")
+    assert not _is_local_host("https://istara.example.com")
+
+
+@pytest.mark.asyncio
+async def test_llm_server_discovery_requires_admin(researcher_headers):
+    await init_db()
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.post("/api/llm-servers/discover", headers=researcher_headers)
+        assert response.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_non_admin_cannot_add_remote_server_marked_local(researcher_headers):
+    await init_db()
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.post(
+            "/api/llm-servers",
+            headers=researcher_headers,
+            json={
+                "name": "Remote LAN",
+                "provider_type": "ollama",
+                "host": "http://192.168.1.25:11434",
+                "is_local": True,
+            },
+        )
+        assert response.status_code == 403

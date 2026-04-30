@@ -23,7 +23,7 @@ import { projects as projectsApi, users as usersApi } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import ViewOnboarding from "@/components/common/ViewOnboarding";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+import { API_BASE } from "@/lib/runtimeConfig";
 
 // ── Types ──
 

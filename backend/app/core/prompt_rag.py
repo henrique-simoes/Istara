@@ -29,7 +29,7 @@ import re
 from pathlib import Path
 
 from app.config import settings
-from app.core.agent_identity import PERSONAS_DIR, IDENTITY_FILES
+from app.core.agent_identity import IDENTITY_FILES, persona_file_path
 
 logger = logging.getLogger(__name__)
 
@@ -140,7 +140,7 @@ def index_agent_sections(agent_id: str) -> list[PromptSection]:
     all_sections: list[PromptSection] = []
 
     for filename in IDENTITY_FILES:
-        filepath = PERSONAS_DIR / agent_id / filename
+        filepath = persona_file_path(agent_id, filename)
         if not filepath.exists():
             continue
 
@@ -236,7 +236,7 @@ def _extract_identity_anchor(agent_id: str) -> str:
     This includes the title, Identity, Personality, and Values sections —
     the minimum needed for the model to know WHO it is.
     """
-    filepath = PERSONAS_DIR / agent_id / "CORE.md"
+    filepath = persona_file_path(agent_id, "CORE.md")
     if not filepath.exists():
         return ""
 

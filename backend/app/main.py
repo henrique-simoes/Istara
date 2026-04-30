@@ -90,6 +90,29 @@ def _persist_env_startup(key: str, value: str, logger=None) -> None:
 _shutting_down = False
 
 
+def _build_bootstrap_admin_user(
+    *,
+    user_id: str,
+    username: str,
+    password_hash: str,
+    recovery_codes_hashed: str,
+):
+    """Create the first admin record with required encrypted-field indexes."""
+    from app.core.field_encryption import hash_field
+    from app.models.user import User
+
+    email = f"{username}@istara.local"
+    return User(
+        id=user_id,
+        username=username,
+        email=email,
+        email_hash=hash_field(email),
+        password_hash=password_hash,
+        role="admin",
+        recovery_codes_hashed=recovery_codes_hashed,
+    )
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Application startup and shutdown lifecycle."""
@@ -141,7 +164,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
                 admin_user = app_settings.admin_username or "admin"
                 admin_pass = app_settings.admin_password or _s.token_urlsafe(16)
-
                 # NIST: breach check for admin password
                 if not app_settings.admin_password and await is_password_breached(admin_pass):
                     # Auto-generated password was breached — generate a new one
@@ -153,12 +175,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                 recovery_codes = generate_recovery_codes()
                 recovery_codes_hashed = "\n".join(hash_recovery_code(c) for c in recovery_codes)
 
-                user = User(
-                    id=str(__import__("uuid").uuid4()),
+                user = _build_bootstrap_admin_user(
+                    user_id=str(__import__("uuid").uuid4()),
                     username=admin_user,
-                    email=f"{admin_user}@istara.local",
                     password_hash=hash_password(admin_pass),
-                    role="admin",
                     recovery_codes_hashed=recovery_codes_hashed,
                 )
                 db.add(user)
@@ -531,6 +551,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             await task
         except asyncio.CancelledError:
             pass
+        except Exception as e:
+            _sd_log.warning(f"Background task stopped with error during shutdown: {e}")
 
     _sd_log.info("Shutdown complete.")
 
@@ -597,6 +619,7 @@ _cors_origins = [o.strip() for o in app_settings.cors_origins.split(",") if o.st
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_cors_origins,
+    allow_origin_regex=app_settings.cors_origin_regex or None,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization", "X-Access-Token"],

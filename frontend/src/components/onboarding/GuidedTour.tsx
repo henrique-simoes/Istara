@@ -5,7 +5,7 @@ import { useTourStore, TOUR_TOTAL_STEPS } from "@/stores/tourStore";
 import { settings as settingsApi } from "@/lib/api";
 import TourPopover from "./TourPopover";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+import { API_BASE } from "@/lib/runtimeConfig";
 
 interface GuidedTourProps {
   setActiveView: (view: string) => void;

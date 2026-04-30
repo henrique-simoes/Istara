@@ -41,6 +41,7 @@ import { useAuthStore } from "@/stores/authStore";
 import { useSessionStore } from "@/stores/sessionStore";
 import { useAgentStore } from "@/stores/agentStore";
 import { settings as settingsApi } from "@/lib/api";
+import { API_BASE } from "@/lib/runtimeConfig";
 
 const VIEW_STORAGE_KEY = "istara_active_view";
 const VIEW_NAMES: Record<string, string> = {
@@ -83,15 +84,25 @@ export default function HomeClient() {
   async function bootstrapAuth() {
     setTourReady(false);
     const authStore = useAuthStore.getState();
-    await authStore.checkTeamStatus();
+    const status = await authStore.checkTeamStatus();
 
     const token = localStorage.getItem("istara_token");
+    if (!token && !status.team_mode && !status.insecure) {
+      await authStore.login("local", "");
+      setAuthenticated(true);
+      return true;
+    }
     if (!token) {
       setAuthenticated(false);
       return false;
     }
 
     const valid = await authStore.fetchMe();
+    if (!valid && !status.team_mode && !status.insecure) {
+      await authStore.login("local", "");
+      setAuthenticated(true);
+      return true;
+    }
     setAuthenticated(valid);
     return valid;
   }
@@ -109,10 +120,17 @@ export default function HomeClient() {
     const initAuth = async () => {
       try {
         const authStore = useAuthStore.getState();
-        await authStore.checkTeamStatus();
+        const status = await authStore.checkTeamStatus();
 
         const token = localStorage.getItem("istara_token");
         if (!token) {
+          if (!status.team_mode && !status.insecure) {
+            await authStore.login("local", "");
+            if (!cancelled) {
+              setAuthenticated(true);
+            }
+            return;
+          }
           if (!cancelled) {
             setAuthenticated(false);
             setTourReady(false);
@@ -121,6 +139,13 @@ export default function HomeClient() {
         }
 
         const valid = await authStore.fetchMe();
+        if (!valid && !status.team_mode && !status.insecure) {
+          await authStore.login("local", "");
+          if (!cancelled) {
+            setAuthenticated(true);
+          }
+          return;
+        }
         if (!cancelled) {
           setAuthenticated(valid);
           if (!valid) {
@@ -152,7 +177,6 @@ export default function HomeClient() {
       return;
     }
     let cancelled = false;
-    const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
     const initTour = async () => {
       // Wait for backend health (up to 30s) — prevents race where frontend

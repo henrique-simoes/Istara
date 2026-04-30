@@ -25,7 +25,27 @@ from app.core.checkpoint import atomic_write
 
 logger = logging.getLogger(__name__)
 
-SKILLS_DIR = Path(__file__).parent / "definitions"
+SOURCE_SKILLS_DIR = Path(__file__).parent / "definitions"
+SKILLS_DIR = SOURCE_SKILLS_DIR
+
+
+def runtime_skills_dir() -> Path:
+    return Path(settings.runtime_skills_dir)
+
+
+def skill_definition_dirs() -> list[Path]:
+    return [SOURCE_SKILLS_DIR, runtime_skills_dir()]
+
+
+def writeable_skill_path(name: str, *, source: bool = False) -> Path:
+    if source:
+        if not settings.allow_source_skill_mutation:
+            raise PermissionError(
+                "Source skill mutation is disabled. Set ALLOW_SOURCE_SKILL_MUTATION=true "
+                "only for deliberate product-default edits."
+            )
+        return SOURCE_SKILLS_DIR / f"{name}.json"
+    return runtime_skills_dir() / f"{name}.json"
 
 
 class SkillDefinition:
@@ -136,28 +156,33 @@ class SkillManager:
         self._proposals: list[SkillUpdateProposal] = []
         self._creation_proposals: list[SkillCreationProposal] = []
         self._usage_stats: dict[str, dict] = {}  # skill_name → {executions, successes, failures, avg_quality}
-        self._proposals_file = SKILLS_DIR / "_proposals.json"
-        self._creation_proposals_file = SKILLS_DIR / "_creation_proposals.json"
-        self._stats_file = SKILLS_DIR / "_usage_stats.json"
+        runtime_meta_dir = runtime_skills_dir()
+        self._proposals_file = runtime_meta_dir / "_proposals.json"
+        self._creation_proposals_file = runtime_meta_dir / "_creation_proposals.json"
+        self._stats_file = runtime_meta_dir / "_usage_stats.json"
 
     def ensure_definitions_dir(self) -> None:
         """Create the definitions directory if it doesn't exist."""
-        SKILLS_DIR.mkdir(parents=True, exist_ok=True)
+        SOURCE_SKILLS_DIR.mkdir(parents=True, exist_ok=True)
+        runtime_skills_dir().mkdir(parents=True, exist_ok=True)
 
     def load_all(self) -> dict[str, SkillDefinition]:
         """Load all skill definitions from individual JSON files."""
         self.ensure_definitions_dir()
         self._definitions = {}
 
-        for path in sorted(SKILLS_DIR.glob("*.json")):
-            if path.name.startswith("_"):
-                continue  # Skip meta files
-            try:
-                defn = SkillDefinition(path)
-                self._definitions[defn.name] = defn
-                logger.info(f"Loaded skill definition: {defn.name} v{defn.version}")
-            except Exception as e:
-                logger.error(f"Failed to load skill {path}: {e}")
+        for directory in skill_definition_dirs():
+            if not directory.exists():
+                continue
+            for path in sorted(directory.glob("*.json")):
+                if path.name.startswith("_"):
+                    continue  # Skip meta files
+                try:
+                    defn = SkillDefinition(path)
+                    self._definitions[defn.name] = defn
+                    logger.info(f"Loaded skill definition: {defn.name} v{defn.version}")
+                except Exception as e:
+                    logger.error(f"Failed to load skill {path}: {e}")
 
         # Load usage stats
         if self._stats_file.exists():
@@ -228,7 +253,9 @@ class SkillManager:
         data["updated_at"] = datetime.now(timezone.utc).isoformat()
         data.setdefault("changelog", [{"version": "1.0.0", "date": data["created_at"], "changes": "Initial creation"}])
 
-        path = SKILLS_DIR / f"{name}.json"
+        source_write = bool(data.pop("_source", False))
+        path = writeable_skill_path(name, source=source_write)
+        path.parent.mkdir(parents=True, exist_ok=True)
         atomic_write(path, json.dumps(data, indent=2, ensure_ascii=False))
 
         defn = SkillDefinition(path)
@@ -241,6 +268,7 @@ class SkillManager:
         defn = self._definitions.get(name)
         if not defn:
             raise ValueError(f"Skill not found: {name}")
+        source_write = bool(updates.pop("_source", False))
 
         # Increment patch version
         parts = defn.version.split(".")
@@ -260,8 +288,14 @@ class SkillManager:
             "changes": changelog_entry or f"Updated fields: {', '.join(updates.keys())}",
         })
 
-        # Write back
-        atomic_write(defn.path, json.dumps(defn.data, indent=2, ensure_ascii=False))
+        path = defn.path
+        if not source_write and defn.path.is_relative_to(SOURCE_SKILLS_DIR):
+            path = writeable_skill_path(name)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            defn.path = path
+        elif source_write:
+            path = writeable_skill_path(name, source=True)
+        atomic_write(path, json.dumps(defn.data, indent=2, ensure_ascii=False))
         logger.info(f"Updated skill: {name} → v{new_version}")
         return defn
 
@@ -271,10 +305,16 @@ class SkillManager:
         if not defn:
             return False
 
-        # Move to a backup instead of hard delete
-        backup_dir = SKILLS_DIR / "_deleted"
-        backup_dir.mkdir(exist_ok=True)
-        shutil.move(str(defn.path), str(backup_dir / defn.path.name))
+        if defn.path.is_relative_to(SOURCE_SKILLS_DIR) and not settings.allow_source_skill_mutation:
+            disabled = {**defn.data, "enabled": False, "lifecycle": "local_deleted"}
+            path = writeable_skill_path(name)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            atomic_write(path, json.dumps(disabled, indent=2, ensure_ascii=False))
+        else:
+            # Move to a backup instead of hard delete
+            backup_dir = defn.path.parent / "_deleted"
+            backup_dir.mkdir(exist_ok=True)
+            shutil.move(str(defn.path), str(backup_dir / defn.path.name))
 
         del self._definitions[name]
         logger.info(f"Deleted skill: {name} (backed up)")
@@ -327,8 +367,11 @@ class SkillManager:
                 if stats["utility_score"] < 0.2:
                     defn = self._definitions.get(skill_name)
                     if defn:
-                        defn._data["lifecycle"] = "deprecated"
-                        self._save_definition(skill_name)
+                        self.update_skill(
+                            skill_name,
+                            {"lifecycle": "deprecated"},
+                            "Auto-deprecated after chronically low utility",
+                        )
                         logger.warning(f"Skill '{skill_name}' auto-deprecated (utility={stats['utility_score']:.2f} after {stats['executions']} runs)")
 
                 loop = asyncio.get_event_loop()
@@ -543,7 +586,8 @@ class SkillManager:
         try:
             # Write temporary skill file for testing
             self.ensure_definitions_dir()
-            test_path = SKILLS_DIR / f"_test_{defn.get('name', 'unknown')}.json"
+            test_path = runtime_skills_dir() / f"_test_{defn.get('name', 'unknown')}.json"
+            test_path.parent.mkdir(parents=True, exist_ok=True)
             defn.setdefault("version", "1.0.0")
             defn.setdefault("enabled", True)
             atomic_write(test_path, json.dumps(defn, indent=2, ensure_ascii=False))
@@ -557,7 +601,7 @@ class SkillManager:
             )
 
             import asyncio
-            skill = registry.get(loaded.name) if loaded.name in [s.name for s in registry.all()] else None
+            skill = registry.get(loaded.name) if loaded.name in registry.list_names() else None
             if not skill:
                 # Register temporarily
                 self._definitions[loaded.name] = loaded
@@ -577,7 +621,7 @@ class SkillManager:
 
             # Clean up test file
             test_path.unlink(missing_ok=True)
-            if loaded.name in self._definitions and self._definitions[loaded.name]._path == test_path:
+            if loaded.name in self._definitions and self._definitions[loaded.name].path == test_path:
                 del self._definitions[loaded.name]
 
             # Store verification result on the proposal
@@ -588,7 +632,7 @@ class SkillManager:
 
         except Exception as e:
             # Clean up on error
-            test_path = SKILLS_DIR / f"_test_{defn.get('name', 'unknown')}.json"
+            test_path = runtime_skills_dir() / f"_test_{defn.get('name', 'unknown')}.json"
             test_path.unlink(missing_ok=True)
             return {"passed": False, "issues": [f"Verification error: {str(e)[:200]}"]}
 
@@ -620,9 +664,10 @@ class SkillManager:
                     "changes": "Initial creation via autonomous proposal (verified)",
                 }])
 
-                # Write to definitions/
+                # Write to local runtime overlay by default.
                 self.ensure_definitions_dir()
-                path = SKILLS_DIR / f"{defn['name']}.json"
+                path = writeable_skill_path(defn["name"])
+                path.parent.mkdir(parents=True, exist_ok=True)
                 atomic_write(path, json.dumps(defn, indent=2, ensure_ascii=False))
 
                 # Load into manager

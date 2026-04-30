@@ -1456,6 +1456,12 @@ Payload contains: `server_url`, `ws_url` (relay WebSocket), `network_token` (NET
 
 One string gets a team member both web UI access (JWT) and relay compute donation (network token). Strings are HMAC-signed with `JWT_SECRET` — only the originating server can create valid ones.
 
+Remote clients must use the server they opened, not their own localhost. The production frontend now derives API/WebSocket origins from the browser host when `NEXT_PUBLIC_API_URL` / `NEXT_PUBLIC_WS_URL` are unset, so `http://server-ip:3000` calls `http://server-ip:8000`. The shell installer and desktop setup no longer bake localhost API values into the frontend build. Backend CORS accepts frontend origins on the configured frontend port so LAN clients can call the API without hand-editing server IPs into `.env`.
+
+`server_url` in a connection string is the web UI URL. `ws_url` is the backend relay WebSocket URL. This split matters for direct LAN installs where the UI is on port 3000 and the backend/relay socket is on port 8000.
+
+The `connection_strings` table is the admin audit surface for generated invites: active/revoked state, expiration, last validation time, redeemed username, and redemption time. Revocation marks a string inactive instead of deleting the row so admins keep the audit trail and clients receive a specific revoked-state message. Public validation is rate-limited per client to slow brute-force or tamper attempts. Rate-limit client identity is proxy-aware (`X-Forwarded-For`, `X-Real-IP`, then socket host) only when the immediate peer matches `TRUSTED_PROXY_HOSTS`; otherwise Istara uses the socket host so direct clients cannot spoof headers. Rate-limit buckets are bounded LRU-style in memory to avoid unbounded growth from one-off IPs.
+
 **Token rotation:** `POST /connections/rotate-network-token` generates new NETWORK_ACCESS_TOKEN, invalidates all existing connection strings, broadcasts to connected relays.
 
 **Files:** `backend/app/core/connection_string.py`, `backend/app/api/routes/connections.py`
@@ -1601,7 +1607,8 @@ System tray application for macOS, Windows, and Linux. **Mode-aware manager only
 - **Compute Donation**: Config toggle with confirmation dialog. Relay managed as Child process with zombie detection.
 - **LLM Status Click**: Dialog with donation toggle or LM Studio launch.
 - **Client Open Behavior**: In Client mode, "Open Istara" opens the remote `server_url` derived from the saved connection string instead of checking local ports.
-- **Client Donation Guardrail**: Enabling Compute Donation in Client mode requires a saved `rcl_...` invite; otherwise the app explains how to add one.
+- **Client Invite Guardrail**: Client mode accepts only `rcl_...` invites. Raw `http://`, `ws://`, and `wss://` addresses are rejected because remote access control, relay credentials, and admin visibility depend on redeemed connection strings.
+- **Relay Execution**: Relay and browser compute nodes answer LLM requests through their established WebSocket. The server tracks pending request IDs and consumes `llm_response` messages, so compute donation does not require inbound HTTP access to the donor machine.
 - **Check Updates**: Three-tier (Tauri updater, git tags, GitHub releases). Always shows a result dialog and only opens GitHub Releases when the user explicitly confirms.
 - **Health loop**: Polls ports every 10s, rebuilds menu on change or every 30s. Checks updates every 6h via git tags.
 - **Zombie detection**: `try_wait()` on all Child handles every cycle. Dead processes cleaned up automatically.
@@ -2015,8 +2022,13 @@ Server-side registry of connected relay nodes:
 - **Capacity tracking**: Total RAM, CPU cores, available models across the pool.
 - **Best-node selection**: For any given model request, selects the node with the highest score.
 - **WebSocket endpoint**: `/ws/relay` for relay node connections.
-- **Relay host resolution**: Relay nodes report `provider_host` as `localhost`; on registration the backend resolves this to the relay's actual IP address so HTTP streaming can reach the relay's LM Studio directly.
-- **Capability detection for relays**: The health loop detects model capabilities (tool support, context length, vision) via HTTP probe for relay nodes, not just local/network nodes.
+- **Authenticated relay entry**: Relay/browser donors must present a valid network token or user JWT; unauthenticated `/ws/relay` connections are rejected even outside team mode.
+- **WebSocket execution path**: Chat and embedding requests for relay/browser donors are sent as `llm_request` / `embed_request` messages over the existing outbound WebSocket and completed from matching response IDs. Backend-to-donor HTTP is not required for donated serving.
+- **Timeout/disconnect cleanup**: Relay request timeouts and disconnects fail pending futures, clear pending request maps, and surface health errors in compute stats.
+- **Relay host resolution**: CLI relay nodes may report `provider_host` as `localhost`; on registration the backend resolves this to the relay's actual IP address for opportunistic health and capability probing only.
+- **Capability detection for relays**: The health loop detects model capabilities (tool support, context length, vision) via HTTP probe for CLI relay nodes when reachable. Browser donors use advertised model lists and heartbeat liveness because backend HTTP cannot reach a browser tab's localhost.
+- **All-node model listing**: `/settings/models` aggregates models from the unified registry so local, network, CLI relay, and browser donated nodes are visible with server metadata.
+- **Serving vs capability UI**: Compute stats expose serving state, capability-probe state, stale model-list flags, and health errors separately so admins can distinguish a connected donor from optional metadata probe failures.
 - **Network/Relay deduplication**: When a relay registers, any network-discovered node pointing to the same `host:port` is automatically removed. Relay is the preferred connection path. Capabilities are transferred from the network node before removal.
 - **Tool filter fallback**: Nodes whose capabilities haven't been detected yet are included in the tool-support filter rather than excluded, preventing "No compute nodes available" errors on freshly registered relays.
 - **Network discovery skip**: `discover_and_register()` skips hosts already covered by an active relay connection.
@@ -2576,6 +2588,16 @@ Root-level file any AI agent can discover and parse. Contains system identity, a
 ### Planner.md — Compass Workflow Control
 
 `planner.md` is tracked as part of Compass. Agents use it for planned, multi-agent, branch-review, stale-branch, and correction workflows. It requires role declaration, repository intelligence checks, protected Compass file preservation, correction/re-review loops when real defects are found, and a final user teaching report when the completed work changes a feature, command, output, or process.
+
+### Public Source / Runtime Data Boundary
+
+The public repository must contain product code, shipped defaults, migrations, tests, and curated documentation only. Local user projects, uploaded files, databases, telemetry exports, generated datasets, model-training labs, audio/video artifacts, tool settings, and scratch audit patches are ignored and blocked by `scripts/check_public_tree_clean.py`. The checked-in `.githooks/pre-commit` runs this check against staged files; CI or release scripts can run it with `--base <ref> --head <ref>` for branch-level validation.
+
+Source personas in `backend/app/agents/personas/` are shipped defaults. Runtime edits from custom agents, identity editing, self-evolution, and persona autoresearch now write to the ignored overlay in `backend/data/personas/` unless `ALLOW_SOURCE_PERSONA_MUTATION=true` is explicitly set for deliberate product-default work. Persona reads merge source defaults with local overlays by preferring overlay files per identity document.
+
+Canonical source skills remain in `backend/app/skills/definitions/`. User-created skills, approved autonomous skill proposals, usage stats, and skill improvement proposal state write to `backend/data/skills/` by default. The skill loader reads both source definitions and runtime overlays, with local overlays taking precedence. Mutating checked-in skill definitions requires `ALLOW_SOURCE_SKILL_MUTATION=true`.
+
+The removed `Model_Finetuning/` and `.qwen/` tracked files are intentionally left as local ignored workspace material. Public sharing of training corpora or model artifacts must happen through a separate curated repository or release artifact, not through the application source tree.
 
 ### Auto-Update Script
 

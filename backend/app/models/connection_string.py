@@ -17,6 +17,10 @@ class ConnectionString(Base):
     # Status
     is_active = Column(Boolean, default=True)
     is_redeemed = Column(Boolean, default=False)
+    redeemed_by_user_id = Column(String, nullable=True)
+    redeemed_username = Column(String, nullable=True)
+    redeemed_at = Column(DateTime, nullable=True)
+    last_validated_at = Column(DateTime, nullable=True)
     
     # Expiration
     expires_at = Column(DateTime, nullable=False)
@@ -35,6 +39,10 @@ class ConnectionString(Base):
             "server_url": self.server_url,
             "is_active": self.is_active,
             "is_redeemed": self.is_redeemed,
+            "redeemed_by_user_id": self.redeemed_by_user_id,
+            "redeemed_username": self.redeemed_username,
+            "redeemed_at": self.redeemed_at.isoformat() if self.redeemed_at else None,
+            "last_validated_at": self.last_validated_at.isoformat() if self.last_validated_at else None,
             "expires_at": self.expires_at.isoformat(),
             "created_at": self.created_at.isoformat(),
             "is_expired": now > expires_at

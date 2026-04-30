@@ -122,6 +122,11 @@ async def init_db() -> None:
             "ALTER TABLE tasks ADD COLUMN human_feedback_score FLOAT",
             "ALTER TABLE tasks ADD COLUMN review_severity VARCHAR(20)",
             "ALTER TABLE tasks ADD COLUMN review_failure_category VARCHAR(60)",
+            # Connection-string redemption and admin visibility.
+            "ALTER TABLE connection_strings ADD COLUMN redeemed_by_user_id VARCHAR(36)",
+            "ALTER TABLE connection_strings ADD COLUMN redeemed_username VARCHAR(255)",
+            "ALTER TABLE connection_strings ADD COLUMN redeemed_at DATETIME",
+            "ALTER TABLE connection_strings ADD COLUMN last_validated_at DATETIME",
         ]
         for ddl in migrations:
             try:
