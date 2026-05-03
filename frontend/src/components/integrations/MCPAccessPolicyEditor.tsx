@@ -17,6 +17,8 @@ export default function MCPAccessPolicyEditor() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState("");
+  const [warnings, setWarnings] = useState<string[]>([]);
   const [localTools, setLocalTools] = useState<Record<string, { allowed: boolean; risk: "low" | "sensitive" | "high" }>>({});
   const [localResources, setLocalResources] = useState<Record<string, { allowed: boolean; risk: "low" | "sensitive" | "high" }>>({});
   const [maxFindings, setMaxFindings] = useState(100);
@@ -53,18 +55,27 @@ export default function MCPAccessPolicyEditor() {
 
   const handleSave = async () => {
     setSaving(true);
+    setError("");
+    setWarnings([]);
     try {
-      await mcpApi.server.updatePolicy({
-        tools: localTools,
-        resources: localResources,
-        limits: {
-          max_findings_per_request: maxFindings,
-          max_skill_executions_per_hour: maxSkillExec,
-        },
-      });
+      const payload: Record<string, any> = {
+        max_findings_per_request: maxFindings,
+        max_skill_executions_per_hour: maxSkillExec,
+      };
+      for (const [name, config] of Object.entries(localTools)) {
+        payload[`allow_${name}`] = config.allowed;
+      }
+      for (const [name, config] of Object.entries(localResources)) {
+        payload[`allow_${name}_resource`] = config.allowed;
+      }
+      const updated = await mcpApi.server.updatePolicy(payload);
+      setPolicy(updated);
+      setLocalTools(updated.tools || {});
+      setLocalResources(updated.resources || {});
+      setWarnings(updated.warnings || []);
       setSaved(true);
-    } catch {
-      // silent
+    } catch (e: any) {
+      setError(e?.message || "Failed to save MCP access policy.");
     } finally {
       setSaving(false);
     }
@@ -99,6 +110,19 @@ export default function MCPAccessPolicyEditor() {
           {saved ? "Saved!" : "Save Policy"}
         </button>
       </div>
+
+      {error && (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-300">
+          {error}
+        </div>
+      )}
+      {warnings.length > 0 && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-200">
+          {warnings.map((warning) => (
+            <p key={warning}>{warning}</p>
+          ))}
+        </div>
+      )}
 
       {/* Tools */}
       <div>

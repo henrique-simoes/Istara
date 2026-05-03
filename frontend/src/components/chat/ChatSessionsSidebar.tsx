@@ -130,48 +130,56 @@ export default function ChatSessionsSidebar({ projectId }: ChatSessionsSidebarPr
           {session.starred && (
             <Star size={10} className="text-amber-400 fill-amber-400 opacity-100" />
           )}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setMenuOpenId(menuOpenId === session.id ? null : session.id);
-            }}
-            className="p-0.5 rounded hover:bg-slate-200 dark:hover:bg-slate-700"
-            aria-label={`Options for ${session.title}`}
-          >
-            <MoreHorizontal size={12} className="text-slate-400" />
-          </button>
-        </div>
-
-        {/* Dropdown menu */}
-        {menuOpenId === session.id && (
-          <div
-            className="absolute right-2 mt-24 z-50 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg py-1 min-w-[120px]"
-            onClick={(e) => e.stopPropagation()}
-          >
+          <div className="relative">
             <button
-              onClick={() => {
-                setRenameValue(session.title);
-                setRenamingId(session.id);
-                setMenuOpenId(null);
+              onClick={(e) => {
+                e.stopPropagation();
+                setMenuOpenId(menuOpenId === session.id ? null : session.id);
               }}
-              className="w-full text-left px-3 py-1.5 text-xs hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-2"
+              className="p-0.5 rounded hover:bg-slate-200 dark:hover:bg-slate-700"
+              aria-label={`Options for ${session.title}`}
+              aria-haspopup="menu"
+              aria-expanded={menuOpenId === session.id}
             >
-              <Pencil size={10} /> Rename
+              <MoreHorizontal size={12} className="text-slate-400" />
             </button>
-            <button
-              onClick={() => { toggleStar(session.id); setMenuOpenId(null); }}
-              className="w-full text-left px-3 py-1.5 text-xs hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-2"
-            >
-              <Star size={10} /> {session.starred ? "Unstar" : "Star"}
-            </button>
-            <button
-              onClick={() => { if (confirm("Delete this chat?")) deleteSession(session.id); setMenuOpenId(null); }}
-              className="w-full text-left px-3 py-1.5 text-xs hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-2 text-red-500"
-            >
-              <Trash2 size={10} /> Delete
-            </button>
+
+            {/* Dropdown menu */}
+            {menuOpenId === session.id && (
+              <div
+                role="menu"
+                className="absolute right-0 top-full mt-1 z-50 min-w-[120px] rounded-lg border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-700 dark:bg-slate-800"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <button
+                  role="menuitem"
+                  onClick={() => {
+                    setRenameValue(session.title);
+                    setRenamingId(session.id);
+                    setMenuOpenId(null);
+                  }}
+                  className="w-full text-left px-3 py-1.5 text-xs hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-2"
+                >
+                  <Pencil size={10} /> Rename
+                </button>
+                <button
+                  role="menuitem"
+                  onClick={() => { toggleStar(session.id); setMenuOpenId(null); }}
+                  className="w-full text-left px-3 py-1.5 text-xs hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-2"
+                >
+                  <Star size={10} /> {session.starred ? "Unstar" : "Star"}
+                </button>
+                <button
+                  role="menuitem"
+                  onClick={() => { if (confirm("Delete this chat?")) deleteSession(session.id); setMenuOpenId(null); }}
+                  className="w-full text-left px-3 py-1.5 text-xs hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-2 text-red-500"
+                >
+                  <Trash2 size={10} /> Delete
+                </button>
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
     );
   };

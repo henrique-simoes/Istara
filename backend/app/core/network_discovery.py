@@ -27,6 +27,32 @@ PROBE_TIMEOUT = 1.5
 MAX_CONCURRENT = 50
 
 
+def _extract_models(data: dict, provider_type: str) -> list[str]:
+    """Return model names only when the response matches the expected LLM API."""
+    if provider_type == "ollama":
+        raw_models = data.get("models")
+        if not isinstance(raw_models, list):
+            return []
+        return [
+            name
+            for model in raw_models
+            if isinstance(model, dict)
+            for name in [model.get("name")]
+            if isinstance(name, str) and name.strip()
+        ]
+
+    raw_models = data.get("data")
+    if not isinstance(raw_models, list):
+        return []
+    return [
+        model_id
+        for model in raw_models
+        if isinstance(model, dict)
+        for model_id in [model.get("id")]
+        if isinstance(model_id, str) and model_id.strip()
+    ]
+
+
 def _get_local_subnets() -> list[str]:
     """Get local /24 subnets from active network interfaces."""
     subnets = set()
@@ -86,12 +112,16 @@ async def _probe_host(client: httpx.AsyncClient, ip: str, port: int, provider_ty
         resp = await client.get(url, timeout=PROBE_TIMEOUT)
         if resp.status_code == 200:
             data = resp.json()
-            # Extract model names
-            models = []
-            if provider_type == "ollama":
-                models = [m.get("name", "") for m in data.get("models", [])]
-            else:
-                models = [m.get("id", "") for m in data.get("data", [])]
+            if not isinstance(data, dict):
+                return None
+            models = _extract_models(data, provider_type)
+            if not models:
+                logger.debug(
+                    "Network discovery ignored %s:%s: no LLM models advertised",
+                    ip,
+                    port,
+                )
+                return None
 
             return {
                 "ip": ip,

@@ -31,9 +31,11 @@ import {
   FlaskConical,
   BookOpen,
   CheckCircle,
+  Shield,
 } from "lucide-react";
 import { useProjectStore } from "@/stores/projectStore";
 import { useNotificationStore } from "@/stores/notificationStore";
+import { useAuthStore } from "@/stores/authStore";
 import DarkModeToggle from "@/components/common/DarkModeToggle";
 import UserMenu from "@/components/common/UserMenu";
 import { cn, phaseLabel } from "@/lib/utils";
@@ -89,6 +91,7 @@ export default function Sidebar({ activeView, onViewChange, onSearchOpen }: Side
   const [newProjectName, setNewProjectName] = useState("");
   const [showSecondary, setShowSecondary] = useState(false);
   const [projectMenu, setProjectMenu] = useState<string | null>(null);
+  const { user } = useAuthStore();
 
   useEffect(() => {
     fetchProjects();
@@ -96,7 +99,7 @@ export default function Sidebar({ activeView, onViewChange, onSearchOpen }: Side
 
   // Auto-expand secondary nav when the active view is a secondary item
   useEffect(() => {
-    const secondaryIds = ["autoresearch", "backup", "meta-hyperagent", "compute", "ensemble", "metrics", "history"];
+    const secondaryIds = ["admin", "autoresearch", "backup", "meta-hyperagent", "compute", "ensemble", "metrics", "history"];
     if (secondaryIds.includes(activeView)) {
       setShowSecondary(true);
     }
@@ -137,6 +140,7 @@ export default function Sidebar({ activeView, onViewChange, onSearchOpen }: Side
 
   // Secondary nav: accessible via "More" or header icons
   const secondaryNav = [
+    ...(user?.role === "admin" ? [{ id: "admin", icon: Shield, label: "Admin" }] : []),
     { id: "autoresearch", icon: FlaskConical, label: "Autoresearch" },
     { id: "backup", icon: Archive, label: "Backup" },
     { id: "meta-hyperagent", icon: Sparkles, label: "Meta-Agent" },

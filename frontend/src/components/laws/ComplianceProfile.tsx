@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { BarChart3, ChevronDown, ChevronRight, ArrowUpDown } from "lucide-react";
+import { AlertCircle, BarChart3, ChevronDown, ChevronRight, ArrowUpDown } from "lucide-react";
 import { useLawsStore } from "@/stores/lawsStore";
 import { useProjectStore } from "@/stores/projectStore";
 import { cn } from "@/lib/utils";
@@ -107,6 +107,40 @@ export default function ComplianceProfile() {
         <p className="text-xs text-center max-w-sm">
           Run a UX Law Compliance Audit or Heuristic Evaluation to generate compliance data for this project.
         </p>
+      </div>
+    );
+  }
+
+  if (compliance.evaluated === false) {
+    return (
+      <div className="flex-1 overflow-y-auto p-4">
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-5 dark:border-amber-800 dark:bg-amber-900/20">
+          <div className="flex items-start gap-3">
+            <AlertCircle size={20} className="mt-0.5 shrink-0 text-amber-600 dark:text-amber-400" />
+            <div>
+              <p className="text-sm font-semibold text-amber-900 dark:text-amber-100">
+                UX Laws have not been evaluated for this project
+              </p>
+              <p className="mt-1 text-sm text-amber-800 dark:text-amber-200">
+                Istara found {compliance.total_findings ?? 0} findings, but none have UX Law tags. Run a UX Law Compliance Audit or a UX evaluation skill that writes ux-law tags before treating this score as compliance evidence.
+              </p>
+              <div className="mt-4 grid grid-cols-1 gap-3 text-xs text-amber-900 dark:text-amber-100 sm:grid-cols-3">
+                <div className="rounded-md bg-white/70 p-3 dark:bg-slate-900/30">
+                  <p className="font-semibold">{compliance.total_findings ?? 0}</p>
+                  <p className="text-amber-700 dark:text-amber-300">Findings checked</p>
+                </div>
+                <div className="rounded-md bg-white/70 p-3 dark:bg-slate-900/30">
+                  <p className="font-semibold">{compliance.evidence_count ?? 0}</p>
+                  <p className="text-amber-700 dark:text-amber-300">UX Law-tagged findings</p>
+                </div>
+                <div className="rounded-md bg-white/70 p-3 dark:bg-slate-900/30">
+                  <p className="font-semibold">{compliance.law_tag_count ?? 0}</p>
+                  <p className="text-amber-700 dark:text-amber-300">UX Law tags</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }

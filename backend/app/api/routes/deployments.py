@@ -6,16 +6,24 @@ import json
 import uuid
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.permissions import get_subject, is_global_admin, require_project_access
 from app.models.database import get_db
 from app.models.research_deployment import ResearchDeployment
 from app.services import deployment_service
 
 router = APIRouter()
+
+
+async def _get_deployment_or_404(db: AsyncSession, deployment_id: str) -> ResearchDeployment:
+    deployment = await deployment_service.get_deployment(db, deployment_id)
+    if not deployment:
+        raise HTTPException(status_code=404, detail="Deployment not found")
+    return deployment
 
 
 # ---------------------------------------------------------------------------
@@ -90,9 +98,13 @@ class HandleResponseRequest(BaseModel):
 
 @router.post("/deployments", response_model=DeploymentResponse, status_code=201)
 async def create_deployment(
-    data: DeploymentCreate, db: AsyncSession = Depends(get_db)
+    data: DeploymentCreate,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
 ):
     """Create a new research deployment."""
+    await require_project_access(db, request, data.project_id, min_role="researcher")
+
     questions = [q.model_dump() for q in data.questions]
     deployment = await deployment_service.create_deployment(
         db=db,
@@ -109,31 +121,41 @@ async def create_deployment(
 
 @router.get("/deployments", response_model=list[DeploymentResponse])
 async def list_deployments(
+    request: Request,
     project_id: str | None = Query(None),
     db: AsyncSession = Depends(get_db),
 ):
     """List deployments, optionally filtered by project_id."""
+    subject = get_subject(request)
+    if project_id:
+        await require_project_access(db, request, project_id, min_role="viewer")
+    elif not is_global_admin(subject):
+        raise HTTPException(status_code=400, detail="project_id is required")
+
     deployments = await deployment_service.list_deployments(db, project_id=project_id)
     return [DeploymentResponse.from_model(d) for d in deployments]
 
 
 @router.get("/deployments/overview")
 async def deployment_overview(
+    request: Request,
     project_id: str = Query(...),
     db: AsyncSession = Depends(get_db),
 ):
     """Cross-deployment summary for a project."""
+    await require_project_access(db, request, project_id, min_role="viewer")
     return await deployment_service.get_deployment_overview(db, project_id)
 
 
 @router.get("/deployments/{deployment_id}", response_model=DeploymentResponse)
 async def get_deployment(
-    deployment_id: str, db: AsyncSession = Depends(get_db)
+    deployment_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
 ):
     """Get a single deployment by ID."""
-    deployment = await deployment_service.get_deployment(db, deployment_id)
-    if not deployment:
-        raise HTTPException(status_code=404, detail="Deployment not found")
+    deployment = await _get_deployment_or_404(db, deployment_id)
+    await require_project_access(db, request, deployment.project_id, min_role="viewer")
     return DeploymentResponse.from_model(deployment)
 
 
@@ -144,9 +166,14 @@ async def get_deployment(
 
 @router.get("/deployments/{deployment_id}/analytics")
 async def deployment_analytics(
-    deployment_id: str, db: AsyncSession = Depends(get_db)
+    deployment_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
 ):
     """Full analytics for a deployment — response rates, per-question stats, completion times."""
+    deployment = await _get_deployment_or_404(db, deployment_id)
+    await require_project_access(db, request, deployment.project_id, min_role="viewer")
+
     analytics = await deployment_service.get_deployment_analytics(db, deployment_id)
     if not analytics:
         raise HTTPException(status_code=404, detail="Deployment not found")
@@ -160,9 +187,14 @@ async def deployment_analytics(
 
 @router.post("/deployments/{deployment_id}/activate")
 async def activate_deployment(
-    deployment_id: str, db: AsyncSession = Depends(get_db)
+    deployment_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
 ):
     """Activate a deployment — starts accepting participant responses."""
+    deployment = await _get_deployment_or_404(db, deployment_id)
+    await require_project_access(db, request, deployment.project_id, min_role="researcher")
+
     try:
         result = await deployment_service.activate_deployment(db, deployment_id)
 
@@ -184,9 +216,14 @@ async def activate_deployment(
 
 @router.post("/deployments/{deployment_id}/pause")
 async def pause_deployment(
-    deployment_id: str, db: AsyncSession = Depends(get_db)
+    deployment_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
 ):
     """Pause a deployment — stops sending new questions to participants."""
+    deployment = await _get_deployment_or_404(db, deployment_id)
+    await require_project_access(db, request, deployment.project_id, min_role="researcher")
+
     try:
         return await deployment_service.pause_deployment(db, deployment_id)
     except ValueError as e:
@@ -195,9 +232,14 @@ async def pause_deployment(
 
 @router.post("/deployments/{deployment_id}/complete")
 async def complete_deployment(
-    deployment_id: str, db: AsyncSession = Depends(get_db)
+    deployment_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
 ):
     """Complete a deployment — marks it finished and triggers final analysis."""
+    deployment = await _get_deployment_or_404(db, deployment_id)
+    await require_project_access(db, request, deployment.project_id, min_role="researcher")
+
     try:
         result = await deployment_service.complete_deployment(db, deployment_id)
 
@@ -226,6 +268,7 @@ async def complete_deployment(
 async def handle_response(
     deployment_id: str,
     data: HandleResponseRequest,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
     """Process a participant response and return the next action.
@@ -235,6 +278,9 @@ async def handle_response(
     - question: (if next_question or ask_followup) the text to send
     - thank_you: (if complete) the closing message
     """
+    deployment = await _get_deployment_or_404(db, deployment_id)
+    await require_project_access(db, request, deployment.project_id, min_role="researcher")
+
     result = await deployment_service.handle_response(
         db=db,
         deployment_id=deployment_id,
@@ -281,9 +327,14 @@ async def handle_response(
 
 @router.get("/deployments/{deployment_id}/conversations")
 async def list_conversations(
-    deployment_id: str, db: AsyncSession = Depends(get_db)
+    deployment_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
 ):
     """List all conversations for a deployment."""
+    deployment = await _get_deployment_or_404(db, deployment_id)
+    await require_project_access(db, request, deployment.project_id, min_role="viewer")
+
     conversations = await deployment_service.list_conversations(db, deployment_id)
     return [c.to_dict() for c in conversations]
 
@@ -292,9 +343,13 @@ async def list_conversations(
 async def get_conversation(
     deployment_id: str,
     conversation_id: str,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
     """Get a single conversation detail."""
+    deployment = await _get_deployment_or_404(db, deployment_id)
+    await require_project_access(db, request, deployment.project_id, min_role="viewer")
+
     conversation = await deployment_service.get_conversation(db, conversation_id)
     if not conversation or conversation.deployment_id != deployment_id:
         raise HTTPException(status_code=404, detail="Conversation not found")
@@ -307,9 +362,13 @@ async def get_conversation(
 async def get_conversation_transcript(
     deployment_id: str,
     conversation_id: str,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
     """Get the full message transcript for a conversation."""
+    deployment = await _get_deployment_or_404(db, deployment_id)
+    await require_project_access(db, request, deployment.project_id, min_role="viewer")
+
     conversation = await deployment_service.get_conversation(db, conversation_id)
     if not conversation or conversation.deployment_id != deployment_id:
         raise HTTPException(status_code=404, detail="Conversation not found")

@@ -127,6 +127,9 @@ async def init_db() -> None:
             "ALTER TABLE connection_strings ADD COLUMN redeemed_username VARCHAR(255)",
             "ALTER TABLE connection_strings ADD COLUMN redeemed_at DATETIME",
             "ALTER TABLE connection_strings ADD COLUMN last_validated_at DATETIME",
+            "ALTER TABLE connection_strings ADD COLUMN token_type VARCHAR(40) NOT NULL DEFAULT 'user_invite'",
+            "ALTER TABLE connection_strings ADD COLUMN ws_url VARCHAR(1000) NOT NULL DEFAULT ''",
+            "ALTER TABLE connection_strings ADD COLUMN intended_role VARCHAR(40) NOT NULL DEFAULT 'researcher'",
         ]
         for ddl in migrations:
             try:

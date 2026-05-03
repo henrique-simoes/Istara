@@ -16,7 +16,7 @@ import re
 import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy import func, select
@@ -26,6 +26,8 @@ from app.config import settings
 from app.core.content_guard import ContentGuard
 from app.core.context_summarizer import context_summarizer
 from app.core.ollama import ollama
+from app.core.permissions import get_subject, get_visible_project_or_404, is_global_admin, require_project_access
+from app.core.security_middleware import require_admin_from_request
 from app.core.prompt_rag import compose_dynamic_prompt
 from app.core.rag import build_augmented_prompt, retrieve_context
 from app.core.token_counter import context_guard
@@ -35,6 +37,7 @@ from app.models.message import Message
 from app.models.project import Project
 from app.models.session import ChatSession, INFERENCE_PRESETS
 from app.skills.design_tools import (
+    OPENAI_DESIGN_TOOLS,
     build_design_tools_prompt,
     execute_design_tool,
 )
@@ -54,13 +57,21 @@ router = APIRouter()
 # Maximum tool-call iterations per message (prevents infinite loops)
 MAX_TOOL_ITERATIONS = 3
 
+
+async def _get_screen_or_404(db: AsyncSession, screen_id: str) -> DesignScreen:
+    result = await db.execute(select(DesignScreen).where(DesignScreen.id == screen_id))
+    screen = result.scalar_one_or_none()
+    if not screen:
+        raise HTTPException(status_code=404, detail="Screen not found")
+    return screen
+
 # Regex to extract tool call JSON from LLM output (same pattern as chat.py)
 _TOOL_CALL_RE = re.compile(
     r'```(?:json)?\s*(\{\s*"tool"\s*:.+?\})\s*```',
     re.DOTALL,
 )
 _TOOL_CALL_INLINE_RE = re.compile(
-    r'(\{\s*"tool"\s*:\s*"[a-z_]+".*?\})',
+    r'(\{\s*"tool"\s*:\s*"[a-z_]+".*)',
     re.DOTALL,
 )
 
@@ -71,22 +82,165 @@ def _extract_tool_call(text: str) -> tuple[dict | None, str, str]:
     Returns (tool_call_dict, text_before_call, text_after_call).
     Returns (None, full_text, "") if no tool call found.
     """
-    match = _TOOL_CALL_RE.search(text)
-    if not match:
-        match = _TOOL_CALL_INLINE_RE.search(text)
+    decoder = json.JSONDecoder()
 
-    if not match:
-        return None, text, ""
+    fenced = _TOOL_CALL_RE.search(text)
+    if fenced:
+        candidate = fenced.group(1)
+        try:
+            call = json.loads(candidate)
+            if isinstance(call, dict) and "tool" in call:
+                return call, text[: fenced.start()].strip(), text[fenced.end() :].strip()
+        except json.JSONDecodeError:
+            pass
 
-    try:
-        call = json.loads(match.group(1) if _TOOL_CALL_RE.search(text) else match.group(1))
-        if "tool" not in call:
-            return None, text, ""
-        before = text[: match.start()].strip()
-        after = text[match.end() :].strip()
-        return call, before, after
-    except (json.JSONDecodeError, IndexError):
-        return None, text, ""
+    for start in [m.start() for m in re.finditer(r"\{", text)]:
+        candidate = text[start:]
+        if '"tool"' not in candidate[:80]:
+            continue
+        try:
+            call, end = decoder.raw_decode(candidate)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(call, dict) and "tool" in call:
+            return call, text[:start].strip(), candidate[end:].strip()
+
+    return None, text, ""
+
+
+def _is_tool_call_only(text: str) -> bool:
+    tool_call, before, after = _extract_tool_call(text.strip())
+    return bool(tool_call and not before and not after)
+
+
+def _fallback_design_answer(tool_results: list[dict], user_message: str) -> str:
+    """User-facing fallback when the model fails to synthesize after tool use."""
+    if not tool_results:
+        return (
+            "I could not produce a usable design response for that request. "
+            "Try asking again with the specific screen, flow, or evidence area you want me to inspect."
+        )
+
+    last = tool_results[-1]
+    result_text = str(last.get("result") or "").strip()
+    tool_name = str(last.get("tool") or "design tool")
+    if result_text.lower() in {"", "no matching findings found."}:
+        return (
+            "I checked the project findings for design evidence and did not find matching UI findings yet.\n\n"
+            "That means I do not have enough evidence in Istara to recommend Acme UI changes from the current findings. "
+            "The next useful step is to add or tag UI-specific evidence, such as onboarding friction, navigation issues, "
+            "screen feedback, verification problems, or prototype notes."
+        )
+
+    return (
+        f"I checked `{tool_name}` and found this relevant design context:\n\n"
+        f"{result_text}\n\n"
+        "Use this as supporting input, but treat it as preliminary until it is linked into the evidence chain."
+    )
+
+
+async def _generate_native_design_tools(
+    conversation: list[dict],
+    all_text_parts: list[str],
+    tool_results: list[dict],
+    request: DesignChatRequest,
+    session_agent_id: str | None,
+    llm_model: str | None,
+    llm_temperature: float,
+    llm_max_tokens: int | None,
+):
+    """Native tool-calling loop for Interfaces Design Chat.
+
+    Mirrors the main Chat route dynamics while using design-specific tools.
+    """
+    for iteration in range(MAX_TOOL_ITERATIONS + 1):
+        content_chunks: list[str] = []
+        tool_calls_payload: dict | None = None
+
+        async for chunk in ollama.chat_stream(
+            messages=conversation,
+            model=llm_model,
+            temperature=llm_temperature,
+            max_tokens=llm_max_tokens,
+            tools=OPENAI_DESIGN_TOOLS,
+        ):
+            if isinstance(chunk, dict) and chunk.get("tool_calls"):
+                tool_calls_payload = chunk
+            elif isinstance(chunk, str):
+                content_chunks.append(chunk)
+
+        response_text = "".join(content_chunks)
+
+        if tool_calls_payload and iteration < MAX_TOOL_ITERATIONS:
+            valid_tool_names = {t["function"]["name"] for t in OPENAI_DESIGN_TOOLS}
+            raw_tool_calls = [
+                tc
+                for tc in tool_calls_payload["tool_calls"]
+                if tc.get("function", {}).get("name", "") in valid_tool_names
+            ]
+
+            if not raw_tool_calls:
+                response_text = response_text.strip()
+                if response_text:
+                    all_text_parts.append(response_text)
+                    yield f"data: {json.dumps({'type': 'chunk', 'content': response_text})}\n\n"
+                break
+
+            if response_text.strip():
+                all_text_parts.append(response_text)
+                event_data = json.dumps({"type": "chunk", "content": response_text + "\n\n"})
+                yield f"data: {event_data}\n\n"
+
+            conversation.append(
+                {
+                    "role": "assistant",
+                    "content": response_text or "",
+                    "tool_calls": raw_tool_calls,
+                }
+            )
+
+            for tc in raw_tool_calls:
+                tc_id = tc.get("id", str(uuid.uuid4()))
+                fn = tc.get("function", {})
+                tool_name = fn.get("name", "")
+                try:
+                    tool_params = json.loads(fn.get("arguments", "{}"))
+                except (json.JSONDecodeError, TypeError):
+                    tool_params = {}
+
+                _log.info(
+                    "Native design tool call [%d]: %s(%s)",
+                    iteration,
+                    tool_name,
+                    json.dumps(tool_params)[:200],
+                )
+
+                yield f"data: {json.dumps({'type': 'tool_call', 'tool': tool_name, 'params': tool_params})}\n\n"
+
+                result = await execute_design_tool(
+                    tool_name,
+                    tool_params,
+                    request.project_id,
+                    agent_id=session_agent_id or "design-lead",
+                )
+                result_text = result.get("result", result.get("error", "Unknown result"))
+                tool_results.append({"tool": tool_name, "result": result_text})
+
+                conversation.append(
+                    {
+                        "role": "tool",
+                        "tool_call_id": tc_id,
+                        "content": str(result_text),
+                    }
+                )
+
+            continue
+
+        response_text = response_text.strip()
+        if response_text:
+            all_text_parts.append(response_text)
+            yield f"data: {json.dumps({'type': 'chunk', 'content': response_text})}\n\n"
+        break
 
 
 # -- Request Models ----------------------------------------------------------
@@ -159,11 +313,12 @@ use the design tools below. For general design conversation and critique, respon
 
 
 @router.get("/interfaces/design-chat/{project_id}/history")
-async def design_chat_history(project_id: str, db: AsyncSession = Depends(get_db)):
+async def design_chat_history(project_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     """Get message history for the design chat session.
 
     Finds the design-scoped session for this project and returns its messages.
     """
+    await require_project_access(db, request, project_id, min_role="viewer")
     session_result = await db.execute(
         select(ChatSession)
         .where(
@@ -191,12 +346,14 @@ async def design_chat_history(project_id: str, db: AsyncSession = Depends(get_db
         }
         for m in msg_result.scalars().all()
         if m.role in ("user", "assistant")
+        and m.content.strip()
+        and not (m.role == "assistant" and _is_tool_call_only(m.content))
     ]
     return {"messages": messages, "session_id": session.id}
 
 
 @router.post("/interfaces/design-chat")
-async def design_chat(request: DesignChatRequest, db: AsyncSession = Depends(get_db)):
+async def design_chat(request: DesignChatRequest, http_request: Request, db: AsyncSession = Depends(get_db)):
     """Send a message to the Design Lead and get a streaming response with design tools.
 
     The response is streamed as Server-Sent Events (SSE) with a ReAct tool loop.
@@ -205,15 +362,29 @@ async def design_chat(request: DesignChatRequest, db: AsyncSession = Depends(get
     created (or reused) for this project so that design chat messages are
     isolated from regular chat messages.
     """
-    # Verify project exists
-    result = await db.execute(select(Project).where(Project.id == request.project_id))
-    project = result.scalar_one_or_none()
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
+    project = await get_visible_project_or_404(
+        db,
+        http_request,
+        request.project_id,
+        min_role="researcher",
+    )
 
-    # Resolve or create a design-scoped session
+    # Resolve or create a design-scoped session. Supplied session IDs must
+    # belong to the requested project and to the design-chat surface.
     resolved_session_id = request.session_id
-    if not resolved_session_id:
+    session: ChatSession | None = None
+    if resolved_session_id:
+        existing = await db.execute(
+            select(ChatSession).where(
+                ChatSession.id == resolved_session_id,
+                ChatSession.project_id == request.project_id,
+                ChatSession.session_type == "design",
+            )
+        )
+        session = existing.scalar_one_or_none()
+        if not session:
+            raise HTTPException(status_code=404, detail="Session not found")
+    else:
         # Find existing design session for this project
         existing = await db.execute(
             select(ChatSession)
@@ -225,20 +396,21 @@ async def design_chat(request: DesignChatRequest, db: AsyncSession = Depends(get
         )
         existing_session = existing.scalar_one_or_none()
         if existing_session:
+            session = existing_session
             resolved_session_id = existing_session.id
         else:
             # Create a new design session
-            new_session = ChatSession(
+            session = ChatSession(
                 id=str(uuid.uuid4()),
                 project_id=request.project_id,
                 title="Design Chat",
                 session_type="design",
                 agent_id="design-lead",
             )
-            db.add(new_session)
+            db.add(session)
             await db.commit()
-            await db.refresh(new_session)
-            resolved_session_id = new_session.id
+            await db.refresh(session)
+            resolved_session_id = session.id
 
     # Save user message (scoped to design session)
     user_msg = Message(
@@ -266,8 +438,6 @@ async def design_chat(request: DesignChatRequest, db: AsyncSession = Depends(get
     llm_model: str | None = None
     session_agent_id: str | None = "design-lead"
 
-    sess_result = await db.execute(select(ChatSession).where(ChatSession.id == resolved_session_id))
-    session = sess_result.scalar_one_or_none()
     if session:
         preset_key = session.inference_preset.value if session.inference_preset else "medium"
         preset = INFERENCE_PRESETS.get(preset_key, INFERENCE_PRESETS["medium"])
@@ -348,9 +518,11 @@ async def design_chat(request: DesignChatRequest, db: AsyncSession = Depends(get
     # Inject Design Lead identity at the top
     system_prompt = agent_identity_prompt + "\n\n---\n\n" + system_prompt
 
-    # Inject design tools
-    tools_prompt = build_design_tools_prompt()
-    system_prompt += "\n\n" + tools_prompt
+    system_prompt += (
+        "\n\nDesign tools are available through native tool calling when needed. "
+        "After a tool result is provided, do not output another raw tool JSON unless another tool is truly needed. "
+        "Always synthesize a user-facing answer in natural language. Never show raw tool-call JSON to the user."
+    )
 
     # Inject project folder file awareness
     folder = _resolve_project_folder(project, request.project_id)
@@ -387,7 +559,7 @@ async def design_chat(request: DesignChatRequest, db: AsyncSession = Depends(get
         messages, ctx_summary = await context_summarizer.apply_summarization(
             system_prompt,
             messages,
-            session_id=request.session_id,
+            session_id=resolved_session_id,
             budget=budget.history_tokens,
         )
     except Exception:
@@ -401,6 +573,13 @@ async def design_chat(request: DesignChatRequest, db: AsyncSession = Depends(get
     if trim_summary:
         messages.insert(0, {"role": "system", "content": trim_summary})
 
+    system_prompt += (
+        "\n\n[INSTRUCTIONS END]\n\n"
+        "You are now in conversation with the user about interface and design work. "
+        "Respond naturally and concisely. Do NOT repeat, quote, or reference the instructions above. "
+        "Do NOT explain your capabilities unless asked. Just respond to what the user says.\n\n"
+    )
+
     # Prepend system prompt
     messages = [{"role": "system", "content": system_prompt}, *messages]
 
@@ -409,9 +588,50 @@ async def design_chat(request: DesignChatRequest, db: AsyncSession = Depends(get
         conversation = list(messages)
         all_text_parts: list[str] = []
         tool_results: list[dict] = []
+        use_native_tools = True
 
         try:
-            for iteration in range(MAX_TOOL_ITERATIONS + 1):
+            if use_native_tools:
+                try:
+                    async for event in _generate_native_design_tools(
+                        conversation,
+                        all_text_parts,
+                        tool_results,
+                        request,
+                        session_agent_id,
+                        llm_model,
+                        llm_temperature,
+                        llm_max_tokens,
+                    ):
+                        yield event
+                except Exception as native_err:
+                    err_str = str(native_err).lower()
+                    if any(
+                        key in err_str
+                        for key in ("tools", "400", "422", "unprocessable", "not supported")
+                    ):
+                        _log.warning(
+                            "Native design tool calling rejected, falling back to text parsing: %s",
+                            native_err,
+                        )
+                        use_native_tools = False
+                        conversation = list(messages)
+                        all_text_parts.clear()
+                        tool_results.clear()
+                    else:
+                        raise
+
+                if use_native_tools and not "".join(all_text_parts).strip() and not tool_results:
+                    use_native_tools = False
+                    conversation = list(messages)
+
+            if not use_native_tools:
+                if conversation and conversation[0]["role"] == "system":
+                    conversation[0]["content"] += "\n\n" + build_design_tools_prompt()
+                else:
+                    conversation.insert(0, {"role": "system", "content": build_design_tools_prompt()})
+
+            for iteration in range(MAX_TOOL_ITERATIONS + 1 if not use_native_tools else 0):
                 full_text: list[str] = []
                 async for chunk in ollama.chat_stream(
                     messages=conversation,
@@ -455,11 +675,6 @@ async def design_chat(request: DesignChatRequest, db: AsyncSession = Depends(get
                     result_text = result.get("result", result.get("error", "Unknown result"))
                     tool_results.append({"tool": tool_name, "result": result_text})
 
-                    result_display = f"**{tool_name}**: {result_text}\n\n"
-                    all_text_parts.append(result_display)
-                    result_event = json.dumps({"type": "chunk", "content": result_display})
-                    yield f"data: {result_event}\n\n"
-
                     assistant_turn = (
                         text_before + f"\n\n[Tool: {tool_name}]"
                         if text_before
@@ -472,6 +687,7 @@ async def design_chat(request: DesignChatRequest, db: AsyncSession = Depends(get
                             "content": (
                                 f"[Tool result for {tool_name}]:\n{result_text}\n\n"
                                 "Now respond to the user based on this result. "
+                                "Do not show raw JSON or the internal tool-call format. "
                                 "Do not call another tool unless necessary."
                             ),
                         }
@@ -479,18 +695,24 @@ async def design_chat(request: DesignChatRequest, db: AsyncSession = Depends(get
                     continue
 
                 else:
-                    all_text_parts.append(response_text)
-                    event_data = json.dumps({"type": "chunk", "content": response_text})
-                    yield f"data: {event_data}\n\n"
+                    if tool_call:
+                        response_text = _fallback_design_answer(tool_results, request.message)
+                    response_text = response_text.strip()
+                    if response_text:
+                        all_text_parts.append(response_text)
+                        event_data = json.dumps({"type": "chunk", "content": response_text})
+                        yield f"data: {event_data}\n\n"
                     break
 
             # Save the full assistant response
             async with async_session() as save_db:
-                assistant_content = "".join(all_text_parts)
+                assistant_content = "".join(all_text_parts).strip()
+                if not assistant_content:
+                    assistant_content = _fallback_design_answer(tool_results, request.message)
                 assistant_msg = Message(
                     id=str(uuid.uuid4()),
                     project_id=request.project_id,
-                    session_id=request.session_id,
+                    session_id=resolved_session_id,
                     role="assistant",
                     content=assistant_content,
                 )
@@ -509,6 +731,7 @@ async def design_chat(request: DesignChatRequest, db: AsyncSession = Depends(get
                     {
                         "type": "done",
                         "message_id": assistant_msg.id,
+                        "session_id": resolved_session_id,
                         "sources": sources,
                         "tools_used": [t["tool"] for t in tool_results] if tool_results else [],
                     }
@@ -522,7 +745,7 @@ async def design_chat(request: DesignChatRequest, db: AsyncSession = Depends(get
                         msg = Message(
                             id=str(uuid.uuid4()),
                             project_id=request.project_id,
-                            session_id=request.session_id,
+                            session_id=resolved_session_id,
                             role="assistant",
                             content="".join(all_text_parts) + "\n\n[Response interrupted]",
                         )
@@ -558,10 +781,17 @@ async def design_chat(request: DesignChatRequest, db: AsyncSession = Depends(get
 
 @router.get("/interfaces/screens")
 async def list_screens(
+    request: Request,
     project_id: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     """List design screens, optionally filtered by project."""
+    subject = get_subject(request)
+    if project_id:
+        await require_project_access(db, request, project_id, min_role="viewer")
+    elif not is_global_admin(subject):
+        raise HTTPException(status_code=400, detail="project_id is required")
+
     query = select(DesignScreen).order_by(DesignScreen.created_at.desc())
     if project_id:
         query = query.where(DesignScreen.project_id == project_id)
@@ -570,17 +800,19 @@ async def list_screens(
 
 
 @router.get("/interfaces/screens/{screen_id}")
-async def get_screen(screen_id: str, db: AsyncSession = Depends(get_db)):
+async def get_screen(screen_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     """Get a single design screen by ID."""
-    result = await db.execute(select(DesignScreen).where(DesignScreen.id == screen_id))
-    screen = result.scalar_one_or_none()
-    if not screen:
-        raise HTTPException(status_code=404, detail="Screen not found")
+    screen = await _get_screen_or_404(db, screen_id)
+    await require_project_access(db, request, screen.project_id, min_role="viewer")
     return screen.to_dict()
 
 
 @router.post("/interfaces/screens/generate")
-async def generate_screen(data: GenerateRequest, db: AsyncSession = Depends(get_db)):
+async def generate_screen(
+    data: GenerateRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
     """Generate a new screen via Stitch or design tools.
 
     When Stitch is configured, calls the real MCP API and parses the response
@@ -590,11 +822,7 @@ async def generate_screen(data: GenerateRequest, db: AsyncSession = Depends(get_
     from app.services.stitch_service import stitch_service
     from app.core.content_guard import ContentGuard
 
-    # Verify project exists
-    result = await db.execute(select(Project).where(Project.id == data.project_id))
-    project = result.scalar_one_or_none()
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
+    await require_project_access(db, request, data.project_id, min_role="researcher")
 
     # If Stitch is not configured, fall back to the design tool executor
     if not settings.stitch_api_key:
@@ -763,7 +991,7 @@ async def generate_screen(data: GenerateRequest, db: AsyncSession = Depends(get_
 
 
 @router.post("/interfaces/screens/edit")
-async def edit_screen(data: EditRequest, db: AsyncSession = Depends(get_db)):
+async def edit_screen(data: EditRequest, request: Request, db: AsyncSession = Depends(get_db)):
     """Edit an existing screen with instructions via Stitch.
 
     Creates a child DesignScreen with the edited HTML, linked via parent_screen_id.
@@ -772,10 +1000,8 @@ async def edit_screen(data: EditRequest, db: AsyncSession = Depends(get_db)):
     from app.services.stitch_service import stitch_service
 
     # Resolve parent screen
-    screen_result = await db.execute(select(DesignScreen).where(DesignScreen.id == data.screen_id))
-    parent = screen_result.scalar_one_or_none()
-    if not parent:
-        raise HTTPException(status_code=404, detail="Screen not found")
+    parent = await _get_screen_or_404(db, data.screen_id)
+    await require_project_access(db, request, parent.project_id, min_role="researcher")
 
     # If Stitch is not configured, fall back to design tool executor
     if not settings.stitch_api_key:
@@ -877,7 +1103,7 @@ async def edit_screen(data: EditRequest, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/interfaces/screens/variant")
-async def create_variant(data: VariantRequest, db: AsyncSession = Depends(get_db)):
+async def create_variant(data: VariantRequest, request: Request, db: AsyncSession = Depends(get_db)):
     """Create design variants of an existing screen via Stitch.
 
     Returns a list of variant DesignScreen records, each linked to the parent.
@@ -885,10 +1111,8 @@ async def create_variant(data: VariantRequest, db: AsyncSession = Depends(get_db
     import httpx
     from app.services.stitch_service import stitch_service
 
-    screen_result = await db.execute(select(DesignScreen).where(DesignScreen.id == data.screen_id))
-    parent = screen_result.scalar_one_or_none()
-    if not parent:
-        raise HTTPException(status_code=404, detail="Screen not found")
+    parent = await _get_screen_or_404(db, data.screen_id)
+    await require_project_access(db, request, parent.project_id, min_role="researcher")
 
     # If Stitch is not configured, fall back to design tool executor
     if not settings.stitch_api_key:
@@ -999,12 +1223,10 @@ async def create_variant(data: VariantRequest, db: AsyncSession = Depends(get_db
 
 
 @router.delete("/interfaces/screens/{screen_id}", status_code=204)
-async def delete_screen(screen_id: str, db: AsyncSession = Depends(get_db)):
+async def delete_screen(screen_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     """Delete a design screen."""
-    result = await db.execute(select(DesignScreen).where(DesignScreen.id == screen_id))
-    screen = result.scalar_one_or_none()
-    if not screen:
-        raise HTTPException(status_code=404, detail="Screen not found")
+    screen = await _get_screen_or_404(db, screen_id)
+    await require_project_access(db, request, screen.project_id, min_role="researcher")
     await db.delete(screen)
     await db.commit()
 
@@ -1013,7 +1235,7 @@ async def delete_screen(screen_id: str, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/interfaces/figma/import")
-async def figma_import(data: FigmaImportRequest, db: AsyncSession = Depends(get_db)):
+async def figma_import(data: FigmaImportRequest, request: Request, db: AsyncSession = Depends(get_db)):
     """Import design context from a Figma URL.
 
     When Figma is configured, calls the real Figma REST API to fetch file data,
@@ -1021,11 +1243,7 @@ async def figma_import(data: FigmaImportRequest, db: AsyncSession = Depends(get_
     """
     from app.services.figma_service import figma_service
 
-    # Verify project exists
-    result = await db.execute(select(Project).where(Project.id == data.project_id))
-    project = result.scalar_one_or_none()
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
+    await require_project_access(db, request, data.project_id, min_role="researcher")
 
     # Parse the Figma URL
     parsed = figma_service.parse_figma_url(data.figma_url)
@@ -1101,12 +1319,10 @@ async def figma_import(data: FigmaImportRequest, db: AsyncSession = Depends(get_
 
 
 @router.post("/interfaces/figma/export")
-async def figma_export(data: FigmaExportRequest, db: AsyncSession = Depends(get_db)):
+async def figma_export(data: FigmaExportRequest, request: Request, db: AsyncSession = Depends(get_db)):
     """Export a design screen to Figma."""
-    screen_result = await db.execute(select(DesignScreen).where(DesignScreen.id == data.screen_id))
-    screen = screen_result.scalar_one_or_none()
-    if not screen:
-        raise HTTPException(status_code=404, detail="Screen not found")
+    screen = await _get_screen_or_404(db, data.screen_id)
+    await require_project_access(db, request, screen.project_id, min_role="researcher")
 
     # Store the Figma link on the screen record
     screen.figma_file_key = data.figma_file_key
@@ -1121,12 +1337,14 @@ async def figma_export(data: FigmaExportRequest, db: AsyncSession = Depends(get_
 
 
 @router.get("/interfaces/figma/design-system/{file_key}")
-async def figma_design_system(file_key: str, db: AsyncSession = Depends(get_db)):
+async def figma_design_system(file_key: str, request: Request, db: AsyncSession = Depends(get_db)):
     """Extract a design system summary from a Figma file.
 
     Returns components and styles organized as a design system.
     Requires Figma API token to be configured.
     """
+    require_admin_from_request(request)
+
     from app.services.figma_service import figma_service
 
     if not settings.figma_api_token:
@@ -1151,8 +1369,18 @@ async def figma_design_system(file_key: str, db: AsyncSession = Depends(get_db))
 
 
 @router.get("/interfaces/handoff/briefs")
-async def list_briefs(project_id: str | None = None, db: AsyncSession = Depends(get_db)):
+async def list_briefs(
+    request: Request,
+    project_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
     """List design briefs for a project."""
+    subject = get_subject(request)
+    if project_id:
+        await require_project_access(db, request, project_id, min_role="viewer")
+    elif not is_global_admin(subject):
+        raise HTTPException(status_code=400, detail="project_id is required")
+
     query = select(DesignBrief).order_by(DesignBrief.created_at.desc())
     if project_id:
         query = query.where(DesignBrief.project_id == project_id)
@@ -1162,8 +1390,13 @@ async def list_briefs(project_id: str | None = None, db: AsyncSession = Depends(
 
 
 @router.post("/interfaces/handoff/brief")
-async def handoff_brief(data: HandoffBriefRequest, db: AsyncSession = Depends(get_db)):
+async def handoff_brief(
+    data: HandoffBriefRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
     """Generate a design brief from project findings."""
+    await require_project_access(db, request, data.project_id, min_role="researcher")
     result = await execute_design_tool(
         "create_design_brief",
         {},
@@ -1173,12 +1406,14 @@ async def handoff_brief(data: HandoffBriefRequest, db: AsyncSession = Depends(ge
 
 
 @router.post("/interfaces/handoff/dev-spec")
-async def handoff_dev_spec(data: HandoffDevSpecRequest, db: AsyncSession = Depends(get_db)):
+async def handoff_dev_spec(
+    data: HandoffDevSpecRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
     """Generate a developer handoff spec from a design screen."""
-    screen_result = await db.execute(select(DesignScreen).where(DesignScreen.id == data.screen_id))
-    screen = screen_result.scalar_one_or_none()
-    if not screen:
-        raise HTTPException(status_code=404, detail="Screen not found")
+    screen = await _get_screen_or_404(db, data.screen_id)
+    await require_project_access(db, request, screen.project_id, min_role="viewer")
 
     # Build a structured dev spec from the screen data
     findings = []
@@ -1218,8 +1453,9 @@ async def handoff_dev_spec(data: HandoffDevSpecRequest, db: AsyncSession = Depen
 
 
 @router.get("/interfaces/status")
-async def interfaces_status(db: AsyncSession = Depends(get_db)):
+async def interfaces_status(request: Request, db: AsyncSession = Depends(get_db)):
     """Get the current status of the Interfaces module."""
+    require_admin_from_request(request)
     screens_count = await db.execute(select(func.count()).select_from(DesignScreen))
     briefs_count = await db.execute(select(func.count()).select_from(DesignBrief))
 
@@ -1234,8 +1470,9 @@ async def interfaces_status(db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/interfaces/configure/stitch")
-async def configure_stitch(data: ConfigureStitchRequest):
+async def configure_stitch(data: ConfigureStitchRequest, request: Request):
     """Configure the Stitch (Google Generative AI) API key."""
+    require_admin_from_request(request)
     from app.api.routes.settings import _persist_env
 
     settings.stitch_api_key = data.api_key
@@ -1253,8 +1490,9 @@ async def configure_stitch(data: ConfigureStitchRequest):
 
 
 @router.post("/interfaces/configure/figma")
-async def configure_figma(data: ConfigureFigmaRequest):
+async def configure_figma(data: ConfigureFigmaRequest, request: Request):
     """Configure the Figma API token."""
+    require_admin_from_request(request)
     from app.api.routes.settings import _persist_env
 
     settings.figma_api_token = data.api_token
@@ -1412,7 +1650,11 @@ class MockFigmaImportRequest(BaseModel):
 
 
 @router.post("/interfaces/mock/generate")
-async def mock_generate_screen(data: MockGenerateRequest, db: AsyncSession = Depends(get_db)):
+async def mock_generate_screen(
+    data: MockGenerateRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
     """Generate a mock screen WITHOUT calling Stitch API.
 
     Creates a real DesignScreen record in the database with realistic HTML content.
@@ -1421,11 +1663,7 @@ async def mock_generate_screen(data: MockGenerateRequest, db: AsyncSession = Dep
     """
     # Mock endpoints always available for integration testing
 
-    # Verify project exists
-    result = await db.execute(select(Project).where(Project.id == data.project_id))
-    project = result.scalar_one_or_none()
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
+    await require_project_access(db, request, data.project_id, min_role="researcher")
 
     screen_id = str(uuid.uuid4())
     screen = DesignScreen(
@@ -1466,7 +1704,11 @@ async def mock_generate_screen(data: MockGenerateRequest, db: AsyncSession = Dep
 
 
 @router.post("/interfaces/mock/edit")
-async def mock_edit_screen(data: MockEditRequest, db: AsyncSession = Depends(get_db)):
+async def mock_edit_screen(
+    data: MockEditRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
     """Edit a screen WITHOUT calling Stitch API.
 
     Creates a child DesignScreen with modified mock HTML linked to the parent.
@@ -1474,10 +1716,8 @@ async def mock_edit_screen(data: MockEditRequest, db: AsyncSession = Depends(get
     """
     # Mock endpoints always available for integration testing
 
-    parent_result = await db.execute(select(DesignScreen).where(DesignScreen.id == data.screen_id))
-    parent = parent_result.scalar_one_or_none()
-    if not parent:
-        raise HTTPException(status_code=404, detail="Screen not found")
+    parent = await _get_screen_or_404(db, data.screen_id)
+    await require_project_access(db, request, parent.project_id, min_role="researcher")
 
     new_id = str(uuid.uuid4())
     edited = DesignScreen(
@@ -1501,7 +1741,11 @@ async def mock_edit_screen(data: MockEditRequest, db: AsyncSession = Depends(get
 
 
 @router.post("/interfaces/mock/variants")
-async def mock_generate_variants(data: MockVariantRequest, db: AsyncSession = Depends(get_db)):
+async def mock_generate_variants(
+    data: MockVariantRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
     """Generate mock variant screens WITHOUT calling Stitch API.
 
     Creates 2-3 child DesignScreen records with different mock HTML variants.
@@ -1509,10 +1753,8 @@ async def mock_generate_variants(data: MockVariantRequest, db: AsyncSession = De
     """
     # Mock endpoints always available for integration testing
 
-    parent_result = await db.execute(select(DesignScreen).where(DesignScreen.id == data.screen_id))
-    parent = parent_result.scalar_one_or_none()
-    if not parent:
-        raise HTTPException(status_code=404, detail="Screen not found")
+    parent = await _get_screen_or_404(db, data.screen_id)
+    await require_project_access(db, request, parent.project_id, min_role="researcher")
 
     count = min(max(data.count, 1), len(MOCK_VARIANT_TEMPLATES))
     variants = []
@@ -1544,13 +1786,18 @@ async def mock_generate_variants(data: MockVariantRequest, db: AsyncSession = De
 
 
 @router.post("/interfaces/mock/figma-import")
-async def mock_figma_import(data: MockFigmaImportRequest, db: AsyncSession = Depends(get_db)):
+async def mock_figma_import(
+    data: MockFigmaImportRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
     """Import mock Figma design context WITHOUT calling Figma API.
 
     Returns realistic mock design context (components, styles, layout data).
     Only available when Figma is NOT configured.
     """
     # Mock endpoints always available for integration testing
+    await require_project_access(db, request, data.project_id, min_role="researcher")
 
     from app.services.figma_service import figma_service
 

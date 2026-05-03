@@ -132,6 +132,7 @@ class SkillCreationProposal:
     created_at: str = ""
     reviewed_at: str | None = None
     reject_reason: str | None = None
+    test_result: dict | None = None
 
     def to_dict(self) -> dict:
         return {
@@ -145,6 +146,7 @@ class SkillCreationProposal:
             "created_at": self.created_at,
             "reviewed_at": self.reviewed_at,
             "reject_reason": self.reject_reason,
+            "test_result": self.test_result,
         }
 
 
@@ -224,6 +226,7 @@ class SkillManager:
                         created_at=p.get("created_at", ""),
                         reviewed_at=p.get("reviewed_at"),
                         reject_reason=p.get("reject_reason"),
+                        test_result=p.get("test_result"),
                     )
                     self._creation_proposals.append(cp)
             except Exception:

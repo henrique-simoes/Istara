@@ -165,10 +165,9 @@ def require_admin_from_request(request: Request) -> None:
         from app.core.security_middleware import require_admin_from_request
         require_admin_from_request(request)
     """
-    user = getattr(request.state, "user", None)
-    if not user or user.get("role") != "admin":
-        from fastapi import HTTPException
-        raise HTTPException(status_code=403, detail="Admin access required.")
+    from app.core.permissions import require_global_admin
+
+    require_global_admin(request)
 
 
 def get_user_from_request(request: Request) -> dict:

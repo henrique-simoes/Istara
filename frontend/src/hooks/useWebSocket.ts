@@ -9,6 +9,8 @@ const WS_URL = `${WS_BASE}/ws`;
 export function useWebSocket(onEvent?: (event: WSEvent) => void) {
   const wsRef = useRef<WebSocket | null>(null);
   const [connected, setConnected] = useState(false);
+  const [status, setStatus] = useState<"connecting" | "connected" | "reconnecting" | "disconnected" | "auth_failed">("connecting");
+  const [lastCloseReason, setLastCloseReason] = useState("");
   const reconnectTimer = useRef<ReturnType<typeof setTimeout>>();
   // Store callback in a ref so reconnect logic never depends on it
   const onEventRef = useRef(onEvent);
@@ -16,9 +18,18 @@ export function useWebSocket(onEvent?: (event: WSEvent) => void) {
 
   const connect = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) return;
+    clearTimeout(reconnectTimer.current);
 
     // Append JWT token as query parameter for authentication
     const token = typeof window !== "undefined" ? localStorage.getItem("istara_token") : null;
+    if (!token) {
+      setConnected(false);
+      setStatus("auth_failed");
+      setLastCloseReason("Missing authentication token");
+      reconnectTimer.current = setTimeout(connect, 3000);
+      return;
+    }
+    setStatus("connecting");
     const wsUrl = token
       ? `${WS_URL}?token=${encodeURIComponent(token)}`
       : WS_URL;
@@ -26,6 +37,8 @@ export function useWebSocket(onEvent?: (event: WSEvent) => void) {
 
     ws.onopen = () => {
       setConnected(true);
+      setStatus("connected");
+      setLastCloseReason("");
       console.log("[Istara WS] Connected");
     };
 
@@ -42,8 +55,17 @@ export function useWebSocket(onEvent?: (event: WSEvent) => void) {
       }
     };
 
-    ws.onclose = () => {
+    ws.onclose = (event) => {
       setConnected(false);
+      const reason = event.reason || (event.code ? `Closed with code ${event.code}` : "");
+      setLastCloseReason(reason);
+      if (event.code === 4001) {
+        setStatus("auth_failed");
+        console.log(`[Istara WS] Authentication failed. Retrying in 3s. ${reason}`);
+        reconnectTimer.current = setTimeout(connect, 3000);
+        return;
+      }
+      setStatus("reconnecting");
       console.log("[Istara WS] Disconnected. Reconnecting in 3s...");
       reconnectTimer.current = setTimeout(connect, 3000);
     };
@@ -57,8 +79,13 @@ export function useWebSocket(onEvent?: (event: WSEvent) => void) {
 
   useEffect(() => {
     connect();
+    const handleAuthChanged = () => connect();
+    window.addEventListener("storage", handleAuthChanged);
+    window.addEventListener("istara:auth-changed", handleAuthChanged);
     return () => {
       clearTimeout(reconnectTimer.current);
+      window.removeEventListener("storage", handleAuthChanged);
+      window.removeEventListener("istara:auth-changed", handleAuthChanged);
       wsRef.current?.close();
     };
   }, [connect]);
@@ -69,5 +96,5 @@ export function useWebSocket(onEvent?: (event: WSEvent) => void) {
     }
   }, []);
 
-  return { connected, send };
+  return { connected, status, lastCloseReason, send };
 }

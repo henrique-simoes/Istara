@@ -262,15 +262,30 @@ class ComputeNode:
                 try:
                     data = resp.json()
                     if self.provider_type == "ollama":
-                        self.loaded_models = [m.get("name", "") for m in data.get("models", [])]
+                        raw_models = data.get("models", []) if isinstance(data, dict) else []
+                        self.loaded_models = [
+                            m.get("name", "")
+                            for m in raw_models
+                            if isinstance(m, dict) and m.get("name")
+                        ]
                     else:
-                        self.loaded_models = [m.get("id", "") for m in data.get("data", [])]
+                        raw_models = data.get("data", []) if isinstance(data, dict) else []
+                        self.loaded_models = [
+                            m.get("id", "")
+                            for m in raw_models
+                            if isinstance(m, dict) and m.get("id")
+                        ]
                 except Exception:
-                    pass
-                self.health_state = "ready"
-                self.health_error = ""
-                self.consecutive_failures = 0
-                self.last_health_check = time.time()
+                    self.loaded_models = []
+                if self.loaded_models:
+                    self.health_state = "ready"
+                    self.health_error = ""
+                    self.consecutive_failures = 0
+                    self.last_health_check = time.time()
+                else:
+                    self.is_healthy = False
+                    self.health_state = "unhealthy"
+                    self.health_error = "No LLM models advertised by this host"
             elif resp.status_code in (401, 403):
                 # Auth failure — server requires an API key
                 self.health_state = "auth_required"

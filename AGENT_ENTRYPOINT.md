@@ -15,6 +15,7 @@ When humans or agents say "follow Compass," they mean the combined system of:
 - generated architecture maps
 - impact matrices
 - change checklists
+- future feature ledger
 - technical narrative docs
 - persona knowledge
 - test and simulation maintenance expectations
@@ -44,9 +45,10 @@ Read these in order before non-trivial work:
 3. `COMPLETE_SYSTEM.md`
 4. `SYSTEM_CHANGE_MATRIX.md`
 5. `CHANGE_CHECKLIST.md`
-6. `SYSTEM_INTEGRITY_GUIDE.md` when you need deeper reference detail
-7. `Tech.md` when architecture, workflows, release behavior, install/update behavior, or operational logic are relevant
-8. `planner.md` for planned, multi-agent, branch-review, stale-branch, or review/correction work
+6. `COMPASS_FUTURE_FEATURES.md` when planning, deferring, or discovering future work
+7. `SYSTEM_INTEGRITY_GUIDE.md` when you need deeper reference detail
+8. `Tech.md` when architecture, workflows, release behavior, install/update behavior, or operational logic are relevant
+9. `planner.md` for planned, multi-agent, branch-review, stale-branch, or review/correction work
 
 **Note on planner.md and Compass rules:**
 - `planner.md` is part of Compass.
@@ -65,6 +67,8 @@ Read these in order before non-trivial work:
   "If X changes, also inspect W/Y/Z."
 - `CHANGE_CHECKLIST.md`
   Execution checklist for making and shipping changes safely.
+- `COMPASS_FUTURE_FEATURES.md`
+  Living ledger for future features, deferred hardening, observability gaps, and product ideas that should influence future plans.
 - `SYSTEM_INTEGRITY_GUIDE.md`
   Deep legacy reference manual.
 - `Tech.md`
@@ -80,17 +84,17 @@ Together, these documents are Compass.
 ## Live Snapshot
 
 - Version: `2026.04.27`
-- Backend route modules: 40 with 383 detected endpoints
-- Frontend mounted views: 23
+- Backend route modules: 41 with 390 detected endpoints
+- Frontend mounted views: 24
 - Frontend stores: 15
 - Data models: 44
 - Personas: 6 (`design-lead`, `istara-devops`, `istara-main`, `istara-sim`, `istara-ui-audit`, `istara-ux-eval`)
-- Active test files: 62 across 4 layers
+- Active test files: 66 across 4 layers
 
 ## Current Product Surface
 
 - Primary navigation: Chat, Findings, UX Laws, Tasks, Interviews, Documents, Context, Skills, Agents, Memory, Interfaces, Integrations, Loops, Settings
-- Secondary navigation: Autoresearch, Backup, Meta-Agent, Compute Pool, Ensemble Health, Quality Dashboard, Project Settings, History
+- Secondary navigation: Admin, Autoresearch, Backup, Meta-Agent, Compute Pool, Ensemble Health, Quality Dashboard, Project Settings, History
 - WebSocket events: `agent_idle`, `agent_status`, `agent_thinking`, `autoresearch_complete`, `autoresearch_progress`, `channel_message`, `channel_status`, `deployment_finding`, `deployment_progress`, `deployment_response`, `file_processed`, `finding_created`, `meta_proposal`, `plan_progress`, `resource_throttle`, `steering_message`, `suggestion`, `task_progress`, `task_queue_update`
 - Channel adapters: `google_chat`, `slack`, `telegram`, `whatsapp`
 - Survey platforms: `google_forms`, `surveymonkey`, `typeform`

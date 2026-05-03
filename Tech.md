@@ -608,6 +608,12 @@ The **SkillManager** (`skills/skill_manager.py`) tracks execution quality:
 
 Every file a user uploads, every output an agent produces, and every task completion that generates an artifact becomes a **Document**. Documents are Istara's source of truth — the final, findable output of everything.
 
+Generated artifacts have two audiences:
+- **Researchers** see a human-readable document. Machine-oriented JSON skill artifacts are rendered into Markdown Documents with headings, summaries, tables, and sections.
+- **Agents/RAG** still retain structured detail. The readable artifact is indexed for normal consultation, and the raw structured content may also be indexed under a raw artifact source for machine reuse.
+
+The Documents UI should prefer the researcher-readable version for generated artifacts. Raw JSON is an implementation detail unless the user explicitly requests raw/export data.
+
 ### Document Lifecycle
 
 ```
@@ -647,6 +653,7 @@ Files placed in the project's upload directory are **automatically registered** 
 
 Document preview follows the same pattern as the Interviews view:
 - Text files render with syntax highlighting
+- Markdown/generated artifacts render as formatted Markdown
 - Images display inline
 - Audio/video play with native controls
 - PDF/DOCX content extracted and shown as text
@@ -1140,6 +1147,9 @@ Projects now support pause/resume and delete from the sidebar context menu:
 - **Delete**: Full cascade deletion of all project entities
 - **Owner**: `owner_id` field for per-user project ownership in team mode
 - **UI**: Right-click or hover menu on project items in sidebar with Pause/Delete actions
+- **Visibility**: Global admins list all projects; non-admin team users list only invited projects.
+- **Project roles**: `project_admin` can manage project settings and project membership for one project; `researcher` can work in the project; `viewer` can only observe.
+- **Admin Dashboard**: Global admins have an Admin Dashboard backed by `/api/admin/*` endpoints for system-wide user, project, access, compute, usage, and connection-string visibility. Metrics that are not durably collected yet must be labeled as not collected rather than shown as zero.
 
 ### Team Mode
 
@@ -1447,20 +1457,20 @@ Backend endpoints with optional `project_id` parameters (documents, findings, no
 
 Tamper-proof bundles for secure client→server setup. Format: `rcl_<base64url(JSON)>.<base64url(HMAC-SHA256)>`
 
-Payload contains: `server_url`, `ws_url` (relay WebSocket), `network_token` (NETWORK_ACCESS_TOKEN), `jwt` (pre-minted for web login), `expires_at`, `label`.
+Payloads include an explicit `kind`. `user_invite` strings contain `server_url`, `ws_url`, a pre-minted invite `jwt`, intended `role`, `expires_at`, and `label`. `compute_donation` strings contain `server_url`, `ws_url`, `network_token`, `expires_at`, and `label`, but never a user JWT.
 
 **Flow:**
-1. Admin generates in Settings → `POST /connections/generate` (admin-only)
+1. Admin generates a user invite → `POST /connections/generate` (admin-only), or a compute donation string → `POST /connections/compute-donation/generate` (admin-only)
 2. Client validates → `POST /connections/validate` (public, no auth required)
-3. Client redeems → `POST /connections/redeem` (creates user account, returns JWT + network token)
+3. User invites redeem through `POST /connections/redeem` (creates user account and returns JWT). Compute donation strings are not redeemable as user accounts.
 
-One string gets a team member both web UI access (JWT) and relay compute donation (network token). Strings are HMAC-signed with `JWT_SECRET` — only the originating server can create valid ones.
+User invites and compute donation strings are separate permission domains. Strings are HMAC-signed with `JWT_SECRET` — only the originating server can create valid strings.
 
 Remote clients must use the server they opened, not their own localhost. The production frontend now derives API/WebSocket origins from the browser host when `NEXT_PUBLIC_API_URL` / `NEXT_PUBLIC_WS_URL` are unset, so `http://server-ip:3000` calls `http://server-ip:8000`. The shell installer and desktop setup no longer bake localhost API values into the frontend build. Backend CORS accepts frontend origins on the configured frontend port so LAN clients can call the API without hand-editing server IPs into `.env`.
 
 `server_url` in a connection string is the web UI URL. `ws_url` is the backend relay WebSocket URL. This split matters for direct LAN installs where the UI is on port 3000 and the backend/relay socket is on port 8000.
 
-The `connection_strings` table is the admin audit surface for generated invites: active/revoked state, expiration, last validation time, redeemed username, and redemption time. Revocation marks a string inactive instead of deleting the row so admins keep the audit trail and clients receive a specific revoked-state message. Public validation is rate-limited per client to slow brute-force or tamper attempts. Rate-limit client identity is proxy-aware (`X-Forwarded-For`, `X-Real-IP`, then socket host) only when the immediate peer matches `TRUSTED_PROXY_HOSTS`; otherwise Istara uses the socket host so direct clients cannot spoof headers. Rate-limit buckets are bounded LRU-style in memory to avoid unbounded growth from one-off IPs.
+The `connection_strings` table is the admin audit surface for generated invites and compute donation strings: token type, active/revoked state, expiration, last validation time, redeemed username, and redemption time. Revocation marks a string inactive instead of deleting the row so admins keep the audit trail and clients receive a specific revoked-state message. Public validation is rate-limited per client to slow brute-force or tamper attempts. Rate-limit client identity is proxy-aware (`X-Forwarded-For`, `X-Real-IP`, then socket host) only when the immediate peer matches `TRUSTED_PROXY_HOSTS`; otherwise Istara uses the socket host so direct clients cannot spoof headers. Rate-limit buckets are bounded LRU-style in memory to avoid unbounded growth from one-off IPs.
 
 **Token rotation:** `POST /connections/rotate-network-token` generates new NETWORK_ACCESS_TOKEN, invalidates all existing connection strings, broadcasts to connected relays.
 
@@ -1697,10 +1707,13 @@ Files queue as preview chips before sending (not uploaded on select). Multiple f
 ### Project Document Picker
 A FolderOpen button opens a searchable dropdown of project documents (calls `GET /api/documents/list` with search param). Selected docs appear as purple reference chips alongside file chips. Referenced docs are included as `[Referenced project documents: ...]` in the message.
 
+### Team Access Enforcement
+Chat write paths are project-scoped. Global admins, project admins, and researchers can send messages in visible projects. Viewers can read visible chat history but cannot send chat messages, create chat sessions, upload through Chat, use voice input, or attach documents. The frontend disables viewer controls, but backend routes remain authoritative.
+
 ### Task Instructions Passthrough
 The Task model's `instructions` field (Specific Instructions) is now included in LLM prompts. Previously silently dropped. Both `_execute_general_task()` and SkillInput construction include it.
 
-**Files:** `frontend/src/components/chat/ChatView.tsx`, `backend/app/core/agent.py`
+**Files:** `frontend/src/components/chat/ChatView.tsx`, `backend/app/core/agent.py`, `backend/app/api/routes/chat.py`, `backend/app/api/routes/sessions.py`
 
 ## Ensemble Validation Integration
 
@@ -1958,6 +1971,8 @@ Istara supports both local (single-user, no auth) and team modes:
 - **User model**: `users` table with username, email, PBKDF2-hashed password, role, and JSON preferences (theme, UI density, shortcuts).
 - **Auth middleware**: `get_current_user()` FastAPI dependency — returns local user in local mode, verifies JWT in team mode.
 - **Preferences**: Stored per-user as JSON, covering theme, keyboard shortcuts, and UI customization.
+
+Team authorization now uses a central permission layer (`backend/app/core/permissions.py`) rather than scattered route-local role checks. The policy combines global RBAC, project relationship checks, and operation attributes. Global admins manage all projects and system settings; project members only see invited projects. Uninvited project access returns `404`, while forbidden mutations inside visible projects return `403`. Viewers are read-only across the locked-down project surfaces: Chat, sessions, Interfaces Design Chat, Tasks, Documents, Findings, Codebooks, and project-scoped Skill execution/planning. Legacy project role `member` maps to `researcher`; legacy project role `admin` maps to `project_admin`. The canonical permission contract lives in `docs/TEAM_RBAC_PERMISSION_MATRIX.md`.
 
 **Files**: `backend/app/models/user.py`, `backend/app/core/auth.py`, `backend/app/api/routes/auth.py`, `backend/app/api/middleware/auth.py`
 
@@ -2350,6 +2365,8 @@ The Interfaces menu creates a bridge between UX Research and Product Design with
 - **Design Chat**: An AI design assistant (Design Lead agent) with automatic research context injection via RAG. Uses the same SSE streaming and ReAct tool loop as the main Chat, with design-specific tools (generate_screen, edit_screen, create_variant, search_findings_for_design, create_design_brief, import_from_figma, list_screens). Messages are scoped to a design-specific `ChatSession` (`session_type="design"`) so they never mix with regular chat messages.
 
 - **Session scoping**: Both Chat and Design Chat now create/find their own sessions automatically when `session_id` is not provided. Chat uses the default session; Design Chat creates/reuses a `session_type="design"` session. This prevents cross-contamination where chat messages appeared in the Design Chat history.
+
+- **Team access**: Design Chat history is readable to invited viewers, but sending messages or triggering design work requires researcher-level project access or higher. Viewer controls are disabled in the Interfaces UI and enforced by the backend.
 
 - **Screen Generation**: Text-to-UI generation via Google Stitch SDK integration. Supports device types (Mobile/Desktop/Tablet/Agnostic) and AI model selection. Screens can be seeded from research findings for evidence-grounded design.
 
@@ -3030,3 +3047,41 @@ All outbound channel calls are protected by:
 - **Audit logging**: Every tool invocation recorded in `MCPAuditEntry` with arguments, caller, policy, and duration.
 - **Rate limiting**: High-risk tools (`execute_skill`, `create_project`, `deploy_research`) capped per hour.
 - **Client registry**: External MCP servers registered with encrypted headers (`encrypt_field`).
+
+---
+
+## Stabilization Sweep (2026-04-30)
+
+The April 30 stabilization pass aligned backend persistence, frontend surfaces, and Compass expectations across several cross-cutting systems. The full audit is tracked in `docs/STABILIZATION_AUDIT_2026_04_30.md`; this section records the architecture-level rules future agents must preserve.
+
+### Cross-System State Lifetimes
+
+- **Meta-Agent**: Pending proposals are durable; recent observations are also persisted now, but they represent observation history rather than a guarantee the observation loop is currently enabled. The UI must distinguish disabled runtime state from persisted proposal/observation artifacts.
+- **Interfaces Design Chat**: Design chat uses a design-scoped `ChatSession`. User and assistant messages must be saved to the resolved design session id. Saving assistant messages with `session_id = null` breaks history on view changes.
+- **Live updates**: The status bar's "Live updates" state refers only to the browser `/ws` event socket. Backend HTTP health and LLM/ComputeRegistry health are separate signals and must not be conflated.
+
+### Evidence and Tag Integrity
+
+- **Documents** are the broad tag surface for Istara. Document views must aggregate relevant document metadata tags, nugget/interview tags, and code-application tags rather than treating Interviews as an isolated tag island.
+- **Codebooks** should show explicit `CodebookVersion` data when present, and fall back to legacy codebook or derived nugget/code-application data when no versioned codebook exists.
+- **Evidence chains** must not imply source evidence exists when it does not. Recommendation drilldowns should show supporting Recommendation -> Insight -> Fact -> Nugget paths when linked, and diagnostics/empty states when the chain stops.
+
+### Human Review Semantics
+
+- **Tasks / Kanban** separate operational status from human judgment. Done means human-approved, not merely agent-completed. Moving into Done requires the review/approval path; moving out of Done should use the revision path and explain why drag-back is blocked.
+- Task labels include user labels plus system-derived organizational tags. Hover explanations should make system tags understandable without changing the underlying task model.
+
+### Compute and LLM Discovery Rules
+
+- Network discovery may reject endpoints that do not return valid provider-shaped model listings.
+- Do not silently deduplicate network-discovered LLM servers by identical provider/port/subnet/model catalog. Two production machines can legitimately expose the same catalog. Duplicate handling needs stronger host identity evidence or explicit admin review/merge/ignore controls.
+
+### Quality and Promotion Gates
+
+- Skill self-evolution promotion must remain verification-gated. The UI should expose proposal diagnostics, test/verification result, promotion readiness, and approval blocking reasons.
+- UX Laws compliance must distinguish "not evaluated" from "100% compliant." A perfect score is meaningful only when relevant UX Law evidence exists.
+- Autoresearch metrics are cross-system: task review, compute, telemetry, agent state, pipeline, and collection metrics must be verified in backend payloads and frontend dashboards together.
+
+### Persona Integrity
+
+System agents must have complete persona directories with `CORE.md`, `SKILLS.md`, `PROTOCOLS.md`, and `MEMORY.md`. Piper/design-lead is a first-class system agent and must follow the same persona-file contract as the other built-in agents.

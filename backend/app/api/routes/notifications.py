@@ -5,11 +5,13 @@ from __future__ import annotations
 import logging
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.permissions import require_project_access
+from app.core.security_middleware import require_admin_from_request
 from app.models.database import get_db
 from app.models.notification import Notification, NotificationPreference
 
@@ -51,6 +53,7 @@ class UpdatePreferencesRequest(BaseModel):
 
 @router.get("/notifications")
 async def list_notifications(
+    request: Request,
     category: str | None = None,
     agent_id: str | None = None,
     project_id: str | None = None,
@@ -64,6 +67,11 @@ async def list_notifications(
     db: AsyncSession = Depends(get_db),
 ):
     """Paginated notification list with optional filters."""
+    if project_id:
+        await require_project_access(db, request, project_id, min_role="viewer")
+    else:
+        require_admin_from_request(request)
+
     query = select(Notification).order_by(Notification.created_at.desc())
 
     if category:
@@ -115,8 +123,9 @@ async def list_notifications(
 
 
 @router.get("/notifications/unread-count")
-async def unread_count(db: AsyncSession = Depends(get_db)):
+async def unread_count(request: Request, db: AsyncSession = Depends(get_db)):
     """Return the number of unread notifications."""
+    require_admin_from_request(request)
     count = (
         await db.execute(
             select(func.count(Notification.id)).where(Notification.read.is_(False))
@@ -126,7 +135,7 @@ async def unread_count(db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/notifications/{notification_id}/read")
-async def mark_read(notification_id: str, db: AsyncSession = Depends(get_db)):
+async def mark_read(notification_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     """Mark a single notification as read."""
     result = await db.execute(
         select(Notification).where(Notification.id == notification_id)
@@ -134,6 +143,10 @@ async def mark_read(notification_id: str, db: AsyncSession = Depends(get_db)):
     notification = result.scalar_one_or_none()
     if not notification:
         raise HTTPException(status_code=404, detail="Notification not found")
+    if notification.project_id:
+        await require_project_access(db, request, notification.project_id, min_role="viewer")
+    else:
+        require_admin_from_request(request)
 
     notification.read = True
     await db.commit()
@@ -142,10 +155,16 @@ async def mark_read(notification_id: str, db: AsyncSession = Depends(get_db)):
 
 @router.post("/notifications/read-all")
 async def mark_all_read(
+    request: Request,
     data: MarkAllReadRequest | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     """Mark all unread notifications as read, optionally scoped to a project."""
+    if data and data.project_id:
+        await require_project_access(db, request, data.project_id, min_role="viewer")
+    else:
+        require_admin_from_request(request)
+
     stmt = (
         update(Notification)
         .where(Notification.read.is_(False))
@@ -163,6 +182,7 @@ async def mark_all_read(
 @router.delete("/notifications/{notification_id}", status_code=204)
 async def delete_notification(
     notification_id: str,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
     """Delete a single notification."""
@@ -172,14 +192,19 @@ async def delete_notification(
     notification = result.scalar_one_or_none()
     if not notification:
         raise HTTPException(status_code=404, detail="Notification not found")
+    if notification.project_id:
+        await require_project_access(db, request, notification.project_id, min_role="researcher")
+    else:
+        require_admin_from_request(request)
 
     await db.delete(notification)
     await db.commit()
 
 
 @router.get("/notifications/preferences")
-async def get_preferences(db: AsyncSession = Depends(get_db)):
+async def get_preferences(request: Request, db: AsyncSession = Depends(get_db)):
     """Get all notification preferences."""
+    require_admin_from_request(request)
     result = await db.execute(
         select(NotificationPreference).order_by(NotificationPreference.category)
     )
@@ -190,9 +215,11 @@ async def get_preferences(db: AsyncSession = Depends(get_db)):
 @router.put("/notifications/preferences")
 async def update_preferences(
     data: UpdatePreferencesRequest,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
     """Create or update notification preferences by category."""
+    require_admin_from_request(request)
     updated: list[dict] = []
 
     for item in data.preferences:

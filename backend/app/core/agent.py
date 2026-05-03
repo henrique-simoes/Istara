@@ -2048,8 +2048,17 @@ class AgentOrchestrator:
         artifact_doc_ids = []
         for filename, content in output.artifacts.items():
             if isinstance(content, str) and len(content) > 50:
+                from app.core.artifact_document import render_artifact_document
+
+                readable_artifact = render_artifact_document(
+                    filename,
+                    content,
+                    skill_name=task.skill_name,
+                )
+                readable_content = readable_artifact["content"]
                 chunks = [
-                    TextChunk(text=content[:2000], source=f"skill:{task.skill_name}:{filename}")
+                    TextChunk(text=readable_content[:2000], source=f"skill:{task.skill_name}:{readable_artifact['file_name']}"),
+                    TextChunk(text=content[:2000], source=f"skill:{task.skill_name}:{filename}:raw"),
                 ]
                 await ingest_chunks(project_id, chunks)
                 # Create a Document record so artifacts appear in Documents view
@@ -2059,12 +2068,17 @@ class AgentOrchestrator:
                     doc = Document(
                         id=str(uuid.uuid4()),
                         project_id=project_id,
-                        title=filename,
-                        file_name=filename,
+                        title=readable_artifact["title"],
+                        description=f"Human-readable skill artifact generated from {filename}.",
+                        file_name=readable_artifact["file_name"],
+                        file_type=readable_artifact["file_type"],
                         source="agent_output",
-                        content_preview=content[:500],
+                        content_preview=readable_content[:500],
+                        content_text=readable_content,
                         status="ready",
                     )
+                    doc.set_skill_names([task.skill_name] if task.skill_name else [])
+                    doc.set_tags(["generated-artifact", "skill-output"])
                     db.add(doc)
                     artifact_doc_ids.append(doc.id)
                 except Exception as e:

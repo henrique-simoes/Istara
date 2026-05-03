@@ -18,16 +18,17 @@ Generated from the repository on version `2026.04.27`. This document is meant to
 
 ## Repository Architecture Snapshot
 
-- FastAPI backend with 40 route modules and 383 detected endpoints.
-- Next.js frontend with 23 mounted views and 15 Zustand stores.
+- FastAPI backend with 41 route modules and 390 detected endpoints.
+- Next.js frontend with 24 mounted views and 15 Zustand stores.
 - 44 SQLAlchemy models in `backend/app/models`.
 - 6 tracked persona directories and 57 JSON-defined skills.
-- 62 active test files across 4 regression layers.
+- 66 active test files across 4 regression layers.
 
 ## Backend Route Inventory
 
 | Route Module | Prefix | Endpoints |
 |---|---|---|
+| `admin.py` | `/admin` | 5 |
 | `agents.py` | `/` | 48 |
 | `audit.py` | `/` | 7 |
 | `auth.py` | `/` | 15 |
@@ -40,7 +41,7 @@ Generated from the repository on version `2026.04.27`. This document is meant to
 | `codebook_versions.py` | `/codebook-versions` | 4 |
 | `codebooks.py` | `/` | 8 |
 | `compute.py` | `/` | 3 |
-| `connections.py` | `/` | 6 |
+| `connections.py` | `/` | 7 |
 | `context_dag.py` | `/` | 6 |
 | `deployments.py` | `/` | 12 |
 | `documents.py` | `/` | 10 |
@@ -61,7 +62,7 @@ Generated from the repository on version `2026.04.27`. This document is meant to
 | `scheduler.py` | `/` | 5 |
 | `sessions.py` | `/` | 8 |
 | `settings.py` | `/` | 18 |
-| `skills.py` | `/` | 18 |
+| `skills.py` | `/` | 19 |
 | `steering.py` | `/` | 8 |
 | `surveys.py` | `/` | 9 |
 | `tasks.py` | `/` | 17 |
@@ -71,6 +72,7 @@ Generated from the repository on version `2026.04.27`. This document is meant to
 
 ### Endpoint Coverage
 
+- **admin**: `GET /api/admin/overview`, `GET /api/admin/projects`, `GET /api/admin/users`, `GET /api/admin/access`, `GET /api/admin/connection-strings`
 - **agents**: `GET /api/agents`, `GET /api/agents/capacity`, `GET /api/agents/heartbeat/status`, `GET /api/agents/a2a/log`, `GET /api/agents/status`, `GET /api/agents/log/recent`, `POST /api/agents`, `GET /api/agents/{agent_id}`, `PATCH /api/agents/{agent_id}`, `DELETE /api/agents/{agent_id}`, `POST /api/agents/{agent_id}/pause`, `POST /api/agents/{agent_id}/resume`, `POST /api/agents/{agent_id}/restart`, `POST /api/agents/{agent_id}/set-scope`, `POST /api/agents/{agent_id}/request-promotion`, `POST /api/agents/{agent_id}/avatar`, `GET /api/agents/{agent_id}/avatar`, `GET /api/agents/{agent_id}/identity`, `PUT /api/agents/{agent_id}/identity`, `GET /api/agents/personas/list`, `GET /api/agents/{agent_id}/learnings`, `GET /api/agents/{agent_id}/evolution/candidates`, `POST /api/agents/{agent_id}/evolution/promote/{learning_id}`, `POST /api/agents/{agent_id}/evolution/auto`, `GET /api/agents/evolution/scan`, `GET /api/agents/creation-proposals/pending`, `GET /api/agents/creation-proposals/all`, `POST /api/agents/creation-proposals/{proposal_id}/approve`, `POST /api/agents/creation-proposals/{proposal_id}/reject`, `GET /api/agents/{agent_id}/prompt/stats`, `POST /api/agents/{agent_id}/prompt/compose`, `GET /api/agents/{agent_id}/memory`, `PATCH /api/agents/{agent_id}/memory`, `GET /api/agents/{agent_id}/messages`, `POST /api/agents/{agent_id}/messages`, `GET /api/audit/ux/latest`, `POST /api/audit/ux/run`, `GET /api/audit/sim/latest`, `POST /api/audit/sim/run`, `GET /api/agents/{agent_id}/export`, `POST /api/agents/import`, `GET /api/resources`, `GET /api/contexts`, `POST /api/contexts`, `GET /api/contexts/{doc_id}`, `PATCH /api/contexts/{doc_id}`, `DELETE /api/contexts/{doc_id}`, `GET /api/contexts/composed/{project_id}`
 - **audit**: `GET /api/audit/devops/latest`, `GET /api/audit/devops/history`, `POST /api/audit/devops/run`, `GET /api/audit/ui/latest`, `GET /api/audit/ui/history`, `POST /api/audit/ui/run`, `GET /api/audit/logs`
 - **auth**: `POST /api/auth/register`, `POST /api/auth/login`, `POST /api/auth/logout`, `POST /api/auth/totp/setup`, `POST /api/auth/totp/verify`, `POST /api/auth/totp/disable`, `POST /api/auth/recovery-codes/generate`, `GET /api/auth/recovery-codes/status`, `GET /api/auth/me`, `PUT /api/auth/preferences`, `GET /api/auth/team-status`, `GET /api/auth/users`, `POST /api/auth/users`, `DELETE /api/auth/users/{user_id}`, `PATCH /api/auth/users/{user_id}/role`
@@ -83,7 +85,7 @@ Generated from the repository on version `2026.04.27`. This document is meant to
 - **codebook_versions**: `GET /api/codebook-versions/{project_id}`, `GET /api/codebook-versions/{project_id}/latest`, `POST /api/codebook-versions`, `GET /api/codebook-versions/detail/{version_id}`
 - **codebooks**: `GET /api/codebooks`, `POST /api/codebooks`, `GET /api/codebooks/{codebook_id}`, `PATCH /api/codebooks/{codebook_id}`, `DELETE /api/codebooks/{codebook_id}`, `POST /api/codes`, `PATCH /api/codes/{code_id}`, `DELETE /api/codes/{code_id}`
 - **compute**: `GET /api/compute/nodes`, `GET /api/compute/stats`, `GET /api/compute/model-warnings`
-- **connections**: `POST /api/connections/generate`, `GET /api/connections`, `DELETE /api/connections/{conn_id}`, `POST /api/connections/validate`, `POST /api/connections/redeem`, `POST /api/connections/rotate-network-token`
+- **connections**: `POST /api/connections/generate`, `POST /api/connections/compute-donation/generate`, `GET /api/connections`, `DELETE /api/connections/{conn_id}`, `POST /api/connections/validate`, `POST /api/connections/redeem`, `POST /api/connections/rotate-network-token`
 - **context_dag**: `GET /api/context-dag/{session_id}`, `GET /api/context-dag/{session_id}/health`, `POST /api/context-dag/{session_id}/expand`, `POST /api/context-dag/{session_id}/grep`, `GET /api/context-dag/{session_id}/node/{node_id}`, `POST /api/context-dag/{session_id}/compact`
 - **deployments**: `POST /api/deployments`, `GET /api/deployments`, `GET /api/deployments/overview`, `GET /api/deployments/{deployment_id}`, `GET /api/deployments/{deployment_id}/analytics`, `POST /api/deployments/{deployment_id}/activate`, `POST /api/deployments/{deployment_id}/pause`, `POST /api/deployments/{deployment_id}/complete`, `POST /api/deployments/{deployment_id}/respond`, `GET /api/deployments/{deployment_id}/conversations`, `GET /api/deployments/{deployment_id}/conversations/{conversation_id}`, `GET /api/deployments/{deployment_id}/conversations/{conversation_id}/transcript`
 - **documents**: `GET /api/documents`, `GET /api/documents/{document_id}`, `POST /api/documents`, `PATCH /api/documents/{document_id}`, `DELETE /api/documents/{document_id}`, `GET /api/documents/{document_id}/content`, `GET /api/documents/search/full`, `GET /api/documents/tags/{project_id}`, `POST /api/documents/sync/{project_id}`, `GET /api/documents/stats/{project_id}`
@@ -104,7 +106,7 @@ Generated from the repository on version `2026.04.27`. This document is meant to
 - **scheduler**: `POST /api/schedules`, `GET /api/schedules`, `GET /api/schedules/{schedule_id}`, `PATCH /api/schedules/{schedule_id}`, `DELETE /api/schedules/{schedule_id}`
 - **sessions**: `GET /api/sessions/{project_id}`, `POST /api/sessions`, `GET /api/sessions/detail/{session_id}`, `PATCH /api/sessions/{session_id}`, `DELETE /api/sessions/{session_id}`, `POST /api/sessions/{session_id}/star`, `GET /api/inference-presets`, `GET /api/sessions/{project_id}/ensure-default`
 - **settings**: `GET /api/settings/hardware`, `GET /api/settings/models`, `POST /api/settings/model`, `POST /api/settings/provider`, `POST /api/settings/maintenance/pause`, `POST /api/settings/maintenance/resume`, `GET /api/settings/maintenance`, `GET /api/settings/integrations-status`, `GET /api/settings/vector-health`, `GET /api/settings/data-integrity`, `POST /api/settings/export-database`, `POST /api/settings/import-database`, `GET /api/settings/status`, `GET /api/settings/telemetry/status`, `POST /api/settings/telemetry/export`, `POST /api/settings/telemetry/toggle`, `GET /api/settings/telemetry/healing`, `POST /api/settings/team-mode`
-- **skills**: `GET /api/skills`, `GET /api/skills/health/all`, `GET /api/skills/proposals/pending`, `GET /api/skills/proposals/all`, `GET /api/skills/creation-proposals/pending`, `GET /api/skills/creation-proposals/all`, `POST /api/skills/creation-proposals/{proposal_id}/approve`, `POST /api/skills/creation-proposals/{proposal_id}/reject`, `GET /api/skills/{name}`, `POST /api/skills`, `PATCH /api/skills/{name}`, `DELETE /api/skills/{name}`, `POST /api/skills/{name}/toggle`, `GET /api/skills/{name}/health`, `POST /api/skills/proposals/{proposal_id}/approve`, `POST /api/skills/proposals/{proposal_id}/reject`, `POST /api/skills/{name}/execute`, `POST /api/skills/{name}/plan`
+- **skills**: `GET /api/skills`, `GET /api/skills/health/all`, `GET /api/skills/proposals/pending`, `GET /api/skills/proposals/all`, `GET /api/skills/creation-proposals/pending`, `GET /api/skills/creation-proposals/all`, `POST /api/skills/creation-proposals/{proposal_id}/approve`, `POST /api/skills/creation-proposals/{proposal_id}/verify`, `POST /api/skills/creation-proposals/{proposal_id}/reject`, `GET /api/skills/{name}`, `POST /api/skills`, `PATCH /api/skills/{name}`, `DELETE /api/skills/{name}`, `POST /api/skills/{name}/toggle`, `GET /api/skills/{name}/health`, `POST /api/skills/proposals/{proposal_id}/approve`, `POST /api/skills/proposals/{proposal_id}/reject`, `POST /api/skills/{name}/execute`, `POST /api/skills/{name}/plan`
 - **steering**: `POST /api/steering/{agent_id}`, `POST /api/steering/{agent_id}/follow-up`, `POST /api/steering/{agent_id}/abort`, `GET /api/steering/{agent_id}/status`, `GET /api/steering/{agent_id}/queues`, `DELETE /api/steering/{agent_id}/queues`, `GET /api/steering/{agent_id}/idle`, `GET /api/steering`
 - **surveys**: `GET /api/surveys/integrations`, `POST /api/surveys/integrations`, `DELETE /api/surveys/integrations/{integration_id}`, `GET /api/surveys/integrations/{integration_id}/surveys`, `POST /api/surveys/integrations/{integration_id}/create`, `POST /api/surveys/links`, `GET /api/surveys/links`, `POST /api/surveys/links/{link_id}/sync`, `GET /api/surveys/links/{link_id}/responses`
 - **tasks**: `GET /api/tasks`, `POST /api/tasks`, `GET /api/tasks/{task_id}`, `PATCH /api/tasks/{task_id}`, `POST /api/tasks/{task_id}/move`, `POST /api/tasks/{task_id}/verify`, `POST /api/tasks/{task_id}/review/approve`, `POST /api/tasks/{task_id}/review/request-revision`, `GET /api/tasks/{task_id}/review-events`, `GET /api/tasks/{task_id}/atomic-path`, `GET /api/tasks/{task_id}/quality-summary`, `POST /api/tasks/{task_id}/reports`, `POST /api/tasks/{task_id}/attach`, `POST /api/tasks/{task_id}/detach`, `POST /api/tasks/{task_id}/lock`, `POST /api/tasks/{task_id}/unlock`, `DELETE /api/tasks/{task_id}`
@@ -179,6 +181,7 @@ Generated from the repository on version `2026.04.27`. This document is meant to
 | Primary | `integrations` | Integrations | `IntegrationsView` |
 | Primary | `loops` | Loops | `LoopsView` |
 | Primary | `settings` | Settings | `SettingsView` |
+| Secondary | `admin` | Admin | `AdminDashboard` |
 | Secondary | `autoresearch` | Autoresearch | `AutoresearchView` |
 | Secondary | `backup` | Backup | `BackupView` |
 | Secondary | `meta-hyperagent` | Meta-Agent | `MetaHyperagentView` |
@@ -213,7 +216,7 @@ Generated from the repository on version `2026.04.27`. This document is meant to
 
 | Persona ID | Description |
 |---|---|
-| `design-lead` | Design Lead -- Istara Interface Agent |
+| `design-lead` | Piper -- Istara Interface Agent |
 | `istara-devops` | Sentinel -- DevOps Audit Agent |
 | `istara-main` | Istara Research Coordinator |
 | `istara-sim` | Echo -- User Simulation Agent |
@@ -240,7 +243,7 @@ Generated from the repository on version `2026.04.27`. This document is meant to
 - **Layer: Benchmarks**: `test_orchestration.py`
 - **Layer: Integration**: `test_llm_orchestration_real.py`
 - **Layer: Simulation**: `run.mjs`
-- **Test Journeys**: `test_agents.py`, `test_auth_security.py`, `test_autoresearch.py`, `test_backup.py`, `test_browser_skills.py`, `test_business_logic.py`, `test_channel_resilience.py`, `test_channels.py`, `test_chat.py`, `test_client_identity.py`, `test_code_applications.py`, `test_codebook_versions.py`, `test_codebooks.py`, `test_compute.py`, `test_connections.py`, `test_content_guard.py`, `test_context_dag.py`, `test_data_transformations.py`, `test_documents.py`, `test_error_handling.py`, `test_evaluation_skill.py`, `test_field_encryption.py`, `test_files.py`, `test_findings.py`, `test_integration.py`, `test_integration_agent_work_cycle.py`, `test_integration_chat_flow.py`, `test_integration_interview.py`, `test_interfaces.py`, `test_laws.py`, `test_llm_servers.py`, `test_loops.py`, `test_mcp.py`, `test_memory.py`, `test_meta_hyperagent.py`, `test_network_security.py`, `test_notifications.py`, `test_participant_simulation.py`, `test_projects.py`, `test_proxy_security.py`, `test_rate_limiter.py`, `test_research_integrity.py`, `test_runtime_source_boundary.py`, `test_self_healing_rules.py`, `test_sessions.py`, `test_settings.py`, `test_skill_definitions.py`, `test_skills.py`, `test_steering.py`, `test_surveys.py`, `test_tasks.py`, `test_telemetry.py`, `test_telemetry_export.py`, `test_transcription.py`, `test_transport_headers.py`, `test_version_comparison.py`, `test_webauthn.py`, `test_websocket.py`, `e2e_test.py`
+- **Test Journeys**: `test_agent_personas.py`, `test_agents.py`, `test_auth_security.py`, `test_autoresearch.py`, `test_backup.py`, `test_browser_skills.py`, `test_business_logic.py`, `test_channel_resilience.py`, `test_channels.py`, `test_chat.py`, `test_client_identity.py`, `test_code_applications.py`, `test_codebook_versions.py`, `test_codebooks.py`, `test_compute.py`, `test_connections.py`, `test_content_guard.py`, `test_context_dag.py`, `test_data_transformations.py`, `test_document_preview_paths.py`, `test_documents.py`, `test_error_handling.py`, `test_evaluation_skill.py`, `test_field_encryption.py`, `test_files.py`, `test_findings.py`, `test_integration.py`, `test_integration_agent_work_cycle.py`, `test_integration_chat_flow.py`, `test_integration_interview.py`, `test_interfaces.py`, `test_laws.py`, `test_llm_servers.py`, `test_loops.py`, `test_mcp.py`, `test_memory.py`, `test_meta_hyperagent.py`, `test_network_discovery.py`, `test_network_security.py`, `test_notifications.py`, `test_participant_simulation.py`, `test_project_rbac.py`, `test_projects.py`, `test_proxy_security.py`, `test_rate_limiter.py`, `test_research_integrity.py`, `test_runtime_source_boundary.py`, `test_self_healing_rules.py`, `test_sessions.py`, `test_settings.py`, `test_skill_definitions.py`, `test_skills.py`, `test_steering.py`, `test_surveys.py`, `test_tasks.py`, `test_telemetry.py`, `test_telemetry_export.py`, `test_transcription.py`, `test_transport_headers.py`, `test_version_comparison.py`, `test_webauthn.py`, `test_websocket.py`, `e2e_test.py`
 
 ## What Agents Must Check Before Editing
 

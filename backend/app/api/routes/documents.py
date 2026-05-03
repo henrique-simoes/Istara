@@ -7,14 +7,17 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
+from app.core.permissions import get_subject, is_global_admin, require_project_access
+from app.models.code_application import CodeApplication
 from app.models.database import get_db
 from app.models.document import Document, DocumentSource, DocumentStatus
+from app.models.finding import Nugget
 from app.models.project import Project
 
 router = APIRouter()
@@ -29,6 +32,110 @@ def _resolve_project_folder(project, project_id: str) -> Path:
     if project and getattr(project, "watch_folder_path", None):
         return Path(project.watch_folder_path)
     return Path(settings.upload_dir) / project_id
+
+
+def _resolve_document_file_path(doc: Document) -> Path | None:
+    """Resolve a document's stored file path across legacy relative formats."""
+    if not doc.file_path:
+        return None
+
+    raw_path = Path(doc.file_path)
+    if raw_path.is_absolute():
+        return raw_path
+
+    upload_dir = Path(settings.upload_dir)
+    raw_parts = raw_path.parts
+    upload_parts = upload_dir.parts[-2:]
+    if len(upload_parts) == 2:
+        for idx in range(0, len(raw_parts) - 1):
+            if raw_parts[idx : idx + 2] == upload_parts:
+                candidate = upload_dir / Path(*raw_parts[idx + 2 :])
+                if candidate.exists():
+                    return candidate
+
+    candidates = [
+        raw_path,
+        upload_dir / doc.project_id / raw_path,
+    ]
+    if raw_path.name != str(raw_path):
+        candidates.append(upload_dir.parent / raw_path)
+    else:
+        candidates.append(upload_dir / doc.project_id / raw_path.name)
+
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    return candidates[-1]
+
+
+def _safe_json_list(value: str | None) -> list:
+    try:
+        parsed = json.loads(value or "[]")
+        return parsed if isinstance(parsed, list) else []
+    except (json.JSONDecodeError, TypeError):
+        return []
+
+
+def _source_matches_document(source: str, doc: Document) -> bool:
+    if not source:
+        return False
+    source_name = Path(source).name
+    names = {doc.file_name, doc.title, Path(doc.file_path or "").name}
+    return any(name and (name in source or source_name == name) for name in names)
+
+
+async def _project_tag_counts(db: AsyncSession, project_id: str) -> dict[str, int]:
+    """Aggregate project tags from documents, nuggets, and code applications."""
+    tag_counts: dict[str, int] = {}
+
+    doc_rows = (await db.execute(select(Document.tags).where(Document.project_id == project_id))).scalars().all()
+    for tags_json in doc_rows:
+        for tag in _safe_json_list(tags_json):
+            if isinstance(tag, str) and tag.strip():
+                tag_counts[tag] = tag_counts.get(tag, 0) + 1
+
+    nugget_rows = (await db.execute(select(Nugget.tags).where(Nugget.project_id == project_id))).scalars().all()
+    for tags_json in nugget_rows:
+        for tag in _safe_json_list(tags_json):
+            if isinstance(tag, str) and tag.strip():
+                tag_counts[tag] = tag_counts.get(tag, 0) + 1
+
+    code_rows = (
+        await db.execute(select(CodeApplication.code_id).where(CodeApplication.project_id == project_id))
+    ).scalars().all()
+    for code_id in code_rows:
+        if code_id and code_id.strip():
+            tag_counts[code_id] = tag_counts.get(code_id, 0) + 1
+
+    return tag_counts
+
+
+async def _document_ids_for_project_tag(db: AsyncSession, project_id: str | None, tag: str) -> list[str]:
+    """Find documents related to a tag through direct tags or nugget sources."""
+    if not project_id:
+        return []
+
+    docs = (
+        await db.execute(select(Document).where(Document.project_id == project_id))
+    ).scalars().all()
+    matched_ids = {
+        doc.id for doc in docs if tag in [t for t in doc.get_tags() if isinstance(t, str)]
+    }
+
+    nugget_rows = (
+        await db.execute(
+            select(Nugget.source).where(
+                Nugget.project_id == project_id,
+                Nugget.tags.contains(f'"{tag}"'),
+            )
+        )
+    ).scalars().all()
+    for source in nugget_rows:
+        for doc in docs:
+            if _source_matches_document(source or "", doc):
+                matched_ids.add(doc.id)
+
+    return list(matched_ids)
 
 
 # --- Request / Response Schemas ---
@@ -74,6 +181,7 @@ class DocumentUpdate(BaseModel):
 
 @router.get("/documents")
 async def list_documents(
+    request: Request,
     project_id: str | None = None,
     phase: str | None = None,
     tag: str | None = None,
@@ -86,6 +194,13 @@ async def list_documents(
     db: AsyncSession = Depends(get_db),
 ):
     """List documents with filtering, search, and pagination."""
+    if project_id:
+        await require_project_access(db, request, project_id, min_role="viewer")
+    else:
+        subject = get_subject(request)
+        if not is_global_admin(subject):
+            raise HTTPException(status_code=422, detail="project_id is required")
+
     query = select(Document).order_by(Document.updated_at.desc())
 
     # Filters
@@ -107,8 +222,9 @@ async def list_documents(
     if task_id:
         conditions.append(Document.task_id == task_id)
     if tag:
-        # Search in JSON tags field
-        conditions.append(Document.tags.contains(f'"{tag}"'))
+        # Search direct document tags and tag-bearing nugget sources.
+        tagged_doc_ids = await _document_ids_for_project_tag(db, project_id, tag)
+        conditions.append(or_(Document.tags.contains(f'"{tag}"'), Document.id.in_(tagged_doc_ids)))
 
     # Full-text search across title, description, content, tags
     if search:
@@ -151,12 +267,13 @@ async def list_documents(
 
 
 @router.get("/documents/{document_id}")
-async def get_document(document_id: str, db: AsyncSession = Depends(get_db)):
+async def get_document(document_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     """Get a single document with full details."""
     result = await db.execute(select(Document).where(Document.id == document_id))
     doc = result.scalar_one_or_none()
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
+    await require_project_access(db, request, doc.project_id, min_role="viewer")
 
     data = doc.to_dict()
     # Include full content for single-document view
@@ -165,8 +282,9 @@ async def get_document(document_id: str, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/documents", status_code=201)
-async def create_document(data: DocumentCreate, db: AsyncSession = Depends(get_db)):
+async def create_document(data: DocumentCreate, request: Request, db: AsyncSession = Depends(get_db)):
     """Create a new document record."""
+    await require_project_access(db, request, data.project_id, min_role="researcher")
     doc_id = str(uuid.uuid4())
 
     doc = Document(
@@ -212,13 +330,14 @@ async def create_document(data: DocumentCreate, db: AsyncSession = Depends(get_d
 
 @router.patch("/documents/{document_id}")
 async def update_document(
-    document_id: str, data: DocumentUpdate, db: AsyncSession = Depends(get_db)
+    document_id: str, data: DocumentUpdate, request: Request, db: AsyncSession = Depends(get_db)
 ):
     """Update a document."""
     result = await db.execute(select(Document).where(Document.id == document_id))
     doc = result.scalar_one_or_none()
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
+    await require_project_access(db, request, doc.project_id, min_role="researcher")
 
     if data.title is not None:
         doc.title = data.title
@@ -266,31 +385,30 @@ async def update_document(
 
 
 @router.delete("/documents/{document_id}", status_code=204)
-async def delete_document(document_id: str, db: AsyncSession = Depends(get_db)):
+async def delete_document(document_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     """Delete a document."""
     result = await db.execute(select(Document).where(Document.id == document_id))
     doc = result.scalar_one_or_none()
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
+    await require_project_access(db, request, doc.project_id, min_role="researcher")
 
     await db.delete(doc)
     await db.commit()
 
 
 @router.get("/documents/{document_id}/content")
-async def get_document_content(document_id: str, db: AsyncSession = Depends(get_db)):
+async def get_document_content(document_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     """Get full document content for preview."""
     result = await db.execute(select(Document).where(Document.id == document_id))
     doc = result.scalar_one_or_none()
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
+    await require_project_access(db, request, doc.project_id, min_role="viewer")
 
     # If the document has a file_path, try to read directly
-    if doc.file_path:
-        file_path = Path(doc.file_path)
-        if not file_path.is_absolute():
-            file_path = Path(settings.upload_dir) / doc.project_id / doc.file_path
-
+    file_path = _resolve_document_file_path(doc)
+    if file_path:
         if file_path.exists() and file_path.is_file():
             suffix = file_path.suffix.lower()
             if suffix in {".txt", ".md", ".csv", ".json"}:
@@ -346,6 +464,7 @@ async def get_document_content(document_id: str, db: AsyncSession = Depends(get_
 
 @router.get("/documents/search/full")
 async def search_documents(
+    request: Request,
     project_id: str,
     q: str,
     phase: str | None = None,
@@ -354,6 +473,7 @@ async def search_documents(
     db: AsyncSession = Depends(get_db),
 ):
     """Full-text search across document titles, descriptions, content, and tags."""
+    await require_project_access(db, request, project_id, min_role="viewer")
     search_pattern = f"%{q}%"
     conditions = [
         Document.project_id == project_id,
@@ -387,19 +507,10 @@ async def search_documents(
 
 
 @router.get("/documents/tags/{project_id}")
-async def get_document_tags(project_id: str, db: AsyncSession = Depends(get_db)):
-    """Get all unique tags used across documents in a project."""
-    result = await db.execute(select(Document.tags).where(Document.project_id == project_id))
-    all_tags_raw = result.scalars().all()
-
-    tag_counts: dict[str, int] = {}
-    for tags_json in all_tags_raw:
-        try:
-            tags = json.loads(tags_json) if tags_json else []
-            for tag in tags:
-                tag_counts[tag] = tag_counts.get(tag, 0) + 1
-        except (json.JSONDecodeError, TypeError):
-            pass
+async def get_document_tags(project_id: str, request: Request, db: AsyncSession = Depends(get_db)):
+    """Get all unique project tags across documents, findings, and code applications."""
+    await require_project_access(db, request, project_id, min_role="viewer")
+    tag_counts = await _project_tag_counts(db, project_id)
 
     return {
         "tags": [
@@ -409,12 +520,13 @@ async def get_document_tags(project_id: str, db: AsyncSession = Depends(get_db))
 
 
 @router.post("/documents/sync/{project_id}")
-async def sync_project_documents(project_id: str, db: AsyncSession = Depends(get_db)):
+async def sync_project_documents(project_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     """Scan the project's folder (external watch folder if linked, otherwise internal uploads)
     and register any untracked files as documents.
 
     This ensures files placed directly in the project folder instantly appear in the Documents UI.
     """
+    await require_project_access(db, request, project_id, min_role="researcher")
     project_result = await db.execute(select(Project).where(Project.id == project_id))
     project = project_result.scalar_one_or_none()
 
@@ -502,8 +614,9 @@ async def sync_project_documents(project_id: str, db: AsyncSession = Depends(get
 
 
 @router.get("/documents/stats/{project_id}")
-async def document_stats(project_id: str, db: AsyncSession = Depends(get_db)):
+async def document_stats(project_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     """Get document statistics for a project."""
+    await require_project_access(db, request, project_id, min_role="viewer")
     # Total count
     total_result = await db.execute(
         select(func.count(Document.id)).where(Document.project_id == project_id)

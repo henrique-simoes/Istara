@@ -6,7 +6,8 @@ import subprocess
 import time
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Body, Depends, HTTPException, Request
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
@@ -14,6 +15,9 @@ from app.models.database import get_db
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+PREPARE_UPDATE_CONFIRMATION = "PREPARE_UPDATE"
+APPLY_UPDATE_CONFIRMATION = "APPLY_UPDATE"
 
 # ── In-memory cache for GitHub API responses (avoids 403 rate limit) ──
 _update_cache: dict = {}
@@ -28,6 +32,25 @@ _CANDIDATES = [
     Path.cwd() / "VERSION",                            # CWD is project root
     Path.cwd().parent / "VERSION",                     # CWD is backend/
 ]
+
+
+class UpdateConfirmation(BaseModel):
+    """Explicit confirmation for update operations that mutate the install."""
+
+    confirm: str | None = None
+
+
+def _require_update_confirmation(
+    payload: UpdateConfirmation | None,
+    *,
+    expected: str,
+    action: str,
+) -> None:
+    if payload is None or payload.confirm != expected:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Explicit confirmation required to {action}. Send confirm='{expected}'.",
+        )
 
 
 def get_current_version() -> str:
@@ -256,8 +279,12 @@ async def check_for_updates():
 
 
 @router.post("/updates/prepare")
-async def prepare_update(request: Request, db: AsyncSession = Depends(get_db)):
-    """Create a backup before updating. Admin only in team mode.
+async def prepare_update(
+    request: Request,
+    payload: UpdateConfirmation | None = Body(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    """Create a backup before updating. Requires explicit confirmation.
 
     This should be called before downloading/applying an update.
     Returns the backup record so the update can be rolled back if needed.
@@ -268,6 +295,12 @@ async def prepare_update(request: Request, db: AsyncSession = Depends(get_db)):
             require_admin_from_request(request)
         except Exception:
             raise HTTPException(status_code=403, detail="Admin required to prepare updates")
+
+    _require_update_confirmation(
+        payload,
+        expected=PREPARE_UPDATE_CONFIRMATION,
+        action="prepare updates",
+    )
 
     try:
         from app.core.backup_manager import backup_manager
@@ -290,7 +323,10 @@ async def prepare_update(request: Request, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/updates/apply")
-async def apply_update(request: Request):
+async def apply_update(
+    request: Request,
+    payload: UpdateConfirmation | None = Body(default=None),
+):
     """Auto-update Istara via git pull + rebuild + restart.
 
     For git-based installs (shell one-liner, from source):
@@ -300,7 +336,7 @@ async def apply_update(request: Request):
       4. Rebuilds frontend (npm install + npm run build)
       5. Restarts services via istara.sh
 
-    Admin only in team mode. Returns immediately — the update runs async.
+    Requires explicit confirmation. Admin only in team mode. Returns immediately — the update runs async.
     """
     if settings.team_mode:
         from app.core.security_middleware import require_admin_from_request
@@ -308,6 +344,12 @@ async def apply_update(request: Request):
             require_admin_from_request(request)
         except Exception:
             raise HTTPException(status_code=403, detail="Admin required to apply updates")
+
+    _require_update_confirmation(
+        payload,
+        expected=APPLY_UPDATE_CONFIRMATION,
+        action="apply updates",
+    )
 
     install_dir = get_install_dir()
     if not install_dir:

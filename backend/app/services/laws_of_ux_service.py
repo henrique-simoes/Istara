@@ -113,6 +113,8 @@ class LawsOfUXService:
         Score degrades proportionally to violation count.
         """
         law_violations: dict[str, list[str]] = {lid: [] for lid in self._laws}
+        evidence_count = 0
+        law_tag_count = 0
 
         for nugget in nuggets:
             tags = nugget.get("tags", [])
@@ -121,11 +123,16 @@ class LawsOfUXService:
                     tags = json.loads(tags)
                 except Exception:
                     tags = []
+            has_law_evidence = False
             for tag in tags:
-                if tag.startswith("ux-law:"):
+                if isinstance(tag, str) and tag.startswith("ux-law:"):
+                    law_tag_count += 1
+                    has_law_evidence = True
                     law_id = tag.removeprefix("ux-law:")
                     if law_id in law_violations:
                         law_violations[law_id].append(nugget.get("id", ""))
+            if has_law_evidence:
+                evidence_count += 1
 
         by_law = []
         category_scores: dict[str, list[float]] = {}
@@ -164,6 +171,10 @@ class LawsOfUXService:
             "overall_score": overall,
             "by_category": by_category,
             "by_law": sorted(by_law, key=lambda x: x["score"]),
+            "evaluated": evidence_count > 0,
+            "evidence_count": evidence_count,
+            "total_findings": len(nuggets),
+            "law_tag_count": law_tag_count,
         }
 
     def get_radar_chart_data(self, compliance: dict) -> dict:
