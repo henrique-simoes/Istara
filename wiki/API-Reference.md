@@ -85,6 +85,12 @@ PATCH  /api/tasks/{id}                       — Update task (status, priority, 
 DELETE /api/tasks/{id}                       — Delete task
 POST   /api/tasks/{id}/attach                — Attach document (direction=input|output)
 POST   /api/tasks/{id}/detach                — Detach document
+POST   /api/tasks/{id}/review/approve        — Human approval from In Review to Done
+POST   /api/tasks/{id}/review/request-revision — Send In Review/Done work back to Backlog or In Progress with What to Review
+GET    /api/tasks/{id}/review-events         — Review/reward history
+GET    /api/tasks/{id}/atomic-path           — Compact documents/findings/report path
+GET    /api/tasks/{id}/quality-summary       — Review and validation metrics
+POST   /api/tasks/{id}/reports               — Create a Findings report from approved Done work
 GET    /api/tasks/{id}/checkpoints           — Get recovery checkpoints
 ```
 
@@ -102,7 +108,7 @@ POST /api/tasks
 }
 ```
 
-**Task status values**: `backlog`, `in_progress`, `review`, `done`
+**Task status values**: `backlog`, `in_progress`, `in_review`, `done`. Agents stop at `in_review`; only human approval marks `done`.
 **Priority values**: `critical`, `high`, `medium`, `low`
 
 ---

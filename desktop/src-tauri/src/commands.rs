@@ -37,6 +37,7 @@ pub fn start_server(state: State<'_, AppState>) -> Result<String, String> {
 
     // Start relay if donation is enabled
     if cfg.donate_compute {
+        validate_donation_allowed(&cfg, true)?;
         if let Err(e) = pm.start_relay(&cfg.install_dir, &cfg.connection_string) {
             eprintln!("[tray] Relay start failed during server start: {}", e);
         }
@@ -55,6 +56,7 @@ pub fn stop_server(state: State<'_, AppState>) -> Result<String, String> {
 #[tauri::command]
 pub fn toggle_relay(state: State<'_, AppState>, enabled: bool) -> Result<String, String> {
     let mut cfg = config::load_config();
+    validate_donation_allowed(&cfg, enabled)?;
     cfg.donate_compute = enabled;
     config::save_config(&cfg)?;
     let mut pm = state.process_manager.lock().map_err(|e| e.to_string())?;
@@ -74,15 +76,7 @@ pub fn set_connection_string(
 ) -> Result<String, String> {
     // Validate connection string format
     let trimmed = conn_str.trim();
-    if !trimmed.is_empty()
-        && !trimmed.starts_with("rcl_")
-        && !trimmed.starts_with("ws://")
-        && !trimmed.starts_with("wss://")
-    {
-        return Err(
-            "Invalid connection string. Expected rcl_... (from admin) or ws://... URL.".to_string(),
-        );
-    }
+    validate_client_connection_string(trimmed)?;
 
     let mut cfg = config::load_config();
     cfg.connection_string = trimmed.to_string();
@@ -124,8 +118,14 @@ pub fn save_setup_config(
     }
 
     if mode == "client" {
+        let trimmed = connection_string.trim();
+        if !trimmed.is_empty() && !trimmed.starts_with("rcl_") {
+            return Err(
+                "Client mode requires the rcl_... invite from your admin. Direct server URLs are not valid for access.".to_string(),
+            );
+        }
         cfg.mode = "client".to_string();
-        cfg.connection_string = connection_string.trim().to_string();
+        cfg.connection_string = trimmed.to_string();
         cfg.donate_compute = !cfg.connection_string.is_empty();
         if let Some(hint) = config::decode_connection_string_hint(&cfg.connection_string) {
             cfg.server_url = hint.server_url;
@@ -223,6 +223,24 @@ fn browser_target(cfg: &config::AppConfig, server_running: bool) -> Result<Strin
     Ok(cfg.server_url.clone())
 }
 
+fn validate_client_connection_string(trimmed: &str) -> Result<(), String> {
+    if !trimmed.is_empty() && !trimmed.starts_with("rcl_") {
+        return Err(
+            "Invalid connection string. Expected the rcl_... invite from your admin.".to_string(),
+        );
+    }
+    Ok(())
+}
+
+fn validate_donation_allowed(cfg: &config::AppConfig, enabled: bool) -> Result<(), String> {
+    if enabled && cfg.mode == "client" && cfg.connection_string.trim().is_empty() {
+        return Err(
+            "Compute Donation in Client mode requires a saved rcl_ connection string from your admin.".to_string(),
+        );
+    }
+    Ok(())
+}
+
 fn desktop_install_dir() -> String {
     let cfg = config::load_config();
     if !cfg.install_dir.is_empty() {
@@ -266,5 +284,29 @@ mod tests {
         let err = browser_target(&cfg("server", "http://localhost:3000"), false)
             .expect_err("should fail");
         assert!(err.contains("Start it first"));
+    }
+
+    #[test]
+    fn client_connection_rejects_direct_urls() {
+        let err = validate_client_connection_string("http://10.0.0.12:3000")
+            .expect_err("direct URL should not be accepted");
+        assert!(err.contains("rcl_"));
+        assert!(validate_client_connection_string("ws://10.0.0.12:8000/ws/relay").is_err());
+        assert!(validate_client_connection_string("rcl_payload.signature").is_ok());
+    }
+
+    #[test]
+    fn client_mode_blocks_donation_without_invite() {
+        let mut cfg = cfg("client", "https://team.example.com");
+        cfg.connection_string = "".to_string();
+        let err = validate_donation_allowed(&cfg, true).expect_err("donation should be blocked");
+        assert!(err.contains("rcl_"));
+    }
+
+    #[test]
+    fn client_mode_allows_donation_with_invite() {
+        let mut cfg = cfg("client", "https://team.example.com");
+        cfg.connection_string = "rcl_payload.signature".to_string();
+        assert!(validate_donation_allowed(&cfg, true).is_ok());
     }
 }

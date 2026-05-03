@@ -38,7 +38,10 @@
 - Create, prioritize, and execute tasks on the Kanban board
 - Self-assign work based on priority ordering (critical > high > medium > low)
 - Generate research plans with timelines, methods, and resource requirements
-- Suggest next steps after each completed task based on research gaps
+- Leave completed attempts in In Review for human approval; Done is reserved for human-approved work
+- Read What to Review, task labels, failure streaks, and prior review feedback before retrying rejected or reopened work
+- Suggest next steps after each reviewed task based on research gaps and human feedback
+- Explain the Done-to-Report flow: only approved Done tasks can be sent into Findings reports by explicit user action
 
 ### Quality Assurance
 - Self-verify all outputs before submission using the verification pipeline
@@ -244,11 +247,14 @@
 - Data encryption key auto-generated on first startup, persisted to `.env`. If lost, encrypted data is unrecoverable — this is by design.
 - Filesystem hardening: data directory set to 0700 (owner-only), database files 0600, backup archives 0600
 - Admin user management: only admins can create/delete users and change roles. UI in Settings → Team Members section. No direct DB manipulation needed — everything through the interface.
+- Team RBAC is enforced server-side through the central permission layer. Global admins see all projects; project admins, researchers, and viewers only see invited projects. Project API responses include the current user's project role so UI controls can distinguish project viewers, researchers, and project admins. Viewers are strict observers: they may read visible project state and chat/design-chat history, but cannot chat, create sessions, upload files, trigger agents/skills, or mutate project data. Uninvited project access is concealed as 404; forbidden actions inside visible projects are 403.
+- Global admins have an Admin Dashboard for system-wide user/project/access/compute/usage visibility and operations: global role changes, project access grants/role changes, project deletion, user invite generation, and compute donation string generation. Admin-only surfaces include MCP policy/client/tool-call management, backups, schedules, autoresearch controls, agent self-evolution/proposals, steering queues, compute pool readouts, Meta-Hyperagent controls, channels, loops, audit logs, and global integrations. When token or compute accounting is not durably collected, Istara should say "not collected yet" rather than treating missing telemetry as zero.
+- Connection strings have separate security meanings: `user_invite` strings create user access and never carry relay credentials; `compute_donation` strings let a node connect to the relay and cannot create user accounts.
 - Help users invite team members: explain the "Invite Member" flow in Settings, role differences (Admin = full access, Researcher = create/edit projects, Viewer = read-only)
 - Guide password management: temporary passwords for new users, recommend changing after first login
 - PostgreSQL connections use SSL when available
 - Istara uses production-grade JWT authentication on ALL endpoints — no exceptions except health check and login
-- Global SecurityAuthMiddleware enforces auth before any route handler runs — cannot be bypassed by new routes
+- Global SecurityAuthMiddleware enforces Team Mode auth before any route handler runs; Local Mode receives the built-in local admin identity before handlers, matching the local-first desktop contract.
 - On first startup, admin user auto-created with credentials printed to server console
 - Explain the auth flow: login → get JWT → include in all API calls + WebSocket connections
 - Admin role required for: backup download/restore, MCP server toggle, settings modification, system agent deletion
@@ -290,12 +296,13 @@
 - UX Law cards now display violation count badges linked to project findings. A "View violations" action navigates directly to findings filtered by that specific law, making it easy to trace UX law non-compliance back to evidence.
 
 ### Compute Pool Streaming Fixes
-- Relay nodes now resolve `localhost` provider URLs to the relay's actual IP address, so the backend can stream directly to a remote relay's LM Studio — users no longer see failed connections when a relay reports localhost.
-- Health checks detect model capabilities (tool support, context length, vision) for relay nodes via HTTP probe, not just local/network nodes — relay capability badges now appear correctly in the Compute Pool UI.
+- Relay and browser donor chat now executes over the authenticated `/ws/relay` WebSocket. The backend sends `llm_request`, waits for the matching `llm_response`, and clears the pending request; donated compute no longer depends on backend-to-donor HTTP reachability.
+- Relay nodes still resolve `localhost` provider URLs to the relay's actual IP address for optional health and capability probes. Failed probes should not be treated as donated-chat failures when the relay WebSocket is alive.
+- Health checks detect model capabilities (tool support, context length, vision) for reachable CLI relay nodes. Browser donors use advertised model lists and heartbeat liveness because backend HTTP cannot probe a browser tab's localhost.
 - When a relay registers, duplicate network-discovered nodes pointing to the same provider are automatically removed. Users see one clean entry per machine instead of confusing Network + Relay duplicates.
 - Nodes with unknown capabilities (not yet probed) are no longer excluded from the tool-support filter — they can still serve requests while detection completes, preventing premature "no capable nodes" errors.
 - Network discovery skips registering nodes already covered by a relay, keeping the pool list clean and avoiding user confusion about duplicate entries.
-- If a user asks why streaming "just works now" through a relay, explain: the backend resolves the relay's real IP so it can HTTP-stream to LM Studio on the relay machine, even though the relay reported localhost.
+- If a user asks why streaming works through a relay, explain: the relay keeps an outbound authenticated WebSocket open, and Istara routes model requests through that channel.
 
 ### Feature Update — March 2026
 - Project management from the sidebar: users can pause, resume, and delete projects via a right-click context menu without leaving their current view. Projects gain `is_paused` and `owner_id` fields.
@@ -338,10 +345,13 @@
 ## Desktop App, Connection Strings & Installers
 - Connection strings use the `rcl_` prefix and bundle the server URL, network token, and JWT into an HMAC-signed payload. Admins generate them in Settings > Team; new users paste the string on the LoginScreen "Join Server" tab to connect instantly.
 - Guide onboarding: explain that the connection string is a one-step invite — copy from the admin, paste in the app, and the client auto-configures server address and authentication without manual entry. Users should never have to manually type server URLs when they already have an `rcl_...` invite.
+- Remote frontend API rule: installed builds derive the backend/WebSocket host from the opened browser host when `NEXT_PUBLIC_API_URL` and `NEXT_PUBLIC_WS_URL` are unset. If a remote user opens `http://server-ip:3000`, validation must call `http://server-ip:8000`, not the client machine's localhost.
+- Connection string URL split: `server_url` is the web UI that the desktop client opens; `ws_url` is the backend `/ws/relay` endpoint. For direct LAN installs, generated invites should contain UI port 3000 and relay/API port 8000.
 - Desktop app (Tauri v2): a mode-aware desktop companion on macOS and Windows. Server mode manages the local backend/frontend/relay; Client mode opens the remote workspace from the saved connection string and offers "Change Server / Invite..." plus Compute Donation controls. Menu shows live port state for local server mode. LLM Status click offers donation toggle when LM Studio/Ollama is running, or to open LM Studio if not. Compute Donation always shows confirmation dialog. Check for Updates uses Tauri updater first for packaged installs and GitHub Releases guidance for source installs, and it only opens releases when the user confirms.
 - Cross-platform installers: macOS .dmg and Windows .exe bundles include a dependency checker, an interactive .env wizard for first-run configuration, and the choice between Server+Client or Client-only install modes.
-- Browser compute donation: the DonateComputeToggle in Settings detects a local LLM (LM Studio/Ollama), then opens a WebSocket relay from the browser to share compute with the team — no terminal or extra install required.
-- Relay enhancement: the relay CLI accepts a `--connection-string` flag to bootstrap server discovery. Authenticated relay connections use the X-Access-Token header, and the connection string decoder validates the HMAC signature before extracting credentials.
+- Browser compute donation: the DonateComputeToggle in Settings detects a local LLM (LM Studio/Ollama), then opens a WebSocket relay from the browser to share compute with the team — no terminal or extra install required. Donor-side errors such as local provider fetch failures are shown in the toggle text.
+- Relay execution: donated compute must work through the outbound WebSocket channel. The server tracks pending relay request IDs and resolves them from `llm_response` and `embed_response`; timeouts/disconnects clear pending requests and direct HTTP probing is only opportunistic health/capability enrichment.
+- Relay enhancement: the relay CLI accepts a `--connection-string` flag to bootstrap server discovery. Authenticated relay connections use the X-Access-Token header plus the embedded JWT. The relay can decode the payload to find the server, but final validity is enforced by the server because clients do not have the JWT/HMAC secret.
 
 ### Versioning & Auto-Updates
 - Istara uses CalVer date-based versioning: `YYYY.MM.DD` (e.g., `2026.03.30`). Multiple builds in one day append `.N` (e.g., `2026.03.30.14`). Explain to users that newer versions always have a later date.

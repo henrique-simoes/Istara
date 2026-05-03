@@ -81,6 +81,10 @@ const PHASE_COLORS: Record<string, string> = {
   deliver: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
 };
 
+function showSkillToast(type: "info" | "success" | "warning" | "error", title: string, message: string) {
+  window.dispatchEvent(new CustomEvent("istara:toast", { detail: { type, title, message } }));
+}
+
 function HealthBadge({ score }: { score: number }) {
   const color =
     score >= 0.7
@@ -93,6 +97,12 @@ function HealthBadge({ score }: { score: number }) {
       {(score * 100).toFixed(0)}%
     </span>
   );
+}
+
+function formatConfidence(confidence: number | undefined): string {
+  if (confidence == null || Number.isNaN(confidence)) return "--";
+  const normalized = confidence <= 1 ? confidence * 100 : confidence;
+  return `${Math.max(0, Math.min(100, normalized)).toFixed(0)}%`;
 }
 
 export default function SkillsView() {
@@ -124,7 +134,7 @@ export default function SkillsView() {
     output_schema: "",
   });
 
-  const { activeProjectId } = useProjectStore();
+  const { activeProjectId, canWriteActiveProject } = useProjectStore();
 
   const fetchSkills = async () => {
     setLoading(true);
@@ -179,6 +189,11 @@ export default function SkillsView() {
   });
 
   const pendingProposals = proposals.filter((p) => p.status === "pending");
+  const skillHealth = Object.values(healthMap);
+  const lowHealthSkills = skillHealth.filter((h: any) => (h.health_score ?? 0) < 0.4).length;
+  const averageHealth = skillHealth.length > 0
+    ? skillHealth.reduce((sum: number, h: any) => sum + (h.health_score ?? 0), 0) / skillHealth.length
+    : 0;
 
   // Skill creation proposals (autonomous)
   const [creationProposals, setCreationProposals] = useState<any[]>([]);
@@ -200,7 +215,11 @@ export default function SkillsView() {
     try {
       await skillsApi.creationProposals.approve(id);
       await Promise.all([fetchSkills(), fetchCreationProposals()]);
-    } catch (e) { console.error("Approve creation failed:", e); }
+      showSkillToast("success", "Skill registered", "The proposed skill passed verification and was added to the runtime catalog.");
+    } catch (e) {
+      console.error("Approve creation failed:", e);
+      showSkillToast("error", "Skill proposal blocked", e instanceof Error ? e.message : "The proposed skill could not be approved.");
+    }
   };
 
   const handleRejectCreation = async (id: string) => {
@@ -223,8 +242,10 @@ export default function SkillsView() {
     try {
       await skillsApi.proposals.approve(id);
       await Promise.all([fetchSkills(), fetchProposals()]);
+      showSkillToast("success", "Skill updated", "The approved improvement was applied to the skill definition.");
     } catch (e) {
       console.error("Approve failed:", e);
+      showSkillToast("error", "Proposal blocked", e instanceof Error ? e.message : "The proposal could not be approved.");
     }
   };
 
@@ -272,6 +293,10 @@ export default function SkillsView() {
   const handleExecute = async (name: string) => {
     if (!activeProjectId) {
       alert("Select a project first.");
+      return;
+    }
+    if (!canWriteActiveProject()) {
+      alert("Viewer access is read-only. Skills cannot be run for this project.");
       return;
     }
     try {
@@ -557,7 +582,8 @@ export default function SkillsView() {
                       <div className="flex gap-2 pt-2 border-t border-slate-100 dark:border-slate-700">
                         <button
                           onClick={() => handleExecute(skill.name)}
-                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-istara-600 text-white text-xs font-medium hover:bg-istara-700"
+                          disabled={!canWriteActiveProject()}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-istara-600 text-white text-xs font-medium hover:bg-istara-700 disabled:opacity-50"
                         >
                           <Play size={12} /> Run
                         </button>
@@ -608,7 +634,52 @@ export default function SkillsView() {
 
       {/* ===== SELF-EVOLUTION TAB ===== */}
       {tab === "proposals" && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="space-y-5">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            <div className="rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-800">
+              <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                <Activity size={13} />
+                Skills watched
+              </div>
+              <p className="mt-1 text-xl font-semibold text-slate-900 dark:text-white">{allSkills.length}</p>
+            </div>
+            <div className="rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-800">
+              <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                <Clock size={13} />
+                Pending updates
+              </div>
+              <p className="mt-1 text-xl font-semibold text-slate-900 dark:text-white">{pendingProposals.length}</p>
+            </div>
+            <div className="rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-800">
+              <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                <Wand2 size={13} />
+                Pending creations
+              </div>
+              <p className="mt-1 text-xl font-semibold text-slate-900 dark:text-white">{pendingCreations.length}</p>
+            </div>
+            <div className="rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-800">
+              <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                <AlertCircle size={13} />
+                Low health
+              </div>
+              <p className={cn("mt-1 text-xl font-semibold", lowHealthSkills > 0 ? "text-amber-600 dark:text-amber-400" : "text-slate-900 dark:text-white")}>
+                {lowHealthSkills}
+              </p>
+              <p className="text-[10px] text-slate-400">Avg {formatConfidence(averageHealth)}</p>
+            </div>
+          </div>
+
+          <div className="flex justify-end">
+            <button
+              onClick={() => void Promise.all([fetchSkills(), fetchProposals(), fetchCreationProposals()])}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+            >
+              <RefreshCw size={13} />
+              Refresh
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* ── Left Column: Self-Improvement Proposals ── */}
           <div className="space-y-4">
             <div className="flex items-center gap-2 mb-2">
@@ -675,7 +746,7 @@ export default function SkillsView() {
                         </span>
                       </div>
                       <span className="text-xs text-amber-600 font-medium">
-                        {(p.confidence * 100).toFixed(0)}% confidence
+                        {formatConfidence(p.confidence)} confidence
                       </span>
                     </div>
                     <p className="text-xs text-slate-600 dark:text-slate-400">
@@ -841,6 +912,7 @@ export default function SkillsView() {
                   ))}
               </div>
             )}
+          </div>
           </div>
         </div>
       )}
@@ -1022,6 +1094,7 @@ function CreationProposalCard({
   const systemPrompt = def.system_prompt || def.execute_prompt || "";
   const proposedName = def.display_name || def.name || "New Skill";
   const specialties: string[] = def.specialties || def.detection_keywords || [];
+  const testResult = proposal.test_result;
 
   return (
     <div className="bg-purple-50 dark:bg-purple-900/10 rounded-xl border border-purple-200 dark:border-purple-800 p-4 space-y-3">
@@ -1037,13 +1110,30 @@ function CreationProposalCard({
           )}
         </div>
         <span className="text-xs text-purple-600 font-medium">
-          {proposal.confidence}% confidence
+          {formatConfidence(proposal.confidence)} confidence
         </span>
       </div>
 
       <p className="text-xs text-slate-600 dark:text-slate-400">
         {def.description || proposal.reason}
       </p>
+
+      {testResult && (
+        <div className={cn(
+          "rounded-lg border p-2 text-xs",
+          testResult.passed
+            ? "border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-900/20 dark:text-green-300"
+            : "border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-300"
+        )}>
+          <div className="flex items-center gap-1 font-medium">
+            {testResult.passed ? <CheckCircle2 size={12} /> : <XCircle size={12} />}
+            Verification {testResult.passed ? "passed" : "failed"}
+          </div>
+          {!testResult.passed && Array.isArray(testResult.issues) && testResult.issues.length > 0 && (
+            <p className="mt-1">{testResult.issues.slice(0, 2).join("; ")}</p>
+          )}
+        </div>
+      )}
 
       {/* Specialties badges */}
       {specialties.length > 0 && (

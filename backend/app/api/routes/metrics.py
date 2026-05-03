@@ -1,9 +1,10 @@
 """Metrics API — quantitative research data for the dashboard."""
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.permissions import require_project_access
 from app.models.database import get_db
 from app.models.finding import Nugget, Fact, Insight, Recommendation
 from app.models.task import Task, TaskStatus
@@ -14,8 +15,13 @@ router = APIRouter()
 
 
 @router.get("/metrics/{project_id}")
-async def get_project_metrics(project_id: str, db: AsyncSession = Depends(get_db)):
+async def get_project_metrics(
+    project_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
     """Get quantitative metrics for a project's research progress."""
+    await require_project_access(db, request, project_id, min_role="viewer")
 
     nugget_count = (
         await db.execute(select(func.count(Nugget.id)).where(Nugget.project_id == project_id))
@@ -85,7 +91,7 @@ async def get_project_metrics(project_id: str, db: AsyncSession = Depends(get_db
         r = (
             await db.execute(
                 select(func.count(Recommendation.id)).where(
-                    Recommendation.id == project_id, Recommendation.phase == phase
+                    Recommendation.project_id == project_id, Recommendation.phase == phase
                 )
             )
         ).scalar() or 0
@@ -123,12 +129,17 @@ async def get_project_metrics(project_id: str, db: AsyncSession = Depends(get_db
 
 
 @router.get("/metrics/{project_id}/validation")
-async def get_validation_metrics(project_id: str, db: AsyncSession = Depends(get_db)):
+async def get_validation_metrics(
+    project_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
     """Get validation and consensus metrics for a project.
 
     Returns per-method adaptive validation stats from MethodMetric,
     plus per-task validation_method and consensus_score for completed tasks.
     """
+    await require_project_access(db, request, project_id, min_role="viewer")
 
     VALIDATION_METHODS = [
         {
@@ -223,12 +234,19 @@ async def get_validation_metrics(project_id: str, db: AsyncSession = Depends(get
 
 
 @router.get("/metrics/{project_id}/model-intelligence")
-async def get_model_intelligence(project_id: str, limit: int = 50):
+async def get_model_intelligence(
+    project_id: str,
+    request: Request,
+    limit: int = 50,
+    db: AsyncSession = Depends(get_db),
+):
     """Get model intelligence data: leaderboard, error taxonomy, tool success, latency.
 
     Aggregates data from ModelSkillStats (production + autoresearch) and
     TelemetrySpan (operational traces) to help users choose the best models
     for each skill and understand error patterns.
     """
+    await require_project_access(db, request, project_id, min_role="viewer")
+
     from app.core.telemetry import telemetry_recorder
     return await telemetry_recorder.get_model_intelligence(project_id, limit=limit)

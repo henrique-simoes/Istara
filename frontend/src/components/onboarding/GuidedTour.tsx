@@ -5,7 +5,7 @@ import { useTourStore, TOUR_TOTAL_STEPS } from "@/stores/tourStore";
 import { settings as settingsApi } from "@/lib/api";
 import TourPopover from "./TourPopover";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+import { API_BASE } from "@/lib/runtimeConfig";
 
 interface GuidedTourProps {
   setActiveView: (view: string) => void;
@@ -107,8 +107,8 @@ const STEPS: StepDef[] = [
   },
   // Step 5: Add Files
   {
-    view: null,
-    targetSelector: null,
+    view: "documents",
+    targetSelector: "#tour-target-document-upload",
     placement: "bottom",
     title: "Add Your Research Files",
     getDescription: (tour: TourStore, _e: ExtraInfo) => (
@@ -122,13 +122,14 @@ const STEPS: StepDef[] = [
           </code>
         )}
         <p className="mt-2 text-xs text-slate-400">
-          Istara will automatically detect and index new files. You can also upload files directly in the Documents view.
+          Istara will automatically detect and index new files. Use the Upload button here to add files directly.
         </p>
       </div>
     ),
     getActions: (tour: TourStore, _e: ExtraInfo) => [
       { label: "Next", onClick: () => tour.nextStep(), variant: "primary" as const },
     ],
+    spotlight: true,
   },
   // Step 6: Project Context
   {

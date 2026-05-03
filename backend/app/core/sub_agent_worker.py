@@ -149,7 +149,22 @@ class SubAgentWorker:
             if task.retry_count < (task.max_retries or 3):
                 task.status = TaskStatus.BACKLOG
             else:
-                task.status = TaskStatus.DONE  # Exhausted retries
+                from app.core.task_review import SYSTEM_FAILED, diagnose_review_event, record_task_review_event
+
+                event = await record_task_review_event(
+                    db,
+                    task,
+                    outcome=SYSTEM_FAILED,
+                    next_status=TaskStatus.IN_REVIEW,
+                    next_review_state="system_failed",
+                    what_to_review=f"Sub-agent failed after {task.retry_count} retries: {str(e)[:500]}",
+                    created_by=self._agent_id,
+                    failure_category="sub_agent_execution_failure",
+                    severity="major",
+                    quality_score=0.1,
+                    context_extra={"source": "sub_agent_worker"},
+                )
+                await diagnose_review_event(db, event.id)
             await db.commit()
 
     async def check_collaboration_requests(self) -> list[dict]:

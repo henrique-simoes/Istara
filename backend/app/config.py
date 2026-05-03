@@ -38,6 +38,7 @@ class Settings(BaseSettings):
 
     # CORS (comma-separated origins)
     cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
+    cors_origin_regex: str = r"https?://[^/]+:3000"
 
     # Admin bootstrap (auto-created on first startup if no users exist)
     admin_username: str = "admin"
@@ -57,6 +58,17 @@ class Settings(BaseSettings):
     # Rate limiting
     rate_limit_enabled: bool = True
     rate_limit_default: str = "200/minute"
+    # Comma-separated exact hosts/IPs or CIDRs whose forwarded client headers
+    # may be trusted for rate limiting and request identity.
+    trusted_proxy_hosts: str = "127.0.0.1,::1,localhost"
+
+    # Runtime/source boundary. Public installs keep shipped personas and skill
+    # definitions read-only; local user changes go under ignored data overlays.
+    istara_runtime_profile: str = "dev"  # dev | public | personal-lab
+    allow_source_persona_mutation: bool = False
+    allow_source_skill_mutation: bool = False
+    runtime_personas_dir: str = "./data/personas"
+    runtime_skills_dir: str = "./data/skills/custom"
 
     # Hardware resource budget
     resource_reserve_ram_gb: float = 4.0
@@ -136,6 +148,8 @@ class Settings(BaseSettings):
             self.projects_dir,
             self.lance_db_path,
             self.agent_avatars_dir,
+            self.runtime_personas_dir,
+            self.runtime_skills_dir,
         ]:
             Path(dir_path).mkdir(parents=True, exist_ok=True)
         Path(self.design_screens_dir).mkdir(parents=True, exist_ok=True)

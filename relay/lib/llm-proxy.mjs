@@ -59,6 +59,7 @@ export class LLMProxy {
         headers: this._headers(),
         body: JSON.stringify(payload),
       });
+      if (!res.ok) throw new Error(await res.text());
       return await res.json();
     } else {
       // OpenAI-compatible (LM Studio)
@@ -75,10 +76,38 @@ export class LLMProxy {
         headers: this._headers(),
         body: JSON.stringify(payload),
       });
+      if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
       // Normalize to Ollama format
       const content = data.choices?.[0]?.message?.content || "";
       return { message: { role: "assistant", content } };
     }
+  }
+
+  async handleEmbedding(msg) {
+    const input = msg.input;
+    const model = msg.model || "default";
+
+    if (this.providerType === "ollama") {
+      const res = await fetch(`${this.host}/api/embed`, {
+        method: "POST",
+        headers: this._headers(),
+        body: JSON.stringify({ model, input }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const data = await res.json();
+      if (Array.isArray(input)) return data.embeddings || [];
+      return data.embeddings?.[0] || [];
+    }
+
+    const res = await fetch(`${this.host}/v1/embeddings`, {
+      method: "POST",
+      headers: this._headers(),
+      body: JSON.stringify({ model, input }),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const data = await res.json();
+    const embeddings = (data.data || []).map((item) => item.embedding || []);
+    return Array.isArray(input) ? embeddings : embeddings[0] || [];
   }
 }

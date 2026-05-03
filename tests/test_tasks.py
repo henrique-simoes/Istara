@@ -75,3 +75,112 @@ async def test_task_unlock_nonexistent_returns_404(auth_headers):
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         response = await ac.post("/api/tasks/non-existent-id/unlock", headers=auth_headers)
         assert response.status_code in (404, 422)
+
+
+@pytest.mark.asyncio
+async def test_human_approval_moves_review_task_to_done(auth_headers):
+    """Only a human review action moves an In Review task to Done."""
+    await init_db()
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        created = await ac.post(
+            "/api/tasks",
+            headers=auth_headers,
+            json={"project_id": "review-flow-project", "title": "Approve reviewed work"},
+        )
+        assert created.status_code == 201
+        task_id = created.json()["id"]
+
+        moved = await ac.post(
+            f"/api/tasks/{task_id}/move?status=in_review",
+            headers=auth_headers,
+        )
+        assert moved.status_code == 200
+        assert moved.json()["status"] == "in_review"
+        assert moved.json()["review_state"] == "awaiting_review"
+
+        approved = await ac.post(
+            f"/api/tasks/{task_id}/review/approve",
+            headers=auth_headers,
+            json={"reviewed_by": "tester", "note": "Looks correct."},
+        )
+        assert approved.status_code == 200
+        payload = approved.json()
+        assert payload["task"]["status"] == "done"
+        assert payload["task"]["review_state"] == "approved"
+        assert payload["event"]["outcome"] == "approved"
+
+
+@pytest.mark.asyncio
+async def test_done_task_revision_returns_to_backlog_with_feedback(auth_headers):
+    """A Done task can be flagged later and must leave Done for agent action."""
+    await init_db()
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        created = await ac.post(
+            "/api/tasks",
+            headers=auth_headers,
+            json={"project_id": "review-flow-project-2", "title": "Reopen wrong work"},
+        )
+        task_id = created.json()["id"]
+        await ac.post(f"/api/tasks/{task_id}/move?status=in_review", headers=auth_headers)
+        await ac.post(f"/api/tasks/{task_id}/review/approve", headers=auth_headers, json={})
+
+        revised = await ac.post(
+            f"/api/tasks/{task_id}/review/request-revision",
+            headers=auth_headers,
+            json={
+                "what_to_review": "The synthesis missed the pricing evidence; rerun with the pricing document.",
+                "next_status": "backlog",
+                "failure_category": "missing_evidence",
+                "labels": [{"name": "pricing", "color": "#2563eb", "kind": "task"}],
+            },
+        )
+        assert revised.status_code == 200
+        payload = revised.json()
+        assert payload["task"]["status"] == "backlog"
+        assert payload["task"]["review_state"] == "rejected_after_done"
+        assert payload["task"]["failure_streak"] == 1
+        assert payload["event"]["next_status"] == "backlog"
+        assert payload["event"]["failure_category"] == "missing_evidence"
+
+
+@pytest.mark.asyncio
+async def test_revision_cannot_send_task_back_to_review(auth_headers):
+    """Rejected work must return to backlog or in progress, not In Review."""
+    await init_db()
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        created = await ac.post(
+            "/api/tasks",
+            headers=auth_headers,
+            json={"project_id": "review-flow-project-3", "title": "Invalid revision target"},
+        )
+        task_id = created.json()["id"]
+        await ac.post(f"/api/tasks/{task_id}/move?status=in_review", headers=auth_headers)
+        response = await ac.post(
+            f"/api/tasks/{task_id}/review/request-revision",
+            headers=auth_headers,
+            json={"what_to_review": "Needs more evidence.", "next_status": "in_review"},
+        )
+        assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_patch_cannot_mark_task_done(auth_headers):
+    """Generic task patching cannot bypass the human review approval path."""
+    await init_db()
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        created = await ac.post(
+            "/api/tasks",
+            headers=auth_headers,
+            json={"project_id": "review-flow-project-4", "title": "No patch done bypass"},
+        )
+        task_id = created.json()["id"]
+        response = await ac.patch(
+            f"/api/tasks/{task_id}",
+            headers=auth_headers,
+            json={"status": "done"},
+        )
+        assert response.status_code == 409

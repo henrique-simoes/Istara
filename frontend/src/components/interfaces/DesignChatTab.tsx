@@ -1,9 +1,12 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { Send, Loader2, Palette, User, Mic } from "lucide-react";
 import { useInterfacesStore } from "@/stores/interfacesStore";
 import { useProjectStore } from "@/stores/projectStore";
+import { useAuthStore } from "@/stores/authStore";
 import { useVoiceRecorder } from "@/hooks/useVoiceRecorder";
 import { cn, formatDate } from "@/lib/utils";
 
@@ -23,33 +26,70 @@ function DesignAvatar() {
   );
 }
 
+function MarkdownMessage({ content, streaming = false }: { content: string; streaming?: boolean }) {
+  return (
+    <div className={cn("text-sm", streaming && "streaming-cursor")}>
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          p: ({ children }) => <p className="my-1 leading-relaxed">{children}</p>,
+          ul: ({ children }) => <ul className="my-2 list-disc pl-5 space-y-1">{children}</ul>,
+          ol: ({ children }) => <ol className="my-2 list-decimal pl-5 space-y-1">{children}</ol>,
+          li: ({ children }) => <li className="leading-relaxed">{children}</li>,
+          h1: ({ children }) => <h1 className="mt-3 mb-1 text-base font-semibold">{children}</h1>,
+          h2: ({ children }) => <h2 className="mt-3 mb-1 text-sm font-semibold">{children}</h2>,
+          h3: ({ children }) => <h3 className="mt-2 mb-1 text-sm font-semibold">{children}</h3>,
+          code: ({ children }) => (
+            <code className="rounded bg-slate-200 px-1 py-0.5 text-[0.85em] dark:bg-slate-700">
+              {children}
+            </code>
+          ),
+          pre: ({ children }) => (
+            <pre className="my-2 overflow-x-auto rounded-lg bg-slate-950 p-3 text-xs text-slate-100">
+              {children}
+            </pre>
+          ),
+          blockquote: ({ children }) => (
+            <blockquote className="my-2 border-l-2 border-violet-300 pl-3 text-slate-600 dark:border-violet-700 dark:text-slate-300">
+              {children}
+            </blockquote>
+          ),
+        }}
+      >
+        {content}
+      </ReactMarkdown>
+    </div>
+  );
+}
+
 export default function DesignChatTab() {
-  const { designMessages, designStreaming, designStreamingContent, error, sendDesignMessage, fetchDesignHistory } = useInterfacesStore();
-  const { activeProjectId } = useProjectStore();
+  const { designMessages, designStreaming, designStreamingContent, designProjectId, error, sendDesignMessage, fetchDesignHistory } = useInterfacesStore();
+  const { activeProjectId, canWriteActiveProject } = useProjectStore();
+  const { user } = useAuthStore();
   const { isRecording, isTranscribing, startRecording, stopRecording, cancelRecording, error: voiceError } = useVoiceRecorder();
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const hasFetchedRef = useRef(false);
+  const canWrite = user?.role === "admin" || canWriteActiveProject();
 
-  // Fetch design chat history on mount
+  // Fetch design chat history when entering Interfaces or switching projects.
   useEffect(() => {
-    if (activeProjectId && !hasFetchedRef.current) {
-      hasFetchedRef.current = true;
+    if (activeProjectId && designProjectId !== activeProjectId) {
       fetchDesignHistory(activeProjectId);
     }
-  }, [activeProjectId, fetchDesignHistory]);
+  }, [activeProjectId, designProjectId, fetchDesignHistory]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [designMessages, designStreamingContent]);
 
   const handleSend = () => {
-    if (!input.trim() || !activeProjectId || designStreaming) return;
+    if (!canWrite || !input.trim() || !activeProjectId || designStreaming) return;
     sendDesignMessage(activeProjectId, input.trim());
     setInput("");
   };
 
   const handleVoiceToggle = async () => {
+    if (!canWrite) return;
     if (isRecording) {
       const transcribedText = await stopRecording();
       if (transcribedText) {
@@ -114,7 +154,11 @@ export default function DesignChatTab() {
                     : "bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-bl-md"
                 )}
               >
-                <div className="whitespace-pre-wrap text-sm">{msg.content}</div>
+                {msg.role === "user" ? (
+                  <div className="whitespace-pre-wrap text-sm">{msg.content}</div>
+                ) : (
+                  <MarkdownMessage content={msg.content} />
+                )}
               </div>
               <p className="text-xs text-slate-400 mt-1 px-1">
                 {formatDate(msg.created_at)}
@@ -130,9 +174,7 @@ export default function DesignChatTab() {
             <div className="flex-1 min-w-0">
               <p className="text-xs text-slate-500 dark:text-slate-400 mb-1 px-1 font-medium">Design Lead</p>
               <div className="rounded-2xl rounded-bl-md px-4 py-3 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100">
-                <div className="whitespace-pre-wrap text-sm streaming-cursor">
-                  {designStreamingContent}
-                </div>
+                <MarkdownMessage content={designStreamingContent} streaming />
               </div>
             </div>
           </div>
@@ -170,12 +212,12 @@ export default function DesignChatTab() {
                   handleSend();
                 }
               }}
-              disabled={isRecording || isTranscribing}
-              placeholder="Ask about design decisions, generate screens, or discuss UI patterns..."
+              disabled={!canWrite || isRecording || isTranscribing}
+              placeholder={canWrite ? "Ask about design decisions, generate screens, or discuss UI patterns..." : "Viewer access is read-only. Design chat is disabled."}
               rows={1}
               className={cn(
                 "w-full resize-none rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-istara-500 focus:border-transparent",
-                (isRecording || isTranscribing) && "italic text-slate-500 bg-slate-50 dark:bg-slate-900"
+                (!canWrite || isRecording || isTranscribing) && "italic text-slate-500 bg-slate-50 dark:bg-slate-900"
               )}
               style={{ minHeight: "44px", maxHeight: "120px" }}
             />
@@ -195,7 +237,7 @@ export default function DesignChatTab() {
           {/* Voice recording button */}
           <button
             onClick={handleVoiceToggle}
-            disabled={designStreaming || isTranscribing}
+            disabled={!canWrite || designStreaming || isTranscribing}
             aria-label={isRecording ? "Stop recording" : "Start recording"}
             className={cn(
               "p-2.5 rounded-lg transition-colors",
@@ -207,14 +249,14 @@ export default function DesignChatTab() {
                 ? "bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600"
                 : "bg-slate-100 dark:bg-slate-800 text-slate-300 cursor-not-allowed"
             )}
-            title={isRecording ? "Stop and Transcribe" : "Voice input"}
+            title={!canWrite ? "Viewers cannot use voice input" : isRecording ? "Stop and Transcribe" : "Voice input"}
           >
             {isTranscribing ? <Loader2 size={20} className="animate-spin" /> : <Mic size={20} />}
           </button>
 
           <button
             onClick={handleSend}
-            disabled={!input.trim() || designStreaming}
+            disabled={!canWrite || !input.trim() || designStreaming}
             aria-label="Send message"
             className={cn(
               "p-2.5 rounded-lg transition-colors",

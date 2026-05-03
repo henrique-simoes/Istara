@@ -2,7 +2,7 @@
 
 Use this checklist for EVERY change to ensure nothing breaks. Cross-reference with **SYSTEM_INTEGRITY_GUIDE.md** for details.
 
-`Compass` is the name of the full agentic development system behind this checklist: prompts, generated docs, matrices, checklists, changelogs, technical narrative, personas, and test/simulation maintenance. Updating Compass means updating this whole system so future agents inherit the new truth.
+`Compass` is the name of the full agentic development system behind this checklist: prompts, generated docs, matrices, checklists, changelogs, future-feature ledger, technical narrative, personas, and test/simulation maintenance. Updating Compass means updating this whole system so future agents inherit the new truth.
 
 ---
 
@@ -16,7 +16,9 @@ Before making ANY change:
 - [ ] Skim `AGENT.md` or `COMPLETE_SYSTEM.md` for the current generated system map
 - [ ] Read `SYSTEM_CHANGE_MATRIX.md` for dependent surfaces that must move with this change
 - [ ] Read `CHANGELOG.md` to understand recent system evolution
+- [ ] Read `COMPASS_FUTURE_FEATURES.md` when planning, deferring, or discovering future work
 - [ ] Decide which parts of Compass must change so the next agent understands the new reality
+- [ ] Decide whether this work creates, updates, ships, or supersedes a future-feature ledger entry
 - [ ] Decide whether `Tech.md` must change because the architecture/process/release story changed
 - [ ] Decide whether Istara's own agents need persona updates to understand this feature
 - [ ] Decide whether an existing simulation scenario is enough or whether a new scenario must be added
@@ -419,6 +421,18 @@ const scenarioFiles = [
 - [ ] KanbanBoard shows consensus badge on task cards with color-coded score
 - [ ] `validation.metrics(projectId)` API client method added to `frontend/src/lib/api.ts`
 - [ ] Persona files updated (istara-main: Research Quality Evaluation)
+
+### Changing Task Review And Agent Completion Semantics
+
+- [ ] Agents stop successful task attempts in `In Review`; no autonomous path writes `Done`
+- [ ] Human approval endpoint is the only normal path from `In Review` to `Done`
+- [ ] Negative review from `In Review` or `Done` requires What to Review and returns to `Backlog` or `In Progress`
+- [ ] `TaskReviewEvent` records approval, rejection, reopen, and system failure outcomes
+- [ ] Review events feed telemetry, model/skill stats, agent learning, and skill health
+- [ ] System action tools refuse `move_task(..., done)` for agents
+- [ ] Task cards and modal expose labels, review state, failure streak, concise quality metrics, atomic path, and Done-to-Report
+- [ ] Backend tests cover approval, Done reopen, invalid revision target, and agent/tool Done restrictions
+- [ ] Compass/persona docs explain that Done is human-approved, not agent-completed
 
 ### Adding Game-Theory Participant Simulation
 

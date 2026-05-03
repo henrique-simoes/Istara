@@ -33,11 +33,12 @@ from sqlalchemy import select, func, distinct
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.agent_identity import (
-    PERSONAS_DIR,
     IDENTITY_FILES,
     _load_persona_file,
     save_agent_memory,
     load_agent_memory,
+    runtime_personas_dir,
+    writeable_persona_path,
 )
 from app.models.database import async_session
 
@@ -307,9 +308,7 @@ class SelfEvolutionEngine:
 
         This gives custom agents the same evolution capabilities as system agents.
         """
-        persona_dir = PERSONAS_DIR / agent_id
-        if persona_dir.exists():
-            return True  # Already has persona files
+        persona_dir = runtime_personas_dir() / agent_id
 
         try:
             persona_dir.mkdir(parents=True, exist_ok=True)
@@ -335,7 +334,6 @@ Your primary directive is defined by your creator's system prompt.
 - Transparency about limitations
 - Respect for project context
 """
-            (persona_dir / "CORE.md").write_text(core_content, encoding="utf-8")
 
             # Generate minimal SKILLS.md
             skills_content = f"""# {name} -- Skills
@@ -349,7 +347,6 @@ Your primary directive is defined by your creator's system prompt.
 - Custom agent — capabilities defined by creator
 - Defer to system agents for specialized audits
 """
-            (persona_dir / "SKILLS.md").write_text(skills_content, encoding="utf-8")
 
             # Generate PROTOCOLS.md
             protocols_content = f"""# {name} -- Behavioral Protocols
@@ -370,7 +367,6 @@ Your primary directive is defined by your creator's system prompt.
 ## Learned Error Patterns
 (Auto-populated by the self-evolution engine)
 """
-            (persona_dir / "PROTOCOLS.md").write_text(protocols_content, encoding="utf-8")
 
             # Generate MEMORY.md
             memory_content = f"""# {name} -- Persistent Memory
@@ -390,7 +386,15 @@ Your primary directive is defined by your creator's system prompt.
 ### Promoted Learnings
 (Auto-populated by the self-evolution engine when patterns mature)
 """
-            (persona_dir / "MEMORY.md").write_text(memory_content, encoding="utf-8")
+            for filename, content in {
+                "CORE.md": core_content,
+                "SKILLS.md": skills_content,
+                "PROTOCOLS.md": protocols_content,
+                "MEMORY.md": memory_content,
+            }.items():
+                path = persona_dir / filename
+                if not path.exists():
+                    path.write_text(content, encoding="utf-8")
 
             logger.info(f"Created persona files for custom agent: {name} ({agent_id})")
             return True
@@ -493,7 +497,11 @@ def _append_to_persona_file(
     text: str,
 ) -> bool:
     """Append a promotion entry to a specific section of a persona file."""
-    filepath = PERSONAS_DIR / agent_id / filename
+    try:
+        filepath = writeable_persona_path(agent_id, filename)
+    except PermissionError as e:
+        logger.error(str(e))
+        return False
     if not filepath.exists():
         # Create the file with the section
         try:

@@ -127,6 +127,23 @@ const ws = createConnection(opts.server, {
           }));
         }
         stateMachine.transition("idle");
+      } else if (msg.type === "embed_request") {
+        stateMachine.transition("donating");
+        try {
+          const result = await llmProxy.handleEmbedding(msg);
+          ws.send(JSON.stringify({
+            type: "embed_response",
+            request_id: msg.request_id,
+            result,
+          }));
+        } catch (err) {
+          ws.send(JSON.stringify({
+            type: "embed_response",
+            request_id: msg.request_id,
+            error: err.message,
+          }));
+        }
+        stateMachine.transition("idle");
       }
     } catch {
       // Ignore malformed messages

@@ -64,11 +64,16 @@ class SkillRegistry:
     def register_from_definition(self, name: str) -> bool:
         """Load a single skill JSON from definitions/ and register at runtime."""
         from app.skills.skill_factory import create_skill
-        from app.skills.skill_manager import SkillDefinition, SKILLS_DIR
+        from app.skills.skill_manager import SkillDefinition, skill_definition_dirs
 
-        path = SKILLS_DIR / f"{name}.json"
-        if not path.exists():
-            logger.warning(f"Skill definition not found: {path}")
+        path = None
+        for directory in reversed(skill_definition_dirs()):
+            candidate = directory / f"{name}.json"
+            if candidate.exists():
+                path = candidate
+                break
+        if path is None:
+            logger.warning(f"Skill definition not found: {name}")
             return False
 
         try:
@@ -120,16 +125,17 @@ def load_default_skills() -> None:
     }
 
     # Factory-generated skills (standard pattern)
-    from app.skills.skill_manager import SKILLS_DIR
+    from app.skills.skill_manager import skill_definition_dirs
 
-    for path in sorted(SKILLS_DIR.glob("*.json")):
-        if path.name.startswith("_"):
+    names: set[str] = set()
+    for directory in skill_definition_dirs():
+        if not directory.exists():
             continue
+        names.update(path.stem for path in directory.glob("*.json") if not path.name.startswith("_"))
 
-        name = path.stem
+    for name in sorted(names):
         if name in hand_crafted:
             continue
-            
         registry.register_from_definition(name)
 
     logger.info(f"Loaded {len(registry.list_all())} skills total.")

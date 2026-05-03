@@ -1,9 +1,10 @@
 """Laws of UX API — query the knowledge base and compute compliance profiles."""
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.permissions import require_project_access
 from app.models.database import get_db
 from app.models.finding import Nugget
 from app.services.laws_of_ux_service import laws_service
@@ -36,8 +37,14 @@ async def match_laws(query: str = Query(...), top_k: int = 5):
 
 
 @router.get("/compliance/{project_id}")
-async def get_compliance(project_id: str, db: AsyncSession = Depends(get_db)):
+async def get_compliance(
+    project_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
     """Compute UX Law compliance profile for a project from tagged findings."""
+    await require_project_access(db, request, project_id, min_role="viewer")
+
     import json
 
     result = await db.execute(
@@ -50,8 +57,14 @@ async def get_compliance(project_id: str, db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/compliance/{project_id}/radar")
-async def get_radar(project_id: str, db: AsyncSession = Depends(get_db)):
+async def get_radar(
+    project_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
     """Get radar chart data for the compliance profile."""
+    await require_project_access(db, request, project_id, min_role="viewer")
+
     import json
 
     result = await db.execute(

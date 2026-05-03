@@ -9,7 +9,11 @@ from app.models.database import Base
 
 
 class ProjectMember(Base):
-    """Links a user to a project with a role (admin/member/viewer)."""
+    """Links a user to a project with a role.
+
+    Canonical roles are project_admin, researcher, and viewer. Legacy stored
+    values "admin" and "member" are normalized in app.core.permissions.
+    """
 
     __tablename__ = "project_members"
 
@@ -18,7 +22,7 @@ class ProjectMember(Base):
         String(36), ForeignKey("projects.id", ondelete="CASCADE"), index=True
     )
     user_id: Mapped[str] = mapped_column(String(36), index=True)
-    role: Mapped[str] = mapped_column(String(20), default="member")  # admin | member | viewer
+    role: Mapped[str] = mapped_column(String(20), default="researcher")
     added_by: Mapped[str] = mapped_column(String(36), default="")
     added_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)

@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { ApiError } from "@/hooks/useApiCall";
 import ViewOnboarding from "@/components/common/ViewOnboarding";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+import { API_BASE } from "@/lib/runtimeConfig";
 
 interface ProjectMetrics {
   findings: { nuggets: number; facts: number; insights: number; recommendations: number; total: number };

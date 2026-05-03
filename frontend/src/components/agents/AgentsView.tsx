@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { API_BASE } from "@/lib/runtimeConfig";
 import {
   Users,
   Plus,
@@ -49,6 +50,7 @@ const ROLE_LABELS: Record<AgentRole, string> = {
   ui_audit: "UI Audit",
   ux_evaluation: "UX Evaluation",
   user_simulation: "User Simulation",
+  design_lead: "Design Lead",
   custom: "Custom",
 };
 
@@ -58,6 +60,7 @@ const ROLE_COLORS: Record<AgentRole, string> = {
   ui_audit: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400",
   ux_evaluation: "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400",
   user_simulation: "bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-400",
+  design_lead: "bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400",
   custom: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
 };
 
@@ -421,7 +424,7 @@ function RecentErrors({ agentId }: { agentId: string }) {
   useEffect(() => {
     if (fetched) return;
     setLoading(true);
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    const baseUrl = API_BASE;
     fetch(`${baseUrl}/api/agents/log/recent?agent_id=${agentId}&limit=5`)
       .then((res) => {
         if (!res.ok) throw new Error("Failed to fetch");
@@ -621,7 +624,7 @@ function AgentDetail({ agent }: { agent: Agent }) {
             <button
               onClick={async () => {
                 try {
-                  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/agents/${agent.id}/export`);
+                  const res = await fetch(`${API_BASE}/api/agents/${agent.id}/export`);
                   const data = await res.json();
                   const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
                   const url = URL.createObjectURL(blob);
@@ -1051,7 +1054,7 @@ export default function AgentsView() {
                           const text = await file.text();
                           const data = JSON.parse(text);
                           const agentData = data.agent || data;
-                          await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/agents/import`, {
+                          await fetch(`${API_BASE}/api/agents/import`, {
                             method: "POST",
                             headers: { "Content-Type": "application/json" },
                             body: JSON.stringify(agentData),

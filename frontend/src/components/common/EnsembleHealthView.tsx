@@ -22,7 +22,7 @@ import {
 import { cn } from "@/lib/utils";
 import { validation, telemetry } from "@/lib/api";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+import { API_BASE } from "@/lib/runtimeConfig";
 
 interface MethodStatRow {
   method: string;

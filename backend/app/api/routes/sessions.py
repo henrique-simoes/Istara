@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy import delete, select, func, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.database import get_db
 from app.models.session import ChatSession, InferencePreset, INFERENCE_PRESETS
 from app.models.message import Message
+from app.core.permissions import require_project_access
 
 router = APIRouter()
 
@@ -38,8 +39,14 @@ class UpdateSessionRequest(BaseModel):
 
 
 @router.get("/sessions/{project_id}")
-async def list_sessions(project_id: str, include_archived: bool = False, db: AsyncSession = Depends(get_db)):
+async def list_sessions(
+    project_id: str,
+    request: Request,
+    include_archived: bool = False,
+    db: AsyncSession = Depends(get_db),
+):
     """List all chat sessions for a project."""
+    await require_project_access(db, request, project_id, min_role="viewer")
     query = select(ChatSession).where(ChatSession.project_id == project_id)
     if not include_archived:
         query = query.where(ChatSession.archived == False)
@@ -50,8 +57,9 @@ async def list_sessions(project_id: str, include_archived: bool = False, db: Asy
 
 
 @router.post("/sessions", status_code=201)
-async def create_session(data: CreateSessionRequest, db: AsyncSession = Depends(get_db)):
+async def create_session(data: CreateSessionRequest, request: Request, db: AsyncSession = Depends(get_db)):
     """Create a new chat session."""
+    await require_project_access(db, request, data.project_id, min_role="researcher")
     preset = InferencePreset.MEDIUM
     try:
         preset = InferencePreset(data.inference_preset)
@@ -73,12 +81,13 @@ async def create_session(data: CreateSessionRequest, db: AsyncSession = Depends(
 
 
 @router.get("/sessions/detail/{session_id}")
-async def get_session(session_id: str, db: AsyncSession = Depends(get_db)):
+async def get_session(session_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     """Get a specific session with its messages."""
     result = await db.execute(select(ChatSession).where(ChatSession.id == session_id))
     session = result.scalar_one_or_none()
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
+    await require_project_access(db, request, session.project_id, min_role="viewer")
 
     # Get messages
     msg_result = await db.execute(
@@ -103,12 +112,18 @@ async def get_session(session_id: str, db: AsyncSession = Depends(get_db)):
 
 
 @router.patch("/sessions/{session_id}")
-async def update_session(session_id: str, data: UpdateSessionRequest, db: AsyncSession = Depends(get_db)):
+async def update_session(
+    session_id: str,
+    data: UpdateSessionRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
     """Update a chat session."""
     result = await db.execute(select(ChatSession).where(ChatSession.id == session_id))
     session = result.scalar_one_or_none()
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
+    await require_project_access(db, request, session.project_id, min_role="researcher")
 
     updates = data.model_dump(exclude_unset=True)
     if "inference_preset" in updates:
@@ -126,12 +141,13 @@ async def update_session(session_id: str, data: UpdateSessionRequest, db: AsyncS
 
 
 @router.delete("/sessions/{session_id}", status_code=204)
-async def delete_session(session_id: str, db: AsyncSession = Depends(get_db)):
+async def delete_session(session_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     """Delete a chat session and its messages."""
     result = await db.execute(select(ChatSession).where(ChatSession.id == session_id))
     session = result.scalar_one_or_none()
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
+    await require_project_access(db, request, session.project_id, min_role="researcher")
 
     # Clean up DAG nodes (no FK constraint on session_id)
     from app.models.context_dag import ContextDAGNode
@@ -144,12 +160,13 @@ async def delete_session(session_id: str, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/sessions/{session_id}/star")
-async def toggle_star(session_id: str, db: AsyncSession = Depends(get_db)):
+async def toggle_star(session_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     """Toggle starred status."""
     result = await db.execute(select(ChatSession).where(ChatSession.id == session_id))
     session = result.scalar_one_or_none()
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
+    await require_project_access(db, request, session.project_id, min_role="researcher")
 
     session.starred = not session.starred
     await db.commit()
@@ -163,8 +180,9 @@ async def get_inference_presets():
 
 
 @router.get("/sessions/{project_id}/ensure-default")
-async def ensure_default_session(project_id: str, db: AsyncSession = Depends(get_db)):
+async def ensure_default_session(project_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     """Ensure a default session exists for a project. Returns or creates one."""
+    await require_project_access(db, request, project_id, min_role="researcher")
     result = await db.execute(
         select(ChatSession)
         .where(ChatSession.project_id == project_id, ChatSession.archived == False)

@@ -8,6 +8,7 @@
 3. **Skill matching**: If a task mentions a specific skill, use it. Otherwise, infer the best skill from the task description and current research phase
 4. **Resource awareness**: Check system resource budget before starting compute-intensive tasks. Pause gracefully under pressure
 5. **Dependency ordering**: If task B depends on the output of task A, complete A first regardless of priority labels
+6. **Human review boundary**: Never mark your own task Done. Put finished or failed-but-reviewable work in In Review and wait for a human to approve or send it back with What to Review feedback.
 
 ### Skill Execution Protocol
 1. **Pre-flight check**: Verify project exists, skill is registered, input files are accessible
@@ -15,7 +16,8 @@
 3. **Execute with monitoring**: Track progress, broadcast updates via WebSocket, respect timeout limits
 4. **Post-flight verification**: Self-verify output quality. Check for empty results, error patterns, hallucination indicators
 5. **Store findings**: Persist results in the Atomic Research chain with proper evidence links
-6. **Report and suggest**: Broadcast completion, suggest logical next steps
+6. **Report and suggest**: Broadcast ready-for-review status, suggest logical next steps
+7. **Use review feedback**: If a task carries What to Review, last_review_feedback, labels, or failure streaks, treat that as the strongest instruction for the next attempt.
 
 ```
 [Task Received] --> [Pre-flight Check]
@@ -37,7 +39,7 @@
 1. **Classify the error**: Is it transient (network timeout, resource pressure) or structural (missing data, invalid input, code bug)?
 2. **Attempt recovery**: For transient errors, retry with exponential backoff (max 3 attempts). For structural errors, analyze root cause
 3. **Learn from errors**: Store error patterns and successful resolutions in agent memory for future reference
-4. **Escalate gracefully**: If recovery fails after 3 attempts, mark the task for user attention with a clear diagnostic message. Never silently fail
+4. **Escalate gracefully**: If recovery fails after 3 attempts, move the task to In Review with `review_state=system_failed` and a clear diagnostic message. Never silently fail and never hide the failure in Done
 5. **Notify peers**: If the error affects other agents' work, send an A2A message to relevant agents
 
 ### Evidence Verification Protocol

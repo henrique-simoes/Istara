@@ -24,16 +24,16 @@ PREFIX = "rcl_"
 
 def create_connection_string(
     server_url: str,
+    ws_url: str | None = None,
     label: str = "",
     expires_hours: int = 168,  # 7 days
     role: str = "researcher",
 ) -> str:
-    """Generate a tamper-proof connection string.
+    """Generate a tamper-proof user invite connection string.
 
     Bundles:
     - server_url: HTTPS URL for the web UI
     - ws_url: WSS URL for relay WebSocket (derived from server_url)
-    - network_token: NETWORK_ACCESS_TOKEN for relay auth
     - jwt: pre-minted JWT for web UI login
     - expires_at: Unix timestamp
     - label: human-readable label (e.g. "Alice's laptop")
@@ -41,9 +41,9 @@ def create_connection_string(
     expires_at = int(time.time()) + (expires_hours * 3600)
 
     # Derive WebSocket URL from server URL
-    ws_url = server_url.replace("https://", "wss://").replace("http://", "ws://")
-    if not ws_url.endswith("/ws/relay"):
-        ws_url = ws_url.rstrip("/") + "/ws/relay"
+    relay_ws_url = ws_url or server_url.replace("https://", "wss://").replace("http://", "ws://")
+    if not relay_ws_url.endswith("/ws/relay"):
+        relay_ws_url = relay_ws_url.rstrip("/") + "/ws/relay"
 
     # Mint a JWT for the invited user (pre-auth)
     # The JWT sub is "invite-<timestamp>" — redeemed when user registers
@@ -55,14 +55,48 @@ def create_connection_string(
 
     payload = {
         "v": 1,
+        "kind": "user_invite",
         "server_url": server_url.rstrip("/"),
-        "ws_url": ws_url,
-        "network_token": settings.network_access_token or "",
+        "ws_url": relay_ws_url,
         "jwt": jwt_token,
+        "role": role,
         "expires_at": expires_at,
         "label": label,
     }
 
+    return _encode_payload(payload)
+
+
+def create_compute_donation_string(
+    server_url: str,
+    ws_url: str | None = None,
+    label: str = "",
+    expires_hours: int = 168,
+) -> str:
+    """Generate a tamper-proof compute donation string.
+
+    Compute donation strings intentionally carry relay connection data only.
+    They never carry or mint a user JWT.
+    """
+    expires_at = int(time.time()) + (expires_hours * 3600)
+    relay_ws_url = ws_url or server_url.replace("https://", "wss://").replace("http://", "ws://")
+    if not relay_ws_url.endswith("/ws/relay"):
+        relay_ws_url = relay_ws_url.rstrip("/") + "/ws/relay"
+
+    payload = {
+        "v": 1,
+        "kind": "compute_donation",
+        "server_url": server_url.rstrip("/"),
+        "ws_url": relay_ws_url,
+        "network_token": settings.network_access_token or "",
+        "expires_at": expires_at,
+        "label": label,
+    }
+
+    return _encode_payload(payload)
+
+
+def _encode_payload(payload: dict) -> str:
     payload_json = json.dumps(payload, separators=(",", ":"))
     payload_b64 = _b64encode(payload_json.encode())
 
@@ -111,6 +145,10 @@ def decode_connection_string(conn_str: str) -> dict | None:
         # Check version
         if payload.get("v") != 1:
             return None
+
+        # Legacy strings predate explicit kinds and bundled both invite and
+        # relay data. Keep validation compatible while new strings stay split.
+        payload.setdefault("kind", "user_invite")
 
         # Check expiry
         if payload.get("expires_at", 0) < time.time():
