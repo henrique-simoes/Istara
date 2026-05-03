@@ -71,6 +71,39 @@ async def test_local_mode_admin_bypass():
         assert response.json()["role"] == "admin"
 
 
+@pytest.mark.asyncio
+async def test_local_mode_protected_api_bootstraps_without_token():
+    """Local desktop mode should not strand first-run users behind JWT middleware."""
+    await init_db()
+    settings.team_mode = False
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        me_response = await ac.get("/api/auth/me")
+        assert me_response.status_code == 200
+        assert me_response.json()["role"] == "admin"
+
+        projects_response = await ac.get("/api/projects")
+        assert projects_response.status_code == 200
+        assert isinstance(projects_response.json(), list)
+
+
+def test_bootstrap_admin_user_has_required_email_hash():
+    """Fresh installs must be able to create the first admin with encrypted email enabled."""
+    from app.core.field_encryption import hash_field
+    from app.main import _build_bootstrap_admin_user
+
+    user = _build_bootstrap_admin_user(
+        user_id="admin-id",
+        username="admin",
+        password_hash="hashed-password",
+        recovery_codes_hashed="hashed-codes",
+    )
+
+    assert user.email == "admin@istara.local"
+    assert user.email_hash == hash_field("admin@istara.local")
+
+
 # ---------------------------------------------------------------------------
 # JWT security tests
 # ---------------------------------------------------------------------------

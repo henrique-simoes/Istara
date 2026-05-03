@@ -88,8 +88,6 @@ pub fn setup_frontend(install_dir: &Path) -> Result<Vec<String>, String> {
     let status = Command::new(&npm)
         .args(["run", "build"])
         .current_dir(&frontend_dir)
-        .env("NEXT_PUBLIC_API_URL", "http://localhost:8000")
-        .env("NEXT_PUBLIC_WS_URL", "ws://localhost:8000")
         .status()
         .map_err(|e| format!("Frontend build failed: {}", e))?;
     if !status.success() {
@@ -136,6 +134,7 @@ TEAM_MODE=false
 
 # CORS
 CORS_ORIGINS=http://localhost:3000
+CORS_ORIGIN_REGEX=https?://[^/]+:3000
 
 # RAG Configuration
 RAG_CHUNK_SIZE=1500

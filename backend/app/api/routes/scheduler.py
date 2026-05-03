@@ -94,10 +94,12 @@ async def create_schedule(data: ScheduleCreate, request: Request, db: AsyncSessi
 
 @router.get("/schedules", response_model=list[ScheduleResponse])
 async def list_schedules(
+    request: Request,
     project_id: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     """List all scheduled tasks, optionally filtered by project."""
+    require_admin_from_request(request)
     query = select(ScheduledTask).order_by(ScheduledTask.created_at)
     if project_id:
         query = query.where(ScheduledTask.project_id == project_id)
@@ -106,8 +108,9 @@ async def list_schedules(
 
 
 @router.get("/schedules/{schedule_id}", response_model=ScheduleResponse)
-async def get_schedule(schedule_id: str, db: AsyncSession = Depends(get_db)):
+async def get_schedule(schedule_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     """Get a scheduled task by ID."""
+    require_admin_from_request(request)
     result = await db.execute(
         select(ScheduledTask).where(ScheduledTask.id == schedule_id)
     )
@@ -121,9 +124,11 @@ async def get_schedule(schedule_id: str, db: AsyncSession = Depends(get_db)):
 async def update_schedule(
     schedule_id: str,
     data: ScheduleUpdate,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
     """Update a scheduled task (enable/disable, change cron, etc.)."""
+    require_admin_from_request(request)
     result = await db.execute(
         select(ScheduledTask).where(ScheduledTask.id == schedule_id)
     )

@@ -41,8 +41,9 @@ class BackupConfigUpdate(BaseModel):
 
 
 @router.get("/backups")
-async def list_backups():
+async def list_backups(request: Request):
     """List all backup records ordered by creation date descending."""
+    require_admin_from_request(request)
     backups = await backup_manager.list_backups()
     return {"backups": backups, "total": len(backups)}
 
@@ -87,8 +88,9 @@ async def restore_from_backup(backup_id: str, request: Request):
 
 
 @router.post("/backups/{backup_id}/verify")
-async def verify_backup(backup_id: str):
+async def verify_backup(backup_id: str, request: Request):
     """Verify checksums of a backup archive against its manifest."""
+    require_admin_from_request(request)
     try:
         result = await backup_manager.verify_backup(backup_id)
         return result
@@ -112,8 +114,9 @@ async def delete_backup(backup_id: str, request: Request):
 
 
 @router.get("/backups/config")
-async def get_backup_config():
+async def get_backup_config(request: Request):
     """Get current backup configuration."""
+    require_admin_from_request(request)
     return {
         "backup_enabled": settings.backup_enabled,
         "backup_dir": settings.backup_dir,
@@ -155,8 +158,9 @@ async def update_backup_config(data: BackupConfigUpdate, request: Request):
 
 
 @router.get("/backups/estimate")
-async def get_backup_estimate():
+async def get_backup_estimate(request: Request):
     """Get an estimated size for the next backup."""
+    require_admin_from_request(request)
     return backup_manager.get_backup_size_estimate()
 
 

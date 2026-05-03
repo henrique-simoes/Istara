@@ -132,9 +132,13 @@ Upload and manage research artifacts: interview transcripts, survey exports, scr
 ### Tasks (Kanban)
 Direct the agent via a Kanban board with columns: Backlog, In Progress, Review, Done. Features:
 - Priority levels: Critical, High, Medium, Low
+- Human review loop: agents stop at Review; users approve Done or send work back with What to Review
+- Task labels for project organization, separate from research/thematic tags
 - Input/output document linking with count badges
 - URL attachment for web pages the agent should analyze
 - Per-task instructions field
+- Atomic path and quality metrics on task cards/modal
+- Approved Done tasks can be sent to Findings reports
 - Agent assignment
 - Task checkpoints for crash recovery
 

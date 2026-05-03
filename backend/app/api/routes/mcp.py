@@ -46,6 +46,10 @@ class PolicyUpdateRequest(BaseModel):
     allowed_project_ids: list[str] | None = None
     max_findings_per_request: int | None = None
     max_skill_executions_per_hour: int | None = None
+    # Backward-compatible UI shape.
+    tools: dict | None = None
+    resources: dict | None = None
+    limits: dict | None = None
 
 
 class ClientRegisterRequest(BaseModel):
@@ -66,8 +70,9 @@ class ToolCallRequest(BaseModel):
 
 
 @router.get("/mcp/server/status")
-async def get_server_status(db: AsyncSession = Depends(get_db)):
+async def get_server_status(request: Request, db: AsyncSession = Depends(get_db)):
     """Get current MCP server status and exposure summary."""
+    require_admin_from_request(request)
     from app.mcp.server import MCP_AVAILABLE
     from app.services.mcp_security import ensure_default_policy, get_exposure_summary
 
@@ -127,8 +132,9 @@ async def toggle_server(data: ServerToggleRequest, request: Request, db: AsyncSe
 
 
 @router.get("/mcp/server/policy")
-async def get_policy(db: AsyncSession = Depends(get_db)):
+async def get_policy(request: Request, db: AsyncSession = Depends(get_db)):
     """Get the current MCP access policy."""
+    require_admin_from_request(request)
     from app.services.mcp_security import ensure_default_policy
 
     policy = await ensure_default_policy(db)
@@ -167,6 +173,38 @@ async def update_policy(data: PolicyUpdateRequest, request: Request, db: AsyncSe
 
     updates = data.model_dump(exclude_unset=True)
 
+    # Accept the grouped frontend shape in addition to explicit backend fields.
+    tool_name_to_field = {
+        "list_skills": "allow_list_skills",
+        "list_projects": "allow_list_projects",
+        "get_deployment_status": "allow_get_deployment_status",
+        "get_findings": "allow_get_findings",
+        "search_memory": "allow_search_memory",
+        "execute_skill": "allow_execute_skill",
+        "create_project": "allow_create_project",
+        "deploy_research": "allow_deploy_research",
+    }
+    for tool_name, config in (updates.pop("tools", None) or {}).items():
+        field_name = tool_name_to_field.get(tool_name)
+        if field_name and isinstance(config, dict) and "allowed" in config:
+            updates[field_name] = bool(config["allowed"])
+
+    resource_name_to_field = {
+        "project": "allow_project_resource",
+        "findings": "allow_findings_resource",
+        "skills": "allow_skills_resource",
+    }
+    for resource_name, config in (updates.pop("resources", None) or {}).items():
+        field_name = resource_name_to_field.get(resource_name)
+        if field_name and isinstance(config, dict) and "allowed" in config:
+            updates[field_name] = bool(config["allowed"])
+
+    limits = updates.pop("limits", None) or {}
+    if isinstance(limits, dict):
+        for key in ("allowed_project_ids", "max_findings_per_request", "max_skill_executions_per_hour"):
+            if key in limits:
+                updates[key] = limits[key]
+
     for field_name, risk in field_risk_map.items():
         if field_name in updates:
             new_val = updates[field_name]
@@ -199,11 +237,13 @@ async def update_policy(data: PolicyUpdateRequest, request: Request, db: AsyncSe
 
 @router.get("/mcp/server/audit")
 async def get_audit(
+    request: Request,
     limit: int = 50,
     offset: int = 0,
     db: AsyncSession = Depends(get_db),
 ):
     """Get MCP audit log entries."""
+    require_admin_from_request(request)
     from app.services.mcp_security import get_audit_log
 
     entries = await get_audit_log(db, limit=limit, offset=offset)
@@ -211,8 +251,9 @@ async def get_audit(
 
 
 @router.get("/mcp/server/exposure")
-async def get_exposure(db: AsyncSession = Depends(get_db)):
+async def get_exposure(request: Request, db: AsyncSession = Depends(get_db)):
     """Get a summary of what is currently exposed via MCP."""
+    require_admin_from_request(request)
     from app.services.mcp_security import get_exposure_summary
 
     return await get_exposure_summary(db)
@@ -225,10 +266,12 @@ async def get_exposure(db: AsyncSession = Depends(get_db)):
 
 @router.get("/mcp/clients")
 async def list_clients(
+    request: Request,
     active_only: bool = False,
     db: AsyncSession = Depends(get_db),
 ):
     """List all registered external MCP servers."""
+    require_admin_from_request(request)
     from app.services.mcp_client_manager import list_servers
 
     servers = await list_servers(db, active_only=active_only)
@@ -236,8 +279,9 @@ async def list_clients(
 
 
 @router.post("/mcp/clients", status_code=201)
-async def register_client(data: ClientRegisterRequest, db: AsyncSession = Depends(get_db)):
+async def register_client(data: ClientRegisterRequest, request: Request, db: AsyncSession = Depends(get_db)):
     """Register a new external MCP server."""
+    require_admin_from_request(request)
     from app.services.mcp_client_manager import register_server
 
     server = await register_server(
@@ -254,8 +298,9 @@ async def register_client(data: ClientRegisterRequest, db: AsyncSession = Depend
 
 
 @router.get("/mcp/clients/tools")
-async def list_all_client_tools(db: AsyncSession = Depends(get_db)):
+async def list_all_client_tools(request: Request, db: AsyncSession = Depends(get_db)):
     """Aggregate cached tools from ALL active external MCP servers."""
+    require_admin_from_request(request)
     from app.services.mcp_client_manager import list_all_tools
 
     tools = await list_all_tools(db)
@@ -277,8 +322,9 @@ async def unregister_client(server_id: str, request: Request, db: AsyncSession =
 
 
 @router.post("/mcp/clients/{server_id}/discover")
-async def discover_client_tools(server_id: str, db: AsyncSession = Depends(get_db)):
+async def discover_client_tools(server_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     """Connect to an external MCP server and discover its available tools."""
+    require_admin_from_request(request)
     from app.services.mcp_client_manager import MCP_CLIENT_AVAILABLE, discover_tools
 
     if not MCP_CLIENT_AVAILABLE:
@@ -292,8 +338,9 @@ async def discover_client_tools(server_id: str, db: AsyncSession = Depends(get_d
 
 
 @router.get("/mcp/clients/{server_id}/tools")
-async def get_client_tools(server_id: str, db: AsyncSession = Depends(get_db)):
+async def get_client_tools(server_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     """Get cached tools for an external MCP server (from last discovery)."""
+    require_admin_from_request(request)
     import json
 
     from app.models.mcp_server_config import MCPServerConfig
@@ -318,9 +365,11 @@ async def get_client_tools(server_id: str, db: AsyncSession = Depends(get_db)):
 async def call_client_tool(
     server_id: str,
     data: ToolCallRequest,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
     """Call a tool on an external MCP server."""
+    require_admin_from_request(request)
     from app.services.mcp_client_manager import MCP_CLIENT_AVAILABLE, call_tool
 
     if not MCP_CLIENT_AVAILABLE:
@@ -342,8 +391,9 @@ async def call_client_tool(
 
 
 @router.get("/mcp/clients/{server_id}/health")
-async def check_client_health(server_id: str, db: AsyncSession = Depends(get_db)):
+async def check_client_health(server_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     """Check connectivity to an external MCP server."""
+    require_admin_from_request(request)
     from app.services.mcp_client_manager import health_check
 
     result = await health_check(db, server_id)
@@ -356,8 +406,9 @@ async def check_client_health(server_id: str, db: AsyncSession = Depends(get_db)
 
 
 @router.get("/mcp/featured")
-async def list_featured_servers():
+async def list_featured_servers(request: Request):
     """List pre-configured MCP servers available for one-click connection."""
+    require_admin_from_request(request)
     import json
     from pathlib import Path
 
@@ -372,8 +423,9 @@ async def list_featured_servers():
 
 
 @router.get("/mcp/featured/{server_id}")
-async def get_featured_server(server_id: str):
+async def get_featured_server(server_id: str, request: Request):
     """Get details for a featured MCP server."""
+    require_admin_from_request(request)
     import json
     from pathlib import Path
 
@@ -400,6 +452,7 @@ class ConnectFeaturedRequest(BaseModel):
 async def connect_featured_server(
     server_id: str,
     body: ConnectFeaturedRequest,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
     """Quick-connect a featured MCP server to Istara's client registry.
@@ -407,6 +460,8 @@ async def connect_featured_server(
     Creates a new MCP client config from the featured server's definition,
     optionally setting environment variables (API keys).
     """
+    require_admin_from_request(request)
+
     import json
     from pathlib import Path
     from app.services.mcp_client_manager import register_server

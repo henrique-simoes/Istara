@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import type { ReactNode } from "react";
 import {
   Cpu,
   HardDrive,
@@ -19,7 +20,7 @@ import { useComputeStore } from "@/stores/computeStore";
 import { cn } from "@/lib/utils";
 import ViewOnboarding from "@/components/common/ViewOnboarding";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+import { API_BASE } from "@/lib/runtimeConfig";
 
 const SWARM_TIERS: Record<string, { label: string; color: string; description: string }> = {
   full_swarm: {
@@ -64,6 +65,11 @@ const SOURCE_BADGES: Record<string, { label: string; icon: typeof Monitor; class
     label: "Relay",
     icon: Radio,
     className: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400",
+  },
+  browser: {
+    label: "Browser",
+    icon: Radio,
+    className: "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400",
   },
 };
 
@@ -361,6 +367,27 @@ export default function ComputePoolView() {
                     {node.ram_available_gb?.toFixed(1)} GB free | CPU {node.cpu_load_pct?.toFixed(0)}%
                   </div>
 
+                  {(node.source === "relay" || node.source === "browser") && (
+                    <div className="flex flex-wrap gap-1.5 mb-3">
+                      <NodeStatusBadge tone={node.alive ? "green" : "red"}>
+                        {node.serving_state === "serving" ? "Serving" : node.alive ? "Connected" : "Offline"}
+                      </NodeStatusBadge>
+                      <NodeStatusBadge
+                        tone={node.capability_probe_status === "available" ? "green" : "amber"}
+                      >
+                        {node.capability_probe_status === "available"
+                          ? "Capabilities ready"
+                          : "Capability probe unavailable"}
+                      </NodeStatusBadge>
+                      {node.model_list_stale && (
+                        <NodeStatusBadge tone="amber">Model list stale</NodeStatusBadge>
+                      )}
+                      {node.health_error && (
+                        <NodeStatusBadge tone="red">{node.health_error}</NodeStatusBadge>
+                      )}
+                    </div>
+                  )}
+
                   {/* Model Capabilities */}
                   {node.loaded_models && node.loaded_models.length > 0 && (
                     <div>
@@ -483,6 +510,25 @@ function ModelBadges({
         </span>
       )}
     </div>
+  );
+}
+
+function NodeStatusBadge({
+  tone,
+  children,
+}: {
+  tone: "green" | "amber" | "red";
+  children: ReactNode;
+}) {
+  const classes = {
+    green: "bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400",
+    amber: "bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+    red: "bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+  };
+  return (
+    <span className={cn("inline-flex px-2 py-0.5 rounded text-[10px] font-medium", classes[tone])}>
+      {children}
+    </span>
   );
 }
 

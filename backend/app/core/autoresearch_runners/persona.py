@@ -13,7 +13,7 @@ import logging
 from pathlib import Path
 from typing import Awaitable, Callable
 
-from app.core.agent_identity import PERSONAS_DIR
+from app.core.agent_identity import persona_file_path, writeable_persona_path
 from app.core.autoresearch_runners import BaseLoopRunner
 
 logger = logging.getLogger(__name__)
@@ -56,7 +56,7 @@ class PersonaRunner(BaseLoopRunner):
         filename = MUTABLE_FILES[self._file_index % len(MUTABLE_FILES)]
         self._file_index += 1
 
-        filepath = PERSONAS_DIR / target / filename
+        filepath = persona_file_path(target, filename)
         current_content = ""
         if filepath.exists():
             try:
@@ -140,7 +140,8 @@ class PersonaRunner(BaseLoopRunner):
         filename = mutation["filename"]
         old_content = mutation["old_content"]
         new_content = mutation["new_content"]
-        filepath = PERSONAS_DIR / target / filename
+        filepath = writeable_persona_path(target, filename)
+        filepath.parent.mkdir(parents=True, exist_ok=True)
 
         # Write new content
         filepath.write_text(new_content, encoding="utf-8")

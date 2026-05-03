@@ -79,6 +79,32 @@ DESIGN_TOOLS = [
     },
 ]
 
+OPENAI_DESIGN_TOOLS = [
+    {
+        "type": "function",
+        "function": {
+            "name": tool["name"],
+            "description": tool["description"],
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    name: {
+                        "type": info.get("type", "string"),
+                        "description": info.get("description", ""),
+                    }
+                    for name, info in tool["parameters"].items()
+                },
+                "required": [
+                    name
+                    for name, info in tool["parameters"].items()
+                    if info.get("required")
+                ],
+            },
+        },
+    }
+    for tool in DESIGN_TOOLS
+]
+
 
 def build_design_tools_prompt() -> str:
     """Build the design tools section for the system prompt."""

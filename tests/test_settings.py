@@ -12,9 +12,13 @@ from app.core.auth import create_token
 def reset_settings():
     original_team_mode = settings.team_mode
     original_jwt_secret = settings.jwt_secret
+    original_data_dir = settings.data_dir
+    original_runtime_personas_dir = settings.runtime_personas_dir
     yield
     settings.team_mode = original_team_mode
     settings.jwt_secret = original_jwt_secret
+    settings.data_dir = original_data_dir
+    settings.runtime_personas_dir = original_runtime_personas_dir
 
 
 @pytest.fixture
@@ -75,3 +79,21 @@ async def test_settings_data_integrity_returns_response(auth_headers):
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         response = await ac.get("/api/settings/data-integrity", headers=auth_headers)
         assert response.status_code in (200, 404, 500)
+
+
+@pytest.mark.asyncio
+async def test_data_integrity_uses_runtime_paths_for_clean_install(tmp_path):
+    """Clean installs should not report orphaned data from a developer checkout."""
+    from app.core.data_integrity import run_integrity_check
+    from app.models.database import async_session
+
+    await init_db()
+    settings.data_dir = str(tmp_path / "data")
+    settings.runtime_personas_dir = str(tmp_path / "data" / "personas")
+
+    async with async_session() as db:
+        report = await run_integrity_check(db)
+
+    warning_text = "\n".join(report["warnings"])
+    assert "keyword index files have no matching project" not in warning_text
+    assert "persona directories have no matching agent record" not in warning_text

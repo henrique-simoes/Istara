@@ -35,7 +35,7 @@ Generated companions now exist for faster drift-resistant scanning:
 Istara is a local-first AI agent for UX research built on a **unified compute registry** that serves as the single source of truth for all LLM compute resources. The system is organized into clear layers:
 
 - **Database Layer**: 51+ SQLAlchemy models with cascade-delete relationships anchored in Project entity
-- **API Layer**: 35 route modules covering 200+ endpoints with global JWT authentication
+- **API Layer**: 35 route modules covering 200+ endpoints with global JWT authentication in Team Mode and an explicit built-in local admin identity in Local Mode
 - **Agent Layer**: 6 autonomous agents + orchestrators coordinating via A2A messages
 - **Skill Layer**: 53 JSON-defined research skills executed through a factory pattern
 - **Compute Layer**: ComputeRegistry unified across local, network, and relay nodes
@@ -315,6 +315,12 @@ All routes are registered in `backend/app/main.py::app.include_router()` with `/
 - `PATCH /api/tasks/{id}` — Update task
 - `DELETE /api/tasks/{id}` — Delete task
 - `POST /api/tasks/{id}/move?status={status}` — Move task in Kanban
+- `POST /api/tasks/{id}/review/approve` — Human approval from In Review to Done, recording a review event
+- `POST /api/tasks/{id}/review/request-revision` — Human rejection/reopen from In Review or Done to Backlog/In Progress with What to Review
+- `GET /api/tasks/{id}/review-events` — Review/reward event history
+- `GET /api/tasks/{id}/atomic-path` — Compact task-specific documents/findings/report path
+- `GET /api/tasks/{id}/quality-summary` — Concise review, validation, and ensemble metrics
+- `POST /api/tasks/{id}/reports` — Create a Findings report from an approved Done task
 - `POST /api/tasks/{id}/attach?document_id={}&direction=input|output` — Attach document
 - `POST /api/tasks/{id}/detach?document_id={}&direction=input|output` — Detach document
 - `POST /api/tasks/{id}/lock` — Lock task for editing
@@ -852,29 +858,33 @@ These represent older naming conventions that should be migrated to hyphenated f
 
 ### Skill Execution Flow
 
-1. **Task Selection**: Main orchestrator picks task from backlog
+1. **Task Selection**: Assigned agent worker picks a backlog/in-progress task by priority, position, and retry backoff
 2. **Skill Lookup**: Get skill by `Task.skill_name`
 3. **Input Preparation**:
    - Fetch Task metadata (context, instructions)
-   - Fetch input documents by IDs
+   - Use task URLs and eligible project files
    - Run RAG to get relevant context
    - Build `SkillInput` object
-4. **Planning Phase**:
-   - Call `skill.plan(input)`
-   - LLM generates execution plan using `plan_prompt`
-5. **Execution Phase**:
+4. **Execution Phase**:
    - Call `skill.execute(input)`
    - LLM executes using `execute_prompt`
    - Validate output against `output_schema`
+5. **Validation Phase**:
+   - Run adaptive ensemble validation when selected
+   - Validate output structure
+   - Run self-verification before handoff to review
 6. **Result Processing**:
    - Parse findings from `SkillOutput.findings`
    - Create Nugget/Fact/Insight/Recommendation records
    - Create Document records for outputs
    - Broadcast `finding_created` WebSocket event
 7. **Task Completion**:
-   - Move task to IN_REVIEW or DONE
+   - Move successful autonomous task work to IN_REVIEW
+   - `POST /api/tasks/{id}/verify` promotes IN_REVIEW tasks to DONE after quality checks
    - Update `Task.progress`
    - Broadcast `task_progress` WebSocket event
+
+The separate `skill.plan(input)` method exists for skill APIs, but the autonomous skilled task path in `backend/app/core/agent.py` does not call it before `skill.execute()`. Planning is used for no-skill complex tasks, where the orchestrator creates a multi-step research plan and may execute dependency-ready steps in parallel.
 
 ### Skill Factory
 
@@ -924,6 +934,30 @@ Instead of relying on brittle metadata or name heuristics, Istara implements **D
 To ensure 100% generic compatibility with all LLM servers, Istara enforces strict URI reference resolution.
 - **Pattern**: `ComputeNode._get_client` ensures `base_url` always ends with a trailing slash.
 - **Standard**: Follows RFC 3986 algorithms used by the official OpenAI client library to prevent path-joining errors and 404s.
+
+#### 3. Remote Client API Origin Rule
+The installed frontend must not bake `http://localhost:8000` into production builds. When `NEXT_PUBLIC_API_URL` / `NEXT_PUBLIC_WS_URL` are unset, `frontend/src/lib/runtimeConfig.ts` derives the backend and WebSocket origins from the browser hostname on port 8000. This keeps `http://server-ip:3000` clients talking to `http://server-ip:8000`; otherwise invite validation silently calls the client machine's localhost and the server sees no connection.
+
+#### 4. Invite-First Access Rule
+Remote client setup must use an `rcl_...` connection string. The desktop client and tray setup reject raw `http://`, `ws://`, and `wss://` server addresses so users cannot enter an IP and fall into a partial username-only flow that bypasses invite validation. Admin visibility is anchored in the `connection_strings` table, which tracks active/revoked state, expiration, last validation, and redemption username/time.
+
+### Public Source / Runtime Data Boundary
+
+Istara separates shipped defaults from user/runtime state:
+
+- Public source personas live in `backend/app/agents/personas/` and are treated as product defaults.
+- Runtime persona overlays live in ignored `backend/data/personas/` and are where identity editing, custom-agent scaffolding, self-evolution, and persona autoresearch write by default.
+- Canonical skills live in `backend/app/skills/definitions/`.
+- Runtime/custom skills, skill proposals, and usage stats live in ignored `backend/data/skills/`.
+- Local databases, uploads, exported projects, generated model datasets, local tool settings, and media artifacts must never be committed to the public application repository.
+
+`scripts/check_public_tree_clean.py` enforces this boundary for staged or branch changes. Source persona mutation requires `ALLOW_SOURCE_PERSONA_MUTATION=true`; source skill mutation requires `ALLOW_SOURCE_SKILL_MUTATION=true`. Those flags are for deliberate product-default changes only.
+
+#### 5. Relay Compute Execution Rule
+Relay/browser compute nodes must be able to execute through the WebSocket they used to register. The `/ws/relay` route dispatches `llm_response` and `embed_response` messages back to pending registry requests; relay nodes must not depend on backend-to-client HTTP reachability for chat, streaming, or embeddings. Direct HTTP probing may still enrich health/capability metadata when the provider host is reachable, but serving health is separate from capability probe health. Timeouts and disconnects must fail and clear pending requests.
+
+#### 6. Connection String URL Split
+Connection string payloads distinguish `server_url` (the web UI URL clients should open) from `ws_url` (the backend `/ws/relay` URL used for compute donation). For direct LAN installs this normally means `server_url=http://server:3000` and `ws_url=ws://server:8000/ws/relay`. Do not place the backend API URL in `server_url`, or the desktop app opens the wrong surface.
 
     def remove_duplicate_network_nodes(relay_node: ComputeNode) -> None  # dedup on relay register
     def update_heartbeat(node_id: str, stats: dict) -> None
@@ -1155,7 +1189,8 @@ All frontend types are defined in a single file for consistency:
 | Type | Usage |
 |------|-------|
 | `Project` | Project metadata (id, name, phase) |
-| `Task` | Task in Kanban (title, status, skill_name, progress) |
+| `Task` | Task in Kanban (title, status, skill_name, progress, labels, review summary fields) |
+| `TaskReviewEvent` | Durable human/system review event ledger for task approval, rejection, reopen, and system failure |
 | `ChatMessage` | Message in chat (role, content, sources) |
 | `ChatSession` | Chat conversation group (project_id, model_override, inference_preset) |
 | `Document` | Project output (title, file_path, status, tags, atomic_path) |
@@ -1820,21 +1855,19 @@ POST /api/tasks
     ↓
 Task record created (status=backlog)
     ↓
-Main orchestrator picks task
+Task record is auto-routed unless explicitly assigned
     ↓
-Get Skill by Task.skill_name
+Meta-orchestrator may distribute unassigned backlog tasks and send A2A collaboration requests
     ↓
-Fetch input documents (from Task.input_document_ids[])
+Assigned agent worker picks task by priority/position after resource and LLM checks
     ↓
-RAG: Retrieve context
+Retrieve RAG context and select explicit/keyword-inferred skill, planned path, or general ReAct path
     ↓
-Build SkillInput
-    ↓
-skill.plan() → LLM generates plan
-    ↓
-skill.execute() → LLM executes
+For skilled tasks: build SkillInput with context, instructions, URLs, RAG, project/company context, eligible files
     ↓
 Validate output against output_schema
+    ↓
+Run adaptive validation and self-verification
     ↓
 Parse findings from SkillOutput
     ↓
@@ -1845,12 +1878,18 @@ For each finding:
     ↓
 Create Document record for outputs
     ↓
-Move Task to in_review or done
+Move Task to in_review with review_state awaiting_review
+    ↓
+Human review approves task → done
+    ↓
+Or human review flags task as not successful with What to Review → backlog or in_progress
     ↓
 broadcast_task_progress() WebSocket event
     ↓
 Frontend updates Kanban board, displays findings
 ```
+
+**Task review invariant:** Agents and system tools cannot mark tasks Done. Done is a human approval state. Agent success, self-verification failure, retry exhaustion, and orphaned-project handling all surface as review-visible tasks in `in_review`, with `TaskReviewEvent` preserving the event and telemetry/learning hooks consuming the outcome. Negative human review from either `in_review` or `done` must choose `backlog` or `in_progress`; sending it back to `in_review` would strand the task because agents intentionally wait there.
 
 ### Flow 3: File Upload → Processing → Indexing
 

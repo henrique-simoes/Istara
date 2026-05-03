@@ -139,21 +139,51 @@ The core agent loop (`backend/app/core/agent.py`) runs continuously:
 
 ```
 ┌─────────────────────────────────────────────────┐
-│  1. Check resources (governor.can_start_agent()) │
-│  2. Pick highest-priority task                   │
-│  3. Load project context (6-level hierarchy)     │
-│  4. Select skill (explicit or keyword-inferred)  │
-│  5. Execute skill → SkillOutput                  │
-│  6. Store findings (Nugget→Fact→Insight→Rec)     │
-│  7. Self-verify output (check_findings)          │
-│  8. Ingest artifacts into vector store           │
-│  9. Record learnings if errors occurred          │
-│  10. Update task status, broadcast progress      │
-│  11. Sleep → repeat                              │
+│  1. Process pending steering messages            │
+│  2. Check resources and LLM availability         │
+│  3. Process A2A collaboration inbox              │
+│  4. Pick assigned task by priority/position       │
+│  5. Load project and retrieve RAG context         │
+│  6. Select skill or create a research plan        │
+│  7. Execute skill/general/plan path               │
+│  8. Validate, self-verify, store findings         │
+│  9. Update task status, broadcast progress        │
+│  10. Emit queue update and process follow-ups     │
+│  11. Sleep or wake immediately on assignment      │
 └─────────────────────────────────────────────────┘
 ```
 
-Task selection uses priority ordering: `critical > high > medium > low`, with agent-assigned tasks taking precedence over unassigned ones. After completing a task, the agent checks queue depth and adjusts its sleep interval (5s when busy, 30s when idle).
+Task selection uses priority ordering: `critical > high > medium > low`, then Kanban `position`, then creation time. Each agent first picks tasks explicitly assigned to itself; only `istara-main` falls back to unassigned backlog/in-progress tasks to avoid sub-agent contention. Tasks in retry backoff are skipped until their backoff window expires. After completing a task attempt, the agent checks queue depth, broadcasts `task_queue_update`, and adjusts its sleep interval (5s when busy, 30s normal, 60s idle wait). `PATCH /api/tasks/{id}` wakes `istara-main` immediately when an agent is assigned; sub-agents wake on their own 30-second worker checks.
+
+Agents do **not** mark tasks `done`. Successful agent attempts end in `in_review` with `review_state="awaiting_review"`. Self-verification failure, retry exhaustion, sub-agent retry exhaustion, or orphaned project failures are surfaced as review-visible `in_review` tasks with `review_state="system_failed"` or `blocked`; they no longer hide in Done. Only human approval through the review API moves an `in_review` task to `done`.
+
+There are three execution paths after RAG context retrieval:
+- **Skilled task**: explicit or keyword-inferred `skill_name` resolves to a registered skill. The orchestrator executes `skill.execute()` directly with task description, user context, specific instructions, URLs, project/company context, RAG context, and eligible project files. It does not call the skill's separate `plan()` method in this path. Although `_semantic_skill_match()` exists, it is currently unreachable after the keyword pass returns `None`.
+- **Planned task**: no skill resolves and the task appears complex. The orchestrator asks the LLM for a 2-5 step research plan and executes dependency-ready steps in parallel when possible, broadcasting `plan_progress`.
+- **General task**: no skill resolves and planning is unnecessary or fails. The orchestrator runs a ReAct tool loop with system action tools, then places the task in review if the response passes the minimum quality check.
+
+### Task Review, Feedback, And Learning Loop
+
+Tasks now separate operational Kanban state from human success judgment:
+
+- `backlog` and `in_progress` are agent-actionable states.
+- `in_review` means agents wait while a human inspects the attempt.
+- `done` means a human approved the work.
+
+The `Task` model carries fast-rendered review summary fields: `labels`, `review_state`, `what_to_review`, `review_cycle_count`, `failure_streak`, `approval_streak`, `last_review_outcome`, `last_reviewed_by`, `last_reviewed_at`, `last_review_feedback`, `next_agent_action`, `human_feedback_score`, `review_severity`, and `review_failure_category`. The durable ledger is `TaskReviewEvent`, which stores status transitions, review outcome, What to Review text, compact task context, an atomic-path snapshot, validation/consensus scores, failure category/severity, human score, review cycle counters, and deterministic diagnosis.
+
+Review endpoints:
+
+- `POST /api/tasks/{task_id}/review/approve`: allowed from `in_review`; records an `approved` event and moves the task to `done`.
+- `POST /api/tasks/{task_id}/review/request-revision`: allowed from `in_review` or `done`; requires What to Review and moves the task to `backlog` or `in_progress`, never `in_review`.
+- `GET /api/tasks/{task_id}/review-events`: returns review/reward history.
+- `GET /api/tasks/{task_id}/atomic-path`: returns compact documents, nuggets, facts, insights, recommendations, and reports involved in the task.
+- `GET /api/tasks/{task_id}/quality-summary`: returns concise validation, ensemble, review-cycle, and feedback metrics for card/modal display.
+- `POST /api/tasks/{task_id}/reports`: creates a draft Findings report from a human-approved Done task.
+
+Review events are immediately used as production learning signals. The service records telemetry spans (`task_review_approved`, `task_review_rejected`, `task_reopened_after_done`, `task_system_failed`), updates model/skill production quality, records negative human feedback into agent learning, and informs skill health through `skill_manager.record_execution()`. Raw What to Review text stays in the local `TaskReviewEvent`; telemetry receives category, severity, score, status, task, skill, agent, model, and consensus metadata.
+
+The ReAct system action tool `move_task` refuses `done`. Agents may move work to `in_review`, but human review must approve Done. When a rejected/reopened task returns to `backlog` or `in_progress`, the next agent prompt includes compact review context: What to Review, last feedback, labels, failure category, and failure streak.
 
 ### Agent Identity System
 
@@ -578,6 +608,12 @@ The **SkillManager** (`skills/skill_manager.py`) tracks execution quality:
 
 Every file a user uploads, every output an agent produces, and every task completion that generates an artifact becomes a **Document**. Documents are Istara's source of truth — the final, findable output of everything.
 
+Generated artifacts have two audiences:
+- **Researchers** see a human-readable document. Machine-oriented JSON skill artifacts are rendered into Markdown Documents with headings, summaries, tables, and sections.
+- **Agents/RAG** still retain structured detail. The readable artifact is indexed for normal consultation, and the raw structured content may also be indexed under a raw artifact source for machine reuse.
+
+The Documents UI should prefer the researcher-readable version for generated artifacts. Raw JSON is an implementation detail unless the user explicitly requests raw/export data.
+
 ### Document Lifecycle
 
 ```
@@ -617,6 +653,7 @@ Files placed in the project's upload directory are **automatically registered** 
 
 Document preview follows the same pattern as the Interviews view:
 - Text files render with syntax highlighting
+- Markdown/generated artifacts render as formatted Markdown
 - Images display inline
 - Audio/video play with native controls
 - PDF/DOCX content extracted and shown as text
@@ -1110,6 +1147,9 @@ Projects now support pause/resume and delete from the sidebar context menu:
 - **Delete**: Full cascade deletion of all project entities
 - **Owner**: `owner_id` field for per-user project ownership in team mode
 - **UI**: Right-click or hover menu on project items in sidebar with Pause/Delete actions
+- **Visibility**: Global admins list all projects; non-admin team users list only invited projects.
+- **Project roles**: `project_admin` can manage project settings and project membership for one project; `researcher` can work in the project; `viewer` can only observe.
+- **Admin Dashboard**: Global admins have an Admin Dashboard backed by `/api/admin/*` endpoints for system-wide user, project, access, compute, usage, and connection-string visibility. Metrics that are not durably collected yet must be labeled as not collected rather than shown as zero.
 
 ### Team Mode
 
@@ -1417,14 +1457,20 @@ Backend endpoints with optional `project_id` parameters (documents, findings, no
 
 Tamper-proof bundles for secure client→server setup. Format: `rcl_<base64url(JSON)>.<base64url(HMAC-SHA256)>`
 
-Payload contains: `server_url`, `ws_url` (relay WebSocket), `network_token` (NETWORK_ACCESS_TOKEN), `jwt` (pre-minted for web login), `expires_at`, `label`.
+Payloads include an explicit `kind`. `user_invite` strings contain `server_url`, `ws_url`, a pre-minted invite `jwt`, intended `role`, `expires_at`, and `label`. `compute_donation` strings contain `server_url`, `ws_url`, `network_token`, `expires_at`, and `label`, but never a user JWT.
 
 **Flow:**
-1. Admin generates in Settings → `POST /connections/generate` (admin-only)
+1. Admin generates a user invite → `POST /connections/generate` (admin-only), or a compute donation string → `POST /connections/compute-donation/generate` (admin-only)
 2. Client validates → `POST /connections/validate` (public, no auth required)
-3. Client redeems → `POST /connections/redeem` (creates user account, returns JWT + network token)
+3. User invites redeem through `POST /connections/redeem` (creates user account and returns JWT). Compute donation strings are not redeemable as user accounts.
 
-One string gets a team member both web UI access (JWT) and relay compute donation (network token). Strings are HMAC-signed with `JWT_SECRET` — only the originating server can create valid ones.
+User invites and compute donation strings are separate permission domains. Strings are HMAC-signed with `JWT_SECRET` — only the originating server can create valid strings.
+
+Remote clients must use the server they opened, not their own localhost. The production frontend now derives API/WebSocket origins from the browser host when `NEXT_PUBLIC_API_URL` / `NEXT_PUBLIC_WS_URL` are unset, so `http://server-ip:3000` calls `http://server-ip:8000`. The shell installer and desktop setup no longer bake localhost API values into the frontend build. Backend CORS accepts frontend origins on the configured frontend port so LAN clients can call the API without hand-editing server IPs into `.env`.
+
+`server_url` in a connection string is the web UI URL. `ws_url` is the backend relay WebSocket URL. This split matters for direct LAN installs where the UI is on port 3000 and the backend/relay socket is on port 8000.
+
+The `connection_strings` table is the admin audit surface for generated invites and compute donation strings: token type, active/revoked state, expiration, last validation time, redeemed username, and redemption time. Revocation marks a string inactive instead of deleting the row so admins keep the audit trail and clients receive a specific revoked-state message. Public validation is rate-limited per client to slow brute-force or tamper attempts. Rate-limit client identity is proxy-aware (`X-Forwarded-For`, `X-Real-IP`, then socket host) only when the immediate peer matches `TRUSTED_PROXY_HOSTS`; otherwise Istara uses the socket host so direct clients cannot spoof headers. Rate-limit buckets are bounded LRU-style in memory to avoid unbounded growth from one-off IPs.
 
 **Token rotation:** `POST /connections/rotate-network-token` generates new NETWORK_ACCESS_TOKEN, invalidates all existing connection strings, broadcasts to connected relays.
 
@@ -1571,7 +1617,8 @@ System tray application for macOS, Windows, and Linux. **Mode-aware manager only
 - **Compute Donation**: Config toggle with confirmation dialog. Relay managed as Child process with zombie detection.
 - **LLM Status Click**: Dialog with donation toggle or LM Studio launch.
 - **Client Open Behavior**: In Client mode, "Open Istara" opens the remote `server_url` derived from the saved connection string instead of checking local ports.
-- **Client Donation Guardrail**: Enabling Compute Donation in Client mode requires a saved `rcl_...` invite; otherwise the app explains how to add one.
+- **Client Invite Guardrail**: Client mode accepts only `rcl_...` invites. Raw `http://`, `ws://`, and `wss://` addresses are rejected because remote access control, relay credentials, and admin visibility depend on redeemed connection strings.
+- **Relay Execution**: Relay and browser compute nodes answer LLM requests through their established WebSocket. The server tracks pending request IDs and consumes `llm_response` messages, so compute donation does not require inbound HTTP access to the donor machine.
 - **Check Updates**: Three-tier (Tauri updater, git tags, GitHub releases). Always shows a result dialog and only opens GitHub Releases when the user explicitly confirms.
 - **Health loop**: Polls ports every 10s, rebuilds menu on change or every 30s. Checks updates every 6h via git tags.
 - **Zombie detection**: `try_wait()` on all Child handles every cycle. Dead processes cleaned up automatically.
@@ -1660,10 +1707,13 @@ Files queue as preview chips before sending (not uploaded on select). Multiple f
 ### Project Document Picker
 A FolderOpen button opens a searchable dropdown of project documents (calls `GET /api/documents/list` with search param). Selected docs appear as purple reference chips alongside file chips. Referenced docs are included as `[Referenced project documents: ...]` in the message.
 
+### Team Access Enforcement
+Chat write paths are project-scoped. Global admins, project admins, and researchers can send messages in visible projects. Viewers can read visible chat history but cannot send chat messages, create chat sessions, upload through Chat, use voice input, or attach documents. The frontend disables viewer controls, but backend routes remain authoritative.
+
 ### Task Instructions Passthrough
 The Task model's `instructions` field (Specific Instructions) is now included in LLM prompts. Previously silently dropped. Both `_execute_general_task()` and SkillInput construction include it.
 
-**Files:** `frontend/src/components/chat/ChatView.tsx`, `backend/app/core/agent.py`
+**Files:** `frontend/src/components/chat/ChatView.tsx`, `backend/app/core/agent.py`, `backend/app/api/routes/chat.py`, `backend/app/api/routes/sessions.py`
 
 ## Ensemble Validation Integration
 
@@ -1686,13 +1736,13 @@ The agent orchestrator now has tool-calling intelligence for general tasks (no m
 Before skill selection, the agent retrieves relevant documents via `retrieve_context()`. RAG context is injected into SkillInput.user_context so skills have document awareness without loading all files.
 
 ### Timeout Protection
-`skill.execute()` wrapped in `asyncio.wait_for(timeout=300)`. Skills that take >5 minutes produce a timeout SkillOutput.
+`skill.execute()` is wrapped in `asyncio.wait_for(timeout=600)` for autonomous task execution. Skills that take more than 10 minutes produce a timeout `SkillOutput`.
 
 ### LLM Self-Reflection
 Replaced heuristic `_self_verify_output()` with `_llm_reflect_on_output()`. Sends task + output to LLM with structured evaluation prompt. Checks: addresses task, evidence-based, chain complete, no hallucinations. Returns `{verified, confidence, reason}` JSON. Falls back to heuristic on failure.
 
 ### A2A Collaboration Activated
-Agents now poll their A2A inbox every work cycle via `_process_a2a_inbox()`. Collaboration requests trigger expert analysis (LLM call with agent-specific system prompt + RAG context) and send `collaboration_response` back. Responses are merged into task context by the orchestrator before the primary agent processes the task. SubAgentWorker also polls A2A.
+Agents now poll their A2A inbox every work cycle via `_process_a2a_inbox()`. Collaboration requests trigger expert analysis (LLM call with agent-specific system prompt + RAG context), append a collaboration note to the task, and send `collaboration_response` back. The meta-orchestrator merges matching collaboration responses into task context when it is distributing unassigned backlog tasks. SubAgentWorker currently polls A2A messages, marks collaboration requests read, and delegates assigned task execution to the main pipeline; primary collaboration response generation lives in `AgentOrchestrator._handle_collaboration()`.
 
 ### Structured Output Validation
 `base.py validate_output()` checks evidence chain integrity (insights without facts, recommendations without insights), confidence score bounds (0-1), and source attribution on facts. Warnings logged in `task.agent_notes` before storing.
@@ -1922,6 +1972,8 @@ Istara supports both local (single-user, no auth) and team modes:
 - **Auth middleware**: `get_current_user()` FastAPI dependency — returns local user in local mode, verifies JWT in team mode.
 - **Preferences**: Stored per-user as JSON, covering theme, keyboard shortcuts, and UI customization.
 
+Team authorization now uses a central permission layer (`backend/app/core/permissions.py`) rather than scattered route-local role checks. The policy combines global RBAC, project relationship checks, and operation attributes. Global admins manage all projects and system settings; project members only see invited projects. Uninvited project access returns `404`, while forbidden mutations inside visible projects return `403`. Viewers are read-only across the locked-down project surfaces: Chat, sessions, Interfaces Design Chat, Tasks, Documents, Findings, Codebooks, and project-scoped Skill execution/planning. Legacy project role `member` maps to `researcher`; legacy project role `admin` maps to `project_admin`. The canonical permission contract lives in `docs/TEAM_RBAC_PERMISSION_MATRIX.md`.
+
 **Files**: `backend/app/models/user.py`, `backend/app/core/auth.py`, `backend/app/api/routes/auth.py`, `backend/app/api/middleware/auth.py`
 
 ### Task Locking
@@ -1985,8 +2037,13 @@ Server-side registry of connected relay nodes:
 - **Capacity tracking**: Total RAM, CPU cores, available models across the pool.
 - **Best-node selection**: For any given model request, selects the node with the highest score.
 - **WebSocket endpoint**: `/ws/relay` for relay node connections.
-- **Relay host resolution**: Relay nodes report `provider_host` as `localhost`; on registration the backend resolves this to the relay's actual IP address so HTTP streaming can reach the relay's LM Studio directly.
-- **Capability detection for relays**: The health loop detects model capabilities (tool support, context length, vision) via HTTP probe for relay nodes, not just local/network nodes.
+- **Authenticated relay entry**: Relay/browser donors must present a valid network token or user JWT; unauthenticated `/ws/relay` connections are rejected even outside team mode.
+- **WebSocket execution path**: Chat and embedding requests for relay/browser donors are sent as `llm_request` / `embed_request` messages over the existing outbound WebSocket and completed from matching response IDs. Backend-to-donor HTTP is not required for donated serving.
+- **Timeout/disconnect cleanup**: Relay request timeouts and disconnects fail pending futures, clear pending request maps, and surface health errors in compute stats.
+- **Relay host resolution**: CLI relay nodes may report `provider_host` as `localhost`; on registration the backend resolves this to the relay's actual IP address for opportunistic health and capability probing only.
+- **Capability detection for relays**: The health loop detects model capabilities (tool support, context length, vision) via HTTP probe for CLI relay nodes when reachable. Browser donors use advertised model lists and heartbeat liveness because backend HTTP cannot reach a browser tab's localhost.
+- **All-node model listing**: `/settings/models` aggregates models from the unified registry so local, network, CLI relay, and browser donated nodes are visible with server metadata.
+- **Serving vs capability UI**: Compute stats expose serving state, capability-probe state, stale model-list flags, and health errors separately so admins can distinguish a connected donor from optional metadata probe failures.
 - **Network/Relay deduplication**: When a relay registers, any network-discovered node pointing to the same `host:port` is automatically removed. Relay is the preferred connection path. Capabilities are transferred from the network node before removal.
 - **Tool filter fallback**: Nodes whose capabilities haven't been detected yet are included in the tool-support filter rather than excluded, preventing "No compute nodes available" errors on freshly registered relays.
 - **Network discovery skip**: `discover_and_register()` skips hosts already covered by an active relay connection.
@@ -2309,6 +2366,8 @@ The Interfaces menu creates a bridge between UX Research and Product Design with
 
 - **Session scoping**: Both Chat and Design Chat now create/find their own sessions automatically when `session_id` is not provided. Chat uses the default session; Design Chat creates/reuses a `session_type="design"` session. This prevents cross-contamination where chat messages appeared in the Design Chat history.
 
+- **Team access**: Design Chat history is readable to invited viewers, but sending messages or triggering design work requires researcher-level project access or higher. Viewer controls are disabled in the Interfaces UI and enforced by the backend.
+
 - **Screen Generation**: Text-to-UI generation via Google Stitch SDK integration. Supports device types (Mobile/Desktop/Tablet/Agnostic) and AI model selection. Screens can be seeded from research findings for evidence-grounded design.
 
 - **Figma Integration**: REST API proxy for Figma v1 API. Import designs from Figma URLs, export generated screens, and extract design systems (components + styles).
@@ -2546,6 +2605,16 @@ Root-level file any AI agent can discover and parse. Contains system identity, a
 ### Planner.md — Compass Workflow Control
 
 `planner.md` is tracked as part of Compass. Agents use it for planned, multi-agent, branch-review, stale-branch, and correction workflows. It requires role declaration, repository intelligence checks, protected Compass file preservation, correction/re-review loops when real defects are found, and a final user teaching report when the completed work changes a feature, command, output, or process.
+
+### Public Source / Runtime Data Boundary
+
+The public repository must contain product code, shipped defaults, migrations, tests, and curated documentation only. Local user projects, uploaded files, databases, telemetry exports, generated datasets, model-training labs, audio/video artifacts, tool settings, and scratch audit patches are ignored and blocked by `scripts/check_public_tree_clean.py`. The checked-in `.githooks/pre-commit` runs this check against staged files; CI or release scripts can run it with `--base <ref> --head <ref>` for branch-level validation.
+
+Source personas in `backend/app/agents/personas/` are shipped defaults. Runtime edits from custom agents, identity editing, self-evolution, and persona autoresearch now write to the ignored overlay in `backend/data/personas/` unless `ALLOW_SOURCE_PERSONA_MUTATION=true` is explicitly set for deliberate product-default work. Persona reads merge source defaults with local overlays by preferring overlay files per identity document.
+
+Canonical source skills remain in `backend/app/skills/definitions/`. User-created skills, approved autonomous skill proposals, usage stats, and skill improvement proposal state write to `backend/data/skills/` by default. The skill loader reads both source definitions and runtime overlays, with local overlays taking precedence. Mutating checked-in skill definitions requires `ALLOW_SOURCE_SKILL_MUTATION=true`.
+
+The removed `Model_Finetuning/` and `.qwen/` tracked files are intentionally left as local ignored workspace material. Public sharing of training corpora or model artifacts must happen through a separate curated repository or release artifact, not through the application source tree.
 
 ### Auto-Update Script
 
@@ -2978,3 +3047,41 @@ All outbound channel calls are protected by:
 - **Audit logging**: Every tool invocation recorded in `MCPAuditEntry` with arguments, caller, policy, and duration.
 - **Rate limiting**: High-risk tools (`execute_skill`, `create_project`, `deploy_research`) capped per hour.
 - **Client registry**: External MCP servers registered with encrypted headers (`encrypt_field`).
+
+---
+
+## Stabilization Sweep (2026-04-30)
+
+The April 30 stabilization pass aligned backend persistence, frontend surfaces, and Compass expectations across several cross-cutting systems. The full audit is tracked in `docs/STABILIZATION_AUDIT_2026_04_30.md`; this section records the architecture-level rules future agents must preserve.
+
+### Cross-System State Lifetimes
+
+- **Meta-Agent**: Pending proposals are durable; recent observations are also persisted now, but they represent observation history rather than a guarantee the observation loop is currently enabled. The UI must distinguish disabled runtime state from persisted proposal/observation artifacts.
+- **Interfaces Design Chat**: Design chat uses a design-scoped `ChatSession`. User and assistant messages must be saved to the resolved design session id. Saving assistant messages with `session_id = null` breaks history on view changes.
+- **Live updates**: The status bar's "Live updates" state refers only to the browser `/ws` event socket. Backend HTTP health and LLM/ComputeRegistry health are separate signals and must not be conflated.
+
+### Evidence and Tag Integrity
+
+- **Documents** are the broad tag surface for Istara. Document views must aggregate relevant document metadata tags, nugget/interview tags, and code-application tags rather than treating Interviews as an isolated tag island.
+- **Codebooks** should show explicit `CodebookVersion` data when present, and fall back to legacy codebook or derived nugget/code-application data when no versioned codebook exists.
+- **Evidence chains** must not imply source evidence exists when it does not. Recommendation drilldowns should show supporting Recommendation -> Insight -> Fact -> Nugget paths when linked, and diagnostics/empty states when the chain stops.
+
+### Human Review Semantics
+
+- **Tasks / Kanban** separate operational status from human judgment. Done means human-approved, not merely agent-completed. Moving into Done requires the review/approval path; moving out of Done should use the revision path and explain why drag-back is blocked.
+- Task labels include user labels plus system-derived organizational tags. Hover explanations should make system tags understandable without changing the underlying task model.
+
+### Compute and LLM Discovery Rules
+
+- Network discovery may reject endpoints that do not return valid provider-shaped model listings.
+- Do not silently deduplicate network-discovered LLM servers by identical provider/port/subnet/model catalog. Two production machines can legitimately expose the same catalog. Duplicate handling needs stronger host identity evidence or explicit admin review/merge/ignore controls.
+
+### Quality and Promotion Gates
+
+- Skill self-evolution promotion must remain verification-gated. The UI should expose proposal diagnostics, test/verification result, promotion readiness, and approval blocking reasons.
+- UX Laws compliance must distinguish "not evaluated" from "100% compliant." A perfect score is meaningful only when relevant UX Law evidence exists.
+- Autoresearch metrics are cross-system: task review, compute, telemetry, agent state, pipeline, and collection metrics must be verified in backend payloads and frontend dashboards together.
+
+### Persona Integrity
+
+System agents must have complete persona directories with `CORE.md`, `SKILLS.md`, `PROTOCOLS.md`, and `MEMORY.md`. Piper/design-lead is a first-class system agent and must follow the same persona-file contract as the other built-in agents.

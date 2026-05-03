@@ -2,13 +2,14 @@
 
 This document tells coding agents what else must be inspected, updated, or revalidated when a specific part of the system changes.
 
-`Compass` is the name of the full system this matrix belongs to: entry docs, prompts, generated architecture maps, change matrix, checklists, changelog, Tech narrative, persona knowledge, and ongoing test/simulation maintenance.
+`Compass` is the name of the full system this matrix belongs to: entry docs, prompts, generated architecture maps, change matrix, checklists, changelog, future-feature ledger, Tech narrative, persona knowledge, and ongoing test/simulation maintenance.
 
 Use it with:
 - `SYSTEM_PROMPT.md` for repo-wide operating rules
 - `AGENT.md` for the current generated inventory
 - `COMPLETE_SYSTEM.md` for the broader generated architecture map
 - `CHANGE_CHECKLIST.md` for step-by-step execution
+- `COMPASS_FUTURE_FEATURES.md` for future plans, deferred hardening, and feature candidates
 - `planner.md` for planned, multi-agent, branch-review, stale-branch, or review/correction workflows
 
 The rule is simple: no change is local unless proven otherwise.
@@ -35,6 +36,7 @@ For any non-trivial change, check these six surfaces:
 | Persona or skill behavior | persona files, skill definitions, routing/recommendation logic, tests, docs | Agent behavior changes without architectural memory |
 | Release/update flow | version script, workflows, updater routes, desktop tray update logic, docs | Shipping/install/update path breaks |
 | Compass doctrine | prompts, `planner.md`, checklists, Tech narrative, personas, generated docs, scenarios | Future agents inherit the wrong operating model |
+| deferred feature or future plan | `COMPASS_FUTURE_FEATURES.md`, `current_plans.md` if execution starts, `CHANGELOG.md` if shipped | Product memory disappears between sessions |
 
 ## Backend Matrix
 
@@ -44,6 +46,11 @@ For any non-trivial change, check these six surfaces:
 |---|---|
 | `backend/app/api/routes/*.py` endpoint or payload | `backend/app/main.py`, `frontend/src/lib/api.ts`, `frontend/src/lib/types.ts`, relevant store(s), relevant view/component(s), e2e/simulation scenarios, generated docs |
 | route auth/role rules | `backend/app/core/security_middleware.py`, `backend/app/core/auth.py`, `frontend/src/components/auth/LoginScreen.tsx`, auth-dependent UX, security tests |
+| project-scoped authorization | `backend/app/core/permissions.py`, `backend/app/models/project_member.py`, all affected project-scoped routes, frontend read-only/disabled states, `docs/TEAM_RBAC_PERMISSION_MATRIX.md`, security tests for `404` concealment and `403` forbidden mutations |
+| system/admin route authorization | `backend/app/core/security_middleware.py`, MCP routes, backup routes, scheduler/autoresearch/loop/agent/channel/survey/audit routes, Admin Dashboard affordances, tests proving non-admins receive `403` for sensitive global reads and mutations |
+| interface/design route authorization | `backend/app/api/routes/interfaces.py`, Design Chat, screens, Figma import/export/config, handoff generation, mock endpoints, project-role frontend controls, tests for viewer read-only and researcher mutation behavior |
+| admin dashboard or `/api/admin/*` | `backend/app/core/permissions.py`, all aggregate source models, `frontend/src/components/admin/AdminDashboard.tsx`, admin-only nav visibility, metric empty/not-collected states, tests proving non-admins receive `403` |
+| connection strings/invites/compute donation tokens | `backend/app/core/connection_string.py`, `backend/app/api/routes/connections.py`, `backend/app/models/connection_string.py`, relay auth, login/join flow, admin dashboard, validation/redeem tests proving user invites and compute donation strings cannot cross privilege domains |
 | route side effects | websocket broadcasts, notifications, downstream services, audit logging, backup/restore expectations |
 | upload/file endpoints | `backend/app/core/file_processor.py`, file watcher behavior, document ingestion flows, preview components, fixtures/tests |
 
@@ -118,20 +125,20 @@ For any non-trivial change, check these six surfaces:
 
 | Feature Area | Also Check When Modified |
 |---|---|
-| Chat | sessions, agents, RAG/context attachments, streaming behavior, evidence links, auth expiry flow |
-| Findings | evidence chain integrity, deletion/linking rules, codebook/code application/report views, Laws/Interfaces consumers |
-| Tasks/Kanban | agent assignment, locking, verification, document attachment, websocket progress, validation_method/consensus_score badges |
-| Documents/Interviews/Context | upload pipeline, file previews, browser/audio support, memory/RAG indexing, voice transcription pipeline |
-| Skills/Browser UX | browse_website system action, task URL pipeline (SkillInput.urls), Playwright MCP, heuristic/accessibility/benchmark skill definitions |
+| Chat | sessions, agents, RAG/context attachments, streaming behavior, evidence links, auth expiry flow, viewer read-only enforcement |
+| Findings | evidence chain integrity, deletion/linking rules, incomplete-chain diagnostics, codebook/code application/report views, Laws/Interfaces consumers |
+| Tasks/Kanban | agent assignment, locking, human review approval/revision, TaskReviewEvent reward ledger, What to Review feedback, document attachment, websocket progress, validation_method/consensus_score badges, Done-to-Report handoff, drag guards that preserve Done-as-human-approved semantics |
+| Documents/Interviews/Context | upload pipeline, file previews, browser/audio support, memory/RAG indexing, voice transcription pipeline, document/nugget/code-application tag aggregation, human-readable rendering for generated artifacts |
+| Skills/Browser UX | browse_website system action, task URL pipeline (SkillInput.urls), Playwright MCP, heuristic/accessibility/benchmark skill definitions, self-evolution verification and promotion gates |
 | Validation/Quality | consensus engine, adaptive validation selector, validation_executor, ensemble health view, quality evaluation skill, model intelligence dashboard |
 | Simulation/Participants | participant_simulation module, game-theory strategies, istara-sim persona, simulation scenarios, payoff matrices |
 | Observability/Telemetry | telemetry_spans table, agent_hooks system, ModelSkillStats production path, model-intelligence API, audit_log table, devops monitoring |
-| Interfaces | Figma/Stitch config, findings seeding, generated screens, handoff contracts |
-| Integrations | messaging, surveys, deployments, MCP policy/security, setup wizards |
-| Loops/Autoresearch | scheduler, configs, experiment history, notifications |
-| Notifications | event metadata, unread counts, preference filters |
-| Settings/Compute/Ensemble | hardware/model/provider state, update checks, validation visibility |
-| Laws of UX | law catalog, compliance profile/radar, finding linkage |
+| Interfaces | Figma/Stitch config, findings seeding, generated screens, handoff contracts, design-scoped chat session persistence, Markdown rendering, project-role enforcement for design chat/generation |
+| Integrations | messaging, surveys, deployments, MCP policy/security, access policy payload normalization, setup wizards |
+| Loops/Autoresearch | scheduler, configs, experiment history, notifications, task-review/compute/telemetry/agent metrics |
+| Notifications | event metadata, unread counts, preference filters, live-events WebSocket status clarity |
+| Settings/Compute/Ensemble | hardware/model/provider state, update checks, validation visibility, network discovery model-shape validation, explicit duplicate-node handling |
+| Laws of UX | law catalog, compliance profile/radar, finding linkage, "not evaluated" versus actual compliance semantics |
 
 ## Agent, Prompt, and Skill Matrix
 

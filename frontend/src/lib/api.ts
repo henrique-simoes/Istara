@@ -1,8 +1,8 @@
 /** API client for Istara backend. */
 
-import type { ChatSession, ChatMessage, InferencePresetConfig, DAGNode, DAGHealth, DAGExpandResult, DAGGrepResult, ReclawDocument, DocumentContent, DocumentTag, DocumentStats, InterfacesStatus, BackupRecord, BackupConfig, MetaProposal, MetaVariant, MetaHyperagentStatus, ChannelInstance, ChannelMessage, ChannelConversation, ResearchDeployment, DeploymentAnalytics, SurveyIntegration, SurveyLink, MCPServerConfig, MCPAccessPolicy, MCPAuditEntry, AutoresearchStatus, AutoresearchExperiment, AutoresearchConfig, ModelSkillLeaderboard, UXLaw, LawMatch, ComplianceProfile, RadarChartData, FeaturedMCPServer, ReclawUser, ProjectReport, CodebookVersionType, CodeApplicationType } from "@/lib/types";
+import type { ChatSession, ChatMessage, InferencePresetConfig, DAGNode, DAGHealth, DAGExpandResult, DAGGrepResult, ReclawDocument, DocumentContent, DocumentTag, DocumentStats, InterfacesStatus, BackupRecord, BackupConfig, MetaProposal, MetaVariant, MetaHyperagentStatus, ChannelInstance, ChannelMessage, ChannelConversation, ResearchDeployment, DeploymentAnalytics, SurveyIntegration, SurveyLink, MCPServerConfig, MCPAccessPolicy, MCPAuditEntry, AutoresearchStatus, AutoresearchExperiment, AutoresearchConfig, ModelSkillLeaderboard, UXLaw, LawMatch, ComplianceProfile, RadarChartData, FeaturedMCPServer, ReclawUser, ProjectReport, CodebookVersionType, CodeApplicationType, Task, TaskStatus, TaskAtomicPath, TaskQualitySummary, TaskReviewEvent } from "@/lib/types";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+import { API_BASE } from "@/lib/runtimeConfig";
 
 function _getAuthHeaders(): Record<string, string> {
   if (typeof window === "undefined") return {};
@@ -24,6 +24,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     localStorage.removeItem("istara_token");
     if (hadToken && typeof window !== "undefined") {
       // Token was present but expired/invalid — dispatch event for auth gate
+      window.dispatchEvent(new Event("istara:auth-changed"));
       window.dispatchEvent(new Event("istara:auth-expired"));
     }
     throw new Error("Authentication required");
@@ -60,6 +61,9 @@ function patch<T>(path: string, data: unknown): Promise<T> {
 function del(path: string): Promise<Response> {
   return fetch(`${API_BASE}${path}`, { method: "DELETE", headers: { ..._getAuthHeaders() } });
 }
+
+// Update routes are implemented in updatesApi.ts:
+// /api/updates/version, /api/updates/check, /api/updates/prepare, /api/updates/apply.
 
 // --- Projects ---
 
@@ -98,6 +102,7 @@ export const tasks = {
     input_document_ids?: string[];
     output_document_ids?: string[];
     urls?: string[];
+    labels?: Array<string | { name: string; color?: string; kind?: string }>;
     user_context?: string;
     agent_id?: string;
   }) => request<any>("/api/tasks", { method: "POST", body: JSON.stringify(data) }),
@@ -111,6 +116,27 @@ export const tasks = {
     post<{ attached: boolean }>(`/api/tasks/${taskId}/attach?document_id=${documentId}&direction=${direction}`, {}),
   detach: (taskId: string, documentId: string, direction: "input" | "output" = "input") =>
     post<{ detached: boolean }>(`/api/tasks/${taskId}/detach?document_id=${documentId}&direction=${direction}`, {}),
+  approve: (taskId: string, data: { reviewed_by?: string; note?: string } = {}) =>
+    post<{ task: Task; event: TaskReviewEvent }>(`/api/tasks/${taskId}/review/approve`, data),
+  requestRevision: (taskId: string, data: {
+    what_to_review: string;
+    next_status: Extract<TaskStatus, "backlog" | "in_progress">;
+    reviewed_by?: string;
+    severity?: string | null;
+    failure_category?: string | null;
+    labels?: Array<string | { name: string; color?: string; kind?: string }>;
+    skill_name?: string | null;
+    input_document_ids?: string[];
+    urls?: string[];
+  }) => post<{ task: Task; event: TaskReviewEvent }>(`/api/tasks/${taskId}/review/request-revision`, data),
+  reviewEvents: (taskId: string) =>
+    get<{ events: TaskReviewEvent[] }>(`/api/tasks/${taskId}/review-events`),
+  atomicPath: (taskId: string) =>
+    get<TaskAtomicPath>(`/api/tasks/${taskId}/atomic-path`),
+  qualitySummary: (taskId: string) =>
+    get<TaskQualitySummary>(`/api/tasks/${taskId}/quality-summary`),
+  createReport: (taskId: string) =>
+    post<{ report: ProjectReport }>(`/api/tasks/${taskId}/reports`, {}),
 };
 
 // --- Chat ---
@@ -391,6 +417,8 @@ export const skills = {
   creationProposals: {
     pending: () => request<any>("/api/skills/creation-proposals/pending"),
     all: (limit = 20) => request<any>(`/api/skills/creation-proposals/all?limit=${limit}`),
+    verify: (id: string) =>
+      request<any>(`/api/skills/creation-proposals/${id}/verify`, { method: "POST" }),
     approve: (id: string) =>
       request<any>(`/api/skills/creation-proposals/${id}/approve`, { method: "POST" }),
     reject: (id: string, reason = "") =>
@@ -1002,6 +1030,30 @@ export const users = {
     patch<ReclawUser>(`/api/auth/users/${id}/role`, { role }),
 };
 
+// --- Admin Dashboard ---
+
+export const admin = {
+  overview: () => get<any>("/api/admin/overview"),
+  projects: () => get<{ projects: any[] }>("/api/admin/projects"),
+  users: () => get<{ users: any[] }>("/api/admin/users"),
+  access: () => get<{ memberships: any[] }>("/api/admin/access"),
+  connectionStrings: () => get<{ user_invites: any[]; compute_donations: any[] }>("/api/admin/connection-strings"),
+  updateUserRole: (userId: string, role: "admin" | "researcher" | "viewer") =>
+    patch<any>(`/api/auth/users/${userId}/role`, { role }),
+  addProjectMember: (projectId: string, userId: string, role: "project_admin" | "researcher" | "viewer") =>
+    post<any>(`/api/projects/${projectId}/members`, { user_id: userId, role }),
+  updateProjectMember: (projectId: string, userId: string, role: "project_admin" | "researcher" | "viewer") =>
+    patch<any>(`/api/projects/${projectId}/members/${userId}`, { role }),
+  removeProjectMember: (projectId: string, userId: string) =>
+    del(`/api/projects/${projectId}/members/${userId}`),
+  deleteProject: (projectId: string) =>
+    del(`/api/projects/${projectId}`),
+  generateUserInvite: (data: { server_url: string; ws_url?: string; label?: string; expires_hours?: number; role?: string }) =>
+    post<any>("/api/connections/generate", data),
+  generateComputeDonation: (data: { server_url: string; ws_url?: string; label?: string; expires_hours?: number }) =>
+    post<any>("/api/connections/compute-donation/generate", data),
+};
+
 // --- Research Integrity ---
 
 export const reports = {
@@ -1028,6 +1080,10 @@ export const codebookVersions = {
     change_log: string;
     methodology?: string;
   }) => post<CodebookVersionType>("/api/codebook-versions", data),
+};
+
+export const codebooks = {
+  list: (projectId: string) => get<any[]>(`/api/codebooks?project_id=${projectId}`),
 };
 
 export const codeApplications = {

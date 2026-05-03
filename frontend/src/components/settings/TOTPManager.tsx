@@ -4,7 +4,7 @@ import { useState } from "react";
 import { ShieldCheck, ShieldOff } from "lucide-react";
 import { useAuthStore } from "@/stores/authStore";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+import { API_BASE } from "@/lib/runtimeConfig";
 
 export default function TOTPManager() {
   const { user, token, fetchMe } = useAuthStore();

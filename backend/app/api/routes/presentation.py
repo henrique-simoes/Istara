@@ -1,9 +1,10 @@
 """Presentation API — generate slide creation instructions from reports."""
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 import json
 
+from app.core.permissions import require_project_access
 from app.models.database import get_db
 from app.models.project_report import ProjectReport
 from app.core.llm_router import llm_router
@@ -11,11 +12,16 @@ from app.core.llm_router import llm_router
 router = APIRouter(prefix="/presentation")
 
 @router.get("/reports/{report_id}/slide-instructions")
-async def get_slide_instructions(report_id: str, db: AsyncSession = Depends(get_db)):
+async def get_slide_instructions(
+    report_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
     """Generate professional slide creation instructions for an external AI."""
     report = await db.get(ProjectReport, report_id)
     if not report:
         raise HTTPException(status_code=404, detail="Report not found")
+    await require_project_access(db, request, report.project_id, min_role="viewer")
         
     content = json.loads(report.content_json or "{}")
     full_text = content.get("full_document", "")

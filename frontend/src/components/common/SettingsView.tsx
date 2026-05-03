@@ -12,6 +12,7 @@ import DonateComputeToggle from "@/components/common/DonateComputeToggle";
 import PasskeyManager from "@/components/settings/PasskeyManager";
 import TOTPManager from "@/components/settings/TOTPManager";
 import { resetAllOnboarding } from "@/hooks/useViewOnboarding";
+import { API_BASE } from "@/lib/runtimeConfig";
 
 export default function SettingsView() {
   const [hardware, setHardware] = useState<HardwareInfo | null>(null);
@@ -318,7 +319,7 @@ export default function SettingsView() {
                 const headers: Record<string, string> = { "Content-Type": "application/json" };
                 if (token) headers["Authorization"] = `Bearer ${token}`;
                 await fetch(
-                  `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/settings/team-mode`,
+                  `${API_BASE}/api/settings/team-mode`,
                   { method: "POST", headers, body: JSON.stringify({ enabled: newState }) }
                 );
                 await fetchAll();

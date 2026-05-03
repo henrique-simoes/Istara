@@ -1,16 +1,15 @@
 "use client";
 
-import { useState, useEffect, useRef, forwardRef } from "react";
-import { Save, X, Bot, User, Zap, FileStack, FileText, Globe, ClipboardList, Plus, Trash2 } from "lucide-react";
+import { forwardRef, useCallback, useEffect, useRef, useState } from "react";
+import type { ReactNode } from "react";
+import { Bot, CheckCircle2, ClipboardList, FileStack, FileText, Globe, Plus, RotateCcw, Save, Send, Tags, Trash2, User, X, Zap } from "lucide-react";
 import { useTaskStore } from "@/stores/taskStore";
 import { useProjectStore } from "@/stores/projectStore";
-import { documents as documentsApi } from "@/lib/api";
-import { cn } from "@/lib/utils";
-import type { Task } from "@/lib/types";
+import { documents as documentsApi, tasks as tasksApi } from "@/lib/api";
+import type { Task, TaskAtomicPath, TaskQualitySummary } from "@/lib/types";
 
-// Common UXR skills for the dropdown
 const SKILL_OPTIONS = [
-  { value: "", label: "Auto-detect (from title)" },
+  { value: "", label: "Auto-detect" },
   { value: "user-interviews", label: "User Interviews" },
   { value: "thematic-analysis", label: "Thematic Analysis" },
   { value: "affinity-mapping", label: "Affinity Mapping" },
@@ -25,8 +24,67 @@ const SKILL_OPTIONS = [
   { value: "interview-question-generator", label: "Interview Questions" },
   { value: "taxonomy-generator", label: "Taxonomy Generator" },
   { value: "kappa-thematic-analysis", label: "Kappa Analysis" },
-  { value: "survey-ai-detection", label: "AI Detection" },
 ];
+
+const LABEL_COLORS = ["#64748b", "#2563eb", "#059669", "#d97706", "#dc2626", "#7c3aed"];
+
+const SYSTEM_TAG_DESCRIPTIONS: Record<string, string> = {
+  evidence: "Evidence-related task. Agents should preserve source traceability and quote/document support.",
+  source: "Source-related task. Check files, citations, links, or source coverage.",
+  citation: "Citation-related task. Verify references and source attribution.",
+  unsupported: "Unsupported-claim tag. Review for claims that need stronger evidence.",
+  nugget: "Nugget-related task. Work touches source evidence extracted from research material.",
+  instruction: "Instruction-following tag. Agents should pay close attention to the user's directives.",
+  method: "Methodology tag. Review or apply the correct research method or skill.",
+  specialist: "Specialist-routing tag. The task may need a more suitable agent or domain expert.",
+  hallucination: "Hallucination risk. Validate claims carefully against project evidence.",
+  synthesis: "Synthesis tag. Work involves facts, insights, recommendations, or patterns.",
+  document: "Document tag. Work depends on uploaded research files.",
+  file: "File tag. Work depends on attached or generated files.",
+  url: "URL/tool tag. Work depends on web links, fetching, or external tools.",
+  website: "Website/tool tag. Check page access, fetching, or browser-derived evidence.",
+  browser: "Browser/tool tag. Work may require browser inspection or web capture.",
+  validation: "Validation tag. Check consensus, review, or quality gates.",
+  consensus: "Consensus tag. Multi-model or agent agreement may be relevant.",
+  requirement: "Requirement-change tag. The user changed scope or acceptance criteria.",
+  unclear: "Ambiguous task tag. Clarify requirements before agents continue.",
+  ambiguous: "Ambiguous task tag. The task needs clearer instructions.",
+  "missing_evidence": "System tag: revision was classified as missing supporting evidence.",
+  "ignored_user_instructions": "System tag: revision was classified as not following user instructions.",
+  "wrong_skill": "System tag: revision was classified as using the wrong skill or method.",
+  "wrong_agent": "System tag: revision was classified as needing a different agent.",
+  "hallucination_or_unsupported_claim": "System tag: revision was classified as hallucination or unsupported claim risk.",
+  "bad_synthesis": "System tag: revision was classified as weak synthesis.",
+  "insufficient_documents": "System tag: revision was classified as missing or insufficient input documents.",
+  "url_or_tool_failure": "System tag: revision was classified as a URL, browser, or tool failure.",
+  "validation_false_positive": "System tag: validation accepted work the user later rejected.",
+  "user_changed_requirements": "System tag: user changed requirements after earlier work.",
+  "unclear_task": "System tag: task was classified as ambiguous or under-specified.",
+};
+
+function normalizeTagName(label: Task["labels"][number]) {
+  return (typeof label === "string" ? label : label.name || "").trim();
+}
+
+function isSystemTag(label: Task["labels"][number]) {
+  if (typeof label !== "string" && label.kind === "system") return true;
+  const name = normalizeTagName(label).toLowerCase();
+  return name in SYSTEM_TAG_DESCRIPTIONS || name.startsWith("system:") || name.startsWith("review:");
+}
+
+function tagDescription(label: Task["labels"][number]) {
+  const name = normalizeTagName(label);
+  const normalized = name.toLowerCase().replace(/^system:/, "").replace(/^review:/, "");
+  if (typeof label !== "string" && label.kind === "system") {
+    return SYSTEM_TAG_DESCRIPTIONS[normalized] || `System tag: ${name}. Istara uses this tag for routing, review, or telemetry.`;
+  }
+  return SYSTEM_TAG_DESCRIPTIONS[normalized] || "User task label. Click to remove it from this task.";
+}
+
+function tagColor(label: Task["labels"][number]) {
+  if (isSystemTag(label)) return "#475569";
+  return typeof label === "string" ? "#64748b" : label.color || "#64748b";
+}
 
 interface TaskEditorProps {
   task: Task;
@@ -34,7 +92,7 @@ interface TaskEditorProps {
 }
 
 export default function TaskEditor({ task, onClose }: TaskEditorProps) {
-  const { updateTask } = useTaskStore();
+  const { updateTask, approveTask, requestRevision } = useTaskStore();
   const { activeProjectId } = useProjectStore();
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description);
@@ -43,74 +101,23 @@ export default function TaskEditor({ task, onClose }: TaskEditorProps) {
   const [instructions, setInstructions] = useState(task.instructions || "");
   const [urls, setUrls] = useState<string[]>(task.urls || []);
   const [newUrl, setNewUrl] = useState("");
-  const [saving, setSaving] = useState(false);
-
+  const [labels, setLabels] = useState<Task["labels"]>(task.labels || []);
+  const [newLabel, setNewLabel] = useState("");
   const [inputDocs, setInputDocs] = useState<string[]>(task.input_document_ids || []);
   const [outputDocs, setOutputDocs] = useState<string[]>(task.output_document_ids || []);
   const [projectDocuments, setProjectDocuments] = useState<{ id: string; title: string }[]>([]);
   const [showDocPicker, setShowDocPicker] = useState<"input" | "output" | null>(null);
   const [docsLoading, setDocsLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [whatToReview, setWhatToReview] = useState(task.what_to_review || task.last_review_feedback || "");
+  const [revisionTarget, setRevisionTarget] = useState<"backlog" | "in_progress">("backlog");
+  const [quality, setQuality] = useState<TaskQualitySummary | null>(null);
+  const [atomicPath, setAtomicPath] = useState<TaskAtomicPath | null>(null);
   const docPickerRef = useRef<HTMLDivElement>(null);
+  const closingRef = useRef(false);
 
-  // Fetch project documents when doc picker is opened
-  useEffect(() => {
-    if (!showDocPicker || !activeProjectId) return;
-    setDocsLoading(true);
-    documentsApi.list({ project_id: activeProjectId, page_size: 100 })
-      .then((data) => {
-        setProjectDocuments((data.documents || []).map((d: any) => ({ id: d.id, title: d.title })));
-      })
-      .catch(() => setProjectDocuments([]))
-      .finally(() => setDocsLoading(false));
-  }, [showDocPicker, activeProjectId]);
-
-  // Close doc picker on outside click
-  useEffect(() => {
-    if (!showDocPicker) return;
-    const handler = (e: MouseEvent) => {
-      if (docPickerRef.current && !docPickerRef.current.contains(e.target as Node)) {
-        setShowDocPicker(null);
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [showDocPicker]);
-
-  const addDocument = (docId: string, target: "input" | "output") => {
-    if (target === "input" && !inputDocs.includes(docId)) {
-      setInputDocs([...inputDocs, docId]);
-    } else if (target === "output" && !outputDocs.includes(docId)) {
-      setOutputDocs([...outputDocs, docId]);
-    }
-    setShowDocPicker(null);
-  };
-
-  const removeInputDoc = (docId: string) => {
-    setInputDocs(inputDocs.filter((id) => id !== docId));
-  };
-
-  const removeOutputDoc = (docId: string) => {
-    setOutputDocs(outputDocs.filter((id) => id !== docId));
-  };
-
-  const getDocTitle = (docId: string) => {
-    const doc = projectDocuments.find((d) => d.id === docId);
-    return doc ? doc.title : docId.slice(0, 12) + "...";
-  };
-
-  const handleAddUrl = () => {
-    const trimmed = newUrl.trim();
-    if (trimmed && !urls.includes(trimmed)) {
-      setUrls([...urls, trimmed]);
-      setNewUrl("");
-    }
-  };
-
-  const handleRemoveUrl = (idx: number) => {
-    setUrls(urls.filter((_, i) => i !== idx));
-  };
-
-  const handleSave = async () => {
+  const saveDraft = useCallback(async () => {
+    if (saving) return;
     setSaving(true);
     try {
       await updateTask(task.id, {
@@ -120,309 +127,336 @@ export default function TaskEditor({ task, onClose }: TaskEditorProps) {
         user_context: userContext,
         instructions,
         urls,
+        labels,
+        what_to_review: whatToReview,
         input_document_ids: inputDocs,
         output_document_ids: outputDocs,
       });
-      onClose();
     } catch (e) {
       console.error("Failed to save task:", e);
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
+  }, [description, inputDocs, instructions, labels, outputDocs, saving, skillName, task.id, title, updateTask, urls, userContext, whatToReview]);
+
+  const closeWithSave = useCallback(async () => {
+    if (closingRef.current) return;
+    closingRef.current = true;
+    await saveDraft();
+    onClose();
+  }, [onClose, saveDraft]);
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeWithSave();
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [closeWithSave]);
+
+  useEffect(() => {
+    tasksApi.qualitySummary(task.id).then(setQuality).catch(() => setQuality(null));
+    tasksApi.atomicPath(task.id).then(setAtomicPath).catch(() => setAtomicPath(null));
+  }, [task.id]);
+
+  useEffect(() => {
+    if (!showDocPicker || !activeProjectId) return;
+    setDocsLoading(true);
+    documentsApi.list({ project_id: activeProjectId, page_size: 100 })
+      .then((data) => setProjectDocuments((data.documents || []).map((d: any) => ({ id: d.id, title: d.title }))))
+      .catch(() => setProjectDocuments([]))
+      .finally(() => setDocsLoading(false));
+  }, [showDocPicker, activeProjectId]);
+
+  useEffect(() => {
+    if (!showDocPicker) return;
+    const handler = (e: MouseEvent) => {
+      if (docPickerRef.current && !docPickerRef.current.contains(e.target as Node)) setShowDocPicker(null);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [showDocPicker]);
+
+  const getDocTitle = (docId: string) => projectDocuments.find((d) => d.id === docId)?.title || `${docId.slice(0, 12)}...`;
+  const addDocument = (docId: string, target: "input" | "output") => {
+    if (target === "input" && !inputDocs.includes(docId)) setInputDocs([...inputDocs, docId]);
+    if (target === "output" && !outputDocs.includes(docId)) setOutputDocs([...outputDocs, docId]);
+    setShowDocPicker(null);
+  };
+  const addUrl = () => {
+    const trimmed = newUrl.trim();
+    if (trimmed && !urls.includes(trimmed)) setUrls([...urls, trimmed]);
+    setNewUrl("");
+  };
+  const addLabel = () => {
+    const name = newLabel.trim();
+    if (!name) return;
+    const color = LABEL_COLORS[labels.length % LABEL_COLORS.length];
+    setLabels([...labels, { name, color, kind: "task" }]);
+    setNewLabel("");
+  };
+  const labelName = normalizeTagName;
+
+  const approve = async () => {
+    await saveDraft();
+    await approveTask(task.id, whatToReview || "Human approved task output.");
+    onClose();
+  };
+  const flagRevision = async () => {
+    await saveDraft();
+    await requestRevision(task.id, {
+      what_to_review: whatToReview,
+      next_status: revisionTarget,
+      labels,
+      skill_name: skillName,
+      input_document_ids: inputDocs,
+      urls,
+    });
+    onClose();
+  };
+  const sendReport = async () => {
+    await saveDraft();
+    await tasksApi.createReport(task.id);
+    onClose();
   };
 
+  const canReview = task.status === "in_review" || task.status === "done";
+  const requiresWhatToReview = canReview && task.review_state !== "approved";
+  const systemStatusTags = [
+    { name: task.status.replace(/_/g, " "), description: "Current Kanban state for this task." },
+    task.review_state && task.review_state !== "none"
+      ? { name: task.review_state.replace(/_/g, " "), description: "Current human review state for this task." }
+      : null,
+    task.review_failure_category
+      ? { name: task.review_failure_category.replace(/_/g, " "), description: tagDescription({ name: task.review_failure_category, kind: "system" }) }
+      : null,
+    task.next_agent_action
+      ? { name: task.next_agent_action.replace(/_/g, " "), description: "Next action Istara will give the assigned agent." }
+      : null,
+  ].filter(Boolean) as Array<{ name: string; description: string }>;
+
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700 sticky top-0 bg-white dark:bg-slate-900 z-10">
-          <h3 className="font-semibold text-slate-900 dark:text-white">Edit Task</h3>
-          <button onClick={onClose} className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800" aria-label="Close editor">
-            <X size={16} className="text-slate-400" />
-          </button>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) closeWithSave();
+      }}
+      role="presentation"
+    >
+      <div role="dialog" aria-modal="true" aria-labelledby="task-editor-title" className="flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-xl bg-white shadow-xl dark:bg-slate-900">
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white px-5 py-4 dark:border-slate-700 dark:bg-slate-900">
+          <div className="min-w-0">
+            <h3 id="task-editor-title" className="truncate text-base font-semibold text-slate-900 dark:text-white">Task Details</h3>
+            <p className="text-xs text-slate-500">Autosaves when the dialog closes.</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-slate-400">{saving ? "Saving..." : "Saved on close"}</span>
+            <button onClick={closeWithSave} className="rounded p-2 hover:bg-slate-100 dark:hover:bg-slate-800" aria-label="Close task editor"><X size={18} /></button>
+          </div>
         </div>
 
-        <div className="p-4 space-y-4">
-          {/* Title */}
-          <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1">Title</label>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-istara-500"
-            />
-          </div>
+        <div className="grid gap-5 overflow-y-auto p-5 lg:grid-cols-[minmax(0,1.4fr)_minmax(340px,0.8fr)]">
+          <div className="space-y-4">
+            <Field label="Title">
+              <input value={title} onChange={(e) => setTitle(e.target.value)} className="field-input text-base font-medium" />
+            </Field>
+            <Field label="Description">
+              <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={5} className="field-input resize-y" />
+            </Field>
 
-          {/* Description */}
-          <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1">Description</label>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={2}
-              className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-istara-500 resize-y"
-              placeholder="What should the agent do?"
-            />
-          </div>
-
-          {/* Skill selector */}
-          <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1 flex items-center gap-1">
-              <Zap size={12} /> Skill
-            </label>
-            <select
-              value={skillName}
-              onChange={(e) => setSkillName(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-istara-500"
-            >
-              {SKILL_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
-              ))}
-            </select>
-            <p className="text-[10px] text-slate-400 mt-0.5">
-              Select a skill or let the agent auto-detect from the task title.
-            </p>
-          </div>
-
-          {/* Instructions */}
-          <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1 flex items-center gap-1">
-              <ClipboardList size={12} /> Specific Instructions
-            </label>
-            <textarea
-              value={instructions}
-              onChange={(e) => setInstructions(e.target.value)}
-              rows={2}
-              className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-istara-500 resize-y"
-              placeholder="Step-by-step instructions for the agent (e.g., 'Focus on onboarding flows' or 'Compare only pricing pages')..."
-            />
-          </div>
-
-          {/* URLs */}
-          <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1 flex items-center gap-1">
-              <Globe size={12} /> URLs to Fetch
-            </label>
-            {urls.length > 0 && (
-              <div className="space-y-1 mb-2">
-                {urls.map((url, i) => (
-                  <div key={i} className="flex items-center gap-2 text-xs">
-                    <span className="flex-1 truncate text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-800 px-2 py-1 rounded">
-                      {url}
-                    </span>
-                    <button
-                      onClick={() => handleRemoveUrl(i)}
-                      className="p-1 text-red-400 hover:text-red-500"
-                      aria-label={`Remove URL ${url}`}
-                    >
-                      <Trash2 size={12} />
-                    </button>
+            <div className="grid gap-4 md:grid-cols-2">
+              <Field label="Skill" icon={<Zap size={13} />}>
+                <select value={skillName} onChange={(e) => setSkillName(e.target.value)} className="field-input">
+                  {SKILL_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                </select>
+              </Field>
+              <Field label="Task Labels" icon={<Tags size={13} />}>
+                <div className="space-y-2">
+                  <div className="flex flex-wrap gap-1.5">
+                    {labels.map((label, idx) => (
+                      <button
+                        key={`${labelName(label)}-${idx}`}
+                        onClick={() => setLabels(labels.filter((_, i) => i !== idx))}
+                        className="inline-flex items-center gap-1 rounded px-2 py-1 text-xs text-white"
+                        style={{ background: tagColor(label) }}
+                        title={`${tagDescription(label)} Click to remove.`}
+                      >
+                        {isSystemTag(label) && <span className="text-[9px] uppercase opacity-80">system</span>}
+                        <span>{labelName(label)}</span>
+                      </button>
+                    ))}
+                    {labels.length === 0 && <span className="text-xs text-slate-400">No labels yet.</span>}
                   </div>
-                ))}
-              </div>
-            )}
-            <div className="flex gap-2">
-              <input
-                type="url"
-                value={newUrl}
-                onChange={(e) => setNewUrl(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddUrl(); } }}
-                placeholder="https://example.com/page-to-analyze"
-                className="flex-1 px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs focus:outline-none focus:ring-2 focus:ring-istara-500"
-              />
-              <button
-                onClick={handleAddUrl}
-                disabled={!newUrl.trim()}
-                className="px-2 py-1.5 text-xs rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 disabled:opacity-40"
-                aria-label="Add URL"
-              >
-                <Plus size={14} />
-              </button>
+                  <div className="flex gap-2">
+                    <input value={newLabel} onChange={(e) => setNewLabel(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addLabel(); } }} className="field-input min-w-0 flex-1" placeholder="Label" />
+                    <IconButton onClick={addLabel} label="Add label"><Plus size={14} /></IconButton>
+                  </div>
+                </div>
+              </Field>
             </div>
-            <p className="text-[10px] text-slate-400 mt-0.5">
-              Add web addresses for the agent to fetch and analyze.
-            </p>
-          </div>
 
-          {/* Input Documents */}
-          <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1 flex items-center gap-1">
-              <FileText size={12} /> Input Documents
-            </label>
-            {inputDocs.length > 0 && (
-              <div className="space-y-1 mb-2">
-                {inputDocs.map((docId) => (
-                  <div key={docId} className="flex items-center gap-2 text-xs">
-                    <span className="flex items-center gap-1.5 flex-1 truncate text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-800 px-2 py-1 rounded">
-                      <FileText size={10} className="shrink-0 text-purple-500" />
-                      {getDocTitle(docId)}
-                    </span>
-                    <button
-                      onClick={() => removeInputDoc(docId)}
-                      className="p-1 text-red-400 hover:text-red-500"
-                      aria-label={`Remove input document ${docId}`}
-                    >
-                      <X size={12} />
-                    </button>
+            <Field label="Specific Instructions" icon={<ClipboardList size={13} />}>
+              <textarea value={instructions} onChange={(e) => setInstructions(e.target.value)} rows={4} className="field-input resize-y" />
+            </Field>
+            <Field label="Additional Context" icon={<User size={13} />}>
+              <textarea value={userContext} onChange={(e) => setUserContext(e.target.value)} rows={5} className="field-input resize-y font-mono text-xs" />
+            </Field>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <DocumentSection title="Input Documents" icon={<FileText size={13} />} docs={inputDocs} getDocTitle={getDocTitle} onRemove={(id) => setInputDocs(inputDocs.filter((doc) => doc !== id))} onPick={() => setShowDocPicker(showDocPicker === "input" ? null : "input")} picker={showDocPicker === "input" ? <DocumentPickerDropdown ref={docPickerRef} documents={projectDocuments} loading={docsLoading} excludeIds={inputDocs} onSelect={(id) => addDocument(id, "input")} /> : null} />
+              <DocumentSection title="Output Documents" icon={<FileStack size={13} />} docs={outputDocs} getDocTitle={getDocTitle} onRemove={(id) => setOutputDocs(outputDocs.filter((doc) => doc !== id))} onPick={() => setShowDocPicker(showDocPicker === "output" ? null : "output")} picker={showDocPicker === "output" ? <DocumentPickerDropdown ref={docPickerRef} documents={projectDocuments} loading={docsLoading} excludeIds={outputDocs} onSelect={(id) => addDocument(id, "output")} /> : null} />
+            </div>
+
+            <Field label="URLs" icon={<Globe size={13} />}>
+              <div className="space-y-2">
+                {urls.map((url, idx) => (
+                  <div key={url} className="flex items-center gap-2 rounded bg-slate-50 px-2 py-1 text-xs dark:bg-slate-800">
+                    <span className="min-w-0 flex-1 truncate">{url}</span>
+                    <IconButton onClick={() => setUrls(urls.filter((_, i) => i !== idx))} label="Remove URL"><Trash2 size={13} /></IconButton>
                   </div>
                 ))}
+                <div className="flex gap-2">
+                  <input value={newUrl} onChange={(e) => setNewUrl(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addUrl(); } }} className="field-input min-w-0 flex-1" placeholder="https://example.com" />
+                  <IconButton onClick={addUrl} label="Add URL"><Plus size={14} /></IconButton>
+                </div>
               </div>
+            </Field>
+
+            {task.agent_notes && (
+              <Field label="Agent Notes" icon={<Bot size={13} />}>
+                <div className="max-h-72 overflow-y-auto whitespace-pre-wrap rounded-lg bg-slate-50 p-3 text-sm text-slate-700 dark:bg-slate-800 dark:text-slate-300">{task.agent_notes}</div>
+              </Field>
             )}
-            {inputDocs.length === 0 && (
-              <p className="text-[10px] text-slate-400 mb-1">No input documents attached.</p>
-            )}
-            <div className="relative">
-              <button
-                onClick={() => setShowDocPicker(showDocPicker === "input" ? null : "input")}
-                className="flex items-center gap-1 px-2 py-1 text-xs rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 disabled:opacity-40"
-                disabled={!activeProjectId}
-              >
-                <Plus size={12} /> Attach Document
-              </button>
-              {showDocPicker === "input" && (
-                <DocumentPickerDropdown
-                  ref={docPickerRef}
-                  documents={projectDocuments}
-                  loading={docsLoading}
-                  excludeIds={inputDocs}
-                  onSelect={(id) => addDocument(id, "input")}
-                />
+          </div>
+
+          <aside className="space-y-4">
+            <section className="rounded-lg border border-slate-200 p-4 dark:border-slate-700">
+              <h4 className="mb-3 flex items-center gap-1.5 text-sm font-semibold text-slate-900 dark:text-white"><Tags size={14} /> Organization Tags</h4>
+              <div className="flex flex-wrap gap-1.5">
+                {labels.map((label, idx) => (
+                  <span
+                    key={`${labelName(label)}-summary-${idx}`}
+                    className="inline-flex items-center gap-1 rounded px-2 py-1 text-xs text-white"
+                    style={{ background: tagColor(label) }}
+                    title={tagDescription(label)}
+                  >
+                    {isSystemTag(label) && <span className="text-[9px] uppercase opacity-80">system</span>}
+                    <span>{labelName(label)}</span>
+                  </span>
+                ))}
+                {systemStatusTags.map((tag) => (
+                  <span key={tag.name} className="rounded bg-slate-100 px-2 py-1 text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-300" title={tag.description}>
+                    {tag.name}
+                  </span>
+                ))}
+                {labels.length === 0 && systemStatusTags.length === 0 && <span className="text-xs text-slate-400">No tags yet.</span>}
+              </div>
+              <p className="mt-2 text-xs text-slate-500">Hover over a tag to see what it means.</p>
+            </section>
+
+            <section className="rounded-lg border border-slate-200 p-4 dark:border-slate-700">
+              <h4 className="mb-3 text-sm font-semibold text-slate-900 dark:text-white">Review</h4>
+              {canReview ? (
+                <div className="space-y-3">
+                  <textarea value={whatToReview} onChange={(e) => setWhatToReview(e.target.value)} rows={6} className="field-input resize-y" placeholder="What should agents review, correct, repeat, or preserve?" />
+                  <div className="grid grid-cols-2 gap-2">
+                    <button onClick={() => setRevisionTarget("backlog")} className={revisionTarget === "backlog" ? "review-choice-active" : "review-choice"}>Backlog</button>
+                    <button onClick={() => setRevisionTarget("in_progress")} className={revisionTarget === "in_progress" ? "review-choice-active" : "review-choice"}>In Progress</button>
+                  </div>
+                  {task.status === "in_review" && (
+                    <button onClick={approve} className="primary-action"><CheckCircle2 size={16} /> Mark Done</button>
+                  )}
+                  <button onClick={flagRevision} disabled={!whatToReview.trim()} className="secondary-action disabled:opacity-40"><RotateCcw size={16} /> Not Successful</button>
+                  {task.status === "done" && task.review_state === "approved" && (
+                    <button onClick={sendReport} className="secondary-action"><Send size={16} /> Send to Report</button>
+                  )}
+                </div>
+              ) : (
+                <p className="text-sm text-slate-500">Review actions are available once agents place the task in review.</p>
               )}
-            </div>
-          </div>
+              {requiresWhatToReview && <p className="mt-2 text-xs text-slate-500">What to Review becomes the next agent instruction and telemetry signal.</p>}
+            </section>
 
-          {/* Output Documents */}
-          <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1 flex items-center gap-1">
-              <FileStack size={12} /> Output Documents
-            </label>
-            {outputDocs.length > 0 && (
-              <div className="space-y-1 mb-2">
-                {outputDocs.map((docId) => (
-                  <div key={docId} className="flex items-center gap-2 text-xs">
-                    <span className="flex items-center gap-1.5 flex-1 truncate text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-800 px-2 py-1 rounded">
-                      <FileText size={10} className="shrink-0 text-green-500" />
-                      {getDocTitle(docId)}
-                    </span>
-                    <button
-                      onClick={() => removeOutputDoc(docId)}
-                      className="p-1 text-red-400 hover:text-red-500"
-                      aria-label={`Remove output document ${docId}`}
-                    >
-                      <X size={12} />
-                    </button>
+            <section className="rounded-lg border border-slate-200 p-4 dark:border-slate-700">
+              <h4 className="mb-3 text-sm font-semibold text-slate-900 dark:text-white">Quality</h4>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <Metric label="Review cycles" value={quality?.review_cycle_count ?? task.review_cycle_count} />
+                <Metric label="Failure streak" value={quality?.failure_streak ?? task.failure_streak} />
+                <Metric label="Human score" value={task.human_feedback_score == null ? "N/A" : `${Math.round(task.human_feedback_score * 100)}%`} />
+                <Metric label="Consensus" value={task.consensus_score == null ? "N/A" : `${Math.round(task.consensus_score * 100)}%`} />
+              </div>
+              {task.review_failure_category && <p className="mt-3 text-xs text-slate-500">Last issue: {task.review_failure_category.replace(/_/g, " ")}</p>}
+            </section>
+
+            <section className="rounded-lg border border-slate-200 p-4 dark:border-slate-700">
+              <h4 className="mb-3 text-sm font-semibold text-slate-900 dark:text-white">Atomic Path</h4>
+              <div className="space-y-2 text-xs">
+                {(["documents", "nuggets", "facts", "insights", "recommendations", "reports"] as const).map((key) => (
+                  <div key={key} className="rounded bg-slate-50 p-2 dark:bg-slate-800">
+                    <div className="flex items-center justify-between font-medium capitalize text-slate-700 dark:text-slate-200"><span>{key}</span><span>{atomicPath?.[key]?.count ?? 0}</span></div>
+                    {(atomicPath?.[key]?.items || []).slice(0, 2).map((item: any) => <p key={item.id} className="mt-1 truncate text-slate-500">{item.title || item.text || item.id}</p>)}
                   </div>
                 ))}
               </div>
-            )}
-            {outputDocs.length === 0 && (
-              <p className="text-[10px] text-slate-400 mb-1">No output documents attached.</p>
-            )}
-            <div className="relative">
-              <button
-                onClick={() => setShowDocPicker(showDocPicker === "output" ? null : "output")}
-                className="flex items-center gap-1 px-2 py-1 text-xs rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 disabled:opacity-40"
-                disabled={!activeProjectId}
-              >
-                <Plus size={12} /> Attach Document
-              </button>
-              {showDocPicker === "output" && (
-                <DocumentPickerDropdown
-                  ref={docPickerRef}
-                  documents={projectDocuments}
-                  loading={docsLoading}
-                  excludeIds={outputDocs}
-                  onSelect={(id) => addDocument(id, "output")}
-                />
-              )}
-            </div>
-          </div>
-
-          {/* User context */}
-          <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1 flex items-center gap-1">
-              <User size={12} /> Additional Context for Agent
-            </label>
-            <textarea
-              value={userContext}
-              onChange={(e) => setUserContext(e.target.value)}
-              rows={2}
-              className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-istara-500 resize-y font-mono"
-              placeholder="Give the agent project-specific context or constraints..."
-            />
-          </div>
-
-          {/* Agent notes (read-only) */}
-          {task.agent_notes && (
-            <div>
-              <label className="block text-xs font-medium text-slate-500 mb-1 flex items-center gap-1">
-                <Bot size={12} /> Agent Notes
-              </label>
-              <div className="px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800/50 text-xs text-slate-600 dark:text-slate-400 max-h-24 overflow-y-auto">
-                {task.agent_notes}
-              </div>
-            </div>
-          )}
+            </section>
+          </aside>
         </div>
 
-        {/* Footer */}
-        <div className="flex justify-end gap-2 p-4 border-t border-slate-200 dark:border-slate-700 sticky bottom-0 bg-white dark:bg-slate-900">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 text-sm rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={saving || !title.trim()}
-            className="flex items-center gap-2 px-4 py-2 text-sm rounded-lg bg-istara-600 text-white hover:bg-istara-700 disabled:opacity-50 font-medium"
-          >
-            <Save size={14} />
-            {saving ? "Saving..." : "Save Changes"}
-          </button>
+        <div className="sticky bottom-0 flex items-center justify-end gap-2 border-t border-slate-200 bg-white px-5 py-3 dark:border-slate-700 dark:bg-slate-900">
+          <button onClick={saveDraft} disabled={saving || !title.trim()} className="secondary-action disabled:opacity-40"><Save size={15} /> Save</button>
+          <button onClick={closeWithSave} className="primary-action">Done Editing</button>
         </div>
       </div>
     </div>
   );
 }
 
-/* ---------- Document Picker Dropdown ---------- */
-
-const DocumentPickerDropdown = forwardRef<
-  HTMLDivElement,
-  {
-    documents: { id: string; title: string }[];
-    loading: boolean;
-    excludeIds: string[];
-    onSelect: (id: string) => void;
-  }
->(function DocumentPickerDropdown({ documents, loading, excludeIds, onSelect }, ref) {
-  const available = documents.filter((d) => !excludeIds.includes(d.id));
-
+function Field({ label, icon, children }: { label: string; icon?: ReactNode; children: ReactNode }) {
   return (
-    <div
-      ref={ref}
-      className="absolute left-0 top-8 z-50 w-72 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 py-1 max-h-56 overflow-y-auto"
-    >
-      {loading ? (
-        <p className="px-3 py-2 text-xs text-slate-400">Loading documents...</p>
-      ) : available.length === 0 ? (
-        <p className="px-3 py-2 text-xs text-slate-400">
-          {documents.length === 0 ? "No documents in this project." : "All documents already attached."}
-        </p>
-      ) : (
-        available.map((doc) => (
-          <button
-            key={doc.id}
-            onClick={() => onSelect(doc.id)}
-            className="w-full text-left px-3 py-2 text-xs hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2"
-          >
-            <FileText size={12} className="shrink-0 text-slate-400" />
-            <span className="text-slate-700 dark:text-slate-300 truncate">{doc.title}</span>
-          </button>
-        ))
-      )}
+    <label className="block">
+      <span className="mb-1.5 flex items-center gap-1 text-xs font-medium text-slate-500">{icon}{label}</span>
+      {children}
+    </label>
+  );
+}
+
+function IconButton({ children, onClick, label }: { children: ReactNode; onClick: () => void; label: string }) {
+  return <button type="button" onClick={onClick} className="rounded-lg bg-slate-100 p-2 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300" aria-label={label} title={label}>{children}</button>;
+}
+
+function Metric({ label, value }: { label: string; value: string | number }) {
+  return <div className="rounded bg-slate-50 p-2 dark:bg-slate-800"><p className="text-slate-500">{label}</p><p className="mt-1 font-semibold text-slate-900 dark:text-white">{value}</p></div>;
+}
+
+function DocumentSection({ title, icon, docs, getDocTitle, onRemove, onPick, picker }: { title: string; icon: ReactNode; docs: string[]; getDocTitle: (id: string) => string; onRemove: (id: string) => void; onPick: () => void; picker: ReactNode }) {
+  return (
+    <Field label={title} icon={icon}>
+      <div className="space-y-2">
+        {docs.map((docId) => (
+          <div key={docId} className="flex items-center gap-2 rounded bg-slate-50 px-2 py-1 text-xs dark:bg-slate-800">
+            <span className="min-w-0 flex-1 truncate">{getDocTitle(docId)}</span>
+            <IconButton onClick={() => onRemove(docId)} label="Remove document"><X size={13} /></IconButton>
+          </div>
+        ))}
+        <div className="relative">
+          <button type="button" onClick={onPick} className="inline-flex items-center gap-1 rounded-lg bg-slate-100 px-2 py-1.5 text-xs text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300"><Plus size={12} /> Attach</button>
+          {picker}
+        </div>
+      </div>
+    </Field>
+  );
+}
+
+const DocumentPickerDropdown = forwardRef<HTMLDivElement, { documents: { id: string; title: string }[]; loading: boolean; excludeIds: string[]; onSelect: (id: string) => void }>(function DocumentPickerDropdown({ documents, loading, excludeIds, onSelect }, ref) {
+  const available = documents.filter((d) => !excludeIds.includes(d.id));
+  return (
+    <div ref={ref} className="absolute left-0 top-8 z-50 max-h-56 w-80 overflow-y-auto rounded-lg border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-700 dark:bg-slate-800">
+      {loading ? <p className="px-3 py-2 text-xs text-slate-400">Loading documents...</p> : available.length === 0 ? <p className="px-3 py-2 text-xs text-slate-400">No available documents.</p> : available.map((doc) => (
+        <button key={doc.id} onClick={() => onSelect(doc.id)} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-slate-50 dark:hover:bg-slate-700">
+          <FileText size={12} className="shrink-0 text-slate-400" />
+          <span className="truncate text-slate-700 dark:text-slate-300">{doc.title}</span>
+        </button>
+      ))}
     </div>
   );
 });

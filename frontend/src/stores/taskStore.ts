@@ -13,6 +13,20 @@ interface TaskStore {
   createTask: (projectId: string, title: string, description?: string) => Promise<Task>;
   moveTask: (taskId: string, status: TaskStatus) => Promise<void>;
   updateTask: (taskId: string, data: Record<string, unknown>) => Promise<void>;
+  approveTask: (taskId: string, note?: string) => Promise<void>;
+  requestRevision: (
+    taskId: string,
+    data: {
+      what_to_review: string;
+      next_status: Extract<TaskStatus, "backlog" | "in_progress">;
+      severity?: string | null;
+      failure_category?: string | null;
+      labels?: Task["labels"];
+      skill_name?: string | null;
+      input_document_ids?: string[];
+      urls?: string[];
+    }
+  ) => Promise<void>;
   deleteTask: (taskId: string) => Promise<void>;
 
   byStatus: (status: TaskStatus) => Task[];
@@ -50,6 +64,20 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
     const updated = await tasksApi.update(taskId, data);
     set((s) => ({
       tasks: s.tasks.map((t) => (t.id === taskId ? updated : t)),
+    }));
+  },
+
+  approveTask: async (taskId, note) => {
+    const { task } = await tasksApi.approve(taskId, { note });
+    set((s) => ({
+      tasks: s.tasks.map((t) => (t.id === taskId ? task : t)),
+    }));
+  },
+
+  requestRevision: async (taskId, data) => {
+    const { task } = await tasksApi.requestRevision(taskId, data);
+    set((s) => ({
+      tasks: s.tasks.map((t) => (t.id === taskId ? task : t)),
     }));
   },
 

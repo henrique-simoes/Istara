@@ -32,8 +32,12 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 
-# Base path for persona files
-PERSONAS_DIR = Path(__file__).parent.parent / "agents" / "personas"
+# Base path for shipped source persona files. These are public product defaults.
+SOURCE_PERSONAS_DIR = Path(__file__).parent.parent / "agents" / "personas"
+
+# Backward-compatible alias for source personas. Runtime writes should use
+# helpers below so local customizations land in the ignored overlay directory.
+PERSONAS_DIR = SOURCE_PERSONAS_DIR
 
 # MD files that compose an agent identity, in priority order
 IDENTITY_FILES = ["CORE.md", "SKILLS.md", "PROTOCOLS.md", "MEMORY.md"]
@@ -56,6 +60,39 @@ DEFAULT_COMPRESSION_STRATEGY = "llmlingua"
 # Persona freeze locks — prevents self-evolution from modifying persona files
 # while autoresearch loops are running experiments on them
 _persona_locks: dict[str, str] = {}  # agent_id -> lock_owner
+
+
+def runtime_personas_dir() -> Path:
+    """Directory for ignored local persona overlays and custom agents."""
+    return Path(settings.runtime_personas_dir)
+
+
+def source_persona_path(agent_id: str, filename: str) -> Path:
+    return SOURCE_PERSONAS_DIR / agent_id / filename
+
+
+def runtime_persona_path(agent_id: str, filename: str) -> Path:
+    return runtime_personas_dir() / agent_id / filename
+
+
+def persona_file_path(agent_id: str, filename: str) -> Path:
+    """Resolve the effective persona file path, preferring local overlays."""
+    overlay = runtime_persona_path(agent_id, filename)
+    if overlay.exists():
+        return overlay
+    return source_persona_path(agent_id, filename)
+
+
+def writeable_persona_path(agent_id: str, filename: str, *, source: bool = False) -> Path:
+    """Return the safe write path for persona mutations."""
+    if source:
+        if not settings.allow_source_persona_mutation:
+            raise PermissionError(
+                "Source persona mutation is disabled. Set ALLOW_SOURCE_PERSONA_MUTATION=true "
+                "only for deliberate product-default edits."
+            )
+        return source_persona_path(agent_id, filename)
+    return runtime_persona_path(agent_id, filename)
 
 
 def acquire_persona_lock(agent_id: str, owner: str) -> bool:
@@ -85,7 +122,7 @@ def is_persona_locked(agent_id: str) -> bool:
 
 def _load_persona_file(agent_id: str, filename: str) -> str | None:
     """Load a single persona MD file for an agent."""
-    filepath = PERSONAS_DIR / agent_id / filename
+    filepath = persona_file_path(agent_id, filename)
     if filepath.exists():
         try:
             return filepath.read_text(encoding="utf-8").strip()
@@ -213,15 +250,11 @@ def save_agent_memory(agent_id: str, content: str) -> bool:
     This is how agents evolve — their MEMORY.md is updated with
     new learnings, error patterns, and user preferences.
     """
-    persona_dir = PERSONAS_DIR / agent_id
-    if not persona_dir.exists():
-        logger.warning(f"Persona directory not found for agent {agent_id}")
-        return False
-
-    filepath = persona_dir / "MEMORY.md"
+    filepath = writeable_persona_path(agent_id, "MEMORY.md")
     try:
+        filepath.parent.mkdir(parents=True, exist_ok=True)
         filepath.write_text(content, encoding="utf-8")
-        logger.info(f"Updated MEMORY.md for agent {agent_id}")
+        logger.info(f"Updated runtime MEMORY.md overlay for agent {agent_id}")
         return True
     except Exception as e:
         logger.error(f"Failed to save MEMORY.md for agent {agent_id}: {e}")
@@ -271,12 +304,15 @@ def append_learning(agent_id: str, category: str, learning: str) -> bool:
 
 def list_agent_personas() -> list[str]:
     """List all agent IDs that have persona directories."""
-    if not PERSONAS_DIR.exists():
-        return []
-    return [
-        d.name for d in PERSONAS_DIR.iterdir()
-        if d.is_dir() and (d / "CORE.md").exists()
-    ]
+    agent_ids: set[str] = set()
+    for base_dir in (SOURCE_PERSONAS_DIR, runtime_personas_dir()):
+        if not base_dir.exists():
+            continue
+        agent_ids.update(
+            d.name for d in base_dir.iterdir()
+            if d.is_dir() and (d / "CORE.md").exists()
+        )
+    return sorted(agent_ids)
 
 
 def get_agent_display_name(agent_id: str) -> str | None:
@@ -307,7 +343,7 @@ def scaffold_persona(
     capabilities: list[str] | None = None,
 ) -> None:
     """Create skeleton persona MD files for a new agent."""
-    persona_dir = PERSONAS_DIR / agent_id
+    persona_dir = runtime_personas_dir() / agent_id
     persona_dir.mkdir(parents=True, exist_ok=True)
 
     # CORE.md -- Identity
@@ -404,7 +440,6 @@ def get_capability_card(agent_id: str) -> dict:
     identity, skills, specialties, and supported input/output modes.
     Used for agent discovery and intelligent task routing.
     """
-    persona_dir = _get_personas_dir() / agent_id
     card = {
         "agent_id": agent_id,
         "name": agent_id,
@@ -416,7 +451,7 @@ def get_capability_card(agent_id: str) -> dict:
     }
 
     # Extract from CORE.md
-    core_path = persona_dir / "CORE.md"
+    core_path = persona_file_path(agent_id, "CORE.md")
     if core_path.exists():
         core_text = core_path.read_text(encoding="utf-8")
         # First line after heading is usually the agent name/role
@@ -431,7 +466,7 @@ def get_capability_card(agent_id: str) -> dict:
                 card["specialties"].append(specialty)
 
     # Extract skills from SKILLS.md
-    skills_path = persona_dir / "SKILLS.md"
+    skills_path = persona_file_path(agent_id, "SKILLS.md")
     if skills_path.exists():
         skills_text = skills_path.read_text(encoding="utf-8")
         # Find skill-like headers (## or ### with action verbs)

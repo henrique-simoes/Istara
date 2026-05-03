@@ -14,6 +14,15 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
+from app.core.permissions import (
+    get_project_role,
+    get_subject,
+    get_visible_project_or_404,
+    is_global_admin,
+    normalize_project_role,
+    require_global_admin,
+    require_project_access,
+)
 from app.core.versioning import ProjectVersioning
 from app.models.database import get_db
 from app.models.project import Project, ProjectPhase
@@ -56,22 +65,68 @@ class ProjectResponse(BaseModel):
     is_paused: bool = False
     owner_id: str = ""
     watch_folder_path: str | None = None
+    current_user_project_role: str | None = None
     created_at: datetime
     updated_at: datetime
 
     model_config = {"from_attributes": True}
 
 
+async def _project_response(
+    project: Project,
+    request: Request,
+    db: AsyncSession,
+) -> dict:
+    subject = get_subject(request)
+    role = "project_admin" if is_global_admin(subject) else await get_project_role(db, project.id, subject.id)
+    return {
+        "id": project.id,
+        "name": project.name,
+        "description": project.description,
+        "phase": project.phase,
+        "company_context": project.company_context,
+        "project_context": project.project_context,
+        "guardrails": project.guardrails,
+        "is_paused": project.is_paused,
+        "owner_id": project.owner_id,
+        "watch_folder_path": project.watch_folder_path,
+        "current_user_project_role": role,
+        "created_at": project.created_at,
+        "updated_at": project.updated_at,
+    }
+
+
 @router.get("/projects", response_model=list[ProjectResponse])
-async def list_projects(db: AsyncSession = Depends(get_db)):
-    """List all projects."""
-    result = await db.execute(select(Project).order_by(Project.updated_at.desc()))
-    return result.scalars().all()
+async def list_projects(request: Request, db: AsyncSession = Depends(get_db)):
+    """List visible projects.
+
+    Global admins see every project. Team-mode non-admins see only projects
+    they were explicitly invited to via ProjectMember.
+    """
+    from app.models.project_member import ProjectMember
+
+    subject = get_subject(request)
+    query = select(Project).order_by(Project.updated_at.desc())
+    if settings.team_mode and not is_global_admin(subject):
+        query = (
+            select(Project)
+            .join(ProjectMember, ProjectMember.project_id == Project.id)
+            .where(ProjectMember.user_id == subject.id)
+            .order_by(Project.updated_at.desc())
+        )
+    result = await db.execute(query)
+    return [await _project_response(project, request, db) for project in result.scalars().all()]
 
 
 @router.post("/projects", response_model=ProjectResponse, status_code=201)
 async def create_project(data: ProjectCreate, request: Request, db: AsyncSession = Depends(get_db)):
-    """Create a new project."""
+    """Create a new project. Global admin only in team mode."""
+    from app.models.project_member import ProjectMember
+
+    subject = get_subject(request)
+    if settings.team_mode:
+        require_global_admin(request)
+
     project_id = str(uuid.uuid4())
 
     project = Project(
@@ -82,9 +137,20 @@ async def create_project(data: ProjectCreate, request: Request, db: AsyncSession
         company_context=data.company_context,
         project_context=data.project_context,
         guardrails=data.guardrails,
+        owner_id=subject.id,
     )
 
     db.add(project)
+    if subject.id:
+        db.add(
+            ProjectMember(
+                id=str(uuid.uuid4()),
+                project_id=project_id,
+                user_id=subject.id,
+                role="project_admin",
+                added_by=subject.id,
+            )
+        )
     await db.commit()
     await db.refresh(project)
 
@@ -104,30 +170,25 @@ async def create_project(data: ProjectCreate, request: Request, db: AsyncSession
     if file_watcher:
         file_watcher.add_watch(upload_dir, project_id)
 
-    return project
+    return await _project_response(project, request, db)
 
 
 @router.get("/projects/{project_id}", response_model=ProjectResponse)
-async def get_project(project_id: str, db: AsyncSession = Depends(get_db)):
+async def get_project(project_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     """Get a project by ID."""
-    result = await db.execute(select(Project).where(Project.id == project_id))
-    project = result.scalar_one_or_none()
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
-    return project
+    project = await get_visible_project_or_404(db, request, project_id)
+    return await _project_response(project, request, db)
 
 
 @router.patch("/projects/{project_id}", response_model=ProjectResponse)
 async def update_project(
     project_id: str,
     data: ProjectUpdate,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
-    """Update a project."""
-    result = await db.execute(select(Project).where(Project.id == project_id))
-    project = result.scalar_one_or_none()
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
+    """Update a project. Requires project admin or global admin."""
+    project = await get_visible_project_or_404(db, request, project_id, min_role="project_admin")
 
     update_data = data.model_dump(exclude_unset=True)
     for field, value in update_data.items():
@@ -147,28 +208,22 @@ async def update_project(
         "guardrails": project.guardrails,
     }, message=f"Update project: {', '.join(update_data.keys())}")
 
-    return project
+    return await _project_response(project, request, db)
 
 
 @router.post("/projects/{project_id}/pause")
-async def pause_project(project_id: str, db: AsyncSession = Depends(get_db)):
+async def pause_project(project_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     """Pause a project — agents and loops stop executing for this project."""
-    result = await db.execute(select(Project).where(Project.id == project_id))
-    project = result.scalar_one_or_none()
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
+    project = await get_visible_project_or_404(db, request, project_id, min_role="project_admin")
     project.is_paused = True
     await db.commit()
     return {"status": "paused", "project_id": project_id}
 
 
 @router.post("/projects/{project_id}/resume")
-async def resume_project(project_id: str, db: AsyncSession = Depends(get_db)):
+async def resume_project(project_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     """Resume a paused project."""
-    result = await db.execute(select(Project).where(Project.id == project_id))
-    project = result.scalar_one_or_none()
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
+    project = await get_visible_project_or_404(db, request, project_id, min_role="project_admin")
     project.is_paused = False
     await db.commit()
     return {"status": "resumed", "project_id": project_id}
@@ -178,6 +233,7 @@ async def resume_project(project_id: str, db: AsyncSession = Depends(get_db)):
 async def link_folder(project_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     """Link an external folder to a project for automatic file monitoring.
     Supports any local folder — Google Drive, Dropbox, or plain directories."""
+    await require_project_access(db, request, project_id, min_role="project_admin")
     body = await request.json()
     folder_path = body.get("folder_path", "").strip()
     if not folder_path:
@@ -189,10 +245,7 @@ async def link_folder(project_id: str, request: Request, db: AsyncSession = Depe
     if not folder.is_dir():
         raise HTTPException(status_code=400, detail=f"Path is not a directory: {folder_path}")
 
-    result = await db.execute(select(Project).where(Project.id == project_id))
-    project = result.scalar_one_or_none()
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
+    project = await get_visible_project_or_404(db, request, project_id, min_role="project_admin")
 
     project.watch_folder_path = str(folder.resolve())
     await db.commit()
@@ -214,10 +267,7 @@ async def link_folder(project_id: str, request: Request, db: AsyncSession = Depe
 async def unlink_folder(project_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     """Remove the external folder link from a project.
     Existing documents are kept, but new files won't be monitored."""
-    result = await db.execute(select(Project).where(Project.id == project_id))
-    project = result.scalar_one_or_none()
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
+    project = await get_visible_project_or_404(db, request, project_id, min_role="project_admin")
 
     old_path = project.watch_folder_path
     project.watch_folder_path = None
@@ -235,9 +285,7 @@ async def unlink_folder(project_id: str, request: Request, db: AsyncSession = De
 @router.delete("/projects/{project_id}", status_code=204)
 async def delete_project(project_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     """Delete a project and all its data. Admin only."""
-    from app.core.security_middleware import require_admin_from_request
-
-    require_admin_from_request(request)
+    require_global_admin(request)
     result = await db.execute(select(Project).where(Project.id == project_id))
     project = result.scalar_one_or_none()
     if not project:
@@ -267,8 +315,9 @@ async def delete_project(project_id: str, request: Request, db: AsyncSession = D
 
 
 @router.get("/projects/{project_id}/versions")
-async def get_project_versions(project_id: str, limit: int = 50):
+async def get_project_versions(project_id: str, request: Request, limit: int = 50, db: AsyncSession = Depends(get_db)):
     """Get version history for a project."""
+    await get_visible_project_or_404(db, request, project_id)
     versioning = ProjectVersioning(project_id)
     history = versioning.get_history(limit=limit)
     return [
@@ -284,7 +333,12 @@ async def get_project_versions(project_id: str, limit: int = 50):
 
 
 @router.post("/projects/{project_id}/export")
-async def export_project(project_id: str, export_path: str | None = None, db: AsyncSession = Depends(get_db)):
+async def export_project(
+    project_id: str,
+    request: Request,
+    export_path: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
     """Export a project to a standalone folder on the user's computer.
 
     If export_path is not provided, exports to ~/Istara-Projects/{project_name}/
@@ -293,10 +347,7 @@ async def export_project(project_id: str, export_path: str | None = None, db: As
     import shutil
     from pathlib import Path
 
-    result = await db.execute(select(Project).where(Project.id == project_id))
-    project = result.scalar_one_or_none()
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
+    project = await get_visible_project_or_404(db, request, project_id, min_role="project_admin")
 
     # Determine export path
     safe_name = "".join(c if c.isalnum() or c in "-_ " else "" for c in project.name).strip()
@@ -441,7 +492,7 @@ To import this project back into Istara, use the import feature or copy the file
 
 class AddMemberRequest(BaseModel):
     user_id: str
-    role: str = "member"  # admin | member | viewer
+    role: str = "researcher"  # project_admin | researcher | viewer
 
 
 class UpdateMemberRoleRequest(BaseModel):
@@ -449,10 +500,12 @@ class UpdateMemberRoleRequest(BaseModel):
 
 
 @router.get("/projects/{project_id}/members")
-async def list_project_members(project_id: str, db: AsyncSession = Depends(get_db)):
+async def list_project_members(project_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     """List all members of a project with their last active time."""
     from app.models.project_member import ProjectMember
     from app.models.user import User
+
+    await require_project_access(db, request, project_id, min_role="viewer")
 
     result = await db.execute(
         select(ProjectMember).where(ProjectMember.project_id == project_id)
@@ -481,17 +534,13 @@ async def list_project_members(project_id: str, db: AsyncSession = Depends(get_d
 async def add_project_member(
     project_id: str, data: AddMemberRequest, request: Request, db: AsyncSession = Depends(get_db)
 ):
-    """Add a server user to this project. Admin only."""
-    from app.core.security_middleware import require_admin_from_request
+    """Add a server user to this project. Global or project admin only."""
     from app.models.project_member import ProjectMember
     from app.models.user import User
 
-    require_admin_from_request(request)
-
-    # Verify project exists
-    project = await db.get(Project, project_id)
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
+    subject = get_subject(request)
+    await get_visible_project_or_404(db, request, project_id, min_role="project_admin")
+    role = normalize_project_role(data.role)
 
     # Verify user exists on this server
     user = await db.get(User, data.user_id)
@@ -509,36 +558,27 @@ async def add_project_member(
         raise HTTPException(status_code=409, detail="User is already a member of this project")
 
     # Get current user ID for added_by
-    current_user_id = ""
-    try:
-        from app.core.auth import get_user_from_request
-        current_user = get_user_from_request(request)
-        current_user_id = current_user.get("sub", "") if current_user else ""
-    except Exception:
-        pass
-
     member = ProjectMember(
         id=str(uuid.uuid4()),
         project_id=project_id,
         user_id=data.user_id,
-        role=data.role,
-        added_by=current_user_id,
+        role=role,
+        added_by=subject.id,
     )
     db.add(member)
     await db.commit()
 
-    return {"added": True, "member_id": member.id, "user_id": data.user_id, "role": data.role}
+    return {"added": True, "member_id": member.id, "user_id": data.user_id, "role": role}
 
 
 @router.delete("/projects/{project_id}/members/{user_id}")
 async def remove_project_member(
     project_id: str, user_id: str, request: Request, db: AsyncSession = Depends(get_db)
 ):
-    """Remove a user from a project. Admin only."""
-    from app.core.security_middleware import require_admin_from_request
+    """Remove a user from a project. Global or project admin only."""
     from app.models.project_member import ProjectMember
 
-    require_admin_from_request(request)
+    await get_visible_project_or_404(db, request, project_id, min_role="project_admin")
 
     result = await db.execute(
         select(ProjectMember).where(
@@ -564,14 +604,11 @@ async def update_member_role(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
-    """Change a member's project-level role. Admin only."""
-    from app.core.security_middleware import require_admin_from_request
+    """Change a member's project-level role. Global or project admin only."""
     from app.models.project_member import ProjectMember
 
-    require_admin_from_request(request)
-
-    if data.role not in ("admin", "member", "viewer"):
-        raise HTTPException(status_code=400, detail="Role must be admin, member, or viewer")
+    await get_visible_project_or_404(db, request, project_id, min_role="project_admin")
+    role = normalize_project_role(data.role)
 
     result = await db.execute(
         select(ProjectMember).where(
@@ -583,7 +620,7 @@ async def update_member_role(
     if not member:
         raise HTTPException(status_code=404, detail="Member not found in this project")
 
-    member.role = data.role
+    member.role = role
     await db.commit()
 
-    return {"updated": True, "user_id": user_id, "role": data.role}
+    return {"updated": True, "user_id": user_id, "role": role}

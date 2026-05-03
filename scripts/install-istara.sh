@@ -496,8 +496,6 @@ if [ "$MODE" = "server" ]; then
     ok "Frontend dependencies installed"
 
     info "Building frontend (this takes 1-2 minutes)..."
-    NEXT_PUBLIC_API_URL="http://localhost:8000" \
-    NEXT_PUBLIC_WS_URL="ws://localhost:8000" \
     "$NPM" run build 2>&1 | tail -5 || { fail "Frontend build failed"; exit 1; }
     ok "Frontend built"
 
@@ -561,7 +559,8 @@ DATA_ENCRYPTION_KEY=${ENCRYPT_KEY}
 NETWORK_ACCESS_TOKEN=${NET_TOKEN}
 TEAM_MODE=${TEAM_MODE}
 
-CORS_ORIGINS=http://localhost:${FRONTEND_PORT}
+CORS_ORIGINS=http://localhost:${FRONTEND_PORT},http://127.0.0.1:${FRONTEND_PORT}
+CORS_ORIGIN_REGEX=https?://[^/]+:${FRONTEND_PORT}
 
 RAG_CHUNK_SIZE=1500
 RAG_CHUNK_OVERLAP=200
@@ -589,6 +588,7 @@ ENVEOF
 else
     # Client mode — just install relay
     header "Step 4: Client Setup"
+    NODE=$(detect_node)
     NPM=$(detect_npm)
     cd "$INSTALL_DIR/relay"
     "$NPM" install --silent 2>/dev/null || true
@@ -597,10 +597,20 @@ else
     print_client_connection_help
     ask "Paste your connection string (from server admin): "
     CONN_STR=""; read -r CONN_STR </dev/tty
+    CLIENT_SERVER_URL=""
+    CLIENT_WS_URL=""
     mkdir -p "$HOME/.istara"
     if [ -n "$CONN_STR" ]; then
-        CLIENT_DONATE="true"
-        ok "Connection string saved for Client mode"
+        if [[ "$CONN_STR" != rcl_* ]]; then
+            warn "That does not look like an rcl_ invite. Raw server URLs are not valid for Client mode."
+            CONN_STR=""
+            CLIENT_DONATE="false"
+        else
+            CLIENT_SERVER_URL=$(CONN_STR="$CONN_STR" "$NODE" -e 'const s=process.env.CONN_STR||""; const b=s.slice(4).split(".")[0]; const p=JSON.parse(Buffer.from(b.replace(/-/g,"+").replace(/_/g,"/"),"base64").toString("utf8")); process.stdout.write((p.server_url||"").replace(/\/$/,""));' 2>/dev/null || true)
+            CLIENT_WS_URL=$(CONN_STR="$CONN_STR" "$NODE" -e 'const s=process.env.CONN_STR||""; const b=s.slice(4).split(".")[0]; const p=JSON.parse(Buffer.from(b.replace(/-/g,"+").replace(/_/g,"/"),"base64").toString("utf8")); process.stdout.write(p.ws_url||"");' 2>/dev/null || true)
+            CLIENT_DONATE="true"
+            ok "Connection string saved for Client mode"
+        fi
     else
         CLIENT_DONATE="false"
         warn "No connection string saved yet — you can add one later in the desktop app"
@@ -608,8 +618,8 @@ else
     cat > "$HOME/.istara/config.json" <<CEOF
 {
   "mode": "client",
-  "server_url": "",
-  "ws_url": "",
+  "server_url": "$CLIENT_SERVER_URL",
+  "ws_url": "$CLIENT_WS_URL",
   "connection_string": "$CONN_STR",
   "donate_compute": $CLIENT_DONATE,
   "install_dir": "$INSTALL_DIR"

@@ -106,3 +106,19 @@ old_plans.md
 # Local model training and release artifacts — NEVER TRACK THESE IN GIT
 # Protected by pre-commit hook. If you need to share models, use releases/artifacts.
 /LLMs/
+/Model_Finetuning/
+*.ogg
+*.wav
+*.mp3
+*.m4a
+audit*_diff.patch
+planner_finetune.md
+current_plans_finetune.md
+example.md
+
+# Runtime overlays for local personas and user-created/custom skills.
+backend/data/personas/
+backend/data/skills/
+
+# Local tool settings. Keep checked-in examples outside this folder if needed.
+.qwen/

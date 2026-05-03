@@ -169,6 +169,63 @@ class AgentOrchestrator:
         self._running = False
         logger.info("Agent Orchestrator stopped.")
 
+    def _review_context_for_prompt(self, task: Task) -> str:
+        """Compact human-review context for retries and revised tasks."""
+        labels = task.get_labels() if hasattr(task, "get_labels") else []
+        parts = []
+        if getattr(task, "what_to_review", ""):
+            parts.append(f"What to Review: {task.what_to_review}")
+        if getattr(task, "last_review_feedback", ""):
+            parts.append(f"Last human feedback: {task.last_review_feedback}")
+        if labels:
+            parts.append(f"Task labels: {json.dumps(labels)[:600]}")
+        if getattr(task, "review_failure_category", None):
+            parts.append(f"Failure category: {task.review_failure_category}")
+        if getattr(task, "failure_streak", 0):
+            parts.append(f"Consecutive unsuccessful reviews: {task.failure_streak}")
+        return "\n".join(parts)
+
+    async def _mark_task_ready_for_review(
+        self,
+        db: AsyncSession,
+        task: Task,
+        notes: str,
+        progress: float = 1.0,
+        review_state: str = "awaiting_review",
+    ) -> None:
+        task.status = TaskStatus.IN_REVIEW
+        task.review_state = review_state
+        task.next_agent_action = None
+        task.progress = progress
+        task.agent_notes = notes
+        await db.commit()
+
+    async def _record_system_failed_review(
+        self,
+        db: AsyncSession,
+        task: Task,
+        reason: str,
+        *,
+        next_review_state: str = "system_failed",
+    ) -> None:
+        """Expose agent/self-verification failure to humans instead of hiding it as Done."""
+        from app.core.task_review import SYSTEM_FAILED, diagnose_review_event, record_task_review_event
+
+        event = await record_task_review_event(
+            db,
+            task,
+            outcome=SYSTEM_FAILED,
+            next_status=TaskStatus.IN_REVIEW,
+            next_review_state=next_review_state,
+            what_to_review=reason,
+            created_by=self._agent_id,
+            failure_category="agent_execution_failure",
+            severity="major",
+            quality_score=0.1,
+            context_extra={"source": "agent_orchestrator"},
+        )
+        await diagnose_review_event(db, event.id)
+
     async def _persist_agent_state(self, state: AgentState, current_task: str = "") -> None:
         """Persist the agent state to the database so the frontend can read it."""
         try:
@@ -230,8 +287,14 @@ class AgentOrchestrator:
             # 2. Get the project context
             project = await self._get_project(db, task.project_id)
             if not project:
-                logger.warning(f"Project not found for task {task.id} — marking as done (orphaned)")
-                task.status = TaskStatus.DONE
+                logger.warning(f"Project not found for task {task.id} — sending to review (orphaned)")
+                task.agent_notes = f"Project not found: {task.project_id}"
+                await self._record_system_failed_review(
+                    db,
+                    task,
+                    f"Project not found for task {task.id}: {task.project_id}",
+                    next_review_state="blocked",
+                )
                 await db.commit()
                 return False
 
@@ -812,6 +875,9 @@ class AgentOrchestrator:
 
         # Build skill input — include task instructions, context, and RAG documents
         task_context = task.user_context or task.description
+        review_context = self._review_context_for_prompt(task)
+        if review_context:
+            task_context += f"\n\n## Human Review Feedback\n{review_context}"
         if getattr(task, "instructions", None):
             task_context += f"\n\nSpecific instructions: {task.instructions}"
         if rag_context.has_context:
@@ -1028,10 +1094,7 @@ class AgentOrchestrator:
 
             if verified:
                 # Update task — passed verification
-                task.status = TaskStatus.IN_REVIEW
-                task.progress = 1.0
-                task.agent_notes = output.summary
-                await db.commit()
+                await self._mark_task_ready_for_review(db, task, output.summary)
 
                 await agent_hooks.fire(
                     "on_completion",
@@ -1052,13 +1115,17 @@ class AgentOrchestrator:
                 await self._persist_agent_state(AgentState.IDLE)
                 await broadcast_agent_status("idle", f"Completed: {task.title}")
             else:
-                # Verification failed — keep in progress for retry/attention
-                task.status = TaskStatus.IN_PROGRESS
-                task.progress = 0.5
+                # Verification failed — surface it for human review and feedback.
                 task.agent_notes = f"[Verification failed] {verify_reason}\n\n{output.summary}"
+                task.progress = 1.0
+                await self._record_system_failed_review(
+                    db,
+                    task,
+                    f"Agent self-verification failed: {verify_reason}",
+                )
                 await db.commit()
 
-                await broadcast_task_progress(task.id, 0.5, f"Verification failed: {verify_reason}")
+                await broadcast_task_progress(task.id, 1.0, f"Verification failed: {verify_reason}")
                 await self._persist_agent_state(AgentState.IDLE)
                 await broadcast_agent_status(
                     "warning", f"Needs attention: {task.title} — {verify_reason}"
@@ -1188,7 +1255,12 @@ class AgentOrchestrator:
                     f"Task retry {task.retry_count}/{task.max_retries or 3}: {task.title} — {error_msg[:80]}",
                 )
             else:
-                task.status = TaskStatus.DONE
+                task.progress = 1.0
+                await self._record_system_failed_review(
+                    db,
+                    task,
+                    f"Task failed after {task.retry_count} retries: {error_msg}{resolution_hint}",
+                )
                 await db.commit()
                 await self._persist_agent_state(AgentState.ERROR, error_msg)
                 await broadcast_agent_status(
@@ -1545,20 +1617,21 @@ class AgentOrchestrator:
 
         # Quality check
         if not result or len(result.strip()) < 20:
-            task.status = TaskStatus.IN_PROGRESS
-            task.progress = 0.5
             task.agent_notes = (
                 f"{tool_summary}[Verification failed] Response too short or empty\n\n{result}"
             )
+            task.progress = 1.0
+            await self._record_system_failed_review(
+                db,
+                task,
+                "General agent response was too short or empty.",
+            )
             await db.commit()
-            await broadcast_task_progress(task.id, 0.5, "Verification failed: response too short")
+            await broadcast_task_progress(task.id, 1.0, "Verification failed: response too short")
             await self._persist_agent_state(AgentState.IDLE)
             await broadcast_agent_status("warning", f"Needs attention: {task.title}")
         else:
-            task.status = TaskStatus.IN_REVIEW
-            task.progress = 1.0
-            task.agent_notes = f"{tool_summary}{result}"
-            await db.commit()
+            await self._mark_task_ready_for_review(db, task, f"{tool_summary}{result}")
             await broadcast_task_progress(task.id, 1.0, "Complete — ready for review.")
             await self._persist_agent_state(AgentState.IDLE)
             await broadcast_agent_status("idle", f"Completed: {task.title}")
@@ -1699,10 +1772,11 @@ class AgentOrchestrator:
             if s.result
         )
 
-        task.status = TaskStatus.IN_REVIEW
-        task.progress = 1.0
-        task.agent_notes = f"[Research Plan]\n{plan_summary}\n\n[Results]\n{compiled}"
-        await db.commit()
+        await self._mark_task_ready_for_review(
+            db,
+            task,
+            f"[Research Plan]\n{plan_summary}\n\n[Results]\n{compiled}",
+        )
 
         await broadcast_task_progress(
             task.id, 1.0, f"Plan complete — {len(plan.past_steps)} steps ({total_steps} planned)."
@@ -1974,8 +2048,17 @@ class AgentOrchestrator:
         artifact_doc_ids = []
         for filename, content in output.artifacts.items():
             if isinstance(content, str) and len(content) > 50:
+                from app.core.artifact_document import render_artifact_document
+
+                readable_artifact = render_artifact_document(
+                    filename,
+                    content,
+                    skill_name=task.skill_name,
+                )
+                readable_content = readable_artifact["content"]
                 chunks = [
-                    TextChunk(text=content[:2000], source=f"skill:{task.skill_name}:{filename}")
+                    TextChunk(text=readable_content[:2000], source=f"skill:{task.skill_name}:{readable_artifact['file_name']}"),
+                    TextChunk(text=content[:2000], source=f"skill:{task.skill_name}:{filename}:raw"),
                 ]
                 await ingest_chunks(project_id, chunks)
                 # Create a Document record so artifacts appear in Documents view
@@ -1985,12 +2068,17 @@ class AgentOrchestrator:
                     doc = Document(
                         id=str(uuid.uuid4()),
                         project_id=project_id,
-                        title=filename,
-                        file_name=filename,
+                        title=readable_artifact["title"],
+                        description=f"Human-readable skill artifact generated from {filename}.",
+                        file_name=readable_artifact["file_name"],
+                        file_type=readable_artifact["file_type"],
                         source="agent_output",
-                        content_preview=content[:500],
+                        content_preview=readable_content[:500],
+                        content_text=readable_content,
                         status="ready",
                     )
+                    doc.set_skill_names([task.skill_name] if task.skill_name else [])
+                    doc.set_tags(["generated-artifact", "skill-output"])
                     db.add(doc)
                     artifact_doc_ids.append(doc.id)
                 except Exception as e:
@@ -2158,12 +2246,12 @@ class AgentOrchestrator:
                 # Self-verify the output quality (heuristic — no task for manual execution)
                 verified, verify_reason = self._self_verify_output_heuristic(output)
 
-                if verified:
-                    task_status = TaskStatus.DONE
-                    task_notes = output.summary
-                else:
-                    task_status = TaskStatus.IN_REVIEW
-                    task_notes = f"[Verification failed] {verify_reason}\n\n{output.summary}"
+                task_status = TaskStatus.IN_REVIEW
+                task_notes = (
+                    output.summary
+                    if verified
+                    else f"[Verification failed] {verify_reason}\n\n{output.summary}"
+                )
 
                 # Create a temporary task to store findings
                 task = Task(
@@ -2172,6 +2260,7 @@ class AgentOrchestrator:
                     title=f"Manual: {skill.display_name}",
                     skill_name=skill_name,
                     status=task_status,
+                    review_state="awaiting_review" if verified else "system_failed",
                     progress=1.0,
                     agent_notes=task_notes,
                 )

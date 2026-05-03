@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.core.hardware import detect_hardware, recommend_model
 from app.core.ollama import ollama
+from app.core.permissions import require_project_access
 from app.core.security_middleware import require_admin_from_request
 from app.models.database import get_db
 
@@ -104,15 +105,18 @@ async def get_models():
     For LM Studio, probes the actually loaded model via a minimal chat request
     since /v1/models returns all downloaded (not just loaded) models.
     """
+    from app.core.compute_registry import compute_registry
+
     healthy = await ollama.health()
-    if not healthy:
+    registry_models = await compute_registry.list_models()
+    if not healthy and not registry_models:
         return {
             "status": "offline",
             "models": [],
             "active_model": _active_model(),
         }
 
-    models = await ollama.list_models()
+    models = registry_models or await ollama.list_models()
     active = _active_model()
 
     # For LM Studio, detect the actually loaded model
@@ -133,9 +137,7 @@ async def get_models():
     # Enrich each model with provider info from the router.
     # The LLMRouter.list_models() already attaches _server / _server_id;
     # we promote those to public fields and add provider_type.
-    from app.core.llm_router import llm_router
-
-    server_map = {s.server_id: s for s in llm_router._servers.values()}
+    server_map = {s.node_id: s for s in compute_registry._nodes.values()}
     enriched = []
     for m in models:
         server_id = m.pop("_server_id", None)
@@ -417,8 +419,9 @@ async def system_status():
 
 
 @router.get("/settings/telemetry/status")
-async def telemetry_status():
+async def telemetry_status(request: Request):
     """Get telemetry configuration and stats."""
+    require_admin_from_request(request)
     from app.core.telemetry_export import export_telemetry
     from app.models.database import async_session
     from sqlalchemy import select, func
@@ -455,11 +458,17 @@ async def telemetry_status():
 
 @router.post("/settings/telemetry/export")
 async def export_telemetry_data(
+    request: Request,
     project_id: str | None = None,
     days: int = 7,
     include_models: bool = True,
+    db: AsyncSession = Depends(get_db),
 ):
     """Export telemetry data to local JSON files. No phone-home."""
+    if project_id:
+        await require_project_access(db, request, project_id, min_role="viewer")
+    else:
+        require_admin_from_request(request)
     from app.core.telemetry_export import export_telemetry
 
     if days < 1 or days > 90:
@@ -487,8 +496,13 @@ async def toggle_telemetry(request: Request, enabled: bool):
 
 
 @router.get("/settings/telemetry/healing")
-async def get_self_healing_evaluation(project_id: str):
+async def get_self_healing_evaluation(
+    project_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
     """Evaluate recent telemetry to detect self-healing rule violations."""
+    await require_project_access(db, request, project_id, min_role="viewer")
     from app.core.self_healing_rules import self_healing
 
     return await self_healing.evaluate_all(project_id)

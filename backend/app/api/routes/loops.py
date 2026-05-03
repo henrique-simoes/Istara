@@ -6,13 +6,14 @@ import logging
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.datetime_utils import ensure_utc
 from app.core.scheduler import CronParser, ScheduledTask
+from app.core.security_middleware import require_admin_from_request
 from app.models.agent import Agent, AgentState
 from app.models.database import get_db
 from app.services import agent_service
@@ -83,8 +84,9 @@ def _schedule_loop_status(task: ScheduledTask) -> str:
 
 
 @router.get("/loops/overview")
-async def loops_overview(db: AsyncSession = Depends(get_db)):
+async def loops_overview(request: Request, db: AsyncSession = Depends(get_db)):
     """Consolidated overview: agents with loop configs, schedules, and health summary."""
+    require_admin_from_request(request)
     # Agents
     agent_result = await db.execute(
         select(Agent).where(Agent.is_active.is_(True)).order_by(Agent.created_at)
@@ -139,8 +141,9 @@ async def loops_overview(db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/loops/agents")
-async def list_loop_agents(db: AsyncSession = Depends(get_db)):
+async def list_loop_agents(request: Request, db: AsyncSession = Depends(get_db)):
     """List all agents with their loop configurations."""
+    require_admin_from_request(request)
     agents = await agent_service.list_agents(db)
     for a in agents:
         a["loop_interval_seconds"] = a.get("heartbeat_interval_seconds", 60)
@@ -154,8 +157,9 @@ async def list_loop_agents(db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/loops/agents/{agent_id}/config")
-async def get_loop_config(agent_id: str, db: AsyncSession = Depends(get_db)):
+async def get_loop_config(agent_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     """Get loop configuration for a specific agent."""
+    require_admin_from_request(request)
     agent = await agent_service.get_agent(db, agent_id)
     if not agent:
         raise HTTPException(status_code=404, detail="Agent not found")
@@ -176,9 +180,11 @@ async def get_loop_config(agent_id: str, db: AsyncSession = Depends(get_db)):
 async def update_loop_config(
     agent_id: str,
     data: UpdateLoopConfigRequest,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
     """Update an agent's loop configuration (interval, paused state, skills)."""
+    require_admin_from_request(request)
     result = await db.execute(select(Agent).where(Agent.id == agent_id))
     agent = result.scalar_one_or_none()
     if not agent:
@@ -212,16 +218,18 @@ async def update_loop_config(
 
 
 @router.post("/loops/agents/{agent_id}/pause")
-async def pause_agent_loop(agent_id: str, db: AsyncSession = Depends(get_db)):
+async def pause_agent_loop(agent_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     """Pause an agent's loop."""
+    require_admin_from_request(request)
     if not await agent_service.set_agent_state(db, agent_id, AgentState.PAUSED):
         raise HTTPException(status_code=404, detail="Agent not found")
     return {"agent_id": agent_id, "status": "paused"}
 
 
 @router.post("/loops/agents/{agent_id}/resume")
-async def resume_agent_loop(agent_id: str, db: AsyncSession = Depends(get_db)):
+async def resume_agent_loop(agent_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     """Resume an agent's loop."""
+    require_admin_from_request(request)
     if not await agent_service.set_agent_state(db, agent_id, AgentState.IDLE):
         raise HTTPException(status_code=404, detail="Agent not found")
     return {"agent_id": agent_id, "status": "resumed"}
@@ -229,6 +237,7 @@ async def resume_agent_loop(agent_id: str, db: AsyncSession = Depends(get_db)):
 
 @router.get("/loops/executions")
 async def list_executions(
+    request: Request,
     source_type: str | None = None,
     source_id: str | None = None,
     status: str | None = None,
@@ -241,6 +250,7 @@ async def list_executions(
     Combines agent execution counts with scheduled task run history
     into a unified timeline.
     """
+    require_admin_from_request(request)
     executions: list[dict] = []
 
     # Agent executions
@@ -300,10 +310,12 @@ async def list_executions(
 
 @router.get("/loops/executions/stats")
 async def execution_stats(
+    request: Request,
     source_id: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     """Aggregated execution statistics."""
+    require_admin_from_request(request)
     # Agent stats
     agent_query = select(
         func.count(Agent.id).label("total_agents"),
@@ -336,8 +348,9 @@ async def execution_stats(
 
 
 @router.get("/loops/health")
-async def loops_health(db: AsyncSession = Depends(get_db)):
+async def loops_health(request: Request, db: AsyncSession = Depends(get_db)):
     """Loop health dashboard — unified status for all loop sources."""
+    require_admin_from_request(request)
     health_items: list[dict] = []
     now = datetime.now(timezone.utc)
 
@@ -398,9 +411,11 @@ async def loops_health(db: AsyncSession = Depends(get_db)):
 @router.post("/loops/custom", status_code=201)
 async def create_custom_loop(
     data: CreateCustomLoopRequest,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
     """Create a custom loop as a ScheduledTask with loop_type metadata."""
+    require_admin_from_request(request)
     # Determine cron expression: explicit or derived from interval
     cron_expr = data.cron_expression
     if not cron_expr and data.interval_seconds:

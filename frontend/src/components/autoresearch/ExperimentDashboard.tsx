@@ -9,6 +9,13 @@ import {
   Play,
   Square,
   Loader2,
+  ClipboardCheck,
+  Cpu,
+  RotateCcw,
+  Bot,
+  Database,
+  Radio,
+  Gauge,
 } from "lucide-react";
 import { useAutoresearchStore } from "@/stores/autoresearchStore";
 import { cn, formatDate } from "@/lib/utils";
@@ -52,6 +59,13 @@ export default function ExperimentDashboard() {
   const bestDelta = experiments.length > 0
     ? Math.max(...experiments.filter((e) => e.kept).map((e) => e.delta), 0)
     : 0;
+  const taskMetrics = status?.operational_metrics?.tasks;
+  const computeMetrics = status?.operational_metrics?.compute_pool;
+  const agentMetrics = status?.operational_metrics?.agents;
+  const pipelineMetrics = status?.operational_metrics?.research_pipeline;
+  const telemetryMetrics = status?.operational_metrics?.telemetry;
+  const loopMetrics = status?.operational_metrics?.loops;
+  const collectionMetrics = status?.operational_metrics?.research_collection;
 
   const handleStart = () => {
     if (!target.trim()) return;
@@ -139,6 +153,253 @@ export default function ExperimentDashboard() {
           <p className="text-2xl font-bold text-istara-600 dark:text-istara-400">
             +{bestDelta.toFixed(3)}
           </p>
+        </div>
+      </div>
+
+      {/* Branch integration signals */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4">
+          <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200 mb-4">
+            <ClipboardCheck size={18} className="text-istara-600 dark:text-istara-400" />
+            <h3 className="font-semibold">Task Review Signals</h3>
+          </div>
+          {taskMetrics ? (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <MiniMetric label="Tasks" value={taskMetrics.total} />
+                <MiniMetric label="In Review" value={taskMetrics.in_review} />
+                <MiniMetric label="Approved" value={taskMetrics.approved} />
+                <MiniMetric label="Needs Revision" value={taskMetrics.needs_revision} tone={taskMetrics.needs_revision > 0 ? "amber" : "slate"} />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <ProgressMetric label="Completion" value={taskMetrics.completion_rate} />
+                <ProgressMetric label="Approval Rate" value={taskMetrics.approval_rate} />
+              </div>
+              <div className="flex flex-wrap gap-2 text-xs text-slate-500 dark:text-slate-400">
+                <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 dark:bg-slate-800 px-2 py-1">
+                  <RotateCcw size={12} />
+                  {taskMetrics.review_cycles} review cycles
+                </span>
+                <span className="rounded-full bg-slate-100 dark:bg-slate-800 px-2 py-1">
+                  {taskMetrics.review_events} review events
+                </span>
+                <span className="rounded-full bg-slate-100 dark:bg-slate-800 px-2 py-1">
+                  {taskMetrics.approval_events} approvals
+                </span>
+                <span className="rounded-full bg-slate-100 dark:bg-slate-800 px-2 py-1">
+                  {taskMetrics.validation_runs} validations
+                </span>
+                <span className="rounded-full bg-slate-100 dark:bg-slate-800 px-2 py-1">
+                  Validation success {taskMetrics.validation_success_rate.toFixed(1)}%
+                </span>
+                {taskMetrics.avg_human_feedback !== null && (
+                  <span className="rounded-full bg-slate-100 dark:bg-slate-800 px-2 py-1">
+                    Human feedback {taskMetrics.avg_human_feedback.toFixed(2)}
+                  </span>
+                )}
+                {taskMetrics.avg_consensus !== null && (
+                  <span className="rounded-full bg-slate-100 dark:bg-slate-800 px-2 py-1">
+                    Consensus {taskMetrics.avg_consensus.toFixed(2)}
+                  </span>
+                )}
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-slate-400 dark:text-slate-500">
+              Task review metrics are not available from this backend.
+            </p>
+          )}
+        </div>
+
+        <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4">
+          <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200 mb-4">
+            <Cpu size={18} className="text-istara-600 dark:text-istara-400" />
+            <h3 className="font-semibold">Compute Pool Availability</h3>
+          </div>
+          {computeMetrics ? (
+            <div className="space-y-4">
+              <div className="grid grid-cols-3 gap-3">
+                <MiniMetric label="Nodes" value={computeMetrics.total_nodes} />
+                <MiniMetric label="Alive" value={computeMetrics.alive_nodes} tone={computeMetrics.alive_nodes > 0 ? "green" : "amber"} />
+                <MiniMetric label="Models" value={computeMetrics.available_model_count} />
+              </div>
+              {computeMetrics.available_models.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {computeMetrics.available_models.slice(0, 8).map((model) => (
+                    <span
+                      key={model}
+                      className="max-w-full truncate rounded-full bg-slate-100 dark:bg-slate-800 px-2 py-1 text-xs text-slate-600 dark:text-slate-300"
+                    >
+                      {model}
+                    </span>
+                  ))}
+                  {computeMetrics.available_models.length > 8 && (
+                    <span className="rounded-full bg-slate-100 dark:bg-slate-800 px-2 py-1 text-xs text-slate-500">
+                      +{computeMetrics.available_models.length - 8} more
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <p className="text-sm text-slate-400 dark:text-slate-500">
+                  No healthy LLM models are currently advertised by the compute pool.
+                </p>
+              )}
+            </div>
+          ) : (
+            <p className="text-sm text-slate-400 dark:text-slate-500">
+              Compute pool metrics are not available from this backend.
+            </p>
+          )}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4">
+          <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200 mb-4">
+            <Gauge size={18} className="text-istara-600 dark:text-istara-400" />
+            <h3 className="font-semibold">Telemetry & Model Health</h3>
+          </div>
+          {telemetryMetrics ? (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <MiniMetric label="24h Spans" value={telemetryMetrics.spans_last_24h} />
+                <MiniMetric label="24h Errors" value={telemetryMetrics.errors_last_24h} tone={telemetryMetrics.errors_last_24h > 0 ? "amber" : "slate"} />
+                <MiniMetric label="Models" value={telemetryMetrics.model_entries} />
+                <MiniMetric label="AR Models" value={telemetryMetrics.autoresearch_model_entries} />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <ProgressMetric label="24h Error Rate" value={telemetryMetrics.error_rate_24h} inverse />
+                <ProgressMetric label="Best Model Quality" value={(telemetryMetrics.best_model_quality ?? 0) * 100} />
+              </div>
+              <div className="flex flex-wrap gap-2 text-xs text-slate-500 dark:text-slate-400">
+                <span className="rounded-full bg-slate-100 dark:bg-slate-800 px-2 py-1">
+                  Telemetry {telemetryMetrics.enabled ? "enabled" : "disabled"}
+                </span>
+                {telemetryMetrics.avg_quality_24h !== null && (
+                  <span className="rounded-full bg-slate-100 dark:bg-slate-800 px-2 py-1">
+                    24h quality {telemetryMetrics.avg_quality_24h.toFixed(2)}
+                  </span>
+                )}
+                {telemetryMetrics.avg_model_quality !== null && (
+                  <span className="rounded-full bg-slate-100 dark:bg-slate-800 px-2 py-1">
+                    Avg model quality {telemetryMetrics.avg_model_quality.toFixed(2)}
+                  </span>
+                )}
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-slate-400 dark:text-slate-500">
+              Telemetry metrics are not available from this backend.
+            </p>
+          )}
+        </div>
+
+        <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4">
+          <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200 mb-4">
+            <Bot size={18} className="text-istara-600 dark:text-istara-400" />
+            <h3 className="font-semibold">Agent & Loop Health</h3>
+          </div>
+          {agentMetrics && loopMetrics ? (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <MiniMetric label="Agents" value={agentMetrics.total} />
+                <MiniMetric label="Working" value={agentMetrics.working} />
+                <MiniMetric label="Unhealthy" value={agentMetrics.unhealthy_heartbeats} tone={agentMetrics.unhealthy_heartbeats > 0 ? "amber" : "slate"} />
+                <MiniMetric label="Schedules" value={loopMetrics.active_schedules} />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <ProgressMetric label="Agent Error Rate" value={agentMetrics.error_rate} inverse />
+                <ProgressMetric label="Active Schedules" value={loopMetrics.total_schedules ? (loopMetrics.active_schedules / loopMetrics.total_schedules) * 100 : 0} />
+              </div>
+              <div className="flex flex-wrap gap-2 text-xs text-slate-500 dark:text-slate-400">
+                <span className="rounded-full bg-slate-100 dark:bg-slate-800 px-2 py-1">
+                  {agentMetrics.executions} agent executions
+                </span>
+                <span className="rounded-full bg-slate-100 dark:bg-slate-800 px-2 py-1">
+                  {loopMetrics.schedule_executions} schedule runs
+                </span>
+                {loopMetrics.running_schedules > 0 && (
+                  <span className="rounded-full bg-slate-100 dark:bg-slate-800 px-2 py-1">
+                    {loopMetrics.running_schedules} running now
+                  </span>
+                )}
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-slate-400 dark:text-slate-500">
+              Agent and loop metrics are not available from this backend.
+            </p>
+          )}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4">
+          <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200 mb-4">
+            <Database size={18} className="text-istara-600 dark:text-istara-400" />
+            <h3 className="font-semibold">Research Pipeline Coverage</h3>
+          </div>
+          {pipelineMetrics ? (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <MiniMetric label="Documents" value={pipelineMetrics.documents} />
+                <MiniMetric label="Indexed" value={pipelineMetrics.indexed_text_documents} />
+                <MiniMetric label="Findings" value={pipelineMetrics.findings} />
+                <MiniMetric label="Code Reviews" value={pipelineMetrics.pending_code_reviews} tone={pipelineMetrics.pending_code_reviews > 0 ? "amber" : "slate"} />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <ProgressMetric label="Document Ready Rate" value={pipelineMetrics.documents ? (pipelineMetrics.ready_documents / pipelineMetrics.documents) * 100 : 0} />
+                <ProgressMetric label="Code Approval Rate" value={pipelineMetrics.code_applications ? (pipelineMetrics.approved_code_reviews / pipelineMetrics.code_applications) * 100 : 0} />
+              </div>
+              <div className="flex flex-wrap gap-2 text-xs text-slate-500 dark:text-slate-400">
+                <span className="rounded-full bg-slate-100 dark:bg-slate-800 px-2 py-1">
+                  {pipelineMetrics.errored_documents} document errors
+                </span>
+                {pipelineMetrics.avg_insight_confidence !== null && (
+                  <span className="rounded-full bg-slate-100 dark:bg-slate-800 px-2 py-1">
+                    Insight confidence {pipelineMetrics.avg_insight_confidence.toFixed(2)}
+                  </span>
+                )}
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-slate-400 dark:text-slate-500">
+              Research pipeline metrics are not available from this backend.
+            </p>
+          )}
+        </div>
+
+        <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4">
+          <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200 mb-4">
+            <Radio size={18} className="text-istara-600 dark:text-istara-400" />
+            <h3 className="font-semibold">Research Collection</h3>
+          </div>
+          {collectionMetrics ? (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <MiniMetric label="Deployments" value={collectionMetrics.deployments} />
+                <MiniMetric label="Active" value={collectionMetrics.active_deployments} />
+                <MiniMetric label="Responses" value={collectionMetrics.deployment_responses + collectionMetrics.survey_responses} />
+                <MiniMetric label="Survey Links" value={collectionMetrics.survey_links} />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <ProgressMetric label="Deployment Completion" value={collectionMetrics.deployment_completion_rate} />
+                <ProgressMetric label="Active Integrations" value={collectionMetrics.survey_integrations ? (collectionMetrics.active_survey_integrations / collectionMetrics.survey_integrations) * 100 : 0} />
+              </div>
+              <div className="flex flex-wrap gap-2 text-xs text-slate-500 dark:text-slate-400">
+                <span className="rounded-full bg-slate-100 dark:bg-slate-800 px-2 py-1">
+                  Target {collectionMetrics.deployment_targets} deployment responses
+                </span>
+                <span className="rounded-full bg-slate-100 dark:bg-slate-800 px-2 py-1">
+                  {collectionMetrics.survey_integrations} survey integrations
+                </span>
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-slate-400 dark:text-slate-500">
+              Research collection metrics are not available from this backend.
+            </p>
+          )}
         </div>
       </div>
 
@@ -306,6 +567,56 @@ export default function ExperimentDashboard() {
             ))}
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+function MiniMetric({
+  label,
+  value,
+  tone = "slate",
+}: {
+  label: string;
+  value: number | string;
+  tone?: "slate" | "green" | "amber";
+}) {
+  const toneClass =
+    tone === "green"
+      ? "text-green-600 dark:text-green-400"
+      : tone === "amber"
+        ? "text-amber-600 dark:text-amber-400"
+        : "text-slate-900 dark:text-white";
+
+  return (
+    <div className="rounded-lg bg-slate-50 dark:bg-slate-800/50 px-3 py-2">
+      <p className="text-xs text-slate-500 dark:text-slate-400">{label}</p>
+      <p className={cn("text-xl font-bold", toneClass)}>{value}</p>
+    </div>
+  );
+}
+
+function ProgressMetric({ label, value, inverse = false }: { label: string; value: number; inverse?: boolean }) {
+  const clamped = Math.max(0, Math.min(100, Number.isFinite(value) ? value : 0));
+  const barColor = inverse
+    ? clamped > 20
+      ? "bg-red-500"
+      : clamped > 5
+        ? "bg-amber-500"
+        : "bg-green-500"
+    : "bg-istara-500";
+
+  return (
+    <div>
+      <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mb-1">
+        <span>{label}</span>
+        <span>{clamped.toFixed(1)}%</span>
+      </div>
+      <div className="h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+        <div
+          className={cn("h-full rounded-full transition-all duration-500", barColor)}
+          style={{ width: `${clamped}%` }}
+        />
       </div>
     </div>
   );

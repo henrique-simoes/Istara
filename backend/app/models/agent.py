@@ -22,6 +22,7 @@ class AgentRole(str, enum.Enum):
     UI_AUDIT = "ui_audit"
     UX_EVALUATION = "ux_evaluation"
     USER_SIMULATION = "user_simulation"
+    DESIGN_LEAD = "design_lead"
     CUSTOM = "custom"
 
 

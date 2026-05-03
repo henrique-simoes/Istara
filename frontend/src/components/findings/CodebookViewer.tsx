@@ -9,7 +9,7 @@ import {
   AlertCircle,
   Loader2,
 } from "lucide-react";
-import { codebookVersions as codebookApi } from "@/lib/api";
+import { codebookVersions as codebookApi, codebooks as legacyCodebookApi } from "@/lib/api";
 import type { CodebookVersionType, CodeEntry } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -51,11 +51,37 @@ export default function CodebookViewer({ projectId }: CodebookViewerProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const normalizeLegacyCodebook = (codebook: any): CodebookVersionType => ({
+    id: codebook.id,
+    project_id: codebook.project_id,
+    version: String(codebook.version || "1"),
+    change_log: codebook.description || codebook.name || "",
+    created_by: "",
+    methodology: "codebook_ta",
+    created_at: codebook.created_at || "",
+    codes: (codebook.codes || []).map((code: any): CodeEntry => ({
+      code_id: code.id,
+      label: code.name || "Untitled code",
+      brief_definition: code.definition || "",
+      full_definition: code.inclusion_criteria || code.definition || "",
+      exclusion_criteria: code.exclusion_criteria || "",
+      typical_example: Array.isArray(code.examples) ? code.examples[0] || "" : "",
+      boundary_example: Array.isArray(code.examples) ? code.examples.slice(1).join("\n") : "",
+      coding_method: code.code_type || codebook.approach || "descriptive",
+      frequency: code.frequency || 0,
+      parent_theme: code.parent_code_id || null,
+    })),
+  });
+
   const loadVersions = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await codebookApi.list(projectId);
+      let data = await codebookApi.list(projectId);
+      if (data.length === 0) {
+        const legacyCodebooks = await legacyCodebookApi.list(projectId);
+        data = legacyCodebooks.map(normalizeLegacyCodebook);
+      }
       setVersions(data);
       if (data.length > 0) {
         setSelectedVersion(data[0]);

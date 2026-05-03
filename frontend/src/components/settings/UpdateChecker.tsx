@@ -3,19 +3,7 @@
 import { useEffect, useState } from "react";
 import { Download, CheckCircle2, AlertTriangle, Loader2, Shield, RefreshCw, Rocket } from "lucide-react";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-
-interface UpdateInfo {
-  update_available: boolean;
-  current_version: string;
-  latest_version: string;
-  release_name?: string;
-  published_at?: string;
-  changelog?: string;
-  release_url?: string;
-  downloads?: Record<string, string>;
-  error?: string;
-}
+import { updatesApi, type UpdateInfo } from "@/lib/updatesApi";
 
 /** Strip GitHub release body to just the meaningful changelog.
  *  Removes install instructions, contributor lists, and other sections
@@ -47,19 +35,11 @@ export default function UpdateChecker() {
     checkForUpdates();
   }, []);
 
-  const getHeaders = (): Record<string, string> => {
-    const headers: Record<string, string> = {};
-    const token = localStorage.getItem("istara_token");
-    if (token) headers["Authorization"] = `Bearer ${token}`;
-    return headers;
-  };
-
   const checkForUpdates = async () => {
     setChecking(true);
     setError(null);
     try {
-      const res = await fetch(`${API_BASE}/api/updates/check`, { headers: getHeaders() });
-      const data = await res.json();
+      const data = await updatesApi.check();
       setUpdateInfo(data);
     } catch (e: any) {
       setError(e.message);
@@ -76,15 +56,7 @@ export default function UpdateChecker() {
     try {
       // The backend handles everything: backup → git pull → rebuild → restart
       setUpdateStatus("updating");
-      const res = await fetch(`${API_BASE}/api/updates/apply`, {
-        method: "POST",
-        headers: { ...getHeaders(), "Content-Type": "application/json" },
-      });
-
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({ detail: "Update failed" }));
-        throw new Error(data.detail);
-      }
+      await updatesApi.apply();
 
       setUpdateStatus("restarting");
 
@@ -94,19 +66,14 @@ export default function UpdateChecker() {
       const pollInterval = setInterval(async () => {
         attempts++;
         try {
-          const healthRes = await fetch(`${API_BASE}/api/updates/version`, {
-            signal: AbortSignal.timeout(2000),
-          });
-          if (healthRes.ok) {
-            const data = await healthRes.json();
-            clearInterval(pollInterval);
-            setUpdateStatus("done");
-            setUpdateInfo((prev) =>
-              prev ? { ...prev, current_version: data.version, update_available: false } : null,
-            );
-            // Reload after a brief pause to pick up new frontend code
-            setTimeout(() => window.location.reload(), 2000);
-          }
+          const data = await updatesApi.version();
+          clearInterval(pollInterval);
+          setUpdateStatus("done");
+          setUpdateInfo((prev) =>
+            prev ? { ...prev, current_version: data.version, update_available: false } : null,
+          );
+          // Reload after a brief pause to pick up new frontend code
+          setTimeout(() => window.location.reload(), 2000);
         } catch {
           // Server still restarting — keep polling
         }

@@ -115,7 +115,7 @@ export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) 
                 Your local-first AI agent for UX Research.
               </p>
               <p className="text-sm text-slate-400 mb-6">
-                Let's set you up in 3 quick steps. Your data never leaves your machine.
+                Let's set you up in a few guided steps. Your data never leaves your machine.
               </p>
 
               <div className="grid grid-cols-3 gap-3 mb-6 text-center">

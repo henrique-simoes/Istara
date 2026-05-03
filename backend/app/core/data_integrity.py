@@ -55,8 +55,9 @@ async def run_integrity_check(db: AsyncSession) -> dict:
                 f"{len(orphaned_lance)} LanceDB directories have no matching project in the database"
             )
 
-    # 2. Check keyword indexes
-    keyword_path = Path("./data/keyword_index")
+    # 2. Check keyword indexes. Keep this tied to the configured runtime data
+    # directory so clean-install checks do not inspect a developer checkout.
+    keyword_path = Path(settings.data_dir) / "keyword_index"
     if keyword_path.exists():
         keyword_files = [f.stem for f in keyword_path.glob("*.db")]
 
@@ -91,8 +92,9 @@ async def run_integrity_check(db: AsyncSession) -> dict:
                 f"{len(orphaned_uploads)} upload directories have no matching project"
             )
 
-    # 4. Check persona directories
-    persona_path = Path(__file__).parent.parent / "agents" / "personas"
+    # 4. Check runtime persona overlays. Shipped source personas are application
+    # assets, not user data, and must not be treated as orphaned runtime state.
+    persona_path = Path(settings.runtime_personas_dir)
     if persona_path.exists():
         persona_dirs = [d.name for d in persona_path.iterdir() if d.is_dir()]
         db_agents = await _get_agent_ids(db)

@@ -12,20 +12,37 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.core.auth import create_token, hash_password
+from app.core.client_identity import BoundedWindowRateLimiter, get_client_ip
 from app.core.field_encryption import hash_field
-from app.core.connection_string import create_connection_string, decode_connection_string
+from app.core.connection_string import (
+    create_compute_donation_string,
+    create_connection_string,
+    decode_connection_string,
+)
 from app.core.security_middleware import require_admin_from_request
 from app.models.database import get_db
 from app.models.connection_string import ConnectionString
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+_validation_limiter = BoundedWindowRateLimiter()
+VALIDATION_RATE_LIMIT = 30
+VALIDATION_RATE_WINDOW_S = 60
 
 
 class GenerateRequest(BaseModel):
     server_url: str
+    ws_url: str = ""
     label: str = ""
     expires_hours: int = 168  # 7 days
+    role: str = "researcher"
+
+
+class ComputeDonationGenerateRequest(BaseModel):
+    server_url: str
+    ws_url: str = ""
+    label: str = ""
+    expires_hours: int = 168
 
 
 class ValidateRequest(BaseModel):
@@ -47,7 +64,7 @@ async def generate_connection_string(
     db: AsyncSession = Depends(get_db),
 ):
     """Generate a connection string for inviting team members.
-    Admin only. Bundles server URL, network token, and a pre-minted JWT."""
+    Admin only. User invite strings never carry compute relay credentials."""
     # Admin enforcement
     if settings.team_mode:
         try:
@@ -57,18 +74,25 @@ async def generate_connection_string(
 
     if not data.server_url:
         raise HTTPException(status_code=400, detail="server_url is required")
+    if data.role not in ("admin", "researcher", "viewer"):
+        raise HTTPException(status_code=422, detail="role must be admin, researcher, or viewer")
 
     conn_str = create_connection_string(
         server_url=data.server_url,
+        ws_url=data.ws_url or None,
         label=data.label,
         expires_hours=data.expires_hours,
+        role=data.role,
     )
 
     new_conn = ConnectionString(
         id=str(uuid.uuid4()),
         connection_string=conn_str,
+        token_type="user_invite",
         label=data.label,
         server_url=data.server_url,
+        ws_url=data.ws_url or "",
+        intended_role=data.role,
         expires_at=datetime.now(timezone.utc) + timedelta(hours=data.expires_hours),
     )
     db.add(new_conn)
@@ -78,6 +102,57 @@ async def generate_connection_string(
         "id": new_conn.id,
         "connection_string": conn_str,
         "server_url": data.server_url,
+        "label": data.label,
+        "expires_at": new_conn.expires_at.isoformat(),
+    }
+
+
+@router.post("/connections/compute-donation/generate")
+async def generate_compute_donation_string(
+    data: ComputeDonationGenerateRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Generate a relay/compute donation string. Admin only.
+
+    Donation strings are intentionally not redeemable as user accounts.
+    """
+    if settings.team_mode:
+        try:
+            require_admin_from_request(request)
+        except Exception:
+            raise HTTPException(status_code=403, detail="Admin required to generate compute donation strings")
+
+    if not data.server_url:
+        raise HTTPException(status_code=400, detail="server_url is required")
+
+    conn_str = create_compute_donation_string(
+        server_url=data.server_url,
+        ws_url=data.ws_url or None,
+        label=data.label,
+        expires_hours=data.expires_hours,
+    )
+    payload = decode_connection_string(conn_str) or {}
+
+    new_conn = ConnectionString(
+        id=str(uuid.uuid4()),
+        connection_string=conn_str,
+        token_type="compute_donation",
+        label=data.label,
+        server_url=data.server_url,
+        ws_url=payload.get("ws_url", data.ws_url or ""),
+        intended_role="compute_node",
+        expires_at=datetime.now(timezone.utc) + timedelta(hours=data.expires_hours),
+    )
+    db.add(new_conn)
+    await db.commit()
+
+    return {
+        "id": new_conn.id,
+        "connection_string": conn_str,
+        "token_type": "compute_donation",
+        "server_url": data.server_url,
+        "ws_url": new_conn.ws_url,
         "label": data.label,
         "expires_at": new_conn.expires_at.isoformat(),
     }
@@ -100,25 +175,36 @@ async def revoke_connection_string(conn_id: str, request: Request, db: AsyncSess
     if not conn:
         raise HTTPException(status_code=404, detail="Connection string not found")
 
-    await db.delete(conn)
+    conn.is_active = False
     await db.commit()
     return {"status": "revoked"}
 
 
 @router.post("/connections/validate")
-async def validate_connection_string(data: ValidateRequest, db: AsyncSession = Depends(get_db)):
+async def validate_connection_string(
+    data: ValidateRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
     """Validate a connection string without redeeming it.
     Public endpoint — used by clients to preview connection info."""
+    client_id = get_client_ip(request, settings.trusted_proxy_hosts)
+    if _is_validation_rate_limited(client_id):
+        return {"valid": False, "error": "Too many validation attempts. Try again shortly."}
+
     payload = decode_connection_string(data.connection_string)
     if not payload:
         return {"valid": False, "error": "Invalid or expired connection string"}
 
-    conn = await _get_redeemable_connection_string(db, data.connection_string)
+    conn, reason = await _get_connection_string_status(db, data.connection_string)
     if conn is None:
-        return {"valid": False, "error": "Connection string has been revoked, redeemed, or expired"}
+        return {"valid": False, "error": _connection_error_message(reason)}
+    conn.last_validated_at = datetime.now(timezone.utc)
+    await db.commit()
 
     return {
         "valid": True,
+        "token_type": payload.get("kind", getattr(conn, "token_type", "user_invite")),
         "server_url": payload.get("server_url"),
         "ws_url": payload.get("ws_url"),
         "label": payload.get("label"),
@@ -134,9 +220,12 @@ async def redeem_connection_string(data: RedeemRequest, db: AsyncSession = Depen
     payload = decode_connection_string(data.connection_string)
     if not payload:
         raise HTTPException(status_code=400, detail="Invalid or expired connection string")
-    conn = await _get_redeemable_connection_string(db, data.connection_string)
+    conn, reason = await _get_connection_string_status(db, data.connection_string)
     if conn is None:
-        raise HTTPException(status_code=400, detail="Connection string has been revoked, redeemed, or expired")
+        raise HTTPException(status_code=400, detail=_connection_error_message(reason))
+    token_type = payload.get("kind", conn.token_type or "user_invite")
+    if token_type != "user_invite":
+        raise HTTPException(status_code=400, detail="Compute donation strings cannot create user accounts")
 
     if not data.username.strip():
         raise HTTPException(status_code=400, detail="Username is required")
@@ -148,6 +237,9 @@ async def redeem_connection_string(data: RedeemRequest, db: AsyncSession = Depen
         # In local mode, just return a local-admin token + network token
         token = create_token("local", data.username.strip(), "admin")
         conn.is_redeemed = True
+        conn.redeemed_by_user_id = "local"
+        conn.redeemed_username = data.username.strip()
+        conn.redeemed_at = datetime.now(timezone.utc)
         await db.commit()
         return {
             "token": token,
@@ -182,11 +274,14 @@ async def redeem_connection_string(data: RedeemRequest, db: AsyncSession = Depen
         email=email,
         email_hash=email_hash,
         password_hash=hash_password(data.password),
-        role=UserRole.RESEARCHER,
+        role=UserRole(conn.intended_role or payload.get("role") or UserRole.RESEARCHER.value),
         display_name=data.display_name.strip() or data.username.strip(),
     )
     db.add(user)
     conn.is_redeemed = True
+    conn.redeemed_by_user_id = user.id
+    conn.redeemed_username = user.username
+    conn.redeemed_at = datetime.now(timezone.utc)
     await db.commit()
 
     token = create_token(user.id, user.username, user.role.value)
@@ -264,3 +359,42 @@ async def _get_redeemable_connection_string(
     if expires_at < datetime.now(timezone.utc):
         return None
     return conn
+
+
+def _is_validation_rate_limited(client_id: str) -> bool:
+    return _validation_limiter.is_limited(
+        client_id,
+        limit=VALIDATION_RATE_LIMIT,
+        window_seconds=VALIDATION_RATE_WINDOW_S,
+    )
+
+
+async def _get_connection_string_status(
+    db: AsyncSession,
+    connection_string: str,
+) -> tuple[ConnectionString | None, str]:
+    result = await db.execute(
+        select(ConnectionString).where(ConnectionString.connection_string == connection_string)
+    )
+    conn = result.scalar_one_or_none()
+    if not conn:
+        return None, "missing"
+    if not conn.is_active:
+        return None, "revoked"
+    if conn.is_redeemed:
+        return None, "redeemed"
+    expires_at = conn.expires_at
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    if expires_at < datetime.now(timezone.utc):
+        return None, "expired"
+    return conn, "ok"
+
+
+def _connection_error_message(reason: str) -> str:
+    return {
+        "missing": "Connection string was not issued by this server",
+        "revoked": "Connection string has been revoked",
+        "redeemed": "Connection string has already been redeemed",
+        "expired": "Connection string has expired",
+    }.get(reason, "Connection string is not valid")

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Cpu, Wifi, WifiOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const WS_BASE = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8000";
+import { WS_BASE } from "@/lib/runtimeConfig";
 
 /**
  * Browser-based compute donation toggle.
@@ -20,6 +20,7 @@ export default function DonateComputeToggle() {
   const [enabled, setEnabled] = useState(false);
   const [connected, setConnected] = useState(false);
   const [localLLM, setLocalLLM] = useState<string | null>(null);
+  const [donationError, setDonationError] = useState<string>("");
   const wsRef = useRef<WebSocket | null>(null);
 
   // Detect local LLM on mount
@@ -59,6 +60,7 @@ export default function DonateComputeToggle() {
 
     ws.onopen = async () => {
       setConnected(true);
+      setDonationError("");
       // Register as browser node
       const models = await fetchModels();
       ws.send(JSON.stringify({
@@ -79,10 +81,21 @@ export default function DonateComputeToggle() {
         if (msg.type === "llm_request") {
           // Proxy the LLM request to local server
           const result = await proxyRequest(msg, localLLM);
+          if (result?.error) setDonationError(String(result.error));
+          else setDonationError("");
           ws.send(JSON.stringify({
             type: "llm_response",
             request_id: msg.request_id,
-            result,
+            ...(result?.error ? { error: result.error } : { result }),
+          }));
+        } else if (msg.type === "embed_request") {
+          const result = await proxyEmbedding(msg, localLLM);
+          if (result?.error) setDonationError(String(result.error));
+          else setDonationError("");
+          ws.send(JSON.stringify({
+            type: "embed_response",
+            request_id: msg.request_id,
+            ...(result?.error ? { error: result.error } : { result }),
           }));
         }
       } catch (e) {
@@ -91,7 +104,10 @@ export default function DonateComputeToggle() {
     };
 
     ws.onclose = () => setConnected(false);
-    ws.onerror = () => setConnected(false);
+    ws.onerror = () => {
+      setDonationError("Relay connection failed");
+      setConnected(false);
+    };
 
     // Heartbeat
     const heartbeat = setInterval(async () => {
@@ -138,14 +154,68 @@ export default function DonateComputeToggle() {
 
       const body = provider === "ollama"
         ? { model: msg.model, messages: msg.messages, stream: false }
-        : { model: msg.model, messages: msg.messages, stream: false, temperature: msg.temperature };
+        : {
+            model: msg.model,
+            messages: msg.messages,
+            stream: false,
+            temperature: msg.temperature,
+            max_tokens: msg.max_tokens,
+            tools: msg.tools,
+            response_format: msg.response_format,
+          };
 
       const res = await fetch(`${host}${endpoint}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-      return await res.json();
+      const data = await res.json();
+      if (!res.ok) {
+        return { error: data?.error?.message || data?.error || `HTTP ${res.status}` };
+      }
+      if (provider === "ollama") {
+        return data;
+      }
+      const choice = data?.choices?.[0] || {};
+      const message = choice.message || {};
+      const result: any = {
+        message: {
+          role: "assistant",
+          content: message.content || "",
+        },
+      };
+      if (message.tool_calls) {
+        result.message.tool_calls = message.tool_calls;
+        result.finish_reason = choice.finish_reason || "tool_calls";
+      }
+      return result;
+    } catch (e: any) {
+      return { error: e.message };
+    }
+  }
+
+  async function proxyEmbedding(msg: any, provider: string) {
+    try {
+      const host = provider === "ollama" ? "http://localhost:11434" : "http://localhost:1234";
+      const endpoint = provider === "ollama" ? "/api/embed" : "/v1/embeddings";
+      const body = provider === "ollama"
+        ? { model: msg.model, input: msg.input }
+        : { model: msg.model, input: msg.input };
+      const res = await fetch(`${host}${endpoint}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        return { error: data?.error?.message || data?.error || `HTTP ${res.status}` };
+      }
+      if (provider === "ollama") {
+        if (Array.isArray(msg.input)) return data.embeddings || [];
+        return data.embeddings?.[0] || [];
+      }
+      const embeddings = (data.data || []).map((item: any) => item.embedding || []);
+      return Array.isArray(msg.input) ? embeddings : embeddings[0] || [];
     } catch (e: any) {
       return { error: e.message };
     }
@@ -161,7 +231,9 @@ export default function DonateComputeToggle() {
           Donate Compute
         </p>
         <p className="text-xs text-slate-400">
-          {connected
+          {donationError
+            ? donationError
+            : connected
             ? "Sharing your local LLM with the server"
             : localLLM === "ollama" ? "Ollama detected" : "LM Studio detected"
           }
