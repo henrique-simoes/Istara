@@ -11,8 +11,11 @@ class ConnectionString(Base):
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     connection_string = Column(String, unique=True, index=True, nullable=False)
+    token_type = Column(String, default="user_invite")  # user_invite | compute_donation
     label = Column(String, default="")
     server_url = Column(String, nullable=False)
+    ws_url = Column(String, default="")
+    intended_role = Column(String, default="researcher")
     
     # Status
     is_active = Column(Boolean, default=True)
@@ -36,7 +39,10 @@ class ConnectionString(Base):
             "id": self.id,
             "label": self.label,
             "connection_string": self.connection_string,
+            "token_type": self.token_type or "user_invite",
             "server_url": self.server_url,
+            "ws_url": self.ws_url,
+            "intended_role": self.intended_role,
             "is_active": self.is_active,
             "is_redeemed": self.is_redeemed,
             "redeemed_by_user_id": self.redeemed_by_user_id,

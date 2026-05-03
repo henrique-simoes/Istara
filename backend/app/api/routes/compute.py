@@ -4,17 +4,19 @@ import json
 import logging
 import uuid
 
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Request, WebSocket, WebSocketDisconnect
 
 from app.core.compute_registry import ComputeNode, compute_registry
+from app.core.security_middleware import require_admin_from_request
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
 @router.get("/compute/nodes")
-async def list_compute_nodes():
+async def list_compute_nodes(request: Request):
     """List all compute nodes from the unified registry."""
+    require_admin_from_request(request)
     stats = compute_registry.get_stats()
     return {
         "total_nodes": stats["total_nodes"],
@@ -24,14 +26,16 @@ async def list_compute_nodes():
 
 
 @router.get("/compute/stats")
-async def compute_stats():
+async def compute_stats(request: Request):
     """Unified compute stats — all nodes from the single registry."""
+    require_admin_from_request(request)
     return compute_registry.get_stats()
 
 
 @router.get("/compute/model-warnings")
-async def model_warnings():
+async def model_warnings(request: Request):
     """Check loaded models for capability limitations relevant to Istara."""
+    require_admin_from_request(request)
     return {"warnings": compute_registry.get_warnings()}
 
 

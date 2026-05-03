@@ -5,11 +5,12 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
 from app.config import settings
 from app.core.meta_hyperagent import meta_hyperagent
+from app.core.security_middleware import require_admin_from_request
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -63,21 +64,26 @@ def _persist_env(key: str, value: str) -> None:
 
 
 @router.get("/meta-hyperagent/status")
-async def meta_hyperagent_status():
+async def meta_hyperagent_status(request: Request):
     """Get meta-hyperagent status overview."""
+    require_admin_from_request(request)
+    recent_observations = meta_hyperagent.get_recent_observations(limit=1)
     return {
         "enabled": settings.meta_hyperagent_enabled,
         "experimental": True,
         "pending_proposals": len(meta_hyperagent.get_pending_proposals()),
         "active_variants": len(meta_hyperagent.get_active_variants()),
+        "recent_observations": len(meta_hyperagent.get_recent_observations(limit=100)),
+        "last_observed_at": recent_observations[-1].get("timestamp") if recent_observations else None,
         "observation_interval_hours": settings.meta_hyperagent_observation_interval_hours,
         "variant_observation_hours": settings.meta_hyperagent_variant_observation_hours,
     }
 
 
 @router.get("/meta-hyperagent/proposals")
-async def list_proposals(limit: int = 50):
+async def list_proposals(request: Request, limit: int = 50):
     """List all meta-hyperagent proposals."""
+    require_admin_from_request(request)
     return {
         "proposals": meta_hyperagent.get_all_proposals(limit=limit),
         "pending_count": len(meta_hyperagent.get_pending_proposals()),
@@ -85,8 +91,9 @@ async def list_proposals(limit: int = 50):
 
 
 @router.post("/meta-hyperagent/proposals/{proposal_id}/approve")
-async def approve_proposal(proposal_id: str):
+async def approve_proposal(proposal_id: str, request: Request):
     """Approve a pending proposal and apply it as an active variant."""
+    require_admin_from_request(request)
     result = await meta_hyperagent.apply_proposal(proposal_id)
     if "error" in result:
         raise HTTPException(status_code=400, detail=result["error"])
@@ -94,8 +101,9 @@ async def approve_proposal(proposal_id: str):
 
 
 @router.post("/meta-hyperagent/proposals/{proposal_id}/reject")
-async def reject_proposal(proposal_id: str, body: RejectRequest | None = None):
+async def reject_proposal(proposal_id: str, request: Request, body: RejectRequest | None = None):
     """Reject a pending proposal with optional reason."""
+    require_admin_from_request(request)
     reason = body.reason if body else ""
     result = meta_hyperagent.reject_proposal(proposal_id, reason=reason)
     if result is None:
@@ -104,8 +112,9 @@ async def reject_proposal(proposal_id: str, body: RejectRequest | None = None):
 
 
 @router.get("/meta-hyperagent/variants")
-async def list_variants(limit: int = 50):
+async def list_variants(request: Request, limit: int = 50):
     """List all meta-hyperagent variants."""
+    require_admin_from_request(request)
     return {
         "variants": meta_hyperagent.get_all_variants(limit=limit),
         "active_count": len(meta_hyperagent.get_active_variants()),
@@ -113,8 +122,9 @@ async def list_variants(limit: int = 50):
 
 
 @router.post("/meta-hyperagent/variants/{variant_id}/revert")
-async def revert_variant(variant_id: str):
+async def revert_variant(variant_id: str, request: Request):
     """Revert an active variant to its original value."""
+    require_admin_from_request(request)
     result = await meta_hyperagent.revert_variant(variant_id)
     if "error" in result:
         raise HTTPException(status_code=400, detail=result["error"])
@@ -122,8 +132,9 @@ async def revert_variant(variant_id: str):
 
 
 @router.post("/meta-hyperagent/variants/{variant_id}/confirm")
-async def confirm_variant(variant_id: str):
+async def confirm_variant(variant_id: str, request: Request):
     """Confirm an active variant — persist the override permanently."""
+    require_admin_from_request(request)
     result = await meta_hyperagent.confirm_variant(variant_id)
     if "error" in result:
         raise HTTPException(status_code=400, detail=result["error"])
@@ -131,16 +142,21 @@ async def confirm_variant(variant_id: str):
 
 
 @router.get("/meta-hyperagent/observations")
-async def get_observations(limit: int = 10):
+async def get_observations(request: Request, limit: int = 10):
     """Get recent observation snapshots."""
+    require_admin_from_request(request)
+    observations = meta_hyperagent.get_recent_observations(limit=limit)
     return {
-        "observations": meta_hyperagent.get_recent_observations(limit=limit),
+        "observations": observations,
+        "count": len(observations),
+        "last_observed_at": observations[-1].get("timestamp") if observations else None,
     }
 
 
 @router.post("/meta-hyperagent/toggle")
-async def toggle_meta_hyperagent(body: ToggleRequest):
+async def toggle_meta_hyperagent(body: ToggleRequest, request: Request):
     """Enable or disable the meta-hyperagent (persists to .env)."""
+    require_admin_from_request(request)
     settings.meta_hyperagent_enabled = body.enabled
     _persist_env("META_HYPERAGENT_ENABLED", str(body.enabled).lower())
 

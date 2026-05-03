@@ -50,6 +50,7 @@ const ROLE_LABELS: Record<AgentRole, string> = {
   ui_audit: "UI Audit",
   ux_evaluation: "UX Evaluation",
   user_simulation: "User Simulation",
+  design_lead: "Design Lead",
   custom: "Custom",
 };
 
@@ -59,6 +60,7 @@ const ROLE_COLORS: Record<AgentRole, string> = {
   ui_audit: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400",
   ux_evaluation: "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400",
   user_simulation: "bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-400",
+  design_lead: "bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400",
   custom: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
 };
 

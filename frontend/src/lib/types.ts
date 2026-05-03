@@ -2,6 +2,7 @@
 
 export type ProjectPhase = "discover" | "define" | "develop" | "deliver";
 export type TaskStatus = "backlog" | "in_progress" | "in_review" | "done";
+// Backend update request model coverage marker: UpdateConfirmation.
 
 export interface Project {
   id: string;
@@ -14,6 +15,7 @@ export interface Project {
   is_paused: boolean;
   owner_id: string;
   watch_folder_path: string | null;
+  current_user_project_role?: "viewer" | "researcher" | "project_admin" | null;
   created_at: string;
   updated_at: string;
 }
@@ -201,7 +203,7 @@ export interface ModelRecommendation {
   reason: string;
 }
 
-export type AgentRole = "task_executor" | "devops_audit" | "ui_audit" | "ux_evaluation" | "user_simulation" | "custom";
+export type AgentRole = "task_executor" | "devops_audit" | "ui_audit" | "ux_evaluation" | "user_simulation" | "design_lead" | "custom";
 export type AgentState = "idle" | "working" | "paused" | "error" | "stopped";
 export type HeartbeatStatus = "healthy" | "degraded" | "error" | "stopped";
 export type AgentCapability = "web_search" | "file_upload" | "skill_execution" | "task_creation" | "findings_write" | "chat" | "rag_retrieval" | "a2a_messaging";
@@ -549,7 +551,10 @@ export interface MetaHyperagentStatus {
   experimental: boolean;
   pending_proposals: number;
   active_variants: number;
+  recent_observations?: number;
+  last_observed_at?: string | null;
   observation_interval_hours: number;
+  variant_observation_hours?: number;
 }
 
 // --- Integrations: Messaging Channels ---
@@ -686,6 +691,7 @@ export interface MCPAccessPolicy {
     max_findings_per_request: number;
     max_skill_executions_per_hour: number;
   };
+  warnings?: string[];
 }
 
 export interface MCPAuditEntry {
@@ -729,6 +735,94 @@ export interface AutoresearchStatus {
   running: boolean;
   enabled: boolean;
   current_experiment: AutoresearchExperiment | null;
+  operational_metrics?: AutoresearchOperationalMetrics;
+}
+
+export interface AutoresearchOperationalMetrics {
+  tasks: {
+    total: number;
+    done: number;
+    in_review: number;
+    approved: number;
+    needs_revision: number;
+    review_events: number;
+    approval_events: number;
+    revision_events: number;
+    review_cycles: number;
+    completion_rate: number;
+    approval_rate: number;
+    avg_human_feedback: number | null;
+    avg_consensus: number | null;
+    validation_runs: number;
+    validation_success_rate: number;
+    validation_methods: Array<{
+      method: string;
+      total_runs: number;
+      success_count: number;
+      fail_count: number;
+      avg_consensus_score: number | null;
+      success_rate: number;
+    }>;
+  };
+  agents: {
+    total: number;
+    active: number;
+    working: number;
+    paused: number;
+    unhealthy_heartbeats: number;
+    executions: number;
+    errors: number;
+    error_rate: number;
+  };
+  research_pipeline: {
+    documents: number;
+    ready_documents: number;
+    errored_documents: number;
+    indexed_text_documents: number;
+    findings: number;
+    avg_insight_confidence: number | null;
+    code_applications: number;
+    pending_code_reviews: number;
+    approved_code_reviews: number;
+  };
+  telemetry: {
+    enabled: boolean;
+    total_spans: number;
+    spans_last_24h: number;
+    errors_last_24h: number;
+    error_rate_24h: number;
+    avg_quality_24h: number | null;
+    model_entries: number;
+    production_model_entries: number;
+    autoresearch_model_entries: number;
+    avg_model_quality: number | null;
+    best_model_quality: number | null;
+  };
+  loops: {
+    total_schedules: number;
+    active_schedules: number;
+    running_schedules: number;
+    schedule_executions: number;
+  };
+  research_collection: {
+    deployments: number;
+    active_deployments: number;
+    deployment_responses: number;
+    deployment_targets: number;
+    deployment_completion_rate: number;
+    survey_integrations: number;
+    active_survey_integrations: number;
+    survey_links: number;
+    survey_responses: number;
+  };
+  compute_pool: {
+    total_nodes: number;
+    alive_nodes: number;
+    healthy_nodes: number;
+    available_models: string[];
+    available_model_count: number;
+    active_requests: number;
+  };
 }
 
 export interface ModelSkillLeaderboard {
@@ -779,6 +873,10 @@ export interface ComplianceProfile {
     violation_count: number;
     finding_ids: string[];
   }>;
+  evaluated?: boolean;
+  evidence_count?: number;
+  total_findings?: number;
+  law_tag_count?: number;
 }
 
 // --- Featured MCP Servers ---

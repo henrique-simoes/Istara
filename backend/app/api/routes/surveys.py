@@ -6,12 +6,14 @@ import json
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.permissions import get_subject, is_global_admin, require_project_access
 from app.core.field_encryption import decrypt_field, encrypt_field
+from app.core.security_middleware import require_admin_from_request
 from app.models.database import get_db
 from app.models.survey_integration import SurveyIntegration, SurveyLink
 
@@ -97,10 +99,12 @@ async def _get_link(db: AsyncSession, link_id: str) -> SurveyLink:
 
 @router.get("/surveys/integrations")
 async def list_integrations(
+    request: Request,
     platform: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     """List all configured survey platform integrations."""
+    require_admin_from_request(request)
     query = select(SurveyIntegration).order_by(SurveyIntegration.created_at.desc())
     if platform:
         query = query.where(SurveyIntegration.platform == platform)
@@ -115,9 +119,11 @@ async def list_integrations(
 @router.post("/surveys/integrations", status_code=201)
 async def create_integration(
     data: IntegrationCreate,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
     """Create a new survey platform integration."""
+    require_admin_from_request(request)
     if data.platform not in SUPPORTED_PLATFORMS:
         raise HTTPException(
             status_code=400,
@@ -141,9 +147,11 @@ async def create_integration(
 @router.delete("/surveys/integrations/{integration_id}", status_code=204)
 async def delete_integration(
     integration_id: str,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
     """Remove a survey platform integration and its linked surveys."""
+    require_admin_from_request(request)
     integration = await _get_integration(db, integration_id)
     await db.delete(integration)
     await db.commit()
@@ -157,9 +165,11 @@ async def delete_integration(
 @router.get("/surveys/integrations/{integration_id}/surveys")
 async def list_platform_surveys(
     integration_id: str,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
     """List surveys available on the connected platform."""
+    require_admin_from_request(request)
     integration = await _get_integration(db, integration_id)
     adapter = _get_adapter(integration)
 
@@ -182,9 +192,11 @@ async def list_platform_surveys(
 async def create_platform_survey(
     integration_id: str,
     data: SurveyCreateRequest,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
     """Create a new survey on the connected platform from Istara data."""
+    require_admin_from_request(request)
     integration = await _get_integration(db, integration_id)
     adapter = _get_adapter(integration)
 
@@ -210,9 +222,11 @@ async def create_platform_survey(
 @router.post("/surveys/links", status_code=201)
 async def create_link(
     data: LinkCreate,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
     """Link an external survey to a Istara project for response ingestion."""
+    await require_project_access(db, request, data.project_id, min_role="researcher")
     # Verify integration exists
     await _get_integration(db, data.integration_id)
 
@@ -231,11 +245,18 @@ async def create_link(
 
 @router.get("/surveys/links")
 async def list_links(
+    request: Request,
     project_id: str | None = None,
     integration_id: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     """List survey links, optionally filtered by project or integration."""
+    subject = get_subject(request)
+    if project_id:
+        await require_project_access(db, request, project_id, min_role="viewer")
+    elif not is_global_admin(subject):
+        raise HTTPException(status_code=400, detail="project_id is required")
+
     query = select(SurveyLink).order_by(SurveyLink.created_at.desc())
     if project_id:
         query = query.where(SurveyLink.project_id == project_id)
@@ -254,10 +275,12 @@ async def list_links(
 @router.post("/surveys/links/{link_id}/sync")
 async def sync_responses(
     link_id: str,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
     """Manually pull responses from the platform and ingest as Nuggets."""
     link = await _get_link(db, link_id)
+    await require_project_access(db, request, link.project_id, min_role="researcher")
 
     # Resolve integration for adapter
     integration = await _get_integration(db, link.integration_id)
@@ -297,10 +320,12 @@ async def sync_responses(
 @router.get("/surveys/links/{link_id}/responses")
 async def get_link_responses(
     link_id: str,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
     """Get responses that have been synced for this link (read from platform)."""
     link = await _get_link(db, link_id)
+    await require_project_access(db, request, link.project_id, min_role="viewer")
     integration = await _get_integration(db, link.integration_id)
     adapter = _get_adapter(integration)
 

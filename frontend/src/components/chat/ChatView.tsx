@@ -8,6 +8,7 @@ import { useChatStore } from "@/stores/chatStore";
 import { useProjectStore } from "@/stores/projectStore";
 import { useSessionStore } from "@/stores/sessionStore";
 import { useAgentStore } from "@/stores/agentStore";
+import { useAuthStore } from "@/stores/authStore";
 import { useVoiceRecorder } from "@/hooks/useVoiceRecorder";
 import { cn, formatDate } from "@/lib/utils";
 import { files as filesApi, documents as documentsApi, steering as steeringApi } from "@/lib/api";
@@ -364,9 +365,10 @@ function SteeringQueueIndicator({ agentId }: { agentId: string | null }) {
 
 export default function ChatView() {
   const { messages, streaming, streamingContent, error, sendMessage, fetchHistory, cancelStreaming } = useChatStore();
-  const { activeProjectId } = useProjectStore();
+  const { activeProjectId, canWriteActiveProject } = useProjectStore();
   const { activeSessionId, ensureDefault, updateSession, pendingPrefill, setPendingPrefill, fetchSessions } = useSessionStore();
   const { agents, fetchAgents } = useAgentStore();
+  const { user } = useAuthStore();
   const activeSession = useSessionStore((s) => s.activeSession());
   const { isRecording, isTranscribing, startRecording, stopRecording, cancelRecording, error: voiceError } = useVoiceRecorder();
   const [input, setInput] = useState("");
@@ -380,6 +382,7 @@ export default function ChatView() {
   const [pendingDocRefs, setPendingDocRefs] = useState<{ id: string; title: string }[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const canWrite = user?.role === "admin" || canWriteActiveProject();
 
   // Initialize sessions: fetch list first (restores localStorage session), then ensure a default exists
   useEffect(() => {
@@ -402,18 +405,18 @@ export default function ChatView() {
 
   // Auto-send pending prefill message (from "Send to Agent" flow)
   useEffect(() => {
-    if (pendingPrefill && activeProjectId && activeSessionId && !streaming && !loadingHistory) {
+    if (pendingPrefill && activeProjectId && activeSessionId && canWrite && !streaming && !loadingHistory) {
       const msg = pendingPrefill;
       setPendingPrefill(null);
       sendMessage(activeProjectId, msg, activeSessionId);
     }
-  }, [pendingPrefill, activeProjectId, activeSessionId, streaming, loadingHistory, setPendingPrefill, sendMessage]);
+  }, [pendingPrefill, activeProjectId, activeSessionId, canWrite, streaming, loadingHistory, setPendingPrefill, sendMessage]);
 
   const handleSend = async () => {
     const text = input.trim();
     const files = [...pendingFiles];
     const docRefs = [...pendingDocRefs];
-    if ((!text && files.length === 0 && docRefs.length === 0) || !activeProjectId || streaming) return;
+    if (!canWrite || (!text && files.length === 0 && docRefs.length === 0) || !activeProjectId || streaming) return;
 
     setInput("");
     setPendingFiles([]);
@@ -450,6 +453,7 @@ export default function ChatView() {
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!canWrite) return;
     const files = e.target.files;
     if (!files) return;
     setPendingFiles((prev) => [...prev, ...Array.from(files)]);
@@ -541,7 +545,7 @@ export default function ChatView() {
   const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault();
     setDragOver(false);
-    if (!activeProjectId) return;
+    if (!activeProjectId || !canWrite) return;
     const file = e.dataTransfer.files[0];
     if (!file) return;
     try {
@@ -562,7 +566,7 @@ export default function ChatView() {
       {/* Main chat area */}
       <div
         className={cn("flex-1 flex flex-col min-h-0 overflow-hidden", dragOver && "ring-2 ring-istara-500 ring-inset bg-istara-50/50 dark:bg-istara-900/10")}
-        onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+        onDragOver={(e) => { e.preventDefault(); if (canWrite) setDragOver(true); }}
         onDragLeave={() => setDragOver(false)}
         onDrop={handleDrop}
       >
@@ -788,19 +792,22 @@ export default function ChatView() {
                 accept=".pdf,.docx,.txt,.csv,.md,.mp3,.wav,.mp4,.mov,.jpg,.jpeg,.png"
                 multiple
                 onChange={handleFileSelect}
+                disabled={!canWrite}
               />
               <button
                 onClick={() => fileInputRef.current?.click()}
+                disabled={!canWrite}
                 className="p-2.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                title="Upload file"
+                title={canWrite ? "Upload file" : "Viewers cannot upload files"}
                 aria-label="Upload file"
               >
                 <Paperclip size={20} />
               </button>
               <button
                 onClick={openDocPicker}
+                disabled={!canWrite}
                 className="p-2.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                title="Attach project document"
+                title={canWrite ? "Attach project document" : "Viewers cannot attach documents"}
                 aria-label="Attach project document"
               >
                 <FolderOpen size={20} />
@@ -816,12 +823,12 @@ export default function ChatView() {
                       handleSend();
                     }
                   }}
-                  disabled={isRecording || isTranscribing}
-                  placeholder="Ask about your research, or drop files here..."
+                  disabled={!canWrite || isRecording || isTranscribing}
+                  placeholder={canWrite ? "Ask about your research, or drop files here..." : "Viewer access is read-only. Chat is disabled."}
                   rows={1}
                   className={cn(
                     "w-full resize-none rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-istara-500 focus:border-transparent",
-                    (isRecording || isTranscribing) && "italic text-slate-500 bg-slate-50 dark:bg-slate-900"
+                    (!canWrite || isRecording || isTranscribing) && "italic text-slate-500 bg-slate-50 dark:bg-slate-900"
                   )}
                   style={{ minHeight: "44px", maxHeight: "120px" }}
                 />
@@ -841,7 +848,7 @@ export default function ChatView() {
               {/* Voice recording button */}
               <button
                 onClick={handleVoiceToggle}
-                disabled={streaming || isTranscribing}
+                disabled={!canWrite || streaming || isTranscribing}
                 aria-label={isRecording ? "Stop recording" : "Start recording"}
                 className={cn(
                   "p-2.5 rounded-lg transition-colors",
@@ -853,14 +860,14 @@ export default function ChatView() {
                     ? "bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600"
                     : "bg-slate-100 dark:bg-slate-800 text-slate-300 cursor-not-allowed"
                 )}
-                title={isRecording ? "Stop and Transcribe" : "Voice input"}
+                title={!canWrite ? "Viewers cannot use voice input" : isRecording ? "Stop and Transcribe" : "Voice input"}
               >
                 {isTranscribing ? <Loader2 size={20} className="animate-spin" /> : <Mic size={20} />}
               </button>
 
               <button
                 onClick={handleSend}
-                disabled={!input.trim() && pendingFiles.length === 0 && pendingDocRefs.length === 0 || streaming}
+                disabled={!canWrite || (!input.trim() && pendingFiles.length === 0 && pendingDocRefs.length === 0) || streaming}
               aria-label="Send message"
               className={cn(
                 "p-2.5 rounded-lg transition-colors",

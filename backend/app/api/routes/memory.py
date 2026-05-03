@@ -5,10 +5,13 @@ from __future__ import annotations
 import logging
 from typing import Optional
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query, Request
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.rag import VectorStore, retrieve_context
 from app.core.keyword_index import KeywordIndex
+from app.core.permissions import require_project_access
+from app.core.rag import VectorStore, retrieve_context
+from app.models.database import get_db
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -17,10 +20,14 @@ router = APIRouter()
 @router.get("/memory/{project_id}")
 async def list_memory(
     project_id: str,
+    request: Request,
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
+    db: AsyncSession = Depends(get_db),
 ):
     """List all chunks in a project's knowledge base, paginated."""
+    await require_project_access(db, request, project_id, min_role="viewer")
+
     store = VectorStore(project_id)
     try:
         if not store._ensure_table():
@@ -67,12 +74,16 @@ async def list_memory(
 @router.get("/memory/{project_id}/search")
 async def search_memory(
     project_id: str,
+    request: Request,
     query: str = "",
     top_k: int = Query(20, ge=1, le=100),
     source: Optional[str] = None,
     file_type: Optional[str] = None,
+    db: AsyncSession = Depends(get_db),
 ):
     """Hybrid search across project memory."""
+    await require_project_access(db, request, project_id, min_role="viewer")
+
     if not query.strip():
         return {"results": [], "query": query}
 
@@ -94,8 +105,10 @@ async def search_memory(
 
 
 @router.get("/memory/{project_id}/stats")
-async def memory_stats(project_id: str):
+async def memory_stats(project_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     """Get memory statistics for a project."""
+    await require_project_access(db, request, project_id, min_role="viewer")
+
     store = VectorStore(project_id)
     keyword_idx = KeywordIndex(project_id)
 
@@ -140,16 +153,30 @@ async def memory_stats(project_id: str):
 
 
 @router.get("/memory/{project_id}/agent/{agent_id}/notes")
-async def agent_notes(project_id: str, agent_id: str):
+async def agent_notes(
+    project_id: str,
+    agent_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
     """Get an agent's private notes for a project."""
+    await require_project_access(db, request, project_id, min_role="viewer")
+
     from app.core.agent_memory import agent_memory
     notes = await agent_memory.get_all_notes(project_id, agent_id)
     return {"agent_id": agent_id, "project_id": project_id, "notes": notes}
 
 
 @router.delete("/memory/{project_id}/source/{source_name:path}")
-async def delete_source(project_id: str, source_name: str):
+async def delete_source(
+    project_id: str,
+    source_name: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
     """Delete all chunks from a specific source."""
+    await require_project_access(db, request, project_id, min_role="researcher")
+
     store = VectorStore(project_id)
     keyword_idx = KeywordIndex(project_id)
 

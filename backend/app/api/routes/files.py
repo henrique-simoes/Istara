@@ -11,11 +11,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.core.file_processor import get_supported_extensions, process_file
+from app.core.permissions import require_project_access
 from app.core.rag import VectorStore, ingest_chunks
 from app.models.database import get_db, async_session
 from app.models.document import Document, DocumentSource, DocumentStatus
 from app.models.project import Project
-from sqlalchemy import select
 from sqlalchemy import select
 
 # Media and image extensions that can be uploaded/served but not text-processed
@@ -55,11 +55,14 @@ async def _resolve_project_folder(db, project_id: str) -> Path:
 @router.post("/files/upload/{project_id}")
 async def upload_file(
     project_id: str,
+    request: Request,
     file: UploadFile,
     background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
 ):
     """Upload a file and process it into the project's knowledge base."""
+    await require_project_access(db, request, project_id, min_role="researcher")
+
     # Validate extension
     suffix = Path(file.filename or "").suffix.lower()
     all_supported = set(get_supported_extensions()) | MEDIA_EXTENSIONS
@@ -163,6 +166,7 @@ async def upload_file(
 
     # Ingest chunks into vector store
     chunks_indexed = await ingest_chunks(project_id, result.chunks)
+    content_text = "\n\n".join(c.text for c in result.chunks)
 
     # Create a Document record so the file appears in Documents view immediately
     doc = Document(
@@ -175,6 +179,8 @@ async def upload_file(
         file_size=len(content),
         source=DocumentSource.USER_UPLOAD,
         status=DocumentStatus.READY,
+        content_text=content_text,
+        content_preview=content_text[:2000],
     )
     db.add(doc)
     await db.commit()
@@ -234,8 +240,10 @@ async def _process_audio_background(project_id: str, doc_id: str, file_path: Pat
 
 
 @router.get("/files/{project_id}")
-async def list_files(project_id: str, db: AsyncSession = Depends(get_db)):
+async def list_files(project_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     """List all uploaded files for a project."""
+    await require_project_access(db, request, project_id, min_role="viewer")
+
     project_upload_dir = await _resolve_project_folder(db, project_id)
     if not project_upload_dir.exists():
         return {"files": []}
@@ -259,8 +267,10 @@ async def list_files(project_id: str, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/files/{project_id}/reprocess")
-async def reprocess_files(project_id: str, db: AsyncSession = Depends(get_db)):
+async def reprocess_files(project_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     """Reprocess all files for a project (re-embed and re-index)."""
+    await require_project_access(db, request, project_id, min_role="researcher")
+
     project_upload_dir = await _resolve_project_folder(db, project_id)
     if not project_upload_dir.exists():
         return {"status": "no files", "processed": 0}
@@ -296,8 +306,10 @@ async def reprocess_files(project_id: str, db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/files/{project_id}/stats")
-async def file_stats(project_id: str):
+async def file_stats(project_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     """Get vector store stats for a project."""
+    await require_project_access(db, request, project_id, min_role="viewer")
+
     store = VectorStore(project_id)
     count = await store.count()
     return {
@@ -307,8 +319,15 @@ async def file_stats(project_id: str):
 
 
 @router.get("/files/{project_id}/content/{filename}")
-async def get_file_content(project_id: str, filename: str):
+async def get_file_content(
+    project_id: str,
+    filename: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
     """Get file content for preview. Returns text content for supported formats."""
+    await require_project_access(db, request, project_id, min_role="viewer")
+
     project_upload_dir = Path(settings.upload_dir) / project_id
     file_path = project_upload_dir / filename
 
@@ -368,6 +387,8 @@ async def scan_project_files(project_id: str, request: Request, db: AsyncSession
     Used by the seeder script and for manual re-scans that also create
     research tasks based on file classification.
     """
+    await require_project_access(db, request, project_id, min_role="researcher")
+
     scan_dir = await _resolve_project_folder(db, project_id)
     if not scan_dir.exists():
         return {"status": "no files", "scanned": 0}
@@ -385,8 +406,15 @@ async def scan_project_files(project_id: str, request: Request, db: AsyncSession
 
 
 @router.get("/files/{project_id}/serve/{filename}")
-async def serve_file(project_id: str, filename: str):
+async def serve_file(
+    project_id: str,
+    filename: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
     """Serve a file directly (for media playback, image display, PDF viewer)."""
+    await require_project_access(db, request, project_id, min_role="viewer")
+
     project_upload_dir = Path(settings.upload_dir) / project_id
     file_path = project_upload_dir / filename
 

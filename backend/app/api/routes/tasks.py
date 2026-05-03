@@ -4,7 +4,7 @@ import json
 import uuid
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, model_validator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,6 +13,7 @@ from app.models.database import get_db
 from app.models.task import Task, TaskStatus
 from app.models.task_review import TaskReviewEvent
 from app.core.agent import agent as agent_orchestrator
+from app.core.permissions import get_subject, is_global_admin, require_project_access
 
 LOCK_EXPIRY_MINUTES = 30
 
@@ -174,6 +175,7 @@ async def _approve_task(
 
 @router.get("/tasks", response_model=list[TaskResponse])
 async def list_tasks(
+    request: Request,
     project_id: str | None = None,
     status: TaskStatus | None = None,
     db: AsyncSession = Depends(get_db),
@@ -182,7 +184,12 @@ async def list_tasks(
     query = select(Task).order_by(Task.position, Task.created_at)
 
     if project_id:
+        await require_project_access(db, request, project_id, min_role="viewer")
         query = query.where(Task.project_id == project_id)
+    else:
+        subject = get_subject(request)
+        if not is_global_admin(subject):
+            raise HTTPException(status_code=422, detail="project_id is required")
     if status:
         query = query.where(Task.status == status)
 
@@ -198,9 +205,11 @@ async def list_tasks(
 
 
 @router.post("/tasks", response_model=TaskResponse, status_code=201)
-async def create_task(data: TaskCreate, db: AsyncSession = Depends(get_db)):
+async def create_task(data: TaskCreate, request: Request, db: AsyncSession = Depends(get_db)):
     """Create a new task with intelligent agent routing."""
     import logging as _log
+
+    await require_project_access(db, request, data.project_id, min_role="researcher")
 
     # Get max position for ordering
     result = await db.execute(
@@ -254,12 +263,13 @@ async def create_task(data: TaskCreate, db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/tasks/{task_id}", response_model=TaskResponse)
-async def get_task(task_id: str, db: AsyncSession = Depends(get_db)):
+async def get_task(task_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     """Get a task by ID."""
     result = await db.execute(select(Task).where(Task.id == task_id))
     task = result.scalar_one_or_none()
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
+    await require_project_access(db, request, task.project_id, min_role="viewer")
 
     from app.core.telemetry import telemetry_recorder
 
@@ -272,6 +282,7 @@ async def get_task(task_id: str, db: AsyncSession = Depends(get_db)):
 async def update_task(
     task_id: str,
     data: TaskUpdate,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
     """Update a task (including status changes for Kanban moves)."""
@@ -279,6 +290,7 @@ async def update_task(
     task = result.scalar_one_or_none()
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
+    await require_project_access(db, request, task.project_id, min_role="researcher")
 
     update_data = data.model_dump(exclude_unset=True)
     if update_data.get("status") == TaskStatus.DONE:
@@ -307,6 +319,7 @@ async def update_task(
 async def move_task(
     task_id: str,
     status: TaskStatus,
+    request: Request,
     position: int | None = None,
     db: AsyncSession = Depends(get_db),
 ):
@@ -315,6 +328,7 @@ async def move_task(
     task = result.scalar_one_or_none()
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
+    await require_project_access(db, request, task.project_id, min_role="researcher")
 
     if status == TaskStatus.DONE:
         if task.status != TaskStatus.IN_REVIEW:
@@ -346,7 +360,7 @@ async def move_task(
 
 
 @router.post("/tasks/{task_id}/verify")
-async def verify_task(task_id: str, db: AsyncSession = Depends(get_db)):
+async def verify_task(task_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     """Verify a task's output quality before marking as done.
 
     On successful verification (IN_REVIEW → DONE):
@@ -356,6 +370,7 @@ async def verify_task(task_id: str, db: AsyncSession = Depends(get_db)):
     task = (await db.execute(select(Task).where(Task.id == task_id))).scalar_one_or_none()
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
+    await require_project_access(db, request, task.project_id, min_role="researcher")
 
     issues = []
     if not task.agent_notes or len(task.agent_notes) < 20:
@@ -387,11 +402,13 @@ async def verify_task(task_id: str, db: AsyncSession = Depends(get_db)):
 @router.post("/tasks/{task_id}/review/approve")
 async def approve_task_review(
     task_id: str,
+    request: Request,
     data: ReviewApproveRequest | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     """Human approval: move an IN_REVIEW task to DONE and record reward signal."""
     task = await _get_task_or_404(db, task_id)
+    await require_project_access(db, request, task.project_id, min_role="researcher")
     if task.status != TaskStatus.IN_REVIEW:
         raise HTTPException(status_code=409, detail="Only tasks in review can be approved as done.")
     body = data or ReviewApproveRequest()
@@ -405,10 +422,12 @@ async def approve_task_review(
 async def request_task_revision(
     task_id: str,
     data: ReviewRevisionRequest,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
     """Human rejection/reopen: send reviewed work back to backlog or in progress."""
     task = await _get_task_or_404(db, task_id)
+    await require_project_access(db, request, task.project_id, min_role="researcher")
     if task.status not in (TaskStatus.IN_REVIEW, TaskStatus.DONE):
         raise HTTPException(status_code=409, detail="Only tasks in review or done can be flagged for revision.")
     if data.next_status not in (TaskStatus.BACKLOG, TaskStatus.IN_PROGRESS):
@@ -450,9 +469,10 @@ async def request_task_revision(
 
 
 @router.get("/tasks/{task_id}/review-events")
-async def get_task_review_events(task_id: str, db: AsyncSession = Depends(get_db)):
+async def get_task_review_events(task_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     """List review/reward events for a task."""
-    await _get_task_or_404(db, task_id)
+    task = await _get_task_or_404(db, task_id)
+    await require_project_access(db, request, task.project_id, min_role="viewer")
     result = await db.execute(
         select(TaskReviewEvent)
         .where(TaskReviewEvent.task_id == task_id)
@@ -462,18 +482,20 @@ async def get_task_review_events(task_id: str, db: AsyncSession = Depends(get_db
 
 
 @router.get("/tasks/{task_id}/atomic-path")
-async def get_task_atomic_path(task_id: str, db: AsyncSession = Depends(get_db)):
+async def get_task_atomic_path(task_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     """Return the task's compact atomic research path."""
     task = await _get_task_or_404(db, task_id)
+    await require_project_access(db, request, task.project_id, min_role="viewer")
     from app.core.task_review import build_atomic_snapshot
 
     return await build_atomic_snapshot(db, task)
 
 
 @router.get("/tasks/{task_id}/quality-summary")
-async def get_task_quality_summary(task_id: str, db: AsyncSession = Depends(get_db)):
+async def get_task_quality_summary(task_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     """Return concise task quality and review metrics for cards/modals."""
     task = await _get_task_or_404(db, task_id)
+    await require_project_access(db, request, task.project_id, min_role="viewer")
     validation = {}
     if task.validation_result:
         try:
@@ -505,9 +527,10 @@ async def get_task_quality_summary(task_id: str, db: AsyncSession = Depends(get_
 
 
 @router.post("/tasks/{task_id}/reports")
-async def create_report_from_task(task_id: str, db: AsyncSession = Depends(get_db)):
+async def create_report_from_task(task_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     """Create a lightweight report record from a human-approved Done task."""
     task = await _get_task_or_404(db, task_id)
+    await require_project_access(db, request, task.project_id, min_role="researcher")
     if task.status != TaskStatus.DONE or task.review_state != "approved":
         raise HTTPException(status_code=409, detail="Only human-approved Done tasks can be sent to Reports.")
 
@@ -547,6 +570,7 @@ async def create_report_from_task(task_id: str, db: AsyncSession = Depends(get_d
 async def attach_document(
     task_id: str,
     document_id: str,
+    request: Request,
     direction: str = "input",
     db: AsyncSession = Depends(get_db),
 ):
@@ -555,6 +579,7 @@ async def attach_document(
     task = result.scalar_one_or_none()
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
+    await require_project_access(db, request, task.project_id, min_role="researcher")
 
     if direction == "output":
         ids = task.get_output_document_ids()
@@ -581,6 +606,7 @@ async def attach_document(
 async def detach_document(
     task_id: str,
     document_id: str,
+    request: Request,
     direction: str = "input",
     db: AsyncSession = Depends(get_db),
 ):
@@ -589,6 +615,7 @@ async def detach_document(
     task = result.scalar_one_or_none()
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
+    await require_project_access(db, request, task.project_id, min_role="researcher")
 
     if direction == "output":
         ids = task.get_output_document_ids()
@@ -613,6 +640,7 @@ async def detach_document(
 @router.post("/tasks/{task_id}/lock")
 async def lock_task(
     task_id: str,
+    request: Request,
     user_id: str = "local",
     db: AsyncSession = Depends(get_db),
 ):
@@ -621,6 +649,7 @@ async def lock_task(
     task = result.scalar_one_or_none()
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
+    await require_project_access(db, request, task.project_id, min_role="researcher")
 
     now = datetime.now(timezone.utc)
 
@@ -651,6 +680,7 @@ async def lock_task(
 @router.post("/tasks/{task_id}/unlock")
 async def unlock_task(
     task_id: str,
+    request: Request,
     user_id: str = "local",
     force: bool = False,
     db: AsyncSession = Depends(get_db),
@@ -660,6 +690,7 @@ async def unlock_task(
     task = result.scalar_one_or_none()
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
+    await require_project_access(db, request, task.project_id, min_role="researcher")
 
     if task.locked_by and task.locked_by != user_id and not force:
         raise HTTPException(status_code=403, detail="Only the lock owner or an admin can unlock.")
@@ -673,12 +704,13 @@ async def unlock_task(
 
 
 @router.delete("/tasks/{task_id}", status_code=204)
-async def delete_task(task_id: str, db: AsyncSession = Depends(get_db)):
+async def delete_task(task_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     """Delete a task."""
     result = await db.execute(select(Task).where(Task.id == task_id))
     task = result.scalar_one_or_none()
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
+    await require_project_access(db, request, task.project_id, min_role="researcher")
 
     await db.delete(task)
     await db.commit()

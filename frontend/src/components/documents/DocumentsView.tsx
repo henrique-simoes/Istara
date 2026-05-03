@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { API_BASE } from "@/lib/runtimeConfig";
 import {
   FileText,
@@ -9,6 +11,7 @@ import {
   X,
   ChevronDown,
   RefreshCw,
+  Upload,
   Tag,
   Clock,
   Bot,
@@ -35,7 +38,7 @@ import {
 } from "lucide-react";
 import { useProjectStore } from "@/stores/projectStore";
 import { useDocumentStore } from "@/stores/documentStore";
-import { documents as documentsApi } from "@/lib/api";
+import { documents as documentsApi, files as filesApi } from "@/lib/api";
 import { cn, phaseLabel } from "@/lib/utils";
 import type { ReclawDocument, DocumentContent } from "@/lib/types";
 import ViewOnboarding from "@/components/common/ViewOnboarding";
@@ -73,6 +76,22 @@ const SOURCE_LABELS: Record<string, string> = {
   external: "External",
 };
 
+function isMarkdownLike(type?: string, fileName?: string): boolean {
+  const normalizedType = (type || "").toLowerCase();
+  const normalizedName = (fileName || "").toLowerCase();
+  return normalizedType === ".md" || normalizedName.endsWith(".md");
+}
+
+function MarkdownDocument({ content }: { content: string }) {
+  return (
+    <div className="prose prose-sm max-w-none dark:prose-invert prose-slate rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-900">
+      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+        {content}
+      </ReactMarkdown>
+    </div>
+  );
+}
+
 function fileIcon(type: string) {
   if ([".jpg", ".jpeg", ".png", ".gif", ".webp"].includes(type)) return FileImage;
   if ([".mp3", ".wav", ".m4a", ".ogg"].includes(type)) return FileAudio;
@@ -99,7 +118,7 @@ function timeAgo(dateStr: string): string {
 }
 
 export default function DocumentsView() {
-  const { activeProjectId } = useProjectStore();
+  const { activeProjectId, canWriteActiveProject } = useProjectStore();
   const {
     documents,
     tags,
@@ -132,6 +151,8 @@ export default function DocumentsView() {
   const [previewContent, setPreviewContent] = useState<DocumentContent | null>(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [viewMode, setViewMode] = useState<"compact" | "list" | "grid">(() => {
     if (typeof window !== "undefined") {
       const stored = localStorage.getItem("istara_documents_view_mode");
@@ -168,7 +189,7 @@ export default function DocumentsView() {
   }, [searchQuery, filterPhase, filterTag, filterSource, activeProjectId, fetchDocuments]);
 
   const handleSync = async () => {
-    if (!activeProjectId) return;
+    if (!activeProjectId || !canWriteActiveProject()) return;
     setSyncing(true);
     try {
       const count = await syncDocuments(activeProjectId);
@@ -191,6 +212,33 @@ export default function DocumentsView() {
       );
     }
     setSyncing(false);
+  };
+
+  const handleUploadFiles = async (fileList: FileList | null) => {
+    if (!activeProjectId || !fileList?.length || !canWriteActiveProject()) return;
+
+    const selectedFiles = Array.from(fileList);
+    setUploading(true);
+    try {
+      let uploadedCount = 0;
+      for (const file of selectedFiles) {
+        await filesApi.upload(activeProjectId, file);
+        uploadedCount++;
+      }
+      await fetchDocuments(activeProjectId);
+      await fetchTags(activeProjectId);
+      await fetchStats(activeProjectId);
+      dispatchToast(
+        "success",
+        "Files Uploaded",
+        `${uploadedCount} file${uploadedCount !== 1 ? "s" : ""} uploaded and queued for indexing.`,
+      );
+    } catch (e: any) {
+      dispatchToast("warning", "Upload Failed", e.message || "Could not upload files.");
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
   };
 
   // handleOrganize replaced by InteractiveSuggestionBox — toggle showOrganize state
@@ -268,6 +316,26 @@ export default function DocumentsView() {
             )}
           </div>
           <div className="flex items-center gap-2">
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              accept=".txt,.pdf,.docx,.csv,.md,.json,.xlsx,.xls"
+              onChange={(e) => handleUploadFiles(e.target.files)}
+              className="hidden"
+            />
+            <button
+              id="tour-target-document-upload"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={!activeProjectId || uploading || !canWriteActiveProject()}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm bg-istara-600 text-white hover:bg-istara-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              aria-label="Upload research files"
+              aria-busy={uploading}
+              title="Upload research files"
+            >
+              {uploading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+              {uploading ? "Uploading" : "Upload"}
+            </button>
             {/* View mode toggle */}
             <div className="flex items-center border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden" role="group" aria-label="View mode">
               <button
@@ -330,7 +398,7 @@ export default function DocumentsView() {
             </button>
             <button
               onClick={handleSync}
-              disabled={syncing}
+              disabled={syncing || !canWriteActiveProject()}
               className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors disabled:opacity-50"
               aria-label="Sync project files"
               title="Scan project folder for new files"
@@ -340,7 +408,7 @@ export default function DocumentsView() {
             </button>
             <button
               onClick={() => setShowOrganize(!showOrganize)}
-              disabled={!activeProjectId}
+              disabled={!activeProjectId || !canWriteActiveProject()}
               className={cn(
                 "flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm transition-colors disabled:opacity-50",
                 showOrganize
@@ -487,7 +555,7 @@ export default function DocumentsView() {
                   key={doc.id}
                   doc={doc}
                   onOpen={() => handleOpenPreview(doc)}
-                  onDelete={() => setConfirmDelete(doc.id)}
+                  onDelete={() => canWriteActiveProject() && setConfirmDelete(doc.id)}
                   isSelected={selectedDocId === doc.id}
                 />
               ) : viewMode === "grid" ? (
@@ -495,7 +563,7 @@ export default function DocumentsView() {
                   key={doc.id}
                   doc={doc}
                   onOpen={() => handleOpenPreview(doc)}
-                  onDelete={() => setConfirmDelete(doc.id)}
+                  onDelete={() => canWriteActiveProject() && setConfirmDelete(doc.id)}
                   isSelected={selectedDocId === doc.id}
                 />
               ) : (
@@ -503,7 +571,7 @@ export default function DocumentsView() {
                   key={doc.id}
                   doc={doc}
                   onOpen={() => handleOpenPreview(doc)}
-                  onDelete={() => setConfirmDelete(doc.id)}
+                  onDelete={() => canWriteActiveProject() && setConfirmDelete(doc.id)}
                   isSelected={selectedDocId === doc.id}
                 />
               )
@@ -936,9 +1004,13 @@ function DocumentPreview({
                       {content.type && [".mp3", ".wav", ".m4a", ".ogg"].includes(content.type) ? "Transcription" : "Document Content"}
                     </h3>
                   </div>
-                  <pre className="whitespace-pre-wrap text-sm text-slate-800 dark:text-slate-200 font-mono leading-relaxed bg-slate-50 dark:bg-slate-900 rounded-lg p-4 border border-slate-200 dark:border-slate-700">
-                    {content.content}
-                  </pre>
+                  {isMarkdownLike(content.type, content.file_name) ? (
+                    <MarkdownDocument content={content.content} />
+                  ) : (
+                    <pre className="whitespace-pre-wrap text-sm text-slate-800 dark:text-slate-200 font-mono leading-relaxed bg-slate-50 dark:bg-slate-900 rounded-lg p-4 border border-slate-200 dark:border-slate-700">
+                      {content.content}
+                    </pre>
+                  )}
                 </div>
               ) : !content?.media_url ? (
                 <div className="text-center py-12">

@@ -207,6 +207,7 @@ The following files are protected system memory:
 - `AGENT.md`
 - `COMPLETE_SYSTEM.md`
 - `CHANGE_CHECKLIST.md`
+- `COMPASS_FUTURE_FEATURES.md`
 - `SYSTEM_CHANGE_MATRIX.md`
 - `SYSTEM_PROMPT.md`
 - `Tech.md`
@@ -218,6 +219,7 @@ The following files are protected system memory:
 - Stale branches are salvage-only.
 - JSON skill definitions are canonical.
 - Generated Compass docs must match current code.
+- `COMPASS_FUTURE_FEATURES.md` is the Compass ledger for future plans/features and deferred hardening. When a review or implementation discovers important work that is not being executed now, record it there instead of relying on chat memory.
 - `current_plans.md` and `old_plans.md` are protected operational ledgers, but this workspace keeps them gitignored by default; when a branch needs durable planner handoff, mirror the summary into tracked Compass docs, branch docs, or the PR body instead of force-adding local plan files.
 - Review-discovered defects require correction and independent re-review.
 - Final agents must explain new capabilities/processes to the user.

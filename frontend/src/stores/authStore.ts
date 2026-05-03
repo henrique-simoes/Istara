@@ -79,6 +79,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       }
       localStorage.setItem("istara_token", data.token);
       if (data.user?.id) localStorage.setItem("istara_auth_user_id", data.user.id);
+      window.dispatchEvent(new Event("istara:auth-changed"));
       set({ user: data.user, token: data.token, loading: false });
       get().checkTeamStatus();
       return { token: data.token, user: data.user };
@@ -109,6 +110,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const data = await res.json();
       localStorage.setItem("istara_token", data.token);
       if (data.user?.id) localStorage.setItem("istara_auth_user_id", data.user.id);
+      window.dispatchEvent(new Event("istara:auth-changed"));
       set({ user: data.user, token: data.token, loading: false });
       get().checkTeamStatus();
     } catch (e) {
@@ -132,6 +134,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const data = await res.json();
       localStorage.setItem("istara_token", data.token);
       if (data.user?.id) localStorage.setItem("istara_auth_user_id", data.user.id);
+      window.dispatchEvent(new Event("istara:auth-changed"));
       set({ user: data.user, token: data.token, loading: false });
       get().checkTeamStatus();
       return {
@@ -146,9 +149,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   logout: () => {
-    localStorage.removeItem("istara_token");
-    localStorage.removeItem("istara_auth_user_id");
-    set({ user: null, token: null });
+      localStorage.removeItem("istara_token");
+      localStorage.removeItem("istara_auth_user_id");
+      window.dispatchEvent(new Event("istara:auth-changed"));
+      set({ user: null, token: null });
     if (typeof window !== "undefined") {
       window.location.reload();
     }
@@ -206,6 +210,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       } else if (res.status === 401) {
         localStorage.removeItem("istara_token");
         localStorage.removeItem("istara_auth_user_id");
+        window.dispatchEvent(new Event("istara:auth-changed"));
         set({ user: null, token: null });
         if (typeof window !== "undefined") {
           window.dispatchEvent(new Event("istara:auth-expired"));
@@ -289,6 +294,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const data = await finishRes.json();
       localStorage.setItem("istara_token", data.token);
       if (data.user?.id) localStorage.setItem("istara_auth_user_id", data.user.id);
+      window.dispatchEvent(new Event("istara:auth-changed"));
       set({ user: data.user, token: data.token, loading: false });
       get().checkTeamStatus();
     } catch (e) {

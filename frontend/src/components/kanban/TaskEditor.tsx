@@ -28,6 +28,64 @@ const SKILL_OPTIONS = [
 
 const LABEL_COLORS = ["#64748b", "#2563eb", "#059669", "#d97706", "#dc2626", "#7c3aed"];
 
+const SYSTEM_TAG_DESCRIPTIONS: Record<string, string> = {
+  evidence: "Evidence-related task. Agents should preserve source traceability and quote/document support.",
+  source: "Source-related task. Check files, citations, links, or source coverage.",
+  citation: "Citation-related task. Verify references and source attribution.",
+  unsupported: "Unsupported-claim tag. Review for claims that need stronger evidence.",
+  nugget: "Nugget-related task. Work touches source evidence extracted from research material.",
+  instruction: "Instruction-following tag. Agents should pay close attention to the user's directives.",
+  method: "Methodology tag. Review or apply the correct research method or skill.",
+  specialist: "Specialist-routing tag. The task may need a more suitable agent or domain expert.",
+  hallucination: "Hallucination risk. Validate claims carefully against project evidence.",
+  synthesis: "Synthesis tag. Work involves facts, insights, recommendations, or patterns.",
+  document: "Document tag. Work depends on uploaded research files.",
+  file: "File tag. Work depends on attached or generated files.",
+  url: "URL/tool tag. Work depends on web links, fetching, or external tools.",
+  website: "Website/tool tag. Check page access, fetching, or browser-derived evidence.",
+  browser: "Browser/tool tag. Work may require browser inspection or web capture.",
+  validation: "Validation tag. Check consensus, review, or quality gates.",
+  consensus: "Consensus tag. Multi-model or agent agreement may be relevant.",
+  requirement: "Requirement-change tag. The user changed scope or acceptance criteria.",
+  unclear: "Ambiguous task tag. Clarify requirements before agents continue.",
+  ambiguous: "Ambiguous task tag. The task needs clearer instructions.",
+  "missing_evidence": "System tag: revision was classified as missing supporting evidence.",
+  "ignored_user_instructions": "System tag: revision was classified as not following user instructions.",
+  "wrong_skill": "System tag: revision was classified as using the wrong skill or method.",
+  "wrong_agent": "System tag: revision was classified as needing a different agent.",
+  "hallucination_or_unsupported_claim": "System tag: revision was classified as hallucination or unsupported claim risk.",
+  "bad_synthesis": "System tag: revision was classified as weak synthesis.",
+  "insufficient_documents": "System tag: revision was classified as missing or insufficient input documents.",
+  "url_or_tool_failure": "System tag: revision was classified as a URL, browser, or tool failure.",
+  "validation_false_positive": "System tag: validation accepted work the user later rejected.",
+  "user_changed_requirements": "System tag: user changed requirements after earlier work.",
+  "unclear_task": "System tag: task was classified as ambiguous or under-specified.",
+};
+
+function normalizeTagName(label: Task["labels"][number]) {
+  return (typeof label === "string" ? label : label.name || "").trim();
+}
+
+function isSystemTag(label: Task["labels"][number]) {
+  if (typeof label !== "string" && label.kind === "system") return true;
+  const name = normalizeTagName(label).toLowerCase();
+  return name in SYSTEM_TAG_DESCRIPTIONS || name.startsWith("system:") || name.startsWith("review:");
+}
+
+function tagDescription(label: Task["labels"][number]) {
+  const name = normalizeTagName(label);
+  const normalized = name.toLowerCase().replace(/^system:/, "").replace(/^review:/, "");
+  if (typeof label !== "string" && label.kind === "system") {
+    return SYSTEM_TAG_DESCRIPTIONS[normalized] || `System tag: ${name}. Istara uses this tag for routing, review, or telemetry.`;
+  }
+  return SYSTEM_TAG_DESCRIPTIONS[normalized] || "User task label. Click to remove it from this task.";
+}
+
+function tagColor(label: Task["labels"][number]) {
+  if (isSystemTag(label)) return "#475569";
+  return typeof label === "string" ? "#64748b" : label.color || "#64748b";
+}
+
 interface TaskEditorProps {
   task: Task;
   onClose: () => void;
@@ -137,7 +195,7 @@ export default function TaskEditor({ task, onClose }: TaskEditorProps) {
     setLabels([...labels, { name, color, kind: "task" }]);
     setNewLabel("");
   };
-  const labelName = (label: Task["labels"][number]) => (typeof label === "string" ? label : label.name);
+  const labelName = normalizeTagName;
 
   const approve = async () => {
     await saveDraft();
@@ -164,6 +222,18 @@ export default function TaskEditor({ task, onClose }: TaskEditorProps) {
 
   const canReview = task.status === "in_review" || task.status === "done";
   const requiresWhatToReview = canReview && task.review_state !== "approved";
+  const systemStatusTags = [
+    { name: task.status.replace(/_/g, " "), description: "Current Kanban state for this task." },
+    task.review_state && task.review_state !== "none"
+      ? { name: task.review_state.replace(/_/g, " "), description: "Current human review state for this task." }
+      : null,
+    task.review_failure_category
+      ? { name: task.review_failure_category.replace(/_/g, " "), description: tagDescription({ name: task.review_failure_category, kind: "system" }) }
+      : null,
+    task.next_agent_action
+      ? { name: task.next_agent_action.replace(/_/g, " "), description: "Next action Istara will give the assigned agent." }
+      : null,
+  ].filter(Boolean) as Array<{ name: string; description: string }>;
 
   return (
     <div
@@ -204,10 +274,18 @@ export default function TaskEditor({ task, onClose }: TaskEditorProps) {
                 <div className="space-y-2">
                   <div className="flex flex-wrap gap-1.5">
                     {labels.map((label, idx) => (
-                      <button key={`${labelName(label)}-${idx}`} onClick={() => setLabels(labels.filter((_, i) => i !== idx))} className="rounded px-2 py-1 text-xs text-white" style={{ background: typeof label === "string" ? "#64748b" : label.color || "#64748b" }} title="Remove label">
-                        {labelName(label)}
+                      <button
+                        key={`${labelName(label)}-${idx}`}
+                        onClick={() => setLabels(labels.filter((_, i) => i !== idx))}
+                        className="inline-flex items-center gap-1 rounded px-2 py-1 text-xs text-white"
+                        style={{ background: tagColor(label) }}
+                        title={`${tagDescription(label)} Click to remove.`}
+                      >
+                        {isSystemTag(label) && <span className="text-[9px] uppercase opacity-80">system</span>}
+                        <span>{labelName(label)}</span>
                       </button>
                     ))}
+                    {labels.length === 0 && <span className="text-xs text-slate-400">No labels yet.</span>}
                   </div>
                   <div className="flex gap-2">
                     <input value={newLabel} onChange={(e) => setNewLabel(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addLabel(); } }} className="field-input min-w-0 flex-1" placeholder="Label" />
@@ -252,6 +330,30 @@ export default function TaskEditor({ task, onClose }: TaskEditorProps) {
           </div>
 
           <aside className="space-y-4">
+            <section className="rounded-lg border border-slate-200 p-4 dark:border-slate-700">
+              <h4 className="mb-3 flex items-center gap-1.5 text-sm font-semibold text-slate-900 dark:text-white"><Tags size={14} /> Organization Tags</h4>
+              <div className="flex flex-wrap gap-1.5">
+                {labels.map((label, idx) => (
+                  <span
+                    key={`${labelName(label)}-summary-${idx}`}
+                    className="inline-flex items-center gap-1 rounded px-2 py-1 text-xs text-white"
+                    style={{ background: tagColor(label) }}
+                    title={tagDescription(label)}
+                  >
+                    {isSystemTag(label) && <span className="text-[9px] uppercase opacity-80">system</span>}
+                    <span>{labelName(label)}</span>
+                  </span>
+                ))}
+                {systemStatusTags.map((tag) => (
+                  <span key={tag.name} className="rounded bg-slate-100 px-2 py-1 text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-300" title={tag.description}>
+                    {tag.name}
+                  </span>
+                ))}
+                {labels.length === 0 && systemStatusTags.length === 0 && <span className="text-xs text-slate-400">No tags yet.</span>}
+              </div>
+              <p className="mt-2 text-xs text-slate-500">Hover over a tag to see what it means.</p>
+            </section>
+
             <section className="rounded-lg border border-slate-200 p-4 dark:border-slate-700">
               <h4 className="mb-3 text-sm font-semibold text-slate-900 dark:text-white">Review</h4>
               {canReview ? (

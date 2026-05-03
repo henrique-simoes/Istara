@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.api.routes import (
+    admin,
     agents,
     audit,
     auth,
@@ -651,6 +652,7 @@ if app_settings.rate_limit_enabled:
 
 # API routes
 app.include_router(auth.router, prefix="/api", tags=["Auth"])
+app.include_router(admin.router, prefix="/api", tags=["Admin"])
 app.include_router(webauthn_routes.router, prefix="/api", tags=["WebAuthn"])
 app.include_router(steering_routes.router, prefix="/api", tags=["Steering"])
 app.include_router(chat.router, prefix="/api", tags=["Chat"])

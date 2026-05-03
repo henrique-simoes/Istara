@@ -39,6 +39,10 @@ const PRIORITY_DOT_COLORS: Record<string, string> = {
   low: "bg-slate-400",
 };
 
+function showTaskToast(type: "info" | "warning" | "error", title: string, message: string) {
+  window.dispatchEvent(new CustomEvent("istara:toast", { detail: { type, title, message } }));
+}
+
 function AgentMiniAvatar({ agentId }: { agentId: string }) {
   const agents = useAgentStore((s) => s.agents);
   const agent = agents.find((a) => a.id === agentId);
@@ -126,17 +130,29 @@ function PriorityPicker({ taskId, currentPriority, onClose }: { taskId: string; 
   );
 }
 
-function TaskCard({ task, onOpen, onDelete }: { task: Task; onOpen: () => void; onDelete: () => void }) {
+function TaskCard({ task, canWrite, onOpen, onDelete }: { task: Task; canWrite: boolean; onOpen: () => void; onDelete: () => void }) {
   const [showAgentMenu, setShowAgentMenu] = useState(false);
   const [showPriorityMenu, setShowPriorityMenu] = useState(false);
+  const [dragging, setDragging] = useState(false);
   const priority = task.priority || "medium";
   const labelNames = (task.labels || []).map((l) => (typeof l === "string" ? l : l.name)).filter(Boolean);
 
   return (
     <div
-      draggable
-      onDragStart={(e) => e.dataTransfer.setData("taskId", task.id)}
-      onClick={onOpen}
+      draggable={canWrite}
+      onDragStart={(e) => {
+        if (!canWrite) return;
+        setDragging(true);
+        e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.setData("text/plain", task.id);
+        e.dataTransfer.setData("application/x-istara-task-id", task.id);
+      }}
+      onDragEnd={() => {
+        window.setTimeout(() => setDragging(false), 0);
+      }}
+      onClick={() => {
+        if (!dragging) onOpen();
+      }}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
@@ -145,7 +161,7 @@ function TaskCard({ task, onOpen, onDelete }: { task: Task; onOpen: () => void; 
       }}
       role="button"
       tabIndex={0}
-      className={cn("rounded-lg border border-slate-200 bg-white p-3 shadow-sm transition-shadow hover:shadow-md focus:outline-none focus:ring-2 focus:ring-istara-500 dark:border-slate-700 dark:bg-slate-800 border-l-[3px]", PRIORITY_COLORS[priority])}
+      className={cn("cursor-grab rounded-lg border border-slate-200 bg-white p-3 shadow-sm transition-shadow hover:shadow-md active:cursor-grabbing focus:outline-none focus:ring-2 focus:ring-istara-500 dark:border-slate-700 dark:bg-slate-800 border-l-[3px]", dragging && "opacity-60", PRIORITY_COLORS[priority])}
     >
       <div className="flex items-start gap-2">
         <GripVertical size={14} className="mt-0.5 shrink-0 text-slate-300" aria-hidden="true" />
@@ -156,8 +172,9 @@ function TaskCard({ task, onOpen, onDelete }: { task: Task; onOpen: () => void; 
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  setShowAgentMenu((v) => !v);
+                  if (canWrite) setShowAgentMenu((v) => !v);
                 }}
+                disabled={!canWrite}
                 className="rounded-full hover:ring-2 hover:ring-istara-300"
                 aria-label="Change assigned agent"
               >
@@ -182,8 +199,9 @@ function TaskCard({ task, onOpen, onDelete }: { task: Task; onOpen: () => void; 
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  setShowPriorityMenu((v) => !v);
+                  if (canWrite) setShowPriorityMenu((v) => !v);
                 }}
+                disabled={!canWrite}
                 className="inline-flex items-center gap-1 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-600 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300"
                 aria-label="Change priority"
               >
@@ -210,8 +228,9 @@ function TaskCard({ task, onOpen, onDelete }: { task: Task; onOpen: () => void; 
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                onDelete();
+                if (canWrite) onDelete();
               }}
+              disabled={!canWrite}
               className="rounded p-1 text-slate-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/30"
               aria-label={`Delete ${task.title}`}
               title="Delete task"
@@ -227,7 +246,7 @@ function TaskCard({ task, onOpen, onDelete }: { task: Task; onOpen: () => void; 
 
 export default function KanbanBoard() {
   const { tasks, fetchTasks, createTask, moveTask, deleteTask } = useTaskStore();
-  const { activeProjectId } = useProjectStore();
+  const { activeProjectId, canWriteActiveProject } = useProjectStore();
   const { agents, fetchAgents } = useAgentStore();
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [addingTo, setAddingTo] = useState<TaskStatus | null>(null);
@@ -243,7 +262,7 @@ export default function KanbanBoard() {
   }, [agents.length, fetchAgents]);
 
   const handleCreate = async (status: TaskStatus) => {
-    if (!newTaskTitle.trim() || !activeProjectId) return;
+    if (!newTaskTitle.trim() || !activeProjectId || !canWriteActiveProject()) return;
     const task = await createTask(activeProjectId, newTaskTitle.trim());
     if (status !== "backlog") await moveTask(task.id, status === "done" ? "in_review" : status);
     setNewTaskTitle("");
@@ -251,10 +270,36 @@ export default function KanbanBoard() {
   };
 
   const handleDrop = async (taskId: string, newStatus: TaskStatus) => {
+    if (!canWriteActiveProject()) {
+      showTaskToast("info", "Read-only project", "Viewer access can inspect tasks but cannot move cards.");
+      return;
+    }
+    const task = tasks.find((t) => t.id === taskId);
+    if (task?.status === "done" && newStatus !== "done") {
+      showTaskToast(
+        "info",
+        "Use Request Revision",
+        "Done work is locked after approval. Open the task and request a revision with instructions to send it back to Backlog or In Progress."
+      );
+      return;
+    }
+    if (task && task.status !== "in_review" && newStatus === "done") {
+      showTaskToast(
+        "info",
+        "Review required",
+        "Only tasks in In Review can be approved as Done. Move the task to In Review first, then approve it after review."
+      );
+      return;
+    }
     try {
       await moveTask(taskId, newStatus);
     } catch (e) {
       console.error("Failed to move task:", e);
+      showTaskToast(
+        "error",
+        "Task move blocked",
+        e instanceof Error ? e.message : "Istara could not move this task."
+      );
     }
   };
 
@@ -277,7 +322,7 @@ export default function KanbanBoard() {
               onDragOver={(e) => e.preventDefault()}
               onDrop={(e) => {
                 e.preventDefault();
-                const taskId = e.dataTransfer.getData("taskId");
+                const taskId = e.dataTransfer.getData("application/x-istara-task-id") || e.dataTransfer.getData("text/plain");
                 if (taskId) handleDrop(taskId, col.id);
               }}
             >
@@ -286,7 +331,7 @@ export default function KanbanBoard() {
                   <h3 className="text-sm font-medium text-slate-700 dark:text-slate-300">{statusLabel(col.id)}</h3>
                   <span className="rounded-full bg-slate-200 px-1.5 py-0.5 text-xs text-slate-500 dark:bg-slate-700">{columnTasks.length}</span>
                 </div>
-                <button onClick={() => setAddingTo(addingTo === col.id ? null : col.id)} aria-label={`Add task to ${statusLabel(col.id)}`} className="rounded p-1 text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800">
+                <button disabled={!canWriteActiveProject()} onClick={() => setAddingTo(addingTo === col.id ? null : col.id)} aria-label={`Add task to ${statusLabel(col.id)}`} className="rounded p-1 text-slate-400 hover:bg-slate-200 disabled:opacity-40 dark:hover:bg-slate-800">
                   <Plus size={14} />
                 </button>
               </div>
@@ -310,7 +355,7 @@ export default function KanbanBoard() {
 
               <div className="min-h-[100px] space-y-2 p-2">
                 {columnTasks.map((task) => (
-                  <TaskCard key={task.id} task={task} onOpen={() => setEditingTask(task.id)} onDelete={() => setDeleteConfirm(task.id)} />
+                  <TaskCard key={task.id} task={task} canWrite={canWriteActiveProject()} onOpen={() => setEditingTask(task.id)} onDelete={() => canWriteActiveProject() && setDeleteConfirm(task.id)} />
                 ))}
               </div>
             </div>
@@ -330,7 +375,7 @@ export default function KanbanBoard() {
         confirmLabel="Delete"
         variant="danger"
         onConfirm={() => {
-          if (deleteConfirm) deleteTask(deleteConfirm);
+          if (deleteConfirm && canWriteActiveProject()) deleteTask(deleteConfirm);
           setDeleteConfirm(null);
         }}
         onCancel={() => setDeleteConfirm(null)}

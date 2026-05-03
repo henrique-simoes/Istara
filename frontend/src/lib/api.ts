@@ -24,6 +24,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     localStorage.removeItem("istara_token");
     if (hadToken && typeof window !== "undefined") {
       // Token was present but expired/invalid — dispatch event for auth gate
+      window.dispatchEvent(new Event("istara:auth-changed"));
       window.dispatchEvent(new Event("istara:auth-expired"));
     }
     throw new Error("Authentication required");
@@ -60,6 +61,9 @@ function patch<T>(path: string, data: unknown): Promise<T> {
 function del(path: string): Promise<Response> {
   return fetch(`${API_BASE}${path}`, { method: "DELETE", headers: { ..._getAuthHeaders() } });
 }
+
+// Update routes are implemented in updatesApi.ts:
+// /api/updates/version, /api/updates/check, /api/updates/prepare, /api/updates/apply.
 
 // --- Projects ---
 
@@ -413,6 +417,8 @@ export const skills = {
   creationProposals: {
     pending: () => request<any>("/api/skills/creation-proposals/pending"),
     all: (limit = 20) => request<any>(`/api/skills/creation-proposals/all?limit=${limit}`),
+    verify: (id: string) =>
+      request<any>(`/api/skills/creation-proposals/${id}/verify`, { method: "POST" }),
     approve: (id: string) =>
       request<any>(`/api/skills/creation-proposals/${id}/approve`, { method: "POST" }),
     reject: (id: string, reason = "") =>
@@ -1024,6 +1030,30 @@ export const users = {
     patch<ReclawUser>(`/api/auth/users/${id}/role`, { role }),
 };
 
+// --- Admin Dashboard ---
+
+export const admin = {
+  overview: () => get<any>("/api/admin/overview"),
+  projects: () => get<{ projects: any[] }>("/api/admin/projects"),
+  users: () => get<{ users: any[] }>("/api/admin/users"),
+  access: () => get<{ memberships: any[] }>("/api/admin/access"),
+  connectionStrings: () => get<{ user_invites: any[]; compute_donations: any[] }>("/api/admin/connection-strings"),
+  updateUserRole: (userId: string, role: "admin" | "researcher" | "viewer") =>
+    patch<any>(`/api/auth/users/${userId}/role`, { role }),
+  addProjectMember: (projectId: string, userId: string, role: "project_admin" | "researcher" | "viewer") =>
+    post<any>(`/api/projects/${projectId}/members`, { user_id: userId, role }),
+  updateProjectMember: (projectId: string, userId: string, role: "project_admin" | "researcher" | "viewer") =>
+    patch<any>(`/api/projects/${projectId}/members/${userId}`, { role }),
+  removeProjectMember: (projectId: string, userId: string) =>
+    del(`/api/projects/${projectId}/members/${userId}`),
+  deleteProject: (projectId: string) =>
+    del(`/api/projects/${projectId}`),
+  generateUserInvite: (data: { server_url: string; ws_url?: string; label?: string; expires_hours?: number; role?: string }) =>
+    post<any>("/api/connections/generate", data),
+  generateComputeDonation: (data: { server_url: string; ws_url?: string; label?: string; expires_hours?: number }) =>
+    post<any>("/api/connections/compute-donation/generate", data),
+};
+
 // --- Research Integrity ---
 
 export const reports = {
@@ -1050,6 +1080,10 @@ export const codebookVersions = {
     change_log: string;
     methodology?: string;
   }) => post<CodebookVersionType>("/api/codebook-versions", data),
+};
+
+export const codebooks = {
+  list: (projectId: string) => get<any[]>(`/api/codebooks?project_id=${projectId}`),
 };
 
 export const codeApplications = {

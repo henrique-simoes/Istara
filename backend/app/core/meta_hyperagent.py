@@ -34,6 +34,7 @@ logger = logging.getLogger(__name__)
 DATA_DIR = Path("data")
 PROPOSALS_FILE = DATA_DIR / "_meta_proposals.json"
 VARIANTS_FILE = DATA_DIR / "_meta_variants.json"
+OBSERVATIONS_FILE = DATA_DIR / "_meta_observations.json"
 OVERRIDES_FILE = DATA_DIR / "_meta_overrides.json"
 AUDIT_LOG_FILE = DATA_DIR / "_meta_audit_log.jsonl"
 
@@ -142,12 +143,26 @@ class MetaHyperagent:
                 self._variants = json.loads(VARIANTS_FILE.read_text(encoding="utf-8"))
             except (json.JSONDecodeError, OSError):
                 self._variants = []
+        if OBSERVATIONS_FILE.exists():
+            try:
+                observations = json.loads(OBSERVATIONS_FILE.read_text(encoding="utf-8"))
+                self._recent_observations = observations if isinstance(observations, list) else []
+            except (json.JSONDecodeError, OSError):
+                self._recent_observations = []
 
     def _save(self) -> None:
         """Persist proposals and variants to disk."""
         DATA_DIR.mkdir(parents=True, exist_ok=True)
         _atomic_write(PROPOSALS_FILE, json.dumps(self._proposals, indent=2, default=str))
         _atomic_write(VARIANTS_FILE, json.dumps(self._variants, indent=2, default=str))
+
+    def _save_observations(self) -> None:
+        """Persist bounded recent observations so metrics survive restarts."""
+        DATA_DIR.mkdir(parents=True, exist_ok=True)
+        _atomic_write(
+            OBSERVATIONS_FILE,
+            json.dumps(self._recent_observations[-100:], indent=2, default=str),
+        )
 
     def _log_audit(self, action: str, details: dict) -> None:
         """Append an entry to the audit log (JSONL)."""
@@ -270,6 +285,7 @@ class MetaHyperagent:
         # Keep last 100 observations in memory
         if len(self._recent_observations) > 100:
             self._recent_observations = self._recent_observations[-100:]
+        self._save_observations()
 
         self._log_audit("observation_cycle", {"summary": {
             k: bool(v) for k, v in observation.items() if k != "timestamp"

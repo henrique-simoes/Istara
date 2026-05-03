@@ -27,6 +27,7 @@ import MetaHyperagentView from "@/components/meta/MetaHyperagentView";
 import AutoresearchView from "@/components/autoresearch/AutoresearchView";
 import LawsView from "@/components/laws/LawsView";
 import DocumentsView from "@/components/documents/DocumentsView";
+import AdminDashboard from "@/components/admin/AdminDashboard";
 import SearchModal from "@/components/common/SearchModal";
 import ToastNotification from "@/components/common/ToastNotification";
 import ErrorBoundary from "@/components/common/ErrorBoundary";
@@ -52,6 +53,7 @@ const VIEW_NAMES: Record<string, string> = {
   notifications: "Notifications", backup: "Backup", "meta-hyperagent": "Meta-Agent",
   autoresearch: "AutoResearch", history: "History", compute: "Compute Pool",
   ensemble: "Ensemble Health", quality: "Quality Dashboard", settings: "Settings",
+  admin: "Admin Dashboard",
 };
 
 function getSavedView(): string {
@@ -350,6 +352,7 @@ export default function HomeClient() {
       case "ensemble": return <EnsembleHealthView />;
       case "quality": return <QualityView />;
       case "settings": return <SettingsView />;
+      case "admin": return <AdminDashboard />;
       default: return <ChatView />;
     }
   };

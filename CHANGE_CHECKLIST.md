@@ -2,7 +2,7 @@
 
 Use this checklist for EVERY change to ensure nothing breaks. Cross-reference with **SYSTEM_INTEGRITY_GUIDE.md** for details.
 
-`Compass` is the name of the full agentic development system behind this checklist: prompts, generated docs, matrices, checklists, changelogs, technical narrative, personas, and test/simulation maintenance. Updating Compass means updating this whole system so future agents inherit the new truth.
+`Compass` is the name of the full agentic development system behind this checklist: prompts, generated docs, matrices, checklists, changelogs, future-feature ledger, technical narrative, personas, and test/simulation maintenance. Updating Compass means updating this whole system so future agents inherit the new truth.
 
 ---
 
@@ -16,7 +16,9 @@ Before making ANY change:
 - [ ] Skim `AGENT.md` or `COMPLETE_SYSTEM.md` for the current generated system map
 - [ ] Read `SYSTEM_CHANGE_MATRIX.md` for dependent surfaces that must move with this change
 - [ ] Read `CHANGELOG.md` to understand recent system evolution
+- [ ] Read `COMPASS_FUTURE_FEATURES.md` when planning, deferring, or discovering future work
 - [ ] Decide which parts of Compass must change so the next agent understands the new reality
+- [ ] Decide whether this work creates, updates, ships, or supersedes a future-feature ledger entry
 - [ ] Decide whether `Tech.md` must change because the architecture/process/release story changed
 - [ ] Decide whether Istara's own agents need persona updates to understand this feature
 - [ ] Decide whether an existing simulation scenario is enough or whether a new scenario must be added
