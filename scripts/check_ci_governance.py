@@ -11,6 +11,7 @@ ROOT = Path(__file__).resolve().parent.parent
 REQUIRED_SNIPPETS: dict[str, dict[str, str]] = {
     ".github/workflows/ci.yml": {
         "CI self-check": "python scripts/check_ci_governance.py",
+        "Node 24 frontend runtime": 'node-version: "24"',
         "production rehearsal": "python ../scripts/production_rehearsal.py --json",
         "governed evolution regression tests": (
             "pytest ../tests/test_improvement_governance.py ../tests/test_compute.py -q"
@@ -23,9 +24,31 @@ REQUIRED_SNIPPETS: dict[str, dict[str, str]] = {
         "integrity check": "python scripts/check_integrity.py",
     },
     ".github/workflows/build-installers.yml": {
+        "Node 24 installer runtime": "node-version: 24",
         "production rehearsal release trigger": "scripts/production_rehearsal.py",
         "CI governance release trigger": "scripts/check_ci_governance.py",
         "change obligation release trigger": "scripts/check_change_obligations.py",
+    },
+    ".nvmrc": {
+        "Node 24 local runtime": "24",
+    },
+    ".node-version": {
+        "Node 24 local runtime": "24",
+    },
+    "frontend/Dockerfile": {
+        "Node 24 dependency image": "FROM node:24-slim AS deps",
+        "Node 24 builder image": "FROM node:24-slim AS builder",
+        "Node 24 runtime image": "FROM node:24-slim",
+    },
+    "relay/Dockerfile": {
+        "Node 24 relay image": "FROM node:24-alpine",
+    },
+    "desktop/src/index.html": {
+        "Node 24 setup wizard label": "Node.js 24",
+    },
+    "desktop/src-tauri/src/installer.rs": {
+        "Node 24 required major": "REQUIRED_NODE_MAJOR: u32 = 24",
+        "Node 24 installer version": 'NODE_VERSION: &str = "24.15.0"',
     },
     "scripts/prepare-release.sh": {
         "integrity release prep": "python scripts/check_integrity.py",
@@ -68,12 +91,27 @@ FORBIDDEN_SNIPPETS: dict[str, dict[str, str]] = {
     ".github/workflows/ci.yml": {
         "legacy Compass doc generation": "scripts/update_agent_md.py",
         "legacy Compass AGENT doc commit": "AGENT.md COMPLETE_SYSTEM.md AGENT_ENTRYPOINT.md",
+        "Node 20 frontend runtime": 'node-version: "20"',
     },
     ".github/workflows/build-installers.yml": {
         "legacy Compass doc generator release trigger": "scripts/update_agent_md.py",
         "legacy Compass AGENT release trigger": "AGENT.md",
         "legacy Compass COMPLETE_SYSTEM release trigger": "COMPLETE_SYSTEM.md",
         "legacy Compass guide release trigger": "SYSTEM_INTEGRITY_GUIDE.md",
+        "Node 20 installer runtime": "node-version: 20",
+    },
+    "frontend/Dockerfile": {
+        "Node 20 frontend image": "node:20-",
+    },
+    "relay/Dockerfile": {
+        "Node 20 relay image": "node:20-",
+    },
+    "desktop/src/index.html": {
+        "Node 20 setup wizard label": "Node.js 20",
+    },
+    "desktop/src-tauri/src/installer.rs": {
+        "Node 20 installer URL": "node-v20.",
+        "Node 20 install message": "Node.js 20 installed",
     },
     "scripts/prepare-release.sh": {
         "legacy Compass doc generation": "scripts/update_agent_md.py",
