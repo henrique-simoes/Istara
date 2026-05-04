@@ -1,0 +1,181 @@
+{
+  "study_metadata": {
+    "study_name": "Healthcare Patient Portal Usability Study",
+    "method": "Semi-structured interviews with task-based scenarios",
+    "duration_minutes": 60,
+    "date_range": "February-March 2024",
+    "participant_count": 40
+  },
+  "interviews": [
+    {
+      "participant_id": "HP001",
+      "demographics": {
+        "age_range": "55-64",
+        "gender": "Female",
+        "health_literacy": "Low",
+        "tech_comfort": "Low",
+        "portal_usage_frequency": "First time"
+      },
+      "responses": {
+        "initial_expectations": "I'm not very good with computers, so I'm worried about this. My doctor said I need to use this portal to see my test results, but I don't know how. I wish I could just call the office, but they said everything is online now. I'm trying to learn, but it's hard.",
+        "login_experience": "I had trouble logging in. I have so many passwords for different things, and I can't remember which one is for this. I tried to reset it, but then I got an email with a link, and I wasn't sure if it was real or spam. I'm always worried about clicking links in emails. I ended up calling the office to make sure it was safe.",
+        "finding_test_results": "I couldn't find my test results anywhere. I clicked around for maybe 20 minutes, and I still couldn't find them. There are so many menus and buttons, and I don't know what they mean. I finally gave up and called the office. They walked me through it over the phone, but I'm not sure I'll remember how to do it next time.",
+        "messaging_doctor": "I wanted to ask my doctor a question, but I couldn't figure out how to send a message. I saw something that said 'Messages' but when I clicked it, I didn't see how to write a new message. Maybe I'm missing something? I ended up just calling the office instead.",
+        "overall_reflection": "I know this is the way things are going, but it's frustrating for someone like me who isn't comfortable with technology. I feel like I'm being left behind. I wish there was more help available, or maybe a simpler version for people like me who just want to do basic things."
+      }
+    },
+    {
+      "participant_id": "HP002",
+      "demographics": {
+        "age_range": "35-44",
+        "gender": "Male",
+        "health_literacy": "High",
+        "tech_comfort": "High",
+        "portal_usage_frequency": "Weekly"
+      },
+      "responses": {
+        "initial_expectations": "I've used patient portals before, so I had expectations based on those experiences. This one is... different. Not necessarily better or worse, just different. The information architecture is unusual - things are organized in a way that doesn't match my mental model.",
+        "login_experience": "Login was fine - standard two-factor authentication, which I appreciate for security. The interface loaded quickly, which is good. But then I was presented with a dashboard that had way too much information at once. It's overwhelming.",
+        "finding_test_results": "Test results are buried. They're under 'Medical Records' which makes sense, but then you have to navigate through multiple sub-menus to find them. And when you do find them, the display is cluttered. I can see the results, but I can't easily compare them to previous results or understand trends over time.",
+        "messaging_doctor": "The messaging system works, but it's not intuitive. You have to select a recipient first, which seems backwards to me. I want to compose my message, then decide who to send it to. Also, there's no indication of response time or when I might hear back, which creates anxiety.",
+        "overall_reflection": "The portal is functional, but it's not optimized for patient needs. It feels like it was designed by healthcare administrators, not by people who understand how patients actually interact with health information. There's a lot of potential here, but it's not being realized."
+      }
+    },
+    {
+      "participant_id": "HP003",
+      "demographics": {
+        "age_range": "25-34",
+        "gender": "Non-binary",
+        "health_literacy": "Medium",
+        "tech_comfort": "High",
+        "portal_usage_frequency": "Monthly"
+      },
+      "responses": {
+        "initial_expectations": "I expected it to be straightforward - log in, see my info, message my doctor if needed. But it's more complicated than that. There are features I didn't expect, and features I expected that aren't there. It's inconsistent.",
+        "login_experience": "The login process itself was fine, but then there's this whole onboarding flow that I couldn't skip. It was showing me features I don't care about and asking me to set up things I'll never use. I just wanted to check my appointment time, but I had to go through 10 minutes of setup first.",
+        "finding_test_results": "I can find my test results, but I can't understand them. The medical terminology isn't explained, and there's no context about what's normal or what I should be concerned about. I end up googling everything, which probably isn't the best approach, but what else am I supposed to do?",
+        "messaging_doctor": "I like that I can message my doctor, but the interface is clunky. It's like using email from 2005. No formatting options, no way to attach files easily, no read receipts. And I never know if my message was received or when I'll get a response. It's better than calling, but not by much.",
+        "overall_reflection": "It's usable, but it's not great. I'll use it because I have to, but I'm not excited about it. It feels outdated, like it was designed 10 years ago and never updated. Healthcare technology should be better than this."
+      }
+    },
+    {
+      "participant_id": "HP004",
+      "demographics": {
+        "age_range": "65-74",
+        "gender": "Male",
+        "health_literacy": "Medium",
+        "tech_comfort": "Low",
+        "portal_usage_frequency": "Rarely"
+      },
+      "responses": {
+        "initial_expectations": "My daughter set this up for me, so I'm not really sure what to expect. She said I can see my appointments and test results here, which sounds useful. But I'm not very good with computers, so I'm worried I'll mess something up.",
+        "login_experience": "I have trouble remembering my password. I wrote it down, but I'm not sure where I put the paper. And the website keeps asking me to change it, which is confusing. Why do I need to change it if it's working? I end up calling my daughter to help me log in most of the time.",
+        "finding_test_results": "I can see that I have test results, but I can't read them. The text is too small, and there are a lot of numbers and abbreviations that I don't understand. I wish there was a way to make it bigger, or maybe have someone explain what it means. Right now I just see numbers and I don't know if that's good or bad.",
+        "messaging_doctor": "I don't think I've ever used the messaging feature. I'm not sure how it works, and I'm worried I'll send a message to the wrong person or say something wrong. I'd rather just call the office - at least then I know I'm talking to the right person.",
+        "overall_reflection": "I know this is supposed to make things easier, but for me it's harder. I'm more comfortable talking to someone on the phone than trying to figure out a website. Maybe if I was younger and grew up with computers, it would be different. But for now, I'll stick to calling when I need something."
+      }
+    },
+    {
+      "participant_id": "HP005",
+      "demographics": {
+        "age_range": "28",
+        "gender": "Female",
+        "health_literacy": "High",
+        "tech_comfort": "High",
+        "portal_usage_frequency": "Daily"
+      },
+      "responses": {
+        "initial_expectations": "I manage a chronic condition, so I use patient portals frequently. I expected this one to be similar to others I've used, but it's actually quite different. Some things are better, some things are worse. Overall, it's functional but not exceptional.",
+        "login_experience": "Login is fine - I appreciate the security measures. But once I'm in, the interface is cluttered. There's too much information competing for attention. I wish I could customize the dashboard to show only what's relevant to me.",
+        "finding_test_results": "I can find my test results, which is good. But I can't easily track trends over time. I have to manually compare results from different dates, which is tedious. A simple graph or chart would be so helpful. Also, the results don't always include reference ranges, which is frustrating.",
+        "messaging_doctor": "The messaging system is adequate, but it's not great. I wish there was a way to mark messages as urgent, or to see if my doctor has read my message. Also, the response time is inconsistent - sometimes I get a response in hours, sometimes it takes days. I never know what to expect.",
+        "overall_reflection": "As someone who uses this portal frequently, I can see its potential, but I'm also frustrated by its limitations. It feels like it was designed for occasional use, not for people who need to manage their health actively. There's room for improvement, especially around data visualization and communication features."
+      }
+    },
+    {
+      "participant_id": "HP006",
+      "demographics": {
+        "age_range": "45-54",
+        "gender": "Female",
+        "health_literacy": "Medium",
+        "tech_comfort": "Medium",
+        "portal_usage_frequency": "A few times per year"
+      },
+      "responses": {
+        "initial_expectations": "I don't use this very often - maybe a few times a year when I need to schedule an appointment or check something. I expected it to be simple and straightforward, but every time I log in, I have to relearn how to use it. Nothing is intuitive.",
+        "login_experience": "I always forget my password because I use this so infrequently. And the password requirements are strict - it needs uppercase, lowercase, numbers, special characters... I can never remember what I set it to. I end up resetting it every time, which is annoying.",
+        "finding_test_results": "I can usually find my test results eventually, but it takes me a while. I click around until I find what I'm looking for. I'm never confident I'm looking in the right place, and I worry I'm missing something important.",
+        "messaging_doctor": "I've never used the messaging feature. I'm not even sure where it is. If I need to contact my doctor, I just call the office. It's faster and I know I'll get a response.",
+        "overall_reflection": "I wish this was easier to use. Every time I log in, I feel like I'm starting from scratch. I know there are probably features that would be helpful, but I don't know what they are or how to find them. It's frustrating."
+      }
+    },
+    {
+      "participant_id": "HP007",
+      "demographics": {
+        "age_range": "32",
+        "gender": "Male",
+        "health_literacy": "High",
+        "tech_comfort": "High",
+        "portal_usage_frequency": "Weekly"
+      },
+      "responses": {
+        "initial_expectations": "I expected a modern, intuitive interface. What I got was... functional, but dated. It works, but it doesn't feel like it was designed in the last decade. The UX patterns are outdated, and the information architecture is confusing.",
+        "login_experience": "Login is standard - no complaints there. But the post-login experience is jarring. I'm presented with a dashboard that has way too much information, and I can't customize it. I have to wade through irrelevant information to find what I need.",
+        "finding_test_results": "Test results are accessible, but the presentation is poor. The data is there, but it's not presented in a way that's easy to understand or act on. I wish there was more context - what do these numbers mean? How do they compare to normal ranges? What should I be concerned about?",
+        "messaging_doctor": "The messaging interface is clunky. It's like using a basic email client from 15 years ago. No rich text, no file attachments that work well, no way to organize messages. It's functional, but it's not a good experience.",
+        "overall_reflection": "The portal meets basic requirements, but it doesn't exceed expectations. It feels like a compliance checkbox rather than a tool designed to help patients manage their health. There's so much potential here, but it's not being realized."
+      }
+    },
+    {
+      "participant_id": "HP008",
+      "demographics": {
+        "age_range": "60-64",
+        "gender": "Female",
+        "health_literacy": "Low",
+        "tech_comfort": "Low",
+        "portal_usage_frequency": "First time"
+      },
+      "responses": {
+        "initial_expectations": "I'm not sure what to expect. My doctor's office said I need to use this to see my lab results, but I'm not comfortable with computers. I'm worried I'll do something wrong or see something I'm not supposed to see.",
+        "login_experience": "I had a lot of trouble logging in. The instructions weren't clear, and I wasn't sure if I was doing it right. I ended up calling the office for help, and they walked me through it over the phone. But I'm not sure I'll remember how to do it next time.",
+        "finding_test_results": "I couldn't find my test results. I looked everywhere, but I couldn't find them. I'm not sure if I'm looking in the right place, or if they're not there yet, or if I'm doing something wrong. I gave up and called the office.",
+        "messaging_doctor": "I don't know how to send a message, and I'm afraid to try. What if I send it to the wrong person? What if I say something wrong? I'd rather just call - at least then I know I'm talking to the right person and I can explain what I need.",
+        "overall_reflection": "This is too complicated for me. I know it's supposed to make things easier, but for someone like me who isn't good with technology, it's actually harder. I wish there was a simpler way, or more help available."
+      }
+    },
+    {
+      "participant_id": "HP009",
+      "demographics": {
+        "age_range": "40",
+        "gender": "Male",
+        "health_literacy": "Medium",
+        "tech_comfort": "High",
+        "portal_usage_frequency": "Monthly"
+      },
+      "responses": {
+        "initial_expectations": "I've used patient portals before, so I had a general idea of what to expect. This one is fairly standard - nothing exceptional, but nothing terrible either. It does what it needs to do.",
+        "login_experience": "Login is straightforward. The two-factor authentication is a bit annoying, but I understand why it's necessary. Once I'm in, the interface is clean enough, though it could be more personalized.",
+        "finding_test_results": "I can find my test results without too much trouble. The layout is a bit cluttered, but I can usually find what I'm looking for. I wish the results were presented more clearly - maybe with visual indicators for what's normal vs. abnormal.",
+        "messaging_doctor": "I've used the messaging feature a few times. It works, but it's not great. The interface is basic, and I never know when I'll get a response. Sometimes it's quick, sometimes it takes days. I wish there was more transparency around response times.",
+        "overall_reflection": "It's functional. I can do what I need to do, but I'm not excited about using it. It feels like a necessary tool rather than a helpful one. There's room for improvement, but it's not terrible."
+      }
+    },
+    {
+      "participant_id": "HP010",
+      "demographics": {
+        "age_range": "22",
+        "gender": "Female",
+        "health_literacy": "Medium",
+        "tech_comfort": "High",
+        "portal_usage_frequency": "A few times per year"
+      },
+      "responses": {
+        "initial_expectations": "I expected it to be like other apps I use - simple, intuitive, fast. But it feels outdated. Like, why does it look like it was designed in 2010? I'm used to modern interfaces, and this isn't one.",
+        "login_experience": "Login is fine, but the interface after login is overwhelming. There's so much information, and I don't know what's important and what's not. I wish I could customize it or at least hide things I don't need.",
+        "finding_test_results": "I can find my test results, but I can't understand them. The medical terminology isn't explained, and there's no context. I end up googling everything, which probably isn't ideal, but what else am I supposed to do?",
+        "messaging_doctor": "I've never used the messaging feature. If I need to contact my doctor, I'll just call or schedule an appointment. The messaging seems like it would be slow and I'm not sure if my doctor even checks it regularly.",
+        "overall_reflection": "It's usable, but it's not great. It feels like healthcare technology is behind the times. I'm used to apps that are fast, intuitive, and beautiful. This is none of those things. It works, but that's about all I can say for it."
+      }
+    }
+  ]
+}
