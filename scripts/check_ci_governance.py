@@ -3,7 +3,6 @@
 
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -19,6 +18,7 @@ REQUIRED_SNIPPETS: dict[str, dict[str, str]] = {
         "governed surface compile check": (
             "python -m compileall -q app ../scripts/production_rehearsal.py"
         ),
+        "changed-file Ruff gate": "python ../scripts/check_ruff_changed.py",
         "change obligations": "python scripts/check_change_obligations.py",
         "integrity check": "python scripts/check_integrity.py",
     },
@@ -45,6 +45,7 @@ REQUIRED_SNIPPETS: dict[str, dict[str, str]] = {
     },
     "scripts/check_integrity.py": {
         "legacy Compass guard": "LEGACY_COMPASS_DOCS",
+        "backend dependency alignment": "BACKEND_DEPENDENCY_MARKERS",
         "governed evolution Tech freshness": '"governed evolution"',
         "sandbox evaluation Tech freshness": '"sandbox evaluation"',
         "production rehearsal Tech freshness": '"production rehearsal"',

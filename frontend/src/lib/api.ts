@@ -51,6 +51,13 @@ function del(path: string): Promise<void> { return request<void>(path, { method:
 
 // Update routes are implemented in updatesApi.ts:
 // /api/updates/version, /api/updates/check, /api/updates/prepare, /api/updates/apply.
+// Auth/passkey routes are implemented in authStore and Settings managers:
+// /auth/login /auth/register /auth/logout /auth/me /auth/team-status /auth/preferences
+// /auth/totp/setup /auth/totp/verify /auth/totp/disable
+// /auth/recovery-codes/generate /auth/recovery-codes/status
+// /webauthn/register/start /webauthn/register/finish
+// /webauthn/authenticate/start /webauthn/authenticate/finish
+// /webauthn/credentials /webauthn/credentials/{credential_id}
 
 // --- Projects ---
 

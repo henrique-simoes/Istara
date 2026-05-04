@@ -1,13 +1,15 @@
 """Tests for Network Security middleware — X-Access-Token validation."""
 
-import pytest
 from unittest.mock import MagicMock
+
+import pytest
 
 
 @pytest.fixture(autouse=True)
 def reset_network_security():
     """Reset network security settings after each test."""
     from app.config import settings
+
     original_token = settings.network_access_token
     original_bind_host = settings.bind_host
     original_team_mode = settings.team_mode
@@ -71,11 +73,13 @@ def test_token_extraction_returns_none():
 
 def test_exempt_paths():
     """Health, login, and register paths are exempt."""
-    from app.core.network_security import EXEMPT_PATHS, EXEMPT_PREFIXES
+    from app.core.network_security import EXEMPT_PATHS
 
     assert "/api/health" in EXEMPT_PATHS
     assert "/api/auth/login" in EXEMPT_PATHS
     assert "/api/auth/register" in EXEMPT_PATHS
+    assert "/api/webauthn/authenticate/start" in EXEMPT_PATHS
+    assert "/api/webauthn/authenticate/finish" in EXEMPT_PATHS
 
 
 def test_local_admin_network_guard_detects_unsafe_wildcard_bind():

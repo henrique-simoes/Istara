@@ -11,6 +11,7 @@ export default function TOTPManager() {
   const [secret, setSecret] = useState("");
   const [provisioningUri, setProvisioningUri] = useState("");
   const [code, setCode] = useState("");
+  const [currentPassword, setCurrentPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -28,6 +29,7 @@ export default function TOTPManager() {
       const res = await fetch(`${API_BASE}/api/auth/totp/setup`, {
         method: "POST",
         headers,
+        body: JSON.stringify({ current_password: currentPassword }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({ detail: "Failed to start 2FA setup" }));
@@ -36,6 +38,7 @@ export default function TOTPManager() {
       const data = await res.json();
       setSecret(data.secret || "");
       setProvisioningUri(data.provisioning_uri || "");
+      setCurrentPassword("");
       setMessage("Add this secret to your authenticator app, then enter the 6-digit code.");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to start 2FA setup");
@@ -81,11 +84,13 @@ export default function TOTPManager() {
       const res = await fetch(`${API_BASE}/api/auth/totp/disable`, {
         method: "POST",
         headers,
+        body: JSON.stringify({ current_password: currentPassword }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({ detail: "Failed to disable 2FA" }));
         throw new Error(data.detail || "Failed to disable 2FA");
       }
+      setCurrentPassword("");
       setMessage("Two-factor authentication is disabled.");
       await fetchMe();
     } catch (e) {
@@ -147,23 +152,36 @@ export default function TOTPManager() {
           </button>
         </div>
       ) : (
-        <div className="mt-4 flex gap-2">
-          <button
-            type="button"
-            onClick={startSetup}
-            disabled={loading}
-            className="py-2 px-4 rounded-lg bg-istara-600 hover:bg-istara-700 text-white text-sm font-medium disabled:opacity-50"
-          >
-            Set Up 2FA
-          </button>
-          <button
-            type="button"
-            onClick={disable}
-            disabled={loading}
-            className="py-2 px-4 rounded-lg border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-sm font-medium disabled:opacity-50"
-          >
-            Disable
-          </button>
+        <div className="mt-4 space-y-3">
+          <input
+            type="password"
+            value={currentPassword}
+            onChange={(e) => setCurrentPassword(e.target.value)}
+            placeholder="Current password"
+            autoComplete="current-password"
+            className="w-full px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+          />
+          <div className="flex gap-2">
+            {!user.totp_enabled ? (
+              <button
+                type="button"
+                onClick={startSetup}
+                disabled={loading}
+                className="py-2 px-4 rounded-lg bg-istara-600 hover:bg-istara-700 text-white text-sm font-medium disabled:opacity-50"
+              >
+                Set Up 2FA
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={disable}
+                disabled={loading}
+                className="py-2 px-4 rounded-lg border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-sm font-medium disabled:opacity-50"
+              >
+                Disable
+              </button>
+            )}
+          </div>
         </div>
       )}
     </div>
