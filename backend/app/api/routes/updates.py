@@ -11,6 +11,7 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
+from app.core.security_middleware import require_admin_or_localhost_for_destructive_action
 from app.models.database import get_db
 
 router = APIRouter()
@@ -289,12 +290,11 @@ async def prepare_update(
     This should be called before downloading/applying an update.
     Returns the backup record so the update can be rolled back if needed.
     """
-    if settings.team_mode:
-        from app.core.security_middleware import require_admin_from_request
-        try:
-            require_admin_from_request(request)
-        except Exception:
-            raise HTTPException(status_code=403, detail="Admin required to prepare updates")
+    try:
+        require_admin_or_localhost_for_destructive_action(request, "prepare updates")
+    except PermissionError as exc:
+        detail = "Admin required to prepare updates" if settings.team_mode else str(exc)
+        raise HTTPException(status_code=403, detail=detail)
 
     _require_update_confirmation(
         payload,
@@ -338,12 +338,11 @@ async def apply_update(
 
     Requires explicit confirmation. Admin only in team mode. Returns immediately — the update runs async.
     """
-    if settings.team_mode:
-        from app.core.security_middleware import require_admin_from_request
-        try:
-            require_admin_from_request(request)
-        except Exception:
-            raise HTTPException(status_code=403, detail="Admin required to apply updates")
+    try:
+        require_admin_or_localhost_for_destructive_action(request, "apply updates")
+    except PermissionError as exc:
+        detail = "Admin required to apply updates" if settings.team_mode else str(exc)
+        raise HTTPException(status_code=403, detail=detail)
 
     _require_update_confirmation(
         payload,

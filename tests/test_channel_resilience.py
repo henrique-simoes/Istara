@@ -1,6 +1,7 @@
 """Tests for channel resilience utilities — retry, circuit breaker, idempotency."""
 
 import asyncio
+from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
@@ -168,3 +169,75 @@ async def test_whatsapp_webhook_missing_id_is_not_globally_deduplicated():
 
     assert callback.call_count == 2
     assert "" not in adapter._seen_message_ids
+
+
+@pytest.mark.asyncio
+async def test_whatsapp_audio_downloads_and_transcribes_before_dispatch(tmp_path, monkeypatch):
+    """WhatsApp audio webhooks should dispatch a local transcript, not a pending marker."""
+    from app.channels.whatsapp import WhatsAppAdapter
+    from app.config import settings
+
+    class FakeResponse:
+        def __init__(self, json_data=None, content=b""):
+            self._json_data = json_data or {}
+            self.content = content
+
+        def json(self):
+            return self._json_data
+
+        def raise_for_status(self):
+            return None
+
+    class FakeHttp:
+        async def get(self, url):
+            if url.endswith("/media-123"):
+                return FakeResponse(
+                    {"url": "https://cdn.whatsapp.test/media-123", "mime_type": "audio/ogg", "file_size": 4}
+                )
+            return FakeResponse(content=b"OggS")
+
+    monkeypatch.setattr(settings, "data_dir", str(tmp_path / "data"))
+    monkeypatch.setattr("app.core.transcription.convert_audio_to_wav", lambda path: path)
+    monkeypatch.setattr(
+        "app.core.transcription.transcribe_audio",
+        lambda path: SimpleNamespace(
+            text="Eu preciso de uma busca melhor",
+            language="pt",
+            confidence=0.91,
+            icr_kappa=0.72,
+            icr_confidence="high",
+            needs_review=False,
+            tags=["interview", "feature-request"],
+            metadata={"path": path},
+        ),
+    )
+
+    adapter = WhatsAppAdapter(
+        "test-instance",
+        {"phone_number_id": "123", "access_token": "abc"},
+    )
+    adapter._running = True
+    adapter._http = FakeHttp()
+    callback = AsyncMock(return_value=None)
+    adapter.on_message(callback)
+
+    await adapter._process_webhook_message(
+        {
+            "id": "msg-audio-001",
+            "type": "audio",
+            "from": "5511999999999",
+            "audio": {"id": "media-123", "mime_type": "audio/ogg", "file_size": 4},
+        },
+        {"5511999999999": "Ada"},
+    )
+
+    callback.assert_awaited_once()
+    message = callback.await_args.args[0]
+    assert message.text == "Eu preciso de uma busca melhor"
+    assert message.metadata["content_type"] == "audio"
+    assert message.metadata["transcription"]["status"] == "complete"
+    assert message.metadata["transcription"]["language"] == "pt"
+    assert message.metadata["transcription_tags"] == ["interview", "feature-request"]
+    assert len(message.attachments) == 1
+    assert message.attachments[0].endswith(".ogg")
+    assert (tmp_path / "data" / "channel_audio" / "test-instance").exists()

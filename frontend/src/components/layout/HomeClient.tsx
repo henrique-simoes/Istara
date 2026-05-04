@@ -43,33 +43,36 @@ import { useSessionStore } from "@/stores/sessionStore";
 import { useAgentStore } from "@/stores/agentStore";
 import { settings as settingsApi } from "@/lib/api";
 import { API_BASE } from "@/lib/runtimeConfig";
+import { VIEW_NAMES, isKnownView, isProjectRequiredView, isViewAllowed } from "@/lib/navigation";
 
 const VIEW_STORAGE_KEY = "istara_active_view";
-const VIEW_NAMES: Record<string, string> = {
-  chat: "Chat", findings: "Findings", tasks: "Tasks", laws: "UX Laws",
-  interviews: "Interviews", documents: "Documents", "project-settings": "Project Settings",
-  context: "Context", skills: "Skills", agents: "Agents", memory: "Memory",
-  interfaces: "Interfaces", integrations: "Integrations", loops: "Loops",
-  notifications: "Notifications", backup: "Backup", "meta-hyperagent": "Meta-Agent",
-  autoresearch: "AutoResearch", history: "History", compute: "Compute Pool",
-  ensemble: "Ensemble Health", quality: "Quality Dashboard", settings: "Settings",
-  admin: "Admin Dashboard",
-};
+
+type FindingsNavigationFilter = {
+  law_id?: string;
+} | null;
 
 function getSavedView(): string {
   if (typeof window === "undefined") return "chat";
-  try { return localStorage.getItem(VIEW_STORAGE_KEY) || "chat"; } catch { return "chat"; }
+  try {
+    const savedView = localStorage.getItem(VIEW_STORAGE_KEY);
+    return savedView && isKnownView(savedView) ? savedView : "chat";
+  } catch {
+    return "chat";
+  }
 }
 
 export default function HomeClient() {
   const [activeView, setActiveViewRaw] = useState(getSavedView);
+  const [findingsFilter, setFindingsFilter] = useState<FindingsNavigationFilter>(null);
   const setActiveView = (view: string) => {
     setActiveViewRaw(view);
+    if (view === "findings") setFindingsFilter(null);
     try { localStorage.setItem(VIEW_STORAGE_KEY, view); } catch {}
     document.title = `${VIEW_NAMES[view] || "Istara"} — Istara`;
   };
-  // Set title on mount
-  useEffect(() => { document.title = `${VIEW_NAMES[activeView] || "Istara"} — Istara`; }, []);
+  useEffect(() => {
+    document.title = `${VIEW_NAMES[activeView] || "Istara"} — Istara`;
+  }, [activeView]);
 
   const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -77,11 +80,19 @@ export default function HomeClient() {
   const [authenticated, setAuthenticated] = useState<boolean | null>(null);
   const [tourReady, setTourReady] = useState(false);
   const { projects, activeProjectId, fetchProjects } = useProjectStore();
+  const user = useAuthStore((s) => s.user);
+  const userRole = user?.role || null;
 
   const tourActive = useTourStore((s) => s.active);
   const tourStep = useTourStore((s) => s.step);
   const isOnboarding = useTourStore((s) => s.isOnboarding);
   const completeOnboarding = useTourStore((s) => s.completeOnboarding);
+
+  useEffect(() => {
+    if (!isKnownView(activeView) || (userRole && !isViewAllowed(activeView, userRole))) {
+      setActiveView("chat");
+    }
+  }, [activeView, userRole]);
 
   async function bootstrapAuth() {
     setTourReady(false);
@@ -227,6 +238,9 @@ export default function HomeClient() {
         setActiveView(detail);
       } else if (detail?.view) {
         setActiveView(detail.view);
+        if (detail.view === "findings") {
+          setFindingsFilter(detail.filter?.law_id ? { law_id: detail.filter.law_id } : null);
+        }
         // If navigating to chat with a specific agent, create/find a session for that agent
         if (detail.view === "chat") {
           const { sessions, createSession, selectSession, setPendingPrefill } = useSessionStore.getState();
@@ -305,16 +319,23 @@ export default function HomeClient() {
     return <GuidedTour setActiveView={setActiveView} currentView={activeView} />;
   }
 
-  // Views that require an active project to show meaningful content
-  const PROJECT_REQUIRED_VIEWS = new Set([
-    "chat", "tasks", "findings", "laws", "interviews", "documents",
-    "project-settings", "context", "loops", "memory", "history", "interfaces",
-    "autoresearch", "backup",
-  ]);
-
   const renderView = () => {
+    if (userRole && !isViewAllowed(activeView, userRole)) {
+      return (
+        <div className="flex-1 flex items-center justify-center p-8">
+          <div className="text-center max-w-sm">
+            <div className="text-4xl mb-3">🔒</div>
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">Restricted View</h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              Your account cannot access {VIEW_NAMES[activeView] || "this view"}.
+            </p>
+          </div>
+        </div>
+      );
+    }
+
     // Guard: views that need a project show a prompt when none is selected
-    if (PROJECT_REQUIRED_VIEWS.has(activeView) && !activeProjectId) {
+    if (isProjectRequiredView(activeView) && !activeProjectId) {
       return (
         <div className="flex-1 flex items-center justify-center p-8">
           <div className="text-center max-w-sm">
@@ -331,7 +352,7 @@ export default function HomeClient() {
     switch (activeView) {
       case "chat": return <ChatView />;
       case "tasks": return <KanbanBoard />;
-      case "findings": return <FindingsView />;
+      case "findings": return <FindingsView navigationFilter={findingsFilter} />;
       case "laws": return <LawsView />;
       case "interviews": return <InterviewView />;
       case "documents": return <DocumentsView />;
@@ -385,7 +406,12 @@ export default function HomeClient() {
       <div className="hidden lg:block">
         <StatusBar />
       </div>
-      <MobileNav activeView={activeView} onViewChange={setActiveView} />
+      <MobileNav
+        activeView={activeView}
+        onViewChange={setActiveView}
+        onSearchOpen={() => setSearchOpen(true)}
+        userRole={userRole}
+      />
       <ToastNotification />
       <SearchModal open={searchOpen} onClose={() => setSearchOpen(false)} onNavigate={setActiveView} />
       <KeyboardShortcuts open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />

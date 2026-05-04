@@ -15,10 +15,11 @@ import logging
 import re
 import uuid
 from pathlib import Path
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -36,6 +37,14 @@ from app.models.design_screen import DesignBrief, DesignDecision, DesignScreen
 from app.models.message import Message
 from app.models.project import Project
 from app.models.session import ChatSession, INFERENCE_PRESETS
+from app.services.design_evidence import (
+    build_dev_spec_content,
+    build_figma_import_html,
+    build_seeded_prompt,
+    hydrate_design_brief,
+    resolve_screen_source_findings,
+    resolve_seed_findings,
+)
 from app.skills.design_tools import (
     OPENAI_DESIGN_TOOLS,
     build_design_tools_prompt,
@@ -50,6 +59,15 @@ def _resolve_project_folder(project, project_id: str) -> Path:
     if project and getattr(project, "watch_folder_path", None):
         return Path(project.watch_folder_path)
     return Path(settings.upload_dir) / project_id
+
+
+def _require_mock_interfaces_enabled() -> None:
+    """Block mock design endpoints in public production installs by default."""
+    if (
+        settings.istara_runtime_profile == "public"
+        and not settings.interfaces_mock_endpoints_enabled
+    ):
+        raise HTTPException(status_code=404, detail="Mock Interfaces endpoints are disabled.")
 
 
 router = APIRouter()
@@ -247,54 +265,70 @@ async def _generate_native_design_tools(
 
 
 class DesignChatRequest(BaseModel):
-    message: str
-    project_id: str
+    message: str = Field(..., min_length=1, max_length=20000)
+    project_id: str = Field(..., min_length=1)
     session_id: str | None = None
 
 
 class GenerateRequest(BaseModel):
-    project_id: str
-    prompt: str
-    device_type: str = "DESKTOP"
-    model: str = "GEMINI_3_FLASH"
-    seed_finding_ids: list[str] = []
+    project_id: str = Field(..., min_length=1)
+    prompt: str = Field(..., min_length=1, max_length=12000)
+    device_type: Literal["MOBILE", "DESKTOP", "TABLET", "AGNOSTIC"] = "DESKTOP"
+    model: Literal["GEMINI_3_FLASH", "GEMINI_3_PRO", "MODEL_ID_UNSPECIFIED"] = "GEMINI_3_FLASH"
+    seed_finding_ids: list[str] = Field(default_factory=list, max_length=10)
 
 
 class EditRequest(BaseModel):
-    screen_id: str
-    instructions: str
+    screen_id: str = Field(..., min_length=1)
+    instructions: str = Field(..., min_length=1, max_length=12000)
 
 
 class VariantRequest(BaseModel):
-    screen_id: str
-    variant_type: str
-    count: int = 3
+    screen_id: str = Field(..., min_length=1)
+    variant_type: Literal["REFINE", "EXPLORE", "REIMAGINE"] = "EXPLORE"
+    count: int = Field(3, ge=1, le=5)
 
 
 class FigmaImportRequest(BaseModel):
-    project_id: str
-    figma_url: str
+    project_id: str = Field(..., min_length=1)
+    figma_url: str = Field(..., min_length=1, max_length=2048)
 
 
 class FigmaExportRequest(BaseModel):
-    screen_id: str
-    figma_file_key: str
+    screen_id: str = Field(..., min_length=1)
+    figma_file_key: str = Field(..., min_length=1, max_length=200)
 
 
 class HandoffBriefRequest(BaseModel):
-    project_id: str
+    project_id: str = Field(..., min_length=1)
 
 
 class HandoffDevSpecRequest(BaseModel):
-    screen_id: str
+    screen_id: str = Field(..., min_length=1)
 
 
 class ConfigureStitchRequest(BaseModel):
-    api_key: str
+    api_key: str = Field(default="", max_length=4096)
+
+    @field_validator("api_key")
+    @classmethod
+    def clean_api_key(cls, value: str) -> str:
+        value = value.strip()
+        if any(ch in value for ch in ("\n", "\r", "\x00")):
+            raise ValueError("API keys cannot contain control characters")
+        return value
 
 
 class ConfigureFigmaRequest(BaseModel):
-    api_token: str
+    api_token: str = Field(default="", max_length=4096)
+
+    @field_validator("api_token")
+    @classmethod
+    def clean_api_token(cls, value: str) -> str:
+        value = value.strip()
+        if any(ch in value for ch in ("\n", "\r", "\x00")):
+            raise ValueError("API tokens cannot contain control characters")
+        return value
 
 
 # -- Design Chat (SSE streaming with ReAct tool loop) -----------------------
@@ -824,6 +858,20 @@ async def generate_screen(
 
     await require_project_access(db, request, data.project_id, min_role="researcher")
 
+    seed_findings, missing_seed_ids = await resolve_seed_findings(
+        db,
+        data.project_id,
+        data.seed_finding_ids,
+        max_items=10,
+    )
+    if missing_seed_ids:
+        raise HTTPException(
+            status_code=422,
+            detail="Seed findings were not found in this project: " + ", ".join(missing_seed_ids),
+        )
+    seed_ids = [finding.id for finding in seed_findings]
+    enriched_prompt = build_seeded_prompt(data.prompt, seed_findings)
+
     # If Stitch is not configured, fall back to the design tool executor
     if not settings.stitch_api_key:
         tool_result = await execute_design_tool(
@@ -832,33 +880,13 @@ async def generate_screen(
                 "prompt": data.prompt,
                 "device_type": data.device_type,
                 "model": data.model,
-                "seed_finding_ids": data.seed_finding_ids,
+                "seed_finding_ids": seed_ids,
             },
             data.project_id,
         )
         return tool_result
 
     guard = ContentGuard()
-    seed_ids = data.seed_finding_ids or []
-
-    # Enrich prompt with findings if seeded
-    enriched_prompt = data.prompt
-    if seed_ids:
-        from app.models.finding import Insight, Recommendation
-
-        texts: list[str] = []
-        for fid in seed_ids[:5]:
-            for Model in [Insight, Recommendation]:
-                r = await db.execute(select(Model).where(Model.id == fid))
-                finding = r.scalar_one_or_none()
-                if finding:
-                    texts.append(f"- {finding.text}")
-        if texts:
-            enriched_prompt = (
-                "Based on these research findings:\n"
-                + "\n".join(texts)
-                + f"\n\nDesign: {data.prompt}"
-            )
 
     # Create or reuse a Stitch project
     stitch_project_id = "default"
@@ -1289,12 +1317,47 @@ async def figma_import(data: FigmaImportRequest, request: Request, db: AsyncSess
 
         components = components_data.get("meta", {}).get("components", [])
         styles = styles_data.get("meta", {}).get("styles", [])
+        screen_id = str(uuid.uuid4())
+        screen = DesignScreen(
+            id=screen_id,
+            project_id=data.project_id,
+            title=f"Figma import: {file_name}",
+            description=f"Imported Figma design context from {data.figma_url}",
+            prompt=data.figma_url,
+            device_type="AGNOSTIC",
+            model_used="FIGMA",
+            html_content=build_figma_import_html(
+                file_name=file_name,
+                file_key=file_key,
+                node_id=node_id,
+                components=components,
+                styles=styles,
+            ),
+            screenshot_path="",
+            figma_file_key=file_key,
+            figma_node_id=node_id,
+            status="ready",
+            metadata_json=json.dumps(
+                {
+                    "figma_file_name": file_name,
+                    "components_count": len(components),
+                    "styles_count": len(styles),
+                    "import_source": "figma",
+                }
+            ),
+        )
+        db.add(screen)
+        await db.commit()
+        await db.refresh(screen)
 
         return {
             "success": True,
             "file_key": file_key,
             "node_id": node_id,
             "name": file_name,
+            "screens_imported": 1,
+            "screen_ids": [screen_id],
+            "screens": [screen.to_dict()],
             "components": [
                 {
                     "name": c.get("name", ""),
@@ -1365,6 +1428,42 @@ async def figma_design_system(file_key: str, request: Request, db: AsyncSession 
         raise HTTPException(status_code=502, detail=f"Figma API error: {e}")
 
 
+@router.get("/interfaces/figma/components/{file_key}")
+async def figma_components(file_key: str, request: Request, db: AsyncSession = Depends(get_db)):
+    """List Figma components for a file.
+
+    This endpoint backs the frontend API helper and keeps the contract explicit
+    instead of leaving an orphan client method.
+    """
+    require_admin_from_request(request)
+
+    from app.services.figma_service import figma_service
+
+    if not settings.figma_api_token:
+        raise HTTPException(
+            status_code=422,
+            detail="Figma API token not configured. Set FIGMA_API_TOKEN in settings.",
+        )
+
+    try:
+        data = await figma_service.get_components(file_key)
+        components = data.get("meta", {}).get("components", [])
+        return {
+            "success": True,
+            "file_key": file_key,
+            "components": [
+                {
+                    "name": c.get("name", ""),
+                    "key": c.get("key", ""),
+                    "description": c.get("description", ""),
+                }
+                for c in components
+            ],
+        }
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Figma API error: {e}")
+
+
 # -- Handoff -----------------------------------------------------------------
 
 
@@ -1386,7 +1485,7 @@ async def list_briefs(
         query = query.where(DesignBrief.project_id == project_id)
     result = await db.execute(query)
     briefs = result.scalars().all()
-    return {"briefs": [b.to_dict() for b in briefs]}
+    return {"briefs": [await hydrate_design_brief(db, b) for b in briefs]}
 
 
 @router.post("/interfaces/handoff/brief")
@@ -1402,6 +1501,15 @@ async def handoff_brief(
         {},
         data.project_id,
     )
+    latest = await db.execute(
+        select(DesignBrief)
+        .where(DesignBrief.project_id == data.project_id)
+        .order_by(DesignBrief.created_at.desc())
+    )
+    brief = latest.scalar_one_or_none()
+    if brief:
+        result["brief_id"] = brief.id
+        result["brief"] = await hydrate_design_brief(db, brief)
     return result
 
 
@@ -1416,22 +1524,8 @@ async def handoff_dev_spec(
     await require_project_access(db, request, screen.project_id, min_role="viewer")
 
     # Build a structured dev spec from the screen data
-    findings = []
-    try:
-        finding_ids = json.loads(screen.source_findings or "[]")
-        if finding_ids:
-            from app.models.finding import Insight, Recommendation
-
-            for fid in finding_ids[:10]:
-                for Model in [Insight, Recommendation]:
-                    r = await db.execute(select(Model).where(Model.id == fid))
-                    item = r.scalar_one_or_none()
-                    if item:
-                        findings.append(
-                            {"type": Model.__tablename__, "text": item.text, "id": item.id}
-                        )
-    except Exception:
-        pass
+    findings = await resolve_screen_source_findings(db, screen)
+    content = build_dev_spec_content(screen, findings)
 
     spec = {
         "screen_id": screen.id,
@@ -1446,26 +1540,49 @@ async def handoff_dev_spec(
         "created_at": screen.created_at.isoformat() if screen.created_at else None,
     }
 
-    return {"success": True, "dev_spec": spec}
+    return {"success": True, "dev_spec": spec, "content": content}
 
 
 # -- Status and Configuration ------------------------------------------------
 
 
 @router.get("/interfaces/status")
-async def interfaces_status(request: Request, db: AsyncSession = Depends(get_db)):
+async def interfaces_status(
+    request: Request,
+    project_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
     """Get the current status of the Interfaces module."""
-    require_admin_from_request(request)
-    screens_count = await db.execute(select(func.count()).select_from(DesignScreen))
-    briefs_count = await db.execute(select(func.count()).select_from(DesignBrief))
+    subject = get_subject(request)
+    if project_id:
+        await require_project_access(db, request, project_id, min_role="viewer")
+        screens_query = select(func.count()).select_from(DesignScreen).where(
+            DesignScreen.project_id == project_id
+        )
+        briefs_query = select(func.count()).select_from(DesignBrief).where(
+            DesignBrief.project_id == project_id
+        )
+        scope = "project"
+    elif is_global_admin(subject) or not settings.team_mode:
+        screens_query = select(func.count()).select_from(DesignScreen)
+        briefs_query = select(func.count()).select_from(DesignBrief)
+        scope = "global"
+    else:
+        screens_query = None
+        briefs_query = None
+        scope = "integration-only"
+
+    screens_count = await db.execute(screens_query) if screens_query is not None else None
+    briefs_count = await db.execute(briefs_query) if briefs_query is not None else None
 
     return {
         "stitch_configured": bool(settings.stitch_api_key),
         "figma_configured": bool(settings.figma_api_token),
         "onboarding_needed": not bool(settings.stitch_api_key)
         and not bool(settings.figma_api_token),
-        "screens_count": screens_count.scalar() or 0,
-        "briefs_count": briefs_count.scalar() or 0,
+        "screens_count": (screens_count.scalar() if screens_count is not None else 0) or 0,
+        "briefs_count": (briefs_count.scalar() if briefs_count is not None else 0) or 0,
+        "scope": scope,
     }
 
 
@@ -1627,26 +1744,30 @@ MOCK_VARIANT_TEMPLATES = [
 
 
 class MockGenerateRequest(BaseModel):
-    project_id: str
-    prompt: str = "Mock dashboard screen"
-    device_type: str = "DESKTOP"
-    seed_finding_ids: list[str] = []
+    project_id: str = Field(..., min_length=1)
+    prompt: str = Field("Mock dashboard screen", min_length=1, max_length=12000)
+    device_type: Literal["MOBILE", "DESKTOP", "TABLET", "AGNOSTIC"] = "DESKTOP"
+    seed_finding_ids: list[str] = Field(default_factory=list, max_length=10)
 
 
 class MockEditRequest(BaseModel):
-    screen_id: str
-    instructions: str = "Make it blue and add a profile link"
+    screen_id: str = Field(..., min_length=1)
+    instructions: str = Field("Make it blue and add a profile link", min_length=1, max_length=12000)
 
 
 class MockVariantRequest(BaseModel):
-    screen_id: str
-    variant_type: str = "EXPLORE"
-    count: int = 3
+    screen_id: str = Field(..., min_length=1)
+    variant_type: Literal["REFINE", "EXPLORE", "REIMAGINE"] = "EXPLORE"
+    count: int = Field(3, ge=1, le=5)
 
 
 class MockFigmaImportRequest(BaseModel):
-    project_id: str
-    figma_url: str = "https://www.figma.com/file/abc123XYZ/MockDesignSystem"
+    project_id: str = Field(..., min_length=1)
+    figma_url: str = Field(
+        "https://www.figma.com/file/abc123XYZ/MockDesignSystem",
+        min_length=1,
+        max_length=2048,
+    )
 
 
 @router.post("/interfaces/mock/generate")
@@ -1661,9 +1782,21 @@ async def mock_generate_screen(
     Also creates a DesignDecision if seed_finding_ids are provided.
     Only available when Stitch is NOT configured (safety guard for tests).
     """
-    # Mock endpoints always available for integration testing
+    _require_mock_interfaces_enabled()
 
     await require_project_access(db, request, data.project_id, min_role="researcher")
+    seed_findings, missing_seed_ids = await resolve_seed_findings(
+        db,
+        data.project_id,
+        data.seed_finding_ids,
+        max_items=10,
+    )
+    if missing_seed_ids:
+        raise HTTPException(
+            status_code=422,
+            detail="Seed findings were not found in this project: " + ", ".join(missing_seed_ids),
+        )
+    seed_ids = [finding.id for finding in seed_findings]
 
     screen_id = str(uuid.uuid4())
     screen = DesignScreen(
@@ -1677,19 +1810,19 @@ async def mock_generate_screen(
         html_content=MOCK_HTML_DASHBOARD,
         screenshot_path="",
         status="ready",
-        source_findings=json.dumps(data.seed_finding_ids),
+        source_findings=json.dumps(seed_ids),
     )
     db.add(screen)
 
     decision_id = None
-    if data.seed_finding_ids:
+    if seed_ids:
         decision_id = str(uuid.uuid4())
         dd = DesignDecision(
             id=decision_id,
             project_id=data.project_id,
             agent_id="mock-test",
             text=f"Design decision: {data.prompt[:200]}",
-            recommendation_ids=json.dumps(data.seed_finding_ids),
+            recommendation_ids=json.dumps(seed_ids),
             screen_ids=json.dumps([screen_id]),
             rationale="Generated from mock endpoint for integration testing",
         )
@@ -1714,7 +1847,7 @@ async def mock_edit_screen(
     Creates a child DesignScreen with modified mock HTML linked to the parent.
     Only available when Stitch is NOT configured.
     """
-    # Mock endpoints always available for integration testing
+    _require_mock_interfaces_enabled()
 
     parent = await _get_screen_or_404(db, data.screen_id)
     await require_project_access(db, request, parent.project_id, min_role="researcher")
@@ -1751,7 +1884,7 @@ async def mock_generate_variants(
     Creates 2-3 child DesignScreen records with different mock HTML variants.
     Only available when Stitch is NOT configured.
     """
-    # Mock endpoints always available for integration testing
+    _require_mock_interfaces_enabled()
 
     parent = await _get_screen_or_404(db, data.screen_id)
     await require_project_access(db, request, parent.project_id, min_role="researcher")
@@ -1796,7 +1929,7 @@ async def mock_figma_import(
     Returns realistic mock design context (components, styles, layout data).
     Only available when Figma is NOT configured.
     """
-    # Mock endpoints always available for integration testing
+    _require_mock_interfaces_enabled()
     await require_project_access(db, request, data.project_id, min_role="researcher")
 
     from app.services.figma_service import figma_service

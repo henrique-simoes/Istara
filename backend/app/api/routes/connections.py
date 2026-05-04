@@ -4,9 +4,11 @@ import logging
 import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
+from typing import Literal
+from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -18,6 +20,8 @@ from app.core.connection_string import (
     create_compute_donation_string,
     create_connection_string,
     decode_connection_string,
+    hash_connection_string,
+    preview_connection_string,
 )
 from app.core.security_middleware import require_admin_from_request
 from app.models.database import get_db
@@ -30,31 +34,86 @@ VALIDATION_RATE_LIMIT = 30
 VALIDATION_RATE_WINDOW_S = 60
 
 
+def _strip_text(value: object) -> str:
+    if value is None:
+        return ""
+    return str(value).strip()
+
+
+def _validate_url(value: str, *, schemes: set[str], field_name: str) -> str:
+    parsed = urlparse(value)
+    if parsed.scheme not in schemes or not parsed.hostname:
+        allowed = ", ".join(sorted(schemes))
+        raise ValueError(f"{field_name} must be an absolute URL using {allowed}")
+    return value.rstrip("/")
+
+
 class GenerateRequest(BaseModel):
-    server_url: str
-    ws_url: str = ""
-    label: str = ""
-    expires_hours: int = 168  # 7 days
-    role: str = "researcher"
+    server_url: str = Field(..., min_length=8, max_length=2048)
+    ws_url: str = Field(default="", max_length=2048)
+    label: str = Field(default="", max_length=120)
+    expires_hours: int = Field(default=168, ge=1, le=8760)  # 7 days, max 1 year
+    role: Literal["admin", "researcher", "viewer"] = "researcher"
+
+    @field_validator("server_url", mode="before")
+    @classmethod
+    def validate_server_url(cls, value: object) -> str:
+        return _validate_url(_strip_text(value), schemes={"http", "https"}, field_name="server_url")
+
+    @field_validator("ws_url", mode="before")
+    @classmethod
+    def validate_ws_url(cls, value: object) -> str:
+        text = _strip_text(value)
+        if not text:
+            return ""
+        return _validate_url(text, schemes={"ws", "wss"}, field_name="ws_url")
+
+    @field_validator("label", mode="before")
+    @classmethod
+    def normalize_label(cls, value: object) -> str:
+        return _strip_text(value)
 
 
 class ComputeDonationGenerateRequest(BaseModel):
-    server_url: str
-    ws_url: str = ""
-    label: str = ""
-    expires_hours: int = 168
+    server_url: str = Field(..., min_length=8, max_length=2048)
+    ws_url: str = Field(default="", max_length=2048)
+    label: str = Field(default="", max_length=120)
+    expires_hours: int = Field(default=168, ge=1, le=8760)
+
+    @field_validator("server_url", mode="before")
+    @classmethod
+    def validate_server_url(cls, value: object) -> str:
+        return _validate_url(_strip_text(value), schemes={"http", "https"}, field_name="server_url")
+
+    @field_validator("ws_url", mode="before")
+    @classmethod
+    def validate_ws_url(cls, value: object) -> str:
+        text = _strip_text(value)
+        if not text:
+            return ""
+        return _validate_url(text, schemes={"ws", "wss"}, field_name="ws_url")
+
+    @field_validator("label", mode="before")
+    @classmethod
+    def normalize_label(cls, value: object) -> str:
+        return _strip_text(value)
 
 
 class ValidateRequest(BaseModel):
-    connection_string: str
+    connection_string: str = Field(..., min_length=1, max_length=20000)
 
 
 class RedeemRequest(BaseModel):
-    connection_string: str
-    username: str
-    password: str
-    email: str = ""
-    display_name: str = ""
+    connection_string: str = Field(..., min_length=1, max_length=20000)
+    username: str = Field(..., min_length=1, max_length=64)
+    password: str = Field(..., min_length=8, max_length=256)
+    email: str = Field(default="", max_length=320)
+    display_name: str = Field(default="", max_length=120)
+
+    @field_validator("username", "email", "display_name", mode="before")
+    @classmethod
+    def normalize_text(cls, value: object) -> str:
+        return _strip_text(value)
 
 
 @router.post("/connections/generate")
@@ -87,7 +146,8 @@ async def generate_connection_string(
 
     new_conn = ConnectionString(
         id=str(uuid.uuid4()),
-        connection_string=conn_str,
+        connection_string=preview_connection_string(conn_str),
+        connection_string_hash=hash_connection_string(conn_str),
         token_type="user_invite",
         label=data.label,
         server_url=data.server_url,
@@ -97,6 +157,25 @@ async def generate_connection_string(
     )
     db.add(new_conn)
     await db.commit()
+    try:
+        from app.core.improvement_governance import improvement_governance
+
+        await improvement_governance.record_feature_evidence(
+            feature="pooled_compute_connection_strings",
+            source_system="connection_strings",
+            source_id=f"invite:{new_conn.id}",
+            agent_id="connection-string-service",
+            summary="User invite connection string generated with hashed storage.",
+            evidence={
+                "passed": True,
+                "connection_id": new_conn.id,
+                "token_type": "user_invite",
+                "intended_role": data.role,
+                "has_hash": bool(new_conn.connection_string_hash),
+            },
+        )
+    except Exception:
+        pass
 
     return {
         "id": new_conn.id,
@@ -136,7 +215,8 @@ async def generate_compute_donation_string(
 
     new_conn = ConnectionString(
         id=str(uuid.uuid4()),
-        connection_string=conn_str,
+        connection_string=preview_connection_string(conn_str),
+        connection_string_hash=hash_connection_string(conn_str),
         token_type="compute_donation",
         label=data.label,
         server_url=data.server_url,
@@ -146,6 +226,25 @@ async def generate_compute_donation_string(
     )
     db.add(new_conn)
     await db.commit()
+    try:
+        from app.core.improvement_governance import improvement_governance
+
+        await improvement_governance.record_feature_evidence(
+            feature="pooled_compute_connection_strings",
+            source_system="connection_strings",
+            source_id=f"compute_donation:{new_conn.id}",
+            agent_id="connection-string-service",
+            summary="Compute donation connection string generated with hashed storage.",
+            evidence={
+                "passed": True,
+                "connection_id": new_conn.id,
+                "token_type": "compute_donation",
+                "has_hash": bool(new_conn.connection_string_hash),
+                "has_ws_url": bool(new_conn.ws_url),
+            },
+        )
+    except Exception:
+        pass
 
     return {
         "id": new_conn.id,
@@ -241,6 +340,24 @@ async def redeem_connection_string(data: RedeemRequest, db: AsyncSession = Depen
         conn.redeemed_username = data.username.strip()
         conn.redeemed_at = datetime.now(timezone.utc)
         await db.commit()
+        try:
+            from app.core.improvement_governance import improvement_governance
+
+            await improvement_governance.record_feature_evidence(
+                feature="pooled_compute_connection_strings",
+                source_system="connection_strings",
+                source_id=f"redeem:{conn.id}",
+                agent_id="connection-string-service",
+                summary="Connection string redeemed in local mode.",
+                evidence={
+                    "passed": True,
+                    "connection_id": conn.id,
+                    "token_type": token_type,
+                    "local_mode": True,
+                },
+            )
+        except Exception:
+            pass
         return {
             "token": token,
             "network_token": payload.get("network_token", ""),
@@ -283,6 +400,25 @@ async def redeem_connection_string(data: RedeemRequest, db: AsyncSession = Depen
     conn.redeemed_username = user.username
     conn.redeemed_at = datetime.now(timezone.utc)
     await db.commit()
+    try:
+        from app.core.improvement_governance import improvement_governance
+
+        await improvement_governance.record_feature_evidence(
+            feature="pooled_compute_connection_strings",
+            source_system="connection_strings",
+            source_id=f"redeem:{conn.id}",
+            agent_id="connection-string-service",
+            summary="Connection string redeemed into a team user.",
+            evidence={
+                "passed": True,
+                "connection_id": conn.id,
+                "token_type": token_type,
+                "user_id": user.id,
+                "role": user.role.value,
+            },
+        )
+    except Exception:
+        pass
 
     token = create_token(user.id, user.username, user.role.value)
     logger.info(f"User created via connection string: {user.username}")
@@ -320,9 +456,28 @@ async def rotate_network_token(request: Request, db: AsyncSession = Depends(get_
     _persist_env("NETWORK_ACCESS_TOKEN", new_token)
 
     result = await db.execute(select(ConnectionString).where(ConnectionString.is_active.is_(True)))
+    revoked = 0
     for conn in result.scalars().all():
         conn.is_active = False
+        revoked += 1
     await db.commit()
+    try:
+        from app.core.improvement_governance import improvement_governance
+
+        await improvement_governance.record_feature_evidence(
+            feature="pooled_compute_connection_strings",
+            source_system="connection_strings",
+            source_id=f"rotate_network_token:{datetime.now(timezone.utc).isoformat()}",
+            agent_id="connection-string-service",
+            summary="Network access token rotated and active connection strings revoked.",
+            evidence={
+                "passed": True,
+                "revoked_connection_strings": revoked,
+            },
+            metrics_after={"revoked_connection_strings": revoked},
+        )
+    except Exception:
+        pass
 
     # Broadcast to connected relays so they know the token changed
     try:
@@ -347,18 +502,42 @@ async def _get_redeemable_connection_string(
     db: AsyncSession,
     connection_string: str,
 ) -> ConnectionString | None:
+    conn, reason = await _get_connection_string_status(db, connection_string)
+    if reason != "ok":
+        return None
+    return conn
+
+
+async def _find_connection_string_record(
+    db: AsyncSession,
+    connection_string: str,
+) -> ConnectionString | None:
+    conn_hash = hash_connection_string(connection_string)
+    result = await db.execute(
+        select(ConnectionString).where(ConnectionString.connection_string_hash == conn_hash)
+    )
+    conn = result.scalar_one_or_none()
+    if conn:
+        return conn
+
+    # Legacy fallback for rows created before hashing was introduced.
     result = await db.execute(
         select(ConnectionString).where(ConnectionString.connection_string == connection_string)
     )
     conn = result.scalar_one_or_none()
+    if conn and not conn.connection_string_hash:
+        conn.connection_string_hash = conn_hash
+        conn.connection_string = preview_connection_string(connection_string)
+    return conn
+
+
+def _connection_expired(conn: ConnectionString) -> bool:
     if not conn or not conn.is_active or conn.is_redeemed:
-        return None
+        return True
     expires_at = conn.expires_at
     if expires_at.tzinfo is None:
         expires_at = expires_at.replace(tzinfo=timezone.utc)
-    if expires_at < datetime.now(timezone.utc):
-        return None
-    return conn
+    return expires_at < datetime.now(timezone.utc)
 
 
 def _is_validation_rate_limited(client_id: str) -> bool:
@@ -373,10 +552,7 @@ async def _get_connection_string_status(
     db: AsyncSession,
     connection_string: str,
 ) -> tuple[ConnectionString | None, str]:
-    result = await db.execute(
-        select(ConnectionString).where(ConnectionString.connection_string == connection_string)
-    )
-    conn = result.scalar_one_or_none()
+    conn = await _find_connection_string_record(db, connection_string)
     if not conn:
         return None, "missing"
     if not conn.is_active:

@@ -124,6 +124,7 @@ export default function DocumentsView() {
     tags,
     stats,
     loading,
+    error,
     total,
     page,
     totalPages,
@@ -160,6 +161,7 @@ export default function DocumentsView() {
     }
     return "compact";
   });
+  const canWrite = canWriteActiveProject();
 
   const handleViewMode = useCallback((mode: "compact" | "list" | "grid") => {
     setViewMode(mode);
@@ -189,7 +191,7 @@ export default function DocumentsView() {
   }, [searchQuery, filterPhase, filterTag, filterSource, activeProjectId, fetchDocuments]);
 
   const handleSync = async () => {
-    if (!activeProjectId || !canWriteActiveProject()) return;
+    if (!activeProjectId || !canWrite) return;
     setSyncing(true);
     try {
       const count = await syncDocuments(activeProjectId);
@@ -215,7 +217,7 @@ export default function DocumentsView() {
   };
 
   const handleUploadFiles = async (fileList: FileList | null) => {
-    if (!activeProjectId || !fileList?.length || !canWriteActiveProject()) return;
+    if (!activeProjectId || !fileList?.length || !canWrite) return;
 
     const selectedFiles = Array.from(fileList);
     setUploading(true);
@@ -320,14 +322,14 @@ export default function DocumentsView() {
               ref={fileInputRef}
               type="file"
               multiple
-              accept=".txt,.pdf,.docx,.csv,.md,.json,.xlsx,.xls"
+              accept=".txt,.pdf,.docx,.csv,.md,.json,.xlsx,.xls,.mp3,.wav,.m4a,.ogg,.mp4,.webm,.mov,.jpg,.jpeg,.png,.gif"
               onChange={(e) => handleUploadFiles(e.target.files)}
               className="hidden"
             />
             <button
               id="tour-target-document-upload"
               onClick={() => fileInputRef.current?.click()}
-              disabled={!activeProjectId || uploading || !canWriteActiveProject()}
+              disabled={!activeProjectId || uploading || !canWrite}
               className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm bg-istara-600 text-white hover:bg-istara-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               aria-label="Upload research files"
               aria-busy={uploading}
@@ -398,7 +400,7 @@ export default function DocumentsView() {
             </button>
             <button
               onClick={handleSync}
-              disabled={syncing || !canWriteActiveProject()}
+              disabled={syncing || !canWrite}
               className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors disabled:opacity-50"
               aria-label="Sync project files"
               title="Scan project folder for new files"
@@ -408,7 +410,7 @@ export default function DocumentsView() {
             </button>
             <button
               onClick={() => setShowOrganize(!showOrganize)}
-              disabled={!activeProjectId || !canWriteActiveProject()}
+              disabled={!activeProjectId || !canWrite}
               className={cn(
                 "flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm transition-colors disabled:opacity-50",
                 showOrganize
@@ -522,6 +524,11 @@ export default function DocumentsView() {
 
       {/* Document List */}
       <div className="flex-1 overflow-y-auto p-4" role="list" aria-label="Documents list">
+        {error && (
+          <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300" role="alert">
+            {error}
+          </div>
+        )}
         {loading && documents.length === 0 ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 size={20} className="animate-spin text-istara-600" />
@@ -555,7 +562,8 @@ export default function DocumentsView() {
                   key={doc.id}
                   doc={doc}
                   onOpen={() => handleOpenPreview(doc)}
-                  onDelete={() => canWriteActiveProject() && setConfirmDelete(doc.id)}
+                  onDelete={() => setConfirmDelete(doc.id)}
+                  canWrite={canWrite}
                   isSelected={selectedDocId === doc.id}
                 />
               ) : viewMode === "grid" ? (
@@ -563,7 +571,8 @@ export default function DocumentsView() {
                   key={doc.id}
                   doc={doc}
                   onOpen={() => handleOpenPreview(doc)}
-                  onDelete={() => canWriteActiveProject() && setConfirmDelete(doc.id)}
+                  onDelete={() => setConfirmDelete(doc.id)}
+                  canWrite={canWrite}
                   isSelected={selectedDocId === doc.id}
                 />
               ) : (
@@ -571,7 +580,8 @@ export default function DocumentsView() {
                   key={doc.id}
                   doc={doc}
                   onOpen={() => handleOpenPreview(doc)}
-                  onDelete={() => canWriteActiveProject() && setConfirmDelete(doc.id)}
+                  onDelete={() => setConfirmDelete(doc.id)}
+                  canWrite={canWrite}
                   isSelected={selectedDocId === doc.id}
                 />
               )
@@ -640,11 +650,13 @@ function DocumentCompactRow({
   doc,
   onOpen,
   onDelete,
+  canWrite,
   isSelected,
 }: {
   doc: ReclawDocument;
   onOpen: () => void;
   onDelete: () => void;
+  canWrite: boolean;
   isSelected: boolean;
 }) {
   const Icon = fileIcon(doc.file_type);
@@ -679,7 +691,7 @@ function DocumentCompactRow({
       <span className="text-xs text-slate-400 shrink-0 whitespace-nowrap">
         {timeAgo(doc.updated_at || doc.created_at)}
       </span>
-      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+      <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 shrink-0">
         <button
           onClick={(e) => { e.stopPropagation(); onOpen(); }}
           className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-400"
@@ -688,14 +700,16 @@ function DocumentCompactRow({
         >
           <Eye size={13} />
         </button>
-        <button
-          onClick={(e) => { e.stopPropagation(); onDelete(); }}
-          className="p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-slate-400 hover:text-red-600"
-          aria-label="Delete document"
-          title="Delete"
-        >
-          <Trash2 size={13} />
-        </button>
+        {canWrite && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onDelete(); }}
+            className="p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-slate-400 hover:text-red-600"
+            aria-label="Delete document"
+            title="Delete"
+          >
+            <Trash2 size={13} />
+          </button>
+        )}
       </div>
     </div>
   );
@@ -707,11 +721,13 @@ function DocumentGridCard({
   doc,
   onOpen,
   onDelete,
+  canWrite,
   isSelected,
 }: {
   doc: ReclawDocument;
   onOpen: () => void;
   onDelete: () => void;
+  canWrite: boolean;
   isSelected: boolean;
 }) {
   const Icon = fileIcon(doc.file_type);
@@ -738,7 +754,7 @@ function DocumentGridCard({
         <h4 className="text-sm font-medium text-slate-900 dark:text-white truncate flex-1">
           {doc.title}
         </h4>
-        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+        <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 shrink-0">
           <button
             onClick={(e) => { e.stopPropagation(); onOpen(); }}
             className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-400"
@@ -747,14 +763,16 @@ function DocumentGridCard({
           >
             <Eye size={13} />
           </button>
-          <button
-            onClick={(e) => { e.stopPropagation(); onDelete(); }}
-            className="p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-slate-400 hover:text-red-600"
-            aria-label="Delete document"
-            title="Delete"
-          >
-            <Trash2 size={13} />
-          </button>
+          {canWrite && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onDelete(); }}
+              className="p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-slate-400 hover:text-red-600"
+              aria-label="Delete document"
+              title="Delete"
+            >
+              <Trash2 size={13} />
+            </button>
+          )}
         </div>
       </div>
 
@@ -788,11 +806,13 @@ function DocumentCard({
   doc,
   onOpen,
   onDelete,
+  canWrite,
   isSelected,
 }: {
   doc: ReclawDocument;
   onOpen: () => void;
   onDelete: () => void;
+  canWrite: boolean;
   isSelected: boolean;
 }) {
   const Icon = fileIcon(doc.file_type);
@@ -906,7 +926,7 @@ function DocumentCard({
         </div>
 
         {/* Actions */}
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+        <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 shrink-0">
           <button
             onClick={(e) => { e.stopPropagation(); onOpen(); }}
             className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400"
@@ -915,14 +935,16 @@ function DocumentCard({
           >
             <Eye size={14} />
           </button>
-          <button
-            onClick={(e) => { e.stopPropagation(); onDelete(); }}
-            className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-slate-400 hover:text-red-600"
-            aria-label="Delete document"
-            title="Delete"
-          >
-            <Trash2 size={14} />
-          </button>
+          {canWrite && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onDelete(); }}
+              className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-slate-400 hover:text-red-600"
+              aria-label="Delete document"
+              title="Delete"
+            >
+              <Trash2 size={14} />
+            </button>
+          )}
         </div>
       </div>
     </div>

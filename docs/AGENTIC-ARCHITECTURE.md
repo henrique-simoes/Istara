@@ -175,6 +175,20 @@ Autoresearch loops (6 types, overnight)
     ├── Agent persona optimization
     ├── Question bank optimization
     └── UI simulation optimization
+    |
+    v
+Improvement Governance Contract
+    ├── Auto-apply only low-risk memory/telemetry/evaluation updates
+    ├── Require approval for prompts, configs, skills, agents, UI, and orchestration
+    ├── Require admin approval for backend code, integrations, MCP, compute, and connection strings
+    └── Track evidence, metrics, rollback, quarantine, and revert state
+    |
+    v
+DGM-H Archive Evolution
+    ├── Every proposal/evidence event becomes a variant with lineage
+    ├── Parent selection uses a UCB-style score across archive candidates
+    ├── Status mirrors governance: candidate → approved → active/confirmed/reverted/quarantined
+    └── Evaluation outcomes write reusable ReasoningBank traces
 ```
 
 ---
@@ -189,6 +203,9 @@ Autoresearch loops (6 types, overnight)
 | **Adversarial review** | Multi-Agent Debate | Du et al. (2024), ICML 2024 | `adaptive_validation.py` debate_rounds |
 | **Prompt compression** | LLMLingua | Jiang et al. (2023) | `agent_identity.py` llmlingua strategy |
 | **Query-aware prompts** | Prompt RAG | Novel (Istara) | `prompt_rag.py` |
+| **Reasoning memory** | ReasoningBank | Ouyang et al. (2026), arXiv:2509.25140 | `reasoning_bank.py`, `reasoning_memory.py`, `/api/reasoning-bank/*` |
+| **Improvement governance** | Production contract over Memento, HyperAgents, ReasoningBank, autoresearch | Istara system contract | `improvement_governance.py`, `improvement_proposals`, `/api/improvement-governance/*` |
+| **Archive evolution** | Hyperagents / DGM-H | Zhang et al. (2026), arXiv:2603.19461 | `dgmh_archive.py`, `dgmh_archive_variants`, `/api/dgmh-archive/*` |
 | **Optimization loops** | Autoresearch | Karpathy (2026), MIT | `autoresearch_engine.py`, 6 runners |
 | **Skill self-improvement** | Memento-Skills | "Let Agents Design Agents" (2025) | `skill_manager.py`, `agent_factory.py` |
 | **Heuristic evaluation** | Nielsen's 10 | Nielsen & Molich (1990), CHI | `heuristic-evaluation.json` skill |
@@ -202,7 +219,7 @@ Autoresearch loops (6 types, overnight)
 | **Cognitive engineering** | Gerhardt-Powals | Gerhardt-Powals (1996) | `heuristic-evaluation.json` Phase 4 |
 | **Usability inspection** | Cockton & Woolrych | Cockton & Woolrych (2001) | Heuristic eval methodology |
 | **LLM-as-Judge** | LLM-as-Judge | Zheng et al. (2023), NeurIPS | `_self_verify_output()` |
-| **Parameter tuning** | Hyperagents (DGM-H) | Hyperagents paper (2025) | `meta_hyperagent.py` |
+| **Parameter tuning** | Hyperagents (DGM-H) | Hyperagents paper (2025) | `meta_hyperagent.py`, `dgmh_archive.py` |
 | **Multi-LLM thematic** | Multi-LLM Analysis | Jain et al. (2025) | Ensemble thematic analysis |
 | **Distributed compute** | BOINC/Petals | Anderson (2020) / Borzunov (2023) | `compute_pool.py`, relay nodes |
 | **ISO usability** | ISO 9241 | ISO 9241-11:2018, ISO 9241-210:2019 | Referenced in skill prompts |
@@ -243,7 +260,7 @@ Autoresearch loops (6 types, overnight)
 | Autonomous Work | ⚠️ Skill execution only | ✅ Heartbeat daemon | ⚠️ Reactive | ❌ User-initiated |
 | Inter-Agent Comms | ⚠️ DB messages (unread) | ✅ Hierarchical | ❌ Single agent | ⚠️ Sub-agent reports |
 | Persona System | ✅ Best in class | ⚠️ Config dirs | ⚠️ 2 MD files | ⚠️ CLAUDE.md |
-| Self-Evolution | ⚠️ Proposals + learning DB | ✅ Self-extending | ✅ Skill evolution | ❌ None |
+| Self-Evolution | ✅ Governed proposals + ReasoningBank | ✅ Self-extending | ✅ Skill evolution | ❌ None |
 | Atomic Research | ✅ Unique | ❌ None | ❌ None | ❌ None |
 | Laws of UX | ✅ Unique (30 laws) | ❌ None | ❌ None | ❌ None |
 | Resource Governance | ✅ Hardware-aware | ⚠️ Partial | ❌ None | ❌ None |

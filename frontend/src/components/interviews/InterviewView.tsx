@@ -139,18 +139,24 @@ function FilePreview({
   onTextSelect?: (text: string, position: { x: number; y: number }) => void;
 }) {
   const [content, setContent] = useState<string | null>(null);
+  const [previewMeta, setPreviewMeta] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const preRef = useRef<HTMLPreElement>(null);
 
   useEffect(() => {
     setLoading(true);
     setContent(null);
+    setPreviewMeta(null);
     filesApi
       .content(projectId, filename)
       .then((res: any) => {
-        setContent(res.content);
+        setContent(res.content || null);
+        setPreviewMeta(res);
       })
-      .catch(() => setContent(null))
+      .catch(() => {
+        setContent(null);
+        setPreviewMeta(null);
+      })
       .finally(() => setLoading(false));
   }, [projectId, filename]);
 
@@ -214,9 +220,34 @@ function FilePreview({
           />
         </div>
         
+        {previewMeta?.document_status === "processing" && !content && (
+          <div className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-300">
+            <Loader2 size={16} className="animate-spin" />
+            Transcription is still processing.
+          </div>
+        )}
+
+        {previewMeta?.document_status === "error" && (
+          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300">
+            Transcription failed. Check server dependencies and retry upload.
+          </div>
+        )}
+
         {content && (
           <div className="space-y-2">
-            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-1">Transcription</h3>
+            <div className="flex flex-wrap items-center gap-2 px-1">
+              <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Transcription</h3>
+              {previewMeta?.transcription?.language && (
+                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                  {previewMeta.transcription.language}
+                </span>
+              )}
+              {previewMeta?.transcription?.needs_review && (
+                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
+                  Review
+                </span>
+              )}
+            </div>
             <pre
               ref={preRef}
               onMouseUp={handleMouseUp}
@@ -770,7 +801,7 @@ export default function InterviewView() {
             <div className="flex flex-wrap gap-1">
               {projectFiles.map((f) => {
                 const shortName = (() => {
-                  const name = f.name || "";
+                  const name = f.display_name || f.name || "";
                   const parts = name.split("/");
                   const filename = parts[parts.length - 1];
                   const stripped = filename.replace(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}[-_]/i, "");
@@ -787,7 +818,7 @@ export default function InterviewView() {
                   <button
                     key={f.name}
                     onClick={() => handleFileSelect(f.name, f.type || "")}
-                    title={`${f.name} (${(f.size_bytes / 1024).toFixed(0)} KB)`}
+                    title={`${f.display_name || f.name} (${(f.size_bytes / 1024).toFixed(0)} KB)`}
                     className={cn(
                       "flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] transition-colors text-left",
                       selectedFile === f.name
@@ -799,6 +830,9 @@ export default function InterviewView() {
                   >
                     <Icon size={11} className="shrink-0" />
                     <span className="truncate font-medium max-w-[120px]">{shortName}</span>
+                    {f.document_status === "processing" && (
+                      <Loader2 size={10} className="shrink-0 animate-spin text-amber-500" />
+                    )}
                     {hasTagNuggets && (
                       <div className="w-1.5 h-1.5 rounded-full bg-purple-500 shrink-0" />
                     )}

@@ -2,13 +2,14 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.context_dag import context_dag
 from app.core.permissions import ProjectRole, require_project_access
 from app.models.database import get_db
+from app.models.context_dag import ContextDAGNode
 from app.models.session import ChatSession
 
 router = APIRouter()
@@ -29,16 +30,33 @@ async def _require_session_access(
     return session
 
 
+async def _require_dag_node(
+    db: AsyncSession,
+    session_id: str,
+    node_id: str,
+) -> ContextDAGNode:
+    result = await db.execute(
+        select(ContextDAGNode).where(
+            ContextDAGNode.id == node_id,
+            ContextDAGNode.session_id == session_id,
+        )
+    )
+    node = result.scalar_one_or_none()
+    if not node:
+        raise HTTPException(status_code=404, detail="DAG node not found for this session")
+    return node
+
+
 # ---- Request models ----
 
 class ExpandRequest(BaseModel):
     """Request body for expanding a DAG node."""
-    node_id: str
+    node_id: str = Field(..., min_length=1, max_length=36)
 
 
 class GrepRequest(BaseModel):
     """Request body for searching conversation history."""
-    query: str
+    query: str = Field(..., min_length=1, max_length=500)
 
 
 # ---- Endpoints ----
@@ -80,9 +98,10 @@ async def expand_node(
 ) -> dict:
     """Expand a DAG node to see its original messages or child summaries."""
     await _require_session_access(db, request, session_id, min_role="viewer")
+    node = await _require_dag_node(db, session_id, body.node_id)
     try:
-        items = await context_dag.expand_node(body.node_id)
-        return {"node_id": body.node_id, "items": items}
+        items = await context_dag.expand_node(body.node_id, session_id=session_id)
+        return {"node_id": body.node_id, "depth": node.depth, "items": items}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -114,8 +133,9 @@ async def get_node_details(
 ) -> dict:
     """Return full metadata for a single DAG node."""
     await _require_session_access(db, request, session_id, min_role="viewer")
+    await _require_dag_node(db, session_id, node_id)
     try:
-        info = await context_dag.describe_node(node_id)
+        info = await context_dag.describe_node(node_id, session_id=session_id)
         if "error" in info:
             raise HTTPException(status_code=404, detail=info["error"])
         return info

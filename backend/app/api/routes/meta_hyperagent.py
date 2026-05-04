@@ -9,8 +9,9 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
 from app.config import settings
+from app.core.improvement_governance import improvement_governance
 from app.core.meta_hyperagent import meta_hyperagent
-from app.core.security_middleware import require_admin_from_request
+from app.core.security_middleware import get_user_from_request, require_admin_from_request
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -58,6 +59,71 @@ def _persist_env(key: str, value: str) -> None:
     env_path.write_text("".join(new_lines))
 
 
+async def _sync_governance_applied(proposal_id: str, request: Request, variant: dict) -> None:
+    """Reflect a HyperAgent UI approval in the system-wide governance ledger."""
+    try:
+        user = get_user_from_request(request)
+        proposal = await improvement_governance.get_proposal_by_source(
+            source_system="hyperagent",
+            source_id=proposal_id,
+        )
+        if proposal is None:
+            return
+        if proposal.status in {"draft", "proposed"}:
+            await improvement_governance.approve_proposal(
+                proposal.id,
+                reviewer_id=user.get("id", ""),
+                note="Approved via Meta-Hyperagent UI",
+            )
+        proposal = await improvement_governance.get_proposal_by_source(
+            source_system="hyperagent",
+            source_id=proposal_id,
+        )
+        if proposal and proposal.status == "approved":
+            await improvement_governance.apply_proposal(
+                proposal.id,
+                actor_id=user.get("id", ""),
+                evidence={"variant_id": variant.get("id"), "source_ui": "meta_hyperagent"},
+            )
+    except Exception as exc:
+        logger.debug(f"Meta-hyperagent governance apply sync skipped: {exc}")
+
+
+async def _sync_governance_rejected(proposal_id: str, request: Request, reason: str) -> None:
+    try:
+        user = get_user_from_request(request)
+        proposal = await improvement_governance.get_proposal_by_source(
+            source_system="hyperagent",
+            source_id=proposal_id,
+        )
+        if proposal and proposal.status in {"draft", "proposed", "approved"}:
+            await improvement_governance.reject_proposal(
+                proposal.id,
+                reviewer_id=user.get("id", ""),
+                reason=reason,
+            )
+    except Exception as exc:
+        logger.debug(f"Meta-hyperagent governance reject sync skipped: {exc}")
+
+
+async def _sync_governance_reverted(variant: dict, request: Request) -> None:
+    try:
+        user = get_user_from_request(request)
+        proposal_id = str(variant.get("proposal_id", ""))
+        proposal = await improvement_governance.get_proposal_by_source(
+            source_system="hyperagent",
+            source_id=proposal_id,
+        )
+        if proposal and proposal.status == "applied":
+            await improvement_governance.revert_proposal(
+                proposal.id,
+                actor_id=user.get("id", ""),
+                reason="Reverted via Meta-Hyperagent UI",
+            )
+    except Exception as exc:
+        logger.debug(f"Meta-hyperagent governance revert sync skipped: {exc}")
+
+
 # ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
@@ -70,11 +136,13 @@ async def meta_hyperagent_status(request: Request):
     recent_observations = meta_hyperagent.get_recent_observations(limit=1)
     return {
         "enabled": settings.meta_hyperagent_enabled,
+        "running": meta_hyperagent.is_running,
         "experimental": True,
         "pending_proposals": len(meta_hyperagent.get_pending_proposals()),
         "active_variants": len(meta_hyperagent.get_active_variants()),
         "recent_observations": len(meta_hyperagent.get_recent_observations(limit=100)),
         "last_observed_at": recent_observations[-1].get("timestamp") if recent_observations else None,
+        "reasoning_bank": recent_observations[-1].get("reasoning_bank", {}) if recent_observations else {},
         "observation_interval_hours": settings.meta_hyperagent_observation_interval_hours,
         "variant_observation_hours": settings.meta_hyperagent_variant_observation_hours,
     }
@@ -97,6 +165,7 @@ async def approve_proposal(proposal_id: str, request: Request):
     result = await meta_hyperagent.apply_proposal(proposal_id)
     if "error" in result:
         raise HTTPException(status_code=400, detail=result["error"])
+    await _sync_governance_applied(proposal_id, request, result)
     return {"status": "applied", "variant": result}
 
 
@@ -108,6 +177,7 @@ async def reject_proposal(proposal_id: str, request: Request, body: RejectReques
     result = meta_hyperagent.reject_proposal(proposal_id, reason=reason)
     if result is None:
         raise HTTPException(status_code=404, detail="Proposal not found or not pending")
+    await _sync_governance_rejected(proposal_id, request, reason)
     return {"status": "rejected", "proposal": result}
 
 
@@ -128,6 +198,7 @@ async def revert_variant(variant_id: str, request: Request):
     result = await meta_hyperagent.revert_variant(variant_id)
     if "error" in result:
         raise HTTPException(status_code=400, detail=result["error"])
+    await _sync_governance_reverted(result, request)
     return {"status": "reverted", "variant": result}
 
 
@@ -161,11 +232,7 @@ async def toggle_meta_hyperagent(body: ToggleRequest, request: Request):
     _persist_env("META_HYPERAGENT_ENABLED", str(body.enabled).lower())
 
     if body.enabled:
-        # Start the observation loop if not already running
-        import asyncio
-        if not meta_hyperagent._running:
-            meta_hyperagent.load_confirmed_overrides()
-            asyncio.create_task(meta_hyperagent.start_observation_loop())
+        meta_hyperagent.start()
     else:
         meta_hyperagent.stop()
 

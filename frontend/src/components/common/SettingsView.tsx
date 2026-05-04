@@ -12,7 +12,6 @@ import DonateComputeToggle from "@/components/common/DonateComputeToggle";
 import PasskeyManager from "@/components/settings/PasskeyManager";
 import TOTPManager from "@/components/settings/TOTPManager";
 import { resetAllOnboarding } from "@/hooks/useViewOnboarding";
-import { API_BASE } from "@/lib/runtimeConfig";
 
 export default function SettingsView() {
   const [hardware, setHardware] = useState<HardwareInfo | null>(null);
@@ -315,13 +314,7 @@ export default function SettingsView() {
             onClick={async () => {
               const newState = !systemStatus?.team_mode;
               try {
-                const token = localStorage.getItem("istara_token");
-                const headers: Record<string, string> = { "Content-Type": "application/json" };
-                if (token) headers["Authorization"] = `Bearer ${token}`;
-                await fetch(
-                  `${API_BASE}/api/settings/team-mode`,
-                  { method: "POST", headers, body: JSON.stringify({ enabled: newState }) }
-                );
+                await settingsApi.toggleTeamMode(newState);
                 await fetchAll();
                 // Refresh auth store so UserManagement appears/disappears
                 await useAuthStore.getState().checkTeamStatus();

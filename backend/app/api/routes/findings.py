@@ -19,6 +19,18 @@ from app.core.permissions import get_subject, is_global_admin, require_project_a
 router = APIRouter()
 
 
+def _parse_json_list(raw) -> list:
+    if isinstance(raw, list):
+        return raw
+    if not raw:
+        return []
+    try:
+        parsed = json.loads(raw)
+    except (json.JSONDecodeError, TypeError):
+        return []
+    return parsed if isinstance(parsed, list) else []
+
+
 async def _guard_optional_project(
     db: AsyncSession,
     request: Request,
@@ -58,7 +70,7 @@ class NuggetResponse(BaseModel):
 
     @classmethod
     def from_orm_with_tags(cls, nugget: Nugget) -> "NuggetResponse":
-        tags = json.loads(nugget.tags) if nugget.tags else []
+        tags = _parse_json_list(nugget.tags)
         return cls(
             id=nugget.id,
             project_id=nugget.project_id,
@@ -92,7 +104,7 @@ class FactResponse(BaseModel):
 
     @classmethod
     def from_orm_with_ids(cls, fact: Fact) -> "FactResponse":
-        nugget_ids = json.loads(fact.nugget_ids) if fact.nugget_ids else []
+        nugget_ids = _parse_json_list(fact.nugget_ids)
         return cls(
             id=fact.id, project_id=fact.project_id, text=fact.text,
             nugget_ids=nugget_ids, phase=fact.phase, confidence=fact.confidence,
@@ -122,7 +134,7 @@ class InsightResponse(BaseModel):
 
     @classmethod
     def from_orm_with_ids(cls, insight: Insight) -> "InsightResponse":
-        fact_ids = json.loads(insight.fact_ids) if insight.fact_ids else []
+        fact_ids = _parse_json_list(insight.fact_ids)
         return cls(
             id=insight.id, project_id=insight.project_id, text=insight.text,
             fact_ids=fact_ids, phase=insight.phase, confidence=insight.confidence,
@@ -154,7 +166,7 @@ class RecommendationResponse(BaseModel):
 
     @classmethod
     def from_orm_with_ids(cls, rec: Recommendation) -> "RecommendationResponse":
-        insight_ids = json.loads(rec.insight_ids) if rec.insight_ids else []
+        insight_ids = _parse_json_list(rec.insight_ids)
         return cls(
             id=rec.id, project_id=rec.project_id, text=rec.text,
             insight_ids=insight_ids, phase=rec.phase, priority=rec.priority,
@@ -441,12 +453,7 @@ async def get_evidence_chain(
     chain = {"recommendation": [], "insight": [], "fact": [], "nugget": []}
 
     def parse_ids(raw):
-        if not raw:
-            return []
-        try:
-            return json.loads(raw)
-        except (json.JSONDecodeError, TypeError):
-            return []
+        return _parse_json_list(raw)
 
     project_id = finding.project_id
 
@@ -564,6 +571,20 @@ async def get_evidence_chain(
             "missing_links": missing_links,
         },
     }
+
+
+@router.get("/findings/evidence-chain")
+async def get_evidence_chain_query(
+    finding_type: str,
+    finding_id: str,
+    request: Request,
+    extended: bool = True,
+    db: AsyncSession = Depends(get_db),
+):
+    """Compatibility endpoint for query-style evidence-chain callers."""
+    if extended:
+        return await get_evidence_chain_extended(finding_type, finding_id, request, db)
+    return await get_evidence_chain(finding_type, finding_id, request, db)
 
 
 class LinkEvidenceRequest(BaseModel):
@@ -720,8 +741,8 @@ class DesignDecisionResponse(BaseModel):
 
     @classmethod
     def from_orm_with_ids(cls, dd: DesignDecision) -> "DesignDecisionResponse":
-        rec_ids = json.loads(dd.recommendation_ids) if dd.recommendation_ids else []
-        scr_ids = json.loads(dd.screen_ids) if dd.screen_ids else []
+        rec_ids = _parse_json_list(dd.recommendation_ids)
+        scr_ids = _parse_json_list(dd.screen_ids)
         return cls(
             id=dd.id,
             project_id=dd.project_id,
@@ -825,50 +846,52 @@ async def get_evidence_chain_extended(
     }
 
     def parse_ids(raw: str | None) -> list[str]:
-        if not raw:
-            return []
-        try:
-            return json.loads(raw)
-        except (json.JSONDecodeError, TypeError):
-            return []
+        return _parse_json_list(raw)
 
     project_id = finding.project_id
 
-    # For recommendations: also find DesignDecisions that reference them
-    if finding_type == "recommendation":
-        chain["recommendation"] = [RecommendationResponse.from_orm_with_ids(finding)]
-        insight_ids = parse_ids(finding.insight_ids)
-        if insight_ids:
-            rows = await db.execute(select(Insight).where(Insight.id.in_(insight_ids)))
-            linked_insights = rows.scalars().all()
-            chain["insight"] = [InsightResponse.from_orm_with_ids(i) for i in linked_insights]
-            fact_ids = []
-            for insight in linked_insights:
-                fact_ids.extend(parse_ids(insight.fact_ids))
-            if fact_ids:
-                rows = await db.execute(select(Fact).where(Fact.id.in_(list(set(fact_ids)))))
-                linked_facts = rows.scalars().all()
-                chain["fact"] = [FactResponse.from_orm_with_ids(f) for f in linked_facts]
-                nugget_ids = []
-                for fact in linked_facts:
-                    nugget_ids.extend(parse_ids(fact.nugget_ids))
-                if nugget_ids:
-                    rows = await db.execute(select(Nugget).where(Nugget.id.in_(list(set(nugget_ids)))))
-                    chain["nugget"] = [NuggetResponse.from_orm_with_tags(n) for n in rows.scalars().all()]
-
-        # Find design decisions that link this recommendation
+    async def append_design_nodes_for_recommendations(recommendation_ids: set[str]) -> None:
+        if not recommendation_ids:
+            return
+        seen_decisions: set[str] = set()
+        seen_screens: set[str] = set()
         dd_rows = await db.execute(
             select(DesignDecision).where(DesignDecision.project_id == project_id)
         )
         for dd in dd_rows.scalars().all():
-            if finding_id in parse_ids(dd.recommendation_ids):
+            if not recommendation_ids.intersection(parse_ids(dd.recommendation_ids)):
+                continue
+            if dd.id not in seen_decisions:
+                seen_decisions.add(dd.id)
                 chain["design_decision"].append(dd.to_dict())
-                # Follow to screens
-                for sid in parse_ids(dd.screen_ids):
-                    sr = await db.execute(select(DesignScreen).where(DesignScreen.id == sid))
-                    scr = sr.scalar_one_or_none()
-                    if scr:
-                        chain["design_screen"].append(scr.to_dict())
+            for sid in parse_ids(dd.screen_ids):
+                if sid in seen_screens:
+                    continue
+                sr = await db.execute(
+                    select(DesignScreen).where(
+                        DesignScreen.id == sid,
+                        DesignScreen.project_id == project_id,
+                    )
+                )
+                scr = sr.scalar_one_or_none()
+                if scr:
+                    seen_screens.add(sid)
+                    chain["design_screen"].append(scr.to_dict())
+
+    def response_id(item) -> str | None:
+        if isinstance(item, dict):
+            return item.get("id")
+        return getattr(item, "id", None)
+
+    if finding_type in {"nugget", "fact", "insight", "recommendation"}:
+        base = await get_evidence_chain(finding_type, finding_id, request, db)
+        for key in ("recommendation", "insight", "fact", "nugget"):
+            chain[key] = list(base["chain"].get(key, []))
+
+        recommendation_ids: set[str] = {
+            rid for rid in (response_id(rec) for rec in chain["recommendation"]) if rid
+        }
+        await append_design_nodes_for_recommendations(recommendation_ids)
 
     elif finding_type == "design_decision":
         chain["design_decision"] = [finding.to_dict()]
@@ -884,6 +907,13 @@ async def get_evidence_chain_extended(
             rec = rr.scalar_one_or_none()
             if rec:
                 chain["recommendation"].append(RecommendationResponse.from_orm_with_ids(rec))
+        recommendation_ids = {
+            rid for rid in (response_id(rec) for rec in chain["recommendation"]) if rid
+        }
+        if recommendation_ids:
+            base = await get_evidence_chain("recommendation", next(iter(recommendation_ids)), request, db)
+            for key in ("insight", "fact", "nugget"):
+                chain[key] = list(base["chain"].get(key, []))
 
     return {
         "finding_type": finding_type,

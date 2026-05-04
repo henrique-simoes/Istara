@@ -27,7 +27,7 @@ async def get_laws_for_heuristic(heuristic_id: str):
 
 
 @router.get("/match")
-async def match_laws(query: str = Query(...), top_k: int = 5):
+async def match_laws(query: str = Query(..., min_length=1), top_k: int = Query(default=5, ge=1, le=30)):
     """Find relevant laws for a text query using keyword matching."""
     matches = laws_service.match_text(query, top_k=top_k)
     return [
@@ -44,8 +44,6 @@ async def get_compliance(
 ):
     """Compute UX Law compliance profile for a project from tagged findings."""
     await require_project_access(db, request, project_id, min_role="viewer")
-
-    import json
 
     result = await db.execute(
         select(Nugget).where(Nugget.project_id == project_id)
@@ -64,8 +62,6 @@ async def get_radar(
 ):
     """Get radar chart data for the compliance profile."""
     await require_project_access(db, request, project_id, min_role="viewer")
-
-    import json
 
     result = await db.execute(
         select(Nugget).where(Nugget.project_id == project_id)

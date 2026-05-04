@@ -1,20 +1,35 @@
 """Tests for Interfaces API routes — screens, design chat, Figma, handoff, configure."""
 
+import json
+import uuid
+from unittest.mock import AsyncMock
+
 import pytest
 from httpx import AsyncClient, ASGITransport
 from app.main import app
 from app.config import settings
-from app.models.database import init_db
+from app.models.database import async_session, init_db
 from app.core.auth import create_token
+from app.models.design_screen import DesignBrief, DesignDecision, DesignScreen
+from app.models.finding import Insight, Recommendation
+from app.models.project import Project
 
 
 @pytest.fixture(autouse=True)
 def reset_settings():
     original_team_mode = settings.team_mode
     original_jwt_secret = settings.jwt_secret
+    original_stitch_api_key = settings.stitch_api_key
+    original_figma_api_token = settings.figma_api_token
+    original_runtime_profile = settings.istara_runtime_profile
+    original_mock_enabled = settings.interfaces_mock_endpoints_enabled
     yield
     settings.team_mode = original_team_mode
     settings.jwt_secret = original_jwt_secret
+    settings.stitch_api_key = original_stitch_api_key
+    settings.figma_api_token = original_figma_api_token
+    settings.istara_runtime_profile = original_runtime_profile
+    settings.interfaces_mock_endpoints_enabled = original_mock_enabled
 
 
 @pytest.fixture
@@ -23,6 +38,48 @@ def auth_headers():
         settings.jwt_secret = "test-secret"
     token = create_token("user1", "testuser", "admin")
     return {"Authorization": f"Bearer {token}"}
+
+
+async def _seed_project(name: str = "Interfaces Test Project") -> Project:
+    project = Project(id=str(uuid.uuid4()), name=f"{name} {uuid.uuid4()}")
+    async with async_session() as db:
+        db.add(project)
+        await db.commit()
+        await db.refresh(project)
+    return project
+
+
+async def _seed_recommendation(project_id: str, text: str | None = None) -> Recommendation:
+    rec = Recommendation(
+        id=str(uuid.uuid4()),
+        project_id=project_id,
+        text=text or "Reduce too many options in onboarding to improve decision speed",
+        insight_ids="[]",
+        phase="deliver",
+        priority="high",
+        effort="medium",
+    )
+    async with async_session() as db:
+        db.add(rec)
+        await db.commit()
+        await db.refresh(rec)
+    return rec
+
+
+async def _seed_insight(project_id: str) -> Insight:
+    insight = Insight(
+        id=str(uuid.uuid4()),
+        project_id=project_id,
+        text="Users struggle to understand the current onboarding sequence",
+        fact_ids="[]",
+        phase="define",
+        impact="high",
+    )
+    async with async_session() as db:
+        db.add(insight)
+        await db.commit()
+        await db.refresh(insight)
+    return insight
 
 
 @pytest.mark.asyncio
@@ -56,3 +113,217 @@ async def test_interfaces_status_returns_response(auth_headers):
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         response = await ac.get("/api/interfaces/status", headers=auth_headers)
         assert response.status_code in (200, 404, 500)
+
+
+@pytest.mark.asyncio
+async def test_mock_generate_rejects_cross_project_seed(auth_headers):
+    """Mock generation must not link findings from another project."""
+    await init_db()
+    target = await _seed_project("Target")
+    other = await _seed_project("Other")
+    rec = await _seed_recommendation(other.id)
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.post(
+            "/api/interfaces/mock/generate",
+            headers=auth_headers,
+            json={
+                "project_id": target.id,
+                "prompt": "Create a dashboard",
+                "seed_finding_ids": [rec.id],
+            },
+        )
+
+    assert response.status_code == 422
+    assert rec.id in response.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_handoff_briefs_hydrate_evidence_payload(auth_headers):
+    """Brief listing returns the source objects that HandoffTab renders."""
+    await init_db()
+    project = await _seed_project("Brief")
+    insight = await _seed_insight(project.id)
+    rec = await _seed_recommendation(project.id)
+    brief = DesignBrief(
+        id=str(uuid.uuid4()),
+        project_id=project.id,
+        title="Evidence Brief",
+        content="Brief content",
+        source_insight_ids=json.dumps([insight.id]),
+        source_recommendation_ids=json.dumps([rec.id]),
+    )
+    async with async_session() as db:
+        db.add(brief)
+        await db.commit()
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.get(
+            f"/api/interfaces/handoff/briefs?project_id={project.id}",
+            headers=auth_headers,
+        )
+
+    assert response.status_code == 200
+    payload = response.json()["briefs"][0]
+    assert payload["source_findings"][0]["id"] == insight.id
+    assert payload["recommendations"][0]["id"] == rec.id
+    assert payload["ux_laws"]
+
+
+@pytest.mark.asyncio
+async def test_handoff_dev_spec_resolves_source_findings(auth_headers):
+    """Developer specs include deterministic content and resolved evidence."""
+    await init_db()
+    project = await _seed_project("Dev Spec")
+    rec = await _seed_recommendation(project.id)
+    screen = DesignScreen(
+        id=str(uuid.uuid4()),
+        project_id=project.id,
+        title="Onboarding Screen",
+        description="Screen description",
+        prompt="Design a simpler onboarding screen",
+        device_type="DESKTOP",
+        html_content="<main><h1>Welcome</h1></main>",
+        source_findings=json.dumps([rec.id]),
+    )
+    async with async_session() as db:
+        db.add(screen)
+        await db.commit()
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.post(
+            "/api/interfaces/handoff/dev-spec",
+            headers=auth_headers,
+            json={"screen_id": screen.id},
+        )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["success"] is True
+    assert "Developer Spec" in payload["content"]
+    assert payload["dev_spec"]["source_findings"][0]["id"] == rec.id
+
+
+@pytest.mark.asyncio
+async def test_figma_import_creates_design_screen(auth_headers, monkeypatch):
+    """Configured Figma import persists an inspectable DesignScreen record."""
+    await init_db()
+    project = await _seed_project("Figma Import")
+    settings.figma_api_token = "figma-test-token"
+
+    from app.services.figma_service import figma_service
+
+    monkeypatch.setattr(figma_service, "get_file", AsyncMock(return_value={"name": "Checkout"}))
+    monkeypatch.setattr(
+        figma_service,
+        "get_components",
+        AsyncMock(return_value={"meta": {"components": [{"name": "Button", "key": "btn"}]}}),
+    )
+    monkeypatch.setattr(
+        figma_service,
+        "get_styles",
+        AsyncMock(return_value={"meta": {"styles": [{"name": "Primary", "key": "pri", "style_type": "FILL"}]}}),
+    )
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.post(
+            "/api/interfaces/figma/import",
+            headers=auth_headers,
+            json={
+                "project_id": project.id,
+                "figma_url": "https://www.figma.com/design/ABC123/Checkout",
+            },
+        )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["screens_imported"] == 1
+    assert payload["screens"][0]["figma_file_key"] == "ABC123"
+
+
+@pytest.mark.asyncio
+async def test_figma_components_endpoint_matches_frontend_helper(auth_headers, monkeypatch):
+    """The frontend components helper has a real backend endpoint."""
+    await init_db()
+    settings.figma_api_token = "figma-test-token"
+
+    from app.services.figma_service import figma_service
+
+    monkeypatch.setattr(
+        figma_service,
+        "get_components",
+        AsyncMock(return_value={"meta": {"components": [{"name": "Card", "key": "card"}]}}),
+    )
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.get(
+            "/api/interfaces/figma/components/ABC123",
+            headers=auth_headers,
+        )
+
+    assert response.status_code == 200
+    assert response.json()["components"][0]["name"] == "Card"
+
+
+@pytest.mark.asyncio
+async def test_mock_endpoints_are_blocked_in_public_profile(auth_headers):
+    """Public runtime profile disables mock endpoints unless explicitly enabled."""
+    await init_db()
+    project = await _seed_project("Public Mock")
+    settings.istara_runtime_profile = "public"
+    settings.interfaces_mock_endpoints_enabled = False
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.post(
+            "/api/interfaces/mock/generate",
+            headers=auth_headers,
+            json={"project_id": project.id, "prompt": "Mock screen"},
+        )
+
+    assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_query_style_evidence_chain_includes_design_nodes(auth_headers):
+    """Legacy query-style evidence-chain callers receive the extended chain."""
+    await init_db()
+    project = await _seed_project("Evidence Chain")
+    rec = await _seed_recommendation(project.id)
+    screen = DesignScreen(
+        id=str(uuid.uuid4()),
+        project_id=project.id,
+        title="Evidence Screen",
+        description="",
+        prompt="",
+        device_type="DESKTOP",
+        source_findings=json.dumps([rec.id]),
+    )
+    decision = DesignDecision(
+        id=str(uuid.uuid4()),
+        project_id=project.id,
+        text="Decision text",
+        recommendation_ids=json.dumps([rec.id]),
+        screen_ids=json.dumps([screen.id]),
+    )
+    async with async_session() as db:
+        db.add(screen)
+        db.add(decision)
+        await db.commit()
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.get(
+            f"/api/findings/evidence-chain?finding_type=recommendation&finding_id={rec.id}",
+            headers=auth_headers,
+        )
+
+    assert response.status_code == 200
+    chain = response.json()["chain"]
+    assert chain["design_decision"][0]["id"] == decision.id
+    assert chain["design_screen"][0]["id"] == screen.id

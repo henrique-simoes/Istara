@@ -5,15 +5,15 @@ import os
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
+from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from pydantic import BaseModel
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
-from app.core.permissions import get_subject, is_global_admin, require_project_access
+from app.core.permissions import get_subject, get_visible_project_or_404, is_global_admin, require_project_access
 from app.models.code_application import CodeApplication
 from app.models.database import get_db
 from app.models.document import Document, DocumentSource, DocumentStatus
@@ -21,6 +21,56 @@ from app.models.finding import Nugget
 from app.models.project import Project
 
 router = APIRouter()
+
+AUDIO_EXTENSIONS = {".mp3", ".wav", ".m4a", ".ogg"}
+MEDIA_EXTENSIONS = {
+    ".mp3",
+    ".wav",
+    ".m4a",
+    ".ogg",
+    ".mp4",
+    ".webm",
+    ".mov",
+    ".jpg",
+    ".jpeg",
+    ".png",
+    ".gif",
+}
+
+
+def _dedupe_text_list(values: list[str]) -> list[str]:
+    seen: set[str] = set()
+    cleaned: list[str] = []
+    for value in values:
+        item = str(value or "").strip()
+        if item and item not in seen:
+            cleaned.append(item)
+            seen.add(item)
+    return cleaned
+
+
+def _project_roots(project, project_id: str) -> list[Path]:
+    roots = [Path(settings.upload_dir).expanduser() / project_id]
+    watch_path = getattr(project, "watch_folder_path", None) if project else None
+    if watch_path:
+        watch_root = Path(watch_path).expanduser()
+        if watch_root not in roots:
+            roots.append(watch_root)
+    return roots
+
+
+def _is_allowed_project_path(path: Path, project, project_id: str) -> bool:
+    try:
+        resolved = path.expanduser().resolve()
+    except OSError:
+        return False
+    for root in _project_roots(project, project_id):
+        try:
+            resolved.relative_to(root.expanduser().resolve())
+            return True
+        except (OSError, ValueError):
+            continue
+    return False
 
 
 def _resolve_project_folder(project, project_id: str) -> Path:
@@ -34,13 +84,13 @@ def _resolve_project_folder(project, project_id: str) -> Path:
     return Path(settings.upload_dir) / project_id
 
 
-def _resolve_document_file_path(doc: Document) -> Path | None:
+def _resolve_document_file_path(doc: Document, project=None) -> Path | None:
     """Resolve a document's stored file path across legacy relative formats."""
     if not doc.file_path:
         return None
 
     raw_path = Path(doc.file_path)
-    if raw_path.is_absolute():
+    if raw_path.is_absolute() and _is_allowed_project_path(raw_path, project, doc.project_id):
         return raw_path
 
     upload_dir = Path(settings.upload_dir)
@@ -50,7 +100,7 @@ def _resolve_document_file_path(doc: Document) -> Path | None:
         for idx in range(0, len(raw_parts) - 1):
             if raw_parts[idx : idx + 2] == upload_parts:
                 candidate = upload_dir / Path(*raw_parts[idx + 2 :])
-                if candidate.exists():
+                if candidate.exists() and _is_allowed_project_path(candidate, project, doc.project_id):
                     return candidate
 
     candidates = [
@@ -63,9 +113,10 @@ def _resolve_document_file_path(doc: Document) -> Path | None:
         candidates.append(upload_dir / doc.project_id / raw_path.name)
 
     for candidate in candidates:
-        if candidate.exists():
+        if candidate.exists() and _is_allowed_project_path(candidate, project, doc.project_id):
             return candidate
-    return candidates[-1]
+    fallback = candidates[-1]
+    return fallback if _is_allowed_project_path(fallback, project, doc.project_id) else None
 
 
 def _safe_json_list(value: str | None) -> list:
@@ -144,36 +195,75 @@ async def _document_ids_for_project_tag(db: AsyncSession, project_id: str | None
 class DocumentCreate(BaseModel):
     """Create a new document record."""
 
-    project_id: str
-    title: str
-    description: str = ""
-    file_path: str = ""
-    file_name: str = ""
-    file_type: str = ""
-    file_size: int = 0
-    source: str = "user_upload"
-    task_id: str | None = None
-    agent_ids: list[str] = []
-    skill_names: list[str] = []
-    tags: list[str] = []
-    phase: str = "discover"
-    atomic_path: dict = {}
-    content_preview: str = ""
-    content_text: str = ""
+    project_id: str = Field(min_length=1, max_length=80)
+    title: str = Field(min_length=1, max_length=500)
+    description: str = Field(default="", max_length=20000)
+    file_path: str = Field(default="", max_length=1000)
+    file_name: str = Field(default="", max_length=500)
+    file_type: str = Field(default="", max_length=40)
+    file_size: int = Field(default=0, ge=0)
+    source: DocumentSource = DocumentSource.USER_UPLOAD
+    task_id: str | None = Field(default=None, max_length=80)
+    agent_ids: list[str] = Field(default_factory=list, max_length=100)
+    skill_names: list[str] = Field(default_factory=list, max_length=100)
+    tags: list[str] = Field(default_factory=list, max_length=200)
+    phase: str = Field(default="discover", max_length=20)
+    atomic_path: dict[str, Any] = Field(default_factory=dict)
+    content_preview: str = Field(default="", max_length=2000)
+    content_text: str = Field(default="", max_length=5000000)
+
+    @field_validator("project_id", "title", "description", "file_path", "file_name", "file_type", "task_id", "phase", "content_preview", "content_text", mode="before")
+    @classmethod
+    def _strip_text(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        return str(value).strip()
+
+    @field_validator("file_type")
+    @classmethod
+    def _normalize_file_type(cls, value: str) -> str:
+        return value.lower()
+
+    @field_validator("agent_ids", "skill_names", "tags", mode="after")
+    @classmethod
+    def _normalize_lists(cls, value: list[str]) -> list[str]:
+        return _dedupe_text_list(value)
 
 
 class DocumentUpdate(BaseModel):
     """Update a document."""
 
-    title: str | None = None
-    description: str | None = None
-    tags: list[str] | None = None
-    phase: str | None = None
-    status: str | None = None
-    atomic_path: dict | None = None
-    content_preview: str | None = None
-    content_text: str | None = None
-    version: int | None = None
+    title: str | None = Field(default=None, min_length=1, max_length=500)
+    description: str | None = Field(default=None, max_length=20000)
+    tags: list[str] | None = Field(default=None, max_length=200)
+    phase: str | None = Field(default=None, max_length=20)
+    status: DocumentStatus | None = None
+    atomic_path: dict[str, Any] | None = None
+    content_preview: str | None = Field(default=None, max_length=2000)
+    content_text: str | None = Field(default=None, max_length=5000000)
+    version: int | None = Field(default=None, ge=1, le=1000000)
+
+    @field_validator("title", "description", "phase", "content_preview", "content_text", mode="before")
+    @classmethod
+    def _strip_optional_text(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        return str(value).strip()
+
+    @field_validator("tags", mode="after")
+    @classmethod
+    def _normalize_tags(cls, value: list[str] | None) -> list[str] | None:
+        return _dedupe_text_list(value) if value is not None else None
+
+
+async def _require_task_in_project(db: AsyncSession, project_id: str, task_id: str | None) -> None:
+    if not task_id:
+        return
+    from app.models.task import Task
+
+    task = (await db.execute(select(Task.id).where(Task.id == task_id, Task.project_id == project_id))).scalar_one_or_none()
+    if not task:
+        raise HTTPException(status_code=404, detail="Linked task not found in this project.")
 
 
 # --- Endpoints ---
@@ -185,8 +275,8 @@ async def list_documents(
     project_id: str | None = None,
     phase: str | None = None,
     tag: str | None = None,
-    source: str | None = None,
-    status: str | None = None,
+    source: DocumentSource | None = None,
+    status: DocumentStatus | None = None,
     task_id: str | None = None,
     search: str | None = None,
     page: int = Query(1, ge=1),
@@ -195,7 +285,7 @@ async def list_documents(
 ):
     """List documents with filtering, search, and pagination."""
     if project_id:
-        await require_project_access(db, request, project_id, min_role="viewer")
+        await get_visible_project_or_404(db, request, project_id, min_role="viewer")
     else:
         subject = get_subject(request)
         if not is_global_admin(subject):
@@ -210,15 +300,9 @@ async def list_documents(
     if phase:
         conditions.append(Document.phase == phase)
     if source:
-        try:
-            conditions.append(Document.source == DocumentSource(source))
-        except ValueError:
-            pass
+        conditions.append(Document.source == source)
     if status:
-        try:
-            conditions.append(Document.status == DocumentStatus(status))
-        except ValueError:
-            pass
+        conditions.append(Document.status == status)
     if task_id:
         conditions.append(Document.task_id == task_id)
     if tag:
@@ -284,7 +368,8 @@ async def get_document(document_id: str, request: Request, db: AsyncSession = De
 @router.post("/documents", status_code=201)
 async def create_document(data: DocumentCreate, request: Request, db: AsyncSession = Depends(get_db)):
     """Create a new document record."""
-    await require_project_access(db, request, data.project_id, min_role="researcher")
+    await get_visible_project_or_404(db, request, data.project_id, min_role="researcher")
+    await _require_task_in_project(db, data.project_id, data.task_id)
     doc_id = str(uuid.uuid4())
 
     doc = Document(
@@ -297,7 +382,7 @@ async def create_document(data: DocumentCreate, request: Request, db: AsyncSessi
         file_type=data.file_type,
         file_size=data.file_size,
         status=DocumentStatus.READY,
-        source=DocumentSource(data.source) if data.source else DocumentSource.USER_UPLOAD,
+        source=data.source,
         task_id=data.task_id,
         phase=data.phase,
         content_preview=data.content_preview[:2000] if data.content_preview else "",
@@ -346,10 +431,7 @@ async def update_document(
     if data.phase is not None:
         doc.phase = data.phase
     if data.status is not None:
-        try:
-            doc.status = DocumentStatus(data.status)
-        except ValueError:
-            pass
+        doc.status = data.status
     if data.tags is not None:
         doc.set_tags(data.tags)
     if data.atomic_path is not None:
@@ -405,9 +487,12 @@ async def get_document_content(document_id: str, request: Request, db: AsyncSess
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
     await require_project_access(db, request, doc.project_id, min_role="viewer")
+    project = (
+        await db.execute(select(Project).where(Project.id == doc.project_id))
+    ).scalar_one_or_none()
 
     # If the document has a file_path, try to read directly
-    file_path = _resolve_document_file_path(doc)
+    file_path = _resolve_document_file_path(doc, project)
     if file_path:
         if file_path.exists() and file_path.is_file():
             suffix = file_path.suffix.lower()
@@ -442,7 +527,20 @@ async def get_document_content(document_id: str, request: Request, db: AsyncSess
                     "media_url": f"/api/files/{doc.project_id}/serve/{file_path.name}",
                     "size": file_path.stat().st_size,
                 }
-            elif suffix in {".mp3", ".wav", ".m4a", ".ogg", ".mp4", ".webm", ".mov"}:
+            elif suffix in {".mp3", ".wav", ".m4a", ".ogg"}:
+                content = doc.content_text or doc.content_preview or ""
+                return {
+                    "id": doc.id,
+                    "file_name": doc.file_name,
+                    "type": suffix,
+                    "content": content,
+                    "media_url": f"/api/files/{doc.project_id}/serve/{file_path.name}",
+                    "size": file_path.stat().st_size,
+                    "status": doc.status.value if doc.status else "ready",
+                    "tags": doc.get_tags(),
+                    "transcription": doc.get_atomic_path().get("transcription"),
+                }
+            elif suffix in {".mp4", ".webm", ".mov"}:
                 return {
                     "id": doc.id,
                     "file_name": doc.file_name,
@@ -466,14 +564,14 @@ async def get_document_content(document_id: str, request: Request, db: AsyncSess
 async def search_documents(
     request: Request,
     project_id: str,
-    q: str,
+    q: str = Query(..., min_length=1, max_length=500),
     phase: str | None = None,
     tag: str | None = None,
     limit: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
 ):
     """Full-text search across document titles, descriptions, content, and tags."""
-    await require_project_access(db, request, project_id, min_role="viewer")
+    await get_visible_project_or_404(db, request, project_id, min_role="viewer")
     search_pattern = f"%{q}%"
     conditions = [
         Document.project_id == project_id,
@@ -509,7 +607,7 @@ async def search_documents(
 @router.get("/documents/tags/{project_id}")
 async def get_document_tags(project_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     """Get all unique project tags across documents, findings, and code applications."""
-    await require_project_access(db, request, project_id, min_role="viewer")
+    await get_visible_project_or_404(db, request, project_id, min_role="viewer")
     tag_counts = await _project_tag_counts(db, project_id)
 
     return {
@@ -520,35 +618,26 @@ async def get_document_tags(project_id: str, request: Request, db: AsyncSession 
 
 
 @router.post("/documents/sync/{project_id}")
-async def sync_project_documents(project_id: str, request: Request, db: AsyncSession = Depends(get_db)):
+async def sync_project_documents(
+    project_id: str,
+    request: Request,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db),
+):
     """Scan the project's folder (external watch folder if linked, otherwise internal uploads)
     and register any untracked files as documents.
 
     This ensures files placed directly in the project folder instantly appear in the Documents UI.
     """
-    await require_project_access(db, request, project_id, min_role="researcher")
-    project_result = await db.execute(select(Project).where(Project.id == project_id))
-    project = project_result.scalar_one_or_none()
+    project = await get_visible_project_or_404(db, request, project_id, min_role="researcher")
 
     scan_dir = _resolve_project_folder(project, project_id)
     if not scan_dir.exists():
         return {"synced": 0, "total": 0}
 
-    from app.core.file_processor import get_supported_extensions
+    from app.core.file_processor import get_supported_extensions, process_file
+    from app.core.rag import VectorStore, ingest_chunks
 
-    MEDIA_EXTENSIONS = {
-        ".mp3",
-        ".wav",
-        ".m4a",
-        ".ogg",
-        ".mp4",
-        ".webm",
-        ".mov",
-        ".jpg",
-        ".jpeg",
-        ".png",
-        ".gif",
-    }
     supported = set(get_supported_extensions()) | MEDIA_EXTENSIONS
 
     # Get existing document file_paths to avoid duplicates
@@ -558,6 +647,7 @@ async def sync_project_documents(project_id: str, request: Request, db: AsyncSes
     existing_files = {r for r in existing_result.scalars().all()}
 
     synced = 0
+    total_chunks_indexed = 0
     for file_path in sorted(scan_dir.iterdir()):
         if not file_path.is_file():
             continue
@@ -569,16 +659,25 @@ async def sync_project_documents(project_id: str, request: Request, db: AsyncSes
         stat = file_path.stat()
         suffix = file_path.suffix.lower()
 
-        # Read preview for text-based files
         content_preview = ""
         content_text = ""
-        if suffix in {".txt", ".md", ".csv", ".json"}:
-            try:
-                text = file_path.read_text(errors="replace")
-                content_preview = text[:2000]
-                content_text = text
-            except Exception:
-                pass
+        status = DocumentStatus.PROCESSING if suffix in AUDIO_EXTENSIONS else DocumentStatus.READY
+        description = f"File added to project folder: {file_path.name}"
+        chunks_indexed = 0
+
+        if suffix not in MEDIA_EXTENSIONS:
+            result = process_file(file_path)
+            if result.error and suffix not in AUDIO_EXTENSIONS:
+                status = DocumentStatus.ERROR
+                description = f"Processing error: {result.error}"
+            elif suffix not in AUDIO_EXTENSIONS:
+                content_text = "\n\n".join(chunk.text for chunk in result.chunks)
+                content_preview = content_text[:2000]
+                if result.chunks:
+                    store = VectorStore(project_id)
+                    await store.delete_by_source(file_path.name)
+                    chunks_indexed = await ingest_chunks(project_id, result.chunks)
+                    total_chunks_indexed += chunks_indexed
 
         # Generate a human-readable title from filename
         title = file_path.stem.replace("-", " ").replace("_", " ").title()
@@ -587,12 +686,12 @@ async def sync_project_documents(project_id: str, request: Request, db: AsyncSes
             id=str(uuid.uuid4()),
             project_id=project_id,
             title=title,
-            description=f"File added to project folder: {file_path.name}",
+            description=description,
             file_path=str(file_path),
             file_name=file_path.name,
             file_type=suffix,
             file_size=stat.st_size,
-            status=DocumentStatus.READY,
+            status=status,
             source=DocumentSource.PROJECT_FILE,
             content_preview=content_preview,
             content_text=content_text,
@@ -600,6 +699,15 @@ async def sync_project_documents(project_id: str, request: Request, db: AsyncSes
         doc.set_tags([])
 
         db.add(doc)
+        if suffix in AUDIO_EXTENSIONS:
+            from app.api.routes.files import _process_audio_background
+
+            background_tasks.add_task(
+                _process_audio_background,
+                project_id=project_id,
+                doc_id=doc.id,
+                file_path=file_path,
+            )
         synced += 1
 
     if synced > 0:
@@ -610,13 +718,13 @@ async def sync_project_documents(project_id: str, request: Request, db: AsyncSes
     )
     total = total_result.scalar() or 0
 
-    return {"synced": synced, "total": total}
+    return {"synced": synced, "total": total, "chunks_indexed": total_chunks_indexed}
 
 
 @router.get("/documents/stats/{project_id}")
 async def document_stats(project_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     """Get document statistics for a project."""
-    await require_project_access(db, request, project_id, min_role="viewer")
+    await get_visible_project_or_404(db, request, project_id, min_role="viewer")
     # Total count
     total_result = await db.execute(
         select(func.count(Document.id)).where(Document.project_id == project_id)

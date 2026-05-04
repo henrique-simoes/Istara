@@ -86,7 +86,7 @@ def main():
                 token = login_resp.json().get("token") or login_resp.json().get("access_token", "")
                 if token:
                     client.headers["Authorization"] = f"Bearer {token}"
-                    print(f"  ✅ Authenticated as {admin_user}")
+                    print("  ✅ Authenticated with configured admin credentials")
         except Exception as e:
             print(f"  ⚠️  Login error: {e}")
 

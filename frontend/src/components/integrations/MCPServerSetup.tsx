@@ -3,13 +3,6 @@
 import { useState } from "react";
 import { X, CheckCircle2, AlertCircle, Server, RefreshCw } from "lucide-react";
 import { mcp as mcpApi } from "@/lib/api";
-import { cn } from "@/lib/utils";
-
-const TRANSPORTS = [
-  { id: "http", label: "HTTP", description: "Standard HTTP transport (recommended)" },
-  { id: "websocket", label: "WebSocket", description: "Persistent WebSocket connection" },
-  { id: "stdio", label: "stdio", description: "Standard I/O for local processes" },
-] as const;
 
 interface MCPServerSetupProps {
   onClose: () => void;
@@ -18,18 +11,20 @@ interface MCPServerSetupProps {
 export default function MCPServerSetup({ onClose }: MCPServerSetupProps) {
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
-  const [transport, setTransport] = useState("http");
+  const [transport] = useState("http");
   const [headers, setHeaders] = useState("");
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<"success" | "error" | null>(null);
   const [testError, setTestError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [createdServerId, setCreatedServerId] = useState<string | null>(null);
 
   const handleTest = async () => {
     setTesting(true);
     setTestResult(null);
     setTestError(null);
+    let serverId: string | null = null;
     try {
       let parsedHeaders: any = undefined;
       if (headers.trim()) {
@@ -49,11 +44,23 @@ export default function MCPServerSetup({ onClose }: MCPServerSetupProps) {
         transport,
         headers: parsedHeaders,
       });
+      serverId = server.id;
 
       // Try discovery
-      await mcpApi.clients.discover(server.id);
+      const discovery = await mcpApi.clients.discover(server.id);
+      if (discovery?.count === 0) {
+        throw new Error("Connected, but no MCP tools were discovered.");
+      }
+      setCreatedServerId(server.id);
       setTestResult("success");
     } catch (e: any) {
+      if (serverId) {
+        try {
+          await mcpApi.clients.delete(serverId);
+        } catch {
+          // Best-effort cleanup. The connection error remains the useful signal.
+        }
+      }
       setTestError(e.message);
       setTestResult("error");
     } finally {
@@ -62,7 +69,7 @@ export default function MCPServerSetup({ onClose }: MCPServerSetupProps) {
   };
 
   const handleSave = async () => {
-    if (testResult === "success") {
+    if (testResult === "success" && createdServerId) {
       // Already created during test
       setSaved(true);
       return;
@@ -147,21 +154,11 @@ export default function MCPServerSetup({ onClose }: MCPServerSetupProps) {
           {/* Transport */}
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Transport</label>
-            <div className="grid grid-cols-3 gap-2">
-              {TRANSPORTS.map((t) => (
-                <button
-                  key={t.id}
-                  onClick={() => setTransport(t.id)}
-                  className={cn(
-                    "p-2 rounded-lg border-2 text-center transition-all",
-                    transport === t.id
-                      ? "border-istara-500 bg-istara-50 dark:bg-istara-900/20"
-                      : "border-slate-200 dark:border-slate-700 hover:border-slate-300"
-                  )}
-                >
-                  <span className="text-xs font-medium text-slate-900 dark:text-white">{t.label}</span>
-                </button>
-              ))}
+            <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2">
+              <span className="text-xs font-medium text-slate-900 dark:text-white">HTTP</span>
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                Istara currently connects to external MCP servers through HTTP. Run stdio or WebSocket servers behind an HTTP MCP bridge before adding them here.
+              </p>
             </div>
           </div>
 

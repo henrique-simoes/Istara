@@ -24,6 +24,7 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
+from app.core.orchestrator_runtime import wake_orchestrator
 from app.models.database import async_session
 from app.models.task import Task, TaskStatus
 from app.models.project import Project
@@ -785,10 +786,7 @@ async def _exec_create_task(params: dict, project_id: str, agent_id: str) -> str
         db.add(task)
         await db.commit()
 
-        # Wake the orchestrator
-        from app.core.agent import agent as orchestrator
-
-        orchestrator.wake()
+        wake_orchestrator()
 
         return f"Task created: '{task.title}' (ID: {task.id}, priority: {task.priority}, status: backlog)"
 
@@ -977,9 +975,7 @@ async def _exec_assign_agent(params: dict, project_id: str, agent_id: str) -> st
         task.agent_id = params["agent_id"]
         await db.commit()
 
-        from app.core.agent import agent as orchestrator
-
-        orchestrator.wake()
+        wake_orchestrator()
 
         return (
             f"Task '{task.title}' assigned to agent '{params['agent_id']}'. Agent woken to process."

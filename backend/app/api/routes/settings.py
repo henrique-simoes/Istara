@@ -2,12 +2,13 @@
 
 import logging
 from datetime import datetime, timezone, timedelta
-from pathlib import Path
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
+from app.core.env_persistence import persist_env_value
 from app.core.hardware import detect_hardware, recommend_model
 from app.core.ollama import ollama
 from app.core.permissions import require_project_access
@@ -18,32 +19,13 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
+class StrictRoutingRequest(BaseModel):
+    enabled: bool
+
+
 def _persist_env(key: str, value: str) -> None:
-    """Update a key in the .env file so the setting survives restarts.
-
-    Creates the key if it doesn't exist, updates it in-place if it does.
-    """
-    env_path = Path(".env")
-    if not env_path.exists():
-        env_path.write_text(f"{key}={value}\n")
-        return
-
-    lines = env_path.read_text().splitlines(keepends=True)
-    found = False
-    new_lines = []
-    for line in lines:
-        stripped = line.strip()
-        if stripped.startswith(f"{key}=") or stripped.startswith(f"{key} ="):
-            new_lines.append(f"{key}={value}\n")
-            found = True
-        else:
-            new_lines.append(line)
-    if not found:
-        # Ensure trailing newline before appending
-        if new_lines and not new_lines[-1].endswith("\n"):
-            new_lines[-1] += "\n"
-        new_lines.append(f"{key}={value}\n")
-    env_path.write_text("".join(new_lines))
+    """Backward-compatible wrapper for settings persistence."""
+    persist_env_value(key, value)
 
 
 def _active_model() -> str:
@@ -310,6 +292,26 @@ async def maintenance_status():
     }
 
 
+@router.post("/settings/strict-routing")
+async def toggle_strict_routing(data: StrictRoutingRequest, request: Request):
+    """Toggle model-aware strict routing for pooled compute. Admin only."""
+    require_admin_from_request(request)
+    enabled = data.enabled
+    settings.strict_auto_routing = enabled
+    try:
+        _persist_env("STRICT_AUTO_ROUTING", str(enabled).lower())
+        persisted = True
+    except Exception as exc:
+        logger.warning("Could not persist STRICT_AUTO_ROUTING: %s", exc)
+        persisted = False
+
+    return {
+        "strict_auto_routing": enabled,
+        "persisted": persisted,
+        "message": "Strict compute routing updated.",
+    }
+
+
 @router.get("/settings/integrations-status")
 async def integrations_status():
     """Check configuration status of design integrations (Stitch, Figma)."""
@@ -405,6 +407,7 @@ async def system_status():
         "status": "healthy" if llm_healthy else "degraded",
         "provider": settings.llm_provider,
         "team_mode": settings.team_mode,
+        "strict_auto_routing": settings.strict_auto_routing,
         "services": {
             "backend": "running",
             "llm": "connected" if llm_healthy else "disconnected",

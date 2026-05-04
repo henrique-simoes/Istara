@@ -22,6 +22,21 @@ logger = logging.getLogger(__name__)
 PREFIX = "rcl_"
 
 
+def hash_connection_string(conn_str: str) -> str:
+    """Create a deterministic one-way hash for exact connection-string lookup."""
+    if not conn_str:
+        return ""
+    return hashlib.sha256(conn_str.encode("utf-8")).hexdigest()
+
+
+def preview_connection_string(conn_str: str) -> str:
+    """Return a non-secret preview suitable for logs and admin lists."""
+    if not conn_str:
+        return ""
+    digest = hash_connection_string(conn_str)
+    return f"{PREFIX}{digest[:12]}...{digest[-8:]}"
+
+
 def create_connection_string(
     server_url: str,
     ws_url: str | None = None,

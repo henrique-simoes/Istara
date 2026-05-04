@@ -126,7 +126,7 @@ export default function ChatSessionsSidebar({ projectId }: ChatSessionsSidebarPr
         </div>
 
         {/* Status + starred */}
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
           {session.starred && (
             <Star size={10} className="text-amber-400 fill-amber-400 opacity-100" />
           )}

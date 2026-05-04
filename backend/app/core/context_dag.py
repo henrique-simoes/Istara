@@ -204,15 +204,18 @@ class ContextDAG:
 
             return dag_summary_messages, fresh_tail_messages
 
-    async def expand_node(self, node_id: str) -> list[dict]:
+    async def expand_node(self, node_id: str, *, session_id: str | None = None) -> list[dict]:
         """Expand a DAG node to reveal its contents.
 
         For depth-0 nodes: returns the original messages.
         For depth>0 nodes: returns the child node summaries.
         """
         async with async_session() as db:
+            node_query = select(ContextDAGNode).where(ContextDAGNode.id == node_id)
+            if session_id:
+                node_query = node_query.where(ContextDAGNode.session_id == session_id)
             result = await db.execute(
-                select(ContextDAGNode).where(ContextDAGNode.id == node_id)
+                node_query
             )
             node = result.scalar_one_or_none()
             if not node:
@@ -223,20 +226,31 @@ class ContextDAG:
                 try:
                     msg_ids = json.loads(node.message_ids)
                 except (json.JSONDecodeError, TypeError):
-                    return [{"error": "Could not parse message IDs for this node"}]
+                    return [
+                        {
+                            "id": f"{node.id}-error",
+                            "type": "summary",
+                            "role": "system",
+                            "content": "Could not parse message IDs for this node",
+                        }
+                    ]
 
                 if not msg_ids:
-                    return [{"info": "No messages associated with this node"}]
+                    return []
 
                 msg_result = await db.execute(
                     select(Message)
-                    .where(Message.id.in_(msg_ids))
+                    .where(
+                        Message.id.in_(msg_ids),
+                        Message.session_id == node.session_id,
+                    )
                     .order_by(Message.created_at.asc())
                 )
                 messages = msg_result.scalars().all()
                 return [
                     {
                         "id": m.id,
+                        "type": "message",
                         "role": m.role,
                         "content": m.content,
                         "created_at": m.created_at.isoformat() if m.created_at else "",
@@ -248,22 +262,36 @@ class ContextDAG:
                 try:
                     child_ids = json.loads(node.child_node_ids)
                 except (json.JSONDecodeError, TypeError):
-                    return [{"error": "Could not parse child node IDs"}]
+                    return [
+                        {
+                            "id": f"{node.id}-error",
+                            "type": "summary",
+                            "role": "system",
+                            "content": "Could not parse child node IDs",
+                        }
+                    ]
 
                 if not child_ids:
-                    return [{"info": "No child nodes for this node"}]
+                    return []
 
                 child_result = await db.execute(
                     select(ContextDAGNode)
-                    .where(ContextDAGNode.id.in_(child_ids))
+                    .where(
+                        ContextDAGNode.id.in_(child_ids),
+                        ContextDAGNode.session_id == node.session_id,
+                    )
                     .order_by(ContextDAGNode.time_range_start.asc())
                 )
                 children = child_result.scalars().all()
                 return [
                     {
+                        "id": c.id,
                         "node_id": c.id,
+                        "type": "summary",
+                        "role": "system",
                         "depth": c.depth,
                         "summary": c.summary_text,
+                        "content": c.summary_text,
                         "message_count": c.message_count,
                         "time_range_start": c.time_range_start.isoformat() if c.time_range_start else None,
                         "time_range_end": c.time_range_end.isoformat() if c.time_range_end else None,
@@ -344,11 +372,14 @@ class ContextDAG:
 
             return results
 
-    async def describe_node(self, node_id: str) -> dict:
+    async def describe_node(self, node_id: str, *, session_id: str | None = None) -> dict:
         """Return full metadata for a single DAG node."""
         async with async_session() as db:
+            node_query = select(ContextDAGNode).where(ContextDAGNode.id == node_id)
+            if session_id:
+                node_query = node_query.where(ContextDAGNode.session_id == session_id)
             result = await db.execute(
-                select(ContextDAGNode).where(ContextDAGNode.id == node_id)
+                node_query
             )
             node = result.scalar_one_or_none()
             if not node:
@@ -417,17 +448,24 @@ class ContextDAG:
                 depth = node.depth
                 if depth > max_depth:
                     max_depth = depth
+                try:
+                    child_node_ids = json.loads(node.child_node_ids)
+                except (json.JSONDecodeError, TypeError):
+                    child_node_ids = []
 
                 node_info = {
                     "id": node.id,
                     "parent_id": node.parent_id,
                     "depth": depth,
+                    "summary_text": node.summary_text,
+                    "summary_preview": (node.summary_text or "")[:150],
                     "message_count": node.message_count,
                     "token_count": node.token_count,
                     "original_token_count": node.original_token_count,
+                    "child_node_ids": child_node_ids,
                     "time_range_start": node.time_range_start.isoformat() if node.time_range_start else None,
                     "time_range_end": node.time_range_end.isoformat() if node.time_range_end else None,
-                    "summary_preview": (node.summary_text or "")[:150],
+                    "created_at": node.created_at.isoformat() if node.created_at else None,
                 }
                 nodes_by_depth[depth].append(node_info)
 
@@ -447,10 +485,11 @@ class ContextDAG:
 
             return {
                 "session_id": session_id,
-                "nodes": top_level,
+                "nodes": all_node_infos,
                 "stats": {
                     "total_nodes": len(all_nodes),
                     "max_depth": max_depth,
+                    "dag_depth": max_depth,
                     "nodes_by_depth": {
                         str(d): len(nodes) for d, nodes in nodes_by_depth.items()
                     },
@@ -462,6 +501,7 @@ class ContextDAG:
                         if total_orig_tokens > 0
                         else 0
                     ),
+                    "dag_enabled": settings.dag_enabled,
                 },
             }
 
@@ -490,6 +530,7 @@ class ContextDAG:
                     "total_messages": total_messages,
                     "compacted_messages": 0,
                     "dag_depth": 0,
+                    "max_depth": 0,
                     "fresh_tail_size": min(total_messages, self.fresh_tail_size),
                     "compression_ratio": 1.0,
                     "nodes_by_depth": {},
@@ -522,6 +563,7 @@ class ContextDAG:
                 "total_messages": total_messages,
                 "compacted_messages": len(compacted_ids),
                 "dag_depth": max_depth,
+                "max_depth": max_depth,
                 "fresh_tail_size": min(
                     total_messages, self.fresh_tail_size
                 ),

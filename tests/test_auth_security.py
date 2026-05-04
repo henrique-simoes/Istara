@@ -52,6 +52,33 @@ async def test_auth_me_enforcement():
 
 
 @pytest.mark.asyncio
+async def test_auth_users_requires_admin_role():
+    """Team user listing must not expose emails and roles to non-admin users."""
+    await init_db()
+    settings.team_mode = True
+    if not settings.jwt_secret:
+        settings.jwt_secret = "test-secret"
+
+    researcher_token = create_token("researcher-1", "researcher", "researcher")
+    admin_token = create_token("admin-1", "admin", "admin")
+    transport = ASGITransport(app=app)
+
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        denied = await ac.get(
+            "/api/auth/users",
+            headers={"Authorization": f"Bearer {researcher_token}"},
+        )
+        allowed = await ac.get(
+            "/api/auth/users",
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+
+    assert denied.status_code == 403
+    assert allowed.status_code == 200
+    assert isinstance(allowed.json(), list)
+
+
+@pytest.mark.asyncio
 async def test_local_mode_admin_bypass():
     """Verify that local mode still works as expected (intentional bypass)."""
     await init_db()

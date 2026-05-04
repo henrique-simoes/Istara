@@ -3,21 +3,39 @@
 from __future__ import annotations
 
 import logging
+import math
 from datetime import datetime
+from typing import Iterable
 
-from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel
-from sqlalchemy import func, select, update
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
+from pydantic import BaseModel, Field
+from sqlalchemy import false, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.permissions import require_project_access
+from app.config import settings
+from app.core.permissions import get_subject, is_global_admin, require_project_access
 from app.core.security_middleware import require_admin_from_request
 from app.models.database import get_db
 from app.models.notification import Notification, NotificationPreference
+from app.models.project_member import ProjectMember
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+ALLOWED_CATEGORIES = {
+    "agent_status",
+    "task_progress",
+    "finding_created",
+    "file_processed",
+    "suggestion",
+    "resource_throttle",
+    "scheduled_reminder",
+    "document",
+    "loop_execution",
+    "system",
+}
+ALLOWED_SEVERITIES = {"info", "warning", "error", "success"}
 
 
 # ---------------------------------------------------------------------------
@@ -28,13 +46,13 @@ router = APIRouter()
 class MarkAllReadRequest(BaseModel):
     """Optional body for mark-all-read — can scope to a project."""
 
-    project_id: str | None = None
+    project_id: str | None = Field(default=None, max_length=36)
 
 
 class PreferenceItem(BaseModel):
     """A single notification preference entry."""
 
-    category: str
+    category: str = Field(min_length=1, max_length=50)
     show_toast: bool = True
     show_center: bool = True
     email_forward: bool = False
@@ -43,7 +61,68 @@ class PreferenceItem(BaseModel):
 class UpdatePreferencesRequest(BaseModel):
     """Request body for bulk-updating notification preferences."""
 
-    preferences: list[PreferenceItem]
+    preferences: list[PreferenceItem] = Field(default_factory=list, max_length=50)
+
+
+def _split_csv(value: str | None) -> list[str]:
+    if not value:
+        return []
+    return [part.strip() for part in value.split(",") if part.strip()]
+
+
+def _merge_filter_values(*values: str | None) -> list[str]:
+    seen: set[str] = set()
+    merged: list[str] = []
+    for value in values:
+        for item in _split_csv(value):
+            if item not in seen:
+                seen.add(item)
+                merged.append(item)
+    return merged
+
+
+def _validate_values(values: Iterable[str], allowed: set[str], label: str) -> list[str]:
+    normalized = [value.strip() for value in values if value.strip()]
+    invalid = [value for value in normalized if value not in allowed]
+    if invalid:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid {label}: {', '.join(invalid)}",
+        )
+    return normalized
+
+
+def _parse_iso_datetime(value: str | None, label: str) -> datetime | None:
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(value)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=f"Invalid {label}") from exc
+
+
+async def _visible_project_ids(
+    db: AsyncSession,
+    request: Request,
+) -> list[str] | None:
+    """Return scoped project ids for team users, or None for global visibility."""
+    if not settings.team_mode:
+        return None
+    subject = get_subject(request)
+    if is_global_admin(subject):
+        return None
+    result = await db.execute(
+        select(ProjectMember.project_id).where(ProjectMember.user_id == subject.id)
+    )
+    return list(result.scalars().all())
+
+
+def _apply_project_scope(query, project_ids: list[str] | None):
+    if project_ids is None:
+        return query
+    if not project_ids:
+        return query.where(false())
+    return query.where(Notification.project_id.in_(project_ids))
 
 
 # ---------------------------------------------------------------------------
@@ -55,33 +134,57 @@ class UpdatePreferencesRequest(BaseModel):
 async def list_notifications(
     request: Request,
     category: str | None = None,
+    categories: str | None = None,
     agent_id: str | None = None,
     project_id: str | None = None,
     severity: str | None = None,
+    severities: str | None = None,
     read: bool | None = None,
-    search: str | None = None,
-    page: int = 1,
-    page_size: int = 50,
+    unread_only: bool = False,
+    search: str | None = Query(default=None, max_length=200),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=50, ge=1, le=100),
     date_from: str | None = None,
     date_to: str | None = None,
+    from_date: str | None = None,
+    to_date: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     """Paginated notification list with optional filters."""
     if project_id:
         await require_project_access(db, request, project_id, min_role="viewer")
+        scoped_project_ids: list[str] | None = None
     else:
-        require_admin_from_request(request)
+        scoped_project_ids = await _visible_project_ids(db, request)
 
     query = select(Notification).order_by(Notification.created_at.desc())
+    query = _apply_project_scope(query, scoped_project_ids)
 
-    if category:
-        query = query.where(Notification.category == category)
+    category_values = _validate_values(
+        _merge_filter_values(category, categories),
+        ALLOWED_CATEGORIES,
+        "notification category",
+    )
+    severity_values = _validate_values(
+        _merge_filter_values(severity, severities),
+        ALLOWED_SEVERITIES,
+        "notification severity",
+    )
+    dt_from = _parse_iso_datetime(date_from or from_date, "date_from")
+    dt_to = _parse_iso_datetime(date_to or to_date, "date_to")
+
+    if category_values:
+        query = query.where(Notification.category.in_(category_values))
     if agent_id:
         query = query.where(Notification.agent_id == agent_id)
     if project_id:
         query = query.where(Notification.project_id == project_id)
-    if severity:
-        query = query.where(Notification.severity == severity)
+    if severity_values:
+        query = query.where(Notification.severity.in_(severity_values))
+    if unread_only:
+        if read is True:
+            raise HTTPException(status_code=400, detail="read=true conflicts with unread_only=true")
+        read = False
     if read is not None:
         query = query.where(Notification.read.is_(read))
     if search:
@@ -90,22 +193,15 @@ async def list_notifications(
             Notification.title.ilike(like_pattern)
             | Notification.message.ilike(like_pattern)
         )
-    if date_from:
-        try:
-            dt_from = datetime.fromisoformat(date_from)
-            query = query.where(Notification.created_at >= dt_from)
-        except ValueError:
-            pass
-    if date_to:
-        try:
-            dt_to = datetime.fromisoformat(date_to)
-            query = query.where(Notification.created_at <= dt_to)
-        except ValueError:
-            pass
+    if dt_from:
+        query = query.where(Notification.created_at >= dt_from)
+    if dt_to:
+        query = query.where(Notification.created_at <= dt_to)
 
     # Total count for pagination
     count_query = select(func.count()).select_from(query.subquery())
     total = (await db.execute(count_query)).scalar() or 0
+    total_pages = max(1, math.ceil(total / page_size))
 
     # Apply pagination
     offset = (page - 1) * page_size
@@ -117,20 +213,29 @@ async def list_notifications(
     return {
         "notifications": notifications,
         "total": total,
+        "total_pages": total_pages,
         "page": page,
         "page_size": page_size,
     }
 
 
 @router.get("/notifications/unread-count")
-async def unread_count(request: Request, db: AsyncSession = Depends(get_db)):
+async def unread_count(
+    request: Request,
+    project_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
     """Return the number of unread notifications."""
-    require_admin_from_request(request)
-    count = (
-        await db.execute(
-            select(func.count(Notification.id)).where(Notification.read.is_(False))
-        )
-    ).scalar() or 0
+    if project_id:
+        await require_project_access(db, request, project_id, min_role="viewer")
+        scoped_project_ids: list[str] | None = None
+    else:
+        scoped_project_ids = await _visible_project_ids(db, request)
+    query = select(func.count(Notification.id)).where(Notification.read.is_(False))
+    query = _apply_project_scope(query, scoped_project_ids)
+    if project_id:
+        query = query.where(Notification.project_id == project_id)
+    count = (await db.execute(query)).scalar() or 0
     return {"count": count}
 
 
@@ -156,19 +261,21 @@ async def mark_read(notification_id: str, request: Request, db: AsyncSession = D
 @router.post("/notifications/read-all")
 async def mark_all_read(
     request: Request,
-    data: MarkAllReadRequest | None = None,
+    data: MarkAllReadRequest | None = Body(default=None),
     db: AsyncSession = Depends(get_db),
 ):
     """Mark all unread notifications as read, optionally scoped to a project."""
     if data and data.project_id:
         await require_project_access(db, request, data.project_id, min_role="viewer")
+        scoped_project_ids: list[str] | None = None
     else:
-        require_admin_from_request(request)
+        scoped_project_ids = await _visible_project_ids(db, request)
 
     stmt = (
         update(Notification)
         .where(Notification.read.is_(False))
     )
+    stmt = _apply_project_scope(stmt, scoped_project_ids)
     if data and data.project_id:
         stmt = stmt.where(Notification.project_id == data.project_id)
 
@@ -214,15 +321,27 @@ async def get_preferences(request: Request, db: AsyncSession = Depends(get_db)):
 
 @router.put("/notifications/preferences")
 async def update_preferences(
-    data: UpdatePreferencesRequest,
+    data: UpdatePreferencesRequest | list[PreferenceItem],
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
     """Create or update notification preferences by category."""
     require_admin_from_request(request)
     updated: list[dict] = []
+    preferences = data if isinstance(data, list) else data.preferences
 
-    for item in data.preferences:
+    if not preferences:
+        raise HTTPException(status_code=400, detail="At least one preference is required")
+
+    categories = _validate_values(
+        (item.category for item in preferences),
+        ALLOWED_CATEGORIES,
+        "notification category",
+    )
+    if len(categories) != len(set(categories)):
+        raise HTTPException(status_code=400, detail="Duplicate notification preference category")
+
+    for item in preferences:
         # Check if preference for this category already exists
         result = await db.execute(
             select(NotificationPreference).where(

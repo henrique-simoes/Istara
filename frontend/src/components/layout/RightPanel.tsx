@@ -3,13 +3,7 @@
 import { useEffect, useState } from "react";
 import {
   X,
-  Sparkles,
-  FileText,
-  Lightbulb,
-  Target,
-  LinkIcon,
   ChevronRight,
-  AlertTriangle,
 } from "lucide-react";
 import { useProjectStore } from "@/stores/projectStore";
 import { findings as findingsApi } from "@/lib/api";
@@ -28,7 +22,12 @@ export default function RightPanel({ activeView, collapsed, onToggle }: RightPan
   const [summary, setSummary] = useState<any>(null);
 
   useEffect(() => {
-    if (!activeProjectId) return;
+    if (!activeProjectId) {
+      setRecentNuggets([]);
+      setRecentInsights([]);
+      setSummary(null);
+      return;
+    }
 
     findingsApi.nuggets(activeProjectId).then((n) => setRecentNuggets(n.slice(0, 5))).catch(() => {});
     findingsApi.insights(activeProjectId).then((i) => setRecentInsights(i.slice(0, 5))).catch(() => {});
@@ -50,7 +49,7 @@ export default function RightPanel({ activeView, collapsed, onToggle }: RightPan
   const renderChatContext = () => (
     <div className="space-y-4">
       {/* Semantically relevant findings */}
-      <Section title="💡 Related Insights" count={recentInsights.length}>
+      <Section title="Related Insights" count={recentInsights.length}>
         {recentInsights.length === 0 ? (
           <EmptyState text="Insights appear here as you chat and run skills." />
         ) : (
@@ -66,7 +65,7 @@ export default function RightPanel({ activeView, collapsed, onToggle }: RightPan
       </Section>
 
       {/* Recent evidence */}
-      <Section title="✨ Latest Evidence" count={recentNuggets.length}>
+      <Section title="Latest Evidence" count={recentNuggets.length}>
         {recentNuggets.length === 0 ? (
           <EmptyState text="Upload research files to start extracting evidence." />
         ) : (
@@ -74,7 +73,7 @@ export default function RightPanel({ activeView, collapsed, onToggle }: RightPan
             <FindingCard
               key={nugget.id}
               text={nugget.text}
-              meta={`📄 ${nugget.source.split("/").pop()}`}
+              meta={`Source: ${nugget.source.split("/").pop()}`}
             />
           ))
         )}
@@ -82,7 +81,7 @@ export default function RightPanel({ activeView, collapsed, onToggle }: RightPan
 
       {/* Project health */}
       {summary && (
-        <Section title="📊 Research Progress">
+        <Section title="Research Progress">
           <div className="grid grid-cols-2 gap-2">
             <StatBox label="Nuggets" value={summary.totals.nuggets} />
             <StatBox label="Facts" value={summary.totals.facts} />
@@ -96,7 +95,7 @@ export default function RightPanel({ activeView, collapsed, onToggle }: RightPan
       )}
 
       {/* Quick action suggestions — agents understand natural language */}
-      <Section title="⚡ Chat Actions">
+      <Section title="Chat Actions">
         <div className="space-y-2 text-xs">
           <p className="text-slate-400">Agents understand what you need. Try:</p>
           <div className="space-y-1">
@@ -116,7 +115,7 @@ export default function RightPanel({ activeView, collapsed, onToggle }: RightPan
 
   const renderFindingsContext = () => (
     <div className="space-y-4">
-      <Section title="🔗 Evidence Chain">
+      <Section title="Evidence Chain">
         <p className="text-xs text-slate-500">
           Click any insight in the main panel to see its full evidence chain:
           Recommendation → Insight → Facts → Nuggets → Sources
@@ -124,13 +123,13 @@ export default function RightPanel({ activeView, collapsed, onToggle }: RightPan
       </Section>
 
       {summary && (
-        <Section title="📊 Findings by Phase">
+        <Section title="Findings by Phase">
           {Object.entries(summary.by_phase).map(([phase, data]: [string, any]) => {
             const total = data.nuggets + data.facts + data.insights + data.recommendations;
             return (
               <div key={phase} className="flex items-center justify-between py-1">
                 <span className="text-xs text-slate-600 dark:text-slate-400 capitalize">
-                  💎 {phase}
+                  {phase}
                 </span>
                 <span className="text-xs font-medium text-slate-900 dark:text-white">
                   {total} findings
@@ -145,19 +144,19 @@ export default function RightPanel({ activeView, collapsed, onToggle }: RightPan
 
   const renderTasksContext = () => (
     <div className="space-y-4">
-      <Section title="🤖 Agent Status">
+      <Section title="Agent Status">
         <p className="text-xs text-slate-500">
           The agent automatically picks up tasks from your Kanban board and runs the
           appropriate skill. Add context to task cards to guide the agent.
         </p>
       </Section>
 
-      <Section title="💡 Tips">
+      <Section title="Tips">
         <div className="space-y-2 text-xs text-slate-500">
-          <p>• Name tasks with skill keywords: "Analyze interview transcripts"</p>
-          <p>• Add user context to cards for better results</p>
-          <p>• Tasks move to "In Review" when the agent finishes</p>
-          <p>• Review and approve before moving to "Done"</p>
+          <p>- Name tasks with skill keywords: "Analyze interview transcripts"</p>
+          <p>- Add user context to cards for better results</p>
+          <p>- Tasks move to "In Review" when the agent finishes</p>
+          <p>- Review and approve before moving to "Done"</p>
         </div>
       </Section>
     </div>
@@ -165,7 +164,7 @@ export default function RightPanel({ activeView, collapsed, onToggle }: RightPan
 
   const renderContextContext = () => (
     <div className="space-y-4">
-      <Section title="📚 How Context Works">
+      <Section title="How Context Works">
         <div className="space-y-3 text-xs text-slate-500">
           <div>
             <p className="font-medium text-slate-700 dark:text-slate-300">Layer 1: Agent Base</p>
@@ -190,13 +189,13 @@ export default function RightPanel({ activeView, collapsed, onToggle }: RightPan
 
   const renderDocumentsContext = () => (
     <div className="space-y-4">
-      <Section title="📄 Documents">
+      <Section title="Documents">
         <p className="text-xs text-slate-500">
           Every task output, file upload, and agent-produced artifact appears here as a document.
         </p>
       </Section>
 
-      <Section title="🔍 How to Search">
+      <Section title="How to Search">
         <div className="space-y-2 text-xs text-slate-500">
           <p>Search by title, content, tags, or file name using the search bar.</p>
           <p>Filter by Double Diamond phase, source type, or tags.</p>
@@ -204,10 +203,39 @@ export default function RightPanel({ activeView, collapsed, onToggle }: RightPan
         </div>
       </Section>
 
-      <Section title="🔗 Atomic Path">
+      <Section title="Atomic Path">
         <p className="text-xs text-slate-500">
           Each document shows which agents, skills, and tasks created it,
           forming a traceable path from user request to output.
+        </p>
+      </Section>
+    </div>
+  );
+
+  const renderSystemContext = () => (
+    <div className="space-y-4">
+      <Section title="System Surface">
+        <p className="text-xs text-slate-500">
+          This view is global to the Istara installation. Changes here can affect every
+          project, agent, model route, and connected client.
+        </p>
+      </Section>
+      <Section title="Production Checks">
+        <div className="space-y-2 text-xs text-slate-500">
+          <p>- Verify admin-only controls before sharing the server.</p>
+          <p>- Watch degraded compute, telemetry, or validation warnings.</p>
+          <p>- Prefer explicit project context when moving back into research work.</p>
+        </div>
+      </Section>
+    </div>
+  );
+
+  const renderHistoryContext = () => (
+    <div className="space-y-4">
+      <Section title="Version History">
+        <p className="text-xs text-slate-500">
+          Project history records version snapshots and exports. Use it to verify
+          production changes have a traceable recovery path.
         </p>
       </Section>
     </div>
@@ -219,8 +247,15 @@ export default function RightPanel({ activeView, collapsed, onToggle }: RightPan
     tasks: renderTasksContext,
     context: renderContextContext,
     documents: renderDocumentsContext,
-    settings: renderChatContext,
+    settings: renderSystemContext,
+    admin: renderSystemContext,
+    compute: renderSystemContext,
+    ensemble: renderSystemContext,
+    quality: renderSystemContext,
+    history: renderHistoryContext,
   };
+
+  const projectScopedViews = new Set(["chat", "findings", "tasks", "context", "documents", "history"]);
 
   return (
     <aside className="w-72 border-l border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 flex flex-col overflow-hidden">
@@ -239,7 +274,11 @@ export default function RightPanel({ activeView, collapsed, onToggle }: RightPan
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-3" tabIndex={0} role="region" aria-label="Context panel">
         {!activeProjectId ? (
-          <EmptyState text="Select a project to see context." />
+          projectScopedViews.has(activeView) ? (
+            <EmptyState text="Select a project to see context." />
+          ) : (
+            (contextMap[activeView] || renderSystemContext)()
+          )
         ) : (
           (contextMap[activeView] || renderChatContext)()
         )}

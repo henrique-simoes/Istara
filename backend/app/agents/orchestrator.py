@@ -384,6 +384,15 @@ class MetaOrchestrator:
                                     task.id,
                                     routing.get("specialties_needed", []),
                                 )
+                                try:
+                                    from dataclasses import asdict
+                                    from app.core.improvement_governance import improvement_governance
+
+                                    await improvement_governance.register_agent_creation_proposal(
+                                        asdict(proposal)
+                                    )
+                                except Exception:
+                                    pass
                                 logger.info(
                                     f"Agent creation proposed: {proposal.proposed_name}"
                                 )

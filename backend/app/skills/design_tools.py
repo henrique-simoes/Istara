@@ -141,33 +141,25 @@ async def _exec_generate_screen(params: dict, project_id: str, agent_id: str) ->
     from app.services.stitch_service import stitch_service
     from app.models.design_screen import DesignScreen, DesignDecision
     from app.config import settings
+    from app.services.design_evidence import build_seeded_prompt, resolve_seed_findings
     from pathlib import Path
     import httpx
 
     prompt = params["prompt"]
     device = params.get("device_type", "DESKTOP")
     model = params.get("model", "GEMINI_3_FLASH")
-    seed_ids = params.get("seed_finding_ids", [])
-
-    # Enrich prompt with findings if seeded
-    enriched_prompt = prompt
-    if seed_ids:
-        from app.models.finding import Insight, Recommendation
-
-        async with async_session() as db:
-            texts: list[str] = []
-            for fid in seed_ids[:5]:  # max 5 findings
-                for Model in [Insight, Recommendation]:
-                    result = await db.execute(select(Model).where(Model.id == fid))
-                    finding = result.scalar_one_or_none()
-                    if finding:
-                        texts.append(f"- {finding.text}")
-            if texts:
-                enriched_prompt = (
-                    "Based on these research findings:\n"
-                    + "\n".join(texts)
-                    + f"\n\nDesign: {prompt}"
-                )
+    raw_seed_ids = params.get("seed_finding_ids", [])
+    async with async_session() as db:
+        seed_findings, missing_seed_ids = await resolve_seed_findings(
+            db,
+            project_id,
+            raw_seed_ids,
+            max_items=10,
+        )
+    if missing_seed_ids:
+        return "Seed findings were not found in this project: " + ", ".join(missing_seed_ids)
+    seed_ids = [finding.id for finding in seed_findings]
+    enriched_prompt = build_seeded_prompt(prompt, seed_findings)
 
     try:
         # Create or reuse a Stitch project for this Istara project
@@ -331,6 +323,8 @@ async def _exec_edit_screen(params: dict, project_id: str, agent_id: str) -> str
         screen = result.scalar_one_or_none()
         if not screen:
             return f"Screen not found: {screen_id}"
+        if screen.project_id != project_id:
+            return f"Screen not found: {screen_id}"
 
     stitch_proj_id = screen.stitch_project_id or "default"
     stitch_screen_ids = [screen.stitch_screen_id] if screen.stitch_screen_id else [screen_id]
@@ -434,6 +428,8 @@ async def _exec_create_variant(params: dict, project_id: str, agent_id: str) -> 
         result = await db.execute(select(DesignScreen).where(DesignScreen.id == screen_id))
         screen = result.scalar_one_or_none()
         if not screen:
+            return f"Screen not found: {screen_id}"
+        if screen.project_id != project_id:
             return f"Screen not found: {screen_id}"
 
     stitch_proj_id = screen.stitch_project_id or "default"

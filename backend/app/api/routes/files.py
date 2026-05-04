@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.core.file_processor import get_supported_extensions, process_file
-from app.core.permissions import require_project_access
+from app.core.permissions import get_visible_project_or_404
 from app.core.rag import VectorStore, ingest_chunks
 from app.models.database import get_db, async_session
 from app.models.document import Document, DocumentSource, DocumentStatus
@@ -39,6 +39,41 @@ AUDIO_EXTENSIONS = {".mp3", ".wav", ".m4a", ".ogg"}
 router = APIRouter()
 
 
+def _project_roots(project: Project | None, project_id: str) -> list[Path]:
+    roots = [Path(settings.upload_dir) / project_id]
+    watch_folder_path = getattr(project, "watch_folder_path", None) if project else None
+    if watch_folder_path:
+        watch_root = Path(watch_folder_path)
+        if watch_root not in roots:
+            roots.append(watch_root)
+    return roots
+
+
+def _safe_filename(filename: str) -> str:
+    name = Path(filename or "").name
+    if not name or name != filename or name in {".", ".."}:
+        raise HTTPException(status_code=400, detail="Invalid filename")
+    return name
+
+
+def _path_within_roots(path: Path, roots: list[Path]) -> bool:
+    try:
+        resolved = path.resolve()
+    except OSError:
+        return False
+    for root in roots:
+        try:
+            resolved.relative_to(root.resolve())
+            return True
+        except (OSError, ValueError):
+            continue
+    return False
+
+
+async def _get_project(db: AsyncSession, request: Request, project_id: str, min_role: str = "viewer") -> Project:
+    return await get_visible_project_or_404(db, request, project_id, min_role=min_role)  # type: ignore[arg-type]
+
+
 async def _resolve_project_folder(db, project_id: str) -> Path:
     """Resolve the primary folder to scan for project files.
 
@@ -52,6 +87,34 @@ async def _resolve_project_folder(db, project_id: str) -> Path:
     return Path(settings.upload_dir) / project_id
 
 
+async def _resolve_project_file(db: AsyncSession, project: Project, project_id: str, filename: str) -> tuple[Path, Document | None]:
+    safe_name = _safe_filename(filename)
+    roots = _project_roots(project, project_id)
+    doc_rows = (
+        await db.execute(select(Document).where(Document.project_id == project_id))
+    ).scalars().all()
+
+    for doc in doc_rows:
+        doc_path = Path(doc.file_path or "")
+        if doc_path.name == safe_name and doc_path.exists() and doc_path.is_file() and _path_within_roots(doc_path, roots):
+            return doc_path, doc
+
+    for root in roots:
+        candidate = root / safe_name
+        if candidate.exists() and candidate.is_file() and _path_within_roots(candidate, roots):
+            doc = next(
+                (
+                    row
+                    for row in doc_rows
+                    if row.file_name == safe_name or Path(row.file_path or "").name == safe_name
+                ),
+                None,
+            )
+            return candidate, doc
+
+    raise HTTPException(status_code=404, detail="File not found")
+
+
 @router.post("/files/upload/{project_id}")
 async def upload_file(
     project_id: str,
@@ -61,7 +124,7 @@ async def upload_file(
     db: AsyncSession = Depends(get_db),
 ):
     """Upload a file and process it into the project's knowledge base."""
-    await require_project_access(db, request, project_id, min_role="researcher")
+    await _get_project(db, request, project_id, min_role="researcher")
 
     # Validate extension
     suffix = Path(file.filename or "").suffix.lower()
@@ -213,9 +276,38 @@ async def _process_audio_background(project_id: str, doc_id: str, file_path: Pat
             if not doc:
                 return
 
+            transcription = result.metadata.get("transcription", {}) if result.metadata else {}
+            transcription_tags = transcription.get("tags") if isinstance(transcription, dict) else []
+            if transcription_tags:
+                doc.set_tags(transcription_tags)
+            if transcription:
+                doc.set_atomic_path({"transcription": transcription})
+
             if result.error:
                 doc.status = DocumentStatus.ERROR
                 doc.description = f"Transcription error: {result.error}"
+                try:
+                    from app.core.improvement_governance import improvement_governance
+
+                    await improvement_governance.record_feature_evidence(
+                        feature="interviews_audio_upload_transcription_tagging_documents",
+                        source_system="transcription",
+                        source_id=doc_id,
+                        project_id=project_id,
+                        agent_id="transcription-pipeline",
+                        summary="Audio transcription failed during document processing.",
+                        evidence={
+                            "passed": False,
+                            "document_id": doc_id,
+                            "file_name": file_path.name,
+                            "error": result.error,
+                            "transcription": transcription,
+                        },
+                        metrics_after={"needs_review": True},
+                        db=db,
+                    )
+                except Exception:
+                    pass
                 await db.commit()
                 return
 
@@ -225,7 +317,45 @@ async def _process_audio_background(project_id: str, doc_id: str, file_path: Pat
             # 3. Update document record
             doc.content_text = "\n\n".join(c.text for c in result.chunks)
             doc.content_preview = doc.content_text[:2000]
+            if isinstance(transcription, dict):
+                doc.description = (
+                    f"Audio transcript. Language: {transcription.get('language', 'unknown')}. "
+                    f"ICR: {transcription.get('icr_confidence', 'insufficient')}. "
+                    f"Needs review: {bool(transcription.get('needs_review'))}."
+                )
             doc.status = DocumentStatus.READY
+            try:
+                from app.core.improvement_governance import improvement_governance
+
+                await improvement_governance.record_feature_evidence(
+                    feature="interviews_audio_upload_transcription_tagging_documents",
+                    source_system="transcription",
+                    source_id=doc_id,
+                    project_id=project_id,
+                    agent_id="transcription-pipeline",
+                    summary="Audio upload was transcribed, tagged, and stored as a document.",
+                    evidence={
+                        "passed": not bool(transcription.get("needs_review")) if isinstance(transcription, dict) else True,
+                        "document_id": doc_id,
+                        "file_name": file_path.name,
+                        "language": transcription.get("language") if isinstance(transcription, dict) else None,
+                        "requested_language": transcription.get("engine_metadata", {}).get("requested_language") if isinstance(transcription, dict) else None,
+                        "detected_language": transcription.get("engine_metadata", {}).get("detected_language") if isinstance(transcription, dict) else None,
+                        "confidence": transcription.get("confidence") if isinstance(transcription, dict) else None,
+                        "icr_kappa": transcription.get("icr_kappa") if isinstance(transcription, dict) else None,
+                        "icr_confidence": transcription.get("icr_confidence") if isinstance(transcription, dict) else None,
+                        "tags": transcription_tags,
+                    },
+                    metrics_after={
+                        "confidence": transcription.get("confidence") if isinstance(transcription, dict) else None,
+                        "icr_kappa": transcription.get("icr_kappa") if isinstance(transcription, dict) else None,
+                        "needs_review": bool(transcription.get("needs_review")) if isinstance(transcription, dict) else False,
+                    },
+                    confidence=float(transcription.get("confidence", 0.5)) if isinstance(transcription, dict) else 0.5,
+                    db=db,
+                )
+            except Exception:
+                pass
             await db.commit()
 
     except Exception as e:
@@ -242,26 +372,48 @@ async def _process_audio_background(project_id: str, doc_id: str, file_path: Pat
 @router.get("/files/{project_id}")
 async def list_files(project_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     """List all uploaded files for a project."""
-    await require_project_access(db, request, project_id, min_role="viewer")
+    project = await _get_project(db, request, project_id, min_role="viewer")
 
-    project_upload_dir = await _resolve_project_folder(db, project_id)
-    if not project_upload_dir.exists():
-        return {"files": []}
+    project_roots = _project_roots(project, project_id)
+
+    doc_rows = (
+        await db.execute(select(Document).where(Document.project_id == project_id))
+    ).scalars().all()
+    docs_by_path_name = {Path(doc.file_path or "").name: doc for doc in doc_rows if doc.file_path}
+    docs_by_file_name = {doc.file_name: doc for doc in doc_rows if doc.file_name}
 
     files = []
+    seen: set[str] = set()
     supported = set(get_supported_extensions()) | MEDIA_EXTENSIONS
 
-    for file_path in sorted(project_upload_dir.iterdir()):
-        if file_path.is_file() and file_path.suffix.lower() in supported:
-            stat = file_path.stat()
-            files.append(
-                {
+    for project_upload_dir in project_roots:
+        if not project_upload_dir.exists():
+            continue
+        for file_path in sorted(project_upload_dir.iterdir()):
+            if file_path.name in seen:
+                continue
+            if file_path.is_file() and file_path.suffix.lower() in supported:
+                seen.add(file_path.name)
+                stat = file_path.stat()
+                doc = docs_by_path_name.get(file_path.name) or docs_by_file_name.get(file_path.name)
+                item = {
                     "name": file_path.name,
+                    "display_name": doc.file_name if doc else file_path.name,
+                    "document_id": doc.id if doc else None,
+                    "document_status": doc.status.value if doc and doc.status else None,
                     "size_bytes": stat.st_size,
                     "modified": stat.st_mtime,
                     "type": file_path.suffix.lower(),
+                    "tags": doc.get_tags() if doc else [],
+                    "has_transcript": bool(doc and doc.content_text),
                 }
-            )
+                if doc:
+                    atomic_path = doc.get_atomic_path()
+                    transcription = atomic_path.get("transcription") if isinstance(atomic_path, dict) else None
+                    if isinstance(transcription, dict):
+                        item["transcription_language"] = transcription.get("language")
+                        item["transcription_needs_review"] = transcription.get("needs_review")
+                files.append(item)
 
     return {"files": files, "count": len(files)}
 
@@ -269,33 +421,34 @@ async def list_files(project_id: str, request: Request, db: AsyncSession = Depen
 @router.post("/files/{project_id}/reprocess")
 async def reprocess_files(project_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     """Reprocess all files for a project (re-embed and re-index)."""
-    await require_project_access(db, request, project_id, min_role="researcher")
+    project = await _get_project(db, request, project_id, min_role="researcher")
 
-    project_upload_dir = await _resolve_project_folder(db, project_id)
-    if not project_upload_dir.exists():
+    project_roots = [root for root in _project_roots(project, project_id) if root.exists()]
+    if not project_roots:
         return {"status": "no files", "processed": 0}
 
     total_chunks = 0
     processed_files = 0
     errors = []
 
-    for file_path in project_upload_dir.iterdir():
-        if not file_path.is_file():
-            continue
+    for project_upload_dir in project_roots:
+        for file_path in project_upload_dir.iterdir():
+            if not file_path.is_file():
+                continue
 
-        result = process_file(file_path)
-        if result.error:
-            errors.append({"file": file_path.name, "error": result.error})
-            continue
+            result = process_file(file_path)
+            if result.error:
+                errors.append({"file": file_path.name, "error": result.error})
+                continue
 
-        if result.chunks:
-            # Remove existing chunks for this source before re-ingesting
-            store = VectorStore(project_id)
-            await store.delete_by_source(file_path.name)
+            if result.chunks:
+                # Remove existing chunks for this source before re-ingesting
+                store = VectorStore(project_id)
+                await store.delete_by_source(file_path.name)
 
-            chunks = await ingest_chunks(project_id, result.chunks)
-            total_chunks += chunks
-            processed_files += 1
+                chunks = await ingest_chunks(project_id, result.chunks)
+                total_chunks += chunks
+                processed_files += 1
 
     return {
         "status": "complete",
@@ -308,7 +461,7 @@ async def reprocess_files(project_id: str, request: Request, db: AsyncSession = 
 @router.get("/files/{project_id}/stats")
 async def file_stats(project_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     """Get vector store stats for a project."""
-    await require_project_access(db, request, project_id, min_role="viewer")
+    await _get_project(db, request, project_id, min_role="viewer")
 
     store = VectorStore(project_id)
     count = await store.count()
@@ -326,19 +479,8 @@ async def get_file_content(
     db: AsyncSession = Depends(get_db),
 ):
     """Get file content for preview. Returns text content for supported formats."""
-    await require_project_access(db, request, project_id, min_role="viewer")
-
-    project_upload_dir = Path(settings.upload_dir) / project_id
-    file_path = project_upload_dir / filename
-
-    if not file_path.exists() or not file_path.is_file():
-        raise HTTPException(status_code=404, detail="File not found")
-
-    # Security: ensure file is within upload dir
-    try:
-        file_path.resolve().relative_to(project_upload_dir.resolve())
-    except ValueError:
-        raise HTTPException(status_code=403, detail="Access denied")
+    project = await _get_project(db, request, project_id, min_role="viewer")
+    file_path, doc = await _resolve_project_file(db, project, project_id, filename)
 
     suffix = file_path.suffix.lower()
 
@@ -369,12 +511,18 @@ async def get_file_content(
     # Media files: return metadata only (frontend handles playback via direct URL)
     if suffix in MEDIA_EXTENSIONS:
         stat = os.stat(file_path)
+        content = (doc.content_text or doc.content_preview) if doc else None
+        atomic_path = doc.get_atomic_path() if doc else {}
         return {
             "filename": filename,
             "type": suffix,
-            "content": None,
+            "content": content,
             "media_url": f"/api/files/{project_id}/serve/{filename}",
             "size": stat.st_size,
+            "document_id": doc.id if doc else None,
+            "document_status": doc.status.value if doc and doc.status else None,
+            "tags": doc.get_tags() if doc else [],
+            "transcription": atomic_path.get("transcription") if isinstance(atomic_path, dict) else None,
         }
 
     return {"filename": filename, "type": suffix, "content": None, "size": 0}
@@ -387,7 +535,7 @@ async def scan_project_files(project_id: str, request: Request, db: AsyncSession
     Used by the seeder script and for manual re-scans that also create
     research tasks based on file classification.
     """
-    await require_project_access(db, request, project_id, min_role="researcher")
+    await _get_project(db, request, project_id, min_role="researcher")
 
     scan_dir = await _resolve_project_folder(db, project_id)
     if not scan_dir.exists():
@@ -413,17 +561,7 @@ async def serve_file(
     db: AsyncSession = Depends(get_db),
 ):
     """Serve a file directly (for media playback, image display, PDF viewer)."""
-    await require_project_access(db, request, project_id, min_role="viewer")
-
-    project_upload_dir = Path(settings.upload_dir) / project_id
-    file_path = project_upload_dir / filename
-
-    if not file_path.exists() or not file_path.is_file():
-        raise HTTPException(status_code=404, detail="File not found")
-
-    try:
-        file_path.resolve().relative_to(project_upload_dir.resolve())
-    except ValueError:
-        raise HTTPException(status_code=403, detail="Access denied")
+    project = await _get_project(db, request, project_id, min_role="viewer")
+    file_path, _doc = await _resolve_project_file(db, project, project_id, filename)
 
     return FileResponse(file_path)

@@ -33,6 +33,60 @@ PLATFORM_ADAPTERS: dict[str, type[ChannelAdapter]] = {
     "google_chat": GoogleChatAdapter,
 }
 
+CONFIG_ALIASES: dict[str, dict[str, str]] = {
+    "telegram": {
+        "Bot Token": "bot_token",
+        "bot token": "bot_token",
+        "token": "bot_token",
+    },
+    "slack": {
+        "Bot Token": "bot_token",
+        "Signing Secret": "signing_secret",
+        "App Token": "app_token",
+        "bot token": "bot_token",
+        "signing secret": "signing_secret",
+        "app token": "app_token",
+    },
+    "whatsapp": {
+        "Phone Number ID": "phone_number_id",
+        "Access Token": "access_token",
+        "Verify Token": "verify_token",
+        "App Secret": "app_secret",
+        "phone number id": "phone_number_id",
+        "access token": "access_token",
+        "verify token": "verify_token",
+        "app secret": "app_secret",
+    },
+    "google_chat": {
+        "Webhook URL": "webhook_url",
+        "Webhook Token": "webhook_token",
+        "Service Account JSON": "service_account_json",
+        "webhook url": "webhook_url",
+        "webhook token": "webhook_token",
+        "service account json": "service_account_json",
+    },
+}
+
+
+def normalize_channel_config(platform: str, config: dict | None) -> dict:
+    """Normalize UI credential labels into adapter config keys."""
+    aliases = CONFIG_ALIASES.get(platform, {})
+    normalized: dict = {}
+    for raw_key, raw_value in (config or {}).items():
+        if raw_value is None:
+            continue
+        key = aliases.get(str(raw_key), str(raw_key).strip())
+        if not key:
+            continue
+        if isinstance(raw_value, str):
+            value = raw_value.strip()
+            if not value:
+                continue
+        else:
+            value = raw_value
+        normalized[key] = value
+    return normalized
+
 
 # ---------------------------------------------------------------------------
 # Instance CRUD
@@ -50,12 +104,13 @@ async def create_channel_instance(
         raise ValueError(
             f"Unknown platform '{platform}'. Supported: {list(PLATFORM_ADAPTERS)}"
         )
+    normalized_config = normalize_channel_config(platform, config)
 
     instance = ChannelInstance(
         id=str(uuid.uuid4()),
         platform=platform,
         name=name,
-        config_json=encrypt_field(json.dumps(config)),
+        config_json=encrypt_field(json.dumps(normalized_config)),
         project_id=project_id,
     )
     db.add(instance)
@@ -83,7 +138,9 @@ async def update_channel_instance(
     if name is not None:
         instance.name = name
     if config is not None:
-        instance.config_json = encrypt_field(json.dumps(config))
+        instance.config_json = encrypt_field(
+            json.dumps(normalize_channel_config(instance.platform, config))
+        )
     if project_id is not None:
         instance.project_id = project_id
 
@@ -164,18 +221,31 @@ async def start_channel_instance(db: AsyncSession, instance_id: str) -> dict:
     if existing is not None and existing.is_running:
         return {"status": "already_running", "instance_id": instance_id}
 
-    # Create and register adapter
+    # Create and register adapter only when it has enough runtime support to run.
     adapter = _instantiate_adapter(instance)
-    channel_router.register(adapter)
 
     if not adapter.enabled:
+        instance.is_active = False
+        instance.health_status = "not_enabled"
+        instance.last_health_at = datetime.now(timezone.utc)
+        await db.commit()
         return {
             "status": "not_enabled",
             "instance_id": instance_id,
             "detail": "Adapter is missing required configuration.",
         }
 
-    await channel_router.start_adapter(instance_id)
+    channel_router.register(adapter)
+
+    try:
+        await channel_router.start_adapter(instance_id)
+    except Exception as exc:
+        channel_router.unregister(instance_id)
+        instance.is_active = False
+        instance.health_status = "unhealthy"
+        instance.last_health_at = datetime.now(timezone.utc)
+        await db.commit()
+        raise RuntimeError(str(exc)) from exc
 
     # Update DB status
     instance.is_active = True
@@ -223,7 +293,15 @@ async def health_check_instance(db: AsyncSession, instance_id: str) -> dict:
 
     adapter = channel_router.get(instance_id)
     if adapter is None:
-        health = {"status": "not_registered", "platform": instance.platform}
+        adapter = _instantiate_adapter(instance)
+        if not adapter.enabled:
+            health = {
+                "status": "not_enabled",
+                "platform": instance.platform,
+                "detail": "Adapter is missing required configuration.",
+            }
+        else:
+            health = {"status": "stopped", "platform": instance.platform}
     else:
         health = await adapter.health_check()
 

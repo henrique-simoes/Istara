@@ -11,6 +11,26 @@ from app.core.llm_router import llm_router
 
 router = APIRouter(prefix="/presentation")
 
+
+def _fallback_slide_instructions(report: ProjectReport, full_text: str) -> str:
+    source = full_text.strip() or report.executive_summary or report.title
+    excerpt = source[:1200]
+    return (
+        "SYSTEM PROMPT\n"
+        "Create an executive research deck using Minto Pyramid structure, action titles, and an SCR narrative.\n\n"
+        "HORIZONTAL FLOW\n"
+        f"1. Situation: frame the research scope for {report.title}.\n"
+        "2. Complication: summarize the strongest evidence-backed user or business tension.\n"
+        "3. Resolution: present the recommended direction and expected impact.\n"
+        "4. Evidence: include the most important findings, grouped into MECE themes.\n"
+        "5. Next Steps: show decisions, owners, and validation needed.\n\n"
+        "SOURCE EXCERPT\n"
+        f"{excerpt}\n\n"
+        "JSON SCHEMA\n"
+        '{"slides":[{"action_title":"string","evidence":["string"],"visual_idea":"string"}]}'
+    )
+
+
 @router.get("/reports/{report_id}/slide-instructions")
 async def get_slide_instructions(
     report_id: str,
@@ -45,12 +65,12 @@ async def get_slide_instructions(
     try:
         response = await llm_router.chat([{"role": "user", "content": prompt}], temperature=0.3)
         instructions = response.get("message", {}).get("content", "Failed to generate instructions.")
-        
-        return {
-            "report_id": report_id,
-            "title": f"Slide Instructions: {report.title}",
-            "instructions": instructions,
-            "methodology": "Minto Pyramid / Action Titles / SCR Framework"
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Generation failed: {str(e)}")
+    except Exception:
+        instructions = _fallback_slide_instructions(report, full_text)
+
+    return {
+        "report_id": report_id,
+        "title": f"Slide Instructions: {report.title}",
+        "instructions": instructions,
+        "methodology": "Minto Pyramid / Action Titles / SCR Framework"
+    }

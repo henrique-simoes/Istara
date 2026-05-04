@@ -66,6 +66,7 @@ def test_local_server_detection_rejects_remote_hosts_marked_local():
 @pytest.mark.asyncio
 async def test_llm_server_discovery_requires_admin(researcher_headers):
     await init_db()
+    settings.team_mode = True
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         response = await ac.post("/api/llm-servers/discover", headers=researcher_headers)
@@ -75,6 +76,7 @@ async def test_llm_server_discovery_requires_admin(researcher_headers):
 @pytest.mark.asyncio
 async def test_non_admin_cannot_add_remote_server_marked_local(researcher_headers):
     await init_db()
+    settings.team_mode = True
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         response = await ac.post(

@@ -41,6 +41,9 @@ from app.api.routes import surveys as survey_routes
 from app.api.routes import mcp as mcp_routes
 from app.api.routes import meta_hyperagent as meta_hyperagent_routes
 from app.api.routes import autoresearch as autoresearch_routes
+from app.api.routes import reasoning_bank as reasoning_bank_routes
+from app.api.routes import improvement_governance as improvement_governance_routes
+from app.api.routes import dgmh_archive as dgmh_archive_routes
 from app.api.routes import laws as laws_routes
 from app.api.routes import reports as reports_routes
 from app.api.routes import code_applications as code_applications_routes
@@ -283,8 +286,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # Load active channel instances from database
     try:
+        from app.services.inbound_processor import process_inbound_channel_message
         from app.services.channel_service import load_active_instances
 
+        channel_router.set_handler(process_inbound_channel_message)
         async with async_session() as db:
             loaded = await load_active_instances(db)
         _log.info(f"Loaded {loaded} active channel instance(s)")
@@ -488,7 +493,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
         mh.load_confirmed_overrides()
         if app_settings.meta_hyperagent_enabled:
-            asyncio.create_task(mh.start_observation_loop())
+            mh.start()
             _log.info("Meta-hyperagent observation loop started.")
     except Exception as e:
         _log.debug(f"Meta-hyperagent startup skipped: {e}")
@@ -626,15 +631,16 @@ app.add_middleware(
     allow_headers=["Content-Type", "Authorization", "X-Access-Token"],
 )
 
-# Network security — access token for non-localhost connections
-if app_settings.network_access_token:
-    from app.core.network_security import NetworkSecurityMiddleware
+# Network security — access token for non-localhost connections, plus a guard
+# for local-mode admin when the API is bound to a network interface.
+from app.core.network_security import NetworkSecurityMiddleware, requires_local_admin_network_guard
 
+if app_settings.network_access_token or requires_local_admin_network_guard(app_settings):
     app.add_middleware(NetworkSecurityMiddleware)
     import logging
 
     logging.getLogger(__name__).info(
-        "Network security enabled — non-localhost requests require access token"
+        "Network security enabled — non-localhost requests require access token or are denied"
     )
 
 # Rate limiting
@@ -679,6 +685,9 @@ app.include_router(loops_routes.router, prefix="/api", tags=["Loops"])
 app.include_router(notification_routes.router, prefix="/api", tags=["Notifications"])
 app.include_router(backup_routes.router, prefix="/api", tags=["Backup"])
 app.include_router(meta_hyperagent_routes.router, prefix="/api", tags=["Meta-Hyperagent"])
+app.include_router(reasoning_bank_routes.router, prefix="/api", tags=["ReasoningBank"])
+app.include_router(improvement_governance_routes.router, prefix="/api", tags=["Improvement Governance"])
+app.include_router(dgmh_archive_routes.router, prefix="/api", tags=["DGM-H Archive"])
 app.include_router(deployment_routes.router, prefix="/api", tags=["Deployments"])
 app.include_router(survey_routes.router, prefix="/api", tags=["Surveys"])
 app.include_router(mcp_routes.router, prefix="/api", tags=["MCP"])

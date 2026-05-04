@@ -25,7 +25,7 @@ interface InterfacesStore {
   designProjectId: string | null;
 
   setActiveTab: (tab: InterfacesTab) => void;
-  fetchStatus: () => Promise<void>;
+  fetchStatus: (projectId?: string) => Promise<void>;
   fetchScreens: (projectId: string) => Promise<void>;
   fetchBriefs: (projectId: string) => Promise<void>;
   selectScreen: (id: string | null) => void;
@@ -63,10 +63,10 @@ export const useInterfacesStore = create<InterfacesStore>((set, get) => ({
 
   setActiveTab: (tab) => set({ activeTab: tab }),
 
-  fetchStatus: async () => {
+  fetchStatus: async (projectId) => {
     try {
-      const status = await interfacesApi.status();
-      set({ status });
+      const status = await interfacesApi.status(projectId);
+      set({ status, error: null });
     } catch (e: any) {
       set({ error: e.message });
     }

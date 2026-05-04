@@ -60,6 +60,8 @@ from app.skills.skill_manager import skill_manager
 
 logger = logging.getLogger(__name__)
 
+_META_SKILL_SIMILARITY_THRESHOLD = 0.6
+
 
 def _resolve_project_folder(project, project_id: str) -> Path:
     if project and getattr(project, "watch_folder_path", None):
@@ -977,10 +979,28 @@ class AgentOrchestrator:
                     }
                     fn = validation_fns.get(method)
                     if fn:
-                        # All validation functions accept (prompt, system, model, n)
-                        val_result = await fn(
-                            prompt=skill_input.user_context or task.description,
-                            system=output.summary,
+                        from app.config import settings
+
+                        validation_prompt = skill_input.user_context or task.description
+                        validation_system = (
+                            "Validate the candidate UX research output for accuracy, "
+                            "completeness, evidence fit, and actionability."
+                        )
+                        validation_kwargs = {
+                            "prompt": validation_prompt,
+                            "system": validation_system,
+                        }
+                        if method == "adversarial_review":
+                            validation_kwargs["initial_response"] = output.summary
+                        else:
+                            validation_kwargs["prompt"] = (
+                                f"Task:\n{validation_prompt}\n\n"
+                                f"Candidate output to validate:\n{output.summary}"
+                            )
+
+                        val_result = await asyncio.wait_for(
+                            fn(**validation_kwargs),
+                            timeout=max(1, int(getattr(settings, "validation_timeout_seconds", 120))),
                         )
                         task.validation_method = method
                         task.validation_result = _json.dumps(
@@ -989,16 +1009,11 @@ class AgentOrchestrator:
                                 "kappa": val_result.consensus.kappa,
                                 "cosine_sim": val_result.consensus.cosine_sim,
                                 "confidence": val_result.consensus.confidence,
+                                "best_response": val_result.best_response,
+                                "response_count": len(val_result.responses),
                             }
                         )
                         task.consensus_score = val_result.consensus.agreement_score
-
-                        # Use best response if consensus is high
-                        if (
-                            val_result.best_response
-                            and val_result.consensus.agreement_score >= 0.55
-                        ):
-                            output.summary = val_result.best_response
 
                         # Record metrics for adaptive learning
                         await selector.record_outcome(
@@ -1092,6 +1107,20 @@ class AgentOrchestrator:
             verified, verify_reason = await self._self_verify_output(task, output)
             quality_score = 0.8 if output.success else 0.2
 
+            try:
+                await self._record_reasoning_memory_for_task(
+                    task=task,
+                    project=project,
+                    skill=skill,
+                    output=output,
+                    verified=verified,
+                    verify_reason=verify_reason,
+                    quality_score=quality_score,
+                    trace_id=trace_id,
+                )
+            except Exception as e:
+                logger.debug(f"ReasoningBank task trace skipped: {e}")
+
             if verified:
                 # Update task — passed verification
                 await self._mark_task_ready_for_review(db, task, output.summary)
@@ -1162,7 +1191,7 @@ class AgentOrchestrator:
                         improvement_text = f"Low quality ({health['avg_quality']:.0%}) after {health['executions']} runs"
 
                     skill_def = skill_manager.get(skill.name)
-                    skill_manager.propose_improvement(
+                    proposal = skill_manager.propose_improvement(
                         skill_name=skill.name,
                         field="execute_prompt",
                         current_value=(skill_def or {}).get("execute_prompt", "")[:200]
@@ -1172,6 +1201,14 @@ class AgentOrchestrator:
                         reason=f"LLM reflection: quality {health['avg_quality']:.0%} after {health['executions']} runs",
                         confidence=0.6,
                     )
+                    try:
+                        from app.core.improvement_governance import improvement_governance
+
+                        await improvement_governance.register_skill_update_proposal(
+                            proposal.to_dict()
+                        )
+                    except Exception:
+                        pass
                     await broadcast_suggestion(
                         f"Skill '{skill.display_name}' needs improvement (quality: {health['avg_quality']:.0%}). "
                         f"An improvement proposal has been created. Check Agents → Skill Proposals.",
@@ -1241,6 +1278,30 @@ class AgentOrchestrator:
             except Exception:
                 pass
 
+            try:
+                from app.core.reasoning_bank import reasoning_bank
+
+                await reasoning_bank.record_trace(
+                    project_id=task.project_id,
+                    agent_id=self._agent_id,
+                    query=f"{task.title}\n{task.description or ''}",
+                    trajectory={
+                        "task_id": task.id,
+                        "skill_name": skill.name,
+                        "error_message": error_msg,
+                        "retry_count": task.retry_count,
+                        "resolution_hint": resolution_hint,
+                    },
+                    outcome="failure",
+                    source_kind="skill",
+                    source_id=task.id,
+                    tags=[skill.name, "memento", "exception"],
+                    domain=skill.name,
+                    judge_score=0.0,
+                )
+            except Exception as memory_err:
+                logger.debug(f"ReasoningBank error trace skipped: {memory_err}")
+
             # Retry logic with backoff
             task.retry_count = (task.retry_count or 0) + 1
             task.last_retry_at = datetime.now(timezone.utc)
@@ -1269,6 +1330,37 @@ class AgentOrchestrator:
                 )
 
             # Leave checkpoint in place for crash recovery awareness
+
+    async def _record_reasoning_memory_for_task(
+        self,
+        *,
+        task: Task,
+        project: Project,
+        skill,
+        output: SkillOutput,
+        verified: bool,
+        verify_reason: str,
+        quality_score: float,
+        trace_id: str,
+    ) -> None:
+        """Distill a completed skill execution into reusable reasoning memory."""
+        from app.core.reasoning_bank import reasoning_bank
+
+        await reasoning_bank.record_task_execution(
+            project_id=project.id,
+            agent_id=task.agent_id or self._agent_id,
+            task_id=task.id,
+            task_title=task.title,
+            task_description=task.description or "",
+            skill_name=skill.name,
+            output_summary=output.summary or "",
+            success=output.success,
+            verified=verified,
+            quality_score=quality_score,
+            errors=list(output.errors or []),
+            validation_reason=verify_reason,
+            trace_id=trace_id,
+        )
 
     async def _maybe_propose_skill(
         self,
@@ -1314,6 +1406,14 @@ class AgentOrchestrator:
                 reason=f"High-quality output ({total_findings} findings) from task: {task.title}",
                 confidence=min(70, 50 + total_findings * 5),
             )
+            try:
+                from app.core.improvement_governance import improvement_governance
+
+                await improvement_governance.register_skill_creation_proposal(
+                    proposal.to_dict()
+                )
+            except Exception:
+                pass
             await broadcast_suggestion(
                 f"New skill proposed: '{proposed_definition['display_name']}' — review in Skill Creation Proposals.",
                 task.project_id,
@@ -1403,8 +1503,6 @@ class AgentOrchestrator:
                 if skill:
                     return skill
 
-        return None
-
         # Semantic matching fallback: embed task text and compare against skills
         try:
             match = await self._semantic_skill_match(task)
@@ -1424,7 +1522,7 @@ class AgentOrchestrator:
         """Try embedding-based semantic matching when keywords fail.
 
         Compares task title+description embeddings against cached skill
-        description embeddings.  Returns the best match above a 0.6
+        description embeddings.  Returns the best match above the current
         cosine similarity threshold, or None.
         """
         import math
@@ -1437,10 +1535,26 @@ class AgentOrchestrator:
         if len(task_text.strip()) < 5:
             return None
 
+        try:
+            from app.core.reasoning_bank import reasoning_bank
+
+            memory_context = await reasoning_bank.context_for_query(
+                project_id=getattr(task, "project_id", "") or "",
+                query=task_text,
+                agent_id=getattr(task, "agent_id", None) or self._agent_id,
+                source_kinds=["skill", "autoresearch"],
+                limit=3,
+                max_chars=900,
+            )
+            if memory_context:
+                task_text = f"{task_text}\n{memory_context}"
+        except Exception as exc:
+            logger.debug(f"ReasoningBank routing context skipped: {exc}")
+
         # Build / refresh description embedding cache
         from app.core.embeddings import embed_text
 
-        task_vec = await embed_text(task_text[:512])
+        task_vec = await embed_text(task_text[:1200])
         if not task_vec:
             return None
 
@@ -1470,7 +1584,7 @@ class AgentOrchestrator:
                 best_score = score
                 best_skill = skill
 
-        if best_skill and best_score >= 0.6:
+        if best_skill and best_score >= _META_SKILL_SIMILARITY_THRESHOLD:
             logger.info(
                 f"Semantic skill match: {best_skill.name} "
                 f"(similarity={best_score:.2f}) for task '{task.title[:60]}'"
@@ -1891,6 +2005,7 @@ class AgentOrchestrator:
         created_nugget_ids: list[str] = []
         created_fact_ids: list[str] = []
         created_insight_ids: list[str] = []
+        created_recommendation_ids: list[str] = []
 
         # Store nuggets
         for nugget_data in output.nuggets:
@@ -1990,11 +2105,12 @@ class AgentOrchestrator:
 
         # Store recommendations — link to insights
         for rec_data in output.recommendations:
+            rid = str(uuid.uuid4())
             # Use explicit insight_ids from skill output if provided, else link to
             # the most recent insights (capped at 2 to avoid meaningless N-to-N mapping)
             linked_insights = rec_data.get("insight_ids") or created_insight_ids[-2:]
             rec = Recommendation(
-                id=str(uuid.uuid4()),
+                id=rid,
                 project_id=project_id,
                 text=rec_data.get("text", ""),
                 insight_ids=json.dumps(linked_insights),
@@ -2003,6 +2119,7 @@ class AgentOrchestrator:
                 effort=rec_data.get("effort", "medium"),
             )
             db.add(rec)
+            created_recommendation_ids.append(rid)
 
         await db.commit()
 
@@ -2010,7 +2127,12 @@ class AgentOrchestrator:
         try:
             from app.core.report_manager import report_manager
 
-            all_finding_ids = created_nugget_ids + created_fact_ids + created_insight_ids
+            all_finding_ids = (
+                created_nugget_ids
+                + created_fact_ids
+                + created_insight_ids
+                + created_recommendation_ids
+            )
             if all_finding_ids and skill:
                 consensus = getattr(task, "consensus_score", None)
                 await report_manager.route_findings(

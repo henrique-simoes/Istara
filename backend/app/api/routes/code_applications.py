@@ -3,12 +3,12 @@
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.permissions import require_project_access
+from app.core.permissions import get_subject, require_project_access
 from app.models.code_application import CodeApplication
 from app.models.database import get_db
 
@@ -17,7 +17,7 @@ router = APIRouter(prefix="/code-applications")
 
 class ReviewAction(BaseModel):
     review_status: str  # "approved" | "rejected" | "modified"
-    reviewed_by: str = "user"
+    reviewed_by: str | None = None
 
 
 @router.get("/{project_id}")
@@ -78,8 +78,9 @@ async def review_code_application(
     if action.review_status not in ("approved", "rejected", "modified"):
         raise HTTPException(status_code=400, detail="Invalid review status")
 
+    subject = get_subject(request)
     ca.review_status = action.review_status
-    ca.reviewed_by = action.reviewed_by
+    ca.reviewed_by = subject.username or subject.id or action.reviewed_by or "local-user"
     ca.reviewed_at = datetime.now(timezone.utc)
     await db.commit()
     await db.refresh(ca)
@@ -90,7 +91,7 @@ async def review_code_application(
 async def bulk_approve_high_confidence(
     project_id: str,
     request: Request,
-    min_confidence: float = 0.9,
+    min_confidence: float = Query(default=0.9, ge=0.0, le=1.0),
     db: AsyncSession = Depends(get_db),
 ):
     """Bulk-approve all pending code applications above a confidence threshold."""

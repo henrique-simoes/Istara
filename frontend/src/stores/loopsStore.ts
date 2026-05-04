@@ -2,24 +2,9 @@
 
 import { create } from "zustand";
 import { loops as loopsApi } from "@/lib/api";
-import type { LoopExecution, AgentLoopConfig, LoopHealthItem } from "@/lib/types";
+import type { LoopExecution, AgentLoopConfig, LoopHealthItem, ScheduledLoop } from "@/lib/types";
 
 type LoopsTab = "overview" | "schedules" | "agent-loops" | "custom" | "history";
-
-interface Schedule {
-  id: string;
-  name: string;
-  skill_name: string;
-  project_id: string;
-  cron_expression: string;
-  interval_seconds: number | null;
-  description: string;
-  enabled: boolean;
-  next_run_at: string | null;
-  last_run_at: string | null;
-  execution_count: number;
-  created_at: string;
-}
 
 interface LoopsOverview {
   active_loops: number;
@@ -41,7 +26,7 @@ interface LoopsStore {
   activeTab: LoopsTab;
   overview: LoopsOverview | null;
   agentLoops: AgentLoopConfig[];
-  schedules: Schedule[];
+  schedules: ScheduledLoop[];
   executions: LoopExecution[];
   health: LoopHealthItem[];
   stats: ExecutionStats | null;
@@ -58,6 +43,16 @@ interface LoopsStore {
 
   setActiveTab: (tab: LoopsTab) => void;
   fetchOverview: () => Promise<void>;
+  fetchSchedules: (projectId?: string) => Promise<void>;
+  createSchedule: (data: {
+    name: string;
+    skill_name?: string;
+    project_id: string;
+    cron_expression: string;
+    description?: string;
+  }) => Promise<void>;
+  updateSchedule: (scheduleId: string, data: Record<string, unknown>) => Promise<void>;
+  deleteSchedule: (scheduleId: string) => Promise<void>;
   fetchAgentLoops: () => Promise<void>;
   fetchAgentConfig: (agentId: string) => Promise<AgentLoopConfig | null>;
   updateAgentConfig: (agentId: string, data: Record<string, unknown>) => Promise<void>;
@@ -105,6 +100,51 @@ export const useLoopsStore = create<LoopsStore>((set, get) => ({
       set({ overview: data, loading: false });
     } catch (e: any) {
       set({ error: e.message, loading: false });
+    }
+  },
+
+  fetchSchedules: async (projectId) => {
+    set({ loading: true, error: null });
+    try {
+      const data = await loopsApi.schedules(projectId ? { project_id: projectId } : undefined);
+      const schedules = Array.isArray(data) ? data : data?.schedules || [];
+      set({ schedules, loading: false });
+    } catch (e: any) {
+      set({ error: e.message, loading: false });
+    }
+  },
+
+  createSchedule: async (data) => {
+    set({ loading: true, error: null });
+    try {
+      await loopsApi.createSchedule(data);
+      set({ loading: false });
+      await get().fetchSchedules();
+      await get().fetchHealth();
+    } catch (e: any) {
+      set({ error: e.message, loading: false });
+    }
+  },
+
+  updateSchedule: async (scheduleId, data) => {
+    set({ error: null });
+    try {
+      await loopsApi.updateSchedule(scheduleId, data);
+      await get().fetchSchedules();
+      await get().fetchHealth();
+    } catch (e: any) {
+      set({ error: e.message });
+    }
+  },
+
+  deleteSchedule: async (scheduleId) => {
+    set({ error: null });
+    try {
+      await loopsApi.deleteSchedule(scheduleId);
+      await get().fetchSchedules();
+      await get().fetchHealth();
+    } catch (e: any) {
+      set({ error: e.message });
     }
   },
 
@@ -169,7 +209,7 @@ export const useLoopsStore = create<LoopsStore>((set, get) => ({
       if (filters.to_date) params.to_date = filters.to_date;
       const data = await loopsApi.executions(params);
       const executions = Array.isArray(data) ? data : data?.executions || [];
-      const totalPages = data?.total_pages || 1;
+      const totalPages = data?.total_pages || Math.max(1, Math.ceil((data?.total || 0) / (data?.page_size || 20)));
       set({ executions, executionPage: page, executionTotalPages: totalPages, loading: false });
     } catch (e: any) {
       set({ error: e.message, loading: false });
@@ -201,7 +241,8 @@ export const useLoopsStore = create<LoopsStore>((set, get) => ({
     try {
       await loopsApi.createCustom(data);
       set({ loading: false });
-      get().fetchHealth();
+      await get().fetchHealth();
+      await get().fetchSchedules();
     } catch (e: any) {
       set({ error: e.message, loading: false });
     }

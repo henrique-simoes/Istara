@@ -126,3 +126,22 @@ async def test_chat_requires_project_id_field():
             headers={"Authorization": f"Bearer {token}"},
         )
         assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_chat_rejects_blank_message_before_project_lookup():
+    """POST /api/chat rejects blank messages at the request contract."""
+    await init_db()
+    if not settings.jwt_secret:
+        settings.jwt_secret = "test-secret"
+
+    token = create_token("user1", "testuser", "admin")
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.post(
+            "/api/chat",
+            json={"message": "   ", "project_id": "some-project"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert response.status_code == 422

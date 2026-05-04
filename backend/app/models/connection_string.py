@@ -1,5 +1,6 @@
 """Connection String model — persists generated team invite strings."""
 
+import hashlib
 import uuid
 from datetime import datetime, timezone
 from sqlalchemy import Column, String, DateTime, Boolean
@@ -11,6 +12,7 @@ class ConnectionString(Base):
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     connection_string = Column(String, unique=True, index=True, nullable=False)
+    connection_string_hash = Column(String(64), unique=True, index=True, nullable=True)
     token_type = Column(String, default="user_invite")  # user_invite | compute_donation
     label = Column(String, default="")
     server_url = Column(String, nullable=False)
@@ -29,6 +31,13 @@ class ConnectionString(Base):
     expires_at = Column(DateTime, nullable=False)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
+    def _safe_preview(self) -> str:
+        value = self.connection_string or ""
+        if value.startswith("rcl_") and "." in value:
+            digest = hashlib.sha256(value.encode("utf-8")).hexdigest()
+            return f"rcl_{digest[:12]}...{digest[-8:]}"
+        return value
+
     def to_dict(self) -> dict:
         now = datetime.now(timezone.utc)
         expires_at = self.expires_at
@@ -38,7 +47,7 @@ class ConnectionString(Base):
         return {
             "id": self.id,
             "label": self.label,
-            "connection_string": self.connection_string,
+            "connection_string_preview": self._safe_preview(),
             "token_type": self.token_type or "user_invite",
             "server_url": self.server_url,
             "ws_url": self.ws_url,

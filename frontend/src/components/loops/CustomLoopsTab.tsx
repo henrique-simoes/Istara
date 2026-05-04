@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, Trash2, Power, PowerOff, RefreshCw } from "lucide-react";
+import { Plus, RefreshCw } from "lucide-react";
 import { useLoopsStore } from "@/stores/loopsStore";
 import { useProjectStore } from "@/stores/projectStore";
 import { skills as skillsApi } from "@/lib/api";
@@ -23,7 +23,7 @@ const EMPTY_FORM: CustomLoopForm = {
   skill_name: "",
   project_id: "",
   cron_expression: "0 * * * *",
-  interval_seconds: 60,
+  interval_seconds: 300,
   description: "",
   mode: "interval",
 };
@@ -48,7 +48,7 @@ export default function CustomLoopsTab() {
   const customLoops = health.filter((h) => h.source_type === "custom");
 
   const handleCreate = async () => {
-    if (!form.name.trim() || !form.skill_name.trim()) return;
+    if (!form.name.trim() || !form.skill_name.trim() || !form.project_id.trim()) return;
     const data: Parameters<typeof createCustomLoop>[0] = {
       name: form.name,
       skill_name: form.skill_name,
@@ -58,7 +58,7 @@ export default function CustomLoopsTab() {
     if (form.mode === "cron") {
       data.cron_expression = form.cron_expression;
     } else {
-      data.interval_seconds = typeof form.interval_seconds === "number" ? form.interval_seconds : 60;
+      data.interval_seconds = typeof form.interval_seconds === "number" ? form.interval_seconds : 300;
     }
     await createCustomLoop(data);
     setForm({ ...EMPTY_FORM });
@@ -116,7 +116,7 @@ export default function CustomLoopsTab() {
                 onChange={(e) => setForm({ ...form, project_id: e.target.value })}
                 className="w-full px-3 py-1.5 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-istara-500"
               >
-                <option value="">All projects</option>
+                <option value="">Select project...</option>
                 {projects.map((p) => (
                   <option key={p.id} value={p.id}>{p.name}</option>
                 ))}
@@ -168,7 +168,7 @@ export default function CustomLoopsTab() {
               <div className="flex items-center gap-2">
                 <input
                   type="number"
-                  min={10}
+                  min={60}
                   max={86400}
                   value={form.interval_seconds}
                   onChange={(e) => setForm({ ...form, interval_seconds: parseInt(e.target.value, 10) || "" })}
@@ -184,7 +184,7 @@ export default function CustomLoopsTab() {
           <div className="flex items-center gap-2 pt-2">
             <button
               onClick={handleCreate}
-              disabled={!form.name.trim() || !form.skill_name.trim() || loading}
+              disabled={!form.name.trim() || !form.skill_name.trim() || !form.project_id.trim() || loading}
               className="px-4 py-1.5 text-sm font-medium rounded-lg bg-istara-600 text-white hover:bg-istara-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? "Creating..." : "Create Loop"}
@@ -225,7 +225,7 @@ export default function CustomLoopsTab() {
                       {loop.source_name}
                     </h3>
                     <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                      {loop.interval_seconds}s interval
+                      {loop.interval_seconds ? `${loop.interval_seconds}s interval` : loop.cron_expression || "cron schedule"}
                     </p>
                   </div>
                 </div>

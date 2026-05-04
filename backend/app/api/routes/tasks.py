@@ -3,58 +3,144 @@
 import json
 import uuid
 from datetime import datetime, timedelta, timezone
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.database import get_db
+from app.models.document import Document
 from app.models.task import Task, TaskStatus
 from app.models.task_review import TaskReviewEvent
 from app.core.agent import agent as agent_orchestrator
-from app.core.permissions import get_subject, is_global_admin, require_project_access
+from app.core.permissions import get_subject, get_visible_project_or_404, is_global_admin, require_project_access
 
 LOCK_EXPIRY_MINUTES = 30
+TASK_PRIORITIES = {"urgent", "high", "medium", "low"}
 
 router = APIRouter()
+
+
+def _dedupe_text_list(values: list[str]) -> list[str]:
+    seen: set[str] = set()
+    cleaned: list[str] = []
+    for value in values:
+        item = str(value or "").strip()
+        if item and item not in seen:
+            cleaned.append(item)
+            seen.add(item)
+    return cleaned
+
+
+async def _ensure_documents_in_project(
+    db: AsyncSession,
+    project_id: str,
+    document_ids: list[str],
+    *,
+    field_name: str,
+) -> list[str]:
+    ids = _dedupe_text_list(document_ids)
+    if not ids:
+        return []
+
+    rows = (
+        await db.execute(select(Document.id, Document.project_id).where(Document.id.in_(ids)))
+    ).all()
+    project_by_id = {row[0]: row[1] for row in rows}
+
+    missing = [doc_id for doc_id in ids if doc_id not in project_by_id]
+    foreign = [doc_id for doc_id in ids if project_by_id.get(doc_id) != project_id]
+    if missing or foreign:
+        raise HTTPException(status_code=404, detail=f"{field_name} contains unknown documents for this project.")
+
+    return ids
 
 
 class TaskCreate(BaseModel):
     """Request body for creating a task."""
 
-    project_id: str
-    title: str
-    description: str = ""
-    skill_name: str = ""
-    user_context: str = ""
-    input_document_ids: list[str] = []
-    output_document_ids: list[str] = []
-    urls: list[str] = []
-    instructions: str = ""
+    project_id: str = Field(min_length=1, max_length=80)
+    title: str = Field(min_length=1, max_length=255)
+    description: str = Field(default="", max_length=20000)
+    skill_name: str = Field(default="", max_length=100)
+    user_context: str = Field(default="", max_length=50000)
+    input_document_ids: list[str] = Field(default_factory=list, max_length=200)
+    output_document_ids: list[str] = Field(default_factory=list, max_length=200)
+    urls: list[str] = Field(default_factory=list, max_length=100)
+    instructions: str = Field(default="", max_length=50000)
+    labels: list[dict | str] = Field(default_factory=list, max_length=100)
     priority: str = "medium"
-    agent_id: str | None = None
+    agent_id: str | None = Field(default=None, max_length=100)
+
+    @field_validator("project_id", "title", "skill_name", "user_context", "instructions", "priority", "agent_id", mode="before")
+    @classmethod
+    def _strip_text(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        return str(value).strip()
+
+    @field_validator("description", mode="before")
+    @classmethod
+    def _strip_description(cls, value: str | None) -> str:
+        return str(value or "").strip()
+
+    @field_validator("priority")
+    @classmethod
+    def _validate_priority(cls, value: str) -> str:
+        normalized = value.strip().lower()
+        if normalized not in TASK_PRIORITIES:
+            raise ValueError("priority must be one of: urgent, high, medium, low")
+        return normalized
+
+    @field_validator("input_document_ids", "output_document_ids", "urls", mode="after")
+    @classmethod
+    def _normalize_lists(cls, value: list[str]) -> list[str]:
+        return _dedupe_text_list(value)
 
 
 class TaskUpdate(BaseModel):
     """Request body for updating a task."""
 
-    title: str | None = None
-    description: str | None = None
+    title: str | None = Field(default=None, min_length=1, max_length=255)
+    description: str | None = Field(default=None, max_length=20000)
     status: TaskStatus | None = None
-    skill_name: str | None = None
-    agent_notes: str | None = None
-    user_context: str | None = None
-    progress: float | None = None
-    position: int | None = None
-    agent_id: str | None = None
+    skill_name: str | None = Field(default=None, max_length=100)
+    agent_notes: str | None = Field(default=None, max_length=50000)
+    user_context: str | None = Field(default=None, max_length=50000)
+    progress: float | None = Field(default=None, ge=0, le=1)
+    position: int | None = Field(default=None, ge=0, le=1000000)
+    agent_id: str | None = Field(default=None, max_length=100)
     priority: str | None = None
-    input_document_ids: list[str] | None = None
-    output_document_ids: list[str] | None = None
-    urls: list[str] | None = None
-    instructions: str | None = None
-    labels: list[dict | str] | None = None
-    what_to_review: str | None = None
+    input_document_ids: list[str] | None = Field(default=None, max_length=200)
+    output_document_ids: list[str] | None = Field(default=None, max_length=200)
+    urls: list[str] | None = Field(default=None, max_length=100)
+    instructions: str | None = Field(default=None, max_length=50000)
+    labels: list[dict | str] | None = Field(default=None, max_length=100)
+    what_to_review: str | None = Field(default=None, max_length=5000)
+
+    @field_validator("title", "description", "skill_name", "agent_notes", "user_context", "agent_id", "priority", "instructions", "what_to_review", mode="before")
+    @classmethod
+    def _strip_optional_text(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        return str(value).strip()
+
+    @field_validator("priority")
+    @classmethod
+    def _validate_priority(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        normalized = value.strip().lower()
+        if normalized not in TASK_PRIORITIES:
+            raise ValueError("priority must be one of: urgent, high, medium, low")
+        return normalized
+
+    @field_validator("input_document_ids", "output_document_ids", "urls", mode="after")
+    @classmethod
+    def _normalize_lists(cls, value: list[str] | None) -> list[str] | None:
+        return _dedupe_text_list(value) if value is not None else None
 
 
 class TaskResponse(BaseModel):
@@ -125,22 +211,39 @@ class TaskResponse(BaseModel):
 class ReviewApproveRequest(BaseModel):
     """Human approval request for moving a task to Done."""
 
-    reviewed_by: str = "local"
-    note: str = ""
+    reviewed_by: str = Field(default="local", max_length=100)
+    note: str = Field(default="", max_length=5000)
+
+    @field_validator("reviewed_by", "note", mode="before")
+    @classmethod
+    def _strip_text(cls, value: str | None) -> str:
+        return str(value or "").strip()
 
 
 class ReviewRevisionRequest(BaseModel):
     """Human request to send reviewed work back to agents."""
 
-    what_to_review: str
+    what_to_review: str = Field(max_length=5000)
     next_status: TaskStatus = TaskStatus.BACKLOG
-    reviewed_by: str = "local"
-    severity: str | None = None
-    failure_category: str | None = None
-    labels: list[dict | str] | None = None
-    skill_name: str | None = None
-    input_document_ids: list[str] | None = None
-    urls: list[str] | None = None
+    reviewed_by: str = Field(default="local", max_length=100)
+    severity: str | None = Field(default=None, max_length=30)
+    failure_category: str | None = Field(default=None, max_length=80)
+    labels: list[dict | str] | None = Field(default=None, max_length=100)
+    skill_name: str | None = Field(default=None, max_length=100)
+    input_document_ids: list[str] | None = Field(default=None, max_length=200)
+    urls: list[str] | None = Field(default=None, max_length=100)
+
+    @field_validator("what_to_review", "reviewed_by", "severity", "failure_category", "skill_name", mode="before")
+    @classmethod
+    def _strip_optional_text(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        return str(value).strip()
+
+    @field_validator("input_document_ids", "urls", mode="after")
+    @classmethod
+    def _normalize_lists(cls, value: list[str] | None) -> list[str] | None:
+        return _dedupe_text_list(value) if value is not None else None
 
 
 async def _get_task_or_404(db: AsyncSession, task_id: str) -> Task:
@@ -184,7 +287,7 @@ async def list_tasks(
     query = select(Task).order_by(Task.position, Task.created_at)
 
     if project_id:
-        await require_project_access(db, request, project_id, min_role="viewer")
+        await get_visible_project_or_404(db, request, project_id, min_role="viewer")
         query = query.where(Task.project_id == project_id)
     else:
         subject = get_subject(request)
@@ -209,7 +312,19 @@ async def create_task(data: TaskCreate, request: Request, db: AsyncSession = Dep
     """Create a new task with intelligent agent routing."""
     import logging as _log
 
-    await require_project_access(db, request, data.project_id, min_role="researcher")
+    await get_visible_project_or_404(db, request, data.project_id, min_role="researcher")
+    input_document_ids = await _ensure_documents_in_project(
+        db,
+        data.project_id,
+        data.input_document_ids,
+        field_name="input_document_ids",
+    )
+    output_document_ids = await _ensure_documents_in_project(
+        db,
+        data.project_id,
+        data.output_document_ids,
+        field_name="output_document_ids",
+    )
 
     # Get max position for ordering
     result = await db.execute(
@@ -251,9 +366,10 @@ async def create_task(data: TaskCreate, request: Request, db: AsyncSession = Dep
         priority=data.priority,
         agent_id=agent_id,
         position=max_pos + 1,
-        input_document_ids=json.dumps(data.input_document_ids),
-        output_document_ids=json.dumps(data.output_document_ids),
+        input_document_ids=json.dumps(input_document_ids),
+        output_document_ids=json.dumps(output_document_ids),
         urls=json.dumps(data.urls),
+        labels=json.dumps(data.labels),
     )
 
     db.add(task)
@@ -298,6 +414,14 @@ async def update_task(
             status_code=409,
             detail="Use the human review approval endpoint to mark tasks done.",
         )
+    for doc_field in ("input_document_ids", "output_document_ids"):
+        if doc_field in update_data and update_data[doc_field] is not None:
+            update_data[doc_field] = await _ensure_documents_in_project(
+                db,
+                task.project_id,
+                update_data[doc_field],
+                field_name=doc_field,
+            )
     # Serialize list fields to JSON strings for the ORM
     for json_field in ("input_document_ids", "output_document_ids", "urls", "labels"):
         if json_field in update_data and isinstance(update_data[json_field], list):
@@ -440,7 +564,14 @@ async def request_task_revision(
     if data.skill_name is not None:
         task.skill_name = data.skill_name
     if data.input_document_ids is not None:
-        task.set_input_document_ids(data.input_document_ids)
+        task.set_input_document_ids(
+            await _ensure_documents_in_project(
+                db,
+                task.project_id,
+                data.input_document_ids,
+                field_name="input_document_ids",
+            )
+        )
     if data.urls is not None:
         task.set_urls(data.urls)
 
@@ -571,7 +702,7 @@ async def attach_document(
     task_id: str,
     document_id: str,
     request: Request,
-    direction: str = "input",
+    direction: Literal["input", "output"] = "input",
     db: AsyncSession = Depends(get_db),
 ):
     """Attach a document to a task as input or output."""
@@ -580,6 +711,7 @@ async def attach_document(
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
     await require_project_access(db, request, task.project_id, min_role="researcher")
+    await _ensure_documents_in_project(db, task.project_id, [document_id], field_name="document_id")
 
     if direction == "output":
         ids = task.get_output_document_ids()
@@ -607,7 +739,7 @@ async def detach_document(
     task_id: str,
     document_id: str,
     request: Request,
-    direction: str = "input",
+    direction: Literal["input", "output"] = "input",
     db: AsyncSession = Depends(get_db),
 ):
     """Detach a document from a task."""
@@ -616,6 +748,7 @@ async def detach_document(
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
     await require_project_access(db, request, task.project_id, min_role="researcher")
+    await _ensure_documents_in_project(db, task.project_id, [document_id], field_name="document_id")
 
     if direction == "output":
         ids = task.get_output_document_ids()

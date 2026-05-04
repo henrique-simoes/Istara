@@ -49,7 +49,7 @@ export default function ExecutionHistoryTab() {
         >
           <option value="">All Types</option>
           <option value="agent">Agent</option>
-          <option value="scheduled">Scheduled</option>
+          <option value="schedule">Scheduled</option>
           <option value="custom">Custom</option>
         </select>
         <select
@@ -122,7 +122,7 @@ export default function ExecutionHistoryTab() {
                       "text-[10px] px-1.5 py-0.5 rounded-full font-medium",
                       exec.source_type === "agent"
                         ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
-                        : exec.source_type === "scheduled"
+                        : exec.source_type === "schedule" || exec.source_type === "scheduled_task"
                         ? "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"
                         : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
                     )}>

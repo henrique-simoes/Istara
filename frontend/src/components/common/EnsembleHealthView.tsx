@@ -21,8 +21,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { validation, telemetry } from "@/lib/api";
-
-import { API_BASE } from "@/lib/runtimeConfig";
+import { useProjectStore } from "@/stores/projectStore";
 
 interface MethodStatRow {
   method: string;
@@ -35,6 +34,11 @@ interface MethodStatRow {
   success_rate: number;
   last_used: string | null;
   weight: number;
+  context_count?: number;
+  success_rate_ci_low?: number;
+  success_rate_ci_high?: number;
+  sample_confidence_weight?: number;
+  rigor_status?: string;
 }
 
 interface RecentValidation {
@@ -53,6 +57,7 @@ interface ValidationData {
   method_stats: MethodStatRow[];
   recent_validations: RecentValidation[];
   confidence_thresholds: Record<string, number>;
+  statistical_notes?: Record<string, string>;
 }
 
 interface MethodStat {
@@ -64,6 +69,10 @@ interface MethodStat {
   avg_consensus_score: number;
   last_used: string;
   recency_weight: number;
+  success_rate_ci_low?: number;
+  success_rate_ci_high?: number;
+  sample_confidence_weight?: number;
+  rigor_status?: string;
 }
 
 // --- Expandable section component ---
@@ -138,25 +147,19 @@ const confidenceIcon = (score: number) => {
 };
 
 export default function EnsembleHealthView() {
-  const [projectId, setProjectId] = useState<string | null>(null);
+  const projectId = useProjectStore((s) => s.activeProjectId);
   const [methods, setMethods] = useState<MethodStat[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [expandedMethod, setExpandedMethod] = useState<string | null>(null);
   const [thresholds, setThresholds] = useState<Record<string, number>>({ nugget: 0.70, fact: 0.65, insight: 0.55, recommendation: 0.50 });
   const [recentValidations, setRecentValidations] = useState<RecentValidation[]>([]);
-
-  useEffect(() => {
-    // Get active project from store
-    try {
-      const { useProjectStore } = require("@/stores/projectStore");
-      const pid = useProjectStore.getState().activeProjectId;
-      setProjectId(pid);
-    } catch {}
-  }, []);
+  const [statisticalNotes, setStatisticalNotes] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (!projectId) return;
     setLoading(true);
+    setError(null);
     validation.metrics(projectId)
       .then((data: ValidationData) => {
         const stats: MethodStat[] = data.method_stats.map((s) => ({
@@ -168,13 +171,19 @@ export default function EnsembleHealthView() {
           avg_consensus_score: s.avg_consensus_score,
           last_used: s.last_used || "",
           recency_weight: s.weight,
+          success_rate_ci_low: s.success_rate_ci_low,
+          success_rate_ci_high: s.success_rate_ci_high,
+          sample_confidence_weight: s.sample_confidence_weight,
+          rigor_status: s.rigor_status,
         }));
         setMethods(stats);
         setThresholds(data.confidence_thresholds);
         setRecentValidations(data.recent_validations);
+        setStatisticalNotes(data.statistical_notes || {});
         setLoading(false);
       })
-      .catch(() => {
+      .catch((err) => {
+        setError(err instanceof Error ? err.message : "Could not load ensemble metrics");
         setLoading(false);
       });
   }, [projectId]);
@@ -207,9 +216,9 @@ export default function EnsembleHealthView() {
     {
       id: "full_ensemble",
       name: "Full Ensemble",
-      description: "3+ models with Fleiss' Kappa (Wang et al., 2025)",
+      description: "3+ validators with composite agreement scoring",
       detail:
-        "3+ models all process the same task. Uses Fleiss' Kappa to measure agreement across all responses.",
+        "3+ validators process the same task. The score combines semantic similarity, confidence, and categorical agreement when available.",
       icon: BarChart3,
     },
     {
@@ -235,6 +244,27 @@ export default function EnsembleHealthView() {
         </p>
       </div>
 
+      {!projectId && (
+        <div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
+          Select a project to inspect ensemble validation and model-intelligence metrics.
+        </div>
+      )}
+
+      {projectId && error && (
+        <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-300">
+          <AlertTriangle size={16} className="mt-0.5 shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
+
+      {projectId && loading && (
+        <div className="rounded-lg border border-slate-200 bg-white p-4 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
+          Loading ensemble metrics...
+        </div>
+      )}
+
+      {projectId && !loading && (
+      <>
       {/* Confidence Thresholds Reference */}
       <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-4">
         <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
@@ -249,14 +279,13 @@ export default function EnsembleHealthView() {
           ].map((item) => (
             <div key={item.type} className={cn("rounded-lg p-3 text-center", item.color)}>
               <div className="text-sm font-medium">{item.type}</div>
-              <div className="text-lg font-bold">{"\u03BA"} {"\u2265"} {item.threshold}</div>
+              <div className="text-lg font-bold">Agreement {"\u2265"} {item.threshold}</div>
             </div>
           ))}
         </div>
 
-        {/* Fleiss' Kappa explanation */}
         <p className="text-xs text-slate-500 dark:text-slate-400 mt-3">
-          Fleiss&apos; Kappa ({"\u03BA"}) measures inter-rater agreement between multiple LLM validators.
+          Agreement is Istara&apos;s composite validation score. Fleiss&apos; Kappa is included when categorical labels can be extracted, but it is not the only signal.
         </p>
         <ExpandableInfo label="Why different thresholds?">
           <div className="text-xs text-slate-500 dark:text-slate-400 space-y-1.5 pl-5">
@@ -347,6 +376,13 @@ export default function EnsembleHealthView() {
                           tooltip="% of runs where consensus exceeded the threshold"
                         />
                       </div>
+                      <div className="text-[10px] text-slate-400">
+                        {stat.success_rate_ci_low !== undefined && stat.success_rate_ci_high !== undefined
+                          ? `95% CI ${(stat.success_rate_ci_low * 100).toFixed(0)}-${(stat.success_rate_ci_high * 100).toFixed(0)}%`
+                          : "No confidence interval yet"}
+                        {" | "}
+                        {stat.rigor_status === "stable_sample" ? "stable sample" : "needs more runs"}
+                      </div>
                     </>
                   ) : (
                     <div className="text-sm text-slate-400">No data yet</div>
@@ -415,14 +451,15 @@ export default function EnsembleHealthView() {
           Adaptive Method Learning
         </h3>
         <p className="text-xs text-blue-600 dark:text-blue-400">
-          Istara automatically learns which validation method works best for each project,
-          skill, and agent combination. Methods are scored with recency-weighted performance
-          metrics (exponential decay, 30-day half-life). The system improves over time.
+          {statisticalNotes.sample_weighting ||
+            "Istara automatically learns which validation method works best for each project, skill, and agent combination. Methods are scored with recency-weighted performance metrics and conservative sample weighting."}
         </p>
       </div>
 
       {/* Model Intelligence Section */}
       <ModelIntelligenceSection projectId={projectId} />
+      </>
+      )}
     </div>
   );
 }

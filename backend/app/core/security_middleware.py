@@ -113,6 +113,15 @@ class SecurityAuthMiddleware(BaseHTTPMiddleware):
 
         from app.config import settings
         if not settings.team_mode:
+            from app.core.network_security import remote_local_admin_block_reason
+
+            client_host = request.client.host if request.client else None
+            local_admin_denial = remote_local_admin_block_reason(client_host, path)
+            if local_admin_denial:
+                return JSONResponse(
+                    status_code=403,
+                    content={"detail": local_admin_denial},
+                )
             request.state.user = LOCAL_ADMIN_USER.copy()
             return await call_next(request)
 
@@ -168,6 +177,25 @@ def require_admin_from_request(request: Request) -> None:
     from app.core.permissions import require_global_admin
 
     require_global_admin(request)
+
+
+def require_admin_or_localhost_for_destructive_action(request: Request, action: str) -> None:
+    """Require team admin or localhost for destructive local-mode operations."""
+    from app.config import settings
+    from app.core.network_security import _is_localhost
+
+    if settings.team_mode:
+        try:
+            require_admin_from_request(request)
+        except Exception:
+            raise PermissionError(f"Admin required to {action}")
+        return
+
+    client_host = request.client.host if request.client else None
+    if not _is_localhost(client_host):
+        raise PermissionError(
+            f"Localhost access required to {action} while team mode is disabled"
+        )
 
 
 def get_user_from_request(request: Request) -> dict:

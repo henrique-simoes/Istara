@@ -20,6 +20,7 @@ pub fn detect_dependencies() -> Vec<DepStatus> {
     vec![
         detect_python(),
         detect_node(),
+        detect_ffmpeg(),
         detect_lmstudio(),
         detect_ollama(),
         detect_docker(),
@@ -65,6 +66,13 @@ const DOCKER_PATHS: &[&str] = &[
     "/Applications/Docker.app/Contents/Resources/bin/docker",
 ];
 
+#[cfg(target_os = "macos")]
+const FFMPEG_PATHS: &[&str] = &[
+    "ffmpeg",
+    "/opt/homebrew/bin/ffmpeg",
+    "/usr/local/bin/ffmpeg",
+];
+
 // ─── Windows common paths ────────────────────────────────────────────
 
 #[cfg(target_os = "windows")]
@@ -96,6 +104,13 @@ const DOCKER_PATHS: &[&str] = &[
     r"C:\Program Files\Docker\Docker\resources\bin\docker.exe",
 ];
 
+#[cfg(target_os = "windows")]
+const FFMPEG_PATHS: &[&str] = &[
+    "ffmpeg",
+    r"C:\ffmpeg\bin\ffmpeg.exe",
+    r"C:\ProgramData\chocolatey\bin\ffmpeg.exe",
+];
+
 // ─── Linux fallback ──────────────────────────────────────────────────
 
 #[cfg(not(any(target_os = "macos", target_os = "windows")))]
@@ -106,6 +121,8 @@ const NODE_PATHS: &[&str] = &["node", "/usr/bin/node"];
 const OLLAMA_PATHS: &[&str] = &["ollama", "/usr/local/bin/ollama"];
 #[cfg(not(any(target_os = "macos", target_os = "windows")))]
 const DOCKER_PATHS: &[&str] = &["docker", "/usr/bin/docker"];
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
+const FFMPEG_PATHS: &[&str] = &["ffmpeg", "/usr/bin/ffmpeg", "/usr/local/bin/ffmpeg"];
 
 // ─── Detectors ───────────────────────────────────────────────────────
 
@@ -188,6 +205,19 @@ fn detect_node() -> DepStatus {
         name: "Node.js 18+".to_string(),
         detected,
         version,
+        required: true,
+    }
+}
+
+fn detect_ffmpeg() -> DepStatus {
+    let (detected, version) = try_paths(FFMPEG_PATHS, &["-version"]);
+    let first_line = version.lines().next().unwrap_or("").to_string();
+
+    DepStatus {
+        id: "ffmpeg".to_string(),
+        name: "FFmpeg".to_string(),
+        detected,
+        version: first_line,
         required: true,
     }
 }
@@ -335,6 +365,7 @@ pub fn install_dependency(dep_id: String) -> Result<String, String> {
     match dep_id.as_str() {
         "python" => install_python(),
         "node" => install_node(),
+        "ffmpeg" => install_ffmpeg(),
         "ollama" => install_ollama(),
         "lmstudio" => {
             open::that("https://lmstudio.ai").map_err(|e| e.to_string())?;
@@ -377,6 +408,40 @@ fn install_node() -> Result<String, String> {
     Ok("Node.js installer opened — follow the prompts".to_string())
 }
 
+#[cfg(target_os = "macos")]
+fn install_ffmpeg() -> Result<String, String> {
+    let brew = if Path::new("/opt/homebrew/bin/brew").exists() {
+        "/opt/homebrew/bin/brew"
+    } else if Path::new("/usr/local/bin/brew").exists() {
+        "/usr/local/bin/brew"
+    } else {
+        "brew"
+    };
+    let status = Command::new(brew)
+        .args(["install", "ffmpeg"])
+        .status()
+        .map_err(|e| format!("FFmpeg install failed: {}", e))?;
+    if status.success() {
+        Ok("FFmpeg installed".to_string())
+    } else {
+        Err("Homebrew could not install FFmpeg. Install Homebrew first or run: brew install ffmpeg".to_string())
+    }
+}
+
+#[cfg(target_os = "windows")]
+fn install_ffmpeg() -> Result<String, String> {
+    if Command::new("winget")
+        .args(["install", "--id", "Gyan.FFmpeg", "-e"])
+        .status()
+        .map(|s| s.success())
+        .unwrap_or(false)
+    {
+        return Ok("FFmpeg installed".to_string());
+    }
+    open::that("https://ffmpeg.org/download.html").map_err(|e| e.to_string())?;
+    Ok("Opened FFmpeg download page".to_string())
+}
+
 #[cfg(target_os = "windows")]
 fn install_node() -> Result<String, String> {
     let url = "https://nodejs.org/dist/v20.18.0/node-v20.18.0-x64.msi";
@@ -414,6 +479,8 @@ fn install_ollama() -> Result<String, String> {
 fn install_python() -> Result<String, String> { Err("Use your package manager: apt install python3".to_string()) }
 #[cfg(not(any(target_os = "macos", target_os = "windows")))]
 fn install_node() -> Result<String, String> { Err("Use your package manager: apt install nodejs".to_string()) }
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
+fn install_ffmpeg() -> Result<String, String> { Err("Use your package manager: apt install ffmpeg".to_string()) }
 #[cfg(not(any(target_os = "macos", target_os = "windows")))]
 fn install_ollama() -> Result<String, String> {
     Command::new("sh").args(["-c", "curl -fsSL https://ollama.com/install.sh | sh"])

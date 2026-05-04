@@ -281,7 +281,7 @@ export default function MCPTab() {
             </div>
             <div>
               <h3 className="font-medium text-slate-900 dark:text-white mb-1">Supported Transports</h3>
-              <p>HTTP (recommended), WebSocket, and stdio are supported. HTTP is the most reliable for remote servers.</p>
+              <p>HTTP is supported for external MCP servers. Use an HTTP bridge for stdio or WebSocket MCP servers before registering them in Istara.</p>
             </div>
           </div>
         </div>

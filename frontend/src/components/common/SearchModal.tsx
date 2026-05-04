@@ -40,6 +40,7 @@ export default function SearchModal({ open, onClose, onNavigate }: SearchModalPr
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [searching, setSearching] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -48,6 +49,7 @@ export default function SearchModal({ open, onClose, onNavigate }: SearchModalPr
     } else {
       setQuery("");
       setResults([]);
+      setError(null);
     }
   }, [open]);
 
@@ -70,8 +72,9 @@ export default function SearchModal({ open, onClose, onNavigate }: SearchModalPr
   }, [open, onClose]);
 
   const handleSearch = async () => {
-    if (!query.trim() || !activeProjectId) return;
+    if (!query.trim()) return;
     setSearching(true);
+    setError(null);
 
     try {
       // Search across all finding types
@@ -119,7 +122,7 @@ export default function SearchModal({ open, onClose, onNavigate }: SearchModalPr
 
       setResults(matched);
     } catch (e) {
-      console.error("Search failed:", e);
+      setError(e instanceof Error ? e.message : "Search failed");
     }
     setSearching(false);
   };
@@ -153,7 +156,12 @@ export default function SearchModal({ open, onClose, onNavigate }: SearchModalPr
 
         {/* Results */}
         <div className="max-h-[50vh] overflow-y-auto">
-          {results.length > 0 ? (
+          {error ? (
+            <div className="p-8 text-center text-red-500">
+              <p className="text-sm">{error}</p>
+              <p className="text-xs mt-1">Check your connection and try again.</p>
+            </div>
+          ) : results.length > 0 ? (
             <div className="divide-y divide-slate-100 dark:divide-slate-800">
               {results.map((result, i) => {
                 const Icon = TYPE_ICONS[result.type];
@@ -175,12 +183,12 @@ export default function SearchModal({ open, onClose, onNavigate }: SearchModalPr
                         </span>
                         {result.phase && (
                           <span className="text-[10px] text-slate-400 capitalize">
-                            💎 {result.phase}
+                            Phase: {result.phase}
                           </span>
                         )}
                         {result.source && (
                           <span className="text-[10px] text-slate-400">
-                            📄 {result.source.split("/").pop()}
+                            Source: {result.source.split("/").pop()}
                           </span>
                         )}
                         {result.confidence !== undefined && (
@@ -213,9 +221,9 @@ export default function SearchModal({ open, onClose, onNavigate }: SearchModalPr
 
         {/* Footer */}
         <div className="flex items-center gap-4 px-4 py-2 border-t border-slate-200 dark:border-slate-700 text-[10px] text-slate-400">
-          <span>↵ Search</span>
-          <span>ESC Close</span>
-          <span>⌘K Toggle</span>
+          <span>Enter Search</span>
+          <span>Esc Close</span>
+          <span>Cmd+K Toggle</span>
         </div>
       </div>
       </FocusTrap>

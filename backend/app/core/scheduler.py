@@ -90,21 +90,45 @@ class CronParser:
     ]
 
     @classmethod
+    def _parse_value(cls, raw: str, lo: int, hi: int) -> int:
+        """Parse and bounds-check a cron field value."""
+        try:
+            value = int(raw)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"Invalid cron value {raw!r}") from exc
+        if value < lo or value > hi:
+            raise ValueError(f"Cron value {value} is outside the allowed range {lo}-{hi}")
+        return value
+
+    @classmethod
     def _expand_field(cls, token: str, lo: int, hi: int) -> set[int]:
         """Expand a single cron field token into a set of valid integers."""
+        if not token:
+            raise ValueError("Cron fields cannot be empty")
         if token == "*":
             return set(range(lo, hi + 1))
         if token.startswith("*/"):
-            step = int(token[2:])
+            try:
+                step = int(token[2:])
+            except (TypeError, ValueError) as exc:
+                raise ValueError(f"Invalid cron step {token!r}") from exc
+            if step <= 0:
+                raise ValueError("Cron step must be greater than zero")
             return set(range(lo, hi + 1, step))
-        # Comma-separated values
+
         values: set[int] = set()
         for part in token.split(","):
+            if not part:
+                raise ValueError("Cron list entries cannot be empty")
             if "-" in part:
-                a, b = part.split("-", 1)
-                values.update(range(int(a), int(b) + 1))
+                start_raw, end_raw = part.split("-", 1)
+                start = cls._parse_value(start_raw, lo, hi)
+                end = cls._parse_value(end_raw, lo, hi)
+                if start > end:
+                    raise ValueError(f"Cron range start {start} cannot be greater than {end}")
+                values.update(range(start, end + 1))
             else:
-                values.add(int(part))
+                values.add(cls._parse_value(part, lo, hi))
         return values
 
     @classmethod
@@ -160,6 +184,7 @@ class Scheduler:
         self._running = False
         self._task: asyncio.Task | None = None
         self._check_interval = 60  # seconds
+        self._stale_running_after = timedelta(hours=1)
 
     async def start(self) -> None:
         """Start the scheduler loop."""
@@ -182,6 +207,8 @@ class Scheduler:
         now = datetime.now(timezone.utc)
 
         async with async_session() as db:
+            await self._reset_stale_running_tasks(db, now)
+
             # Fetch all enabled tasks then filter in Python to avoid
             # SQLite naive-vs-aware datetime comparison crashes.
             # Also skip tasks that are currently running.
@@ -223,7 +250,7 @@ class Scheduler:
                     try:
                         from app.services.loop_execution_service import record_execution
                         await record_execution(
-                            source_type="scheduled_task",
+                            source_type="custom" if task.loop_type == "custom" else "schedule",
                             source_id=task.id,
                             source_name=task.name,
                             status=exec_status,
@@ -245,6 +272,26 @@ class Scheduler:
             if due_tasks:
                 await db.commit()
 
+    async def _reset_stale_running_tasks(self, db: AsyncSession, now: datetime) -> None:
+        """Release tasks left running by a crashed process or interrupted tick."""
+        result = await db.execute(
+            select(ScheduledTask).where(
+                ScheduledTask.enabled.is_(True),
+                ScheduledTask.is_running.is_(True),
+            )
+        )
+        stale_cutoff = now - self._stale_running_after
+        reset_count = 0
+        for task in result.scalars().all():
+            next_run = ensure_utc(task.next_run) if task.next_run else None
+            if next_run and next_run <= stale_cutoff:
+                task.is_running = False
+                task.last_status = "failure"
+                reset_count += 1
+        if reset_count:
+            logger.warning("Released %s stale scheduled task leases", reset_count)
+            await db.commit()
+
     async def _execute(self, task: ScheduledTask, db: AsyncSession) -> None:
         """Execute a single scheduled task."""
         logger.info(f"Executing scheduled task: {task.name} (skill={task.skill_name or 'none'})")
@@ -256,8 +303,7 @@ class Scheduler:
 
             skill = registry.get(task.skill_name)
             if skill is None:
-                logger.warning(f"Skill '{task.skill_name}' not found for scheduled task {task.id}")
-                return
+                raise ValueError(f"Skill {task.skill_name!r} not found for scheduled task {task.id}")
 
             skill_input = SkillInput(
                 project_id=task.project_id,

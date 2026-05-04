@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { API_BASE } from "@/lib/runtimeConfig";
 import {
   Users,
   Plus,
@@ -424,14 +423,9 @@ function RecentErrors({ agentId }: { agentId: string }) {
   useEffect(() => {
     if (fetched) return;
     setLoading(true);
-    const baseUrl = API_BASE;
-    fetch(`${baseUrl}/api/agents/log/recent?agent_id=${agentId}&limit=5`)
-      .then((res) => {
-        if (!res.ok) throw new Error("Failed to fetch");
-        return res.json();
-      })
+    agentsApi.recentLog(agentId, 5)
       .then((data) => {
-        setErrors(data.entries || data.logs || []);
+        setErrors(data.log || data.entries || data.logs || []);
       })
       .catch(() => {
         setErrors([]);
@@ -624,8 +618,7 @@ function AgentDetail({ agent }: { agent: Agent }) {
             <button
               onClick={async () => {
                 try {
-                  const res = await fetch(`${API_BASE}/api/agents/${agent.id}/export`);
-                  const data = await res.json();
+                  const data = await agentsApi.exportConfig(agent.id);
                   const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
                   const url = URL.createObjectURL(blob);
                   const a = document.createElement("a");
@@ -1054,11 +1047,7 @@ export default function AgentsView() {
                           const text = await file.text();
                           const data = JSON.parse(text);
                           const agentData = data.agent || data;
-                          await fetch(`${API_BASE}/api/agents/import`, {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify(agentData),
-                          });
+                          await agentsApi.importConfig(agentData);
                           fetchAgents();
                         } catch (err) {
                           console.error("Import failed:", err);

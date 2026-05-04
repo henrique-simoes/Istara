@@ -49,6 +49,8 @@ class ConfigUpdate(BaseModel):
     enabled: bool | None = None
     max_experiments_per_run: int | None = None
     max_daily_experiments: int | None = None
+    min_improvement_delta: float | None = None
+    measurement_repeats: int | None = None
 
 
 class ToggleRequest(BaseModel):
@@ -75,28 +77,37 @@ def _get_engine():
 def _get_runner(loop_type: str):
     """Lazy-import a runner by loop type."""
     runner_map = {
-        "model_temp": "app.core.autoresearch_runners.model_temp",
-        "skill_prompt": "app.core.autoresearch_runners.skill_prompt",
-        "rag_params": "app.core.autoresearch_runners.rag_params",
-        "persona": "app.core.autoresearch_runners.persona",
-        "question_bank": "app.core.autoresearch_runners.question_bank",
-        "ui_sim": "app.core.autoresearch_runners.ui_sim",
+        "model_temp": ("app.core.autoresearch_runners.model_temp", "ModelTempRunner"),
+        "skill_prompt": ("app.core.autoresearch_runners.skill_prompt", "SkillPromptRunner"),
+        "rag_params": ("app.core.autoresearch_runners.rag_params", "RAGParamsRunner"),
+        "persona": ("app.core.autoresearch_runners.persona", "PersonaRunner"),
+        "question_bank": ("app.core.autoresearch_runners.question_bank", "QuestionBankRunner"),
+        "ui_sim": ("app.core.autoresearch_runners.ui_sim", "UISimRunner"),
     }
-    module_path = runner_map.get(loop_type)
-    if not module_path:
+    runner_spec = runner_map.get(loop_type)
+    if not runner_spec:
         raise HTTPException(
             status_code=400,
             detail=f"Unknown loop type: {loop_type}. Valid types: {', '.join(runner_map.keys())}",
         )
+    module_path, class_name = runner_spec
     try:
         import importlib
         mod = importlib.import_module(module_path)
-        return mod
-    except ImportError:
+        runner_cls = getattr(mod, class_name)
+        return runner_cls()
+    except (AttributeError, ImportError, TypeError) as exc:
+        logger.warning("Autoresearch runner load failed for %s: %s", loop_type, exc)
         raise HTTPException(
             status_code=501,
             detail=f"Runner for loop type '{loop_type}' is not installed.",
         )
+
+
+def _clamp_iterations(requested: int) -> int:
+    """Clamp requested iterations to configured production limits."""
+    max_per_run = max(1, int(getattr(settings, "autoresearch_max_experiments_per_run", 20)))
+    return max(1, min(int(requested or 1), max_per_run))
 
 
 async def _build_operational_metrics(db: AsyncSession) -> dict:
@@ -401,7 +412,7 @@ async def get_experiment(experiment_id: str, request: Request):
     """Get a single experiment by ID."""
     require_admin_from_request(request)
     engine = _get_engine()
-    experiment = engine.get_experiment(experiment_id)
+    experiment = await engine.get_experiment(experiment_id)
     if not experiment:
         raise HTTPException(status_code=404, detail="Experiment not found")
     return experiment
@@ -413,7 +424,7 @@ async def start_experiment(body: StartExperimentRequest, request: Request, backg
     require_admin_from_request(request)
     engine = _get_engine()
 
-    if engine.is_running():
+    if engine.is_running:
         raise HTTPException(
             status_code=409,
             detail="An experiment loop is already running. Stop it first.",
@@ -425,15 +436,15 @@ async def start_experiment(body: StartExperimentRequest, request: Request, backg
             detail="Autoresearch is disabled. Enable it first via /api/autoresearch/toggle.",
         )
 
-    # Validate runner exists
-    _get_runner(body.loop_type)
+    runner = _get_runner(body.loop_type)
+    max_iterations = _clamp_iterations(body.max_iterations)
 
     async def _run_loop():
         try:
             await engine.run_loop(
-                loop_type=body.loop_type,
+                runner=runner,
                 target=body.target,
-                max_iterations=body.max_iterations,
+                max_iterations=max_iterations,
                 project_id=body.project_id,
             )
         except Exception as exc:
@@ -445,7 +456,7 @@ async def start_experiment(body: StartExperimentRequest, request: Request, backg
         "status": "started",
         "loop_type": body.loop_type,
         "target": body.target,
-        "max_iterations": body.max_iterations,
+        "max_iterations": max_iterations,
     }
 
 
@@ -455,10 +466,10 @@ async def stop_experiment(request: Request):
     require_admin_from_request(request)
     engine = _get_engine()
 
-    if not engine.is_running():
+    if not engine.is_running:
         raise HTTPException(status_code=409, detail="No experiment loop is currently running.")
 
-    engine.stop()
+    engine.request_stop()
     return {"status": "stopped"}
 
 
@@ -470,6 +481,8 @@ async def get_config(request: Request):
         "enabled": getattr(settings, "autoresearch_enabled", False),
         "max_experiments_per_run": getattr(settings, "autoresearch_max_experiments_per_run", 20),
         "max_daily_experiments": getattr(settings, "autoresearch_max_daily_experiments", 100),
+        "min_improvement_delta": getattr(settings, "autoresearch_min_improvement_delta", 0.01),
+        "measurement_repeats": getattr(settings, "autoresearch_measurement_repeats", 1),
     }
 
 
@@ -480,14 +493,28 @@ async def update_config(body: ConfigUpdate, request: Request):
     if body.enabled is not None:
         settings.autoresearch_enabled = body.enabled
     if body.max_experiments_per_run is not None:
+        if body.max_experiments_per_run < 1 or body.max_experiments_per_run > 100:
+            raise HTTPException(status_code=400, detail="max_experiments_per_run must be between 1 and 100")
         settings.autoresearch_max_experiments_per_run = body.max_experiments_per_run
     if body.max_daily_experiments is not None:
+        if body.max_daily_experiments < 1 or body.max_daily_experiments > 1000:
+            raise HTTPException(status_code=400, detail="max_daily_experiments must be between 1 and 1000")
         settings.autoresearch_max_daily_experiments = body.max_daily_experiments
+    if body.min_improvement_delta is not None:
+        if body.min_improvement_delta < 0 or body.min_improvement_delta > 1:
+            raise HTTPException(status_code=400, detail="min_improvement_delta must be between 0 and 1")
+        settings.autoresearch_min_improvement_delta = body.min_improvement_delta
+    if body.measurement_repeats is not None:
+        if body.measurement_repeats < 1 or body.measurement_repeats > 10:
+            raise HTTPException(status_code=400, detail="measurement_repeats must be between 1 and 10")
+        settings.autoresearch_measurement_repeats = body.measurement_repeats
 
     return {
         "enabled": getattr(settings, "autoresearch_enabled", False),
         "max_experiments_per_run": getattr(settings, "autoresearch_max_experiments_per_run", 20),
         "max_daily_experiments": getattr(settings, "autoresearch_max_daily_experiments", 100),
+        "min_improvement_delta": getattr(settings, "autoresearch_min_improvement_delta", 0.01),
+        "measurement_repeats": getattr(settings, "autoresearch_measurement_repeats", 1),
     }
 
 
@@ -506,8 +533,8 @@ async def toggle_autoresearch(body: ToggleRequest, request: Request):
     settings.autoresearch_enabled = body.enabled
 
     engine = _get_engine()
-    if not body.enabled and engine.is_running():
-        engine.stop()
+    if not body.enabled and engine.is_running:
+        engine.request_stop()
 
     return {
         "enabled": body.enabled,

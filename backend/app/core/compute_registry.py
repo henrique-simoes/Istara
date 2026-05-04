@@ -73,6 +73,7 @@ class ComputeNode:
     priority: int = 10
     latency_ms: float = 0
     active_requests: int = 0
+    max_active_requests: int = 4
     is_local: bool = False
     is_relay: bool = False
 
@@ -122,6 +123,8 @@ class ComputeNode:
 
     def score(self) -> float:
         if not self.is_healthy:
+            return -1
+        if self.active_requests >= self.max_active_requests:
             return -1
         if self.health_state == "cooldown" and time.time() < self.cooldown_until:
             return -1
@@ -651,10 +654,7 @@ class ComputeRegistry:
 
     def has_available_node(self) -> bool:
         """Check if at least one compute node is available for LLM calls."""
-        for node in self._nodes.values():
-            if node.is_healthy and node.cb_is_available():
-                return True
-        return False
+        return bool(self._select_candidates())
 
     async def broadcast_llm_status(self, status: str, detail: str = "") -> None:
         """Broadcast LLM availability changes to frontend."""
@@ -912,6 +912,8 @@ class ComputeRegistry:
         require_tools: bool = False,
         require_vision: bool = False,
         min_context: int = 0,
+        model: str | None = None,
+        strict_model: bool = False,
     ) -> list[ComputeNode]:
         """Get candidate nodes sorted by score, filtered by capabilities and circuit breaker."""
         candidates = [n for n in self._nodes.values() if n.score() > 0 and n.cb_is_available()]
@@ -939,8 +941,73 @@ class ComputeRegistry:
             if vision_capable:
                 candidates = vision_capable
 
+        if min_context > 0 and candidates:
+            context_capable = [
+                n
+                for n in candidates
+                if any(
+                    c.get("context_length", 0) >= min_context
+                    for c in n.model_capabilities.values()
+                )
+            ]
+            if context_capable:
+                candidates = context_capable
+
+        requested_model = (model or "").strip()
+        if requested_model and requested_model != "default" and candidates:
+            model_capable = [n for n in candidates if self._node_supports_model(n, requested_model)]
+            if strict_model:
+                candidates = model_capable
+            elif model_capable:
+                capable_ids = {n.node_id for n in model_capable}
+                candidates.sort(
+                    key=lambda n: (
+                        0 if n.node_id in capable_ids else 1,
+                        -n.score(),
+                    )
+                )
+                return candidates
+
         candidates.sort(key=lambda n: n.score(), reverse=True)
         return candidates
+
+    @staticmethod
+    def _model_aliases(model: str) -> set[str]:
+        base = model.strip()
+        aliases = {base}
+        if base.endswith(":latest"):
+            aliases.add(base.removesuffix(":latest"))
+        elif ":" not in base:
+            aliases.add(f"{base}:latest")
+        return aliases
+
+    @classmethod
+    def _node_supports_model(cls, node: ComputeNode, model: str) -> bool:
+        aliases = cls._model_aliases(model)
+        loaded = {str(m).strip() for m in node.loaded_models if str(m).strip()}
+        capability_keys = {str(m).strip() for m in node.model_capabilities.keys() if str(m).strip()}
+        advertised = loaded | capability_keys
+        return bool(advertised and advertised.intersection(aliases))
+
+    @staticmethod
+    def _record_success(node: ComputeNode) -> None:
+        node.consecutive_failures = 0
+        node.health_state = "ready"
+        node.health_error = ""
+        node.is_healthy = True
+        node.cb_record_success()
+
+    @staticmethod
+    def _record_failure(node: ComputeNode, error: Exception) -> None:
+        node.consecutive_failures += 1
+        node.health_error = str(error)[:200] if str(error) else "Request failed"
+        node.cb_record_failure()
+        if node.consecutive_failures >= 3:
+            node.health_state = "cooldown"
+            node.cooldown_until = time.time() + 60
+            node.is_healthy = False
+        else:
+            node.health_state = "degraded"
 
     @staticmethod
     def _sanitize_messages(messages: list[dict]) -> list[dict]:
@@ -999,9 +1066,11 @@ class ComputeRegistry:
             msgs = [{"role": "system", "content": system}, *msgs]
         msgs = self._sanitize_messages(msgs)
 
-        for node in self._sorted_servers(require_tools=bool(tools)):
-            if not node.is_healthy:
-                continue
+        for node in self._select_candidates(
+            require_tools=bool(tools),
+            model=model,
+            strict_model=settings.strict_auto_routing,
+        ):
             resolved_model = node._resolve_model(model)
             logger.info(
                 f"ComputeRegistry: routing chat to {node.name} ({node.host}) model={resolved_model}"
@@ -1017,9 +1086,7 @@ class ComputeRegistry:
                         tools=tools,
                         response_format=response_format,
                     )
-                    node.consecutive_failures = 0
-                    node.health_state = "ready"
-                    node.cb_record_success()
+                    self._record_success(node)
                     return data
 
                 client = await node._get_client()
@@ -1037,9 +1104,7 @@ class ComputeRegistry:
                     resp = await client.post("/api/chat", json=payload)
                     resp.raise_for_status()
                     data = resp.json()
-                    node.consecutive_failures = 0
-                    node.health_state = "ready"
-                    node.cb_record_success()
+                    self._record_success(node)
                     return data
                 else:
                     payload = {
@@ -1069,9 +1134,7 @@ class ComputeRegistry:
                         result["message"]["tool_calls"] = message["tool_calls"]
                         result["finish_reason"] = choice.get("finish_reason", "tool_calls")
 
-                    node.consecutive_failures = 0
-                    node.health_state = "ready"
-                    node.cb_record_success()
+                    self._record_success(node)
                     return result
 
             except Exception as e:
@@ -1079,14 +1142,7 @@ class ComputeRegistry:
                     logger.warning(f"ComputeRegistry: chat failed on {node.name}: {e} | Body: {e.response.text}")
                 else:
                     logger.warning(f"ComputeRegistry: chat failed on {node.name}: {e}")
-                node.consecutive_failures += 1
-                node.cb_record_failure()
-                if node.consecutive_failures >= 3:
-                    node.health_state = "cooldown"
-                    node.cooldown_until = time.time() + 60
-                    node.is_healthy = False
-                else:
-                    node.is_healthy = False
+                self._record_failure(node, e)
             finally:
                 node.active_requests -= 1
 
@@ -1107,9 +1163,11 @@ class ComputeRegistry:
             msgs = [{"role": "system", "content": system}, *msgs]
         msgs = self._sanitize_messages(msgs)
 
-        for node in self._sorted_servers(require_tools=bool(tools)):
-            if not node.is_healthy:
-                continue
+        for node in self._select_candidates(
+            require_tools=bool(tools),
+            model=model,
+            strict_model=settings.strict_auto_routing,
+        ):
             resolved_model = node._resolve_model(model)
             logger.info(
                 f"ComputeRegistry: routing stream to {node.name} "
@@ -1128,8 +1186,7 @@ class ComputeRegistry:
                     content = data.get("message", {}).get("content", "")
                     if content:
                         yield content
-                    node.consecutive_failures = 0
-                    node.health_state = "ready"
+                    self._record_success(node)
                     return
 
                 client = await node._get_client()
@@ -1230,19 +1287,12 @@ class ComputeRegistry:
                             "finish_reason": "tool_calls",
                         }
 
-                node.consecutive_failures = 0
-                node.health_state = "ready"
+                self._record_success(node)
                 return
 
             except Exception as e:
                 logger.warning(f"ComputeRegistry: stream failed on {node.name}: {e}")
-                node.consecutive_failures += 1
-                if node.consecutive_failures >= 3:
-                    node.health_state = "cooldown"
-                    node.cooldown_until = time.time() + 60
-                    node.is_healthy = False
-                else:
-                    node.is_healthy = False
+                self._record_failure(node, e)
             finally:
                 node.active_requests -= 1
 
@@ -1250,16 +1300,15 @@ class ComputeRegistry:
 
     async def embed(self, text: str, model: str | None = None) -> list[float]:
         """Route an embedding request."""
-        for node in self._sorted_servers():
-            if not node.is_healthy:
-                continue
+        for node in self._select_candidates(
+            model=model,
+            strict_model=settings.strict_auto_routing,
+        ):
             node.active_requests += 1
             try:
                 if node.source in ("relay", "browser") and node.websocket:
                     result = await node.embed(text, model=model)
-                    node.consecutive_failures = 0
-                    node.health_state = "ready"
-                    node.cb_record_success()
+                    self._record_success(node)
                     return result
 
                 client = await node._get_client()
@@ -1281,9 +1330,11 @@ class ComputeRegistry:
 
                 if node.provider_type == "ollama":
                     embeddings = data.get("embeddings", [])
+                    self._record_success(node)
                     return embeddings[0] if embeddings else []
                 else:
                     items = data.get("data", [])
+                    self._record_success(node)
                     return items[0].get("embedding", []) if items else []
 
             except Exception as e:
@@ -1291,7 +1342,7 @@ class ComputeRegistry:
                     logger.warning(f"ComputeRegistry: embed failed on {node.name}: {e} | Body: {e.response.text}")
                 else:
                     logger.warning(f"ComputeRegistry: embed failed on {node.name}: {e}")
-                node.is_healthy = False
+                self._record_failure(node, e)
             finally:
                 node.active_requests -= 1
 
@@ -1299,16 +1350,15 @@ class ComputeRegistry:
 
     async def embed_batch(self, texts: list[str], model: str | None = None) -> list[list[float]]:
         """Route a batch embedding request."""
-        for node in self._sorted_servers():
-            if not node.is_healthy:
-                continue
+        for node in self._select_candidates(
+            model=model,
+            strict_model=settings.strict_auto_routing,
+        ):
             node.active_requests += 1
             try:
                 if node.source in ("relay", "browser") and node.websocket:
                     result = await node.embed_batch(texts, model=model)
-                    node.consecutive_failures = 0
-                    node.health_state = "ready"
-                    node.cb_record_success()
+                    self._record_success(node)
                     return result
 
                 client = await node._get_client()
@@ -1320,6 +1370,7 @@ class ComputeRegistry:
                         json={"model": embed_model, "input": texts},
                     )
                     resp.raise_for_status()
+                    self._record_success(node)
                     return resp.json().get("embeddings", [])
                 else:
                     resp = await client.post(
@@ -1327,6 +1378,7 @@ class ComputeRegistry:
                         json={"model": embed_model, "input": texts},
                     )
                     resp.raise_for_status()
+                    self._record_success(node)
                     return [item.get("embedding", []) for item in resp.json().get("data", [])]
 
             except Exception as e:
@@ -1334,7 +1386,7 @@ class ComputeRegistry:
                     logger.warning(f"ComputeRegistry: embed_batch failed on {node.name}: {e} | Body: {e.response.text}")
                 else:
                     logger.warning(f"ComputeRegistry: embed_batch failed on {node.name}: {e}")
-                node.is_healthy = False
+                self._record_failure(node, e)
             finally:
                 node.active_requests -= 1
 
@@ -1343,9 +1395,7 @@ class ComputeRegistry:
     async def list_models(self) -> list[dict]:
         """Aggregate models from all healthy nodes."""
         all_models: list[dict] = []
-        for node in self._sorted_servers():
-            if not node.is_healthy:
-                continue
+        for node in self._select_candidates():
             try:
                 if node.source in ("relay", "browser"):
                     for name in node.loaded_models:
@@ -1432,12 +1482,10 @@ class ComputeRegistry:
 
     def best_node_for(self, model: str | None = None) -> ComputeNode | None:
         """Select the best node for a given model (backward compat)."""
-        candidates = self.alive_nodes()
-        if model:
-            candidates = [n for n in candidates if model in n.loaded_models] or candidates
+        candidates = self._select_candidates(model=model)
         if not candidates:
             return None
-        return max(candidates, key=lambda n: n.score())
+        return candidates[0]
 
     # ================================================================
     # Unified Stats

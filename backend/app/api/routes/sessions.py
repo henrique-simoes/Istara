@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import delete, select, func, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -19,23 +19,41 @@ router = APIRouter()
 
 
 class CreateSessionRequest(BaseModel):
-    project_id: str
-    title: str = "New Chat"
-    agent_id: str | None = None
-    model_override: str | None = None
-    inference_preset: str = "medium"
+    project_id: str = Field(..., min_length=1, max_length=36)
+    title: str = Field(default="New Chat", min_length=1, max_length=255)
+    agent_id: str | None = Field(default=None, max_length=255)
+    model_override: str | None = Field(default=None, max_length=255)
+    inference_preset: InferencePreset = InferencePreset.MEDIUM
+
+    @field_validator("title")
+    @classmethod
+    def normalize_title(cls, value: str) -> str:
+        title = value.strip()
+        if not title:
+            raise ValueError("Title cannot be blank")
+        return title
 
 
 class UpdateSessionRequest(BaseModel):
-    title: str | None = None
-    agent_id: str | None = None
-    model_override: str | None = None
-    inference_preset: str | None = None
-    custom_temperature: float | None = None
-    custom_max_tokens: int | None = None
-    custom_context_window: int | None = None
+    title: str | None = Field(default=None, min_length=1, max_length=255)
+    agent_id: str | None = Field(default=None, max_length=255)
+    model_override: str | None = Field(default=None, max_length=255)
+    inference_preset: InferencePreset | None = None
+    custom_temperature: float | None = Field(default=None, ge=0.0, le=2.0)
+    custom_max_tokens: int | None = Field(default=None, ge=1, le=65536)
+    custom_context_window: int | None = Field(default=None, ge=512, le=262144)
     starred: bool | None = None
     archived: bool | None = None
+
+    @field_validator("title")
+    @classmethod
+    def normalize_optional_title(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        title = value.strip()
+        if not title:
+            raise ValueError("Title cannot be blank")
+        return title
 
 
 @router.get("/sessions/{project_id}")
@@ -60,11 +78,6 @@ async def list_sessions(
 async def create_session(data: CreateSessionRequest, request: Request, db: AsyncSession = Depends(get_db)):
     """Create a new chat session."""
     await require_project_access(db, request, data.project_id, min_role="researcher")
-    preset = InferencePreset.MEDIUM
-    try:
-        preset = InferencePreset(data.inference_preset)
-    except ValueError:
-        pass
 
     session = ChatSession(
         id=str(uuid.uuid4()),
@@ -72,7 +85,7 @@ async def create_session(data: CreateSessionRequest, request: Request, db: Async
         title=data.title,
         agent_id=data.agent_id,
         model_override=data.model_override,
-        inference_preset=preset,
+        inference_preset=data.inference_preset,
     )
     db.add(session)
     await db.commit()
@@ -126,12 +139,6 @@ async def update_session(
     await require_project_access(db, request, session.project_id, min_role="researcher")
 
     updates = data.model_dump(exclude_unset=True)
-    if "inference_preset" in updates:
-        try:
-            updates["inference_preset"] = InferencePreset(updates["inference_preset"])
-        except ValueError:
-            pass
-
     for key, value in updates.items():
         setattr(session, key, value)
 

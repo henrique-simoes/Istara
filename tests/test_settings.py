@@ -14,11 +14,13 @@ def reset_settings():
     original_jwt_secret = settings.jwt_secret
     original_data_dir = settings.data_dir
     original_runtime_personas_dir = settings.runtime_personas_dir
+    original_strict_auto_routing = settings.strict_auto_routing
     yield
     settings.team_mode = original_team_mode
     settings.jwt_secret = original_jwt_secret
     settings.data_dir = original_data_dir
     settings.runtime_personas_dir = original_runtime_personas_dir
+    settings.strict_auto_routing = original_strict_auto_routing
 
 
 @pytest.fixture
@@ -33,11 +35,37 @@ def auth_headers():
 async def test_settings_status_returns_response(auth_headers):
     """GET /api/settings/status returns system status."""
     await init_db()
+    settings.strict_auto_routing = True
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         response = await ac.get("/api/settings/status", headers=auth_headers)
         assert response.status_code == 200
         assert isinstance(response.json(), dict)
+        assert response.json()["strict_auto_routing"] is True
+
+
+@pytest.mark.asyncio
+async def test_strict_routing_toggle_updates_runtime_and_persists(auth_headers, monkeypatch):
+    """POST /api/settings/strict-routing persists the compute routing mode."""
+    await init_db()
+    persisted: dict[str, str] = {}
+    monkeypatch.setattr(
+        "app.api.routes.settings._persist_env",
+        lambda key, value: persisted.setdefault(key, value),
+    )
+    transport = ASGITransport(app=app)
+
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.post(
+            "/api/settings/strict-routing",
+            headers=auth_headers,
+            json={"enabled": True},
+        )
+
+    assert response.status_code == 200
+    assert response.json()["strict_auto_routing"] is True
+    assert settings.strict_auto_routing is True
+    assert persisted == {"STRICT_AUTO_ROUTING": "true"}
 
 
 @pytest.mark.asyncio

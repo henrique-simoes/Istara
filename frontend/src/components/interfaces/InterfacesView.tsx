@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { Bot, Wand2, LayoutGrid, ExternalLink, FileOutput } from "lucide-react";
 import { useInterfacesStore } from "@/stores/interfacesStore";
+import { useProjectStore } from "@/stores/projectStore";
 import { cn } from "@/lib/utils";
 import InterfacesOnboarding from "./InterfacesOnboarding";
 import DesignChatTab from "./DesignChatTab";
@@ -24,10 +25,11 @@ const TABS: { id: InterfacesTab; icon: any; label: string }[] = [
 
 export default function InterfacesView() {
   const { activeTab, setActiveTab, status, fetchStatus, onboardingDismissed } = useInterfacesStore();
+  const { activeProjectId } = useProjectStore();
 
   useEffect(() => {
-    fetchStatus();
-  }, [fetchStatus]);
+    fetchStatus(activeProjectId || undefined);
+  }, [activeProjectId, fetchStatus]);
 
   const showOnboarding = status?.onboarding_needed && !onboardingDismissed;
 

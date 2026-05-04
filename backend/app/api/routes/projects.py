@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -30,26 +30,77 @@ from app.models.project import Project, ProjectPhase
 router = APIRouter()
 
 
+def _validate_watch_folder(folder_path: str) -> Path:
+    folder = Path(folder_path).expanduser()
+    try:
+        resolved = folder.resolve()
+    except OSError as exc:
+        raise HTTPException(status_code=400, detail=f"Folder cannot be resolved: {exc}") from exc
+
+    if not resolved.exists():
+        raise HTTPException(status_code=400, detail=f"Folder does not exist: {folder_path}")
+    if not resolved.is_dir():
+        raise HTTPException(status_code=400, detail=f"Path is not a directory: {folder_path}")
+
+    if resolved == Path(resolved.anchor):
+        raise HTTPException(status_code=400, detail="Project folder cannot be a filesystem root.")
+
+    try:
+        home = Path.home().resolve()
+        if resolved == home:
+            raise HTTPException(status_code=400, detail="Project folder cannot be the whole home directory.")
+    except RuntimeError:
+        pass
+
+    return resolved
+
+
 class ProjectCreate(BaseModel):
     """Request body for creating a project."""
 
-    name: str
-    description: str = ""
+    name: str = Field(min_length=1, max_length=200)
+    description: str = Field(default="", max_length=10000)
     phase: ProjectPhase = ProjectPhase.DISCOVER
-    company_context: str = ""
-    project_context: str = ""
-    guardrails: str = ""
+    company_context: str = Field(default="", max_length=50000)
+    project_context: str = Field(default="", max_length=50000)
+    guardrails: str = Field(default="", max_length=50000)
+
+    @field_validator("name", mode="before")
+    @classmethod
+    def _strip_required_text(cls, value: str) -> str:
+        return str(value or "").strip()
+
+    @field_validator("description", "company_context", "project_context", "guardrails", mode="before")
+    @classmethod
+    def _strip_optional_text(cls, value: str | None) -> str:
+        return str(value or "").strip()
 
 
 class ProjectUpdate(BaseModel):
     """Request body for updating a project."""
 
-    name: str | None = None
-    description: str | None = None
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    description: str | None = Field(default=None, max_length=10000)
     phase: ProjectPhase | None = None
-    company_context: str | None = None
-    project_context: str | None = None
-    guardrails: str | None = None
+    company_context: str | None = Field(default=None, max_length=50000)
+    project_context: str | None = Field(default=None, max_length=50000)
+    guardrails: str | None = Field(default=None, max_length=50000)
+
+    @field_validator("name", "description", "company_context", "project_context", "guardrails", mode="before")
+    @classmethod
+    def _strip_optional_text(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        return str(value).strip()
+
+
+class LinkFolderRequest(BaseModel):
+    folder_path: str = Field(min_length=1, max_length=2000)
+
+    @field_validator("folder_path", mode="before")
+    @classmethod
+    def _strip_path(cls, value: str) -> str:
+        return str(value or "").strip()
 
 
 class ProjectResponse(BaseModel):
@@ -230,36 +281,32 @@ async def resume_project(project_id: str, request: Request, db: AsyncSession = D
 
 
 @router.post("/projects/{project_id}/link-folder")
-async def link_folder(project_id: str, request: Request, db: AsyncSession = Depends(get_db)):
+async def link_folder(
+    project_id: str,
+    data: LinkFolderRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
     """Link an external folder to a project for automatic file monitoring.
     Supports any local folder — Google Drive, Dropbox, or plain directories."""
     await require_project_access(db, request, project_id, min_role="project_admin")
-    body = await request.json()
-    folder_path = body.get("folder_path", "").strip()
-    if not folder_path:
-        raise HTTPException(status_code=400, detail="folder_path is required")
-
-    folder = Path(folder_path)
-    if not folder.exists():
-        raise HTTPException(status_code=400, detail=f"Folder does not exist: {folder_path}")
-    if not folder.is_dir():
-        raise HTTPException(status_code=400, detail=f"Path is not a directory: {folder_path}")
+    folder = _validate_watch_folder(data.folder_path)
 
     project = await get_visible_project_or_404(db, request, project_id, min_role="project_admin")
 
-    project.watch_folder_path = str(folder.resolve())
+    project.watch_folder_path = str(folder)
     await db.commit()
 
     # Register with file watcher
     file_watcher = getattr(request.app.state, "file_watcher", None)
     if file_watcher:
-        file_watcher.add_watch(str(folder.resolve()), project_id)
-        logger.info(f"Linked external folder for project {project_id}: {folder.resolve()}")
+        file_watcher.add_watch(str(folder), project_id)
+        logger.info(f"Linked external folder for project {project_id}: {folder}")
 
     return {
         "status": "linked",
         "project_id": project_id,
-        "watch_folder_path": str(folder.resolve()),
+        "watch_folder_path": str(folder),
     }
 
 

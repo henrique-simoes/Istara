@@ -8,7 +8,7 @@ from app.config import settings
 from app.models.database import init_db
 from app.models.database import async_session
 from app.core.auth import create_token
-from app.core.connection_string import create_connection_string, decode_connection_string
+from app.core.connection_string import create_connection_string, decode_connection_string, hash_connection_string
 from app.api.routes import connections as connection_routes
 from app.models.connection_string import ConnectionString
 
@@ -43,18 +43,48 @@ async def test_connections_validate_returns_response(auth_headers):
             headers=auth_headers,
             json={"connection_string": "invalid-string"},
         )
-        assert response.status_code in (200, 400, 401)
+        assert response.status_code == 200
+        assert response.json()["valid"] is False
 
 
 @pytest.mark.asyncio
-async def test_connections_requires_auth():
-    """Connections endpoints require authentication in team mode."""
+async def test_connections_list_requires_auth():
+    """Listing generated connection strings requires authentication in team mode."""
     await init_db()
     settings.team_mode = True
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.post("/api/connections/validate", json={"connection_string": "test"})
-        assert response.status_code in (401, 200)
+        response = await ac.get("/api/connections")
+        assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_generate_connection_string_rejects_unsafe_urls(auth_headers):
+    await init_db()
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        bad_server = await ac.post(
+            "/api/connections/generate",
+            headers=auth_headers,
+            json={"server_url": "file:///tmp/istara", "label": "Bad"},
+        )
+        bad_ws = await ac.post(
+            "/api/connections/compute-donation/generate",
+            headers=auth_headers,
+            json={
+                "server_url": "https://istara.example.com",
+                "ws_url": "https://istara.example.com/ws/relay",
+            },
+        )
+        bad_expiry = await ac.post(
+            "/api/connections/generate",
+            headers=auth_headers,
+            json={"server_url": "https://istara.example.com", "expires_hours": 0},
+        )
+
+    assert bad_server.status_code == 422
+    assert bad_ws.status_code == 422
+    assert bad_expiry.status_code == 422
 
 
 def test_connection_string_keeps_http_and_websocket_urls_separate():
@@ -100,9 +130,12 @@ async def test_connection_string_lifecycle_tracks_validation_and_redemption(auth
 
             async with async_session() as db:
                 result = await db.execute(
-                    select(ConnectionString).where(ConnectionString.connection_string == conn_str)
+                    select(ConnectionString).where(
+                        ConnectionString.connection_string_hash == hash_connection_string(conn_str)
+                    )
                 )
                 conn = result.scalar_one()
+                assert conn.connection_string != conn_str
                 assert conn.last_validated_at is not None
                 assert conn.redeemed_username is None
 
@@ -137,7 +170,9 @@ async def test_connection_string_lifecycle_tracks_validation_and_redemption(auth
 
             async with async_session() as db:
                 result = await db.execute(
-                    select(ConnectionString).where(ConnectionString.connection_string == conn_str)
+                    select(ConnectionString).where(
+                        ConnectionString.connection_string_hash == hash_connection_string(conn_str)
+                    )
                 )
                 conn = result.scalar_one()
                 assert conn.is_redeemed is True
@@ -225,7 +260,9 @@ async def test_network_token_rotation_invalidates_active_connection_strings(auth
 
             async with async_session() as db:
                 result = await db.execute(
-                    select(ConnectionString).where(ConnectionString.connection_string == conn_str)
+                    select(ConnectionString).where(
+                        ConnectionString.connection_string_hash == hash_connection_string(conn_str)
+                    )
                 )
                 conn = result.scalar_one()
                 assert conn.is_active is False
@@ -258,3 +295,37 @@ async def test_connection_string_validation_rate_limit(monkeypatch):
             "valid": False,
             "error": "Too many validation attempts. Try again shortly.",
         }
+
+
+@pytest.mark.asyncio
+async def test_connection_list_redacts_stored_secret(auth_headers):
+    await init_db()
+    transport = ASGITransport(app=app)
+
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        generated = await ac.post(
+            "/api/connections/generate",
+            headers=auth_headers,
+            json={
+                "server_url": "http://server.test:3000",
+                "label": "Redacted Laptop",
+                "expires_hours": 24,
+            },
+        )
+        assert generated.status_code == 200
+        conn_str = generated.json()["connection_string"]
+
+        listed = await ac.get("/api/connections", headers=auth_headers)
+
+    assert listed.status_code == 200
+    rows = listed.json()
+    assert rows
+    assert all(row.get("connection_string") is None for row in rows)
+    assert any(row.get("connection_string_preview") for row in rows)
+    assert conn_str not in json_dumps(rows)
+
+
+def json_dumps(value):
+    import json
+
+    return json.dumps(value, sort_keys=True)

@@ -19,8 +19,7 @@ import {
 import { useComputeStore } from "@/stores/computeStore";
 import { cn } from "@/lib/utils";
 import ViewOnboarding from "@/components/common/ViewOnboarding";
-
-import { API_BASE } from "@/lib/runtimeConfig";
+import { compute as computeApi, settings as settingsApi } from "@/lib/api";
 
 const SWARM_TIERS: Record<string, { label: string; color: string; description: string }> = {
   full_swarm: {
@@ -81,55 +80,43 @@ interface ModelWarning {
 }
 
 export default function ComputePoolView() {
-  const { stats, loading, fetchStats } = useComputeStore();
+  const { stats, loading, error, fetchStats } = useComputeStore();
   const [warnings, setWarnings] = useState<ModelWarning[]>([]);
   const [showWarnings, setShowWarnings] = useState(false);
   const [strictRouting, setStrictRouting] = useState(false);
+  const [routingError, setRoutingError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchStats();
     const interval = setInterval(fetchStats, 15000);
-    
-    // Fetch initial routing state
-    const token = localStorage.getItem("istara_token");
-    const headers: Record<string, string> = {};
-    if (token) headers["Authorization"] = `Bearer ${token}`;
-    fetch(`${API_BASE}/api/settings/status`, { headers })
-      .then((r) => r.json())
+
+    settingsApi.status()
       .then((d) => {
         if (d.strict_auto_routing !== undefined) {
-          setStrictRouting(d.strict_auto_routing);
+          setStrictRouting(Boolean(d.strict_auto_routing));
         }
+        setRoutingError(null);
       })
-      .catch(() => {});
-      
+      .catch((err) => setRoutingError(err instanceof Error ? err.message : "Could not load routing settings"));
+
     return () => clearInterval(interval);
   }, [fetchStats]);
 
   const toggleStrictRouting = async () => {
     const newVal = !strictRouting;
     setStrictRouting(newVal);
-    const token = localStorage.getItem("istara_token");
-    const headers: Record<string, string> = { "Content-Type": "application/json" };
-    if (token) headers["Authorization"] = `Bearer ${token}`;
     try {
-      await fetch(`${API_BASE}/api/settings/strict-routing`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify({ enabled: newVal }),
-      });
+      const response = await settingsApi.toggleStrictRouting(newVal);
+      setStrictRouting(response.strict_auto_routing);
+      setRoutingError(null);
     } catch (e) {
-      console.error(e);
       setStrictRouting(!newVal);
+      setRoutingError(e instanceof Error ? e.message : "Could not update routing settings");
     }
   };
 
   useEffect(() => {
-    const token = localStorage.getItem("istara_token");
-    const headers: Record<string, string> = {};
-    if (token) headers["Authorization"] = `Bearer ${token}`;
-    fetch(`${API_BASE}/api/compute/model-warnings`, { headers })
-      .then((r) => r.json())
+    computeApi.modelWarnings()
       .then((d) => setWarnings(d.warnings || []))
       .catch(() => {});
   }, []);
@@ -148,6 +135,13 @@ export default function ComputePoolView() {
           LLM servers and relay nodes powering your agent compute
         </p>
       </div>
+
+      {(error || routingError) && (
+        <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-300">
+          <AlertTriangle size={16} className="mt-0.5 shrink-0" />
+          <span>{error || routingError}</span>
+        </div>
+      )}
 
       {/* Model Warnings — collapsed summary */}
       {warnings.length > 0 && (

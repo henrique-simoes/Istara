@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.keyword_index import KeywordIndex
@@ -75,19 +75,30 @@ async def list_memory(
 async def search_memory(
     project_id: str,
     request: Request,
-    query: str = "",
+    query: str = Query("", max_length=500),
+    q: str | None = Query(None, max_length=500),
     top_k: int = Query(20, ge=1, le=100),
-    source: Optional[str] = None,
-    file_type: Optional[str] = None,
+    source: Optional[str] = Query(None, max_length=1000),
+    file_type: Optional[str] = Query(None, max_length=32),
     db: AsyncSession = Depends(get_db),
 ):
     """Hybrid search across project memory."""
     await require_project_access(db, request, project_id, min_role="viewer")
 
-    if not query.strip():
-        return {"results": [], "query": query}
+    search_text = (query or q or "").strip()
+    if not search_text:
+        return {"results": [], "query": search_text, "total": 0}
 
-    context = await retrieve_context(project_id, query, top_k=top_k)
+    source_filter = source.strip() if source and source.strip() else None
+    file_type_filter = file_type.strip().lstrip(".").lower() if file_type and file_type.strip() else None
+
+    context = await retrieve_context(
+        project_id,
+        search_text,
+        top_k=top_k,
+        source_filter=source_filter,
+        file_type_filter=file_type_filter,
+    )
 
     return {
         "results": [
@@ -99,8 +110,12 @@ async def search_memory(
             }
             for r in context.retrieved
         ],
-        "query": query,
+        "query": search_text,
         "total": len(context.retrieved),
+        "filters": {
+            "source": source_filter,
+            "file_type": file_type_filter,
+        },
     }
 
 
@@ -176,6 +191,9 @@ async def delete_source(
 ):
     """Delete all chunks from a specific source."""
     await require_project_access(db, request, project_id, min_role="researcher")
+    source_name = source_name.strip()
+    if not source_name:
+        raise HTTPException(status_code=400, detail="Source name must not be empty")
 
     store = VectorStore(project_id)
     keyword_idx = KeywordIndex(project_id)

@@ -20,9 +20,9 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, UploadFile, File
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -340,11 +340,19 @@ async def _generate_text_fallback(
 class ChatRequest(BaseModel):
     """Chat request body."""
 
-    message: str
-    project_id: str
+    message: str = Field(..., min_length=1, max_length=20000)
+    project_id: str = Field(..., min_length=1, max_length=36)
     session_id: str | None = None
     include_history: bool = True
-    max_history: int = 20
+    max_history: int = Field(default=20, ge=0, le=200)
+
+    @field_validator("message")
+    @classmethod
+    def normalize_message(cls, value: str) -> str:
+        message = value.strip()
+        if not message:
+            raise ValueError("Message cannot be blank")
+        return message
 
 
 class ChatMessage(BaseModel):
@@ -396,12 +404,14 @@ async def chat(request: ChatRequest, http_request: Request, db: AsyncSession = D
         request.session_id = session.id
 
     # Save user message
+    user_created_at = datetime.now(timezone.utc)
     user_msg = Message(
         id=str(uuid.uuid4()),
         project_id=request.project_id,
         session_id=request.session_id,
         role="user",
         content=request.message,
+        created_at=user_created_at,
     )
     db.add(user_msg)
     await db.commit()
@@ -423,7 +433,12 @@ async def chat(request: ChatRequest, http_request: Request, db: AsyncSession = D
     agent_identity_prompt: str = ""
 
     if session:
-        preset_key = session.inference_preset.value if session.inference_preset else "medium"
+        preset_value = session.inference_preset
+        preset_key = (
+            preset_value.value if hasattr(preset_value, "value") else str(preset_value or "medium")
+        )
+        if preset_key not in INFERENCE_PRESETS:
+            preset_key = "medium"
         preset = INFERENCE_PRESETS.get(preset_key, INFERENCE_PRESETS["medium"])
 
         if preset_key == "custom":
@@ -469,7 +484,7 @@ async def chat(request: ChatRequest, http_request: Request, db: AsyncSession = D
 
         # Update session message count and last_message_at
         session.message_count = (session.message_count or 0) + 1
-        session.last_message_at = user_msg.created_at
+        session.last_message_at = user_created_at
         await db.commit()
 
     # If no agent identity loaded yet, default to istara-main
@@ -698,14 +713,27 @@ async def chat(request: ChatRequest, http_request: Request, db: AsyncSession = D
             # ── Save the full assistant response ─────────────────────
             async with async_session() as save_db:
                 assistant_content = "".join(all_text_parts)
+                assistant_created_at = datetime.now(timezone.utc)
                 assistant_msg = Message(
                     id=str(uuid.uuid4()),
                     project_id=request.project_id,
                     session_id=request.session_id,
                     role="assistant",
                     content=assistant_content,
+                    created_at=assistant_created_at,
                 )
                 save_db.add(assistant_msg)
+                if request.session_id:
+                    session_result = await save_db.execute(
+                        select(ChatSession).where(
+                            ChatSession.id == request.session_id,
+                            ChatSession.project_id == request.project_id,
+                        )
+                    )
+                    saved_session = session_result.scalar_one_or_none()
+                    if saved_session:
+                        saved_session.message_count = (saved_session.message_count or 0) + 1
+                        saved_session.last_message_at = assistant_created_at
                 await save_db.commit()
 
                 # Trigger DAG compaction asynchronously
@@ -741,14 +769,29 @@ async def chat(request: ChatRequest, http_request: Request, db: AsyncSession = D
             if all_text_parts:
                 try:
                     async with async_session() as save_db:
+                        interrupted_created_at = datetime.now(timezone.utc)
                         msg = Message(
                             id=str(uuid.uuid4()),
                             project_id=request.project_id,
                             session_id=request.session_id,
                             role="assistant",
                             content="".join(all_text_parts) + "\n\n[Response interrupted]",
+                            created_at=interrupted_created_at,
                         )
                         save_db.add(msg)
+                        if request.session_id:
+                            session_result = await save_db.execute(
+                                select(ChatSession).where(
+                                    ChatSession.id == request.session_id,
+                                    ChatSession.project_id == request.project_id,
+                                )
+                            )
+                            saved_session = session_result.scalar_one_or_none()
+                            if saved_session:
+                                saved_session.message_count = (
+                                    saved_session.message_count or 0
+                                ) + 1
+                                saved_session.last_message_at = interrupted_created_at
                         await save_db.commit()
                 except Exception:
                     pass
@@ -781,7 +824,7 @@ async def get_chat_history(
     project_id: str,
     request: Request,
     session_id: str | None = None,
-    limit: int = 50,
+    limit: int = Query(50, ge=1, le=500),
     db: AsyncSession = Depends(get_db),
 ) -> list[ChatMessage]:
     """Get chat history for a project, optionally scoped to a session."""

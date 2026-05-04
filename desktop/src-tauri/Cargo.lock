@@ -1676,10 +1676,11 @@ dependencies = [
 
 [[package]]
 name = "istara-desktop"
-version = "26.126.14"
+version = "26.151.0"
 dependencies = [
  "base64 0.22.1",
  "dirs 5.0.1",
+ "getrandom 0.2.17",
  "open",
  "serde",
  "serde_json",

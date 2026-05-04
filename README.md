@@ -46,6 +46,7 @@
 | 💬 Messaging Channels | Deploy research to Slack, Telegram, WhatsApp — managed entirely by your agents |
 | 📊 Survey Sync | Pull from SurveyMonkey, Typeform, Google Forms — synthesize thousands of responses fast |
 | 🔄 Autoresearch | Continuous self-improvement — agents optimize their own prompts and RAG parameters |
+| 🧾 Improvement Governance | Self-evolution changes are tracked with approval, evidence, metrics, rollback, and revert state |
 | ✅ Ensemble Health | Multi-model consensus, adversarial review, debate rounds — every insight rock solid |
 
 <div align="center">
@@ -237,7 +238,9 @@ ModelSkillStats(
 
 When quality drops below threshold, Istara surfaces a diff between the current prompt and the proposed revision. You approve or reject. Skills that consistently perform well earn higher health scores and priority routing.
 
-> **References:** Zhou et al. (2026) "Memento-Skills: Let Agents Design Agents" arXiv:2603.18743; Zhang et al. (2026) "Hyperagents: DGM-H Metacognitive Self-Modification for Cross-Domain Transfer" arXiv:2603.19461
+All self-improvement now runs through an **Improvement Governance** contract and **DGM-H Archive**. Reasoning memories and telemetry can be recorded automatically, while behavior-changing updates to prompts, configs, skills, agents, UI, integrations, compute, or backend code become visible proposals with evidence, metrics, approval state, lineage, parent-selection scores, and rollback/revert tracking.
+
+> **References:** Zhou et al. (2026) "Memento-Skills: Let Agents Design Agents" arXiv:2603.18743; Zhang et al. (2026) "Hyperagents: DGM-H Metacognitive Self-Modification for Cross-Domain Transfer" arXiv:2603.19461; Ouyang et al. (2026) "ReasoningBank: Scaling Agent Self-Evolving with Reasoning Memory" arXiv:2509.25140
 
 ---
 
@@ -817,7 +820,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions, code style guide,
 ## Academic References
 
 <details>
-<summary><strong>Full bibliography (17 references)</strong></summary>
+<summary><strong>Full bibliography (22 references)</strong></summary>
 
 ### Agent Self-Evolution and Design
 
@@ -845,37 +848,39 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions, code style guide,
 
 10. **Pan et al. (2024)** — "From RAG to Prompt RAG: Revisiting Retrieval-Augmented Generation for Long-Context Language Models" *ACL 2024*. Prompt RAG for injecting retrieved context at inference time.
 
+11. **Ouyang et al. (2026)** — "ReasoningBank: Scaling Agent Self-Evolving with Reasoning Memory" *arXiv:2509.25140*. Structured reasoning memory for distilling successful and failed agent trajectories into reusable strategies; implemented as Istara's shared orchestration-memory layer for Memento routing, autoresearch, and meta-agent observation.
+
 ### Retrieval-Augmented Generation
 
-11. **Lewis et al. (2020)** — "Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks" *NeurIPS 2020*. The foundational RAG paper; Istara's hybrid retrieval implements this architecture.
+12. **Lewis et al. (2020)** — "Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks" *NeurIPS 2020*. The foundational RAG paper; Istara's hybrid retrieval implements this architecture.
 
-12. **Cormack et al. (2009)** — "Reciprocal rank fusion outperforms condorcet and individual rank learning methods" *SIGIR 2009*. RRF algorithm merging vector and keyword search rankings in Istara.
+13. **Cormack et al. (2009)** — "Reciprocal rank fusion outperforms condorcet and individual rank learning methods" *SIGIR 2009*. RRF algorithm merging vector and keyword search rankings in Istara.
 
-13. **Robertson & Zaragoza (2009)** — "The Probabilistic Relevance Framework: BM25 and Beyond" *Foundations and Trends in Information Retrieval* 3(4). BM25 keyword search component of Istara's hybrid retrieval.
+14. **Robertson & Zaragoza (2009)** — "The Probabilistic Relevance Framework: BM25 and Beyond" *Foundations and Trends in Information Retrieval* 3(4). BM25 keyword search component of Istara's hybrid retrieval.
 
 ### Distributed Compute
 
-14. **Borzunov et al. (2022)** — "Petals: Collaborative Inference and Fine-tuning of Large Models" *arXiv:2209.01188*. Distributed inference architecture; Istara's Compute Relay is inspired by Petals.
+15. **Borzunov et al. (2022)** — "Petals: Collaborative Inference and Fine-tuning of Large Models" *arXiv:2209.01188*. Distributed inference architecture; Istara's Compute Relay is inspired by Petals.
 
-15. **Borzunov et al. (2023)** — "Distributed Inference and Fine-tuning of Large Language Models Over the Internet" *NeurIPS 2023*.
+16. **Borzunov et al. (2023)** — "Distributed Inference and Fine-tuning of Large Language Models Over the Internet" *NeurIPS 2023*.
 
 ### Survey and Interview Channels
 
-16. **AURA (2025)** — "AURA: Adaptive User Research Assistant" *arXiv:2510.27126*. Adaptive interview agent architecture deployed by Istara across messaging channels.
+17. **AURA (2025)** — "AURA: Adaptive User Research Assistant" *arXiv:2510.27126*. Adaptive interview agent architecture deployed by Istara across messaging channels.
 
 ### Research Methodology
 
-17. **Sharon & Gadbaw (2018)** — "Atomic Research" WeWork Research Operations. The Nugget→Fact→Insight→Recommendation evidence chain implemented as Istara's core data model.
+18. **Sharon & Gadbaw (2018)** — "Atomic Research" WeWork Research Operations. The Nugget→Fact→Insight→Recommendation evidence chain implemented as Istara's core data model.
 
-18. **Yablonski, J. (2020)** — *Laws of UX: Design Principles for Persuasive and Ethical Products*. O'Reilly Media. The 30 Laws of UX audited by Istara's compliance checker.
+19. **Yablonski, J. (2020)** — *Laws of UX: Design Principles for Persuasive and Ethical Products*. O'Reilly Media. The 30 Laws of UX audited by Istara's compliance checker.
 
-19. **Karpathy, A. (2026)** — "autoresearch: autonomous experiment loops for AI systems" github.com/karpathy/autoresearch. Autonomous optimization framework; implemented as Istara's autoresearch engine.
+20. **Karpathy, A. (2026)** — "autoresearch: autonomous experiment loops for AI systems" github.com/karpathy/autoresearch. Autonomous optimization framework; implemented as Istara's autoresearch engine.
 
 ### Interoperability Standards
 
-20. **Anthropic (2024)** — "Model Context Protocol" modelcontextprotocol.io. Open standard for tool-augmented LLM interactions; Istara exposes an MCP server.
+21. **Anthropic (2024)** — "Model Context Protocol" modelcontextprotocol.io. Open standard for tool-augmented LLM interactions; Istara exposes an MCP server.
 
-21. **Google (2025)** — "Agent-to-Agent Protocol (A2A)" google.github.io/A2A. Agent discovery and communication standard; Istara publishes an A2A discovery manifest.
+22. **Google (2025)** — "Agent-to-Agent Protocol (A2A)" google.github.io/A2A. Agent discovery and communication standard; Istara publishes an A2A discovery manifest.
 
 </details>
 

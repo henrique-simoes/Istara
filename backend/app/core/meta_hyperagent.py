@@ -192,6 +192,7 @@ class MetaHyperagent:
             "skill_selection": {},
             "quality_eval": {},
             "agent_capabilities": {},
+            "reasoning_bank": {},
         }
 
         # 1. Task routing — current keyword config
@@ -280,6 +281,14 @@ class MetaHyperagent:
             }
         except Exception as exc:
             logger.debug(f"Meta-hyperagent: agent_capabilities observe failed: {exc}")
+
+        # 6. ReasoningBank — shared success/failure memory for self-evolution.
+        try:
+            from app.core.reasoning_bank import reasoning_bank
+
+            observation["reasoning_bank"] = await reasoning_bank.summary()
+        except Exception as exc:
+            logger.debug(f"Meta-hyperagent: reasoning_bank observe failed: {exc}")
 
         self._recent_observations.append(observation)
         # Keep last 100 observations in memory
@@ -436,6 +445,14 @@ class MetaHyperagent:
                     )
                 except Exception:
                     pass
+
+            try:
+                from app.core.improvement_governance import improvement_governance
+
+                for proposal in new_proposals:
+                    await improvement_governance.register_meta_proposal(asdict(proposal))
+            except Exception as exc:
+                logger.debug(f"Meta-hyperagent governance registration skipped: {exc}")
 
         return new_proposals
 
@@ -698,8 +715,24 @@ class MetaHyperagent:
 
     # -- Observation loop ---------------------------------------------------
 
+    @property
+    def is_running(self) -> bool:
+        """Whether the observation loop task is active."""
+        return bool(self._running and self._task and not self._task.done())
+
+    def start(self) -> asyncio.Task:
+        """Start the observation loop and retain the task handle."""
+        if self._task and not self._task.done():
+            return self._task
+        self.load_confirmed_overrides()
+        self._task = asyncio.create_task(self.start_observation_loop())
+        return self._task
+
     async def start_observation_loop(self) -> None:
         """Background loop that observes and analyzes at configured intervals."""
+        current_task = asyncio.current_task()
+        if current_task is not None and (self._task is None or self._task.done()):
+            self._task = current_task
         self._running = True
         interval_secs = settings.meta_hyperagent_observation_interval_hours * 3600
         logger.info(
@@ -707,25 +740,31 @@ class MetaHyperagent:
             f"(interval={settings.meta_hyperagent_observation_interval_hours}h)"
         )
 
-        while self._running:
-            try:
-                await self.observe_cycle()
-                await self.analyze_and_propose()
-            except Exception as exc:
-                logger.error(f"Meta-hyperagent observation cycle error: {exc}")
+        try:
+            while self._running:
+                try:
+                    await self.observe_cycle()
+                    await self.analyze_and_propose()
+                except Exception as exc:
+                    logger.error(f"Meta-hyperagent observation cycle error: {exc}")
 
-            try:
+                if not self._running:
+                    break
                 await asyncio.sleep(interval_secs)
-            except asyncio.CancelledError:
-                break
-
-        logger.info("Meta-hyperagent observation loop stopped.")
+        except asyncio.CancelledError:
+            logger.info("Meta-hyperagent observation loop cancelled.")
+        finally:
+            self._running = False
+            if self._task is current_task:
+                self._task = None
+            logger.info("Meta-hyperagent observation loop stopped.")
 
     def stop(self) -> None:
         """Stop the observation loop."""
         self._running = False
         if self._task and not self._task.done():
             self._task.cancel()
+        self._task = None
 
     # -- Query helpers ------------------------------------------------------
 

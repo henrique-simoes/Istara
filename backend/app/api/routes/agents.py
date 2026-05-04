@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import hashlib
 import logging
+import re
 from pathlib import Path
 
 
@@ -12,8 +14,6 @@ def _get_version() -> str:
         return vf.read_text().strip() if vf.exists() else "dev"
     except Exception:
         return "dev"
-import shutil
-from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse
@@ -25,6 +25,7 @@ from app.agents.orchestrator import meta_orchestrator
 from app.agents.ux_eval_agent import ux_eval_agent
 from app.agents.user_sim_agent import user_sim_agent
 from app.config import settings
+from app.core.improvement_governance import improvement_governance
 from app.core.permissions import require_project_access
 from app.core.resource_governor import governor
 from app.core.security_middleware import require_admin_from_request
@@ -35,6 +36,57 @@ from app.services import agent_service, a2a
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+AVATAR_CONTENT_TYPES = {
+    "image/png": ".png",
+    "image/jpeg": ".jpg",
+    "image/webp": ".webp",
+    "image/gif": ".gif",
+}
+_SAFE_AVATAR_ID_RE = re.compile(r"[^A-Za-z0-9_-]+")
+
+
+def _avatar_filename(agent_id: str, ext: str) -> str:
+    safe_id = _SAFE_AVATAR_ID_RE.sub("_", agent_id).strip("_")[:80] or "agent"
+    digest = hashlib.sha256(agent_id.encode("utf-8")).hexdigest()[:12]
+    return f"{safe_id}-{digest}{ext}"
+
+
+async def _read_upload_with_limit(file: UploadFile, max_bytes: int) -> bytes:
+    chunks: list[bytes] = []
+    total = 0
+    while True:
+        chunk = await file.read(1024 * 1024)
+        if not chunk:
+            break
+        total += len(chunk)
+        if total > max_bytes:
+            raise HTTPException(
+                status_code=413,
+                detail=f"Avatar exceeds maximum size of {max_bytes} bytes",
+            )
+        chunks.append(chunk)
+    if total == 0:
+        raise HTTPException(status_code=400, detail="Avatar file is empty")
+    return b"".join(chunks)
+
+
+def _resolve_avatar_path(avatar_path: str) -> Path:
+    root = Path(settings.agent_avatars_dir).resolve()
+    candidate = Path(avatar_path)
+    if candidate.is_absolute():
+        resolved = candidate.resolve()
+    else:
+        resolved = candidate.resolve()
+        try:
+            resolved.relative_to(root)
+        except ValueError:
+            resolved = (root / candidate).resolve()
+    try:
+        resolved.relative_to(root)
+    except ValueError:
+        raise HTTPException(status_code=403, detail="Avatar path is outside avatar storage")
+    return resolved
 
 
 async def _require_context_access(
@@ -127,8 +179,12 @@ async def get_orchestrator_status():
 
 
 @router.get("/agents/log/recent")
-async def get_agent_log(limit: int = 50):
-    return {"log": meta_orchestrator.get_work_log(limit)}
+async def get_agent_log(agent_id: str | None = None, limit: int = 50):
+    limit = max(1, min(limit, 100))
+    log = meta_orchestrator.get_work_log(limit=limit)
+    if agent_id:
+        log = [entry for entry in log if entry.get("agent_id") == agent_id]
+    return {"log": log[-limit:]}
 
 
 @router.post("/agents", status_code=201)
@@ -249,13 +305,15 @@ async def restart_agent(agent_id: str, request: Request, db: AsyncSession = Depe
     """Reset an agent from ERROR state back to IDLE, clearing error counters."""
     require_admin_from_request(request)
     from app.models.agent import AgentState, HeartbeatStatus
-    agent = await agent_service.get_agent(db, agent_id)
+    from app.models.agent import Agent
+
+    result = await db.execute(select(Agent).where(Agent.id == agent_id))
+    agent = result.scalar_one_or_none()
     if not agent:
         raise HTTPException(status_code=404, detail="Agent not found")
     agent.state = AgentState.IDLE
     agent.heartbeat_status = HeartbeatStatus.HEALTHY
     agent.error_count = 0
-    agent.consecutive_failures = getattr(agent, "consecutive_failures", 0)
     if hasattr(agent, "consecutive_failures"):
         agent.consecutive_failures = 0
     await db.commit()
@@ -274,11 +332,19 @@ async def set_agent_scope(
     """Set an agent's scope to 'universal' or 'project'.
     Promoting to universal requires admin role in team mode."""
     require_admin_from_request(request)
-    body = await request.json()
-    new_scope = body.get("scope", "project")
-    project_id = body.get("project_id", "")
+    from app.models.agent import Agent
 
-    agent = await agent_service.get_agent(db, agent_id)
+    body = await request.json()
+    new_scope = str(body.get("scope") or "")
+    project_id = str(body.get("project_id") or "")
+
+    if new_scope not in {"universal", "project"}:
+        raise HTTPException(status_code=422, detail="scope must be 'universal' or 'project'")
+    if new_scope == "project" and not project_id:
+        raise HTTPException(status_code=422, detail="project_id is required for project-scoped agents")
+
+    result = await db.execute(select(Agent).where(Agent.id == agent_id))
+    agent = result.scalar_one_or_none()
     if not agent:
         raise HTTPException(status_code=404, detail="Agent not found")
 
@@ -296,7 +362,10 @@ async def set_agent_scope(
 async def request_promotion(agent_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     """Submit a request to promote a project-scoped agent to universal.
     Creates a notification for admins to review."""
-    agent = await agent_service.get_agent(db, agent_id)
+    from app.models.agent import Agent
+
+    result = await db.execute(select(Agent).where(Agent.id == agent_id))
+    agent = result.scalar_one_or_none()
     if not agent:
         raise HTTPException(status_code=404, detail="Agent not found")
 
@@ -308,12 +377,14 @@ async def request_promotion(agent_id: str, request: Request, db: AsyncSession = 
     import uuid
     notif = Notification(
         id=str(uuid.uuid4()),
+        type="agent_promotion_request",
         title=f"Agent Promotion Request: {agent.name}",
-        body=f"A user has requested that agent '{agent.name}' be promoted from project scope to universal scope.",
+        message=f"A user has requested that agent '{agent.name}' be promoted from project scope to universal scope.",
         category="agent_promotion",
         severity="info",
-        source_type="agent",
-        source_id=agent_id,
+        agent_id=agent_id,
+        action_type="review_agent_promotion",
+        action_target=agent_id,
     )
     db.add(notif)
     await db.commit()
@@ -336,17 +407,16 @@ async def upload_avatar(
     if not agent:
         raise HTTPException(status_code=404, detail="Agent not found")
 
-    if file.content_type not in ("image/png", "image/jpeg", "image/webp", "image/gif"):
+    ext = AVATAR_CONTENT_TYPES.get(file.content_type or "")
+    if not ext:
         raise HTTPException(status_code=400, detail="Avatar must be PNG, JPEG, WebP, or GIF")
 
-    ext = file.filename.split(".")[-1] if file.filename else "png"
-    filename = f"{agent_id}.{ext}"
-    avatar_dir = Path(settings.agent_avatars_dir)
+    content = await _read_upload_with_limit(file, settings.avatar_max_bytes)
+    filename = _avatar_filename(agent_id, ext)
+    avatar_dir = Path(settings.agent_avatars_dir).resolve()
     avatar_dir.mkdir(parents=True, exist_ok=True)
     dest = avatar_dir / filename
-
-    with open(dest, "wb") as f:
-        shutil.copyfileobj(file.file, f)
+    dest.write_bytes(content)
 
     await agent_service.update_agent(db, agent_id, {"avatar_path": str(dest)})
     return {"avatar_path": str(dest)}
@@ -358,7 +428,7 @@ async def get_avatar(agent_id: str, db: AsyncSession = Depends(get_db)):
     agent = await agent_service.get_agent(db, agent_id)
     if not agent or not agent.get("avatar_path"):
         raise HTTPException(status_code=404, detail="No avatar found")
-    path = Path(agent["avatar_path"])
+    path = _resolve_avatar_path(agent["avatar_path"])
     if not path.exists():
         raise HTTPException(status_code=404, detail="Avatar file missing")
     return FileResponse(path)
@@ -511,6 +581,10 @@ async def promote_learning(
     result = await self_evolution.promote_learning(agent_id, learning_id, target_file)
     if not result.get("success"):
         raise HTTPException(status_code=400, detail=result.get("error", "Promotion failed"))
+    try:
+        await improvement_governance.register_self_evolution_promotion(result, applied=True)
+    except Exception:
+        pass
     return result
 
 
@@ -520,6 +594,11 @@ async def auto_evolve(agent_id: str, request: Request):
     require_admin_from_request(request)
     from app.core.self_evolution import self_evolution
     promotions = await self_evolution.auto_evolve(agent_id)
+    for promotion in promotions:
+        try:
+            await improvement_governance.register_self_evolution_promotion(promotion, applied=True)
+        except Exception:
+            pass
     return {
         "agent_id": agent_id,
         "promotions_applied": len(promotions),
@@ -651,6 +730,30 @@ async def approve_proposal(
     except Exception:
         pass
 
+    try:
+        governance = await improvement_governance.get_proposal_by_source(
+            source_system="memento_agent_factory",
+            source_id=proposal_id,
+        )
+        if governance and governance.status in {"draft", "proposed"}:
+            await improvement_governance.approve_proposal(
+                governance.id,
+                reviewer_id="agents-ui",
+                note="Approved via Agent Creation UI",
+            )
+        governance = await improvement_governance.get_proposal_by_source(
+            source_system="memento_agent_factory",
+            source_id=proposal_id,
+        )
+        if governance and governance.status == "approved":
+            await improvement_governance.apply_proposal(
+                governance.id,
+                actor_id="agents-ui",
+                evidence={"agent_id": agent.get("id"), "agent_name": agent.get("name")},
+            )
+    except Exception:
+        pass
+
     return {
         "status": "approved",
         "proposal": proposal,
@@ -673,6 +776,20 @@ async def reject_proposal(
     proposal = factory.reject_proposal(proposal_id, reason)
     if not proposal:
         raise HTTPException(status_code=404, detail="Proposal not found or not pending")
+
+    try:
+        governance = await improvement_governance.get_proposal_by_source(
+            source_system="memento_agent_factory",
+            source_id=proposal_id,
+        )
+        if governance and governance.status in {"draft", "proposed", "approved"}:
+            await improvement_governance.reject_proposal(
+                governance.id,
+                reviewer_id="agents-ui",
+                reason=reason,
+            )
+    except Exception:
+        pass
 
     return {"status": "rejected", "proposal": proposal}
 
@@ -873,8 +990,9 @@ class AgentExportData(BaseModel):
 
 
 @router.get("/agents/{agent_id}/export")
-async def export_agent(agent_id: str, db: AsyncSession = Depends(get_db)):
+async def export_agent(agent_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     """Export an agent's configuration as a portable JSON config."""
+    require_admin_from_request(request)
     agent = await agent_service.get_agent(db, agent_id)
     if not agent:
         raise HTTPException(status_code=404, detail="Agent not found")

@@ -47,7 +47,7 @@ export default function FigmaTab() {
       await interfacesApi.configure.stitch({ api_key: stitchKey.trim() });
       setStitchSaved(true);
       setStitchKey("");
-      useInterfacesStore.getState().fetchStatus();
+      useInterfacesStore.getState().fetchStatus(activeProjectId || undefined);
     } catch (e: any) {
       setStitchError(e.message);
     } finally {
@@ -64,7 +64,7 @@ export default function FigmaTab() {
       await interfacesApi.configure.figma({ api_token: apiToken.trim() });
       setTokenSaved(true);
       setApiToken("");
-      useInterfacesStore.getState().fetchStatus();
+      useInterfacesStore.getState().fetchStatus(activeProjectId || undefined);
     } catch (e: any) {
       setTokenError(e.message);
     } finally {
@@ -251,7 +251,7 @@ export default function FigmaTab() {
 
               {importResult && (
                 <div className="mt-3 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg text-sm text-green-700 dark:text-green-400">
-                  Import successful. {importResult.screens_imported || 0} screen(s) imported.
+                  Import successful. {importResult.screens_imported || importResult.screen_ids?.length || 0} screen(s) imported.
                 </div>
               )}
               {importError && (

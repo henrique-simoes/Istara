@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, Pencil, Trash2, Clock, Play, Pause } from "lucide-react";
+import { Plus, Trash2, Clock, Play, Pause } from "lucide-react";
 import { useLoopsStore } from "@/stores/loopsStore";
+import { useProjectStore } from "@/stores/projectStore";
 import { cn } from "@/lib/utils";
 import CronBuilder from "./CronBuilder";
 
@@ -41,21 +42,20 @@ function formatTimeUntil(dateStr: string | null): string {
 }
 
 export default function SchedulesTab() {
-  const { health, loading, createCustomLoop, fetchHealth } = useLoopsStore();
+  const { schedules, loading, createSchedule, updateSchedule, deleteSchedule, fetchSchedules } = useLoopsStore();
+  const { projects, fetchProjects } = useProjectStore();
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<ScheduleForm>({ ...EMPTY_FORM });
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchHealth();
-  }, [fetchHealth]);
-
-  // Filter schedules from health (source_type = "schedule" or "custom")
-  const schedules = health.filter((h) => h.source_type === "schedule" || h.source_type === "custom");
+    fetchSchedules();
+    fetchProjects();
+  }, [fetchSchedules, fetchProjects]);
 
   const handleCreate = async () => {
-    if (!form.name.trim() || !form.skill_name.trim()) return;
-    await createCustomLoop({
+    if (!form.name.trim() || !form.project_id.trim()) return;
+    await createSchedule({
       name: form.name,
       skill_name: form.skill_name,
       project_id: form.project_id,
@@ -109,6 +109,19 @@ export default function SchedulesTab() {
             </div>
           </div>
           <div>
+            <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Project</label>
+            <select
+              value={form.project_id}
+              onChange={(e) => setForm({ ...form, project_id: e.target.value })}
+              className="w-full px-3 py-1.5 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-istara-500"
+            >
+              <option value="">Select project...</option>
+              {projects.map((project) => (
+                <option key={project.id} value={project.id}>{project.name}</option>
+              ))}
+            </select>
+          </div>
+          <div>
             <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Description</label>
             <input
               type="text"
@@ -125,7 +138,7 @@ export default function SchedulesTab() {
           <div className="flex items-center gap-2 pt-2">
             <button
               onClick={handleCreate}
-              disabled={!form.name.trim() || !form.skill_name.trim()}
+              disabled={!form.name.trim() || !form.project_id.trim()}
               className="px-4 py-1.5 text-sm font-medium rounded-lg bg-istara-600 text-white hover:bg-istara-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Create
@@ -151,28 +164,57 @@ export default function SchedulesTab() {
         <div className="space-y-2">
           {schedules.map((schedule) => (
             <div
-              key={`${schedule.source_type}-${schedule.source_id}`}
+              key={schedule.id}
               className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4"
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3 min-w-0">
                   <span className={cn(
                     "w-2 h-2 rounded-full shrink-0",
-                    schedule.status === "active" ? "bg-green-500" :
-                    schedule.status === "paused" ? "bg-yellow-500" : "bg-red-500"
+                    schedule.enabled ? "bg-green-500" : "bg-yellow-500"
                   )} />
                   <div className="min-w-0">
                     <h3 className="text-sm font-medium text-slate-900 dark:text-white truncate">
-                      {schedule.source_name}
+                      {schedule.name}
                     </h3>
                     <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                      Interval: {schedule.interval_seconds}s
+                      {schedule.cron_expression}
+                      {schedule.skill_name ? ` - ${schedule.skill_name}` : ""}
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
-                  <span>Last: {formatTimeAgo(schedule.last_execution_at)}</span>
-                  <span>Next: {formatTimeUntil(schedule.next_expected_at)}</span>
+                  <span>Last: {formatTimeAgo(schedule.last_run)}</span>
+                  <span>Next: {formatTimeUntil(schedule.next_run)}</span>
+                  <button
+                    type="button"
+                    onClick={() => updateSchedule(schedule.id, { enabled: !schedule.enabled })}
+                    className={cn(
+                      "p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800",
+                      schedule.enabled ? "text-yellow-600 dark:text-yellow-400" : "text-green-600 dark:text-green-400"
+                    )}
+                    aria-label={schedule.enabled ? "Pause schedule" : "Resume schedule"}
+                  >
+                    {schedule.enabled ? <Pause size={14} /> : <Play size={14} />}
+                  </button>
+                  {deleteConfirm === schedule.id ? (
+                    <button
+                      type="button"
+                      onClick={() => deleteSchedule(schedule.id).then(() => setDeleteConfirm(null))}
+                      className="px-2 py-1 text-[10px] font-medium rounded bg-red-600 text-white hover:bg-red-700"
+                    >
+                      Confirm
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setDeleteConfirm(schedule.id)}
+                      className="p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-red-600"
+                      aria-label="Delete schedule"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  )}
                 </div>
               </div>
             </div>

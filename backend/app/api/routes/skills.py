@@ -7,6 +7,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from app.core.agent import agent
+from app.core.improvement_governance import improvement_governance
 from app.core.permissions import require_global_admin, require_project_access
 from app.models.database import get_db
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -147,6 +148,29 @@ async def approve_creation_proposal(proposal_id: str, request: Request):
     except Exception as e:
         # Skill file was written but runtime registration failed — not fatal
         pass
+    try:
+        governance = await improvement_governance.get_proposal_by_source(
+            source_system="memento_skill_factory",
+            source_id=proposal_id,
+        )
+        if governance and governance.status in {"draft", "proposed"}:
+            await improvement_governance.approve_proposal(
+                governance.id,
+                reviewer_id="skills-ui",
+                note="Approved via Skill Creation UI",
+            )
+        governance = await improvement_governance.get_proposal_by_source(
+            source_system="memento_skill_factory",
+            source_id=proposal_id,
+        )
+        if governance and governance.status == "approved":
+            await improvement_governance.apply_proposal(
+                governance.id,
+                actor_id="skills-ui",
+                evidence={"skill_name": result["name"]},
+            )
+    except Exception:
+        pass
 
     return {"status": "approved", "proposal_id": proposal_id, "skill_name": result["name"]}
 
@@ -167,6 +191,19 @@ async def reject_creation_proposal(proposal_id: str, request: Request, reason: s
     require_global_admin(request)
     if not skill_manager.reject_creation_proposal(proposal_id, reason):
         raise HTTPException(status_code=404, detail="Creation proposal not found or not pending")
+    try:
+        governance = await improvement_governance.get_proposal_by_source(
+            source_system="memento_skill_factory",
+            source_id=proposal_id,
+        )
+        if governance and governance.status in {"draft", "proposed", "approved"}:
+            await improvement_governance.reject_proposal(
+                governance.id,
+                reviewer_id="skills-ui",
+                reason=reason,
+            )
+    except Exception:
+        pass
     return {"status": "rejected", "proposal_id": proposal_id}
 
 
@@ -246,6 +283,29 @@ async def approve_proposal(proposal_id: str, request: Request):
     require_global_admin(request)
     if not skill_manager.approve_proposal(proposal_id):
         raise HTTPException(status_code=404, detail="Proposal not found or not pending")
+    try:
+        governance = await improvement_governance.get_proposal_by_source(
+            source_system="skill_evolution",
+            source_id=proposal_id,
+        )
+        if governance and governance.status in {"draft", "proposed"}:
+            await improvement_governance.approve_proposal(
+                governance.id,
+                reviewer_id="skills-ui",
+                note="Approved via Skill Evolution UI",
+            )
+        governance = await improvement_governance.get_proposal_by_source(
+            source_system="skill_evolution",
+            source_id=proposal_id,
+        )
+        if governance and governance.status == "approved":
+            await improvement_governance.apply_proposal(
+                governance.id,
+                actor_id="skills-ui",
+                evidence={"skill_proposal_id": proposal_id},
+            )
+    except Exception:
+        pass
     return {"status": "approved", "proposal_id": proposal_id}
 
 
@@ -255,6 +315,19 @@ async def reject_proposal(proposal_id: str, request: Request, reason: str = ""):
     require_global_admin(request)
     if not skill_manager.reject_proposal(proposal_id, reason):
         raise HTTPException(status_code=404, detail="Proposal not found or not pending")
+    try:
+        governance = await improvement_governance.get_proposal_by_source(
+            source_system="skill_evolution",
+            source_id=proposal_id,
+        )
+        if governance and governance.status in {"draft", "proposed", "approved"}:
+            await improvement_governance.reject_proposal(
+                governance.id,
+                reviewer_id="skills-ui",
+                reason=reason,
+            )
+    except Exception:
+        pass
     return {"status": "rejected", "proposal_id": proposal_id}
 
 

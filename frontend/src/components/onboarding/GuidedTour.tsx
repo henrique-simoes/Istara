@@ -5,8 +5,6 @@ import { useTourStore, TOUR_TOTAL_STEPS } from "@/stores/tourStore";
 import { settings as settingsApi } from "@/lib/api";
 import TourPopover from "./TourPopover";
 
-import { API_BASE } from "@/lib/runtimeConfig";
-
 interface GuidedTourProps {
   setActiveView: (view: string) => void;
   currentView: string;
@@ -239,6 +237,10 @@ const STEPS: StepDef[] = [
 
 export default function GuidedTour({ setActiveView, currentView }: GuidedTourProps) {
   const tour = useTourStore();
+  const setTeamModeEnabled = useTourStore((s) => s.setTeamModeEnabled);
+  const setConnectionStringGenerated = useTourStore((s) => s.setConnectionStringGenerated);
+  const setLlmStatus = useTourStore((s) => s.setLlmStatus);
+  const completeTour = useTourStore((s) => s.completeTour);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [showResume, setShowResume] = useState(false);
   const autoDismissRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -288,10 +290,10 @@ export default function GuidedTour({ setActiveView, currentView }: GuidedTourPro
   useEffect(() => {
     const handleTeamToggle = (e: Event) => {
       const detail = (e as CustomEvent).detail;
-      tour.setTeamModeEnabled(detail?.enabled ?? false);
+      setTeamModeEnabled(detail?.enabled ?? false);
     };
     const handleConnString = () => {
-      tour.setConnectionStringGenerated();
+      setConnectionStringGenerated();
     };
 
     window.addEventListener("istara:team-mode-toggled", handleTeamToggle);
@@ -300,7 +302,7 @@ export default function GuidedTour({ setActiveView, currentView }: GuidedTourPro
       window.removeEventListener("istara:team-mode-toggled", handleTeamToggle);
       window.removeEventListener("istara:connection-string-generated", handleConnString);
     };
-  }, [tour]);
+  }, [setConnectionStringGenerated, setTeamModeEnabled]);
 
   // Poll LLM status on step 8
   useEffect(() => {
@@ -315,7 +317,7 @@ export default function GuidedTour({ setActiveView, currentView }: GuidedTourPro
         const connected = status?.services?.llm === "connected";
         const provider = status?.provider || "";
         const model = status?.config?.model || "";
-        tour.setLlmStatus(connected, provider, model);
+        setLlmStatus(connected, provider, model);
       } catch {}
     };
 
@@ -325,17 +327,17 @@ export default function GuidedTour({ setActiveView, currentView }: GuidedTourPro
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
     };
-  }, [tour.active, step]);
+  }, [tour.active, step, setLlmStatus]);
 
   // Auto-dismiss final step after 10 seconds
   useEffect(() => {
     if (tour.active && step === 9) {
-      autoDismissRef.current = setTimeout(() => tour.completeTour(), 10000);
+      autoDismissRef.current = setTimeout(() => completeTour(), 10000);
     }
     return () => {
       if (autoDismissRef.current) clearTimeout(autoDismissRef.current);
     };
-  }, [tour.active, step]);
+  }, [completeTour, tour.active, step]);
 
   // Not active — nothing to render
   if (!tour.active) return null;
@@ -371,7 +373,7 @@ export default function GuidedTour({ setActiveView, currentView }: GuidedTourPro
         className="fixed bottom-6 right-6 z-[999] px-4 py-2 rounded-full bg-istara-600 text-white text-sm font-medium shadow-lg hover:bg-istara-700 transition animate-bounce"
         aria-label="Resume onboarding tour"
       >
-        🐾 Resume Tour
+        Resume Tour
       </button>
     );
   }

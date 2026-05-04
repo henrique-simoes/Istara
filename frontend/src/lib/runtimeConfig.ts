@@ -1,5 +1,13 @@
 const DEFAULT_BACKEND_PORT = "8000";
 
+function readPublicRuntimeSetting(name: "NEXT_PUBLIC_API_URL" | "NEXT_PUBLIC_WS_URL"): string {
+  return process.env[name]?.trim() || "";
+}
+
+function withoutTrailingSlash(value: string): string {
+  return value.replace(/\/$/, "");
+}
+
 function browserOriginWithPort(port: string): string | null {
   if (typeof window === "undefined") return null;
   const { protocol, hostname } = window.location;
@@ -8,14 +16,14 @@ function browserOriginWithPort(port: string): string | null {
 }
 
 export function getApiBase(): string {
-  const configured = process.env.NEXT_PUBLIC_API_URL?.trim();
-  if (configured) return configured.replace(/\/$/, "");
+  const publicApiUrl = readPublicRuntimeSetting("NEXT_PUBLIC_API_URL");
+  if (publicApiUrl) return withoutTrailingSlash(publicApiUrl);
   return browserOriginWithPort(DEFAULT_BACKEND_PORT) || "http://localhost:8000";
 }
 
 export function getWsBase(): string {
-  const configured = process.env.NEXT_PUBLIC_WS_URL?.trim();
-  if (configured) return configured.replace(/\/$/, "");
+  const publicWsUrl = readPublicRuntimeSetting("NEXT_PUBLIC_WS_URL");
+  if (publicWsUrl) return withoutTrailingSlash(publicWsUrl);
 
   if (typeof window !== "undefined") {
     const { protocol, hostname } = window.location;

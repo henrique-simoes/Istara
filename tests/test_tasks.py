@@ -1,11 +1,16 @@
 """Tests for Tasks API routes — CRUD, move, attach/detach, lock/unlock."""
 
+import uuid
+
 import pytest
 from httpx import AsyncClient, ASGITransport
 from app.main import app
 from app.config import settings
-from app.models.database import init_db
+from app.models.database import async_session, init_db
 from app.core.auth import create_token
+from app.models.document import Document, DocumentStatus
+from app.models.project import Project
+from app.models.task import Task, TaskStatus
 
 
 @pytest.fixture(autouse=True)
@@ -23,6 +28,41 @@ def auth_headers():
         settings.jwt_secret = "test-secret"
     token = create_token("user1", "testuser", "admin")
     return {"Authorization": f"Bearer {token}"}
+
+
+async def _seed_project(name: str = "Tasks Test Project") -> Project:
+    project = Project(id=str(uuid.uuid4()), name=f"{name} {uuid.uuid4()}")
+    async with async_session() as db:
+        db.add(project)
+        await db.commit()
+        await db.refresh(project)
+    return project
+
+
+async def _seed_document(project_id: str, title: str = "Task Document") -> Document:
+    doc = Document(
+        id=str(uuid.uuid4()),
+        project_id=project_id,
+        title=title,
+        file_name=f"{title.lower().replace(' ', '-')}.txt",
+        file_type=".txt",
+        status=DocumentStatus.READY,
+        content_text="Document evidence",
+    )
+    async with async_session() as db:
+        db.add(doc)
+        await db.commit()
+        await db.refresh(doc)
+    return doc
+
+
+async def _seed_task(project_id: str, title: str = "Seeded Task") -> Task:
+    task = Task(id=str(uuid.uuid4()), project_id=project_id, title=title, status=TaskStatus.BACKLOG)
+    async with async_session() as db:
+        db.add(task)
+        await db.commit()
+        await db.refresh(task)
+    return task
 
 
 @pytest.mark.asyncio
@@ -81,12 +121,13 @@ async def test_task_unlock_nonexistent_returns_404(auth_headers):
 async def test_human_approval_moves_review_task_to_done(auth_headers):
     """Only a human review action moves an In Review task to Done."""
     await init_db()
+    project = await _seed_project("Review Flow")
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         created = await ac.post(
             "/api/tasks",
             headers=auth_headers,
-            json={"project_id": "review-flow-project", "title": "Approve reviewed work"},
+            json={"project_id": project.id, "title": "Approve reviewed work"},
         )
         assert created.status_code == 201
         task_id = created.json()["id"]
@@ -115,12 +156,13 @@ async def test_human_approval_moves_review_task_to_done(auth_headers):
 async def test_done_task_revision_returns_to_backlog_with_feedback(auth_headers):
     """A Done task can be flagged later and must leave Done for agent action."""
     await init_db()
+    project = await _seed_project("Revision Flow")
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         created = await ac.post(
             "/api/tasks",
             headers=auth_headers,
-            json={"project_id": "review-flow-project-2", "title": "Reopen wrong work"},
+            json={"project_id": project.id, "title": "Reopen wrong work"},
         )
         task_id = created.json()["id"]
         await ac.post(f"/api/tasks/{task_id}/move?status=in_review", headers=auth_headers)
@@ -149,12 +191,13 @@ async def test_done_task_revision_returns_to_backlog_with_feedback(auth_headers)
 async def test_revision_cannot_send_task_back_to_review(auth_headers):
     """Rejected work must return to backlog or in progress, not In Review."""
     await init_db()
+    project = await _seed_project("Invalid Revision Target")
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         created = await ac.post(
             "/api/tasks",
             headers=auth_headers,
-            json={"project_id": "review-flow-project-3", "title": "Invalid revision target"},
+            json={"project_id": project.id, "title": "Invalid revision target"},
         )
         task_id = created.json()["id"]
         await ac.post(f"/api/tasks/{task_id}/move?status=in_review", headers=auth_headers)
@@ -170,12 +213,13 @@ async def test_revision_cannot_send_task_back_to_review(auth_headers):
 async def test_patch_cannot_mark_task_done(auth_headers):
     """Generic task patching cannot bypass the human review approval path."""
     await init_db()
+    project = await _seed_project("Patch Done Bypass")
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         created = await ac.post(
             "/api/tasks",
             headers=auth_headers,
-            json={"project_id": "review-flow-project-4", "title": "No patch done bypass"},
+            json={"project_id": project.id, "title": "No patch done bypass"},
         )
         task_id = created.json()["id"]
         response = await ac.patch(
@@ -184,3 +228,45 @@ async def test_patch_cannot_mark_task_done(auth_headers):
             json={"status": "done"},
         )
         assert response.status_code == 409
+
+
+@pytest.mark.asyncio
+async def test_task_create_rejects_foreign_input_document(auth_headers):
+    """Task inputs must belong to the same project as the task."""
+    await init_db()
+    project = await _seed_project("Task Project")
+    other_project = await _seed_project("Other Document Project")
+    foreign_doc = await _seed_document(other_project.id, "Foreign Evidence")
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.post(
+            "/api/tasks",
+            headers=auth_headers,
+            json={
+                "project_id": project.id,
+                "title": "Analyze local documents only",
+                "input_document_ids": [foreign_doc.id],
+            },
+        )
+
+    assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_task_attach_rejects_foreign_document(auth_headers):
+    """Attach/detach endpoints must not link documents from another project."""
+    await init_db()
+    project = await _seed_project("Attach Project")
+    other_project = await _seed_project("Foreign Attach Project")
+    task = await _seed_task(project.id)
+    foreign_doc = await _seed_document(other_project.id, "Attach Foreign Evidence")
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.post(
+            f"/api/tasks/{task.id}/attach?document_id={foreign_doc.id}&direction=input",
+            headers=auth_headers,
+        )
+
+    assert response.status_code == 404

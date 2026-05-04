@@ -9,7 +9,7 @@ from app.main import app
 from app.config import settings
 from app.models.database import init_db
 from app.core.auth import create_token
-from app.core.compute_registry import ComputeNode, compute_registry
+from app.core.compute_registry import ComputeNode, ComputeRegistry, compute_registry
 from app.api.routes.compute import relay_websocket
 
 
@@ -37,9 +37,11 @@ async def test_compute_nodes_returns_list(auth_headers):
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         response = await ac.get("/api/compute/nodes", headers=auth_headers)
-        assert response.status_code in (200, 404, 500)
-        if response.status_code == 200:
-            assert isinstance(response.json(), dict)
+        assert response.status_code == 200
+        body = response.json()
+        assert isinstance(body, dict)
+        assert "nodes" in body
+        assert "total_nodes" in body
 
 
 @pytest.mark.asyncio
@@ -60,7 +62,10 @@ async def test_compute_stats_returns_response(auth_headers):
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         response = await ac.get("/api/compute/stats", headers=auth_headers)
-        assert response.status_code in (200, 404, 500)
+        assert response.status_code == 200
+        body = response.json()
+        assert "nodes" in body
+        assert "total_nodes" in body
 
 
 class FakeWebSocket:
@@ -212,6 +217,119 @@ def test_total_capacity_counts_relay_and_browser_nodes():
     finally:
         compute_registry._nodes.clear()
         compute_registry._nodes.update(original_nodes)
+
+
+def test_select_candidates_filters_saturated_nodes_and_prefers_score():
+    registry = ComputeRegistry()
+    saturated = ComputeNode(
+        node_id="saturated",
+        name="Saturated",
+        host="http://localhost:1234",
+        source="local",
+        provider_type="lmstudio",
+        is_healthy=True,
+        active_requests=4,
+        max_active_requests=4,
+    )
+    available = ComputeNode(
+        node_id="available",
+        name="Available",
+        host="http://localhost:1235",
+        source="local",
+        provider_type="lmstudio",
+        is_healthy=True,
+        active_requests=1,
+        max_active_requests=4,
+        ram_available_gb=8,
+    )
+    registry.register_node(saturated)
+    registry.register_node(available)
+
+    candidates = registry._select_candidates()
+
+    assert [node.node_id for node in candidates] == ["available"]
+
+
+def test_select_candidates_prefers_requested_model_before_score():
+    registry = ComputeRegistry()
+    fast_wrong_model = ComputeNode(
+        node_id="fast-wrong",
+        name="Fast Wrong",
+        host="http://localhost:1234",
+        source="local",
+        provider_type="lmstudio",
+        is_healthy=True,
+        priority=0,
+        ram_available_gb=10,
+        loaded_models=["other-model"],
+    )
+    slower_requested_model = ComputeNode(
+        node_id="slower-requested",
+        name="Slower Requested",
+        host="http://localhost:1235",
+        source="local",
+        provider_type="lmstudio",
+        is_healthy=True,
+        priority=25,
+        loaded_models=["llama3:latest"],
+    )
+    registry.register_node(fast_wrong_model)
+    registry.register_node(slower_requested_model)
+
+    candidates = registry._select_candidates(model="llama3")
+
+    assert [node.node_id for node in candidates] == ["slower-requested", "fast-wrong"]
+
+
+def test_select_candidates_strict_model_filters_missing_models():
+    registry = ComputeRegistry()
+    wrong_model = ComputeNode(
+        node_id="wrong",
+        name="Wrong",
+        host="http://localhost:1234",
+        source="local",
+        provider_type="lmstudio",
+        is_healthy=True,
+        loaded_models=["other-model"],
+    )
+    requested_model = ComputeNode(
+        node_id="requested",
+        name="Requested",
+        host="http://localhost:1235",
+        source="local",
+        provider_type="lmstudio",
+        is_healthy=True,
+        loaded_models=["llama3"],
+    )
+    registry.register_node(wrong_model)
+    registry.register_node(requested_model)
+
+    candidates = registry._select_candidates(model="llama3", strict_model=True)
+
+    assert [node.node_id for node in candidates] == ["requested"]
+
+
+def test_record_failure_degrades_before_cooldown():
+    node = ComputeNode(
+        node_id="node",
+        name="Node",
+        host="http://localhost:1234",
+        source="local",
+        provider_type="lmstudio",
+        is_healthy=True,
+    )
+
+    ComputeRegistry._record_failure(node, RuntimeError("temporary"))
+
+    assert node.is_healthy is True
+    assert node.health_state == "degraded"
+    assert node.consecutive_failures == 1
+
+    ComputeRegistry._record_failure(node, RuntimeError("temporary"))
+    ComputeRegistry._record_failure(node, RuntimeError("temporary"))
+
+    assert node.is_healthy is False
+    assert node.health_state == "cooldown"
 
 
 class FakeRelayWebSocket:

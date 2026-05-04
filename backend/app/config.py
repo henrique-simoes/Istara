@@ -30,6 +30,8 @@ class Settings(BaseSettings):
     upload_dir: str = "./data/uploads"
     projects_dir: str = "./data/projects"
     agent_avatars_dir: str = "./data/agent_avatars"
+    avatar_max_bytes: int = 5 * 1024 * 1024
+    channel_attachment_max_bytes: int = 25 * 1024 * 1024
 
     # Team mode (multi-user)
     team_mode: bool = False
@@ -73,6 +75,7 @@ class Settings(BaseSettings):
     # Hardware resource budget
     resource_reserve_ram_gb: float = 4.0
     resource_reserve_cpu_percent: int = 30
+    strict_auto_routing: bool = False
 
     # File watcher
     file_watch_interval_seconds: int = 5
@@ -106,6 +109,7 @@ class Settings(BaseSettings):
     figma_api_token: str = ""
     figma_api_host: str = "https://api.figma.com"
     design_screens_dir: str = "./data/design_screens"
+    interfaces_mock_endpoints_enabled: bool = False
 
     # Backup
     backup_dir: str = "./data/backups"
@@ -134,6 +138,9 @@ class Settings(BaseSettings):
     autoresearch_enabled: bool = False
     autoresearch_max_experiments_per_run: int = 20
     autoresearch_max_daily_experiments: int = 200
+    autoresearch_min_improvement_delta: float = 0.01
+    autoresearch_measurement_repeats: int = 1
+    validation_timeout_seconds: int = 120
 
     # Telemetry (local-first, zero-trust — OFF for sharing by default)
     telemetry_enabled: bool = False
