@@ -33,6 +33,7 @@ _EXPORTS: dict[str, tuple[str, str]] = {
     "ReasoningMemoryItem": ("app.models.reasoning_memory", "ReasoningMemoryItem"),
     "ImprovementProposal": ("app.models.improvement_governance", "ImprovementProposal"),
     "DGMHArchiveVariant": ("app.models.dgmh_archive", "DGMHArchiveVariant"),
+    "AuthSession": ("app.models.auth_session", "AuthSession"),
 }
 
 __all__ = sorted(_EXPORTS)

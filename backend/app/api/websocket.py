@@ -104,10 +104,20 @@ async def websocket_endpoint(websocket: WebSocket):
             token = auth_header[7:]
     if token:
         from app.core.auth import verify_token
+        from app.core.auth_sessions import validate_auth_session
+        from app.models.database import async_session
+
         payload = verify_token(token)
         if not payload:
             await websocket.close(code=4001, reason="Invalid authentication token")
             return
+        async with async_session() as db:
+            if not await validate_auth_session(db, payload):
+                await websocket.close(
+                    code=4001,
+                    reason="Invalid or revoked authentication session",
+                )
+                return
     else:
         await websocket.close(code=4001, reason="Authentication required. Pass ?token=<jwt>")
         return

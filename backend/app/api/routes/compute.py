@@ -59,10 +59,14 @@ async def relay_websocket(ws: WebSocket):
     # invite string or a valid user JWT from an authenticated browser session.
     from app.config import settings
     from app.core.auth import verify_token
+    from app.core.auth_sessions import validate_auth_session
+    from app.models.database import async_session
 
     network_token = ws.headers.get("x-access-token", "") or ws.query_params.get("access_token", "")
     auth_header = ws.headers.get("authorization", "")
-    jwt_token = auth_header.removeprefix("Bearer ").strip() if auth_header.startswith("Bearer ") else ""
+    jwt_token = (
+        auth_header.removeprefix("Bearer ").strip() if auth_header.startswith("Bearer ") else ""
+    )
     if not jwt_token:
         jwt_token = ws.query_params.get("token", "")
 
@@ -70,6 +74,10 @@ async def relay_websocket(ws: WebSocket):
         settings.network_access_token and network_token == settings.network_access_token
     )
     jwt_payload = verify_token(jwt_token) if jwt_token else None
+    if jwt_payload is not None:
+        async with async_session() as db:
+            if not await validate_auth_session(db, jwt_payload):
+                jwt_payload = None
     if not has_valid_network_token and jwt_payload is None:
         await ws.close(code=4001, reason="Authentication required for relay connections")
         return

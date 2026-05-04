@@ -32,6 +32,13 @@ from app.core.auth import (
     verify_recovery_code,
     verify_totp,
 )
+from app.core.auth_sessions import (
+    is_session_bound,
+    issue_auth_session_token,
+    revoke_auth_session_for_payload,
+    revoke_user_auth_sessions,
+    validate_auth_session,
+)
 from app.core.client_identity import BoundedWindowRateLimiter, get_client_ip
 from app.core.field_encryption import hash_field
 from app.core.security_middleware import require_admin_from_request
@@ -162,8 +169,8 @@ def _user_to_dict(user: User) -> dict:
     }
 
 
-def _token_payload_from_request(request: Request) -> dict:
-    """Return a verified token payload from Authorization or the session cookie."""
+def _token_from_request(request: Request) -> str:
+    """Return a bearer or session-cookie token from the request."""
     auth_header = request.headers.get("Authorization", "")
     token_str = (
         auth_header.removeprefix("Bearer ").strip() if auth_header.startswith("Bearer ") else ""
@@ -172,12 +179,34 @@ def _token_payload_from_request(request: Request) -> dict:
         token_str = request.cookies.get("istara_session", "")
     if not token_str:
         raise HTTPException(status_code=401, detail="Authentication required")
+    return token_str
+
+
+async def _token_payload_from_request(
+    request: Request,
+    db: AsyncSession | None = None,
+) -> dict:
+    """Return a verified token payload from Authorization or the session cookie."""
+    token_str = _token_from_request(request)
 
     from app.core.auth import verify_token
 
     payload = verify_token(token_str)
     if not payload:
         raise HTTPException(status_code=401, detail="Invalid token")
+    if db is not None:
+        if not await validate_auth_session(db, payload, request):
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid or revoked authentication session.",
+            )
+    elif is_session_bound(payload):
+        async with async_session() as session:
+            if not await validate_auth_session(session, payload, request):
+                raise HTTPException(
+                    status_code=401,
+                    detail="Invalid or revoked authentication session.",
+                )
     return payload
 
 
@@ -195,7 +224,7 @@ def _require_current_password(user: User, current_password: str) -> None:
 
 
 @router.post("/auth/register")
-async def register(req: RegisterRequest, response: Response):
+async def register(req: RegisterRequest, response: Response, request: Request):
     """Register a new user (team mode only).
 
     NIST SP 800-63B Rev.4 requirements:
@@ -253,7 +282,12 @@ async def register(req: RegisterRequest, response: Response):
         db.add(user)
         await db.commit()
 
-        token = create_token(user.id, user.username, user.role)
+        token = await issue_auth_session_token(
+            db,
+            user,
+            request,
+            auth_method="register",
+        )
         _set_auth_cookie(response, token)
         logger.info(f"User registered: {user.username} (role={user.role})")
 
@@ -349,7 +383,13 @@ async def login(
                 "methods": ["totp", "recovery_code"],
             }
 
-    token = create_token(user.id, user.username, user.role, mfa_verified=mfa_verified)
+    token = await issue_auth_session_token(
+        db,
+        user,
+        request,
+        auth_method="password",
+        mfa_verified=mfa_verified,
+    )
     _set_auth_cookie(response, token)
     return {
         "token": token,
@@ -358,8 +398,17 @@ async def login(
 
 
 @router.post("/auth/logout")
-async def logout(response: Response):
+async def logout(response: Response, request: Request, db: AsyncSession = Depends(get_db)):
     """Log out and clear the session cookie."""
+    try:
+        token = _token_from_request(request)
+        from app.core.auth import verify_token
+
+        payload = verify_token(token)
+        if payload:
+            await revoke_auth_session_for_payload(db, payload)
+    except HTTPException:
+        pass
     _clear_auth_cookie(response)
     return {"status": "ok"}
 
@@ -380,7 +429,7 @@ async def totp_setup(
     Returns the secret (shown once) and a URI for QR code generation.
     The user must verify a code to enable TOTP.
     """
-    payload = _token_payload_from_request(request)
+    payload = await _token_payload_from_request(request, db)
     user_id = payload.get("sub")
     user = await db.get(User, user_id)
     if not user:
@@ -411,7 +460,7 @@ async def totp_setup(
 @router.post("/auth/totp/verify")
 async def totp_verify(req: TOTPVerifyRequest, request: Request, db: AsyncSession = Depends(get_db)):
     """Verify a TOTP code to enable 2FA."""
-    payload = _token_payload_from_request(request)
+    payload = await _token_payload_from_request(request, db)
     user_id = payload.get("sub")
     user = await db.get(User, user_id)
     if not user:
@@ -438,7 +487,7 @@ async def totp_disable(
     db: AsyncSession = Depends(get_db),
 ):
     """Disable TOTP 2FA. Requires password verification."""
-    payload = _token_payload_from_request(request)
+    payload = await _token_payload_from_request(request, db)
     user_id = payload.get("sub")
     user = await db.get(User, user_id)
     if not user:
@@ -468,7 +517,7 @@ async def generate_recovery_codes_endpoint(
 
     Requires the user's current password for verification.
     """
-    payload = _token_payload_from_request(request)
+    payload = await _token_payload_from_request(request, db)
     user_id = payload.get("sub")
     user = await db.get(User, user_id)
     if not user:
@@ -490,30 +539,15 @@ async def generate_recovery_codes_endpoint(
 @router.get("/auth/recovery-codes/status")
 async def recovery_codes_status(request: Request, db: AsyncSession = Depends(get_db)):
     """Check how many unused recovery codes remain."""
-    auth_header = request.headers.get("Authorization", "")
-    token_str = (
-        auth_header.removeprefix("Bearer ").strip() if auth_header.startswith("Bearer ") else ""
-    )
-    if not token_str:
-        token_str = request.cookies.get("istara_session", "")
-    if not token_str:
-        raise HTTPException(status_code=401, detail="Authentication required")
-
-    from app.core.auth import verify_token
-
-    payload = verify_token(token_str)
-    if not payload:
-        raise HTTPException(status_code=401, detail="Invalid token")
-
+    payload = await _token_payload_from_request(request, db)
     user_id = payload.get("sub")
-    async with async_session() as session:
-        user = await session.get(User, user_id)
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
+    user = await db.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
 
-        codes = (user.recovery_codes_hashed or "").split("\n")
-        remaining = len([c for c in codes if c.strip()])
-        return {"remaining": remaining, "total": 8}
+    codes = (user.recovery_codes_hashed or "").split("\n")
+    remaining = len([c for c in codes if c.strip()])
+    return {"remaining": remaining, "total": 8}
 
 
 # ---------------------------------------------------------------------------
@@ -553,6 +587,11 @@ async def get_me(request: Request):
         raise HTTPException(status_code=401, detail="Invalid or expired token")
 
     async with async_session() as db:
+        if not await validate_auth_session(db, payload, request):
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid or revoked authentication session",
+            )
         result = await db.execute(select(User).where(User.id == payload["sub"]))
         user = result.scalar_one_or_none()
         if user:
@@ -567,6 +606,11 @@ async def get_me(request: Request):
                 "totp_enabled": getattr(user, "totp_enabled", False),
                 "passkey_enabled": getattr(user, "passkey_enabled", False),
             }
+        if is_session_bound(payload):
+            raise HTTPException(
+                status_code=401,
+                detail="Authenticated user no longer exists",
+            )
 
     if not settings.team_mode:
         return {
@@ -599,30 +643,19 @@ async def update_preferences(
     req: PreferencesRequest, request: Request, db: AsyncSession = Depends(get_db)
 ):
     """Update user preferences (theme, UI density, etc.)."""
-    auth_header = request.headers.get("Authorization", "")
-    token_str = (
-        auth_header.removeprefix("Bearer ").strip() if auth_header.startswith("Bearer ") else ""
-    )
-    if not token_str:
-        token_str = request.cookies.get("istara_session", "")
-    if not token_str:
+    try:
+        payload = await _token_payload_from_request(request, db)
+    except HTTPException:
         if not settings.team_mode:
             return {"status": "ok", "preferences": req.preferences}
-        raise HTTPException(status_code=401, detail="Authentication required")
-
-    from app.core.auth import verify_token
-
-    payload = verify_token(token_str)
-    if not payload:
-        raise HTTPException(status_code=401, detail="Invalid token")
+        raise
 
     user_id = payload.get("sub")
-    async with async_session() as session:
-        user = await session.get(User, user_id)
-        if user:
-            user.preferences = json.dumps(req.preferences)
-            await session.commit()
-        return {"status": "ok", "preferences": req.preferences}
+    user = await db.get(User, user_id)
+    if user:
+        user.preferences = json.dumps(req.preferences)
+        await db.commit()
+    return {"status": "ok", "preferences": req.preferences}
 
 
 @router.get("/auth/team-status")
@@ -738,6 +771,7 @@ async def delete_user(
     user = await db.get(User, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+    await revoke_user_auth_sessions(db, user_id)
     await db.delete(user)
     await db.commit()
     logger.info("Admin deleted user: %s (id=%s)", user.username, user_id)
