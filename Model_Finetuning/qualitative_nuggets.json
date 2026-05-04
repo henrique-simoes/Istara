@@ -1,0 +1,4626 @@
+[
+  [
+    "I love how intuitive everything is. I was up and running in like 10 minutes, which is amazing. Usually onboarding takes forever, but this was smooth and actually helpful. The interactive tutorial showed me exactly what I needed to know without overwhelming me.",
+    "onboarding_nps_followups.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "I'm still confused about how to use most of the features. The onboarding was too fast - it showed me things but didn't give me time to actually try them. Now I'm stuck and don't know what to do. I've watched the tutorial videos but they don't help much.",
+    "onboarding_nps_followups.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "It's pretty good overall. The onboarding was helpful, but I feel like I'm still discovering features. Some things aren't obvious, and I wish there was better guidance. But I can see the value, so I'll stick with it for now.",
+    "onboarding_nps_followups.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "This is the best onboarding experience I've ever had. Everything was clear, the examples were relevant, and I felt confident using the tool right away. I've already recommended it to three colleagues. Seriously, whoever designed this did an amazing job.",
+    "onboarding_nps_followups.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "I'm frustrated. The onboarding seemed fine at first, but now that I'm actually trying to use the tool, nothing works the way I expected. The tutorial showed me one thing, but the actual interface is different. I feel misled.",
+    "onboarding_nps_followups.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "I really like it. The onboarding was smooth, and I appreciate that I could skip parts I didn't need. The tool itself is powerful, and I can see myself using it regularly. My only complaint is that some features are hard to find.",
+    "onboarding_nps_followups.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "It's okay. Not great, not terrible. The onboarding was fine, but I'm still not sure if this tool is right for me. I need to use it more to really decide. Right now I'm neutral - it works, but I'm not excited about it.",
+    "onboarding_nps_followups.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "I'm impressed. Usually I hate onboarding flows - they're either too slow or too fast, and they never actually help. But this one was perfect. It gave me exactly what I needed without being annoying. And the tool itself is great.",
+    "onboarding_nps_followups.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "I'm on the fence. The onboarding was okay, but I'm not sure I understand how to use the tool effectively. I've been clicking around, but I feel like I'm missing something. Maybe I need to watch more tutorials or something.",
+    "onboarding_nps_followups.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "It's good. The onboarding was helpful, and I can see the value in the tool. But there's a learning curve, and I'm not sure I have time to invest in learning it right now. I'll probably come back to it later when I have more time.",
+    "onboarding_nps_followups.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "Amazing experience. I was skeptical at first because I've been burned by bad onboarding before, but this was different. It was actually useful, not just a checkbox. And the tool itself is exactly what I needed. I'm already using it daily.",
+    "onboarding_nps_followups.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "I'm really frustrated. The onboarding was confusing, and now I can't figure out how to do basic things. I've tried reading the documentation, but it's not helpful. I'm probably going to cancel my subscription because I can't use the tool effectively.",
+    "onboarding_nps_followups.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "I like it. The onboarding was smooth, and I appreciate that I could customize it based on my role. The tool is powerful, and I can see myself using it regularly. My only complaint is that some features aren't intuitive.",
+    "onboarding_nps_followups.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "It's fine. The onboarding was okay, but I'm still not sure if this is the right tool for me. I need to use it more to really understand its value. Right now I'm neutral - it works, but I'm not sure if it's worth the cost.",
+    "onboarding_nps_followups.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "I'm really happy with it. The onboarding was great - it showed me exactly what I needed to know without being overwhelming. And the tool itself is powerful and easy to use. I've already recommended it to my team.",
+    "onboarding_nps_followups.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "I'm confused. The onboarding seemed fine, but now that I'm actually using the tool, nothing works the way I expected. I feel like I was shown a simplified version, but the real thing is completely different. I'm struggling to figure things out.",
+    "onboarding_nps_followups.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "It's good overall. The onboarding was helpful, and I can see the value in the tool. But there's definitely a learning curve, and I'm not sure I have time to invest in learning it right now. I'll probably come back to it later.",
+    "onboarding_nps_followups.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "This is the best tool I've used in a long time. The onboarding was perfect - it gave me exactly what I needed without being annoying. And the tool itself is powerful and intuitive. I'm already using it daily and recommending it to everyone.",
+    "onboarding_nps_followups.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "I'm on the fence. The onboarding was okay, but I'm not sure I understand how to use the tool effectively. I've been clicking around, but I feel like I'm missing something important. Maybe I need more help or better documentation.",
+    "onboarding_nps_followups.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "I really like it. The onboarding was smooth, and I appreciate that I could skip parts I didn't need. The tool is powerful, and I can see myself using it regularly. My only complaint is that some advanced features are hard to discover.",
+    "onboarding_nps_followups.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "I'm frustrated. The onboarding was too fast, and I didn't have time to actually try the features. Now I'm stuck and don't know what to do. I've tried watching tutorials, but they don't help. I'm probably going to cancel.",
+    "onboarding_nps_followups.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "I'm impressed. Usually onboarding flows are annoying, but this one was actually helpful. It showed me exactly what I needed to know, and I felt confident using the tool right away. The tool itself is great too.",
+    "onboarding_nps_followups.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "It's okay. The onboarding was fine, but I'm still not sure if this tool is right for me. I need to use it more to really decide. Right now I'm neutral - it works, but I'm not excited about it.",
+    "onboarding_nps_followups.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "I like it. The onboarding was helpful, and I can see the value in the tool. But there's a learning curve, and I'm not sure I have time to invest right now. I'll probably come back to it later when I have more time.",
+    "onboarding_nps_followups.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "Amazing. The onboarding was perfect - it gave me exactly what I needed without being overwhelming. And the tool itself is exactly what I was looking for. I'm already using it daily and telling everyone about it.",
+    "onboarding_nps_followups.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "I'm confused. The onboarding seemed okay, but now that I'm actually using the tool, I can't figure out how to do basic things. I feel like I was shown one thing, but the actual interface is different. I'm struggling.",
+    "onboarding_nps_followups.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "I really like it. The onboarding was smooth, and I appreciate the customization options. The tool is powerful, and I can see myself using it regularly. My only complaint is that some features could be more discoverable.",
+    "onboarding_nps_followups.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "I'm on the fence. The onboarding was okay, but I'm not sure I understand how to use the tool effectively. I've been exploring, but I feel like I'm missing something important. Maybe I need better guidance.",
+    "onboarding_nps_followups.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "I'm really happy with it. The onboarding was great - it showed me exactly what I needed without being annoying. And the tool itself is powerful and intuitive. I've already recommended it to colleagues.",
+    "onboarding_nps_followups.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "It's fine. The onboarding was okay, but I'm still not sure if this is the right tool for me. I need to use it more to really understand its value. Right now I'm neutral - it works, but I'm not sure if it's worth it.",
+    "onboarding_nps_followups.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "I'm really frustrated. The onboarding was confusing, and I can't figure out how to use the tool. I've tried everything - tutorials, documentation, support - but nothing helps. I'm canceling my subscription.",
+    "onboarding_nps_followups.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "I like it. The onboarding was smooth, and I appreciate that I could customize it. The tool is powerful, and I can see myself using it regularly. My only complaint is that some features aren't obvious.",
+    "onboarding_nps_followups.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "It's good overall. The onboarding was helpful, and I can see the value. But there's a learning curve, and I'm not sure I have time right now. I'll probably come back to it later when I have more time to invest.",
+    "onboarding_nps_followups.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "This is amazing. The onboarding was perfect - it gave me exactly what I needed. And the tool itself is exactly what I was looking for. I'm already using it daily and recommending it to everyone I know.",
+    "onboarding_nps_followups.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "I'm confused. The onboarding seemed fine, but now I can't figure out how to do basic things. I feel like I was shown a simplified version, but the real thing is different. I'm struggling to use it effectively.",
+    "onboarding_nps_followups.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "I'm impressed. Usually I hate onboarding, but this one was actually useful. It showed me what I needed to know, and I felt confident right away. The tool itself is great too. I'm already a power user.",
+    "onboarding_nps_followups.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "It's okay. The onboarding was fine, but I'm still not sure if this is right for me. I need to use it more to really decide. Right now I'm neutral - it works, but I'm not excited about it.",
+    "onboarding_nps_followups.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "I really like it. The onboarding was smooth, and I appreciate the customization. The tool is powerful, and I can see myself using it regularly. My only complaint is that some advanced features are hard to find.",
+    "onboarding_nps_followups.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "I'm on the fence. The onboarding was okay, but I'm not sure I understand how to use it effectively. I've been exploring, but I feel like I'm missing something. Maybe I need more help.",
+    "onboarding_nps_followups.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "I like it. The onboarding was helpful, and I can see the value. But there's a learning curve, and I'm not sure I have time right now. I'll probably come back to it later when I have more time to invest.",
+    "onboarding_nps_followups.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "Amazing experience. The onboarding was perfect - it gave me exactly what I needed. And the tool itself is exactly what I was looking for. I'm already using it daily and telling everyone about it.",
+    "onboarding_nps_followups.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "I'm frustrated. The onboarding was too fast, and I didn't have time to actually try things. Now I'm stuck and don't know what to do. I've tried tutorials, but they don't help. I'm probably canceling.",
+    "onboarding_nps_followups.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "I really like it. The onboarding was smooth, and I appreciate that I could skip parts. The tool is powerful, and I can see myself using it regularly. My only complaint is discoverability of some features.",
+    "onboarding_nps_followups.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "It's fine. The onboarding was okay, but I'm still not sure if this is right for me. I need to use it more to really understand. Right now I'm neutral - it works, but I'm not sure if it's worth the cost.",
+    "onboarding_nps_followups.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "I'm really happy with it. The onboarding was great - it showed me exactly what I needed. And the tool itself is powerful and intuitive. I've already recommended it to my team.",
+    "onboarding_nps_followups.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "I'm confused. The onboarding seemed okay, but now I can't figure out how to do basic things. I feel like I was shown one thing, but the actual interface is different. I'm struggling to use it.",
+    "onboarding_nps_followups.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "It's good overall. The onboarding was helpful, and I can see the value. But there's a learning curve, and I'm not sure I have time right now. I'll probably come back to it later.",
+    "onboarding_nps_followups.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "This is the best tool I've used. The onboarding was perfect - it gave me exactly what I needed. And the tool itself is amazing. I'm already using it daily and recommending it to everyone.",
+    "onboarding_nps_followups.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "I'm on the fence. The onboarding was okay, but I'm not sure I understand how to use it effectively. I've been exploring, but I feel like I'm missing something important. Maybe I need better guidance.",
+    "onboarding_nps_followups.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "I like it. The onboarding was smooth, and I appreciate the customization options. The tool is powerful, and I can see myself using it regularly. My only complaint is that some features could be more discoverable.",
+    "onboarding_nps_followups.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "I really need a way to collaborate in real-time with my team. Right now I have to export files and send them via email or Slack, which is clunky. If I could just share a link and have people comment or edit directly, that would be a game-changer. Like Figma but for this tool.",
+    "feature_request_survey.json",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "Better reporting and analytics. I want to see how my projects are performing over time, not just current status. Dashboards with charts, trends, that kind of thing. Right now I have to export data and make my own reports in Excel, which is tedious.",
+    "feature_request_survey.json",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "API access. I need to integrate this with other tools I use. Right now everything is manual, which doesn't scale. If I could pull data via API or trigger actions programmatically, I could automate a lot of my workflow.",
+    "feature_request_survey.json",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "Templates. I do similar projects all the time, and I have to recreate everything from scratch each time. If I could save a project as a template and reuse it, that would save me hours. Even better if there were pre-made templates for common use cases.",
+    "feature_request_survey.json",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "A mobile app. I'm always on the go, and I can't always access the web version. If I could check things or make quick edits from my phone, that would be really helpful. Even if it's just basic features, that's better than nothing.",
+    "feature_request_survey.json",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "Better search functionality. I have hundreds of projects, and finding the right one is a pain. The current search is too basic - I need filters, tags, date ranges, that kind of thing. Maybe even saved searches or smart folders.",
+    "feature_request_survey.json",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "Version history. I make a lot of changes, and sometimes I want to go back to an earlier version. Right now I have to manually save copies, which is messy. If there was automatic versioning like Google Docs, that would be perfect.",
+    "feature_request_survey.json",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "Custom fields and workflows. Every team works differently, and the current structure is too rigid. I need to be able to add custom fields, create my own workflows, set up automation rules. Basically, make it work the way my team works, not the other way around.",
+    "feature_request_survey.json",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "Better notifications. I need to know when things happen, but right now I either get too many notifications or not enough. I want to customize what I'm notified about and how. Email, push, in-app - let me choose what works for me.",
+    "feature_request_survey.json",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "Bulk operations. I often need to update or delete multiple items at once, but I have to do them one by one. That's fine for a few items, but when I have 50 or 100, it's a nightmare. Let me select multiple items and apply actions to all of them.",
+    "feature_request_survey.json",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "Keyboard shortcuts. I use this tool all day, and I'm constantly clicking around. If I could use keyboard shortcuts for common actions, I'd be so much faster. Even basic ones like Cmd+S to save, Cmd+N for new, that kind of thing.",
+    "feature_request_survey.json",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "Integration with Slack. My team uses Slack for everything, and I want to get notifications there. Also, it would be cool if I could create or update things directly from Slack, like with slash commands or something.",
+    "feature_request_survey.json",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "Export options. I need to export data in different formats - CSV, Excel, PDF, JSON. Right now the export options are limited, and the formatting is always off. I end up having to reformat everything manually, which defeats the purpose.",
+    "feature_request_survey.json",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "Calendar integration. I want to see my deadlines and milestones in my calendar app. Right now I have to manually add them, which is annoying. If it synced automatically, that would be amazing. Google Calendar, Outlook, whatever.",
+    "feature_request_survey.json",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "Better help and documentation. When I'm stuck, I don't know where to look. The help center is hard to search, and the documentation is outdated. I want contextual help - like tooltips or inline guides that show me what to do right when I need it.",
+    "feature_request_survey.json",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "Webhooks. I need to know when things change so I can trigger actions in other systems. If I could set up webhooks for events like 'project created' or 'status changed', I could automate a lot of my workflow.",
+    "feature_request_survey.json",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "Dark mode. I use this tool all day, and the bright white background is hard on my eyes. I know it's a small thing, but it would make a big difference for my comfort. Plus, it just looks cooler.",
+    "feature_request_survey.json",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "Better permissions and roles. I need fine-grained control over who can see and edit what. Right now it's too all-or-nothing. I want to be able to set permissions at the project level, item level, field level. That kind of granularity.",
+    "feature_request_survey.json",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "Activity feed. I want to see what's happening across all my projects in one place. Who's doing what, when things are updated, comments, changes - all in a timeline view. Right now I have to check each project individually.",
+    "feature_request_survey.json",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "Formulas and calculations. I need to do math on my data - sums, averages, percentages, that kind of thing. Right now I have to export to Excel, do the calculations, then import back. If I could do it directly in the tool, that would save so much time.",
+    "feature_request_survey.json",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "The shipping address form was annoying. It kept asking me to verify my address even though I've used it before. And the autocomplete didn't work properly - it suggested addresses that weren't even close to mine. I had to type everything manually, which took forever.",
+    "ecommerce_checkout_feedback.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "I couldn't find where to apply my discount code. I looked everywhere, but it wasn't obvious. I finally found it, but it was hidden in a dropdown menu. Why isn't it more prominent? I almost gave up because I thought I couldn't use my code.",
+    "ecommerce_checkout_feedback.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "Why did you leave without completing your purchase?",
+    "ecommerce_checkout_feedback.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "The payment form was confusing. It asked for my card number, then my name, then my billing address, but the fields were in a weird order. And there was no option to save my payment method for next time, which is annoying since I shop here regularly.",
+    "ecommerce_checkout_feedback.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "Why did you leave without completing your purchase?",
+    "ecommerce_checkout_feedback.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "The page kept refreshing while I was filling out the form. I'd type something, and then the page would reload and I'd lose my progress. This happened three times before I finally got through. Very frustrating.",
+    "ecommerce_checkout_feedback.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "I couldn't see the total cost until the very end. There were all these fees and taxes being added, but I couldn't see the final price until I got to the confirmation screen. I wish I could see the total earlier in the process.",
+    "ecommerce_checkout_feedback.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "Why did you leave without completing your purchase?",
+    "ecommerce_checkout_feedback.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "The shipping options were confusing. There were like 5 different options, but I couldn't tell the difference between them. What's the difference between 'Standard' and 'Economy' shipping? They both said 5-7 business days. Why are there two options that are the same?",
+    "ecommerce_checkout_feedback.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "I wanted to change my shipping address, but I couldn't figure out how. I clicked 'Edit' but it took me back to the beginning of the checkout process. I had to start over, which was annoying.",
+    "ecommerce_checkout_feedback.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "Why did you leave without completing your purchase?",
+    "ecommerce_checkout_feedback.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "The form validation was too strict. It kept telling me my phone number was invalid, but I know it's correct. I tried formatting it different ways, but nothing worked. I finally just put in a fake number to get through.",
+    "ecommerce_checkout_feedback.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "I couldn't use Apple Pay even though there was a button for it. I clicked it, but nothing happened. I tried a few times, then gave up and just entered my card manually. That was annoying.",
+    "ecommerce_checkout_feedback.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "Why did you leave without completing your purchase?",
+    "ecommerce_checkout_feedback.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "The confirmation page took forever to load. I wasn't sure if my order went through or not. I waited like 2 minutes, then refreshed the page, and it said my order was processing. But I'm still not 100% sure it went through. I'll check my email, I guess.",
+    "ecommerce_checkout_feedback.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "I wanted to add a gift message, but I couldn't find where to do that. I looked everywhere, but it wasn't an option. I ended up just putting it in the shipping address notes, but I'm not sure if that will work.",
+    "ecommerce_checkout_feedback.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "Why did you leave without completing your purchase?",
+    "ecommerce_checkout_feedback.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "I couldn't see what items were in my cart during checkout. I wanted to double-check that I had the right sizes and colors, but the cart summary was collapsed and I couldn't expand it. I had to trust that everything was correct.",
+    "ecommerce_checkout_feedback.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "The billing address form was confusing. It asked if my billing address was the same as my shipping address, but when I said yes, it still made me fill out the billing address form. That doesn't make sense.",
+    "ecommerce_checkout_feedback.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "Why did you leave without completing your purchase?",
+    "ecommerce_checkout_feedback.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "The shipping calculator was wrong. It said my package would arrive in 3-5 days, but when I got to the confirmation page, it said 7-10 days. That's a big difference. I wish the estimates were accurate from the start.",
+    "ecommerce_checkout_feedback.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "I couldn't change the quantity of items in my cart during checkout. I realized I wanted two of something instead of one, but I had to go all the way back to the cart page to change it. That was annoying.",
+    "ecommerce_checkout_feedback.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "Why did you leave without completing your purchase?",
+    "ecommerce_checkout_feedback.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "The payment form didn't accept my card. I know the card is valid and has money on it, but it kept saying 'payment declined'. I tried a different card and it worked, but I'm not sure why the first one didn't work.",
+    "ecommerce_checkout_feedback.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "I wanted to split my payment between two cards, but there was no option for that. I had to use one card, which maxed out my credit limit. I wish there was a way to split payments.",
+    "ecommerce_checkout_feedback.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "Why did you leave without completing your purchase?",
+    "ecommerce_checkout_feedback.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "The checkout process was fine overall, but I wish there was a way to save my payment method for next time. I shop here regularly, and it's annoying to enter my card info every time.",
+    "ecommerce_checkout_feedback.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "I couldn't see the estimated delivery date until the very end. I wanted to know if my order would arrive in time for an event, but I had to go through the entire checkout process to find out. That was frustrating.",
+    "ecommerce_checkout_feedback.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "Why did you leave without completing your purchase?",
+    "ecommerce_checkout_feedback.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "The form kept timing out. I'd fill out a section, then move to the next section, and when I came back, my previous answers were gone. This happened twice. I had to start over both times.",
+    "ecommerce_checkout_feedback.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "I wanted to add insurance to my shipment, but I couldn't find that option. I looked everywhere, but it wasn't available. I'm shipping something expensive, so I wanted the extra protection.",
+    "ecommerce_checkout_feedback.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "Why did you leave without completing your purchase?",
+    "ecommerce_checkout_feedback.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "The checkout process was mostly fine, but I wish there was a progress indicator. I didn't know how many steps were left, so I didn't know if I was almost done or if there were more pages to go through.",
+    "ecommerce_checkout_feedback.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "I couldn't use my store credit during checkout. I have $50 in store credit, but there was no option to apply it. I had to call customer service, and they applied it manually. That was annoying - it should be automatic.",
+    "ecommerce_checkout_feedback.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "Why did you leave without completing your purchase?",
+    "ecommerce_checkout_feedback.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "The shipping address autocomplete suggested the wrong address. I selected it by mistake, and then I had to manually correct it. The autocomplete should be more accurate, or at least let me edit it easily.",
+    "ecommerce_checkout_feedback.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "I wanted to change my shipping method after I selected it, but I couldn't figure out how. I had to go back to the beginning of checkout and start over. That was frustrating.",
+    "ecommerce_checkout_feedback.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "Why did you leave without completing your purchase?",
+    "ecommerce_checkout_feedback.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "The checkout process was fine, but I wish I could see a summary of my order before I confirmed it. I wanted to double-check everything, but the summary was on a different page and I couldn't see it while I was filling out the payment form.",
+    "ecommerce_checkout_feedback.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "I couldn't use PayPal even though there was a PayPal button. I clicked it, but it just reloaded the page. I tried a few times, then gave up and used my credit card instead. That was annoying.",
+    "ecommerce_checkout_feedback.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "Why did you leave without completing your purchase?",
+    "ecommerce_checkout_feedback.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "The form validation messages were confusing. It kept saying 'invalid format' but didn't tell me what format it wanted. I had to guess what the correct format was. That was frustrating.",
+    "ecommerce_checkout_feedback.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "I wanted to add a promo code, but I couldn't find where to enter it. I looked everywhere, but it wasn't obvious. I finally found it in a tiny link at the bottom of the page. Why isn't it more prominent?",
+    "ecommerce_checkout_feedback.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "Why did you leave without completing your purchase?",
+    "ecommerce_checkout_feedback.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "The checkout process was mostly smooth, but I wish there was a way to save my shipping address for next time. I shop here regularly, and it's annoying to enter my address every time.",
+    "ecommerce_checkout_feedback.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "I couldn't see the tax amount until the very end. I wanted to know the total cost including tax, but I had to go through the entire checkout process to find out. That was frustrating.",
+    "ecommerce_checkout_feedback.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "Why did you leave without completing your purchase?",
+    "ecommerce_checkout_feedback.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "The payment form didn't have an option to save my card for future purchases. I shop here regularly, and it's annoying to enter my card info every time. I wish there was a way to save it securely.",
+    "ecommerce_checkout_feedback.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "I wanted to change my shipping address, but when I clicked 'Edit', it took me back to the cart page instead of just letting me edit the address. I had to go through the entire checkout process again. That was annoying.",
+    "ecommerce_checkout_feedback.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "Why did you leave without completing your purchase?",
+    "ecommerce_checkout_feedback.csv",
+    [
+      "open_ended_surveys",
+      "qualitative"
+    ]
+  ],
+  [
+    "MOBILE APP USABILITY INTERVIEWS - TRANSCRIPT EXCERPTS\nStudy: Mobile Banking App Redesign\nMethod: Moderated usability testing with think-aloud protocol\nDuration: 45-60 minutes per session\nDate: March 2024",
+    "mobile_app_usability_interviews.txt",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "[Task: Transfer money to a friend]",
+    "mobile_app_usability_interviews.txt",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "\"I'm looking for... where do I send money? Okay, I see a 'Pay' button at the bottom. Let me tap that. Hmm, it's asking me to add a recipient first. But I just want to send money to Sarah, she's already in my contacts. Why can't I just... oh wait, maybe I need to go to transfers? Let me check the menu. There's a lot of options here. Transfers, Payments, Send Money... they all sound the same to me. I'm not sure which one I need. I'll try Send Money. Okay, now I can search for Sarah. Good. But why wasn't this the first option? I feel like I'm clicking through too many screens just to do something simple.\"",
+    "mobile_app_usability_interviews.txt",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "\"This is easy, I can see it right on the home screen. But... is this my checking or savings? It just says 'Balance: $2,450'. Which account is that? I have three accounts with this bank. I need to tap to see more details, I guess. Oh, there it is. But I wish I could see all my balances at once without having to tap into each account. Like, a summary view would be nice.\"",
+    "mobile_app_usability_interviews.txt",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "[Task: Find transaction history]",
+    "mobile_app_usability_interviews.txt",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "\"I'm looking for my recent transactions. Let me check... I don't see a clear 'Transactions' or 'History' button. Maybe it's in the account details? Let me tap on my checking account. Yeah, there it is. But it took me two taps to get there. I feel like this should be more prominent. I check my transaction history all the time, so it should be easier to find.\"",
+    "mobile_app_usability_interviews.txt",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "\"The app works, but it's not intuitive. I have to think too hard about where things are. I want to just... do things, you know? Not navigate through menus and figure out which button does what. It feels like it was designed by someone who already knows how banking apps work, not by someone who's trying to use it for the first time.\"",
+    "mobile_app_usability_interviews.txt",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "[Task: Transfer money to a friend]",
+    "mobile_app_usability_interviews.txt",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "\"Okay, I need to send money. Let me look around... I see a lot of icons but I'm not sure what they mean. This one looks like it might be for payments? [taps] Oh no, that's not right. That took me to bill pay. Let me go back. I'm looking for... I think I need to find my contacts or something? Actually, wait, can I just type in a phone number? I don't know. This is confusing. I'm used to [competitor app] where you just tap 'Send' and type a name. This is more complicated.\"",
+    "mobile_app_usability_interviews.txt",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "\"I can see a number on the screen, but I'm not sure if that's right. It seems low. Let me check... oh, I need to refresh? Why doesn't it update automatically? And there's a loading spinner that takes forever. Is my internet slow or is the app slow? I can't tell.\"",
+    "mobile_app_usability_interviews.txt",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "[Task: Find transaction history]",
+    "mobile_app_usability_interviews.txt",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "\"I want to see what I spent money on. Let me look... I don't see anything obvious. Maybe it's in settings? No, that doesn't make sense. Let me try tapping on the account balance. Oh, there it is! But I never would have guessed to tap there. That's not obvious at all.\"",
+    "mobile_app_usability_interviews.txt",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "\"I'm not very tech-savvy, so maybe that's my problem. But I feel like a banking app should be simple enough that anyone can use it. Right now, I'm afraid I'll tap the wrong thing and send money to the wrong person or something. I need more confidence that I'm doing things right.\"",
+    "mobile_app_usability_interviews.txt",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "[Task: Transfer money to a friend]",
+    "mobile_app_usability_interviews.txt",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "\"The navigation is... interesting. It's using a bottom tab bar, which is standard, but the organization is off. 'Pay' should probably be 'Send' or 'Transfer', and it should be more prominent. The current hierarchy doesn't match user mental models. Also, the recipient selection flow is clunky - why do I need to add them before I can send? That's an extra step that doesn't need to exist. I can see they're trying to prevent errors, but it's creating friction.\"",
+    "mobile_app_usability_interviews.txt",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "\"The balance display is clean, but the information architecture is questionable. Why is the primary balance shown but not the account type? That's critical information. And the way you access account details is inconsistent with iOS design patterns. The tap target is too small, and there's no visual affordance that it's tappable.\"",
+    "mobile_app_usability_interviews.txt",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "[Task: Find transaction history]",
+    "mobile_app_usability_interviews.txt",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "\"Transaction history is buried. It should be a primary action, not secondary. Users check their history frequently - it's a core use case. The current placement suggests it's not important, but it absolutely is. Also, the search functionality within transactions is weak. No filters, no date range selection, just a basic search that probably doesn't work well.\"",
+    "mobile_app_usability_interviews.txt",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "\"From a technical perspective, the app is functional. But from a UX perspective, it's missing the mark. The information architecture doesn't prioritize user goals, and the interaction patterns don't follow platform conventions. It feels like it was designed in a vacuum without considering how people actually use banking apps.\"",
+    "mobile_app_usability_interviews.txt",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "[Task: Transfer money to a friend]",
+    "mobile_app_usability_interviews.txt",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "\"I use Venmo a lot, so I'm comparing this to that. Venmo is super simple - you just open it and the first thing you see is 'Pay or Request'. This app makes me work harder. I have to figure out which button to tap, then add a recipient, then confirm... it's too many steps. I know security is important, but there's got to be a way to make this faster for people I send money to regularly.\"",
+    "mobile_app_usability_interviews.txt",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "\"The balance is right there, which is good. But I wish I could see all my accounts in one view. Right now I have to remember which account I'm looking at. And the numbers are small - I have to squint to read them. Can we make the font bigger? Or at least make it easier to see?\"",
+    "mobile_app_usability_interviews.txt",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "[Task: Find transaction history]",
+    "mobile_app_usability_interviews.txt",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "\"I'm looking for a specific transaction from last week. Let me check the history... okay, I can see recent transactions, but I can't scroll back very far. And there's no search. So if I'm looking for something from a month ago, I'm out of luck. That's frustrating. I know the transaction is there, but I can't find it.\"",
+    "mobile_app_usability_interviews.txt",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "\"It's okay, but it's not great. I'll use it because I have to - it's my bank's app. But I'm not excited about it. It feels like it was designed five years ago and never updated. Like, where's the modern UX? Where's the delight? It's just... functional. And that's not enough anymore.\"",
+    "mobile_app_usability_interviews.txt",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "[Task: Transfer money to a friend]",
+    "mobile_app_usability_interviews.txt",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "\"I'm not very comfortable with this. I'm worried I'll make a mistake. Let me see... I need to send money to my daughter. Where do I do that? I see a lot of buttons but I'm not sure what they do. Maybe I should call the bank instead? But they said I could do it in the app, so let me try. Okay, I see 'Send Money'. Let me tap that. Now it's asking for an email or phone number. But I just want to send it to my daughter - she's in my contacts. Why can't I just pick her name? This is more complicated than I thought.\"",
+    "mobile_app_usability_interviews.txt",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "\"I can see my balance, which is good. But I'm not sure if this is up to date. Does it update automatically? Or do I need to do something? I see a refresh button, so maybe I need to tap that? Let me try... okay, it's loading. Is that normal? How long does this take? I'm waiting... okay, it updated. But I wish it would just show me the current balance without me having to refresh.\"",
+    "mobile_app_usability_interviews.txt",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "[Task: Find transaction history]",
+    "mobile_app_usability_interviews.txt",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "\"I want to see what I spent money on recently. Let me look around... I don't see anything that says 'Transactions' or 'History'. Maybe it's in my account? Let me tap on the balance. Oh, there it is! But I never would have thought to tap there. That's not obvious at all. I think there should be a button that says 'View Transactions' or something like that.\"",
+    "mobile_app_usability_interviews.txt",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "\"I'm trying to learn, but it's not easy. Everything feels hidden. I wish there were more labels and explanations. Like, what does this button do? What happens if I tap that? I'm afraid I'll do something wrong. I think I'll stick to using the website on my computer - at least there I can see everything at once and I'm not worried about tapping the wrong thing.\"",
+    "mobile_app_usability_interviews.txt",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "[Task: Transfer money to a friend]",
+    "mobile_app_usability_interviews.txt",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "\"The micro-interactions are nice - smooth animations, good feedback. But the macro flow is problematic. The recipient management is over-engineered. I get that they want to prevent errors, but the current flow creates unnecessary friction. Also, the 'Pay' button in the bottom nav is confusing - pay who? Pay what? It's too generic. Should be 'Send' or 'Transfer'.\"",
+    "mobile_app_usability_interviews.txt",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "\"Visual hierarchy is off. The balance is prominent, which is good, but the account context is missing. Is this checking? Savings? Credit? That information should be equally prominent. And the way you drill down into account details feels inconsistent - sometimes it's a tap, sometimes it's a swipe, and there's no clear pattern.\"",
+    "mobile_app_usability_interviews.txt",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "[Task: Find transaction history]",
+    "mobile_app_usability_interviews.txt",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "\"Transaction history is a secondary action when it should be primary. Users check their history constantly - it's a core use case. The current placement in the account details screen means it's two taps away from the home screen, which is too many. Also, the transaction list itself needs work - no grouping by date, no quick filters, no search. It's just a long list.\"",
+    "mobile_app_usability_interviews.txt",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "\"The app has good bones - the visual design is clean, the performance is solid. But the UX needs work. It feels like features were added without considering the overall user journey. The information architecture doesn't prioritize user goals, and the interaction patterns are inconsistent. It's functional, but not delightful.\"",
+    "mobile_app_usability_interviews.txt",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "[Task: Transfer money to a friend]",
+    "mobile_app_usability_interviews.txt",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "\"This is way more complicated than it needs to be. I'm used to Cash App where you just tap a button and send. This makes me do way too much. Like, why do I need to add a recipient first? Can't I just type their name or number and send? And why are there so many confirmation screens? I know what I'm doing, just let me do it.\"",
+    "mobile_app_usability_interviews.txt",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "\"The balance is right there, which is fine. But I wish I could see it bigger, or maybe have it update in real-time. Right now I have to refresh to see the latest balance, which is annoying. And I can't see all my accounts at once - I have to switch between them, which is extra taps.\"",
+    "mobile_app_usability_interviews.txt",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "[Task: Find transaction history]",
+    "mobile_app_usability_interviews.txt",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "\"I'm trying to find a transaction from like two weeks ago. Let me scroll... okay, I can only see the last few days. How do I see older transactions? There's no 'Load More' button or anything. And I can't search. So if I'm looking for something specific, I'm basically out of luck unless it's recent.\"",
+    "mobile_app_usability_interviews.txt",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "\"It's not terrible, but it's not great either. It feels outdated. Like, where are the modern features? Where's the quick actions? Where's the smart suggestions? It's just... basic. I'll use it because I have to, but I'm not going to enjoy it. And that's a problem, right? Apps should be enjoyable to use.\"",
+    "mobile_app_usability_interviews.txt",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "[Task: Transfer money to a friend]",
+    "mobile_app_usability_interviews.txt",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "\"From a security perspective, I appreciate the multiple confirmation steps. But from a usability perspective, it's too much friction. There's a balance to strike, and this leans too far toward security at the expense of usability. The recipient management is also problematic - why can't I just send to someone in my contacts without adding them first? That's an unnecessary step.\"",
+    "mobile_app_usability_interviews.txt",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "\"The balance display is functional but lacks context. Which account am I looking at? What's the available balance versus pending transactions? These are critical pieces of information that should be immediately visible. The current design requires too much cognitive load to understand my financial position.\"",
+    "mobile_app_usability_interviews.txt",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "[Task: Find transaction history]",
+    "mobile_app_usability_interviews.txt",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "\"Transaction history is a core feature, but it's buried. It should be accessible from the home screen, not hidden in account details. Also, the transaction list needs better organization - grouping by date, filtering options, search functionality. Right now it's just a chronological list, which isn't helpful for analysis.\"",
+    "mobile_app_usability_interviews.txt",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "\"The app prioritizes security and compliance over user experience, which is understandable for a banking app, but it goes too far. There are ways to maintain security while improving usability, and this app isn't taking advantage of those opportunities. The result is an app that's safe but frustrating to use.\"",
+    "mobile_app_usability_interviews.txt",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "[Task: Transfer money to a friend]",
+    "mobile_app_usability_interviews.txt",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "\"I'm comparing this to other apps I use, and this one feels clunky. Like, why can't I just swipe to send money? Or have quick actions for people I send to regularly? Right now it's too many taps. And the recipient selection is confusing - do I add them first, or can I just type their info? I'm not sure, and I don't want to mess it up.\"",
+    "mobile_app_usability_interviews.txt",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "\"The balance is visible, which is good. But I wish I could customize the home screen. Like, maybe I want to see my savings account first instead of checking? Or maybe I want to see both at once? Right now I'm stuck with whatever default they chose, and it's not what I need.\"",
+    "mobile_app_usability_interviews.txt",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "[Task: Find transaction history]",
+    "mobile_app_usability_interviews.txt",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "\"I check my transaction history all the time - like, multiple times a day. So it should be super easy to access. Right now it's buried, which is annoying. And when I do find it, I can't search or filter, so if I'm looking for something specific, I have to scroll through everything. That's not efficient.\"",
+    "mobile_app_usability_interviews.txt",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "\"It's functional, but it's not optimized for how I actually use it. It feels like it was designed for occasional use, not daily use. But I use my banking app every day, so I need it to be fast and efficient. Right now it's neither.\"",
+    "mobile_app_usability_interviews.txt",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "[Task: Transfer money to a friend]",
+    "mobile_app_usability_interviews.txt",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "\"I'm not very good with technology, so this is stressful for me. I need to send money to my son for his rent, but I'm worried I'll do something wrong. Let me see... I think I need to find a 'Send' button or something. I see a lot of options, but I'm not sure which one is right. Maybe I should just do a bank transfer from my computer instead? But they said the app is easier, so let me try. Okay, I see 'Send Money'. Let me tap that. Now it's asking for information I'm not sure about. Do I need my son's account number? Or can I just use his phone number? I'm confused.\"",
+    "mobile_app_usability_interviews.txt",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "\"I can see my balance, which is helpful. But I'm not sure if this is the right amount. I just got paid, so it should be higher. Maybe I need to refresh? Let me try tapping the refresh button. It's loading... is this normal? I'm waiting. Okay, it updated. Good. But I wish it would just show me the current balance automatically without me having to refresh.\"",
+    "mobile_app_usability_interviews.txt",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "[Task: Find transaction history]",
+    "mobile_app_usability_interviews.txt",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "\"I want to make sure a payment went through. Let me look for my transactions... I don't see anything obvious. Maybe it's in my account details? Let me tap on the balance. Oh, there it is! But I never would have thought to tap there. I think there should be a clearer button or menu item for transactions.\"",
+    "mobile_app_usability_interviews.txt",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "\"I'm trying to learn how to use this, but it's not intuitive for me. Everything feels hidden, and I'm worried I'll make a mistake. I think I'll stick to using the bank's website on my computer - at least there I can see everything clearly and I'm not worried about tapping the wrong thing on a small screen.\"",
+    "mobile_app_usability_interviews.txt",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "I'm not very good with computers, so I'm worried about this. My doctor said I need to use this portal to see my test results, but I don't know how. I wish I could just call the office, but they said everything is online now. I'm trying to learn, but it's hard.",
+    "healthcare_portal_interviews.json",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "I had trouble logging in. I have so many passwords for different things, and I can't remember which one is for this. I tried to reset it, but then I got an email with a link, and I wasn't sure if it was real or spam. I'm always worried about clicking links in emails. I ended up calling the office to make sure it was safe.",
+    "healthcare_portal_interviews.json",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "I couldn't find my test results anywhere. I clicked around for maybe 20 minutes, and I still couldn't find them. There are so many menus and buttons, and I don't know what they mean. I finally gave up and called the office. They walked me through it over the phone, but I'm not sure I'll remember how to do it next time.",
+    "healthcare_portal_interviews.json",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "I wanted to ask my doctor a question, but I couldn't figure out how to send a message. I saw something that said 'Messages' but when I clicked it, I didn't see how to write a new message. Maybe I'm missing something? I ended up just calling the office instead.",
+    "healthcare_portal_interviews.json",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "I know this is the way things are going, but it's frustrating for someone like me who isn't comfortable with technology. I feel like I'm being left behind. I wish there was more help available, or maybe a simpler version for people like me who just want to do basic things.",
+    "healthcare_portal_interviews.json",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "I've used patient portals before, so I had expectations based on those experiences. This one is... different. Not necessarily better or worse, just different. The information architecture is unusual - things are organized in a way that doesn't match my mental model.",
+    "healthcare_portal_interviews.json",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "Login was fine - standard two-factor authentication, which I appreciate for security. The interface loaded quickly, which is good. But then I was presented with a dashboard that had way too much information at once. It's overwhelming.",
+    "healthcare_portal_interviews.json",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "Test results are buried. They're under 'Medical Records' which makes sense, but then you have to navigate through multiple sub-menus to find them. And when you do find them, the display is cluttered. I can see the results, but I can't easily compare them to previous results or understand trends over time.",
+    "healthcare_portal_interviews.json",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "The messaging system works, but it's not intuitive. You have to select a recipient first, which seems backwards to me. I want to compose my message, then decide who to send it to. Also, there's no indication of response time or when I might hear back, which creates anxiety.",
+    "healthcare_portal_interviews.json",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "The portal is functional, but it's not optimized for patient needs. It feels like it was designed by healthcare administrators, not by people who understand how patients actually interact with health information. There's a lot of potential here, but it's not being realized.",
+    "healthcare_portal_interviews.json",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "I expected it to be straightforward - log in, see my info, message my doctor if needed. But it's more complicated than that. There are features I didn't expect, and features I expected that aren't there. It's inconsistent.",
+    "healthcare_portal_interviews.json",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "The login process itself was fine, but then there's this whole onboarding flow that I couldn't skip. It was showing me features I don't care about and asking me to set up things I'll never use. I just wanted to check my appointment time, but I had to go through 10 minutes of setup first.",
+    "healthcare_portal_interviews.json",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "I can find my test results, but I can't understand them. The medical terminology isn't explained, and there's no context about what's normal or what I should be concerned about. I end up googling everything, which probably isn't the best approach, but what else am I supposed to do?",
+    "healthcare_portal_interviews.json",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "I like that I can message my doctor, but the interface is clunky. It's like using email from 2005. No formatting options, no way to attach files easily, no read receipts. And I never know if my message was received or when I'll get a response. It's better than calling, but not by much.",
+    "healthcare_portal_interviews.json",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "It's usable, but it's not great. I'll use it because I have to, but I'm not excited about it. It feels outdated, like it was designed 10 years ago and never updated. Healthcare technology should be better than this.",
+    "healthcare_portal_interviews.json",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "My daughter set this up for me, so I'm not really sure what to expect. She said I can see my appointments and test results here, which sounds useful. But I'm not very good with computers, so I'm worried I'll mess something up.",
+    "healthcare_portal_interviews.json",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "I have trouble remembering my password. I wrote it down, but I'm not sure where I put the paper. And the website keeps asking me to change it, which is confusing. Why do I need to change it if it's working? I end up calling my daughter to help me log in most of the time.",
+    "healthcare_portal_interviews.json",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "I can see that I have test results, but I can't read them. The text is too small, and there are a lot of numbers and abbreviations that I don't understand. I wish there was a way to make it bigger, or maybe have someone explain what it means. Right now I just see numbers and I don't know if that's good or bad.",
+    "healthcare_portal_interviews.json",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "I don't think I've ever used the messaging feature. I'm not sure how it works, and I'm worried I'll send a message to the wrong person or say something wrong. I'd rather just call the office - at least then I know I'm talking to the right person.",
+    "healthcare_portal_interviews.json",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "I know this is supposed to make things easier, but for me it's harder. I'm more comfortable talking to someone on the phone than trying to figure out a website. Maybe if I was younger and grew up with computers, it would be different. But for now, I'll stick to calling when I need something.",
+    "healthcare_portal_interviews.json",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "I manage a chronic condition, so I use patient portals frequently. I expected this one to be similar to others I've used, but it's actually quite different. Some things are better, some things are worse. Overall, it's functional but not exceptional.",
+    "healthcare_portal_interviews.json",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "Login is fine - I appreciate the security measures. But once I'm in, the interface is cluttered. There's too much information competing for attention. I wish I could customize the dashboard to show only what's relevant to me.",
+    "healthcare_portal_interviews.json",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "I can find my test results, which is good. But I can't easily track trends over time. I have to manually compare results from different dates, which is tedious. A simple graph or chart would be so helpful. Also, the results don't always include reference ranges, which is frustrating.",
+    "healthcare_portal_interviews.json",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "The messaging system is adequate, but it's not great. I wish there was a way to mark messages as urgent, or to see if my doctor has read my message. Also, the response time is inconsistent - sometimes I get a response in hours, sometimes it takes days. I never know what to expect.",
+    "healthcare_portal_interviews.json",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "As someone who uses this portal frequently, I can see its potential, but I'm also frustrated by its limitations. It feels like it was designed for occasional use, not for people who need to manage their health actively. There's room for improvement, especially around data visualization and communication features.",
+    "healthcare_portal_interviews.json",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "I don't use this very often - maybe a few times a year when I need to schedule an appointment or check something. I expected it to be simple and straightforward, but every time I log in, I have to relearn how to use it. Nothing is intuitive.",
+    "healthcare_portal_interviews.json",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "I always forget my password because I use this so infrequently. And the password requirements are strict - it needs uppercase, lowercase, numbers, special characters... I can never remember what I set it to. I end up resetting it every time, which is annoying.",
+    "healthcare_portal_interviews.json",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "I can usually find my test results eventually, but it takes me a while. I click around until I find what I'm looking for. I'm never confident I'm looking in the right place, and I worry I'm missing something important.",
+    "healthcare_portal_interviews.json",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "I've never used the messaging feature. I'm not even sure where it is. If I need to contact my doctor, I just call the office. It's faster and I know I'll get a response.",
+    "healthcare_portal_interviews.json",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "I wish this was easier to use. Every time I log in, I feel like I'm starting from scratch. I know there are probably features that would be helpful, but I don't know what they are or how to find them. It's frustrating.",
+    "healthcare_portal_interviews.json",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "I expected a modern, intuitive interface. What I got was... functional, but dated. It works, but it doesn't feel like it was designed in the last decade. The UX patterns are outdated, and the information architecture is confusing.",
+    "healthcare_portal_interviews.json",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "Login is standard - no complaints there. But the post-login experience is jarring. I'm presented with a dashboard that has way too much information, and I can't customize it. I have to wade through irrelevant information to find what I need.",
+    "healthcare_portal_interviews.json",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "Test results are accessible, but the presentation is poor. The data is there, but it's not presented in a way that's easy to understand or act on. I wish there was more context - what do these numbers mean? How do they compare to normal ranges? What should I be concerned about?",
+    "healthcare_portal_interviews.json",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "The messaging interface is clunky. It's like using a basic email client from 15 years ago. No rich text, no file attachments that work well, no way to organize messages. It's functional, but it's not a good experience.",
+    "healthcare_portal_interviews.json",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "The portal meets basic requirements, but it doesn't exceed expectations. It feels like a compliance checkbox rather than a tool designed to help patients manage their health. There's so much potential here, but it's not being realized.",
+    "healthcare_portal_interviews.json",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "I'm not sure what to expect. My doctor's office said I need to use this to see my lab results, but I'm not comfortable with computers. I'm worried I'll do something wrong or see something I'm not supposed to see.",
+    "healthcare_portal_interviews.json",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "I had a lot of trouble logging in. The instructions weren't clear, and I wasn't sure if I was doing it right. I ended up calling the office for help, and they walked me through it over the phone. But I'm not sure I'll remember how to do it next time.",
+    "healthcare_portal_interviews.json",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "I couldn't find my test results. I looked everywhere, but I couldn't find them. I'm not sure if I'm looking in the right place, or if they're not there yet, or if I'm doing something wrong. I gave up and called the office.",
+    "healthcare_portal_interviews.json",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "I don't know how to send a message, and I'm afraid to try. What if I send it to the wrong person? What if I say something wrong? I'd rather just call - at least then I know I'm talking to the right person and I can explain what I need.",
+    "healthcare_portal_interviews.json",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "This is too complicated for me. I know it's supposed to make things easier, but for someone like me who isn't good with technology, it's actually harder. I wish there was a simpler way, or more help available.",
+    "healthcare_portal_interviews.json",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "I've used patient portals before, so I had a general idea of what to expect. This one is fairly standard - nothing exceptional, but nothing terrible either. It does what it needs to do.",
+    "healthcare_portal_interviews.json",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "Login is straightforward. The two-factor authentication is a bit annoying, but I understand why it's necessary. Once I'm in, the interface is clean enough, though it could be more personalized.",
+    "healthcare_portal_interviews.json",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "I can find my test results without too much trouble. The layout is a bit cluttered, but I can usually find what I'm looking for. I wish the results were presented more clearly - maybe with visual indicators for what's normal vs. abnormal.",
+    "healthcare_portal_interviews.json",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "I've used the messaging feature a few times. It works, but it's not great. The interface is basic, and I never know when I'll get a response. Sometimes it's quick, sometimes it takes days. I wish there was more transparency around response times.",
+    "healthcare_portal_interviews.json",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "It's functional. I can do what I need to do, but I'm not excited about using it. It feels like a necessary tool rather than a helpful one. There's room for improvement, but it's not terrible.",
+    "healthcare_portal_interviews.json",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "I expected it to be like other apps I use - simple, intuitive, fast. But it feels outdated. Like, why does it look like it was designed in 2010? I'm used to modern interfaces, and this isn't one.",
+    "healthcare_portal_interviews.json",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "Login is fine, but the interface after login is overwhelming. There's so much information, and I don't know what's important and what's not. I wish I could customize it or at least hide things I don't need.",
+    "healthcare_portal_interviews.json",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "I can find my test results, but I can't understand them. The medical terminology isn't explained, and there's no context. I end up googling everything, which probably isn't ideal, but what else am I supposed to do?",
+    "healthcare_portal_interviews.json",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "I've never used the messaging feature. If I need to contact my doctor, I'll just call or schedule an appointment. The messaging seems like it would be slow and I'm not sure if my doctor even checks it regularly.",
+    "healthcare_portal_interviews.json",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "It's usable, but it's not great. It feels like healthcare technology is behind the times. I'm used to apps that are fast, intuitive, and beautiful. This is none of those things. It works, but that's about all I can say for it.",
+    "healthcare_portal_interviews.json",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "I mean, honestly? I was expecting it to be pretty straightforward. Like, sign up, maybe watch a quick tutorial, and then I'm good to go. But there's so much... stuff. I don't even know where to start. It's overwhelming, you know?",
+    "saas_onboarding_interviews.csv",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "Okay so I logged in and there's this dashboard thing. It's got like 20 different sections and I'm just sitting here like... what am I supposed to do first? There's no clear path. I clicked around for maybe 10 minutes before I gave up and just started clicking random things.",
+    "saas_onboarding_interviews.csv",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "The onboarding was... fine? I guess? But I feel like I'm missing something. Like, they showed me how to create a project, but not WHY I would want to create a project, or what happens after. It's very feature-focused, not goal-focused.",
+    "saas_onboarding_interviews.csv",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "I had no idea this feature even existed until I accidentally stumbled on it. And it's actually really useful! But why wasn't it mentioned in the onboarding? I've been using the tool for three weeks and I'm still finding new things.",
+    "saas_onboarding_interviews.csv",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "I'm frustrated, honestly. I know this tool can do what I need, but I feel like I'm fighting against it instead of it helping me. Every time I try to do something, I have to Google how to do it or ask support. That shouldn't be necessary.",
+    "saas_onboarding_interviews.csv",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "I've used similar tools before, so I thought I knew what to expect. But this one is... different. In a good way, I think? But also confusing because my mental model doesn't match.",
+    "saas_onboarding_interviews.csv",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "The welcome screen was nice, I'll give them that. But then it just... stopped. Like, here's your dashboard, figure it out. I wish there was a way to say 'hey, I'm new, show me around' or 'I know what I'm doing, skip this'.",
+    "saas_onboarding_interviews.csv",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "I liked the interactive tutorial, but it disappeared too fast. And I couldn't go back to it later. So now I'm stuck trying to remember what it said, and I'm probably doing things wrong.",
+    "saas_onboarding_interviews.csv",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "There are so many features hidden in menus. I feel like I'm using maybe 20% of what this tool can do, but I don't know what the other 80% is or if I even need it. A feature discovery thing would be helpful.",
+    "saas_onboarding_interviews.csv",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "It's growing on me. The first week was rough, but now that I've figured out the basics, I can see the value. I just wish the learning curve wasn't so steep at the beginning.",
+    "saas_onboarding_interviews.csv",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "I watched a demo video before signing up, and it looked amazing. But the actual experience is... not the same. The video made it seem intuitive, but in practice, everything feels buried.",
+    "saas_onboarding_interviews.csv",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "I got stuck on the email verification step. The email went to spam, so I waited like an hour before checking. Then when I finally got in, I had no idea what to do next. The momentum was gone.",
+    "saas_onboarding_interviews.csv",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "The tooltips are helpful, but there are too many of them. It's like death by a thousand tooltips. I started ignoring them after the first five, so I probably missed important information.",
+    "saas_onboarding_interviews.csv",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "I wish there was a 'most common tasks' section or something. Like, 'here's what 80% of users do first' or 'start here if you want to do X'. Right now it's just... everything at once.",
+    "saas_onboarding_interviews.csv",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "I'm actually really impressed. Once you get past the initial confusion, it's powerful. But I can see why people would give up before they get to that point. The barrier to entry is high.",
+    "saas_onboarding_interviews.csv",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "I expected it to be complicated because it's enterprise software, but I didn't expect it to be THIS complicated. There's a difference between powerful and overwhelming.",
+    "saas_onboarding_interviews.csv",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "The login process itself was fine, but then there's this whole setup wizard that I couldn't skip. I just wanted to explore, but it forced me through 15 steps before I could actually use anything.",
+    "saas_onboarding_interviews.csv",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "I appreciate that they're trying to help, but the onboarding feels like it was designed for someone who's never used software before. I'm not a beginner, but I'm being treated like one.",
+    "saas_onboarding_interviews.csv",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "I found this really cool feature by accident, and it's exactly what I needed. But I've been using the tool for a month and I'm just now finding it. That's a problem.",
+    "saas_onboarding_interviews.csv",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "Mixed feelings. The tool itself is great, but the onboarding experience left a bad first impression. I almost canceled my trial because of it. Glad I stuck with it, but they're losing users at this stage.",
+    "saas_onboarding_interviews.csv",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "I thought it would be plug-and-play, but it's more like... plug and configure and read documentation and watch videos and then maybe play?",
+    "saas_onboarding_interviews.csv",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "The dashboard is beautiful, I'll give them that. But beautiful doesn't mean usable. I spent 20 minutes just trying to figure out where my data was.",
+    "saas_onboarding_interviews.csv",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "The step-by-step guide was helpful, but it assumed I knew what all these terms meant. Like, 'configure your workspace' - what does that even mean? I had to look it up.",
+    "saas_onboarding_interviews.csv",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "There's a search function, which is good, but it doesn't always find what I'm looking for. And sometimes I don't know what to search for because I don't know what the feature is called.",
+    "saas_onboarding_interviews.csv",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "I'm getting there. It's not intuitive, but it's learnable. I just wish the learning happened faster. I feel like I'm wasting time that I could be spending on actual work.",
+    "saas_onboarding_interviews.csv",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "I've been burned by bad onboarding before, so I went in with low expectations. And... yeah, it met those expectations. Not terrible, but not great either.",
+    "saas_onboarding_interviews.csv",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "I liked that I could choose my role during signup - that was smart. But then the onboarding didn't really change based on my role. It was still generic.",
+    "saas_onboarding_interviews.csv",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "The video tutorials are well-made, but I don't want to watch a 10-minute video every time I want to learn something. I want contextual help, right when I need it.",
+    "saas_onboarding_interviews.csv",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "I wish there was a way to see what other users in my role typically do. Like, 'other marketing managers usually start with X, Y, Z'. That would be helpful.",
+    "saas_onboarding_interviews.csv",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "It's fine. Not amazing, not terrible. Just... fine. I'll use it because I have to, but I'm not excited about it. And that's probably not what they want to hear.",
+    "saas_onboarding_interviews.csv",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "I expected a modern, streamlined experience based on the marketing. But it feels like they built all these features and then just... dumped them on the screen. No curation.",
+    "saas_onboarding_interviews.csv",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "The first thing I saw was a blank dashboard with a 'get started' button. I clicked it, and it took me to another page with more buttons. It's buttons all the way down.",
+    "saas_onboarding_interviews.csv",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "I appreciate the effort, but the onboarding feels disconnected from the actual product. Like, they show you simplified examples, but then the real thing is completely different.",
+    "saas_onboarding_interviews.csv",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "There's a help center, which is good. But I have to leave the app to use it, and by the time I find what I need, I've forgotten what I was trying to do in the first place.",
+    "saas_onboarding_interviews.csv",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "I'm frustrated because I can see the potential, but I can't unlock it. It's like having a powerful car but not knowing how to drive stick. The tool is there, but I'm not skilled enough to use it effectively.",
+    "saas_onboarding_interviews.csv",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "I thought it would be similar to [competitor tool], but it's actually quite different. That's not necessarily bad, but it means I can't rely on my existing knowledge.",
+    "saas_onboarding_interviews.csv",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "The signup was quick, which I liked. But then there's this huge gap between signing up and actually being productive. Like, okay, I'm in, now what?",
+    "saas_onboarding_interviews.csv",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "The interactive walkthrough was helpful, but it was too fast. I couldn't process everything before it moved on. And there's no way to slow it down or pause it.",
+    "saas_onboarding_interviews.csv",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "I keep finding features that I didn't know existed, and they're solving problems I didn't even know I had. That's cool, but also frustrating because I've been working around these problems for weeks.",
+    "saas_onboarding_interviews.csv",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "It's a learning curve, for sure. But I think once I get comfortable, it'll be worth it. The question is whether I'll stick around long enough to get comfortable.",
+    "saas_onboarding_interviews.csv",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "I expected it to be complex because it's a professional tool, but I also expected better guidance. Like, hold my hand through the complex parts, you know?",
+    "saas_onboarding_interviews.csv",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "I got through the onboarding, but I'm not confident I did it right. Like, did I set things up correctly? Am I missing something important? There's no way to know.",
+    "saas_onboarding_interviews.csv",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "The onboarding covers the basics, but not the 'why'. Like, I know HOW to create a project, but I don't know WHY I would want to, or when, or what happens next.",
+    "saas_onboarding_interviews.csv",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "I wish there was a 'new user checklist' or something. Like, 'here are the 10 things you should do in your first week'. Right now I'm just guessing.",
+    "saas_onboarding_interviews.csv",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "I'm torn. The tool is powerful, but the onboarding is weak. I'm spending more time learning than doing, and that's not sustainable.",
+    "saas_onboarding_interviews.csv",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "I went in blind, which was probably a mistake. But I also think the product should be usable even if you go in blind. That's the whole point of good UX, right?",
+    "saas_onboarding_interviews.csv",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "The welcome message was nice, but then it just... ended. Like, 'welcome! Good luck!' And I'm sitting there like, okay, now what do I do?",
+    "saas_onboarding_interviews.csv",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "I liked that I could skip parts of the onboarding, but I'm worried I skipped something important. There's no way to go back and check what I missed.",
+    "saas_onboarding_interviews.csv",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "The UI is clean, which is good, but it also means features are hidden. I'm constantly right-clicking or hovering, trying to find things that might not even exist.",
+    "saas_onboarding_interviews.csv",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "It's getting better as I use it more, but the first impression wasn't great. And first impressions matter. I almost didn't come back after the first session.",
+    "saas_onboarding_interviews.csv",
+    [
+      "user_interviews",
+      "qualitative"
+    ]
+  ],
+  [
+    "I'm struggling with a stakeholder who keeps asking for changes that don't make sense from a UX perspective. They want to add more features, make buttons bigger, add more colors - basically everything that goes against best practices. I've tried explaining the reasoning, showing research, but they don't listen. How do you handle this situation? I'm getting frustrated and starting to feel like I'm not doing my job well.",
+    "ux_forum_threads.json",
+    [
+      "community_forums",
+      "qualitative"
+    ]
+  ],
+  [
+    "This is so common. What's worked for me is framing things in business terms rather than UX terms. Instead of 'this violates UX best practices,' try 'this will reduce conversion by X% based on industry benchmarks.' Stakeholders care about business outcomes, not UX theory.",
+    "ux_forum_threads.json",
+    [
+      "community_forums",
+      "qualitative"
+    ]
+  ],
+  [
+    "I've found that showing real user data helps. Do a quick usability test with 5 users and show them the results. When stakeholders see actual people struggling with their suggestions, they usually back down. It's harder to argue with real user behavior than with principles.",
+    "ux_forum_threads.json",
+    [
+      "community_forums",
+      "qualitative"
+    ]
+  ],
+  [
+    "Sometimes you have to pick your battles. Not every design decision is worth fighting over. I try to identify what's truly important (accessibility, conversion, user safety) and stand firm on those, but compromise on less critical things. It's about building trust over time.",
+    "ux_forum_threads.json",
+    [
+      "community_forums",
+      "qualitative"
+    ]
+  ],
+  [
+    "I'm new to UX research and I'm overwhelmed by all the tools available. There's UserTesting, Maze, Hotjar, Dovetail, Optimal Workshop... the list goes on. What tools do you actually use day-to-day? Which ones are worth the money? I'm on a budget, so I need to be strategic about what I invest in.",
+    "ux_forum_threads.json",
+    [
+      "community_forums",
+      "qualitative"
+    ]
+  ],
+  [
+    "Start with free tools. Google Forms for surveys, Zoom for interviews, Miro for affinity mapping, Excel for analysis. You don't need expensive tools to do good research. Once you understand the methods, then consider paid tools if they save you significant time.",
+    "ux_forum_threads.json",
+    [
+      "community_forums",
+      "qualitative"
+    ]
+  ],
+  [
+    "It depends on what you're doing. For usability testing, I use UserTesting or Maze. For analytics, Hotjar or FullStory. For synthesis, Dovetail is amazing but expensive. For surveys, Typeform or SurveyMonkey. Don't try to use everything - pick 2-3 that cover your main needs.",
+    "ux_forum_threads.json",
+    [
+      "community_forums",
+      "qualitative"
+    ]
+  ],
+  [
+    "The tool doesn't matter as much as the method. Focus on learning research methods first - interviews, surveys, usability testing, card sorting. Once you know the methods, you can use almost any tool. Don't let tool choice become a barrier to doing research.",
+    "ux_forum_threads.json",
+    [
+      "community_forums",
+      "qualitative"
+    ]
+  ],
+  [
+    "I'm trying to convince leadership to invest more in UX, but they keep asking for metrics. How do you measure UX success? What KPIs do you track? I know about NPS and task completion rates, but what else? I need something that will resonate with executives who care about ROI.",
+    "ux_forum_threads.json",
+    [
+      "community_forums",
+      "qualitative"
+    ]
+  ],
+  [
+    "I track a combination of quantitative and qualitative metrics. Quantitative: task completion rate, time on task, error rate, conversion rate, retention. Qualitative: user satisfaction scores, ease of use ratings, feature adoption. The key is showing how UX improvements lead to business outcomes.",
+    "ux_forum_threads.json",
+    [
+      "community_forums",
+      "qualitative"
+    ]
+  ],
+  [
+    "Frame it in business terms. Instead of 'improved UX,' say 'reduced support tickets by 30%' or 'increased conversion by 15%.' Show the cost savings or revenue impact. Executives care about money, so show them how UX saves or makes money.",
+    "ux_forum_threads.json",
+    [
+      "community_forums",
+      "qualitative"
+    ]
+  ],
+  [
+    "Don't forget about leading indicators. Task completion and conversion are lagging indicators. Leading indicators like user confidence, perceived ease of use, and intent to recommend can predict future success. Track both to show both current performance and future potential.",
+    "ux_forum_threads.json",
+    [
+      "community_forums",
+      "qualitative"
+    ]
+  ],
+  [
+    "I've been in UX for 2 years now, but I still feel like I don't know what I'm doing. Everyone around me seems so confident and knowledgeable, and I'm constantly second-guessing myself. I worry that I'm not good enough, that I'll be found out. How do you deal with this? Does it ever go away?",
+    "ux_forum_threads.json",
+    [
+      "community_forums",
+      "qualitative"
+    ]
+  ],
+  [
+    "I've been doing this for 10 years and I still feel imposter syndrome sometimes. It's normal, especially in a field that's constantly evolving. The key is recognizing that everyone feels this way sometimes, even the people who seem confident. You're not alone.",
+    "ux_forum_threads.json",
+    [
+      "community_forums",
+      "qualitative"
+    ]
+  ],
+  [
+    "What helped me was focusing on what I do know rather than what I don't. Make a list of your skills and accomplishments. When imposter syndrome hits, look at that list. Also, remember that UX is a team sport - you don't have to know everything, you just need to know how to find answers.",
+    "ux_forum_threads.json",
+    [
+      "community_forums",
+      "qualitative"
+    ]
+  ],
+  [
+    "Find a mentor or community. Having people to talk to who understand what you're going through is huge. Also, remember that learning is part of the job. If you're not learning, you're not growing. Embrace the uncertainty - it means you're pushing yourself.",
+    "ux_forum_threads.json",
+    [
+      "community_forums",
+      "qualitative"
+    ]
+  ],
+  [
+    "I just finished a big usability study and I need to present the findings to stakeholders. I have tons of data - interview transcripts, survey results, task completion rates, quotes, video clips. How do I organize all of this into a presentation that's actually useful? I don't want to overwhelm them with data, but I also don't want to oversimplify.",
+    "ux_forum_threads.json",
+    [
+      "community_forums",
+      "qualitative"
+    ]
+  ],
+  [
+    "Start with the key insights, not the data. What did you learn? What should they do about it? Then support those insights with data. Use the 3-5-7 rule: 3 main insights, 5 supporting points, 7 minutes max. Stakeholders don't need to see everything, they need to see what matters.",
+    "ux_forum_threads.json",
+    [
+      "community_forums",
+      "qualitative"
+    ]
+  ],
+  [
+    "Tell a story. Start with the problem, show user quotes or video clips to make it real, then present your findings as the solution. Use visuals - charts, graphs, journey maps. Make it engaging, not just a data dump. People remember stories, not statistics.",
+    "ux_forum_threads.json",
+    [
+      "community_forums",
+      "qualitative"
+    ]
+  ],
+  [
+    "Create an executive summary (1 page) with key findings and recommendations. Then have detailed slides as backup. Most stakeholders will only read the summary, but having details available shows you did thorough work. Also, prioritize findings by impact - what will have the biggest effect?",
+    "ux_forum_threads.json",
+    [
+      "community_forums",
+      "qualitative"
+    ]
+  ],
+  [
+    "REDDIT POSTS - PRODUCT DESIGN SUBREDDIT\nSubreddit: r/productdesign\nDate Range: March 2024\nFormat: Post titles and top comments",
+    "product_reddit_posts.txt",
+    [
+      "community_forums",
+      "qualitative"
+    ]
+  ],
+  [
+    "Author: u/DesignFrustrated\nUpvotes: 234\nComments: 47\nDate: 2024-03-01",
+    "product_reddit_posts.txt",
+    [
+      "community_forums",
+      "qualitative"
+    ]
+  ],
+  [
+    "Post: \"I'm so tired of this. Every sprint planning meeting, it's 'we need to add this feature' or 'we need to build that feature.' No one ever says 'we need to improve the UX of existing features' or 'we need to fix usability issues.'",
+    "product_reddit_posts.txt",
+    [
+      "community_forums",
+      "qualitative"
+    ]
+  ],
+  [
+    "Features get prioritized because they're visible and measurable. UX improvements are invisible until you look closely, so they get deprioritized. But bad UX is killing our product - users are frustrated, support tickets are high, retention is low.",
+    "product_reddit_posts.txt",
+    [
+      "community_forums",
+      "qualitative"
+    ]
+  ],
+  [
+    "How do you convince product teams that UX improvements are just as important as new features? I'm losing this battle constantly.\"",
+    "product_reddit_posts.txt",
+    [
+      "community_forums",
+      "qualitative"
+    ]
+  ],
+  [
+    "u/ProductDesigner: \"I feel you. What's worked for me is framing UX improvements as features. Instead of 'improve checkout flow,' say 'reduce checkout abandonment by 30%.' Instead of 'fix navigation,' say 'increase feature discovery by 50%.' Product teams understand features, so speak their language.\"",
+    "product_reddit_posts.txt",
+    [
+      "community_forums",
+      "qualitative"
+    ]
+  ],
+  [
+    "u/UXLead: \"This is a classic problem. The issue is that UX improvements don't have clear ROI, while features do. You need to show the business impact. Track metrics before and after UX improvements. Show how fixing UX issues reduces support costs, increases conversion, improves retention. Data talks.\"",
+    "product_reddit_posts.txt",
+    [
+      "community_forums",
+      "qualitative"
+    ]
+  ],
+  [
+    "u/DesignManager: \"Sometimes you have to be strategic. I've found that bundling UX improvements with new features works well. Like, 'we're adding this new feature, but we also need to improve the UX of the related features to make it work well.' It's not ideal, but it gets things done.\"",
+    "product_reddit_posts.txt",
+    [
+      "community_forums",
+      "qualitative"
+    ]
+  ],
+  [
+    "Author: u/CareerSwitcher\nUpvotes: 189\nComments: 62\nDate: 2024-03-02",
+    "product_reddit_posts.txt",
+    [
+      "community_forums",
+      "qualitative"
+    ]
+  ],
+  [
+    "Post: \"I'm looking to switch careers into UX design. I have a background in marketing, so I understand users and business, but I don't have design skills.",
+    "product_reddit_posts.txt",
+    [
+      "community_forums",
+      "qualitative"
+    ]
+  ],
+  [
+    "There are so many resources out there - bootcamps, online courses, YouTube videos, books. I'm overwhelmed. What's actually worth it? I don't have a ton of money to spend, so I need to be strategic.",
+    "product_reddit_posts.txt",
+    [
+      "community_forums",
+      "qualitative"
+    ]
+  ],
+  [
+    "Also, do I need to learn to code? I see mixed opinions on this. Some say yes, some say no. What's the reality?\"",
+    "product_reddit_posts.txt",
+    [
+      "community_forums",
+      "qualitative"
+    ]
+  ],
+  [
+    "u/UXMentor: \"You don't need to learn to code, but understanding how things work technically helps. Focus on: 1) Design fundamentals (typography, color, layout), 2) UX methods (research, testing, prototyping), 3) Tools (Figma, Miro, etc.), 4) Build a portfolio with real projects. Bootcamps can be good, but they're expensive. Start with free resources, then invest if you need structure.\"",
+    "product_reddit_posts.txt",
+    [
+      "community_forums",
+      "qualitative"
+    ]
+  ],
+  [
+    "u/SeniorDesigner: \"I'm self-taught. What worked for me: 1) Read 'Don't Make Me Think' and 'The Design of Everyday Things', 2) Take free courses on Coursera or edX, 3) Redesign existing apps/websites and document your process, 4) Find a mentor, 5) Join UX communities. You don't need a bootcamp if you're disciplined.\"",
+    "product_reddit_posts.txt",
+    [
+      "community_forums",
+      "qualitative"
+    ]
+  ],
+  [
+    "u/DesignRecruiter: \"From a hiring perspective: portfolio > education. I don't care if you went to a bootcamp or are self-taught. I care about your portfolio and your ability to think through problems. Focus on building a strong portfolio with 3-5 case studies that show your process.\"",
+    "product_reddit_posts.txt",
+    [
+      "community_forums",
+      "qualitative"
+    ]
+  ],
+  [
+    "Author: u/JuniorDesigner2024\nUpvotes: 156\nComments: 38\nDate: 2024-03-03",
+    "product_reddit_posts.txt",
+    [
+      "community_forums",
+      "qualitative"
+    ]
+  ],
+  [
+    "Post: \"I got feedback from a stakeholder that literally makes no sense. They want me to 'make it pop more' and 'add more energy' but when I ask what that means, they can't explain it. They just keep saying 'you know, make it better.'",
+    "product_reddit_posts.txt",
+    [
+      "community_forums",
+      "qualitative"
+    ]
+  ],
+  [
+    "I've tried asking clarifying questions, showing examples, explaining my design decisions, but nothing works. They just keep giving vague feedback. I'm frustrated and don't know how to move forward.",
+    "product_reddit_posts.txt",
+    [
+      "community_forums",
+      "qualitative"
+    ]
+  ],
+  [
+    "How do you handle this? Do you just do what they ask even if it doesn't make sense? Or do you push back? I'm worried about seeming difficult, but I also don't want to make bad design decisions.\"",
+    "product_reddit_posts.txt",
+    [
+      "community_forums",
+      "qualitative"
+    ]
+  ],
+  [
+    "u/DesignVeteran: \"This is so common. What I do: 1) Ask 'why' - what problem are they trying to solve? 2) Show 3 options - sometimes they don't know what they want until they see it, 3) Use data - 'based on user research, users prefer X', 4) If all else fails, do a quick version of what they want and test it. Sometimes they realize it's not what they wanted when they see it.\"",
+    "product_reddit_posts.txt",
+    [
+      "community_forums",
+      "qualitative"
+    ]
+  ],
+  [
+    "u/UXConsultant: \"Vague feedback usually means they don't know what they want. Help them figure it out. Ask: 'What feeling do you want users to have?' 'What action do you want them to take?' 'What's not working about the current design?' Get to the root of what they're actually trying to achieve.\"",
+    "product_reddit_posts.txt",
+    [
+      "community_forums",
+      "qualitative"
+    ]
+  ],
+  [
+    "u/SeniorDesigner: \"Sometimes you have to pick your battles. If it's not a critical decision, I'll make the change they want (even if I disagree) to build trust. Then when something important comes up, they're more likely to listen. It's about relationship building, not just design.\"",
+    "product_reddit_posts.txt",
+    [
+      "community_forums",
+      "qualitative"
+    ]
+  ],
+  [
+    "Author: u/SkepticalPM\nUpvotes: 312\nComments: 89\nDate: 2024-03-04",
+    "product_reddit_posts.txt",
+    [
+      "community_forums",
+      "qualitative"
+    ]
+  ],
+  [
+    "Post: \"I'm a product manager, and I'm skeptical about UX research. We do user interviews and usability tests, but I feel like we're just checking a box. The research confirms what we already know, or it's so obvious that it's not useful.",
+    "product_reddit_posts.txt",
+    [
+      "community_forums",
+      "qualitative"
+    ]
+  ],
+  [
+    "Like, we'll do a usability test and find out that users want the feature to be faster. Well, duh. Everyone wants everything to be faster. That's not actionable insight.",
+    "product_reddit_posts.txt",
+    [
+      "community_forums",
+      "qualitative"
+    ]
+  ],
+  [
+    "Am I missing something? Is UX research actually valuable, or is it just something we do to feel good about ourselves? What makes research actually useful?\"",
+    "product_reddit_posts.txt",
+    [
+      "community_forums",
+      "qualitative"
+    ]
+  ],
+  [
+    "u/ResearchLead: \"Bad research confirms what you already know. Good research surprises you. If your research isn't revealing new insights, you're probably asking the wrong questions or testing the wrong things. Try: 1) Testing assumptions, not features, 2) Observing behavior, not asking opinions, 3) Testing early, before you've invested too much.\"",
+    "product_reddit_posts.txt",
+    [
+      "community_forums",
+      "qualitative"
+    ]
+  ],
+  [
+    "u/UXResearcher: \"Research is only useful if you act on it. I've seen teams do research, find problems, then ignore the findings because they don't align with what they want to build. That's when research becomes a checkbox. Research should inform decisions, not just validate them.\"",
+    "product_reddit_posts.txt",
+    [
+      "community_forums",
+      "qualitative"
+    ]
+  ],
+  [
+    "u/ProductDesigner: \"The value of research isn't always in the findings - sometimes it's in the process. Research forces you to think about users, to question assumptions, to consider alternatives. Even if the findings are obvious, the act of doing research changes how you think about the product.\"",
+    "product_reddit_posts.txt",
+    [
+      "community_forums",
+      "qualitative"
+    ]
+  ],
+  [
+    "Author: u/BurntOutDesigner\nUpvotes: 278\nComments: 54\nDate: 2024-03-05",
+    "product_reddit_posts.txt",
+    [
+      "community_forums",
+      "qualitative"
+    ]
+  ],
+  [
+    "Post: \"I've been working on the same product for 3 years now. I'm doing the same types of projects, solving the same types of problems, using the same design patterns. I feel like I'm in a rut. My designs are getting stale, and I'm losing motivation.",
+    "product_reddit_posts.txt",
+    [
+      "community_forums",
+      "qualitative"
+    ]
+  ],
+  [
+    "I used to love design, but now it feels like a job. I'm not excited about new projects anymore. I'm just going through the motions.",
+    "product_reddit_posts.txt",
+    [
+      "community_forums",
+      "qualitative"
+    ]
+  ],
+  [
+    "How do you stay creative and motivated when you're working on the same thing day after day? Do I need to switch jobs? Or is there a way to find inspiration in the work I'm already doing?\"",
+    "product_reddit_posts.txt",
+    [
+      "community_forums",
+      "qualitative"
+    ]
+  ],
+  [
+    "u/CreativeDirector: \"This is burnout, and it's normal. What helps: 1) Side projects - work on something completely different, 2) Learn new skills - try a new tool or method, 3) Teach others - mentoring can reignite your passion, 4) Take breaks - sometimes you just need time away, 5) Find new challenges - ask for different types of projects or switch teams.\"",
+    "product_reddit_posts.txt",
+    [
+      "community_forums",
+      "qualitative"
+    ]
+  ],
+  [
+    "u/DesignVeteran: \"I've been there. What helped me was changing my perspective. Instead of 'I'm designing another form,' think 'I'm solving a new problem' or 'I'm helping a user achieve a goal.' Focus on the impact, not the output. Also, try redesigning things just for fun - it keeps your skills sharp and your creativity flowing.\"",
+    "product_reddit_posts.txt",
+    [
+      "community_forums",
+      "qualitative"
+    ]
+  ],
+  [
+    "u/SeniorDesigner: \"Sometimes you do need a change. But before switching jobs, try: 1) Switching teams or projects within your company, 2) Taking on a side project, 3) Learning something new (motion design, research, etc.), 4) Attending conferences or meetups. If none of that helps, then maybe it's time for a new role.\"",
+    "product_reddit_posts.txt",
+    [
+      "community_forums",
+      "qualitative"
+    ]
+  ],
+  [
+    "CHATBOT CONVERSATIONS - CUSTOMER SUPPORT LOGS\nSource: E-commerce Website Support Chatbot\nDate Range: March 2024\nFormat: User messages and bot responses",
+    "chatbot_conversations.txt",
+    [
+      "customer_feedback",
+      "qualitative"
+    ]
+  ],
+  [
+    "I've been trying to reset my password for 2 days now. I click 'Forgot Password', enter my email, but I never receive the reset link. I've checked my spam folder, tried multiple times, nothing works. I need to access my account urgently for work. Please help!",
+    "support_tickets.json",
+    [
+      "customer_feedback",
+      "qualitative"
+    ]
+  ],
+  [
+    "We've identified an issue with our email delivery system. I've manually reset your password and sent it to your email. You should be able to log in now. We're working on fixing the automated system.",
+    "support_tickets.json",
+    [
+      "customer_feedback",
+      "qualitative"
+    ]
+  ],
+  [
+    "I need to export my project data to Excel for reporting, but the current export only supports CSV. CSV doesn't preserve formatting, and I have to manually reformat everything. Can you add Excel export? This would save me hours every week.",
+    "support_tickets.json",
+    [
+      "customer_feedback",
+      "qualitative"
+    ]
+  ],
+  [
+    "Thank you for the feedback. We've added Excel export to our roadmap and will prioritize it for a future release. In the meantime, you can use Excel to open CSV files and apply formatting.",
+    "support_tickets.json",
+    [
+      "customer_feedback",
+      "qualitative"
+    ]
+  ],
+  [
+    "Every time I try to upload a file larger than 50MB, the app crashes. This happens on both web and mobile. I've tried different file types, different browsers, nothing works. I need to upload large files for my work. This is blocking me.",
+    "support_tickets.json",
+    [
+      "customer_feedback",
+      "qualitative"
+    ]
+  ],
+  [
+    "We've identified a memory issue when handling large file uploads. We've deployed a fix that should resolve this. Please try uploading again and let us know if you still experience issues.",
+    "support_tickets.json",
+    [
+      "customer_feedback",
+      "qualitative"
+    ]
+  ],
+  [
+    "I want to share a project with a client, but they don't have an account. Is there a way to share it with them without requiring them to sign up? I don't want to force them to create an account just to view something.",
+    "support_tickets.json",
+    [
+      "customer_feedback",
+      "qualitative"
+    ]
+  ],
+  [
+    "Currently, all collaborators need to have an account. However, you can export the project as a PDF and share that. We're working on a guest access feature that will be available in a future release.",
+    "support_tickets.json",
+    [
+      "customer_feedback",
+      "qualitative"
+    ]
+  ],
+  [
+    "I was charged twice for my monthly subscription this month. I only have one account, so this shouldn't have happened. I've checked my bank statement, and there are definitely two charges. Please refund one of them immediately.",
+    "support_tickets.json",
+    [
+      "customer_feedback",
+      "qualitative"
+    ]
+  ],
+  [
+    "We apologize for the error. We've identified a duplicate charge issue and refunded the second charge. The refund should appear in your account within 3-5 business days. We've also fixed the underlying issue to prevent this from happening again.",
+    "support_tickets.json",
+    [
+      "customer_feedback",
+      "qualitative"
+    ]
+  ],
+  [
+    "I use this app all day, and the bright white background is hard on my eyes. Can you add a dark mode? This would make such a difference for my comfort. I know it's not a critical feature, but it would really improve my experience.",
+    "support_tickets.json",
+    [
+      "customer_feedback",
+      "qualitative"
+    ]
+  ],
+  [
+    "Thank you for the suggestion! Dark mode is on our roadmap and we're planning to release it in the next major update. We'll notify you when it's available.",
+    "support_tickets.json",
+    [
+      "customer_feedback",
+      "qualitative"
+    ]
+  ],
+  [
+    "I made changes to a project on my laptop, but when I opened it on my phone, the changes weren't there. I've tried refreshing, logging out and back in, nothing works. The sync is completely broken. I've lost work because of this.",
+    "support_tickets.json",
+    [
+      "customer_feedback",
+      "qualitative"
+    ]
+  ],
+  [
+    "We've identified a sync issue affecting some users. We've deployed a fix and your changes should now sync properly. Please try making a change and let us know if you still experience issues.",
+    "support_tickets.json",
+    [
+      "customer_feedback",
+      "qualitative"
+    ]
+  ],
+  [
+    "I have hundreds of old items I want to delete, but I have to delete them one by one, which takes forever. Is there a way to select multiple items and delete them all at once? This would save me so much time.",
+    "support_tickets.json",
+    [
+      "customer_feedback",
+      "qualitative"
+    ]
+  ],
+  [
+    "Currently, bulk delete is not available, but it's a feature we're planning to add. In the meantime, you can use our API to bulk delete items programmatically. I can send you documentation if you're interested.",
+    "support_tickets.json",
+    [
+      "customer_feedback",
+      "qualitative"
+    ]
+  ],
+  [
+    "I've set up notifications for important events, but I never receive them. I've checked all my settings, everything is enabled, but still nothing. I'm missing important updates because of this. Please fix this ASAP.",
+    "support_tickets.json",
+    [
+      "customer_feedback",
+      "qualitative"
+    ]
+  ],
+  [
+    "We've identified an issue with our notification system. We've fixed it and you should now receive notifications properly. You may need to re-enable notifications in your settings.",
+    "support_tickets.json",
+    [
+      "customer_feedback",
+      "qualitative"
+    ]
+  ],
+  [
+    "I use this app all day, and I'm constantly clicking around. If I could use keyboard shortcuts for common actions, I'd be so much faster. Even basic ones like Cmd+S to save, Cmd+N for new, that kind of thing.",
+    "support_tickets.json",
+    [
+      "customer_feedback",
+      "qualitative"
+    ]
+  ],
+  [
+    "Great suggestion! Keyboard shortcuts are available - you can see them by pressing Cmd+? (or Ctrl+? on Windows). We're also planning to add more shortcuts in future updates.",
+    "support_tickets.json",
+    [
+      "customer_feedback",
+      "qualitative"
+    ]
+  ],
+  [
+    "I tried to log in today and got a message saying my account has been suspended. I have no idea why - I haven't done anything wrong. I need access to my account for work. This is urgent. Please help!",
+    "support_tickets.json",
+    [
+      "customer_feedback",
+      "qualitative"
+    ]
+  ],
+  [
+    "We apologize for the error. Your account was incorrectly flagged by our automated system. We've restored your access and you should be able to log in now. We're reviewing our system to prevent this from happening again.",
+    "support_tickets.json",
+    [
+      "customer_feedback",
+      "qualitative"
+    ]
+  ],
+  [
+    "I want to be able to customize my dashboard to show what's important to me. Right now it shows everything, but I only care about a few things. Can you add the ability to customize the layout?",
+    "support_tickets.json",
+    [
+      "customer_feedback",
+      "qualitative"
+    ]
+  ],
+  [
+    "Thank you for the feedback. Dashboard customization is on our roadmap. In the meantime, you can use filters to focus on what's important to you.",
+    "support_tickets.json",
+    [
+      "customer_feedback",
+      "qualitative"
+    ]
+  ],
+  [
+    "After the latest update, I lost all my data. Everything is gone - projects, settings, everything. I've tried restoring from backup, but the backup is also empty. This is catastrophic. I've lost months of work. Please help!",
+    "support_tickets.json",
+    [
+      "customer_feedback",
+      "qualitative"
+    ]
+  ],
+  [
+    "We're very sorry about this. We've identified a critical bug in the update that affected some users. We've restored your data from our servers. You should see all your data now. We're also providing you with 3 months of free service as compensation.",
+    "support_tickets.json",
+    [
+      "customer_feedback",
+      "qualitative"
+    ]
+  ],
+  [
+    "I want to get notifications in Slack when things happen in the app. Is there a way to integrate with Slack? I saw something about integrations but I'm not sure how to set it up.",
+    "support_tickets.json",
+    [
+      "customer_feedback",
+      "qualitative"
+    ]
+  ],
+  [
+    "Yes, we have a Slack integration! You can set it up by going to Settings > Integrations > Slack. There's a step-by-step guide there. If you need help, let me know.",
+    "support_tickets.json",
+    [
+      "customer_feedback",
+      "qualitative"
+    ]
+  ],
+  [
+    "The app has become extremely slow over the past week. It takes 30+ seconds to load pages, and actions are delayed. This is making it unusable. I've tried different browsers, cleared cache, nothing helps. Please fix this.",
+    "support_tickets.json",
+    [
+      "customer_feedback",
+      "qualitative"
+    ]
+  ],
+  [
+    "We've identified a performance issue affecting some users. We've optimized our servers and deployed a fix. The app should be much faster now. Please try again and let us know if you still experience slowness.",
+    "support_tickets.json",
+    [
+      "customer_feedback",
+      "qualitative"
+    ]
+  ],
+  [
+    "WELLNESS APP DIARY STUDY - DAILY LOGS\nStudy: Wellness App User Experience Over Time\nMethod: Diary study with daily prompts\nDuration: 14 days\nDate Range: March 2024",
+    "wellness_app_daily_logs.txt",
+    [
+      "diary_studies",
+      "qualitative"
+    ]
+  ],
+  [
+    "Day 1 - March 1, 2024\nPrompt: \"How did you use the wellness app today? What worked well? What didn't?\"",
+    "wellness_app_daily_logs.txt",
+    [
+      "diary_studies",
+      "qualitative"
+    ]
+  ],
+  [
+    "\"I downloaded the app this morning and set up my profile. The onboarding was pretty smooth - it asked me about my goals, my current activity level, stuff like that. I set a goal to walk 10,000 steps a day and meditate for 10 minutes.",
+    "wellness_app_daily_logs.txt",
+    [
+      "diary_studies",
+      "qualitative"
+    ]
+  ],
+  [
+    "I went for a walk during lunch and the app tracked my steps automatically, which was cool. But I forgot to log my meditation, and when I tried to add it later, I couldn't figure out how. The interface is a bit confusing - there are a lot of buttons and I'm not sure what they all do.",
+    "wellness_app_daily_logs.txt",
+    [
+      "diary_studies",
+      "qualitative"
+    ]
+  ],
+  [
+    "Overall, first day was okay. I'm optimistic, but I need to figure out how to use all the features.\"",
+    "wellness_app_daily_logs.txt",
+    [
+      "diary_studies",
+      "qualitative"
+    ]
+  ],
+  [
+    "Day 2 - March 2, 2024\nPrompt: \"Did you remember to use the app? What motivated or prevented you?\"",
+    "wellness_app_daily_logs.txt",
+    [
+      "diary_studies",
+      "qualitative"
+    ]
+  ],
+  [
+    "\"I almost forgot to use it today. I was busy at work and didn't check the app until evening. I did hit my step goal though - walked to a coffee shop instead of driving. The app sent me a notification congratulating me, which was nice. Felt good to get that positive reinforcement.",
+    "wellness_app_daily_logs.txt",
+    [
+      "diary_studies",
+      "qualitative"
+    ]
+  ],
+  [
+    "I still haven't figured out how to log meditation. I tried meditating this morning but forgot to start a session in the app. By the time I remembered, I was already done. Maybe I need to set a reminder or something.\"",
+    "wellness_app_daily_logs.txt",
+    [
+      "diary_studies",
+      "qualitative"
+    ]
+  ],
+  [
+    "Day 3 - March 3, 2024\nPrompt: \"What's your biggest frustration with the app so far?\"",
+    "wellness_app_daily_logs.txt",
+    [
+      "diary_studies",
+      "qualitative"
+    ]
+  ],
+  [
+    "\"My biggest frustration is that I keep forgetting to use it. I know that's partly on me, but I wish the app was more proactive about reminding me. Like, if I haven't logged anything by noon, maybe send me a gentle reminder. Or if I'm close to my step goal, encourage me to go for a walk.",
+    "wellness_app_daily_logs.txt",
+    [
+      "diary_studies",
+      "qualitative"
+    ]
+  ],
+  [
+    "Also, the meditation logging is still confusing. I wish it was more obvious how to start and stop a session. Right now I have to dig through menus to find it.\"",
+    "wellness_app_daily_logs.txt",
+    [
+      "diary_studies",
+      "qualitative"
+    ]
+  ],
+  [
+    "Day 4 - March 4, 2024\nPrompt: \"How is the app fitting into your daily routine?\"",
+    "wellness_app_daily_logs.txt",
+    [
+      "diary_studies",
+      "qualitative"
+    ]
+  ],
+  [
+    "\"It's not really fitting in yet. I'm still trying to remember to use it. I think part of the problem is that it doesn't feel essential - like, I can go for a walk without the app, so why do I need it? I need to see more value.",
+    "wellness_app_daily_logs.txt",
+    [
+      "diary_studies",
+      "qualitative"
+    ]
+  ],
+  [
+    "I did check my stats today and saw that I've walked more this week than usual, which is cool. But I'm not sure if that's because of the app or just coincidence. Maybe I need to use it longer to see real benefits.\"",
+    "wellness_app_daily_logs.txt",
+    [
+      "diary_studies",
+      "qualitative"
+    ]
+  ],
+  [
+    "Day 5 - March 5, 2024\nPrompt: \"What would make you want to use this app more?\"",
+    "wellness_app_daily_logs.txt",
+    [
+      "diary_studies",
+      "qualitative"
+    ]
+  ],
+  [
+    "\"I think I need more motivation. Like, maybe challenges or streaks or something. Right now it's just tracking, which is fine but not exciting. I want to feel like I'm achieving something, not just logging data.",
+    "wellness_app_daily_logs.txt",
+    [
+      "diary_studies",
+      "qualitative"
+    ]
+  ],
+  [
+    "Also, I wish it connected to other apps I use. Like, if it could pull in data from my fitness tracker or my calendar, that would be helpful. Right now I'm manually entering everything, which is tedious.\"",
+    "wellness_app_daily_logs.txt",
+    [
+      "diary_studies",
+      "qualitative"
+    ]
+  ],
+  [
+    "Day 6 - March 6, 2024\nPrompt: \"How did you use the app today? Any new discoveries?\"",
+    "wellness_app_daily_logs.txt",
+    [
+      "diary_studies",
+      "qualitative"
+    ]
+  ],
+  [
+    "\"I discovered the social features today - you can connect with friends and see their activity. That's actually motivating. I saw that my friend Sarah walked 15,000 steps yesterday, and I was like 'I can do that too!' So I went for an extra walk in the evening.",
+    "wellness_app_daily_logs.txt",
+    [
+      "diary_studies",
+      "qualitative"
+    ]
+  ],
+  [
+    "But the social features are also a bit overwhelming. I got a bunch of friend requests from people I don't know, which feels weird. I wish I could control who can see my activity or send me requests.\"",
+    "wellness_app_daily_logs.txt",
+    [
+      "diary_studies",
+      "qualitative"
+    ]
+  ],
+  [
+    "Day 7 - March 7, 2024\nPrompt: \"One week in - how are you feeling about the app?\"",
+    "wellness_app_daily_logs.txt",
+    [
+      "diary_studies",
+      "qualitative"
+    ]
+  ],
+  [
+    "\"Mixed feelings. On one hand, I'm walking more and I'm more aware of my activity. On the other hand, I'm still not using all the features, and I'm not sure if the app is actually helping me or if I'm just more conscious of my habits.",
+    "wellness_app_daily_logs.txt",
+    [
+      "diary_studies",
+      "qualitative"
+    ]
+  ],
+  [
+    "I think I need to give it more time. A week isn't enough to form a habit or see real results. But I'm also starting to wonder if this is the right app for me. Maybe I need something simpler, or maybe I need something with more features. I'm not sure.\"",
+    "wellness_app_daily_logs.txt",
+    [
+      "diary_studies",
+      "qualitative"
+    ]
+  ],
+  [
+    "Day 8 - March 8, 2024\nPrompt: \"What's working well? What's not?\"",
+    "wellness_app_daily_logs.txt",
+    [
+      "diary_studies",
+      "qualitative"
+    ]
+  ],
+  [
+    "\"What's working: The step tracking is accurate and automatic. The notifications are helpful (when I remember to enable them). The social features are motivating.",
+    "wellness_app_daily_logs.txt",
+    [
+      "diary_studies",
+      "qualitative"
+    ]
+  ],
+  [
+    "What's not working: I still can't figure out the meditation logging. The interface is cluttered - too many options, not enough guidance. I feel like I'm using maybe 20% of what the app can do, but I don't know what the other 80% is or if I need it.\"",
+    "wellness_app_daily_logs.txt",
+    [
+      "diary_studies",
+      "qualitative"
+    ]
+  ],
+  [
+    "Day 9 - March 9, 2024\nPrompt: \"Did anything surprise you about using the app?\"",
+    "wellness_app_daily_logs.txt",
+    [
+      "diary_studies",
+      "qualitative"
+    ]
+  ],
+  [
+    "\"I was surprised by how much I'm walking now. I've been hitting my step goal almost every day, which I didn't expect. I think the app is making me more conscious of my activity, which is good.",
+    "wellness_app_daily_logs.txt",
+    [
+      "diary_studies",
+      "qualitative"
+    ]
+  ],
+  [
+    "But I'm also surprised by how much I'm NOT using it. Like, I forget to log meals, I forget to log sleep, I forget to meditate. The app has all these features, but I'm only using the step tracking. Maybe that's okay? Maybe I don't need all the features?\"",
+    "wellness_app_daily_logs.txt",
+    [
+      "diary_studies",
+      "qualitative"
+    ]
+  ],
+  [
+    "Day 10 - March 10, 2024\nPrompt: \"How has your relationship with the app changed over time?\"",
+    "wellness_app_daily_logs.txt",
+    [
+      "diary_studies",
+      "qualitative"
+    ]
+  ],
+  [
+    "\"At first, I was excited and wanted to use all the features. Now I'm more realistic - I'm using it for what I need (step tracking) and ignoring the rest. That's probably fine, but I feel like I'm not getting the full value.",
+    "wellness_app_daily_logs.txt",
+    [
+      "diary_studies",
+      "qualitative"
+    ]
+  ],
+  [
+    "I'm also less motivated than I was at the beginning. The novelty has worn off. I need something to keep me engaged - maybe challenges, or progress toward bigger goals, or something that makes it feel like a game.\"",
+    "wellness_app_daily_logs.txt",
+    [
+      "diary_studies",
+      "qualitative"
+    ]
+  ],
+  [
+    "Day 11 - March 11, 2024\nPrompt: \"What would you tell a friend about this app?\"",
+    "wellness_app_daily_logs.txt",
+    [
+      "diary_studies",
+      "qualitative"
+    ]
+  ],
+  [
+    "\"I'd tell them it's good for tracking steps, but the rest is confusing. If you just want to count steps, it works fine. But if you want to use all the wellness features, be prepared for a learning curve.",
+    "wellness_app_daily_logs.txt",
+    [
+      "diary_studies",
+      "qualitative"
+    ]
+  ],
+  [
+    "I'd also say it's motivating to see your progress and connect with friends, but the social features can be overwhelming. Overall, it's okay but not amazing. I'm not sure if I'll keep using it long-term.\"",
+    "wellness_app_daily_logs.txt",
+    [
+      "diary_studies",
+      "qualitative"
+    ]
+  ],
+  [
+    "Day 12 - March 12, 2024\nPrompt: \"What's preventing you from using the app more effectively?\"",
+    "wellness_app_daily_logs.txt",
+    [
+      "diary_studies",
+      "qualitative"
+    ]
+  ],
+  [
+    "\"Time and mental energy. I'm busy, and remembering to log things takes effort. I wish the app could do more automatically - like, if it could detect when I'm walking or sleeping without me having to tell it, that would be better.",
+    "wellness_app_daily_logs.txt",
+    [
+      "diary_studies",
+      "qualitative"
+    ]
+  ],
+  [
+    "Also, I'm not sure what I'm supposed to be doing. Like, what's the goal? Just track things? Improve my health? The app doesn't give me clear guidance on what I should focus on or how to use it effectively.\"",
+    "wellness_app_daily_logs.txt",
+    [
+      "diary_studies",
+      "qualitative"
+    ]
+  ],
+  [
+    "Day 13 - March 13, 2024\nPrompt: \"How is the app impacting your wellness goals?\"",
+    "wellness_app_daily_logs.txt",
+    [
+      "diary_studies",
+      "qualitative"
+    ]
+  ],
+  [
+    "\"I'm walking more, which is good. But I'm not sure if that's because of the app or just because I'm more aware. I haven't really changed my other habits - I'm still not meditating regularly, I'm still not eating better, I'm still not sleeping more.",
+    "wellness_app_daily_logs.txt",
+    [
+      "diary_studies",
+      "qualitative"
+    ]
+  ],
+  [
+    "Maybe the app is helping with awareness, but it's not helping me actually change my behavior. I think I need more than just tracking - I need guidance, motivation, accountability. The app provides some of that, but not enough.\"",
+    "wellness_app_daily_logs.txt",
+    [
+      "diary_studies",
+      "qualitative"
+    ]
+  ],
+  [
+    "Day 14 - March 14, 2024\nPrompt: \"Final thoughts - would you continue using this app?\"",
+    "wellness_app_daily_logs.txt",
+    [
+      "diary_studies",
+      "qualitative"
+    ]
+  ],
+  [
+    "\"Probably, but only for step tracking. The other features aren't worth the effort for me. I'll keep using it as long as it's motivating me to walk more, but if that stops, I'll probably delete it.",
+    "wellness_app_daily_logs.txt",
+    [
+      "diary_studies",
+      "qualitative"
+    ]
+  ],
+  [
+    "I think the app has potential, but it needs to be simpler or provide more value. Right now it's trying to do too much, and as a result, it's not doing anything really well. I'd rather have a simple app that does one thing perfectly than a complex app that does many things poorly.\"",
+    "wellness_app_daily_logs.txt",
+    [
+      "diary_studies",
+      "qualitative"
+    ]
+  ],
+  [
+    "Day 1 - March 1, 2024\nPrompt: \"How did you use the wellness app today? What worked well? What didn't?\"",
+    "wellness_app_daily_logs.txt",
+    [
+      "diary_studies",
+      "qualitative"
+    ]
+  ],
+  [
+    "\"I'm a data person, so I was excited to try this app. I set it up and connected it to my Apple Watch, which was easy. I like that it automatically tracks my activity without me having to do anything.",
+    "wellness_app_daily_logs.txt",
+    [
+      "diary_studies",
+      "qualitative"
+    ]
+  ],
+  [
+    "The interface is clean, which I appreciate. But I'm already noticing some issues - the data visualization is basic. I want to see trends over time, correlations between different metrics, that kind of thing. Right now it's just showing me daily numbers, which isn't that useful.\"",
+    "wellness_app_daily_logs.txt",
+    [
+      "diary_studies",
+      "qualitative"
+    ]
+  ],
+  [
+    "Day 2 - March 2, 2024\nPrompt: \"Did you remember to use the app? What motivated or prevented you?\"",
+    "wellness_app_daily_logs.txt",
+    [
+      "diary_studies",
+      "qualitative"
+    ]
+  ],
+  [
+    "\"I didn't have to remember - it's connected to my watch, so it's automatic. That's the best part. I don't want to manually log things, I want the app to do it for me.",
+    "wellness_app_daily_logs.txt",
+    [
+      "diary_studies",
+      "qualitative"
+    ]
+  ],
+  [
+    "I checked the app today and saw my activity data. It's interesting, but I want more analysis. Like, how does my activity correlate with my sleep? Or my mood? The app tracks these things separately, but doesn't show me how they're related.\"",
+    "wellness_app_daily_logs.txt",
+    [
+      "diary_studies",
+      "qualitative"
+    ]
+  ],
+  [
+    "Day 3 - March 3, 2024\nPrompt: \"What's your biggest frustration with the app so far?\"",
+    "wellness_app_daily_logs.txt",
+    [
+      "diary_studies",
+      "qualitative"
+    ]
+  ],
+  [
+    "\"The lack of data insights. I'm tracking all this data, but the app isn't telling me what it means. I want AI-powered insights, recommendations, predictions. Right now it's just a data logger, not a wellness coach.",
+    "wellness_app_daily_logs.txt",
+    [
+      "diary_studies",
+      "qualitative"
+    ]
+  ],
+  [
+    "Also, the export functionality is limited. I want to be able to export my data in different formats so I can analyze it myself. But the app only lets me export as CSV, and even that's clunky.\"",
+    "wellness_app_daily_logs.txt",
+    [
+      "diary_studies",
+      "qualitative"
+    ]
+  ],
+  [
+    "Day 4 - March 4, 2024\nPrompt: \"How is the app fitting into your daily routine?\"",
+    "wellness_app_daily_logs.txt",
+    [
+      "diary_studies",
+      "qualitative"
+    ]
+  ],
+  [
+    "\"It fits in seamlessly because it's automatic. I don't have to think about it, which is perfect. But I'm also not really engaging with it - I check it once a day, see my numbers, and move on. It's not becoming a habit or a tool I actively use.\"",
+    "wellness_app_daily_logs.txt",
+    [
+      "diary_studies",
+      "qualitative"
+    ]
+  ],
+  [
+    "Day 5 - March 5, 2024\nPrompt: \"What would make you want to use this app more?\"",
+    "wellness_app_daily_logs.txt",
+    [
+      "diary_studies",
+      "qualitative"
+    ]
+  ],
+  [
+    "\"Better insights and recommendations. I want the app to tell me things like 'You sleep better on days when you exercise in the morning' or 'Your step count is 20% lower on Mondays - try taking a walk during lunch.' Right now it's just showing me data without interpretation.\"",
+    "wellness_app_daily_logs.txt",
+    [
+      "diary_studies",
+      "qualitative"
+    ]
+  ],
+  [
+    "Day 6 - March 6, 2024\nPrompt: \"How did you use the app today? Any new discoveries?\"",
+    "wellness_app_daily_logs.txt",
+    [
+      "diary_studies",
+      "qualitative"
+    ]
+  ],
+  [
+    "\"I discovered the challenges feature today. I joined a 7-day step challenge, which is motivating. But the challenges are pretty basic - just 'walk X steps' or 'exercise Y minutes.' I want more creative challenges, or challenges based on my personal goals.",
+    "wellness_app_daily_logs.txt",
+    [
+      "diary_studies",
+      "qualitative"
+    ]
+  ],
+  [
+    "Also, I noticed the app has a premium version with more features. I'm not sure if it's worth paying for - I'd need to see what those features are and if they're actually useful.\"",
+    "wellness_app_daily_logs.txt",
+    [
+      "diary_studies",
+      "qualitative"
+    ]
+  ],
+  [
+    "Day 7 - March 7, 2024\nPrompt: \"One week in - how are you feeling about the app?\"",
+    "wellness_app_daily_logs.txt",
+    [
+      "diary_studies",
+      "qualitative"
+    ]
+  ],
+  [
+    "\"I'm underwhelmed. The app works, but it's not exciting or particularly useful. It's tracking my data, which is fine, but it's not helping me improve my wellness. I want more than just tracking - I want actionable insights and personalized recommendations.",
+    "wellness_app_daily_logs.txt",
+    [
+      "diary_studies",
+      "qualitative"
+    ]
+  ],
+  [
+    "I'll probably keep using it for a while to see if it gets better, but I'm not optimistic. It feels like a basic fitness tracker app, not a comprehensive wellness solution.\"",
+    "wellness_app_daily_logs.txt",
+    [
+      "diary_studies",
+      "qualitative"
+    ]
+  ],
+  [
+    "Day 8 - March 8, 2024\nPrompt: \"What's working well? What's not?\"",
+    "wellness_app_daily_logs.txt",
+    [
+      "diary_studies",
+      "qualitative"
+    ]
+  ],
+  [
+    "\"What's working: Automatic tracking, clean interface, easy setup.",
+    "wellness_app_daily_logs.txt",
+    [
+      "diary_studies",
+      "qualitative"
+    ]
+  ],
+  [
+    "What's not: Lack of insights, basic data visualization, no personalized recommendations, limited export options, challenges are too simple.\"",
+    "wellness_app_daily_logs.txt",
+    [
+      "diary_studies",
+      "qualitative"
+    ]
+  ],
+  [
+    "Day 9 - March 9, 2024\nPrompt: \"Did anything surprise you about using the app?\"",
+    "wellness_app_daily_logs.txt",
+    [
+      "diary_studies",
+      "qualitative"
+    ]
+  ],
+  [
+    "\"I was surprised by how much data I'm generating. I'm tracking steps, sleep, heart rate, workouts, meals, mood - that's a lot of data. But the app isn't doing anything interesting with it. It's just storing it. I feel like there's so much potential here that's not being realized.\"",
+    "wellness_app_daily_logs.txt",
+    [
+      "diary_studies",
+      "qualitative"
+    ]
+  ],
+  [
+    "Day 10 - March 10, 2024\nPrompt: \"How has your relationship with the app changed over time?\"",
+    "wellness_app_daily_logs.txt",
+    [
+      "diary_studies",
+      "qualitative"
+    ]
+  ],
+  [
+    "\"At first I was excited about the possibilities. Now I'm disappointed that it's not living up to its potential. I'm still using it, but more out of habit than enthusiasm. I check it less frequently, and I'm not really engaging with the features.\"",
+    "wellness_app_daily_logs.txt",
+    [
+      "diary_studies",
+      "qualitative"
+    ]
+  ],
+  [
+    "Day 11 - March 11, 2024\nPrompt: \"What would you tell a friend about this app?\"",
+    "wellness_app_daily_logs.txt",
+    [
+      "diary_studies",
+      "qualitative"
+    ]
+  ],
+  [
+    "\"I'd tell them it's fine for basic tracking, but don't expect much more. If you want detailed insights or personalized recommendations, look elsewhere. It's a decent fitness tracker, but it's not a wellness coach.\"",
+    "wellness_app_daily_logs.txt",
+    [
+      "diary_studies",
+      "qualitative"
+    ]
+  ],
+  [
+    "Day 12 - March 12, 2024\nPrompt: \"What's preventing you from using the app more effectively?\"",
+    "wellness_app_daily_logs.txt",
+    [
+      "diary_studies",
+      "qualitative"
+    ]
+  ],
+  [
+    "\"Nothing is preventing me - the app is easy to use. But nothing is motivating me either. I want the app to be more proactive, to give me reasons to check it, to make me want to improve. Right now it's passive, and I'm losing interest.\"",
+    "wellness_app_daily_logs.txt",
+    [
+      "diary_studies",
+      "qualitative"
+    ]
+  ],
+  [
+    "Day 13 - March 13, 2024\nPrompt: \"How is the app impacting your wellness goals?\"",
+    "wellness_app_daily_logs.txt",
+    [
+      "diary_studies",
+      "qualitative"
+    ]
+  ],
+  [
+    "\"Minimally. I'm aware of my activity levels, which is good, but I'm not really changing my behavior. The app isn't giving me enough motivation or guidance to actually improve. It's just showing me where I am, not helping me get where I want to be.\"",
+    "wellness_app_daily_logs.txt",
+    [
+      "diary_studies",
+      "qualitative"
+    ]
+  ],
+  [
+    "Day 14 - March 14, 2024\nPrompt: \"Final thoughts - would you continue using this app?\"",
+    "wellness_app_daily_logs.txt",
+    [
+      "diary_studies",
+      "qualitative"
+    ]
+  ],
+  [
+    "\"Probably not. It's not providing enough value to justify keeping it. I'll stick with my Apple Watch's built-in fitness tracking, which is simpler and does what I need. This app promised more but delivered less. I'm disappointed, but not surprised - most wellness apps are like this.\"",
+    "wellness_app_daily_logs.txt",
+    [
+      "diary_studies",
+      "qualitative"
+    ]
+  ],
+  [
+    "FOCUS GROUP TRANSCRIPT - PRODUCTIVITY TOOL EVALUATION\nStudy: Productivity Tool Redesign Research\nMethod: Moderated focus group discussion\nParticipants: 8 users (mixed roles and experience levels)\nDuration: 90 minutes\nDate: March 2024\nModerator: Sarah Chen",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Moderator: \"Thanks everyone for coming. Let's start by going around and introducing ourselves. Tell us your name, your role, and how you currently use productivity tools.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "P1 (Alex, Product Manager): \"I'm Alex, I'm a product manager at a tech company. I use a bunch of different tools - Asana for project management, Slack for communication, Google Docs for documents. I'm always switching between them, which is annoying. I'm looking for something that can bring it all together.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "P2 (Jordan, Designer): \"I'm Jordan, I'm a UX designer. I use Notion for notes and documentation, Figma for design, and Trello for personal task management. I'm pretty happy with my current setup, but I'm always open to trying new things if they're better.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "P3 (Sam, Developer): \"I'm Sam, I'm a software engineer. I use GitHub for code, Jira for tickets, and a bunch of command-line tools. I'm not really looking for a new tool, but I'm curious what this one offers.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "P4 (Morgan, Marketing Manager): \"I'm Morgan, I do marketing. I use Monday.com for project management, HubSpot for CRM, and a million other tools. I feel like I'm drowning in tools sometimes. I need something simpler.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "P5 (Riley, Consultant): \"I'm Riley, I'm a consultant. I work with multiple clients, so I need tools that are flexible and can adapt to different workflows. Right now I use Airtable for data, Todoist for tasks, and Evernote for notes.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "P6 (Casey, Student): \"I'm Casey, I'm a grad student. I use Notion for everything - notes, tasks, research. I love how flexible it is, but sometimes it's too flexible, if that makes sense. I get lost in my own organization system.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "P7 (Taylor, Operations Lead): \"I'm Taylor, I'm in operations. I use Asana for team projects and Apple Notes for personal stuff. I'm not super tech-savvy, so I need something that's easy to use and doesn't require a lot of setup.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "P8 (Quinn, Freelancer): \"I'm Quinn, I'm a freelance writer. I use a mix of tools - Google Docs, Trello, and a bunch of browser extensions. I'm always looking for ways to be more productive, but I also don't want to spend a lot of time learning new tools.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Moderator: \"Let's talk about what frustrates you most about your current productivity tools. What makes you want to pull your hair out?\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Alex: \"For me, it's the context switching. I'm constantly jumping between tools, and I lose track of where things are. Like, is this task in Asana or Trello? Did I save that note in Notion or Google Docs? It's exhausting.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Jordan: \"I agree with that. Also, the lack of integration. I want my tasks, notes, and designs to all be connected, but they're all in separate silos. I have to manually link things together, which is tedious.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Sam: \"For me, it's the complexity. Most productivity tools try to do everything, and they end up being overwhelming. I just want something simple that does a few things really well, not something that does everything poorly.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Morgan: \"The learning curve. Every time I start using a new tool, I have to spend hours learning how it works. And by the time I figure it out, there's a new feature or update that changes everything. I'm tired of constantly learning new tools.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Riley: \"I think the biggest issue is that most tools assume everyone works the same way. But I work differently with different clients. I need something that can adapt to my workflow, not force me to adapt to its workflow.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Casey: \"For me, it's organization. I start with a great system, but then it gets messy over time. And I can't find things anymore. I wish there was a better way to organize and search through everything.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Taylor: \"I just want something that works out of the box. I don't want to spend hours setting up workflows and templates. I want to open it and start using it immediately.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Quinn: \"The cost. Most good productivity tools are expensive, especially if you need multiple tools. I'm a freelancer, so I can't afford to pay for five different subscriptions. I need something affordable or free.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Moderator: \"So it sounds like you're all dealing with similar issues - context switching, lack of integration, complexity, learning curves. What would an ideal tool look like for you?\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Alex: \"Something that brings everything together. One place for tasks, notes, documents, communication. But it has to be fast and not feel bloated.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Jordan: \"I want flexibility. Let me organize things the way I want, not the way the tool thinks I should. But also give me good defaults so I don't have to set everything up from scratch.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Sam: \"Simplicity. Do a few things really well. Don't try to be everything to everyone. And make it fast - I don't want to wait for pages to load or features to work.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Morgan: \"I want it to be intuitive. I shouldn't have to read documentation or watch tutorials to figure out how to use it. It should be obvious.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Riley: \"Adaptability. Let me customize it for different projects or clients. But make the customization easy - don't make me write code or configure complex settings.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Casey: \"Good search and organization. I want to be able to find things quickly, even if I don't remember exactly where I put them. And I want the organization to make sense, not require me to maintain a complex taxonomy.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Taylor: \"Just work. I don't want to think about it. I want to open it, do my work, and close it. No setup, no configuration, no learning curve.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Quinn: \"Affordable. And it should work well on mobile. I'm not always at my computer, so I need to be able to access things from my phone.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Moderator: \"Let's talk about specific features. If you could have any feature in a productivity tool, what would it be?\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Alex: \"Real-time collaboration. I want to be able to work on things with my team in real-time, not have to constantly refresh or merge changes.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Jordan: \"Visual organization. I'm a visual person, so I want to be able to see things in different views - lists, boards, timelines, whatever works for the task.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Sam: \"Keyboard shortcuts. I live in the terminal, so I want to be able to do everything with the keyboard. Mouse clicking is slow.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Morgan: \"Templates. I do similar projects all the time, so I want to be able to save templates and reuse them. But the templates should be customizable, not rigid.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Riley: \"Multi-workspace support. I need separate workspaces for different clients, but I also want to be able to share things between them when needed.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Casey: \"Backlinks and connections. I want to be able to link related notes and tasks together, and see how everything connects. Like a knowledge graph.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Taylor: \"Mobile app that actually works. Most mobile apps are just watered-down versions of the web app. I want a mobile app that's designed for mobile, not just a port.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Quinn: \"Offline support. I'm not always connected to the internet, so I need to be able to work offline and sync when I'm back online.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Alex: \"I also want good search. Not just text search, but semantic search. Like, 'find everything related to the Q2 product launch' even if those exact words aren't in the documents.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Jordan: \"Customizable dashboards. I want to see what's important to me at a glance, not what the tool thinks is important.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Sam: \"API access. I want to be able to integrate with other tools and automate things. If I can't integrate it, it's not useful to me.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Morgan: \"Notifications that make sense. I want to know about important things, but I don't want to be bombarded with notifications for every little change.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Riley: \"Export options. I need to be able to get my data out in different formats. I don't want to be locked into one tool forever.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Casey: \"Version history. I want to be able to see what changed and when, and go back to previous versions if needed.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Taylor: \"Simple sharing. I want to be able to share things with people who don't use the tool, not force them to sign up.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Quinn: \"Markdown support. I write in Markdown, so I want to be able to use Markdown formatting, not be forced to use a WYSIWYG editor.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Moderator: \"What would be a dealbreaker for you? What would make you not use a productivity tool?\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Alex: \"If it's slow or buggy. I don't have time to wait for things to load or deal with crashes. It has to be reliable.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Jordan: \"If it's not flexible. I need to be able to organize things my way. If it forces me into a rigid structure, I'm out.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Sam: \"If it doesn't have an API or integration options. I need to be able to connect it to my other tools.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Morgan: \"If it's too expensive. I'm already paying for too many tools. I can't afford another expensive subscription.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Riley: \"If it's too complicated. I don't want to spend hours learning how to use it. It should be intuitive.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Casey: \"If the search is bad. If I can't find things quickly, the tool is useless to me.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Taylor: \"If it doesn't work on mobile. I need to be able to access things from my phone.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Quinn: \"If it's not secure. I'm putting sensitive information in these tools, so security is critical. If I don't trust it, I won't use it.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Alex: \"Also, if it doesn't have good collaboration features. I work with a team, so if I can't collaborate effectively, it's not useful.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Jordan: \"If the UI is ugly or cluttered. I spend a lot of time in these tools, so I want them to be pleasant to use.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Sam: \"If it's web-only. I want a native app, not just a web app. Web apps are always slower and less responsive.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Morgan: \"If customer support is bad. When something goes wrong, I need help quickly. If support is slow or unhelpful, that's a problem.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Riley: \"If it doesn't have good export options. I need to be able to get my data out if I want to switch tools.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Casey: \"If it doesn't have offline support. I need to be able to work when I'm not connected.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Taylor: \"If it requires too much setup. I want something that works out of the box.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Quinn: \"If it's not affordable. I'm a freelancer, so cost matters. If it's too expensive, I'll find a free alternative.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Moderator: \"Let's imagine the perfect productivity tool. Walk me through what using it would be like.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Alex: \"I open it in the morning, and I see my dashboard with everything I need - my tasks, my team's updates, important documents. I can quickly see what needs my attention. I click on a task, and I can see all the context - related notes, documents, conversations - all in one place. I don't have to switch between tools.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Jordan: \"I start a new project, and the tool suggests a template based on similar projects I've done. I customize it a bit, and I'm ready to go. As I work, I can organize things visually - maybe a board view for tasks, a timeline for deadlines, a gallery for assets. Everything is connected, so I can see relationships between things.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Sam: \"I open the terminal, type a command, and I'm in. I can create tasks, search for things, update status - all from the command line. When I need the UI, it's fast and responsive. No lag, no waiting for things to load.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Morgan: \"I get a notification that something needs my attention. I click it, and I'm taken directly to the relevant item. I can take action right there - approve, comment, delegate - without having to navigate through multiple screens. Everything is contextual.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Riley: \"I switch between workspaces seamlessly. Each workspace is customized for that client, but I can still access shared resources. I can quickly find things across all workspaces with a single search. The tool adapts to how I work, not the other way around.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Casey: \"I'm writing a research paper, and I can link related notes together. I can see a graph of how everything connects. When I search for something, I get results that are semantically related, not just keyword matches. I can find things even if I don't remember exactly what I called them.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Taylor: \"I open the app on my phone, and I can quickly add a task or check something. The mobile app is actually useful, not just a basic version. When I get to my computer, everything is synced and ready to go.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Quinn: \"I'm working offline on a plane, and I can still access everything. When I land and connect to WiFi, everything syncs automatically. I don't have to think about it - it just works.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Moderator: \"That all sounds great. But realistically, what would you be willing to compromise on? What's not essential?\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Alex: \"I could compromise on some advanced features if the core experience is great. I don't need every possible feature - I just need the ones I use to work really well.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Jordan: \"I could compromise on customization if the defaults are good. I don't need infinite flexibility - I just need enough to make it work for me.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Sam: \"I could compromise on the UI if the functionality is there. I care more about what it does than how it looks, as long as it's not terrible.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Morgan: \"I could compromise on integrations if the tool does enough on its own. I don't need to integrate with everything - just the essentials.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Riley: \"I could compromise on some features if the tool is reliable and fast. I'd rather have fewer features that work well than many features that are buggy.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Casey: \"I could compromise on advanced organization if the search is really good. If I can find things easily, I don't need a perfect organization system.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Taylor: \"I could compromise on customization if it's easy to use out of the box. I don't need to configure everything - I just need it to work.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Quinn: \"I could compromise on some features if the price is right. I don't need every possible feature - I just need the ones I use regularly.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Moderator: \"Any final thoughts? What would make you switch from your current tools to a new one?\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Alex: \"It would have to be significantly better than what I'm using now. Not just slightly better - significantly better. Because switching tools is a pain, so it has to be worth it.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Jordan: \"I agree. The switching cost is high, so the new tool needs to offer real value. It can't just be another tool that does the same thing slightly differently.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Sam: \"For me, it's about the ecosystem. If it integrates well with the tools I already use, that's a big plus. If it's isolated, it's harder to justify switching.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Morgan: \"It needs to solve a real problem I have. Not a theoretical problem, but an actual pain point I experience daily. If it doesn't solve a real problem, I'm not interested.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Riley: \"It needs to be flexible enough to adapt to how I work. I don't want to change my workflow to fit the tool - the tool should fit my workflow.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Casey: \"It needs to be reliable. If I can't trust it to work when I need it, I won't use it. Reliability is more important than features.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Taylor: \"It needs to be simple. I don't want to spend time learning or configuring. I just want to use it and get work done.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Quinn: \"It needs to be affordable. I can't justify paying a lot for a productivity tool when there are free alternatives. The value has to be clear.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Moderator: \"Thank you all for your time and insights. This has been really helpful.\"",
+    "productivity_tool_focus_group.txt",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "First thing I noticed - the login screen is clean, which is good. But then I logged in and there's just... a lot going on. Like, where do I start? There's no clear hierarchy.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "I agree. It's visually appealing, but I'm not sure what I'm supposed to do first. Is my balance the most important thing? Recent transactions? Quick actions? It's all competing for attention.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "For me, the first thing I want to see is my account balance. That should be front and center. But it's buried in the middle of the screen, and I had to scroll to see it clearly.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "I'm confused about what this app does differently from my regular bank app. Like, why would I switch? I don't see anything that's obviously better.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "The design is modern, which I like. But modern doesn't always mean usable. I'm having trouble figuring out the navigation. The bottom tabs aren't labeled clearly.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "I'm not very good with technology, so I'm already feeling overwhelmed. There are so many buttons and options, and I'm worried I'll tap the wrong thing and mess something up.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "This should be the easiest task, but it took me a few seconds to find my balance. It's on the home screen, but it's not prominent enough. I had to look around to find it.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "I have multiple accounts, and I can't see all my balances at once. I have to tap into each account individually, which is annoying. I want a summary view.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "The balance is there, but I can't tell if it's my checking or savings account. The labels are too small, and I have to tap to see which account I'm looking at.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "I'm not sure if the balance is up to date. Is this my current balance? Available balance? Pending transactions? It's not clear.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "The balance display is fine, but I wish I could see it bigger. Sometimes I'm in a hurry and I just want to quickly check my balance without having to squint.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "I found my balance, but I'm not confident it's correct. I wish there was a way to refresh it or see when it was last updated. I'm always worried about whether the information is current.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "The transfer flow is confusing. There are too many steps, and I'm not sure why. Like, why do I need to confirm my identity again if I just logged in? That's redundant.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "I couldn't find where to transfer money at first. I looked for a 'Transfer' button, but it's called 'Send Money' which is different. The terminology is inconsistent.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "I want to transfer money to my business account, but I can't find it in my contacts. I have to manually enter the account number every time, which is annoying and error-prone.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "The recipient selection is weird. It's asking for email or phone number, but I just want to send to someone in my contacts. Why can't I just pick a name?",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "I like that there are security checks, but they're too frequent. I'm transferring $20 to a friend, and it's asking me to verify my identity three times. That's overkill.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "I'm afraid to transfer money because I'm worried I'll send it to the wrong person. The confirmation screen doesn't show enough information for me to be confident I'm doing it right.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Transaction history is buried. It should be a primary action, not hidden in account details. Users check their history all the time - it should be easier to access.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "I can see recent transactions, but I can't filter or search. If I'm looking for a specific transaction from last month, I have to scroll through everything. That's not efficient.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "The transactions aren't grouped by date, which makes it hard to scan. I want to see 'Today', 'Yesterday', 'This Week', 'This Month' - that kind of grouping.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "I can't see pending transactions clearly. They're mixed in with completed transactions, and I can't tell which is which. I want to see what's pending separately.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "The transaction descriptions are truncated, so I can't see the full merchant name or description. I have to tap each transaction to see the details, which is tedious.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "I'm looking for a transaction from two weeks ago, but I can only see the last few days. How do I see older transactions? There's no 'Load More' button or way to go back further.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "The security measures are good - two-factor authentication, biometric login. But the UI doesn't communicate that well. I want to see more indicators that my data is secure.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "I'm not sure if this app is legitimate. The branding is modern, but I don't recognize the company. I want to see more trust signals - security badges, certifications, that kind of thing.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "For business banking, security is critical. I need to know that my money is safe. The app doesn't do enough to communicate its security features or make me feel confident.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "I'm worried about fraud. If someone gets into my account, what happens? The app doesn't explain its fraud protection or what I should do if something goes wrong.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "The login process is secure, which is good. But once I'm in, I don't see any indicators that I'm still in a secure session. I want to know that my connection is encrypted.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "I'm not comfortable putting my banking information in an app I don't know. I need more reassurance that this is safe and legitimate. Maybe testimonials or security information would help.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "The app is functional, but it's not great. The UX needs work - better information architecture, clearer navigation, more intuitive flows. It works, but it's frustrating to use.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "I'm not sure I would switch from my current bank app. This one doesn't offer enough advantages to justify the switching cost. It needs to be significantly better, not just different.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "For business use, this isn't sufficient. I need more features - invoicing, expense tracking, tax reporting. This feels like it's designed for personal use, not business.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "It's okay, but it's not exciting. I'm used to apps that are delightful to use, and this one is just... functional. I want something that makes banking easier and more enjoyable.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "The design is nice, but the usability is lacking. It feels like it was designed by people who already know how banking apps work, not by people who are trying to use it for the first time.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "I'm probably not the target audience. This feels like it's designed for younger, tech-savvy people. I need something simpler and more straightforward. I'll stick with my regular bank app.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Simplify the navigation. Make the primary actions more obvious. Reduce the number of steps for common tasks. And improve the information architecture - things are organized in a way that doesn't match user mental models.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Add more personalization. Let me customize the home screen to show what's important to me. And improve the visual hierarchy - not everything can be equally important.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Add business features. If you want business customers, you need business features. Invoicing, expense tracking, multi-user access, that kind of thing.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Make it more intuitive. I shouldn't have to think about where things are or how to do things - it should be obvious. Reduce cognitive load.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Improve the transaction history. Better filtering, search, grouping. And make it easier to access - it's a core feature that's currently buried.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ],
+  [
+    "Make it simpler. Not everyone is tech-savvy. Add more help, more explanations, more guidance. And make sure it works for people who aren't comfortable with technology.",
+    "fintech_app_focus_group.json",
+    [
+      "focus_groups",
+      "qualitative"
+    ]
+  ]
+]

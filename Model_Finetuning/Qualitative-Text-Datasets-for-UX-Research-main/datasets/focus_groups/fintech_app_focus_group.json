@@ -1,0 +1,265 @@
+{
+  "focus_group_metadata": {
+    "study_name": "FinTech Mobile App Usability Focus Group",
+    "method": "Moderated focus group with task-based discussion",
+    "participants": 6,
+    "duration_minutes": 75,
+    "date": "2024-03-20",
+    "moderator": "David Kim"
+  },
+  "participants": [
+    {
+      "participant_id": "FG001",
+      "pseudonym": "Alex",
+      "age_range": "28",
+      "role": "Software Engineer",
+      "banking_app_experience": "High",
+      "financial_literacy": "High"
+    },
+    {
+      "participant_id": "FG002",
+      "pseudonym": "Jordan",
+      "age_range": "35",
+      "role": "Marketing Manager",
+      "banking_app_experience": "Medium",
+      "financial_literacy": "Medium"
+    },
+    {
+      "participant_id": "FG003",
+      "pseudonym": "Sam",
+      "age_range": "42",
+      "role": "Small Business Owner",
+      "banking_app_experience": "Low",
+      "financial_literacy": "High"
+    },
+    {
+      "participant_id": "FG004",
+      "pseudonym": "Morgan",
+      "age_range": "24",
+      "role": "Graduate Student",
+      "banking_app_experience": "Medium",
+      "financial_literacy": "Low"
+    },
+    {
+      "participant_id": "FG005",
+      "pseudonym": "Riley",
+      "age_range": "31",
+      "role": "Freelance Designer",
+      "banking_app_experience": "High",
+      "financial_literacy": "Medium"
+    },
+    {
+      "participant_id": "FG006",
+      "pseudonym": "Casey",
+      "age_range": "55",
+      "role": "Retired Teacher",
+      "banking_app_experience": "Low",
+      "financial_literacy": "Medium"
+    }
+  ],
+  "discussion_segments": [
+    {
+      "segment": "Initial Impressions",
+      "discussion": [
+        {
+          "speaker": "Alex",
+          "quote": "First thing I noticed - the login screen is clean, which is good. But then I logged in and there's just... a lot going on. Like, where do I start? There's no clear hierarchy."
+        },
+        {
+          "speaker": "Jordan",
+          "quote": "I agree. It's visually appealing, but I'm not sure what I'm supposed to do first. Is my balance the most important thing? Recent transactions? Quick actions? It's all competing for attention."
+        },
+        {
+          "speaker": "Sam",
+          "quote": "For me, the first thing I want to see is my account balance. That should be front and center. But it's buried in the middle of the screen, and I had to scroll to see it clearly."
+        },
+        {
+          "speaker": "Morgan",
+          "quote": "I'm confused about what this app does differently from my regular bank app. Like, why would I switch? I don't see anything that's obviously better."
+        },
+        {
+          "speaker": "Riley",
+          "quote": "The design is modern, which I like. But modern doesn't always mean usable. I'm having trouble figuring out the navigation. The bottom tabs aren't labeled clearly."
+        },
+        {
+          "speaker": "Casey",
+          "quote": "I'm not very good with technology, so I'm already feeling overwhelmed. There are so many buttons and options, and I'm worried I'll tap the wrong thing and mess something up."
+        }
+      ]
+    },
+    {
+      "segment": "Task: Check Account Balance",
+      "discussion": [
+        {
+          "speaker": "Alex",
+          "quote": "This should be the easiest task, but it took me a few seconds to find my balance. It's on the home screen, but it's not prominent enough. I had to look around to find it."
+        },
+        {
+          "speaker": "Jordan",
+          "quote": "I have multiple accounts, and I can't see all my balances at once. I have to tap into each account individually, which is annoying. I want a summary view."
+        },
+        {
+          "speaker": "Sam",
+          "quote": "The balance is there, but I can't tell if it's my checking or savings account. The labels are too small, and I have to tap to see which account I'm looking at."
+        },
+        {
+          "speaker": "Morgan",
+          "quote": "I'm not sure if the balance is up to date. Is this my current balance? Available balance? Pending transactions? It's not clear."
+        },
+        {
+          "speaker": "Riley",
+          "quote": "The balance display is fine, but I wish I could see it bigger. Sometimes I'm in a hurry and I just want to quickly check my balance without having to squint."
+        },
+        {
+          "speaker": "Casey",
+          "quote": "I found my balance, but I'm not confident it's correct. I wish there was a way to refresh it or see when it was last updated. I'm always worried about whether the information is current."
+        }
+      ]
+    },
+    {
+      "segment": "Task: Transfer Money",
+      "discussion": [
+        {
+          "speaker": "Alex",
+          "quote": "The transfer flow is confusing. There are too many steps, and I'm not sure why. Like, why do I need to confirm my identity again if I just logged in? That's redundant."
+        },
+        {
+          "speaker": "Jordan",
+          "quote": "I couldn't find where to transfer money at first. I looked for a 'Transfer' button, but it's called 'Send Money' which is different. The terminology is inconsistent."
+        },
+        {
+          "speaker": "Sam",
+          "quote": "I want to transfer money to my business account, but I can't find it in my contacts. I have to manually enter the account number every time, which is annoying and error-prone."
+        },
+        {
+          "speaker": "Morgan",
+          "quote": "The recipient selection is weird. It's asking for email or phone number, but I just want to send to someone in my contacts. Why can't I just pick a name?"
+        },
+        {
+          "speaker": "Riley",
+          "quote": "I like that there are security checks, but they're too frequent. I'm transferring $20 to a friend, and it's asking me to verify my identity three times. That's overkill."
+        },
+        {
+          "speaker": "Casey",
+          "quote": "I'm afraid to transfer money because I'm worried I'll send it to the wrong person. The confirmation screen doesn't show enough information for me to be confident I'm doing it right."
+        }
+      ]
+    },
+    {
+      "segment": "Task: View Transaction History",
+      "discussion": [
+        {
+          "speaker": "Alex",
+          "quote": "Transaction history is buried. It should be a primary action, not hidden in account details. Users check their history all the time - it should be easier to access."
+        },
+        {
+          "speaker": "Jordan",
+          "quote": "I can see recent transactions, but I can't filter or search. If I'm looking for a specific transaction from last month, I have to scroll through everything. That's not efficient."
+        },
+        {
+          "speaker": "Sam",
+          "quote": "The transactions aren't grouped by date, which makes it hard to scan. I want to see 'Today', 'Yesterday', 'This Week', 'This Month' - that kind of grouping."
+        },
+        {
+          "speaker": "Morgan",
+          "quote": "I can't see pending transactions clearly. They're mixed in with completed transactions, and I can't tell which is which. I want to see what's pending separately."
+        },
+        {
+          "speaker": "Riley",
+          "quote": "The transaction descriptions are truncated, so I can't see the full merchant name or description. I have to tap each transaction to see the details, which is tedious."
+        },
+        {
+          "speaker": "Casey",
+          "quote": "I'm looking for a transaction from two weeks ago, but I can only see the last few days. How do I see older transactions? There's no 'Load More' button or way to go back further."
+        }
+      ]
+    },
+    {
+      "segment": "Security and Trust",
+      "discussion": [
+        {
+          "speaker": "Alex",
+          "quote": "The security measures are good - two-factor authentication, biometric login. But the UI doesn't communicate that well. I want to see more indicators that my data is secure."
+        },
+        {
+          "speaker": "Jordan",
+          "quote": "I'm not sure if this app is legitimate. The branding is modern, but I don't recognize the company. I want to see more trust signals - security badges, certifications, that kind of thing."
+        },
+        {
+          "speaker": "Sam",
+          "quote": "For business banking, security is critical. I need to know that my money is safe. The app doesn't do enough to communicate its security features or make me feel confident."
+        },
+        {
+          "speaker": "Morgan",
+          "quote": "I'm worried about fraud. If someone gets into my account, what happens? The app doesn't explain its fraud protection or what I should do if something goes wrong."
+        },
+        {
+          "speaker": "Riley",
+          "quote": "The login process is secure, which is good. But once I'm in, I don't see any indicators that I'm still in a secure session. I want to know that my connection is encrypted."
+        },
+        {
+          "speaker": "Casey",
+          "quote": "I'm not comfortable putting my banking information in an app I don't know. I need more reassurance that this is safe and legitimate. Maybe testimonials or security information would help."
+        }
+      ]
+    },
+    {
+      "segment": "Overall Experience",
+      "discussion": [
+        {
+          "speaker": "Alex",
+          "quote": "The app is functional, but it's not great. The UX needs work - better information architecture, clearer navigation, more intuitive flows. It works, but it's frustrating to use."
+        },
+        {
+          "speaker": "Jordan",
+          "quote": "I'm not sure I would switch from my current bank app. This one doesn't offer enough advantages to justify the switching cost. It needs to be significantly better, not just different."
+        },
+        {
+          "speaker": "Sam",
+          "quote": "For business use, this isn't sufficient. I need more features - invoicing, expense tracking, tax reporting. This feels like it's designed for personal use, not business."
+        },
+        {
+          "speaker": "Morgan",
+          "quote": "It's okay, but it's not exciting. I'm used to apps that are delightful to use, and this one is just... functional. I want something that makes banking easier and more enjoyable."
+        },
+        {
+          "speaker": "Riley",
+          "quote": "The design is nice, but the usability is lacking. It feels like it was designed by people who already know how banking apps work, not by people who are trying to use it for the first time."
+        },
+        {
+          "speaker": "Casey",
+          "quote": "I'm probably not the target audience. This feels like it's designed for younger, tech-savvy people. I need something simpler and more straightforward. I'll stick with my regular bank app."
+        }
+      ]
+    },
+    {
+      "segment": "Recommendations",
+      "discussion": [
+        {
+          "speaker": "Alex",
+          "quote": "Simplify the navigation. Make the primary actions more obvious. Reduce the number of steps for common tasks. And improve the information architecture - things are organized in a way that doesn't match user mental models."
+        },
+        {
+          "speaker": "Jordan",
+          "quote": "Add more personalization. Let me customize the home screen to show what's important to me. And improve the visual hierarchy - not everything can be equally important."
+        },
+        {
+          "speaker": "Sam",
+          "quote": "Add business features. If you want business customers, you need business features. Invoicing, expense tracking, multi-user access, that kind of thing."
+        },
+        {
+          "speaker": "Morgan",
+          "quote": "Make it more intuitive. I shouldn't have to think about where things are or how to do things - it should be obvious. Reduce cognitive load."
+        },
+        {
+          "speaker": "Riley",
+          "quote": "Improve the transaction history. Better filtering, search, grouping. And make it easier to access - it's a core feature that's currently buried."
+        },
+        {
+          "speaker": "Casey",
+          "quote": "Make it simpler. Not everyone is tech-savvy. Add more help, more explanations, more guidance. And make sure it works for people who aren't comfortable with technology."
+        }
+      ]
+    }
+  ]
+}
