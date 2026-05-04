@@ -3,7 +3,6 @@
 
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -20,6 +19,11 @@ LEGACY_COMPASS_DOCS = [
     ROOT / "COMPLETE_SYSTEM.md",
     ROOT / "SYSTEM_INTEGRITY_GUIDE.md",
 ]
+BACKEND_DEPENDENCY_MARKERS = {
+    "webauthn": "WebAuthn/FIDO2 passkey support",
+    "openai-whisper": "local interview transcription",
+    "pydub": "audio format conversion fallback",
+}
 
 
 def check_exists(issues: list[str]) -> None:
@@ -31,9 +35,11 @@ def check_exists(issues: list[str]) -> None:
 def check_legacy_compass_not_active(issues: list[str]) -> None:
     """Guard against accidentally re-promoting legacy Compass markdown to CI truth."""
     ci_text = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8").lower()
-    build_text = (ROOT / ".github" / "workflows" / "build-installers.yml").read_text(
-        encoding="utf-8"
-    ).lower()
+    build_text = (
+        (ROOT / ".github" / "workflows" / "build-installers.yml")
+        .read_text(encoding="utf-8")
+        .lower()
+    )
     release_text = (ROOT / "scripts" / "prepare-release.sh").read_text(encoding="utf-8").lower()
 
     legacy_names = {path.name.lower() for path in LEGACY_COMPASS_DOCS}
@@ -44,7 +50,11 @@ def check_legacy_compass_not_active(issues: list[str]) -> None:
                 "Keep legacy Compass markdown optional; Compass Forge is the control plane."
             )
 
-    if "update_agent_md.py" in ci_text or "update_agent_md.py" in build_text or "update_agent_md.py" in release_text:
+    if (
+        "update_agent_md.py" in ci_text
+        or "update_agent_md.py" in build_text
+        or "update_agent_md.py" in release_text
+    ):
         issues.append(
             "LEGACY: scripts/update_agent_md.py is referenced by active CI/release governance. "
             "Generated legacy Compass docs are optional and must not block release checks."
@@ -59,7 +69,7 @@ def check_tech_md_freshness(issues: list[str]) -> None:
     keywords here so Tech.md freshness can be verified.
     """
     if not TECH_MD.exists():
-        issues.append(f"MISSING: Tech.md does not exist")
+        issues.append("MISSING: Tech.md does not exist")
         return
 
     tech_text = TECH_MD.read_text(encoding="utf-8").lower()
@@ -111,6 +121,23 @@ def check_tech_md_freshness(issues: list[str]) -> None:
         )
 
 
+def check_backend_dependency_alignment(issues: list[str]) -> None:
+    """Verify source-install and editable-install dependency manifests stay aligned."""
+    requirements_text = (ROOT / "backend" / "requirements.txt").read_text(encoding="utf-8").lower()
+    pyproject_text = (ROOT / "backend" / "pyproject.toml").read_text(encoding="utf-8").lower()
+
+    missing = []
+    for marker, description in BACKEND_DEPENDENCY_MARKERS.items():
+        if marker in requirements_text and marker not in pyproject_text:
+            missing.append(description)
+
+    if missing:
+        issues.append(
+            "DEPENDENCIES: backend/pyproject.toml is missing dependencies present in "
+            f"backend/requirements.txt for: {', '.join(missing)}."
+        )
+
+
 def main() -> int:
     issues: list[str] = []
 
@@ -125,6 +152,7 @@ def main() -> int:
 
     check_legacy_compass_not_active(issues)
     check_tech_md_freshness(issues)
+    check_backend_dependency_alignment(issues)
 
     if issues:
         print("Integrity issues detected:")

@@ -1,9 +1,9 @@
 import pytest
-from httpx import AsyncClient, ASGITransport
-from app.main import app
 from app.config import settings
-from app.models.database import init_db
 from app.core.auth import create_token
+from app.main import app
+from app.models.database import init_db
+from httpx import ASGITransport, AsyncClient
 
 
 @pytest.fixture(autouse=True)
@@ -135,11 +135,13 @@ def test_bootstrap_admin_user_has_required_email_hash():
 # JWT security tests
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_jwt_alg_none_rejected():
     """Verify that JWT with alg:none is rejected."""
-    from app.core.auth import _b64encode, verify_token
     import json
+
+    from app.core.auth import _b64encode, verify_token
 
     # Create a token with alg:none
     header = _b64encode(json.dumps({"alg": "none", "typ": "JWT"}).encode())
@@ -158,6 +160,7 @@ async def test_jwt_has_jti_and_mfa_claims():
 
     token = create_token("user1", "testuser", "admin", mfa_verified=True)
     from app.core.auth import verify_token
+
     payload = verify_token(token)
     assert payload is not None
     assert "jti" in payload, "Token should have jti for revocation"
@@ -171,9 +174,10 @@ async def test_expired_jwt_rejected():
     if not settings.jwt_secret:
         settings.jwt_secret = "test-secret"
 
-    import time
-    from app.core.auth import _b64encode, verify_token
     import json
+    import time
+
+    from app.core.auth import _b64encode, verify_token
 
     # Create an expired token
     header = _b64encode(json.dumps({"alg": "HS256", "typ": "JWT"}).encode())
@@ -187,7 +191,8 @@ async def test_expired_jwt_rejected():
         "exp": int(time.time()) - 5000,  # Expired 5000 seconds ago
     }
     payload = _b64encode(json.dumps(payload_data).encode())
-    from app.core.auth import hmac, hashlib, _b64decode
+    from app.core.auth import hashlib, hmac
+
     sig_input = f"{header}.{payload}".encode()
     sig = _b64encode(hmac.new(settings.jwt_secret.encode(), sig_input, hashlib.sha256).digest())
     expired_token = f"{header}.{payload}.{sig}"
@@ -199,6 +204,7 @@ async def test_expired_jwt_rejected():
 # ---------------------------------------------------------------------------
 # Cookie-based auth tests
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_login_sets_session_cookie():
@@ -237,9 +243,32 @@ async def test_logout_requires_auth():
         assert response.status_code == 200
 
 
+@pytest.mark.asyncio
+async def test_cookie_auth_rejects_untrusted_origin_on_state_change():
+    """Cookie-authenticated unsafe requests should reject untrusted browser origins."""
+    await init_db()
+    settings.team_mode = True
+    if not settings.jwt_secret:
+        settings.jwt_secret = "test-secret"
+
+    token = create_token("admin-1", "admin", "admin")
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        ac.cookies.set("istara_session", token)
+        response = await ac.put(
+            "/api/auth/preferences",
+            json={"preferences": {"theme": "dark"}},
+            headers={"Origin": "https://evil.example"},
+        )
+
+    assert response.status_code == 403
+    assert "Untrusted browser origin" in response.json()["detail"]
+
+
 # ---------------------------------------------------------------------------
 # 2FA / MFA tests
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_login_returns_requires_2fa_when_totp_enabled():
@@ -250,36 +279,51 @@ async def test_login_returns_requires_2fa_when_totp_enabled():
         settings.jwt_secret = "test-secret"
 
     import uuid
+
     username = f"mfauser_{uuid.uuid4().hex[:8]}"
     email = f"mfa_{uuid.uuid4().hex[:8]}@example.com"
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         # Register a user
-        reg = await ac.post("/api/auth/register", json={
-            "username": username,
-            "email": email,
-            "password": "xK9#mP2$vL7nQ4@wR1!",
-        })
+        reg = await ac.post(
+            "/api/auth/register",
+            json={
+                "username": username,
+                "email": email,
+                "password": "xK9#mP2$vL7nQ4@wR1!",
+            },
+        )
         assert reg.status_code == 200
         token = reg.json()["token"]
 
         # Setup TOTP
-        totp_setup = await ac.post("/api/auth/totp/setup", headers={"Authorization": f"Bearer {token}"})
+        totp_setup = await ac.post(
+            "/api/auth/totp/setup",
+            json={"current_password": "xK9#mP2$vL7nQ4@wR1!"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
         assert totp_setup.status_code == 200
         secret = totp_setup.json()["secret"]
 
         # Verify TOTP to enable it
         import pyotp
+
         code = pyotp.TOTP(secret).now()
-        totp_verify = await ac.post("/api/auth/totp/verify", json={"totp_code": code}, headers={"Authorization": f"Bearer {token}"})
+        totp_verify = await ac.post(
+            "/api/auth/totp/verify",
+            json={"totp_code": code},
+            headers={"Authorization": f"Bearer {token}"},
+        )
         assert totp_verify.status_code == 200
 
         # Log out (clear token)
         await ac.post("/api/auth/logout", headers={"Authorization": f"Bearer {token}"})
 
         # Login WITHOUT TOTP code — should return requires_2fa
-        login = await ac.post("/api/auth/login", json={"username": username, "password": "xK9#mP2$vL7nQ4@wR1!"})
+        login = await ac.post(
+            "/api/auth/login", json={"username": username, "password": "xK9#mP2$vL7nQ4@wR1!"}
+        )
         assert login.status_code == 200
         data = login.json()
         assert data.get("requires_2fa") is True
@@ -296,42 +340,102 @@ async def test_login_with_totp_code_succeeds():
         settings.jwt_secret = "test-secret"
 
     import uuid
+
     username = f"mfauser2_{uuid.uuid4().hex[:8]}"
     email = f"mfa2_{uuid.uuid4().hex[:8]}@example.com"
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         # Register and setup TOTP
-        reg = await ac.post("/api/auth/register", json={
-            "username": username,
-            "email": email,
-            "password": "xK9#mP2$vL7nQ4@wR1!",
-        })
+        reg = await ac.post(
+            "/api/auth/register",
+            json={
+                "username": username,
+                "email": email,
+                "password": "xK9#mP2$vL7nQ4@wR1!",
+            },
+        )
         token = reg.json()["token"]
 
-        totp_setup = await ac.post("/api/auth/totp/setup", headers={"Authorization": f"Bearer {token}"})
+        totp_setup = await ac.post(
+            "/api/auth/totp/setup",
+            json={"current_password": "xK9#mP2$vL7nQ4@wR1!"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
         secret = totp_setup.json()["secret"]
 
         import pyotp
+
         code = pyotp.TOTP(secret).now()
-        await ac.post("/api/auth/totp/verify", json={"totp_code": code}, headers={"Authorization": f"Bearer {token}"})
+        await ac.post(
+            "/api/auth/totp/verify",
+            json={"totp_code": code},
+            headers={"Authorization": f"Bearer {token}"},
+        )
         await ac.post("/api/auth/logout", headers={"Authorization": f"Bearer {token}"})
 
         # Login WITH TOTP code
-        login = await ac.post("/api/auth/login", json={
-            "username": username,
-            "password": "xK9#mP2$vL7nQ4@wR1!",
-            "totp_code": pyotp.TOTP(secret).now(),
-        })
+        login = await ac.post(
+            "/api/auth/login",
+            json={
+                "username": username,
+                "password": "xK9#mP2$vL7nQ4@wR1!",
+                "totp_code": pyotp.TOTP(secret).now(),
+            },
+        )
         assert login.status_code == 200
         data = login.json()
         assert "token" in data
         assert data.get("requires_2fa") is not True
 
 
+@pytest.mark.asyncio
+async def test_totp_setup_requires_current_password():
+    """Changing MFA state requires a password confirmation."""
+    await init_db()
+    settings.team_mode = True
+    if not settings.jwt_secret:
+        settings.jwt_secret = "test-secret"
+
+    import uuid
+
+    username = f"mfareauth_{uuid.uuid4().hex[:8]}"
+    email = f"mfareauth_{uuid.uuid4().hex[:8]}@example.com"
+    password = "xK9#mP2$vL7nQ4@wR1!"
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        reg = await ac.post(
+            "/api/auth/register",
+            json={"username": username, "email": email, "password": password},
+        )
+        token = reg.json()["token"]
+
+        missing = await ac.post(
+            "/api/auth/totp/setup",
+            json={},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        wrong = await ac.post(
+            "/api/auth/totp/setup",
+            json={"current_password": "wrong-password"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        ok = await ac.post(
+            "/api/auth/totp/setup",
+            json={"current_password": password},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+    assert missing.status_code == 422
+    assert wrong.status_code == 401
+    assert ok.status_code == 200
+
+
 # ---------------------------------------------------------------------------
 # Security headers tests
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_security_headers_present():

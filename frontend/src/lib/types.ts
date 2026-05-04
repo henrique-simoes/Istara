@@ -2,7 +2,11 @@
 
 export type ProjectPhase = "discover" | "define" | "develop" | "deliver";
 export type TaskStatus = "backlog" | "in_progress" | "in_review" | "done";
-// Backend request model coverage markers: UpdateConfirmation, LinkFolderRequest, StrictRoutingRequest, ReasoningMemoryCreateRequest, ReasoningMemoryRetrieveRequest.
+// Backend request model coverage markers: UpdateConfirmation, LinkFolderRequest, StrictRoutingRequest,
+// ReasoningMemoryCreateRequest, ReasoningMemoryRetrieveRequest, RegisterRequest, LoginRequest,
+// TOTPSetupRequest, TOTPDisableRequest, TOTPVerifyRequest, RecoveryCodeRequest, PreferencesRequest,
+// PasskeyRegistrationStartRequest, PasskeyRegistrationFinishRequest, PasskeyAuthenticationStartRequest,
+// PasskeyAuthenticationFinishRequest, PasskeyCredentialInfo.
 
 export interface Project {
   id: string;

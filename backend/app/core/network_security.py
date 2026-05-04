@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import Request, Response
+from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
 from starlette.websockets import WebSocket
@@ -37,6 +37,8 @@ EXEMPT_PATHS = {
     "/api/auth/login",
     "/api/auth/register",
     "/api/auth/team-status",
+    "/api/webauthn/authenticate/start",
+    "/api/webauthn/authenticate/finish",
     "/api/settings/status",
     "/api/connections/validate",
     "/api/connections/redeem",
@@ -131,7 +133,10 @@ class NetworkSecurityMiddleware(BaseHTTPMiddleware):
         if local_admin_denial:
             logger.warning(
                 "Network access denied: %s %s from %s (%s)",
-                request.method, path, client_host, local_admin_denial,
+                request.method,
+                path,
+                client_host,
+                local_admin_denial,
             )
             return JSONResponse(
                 status_code=403,
@@ -157,7 +162,9 @@ class NetworkSecurityMiddleware(BaseHTTPMiddleware):
         if not token or token != settings.network_access_token:
             logger.warning(
                 "Network access denied: %s %s from %s (invalid or missing token)",
-                request.method, path, client_host,
+                request.method,
+                path,
+                client_host,
             )
             return JSONResponse(
                 status_code=401,

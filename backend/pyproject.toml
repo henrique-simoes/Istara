@@ -34,13 +34,18 @@ dependencies = [
     # Security
     "argon2-cffi>=23.1.0",
     "pyotp>=2.9.0",
+    "webauthn>=2.0.0",
     "cryptography>=43.0.0",
     "slowapi>=0.1.9",
+    "packaging>=24.0",
     # Messaging channels
     "python-telegram-bot>=22.0",
     "slack-bolt[async]>=1.20.0",
     # MCP (Model Context Protocol)
     "fastmcp>=2.0.0",
+    # Voice transcription
+    "openai-whisper>=20240930",
+    "pydub>=0.25.1",
 ]
 
 [project.optional-dependencies]

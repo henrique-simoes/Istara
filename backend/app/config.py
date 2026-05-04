@@ -38,6 +38,11 @@ class Settings(BaseSettings):
     jwt_secret: str = ""  # Auto-generated on first run if empty
     jwt_expire_minutes: int = 1440  # 24 hours
 
+    # WebAuthn / passkeys. RP ID must match the production host domain.
+    webauthn_rp_id: str = "localhost"
+    webauthn_rp_name: str = "Istara"
+    webauthn_origins: str = ""  # Empty = derive from CORS origins
+
     # CORS (comma-separated origins)
     cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
     cors_origin_regex: str = r"https?://[^/]+:3000"

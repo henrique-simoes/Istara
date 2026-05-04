@@ -14,26 +14,26 @@ import logging
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
-from pydantic import BaseModel, validator
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.core.auth import (
     create_token,
-    hash_password,
-    verify_password,
-    needs_rehash,
     generate_recovery_codes,
-    hash_recovery_code,
-    verify_recovery_code,
-    generate_totp_secret,
     generate_totp_provisioning_uri,
-    verify_totp,
+    generate_totp_secret,
+    hash_password,
+    hash_recovery_code,
     is_password_breached,
+    needs_rehash,
+    verify_password,
+    verify_recovery_code,
+    verify_totp,
 )
-from app.core.field_encryption import hash_field
 from app.core.client_identity import BoundedWindowRateLimiter, get_client_ip
+from app.core.field_encryption import hash_field
 from app.core.security_middleware import require_admin_from_request
 from app.models.database import async_session, get_db
 from app.models.user import User
@@ -56,12 +56,15 @@ async def _check_login_rate(request: Request):
         limit=MAX_LOGIN_ATTEMPTS,
         window_seconds=LOGIN_WINDOW,
     ):
-        raise HTTPException(status_code=429, detail="Too many login attempts. Try again in 60 seconds.")
+        raise HTTPException(
+            status_code=429, detail="Too many login attempts. Try again in 60 seconds."
+        )
 
 
 # ---------------------------------------------------------------------------
 # Request models
 # ---------------------------------------------------------------------------
+
 
 class RegisterRequest(BaseModel):
     username: str
@@ -79,16 +82,25 @@ class LoginRequest(BaseModel):
 
 class TOTPSetupRequest(BaseModel):
     """Request to enable TOTP for a user."""
-    pass
+
+    current_password: str
+
+
+class TOTPDisableRequest(BaseModel):
+    """Request to disable TOTP for a user."""
+
+    current_password: str
 
 
 class TOTPVerifyRequest(BaseModel):
     """Verify a TOTP code."""
+
     totp_code: str
 
 
 class RecoveryCodeRequest(BaseModel):
     """Generate new recovery codes."""
+
     current_password: str
 
 
@@ -99,6 +111,7 @@ class PreferencesRequest(BaseModel):
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def is_request_local(request: Request) -> bool:
     """Check if the request truly originates from localhost."""
@@ -149,9 +162,37 @@ def _user_to_dict(user: User) -> dict:
     }
 
 
+def _token_payload_from_request(request: Request) -> dict:
+    """Return a verified token payload from Authorization or the session cookie."""
+    auth_header = request.headers.get("Authorization", "")
+    token_str = (
+        auth_header.removeprefix("Bearer ").strip() if auth_header.startswith("Bearer ") else ""
+    )
+    if not token_str:
+        token_str = request.cookies.get("istara_session", "")
+    if not token_str:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    from app.core.auth import verify_token
+
+    payload = verify_token(token_str)
+    if not payload:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    return payload
+
+
+def _require_current_password(user: User, current_password: str) -> None:
+    """Require password confirmation before changing authentication factors."""
+    if not current_password:
+        raise HTTPException(status_code=400, detail="Current password is required.")
+    if not verify_password(current_password, user.password_hash):
+        raise HTTPException(status_code=401, detail="Invalid current password.")
+
+
 # ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
+
 
 @router.post("/auth/register")
 async def register(req: RegisterRequest, response: Response):
@@ -164,7 +205,9 @@ async def register(req: RegisterRequest, response: Response):
     - Generate recovery codes
     """
     if not settings.team_mode:
-        raise HTTPException(status_code=400, detail="Registration requires team mode. Enable TEAM_MODE=true.")
+        raise HTTPException(
+            status_code=400, detail="Registration requires team mode. Enable TEAM_MODE=true."
+        )
 
     # NIST: password length check (8-64 chars)
     if len(req.password) < 8:
@@ -176,7 +219,10 @@ async def register(req: RegisterRequest, response: Response):
     if await is_password_breached(req.password):
         raise HTTPException(
             status_code=400,
-            detail="This password has appeared in a known data breach. Please choose a different password.",
+            detail=(
+                "This password has appeared in a known data breach. "
+                "Please choose a different password."
+            ),
         )
 
     async with async_session() as db:
@@ -219,7 +265,9 @@ async def register(req: RegisterRequest, response: Response):
 
 
 @router.post("/auth/login")
-async def login(req: LoginRequest, response: Response, request: Request, db: AsyncSession = Depends(get_db)):
+async def login(
+    req: LoginRequest, response: Response, request: Request, db: AsyncSession = Depends(get_db)
+):
     """Log in and receive a JWT token + HttpOnly session cookie.
 
     Supports:
@@ -235,7 +283,10 @@ async def login(req: LoginRequest, response: Response, request: Request, db: Asy
         if not is_request_local(request):
             raise HTTPException(
                 status_code=403,
-                detail="This server is in Local Mode. Remote access requires a connection string or Team Mode."
+                detail=(
+                    "This server is in Local Mode. Remote access requires a connection string "
+                    "or Team Mode."
+                ),
             )
         token = create_token("local", req.username or "local", "admin")
         _set_auth_cookie(response, token)
@@ -317,158 +368,139 @@ async def logout(response: Response):
 # TOTP 2FA Management
 # ---------------------------------------------------------------------------
 
+
 @router.post("/auth/totp/setup")
-async def totp_setup(response: Response, request: Request, db: AsyncSession = Depends(get_db)):
+async def totp_setup(
+    req: TOTPSetupRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
     """Generate a TOTP secret and provisioning URI for QR code display.
 
     Returns the secret (shown once) and a URI for QR code generation.
     The user must verify a code to enable TOTP.
     """
-    auth_header = request.headers.get("Authorization", "")
-    token_str = auth_header.removeprefix("Bearer ").strip() if auth_header.startswith("Bearer ") else ""
-    if not token_str:
-        token_str = request.cookies.get("istara_session", "")
-    if not token_str:
-        raise HTTPException(status_code=401, detail="Authentication required")
-
-    from app.core.auth import verify_token
-    payload = verify_token(token_str)
-    if not payload:
-        raise HTTPException(status_code=401, detail="Invalid token")
-
+    payload = _token_payload_from_request(request)
     user_id = payload.get("sub")
-    async with async_session() as session:
-        user = await session.get(User, user_id)
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
+    user = await db.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
 
-        secret = generate_totp_secret()
-        uri = generate_totp_provisioning_uri(secret, user.username)
+    _require_current_password(user, req.current_password)
 
-        # Store secret but don't enable yet (requires verification)
-        user.totp_secret = secret
-        await session.commit()
+    secret = generate_totp_secret()
+    if not secret:
+        raise HTTPException(status_code=503, detail="TOTP support is not available.")
+    uri = generate_totp_provisioning_uri(secret, user.username)
+    if not uri:
+        raise HTTPException(status_code=503, detail="TOTP support is not available.")
 
-        return {
-            "secret": secret,
-            "provisioning_uri": uri,
-            "message": "Scan the QR code with your authenticator app, then verify with /auth/totp/verify",
-        }
+    # Store secret but don't enable yet (requires verification)
+    user.totp_secret = secret
+    await db.commit()
+
+    return {
+        "secret": secret,
+        "provisioning_uri": uri,
+        "message": (
+            "Scan the QR code with your authenticator app, then verify with /auth/totp/verify"
+        ),
+    }
 
 
 @router.post("/auth/totp/verify")
 async def totp_verify(req: TOTPVerifyRequest, request: Request, db: AsyncSession = Depends(get_db)):
     """Verify a TOTP code to enable 2FA."""
-    auth_header = request.headers.get("Authorization", "")
-    token_str = auth_header.removeprefix("Bearer ").strip() if auth_header.startswith("Bearer ") else ""
-    if not token_str:
-        token_str = request.cookies.get("istara_session", "")
-    if not token_str:
-        raise HTTPException(status_code=401, detail="Authentication required")
-
-    from app.core.auth import verify_token
-    payload = verify_token(token_str)
-    if not payload:
-        raise HTTPException(status_code=401, detail="Invalid token")
-
+    payload = _token_payload_from_request(request)
     user_id = payload.get("sub")
-    async with async_session() as session:
-        user = await session.get(User, user_id)
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
-        if not user.totp_secret:
-            raise HTTPException(status_code=400, detail="TOTP not set up. Call /auth/totp/setup first.")
+    user = await db.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if not user.totp_secret:
+        raise HTTPException(status_code=400, detail="TOTP not set up. Call /auth/totp/setup first.")
 
-        if not verify_totp(user.totp_secret, req.totp_code):
-            raise HTTPException(status_code=401, detail="Invalid TOTP code.")
+    if not verify_totp(user.totp_secret, req.totp_code):
+        raise HTTPException(status_code=401, detail="Invalid TOTP code.")
 
-        user.totp_enabled = True
-        await session.commit()
+    user.totp_enabled = True
+    await db.commit()
 
-        return {
-            "success": True,
-            "message": "TOTP 2FA enabled. Save your recovery codes from /auth/recovery-codes.",
-        }
+    return {
+        "success": True,
+        "message": "TOTP 2FA enabled. Save your recovery codes from /auth/recovery-codes.",
+    }
 
 
 @router.post("/auth/totp/disable")
-async def totp_disable(request: Request, db: AsyncSession = Depends(get_db)):
+async def totp_disable(
+    req: TOTPDisableRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
     """Disable TOTP 2FA. Requires password verification."""
-    auth_header = request.headers.get("Authorization", "")
-    token_str = auth_header.removeprefix("Bearer ").strip() if auth_header.startswith("Bearer ") else ""
-    if not token_str:
-        token_str = request.cookies.get("istara_session", "")
-    if not token_str:
-        raise HTTPException(status_code=401, detail="Authentication required")
-
-    from app.core.auth import verify_token
-    payload = verify_token(token_str)
-    if not payload:
-        raise HTTPException(status_code=401, detail="Invalid token")
-
+    payload = _token_payload_from_request(request)
     user_id = payload.get("sub")
-    async with async_session() as session:
-        user = await session.get(User, user_id)
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
+    user = await db.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
 
-        user.totp_enabled = False
-        user.totp_secret = None
-        await session.commit()
+    _require_current_password(user, req.current_password)
 
-        return {"success": True, "message": "TOTP 2FA disabled."}
+    user.totp_enabled = False
+    user.totp_secret = None
+    await db.commit()
+
+    return {"success": True, "message": "TOTP 2FA disabled."}
 
 
 # ---------------------------------------------------------------------------
 # Recovery Codes
 # ---------------------------------------------------------------------------
 
+
 @router.post("/auth/recovery-codes/generate")
-async def generate_recovery_codes_endpoint(request: Request, db: AsyncSession = Depends(get_db)):
+async def generate_recovery_codes_endpoint(
+    req: RecoveryCodeRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
     """Generate new recovery codes. Replaces all existing codes.
 
     Requires the user's current password for verification.
     """
-    auth_header = request.headers.get("Authorization", "")
-    token_str = auth_header.removeprefix("Bearer ").strip() if auth_header.startswith("Bearer ") else ""
-    if not token_str:
-        token_str = request.cookies.get("istara_session", "")
-    if not token_str:
-        raise HTTPException(status_code=401, detail="Authentication required")
-
-    from app.core.auth import verify_token
-    payload = verify_token(token_str)
-    if not payload:
-        raise HTTPException(status_code=401, detail="Invalid token")
-
+    payload = _token_payload_from_request(request)
     user_id = payload.get("sub")
-    async with async_session() as session:
-        user = await session.get(User, user_id)
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
+    user = await db.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
 
-        codes = generate_recovery_codes()
-        codes_hashed = "\n".join(hash_recovery_code(c) for c in codes)
-        user.recovery_codes_hashed = codes_hashed
-        await session.commit()
+    _require_current_password(user, req.current_password)
 
-        return {
-            "recovery_codes": codes,
-            "message": "Save these codes — they will only be shown once.",
-        }
+    codes = generate_recovery_codes()
+    codes_hashed = "\n".join(hash_recovery_code(c) for c in codes)
+    user.recovery_codes_hashed = codes_hashed
+    await db.commit()
+
+    return {
+        "recovery_codes": codes,
+        "message": "Save these codes — they will only be shown once.",
+    }
 
 
 @router.get("/auth/recovery-codes/status")
 async def recovery_codes_status(request: Request, db: AsyncSession = Depends(get_db)):
     """Check how many unused recovery codes remain."""
     auth_header = request.headers.get("Authorization", "")
-    token_str = auth_header.removeprefix("Bearer ").strip() if auth_header.startswith("Bearer ") else ""
+    token_str = (
+        auth_header.removeprefix("Bearer ").strip() if auth_header.startswith("Bearer ") else ""
+    )
     if not token_str:
         token_str = request.cookies.get("istara_session", "")
     if not token_str:
         raise HTTPException(status_code=401, detail="Authentication required")
 
     from app.core.auth import verify_token
+
     payload = verify_token(token_str)
     if not payload:
         raise HTTPException(status_code=401, detail="Invalid token")
@@ -487,6 +519,7 @@ async def recovery_codes_status(request: Request, db: AsyncSession = Depends(get
 # ---------------------------------------------------------------------------
 # User Info
 # ---------------------------------------------------------------------------
+
 
 @router.get("/auth/me")
 async def get_me(request: Request):
@@ -562,10 +595,14 @@ async def get_me(request: Request):
 
 
 @router.put("/auth/preferences")
-async def update_preferences(req: PreferencesRequest, request: Request, db: AsyncSession = Depends(get_db)):
+async def update_preferences(
+    req: PreferencesRequest, request: Request, db: AsyncSession = Depends(get_db)
+):
     """Update user preferences (theme, UI density, etc.)."""
     auth_header = request.headers.get("Authorization", "")
-    token_str = auth_header.removeprefix("Bearer ").strip() if auth_header.startswith("Bearer ") else ""
+    token_str = (
+        auth_header.removeprefix("Bearer ").strip() if auth_header.startswith("Bearer ") else ""
+    )
     if not token_str:
         token_str = request.cookies.get("istara_session", "")
     if not token_str:
@@ -574,6 +611,7 @@ async def update_preferences(req: PreferencesRequest, request: Request, db: Asyn
         raise HTTPException(status_code=401, detail="Authentication required")
 
     from app.core.auth import verify_token
+
     payload = verify_token(token_str)
     if not payload:
         raise HTTPException(status_code=401, detail="Invalid token")
@@ -609,6 +647,7 @@ async def team_status(request: Request):
 # ---------------------------------------------------------------------------
 # Admin User Management
 # ---------------------------------------------------------------------------
+
 
 @router.get("/auth/users")
 async def list_users(request: Request, db: AsyncSession = Depends(get_db)):
