@@ -1,5 +1,6 @@
 """Database connection and session management."""
 
+from importlib import import_module
 from pathlib import Path
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -51,37 +52,53 @@ async def get_db() -> AsyncSession:
 
 async def init_db() -> None:
     """Create all database tables."""
-    # Import all models so they're registered with Base
-    from app.models import agent, codebook, document, finding, message, project, session, task  # noqa: F401
-    from app.models import user  # noqa: F401
-    from app.models import llm_server, method_metric  # noqa: F401
-    from app.models.webauthn_credential import WebAuthnCredential  # noqa: F401
-    from app.core.checkpoint import TaskCheckpoint  # noqa: F401
-    from app.core.context_hierarchy import ContextDocument  # noqa: F401
-    from app.core.scheduler import ScheduledTask  # noqa: F401
-    from app.models.context_dag import ContextDAGNode  # noqa: F401
-    from app.models.design_screen import DesignScreen, DesignBrief, DesignDecision  # noqa: F401
-    from app.models.loop_execution import LoopExecution  # noqa: F401
-    from app.models.agent_loop_config import AgentLoopConfig  # noqa: F401
-    from app.models.notification import Notification, NotificationPreference  # noqa: F401
-    from app.models.backup import BackupRecord  # noqa: F401
-    from app.models.channel_instance import ChannelInstance  # noqa: F401
-    from app.models.channel_message import ChannelMessage  # noqa: F401
-    from app.models.channel_conversation import ChannelConversation  # noqa: F401
-    from app.models.research_deployment import ResearchDeployment  # noqa: F401
-    from app.models.survey_integration import SurveyIntegration, SurveyLink  # noqa: F401
-    from app.models.mcp_server_config import MCPServerConfig  # noqa: F401
-    from app.models.mcp_access_policy import MCPAccessPolicy  # noqa: F401
-    from app.models.mcp_audit_log import MCPAuditEntry  # noqa: F401
-    from app.models.model_skill_stats import ModelSkillStats  # noqa: F401
-    from app.models.autoresearch_experiment import AutoresearchExperiment  # noqa: F401
-    from app.models.codebook_version import CodebookVersion  # noqa: F401
-    from app.models.code_application import CodeApplication  # noqa: F401
-    from app.models.connection_string import ConnectionString  # noqa: F401
-    from app.core.audit_middleware import AuditLog  # noqa: F401
-    from app.models.telemetry_span import TelemetrySpan  # noqa: F401
-    from app.models.project_report import ProjectReport  # noqa: F401
-    from app.models.project_member import ProjectMember  # noqa: F401
+    # Import model modules so they're registered with Base. Keep this dynamic so
+    # database.py does not statically depend on every model-owning feature module.
+    for module_name in (
+        "app.models.agent",
+        "app.models.codebook",
+        "app.models.document",
+        "app.models.finding",
+        "app.models.message",
+        "app.models.project",
+        "app.models.session",
+        "app.models.task",
+        "app.models.user",
+        "app.models.llm_server",
+        "app.models.method_metric",
+        "app.models.webauthn_credential",
+        "app.core.checkpoint",
+        "app.core.context_hierarchy",
+        "app.core.scheduler",
+        "app.models.context_dag",
+        "app.models.design_screen",
+        "app.models.loop_execution",
+        "app.models.agent_loop_config",
+        "app.models.notification",
+        "app.models.backup",
+        "app.models.channel_instance",
+        "app.models.channel_message",
+        "app.models.channel_conversation",
+        "app.models.research_deployment",
+        "app.models.survey_integration",
+        "app.models.mcp_server_config",
+        "app.models.mcp_access_policy",
+        "app.models.mcp_audit_log",
+        "app.models.model_skill_stats",
+        "app.models.autoresearch_experiment",
+        "app.models.codebook_version",
+        "app.models.code_application",
+        "app.models.connection_string",
+        "app.models.reasoning_memory",
+        "app.models.improvement_governance",
+        "app.models.dgmh_archive",
+        "app.core.audit_middleware",
+        "app.models.telemetry_span",
+        "app.models.project_report",
+        "app.models.project_member",
+        "app.models.task_review",
+    ):
+        import_module(module_name)
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
@@ -106,18 +123,55 @@ async def init_db() -> None:
             "ALTER TABLE users ALTER COLUMN password_hash TYPE VARCHAR(512)",
             # Email encryption support
             "ALTER TABLE users ADD COLUMN email_hash VARCHAR(64)",
+            # Task review/reward state
+            "ALTER TABLE tasks ADD COLUMN labels TEXT NOT NULL DEFAULT '[]'",
+            "ALTER TABLE tasks ADD COLUMN review_state VARCHAR(30) NOT NULL DEFAULT 'none'",
+            "ALTER TABLE tasks ADD COLUMN what_to_review TEXT NOT NULL DEFAULT ''",
+            "ALTER TABLE tasks ADD COLUMN review_cycle_count INTEGER NOT NULL DEFAULT 0",
+            "ALTER TABLE tasks ADD COLUMN failure_streak INTEGER NOT NULL DEFAULT 0",
+            "ALTER TABLE tasks ADD COLUMN approval_streak INTEGER NOT NULL DEFAULT 0",
+            "ALTER TABLE tasks ADD COLUMN last_review_outcome VARCHAR(50)",
+            "ALTER TABLE tasks ADD COLUMN last_reviewed_by VARCHAR(36)",
+            "ALTER TABLE tasks ADD COLUMN last_reviewed_at DATETIME",
+            "ALTER TABLE tasks ADD COLUMN last_review_feedback TEXT NOT NULL DEFAULT ''",
+            "ALTER TABLE tasks ADD COLUMN next_agent_action VARCHAR(30)",
+            "ALTER TABLE tasks ADD COLUMN human_feedback_score FLOAT",
+            "ALTER TABLE tasks ADD COLUMN review_severity VARCHAR(20)",
+            "ALTER TABLE tasks ADD COLUMN review_failure_category VARCHAR(60)",
+            # Connection-string redemption and admin visibility.
+            "ALTER TABLE connection_strings ADD COLUMN redeemed_by_user_id VARCHAR(36)",
+            "ALTER TABLE connection_strings ADD COLUMN redeemed_username VARCHAR(255)",
+            "ALTER TABLE connection_strings ADD COLUMN redeemed_at DATETIME",
+            "ALTER TABLE connection_strings ADD COLUMN last_validated_at DATETIME",
+            "ALTER TABLE connection_strings ADD COLUMN token_type VARCHAR(40) NOT NULL DEFAULT 'user_invite'",
+            "ALTER TABLE connection_strings ADD COLUMN ws_url VARCHAR(1000) NOT NULL DEFAULT ''",
+            "ALTER TABLE connection_strings ADD COLUMN intended_role VARCHAR(40) NOT NULL DEFAULT 'researcher'",
+            "ALTER TABLE connection_strings ADD COLUMN connection_string_hash VARCHAR(64)",
+            # Scheduler/loops hardening columns for existing installations.
+            "ALTER TABLE scheduled_tasks ADD COLUMN is_running BOOLEAN NOT NULL DEFAULT 0",
+            "ALTER TABLE scheduled_tasks ADD COLUMN agent_id VARCHAR(36)",
+            "ALTER TABLE scheduled_tasks ADD COLUMN loop_type VARCHAR(50) NOT NULL DEFAULT 'cron'",
+            "ALTER TABLE scheduled_tasks ADD COLUMN interval_seconds INTEGER",
+            "ALTER TABLE scheduled_tasks ADD COLUMN execution_count INTEGER NOT NULL DEFAULT 0",
+            "ALTER TABLE scheduled_tasks ADD COLUMN last_status VARCHAR(20) NOT NULL DEFAULT ''",
         ]
         for ddl in migrations:
             try:
                 await conn.execute(sa.text(ddl))
-                await conn.commit()
             except Exception:
                 pass  # Column already exists or SQLite doesn't support this DDL
 
-        # Create webauthn_credentials table if it doesn't exist
+        # Create tables with follow-up lightweight migrations when needed.
         try:
-            from app.models.webauthn_credential import WebAuthnCredential
+            await conn.run_sync(
+                lambda c: Base.metadata.tables["webauthn_credentials"].create(c, checkfirst=True)
+            )
+        except Exception:
+            pass  # Table already exists
 
-            await conn.run_sync(lambda c: WebAuthnCredential.__table__.create(c, checkfirst=True))
+        try:
+            await conn.run_sync(
+                lambda c: Base.metadata.tables["task_review_events"].create(c, checkfirst=True)
+            )
         except Exception:
             pass  # Table already exists

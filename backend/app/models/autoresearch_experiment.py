@@ -1,6 +1,7 @@
 # Inspired by Karpathy's autoresearch (MIT) — https://github.com/karpathy/autoresearch
 """Autoresearch Experiment model — replaces Karpathy's results.tsv with a DB table."""
 
+import json
 from datetime import datetime, timezone
 
 from sqlalchemy import Boolean, DateTime, Float, String, Text
@@ -40,6 +41,10 @@ class AutoresearchExperiment(Base):
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     def to_dict(self) -> dict:
+        try:
+            config_snapshot = json.loads(self.config_snapshot or "{}")
+        except json.JSONDecodeError:
+            config_snapshot = {}
         return {
             "id": self.id,
             "loop_type": self.loop_type,
@@ -51,6 +56,7 @@ class AutoresearchExperiment(Base):
             "delta": self.delta,
             "kept": self.kept,
             "status": self.status,
+            "config_snapshot": config_snapshot,
             "error_message": self.error_message,
             "project_id": self.project_id,
             "started_at": self.started_at.isoformat() if self.started_at else None,

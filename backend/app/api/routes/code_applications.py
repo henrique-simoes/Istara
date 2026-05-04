@@ -3,11 +3,12 @@
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.permissions import get_subject, require_project_access
 from app.models.code_application import CodeApplication
 from app.models.database import get_db
 
@@ -16,16 +17,19 @@ router = APIRouter(prefix="/code-applications")
 
 class ReviewAction(BaseModel):
     review_status: str  # "approved" | "rejected" | "modified"
-    reviewed_by: str = "user"
+    reviewed_by: str | None = None
 
 
 @router.get("/{project_id}")
 async def get_project_code_applications(
     project_id: str,
+    request: Request,
     status: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     """Get all code applications for a project, optionally filtered by review status."""
+    await require_project_access(db, request, project_id, min_role="viewer")
+
     query = select(CodeApplication).where(
         CodeApplication.project_id == project_id
     )
@@ -40,9 +44,12 @@ async def get_project_code_applications(
 @router.get("/{project_id}/pending")
 async def get_pending_reviews(
     project_id: str,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
     """Get code applications pending human review."""
+    await require_project_access(db, request, project_id, min_role="viewer")
+
     result = await db.execute(
         select(CodeApplication).where(
             CodeApplication.project_id == project_id,
@@ -56,6 +63,7 @@ async def get_pending_reviews(
 async def review_code_application(
     application_id: str,
     action: ReviewAction,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
     """Review a code application (approve/reject/modify)."""
@@ -65,12 +73,14 @@ async def review_code_application(
     ca = result.scalar_one_or_none()
     if not ca:
         raise HTTPException(status_code=404, detail="Code application not found")
+    await require_project_access(db, request, ca.project_id, min_role="researcher")
 
     if action.review_status not in ("approved", "rejected", "modified"):
         raise HTTPException(status_code=400, detail="Invalid review status")
 
+    subject = get_subject(request)
     ca.review_status = action.review_status
-    ca.reviewed_by = action.reviewed_by
+    ca.reviewed_by = subject.username or subject.id or action.reviewed_by or "local-user"
     ca.reviewed_at = datetime.now(timezone.utc)
     await db.commit()
     await db.refresh(ca)
@@ -80,10 +90,13 @@ async def review_code_application(
 @router.post("/{project_id}/bulk-approve")
 async def bulk_approve_high_confidence(
     project_id: str,
-    min_confidence: float = 0.9,
+    request: Request,
+    min_confidence: float = Query(default=0.9, ge=0.0, le=1.0),
     db: AsyncSession = Depends(get_db),
 ):
     """Bulk-approve all pending code applications above a confidence threshold."""
+    await require_project_access(db, request, project_id, min_role="researcher")
+
     result = await db.execute(
         select(CodeApplication).where(
             CodeApplication.project_id == project_id,

@@ -116,6 +116,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         streamingContent: "",
         abortController: null,
       }));
+      void useSessionStore.getState().fetchSessions(projectId);
     } catch (e: any) {
       if (e.name === "AbortError") {
         set({ streaming: false, streamingContent: "", abortController: null });

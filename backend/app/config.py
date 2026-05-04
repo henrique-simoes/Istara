@@ -30,6 +30,8 @@ class Settings(BaseSettings):
     upload_dir: str = "./data/uploads"
     projects_dir: str = "./data/projects"
     agent_avatars_dir: str = "./data/agent_avatars"
+    avatar_max_bytes: int = 5 * 1024 * 1024
+    channel_attachment_max_bytes: int = 25 * 1024 * 1024
 
     # Team mode (multi-user)
     team_mode: bool = False
@@ -38,6 +40,7 @@ class Settings(BaseSettings):
 
     # CORS (comma-separated origins)
     cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
+    cors_origin_regex: str = r"https?://[^/]+:3000"
 
     # Admin bootstrap (auto-created on first startup if no users exist)
     admin_username: str = "admin"
@@ -57,10 +60,22 @@ class Settings(BaseSettings):
     # Rate limiting
     rate_limit_enabled: bool = True
     rate_limit_default: str = "200/minute"
+    # Comma-separated exact hosts/IPs or CIDRs whose forwarded client headers
+    # may be trusted for rate limiting and request identity.
+    trusted_proxy_hosts: str = "127.0.0.1,::1,localhost"
+
+    # Runtime/source boundary. Public installs keep shipped personas and skill
+    # definitions read-only; local user changes go under ignored data overlays.
+    istara_runtime_profile: str = "dev"  # dev | public | personal-lab
+    allow_source_persona_mutation: bool = False
+    allow_source_skill_mutation: bool = False
+    runtime_personas_dir: str = "./data/personas"
+    runtime_skills_dir: str = "./data/skills/custom"
 
     # Hardware resource budget
     resource_reserve_ram_gb: float = 4.0
     resource_reserve_cpu_percent: int = 30
+    strict_auto_routing: bool = False
 
     # File watcher
     file_watch_interval_seconds: int = 5
@@ -94,6 +109,7 @@ class Settings(BaseSettings):
     figma_api_token: str = ""
     figma_api_host: str = "https://api.figma.com"
     design_screens_dir: str = "./data/design_screens"
+    interfaces_mock_endpoints_enabled: bool = False
 
     # Backup
     backup_dir: str = "./data/backups"
@@ -122,6 +138,9 @@ class Settings(BaseSettings):
     autoresearch_enabled: bool = False
     autoresearch_max_experiments_per_run: int = 20
     autoresearch_max_daily_experiments: int = 200
+    autoresearch_min_improvement_delta: float = 0.01
+    autoresearch_measurement_repeats: int = 1
+    validation_timeout_seconds: int = 120
 
     # Telemetry (local-first, zero-trust — OFF for sharing by default)
     telemetry_enabled: bool = False
@@ -136,6 +155,8 @@ class Settings(BaseSettings):
             self.projects_dir,
             self.lance_db_path,
             self.agent_avatars_dir,
+            self.runtime_personas_dir,
+            self.runtime_skills_dir,
         ]:
             Path(dir_path).mkdir(parents=True, exist_ok=True)
         Path(self.design_screens_dir).mkdir(parents=True, exist_ok=True)

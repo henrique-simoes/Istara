@@ -24,7 +24,10 @@ from app.models.database import Base
 from app.models.codebook_version import CodebookVersion
 from app.models.code_application import CodeApplication
 from app.models.project_report import ProjectReport
+from app.models.task import Task
+from app.core.agent import AgentOrchestrator
 from app.skills.intercoder import cohen_kappa, krippendorff_alpha
+from app.skills.base import SkillOutput
 from app.core.validation_executor import ValidationExecutor, ValidationResult
 from app.core.report_manager import ReportManager, SCOPE_MAP, SYNTHESIS_SKILLS
 
@@ -194,6 +197,19 @@ class TestCodebookVersionModel:
         assert d["codes"][0]["label"] == "test-code"
         assert d["version"] == "1.0.0"  # default
 
+    async def test_to_dict_invalid_codes_json_returns_empty_list(self, db_session):
+        """Corrupt codebook JSON should not break the Codebook menu."""
+        cbv = CodebookVersion(
+            id=str(uuid.uuid4()),
+            project_id="proj-invalid-json",
+            codes_json="{not valid json",
+        )
+        db_session.add(cbv)
+        await db_session.commit()
+        await db_session.refresh(cbv)
+
+        assert cbv.to_dict()["codes"] == []
+
 
 # ============================================================
 # 2. CodeApplication Model Tests
@@ -302,6 +318,49 @@ class TestCodeApplicationModel:
         assert d["coder_type"] == "human"
         assert d["confidence"] == 0.9
         assert d["review_status"] == "approved"
+        assert "reviewed_by" in d
+        assert "reviewed_at" in d
+        assert "source_document_id" in d
+
+    async def test_agent_routes_recommendations_to_reports(self, db_session):
+        """Stored recommendations are included in the report convergence path."""
+        class PhaseStub:
+            value = "discover"
+
+        class SkillStub:
+            name = "user-interviews"
+            phase = PhaseStub()
+
+        task = Task(
+            id="task-route-recs",
+            project_id="proj-route-recs",
+            title="Route recs",
+            skill_name="user-interviews",
+        )
+        output = SkillOutput(
+            success=True,
+            summary="done",
+            nuggets=[{"text": "raw quote", "source": "interview"}],
+            facts=[{"text": "verified fact"}],
+            insights=[{"text": "pattern"}],
+            recommendations=[{"text": "action to take"}],
+        )
+
+        orchestrator = AgentOrchestrator()
+        with (
+            patch("app.core.agent.registry.get", return_value=SkillStub()),
+            patch("app.core.report_manager.report_manager.route_findings", new_callable=AsyncMock) as route_findings,
+        ):
+            await orchestrator._store_findings(db_session, "proj-route-recs", output, task)
+
+        routed_ids = route_findings.await_args.args[2]
+        assert len(routed_ids) == 4
+
+        stored_recs = await db_session.execute(
+            select(finding.Recommendation).where(finding.Recommendation.project_id == "proj-route-recs")
+        )
+        rec = stored_recs.scalar_one()
+        assert rec.id in routed_ids
 
 
 # ============================================================
@@ -832,6 +891,54 @@ class TestReportManager:
         layers = [r["layer"] for r in reports]
         assert layers == sorted(layers, reverse=True)
 
+    async def test_route_findings_preserves_finding_order(self, db_session):
+        """Report IDs stay deterministic for stable UI diffs and exports."""
+        manager = ReportManager()
+
+        await manager.route_findings(
+            "proj-rm-order", "thematic-analysis", ["f-1", "f-2"], db_session
+        )
+        await manager.route_findings(
+            "proj-rm-order", "thematic-analysis", ["f-2", "f-3"], db_session
+        )
+
+        result = await db_session.execute(
+            select(ProjectReport).where(
+                ProjectReport.project_id == "proj-rm-order",
+                ProjectReport.scope == "Interview Analysis",
+            )
+        )
+        report = result.scalar_one()
+        assert json.loads(report.finding_ids_json) == ["f-1", "f-2", "f-3"]
+
+    async def test_executive_summary_uses_recommendation_text(self, db_session):
+        """Reports that contain recommendations should not summarize only lower-level findings."""
+        manager = ReportManager()
+        rec = finding.Recommendation(
+            id="rec-summary",
+            project_id="proj-summary-rec",
+            text="Replace buried exports with a visible report action.",
+        )
+        report = ProjectReport(
+            id="report-summary-rec",
+            project_id="proj-summary-rec",
+            title="Recommendation Report",
+            scope="Usability Study",
+            finding_ids_json=json.dumps(["rec-summary", "missing-1", "missing-2"]),
+        )
+        db_session.add_all([rec, report])
+        await db_session.commit()
+
+        async def fake_chat(messages, temperature=0.3):
+            assert "Replace buried exports" in messages[0]["content"]
+            return {"message": {"content": "SITUATION\nA summary with recommendations."}}
+
+        with patch("app.core.llm_router.llm_router.chat", new=fake_chat):
+            await manager._generate_executive_summary(report, db_session)
+
+        await db_session.refresh(report)
+        assert report.executive_summary.startswith("SITUATION")
+
 
 # ============================================================
 # 7. ProjectReport Model Tests
@@ -962,6 +1069,23 @@ class TestProjectReportModel:
         assert d["status"] == "draft"  # default
         assert d["created_at"] is not None
         assert d["updated_at"] is not None
+
+    async def test_to_dict_invalid_json_fields_do_not_raise(self, db_session):
+        """Bad persisted report JSON should degrade to empty UI collections."""
+        report = ProjectReport(
+            id=str(uuid.uuid4()),
+            project_id="proj-pr-bad-json",
+            title="Bad JSON Report",
+            finding_ids_json="{bad",
+            mece_categories_json="{also bad",
+        )
+        db_session.add(report)
+        await db_session.commit()
+        await db_session.refresh(report)
+
+        data = report.to_dict()
+        assert data["finding_count"] == 0
+        assert data["mece_categories"] == []
 
     async def test_version_increments_on_update(self, db_session):
         """Report version increments when findings are routed."""

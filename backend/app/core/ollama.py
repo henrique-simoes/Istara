@@ -6,6 +6,7 @@ from typing import AsyncGenerator
 import httpx
 
 from app.config import settings
+from app.core.env_persistence import persist_env_value
 
 
 class OllamaClient:
@@ -340,9 +341,7 @@ async def auto_detect_provider() -> None:
                 settings.llm_provider = name
                 print(f"Auto-detected LLM provider: {name}")
                 try:
-                    from app.api.routes.settings import _persist_env
-
-                    _persist_env("LLM_PROVIDER", name)
+                    persist_env_value("LLM_PROVIDER", name)
                 except Exception:
                     pass
                 await client.close()

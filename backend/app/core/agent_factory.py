@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 
 DATA_DIR = Path("data")
 PROPOSALS_FILE = DATA_DIR / "_agent_proposals.json"
+_META_COVERAGE_THRESHOLD = 0.6
 
 
 @dataclass
@@ -80,7 +81,7 @@ class AgentFactory:
         task_specialties: list[str],
         available_agents: list[dict],
     ) -> str | None:
-        """Check if any agent covers >= 60% of task specialties.
+        """Check if any agent covers the configured share of task specialties.
 
         Args:
             task_specialties: List of specialty domains needed for the task.
@@ -104,7 +105,7 @@ class AgentFactory:
             coverage = overlap / len(task_specialties) if task_specialties else 0
             best_coverage = max(best_coverage, coverage)
 
-        if best_coverage >= 0.6:
+        if best_coverage >= _META_COVERAGE_THRESHOLD:
             return None  # adequately covered
 
         uncovered = [

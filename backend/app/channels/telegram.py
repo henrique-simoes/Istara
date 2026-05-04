@@ -12,12 +12,15 @@ from __future__ import annotations
 import io
 import logging
 import os
+import re
 from pathlib import Path
 
+from app.config import settings
 from app.channels.base import ChannelAdapter, IncomingMessage, OutgoingMessage
 from app.core.channel_resilience import CircuitBreaker
 
 logger = logging.getLogger(__name__)
+_SAFE_NAME_RE = re.compile(r"[^A-Za-z0-9._-]+")
 
 # Optional dependency -- graceful degradation if not installed.
 try:
@@ -58,6 +61,72 @@ class TelegramAdapter(ChannelAdapter):
     @property
     def enabled(self) -> bool:
         return bool(self._bot_token) and _TELEGRAM_AVAILABLE
+
+    @staticmethod
+    def _clean_path_component(value: str | None, default: str = "file") -> str:
+        """Return a filesystem-safe single path component."""
+        cleaned = _SAFE_NAME_RE.sub("_", value or "").strip("._-")
+        return (cleaned[:120] if cleaned else default)
+
+    @staticmethod
+    def _safe_suffix(suffix: str | None, default: str = ".bin") -> str:
+        suffix = (suffix or default).lower()
+        if not suffix.startswith("."):
+            suffix = f".{suffix}"
+        if re.fullmatch(r"\.[a-z0-9]{1,12}", suffix):
+            return suffix
+        return default
+
+    def _channel_storage_dir(self, kind: str) -> Path:
+        segment = self._clean_path_component(self.instance_id or "default", "default")
+        storage_dir = Path(settings.data_dir) / kind / segment
+        storage_dir.mkdir(parents=True, exist_ok=True)
+        return storage_dir
+
+    def _safe_download_filename(
+        self,
+        filename: str | None,
+        unique_id: str | None,
+        default_ext: str = ".bin",
+    ) -> str:
+        default_ext = self._safe_suffix(default_ext)
+        original = Path(filename or "").name
+        if not original or original in {".", ".."}:
+            original = f"{unique_id or 'telegram'}{default_ext}"
+
+        original_path = Path(original)
+        suffix = self._safe_suffix(original_path.suffix, default_ext)
+        stem = self._clean_path_component(original_path.stem, "telegram")
+        safe_unique = self._clean_path_component(unique_id, "telegram")
+        basename = stem if stem.startswith(safe_unique) else f"{safe_unique}_{stem}"
+        max_basename_len = max(1, 180 - len(suffix))
+        return f"{basename[:max_basename_len]}{suffix}"
+
+    @staticmethod
+    def _declared_size(item: object) -> int | None:
+        size = getattr(item, "file_size", None)
+        return int(size) if isinstance(size, int) and size >= 0 else None
+
+    def _ensure_download_size(self, size: int | None, label: str) -> None:
+        if size is not None and size > settings.channel_attachment_max_bytes:
+            raise ValueError(
+                f"{label} exceeds Telegram download limit "
+                f"({size} > {settings.channel_attachment_max_bytes} bytes)"
+            )
+
+    async def _download_telegram_file(
+        self,
+        tg_file: object,
+        *,
+        declared_size: int | None,
+        label: str,
+    ) -> bytes:
+        self._ensure_download_size(declared_size, label)
+        buf = io.BytesIO()
+        await tg_file.download_to_memory(buf)
+        data = buf.getvalue()
+        self._ensure_download_size(len(data), label)
+        return data
 
     async def start(self) -> None:
         """Start polling for Telegram updates."""
@@ -221,15 +290,19 @@ class TelegramAdapter(ChannelAdapter):
             voice = update.message.voice
             tg_file = await voice.get_file()
 
-            # Save to data/channel_audio/{instance_id}/
-            audio_dir = Path("data") / "channel_audio" / (self.instance_id or "default")
-            audio_dir.mkdir(parents=True, exist_ok=True)
-            audio_path = audio_dir / f"{tg_file.file_unique_id}.ogg"
-
-            buf = io.BytesIO()
-            await tg_file.download_to_memory(buf)
-            buf.seek(0)
-            audio_path.write_bytes(buf.read())
+            audio_dir = self._channel_storage_dir("channel_audio")
+            audio_path = audio_dir / self._safe_download_filename(
+                None,
+                getattr(tg_file, "file_unique_id", None),
+                ".ogg",
+            )
+            audio_path.write_bytes(
+                await self._download_telegram_file(
+                    tg_file,
+                    declared_size=self._declared_size(voice),
+                    label="Telegram voice message",
+                )
+            )
 
             # Auto-transcribe voice message
             transcription_text = "[Voice message — transcription unavailable]"
@@ -269,14 +342,19 @@ class TelegramAdapter(ChannelAdapter):
             photo = update.message.photo[-1]
             tg_file = await photo.get_file()
 
-            img_dir = Path("data") / "channel_images" / (self.instance_id or "default")
-            img_dir.mkdir(parents=True, exist_ok=True)
-            img_path = img_dir / f"{tg_file.file_unique_id}.jpg"
-
-            buf = io.BytesIO()
-            await tg_file.download_to_memory(buf)
-            buf.seek(0)
-            img_path.write_bytes(buf.read())
+            img_dir = self._channel_storage_dir("channel_images")
+            img_path = img_dir / self._safe_download_filename(
+                None,
+                getattr(tg_file, "file_unique_id", None),
+                ".jpg",
+            )
+            img_path.write_bytes(
+                await self._download_telegram_file(
+                    tg_file,
+                    declared_size=self._declared_size(photo),
+                    label="Telegram photo",
+                )
+            )
 
             caption = update.message.caption or ""
             msg = self._build_incoming(
@@ -297,15 +375,21 @@ class TelegramAdapter(ChannelAdapter):
             doc = update.message.document
             tg_file = await doc.get_file()
 
-            doc_dir = Path("data") / "channel_files" / (self.instance_id or "default")
-            doc_dir.mkdir(parents=True, exist_ok=True)
-            filename = doc.file_name or tg_file.file_unique_id
+            doc_dir = self._channel_storage_dir("channel_files")
+            filename = self._safe_download_filename(
+                doc.file_name,
+                getattr(tg_file, "file_unique_id", None),
+                ".bin",
+            )
             doc_path = doc_dir / filename
 
-            buf = io.BytesIO()
-            await tg_file.download_to_memory(buf)
-            buf.seek(0)
-            doc_path.write_bytes(buf.read())
+            doc_path.write_bytes(
+                await self._download_telegram_file(
+                    tg_file,
+                    declared_size=self._declared_size(doc),
+                    label="Telegram document",
+                )
+            )
 
             caption = update.message.caption or ""
             msg = self._build_incoming(

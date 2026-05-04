@@ -53,8 +53,15 @@ async def whatsapp_webhook(instance_id: str, request: Request) -> dict:
     if adapter is None or not isinstance(adapter, WhatsAppAdapter):
         raise HTTPException(status_code=404, detail="WhatsApp instance not found")
 
+    raw_body = await request.body()
+    signature = request.headers.get("x-hub-signature-256")
+    if not adapter.verify_signature(raw_body, signature):
+        raise HTTPException(status_code=403, detail="Invalid WhatsApp webhook signature")
+
     try:
-        data = await request.json()
+        import json
+
+        data = json.loads(raw_body.decode("utf-8"))
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid JSON payload")
 
@@ -77,6 +84,14 @@ async def google_chat_webhook(instance_id: str, request: Request) -> dict:
     adapter = channel_router.get(instance_id)
     if adapter is None or not isinstance(adapter, GoogleChatAdapter):
         raise HTTPException(status_code=404, detail="Google Chat instance not found")
+
+    token = (
+        request.headers.get("x-goog-chat-token")
+        or request.headers.get("x-webhook-token")
+        or request.query_params.get("token")
+    )
+    if not adapter.verify_webhook_token(token):
+        raise HTTPException(status_code=403, detail="Invalid Google Chat webhook token")
 
     try:
         data = await request.json()

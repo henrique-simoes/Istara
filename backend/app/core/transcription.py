@@ -16,7 +16,6 @@ All transcriptions are auto-tagged with inter-coder reliability scoring.
 import logging
 import os
 import shutil
-import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
@@ -46,6 +45,59 @@ class TranscriptionResult:
 _WHISPER_AVAILABLE = False
 _WHISPER_MODEL = None
 _WHISPER_TINY_MODEL = None  # Cache for ICR
+
+
+def transcription_dependency_status() -> dict:
+    """Return runtime dependency status for local audio transcription."""
+    return {
+        "whisper_available": _WHISPER_AVAILABLE,
+        "ffmpeg_available": shutil.which("ffmpeg") is not None,
+        "ffmpeg_path": shutil.which("ffmpeg"),
+    }
+
+
+def _transcription_dependency_error(audio_path: str) -> TranscriptionResult | None:
+    """Return a typed dependency error if Whisper cannot decode audio locally."""
+    if shutil.which("ffmpeg") is not None:
+        return None
+
+    return TranscriptionResult(
+        text="[Transcription unavailable: ffmpeg is required for Whisper audio decoding. Install ffmpeg and retry transcription.]",
+        language="unknown",
+        confidence=0.0,
+        icr_kappa=0.0,
+        icr_confidence="insufficient",
+        needs_review=True,
+        original_audio_path=audio_path,
+        tags=["transcription-error", "audio-decoder-unavailable"],
+        metadata={"error_type": "audio_decoder_unavailable"},
+    )
+
+
+def _estimate_whisper_confidence(result: dict) -> float:
+    """Estimate confidence from Whisper segment diagnostics when available."""
+    if isinstance(result.get("confidence"), (int, float)):
+        return max(0.0, min(1.0, float(result["confidence"])))
+
+    segments = result.get("segments") or []
+    if not segments:
+        return 0.5
+
+    scored_segments = []
+    for segment in segments:
+        avg_logprob = segment.get("avg_logprob")
+        no_speech_prob = segment.get("no_speech_prob")
+        if not isinstance(avg_logprob, (int, float)):
+            continue
+        # Whisper avg_logprob is usually <= 0. Convert roughly into a bounded
+        # probability-like score and penalize likely non-speech segments.
+        logprob_score = max(0.0, min(1.0, 1.0 + float(avg_logprob)))
+        speech_score = 1.0 - float(no_speech_prob or 0.0)
+        scored_segments.append(max(0.0, min(1.0, logprob_score * speech_score)))
+
+    if not scored_segments:
+        return 0.5
+    return round(sum(scored_segments) / len(scored_segments), 4)
 
 
 def _load_whisper_model(model_size: str = "base"):
@@ -112,19 +164,6 @@ def transcribe_audio(
             metadata={"error_type": "audio_file_missing"},
         )
 
-    if path.suffix.lower() != ".wav" and shutil.which("ffmpeg") is None:
-        return TranscriptionResult(
-            text="[Transcription unavailable: ffmpeg is required to convert this audio format. Install ffmpeg or upload a WAV file.]",
-            language="unknown",
-            confidence=0.0,
-            icr_kappa=0.0,
-            icr_confidence="insufficient",
-            needs_review=True,
-            original_audio_path=audio_path,
-            tags=["transcription-error", "audio-conversion-unavailable"],
-            metadata={"error_type": "audio_conversion_unavailable"},
-        )
-
     model = _load_whisper_model(model_size)
 
     if not _WHISPER_AVAILABLE or model is None:
@@ -140,6 +179,10 @@ def transcribe_audio(
             metadata={"error_type": "transcription_engine_unavailable"},
         )
 
+    dependency_error = _transcription_dependency_error(audio_path)
+    if dependency_error is not None:
+        return dependency_error
+
     try:
         result = model.transcribe(
             audio_path,
@@ -149,10 +192,14 @@ def transcribe_audio(
 
         text = result.get("text", "").strip()
         detected_language = result.get("language", "unknown")
-        confidence = result.get("confidence", 0.5)  # Whisper may not always provide this
+        confidence = _estimate_whisper_confidence(result)
 
         # Run ICR consensus check
-        icr_result = _compute_transcription_icr(text, audio_path)
+        icr_result = _compute_transcription_icr(
+            text,
+            audio_path,
+            language=detected_language if detected_language != "unknown" else language,
+        )
 
         # Auto-generate tags based on content
         tags = _generate_transcription_tags(text)
@@ -168,6 +215,8 @@ def transcribe_audio(
             tags=tags,
             metadata={
                 "model_size": model_size,
+                "requested_language": language,
+                "detected_language": detected_language,
                 "icr_details": icr_result.details,
             },
         )
@@ -191,7 +240,7 @@ def transcribe_audio(
 # Inter-Coder Reliability for Transcriptions
 # ---------------------------------------------------------------------------
 
-def _compute_transcription_icr(text: str, audio_path: str):
+def _compute_transcription_icr(text: str, audio_path: str, language: str | None = None):
     """Compute ICR for transcription by comparing multiple transcriptions.
 
     Uses the consensus engine to check agreement between:
@@ -203,48 +252,24 @@ def _compute_transcription_icr(text: str, audio_path: str):
     """
     from app.core.consensus import compute_consensus
 
-    # Generate alternative transcriptions for comparison
+    # Generate alternative transcriptions for comparison.
+    # If no independent alternative is available, report insufficient evidence
+    # instead of manufacturing agreement from the primary text.
     responses = [text]  # Primary transcription
 
     # Try to get alternative transcription (different model size)
     try:
         alt_model = _load_whisper_model("tiny")
         if alt_model:
-            alt_result = alt_model.transcribe(audio_path)
-            responses.append(alt_result.get("text", ""))
-        else:
-            responses.append(_perturb_transcription(text))
+            alt_result = alt_model.transcribe(audio_path, language=language, task="transcribe")
+            alt_text = alt_result.get("text", "").strip()
+            if alt_text:
+                responses.append(alt_text)
     except Exception:
-        # If alternative model unavailable, use semantic self-consistency
-        responses.append(_perturb_transcription(text))
+        logger.debug("Alternative transcription pass unavailable", exc_info=True)
 
     # Compute consensus
     return compute_consensus(responses, method="auto")
-
-
-def _perturb_transcription(text: str) -> str:
-    """Create a perturbed version of transcription for self-consistency check.
-
-    Used when alternative models are unavailable.
-    """
-    # Simple perturbation: simulate what a slightly different model might output
-    # by removing low-confidence words (heuristic)
-    import re
-    words = text.split()
-    if len(words) <= 5:
-        return text
-    # Remove ~10% of words randomly to simulate model variance
-    import hashlib
-    h = hashlib.md5(text.encode()).hexdigest()
-    indices_to_remove = set()
-    for i in range(0, len(h), 2):
-        idx = int(h[i:i+2], 16) % len(words)
-        indices_to_remove.add(idx)
-        if len(indices_to_remove) > len(words) // 10:
-            break
-
-    perturbed = [w for i, w in enumerate(words) if i not in indices_to_remove]
-    return " ".join(perturbed)
 
 
 # ---------------------------------------------------------------------------

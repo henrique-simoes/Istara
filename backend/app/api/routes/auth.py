@@ -11,7 +11,6 @@ Supports:
 
 import json
 import logging
-import time
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
@@ -34,6 +33,7 @@ from app.core.auth import (
     is_password_breached,
 )
 from app.core.field_encryption import hash_field
+from app.core.client_identity import BoundedWindowRateLimiter, get_client_ip
 from app.core.security_middleware import require_admin_from_request
 from app.models.database import async_session, get_db
 from app.models.user import User
@@ -44,20 +44,19 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # In-memory login rate limiter
 # ---------------------------------------------------------------------------
-_login_attempts: dict[str, list[float]] = {}  # IP -> [timestamps]
+_login_limiter = BoundedWindowRateLimiter()
 MAX_LOGIN_ATTEMPTS = 5
 LOGIN_WINDOW = 60  # seconds
 
 
 async def _check_login_rate(request: Request):
-    client_ip = request.client.host if request.client else "unknown"
-    now = time.time()
-    attempts = _login_attempts.get(client_ip, [])
-    attempts = [t for t in attempts if now - t < LOGIN_WINDOW]
-    if len(attempts) >= MAX_LOGIN_ATTEMPTS:
+    client_ip = get_client_ip(request, settings.trusted_proxy_hosts)
+    if _login_limiter.is_limited(
+        client_ip,
+        limit=MAX_LOGIN_ATTEMPTS,
+        window_seconds=LOGIN_WINDOW,
+    ):
         raise HTTPException(status_code=429, detail="Too many login attempts. Try again in 60 seconds.")
-    attempts.append(now)
-    _login_attempts[client_ip] = attempts
 
 
 # ---------------------------------------------------------------------------
@@ -613,19 +612,8 @@ async def team_status(request: Request):
 
 @router.get("/auth/users")
 async def list_users(request: Request, db: AsyncSession = Depends(get_db)):
-    """List all users. Authenticated users only."""
-    # Ensure user is at least logged in
-    auth_header = request.headers.get("Authorization", "")
-    token_str = auth_header.removeprefix("Bearer ").strip() if auth_header.startswith("Bearer ") else ""
-    if not token_str:
-        token_str = request.cookies.get("istara_session", "")
-    if not token_str:
-        raise HTTPException(status_code=401, detail="Authentication required")
-
-    from app.core.auth import verify_token
-    payload = verify_token(token_str)
-    if not payload:
-        raise HTTPException(status_code=401, detail="Invalid token")
+    """List all users. Admin only."""
+    require_admin_from_request(request)
 
     result = await db.execute(select(User).order_by(User.created_at.desc()))
     users = result.scalars().all()

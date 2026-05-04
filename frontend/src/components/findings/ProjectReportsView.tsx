@@ -81,6 +81,7 @@ export default function ProjectReportsView({
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
   const [slideInstructions, setSlideInstructions] = useState<{title: string, content: string} | null>(null);
   const [loadingSlides, setLoadingSlides] = useState(false);
+  const [slideError, setSlideError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
   const loadReports = useCallback(async () => {
@@ -103,6 +104,7 @@ export default function ProjectReportsView({
 
   const fetchSlideInstructions = async (reportId: string) => {
     setLoadingSlides(true);
+    setSlideError(null);
     try {
       const data = await presentationApi.slideInstructions(reportId);
       setSlideInstructions({
@@ -111,6 +113,7 @@ export default function ProjectReportsView({
       });
     } catch (err) {
       console.error("Failed to fetch slide instructions:", err);
+      setSlideError(err instanceof Error ? err.message : "Failed to fetch slide instructions");
     }
     setLoadingSlides(false);
   };
@@ -388,18 +391,25 @@ export default function ProjectReportsView({
 
               {/* Presentation Feature */}
               <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-center">
-                <button
-                  onClick={() => fetchSlideInstructions(report.id)}
-                  disabled={loadingSlides}
-                  className="flex items-center gap-2 px-4 py-2 bg-istara-600 hover:bg-istara-700 text-white rounded-lg text-sm font-medium transition-all shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {loadingSlides ? (
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <Presentation size={18} />
+                <div className="flex flex-col items-center gap-2">
+                  <button
+                    onClick={() => fetchSlideInstructions(report.id)}
+                    disabled={loadingSlides}
+                    className="flex items-center gap-2 px-4 py-2 bg-istara-600 hover:bg-istara-700 text-white rounded-lg text-sm font-medium transition-all shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {loadingSlides ? (
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <Presentation size={18} />
+                    )}
+                    {loadingSlides ? "Generating..." : "Instructions to create slides"}
+                  </button>
+                  {slideError && (
+                    <p className="max-w-md text-center text-xs text-red-600 dark:text-red-400" role="alert">
+                      {slideError}
+                    </p>
                   )}
-                  {loadingSlides ? "Generating..." : "Instructions to create slides"}
-                </button>
+                </div>
               </div>
             </div>
           );
@@ -568,7 +578,7 @@ function ReportCard({
         isSelected && "ring-2 ring-istara-500 shadow-md"
       )}
       aria-label={`Report: ${report.title}`}
-      aria-selected={isSelected}
+      data-selected={isSelected ? "true" : undefined}
     >
       {/* Title + badges */}
       <div className="flex items-start justify-between gap-2 mb-2">

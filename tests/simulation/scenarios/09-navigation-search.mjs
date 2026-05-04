@@ -11,7 +11,22 @@ export async function run(ctx) {
   await page.waitForTimeout(1500);
 
   // Test sidebar nav items exist
-  const navItems = ["Chat", "Findings", "Tasks", "Interviews", "Context", "Skills", "Agents"];
+  const navItems = [
+    "Chat",
+    "Findings",
+    "UX Laws",
+    "Tasks",
+    "Interviews",
+    "Documents",
+    "Context",
+    "Skills",
+    "Agents",
+    "Memory",
+    "Interfaces",
+    "Integrations",
+    "Loops",
+    "Settings",
+  ];
   for (const item of navItems) {
     const btn = page.locator(`button[aria-label="${item}"]`).first();
     const visible = await btn.isVisible({ timeout: 2000 }).catch(() => false);
@@ -23,13 +38,33 @@ export async function run(ctx) {
   if (await moreBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
     await moreBtn.click();
     await page.waitForTimeout(500);
-    const secondaryItems = ["Metrics", "History"];
+    const secondaryItems = [
+      "Autoresearch",
+      "Backup",
+      "Meta-Agent",
+      "Compute Pool",
+      "Ensemble Health",
+      "Quality Dashboard",
+      "Project Settings",
+      "History",
+    ];
     for (const item of secondaryItems) {
       const btn = page.locator(`button[aria-label="${item}"]`).first();
       const visible = await btn.isVisible({ timeout: 1000 }).catch(() => false);
       checks.push({ name: `Secondary nav: ${item}`, passed: visible, detail: "" });
     }
   }
+
+  // Desktop secondary nav should auto-expand when returning to a secondary view.
+  await page.evaluate(() => localStorage.setItem("istara_active_view", "quality"));
+  await page.reload({ waitUntil: "networkidle" });
+  await page.waitForTimeout(1000);
+  const restoredQuality = await page.locator('button[aria-label="Quality Dashboard"][aria-selected="true"]').first().isVisible({ timeout: 2000 }).catch(() => false);
+  checks.push({
+    name: "Secondary nav auto-expands for Quality Dashboard",
+    passed: restoredQuality,
+    detail: restoredQuality ? "Quality Dashboard restored and visible" : "Quality Dashboard not visible after reload",
+  });
 
   // Test view switching via clicks
   for (const view of navItems) {
@@ -50,6 +85,62 @@ export async function run(ctx) {
     const activeBtn = page.locator(`button[aria-label="${expectedView}"][aria-selected="true"]`).first();
     const isActive = await activeBtn.isVisible({ timeout: 1000 }).catch(() => false);
     checks.push({ name: `Shortcut Cmd+${key} → ${expectedView}`, passed: isActive, detail: "" });
+  }
+
+  // Mobile navigation: primary bar plus More sheet must expose every hidden view.
+  {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("http://localhost:3000", { waitUntil: "networkidle" });
+    await page.waitForTimeout(1000);
+
+    const mobileBar = page.locator('nav[aria-label="Mobile navigation"]').first();
+    const mobileVisible = await mobileBar.isVisible({ timeout: 2000 }).catch(() => false);
+    checks.push({ name: "Mobile navigation bar visible", passed: mobileVisible, detail: "" });
+
+    const mobilePrimary = ["Chat", "Findings", "Tasks", "Documents"];
+    for (const item of mobilePrimary) {
+      const visible = await mobileBar.locator(`button[aria-label="${item}"]`).first().isVisible({ timeout: 1000 }).catch(() => false);
+      checks.push({ name: `Mobile primary nav: ${item}`, passed: visible, detail: "" });
+    }
+
+    const mobileMore = mobileBar.locator('button[aria-label="More views"]').first();
+    if (await mobileMore.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await mobileMore.click();
+      await page.waitForTimeout(500);
+      const mobileMenu = page.locator('[role="dialog"][aria-label="Mobile navigation menu"]').first();
+      const moreItems = [
+        "UX Laws",
+        "Interviews",
+        "Context",
+        "Skills",
+        "Agents",
+        "Memory",
+        "Interfaces",
+        "Integrations",
+        "Loops",
+        "Settings",
+        "Notifications",
+        "Autoresearch",
+        "Backup",
+        "Meta-Agent",
+        "Compute Pool",
+        "Ensemble Health",
+        "Quality Dashboard",
+        "Project Settings",
+        "History",
+      ];
+      for (const item of moreItems) {
+        const visible = await mobileMenu.locator(`button[aria-label="${item}"]`).first().isVisible({ timeout: 1000 }).catch(() => false);
+        checks.push({ name: `Mobile More nav: ${item}`, passed: visible, detail: "" });
+      }
+      await page.keyboard.press("Escape");
+    } else {
+      checks.push({ name: "Mobile More nav opens", passed: false, detail: "More button not visible" });
+    }
+
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto("http://localhost:3000", { waitUntil: "networkidle" });
+    await page.waitForTimeout(1000);
   }
 
   // ── Phase 0: View Persistence ──

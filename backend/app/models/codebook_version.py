@@ -13,6 +13,18 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.models.database import Base
 
 
+def _json_list(value: str | None) -> list:
+    import json
+
+    if not value:
+        return []
+    try:
+        parsed = json.loads(value)
+    except (json.JSONDecodeError, TypeError):
+        return []
+    return parsed if isinstance(parsed, list) else []
+
+
 class CodebookVersion(Base):
     __tablename__ = "codebook_versions"
 
@@ -28,11 +40,10 @@ class CodebookVersion(Base):
     )
 
     def to_dict(self) -> dict:
-        import json
         return {
             "id": self.id, "project_id": self.project_id,
             "version": self.version,
-            "codes": json.loads(self.codes_json) if self.codes_json else [],
+            "codes": _json_list(self.codes_json),
             "change_log": self.change_log, "created_by": self.created_by,
             "methodology": self.methodology,
             "created_at": self.created_at.isoformat() if self.created_at else None,

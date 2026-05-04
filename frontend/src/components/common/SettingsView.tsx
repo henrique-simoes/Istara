@@ -8,6 +8,7 @@ import { useAuthStore } from "@/stores/authStore";
 import UserManagement from "./UserManagement";
 import ConnectionStringPanel from "@/components/settings/ConnectionStringPanel";
 import UpdateChecker from "@/components/settings/UpdateChecker";
+import GovernedEvolutionView from "@/components/settings/GovernedEvolutionView";
 import DonateComputeToggle from "@/components/common/DonateComputeToggle";
 import PasskeyManager from "@/components/settings/PasskeyManager";
 import TOTPManager from "@/components/settings/TOTPManager";
@@ -55,11 +56,14 @@ export default function SettingsView() {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto p-6 max-w-3xl mx-auto space-y-6">
+    <div className="flex-1 overflow-y-auto p-6 max-w-5xl mx-auto space-y-6">
       <h2 className="text-lg font-semibold text-slate-900 dark:text-white">⚙️ Settings</h2>
 
       {/* Software Updates */}
       <UpdateChecker />
+
+      {/* Governed Evolution */}
+      <GovernedEvolutionView />
 
       {/* Team Members */}
       <div id="tour-target-user-management">
@@ -314,13 +318,7 @@ export default function SettingsView() {
             onClick={async () => {
               const newState = !systemStatus?.team_mode;
               try {
-                const token = localStorage.getItem("istara_token");
-                const headers: Record<string, string> = { "Content-Type": "application/json" };
-                if (token) headers["Authorization"] = `Bearer ${token}`;
-                await fetch(
-                  `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/settings/team-mode`,
-                  { method: "POST", headers, body: JSON.stringify({ enabled: newState }) }
-                );
+                await settingsApi.toggleTeamMode(newState);
                 await fetchAll();
                 // Refresh auth store so UserManagement appears/disappears
                 await useAuthStore.getState().checkTeamStatus();

@@ -7,6 +7,7 @@ adapted for 6 UX research optimization domains.
 
 import json
 import logging
+import statistics
 import uuid
 from datetime import datetime, timezone
 
@@ -43,6 +44,10 @@ class AutoresearchEngine:
         """Signal the running loop to stop after the current iteration."""
         self._stop_requested = True
 
+    def stop(self):
+        """Backward-compatible alias for request_stop."""
+        self.request_stop()
+
     async def run_loop(
         self,
         runner,  # BaseLoopRunner
@@ -61,6 +66,8 @@ class AutoresearchEngine:
         self._stop_requested = False
         results: list[dict] = []
         baseline = 0.0
+        min_delta = max(0.0, float(getattr(settings, "autoresearch_min_improvement_delta", 0.01)))
+        measurement_repeats = max(1, min(10, int(getattr(settings, "autoresearch_measurement_repeats", 1))))
 
         try:
             # Acquire persona lock if needed
@@ -123,19 +130,36 @@ class AutoresearchEngine:
 
                         # Measure
                         try:
-                            score = await runner.measure(target)
+                            measurement = await self._measure_candidate(
+                                runner,
+                                target,
+                                repeats=measurement_repeats,
+                            )
+                            score = measurement["mean"]
+                            delta = score - best_score
                             experiment["experiment_score"] = score
-                            experiment["delta"] = score - best_score
+                            experiment["delta"] = delta
+                            experiment["score_samples"] = measurement["samples"]
+                            experiment["score_stddev"] = measurement["stddev"]
+                            experiment["confidence_interval_95"] = measurement["confidence_interval_95"]
+                            experiment["minimum_delta"] = min_delta
+                            experiment["measurement_repeats"] = measurement_repeats
 
                             # Keep or revert
-                            if score > best_score:
+                            should_keep, decision_reason = self._should_keep_candidate(
+                                delta,
+                                min_delta=min_delta,
+                                confidence_interval_95=measurement["confidence_interval_95"],
+                            )
+                            experiment["decision_reason"] = decision_reason
+                            if should_keep:
                                 best_score = score
                                 experiment["kept"] = True
                                 experiment["status"] = "completed"
                                 logger.info(
                                     f"  [{i+1}/{max_iterations}] KEPT: "
                                     f"{hypothesis[:60]} "
-                                    f"(delta=+{score - experiment['baseline_score']:.4f})"
+                                    f"(delta=+{delta:.4f}, reason={decision_reason})"
                                 )
                             else:
                                 await revert_fn()
@@ -144,7 +168,7 @@ class AutoresearchEngine:
                                 logger.info(
                                     f"  [{i+1}/{max_iterations}] REVERTED: "
                                     f"{hypothesis[:60]} "
-                                    f"(delta={score - experiment['baseline_score']:.4f})"
+                                    f"(delta={delta:.4f}, reason={decision_reason})"
                                 )
                         except Exception as e:
                             await revert_fn()
@@ -165,6 +189,14 @@ class AutoresearchEngine:
                     # Persist experiment
                     experiment["completed_at"] = datetime.now(timezone.utc).isoformat()
                     await self._persist_experiment(experiment, project_id)
+                    experiment["reasoning_memory_ids"] = await self._record_reasoning_memory(
+                        experiment,
+                        project_id,
+                    )
+                    experiment["improvement_proposal_ids"] = await self._register_improvement_proposals(
+                        experiment,
+                        project_id,
+                    )
                     results.append(experiment)
 
                     # Broadcast progress
@@ -209,6 +241,38 @@ class AutoresearchEngine:
 
         return results
 
+    async def _measure_candidate(self, runner, target: str, repeats: int) -> dict:
+        """Measure a candidate once or repeatedly and summarize uncertainty."""
+        samples = [float(await runner.measure(target)) for _ in range(repeats)]
+        mean = statistics.fmean(samples)
+        stddev = statistics.stdev(samples) if len(samples) > 1 else 0.0
+        confidence_interval_95 = (
+            1.96 * (stddev / (len(samples) ** 0.5)) if len(samples) > 1 else None
+        )
+        return {
+            "samples": samples,
+            "mean": mean,
+            "stddev": stddev,
+            "confidence_interval_95": confidence_interval_95,
+        }
+
+    def _should_keep_candidate(
+        self,
+        delta: float,
+        *,
+        min_delta: float,
+        confidence_interval_95: float | None,
+    ) -> tuple[bool, str]:
+        """Use a conservative improvement rule instead of accepting any noise."""
+        if delta < min_delta:
+            return False, f"delta {delta:.4f} below minimum {min_delta:.4f}"
+        if confidence_interval_95 is not None and delta <= confidence_interval_95:
+            return (
+                False,
+                f"delta {delta:.4f} does not exceed 95% CI half-width {confidence_interval_95:.4f}",
+            )
+        return True, "delta exceeds configured minimum and uncertainty guard"
+
     def _conflicts_with_meta(self, runner) -> bool:
         """Check if meta-hyperagent has active variants on parameters this runner modifies."""
         try:
@@ -250,12 +314,50 @@ class AutoresearchEngine:
                 delta=experiment.get("delta", 0),
                 kept=experiment.get("kept", False),
                 status=experiment.get("status", "failed"),
+                config_snapshot=json.dumps(
+                    {
+                        "measurement_repeats": experiment.get("measurement_repeats"),
+                        "score_samples": experiment.get("score_samples"),
+                        "score_stddev": experiment.get("score_stddev"),
+                        "confidence_interval_95": experiment.get("confidence_interval_95"),
+                        "minimum_delta": experiment.get("minimum_delta"),
+                        "decision_reason": experiment.get("decision_reason"),
+                    }
+                ),
                 error_message=experiment.get("error_message", ""),
                 project_id=project_id,
                 completed_at=datetime.now(timezone.utc),
             )
             db.add(record)
             await db.commit()
+
+    async def _record_reasoning_memory(self, experiment: dict, project_id: str) -> list[str]:
+        """Distill an autoresearch experiment into reusable ReasoningBank memory."""
+        try:
+            from app.core.reasoning_bank import reasoning_bank
+
+            memories = await reasoning_bank.record_autoresearch_experiment(
+                experiment,
+                project_id=project_id,
+            )
+            return [memory["id"] for memory in memories if memory.get("id")]
+        except Exception as exc:
+            logger.debug(f"Autoresearch ReasoningBank record skipped: {exc}")
+            return []
+
+    async def _register_improvement_proposals(self, experiment: dict, project_id: str) -> list[str]:
+        """Register kept autoresearch candidates in the governance promotion lane."""
+        try:
+            from app.core.improvement_governance import improvement_governance
+
+            return await improvement_governance.register_autoresearch_experiment(
+                experiment,
+                project_id=project_id,
+                reasoning_memory_ids=experiment.get("reasoning_memory_ids", []),
+            )
+        except Exception as exc:
+            logger.debug(f"Autoresearch governance registration skipped: {exc}")
+            return []
 
     async def get_experiments(
         self,
@@ -278,6 +380,17 @@ class AutoresearchEngine:
             query = query.offset(offset).limit(limit)
             result = await db.execute(query)
             return [e.to_dict() for e in result.scalars().all()]
+
+    async def get_experiment(self, experiment_id: str) -> dict | None:
+        """Get one experiment by ID."""
+        from sqlalchemy import select
+
+        async with async_session() as db:
+            result = await db.execute(
+                select(AutoresearchExperiment).where(AutoresearchExperiment.id == experiment_id)
+            )
+            record = result.scalar_one_or_none()
+            return record.to_dict() if record else None
 
     async def get_leaderboard(self) -> list[dict]:
         """Get best model+temp per skill from model_skill_stats."""

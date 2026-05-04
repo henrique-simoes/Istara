@@ -35,6 +35,26 @@ function formatValue(val: any): string {
   return String(val);
 }
 
+function normalizeConfidence(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  const ratio = value > 1 ? value / 100 : value;
+  return Math.max(0, Math.min(1, ratio));
+}
+
+function latestObservation(payload: any): any | null {
+  const observations = Array.isArray(payload?.observations)
+    ? payload.observations
+    : Array.isArray(payload)
+      ? payload
+      : [];
+  return observations.length > 0 ? observations[observations.length - 1] : null;
+}
+
+function metricPercent(observation: any | null, path: string[]): number | null {
+  const value = path.reduce((acc, key) => acc?.[key], observation);
+  return typeof value === "number" && Number.isFinite(value) ? Math.round(value * 100) : null;
+}
+
 const SYSTEM_COLORS: Record<string, string> = {
   routing: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
   evolution: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400",
@@ -146,6 +166,15 @@ export default function MetaHyperagentView() {
   const isEnabled = status?.enabled ?? false;
   const activeVariants = variants.filter((v) => v.status === "active");
   const pendingProposals = proposals.filter((p) => p.status === "pending");
+  const observationList = Array.isArray(observations?.observations)
+    ? observations.observations
+    : Array.isArray(observations)
+      ? observations
+      : [];
+  const latestObs = latestObservation(observations);
+  const hasObservations = observationList.length > 0;
+  const hasPersistedHistory = (status?.recent_observations ?? 0) > 0;
+  const showDormantHistoryNotice = !isEnabled && pendingProposals.length > 0;
 
   // Disabled empty state
   if (!isEnabled && activeVariants.length === 0 && pendingProposals.length === 0) {
@@ -262,6 +291,21 @@ export default function MetaHyperagentView() {
         </div>
       </div>
 
+      {showDormantHistoryNotice && (
+        <div className="bg-sky-50 dark:bg-sky-900/20 border border-sky-200 dark:border-sky-800 rounded-lg p-4">
+          <div className="flex gap-3">
+            <Eye size={18} className="text-sky-600 dark:text-sky-400 shrink-0 mt-0.5" />
+            <div className="text-sm text-sky-800 dark:text-sky-200">
+              <strong>Reviewing previous proposals</strong> — Disabled stops new observation
+              cycles, but pending proposals remain available because they are persisted for review.
+              {hasPersistedHistory && status?.last_observed_at
+                ? ` Last observation was ${timeAgo(status.last_observed_at)}.`
+                : " No observation snapshots have been collected in this session yet."}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Active Variants Section */}
       {activeVariants.length > 0 && (
         <div className="space-y-3">
@@ -336,7 +380,10 @@ export default function MetaHyperagentView() {
             <Shield size={16} />
             Pending Proposals ({pendingProposals.length})
           </h3>
-          {pendingProposals.map((proposal) => (
+          {pendingProposals.map((proposal) => {
+            const confidence = normalizeConfidence(proposal.confidence);
+            const confidencePercent = Math.round(confidence * 100);
+            return (
             <div
               key={proposal.id}
               className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4"
@@ -379,23 +426,23 @@ export default function MetaHyperagentView() {
                     </div>
                   )}
                   {/* Confidence bar */}
-                  <div className="flex items-center gap-2">
-                    <div className="text-[10px] text-slate-400">Confidence</div>
-                    <div className="flex-1 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full max-w-[120px]">
+                  <div className="flex max-w-full items-center gap-2 overflow-hidden">
+                    <div className="shrink-0 text-[10px] text-slate-400">Confidence</div>
+                    <div className="h-1.5 w-24 max-w-[35vw] shrink rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
                       <div
                         className={cn(
                           "h-full rounded-full transition-all",
-                          proposal.confidence >= 0.8
+                          confidence >= 0.8
                             ? "bg-green-500"
-                            : proposal.confidence >= 0.5
+                            : confidence >= 0.5
                             ? "bg-yellow-500"
                             : "bg-red-500"
                         )}
-                        style={{ width: `${Math.round(proposal.confidence * 100)}%` }}
+                        style={{ width: `${confidencePercent}%` }}
                       />
                     </div>
-                    <span className="text-[10px] text-slate-400">
-                      {Math.round(proposal.confidence * 100)}%
+                    <span className="w-8 shrink-0 text-right text-[10px] text-slate-400">
+                      {confidencePercent}%
                     </span>
                   </div>
                   {proposal.expected_impact && (
@@ -424,42 +471,54 @@ export default function MetaHyperagentView() {
                 </div>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
       {/* Observations Section */}
-      {observations && (
+      {(observations || !hasObservations) && (
         <div className="space-y-3">
           <h3 className="text-sm font-medium text-slate-900 dark:text-white flex items-center gap-2">
             <Activity size={16} />
             Observations
           </h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {[
-              { label: "Routing Accuracy", key: "routing_accuracy", suffix: "%" },
-              { label: "Promotion Rate", key: "promotion_rate", suffix: "%" },
-              { label: "Skill Match Rate", key: "skill_match_rate", suffix: "%" },
-              { label: "Verification Pass", key: "verification_pass_rate", suffix: "%" },
-            ].map((metric) => {
-              const value = observations[metric.key];
-              return (
-                <div
-                  key={metric.key}
-                  className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4 text-center"
-                >
-                  <div className="text-2xl font-bold text-slate-900 dark:text-white">
-                    {value !== undefined && value !== null
-                      ? `${typeof value === "number" ? Math.round(value * 100) : value}${metric.suffix}`
-                      : "--"}
+          {hasObservations ? (
+            <div className="space-y-2">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {[
+                  { label: "Skill Success", value: metricPercent(latestObs, ["skill_selection", "success_rate"]) },
+                  { label: "Verification Pass", value: metricPercent(latestObs, ["quality_eval", "pass_rate"]) },
+                  { label: "Semantic Fallbacks", value: latestObs?.skill_selection?.total_executions ? Math.round((latestObs.skill_selection.semantic_fallback_count / latestObs.skill_selection.total_executions) * 100) : null },
+                  { label: "Agent Proposals", value: latestObs?.agent_capabilities?.pending_agent_proposals ?? null, suffix: "" },
+                ].map((metric) => (
+                  <div
+                    key={metric.label}
+                    className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4 text-center"
+                  >
+                    <div className="text-2xl font-bold text-slate-900 dark:text-white">
+                      {metric.value !== undefined && metric.value !== null
+                        ? `${metric.value}${metric.suffix ?? "%"}`
+                        : "--"}
+                    </div>
+                    <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                      {metric.label}
+                    </div>
                   </div>
-                  <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                    {metric.label}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                ))}
+              </div>
+              <div className="text-xs text-slate-400 dark:text-slate-500">
+                {observationList.length} persisted observation{observationList.length === 1 ? "" : "s"}
+                {latestObs?.timestamp ? ` · latest ${timeAgo(latestObs.timestamp)}` : ""}
+              </div>
+            </div>
+          ) : (
+            <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5 text-sm text-slate-500 dark:text-slate-400">
+              No observation snapshots are available yet. Enable the Meta-Hyperagent to collect
+              fresh metrics; pending proposals may still appear here if they were generated before
+              observations were persisted.
+            </div>
+          )}
         </div>
       )}
 

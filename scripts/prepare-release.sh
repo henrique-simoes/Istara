@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# Prepare an Istara release locally by syncing docs/integrity and bumping version.
+# Prepare an Istara release locally by checking governance and bumping version.
 #
 # Usage:
 #   ./scripts/prepare-release.sh --bump
 #   ./scripts/prepare-release.sh 2026.04.03
 #
 # This script does not commit, tag, or push automatically. It standardizes the
-# local release-preparation sequence so versioning, generated docs, and integrity
+# local release-preparation sequence so versioning, governance, and rehearsal
 # checks stay aligned.
 
 set -euo pipefail
@@ -16,18 +16,20 @@ ARG="${1:---bump}"
 
 cd "$ROOT"
 
-echo "==> Regenerating living docs"
-python scripts/update_agent_md.py
-
 echo "==> Checking integrity"
 python scripts/check_integrity.py
+
+echo "==> Checking CI/CD governance"
+python scripts/check_ci_governance.py
+
+echo "==> Running production rehearsal"
+python scripts/production_rehearsal.py --json
 
 echo "==> Updating version"
 chmod +x scripts/set-version.sh
 ./scripts/set-version.sh "$ARG"
 
 echo "==> Re-running integrity after version update"
-python scripts/update_agent_md.py
 python scripts/check_integrity.py
 
 VERSION="$(cat VERSION | tr -d '[:space:]')"

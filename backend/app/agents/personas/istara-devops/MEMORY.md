@@ -5,7 +5,7 @@ _Automatically updated as audit patterns emerge._
 
 ### Known Error Patterns
 - **Timezone comparison crash**: `can't subtract offset-naive and offset-aware datetimes` -- Always wrap datetime DB values with `ensure_utc()` before arithmetic
-- **Orphaned task infinite loop**: Tasks referencing deleted projects get picked up repeatedly. Resolution: mark as DONE with "orphaned" note rather than returning to BACKLOG
+- **Orphaned task infinite loop**: Tasks referencing deleted projects get picked up repeatedly. Resolution: surface as `IN_REVIEW` with `review_state=blocked`/`system_failed` and a TaskReviewEvent; never mark orphaned agent work as DONE
 - **Vector store table missing**: New projects may not have a vector store table until first document ingestion. Treat missing table as informational, not an error
 - **str.get() AttributeError**: LLM responses sometimes return raw strings instead of expected dict objects. Always type-check before calling .get()
 

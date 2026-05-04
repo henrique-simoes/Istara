@@ -2,22 +2,16 @@
 
 import { useEffect, useState } from "react";
 import {
-  CheckCircle,
   AlertTriangle,
-  Zap,
-  Clock,
-  Gauge,
   TrendingUp,
   Brain,
   Shield,
-  Search,
-  ChevronDown,
-  ChevronRight,
   Activity,
   BarChart3,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { validation, telemetry } from "@/lib/api";
+import { validation } from "@/lib/api";
+import { useProjectStore } from "@/stores/projectStore";
 
 interface MethodStat {
   method: string;
@@ -28,27 +22,24 @@ interface MethodStat {
   avg_consensus_score: number;
   last_used: string;
   recency_weight: number;
+  success_rate_ci_low?: number;
+  success_rate_ci_high?: number;
+  sample_confidence_weight?: number;
+  rigor_status?: string;
 }
 
 export default function QualityView() {
-  const [projectId, setProjectId] = useState<string | null>(null);
+  const projectId = useProjectStore((s) => s.activeProjectId);
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
-  const [toolStats, setToolStats] = useState<any[]>([]);
   const [methods, setMethods] = useState<MethodStat[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [thresholds, setThresholds] = useState<Record<string, number>>({ nugget: 0.70, fact: 0.65, insight: 0.55, recommendation: 0.50 });
-
-  useEffect(() => {
-    try {
-      const { useProjectStore } = require("@/stores/projectStore");
-      const pid = useProjectStore.getState().activeProjectId;
-      setProjectId(pid);
-    } catch {}
-  }, []);
 
   useEffect(() => {
     if (!projectId) return;
     setLoading(true);
+    setError(null);
     
     // Fetch both model intelligence and ensemble metrics
     Promise.all([
@@ -56,7 +47,6 @@ export default function QualityView() {
       validation.metrics(projectId)
     ]).then(([intel, metrics]) => {
       setLeaderboard(intel.leaderboard);
-      setToolStats(intel.tool_success_rates);
       
       const stats: MethodStat[] = metrics.method_stats.map((s: any) => ({
         method: s.method,
@@ -67,11 +57,18 @@ export default function QualityView() {
         avg_consensus_score: s.avg_consensus_score,
         last_used: s.last_used || "",
         recency_weight: s.weight,
+        success_rate_ci_low: s.success_rate_ci_low,
+        success_rate_ci_high: s.success_rate_ci_high,
+        sample_confidence_weight: s.sample_confidence_weight,
+        rigor_status: s.rigor_status,
       }));
       setMethods(stats);
       setThresholds(metrics.confidence_thresholds);
       setLoading(false);
-    }).catch(() => setLoading(false));
+    }).catch((err) => {
+      setError(err instanceof Error ? err.message : "Could not load quality metrics");
+      setLoading(false);
+    });
   }, [projectId]);
 
   const confidenceColor = (score: number) => {
@@ -84,7 +81,7 @@ export default function QualityView() {
     { id: "self_moa", name: "Self-MoA", icon: Brain, desc: "Same model, temp variation" },
     { id: "dual_run", name: "Dual Run", icon: Activity, desc: "Two model comparison" },
     { id: "adversarial_review", name: "Adversarial", icon: AlertTriangle, desc: "Model-on-model critique" },
-    { id: "full_ensemble", name: "Full Ensemble", icon: BarChart3, desc: "3+ models (Fleiss' Kappa)" },
+    { id: "full_ensemble", name: "Full Ensemble", icon: BarChart3, desc: "3+ models, composite agreement" },
   ];
 
   return (
@@ -102,6 +99,26 @@ export default function QualityView() {
         </div>
       </div>
 
+      {!projectId && (
+        <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
+          Select a project to inspect quality, ensemble, and model-intelligence metrics.
+        </div>
+      )}
+
+      {projectId && error && (
+        <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-300">
+          <AlertTriangle size={16} className="mt-0.5 shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
+
+      {projectId && loading && (
+        <div className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
+          Loading quality metrics...
+        </div>
+      )}
+
+      {projectId && !loading && (
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Main Quality Column */}
         <div className="md:col-span-2 space-y-6">
@@ -116,6 +133,10 @@ export default function QualityView() {
               {VALIDATION_METHODS.map(m => {
                 const stat = methods.find(s => s.method === m.id);
                 const score = stat?.avg_consensus_score || 0;
+                const ciLabel =
+                  stat?.success_rate_ci_low !== undefined && stat?.success_rate_ci_high !== undefined
+                    ? `${(stat.success_rate_ci_low * 100).toFixed(0)}-${(stat.success_rate_ci_high * 100).toFixed(0)}% success CI`
+                    : "No success interval yet";
                 return (
                   <div key={m.id} className="p-4 rounded-lg border border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/30">
                     <div className="flex items-center justify-between mb-2">
@@ -131,6 +152,16 @@ export default function QualityView() {
                     <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
                       <div className="h-full bg-istara-500 rounded-full" style={{ width: `${score * 100}%` }} />
                     </div>
+                    <div className="mt-2 flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400">
+                      <span>{stat ? `${stat.total_runs} runs` : "No runs"}</span>
+                      <span>{ciLabel}</span>
+                    </div>
+                    {stat && (
+                      <div className="mt-1 flex items-center justify-between text-[10px] text-slate-400">
+                        <span>Evidence {(stat.sample_confidence_weight || 0).toFixed(2)}</span>
+                        <span>{stat.rigor_status === "stable_sample" ? "Stable sample" : "Needs more runs"}</span>
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -180,14 +211,14 @@ export default function QualityView() {
             </h4>
             <div className="space-y-3">
               {[
-                { label: "Nuggets", val: thresholds.nugget || "0.70", desc: "Raw extraction requires high kappa." },
+                { label: "Nuggets", val: thresholds.nugget || "0.70", desc: "Raw extraction requires high agreement." },
                 { label: "Facts", val: thresholds.fact || "0.65", desc: "Verified claims." },
                 { label: "Insights", val: thresholds.insight || "0.55", desc: "Analytical conclusions." },
               ].map(row => (
                 <div key={row.label}>
                   <div className="flex items-center justify-between text-xs mb-1">
                     <span className="font-semibold">{row.label}</span>
-                    <span className="font-mono font-bold text-istara-600">{"\u03BA"} {row.val}</span>
+                    <span className="font-mono font-bold text-istara-600">&gt;= {row.val}</span>
                   </div>
                   <div className="text-[10px] text-slate-500 dark:text-slate-400">{row.desc}</div>
                 </div>
@@ -216,6 +247,7 @@ export default function QualityView() {
           </div>
         </div>
       </div>
+      )}
     </div>
   );
 }

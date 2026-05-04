@@ -15,17 +15,32 @@ const PLATFORMS = [
   { id: "google_chat", label: "Google Chat", color: "#00AC47", icon: MessageSquare, description: "Connect via Google Workspace" },
 ] as const;
 
-const CREDENTIAL_FIELDS: Record<string, { label: string; placeholder: string; type: string }[]> = {
-  telegram: [{ label: "Bot Token", placeholder: "123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11", type: "password" }],
+type CredentialField = {
+  key: string;
+  label: string;
+  placeholder: string;
+  type: "text" | "password";
+  required?: boolean;
+};
+
+const CREDENTIAL_FIELDS: Record<string, CredentialField[]> = {
+  telegram: [{ key: "bot_token", label: "Bot Token", placeholder: "123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11", type: "password", required: true }],
   slack: [
-    { label: "Bot Token", placeholder: "xoxb-...", type: "password" },
-    { label: "Signing Secret", placeholder: "Slack signing secret", type: "password" },
+    { key: "bot_token", label: "Bot Token", placeholder: "xoxb-...", type: "password", required: true },
+    { key: "signing_secret", label: "Signing Secret", placeholder: "Slack signing secret", type: "password", required: true },
+    { key: "app_token", label: "App Token", placeholder: "xapp-... (optional Socket Mode)", type: "password" },
   ],
   whatsapp: [
-    { label: "Phone Number ID", placeholder: "Your phone number ID", type: "text" },
-    { label: "Access Token", placeholder: "WhatsApp Business API token", type: "password" },
+    { key: "phone_number_id", label: "Phone Number ID", placeholder: "Your phone number ID", type: "text", required: true },
+    { key: "access_token", label: "Access Token", placeholder: "WhatsApp Business API token", type: "password", required: true },
+    { key: "verify_token", label: "Verify Token", placeholder: "Webhook verification token", type: "password", required: true },
+    { key: "app_secret", label: "App Secret", placeholder: "Meta app secret for webhook signatures", type: "password", required: true },
   ],
-  google_chat: [{ label: "Service Account JSON", placeholder: "Paste service account credentials JSON", type: "password" }],
+  google_chat: [
+    { key: "webhook_url", label: "Webhook URL", placeholder: "https://chat.googleapis.com/v1/spaces/...", type: "text", required: true },
+    { key: "webhook_token", label: "Webhook Token", placeholder: "Shared secret for inbound events", type: "password", required: true },
+    { key: "service_account_json", label: "Service Account JSON", placeholder: "Optional service account credentials JSON", type: "password" },
+  ],
 };
 
 interface ChannelSetupWizardProps {
@@ -40,7 +55,7 @@ export default function ChannelSetupWizard({ onClose }: ChannelSetupWizardProps)
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<"success" | "error" | null>(null);
   const [testError, setTestError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
+  const [createdInstanceId, setCreatedInstanceId] = useState<string | null>(null);
 
   const stepIndex = STEPS.indexOf(currentStep);
 
@@ -56,17 +71,34 @@ export default function ChannelSetupWizard({ onClose }: ChannelSetupWizardProps)
     setTesting(true);
     setTestResult(null);
     setTestError(null);
+    let instanceId: string | null = null;
     try {
       const instance = await channelsApi.create({
         platform: selectedPlatform,
         name: channelName || `${selectedPlatform}-channel`,
         config: credentials,
       });
-      // Try health check
+      instanceId = instance.id;
+      const start = await channelsApi.start(instance.id);
+      if (!["started", "already_running"].includes(start?.status)) {
+        throw new Error(start?.detail || "Channel could not be started with the supplied credentials.");
+      }
       const health = await channelsApi.health(instance.id);
+      if (health?.status !== "healthy") {
+        throw new Error(health?.error || health?.detail || `Health check returned ${health?.status || "unknown"}.`);
+      }
+      setCreatedInstanceId(instance.id);
       setTestResult("success");
       goNext();
     } catch (e: any) {
+      if (instanceId) {
+        try {
+          await channelsApi.stop(instanceId);
+          await channelsApi.delete(instanceId);
+        } catch {
+          // Best-effort cleanup: the visible error below is the connection failure.
+        }
+      }
       setTestError(e.message);
       setTestResult("error");
     } finally {
@@ -77,9 +109,15 @@ export default function ChannelSetupWizard({ onClose }: ChannelSetupWizardProps)
   const canProceed = () => {
     switch (currentStep) {
       case "platform": return !!selectedPlatform;
-      case "credentials": return Object.values(credentials).some((v) => v.trim());
+      case "credentials": {
+        if (!selectedPlatform) return false;
+        const fields = CREDENTIAL_FIELDS[selectedPlatform] || [];
+        return fields
+          .filter((field) => field.required)
+          .every((field) => (credentials[field.key] || "").trim().length > 0);
+      }
       case "name": return channelName.trim().length > 0;
-      case "test": return testResult === "success";
+      case "test": return testResult === "success" && !!createdInstanceId;
       default: return true;
     }
   };
@@ -145,8 +183,8 @@ export default function ChannelSetupWizard({ onClose }: ChannelSetupWizardProps)
                     <input
                       type={field.type}
                       placeholder={field.placeholder}
-                      value={credentials[field.label] || ""}
-                      onChange={(e) => setCredentials({ ...credentials, [field.label]: e.target.value })}
+                      value={credentials[field.key] || ""}
+                      onChange={(e) => setCredentials({ ...credentials, [field.key]: e.target.value })}
                       className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-istara-500"
                     />
                   </div>

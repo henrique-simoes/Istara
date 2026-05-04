@@ -128,7 +128,7 @@ def _handle_intro(config: dict, questions: list[dict], metadata: dict) -> dict:
             "send_message",
             text,
             state=ConversationState.QUESTIONS,
-            question_index=0,
+            question_index=1,
             metadata=metadata,
         )
 
@@ -177,7 +177,7 @@ async def _handle_questions(
             "send_message",
             questions[q_index]["text"],
             state=ConversationState.QUESTIONS,
-            question_index=q_index,
+            question_index=q_index + 1,
             metadata=metadata,
         )
 
@@ -211,7 +211,7 @@ async def _handle_probing(
                 "send_message",
                 questions[q_index]["text"],
                 state=ConversationState.QUESTIONS,
-                question_index=q_index,
+                question_index=q_index + 1,
                 metadata=metadata,
             )
         # All questions done

@@ -19,6 +19,25 @@ from typing import Any
 from app.config import settings
 
 logger = logging.getLogger(__name__)
+_TRANSPORT_RUNNING = False
+
+
+def get_runtime_status() -> dict:
+    """Return the actual MCP serving state for the management API.
+
+    The FastAPI management toggle controls configuration. The MCP transport is
+    a separate FastMCP process/entrypoint, so the API must not imply that a
+    listener started inside this web process.
+    """
+    serving = bool(_TRANSPORT_RUNNING and settings.mcp_server_enabled and MCP_AVAILABLE)
+    return {
+        "configured_enabled": settings.mcp_server_enabled,
+        "serving": serving,
+        "restart_required": bool(settings.mcp_server_enabled and not serving),
+        "lifecycle_state": "serving" if serving else (
+            "restart_required" if settings.mcp_server_enabled else "disabled"
+        ),
+    }
 
 # ---------------------------------------------------------------------------
 # Conditional import of fastmcp

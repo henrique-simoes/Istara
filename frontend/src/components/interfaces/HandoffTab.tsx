@@ -232,7 +232,9 @@ export default function HandoffTab() {
                 <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
                   <h4 className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Developer Specification</h4>
                   <div className="text-sm text-slate-600 dark:text-slate-400 whitespace-pre-wrap">
-                    {typeof devSpec === "string" ? devSpec : devSpec.content || JSON.stringify(devSpec, null, 2)}
+                    {typeof devSpec === "string"
+                      ? devSpec
+                      : devSpec.content || devSpec.dev_spec?.content || JSON.stringify(devSpec.dev_spec || devSpec, null, 2)}
                   </div>
                 </div>
               )}

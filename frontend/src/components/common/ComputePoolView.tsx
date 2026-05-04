@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import type { ReactNode } from "react";
 import {
   Cpu,
   HardDrive,
@@ -18,8 +19,7 @@ import {
 import { useComputeStore } from "@/stores/computeStore";
 import { cn } from "@/lib/utils";
 import ViewOnboarding from "@/components/common/ViewOnboarding";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+import { compute as computeApi, settings as settingsApi } from "@/lib/api";
 
 const SWARM_TIERS: Record<string, { label: string; color: string; description: string }> = {
   full_swarm: {
@@ -65,6 +65,11 @@ const SOURCE_BADGES: Record<string, { label: string; icon: typeof Monitor; class
     icon: Radio,
     className: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400",
   },
+  browser: {
+    label: "Browser",
+    icon: Radio,
+    className: "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400",
+  },
 };
 
 interface ModelWarning {
@@ -75,55 +80,43 @@ interface ModelWarning {
 }
 
 export default function ComputePoolView() {
-  const { stats, loading, fetchStats } = useComputeStore();
+  const { stats, loading, error, fetchStats } = useComputeStore();
   const [warnings, setWarnings] = useState<ModelWarning[]>([]);
   const [showWarnings, setShowWarnings] = useState(false);
   const [strictRouting, setStrictRouting] = useState(false);
+  const [routingError, setRoutingError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchStats();
     const interval = setInterval(fetchStats, 15000);
-    
-    // Fetch initial routing state
-    const token = localStorage.getItem("istara_token");
-    const headers: Record<string, string> = {};
-    if (token) headers["Authorization"] = `Bearer ${token}`;
-    fetch(`${API_BASE}/api/settings/status`, { headers })
-      .then((r) => r.json())
+
+    settingsApi.status()
       .then((d) => {
         if (d.strict_auto_routing !== undefined) {
-          setStrictRouting(d.strict_auto_routing);
+          setStrictRouting(Boolean(d.strict_auto_routing));
         }
+        setRoutingError(null);
       })
-      .catch(() => {});
-      
+      .catch((err) => setRoutingError(err instanceof Error ? err.message : "Could not load routing settings"));
+
     return () => clearInterval(interval);
   }, [fetchStats]);
 
   const toggleStrictRouting = async () => {
     const newVal = !strictRouting;
     setStrictRouting(newVal);
-    const token = localStorage.getItem("istara_token");
-    const headers: Record<string, string> = { "Content-Type": "application/json" };
-    if (token) headers["Authorization"] = `Bearer ${token}`;
     try {
-      await fetch(`${API_BASE}/api/settings/strict-routing`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify({ enabled: newVal }),
-      });
+      const response = await settingsApi.toggleStrictRouting(newVal);
+      setStrictRouting(response.strict_auto_routing);
+      setRoutingError(null);
     } catch (e) {
-      console.error(e);
       setStrictRouting(!newVal);
+      setRoutingError(e instanceof Error ? e.message : "Could not update routing settings");
     }
   };
 
   useEffect(() => {
-    const token = localStorage.getItem("istara_token");
-    const headers: Record<string, string> = {};
-    if (token) headers["Authorization"] = `Bearer ${token}`;
-    fetch(`${API_BASE}/api/compute/model-warnings`, { headers })
-      .then((r) => r.json())
+    computeApi.modelWarnings()
       .then((d) => setWarnings(d.warnings || []))
       .catch(() => {});
   }, []);
@@ -142,6 +135,13 @@ export default function ComputePoolView() {
           LLM servers and relay nodes powering your agent compute
         </p>
       </div>
+
+      {(error || routingError) && (
+        <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-300">
+          <AlertTriangle size={16} className="mt-0.5 shrink-0" />
+          <span>{error || routingError}</span>
+        </div>
+      )}
 
       {/* Model Warnings — collapsed summary */}
       {warnings.length > 0 && (
@@ -238,12 +238,13 @@ export default function ComputePoolView() {
           icon={Cpu}
           label="CPU Cores"
           value={stats?.total_cpu_cores || 0}
+          sub={`${stats?.hardware_load_pct?.toFixed(1) || "0.0"}% load`}
         />
         <StatCard
           icon={Zap}
           label="Models"
           value={stats?.available_models?.length || 0}
-          sub="across pool"
+          sub={`${stats?.request_slots_available || 0}/${stats?.request_slots_total || 0} slots`}
         />
       </div>
       
@@ -360,6 +361,27 @@ export default function ComputePoolView() {
                   <div className="text-xs text-slate-500 mb-3">
                     {node.ram_available_gb?.toFixed(1)} GB free | CPU {node.cpu_load_pct?.toFixed(0)}%
                   </div>
+
+                  {(node.source === "relay" || node.source === "browser") && (
+                    <div className="flex flex-wrap gap-1.5 mb-3">
+                      <NodeStatusBadge tone={node.alive ? "green" : "red"}>
+                        {node.serving_state === "serving" ? "Serving" : node.alive ? "Connected" : "Offline"}
+                      </NodeStatusBadge>
+                      <NodeStatusBadge
+                        tone={node.capability_probe_status === "available" ? "green" : "amber"}
+                      >
+                        {node.capability_probe_status === "available"
+                          ? "Capabilities ready"
+                          : "Capability probe unavailable"}
+                      </NodeStatusBadge>
+                      {node.model_list_stale && (
+                        <NodeStatusBadge tone="amber">Model list stale</NodeStatusBadge>
+                      )}
+                      {node.health_error && (
+                        <NodeStatusBadge tone="red">{node.health_error}</NodeStatusBadge>
+                      )}
+                    </div>
+                  )}
 
                   {/* Model Capabilities */}
                   {node.loaded_models && node.loaded_models.length > 0 && (
@@ -483,6 +505,25 @@ function ModelBadges({
         </span>
       )}
     </div>
+  );
+}
+
+function NodeStatusBadge({
+  tone,
+  children,
+}: {
+  tone: "green" | "amber" | "red";
+  children: ReactNode;
+}) {
+  const classes = {
+    green: "bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400",
+    amber: "bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+    red: "bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+  };
+  return (
+    <span className={cn("inline-flex px-2 py-0.5 rounded text-[10px] font-medium", classes[tone])}>
+      {children}
+    </span>
   );
 }
 

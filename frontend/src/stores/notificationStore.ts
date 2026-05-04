@@ -31,7 +31,7 @@ interface NotificationStore {
 
   setActiveTab: (tab: NotificationsTab) => void;
   fetchNotifications: (page?: number) => Promise<void>;
-  fetchUnreadCount: () => Promise<void>;
+  fetchUnreadCount: (projectId?: string) => Promise<void>;
   markRead: (id: string) => Promise<void>;
   markAllRead: (projectId?: string) => Promise<void>;
   deleteNotification: (id: string) => Promise<void>;
@@ -81,18 +81,21 @@ export const useNotificationStore = create<NotificationStore>((set, get) => ({
       if (filters.to_date) params.to_date = filters.to_date;
       if (filters.unread_only) params.unread_only = true;
       const data = await notificationsApi.list(params);
-      const notifications = Array.isArray(data) ? data : data?.notifications || [];
-      const totalPages = data?.total_pages || 1;
+      const notifications = (Array.isArray(data) ? data : data?.notifications || []).map((n: any) => ({
+        ...n,
+        metadata: n.metadata || n.metadata_json || {},
+      }));
       const total = data?.total || notifications.length;
+      const totalPages = data?.total_pages || Math.max(1, Math.ceil(total / 20));
       set({ notifications, page, totalPages, total, loading: false });
     } catch (e: any) {
       set({ error: e.message, loading: false });
     }
   },
 
-  fetchUnreadCount: async () => {
+  fetchUnreadCount: async (projectId) => {
     try {
-      const data = await notificationsApi.unreadCount();
+      const data = await notificationsApi.unreadCount(projectId);
       set({ unreadCount: data.count });
     } catch {
       // silent
@@ -104,7 +107,10 @@ export const useNotificationStore = create<NotificationStore>((set, get) => ({
       await notificationsApi.markRead(id);
       set((s) => ({
         notifications: s.notifications.map((n) => (n.id === id ? { ...n, read: true } : n)),
-        unreadCount: Math.max(0, s.unreadCount - 1),
+        unreadCount: Math.max(
+          0,
+          s.unreadCount - (s.notifications.find((n) => n.id === id && !n.read) ? 1 : 0)
+        ),
       }));
     } catch (e: any) {
       set({ error: e.message });
@@ -128,6 +134,10 @@ export const useNotificationStore = create<NotificationStore>((set, get) => ({
       await notificationsApi.delete(id);
       set((s) => ({
         notifications: s.notifications.filter((n) => n.id !== id),
+        unreadCount: Math.max(
+          0,
+          s.unreadCount - (s.notifications.find((n) => n.id === id && !n.read) ? 1 : 0)
+        ),
         total: Math.max(0, s.total - 1),
       }));
     } catch (e: any) {

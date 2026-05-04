@@ -6,6 +6,8 @@ from app.main import app
 from app.config import settings
 from app.models.database import init_db
 from app.core.auth import create_token
+from app.models.database import async_session
+from app.models.project import Project
 
 
 @pytest.fixture(autouse=True)
@@ -99,3 +101,46 @@ async def test_project_versions_returns_list(auth_headers):
         assert response.status_code in (200, 404)
         if response.status_code == 200:
             assert isinstance(response.json(), list)
+
+
+@pytest.mark.asyncio
+async def test_link_folder_rejects_filesystem_root(auth_headers):
+    """Folder linking should not allow broad system roots as project watch folders."""
+    await init_db()
+    project = Project(id="link-root-project", name="Link Root Project")
+    async with async_session() as db:
+        db.add(project)
+        await db.commit()
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.post(
+            f"/api/projects/{project.id}/link-folder",
+            headers=auth_headers,
+            json={"folder_path": "/"},
+        )
+
+    assert response.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_link_folder_persists_resolved_directory(auth_headers, tmp_path):
+    """Valid linked folders should be persisted as the project watch folder."""
+    await init_db()
+    project = Project(id="link-valid-project", name="Link Valid Project")
+    linked_dir = tmp_path / "research-files"
+    linked_dir.mkdir()
+    async with async_session() as db:
+        db.add(project)
+        await db.commit()
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.post(
+            f"/api/projects/{project.id}/link-folder",
+            headers=auth_headers,
+            json={"folder_path": str(linked_dir)},
+        )
+
+    assert response.status_code == 200
+    assert response.json()["watch_folder_path"] == str(linked_dir.resolve())

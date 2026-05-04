@@ -22,7 +22,8 @@ const STATUS_LABEL: Record<LoopStatus, string> = {
   error: "Error",
 };
 
-function formatInterval(seconds: number): string {
+function formatInterval(seconds: number | null | undefined): string {
+  if (seconds === null || seconds === undefined) return "Cron";
   if (seconds < 60) return `${seconds}s`;
   if (seconds < 3600) return `${Math.round(seconds / 60)}m`;
   return `${(seconds / 3600).toFixed(1)}h`;
@@ -152,7 +153,7 @@ function HealthCard({ item }: { item: LoopHealthItem }) {
           <span>Next expected</span>
           <span className="font-medium">{formatTimeUntil(item.next_expected_at)}</span>
         </div>
-        {item.behind_by_seconds > 0 && (
+        {(item.behind_by_seconds ?? 0) > 0 && (
           <div className="flex items-center gap-1 text-red-600 dark:text-red-400 mt-1">
             <AlertTriangle size={12} />
             <span>Behind by {formatInterval(item.behind_by_seconds)}</span>

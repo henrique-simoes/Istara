@@ -1,6 +1,9 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import { API_BASE } from "@/lib/runtimeConfig";
 import {
   FileText,
   Search,
@@ -8,6 +11,7 @@ import {
   X,
   ChevronDown,
   RefreshCw,
+  Upload,
   Tag,
   Clock,
   Bot,
@@ -34,7 +38,7 @@ import {
 } from "lucide-react";
 import { useProjectStore } from "@/stores/projectStore";
 import { useDocumentStore } from "@/stores/documentStore";
-import { documents as documentsApi } from "@/lib/api";
+import { documents as documentsApi, files as filesApi } from "@/lib/api";
 import { cn, phaseLabel } from "@/lib/utils";
 import type { ReclawDocument, DocumentContent } from "@/lib/types";
 import ViewOnboarding from "@/components/common/ViewOnboarding";
@@ -72,6 +76,22 @@ const SOURCE_LABELS: Record<string, string> = {
   external: "External",
 };
 
+function isMarkdownLike(type?: string, fileName?: string): boolean {
+  const normalizedType = (type || "").toLowerCase();
+  const normalizedName = (fileName || "").toLowerCase();
+  return normalizedType === ".md" || normalizedName.endsWith(".md");
+}
+
+function MarkdownDocument({ content }: { content: string }) {
+  return (
+    <div className="prose prose-sm max-w-none dark:prose-invert prose-slate rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-900">
+      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+        {content}
+      </ReactMarkdown>
+    </div>
+  );
+}
+
 function fileIcon(type: string) {
   if ([".jpg", ".jpeg", ".png", ".gif", ".webp"].includes(type)) return FileImage;
   if ([".mp3", ".wav", ".m4a", ".ogg"].includes(type)) return FileAudio;
@@ -98,12 +118,13 @@ function timeAgo(dateStr: string): string {
 }
 
 export default function DocumentsView() {
-  const { activeProjectId } = useProjectStore();
+  const { activeProjectId, canWriteActiveProject } = useProjectStore();
   const {
     documents,
     tags,
     stats,
     loading,
+    error,
     total,
     page,
     totalPages,
@@ -131,6 +152,8 @@ export default function DocumentsView() {
   const [previewContent, setPreviewContent] = useState<DocumentContent | null>(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [viewMode, setViewMode] = useState<"compact" | "list" | "grid">(() => {
     if (typeof window !== "undefined") {
       const stored = localStorage.getItem("istara_documents_view_mode");
@@ -138,6 +161,7 @@ export default function DocumentsView() {
     }
     return "compact";
   });
+  const canWrite = canWriteActiveProject();
 
   const handleViewMode = useCallback((mode: "compact" | "list" | "grid") => {
     setViewMode(mode);
@@ -167,7 +191,7 @@ export default function DocumentsView() {
   }, [searchQuery, filterPhase, filterTag, filterSource, activeProjectId, fetchDocuments]);
 
   const handleSync = async () => {
-    if (!activeProjectId) return;
+    if (!activeProjectId || !canWrite) return;
     setSyncing(true);
     try {
       const count = await syncDocuments(activeProjectId);
@@ -190,6 +214,33 @@ export default function DocumentsView() {
       );
     }
     setSyncing(false);
+  };
+
+  const handleUploadFiles = async (fileList: FileList | null) => {
+    if (!activeProjectId || !fileList?.length || !canWrite) return;
+
+    const selectedFiles = Array.from(fileList);
+    setUploading(true);
+    try {
+      let uploadedCount = 0;
+      for (const file of selectedFiles) {
+        await filesApi.upload(activeProjectId, file);
+        uploadedCount++;
+      }
+      await fetchDocuments(activeProjectId);
+      await fetchTags(activeProjectId);
+      await fetchStats(activeProjectId);
+      dispatchToast(
+        "success",
+        "Files Uploaded",
+        `${uploadedCount} file${uploadedCount !== 1 ? "s" : ""} uploaded and queued for indexing.`,
+      );
+    } catch (e: any) {
+      dispatchToast("warning", "Upload Failed", e.message || "Could not upload files.");
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
   };
 
   // handleOrganize replaced by InteractiveSuggestionBox — toggle showOrganize state
@@ -267,6 +318,26 @@ export default function DocumentsView() {
             )}
           </div>
           <div className="flex items-center gap-2">
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              accept=".txt,.pdf,.docx,.csv,.md,.json,.xlsx,.xls,.mp3,.wav,.m4a,.ogg,.mp4,.webm,.mov,.jpg,.jpeg,.png,.gif"
+              onChange={(e) => handleUploadFiles(e.target.files)}
+              className="hidden"
+            />
+            <button
+              id="tour-target-document-upload"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={!activeProjectId || uploading || !canWrite}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm bg-istara-600 text-white hover:bg-istara-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              aria-label="Upload research files"
+              aria-busy={uploading}
+              title="Upload research files"
+            >
+              {uploading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+              {uploading ? "Uploading" : "Upload"}
+            </button>
             {/* View mode toggle */}
             <div className="flex items-center border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden" role="group" aria-label="View mode">
               <button
@@ -329,7 +400,7 @@ export default function DocumentsView() {
             </button>
             <button
               onClick={handleSync}
-              disabled={syncing}
+              disabled={syncing || !canWrite}
               className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors disabled:opacity-50"
               aria-label="Sync project files"
               title="Scan project folder for new files"
@@ -339,7 +410,7 @@ export default function DocumentsView() {
             </button>
             <button
               onClick={() => setShowOrganize(!showOrganize)}
-              disabled={!activeProjectId}
+              disabled={!activeProjectId || !canWrite}
               className={cn(
                 "flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm transition-colors disabled:opacity-50",
                 showOrganize
@@ -453,6 +524,11 @@ export default function DocumentsView() {
 
       {/* Document List */}
       <div className="flex-1 overflow-y-auto p-4" role="list" aria-label="Documents list">
+        {error && (
+          <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300" role="alert">
+            {error}
+          </div>
+        )}
         {loading && documents.length === 0 ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 size={20} className="animate-spin text-istara-600" />
@@ -487,6 +563,7 @@ export default function DocumentsView() {
                   doc={doc}
                   onOpen={() => handleOpenPreview(doc)}
                   onDelete={() => setConfirmDelete(doc.id)}
+                  canWrite={canWrite}
                   isSelected={selectedDocId === doc.id}
                 />
               ) : viewMode === "grid" ? (
@@ -495,6 +572,7 @@ export default function DocumentsView() {
                   doc={doc}
                   onOpen={() => handleOpenPreview(doc)}
                   onDelete={() => setConfirmDelete(doc.id)}
+                  canWrite={canWrite}
                   isSelected={selectedDocId === doc.id}
                 />
               ) : (
@@ -503,6 +581,7 @@ export default function DocumentsView() {
                   doc={doc}
                   onOpen={() => handleOpenPreview(doc)}
                   onDelete={() => setConfirmDelete(doc.id)}
+                  canWrite={canWrite}
                   isSelected={selectedDocId === doc.id}
                 />
               )
@@ -571,11 +650,13 @@ function DocumentCompactRow({
   doc,
   onOpen,
   onDelete,
+  canWrite,
   isSelected,
 }: {
   doc: ReclawDocument;
   onOpen: () => void;
   onDelete: () => void;
+  canWrite: boolean;
   isSelected: boolean;
 }) {
   const Icon = fileIcon(doc.file_type);
@@ -610,7 +691,7 @@ function DocumentCompactRow({
       <span className="text-xs text-slate-400 shrink-0 whitespace-nowrap">
         {timeAgo(doc.updated_at || doc.created_at)}
       </span>
-      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+      <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 shrink-0">
         <button
           onClick={(e) => { e.stopPropagation(); onOpen(); }}
           className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-400"
@@ -619,14 +700,16 @@ function DocumentCompactRow({
         >
           <Eye size={13} />
         </button>
-        <button
-          onClick={(e) => { e.stopPropagation(); onDelete(); }}
-          className="p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-slate-400 hover:text-red-600"
-          aria-label="Delete document"
-          title="Delete"
-        >
-          <Trash2 size={13} />
-        </button>
+        {canWrite && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onDelete(); }}
+            className="p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-slate-400 hover:text-red-600"
+            aria-label="Delete document"
+            title="Delete"
+          >
+            <Trash2 size={13} />
+          </button>
+        )}
       </div>
     </div>
   );
@@ -638,11 +721,13 @@ function DocumentGridCard({
   doc,
   onOpen,
   onDelete,
+  canWrite,
   isSelected,
 }: {
   doc: ReclawDocument;
   onOpen: () => void;
   onDelete: () => void;
+  canWrite: boolean;
   isSelected: boolean;
 }) {
   const Icon = fileIcon(doc.file_type);
@@ -669,7 +754,7 @@ function DocumentGridCard({
         <h4 className="text-sm font-medium text-slate-900 dark:text-white truncate flex-1">
           {doc.title}
         </h4>
-        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+        <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 shrink-0">
           <button
             onClick={(e) => { e.stopPropagation(); onOpen(); }}
             className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-400"
@@ -678,14 +763,16 @@ function DocumentGridCard({
           >
             <Eye size={13} />
           </button>
-          <button
-            onClick={(e) => { e.stopPropagation(); onDelete(); }}
-            className="p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-slate-400 hover:text-red-600"
-            aria-label="Delete document"
-            title="Delete"
-          >
-            <Trash2 size={13} />
-          </button>
+          {canWrite && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onDelete(); }}
+              className="p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-slate-400 hover:text-red-600"
+              aria-label="Delete document"
+              title="Delete"
+            >
+              <Trash2 size={13} />
+            </button>
+          )}
         </div>
       </div>
 
@@ -719,11 +806,13 @@ function DocumentCard({
   doc,
   onOpen,
   onDelete,
+  canWrite,
   isSelected,
 }: {
   doc: ReclawDocument;
   onOpen: () => void;
   onDelete: () => void;
+  canWrite: boolean;
   isSelected: boolean;
 }) {
   const Icon = fileIcon(doc.file_type);
@@ -837,7 +926,7 @@ function DocumentCard({
         </div>
 
         {/* Actions */}
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+        <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 shrink-0">
           <button
             onClick={(e) => { e.stopPropagation(); onOpen(); }}
             className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400"
@@ -846,14 +935,16 @@ function DocumentCard({
           >
             <Eye size={14} />
           </button>
-          <button
-            onClick={(e) => { e.stopPropagation(); onDelete(); }}
-            className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-slate-400 hover:text-red-600"
-            aria-label="Delete document"
-            title="Delete"
-          >
-            <Trash2 size={14} />
-          </button>
+          {canWrite && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onDelete(); }}
+              className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-slate-400 hover:text-red-600"
+              aria-label="Delete document"
+              title="Delete"
+            >
+              <Trash2 size={14} />
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -917,11 +1008,11 @@ function DocumentPreview({
               {content?.media_url && (
                 <div className="flex flex-col items-center justify-center py-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800">
                   {content.type && [".jpg", ".jpeg", ".png", ".gif"].includes(content.type) ? (
-                    <img src={`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}${content.media_url}`} alt={doc.title} className="max-h-96 rounded-lg" />
+                    <img src={`${API_BASE}${content.media_url}`} alt={doc.title} className="max-h-96 rounded-lg" />
                   ) : content.type && [".mp3", ".wav", ".m4a", ".ogg"].includes(content.type) ? (
-                    <audio controls src={`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}${content.media_url}`} className="w-full max-w-lg" />
+                    <audio controls src={`${API_BASE}${content.media_url}`} className="w-full max-w-lg" />
                   ) : content.type && [".mp4", ".webm", ".mov"].includes(content.type) ? (
-                    <video controls src={`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}${content.media_url}`} className="max-h-96 rounded-lg" />
+                    <video controls src={`${API_BASE}${content.media_url}`} className="max-h-96 rounded-lg" />
                   ) : null}
                   <p className="text-[10px] text-slate-400 mt-2">Original Media File</p>
                 </div>
@@ -935,9 +1026,13 @@ function DocumentPreview({
                       {content.type && [".mp3", ".wav", ".m4a", ".ogg"].includes(content.type) ? "Transcription" : "Document Content"}
                     </h3>
                   </div>
-                  <pre className="whitespace-pre-wrap text-sm text-slate-800 dark:text-slate-200 font-mono leading-relaxed bg-slate-50 dark:bg-slate-900 rounded-lg p-4 border border-slate-200 dark:border-slate-700">
-                    {content.content}
-                  </pre>
+                  {isMarkdownLike(content.type, content.file_name) ? (
+                    <MarkdownDocument content={content.content} />
+                  ) : (
+                    <pre className="whitespace-pre-wrap text-sm text-slate-800 dark:text-slate-200 font-mono leading-relaxed bg-slate-50 dark:bg-slate-900 rounded-lg p-4 border border-slate-200 dark:border-slate-700">
+                      {content.content}
+                    </pre>
+                  )}
                 </div>
               ) : !content?.media_url ? (
                 <div className="text-center py-12">

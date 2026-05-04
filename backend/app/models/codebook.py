@@ -13,6 +13,18 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.database import Base
 
 
+def _json_list(value: str | None) -> list:
+    import json
+
+    if not value:
+        return []
+    try:
+        parsed = json.loads(value)
+    except (json.JSONDecodeError, TypeError):
+        return []
+    return parsed if isinstance(parsed, list) else []
+
+
 class Codebook(Base):
     """A versioned codebook for qualitative coding.
 
@@ -89,7 +101,6 @@ class Code(Base):
     parent = relationship("Code", back_populates="children", remote_side="Code.id")
 
     def to_dict(self) -> dict:
-        import json
         return {
             "id": self.id,
             "codebook_id": self.codebook_id,
@@ -98,7 +109,7 @@ class Code(Base):
             "definition": self.definition,
             "inclusion_criteria": self.inclusion_criteria,
             "exclusion_criteria": self.exclusion_criteria,
-            "examples": json.loads(self.examples) if self.examples else [],
+            "examples": _json_list(self.examples),
             "code_type": self.code_type,
             "frequency": self.frequency,
             "kappa": self.kappa,

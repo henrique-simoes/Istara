@@ -42,6 +42,22 @@ class Task(Base):
     output_document_ids: Mapped[str] = mapped_column(Text, default="[]")  # JSON list of document IDs
     urls: Mapped[str] = mapped_column(Text, default="[]")  # JSON list of URLs to fetch
     instructions: Mapped[str] = mapped_column(Text, default="")  # Specific instructions from user
+    labels: Mapped[str] = mapped_column(Text, default="[]")  # JSON list of task-management labels
+
+    # Human review / reward signal state
+    review_state: Mapped[str] = mapped_column(String(30), default="none")
+    what_to_review: Mapped[str] = mapped_column(Text, default="")
+    review_cycle_count: Mapped[int] = mapped_column(Integer, default=0)
+    failure_streak: Mapped[int] = mapped_column(Integer, default=0)
+    approval_streak: Mapped[int] = mapped_column(Integer, default=0)
+    last_review_outcome: Mapped[str | None] = mapped_column(String(50), nullable=True, default=None)
+    last_reviewed_by: Mapped[str | None] = mapped_column(String(36), nullable=True, default=None)
+    last_reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, default=None)
+    last_review_feedback: Mapped[str] = mapped_column(Text, default="")
+    next_agent_action: Mapped[str | None] = mapped_column(String(30), nullable=True, default=None)
+    human_feedback_score: Mapped[float | None] = mapped_column(Float, nullable=True, default=None)
+    review_severity: Mapped[str | None] = mapped_column(String(20), nullable=True, default=None)
+    review_failure_category: Mapped[str | None] = mapped_column(String(60), nullable=True, default=None)
 
     # Task locking (multi-user)
     locked_by: Mapped[str | None] = mapped_column(String(36), nullable=True, default=None)
@@ -98,3 +114,13 @@ class Task(Base):
 
     def set_urls(self, urls: list[str]):
         self.urls = json.dumps(urls)
+
+    def get_labels(self) -> list[dict | str]:
+        try:
+            labels = json.loads(self.labels or "[]")
+            return labels if isinstance(labels, list) else []
+        except (json.JSONDecodeError, TypeError):
+            return []
+
+    def set_labels(self, labels: list[dict | str]):
+        self.labels = json.dumps(labels)

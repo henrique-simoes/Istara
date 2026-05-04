@@ -17,7 +17,7 @@ export const SIDEBAR = {
   container: 'aside[role="navigation"][aria-label="Main navigation"]',
 
   /** Navigation tab list */
-  tablist: 'nav[role="tablist"][aria-label="Views"]',
+  tablist: '[role="tablist"][aria-label="Main views"]',
 
   /** Individual nav tabs (primary) */
   chatTab: 'button[role="tab"][aria-label="Chat"]',
@@ -31,9 +31,14 @@ export const SIDEBAR = {
   moreToggle: 'button[aria-label="More views"]',
 
   /** Secondary nav tabs (visible after clicking "More views") */
-  metricsTab: 'button[role="tab"][aria-label="Metrics"]',
+  qualityTab: 'button[role="tab"][aria-label="Quality Dashboard"]',
+  projectSettingsTab: 'button[role="tab"][aria-label="Project Settings"]',
   historyTab: 'button[role="tab"][aria-label="History"]',
   settingsTab: 'button[role="tab"][aria-label="Settings"]',
+
+  /** Mobile navigation */
+  mobileContainer: 'nav[aria-label="Mobile navigation"]',
+  mobileMenu: '[role="dialog"][aria-label="Mobile navigation menu"]',
 
   /** Helper to get a tab by view name */
   tab: (viewName) => `button[role="tab"][aria-label="${viewName}"]`,

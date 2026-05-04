@@ -6,12 +6,15 @@ Google Chat API with service account credentials.
 Required config keys:
     webhook_url                -- Incoming webhook URL for simple send-only mode
     service_account_json       -- JSON string of service account credentials (for full API)
+    webhook_token              -- Shared secret required for inbound webhooks
 """
 
 from __future__ import annotations
 
 import json
 import logging
+import os
+import hmac
 
 from app.channels.base import ChannelAdapter, IncomingMessage, OutgoingMessage
 
@@ -33,6 +36,9 @@ class GoogleChatAdapter(ChannelAdapter):
         super().__init__(instance_id, config)
         self._webhook_url: str = self.config.get("webhook_url", "")
         self._service_account_json: str = self.config.get("service_account_json", "")
+        self._webhook_token: str = self.config.get("webhook_token", "") or os.getenv(
+            "GOOGLE_CHAT_WEBHOOK_TOKEN", ""
+        )
         self._http: httpx.AsyncClient | None = None
 
     # -- ChannelAdapter interface ---------------------------------------------
@@ -123,6 +129,10 @@ class GoogleChatAdapter(ChannelAdapter):
         }
 
     # -- Webhook handling -----------------------------------------------------
+
+    def verify_webhook_token(self, token: str | None) -> bool:
+        """Verify the shared inbound webhook token."""
+        return bool(self._webhook_token and token and hmac.compare_digest(token, self._webhook_token))
 
     async def handle_webhook(self, data: dict) -> None:
         """Parse an incoming Google Chat event and dispatch."""

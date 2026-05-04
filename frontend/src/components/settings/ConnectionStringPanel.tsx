@@ -3,14 +3,21 @@ import { Copy, Check, Key, RefreshCw, Loader2, Shield, Trash2, Clock, Globe } fr
 import { useAuthStore } from "@/stores/authStore";
 import { cn, formatDate } from "@/lib/utils";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+import { API_BASE, WS_BASE } from "@/lib/runtimeConfig";
 
 interface ActiveConnectionString {
   id: string;
   label: string;
-  connection_string: string;
+  connection_string_preview: string;
+  token_type: "user_invite" | "compute_donation";
+  intended_role?: string | null;
   expires_at: string;
   is_expired: boolean;
+  is_active: boolean;
+  is_redeemed: boolean;
+  redeemed_username?: string | null;
+  redeemed_at?: string | null;
+  last_validated_at?: string | null;
 }
 
 export default function ConnectionStringPanel() {
@@ -19,6 +26,8 @@ export default function ConnectionStringPanel() {
 
   const [label, setLabel] = useState("");
   const [expiryHours, setExpiryHours] = useState(168);
+  const [tokenType, setTokenType] = useState<"user_invite" | "compute_donation">("user_invite");
+  const [role, setRole] = useState<"researcher" | "viewer" | "admin">("researcher");
   const [connectionString, setConnectionString] = useState("");
   const [activeStrings, setActiveStrings] = useState<ActiveConnectionString[]>([]);
   const [loading, setLoading] = useState(false);
@@ -57,8 +66,11 @@ export default function ConnectionStringPanel() {
     setConnectionString("");
     try {
       const token = localStorage.getItem("istara_token");
-      const serverUrl = window.location.origin.replace(":3000", ":8000");
-      const res = await fetch(`${API_BASE}/api/connections/generate`, {
+      const serverUrl = window.location.origin;
+      const endpoint = tokenType === "compute_donation"
+        ? "/api/connections/compute-donation/generate"
+        : "/api/connections/generate";
+      const res = await fetch(`${API_BASE}${endpoint}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -66,8 +78,10 @@ export default function ConnectionStringPanel() {
         },
         body: JSON.stringify({
           server_url: serverUrl,
-          label: label.trim() || "Team Member",
+          ws_url: `${WS_BASE}/ws/relay`,
+          label: label.trim() || (tokenType === "compute_donation" ? "Compute Node" : "Team Member"),
           expires_hours: expiryHours,
+          ...(tokenType === "user_invite" ? { role } : {}),
         }),
       });
       if (!res.ok) {
@@ -99,9 +113,12 @@ export default function ConnectionStringPanel() {
       });
       if (res.ok) {
         loadActiveStrings();
+      } else {
+        const data = await res.json().catch(() => ({ detail: "Revocation failed" }));
+        throw new Error(data.detail || "Revocation failed");
       }
-    } catch (e) {
-      console.error("Revocation failed", e);
+    } catch (e: any) {
+      setError(e.message || "Revocation failed");
     }
   };
 
@@ -110,13 +127,17 @@ export default function ConnectionStringPanel() {
     setRotating(true);
     try {
       const token = localStorage.getItem("istara_token");
-      await fetch(`${API_BASE}/api/connections/rotate-network-token`, {
+      const res = await fetch(`${API_BASE}/api/connections/rotate-network-token`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
       });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({ detail: "Token rotation failed" }));
+        throw new Error(data.detail || "Token rotation failed");
+      }
       setConnectionString("");
       loadActiveStrings();
     } catch (e: any) {
@@ -150,14 +171,33 @@ export default function ConnectionStringPanel() {
       </p>
 
       {/* Generate form */}
-      <div className="flex gap-2 mb-4">
+      <div className="grid grid-cols-1 gap-2 mb-4 md:grid-cols-[1fr_auto_auto_auto_auto]">
         <input
           type="text"
-          placeholder="Label (e.g. Researcher Laptop)"
+          placeholder={tokenType === "compute_donation" ? "Label (e.g. RTX Workstation)" : "Label (e.g. Researcher Laptop)"}
           value={label}
           onChange={(e) => setLabel(e.target.value)}
           className="flex-1 px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-istara-500"
         />
+        <select
+          value={tokenType}
+          onChange={(e) => setTokenType(e.target.value as "user_invite" | "compute_donation")}
+          className="px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-istara-500"
+        >
+          <option value="user_invite">User invite</option>
+          <option value="compute_donation">Compute donation</option>
+        </select>
+        {tokenType === "user_invite" && (
+          <select
+            value={role}
+            onChange={(e) => setRole(e.target.value as "researcher" | "viewer" | "admin")}
+            className="px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-istara-500"
+          >
+            <option value="researcher">Researcher</option>
+            <option value="viewer">Viewer</option>
+            <option value="admin">Admin</option>
+          </select>
+        )}
         <select
           value={expiryHours}
           onChange={(e) => setExpiryHours(Number(e.target.value))}
@@ -193,19 +233,25 @@ export default function ConnectionStringPanel() {
             >
               <div className="flex flex-col gap-0.5 overflow-hidden">
                 <span className="font-bold text-slate-700 dark:text-slate-200 truncate">{str.label}</span>
+                <span className="font-mono text-[10px] text-slate-400 truncate">{str.connection_string_preview}</span>
                 <div className="flex items-center gap-2 text-slate-400">
+                  <span className="font-medium text-slate-500 dark:text-slate-300">
+                    {str.token_type === "compute_donation" ? "Compute" : str.intended_role || "Invite"}
+                  </span>
                   <span className="flex items-center gap-0.5"><Clock size={10} /> Exp: {formatDate(str.expires_at)}</span>
+                  {str.is_redeemed && <span className="text-green-600 dark:text-green-400 font-medium">Redeemed</span>}
+                  {!str.is_active && <span className="text-red-500 font-medium">Revoked</span>}
                   {str.is_expired && <span className="text-red-500 font-medium">Expired</span>}
                 </div>
+                {(str.redeemed_username || str.last_validated_at) && (
+                  <div className="text-slate-400">
+                    {str.redeemed_username
+                      ? `User: ${str.redeemed_username}${str.redeemed_at ? ` on ${formatDate(str.redeemed_at)}` : ""}`
+                      : `Last checked: ${formatDate(str.last_validated_at || "")}`}
+                  </div>
+                )}
               </div>
               <div className="flex items-center gap-1">
-                <button
-                  onClick={() => handleCopy(str.connection_string)}
-                  className="p-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 transition-colors"
-                  title="Copy string"
-                >
-                  <Copy size={14} />
-                </button>
                 <button
                   onClick={() => handleRevoke(str.id)}
                   className="p-1.5 rounded-md hover:bg-red-50 dark:hover:bg-red-900/30 text-slate-400 hover:text-red-600 transition-colors"

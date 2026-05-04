@@ -1,11 +1,12 @@
 """Audit API routes — DevOps, UI audit agent, and system audit log endpoints."""
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.devops_agent import devops_agent
 from app.agents.ui_audit_agent import ui_audit_agent
+from app.core.security_middleware import require_admin_from_request
 from app.models.database import get_db
 from app.core.audit_middleware import AuditLog
 
@@ -13,8 +14,9 @@ router = APIRouter()
 
 
 @router.get("/audit/devops/latest")
-async def get_devops_audit():
+async def get_devops_audit(request: Request):
     """Get the latest DevOps audit report."""
+    require_admin_from_request(request)
     report = devops_agent.get_latest_report()
     if not report:
         return {"status": "no_reports", "message": "No audit has run yet."}
@@ -22,21 +24,24 @@ async def get_devops_audit():
 
 
 @router.get("/audit/devops/history")
-async def get_devops_history(limit: int = 10):
+async def get_devops_history(request: Request, limit: int = 10):
     """Get recent DevOps audit reports."""
+    require_admin_from_request(request)
     return {"reports": devops_agent.get_reports(limit)}
 
 
 @router.post("/audit/devops/run")
-async def trigger_devops_audit():
+async def trigger_devops_audit(request: Request):
     """Trigger an immediate DevOps audit cycle."""
+    require_admin_from_request(request)
     report = await devops_agent.run_audit_cycle()
     return report
 
 
 @router.get("/audit/ui/latest")
-async def get_ui_audit():
+async def get_ui_audit(request: Request):
     """Get the latest UI audit report."""
+    require_admin_from_request(request)
     report = ui_audit_agent.get_latest_report()
     if not report:
         return {"status": "no_reports", "message": "No UI audit has run yet."}
@@ -61,8 +66,9 @@ async def get_ui_audit():
 
 
 @router.get("/audit/ui/history")
-async def get_ui_history(limit: int = 10):
+async def get_ui_history(request: Request, limit: int = 10):
     """Get recent UI audit reports."""
+    require_admin_from_request(request)
     reports = ui_audit_agent.get_reports(limit)
     return {
         "reports": [
@@ -78,8 +84,9 @@ async def get_ui_history(limit: int = 10):
 
 
 @router.post("/audit/ui/run")
-async def trigger_ui_audit():
+async def trigger_ui_audit(request: Request):
     """Trigger an immediate UI audit cycle."""
+    require_admin_from_request(request)
     report = await ui_audit_agent.run_audit()
     return {
         "timestamp": report.timestamp,
@@ -102,6 +109,7 @@ async def trigger_ui_audit():
 
 @router.get("/audit/logs")
 async def get_audit_logs(
+    request: Request,
     limit: int = Query(default=100, le=500),
     offset: int = Query(default=0, ge=0),
     user_id: str | None = None,
@@ -115,6 +123,7 @@ async def get_audit_logs(
     Provides a persistent trail of all API requests for compliance,
     debugging, and research audit requirements.
     """
+    require_admin_from_request(request)
     stmt = select(AuditLog).order_by(AuditLog.timestamp.desc()).limit(limit).offset(offset)
     if user_id:
         stmt = stmt.where(AuditLog.user_id == user_id)

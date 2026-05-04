@@ -259,6 +259,19 @@ async def hybrid_search(
         agent_id=agent_id,
     )
     keyword_results = await kw_index.search(query, top_k=k * 2)
+    if source_filter:
+        keyword_results = [kr for kr in keyword_results if kr.source == source_filter]
+    if file_type_filter:
+        normalized_file_type = file_type_filter.lstrip(".").lower()
+        keyword_results = [
+            kr
+            for kr in keyword_results
+            if Path(kr.source).suffix.lstrip(".").lower() == normalized_file_type
+        ]
+    if agent_id is not None:
+        # The keyword index does not currently store agent ownership; avoid
+        # mixing unscoped keyword hits into an agent-scoped retrieval.
+        keyword_results = []
 
     vw = settings.rag_hybrid_vector_weight
     kw = settings.rag_hybrid_keyword_weight
@@ -341,6 +354,10 @@ async def retrieve_context(
     project_id: str,
     query: str,
     top_k: int | None = None,
+    *,
+    source_filter: str | None = None,
+    file_type_filter: str | None = None,
+    agent_id: str | None = None,
 ) -> RAGContext:
     """Retrieve relevant context for a query.
 
@@ -353,7 +370,15 @@ async def retrieve_context(
         RAGContext with retrieved documents and formatted context.
     """
     query_vector = await embed_text(query)
-    results = await hybrid_search(project_id, query, query_vector, top_k=top_k)
+    results = await hybrid_search(
+        project_id,
+        query,
+        query_vector,
+        top_k=top_k,
+        source_filter=source_filter,
+        file_type_filter=file_type_filter,
+        agent_id=agent_id,
+    )
 
     # Format context for the LLM — wrap each chunk in untrusted delimiters
     context_parts = []

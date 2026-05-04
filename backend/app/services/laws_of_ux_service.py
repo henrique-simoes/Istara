@@ -32,9 +32,11 @@ class LawsOfUXService:
             data = json.loads(LAWS_FILE.read_text())
             for law in data.get("laws", []):
                 self._laws[law["id"]] = law
-                self._keyword_index[law["id"]] = set(
-                    k.lower() for k in law.get("detection_keywords", [])
-                )
+                self._keyword_index[law["id"]] = {
+                    k.lower().strip()
+                    for k in law.get("detection_keywords", [])
+                    if isinstance(k, str) and k.strip()
+                }
                 for h in law.get("related_nielsen_heuristics", []):
                     self._heuristic_map.setdefault(h, []).append(law["id"])
             self._loaded = True
@@ -65,20 +67,37 @@ class LawsOfUXService:
         Uses Jaccard-like overlap scoring (same pattern as prompt_rag.py).
         Returns [(law_id, score)] sorted by score descending.
         """
-        text_tokens = set(re.findall(r'\b\w{3,}\b', text.lower()))
+        text_normalized = re.sub(r"\s+", " ", text.lower()).strip()
+        text_tokens = set(re.findall(r"\b\w{3,}\b", text_normalized))
         if not text_tokens:
             return []
 
         scores = []
         for law_id, keywords in self._keyword_index.items():
-            overlap = text_tokens & keywords
-            if not overlap:
+            keyword_tokens: set[str] = set()
+            matched_tokens: set[str] = set()
+            phrase_weight = 0
+            for keyword in keywords:
+                tokens = set(re.findall(r"\b\w{3,}\b", keyword))
+                keyword_tokens.update(tokens)
+                if " " in keyword and keyword in text_normalized:
+                    phrase_weight += max(1, len(tokens))
+                    matched_tokens.update(tokens)
+                    continue
+                matched_tokens.update(text_tokens & tokens)
+
+            if not matched_tokens and phrase_weight == 0:
                 continue
-            # Jaccard-ish similarity
-            score = len(overlap) / (len(text_tokens) + len(keywords) - len(overlap))
+            # Jaccard-ish similarity over normalized keyword tokens, with phrase
+            # matches weighted so "hard to click" and "too many options" are not
+            # diluted into unrelated single-token noise.
+            denominator = max(1, len(text_tokens | keyword_tokens))
+            score = (len(matched_tokens) + phrase_weight) / denominator
             # Boost for multiple keyword matches (compound evidence)
-            if len(overlap) >= 2:
+            if len(matched_tokens) >= 2:
                 score *= 1.3
+            if phrase_weight:
+                score *= 1.2
             scores.append((law_id, min(score, 1.0)))
 
         scores.sort(key=lambda x: x[1], reverse=True)
@@ -113,6 +132,8 @@ class LawsOfUXService:
         Score degrades proportionally to violation count.
         """
         law_violations: dict[str, list[str]] = {lid: [] for lid in self._laws}
+        evidence_count = 0
+        law_tag_count = 0
 
         for nugget in nuggets:
             tags = nugget.get("tags", [])
@@ -121,11 +142,16 @@ class LawsOfUXService:
                     tags = json.loads(tags)
                 except Exception:
                     tags = []
+            has_law_evidence = False
             for tag in tags:
-                if tag.startswith("ux-law:"):
+                if isinstance(tag, str) and tag.startswith("ux-law:"):
+                    law_tag_count += 1
+                    has_law_evidence = True
                     law_id = tag.removeprefix("ux-law:")
                     if law_id in law_violations:
                         law_violations[law_id].append(nugget.get("id", ""))
+            if has_law_evidence:
+                evidence_count += 1
 
         by_law = []
         category_scores: dict[str, list[float]] = {}
@@ -164,6 +190,10 @@ class LawsOfUXService:
             "overall_score": overall,
             "by_category": by_category,
             "by_law": sorted(by_law, key=lambda x: x["score"]),
+            "evaluated": evidence_count > 0,
+            "evidence_count": evidence_count,
+            "total_findings": len(nuggets),
+            "law_tag_count": law_tag_count,
         }
 
     def get_radar_chart_data(self, compliance: dict) -> dict:

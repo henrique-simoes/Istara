@@ -13,6 +13,7 @@ import {
   BookOpen,
   ClipboardCheck,
   Layers,
+  X,
 } from "lucide-react";
 import { useProjectStore } from "@/stores/projectStore";
 import { findings as findingsApi } from "@/lib/api";
@@ -28,6 +29,13 @@ const CodeReviewQueue = lazy(() => import("./CodeReviewQueue"));
 const ProjectReportsView = lazy(() => import("./ProjectReportsView"));
 
 type FindingsTab = "evidence" | "codebook" | "review" | "reports";
+type FindingsNavigationFilter = {
+  law_id?: string;
+} | null;
+
+interface FindingsViewProps {
+  navigationFilter?: FindingsNavigationFilter;
+}
 
 const FINDINGS_TABS: { id: FindingsTab; label: string; icon: typeof Diamond }[] = [
   { id: "evidence", label: "Evidence", icon: Sparkles },
@@ -43,10 +51,14 @@ const PHASE_TABS: { id: ProjectPhase; label: string; icon: typeof Diamond }[] = 
   { id: "deliver", label: "Deliver", icon: Diamond },
 ];
 
-export default function FindingsView() {
+const isProjectPhase = (phase: string): phase is ProjectPhase =>
+  ["discover", "define", "develop", "deliver"].includes(phase);
+
+export default function FindingsView({ navigationFilter = null }: FindingsViewProps) {
   const { activeProjectId } = useProjectStore();
   const [activeTab, setActiveTab] = useState<FindingsTab>("evidence");
   const [activePhase, setActivePhase] = useState<ProjectPhase>("discover");
+  const [lawFilter, setLawFilter] = useState<string | null>(null);
   const [summary, setSummary] = useState<FindingsSummary | null>(null);
   const [nuggets, setNuggets] = useState<Nugget[]>([]);
   const [facts, setFacts] = useState<Fact[]>([]);
@@ -69,6 +81,21 @@ export default function FindingsView() {
     findingsApi.recommendations(activeProjectId).then(setRecommendations).catch(console.error);
   }, [activeProjectId]);
 
+  useEffect(() => {
+    if (!navigationFilter?.law_id) return;
+    setLawFilter(navigationFilter.law_id);
+    setActiveTab("evidence");
+    setExpandedSection("nuggets");
+  }, [navigationFilter?.law_id]);
+
+  useEffect(() => {
+    if (!lawFilter) return;
+    const firstMatch = nuggets.find((n) => Array.isArray(n.tags) && n.tags.includes(`ux-law:${lawFilter}`));
+    if (firstMatch?.phase && isProjectPhase(firstMatch.phase)) {
+      setActivePhase(firstMatch.phase);
+    }
+  }, [lawFilter, nuggets]);
+
   if (!activeProjectId) {
     return (
       <div className="flex-1 flex items-center justify-center text-slate-400">
@@ -77,7 +104,10 @@ export default function FindingsView() {
     );
   }
 
-  const phaseNuggets = nuggets.filter((n) => n.phase === activePhase);
+  const hasSelectedLaw = (item: { tags?: string[] }) =>
+    !lawFilter || (Array.isArray(item.tags) && item.tags.includes(`ux-law:${lawFilter}`));
+
+  const phaseNuggets = nuggets.filter((n) => n.phase === activePhase && hasSelectedLaw(n));
   const phaseFacts = facts.filter((f) => f.phase === activePhase);
   const phaseInsights = insights.filter((i) => i.phase === activePhase);
   const phaseRecs = recommendations.filter((r) => r.phase === activePhase);
@@ -194,6 +224,21 @@ export default function FindingsView() {
       {activeTab === "evidence" && (
       <>
       <div className="p-4 border-b border-slate-200 dark:border-slate-800">
+        {lawFilter && (
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-100">
+            <span>
+              Showing findings tagged with <span className="font-semibold">ux-law:{lawFilter}</span>
+            </span>
+            <button
+              onClick={() => setLawFilter(null)}
+              className="inline-flex items-center gap-1 rounded-md px-2 py-1 font-medium text-amber-800 hover:bg-amber-100 dark:text-amber-100 dark:hover:bg-amber-900/40"
+              aria-label="Clear UX law findings filter"
+            >
+              <X size={12} />
+              Clear
+            </button>
+          </div>
+        )}
         {/* Phase tabs */}
         <div
           className="flex gap-1 bg-slate-100 dark:bg-slate-800 rounded-lg p-1"

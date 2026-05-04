@@ -224,6 +224,22 @@ detect_npm() {
     return 1
 }
 
+detect_ffmpeg() {
+    local paths=(
+        "ffmpeg"
+        "/opt/homebrew/bin/ffmpeg"
+        "/usr/local/bin/ffmpeg"
+        "/usr/bin/ffmpeg"
+    )
+    for ff in "${paths[@]}"; do
+        if command -v "$ff" >/dev/null 2>&1 || [ -x "$ff" ]; then
+            echo "$ff"
+            return 0
+        fi
+    done
+    return 1
+}
+
 detect_git() { command -v git >/dev/null 2>&1; }
 
 get_latest_release_version() {
@@ -355,6 +371,33 @@ ensure_node() {
     ok "Node $($(detect_node) --version 2>&1) installed"
 }
 
+ensure_ffmpeg() {
+    local found_ffmpeg=""
+    found_ffmpeg=$(detect_ffmpeg 2>/dev/null) || found_ffmpeg=""
+    if [ -n "$found_ffmpeg" ]; then
+        local fver; fver=$("$found_ffmpeg" -version 2>&1 | head -1 || echo "unknown")
+        ok "$fver ($found_ffmpeg)"
+        return 0
+    fi
+
+    info "Installing FFmpeg (required for Whisper transcription)..."
+    if [ "$PLATFORM" = "macos" ]; then
+        ensure_homebrew
+        brew install ffmpeg
+    else
+        sudo apt-get update 2>/dev/null || true
+        sudo apt-get install -y ffmpeg 2>/dev/null || \
+            sudo dnf install -y ffmpeg 2>/dev/null || \
+            sudo yum install -y ffmpeg 2>/dev/null || {
+                fail "Failed to install FFmpeg. Install it with your package manager and rerun the installer."
+                exit 1
+            }
+    fi
+    found_ffmpeg=$(detect_ffmpeg 2>/dev/null) || found_ffmpeg=""
+    [ -n "$found_ffmpeg" ] || { fail "FFmpeg installed but not detected in PATH."; exit 1; }
+    ok "FFmpeg installed"
+}
+
 ensure_git() {
     detect_git && { ok "Git $(git --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')"; return 0; }
     info "Installing Git..."
@@ -406,6 +449,7 @@ ensure_git
 if [ "$MODE" = "server" ]; then
     ensure_python
     ensure_node
+    ensure_ffmpeg
 
     # Check for LLM provider
     LLM_PROVIDER=""
@@ -483,7 +527,16 @@ if [ "$MODE" = "server" ]; then
     info "Upgrading pip..."
     "$INSTALL_DIR/venv/bin/pip" install --upgrade pip 2>&1 | tail -1
     info "Installing backend dependencies (this takes 1-3 minutes)..."
-    "$INSTALL_DIR/venv/bin/pip" install -r "$INSTALL_DIR/backend/requirements.txt" 2>&1 | grep -E "^(Collecting|Installing|Successfully)" | head -20 || true
+    PIP_INSTALL_LOG="$(mktemp)"
+    if "$INSTALL_DIR/venv/bin/pip" install -r "$INSTALL_DIR/backend/requirements.txt" >"$PIP_INSTALL_LOG" 2>&1; then
+        grep -E "^(Collecting|Installing|Successfully)" "$PIP_INSTALL_LOG" | head -20 || true
+    else
+        tail -40 "$PIP_INSTALL_LOG" >&2
+        rm -f "$PIP_INSTALL_LOG"
+        fail "Backend dependency installation failed"
+        exit 1
+    fi
+    rm -f "$PIP_INSTALL_LOG"
     ok "Backend dependencies installed"
 
     # Frontend
@@ -496,14 +549,12 @@ if [ "$MODE" = "server" ]; then
     ok "Frontend dependencies installed"
 
     info "Building frontend (this takes 1-2 minutes)..."
-    NEXT_PUBLIC_API_URL="http://localhost:8000" \
-    NEXT_PUBLIC_WS_URL="ws://localhost:8000" \
     "$NPM" run build 2>&1 | tail -5 || { fail "Frontend build failed"; exit 1; }
     ok "Frontend built"
 
     # Data directories
     cd "$INSTALL_DIR"
-    mkdir -p data/{uploads,projects,lance_db,backups,channel_audio}
+    mkdir -p data/{uploads,projects,lance_db,backups,channel_audio,channel_audio/telegram,channel_audio/whatsapp}
     ok "Data directories created"
 
 # ── Step 6: Configuration ──────────────────────────────────────
@@ -561,7 +612,8 @@ DATA_ENCRYPTION_KEY=${ENCRYPT_KEY}
 NETWORK_ACCESS_TOKEN=${NET_TOKEN}
 TEAM_MODE=${TEAM_MODE}
 
-CORS_ORIGINS=http://localhost:${FRONTEND_PORT}
+CORS_ORIGINS=http://localhost:${FRONTEND_PORT},http://127.0.0.1:${FRONTEND_PORT}
+CORS_ORIGIN_REGEX=https?://[^/]+:${FRONTEND_PORT}
 
 RAG_CHUNK_SIZE=1500
 RAG_CHUNK_OVERLAP=200
@@ -589,6 +641,7 @@ ENVEOF
 else
     # Client mode — just install relay
     header "Step 4: Client Setup"
+    NODE=$(detect_node)
     NPM=$(detect_npm)
     cd "$INSTALL_DIR/relay"
     "$NPM" install --silent 2>/dev/null || true
@@ -597,10 +650,20 @@ else
     print_client_connection_help
     ask "Paste your connection string (from server admin): "
     CONN_STR=""; read -r CONN_STR </dev/tty
+    CLIENT_SERVER_URL=""
+    CLIENT_WS_URL=""
     mkdir -p "$HOME/.istara"
     if [ -n "$CONN_STR" ]; then
-        CLIENT_DONATE="true"
-        ok "Connection string saved for Client mode"
+        if [[ "$CONN_STR" != rcl_* ]]; then
+            warn "That does not look like an rcl_ invite. Raw server URLs are not valid for Client mode."
+            CONN_STR=""
+            CLIENT_DONATE="false"
+        else
+            CLIENT_SERVER_URL=$(CONN_STR="$CONN_STR" "$NODE" -e 'const s=process.env.CONN_STR||""; const b=s.slice(4).split(".")[0]; const p=JSON.parse(Buffer.from(b.replace(/-/g,"+").replace(/_/g,"/"),"base64").toString("utf8")); process.stdout.write((p.server_url||"").replace(/\/$/,""));' 2>/dev/null || true)
+            CLIENT_WS_URL=$(CONN_STR="$CONN_STR" "$NODE" -e 'const s=process.env.CONN_STR||""; const b=s.slice(4).split(".")[0]; const p=JSON.parse(Buffer.from(b.replace(/-/g,"+").replace(/_/g,"/"),"base64").toString("utf8")); process.stdout.write(p.ws_url||"");' 2>/dev/null || true)
+            CLIENT_DONATE="true"
+            ok "Connection string saved for Client mode"
+        fi
     else
         CLIENT_DONATE="false"
         warn "No connection string saved yet — you can add one later in the desktop app"
@@ -608,8 +671,8 @@ else
     cat > "$HOME/.istara/config.json" <<CEOF
 {
   "mode": "client",
-  "server_url": "",
-  "ws_url": "",
+  "server_url": "$CLIENT_SERVER_URL",
+  "ws_url": "$CLIENT_WS_URL",
   "connection_string": "$CONN_STR",
   "donate_compute": $CLIENT_DONATE,
   "install_dir": "$INSTALL_DIR"

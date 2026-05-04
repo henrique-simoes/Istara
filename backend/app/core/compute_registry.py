@@ -15,12 +15,14 @@ import asyncio
 import json
 import logging
 import time
+import uuid
 from dataclasses import dataclass, field
 from typing import Any, AsyncGenerator
 
 import httpx
 
 from app.config import settings
+from app.core.compute_capacity import compute_capacity_envelope, node_capacity_score
 
 logger = logging.getLogger(__name__)
 
@@ -72,12 +74,15 @@ class ComputeNode:
     priority: int = 10
     latency_ms: float = 0
     active_requests: int = 0
+    max_active_requests: int = 4
     is_local: bool = False
     is_relay: bool = False
 
     # Connection (relay nodes)
     websocket: Any = None
+    pending_requests: dict = field(default_factory=dict)
     last_heartbeat: float = 0
+    relay_request_timeout_s: float = 300
 
     # Relay-specific fields (backward compat with RelayNode)
     user_id: str = ""
@@ -118,18 +123,7 @@ class ComputeNode:
         return self.name
 
     def score(self) -> float:
-        if not self.is_healthy:
-            return -1
-        if self.health_state == "cooldown" and time.time() < self.cooldown_until:
-            return -1
-        s = 100.0
-        s -= self.active_requests * 15
-        if self.latency_ms:
-            s -= min(self.latency_ms / 10, 30)
-        s -= self.priority
-        if self.ram_available_gb:
-            s += min(self.ram_available_gb * 2, 20)
-        return s
+        return node_capacity_score(self)
 
     def is_alive(self, timeout: float = 90) -> bool:
         """Backward compat with RelayNode.is_alive()."""
@@ -204,6 +198,43 @@ class ComputeNode:
         if self._client and not self._client.is_closed:
             await self._client.aclose()
 
+    def fail_pending_requests(self, reason: str) -> None:
+        """Fail in-flight relay/browser requests when the websocket disappears."""
+        for request_id, future in list(self.pending_requests.items()):
+            if future and not future.done():
+                future.set_exception(RuntimeError(reason))
+            self.pending_requests.pop(request_id, None)
+
+    async def _request_over_websocket(self, request_type: str, payload: dict) -> dict:
+        """Send a request to a relay/browser donor over its outbound websocket."""
+        if self.source not in ("relay", "browser") or not self.websocket:
+            raise RuntimeError("Node is not connected over relay websocket")
+
+        request_id = f"relay-{uuid.uuid4()}"
+        loop = asyncio.get_running_loop()
+        future = loop.create_future()
+        self.pending_requests[request_id] = future
+        await self.websocket.send_json(
+            {
+                "type": request_type,
+                "request_id": request_id,
+                **payload,
+            }
+        )
+        try:
+            response = await asyncio.wait_for(future, timeout=self.relay_request_timeout_s)
+        except asyncio.TimeoutError as exc:
+            self.health_error = f"Relay request timed out after {self.relay_request_timeout_s:.0f}s"
+            raise RuntimeError(self.health_error) from exc
+        finally:
+            self.pending_requests.pop(request_id, None)
+
+        if response.get("error"):
+            self.health_error = str(response["error"])
+            raise RuntimeError(self.health_error)
+        self.health_error = ""
+        return response
+
     async def check_health(self) -> bool:
         """Probe the server health endpoint and discover available models.
 
@@ -222,15 +253,30 @@ class ComputeNode:
                 try:
                     data = resp.json()
                     if self.provider_type == "ollama":
-                        self.loaded_models = [m.get("name", "") for m in data.get("models", [])]
+                        raw_models = data.get("models", []) if isinstance(data, dict) else []
+                        self.loaded_models = [
+                            m.get("name", "")
+                            for m in raw_models
+                            if isinstance(m, dict) and m.get("name")
+                        ]
                     else:
-                        self.loaded_models = [m.get("id", "") for m in data.get("data", [])]
+                        raw_models = data.get("data", []) if isinstance(data, dict) else []
+                        self.loaded_models = [
+                            m.get("id", "")
+                            for m in raw_models
+                            if isinstance(m, dict) and m.get("id")
+                        ]
                 except Exception:
-                    pass
-                self.health_state = "ready"
-                self.health_error = ""
-                self.consecutive_failures = 0
-                self.last_health_check = time.time()
+                    self.loaded_models = []
+                if self.loaded_models:
+                    self.health_state = "ready"
+                    self.health_error = ""
+                    self.consecutive_failures = 0
+                    self.last_health_check = time.time()
+                else:
+                    self.is_healthy = False
+                    self.health_state = "unhealthy"
+                    self.health_error = "No LLM models advertised by this host"
             elif resp.status_code in (401, 403):
                 # Auth failure — server requires an API key
                 self.health_state = "auth_required"
@@ -299,11 +345,26 @@ class ComputeNode:
         temperature: float = 0.7,
         max_tokens: int | None = None,
         tools: list[dict] | None = None,
+        response_format: dict | None = None,
     ) -> dict:
         """Direct chat on this specific node (backward compat with LLMServerEntry.chat)."""
         msgs = list(messages)
         if system:
             msgs = [{"role": "system", "content": system}, *msgs]
+
+        if self.source in ("relay", "browser") and self.websocket:
+            response = await self._request_over_websocket(
+                "llm_request",
+                {
+                    "messages": msgs,
+                    "model": self._resolve_model(model),
+                    "temperature": temperature,
+                    "max_tokens": max_tokens,
+                    "tools": tools,
+                    "response_format": response_format,
+                }
+            )
+            return response.get("result", {})
 
         client = await self._get_client()
 
@@ -360,6 +421,20 @@ class ComputeNode:
         msgs = list(messages)
         if system:
             msgs = [{"role": "system", "content": system}, *msgs]
+
+        if self.source in ("relay", "browser") and self.websocket:
+            result = await self.chat(
+                messages,
+                model=model,
+                system=system,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                tools=tools,
+            )
+            content = result.get("message", {}).get("content", "")
+            if content:
+                yield content
+            return
 
         client = await self._get_client()
 
@@ -456,6 +531,17 @@ class ComputeNode:
 
     async def embed(self, text: str, model: str | None = None) -> list[float]:
         """Direct embedding on this specific node (backward compat)."""
+        if self.source in ("relay", "browser") and self.websocket:
+            response = await self._request_over_websocket(
+                "embed_request",
+                {
+                    "input": text,
+                    "model": self._resolve_embed_model(model),
+                },
+            )
+            result = response.get("result", [])
+            return result if isinstance(result, list) else []
+
         client = await self._get_client()
         embed_model = self._resolve_embed_model(model)
 
@@ -472,6 +558,17 @@ class ComputeNode:
 
     async def embed_batch(self, texts: list[str], model: str | None = None) -> list[list[float]]:
         """Direct batch embedding on this specific node (backward compat)."""
+        if self.source in ("relay", "browser") and self.websocket:
+            response = await self._request_over_websocket(
+                "embed_request",
+                {
+                    "input": texts,
+                    "model": self._resolve_embed_model(model),
+                },
+            )
+            result = response.get("result", [])
+            return result if isinstance(result, list) else []
+
         client = await self._get_client()
         embed_model = self._resolve_embed_model(model)
 
@@ -485,6 +582,16 @@ class ComputeNode:
             return [item.get("embedding", []) for item in resp.json().get("data", [])]
 
     def to_dict(self) -> dict:
+        capability_probe_status = "not_applicable"
+        if self.source in ("relay", "browser"):
+            capability_probe_status = "available" if self.model_capabilities else "unavailable"
+        elif self.model_capabilities:
+            capability_probe_status = "available"
+        model_list_stale = bool(
+            self.source in ("relay", "browser")
+            and self.last_heartbeat
+            and (time.time() - self.last_heartbeat) > 60
+        )
         return {
             "node_id": self.node_id,
             "hostname": self.name,
@@ -493,6 +600,11 @@ class ComputeNode:
             "source": self.source,
             "provider_type": self.provider_type,
             "state": self.health_state,
+            "serving_state": "serving" if self.is_healthy and self.websocket else self.health_state,
+            "health_error": self.health_error,
+            "capability_probe_status": capability_probe_status,
+            "model_list_stale": model_list_stale,
+            "last_heartbeat": self.last_heartbeat,
             "is_healthy": self.is_healthy,
             "is_local": self.is_local,
             "priority": self.priority,
@@ -530,10 +642,7 @@ class ComputeRegistry:
 
     def has_available_node(self) -> bool:
         """Check if at least one compute node is available for LLM calls."""
-        for node in self._nodes.values():
-            if node.is_healthy and node.cb_is_available():
-                return True
-        return False
+        return bool(self._select_candidates())
 
     async def broadcast_llm_status(self, status: str, detail: str = "") -> None:
         """Broadcast LLM availability changes to frontend."""
@@ -645,15 +754,22 @@ class ComputeRegistry:
         """
         results: dict[str, bool] = {}
         for nid, node in list(self._nodes.items()):
-            if node.source == "relay":
-                # Relay health is based on heartbeat timeout
+            if node.source in ("relay", "browser"):
+                # Relay/browser health is based on heartbeat timeout. Browser
+                # donors are not reachable by backend HTTP, so cached models and
+                # websocket liveness are the source of truth.
                 if node.last_heartbeat and (time.time() - node.last_heartbeat) > 90:
                     node.is_healthy = False
                     node.health_state = "unhealthy"
                 results[nid] = node.is_healthy
                 # Detect capabilities for healthy relay nodes via HTTP
                 # to their resolved provider address.
-                if node.is_healthy and not node.model_capabilities and node.host:
+                if (
+                    node.source == "relay"
+                    and node.is_healthy
+                    and not node.model_capabilities
+                    and node.host
+                ):
                     try:
                         from app.core.model_capabilities import detect_capabilities_generic
 
@@ -784,6 +900,8 @@ class ComputeRegistry:
         require_tools: bool = False,
         require_vision: bool = False,
         min_context: int = 0,
+        model: str | None = None,
+        strict_model: bool = False,
     ) -> list[ComputeNode]:
         """Get candidate nodes sorted by score, filtered by capabilities and circuit breaker."""
         candidates = [n for n in self._nodes.values() if n.score() > 0 and n.cb_is_available()]
@@ -811,8 +929,73 @@ class ComputeRegistry:
             if vision_capable:
                 candidates = vision_capable
 
+        if min_context > 0 and candidates:
+            context_capable = [
+                n
+                for n in candidates
+                if any(
+                    c.get("context_length", 0) >= min_context
+                    for c in n.model_capabilities.values()
+                )
+            ]
+            if context_capable:
+                candidates = context_capable
+
+        requested_model = (model or "").strip()
+        if requested_model and requested_model != "default" and candidates:
+            model_capable = [n for n in candidates if self._node_supports_model(n, requested_model)]
+            if strict_model:
+                candidates = model_capable
+            elif model_capable:
+                capable_ids = {n.node_id for n in model_capable}
+                candidates.sort(
+                    key=lambda n: (
+                        0 if n.node_id in capable_ids else 1,
+                        -n.score(),
+                    )
+                )
+                return candidates
+
         candidates.sort(key=lambda n: n.score(), reverse=True)
         return candidates
+
+    @staticmethod
+    def _model_aliases(model: str) -> set[str]:
+        base = model.strip()
+        aliases = {base}
+        if base.endswith(":latest"):
+            aliases.add(base.removesuffix(":latest"))
+        elif ":" not in base:
+            aliases.add(f"{base}:latest")
+        return aliases
+
+    @classmethod
+    def _node_supports_model(cls, node: ComputeNode, model: str) -> bool:
+        aliases = cls._model_aliases(model)
+        loaded = {str(m).strip() for m in node.loaded_models if str(m).strip()}
+        capability_keys = {str(m).strip() for m in node.model_capabilities.keys() if str(m).strip()}
+        advertised = loaded | capability_keys
+        return bool(advertised and advertised.intersection(aliases))
+
+    @staticmethod
+    def _record_success(node: ComputeNode) -> None:
+        node.consecutive_failures = 0
+        node.health_state = "ready"
+        node.health_error = ""
+        node.is_healthy = True
+        node.cb_record_success()
+
+    @staticmethod
+    def _record_failure(node: ComputeNode, error: Exception) -> None:
+        node.consecutive_failures += 1
+        node.health_error = str(error)[:200] if str(error) else "Request failed"
+        node.cb_record_failure()
+        if node.consecutive_failures >= 3:
+            node.health_state = "cooldown"
+            node.cooldown_until = time.time() + 60
+            node.is_healthy = False
+        else:
+            node.health_state = "degraded"
 
     @staticmethod
     def _sanitize_messages(messages: list[dict]) -> list[dict]:
@@ -871,15 +1054,29 @@ class ComputeRegistry:
             msgs = [{"role": "system", "content": system}, *msgs]
         msgs = self._sanitize_messages(msgs)
 
-        for node in self._sorted_servers(require_tools=bool(tools)):
-            if not node.is_healthy:
-                continue
+        for node in self._select_candidates(
+            require_tools=bool(tools),
+            model=model,
+            strict_model=settings.strict_auto_routing,
+        ):
             resolved_model = node._resolve_model(model)
             logger.info(
                 f"ComputeRegistry: routing chat to {node.name} ({node.host}) model={resolved_model}"
             )
             node.active_requests += 1
             try:
+                if node.source in ("relay", "browser") and node.websocket:
+                    data = await node.chat(
+                        msgs,
+                        model=resolved_model,
+                        temperature=temperature,
+                        max_tokens=max_tokens,
+                        tools=tools,
+                        response_format=response_format,
+                    )
+                    self._record_success(node)
+                    return data
+
                 client = await node._get_client()
 
                 if node.provider_type == "ollama":
@@ -895,9 +1092,7 @@ class ComputeRegistry:
                     resp = await client.post("/api/chat", json=payload)
                     resp.raise_for_status()
                     data = resp.json()
-                    node.consecutive_failures = 0
-                    node.health_state = "ready"
-                    node.cb_record_success()
+                    self._record_success(node)
                     return data
                 else:
                     payload = {
@@ -927,9 +1122,7 @@ class ComputeRegistry:
                         result["message"]["tool_calls"] = message["tool_calls"]
                         result["finish_reason"] = choice.get("finish_reason", "tool_calls")
 
-                    node.consecutive_failures = 0
-                    node.health_state = "ready"
-                    node.cb_record_success()
+                    self._record_success(node)
                     return result
 
             except Exception as e:
@@ -937,14 +1130,7 @@ class ComputeRegistry:
                     logger.warning(f"ComputeRegistry: chat failed on {node.name}: {e} | Body: {e.response.text}")
                 else:
                     logger.warning(f"ComputeRegistry: chat failed on {node.name}: {e}")
-                node.consecutive_failures += 1
-                node.cb_record_failure()
-                if node.consecutive_failures >= 3:
-                    node.health_state = "cooldown"
-                    node.cooldown_until = time.time() + 60
-                    node.is_healthy = False
-                else:
-                    node.is_healthy = False
+                self._record_failure(node, e)
             finally:
                 node.active_requests -= 1
 
@@ -965,9 +1151,11 @@ class ComputeRegistry:
             msgs = [{"role": "system", "content": system}, *msgs]
         msgs = self._sanitize_messages(msgs)
 
-        for node in self._sorted_servers(require_tools=bool(tools)):
-            if not node.is_healthy:
-                continue
+        for node in self._select_candidates(
+            require_tools=bool(tools),
+            model=model,
+            strict_model=settings.strict_auto_routing,
+        ):
             resolved_model = node._resolve_model(model)
             logger.info(
                 f"ComputeRegistry: routing stream to {node.name} "
@@ -975,6 +1163,20 @@ class ComputeRegistry:
             )
             node.active_requests += 1
             try:
+                if node.source in ("relay", "browser") and node.websocket:
+                    data = await node.chat(
+                        msgs,
+                        model=resolved_model,
+                        temperature=temperature,
+                        max_tokens=max_tokens,
+                        tools=tools,
+                    )
+                    content = data.get("message", {}).get("content", "")
+                    if content:
+                        yield content
+                    self._record_success(node)
+                    return
+
                 client = await node._get_client()
 
                 if node.provider_type == "ollama":
@@ -1073,19 +1275,12 @@ class ComputeRegistry:
                             "finish_reason": "tool_calls",
                         }
 
-                node.consecutive_failures = 0
-                node.health_state = "ready"
+                self._record_success(node)
                 return
 
             except Exception as e:
                 logger.warning(f"ComputeRegistry: stream failed on {node.name}: {e}")
-                node.consecutive_failures += 1
-                if node.consecutive_failures >= 3:
-                    node.health_state = "cooldown"
-                    node.cooldown_until = time.time() + 60
-                    node.is_healthy = False
-                else:
-                    node.is_healthy = False
+                self._record_failure(node, e)
             finally:
                 node.active_requests -= 1
 
@@ -1093,11 +1288,17 @@ class ComputeRegistry:
 
     async def embed(self, text: str, model: str | None = None) -> list[float]:
         """Route an embedding request."""
-        for node in self._sorted_servers():
-            if not node.is_healthy:
-                continue
+        for node in self._select_candidates(
+            model=model,
+            strict_model=settings.strict_auto_routing,
+        ):
             node.active_requests += 1
             try:
+                if node.source in ("relay", "browser") and node.websocket:
+                    result = await node.embed(text, model=model)
+                    self._record_success(node)
+                    return result
+
                 client = await node._get_client()
                 embed_model = node._resolve_embed_model(model)
 
@@ -1117,9 +1318,11 @@ class ComputeRegistry:
 
                 if node.provider_type == "ollama":
                     embeddings = data.get("embeddings", [])
+                    self._record_success(node)
                     return embeddings[0] if embeddings else []
                 else:
                     items = data.get("data", [])
+                    self._record_success(node)
                     return items[0].get("embedding", []) if items else []
 
             except Exception as e:
@@ -1127,7 +1330,7 @@ class ComputeRegistry:
                     logger.warning(f"ComputeRegistry: embed failed on {node.name}: {e} | Body: {e.response.text}")
                 else:
                     logger.warning(f"ComputeRegistry: embed failed on {node.name}: {e}")
-                node.is_healthy = False
+                self._record_failure(node, e)
             finally:
                 node.active_requests -= 1
 
@@ -1135,11 +1338,17 @@ class ComputeRegistry:
 
     async def embed_batch(self, texts: list[str], model: str | None = None) -> list[list[float]]:
         """Route a batch embedding request."""
-        for node in self._sorted_servers():
-            if not node.is_healthy:
-                continue
+        for node in self._select_candidates(
+            model=model,
+            strict_model=settings.strict_auto_routing,
+        ):
             node.active_requests += 1
             try:
+                if node.source in ("relay", "browser") and node.websocket:
+                    result = await node.embed_batch(texts, model=model)
+                    self._record_success(node)
+                    return result
+
                 client = await node._get_client()
                 embed_model = node._resolve_embed_model(model)
 
@@ -1149,6 +1358,7 @@ class ComputeRegistry:
                         json={"model": embed_model, "input": texts},
                     )
                     resp.raise_for_status()
+                    self._record_success(node)
                     return resp.json().get("embeddings", [])
                 else:
                     resp = await client.post(
@@ -1156,6 +1366,7 @@ class ComputeRegistry:
                         json={"model": embed_model, "input": texts},
                     )
                     resp.raise_for_status()
+                    self._record_success(node)
                     return [item.get("embedding", []) for item in resp.json().get("data", [])]
 
             except Exception as e:
@@ -1163,7 +1374,7 @@ class ComputeRegistry:
                     logger.warning(f"ComputeRegistry: embed_batch failed on {node.name}: {e} | Body: {e.response.text}")
                 else:
                     logger.warning(f"ComputeRegistry: embed_batch failed on {node.name}: {e}")
-                node.is_healthy = False
+                self._record_failure(node, e)
             finally:
                 node.active_requests -= 1
 
@@ -1172,10 +1383,20 @@ class ComputeRegistry:
     async def list_models(self) -> list[dict]:
         """Aggregate models from all healthy nodes."""
         all_models: list[dict] = []
-        for node in self._sorted_servers():
-            if not node.is_healthy:
-                continue
+        for node in self._select_candidates():
             try:
+                if node.source in ("relay", "browser"):
+                    for name in node.loaded_models:
+                        all_models.append(
+                            {
+                                "name": name,
+                                "id": name,
+                                "_server": node.name,
+                                "_server_id": node.node_id,
+                            }
+                        )
+                    continue
+
                 client = await node._get_client()
                 if node.provider_type == "ollama":
                     resp = await client.get("/api/tags", timeout=10.0)
@@ -1237,8 +1458,8 @@ class ComputeRegistry:
         return [n for n in self._nodes.values() if n.is_alive()]
 
     def total_capacity(self) -> int:
-        """Total number of alive relay nodes (backward compat with ComputePool)."""
-        return len([n for n in self._nodes.values() if n.source == "relay" and n.is_alive()])
+        """Total number of alive donated compute nodes (relay/browser)."""
+        return len([n for n in self._nodes.values() if n.source in ("relay", "browser") and n.is_alive()])
 
     def available_models_list(self) -> list[str]:
         """All models available across the pool (backward compat)."""
@@ -1249,26 +1470,26 @@ class ComputeRegistry:
 
     def best_node_for(self, model: str | None = None) -> ComputeNode | None:
         """Select the best node for a given model (backward compat)."""
-        candidates = self.alive_nodes()
-        if model:
-            candidates = [n for n in candidates if model in n.loaded_models] or candidates
+        candidates = self._select_candidates(model=model)
         if not candidates:
             return None
-        return max(candidates, key=lambda n: n.score())
+        return candidates[0]
 
     # ================================================================
     # Unified Stats
     # ================================================================
 
     def get_stats(self) -> dict:
-        nodes = [n.to_dict() for n in self._nodes.values()]
-        alive = sum(1 for n in self._nodes.values() if n.is_healthy)
+        registry_nodes = list(self._nodes.values())
+        nodes = [n.to_dict() for n in registry_nodes]
+        alive = sum(1 for n in registry_nodes if n.is_healthy)
         all_models: set[str] = set()
-        for n in self._nodes.values():
+        for n in registry_nodes:
             all_models.update(n.loaded_models or [])
-        total_ram = sum(n.ram_total_gb for n in self._nodes.values())
-        avail_ram = sum(n.ram_available_gb for n in self._nodes.values())
-        total_cpu = sum(n.cpu_cores for n in self._nodes.values())
+        total_ram = sum(n.ram_total_gb for n in registry_nodes)
+        avail_ram = sum(n.ram_available_gb for n in registry_nodes)
+        total_cpu = sum(n.cpu_cores for n in registry_nodes)
+        capacity = compute_capacity_envelope(registry_nodes)
 
         if alive >= 8:
             tier = "full_swarm"
@@ -1289,6 +1510,7 @@ class ComputeRegistry:
             "total_cpu_cores": total_cpu,
             "available_models": sorted(all_models),
             "swarm_tier": tier,
+            **capacity,
             "nodes": nodes,
         }
 

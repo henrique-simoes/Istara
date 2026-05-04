@@ -1,10 +1,13 @@
 """Tests for Code Applications API routes — list, pending, review, bulk-approve."""
 
+import uuid
+
 import pytest
 from httpx import AsyncClient, ASGITransport
 from app.main import app
 from app.config import settings
-from app.models.database import init_db
+from app.models.code_application import CodeApplication
+from app.models.database import async_session, init_db
 from app.core.auth import create_token
 
 
@@ -54,3 +57,46 @@ async def test_code_apps_pending_returns_response(auth_headers):
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         response = await ac.get("/api/code-applications/test-project/pending", headers=auth_headers)
         assert response.status_code in (200, 404, 500)
+
+
+@pytest.mark.asyncio
+async def test_code_apps_bulk_approve_bounds_confidence(auth_headers):
+    """Bulk approval threshold is bounded to the statistical confidence interval."""
+    await init_db()
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.post(
+            "/api/code-applications/test-project/bulk-approve",
+            params={"min_confidence": 1.5},
+            headers=auth_headers,
+        )
+        assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_code_apps_review_uses_authenticated_reviewer(auth_headers):
+    """Review audit trail comes from the authenticated subject, not client input."""
+    await init_db()
+    settings.team_mode = True
+    app_id = str(uuid.uuid4())
+    async with async_session() as db:
+        db.add(
+            CodeApplication(
+                id=app_id,
+                project_id="code-review-auth",
+                code_id="nav-confusion",
+                source_text="I cannot find reports.",
+            )
+        )
+        await db.commit()
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.patch(
+            f"/api/code-applications/{app_id}/review",
+            json={"review_status": "approved", "reviewed_by": "spoofed-user"},
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        assert response.json()["reviewed_by"] == "testuser"
+        assert response.json()["reviewed_at"] is not None

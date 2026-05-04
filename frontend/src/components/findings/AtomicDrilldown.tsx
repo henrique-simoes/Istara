@@ -40,6 +40,12 @@ interface ChainData {
 
 const EMPTY_CHAIN: ChainData = { recommendation: [], insight: [], fact: [], nugget: [] };
 
+interface ChainDiagnostics {
+  supporting_counts?: Partial<Record<FindingType, number>>;
+  has_supporting_evidence?: boolean;
+  missing_links?: string[];
+}
+
 /** Map finding types to what can be linked TO them */
 const LINKABLE_TYPES: Record<FindingType, { linkType: FindingType; label: string } | null> = {
   recommendation: { linkType: "insight", label: "Insights" },
@@ -51,6 +57,7 @@ const LINKABLE_TYPES: Record<FindingType, { linkType: FindingType; label: string
 export default function AtomicDrilldown({ projectId, finding: initialFinding, onClose }: AtomicDrilldownProps) {
   const [activeFinding, setActiveFinding] = useState(initialFinding);
   const [chain, setChain] = useState<ChainData>(EMPTY_CHAIN);
+  const [diagnostics, setDiagnostics] = useState<ChainDiagnostics>({});
   const [loading, setLoading] = useState(true);
   // Navigation history for breadcrumb traversal
   const [history, setHistory] = useState<Array<{ id: string; type: FindingType; text: string }>>([initialFinding]);
@@ -66,6 +73,7 @@ export default function AtomicDrilldown({ projectId, finding: initialFinding, on
     try {
       const result = await findingsApi.evidenceChain(type, id);
       setChain(result.chain || EMPTY_CHAIN);
+      setDiagnostics(result.diagnostics || {});
     } catch {
       // Fallback: load all findings and try local linking
       try {
@@ -75,9 +83,12 @@ export default function AtomicDrilldown({ projectId, finding: initialFinding, on
           findingsApi.insights(projectId),
           findingsApi.recommendations(projectId),
         ]);
-        setChain(buildLocalChain({ id, type }, recs, insights, facts, nuggets));
+        const localChain = buildLocalChain({ id, type }, recs, insights, facts, nuggets);
+        setChain(localChain);
+        setDiagnostics(buildLocalDiagnostics(type as FindingType, localChain));
       } catch {
         setChain(EMPTY_CHAIN);
+        setDiagnostics({});
       }
     }
     setLoading(false);
@@ -163,6 +174,11 @@ export default function AtomicDrilldown({ projectId, finding: initialFinding, on
       drillTo(type, items[0] as any);
     }
   };
+
+  const supportingEvidenceCount = (["recommendation", "insight", "fact", "nugget"] as FindingType[])
+    .filter((type) => type !== activeFinding.type)
+    .reduce((sum, type) => sum + (chain[type]?.length || 0), 0);
+  const missingLinks = diagnostics.missing_links || [];
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
@@ -347,7 +363,7 @@ export default function AtomicDrilldown({ projectId, finding: initialFinding, on
               )}
 
               {activeFinding.type !== "nugget" && chain.nugget.length > 0 && (
-                <ChainLevel icon={Sparkles} label="Nuggets (Raw Evidence)" color="text-purple-600">
+                <ChainLevel icon={Sparkles} label="Nuggets (Source Evidence)" color="text-purple-600">
                   {chain.nugget.map((n: any) => (
                     <EvidenceCard
                       key={n.id}
@@ -377,20 +393,29 @@ export default function AtomicDrilldown({ projectId, finding: initialFinding, on
                 </ChainLevel>
               )}
 
-              {/* Empty state — only show if NO linked evidence at all */}
-              {chain.insight.length === 0 &&
-                chain.fact.length === 0 &&
-                chain.nugget.length === 0 &&
-                chain.recommendation.length === 0 && (
+              {supportingEvidenceCount > 0 && missingLinks.length > 0 && (
+                <div className="mb-4 ml-8 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-200">
+                  <p className="font-medium">Evidence chain is incomplete.</p>
+                  <p className="mt-1">
+                    {missingLinks.includes("recommendation_to_insight") && "This recommendation is not linked to any insight."}
+                    {missingLinks.includes("insight_to_fact") && "The chain reaches insights, but those insights are not linked to supporting facts."}
+                    {missingLinks.includes("fact_to_nugget") && "The chain reaches facts, but those facts are not linked to source evidence."}
+                    {missingLinks.includes("nugget_to_fact") && "This source evidence has not been synthesized into facts yet."}
+                  </p>
+                </div>
+              )}
+
+              {/* Empty state — only show if NO supporting evidence is linked. */}
+              {supportingEvidenceCount === 0 && (
                   <div className="text-center py-8">
                     <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">
-                      No linked evidence chain yet.
+                      No supporting evidence chain is linked yet.
                     </p>
                     <p className="text-xs text-slate-400 mt-1">
-                      Link this {activeFinding.type} to supporting evidence to build the atomic research path.
+                      Link this {activeFinding.type} to the evidence that supports it. Istara will not invent a chain that was not stored.
                     </p>
                     <p className="text-xs text-slate-400 mt-0.5">
-                      The research chain tracks how information flows: Nuggets → Facts → Insights → Recommendations
+                      The research chain should show how evidence flows: Source Evidence → Facts → Insights → Recommendations
                     </p>
 
                     {/* Atomic research chain diagram */}
@@ -399,7 +424,7 @@ export default function AtomicDrilldown({ projectId, finding: initialFinding, on
                         { label: "Recommendation", desc: "Actionable next step", color: "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800", icon: "🎯" },
                         { label: "Insight", desc: "Pattern or theme identified", color: "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800", icon: "💡" },
                         { label: "Fact", desc: "Verified claim from evidence", color: "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800", icon: "📄" },
-                        { label: "Nugget", desc: "Raw quote or observation", color: "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-800", icon: "✨" },
+                        { label: "Source Evidence", desc: "Linked project evidence", color: "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-800", icon: "✨" },
                       ].map((level, idx) => (
                         <div key={level.label} className="flex flex-col items-center">
                           {idx > 0 && (
@@ -509,6 +534,33 @@ function buildLocalChain(
     default:
       return EMPTY_CHAIN;
   }
+}
+
+function buildLocalDiagnostics(type: FindingType, chain: ChainData): ChainDiagnostics {
+  const supporting_counts = {
+    recommendation: type === "recommendation" ? 0 : chain.recommendation.length,
+    insight: type === "insight" ? 0 : chain.insight.length,
+    fact: type === "fact" ? 0 : chain.fact.length,
+    nugget: type === "nugget" ? 0 : chain.nugget.length,
+  };
+  const missing_links: string[] = [];
+  if (type === "recommendation") {
+    if (!chain.insight.length) missing_links.push("recommendation_to_insight");
+    else if (!chain.fact.length) missing_links.push("insight_to_fact");
+    else if (!chain.nugget.length) missing_links.push("fact_to_nugget");
+  } else if (type === "insight") {
+    if (!chain.fact.length) missing_links.push("insight_to_fact");
+    else if (!chain.nugget.length) missing_links.push("fact_to_nugget");
+  } else if (type === "fact" && !chain.nugget.length) {
+    missing_links.push("fact_to_nugget");
+  } else if (type === "nugget" && !chain.fact.length) {
+    missing_links.push("nugget_to_fact");
+  }
+  return {
+    supporting_counts,
+    has_supporting_evidence: Object.values(supporting_counts).some(Boolean),
+    missing_links,
+  };
 }
 
 function getIcon(type: string) {

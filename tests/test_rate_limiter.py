@@ -1,7 +1,6 @@
 """Tests for rate limiting — login rate limiter."""
 
 import pytest
-import time
 from httpx import AsyncClient, ASGITransport
 from app.main import app
 from app.config import settings
@@ -12,16 +11,16 @@ from app.core.auth import create_token
 @pytest.fixture(autouse=True)
 def reset_rate_limiter():
     """Clear the in-memory login attempts between tests."""
-    from app.api.routes.auth import _login_attempts
-    _login_attempts.clear()
+    from app.api.routes.auth import _login_limiter
+    _login_limiter.clear()
     yield
-    _login_attempts.clear()
+    _login_limiter.clear()
 
 
 @pytest.mark.asyncio
 async def test_login_rate_limiter_function():
     """The _check_login_rate function blocks after 5 attempts in 60s."""
-    from app.api.routes.auth import _check_login_rate, _login_attempts, MAX_LOGIN_ATTEMPTS
+    from app.api.routes.auth import _check_login_rate, MAX_LOGIN_ATTEMPTS
     from unittest.mock import MagicMock
 
     mock_request = MagicMock()
@@ -42,7 +41,7 @@ async def test_login_rate_limiter_function():
 @pytest.mark.asyncio
 async def test_login_rate_limiter_resets_after_window():
     """After the window expires, login attempts are allowed again."""
-    from app.api.routes.auth import _check_login_rate, _login_attempts, LOGIN_WINDOW
+    from app.api.routes.auth import _check_login_rate, _login_limiter, LOGIN_WINDOW
     from unittest.mock import MagicMock
     from fastapi import HTTPException
 
@@ -57,11 +56,8 @@ async def test_login_rate_limiter_resets_after_window():
     with pytest.raises(HTTPException):
         await _check_login_rate(mock_request)
 
-    # Simulate time passing by clearing the old entries
-    now = time.time()
-    _login_attempts["10.0.0.50"] = [t for t in _login_attempts.get("10.0.0.50", []) if now - t < LOGIN_WINDOW]
-    # Now clear them to simulate window expired
-    _login_attempts.clear()
+    # Clear them to simulate window expiry without sleeping.
+    _login_limiter.clear()
 
     # Should be allowed again
     await _check_login_rate(mock_request)  # No exception = allowed
@@ -70,7 +66,7 @@ async def test_login_rate_limiter_resets_after_window():
 @pytest.mark.asyncio
 async def test_rate_limiter_per_ip_isolation():
     """Different IPs have independent rate limits."""
-    from app.api.routes.auth import _check_login_rate, _login_attempts
+    from app.api.routes.auth import _check_login_rate
     from unittest.mock import MagicMock
     from fastapi import HTTPException
 
