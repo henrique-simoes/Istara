@@ -332,6 +332,48 @@ def test_record_failure_degrades_before_cooldown():
     assert node.health_state == "cooldown"
 
 
+def test_compute_stats_include_capacity_envelope():
+    registry = ComputeRegistry()
+    registry.register_node(
+        ComputeNode(
+            node_id="busy-local",
+            name="Busy Local",
+            host="http://localhost:1234",
+            source="local",
+            provider_type="lmstudio",
+            is_healthy=True,
+            active_requests=2,
+            max_active_requests=4,
+            ram_total_gb=16,
+            ram_available_gb=4,
+            cpu_cores=8,
+            cpu_load_pct=80,
+            loaded_models=["llama3"],
+        )
+    )
+    registry.register_node(
+        ComputeNode(
+            node_id="saturated-relay",
+            name="Saturated Relay",
+            host="",
+            source="relay",
+            provider_type="ollama",
+            is_healthy=True,
+            active_requests=2,
+            max_active_requests=2,
+            cpu_load_pct=50,
+        )
+    )
+
+    stats = registry.get_stats()
+
+    assert stats["request_slots_total"] == 6
+    assert stats["request_slots_used"] == 4
+    assert stats["request_slots_available"] == 2
+    assert stats["saturated_nodes"] == 1
+    assert stats["hardware_load_pct"] == 65.0
+
+
 class FakeRelayWebSocket:
     def __init__(self, *, headers=None, query_params=None, messages=None):
         self.headers = headers or {}

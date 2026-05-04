@@ -39,6 +39,12 @@ interface ComputeStats {
   available_models: string[];
   nodes: ComputeNode[];
   swarm_tier?: string;
+  request_slots_total?: number;
+  request_slots_used?: number;
+  request_slots_available?: number;
+  request_slot_utilization_pct?: number;
+  saturated_nodes?: number;
+  hardware_load_pct?: number;
 }
 
 interface ComputeState {

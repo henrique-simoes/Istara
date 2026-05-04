@@ -787,7 +787,7 @@ export const reasoningBank = {
 
 export { improvementGovernance } from "./improvementGovernanceApi";
 export { dgmhArchive } from "./dgmhArchiveApi";
-// Route coverage hints: /improvement-governance/proposals /improvement-governance/proposals/{proposal_id} /improvement-governance/proposals/{proposal_id}/approve /improvement-governance/proposals/{proposal_id}/apply /improvement-governance/proposals/{proposal_id}/reject /improvement-governance/proposals/{proposal_id}/revert /improvement-governance/proposals/{proposal_id}/quarantine /improvement-governance/proposals/{proposal_id}/evaluation /improvement-governance/summary /improvement-governance/feature-contract
+// Route coverage hints: /improvement-governance/proposals /improvement-governance/proposals/{proposal_id} /improvement-governance/proposals/{proposal_id}/approve /improvement-governance/proposals/{proposal_id}/apply /improvement-governance/proposals/{proposal_id}/reject /improvement-governance/proposals/{proposal_id}/revert /improvement-governance/proposals/{proposal_id}/quarantine /improvement-governance/proposals/{proposal_id}/evaluation /improvement-governance/proposals/{proposal_id}/sandbox-evaluation /improvement-governance/summary /improvement-governance/feature-contract
 
 // --- Channels ---
 

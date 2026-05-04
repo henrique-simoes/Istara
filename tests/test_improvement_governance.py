@@ -88,6 +88,16 @@ async def test_governance_lifecycle_redacts_evaluates_and_reverts():
         evidence={"command": "pytest tests/test_improvement_governance.py"},
     )
     assert applied["proposal"]["status"] == "applied"
+    sandbox_events = [
+        item for item in applied["proposal"]["evidence"]
+        if item.get("event") == "sandbox_evaluation"
+    ]
+    assert sandbox_events
+    assert sandbox_events[-1]["passed"] is True
+    assert any(
+        check["id"] == "secret_redaction" and check["passed"] is False
+        for check in sandbox_events[-1]["checks"]
+    )
 
     evaluated = await improvement_governance.record_evaluation(
         proposal.id,
@@ -146,6 +156,19 @@ async def test_governance_api_contract_and_admin_guard(auth_headers):
         assert "dgmh_archive_evolution" in features
         assert "karpathy_autoresearch" in features
         assert "interviews_audio_upload_transcription_tagging_documents" in features
+
+        sandbox = await ac.post(
+            f"/api/improvement-governance/proposals/{proposal['id']}/sandbox-evaluation",
+            headers=auth_headers,
+            json={"evidence": {"tests": "api contract smoke"}},
+        )
+        assert sandbox.status_code == 200
+        payload = sandbox.json()
+        assert payload["sandbox_evaluation"]["passed"] is True
+        assert any(
+            item.get("event") == "sandbox_evaluation"
+            for item in payload["proposal"]["evidence"]
+        )
 
     token = create_token("user2", "researcher", "researcher")
     async with AsyncClient(transport=transport, base_url="http://test") as ac:

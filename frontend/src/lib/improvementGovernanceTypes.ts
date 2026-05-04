@@ -84,6 +84,31 @@ export interface ProposalEvaluationRequest {
   evidence?: Record<string, any>;
 }
 
+export interface ProposalSandboxEvaluationRequest {
+  evidence?: Record<string, any>;
+}
+
+export interface ProposalSandboxCheck {
+  id: string;
+  passed: boolean;
+  severity: "blocker" | "warning" | string;
+  message: string;
+  detail?: any;
+}
+
+export interface ProposalSandboxEvaluation {
+  event: "sandbox_evaluation" | string;
+  proposal_id: string;
+  source_system: string;
+  risk_level: string;
+  affected_surfaces: string[];
+  passed: boolean;
+  blockers: ProposalSandboxCheck[];
+  warnings: ProposalSandboxCheck[];
+  checks: ProposalSandboxCheck[];
+  evaluated_at: string;
+}
+
 export interface ImprovementGovernanceSummary {
   total: number;
   by_status: Record<string, number>;

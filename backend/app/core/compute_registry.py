@@ -22,6 +22,7 @@ from typing import Any, AsyncGenerator
 import httpx
 
 from app.config import settings
+from app.core.compute_capacity import compute_capacity_envelope, node_capacity_score
 
 logger = logging.getLogger(__name__)
 
@@ -122,20 +123,7 @@ class ComputeNode:
         return self.name
 
     def score(self) -> float:
-        if not self.is_healthy:
-            return -1
-        if self.active_requests >= self.max_active_requests:
-            return -1
-        if self.health_state == "cooldown" and time.time() < self.cooldown_until:
-            return -1
-        s = 100.0
-        s -= self.active_requests * 15
-        if self.latency_ms:
-            s -= min(self.latency_ms / 10, 30)
-        s -= self.priority
-        if self.ram_available_gb:
-            s += min(self.ram_available_gb * 2, 20)
-        return s
+        return node_capacity_score(self)
 
     def is_alive(self, timeout: float = 90) -> bool:
         """Backward compat with RelayNode.is_alive()."""
@@ -1492,14 +1480,16 @@ class ComputeRegistry:
     # ================================================================
 
     def get_stats(self) -> dict:
-        nodes = [n.to_dict() for n in self._nodes.values()]
-        alive = sum(1 for n in self._nodes.values() if n.is_healthy)
+        registry_nodes = list(self._nodes.values())
+        nodes = [n.to_dict() for n in registry_nodes]
+        alive = sum(1 for n in registry_nodes if n.is_healthy)
         all_models: set[str] = set()
-        for n in self._nodes.values():
+        for n in registry_nodes:
             all_models.update(n.loaded_models or [])
-        total_ram = sum(n.ram_total_gb for n in self._nodes.values())
-        avail_ram = sum(n.ram_available_gb for n in self._nodes.values())
-        total_cpu = sum(n.cpu_cores for n in self._nodes.values())
+        total_ram = sum(n.ram_total_gb for n in registry_nodes)
+        avail_ram = sum(n.ram_available_gb for n in registry_nodes)
+        total_cpu = sum(n.cpu_cores for n in registry_nodes)
+        capacity = compute_capacity_envelope(registry_nodes)
 
         if alive >= 8:
             tier = "full_swarm"
@@ -1520,6 +1510,7 @@ class ComputeRegistry:
             "total_cpu_cores": total_cpu,
             "available_models": sorted(all_models),
             "swarm_tier": tier,
+            **capacity,
             "nodes": nodes,
         }
 

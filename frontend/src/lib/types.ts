@@ -995,7 +995,20 @@ export interface CodeApplicationType {
 
 // Improvement Governance request contracts live in improvementGovernanceTypes.ts:
 // ImprovementProposalCreateRequest, ProposalDecisionRequest, ProposalApplyRequest,
-// ProposalEvaluationRequest.
+// ProposalEvaluationRequest, ProposalSandboxEvaluationRequest.
+export type {
+  ImprovementFeatureContract,
+  ImprovementGovernanceSummary,
+  ImprovementProposal,
+  ImprovementProposalCreateRequest,
+  ProposalApplyRequest,
+  ProposalDecisionRequest,
+  ProposalEvaluationRequest,
+  ProposalSandboxCheck,
+  ProposalSandboxEvaluation,
+  ProposalSandboxEvaluationRequest,
+} from "./improvementGovernanceTypes";
+
 export type {
   DGMHArchiveSummary,
   DGMHArchiveVariant,

@@ -54,6 +54,10 @@ class ProposalEvaluationRequest(BaseModel):
     evidence: dict = Field(default_factory=dict)
 
 
+class ProposalSandboxEvaluationRequest(BaseModel):
+    evidence: dict = Field(default_factory=dict)
+
+
 @router.get("/proposals")
 async def list_proposals(
     request: Request,
@@ -236,6 +240,26 @@ async def record_evaluation(
         metrics_before=body.metrics_before,
         metrics_after=body.metrics_after,
         passed=body.passed,
+        evidence=body.evidence,
+        db=db,
+    )
+    if "error" in result:
+        raise HTTPException(status_code=400, detail=result["error"])
+    await db.commit()
+    return result
+
+
+@router.post("/proposals/{proposal_id}/sandbox-evaluation")
+async def record_sandbox_evaluation(
+    proposal_id: str,
+    body: ProposalSandboxEvaluationRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Run and persist local sandbox checks before apply."""
+    require_admin_from_request(request)
+    result = await improvement_governance.record_sandbox_evaluation(
+        proposal_id,
         evidence=body.evidence,
         db=db,
     )

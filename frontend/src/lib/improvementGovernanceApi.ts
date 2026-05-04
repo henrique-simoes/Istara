@@ -5,6 +5,8 @@ import type {
   ImprovementGovernanceSummary,
   ImprovementProposal,
   ImprovementProposalCreateRequest,
+  ProposalSandboxEvaluation,
+  ProposalSandboxEvaluationRequest,
   ProposalEvaluationRequest,
 } from "@/lib/improvementGovernanceTypes";
 
@@ -72,8 +74,13 @@ export const improvementGovernance = {
     id: string,
     data: ProposalEvaluationRequest
   ) => post<{ proposal: ImprovementProposal }>(`/api/improvement-governance/proposals/${id}/evaluation`, data),
+  sandboxEvaluation: (id: string, data: ProposalSandboxEvaluationRequest = {}) =>
+    post<{ proposal: ImprovementProposal; sandbox_evaluation: ProposalSandboxEvaluation }>(
+      `/api/improvement-governance/proposals/${id}/sandbox-evaluation`,
+      data
+    ),
   featureContract: () =>
     get<{ features: ImprovementFeatureContract[] }>("/api/improvement-governance/feature-contract"),
 };
 
-// Route coverage hints: /improvement-governance/proposals /improvement-governance/proposals/{proposal_id} /improvement-governance/proposals/{proposal_id}/approve /improvement-governance/proposals/{proposal_id}/apply /improvement-governance/proposals/{proposal_id}/reject /improvement-governance/proposals/{proposal_id}/revert /improvement-governance/proposals/{proposal_id}/quarantine /improvement-governance/proposals/{proposal_id}/evaluation /improvement-governance/summary /improvement-governance/feature-contract
+// Route coverage hints: /improvement-governance/proposals /improvement-governance/proposals/{proposal_id} /improvement-governance/proposals/{proposal_id}/approve /improvement-governance/proposals/{proposal_id}/apply /improvement-governance/proposals/{proposal_id}/reject /improvement-governance/proposals/{proposal_id}/revert /improvement-governance/proposals/{proposal_id}/quarantine /improvement-governance/proposals/{proposal_id}/evaluation /improvement-governance/proposals/{proposal_id}/sandbox-evaluation /improvement-governance/summary /improvement-governance/feature-contract

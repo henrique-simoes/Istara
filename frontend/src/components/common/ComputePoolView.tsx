@@ -238,12 +238,13 @@ export default function ComputePoolView() {
           icon={Cpu}
           label="CPU Cores"
           value={stats?.total_cpu_cores || 0}
+          sub={`${stats?.hardware_load_pct?.toFixed(1) || "0.0"}% load`}
         />
         <StatCard
           icon={Zap}
           label="Models"
           value={stats?.available_models?.length || 0}
-          sub="across pool"
+          sub={`${stats?.request_slots_available || 0}/${stats?.request_slots_total || 0} slots`}
         />
       </div>
       
