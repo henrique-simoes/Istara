@@ -129,7 +129,14 @@ def _b64decode(s: str) -> bytes:
     return urlsafe_b64decode(s)
 
 
-def create_token(user_id: str, username: str, role: str, mfa_verified: bool = False) -> str:
+def create_token(
+    user_id: str,
+    username: str,
+    role: str,
+    mfa_verified: bool = False,
+    session_id: str | None = None,
+    session_bound: bool = False,
+) -> str:
     """Create a JWT-like token (HMAC-SHA256 signed).
 
     Includes MFA verification status and a unique token ID for future revocation.
@@ -144,6 +151,10 @@ def create_token(user_id: str, username: str, role: str, mfa_verified: bool = Fa
         "iat": int(time.time()),
         "exp": int(time.time()) + settings.jwt_expire_minutes * 60,
     }
+    if session_id:
+        payload_data["sid"] = session_id
+    if session_bound:
+        payload_data["session_bound"] = True
     payload = _b64encode(json.dumps(payload_data).encode())
     signature_input = f"{header}.{payload}".encode()
     signature = hmac.new(settings.jwt_secret.encode(), signature_input, hashlib.sha256).digest()

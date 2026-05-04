@@ -131,6 +131,32 @@ def test_bootstrap_admin_user_has_required_email_hash():
     assert user.email_hash == hash_field("admin@istara.local")
 
 
+async def _create_team_user(
+    *,
+    username: str,
+    email: str,
+    password: str,
+    role: str = "admin",
+) -> None:
+    from app.core.auth import hash_password
+    from app.core.field_encryption import hash_field
+    from app.models.database import async_session
+    from app.models.user import User
+
+    async with async_session() as db:
+        user = User(
+            id=f"user-{username}",
+            username=username,
+            email=email,
+            email_hash=hash_field(email),
+            password_hash=hash_password(password),
+            role=role,
+            display_name=username,
+        )
+        db.add(user)
+        await db.commit()
+
+
 # ---------------------------------------------------------------------------
 # JWT security tests
 # ---------------------------------------------------------------------------
@@ -263,6 +289,103 @@ async def test_cookie_auth_rejects_untrusted_origin_on_state_change():
 
     assert response.status_code == 403
     assert "Untrusted browser origin" in response.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_login_creates_revocable_server_auth_session():
+    """Team-mode login should create a server-backed session that logout revokes."""
+    await init_db()
+    settings.team_mode = True
+    if not settings.jwt_secret:
+        settings.jwt_secret = "test-secret"
+
+    import uuid
+
+    username = f"sessionuser_{uuid.uuid4().hex[:8]}"
+    email = f"{username}@example.com"
+    password = "xK9#mP2$vL7nQ4@wR1!"
+    await _create_team_user(username=username, email=email, password=password)
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        login = await ac.post(
+            "/api/auth/login",
+            json={"username": username, "password": password},
+        )
+        assert login.status_code == 200
+        token = login.json()["token"]
+
+        from app.core.auth import verify_token
+        from app.models.auth_session import AuthSession
+        from app.models.database import async_session
+
+        payload = verify_token(token)
+        assert payload is not None
+        assert payload["session_bound"] is True
+        assert payload["sid"]
+
+        async with async_session() as db:
+            session = await db.get(AuthSession, payload["sid"])
+            assert session is not None
+            assert session.user_id == payload["sub"]
+            assert session.token_jti == payload["jti"]
+            assert session.revoked_at is None
+
+        active = await ac.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
+        assert active.status_code == 200
+
+        logout = await ac.post("/api/auth/logout", headers={"Authorization": f"Bearer {token}"})
+        assert logout.status_code == 200
+
+        async with async_session() as db:
+            session = await db.get(AuthSession, payload["sid"])
+            assert session is not None
+            assert session.revoked_at is not None
+
+        revoked = await ac.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
+        assert revoked.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_bound_session_uses_current_user_role():
+    """Role changes should take effect immediately for server-bound sessions."""
+    await init_db()
+    settings.team_mode = True
+    if not settings.jwt_secret:
+        settings.jwt_secret = "test-secret"
+
+    import uuid
+
+    username = f"rolebound_{uuid.uuid4().hex[:8]}"
+    email = f"{username}@example.com"
+    password = "xK9#mP2$vL7nQ4@wR1!"
+    await _create_team_user(username=username, email=email, password=password)
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        login = await ac.post(
+            "/api/auth/login",
+            json={"username": username, "password": password},
+        )
+        assert login.status_code == 200
+        token = login.json()["token"]
+        headers = {"Authorization": f"Bearer {token}"}
+
+        allowed = await ac.get("/api/auth/users", headers=headers)
+        assert allowed.status_code == 200
+
+        from app.models.database import async_session
+        from app.models.user import User
+        from sqlalchemy import select
+
+        async with async_session() as db:
+            result = await db.execute(select(User).where(User.username == username))
+            user = result.scalar_one()
+            user.role = "viewer"
+            await db.commit()
+
+        denied = await ac.get("/api/auth/users", headers=headers)
+        assert denied.status_code == 403
 
 
 # ---------------------------------------------------------------------------

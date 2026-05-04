@@ -11,7 +11,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.field_encryption import encrypt_field, decrypt_field
+from app.core.field_encryption import decrypt_field, encrypt_field
 from app.core.security_middleware import require_admin_from_request
 from app.models.database import get_db
 from app.models.llm_server import LLMServer
@@ -99,9 +99,12 @@ async def add_llm_server(data: LLMServerCreate, request: Request, db: AsyncSessi
             token_str = request.cookies.get("istara_session", "")
         if not token_str:
             raise HTTPException(status_code=401, detail="Authentication required")
-            
+
         from app.core.auth import verify_token
-        if not verify_token(token_str):
+        from app.core.auth_sessions import validate_auth_session
+
+        payload = verify_token(token_str)
+        if not payload or not await validate_auth_session(db, payload, request):
             raise HTTPException(status_code=401, detail="Invalid token")
 
     server = LLMServer(
@@ -118,7 +121,7 @@ async def add_llm_server(data: LLMServerCreate, request: Request, db: AsyncSessi
     await db.refresh(server)
 
     # Register with the live router (decrypt key for runtime use)
-    from app.core.llm_router import llm_router, LLMServerEntry
+    from app.core.llm_router import LLMServerEntry, llm_router
     entry = LLMServerEntry(
         server_id=server.id,
         name=server.name,

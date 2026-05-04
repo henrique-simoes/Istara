@@ -14,8 +14,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.core.auth import create_token, hash_password
+from app.core.auth_sessions import issue_auth_session_token
 from app.core.client_identity import BoundedWindowRateLimiter, get_client_ip
-from app.core.field_encryption import hash_field
 from app.core.connection_string import (
     create_compute_donation_string,
     create_connection_string,
@@ -23,9 +23,10 @@ from app.core.connection_string import (
     hash_connection_string,
     preview_connection_string,
 )
+from app.core.field_encryption import hash_field
 from app.core.security_middleware import require_admin_from_request
-from app.models.database import get_db
 from app.models.connection_string import ConnectionString
+from app.models.database import get_db
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -312,7 +313,11 @@ async def validate_connection_string(
 
 
 @router.post("/connections/redeem")
-async def redeem_connection_string(data: RedeemRequest, db: AsyncSession = Depends(get_db)):
+async def redeem_connection_string(
+    data: RedeemRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
     """Redeem a connection string — creates a user account and returns auth tokens.
     The user can then access the web UI with the JWT and connect a relay with the
     network token."""
@@ -420,7 +425,12 @@ async def redeem_connection_string(data: RedeemRequest, db: AsyncSession = Depen
     except Exception:
         pass
 
-    token = create_token(user.id, user.username, user.role.value)
+    token = await issue_auth_session_token(
+        db,
+        user,
+        request,
+        auth_method="connection_string",
+    )
     logger.info(f"User created via connection string: {user.username}")
 
     return {

@@ -64,6 +64,7 @@ async def init_db() -> None:
         "app.models.session",
         "app.models.task",
         "app.models.user",
+        "app.models.auth_session",
         "app.models.llm_server",
         "app.models.method_metric",
         "app.models.webauthn_credential",

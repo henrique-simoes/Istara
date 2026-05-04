@@ -207,6 +207,8 @@ class SecurityAuthMiddleware(BaseHTTPMiddleware):
 
         # Verify JWT
         from app.core.auth import verify_token
+        from app.core.auth_sessions import current_user_context_for_payload, validate_auth_session
+        from app.models.database import async_session
 
         payload = verify_token(token)
         if not payload:
@@ -215,12 +217,21 @@ class SecurityAuthMiddleware(BaseHTTPMiddleware):
                 content={"detail": "Invalid or expired authentication token."},
             )
 
+        async with async_session() as db:
+            if not await validate_auth_session(db, payload, request):
+                return JSONResponse(
+                    status_code=401,
+                    content={"detail": "Invalid or revoked authentication session."},
+                )
+            user_context = await current_user_context_for_payload(db, payload)
+            if not user_context:
+                return JSONResponse(
+                    status_code=401,
+                    content={"detail": "Authenticated user no longer exists."},
+                )
+
         # Attach user info to request state for downstream use
-        request.state.user = {
-            "id": payload.get("sub", ""),
-            "username": payload.get("username", ""),
-            "role": payload.get("role", "researcher"),
-        }
+        request.state.user = user_context
 
         return await call_next(request)
 
