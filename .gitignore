@@ -106,9 +106,10 @@ old_plans.md
 # Documentation snapshots are local/Compass Forge archival material.
 docs/
 
-# Local model weights, media, and release artifacts — NEVER TRACK THESE IN GIT.
-# Model_Finetuning/ is tracked; deployable model binaries belong in releases/artifacts.
+# Local model training, weights, media, and release artifacts — NEVER TRACK THESE IN GIT.
+# Protected by pre-commit hook. If you need to share models, use releases/artifacts.
 /LLMs/
+/Model_Finetuning/
 *.ogg
 *.wav
 *.mp3
