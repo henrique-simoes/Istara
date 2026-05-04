@@ -1644,10 +1644,19 @@ System tray application for macOS, Windows, and Linux. **Mode-aware manager only
 - CalVer for qualifying `main` pushes is derived from the latest existing release tag, not the committed `VERSION` file. This prevents same-day qualifying pushes from silently colliding on the same release version.
 
 `.github/workflows/ci.yml` enforces repository governance on pushes to `main` and pull requests:
-- Generated docs must be current: `python scripts/update_agent_md.py --check`
-- Integrity stack must be coherent: `python scripts/check_integrity.py`
+- Active governance docs must be coherent: `python scripts/check_integrity.py`
+- CI/CD governance must be self-consistent: `python scripts/check_ci_governance.py`
 - Change obligations must be satisfied: `python scripts/check_change_obligations.py`
 - That governance check fails when architecture/process/release-sensitive code changes without corresponding updates to `Tech.md`, tests, or Istara persona files
+- Backend CI compiles release-critical governed surfaces, runs `python scripts/production_rehearsal.py --json`, and then runs the dedicated governed evolution regression pair: `tests/test_improvement_governance.py` and `tests/test_compute.py`
+
+Legacy Compass markdown (`AGENT.md`, `AGENT_ENTRYPOINT.md`, `COMPLETE_SYSTEM.md`, and `SYSTEM_INTEGRITY_GUIDE.md`) is no longer a blocking CI/CD governance source. Those files may remain as historical references, but Compass Forge is the local-first control plane for repository onboarding, impact analysis, gates, work orders, and evidence. CI therefore guards against accidentally re-promoting the legacy generator or legacy markdown drift checks back into release governance.
+
+The production rehearsal is the lightweight release smoke test for the new self-improvement architecture. It verifies importability and wiring for the Improvement Governance contract, sandbox evaluation, DGM-H archive, ReasoningBank, compute capacity envelope, dependency manifest coverage, route/type contract expectations, and rollback/evidence surfaces before the full backend test suite runs. This keeps CI aligned with the production rule that autoresearch, skill evolution, agent creation, meta-agent proposals, UI changes, integrations, and backend-code mutations must become governed proposals with evidence and rollback rather than invisible mutations.
+
+Governed evolution changes are tracked in `scripts/check_change_obligations.py` through explicit patterns for autoresearch, ReasoningBank, DGM-H, Improvement Governance, sandbox evaluation, compute capacity, and their frontend/API contracts. Those changes must update one of the dedicated tests for autoresearch, ReasoningBank, DGM-H, improvement governance, meta-hyperagent, compute, or research integrity. Release detection in `.github/workflows/build-installers.yml` treats the governance scripts and production rehearsal as release-worthy because they determine what is safe to ship.
+
+`.github/workflows/track-autoresearch.yml` watches Karpathy's autoresearch upstream and creates an issue when the upstream reference changes. The workflow checks out the repository so any tracked SHA marker is available, uses read-only contents permission plus issue write permission, and routes upstream changes through the same governed evolution process before Istara adopts them.
 
 ### Secret Generation
 `scripts/generate-secrets.sh` generates ALL production secrets:
@@ -2459,7 +2468,7 @@ Istara includes a comprehensive backup system that protects all user data with m
 
 ### Meta-Hyperagent (Experimental)
 
-The Meta-Hyperagent is an experimental self-improvement layer inspired by the Hyperagents paper (DGM-H) on metacognitive self-modification. It observes Istara's own subsystems and proposes parameter optimizations:
+The Meta-Hyperagent is an experimental self-improvement layer inspired by the Hyperagents paper (DGM-H) on metacognitive self-modification. It now participates in the same governed evolution contract used by autoresearch, Memento-style skill/agent creation, ReasoningBank memory distillation, and user-visible approval/rollback flows. It observes Istara's own subsystems and proposes parameter optimizations:
 
 - **5 Observed Subsystems**: The meta-hyperagent monitors routing (task-to-agent matching accuracy), evolution (prompt promotion rate and quality), skill selection (skill-task match rate), quality evaluation (verification pass rate), and agent capabilities (capability utilization and error rates).
 
@@ -2472,6 +2481,20 @@ The Meta-Hyperagent is an experimental self-improvement layer inspired by the Hy
 - **Confirmed Overrides**: When a variant is confirmed, the parameter override is persisted to `_meta_overrides.json` and loaded at startup, making the optimization permanent until manually removed.
 
 - **Safety Mechanisms**: Value bounds prevent parameters from being set outside safe ranges. Rate limiting caps active variants at 3 simultaneously to prevent cascading instability. A full audit trail logs every proposal, approval, rejection, application, revert, and confirmation with timestamps.
+
+### System-Wide Governed Evolution Contract
+
+All self-improving producers use Improvement Governance as the central write barrier. Autoresearch, the Meta-Hyperagent, skill evolution, automatic agent creation, messaging/integration evidence hooks, and manual admin proposals can record an `ImprovementProposal` with affected surfaces, before/after state, reasoning memory IDs, metrics, evidence, approval policy, and rollback plan. Low-risk prompt/config changes may be auto-applicable after sandbox evaluation; behavior-changing updates to skills, agents, UI, integrations, compute, or backend code remain proposal-first for non-technical users.
+
+ReasoningBank is Istara's shared orchestration memory. It stores distilled success and failure traces from task execution, autoresearch experiments, skill proposals, and meta-agent observations. Retrieval feeds prompt-RAG and routing context while preserving BM25/RAG behavior: BM25 still ranks lexical matches, vector/RAG still supplies project content, prompt-RAG composes the final context, and LLMLingua-style compression should protect governance instructions, tool outputs, and selected reasoning memories rather than compressing away decision-critical evidence.
+
+The DGM-H archive is the lineage layer for evolved variants. Each accepted or candidate mutation can be represented as a `DGMHArchiveVariant` with parent linkage, mutation surface, artifact reference, score, confidence, evaluation evidence, approval/application status, rollback metadata, and quarantine/confirmation state. Parent selection uses scored lineage rather than only latest-success selection, so production changes can preserve promising alternatives without applying them blindly.
+
+Sandbox evaluation is the pre-apply safety check. It inspects the proposal surface, approval policy, rollback plan, evidence completeness, risky file/process targets, and apply evidence before allowing a proposal to move from approved to applied. The same result is persisted as proposal evidence and is exposed in the Governed Evolution UI.
+
+The compute capacity envelope is attached to the pooled compute registry so routed LLM work can account for local, network, and relay capacity in a stable way. It summarizes node count, availability, weighted capacity score, and bottlenecks, and it gives CI a concrete release check for faster and more stable hardware management.
+
+The route/type contract is maintained across backend routes, frontend API clients, and TypeScript types. New governance, ReasoningBank, and DGM-H routes must have frontend contracts and tests in the same change, and Compass Forge route/type drift warnings are treated as release-hardening evidence even when they are not yet fully blocking.
 
 ### Academic References
 
@@ -2598,11 +2621,11 @@ Connect external MCP servers to augment Istara's capabilities. Discover tools, c
 
 ## System Documentation Layer
 
-### AGENT.md — Universal Agent-Readable Spec
+### Compass Forge — Active Governance Control Plane
 
-Root-level file any AI agent can discover and parse. Contains system identity, architecture, capabilities catalog (auto-generated), agent interaction guide, security boundaries.
+Compass Forge is the active local-first control plane for repository onboarding, impact analysis, work orders, gates, evidence, and architecture freshness. CI/CD does not regenerate or block on the old Compass markdown inventory files; release governance is enforced through active process docs, `scripts/check_integrity.py`, `scripts/check_ci_governance.py`, `scripts/check_change_obligations.py`, production rehearsal, and tests.
 
-### Planner.md — Compass Workflow Control
+### Planner.md — Legacy Compass Workflow Control
 
 `planner.md` is tracked as part of Compass. Agents use it for planned, multi-agent, branch-review, stale-branch, and correction workflows. It requires role declaration, repository intelligence checks, protected Compass file preservation, correction/re-review loops when real defects are found, and a final user teaching report when the completed work changes a feature, command, output, or process.
 
@@ -2616,9 +2639,9 @@ Canonical source skills remain in `backend/app/skills/definitions/`. User-create
 
 The removed `Model_Finetuning/` and `.qwen/` tracked files are intentionally left as local ignored workspace material. Public sharing of training corpora or model artifacts must happen through a separate curated repository or release artifact, not through the application source tree.
 
-### Auto-Update Script
+### Legacy Compass Markdown
 
-`scripts/update_agent_md.py` regenerates the Capabilities Catalog by scanning API routes, skills, agents, menus, models, and MCP tools. Run after every feature addition.
+`AGENT.md`, `AGENT_ENTRYPOINT.md`, `COMPLETE_SYSTEM.md`, `SYSTEM_INTEGRITY_GUIDE.md`, and `scripts/update_agent_md.py` are legacy Compass inventory artifacts. They are optional historical references and must not be treated as blocking CI/CD governance now that Compass Forge owns repository mapping and process evidence.
 
 ### Feature Documentation
 

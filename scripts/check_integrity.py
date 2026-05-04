@@ -1,82 +1,54 @@
 #!/usr/bin/env python3
-"""Integrity checker for Istara's living architecture docs."""
+"""Integrity checker for Istara's active release governance docs."""
 
 from __future__ import annotations
 
-import re
 import sys
 from pathlib import Path
 
-from update_agent_md import (
-    AGENT_MD,
-    COMPLETE_SYSTEM_MD,
-    ROOT,
-    build_agent_document,
-    build_complete_system_document,
-    build_inventory,
-)
-
-GUIDE = ROOT / "SYSTEM_INTEGRITY_GUIDE.md"
+ROOT = Path(__file__).resolve().parent.parent
 TECH_MD = ROOT / "Tech.md"
-
-# Dynamically discover prompt and governance docs (strictly uppercase in root)
-PROMPT_DOCS = [
-    p for p in ROOT.glob("*.md")
-    if p.stem.isupper() and p.name not in {
-        "README.md", "CHANGELOG.md", "CONTRIBUTING.md", "TESTING.md",
-        "AGENT.md", "COMPLETE_SYSTEM.md", "SYSTEM_INTEGRITY_GUIDE.md"
-    }
+ACTIVE_GOVERNANCE_DOCS = [
+    TECH_MD,
+    ROOT / "CHANGE_CHECKLIST.md",
+    ROOT / "SYSTEM_CHANGE_MATRIX.md",
+    ROOT / "SYSTEM_PROMPT.md",
+]
+LEGACY_COMPASS_DOCS = [
+    ROOT / "AGENT.md",
+    ROOT / "AGENT_ENTRYPOINT.md",
+    ROOT / "COMPLETE_SYSTEM.md",
+    ROOT / "SYSTEM_INTEGRITY_GUIDE.md",
 ]
 
 
 def check_exists(issues: list[str]) -> None:
-    required = [AGENT_MD, COMPLETE_SYSTEM_MD, GUIDE, *PROMPT_DOCS]
-    # Ensure baseline docs exist even if dynamic discovery misses them
-    baseline = ["AGENT_ENTRYPOINT.md", "SYSTEM_PROMPT.md", "CHANGE_CHECKLIST.md"]
-    for name in baseline:
-        if not (ROOT / name).exists():
-            issues.append(f"MISSING: Baseline doc {name} does not exist")
-            
-    for path in required:
+    for path in ACTIVE_GOVERNANCE_DOCS:
         if not path.exists():
-            issues.append(f"MISSING: {path.name} does not exist")
+            issues.append(f"MISSING: active governance doc {path.name} does not exist")
 
 
-def check_generated_docs(issues: list[str]) -> None:
-    inventory = build_inventory()
-    expected = {
-        AGENT_MD: build_agent_document(inventory),
-        COMPLETE_SYSTEM_MD: build_complete_system_document(inventory),
-    }
-    for path, content in expected.items():
-        if not path.exists():
-            continue
-        if path.read_text(encoding="utf-8") != content:
-            issues.append(f"DRIFT: {path.name} is out of date. Run `python scripts/update_agent_md.py`.")
+def check_legacy_compass_not_active(issues: list[str]) -> None:
+    """Guard against accidentally re-promoting legacy Compass markdown to CI truth."""
+    ci_text = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8").lower()
+    build_text = (ROOT / ".github" / "workflows" / "build-installers.yml").read_text(
+        encoding="utf-8"
+    ).lower()
+    release_text = (ROOT / "scripts" / "prepare-release.sh").read_text(encoding="utf-8").lower()
 
+    legacy_names = {path.name.lower() for path in LEGACY_COMPASS_DOCS}
+    for name in sorted(legacy_names):
+        if name in ci_text or name in build_text or name in release_text:
+            issues.append(
+                f"LEGACY: {name} is referenced by active CI/release governance. "
+                "Keep legacy Compass markdown optional; Compass Forge is the control plane."
+            )
 
-def check_legacy_guide_mentions(issues: list[str]) -> None:
-    if not GUIDE.exists():
-        return
-    guide_text = GUIDE.read_text(encoding="utf-8")
-
-    database_file = ROOT / "backend" / "app" / "models" / "database.py"
-    if database_file.exists():
-        content = database_file.read_text(encoding="utf-8")
-        imports = re.findall(r"from app\.models\.(\w+) import", content)
-        imports += re.findall(r"from app\.core\.(\w+) import", content)
-        for mod in imports:
-            if mod not in guide_text and mod.replace("_", " ") not in guide_text.lower():
-                issues.append(f"GUIDE: `{mod}` is registered in database.py but not mentioned in SYSTEM_INTEGRITY_GUIDE.md")
-
-    main_file = ROOT / "backend" / "app" / "main.py"
-    if main_file.exists():
-        content = main_file.read_text(encoding="utf-8")
-        routers = re.findall(r"include_router\((\w+)\.router", content)
-        for router_name in routers:
-            clean = router_name.replace("_routes", "").replace("_router", "")
-            if clean not in guide_text and clean.replace("_", " ") not in guide_text.lower():
-                issues.append(f"GUIDE: router `{router_name}` is registered in main.py but not mentioned in SYSTEM_INTEGRITY_GUIDE.md")
+    if "update_agent_md.py" in ci_text or "update_agent_md.py" in build_text or "update_agent_md.py" in release_text:
+        issues.append(
+            "LEGACY: scripts/update_agent_md.py is referenced by active CI/release governance. "
+            "Generated legacy Compass docs are optional and must not block release checks."
+        )
 
 
 def check_tech_md_freshness(issues: list[str]) -> None:
@@ -114,10 +86,17 @@ def check_tech_md_freshness(issues: list[str]) -> None:
         "opentelemetry": "Local-First OpenTelemetry & Tracing",
         "agent hooks": "Agent Hooks lifecycle interception",
         "compute registry": "Unified ComputeRegistry architecture",
+        "compute capacity": "Compute capacity envelope for pooled hardware",
         "rfc 3986": "RFC 3986 URI normalization",
         "layer 5": "Layer 5 Real-World Orchestration benchmarks",
         "minto": "Minto Pyramid and SCR framework for presentations",
-        "connection string": "Connection string lifecycle and relay management"
+        "connection string": "Connection string lifecycle and relay management",
+        "governed evolution": "System-wide governed evolution contract",
+        "sandbox evaluation": "Pre-apply sandbox evaluation for self-improvement proposals",
+        "production rehearsal": "Production rehearsal gate for release-critical processes",
+        "reasoningbank": "ReasoningBank shared orchestration memory",
+        "dgm-h": "DGM-H archive evolution and rollback lineage",
+        "route/type contract": "Route/type contract governance",
     }
 
     missing = []
@@ -144,8 +123,7 @@ def main() -> int:
             print(f"  - {issue}")
         return 1
 
-    check_generated_docs(issues)
-    check_legacy_guide_mentions(issues)
+    check_legacy_compass_not_active(issues)
     check_tech_md_freshness(issues)
 
     if issues:
@@ -154,7 +132,7 @@ def main() -> int:
             print(f"  - {issue}")
         return 1
 
-    print("All tracked architecture docs are in sync.")
+    print("Active release governance docs are coherent.")
     return 0
 
 

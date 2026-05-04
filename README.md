@@ -809,8 +809,9 @@ node tests/simulation/run.mjs
 # Verify system integrity before committing
 python scripts/check_integrity.py
 
-# Update agent capability documentation
-python scripts/update_agent_md.py
+# Verify CI/CD governance and production rehearsal
+python scripts/check_ci_governance.py
+python scripts/production_rehearsal.py --json
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions, code style guide, and the change checklist.

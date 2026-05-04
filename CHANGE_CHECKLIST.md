@@ -1,8 +1,8 @@
 # Istara Change Checklist
 
-Use this checklist for EVERY change to ensure nothing breaks. Cross-reference with **SYSTEM_INTEGRITY_GUIDE.md** for details.
+Use this checklist for EVERY change to ensure nothing breaks. Cross-reference active Compass Forge evidence and `Tech.md` for current architecture details.
 
-`Compass` is the name of the full agentic development system behind this checklist: prompts, generated docs, matrices, checklists, changelogs, future-feature ledger, technical narrative, personas, and test/simulation maintenance. Updating Compass means updating this whole system so future agents inherit the new truth.
+Compass Forge is the active control plane for repository mapping, impact analysis, work orders, gates, and evidence. The old generated Compass markdown files are legacy references and are no longer blocking CI/CD governance.
 
 ---
 
@@ -11,9 +11,8 @@ Use this checklist for EVERY change to ensure nothing breaks. Cross-reference wi
 Before making ANY change:
 
 - [ ] Read `SYSTEM_PROMPT.md` for the repo-wide agent contract
-- [ ] Read `AGENT_ENTRYPOINT.md` for the canonical reading order
+- [ ] Run Compass Forge status/brief/impact for non-trivial work
 - [ ] Read `planner.md` for planned, multi-agent, branch-review, stale-branch, or review/correction work
-- [ ] Skim `AGENT.md` or `COMPLETE_SYSTEM.md` for the current generated system map
 - [ ] Read `SYSTEM_CHANGE_MATRIX.md` for dependent surfaces that must move with this change
 - [ ] Read `CHANGELOG.md` to understand recent system evolution
 - [ ] Read `COMPASS_FUTURE_FEATURES.md` when planning, deferring, or discovering future work
@@ -22,7 +21,7 @@ Before making ANY change:
 - [ ] Decide whether `Tech.md` must change because the architecture/process/release story changed
 - [ ] Decide whether Istara's own agents need persona updates to understand this feature
 - [ ] Decide whether an existing simulation scenario is enough or whether a new scenario must be added
-- [ ] Read relevant sections in SYSTEM_INTEGRITY_GUIDE.md
+- [ ] Read relevant sections in `Tech.md` and Compass Forge context packs
 - [ ] Identify all affected subsystems (Database, Routes, Frontend, Agents, Skills, WebSocket)
 - [ ] Check if this change involves cascade deletes
 - [ ] Verify authentication/authorization impact
@@ -216,7 +215,7 @@ const scenarioFiles = [
 - [ ] Add WebSocket event handler if real-time updates needed
 - [ ] Write unit tests
 - [ ] Update this CHANGE_CHECKLIST.md
-- [ ] Run `python scripts/update_agent_md.py`
+- [ ] Run `python scripts/check_integrity.py`
 
 ### Adding a New API Route
 
@@ -380,7 +379,7 @@ const scenarioFiles = [
 - [ ] Persona files updated (istara-main, istara-devops) to understand transcription capability
 - [ ] Tech.md updated with transcription pipeline architecture
 - [ ] `SYSTEM_CHANGE_MATRIX.md` "Documents/Interviews/Context" row updated for voice input
-- [ ] Run `python scripts/update_agent_md.py` and `python scripts/check_integrity.py`
+- [ ] Run `python scripts/check_integrity.py`
 
 ### Adding an Integration (Survey, Design, etc.)
 
@@ -466,7 +465,7 @@ const scenarioFiles = [
 - [ ] `TELEMETRY_ENABLED=false` by default — no phone-home, local-first data only
 - [ ] No prompts, responses, user content, or project data stored in telemetry spans
 - [ ] Persona files updated (istara-devops: Telemetry Monitoring)
-- [ ] Tech.md and SYSTEM_INTEGRITY_GUIDE.md updated for telemetry
+- [ ] Tech.md updated for telemetry
 
 ---
 
@@ -527,12 +526,10 @@ Before pushing to production:
 - [ ] Database ports not exposed to host (PostgreSQL, Ollama)
 
 ### Documentation
-- [ ] Regenerate architecture docs: `python scripts/update_agent_md.py`
 - [ ] Integrity check passes: `python scripts/check_integrity.py`
-- [ ] Compass was updated anywhere future agents would otherwise be misled
+- [ ] Compass Forge was refreshed/gated anywhere future agents would otherwise be misled
 - [ ] `Tech.md` updated if architecture, workflows, or release/update behavior changed
 - [ ] Relevant persona files updated if Istara's own agents need to know about the change
-- [ ] SYSTEM_INTEGRITY_GUIDE.md updated
 - [ ] CHANGE_CHECKLIST.md updated
 - [ ] Code comments added for complex logic
 - [ ] API docs generated (if using FastAPI docs)
@@ -734,7 +731,8 @@ lms server start  # Starts on http://localhost:1234
 # Tests
 pytest tests/
 pytest tests/simulation/run.mjs
-python scripts/update_agent_md.py
+python scripts/check_integrity.py
+python scripts/check_ci_governance.py
 ```
 
 ### Production Deployment
@@ -772,10 +770,10 @@ curl http://localhost:8000/api/compute/nodes \
 
 ## REFERENCES
 
-- **Full System Guide**: `SYSTEM_INTEGRITY_GUIDE.md`
+- **Active Governance**: Compass Forge + `Tech.md`
 - **Architecture**: `Tech.md`
 - **Development Patterns**: `CLAUDE.md`
-- **Agent Capabilities**: `AGENT.md` (auto-generated)
+- **Legacy References**: `AGENT.md`, `COMPLETE_SYSTEM.md`, `SYSTEM_INTEGRITY_GUIDE.md` (optional, non-blocking)
 
 ---
 

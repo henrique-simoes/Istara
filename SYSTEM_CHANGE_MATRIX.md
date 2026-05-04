@@ -2,12 +2,11 @@
 
 This document tells coding agents what else must be inspected, updated, or revalidated when a specific part of the system changes.
 
-`Compass` is the name of the full system this matrix belongs to: entry docs, prompts, generated architecture maps, change matrix, checklists, changelog, future-feature ledger, Tech narrative, persona knowledge, and ongoing test/simulation maintenance.
+Compass Forge is the active control plane this matrix belongs to: impact analysis, work orders, gates, evidence, active process docs, Tech narrative, persona knowledge, and ongoing test/simulation maintenance.
 
 Use it with:
 - `SYSTEM_PROMPT.md` for repo-wide operating rules
-- `AGENT.md` for the current generated inventory
-- `COMPLETE_SYSTEM.md` for the broader generated architecture map
+- Compass Forge status/brief/impact/gates for the current repository map
 - `CHANGE_CHECKLIST.md` for step-by-step execution
 - `COMPASS_FUTURE_FEATURES.md` for future plans, deferred hardening, and feature candidates
 - `planner.md` for planned, multi-agent, branch-review, stale-branch, or review/correction workflows
@@ -35,7 +34,7 @@ For any non-trivial change, check these six surfaces:
 | Background jobs/events | websocket broadcasters, frontend listeners, notification handling, loops/autoresearch views | Async systems fail indirectly |
 | Persona or skill behavior | persona files, skill definitions, routing/recommendation logic, tests, docs | Agent behavior changes without architectural memory |
 | Release/update flow | version script, workflows, updater routes, desktop tray update logic, docs | Shipping/install/update path breaks |
-| Compass doctrine | prompts, `planner.md`, checklists, Tech narrative, personas, generated docs, scenarios | Future agents inherit the wrong operating model |
+| Compass Forge doctrine | prompts, `planner.md`, checklists, Tech narrative, personas, Compass Forge evidence, scenarios | Future agents inherit the wrong operating model |
 | deferred feature or future plan | `COMPASS_FUTURE_FEATURES.md`, `current_plans.md` if execution starts, `CHANGELOG.md` if shipped | Product memory disappears between sessions |
 
 ## Backend Matrix
@@ -44,7 +43,7 @@ For any non-trivial change, check these six surfaces:
 
 | If You Change | Must Also Inspect |
 |---|---|
-| `backend/app/api/routes/*.py` endpoint or payload | `backend/app/main.py`, `frontend/src/lib/api.ts`, `frontend/src/lib/types.ts`, relevant store(s), relevant view/component(s), e2e/simulation scenarios, generated docs |
+| `backend/app/api/routes/*.py` endpoint or payload | `backend/app/main.py`, `frontend/src/lib/api.ts`, `frontend/src/lib/types.ts`, relevant store(s), relevant view/component(s), e2e/simulation scenarios, Compass Forge route/type drift |
 | route auth/role rules | `backend/app/core/security_middleware.py`, `backend/app/core/auth.py`, `frontend/src/components/auth/LoginScreen.tsx`, auth-dependent UX, security tests |
 | project-scoped authorization | `backend/app/core/permissions.py`, `backend/app/models/project_member.py`, all affected project-scoped routes, frontend read-only/disabled states, `docs/TEAM_RBAC_PERMISSION_MATRIX.md`, security tests for `404` concealment and `403` forbidden mutations |
 | system/admin route authorization | `backend/app/core/security_middleware.py`, MCP routes, backup routes, scheduler/autoresearch/loop/agent/channel/survey/audit routes, Admin Dashboard affordances, tests proving non-admins receive `403` for sensitive global reads and mutations |
@@ -98,8 +97,8 @@ For any non-trivial change, check these six surfaces:
 
 | If You Change | Must Also Inspect |
 |---|---|
-| `frontend/src/components/layout/Sidebar.tsx` | `HomeClient.tsx`, `MobileNav.tsx`, search modal results, keyboard shortcuts, simulation navigation scenarios, generated docs |
-| `frontend/src/components/layout/HomeClient.tsx` view switch | sidebar IDs, mobile nav IDs, onboarding/tour transitions, project-required guards, generated docs |
+| `frontend/src/components/layout/Sidebar.tsx` | `HomeClient.tsx`, `MobileNav.tsx`, search modal results, keyboard shortcuts, simulation navigation scenarios, Compass Forge freshness |
+| `frontend/src/components/layout/HomeClient.tsx` view switch | sidebar IDs, mobile nav IDs, onboarding/tour transitions, project-required guards, Compass Forge freshness |
 | active view IDs | localStorage key usage, deep-link/navigation events, right panel logic, notifications and suggestions that navigate |
 
 ### Stores and Client State
@@ -144,10 +143,10 @@ For any non-trivial change, check these six surfaces:
 
 | If You Change | Must Also Inspect |
 |---|---|
-| persona files in `backend/app/agents/personas/*` | any docs/prompts that describe agent behavior, tests/simulations that rely on that persona, generated docs if tracked inventory changes |
+| persona files in `backend/app/agents/personas/*` | any docs/prompts that describe agent behavior, tests/simulations that rely on that persona, Compass Forge freshness if tracked inventory changes |
 | skill definition JSON | skills API/routes, planning/execution flows, reports, recommendation logic, `scripts/validate_skills.py`, simulation/e2e coverage |
 | removed legacy skill generator/export modules | do not reintroduce them as sources of truth; keep `definitions/*.json` canonical; run `python scripts/validate_skills.py` |
-| system prompt / repo instructions | `SYSTEM_PROMPT.md`, `AGENT_ENTRYPOINT.md`, `planner.md`, wrappers (`CLAUDE.md`, `GEMINI.md`), checklist references, docs describing the workflow |
+| system prompt / repo instructions | `SYSTEM_PROMPT.md`, `planner.md`, wrappers (`CLAUDE.md`, `GEMINI.md`), checklist references, docs describing the workflow |
 | agent orchestration/routing | task routing keywords, specialty assumptions, chat/session creation, audit behavior |
 
 ## Testing Matrix
@@ -166,26 +165,26 @@ For any non-trivial change, check these six surfaces:
 If a change would confuse a future agent reading the UI or API map, it probably deserves:
 - one direct test or scenario update
 - one new scenario when the behavior creates a new important journey or state transition
-- one generated-doc refresh
+- one Compass Forge refresh/gate evidence item
 - one prompt/checklist reference if it changes workflow expectations
 
 ## Documentation Matrix
 
 | If You Change | Must Also Inspect |
 |---|---|
-| architecture shape | `AGENT.md`, `COMPLETE_SYSTEM.md`, `SYSTEM_INTEGRITY_GUIDE.md`, `Tech.md` if the narrative architecture changed |
-| workflow/process expectations | `SYSTEM_PROMPT.md`, `AGENT_ENTRYPOINT.md`, `planner.md`, `CHANGE_CHECKLIST.md`, model wrappers, contributor docs |
+| architecture shape | Compass Forge map/impact/gate, `Tech.md` if the narrative architecture changed |
+| workflow/process expectations | `SYSTEM_PROMPT.md`, `planner.md`, `CHANGE_CHECKLIST.md`, model wrappers, contributor docs |
 | release/update behavior | `Tech.md`, release workflow docs, updater descriptions, versioning script references |
 | user-facing capabilities | README/wiki/docs feature docs where applicable |
-| Istara-agent understanding of a feature | relevant persona files in `backend/app/agents/personas/`, prompt/process docs, generated docs if inventory changed |
+| Istara-agent understanding of a feature | relevant persona files in `backend/app/agents/personas/`, prompt/process docs, Compass Forge freshness if inventory changed |
 
-### Required Regeneration
+### Required Governance Checks
 
 After architecture-affecting changes, run:
 
 ```bash
-python scripts/update_agent_md.py
 python scripts/check_integrity.py
+python scripts/check_ci_governance.py
 ```
 
 ## Release, Versioning, and Update Matrix
@@ -194,7 +193,7 @@ python scripts/check_integrity.py
 |---|---|
 | versioning format | `scripts/set-version.sh`, `scripts/prepare-release.sh`, `VERSION`, `CHANGELOG.md`, updater logic, desktop tag checks, release workflow |
 | release workflow | `.github/workflows/build-installers.yml`, artifact naming, updater `latest.json`, release notes assumptions, `CHANGELOG.md` |
-| release preparation | `scripts/prepare-release.sh`, `CHANGELOG.md`, integrity/doc regeneration flow, release commit/tag sequence |
+| release preparation | `scripts/prepare-release.sh`, `CHANGELOG.md`, integrity/governance/rehearsal flow, release commit/tag sequence |
 | CI enforcement | `.github/workflows/ci.yml`, required checks, docs/checker steps, contributor workflow |
 | runtime update behavior | `backend/app/api/routes/updates.py`, `desktop/src-tauri/src/health.rs`, settings update UI, backup/update docs |
 | installer packaging | desktop build, bundled resources, source inclusion/exclusion, install docs |
@@ -205,7 +204,7 @@ These are repo doctrines, not optional suggestions.
 
 | Doctrine | What It Means In Practice |
 |---|---|
-| Compass must stay current | If a change alters how agents should understand, navigate, test, release, install, or preserve Istara, update the relevant Compass docs in the same change |
+| Compass Forge must stay current | If a change alters how agents should understand, navigate, test, release, install, or preserve Istara, refresh/gate Compass Forge and update the active docs in the same change |
 | Planner is Compass context | If work uses planned, multi-agent, branch-review, stale-branch, or correction flow, `planner.md` must be read and preserved with the rest of Compass |
 | Update `Tech.md` when the system meaningfully changes | If architecture, process, versioning, update flow, installer flow, or subsystem behavior changed, the narrative technical reference must change too |
 | Update the testing suite for future changes | Do not only verify the current change manually; extend `tests/e2e_test.py`, `tests/simulation/scenarios/`, fixtures, or assertions so the feature remains protected later |

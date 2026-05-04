@@ -22,9 +22,6 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Regenerate docs
-        run: python scripts/update_agent_md.py
-
       - name: Sync README version badges
         if: github.event_name == 'push'
         run: |
@@ -39,27 +36,11 @@ jobs:
             git push origin HEAD:${{ github.ref_name }} || echo "Push failed (token permissions)"
           fi
 
-      - name: Check for drift
-        id: drift
-        run: |
-          if [ -n "$(git status --porcelain)" ]; then
-            echo "has_drift=true" >> $GITHUB_OUTPUT
-          else
-            echo "has_drift=false" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Commit regenerated docs
-        if: steps.drift.outputs.has_drift == 'true' && github.event_name == 'push'
-        continue-on-error: true
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add AGENT.md COMPLETE_SYSTEM.md AGENT_ENTRYPOINT.md
-          git commit -m "ci: regenerate Compass docs [skip ci]"
-          git push origin HEAD:${{ github.ref_name }} || echo "Push failed (token permissions). Update committed docs locally: python scripts/update_agent_md.py"
-
       - name: Check integrity
         run: python scripts/check_integrity.py
+
+      - name: Check CI/CD governance
+        run: python scripts/check_ci_governance.py
 
       - name: Check change obligations
         if: github.event_name == 'pull_request'
@@ -85,6 +66,15 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -e ".[dev]"
+
+      - name: Compile governed release surfaces
+        run: python -m compileall -q app ../scripts/production_rehearsal.py ../scripts/check_ci_governance.py ../scripts/check_change_obligations.py ../scripts/check_integrity.py
+
+      - name: Run production rehearsal
+        run: python ../scripts/production_rehearsal.py --json
+
+      - name: Run governed evolution regressions
+        run: pytest ../tests/test_improvement_governance.py ../tests/test_compute.py -q
 
       - name: Lint
         run: ruff check . --statistics
