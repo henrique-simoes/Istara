@@ -125,3 +125,6 @@ backend/data/skills/
 
 # Local tool settings. Keep checked-in examples outside this folder if needed.
 .qwen/
+.compass-forge/
+.mcp.json
+opencode.json
