@@ -10,11 +10,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 
-ALLOWED_PREFIXES = (
-    "Model_Finetuning/",
-)
-
 BLOCKED_PREFIXES = (
+    "Model_Finetuning/",
     "LLMs/",
     "backend/data/",
     "data/",
@@ -76,8 +73,6 @@ def changed_files(base: str, head: str) -> list[str]:
 
 
 def path_is_blocked(path: str) -> str | None:
-    if path.startswith(ALLOWED_PREFIXES):
-        return None
     if path in BLOCKED_EXACT:
         return "local/runtime control file"
     if path.startswith(BLOCKED_PREFIXES):
