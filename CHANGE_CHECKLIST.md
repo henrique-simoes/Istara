@@ -1,8 +1,8 @@
 # Istara Change Checklist
 
-Use this checklist for EVERY change to ensure nothing breaks. Cross-reference with **SYSTEM_INTEGRITY_GUIDE.md** for details.
+Use this checklist for EVERY change to ensure nothing breaks. Cross-reference active Compass Forge evidence and `Tech.md` for current architecture details.
 
-`Compass` is the name of the full agentic development system behind this checklist: prompts, generated docs, matrices, checklists, changelogs, technical narrative, personas, and test/simulation maintenance. Updating Compass means updating this whole system so future agents inherit the new truth.
+Compass Forge is the active control plane for repository mapping, impact analysis, work orders, gates, and evidence. The old generated Compass markdown files are legacy references and are no longer blocking CI/CD governance.
 
 ---
 
@@ -11,16 +11,17 @@ Use this checklist for EVERY change to ensure nothing breaks. Cross-reference wi
 Before making ANY change:
 
 - [ ] Read `SYSTEM_PROMPT.md` for the repo-wide agent contract
-- [ ] Read `AGENT_ENTRYPOINT.md` for the canonical reading order
+- [ ] Run Compass Forge status/brief/impact for non-trivial work
 - [ ] Read `planner.md` for planned, multi-agent, branch-review, stale-branch, or review/correction work
-- [ ] Skim `AGENT.md` or `COMPLETE_SYSTEM.md` for the current generated system map
 - [ ] Read `SYSTEM_CHANGE_MATRIX.md` for dependent surfaces that must move with this change
 - [ ] Read `CHANGELOG.md` to understand recent system evolution
+- [ ] Read `COMPASS_FUTURE_FEATURES.md` when planning, deferring, or discovering future work
 - [ ] Decide which parts of Compass must change so the next agent understands the new reality
+- [ ] Decide whether this work creates, updates, ships, or supersedes a future-feature ledger entry
 - [ ] Decide whether `Tech.md` must change because the architecture/process/release story changed
 - [ ] Decide whether Istara's own agents need persona updates to understand this feature
 - [ ] Decide whether an existing simulation scenario is enough or whether a new scenario must be added
-- [ ] Read relevant sections in SYSTEM_INTEGRITY_GUIDE.md
+- [ ] Read relevant sections in `Tech.md` and Compass Forge context packs
 - [ ] Identify all affected subsystems (Database, Routes, Frontend, Agents, Skills, WebSocket)
 - [ ] Check if this change involves cascade deletes
 - [ ] Verify authentication/authorization impact
@@ -214,7 +215,7 @@ const scenarioFiles = [
 - [ ] Add WebSocket event handler if real-time updates needed
 - [ ] Write unit tests
 - [ ] Update this CHANGE_CHECKLIST.md
-- [ ] Run `python scripts/update_agent_md.py`
+- [ ] Run `python scripts/check_integrity.py`
 
 ### Adding a New API Route
 
@@ -378,7 +379,7 @@ const scenarioFiles = [
 - [ ] Persona files updated (istara-main, istara-devops) to understand transcription capability
 - [ ] Tech.md updated with transcription pipeline architecture
 - [ ] `SYSTEM_CHANGE_MATRIX.md` "Documents/Interviews/Context" row updated for voice input
-- [ ] Run `python scripts/update_agent_md.py` and `python scripts/check_integrity.py`
+- [ ] Run `python scripts/check_integrity.py`
 
 ### Adding an Integration (Survey, Design, etc.)
 
@@ -420,6 +421,18 @@ const scenarioFiles = [
 - [ ] `validation.metrics(projectId)` API client method added to `frontend/src/lib/api.ts`
 - [ ] Persona files updated (istara-main: Research Quality Evaluation)
 
+### Changing Task Review And Agent Completion Semantics
+
+- [ ] Agents stop successful task attempts in `In Review`; no autonomous path writes `Done`
+- [ ] Human approval endpoint is the only normal path from `In Review` to `Done`
+- [ ] Negative review from `In Review` or `Done` requires What to Review and returns to `Backlog` or `In Progress`
+- [ ] `TaskReviewEvent` records approval, rejection, reopen, and system failure outcomes
+- [ ] Review events feed telemetry, model/skill stats, agent learning, and skill health
+- [ ] System action tools refuse `move_task(..., done)` for agents
+- [ ] Task cards and modal expose labels, review state, failure streak, concise quality metrics, atomic path, and Done-to-Report
+- [ ] Backend tests cover approval, Done reopen, invalid revision target, and agent/tool Done restrictions
+- [ ] Compass/persona docs explain that Done is human-approved, not agent-completed
+
 ### Adding Game-Theory Participant Simulation
 
 - [ ] `backend/app/core/participant_simulation.py` implements 7 strategies (cooperative, selfish, reciprocating, random, satisficing, social_desirability, adversarial)
@@ -452,7 +465,7 @@ const scenarioFiles = [
 - [ ] `TELEMETRY_ENABLED=false` by default — no phone-home, local-first data only
 - [ ] No prompts, responses, user content, or project data stored in telemetry spans
 - [ ] Persona files updated (istara-devops: Telemetry Monitoring)
-- [ ] Tech.md and SYSTEM_INTEGRITY_GUIDE.md updated for telemetry
+- [ ] Tech.md updated for telemetry
 
 ---
 
@@ -513,12 +526,10 @@ Before pushing to production:
 - [ ] Database ports not exposed to host (PostgreSQL, Ollama)
 
 ### Documentation
-- [ ] Regenerate architecture docs: `python scripts/update_agent_md.py`
 - [ ] Integrity check passes: `python scripts/check_integrity.py`
-- [ ] Compass was updated anywhere future agents would otherwise be misled
+- [ ] Compass Forge was refreshed/gated anywhere future agents would otherwise be misled
 - [ ] `Tech.md` updated if architecture, workflows, or release/update behavior changed
 - [ ] Relevant persona files updated if Istara's own agents need to know about the change
-- [ ] SYSTEM_INTEGRITY_GUIDE.md updated
 - [ ] CHANGE_CHECKLIST.md updated
 - [ ] Code comments added for complex logic
 - [ ] API docs generated (if using FastAPI docs)
@@ -720,7 +731,8 @@ lms server start  # Starts on http://localhost:1234
 # Tests
 pytest tests/
 pytest tests/simulation/run.mjs
-python scripts/update_agent_md.py
+python scripts/check_integrity.py
+python scripts/check_ci_governance.py
 ```
 
 ### Production Deployment
@@ -758,10 +770,10 @@ curl http://localhost:8000/api/compute/nodes \
 
 ## REFERENCES
 
-- **Full System Guide**: `SYSTEM_INTEGRITY_GUIDE.md`
+- **Active Governance**: Compass Forge + `Tech.md`
 - **Architecture**: `Tech.md`
 - **Development Patterns**: `CLAUDE.md`
-- **Agent Capabilities**: `AGENT.md` (auto-generated)
+- **Legacy References**: `AGENT.md`, `COMPLETE_SYSTEM.md`, `SYSTEM_INTEGRITY_GUIDE.md` (optional, non-blocking)
 
 ---
 

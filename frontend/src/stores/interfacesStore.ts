@@ -21,9 +21,11 @@ interface InterfacesStore {
   designMessages: any[];
   designStreaming: boolean;
   designStreamingContent: string;
+  designSessionId: string | null;
+  designProjectId: string | null;
 
   setActiveTab: (tab: InterfacesTab) => void;
-  fetchStatus: () => Promise<void>;
+  fetchStatus: (projectId?: string) => Promise<void>;
   fetchScreens: (projectId: string) => Promise<void>;
   fetchBriefs: (projectId: string) => Promise<void>;
   selectScreen: (id: string | null) => void;
@@ -56,13 +58,15 @@ export const useInterfacesStore = create<InterfacesStore>((set, get) => ({
   designMessages: [],
   designStreaming: false,
   designStreamingContent: "",
+  designSessionId: null,
+  designProjectId: null,
 
   setActiveTab: (tab) => set({ activeTab: tab }),
 
-  fetchStatus: async () => {
+  fetchStatus: async (projectId) => {
     try {
-      const status = await interfacesApi.status();
-      set({ status });
+      const status = await interfacesApi.status(projectId);
+      set({ status, error: null });
     } catch (e: any) {
       set({ error: e.message });
     }
@@ -98,9 +102,11 @@ export const useInterfacesStore = create<InterfacesStore>((set, get) => ({
   },
 
   sendDesignMessage: async (projectId, content, sessionId) => {
+    const activeSessionId = sessionId || get().designSessionId || undefined;
     const userMsg = { id: `temp-${Date.now()}`, role: "user", content, created_at: new Date().toISOString() };
     set((s) => ({
-      designMessages: [...s.designMessages, userMsg],
+      designMessages: s.designProjectId === projectId ? [...s.designMessages, userMsg] : [userMsg],
+      designProjectId: projectId,
       designStreaming: true,
       designStreamingContent: "",
       error: null,
@@ -108,12 +114,13 @@ export const useInterfacesStore = create<InterfacesStore>((set, get) => ({
     try {
       let fullContent = "";
       let messageId = "";
-      for await (const event of interfacesApi.designChat.send(projectId, content, sessionId)) {
+      for await (const event of interfacesApi.designChat.send(projectId, content, activeSessionId)) {
         if (event.type === "chunk") {
           fullContent += event.content;
           set({ designStreamingContent: fullContent });
         } else if (event.type === "done") {
           messageId = event.message_id;
+          if (event.session_id) set({ designSessionId: event.session_id });
         } else if (event.type === "error") {
           set({ error: event.message, designStreaming: false });
           return;
@@ -141,9 +148,11 @@ export const useInterfacesStore = create<InterfacesStore>((set, get) => ({
   fetchDesignHistory: async (projectId) => {
     try {
       const data = await interfacesApi.designChat.history(projectId);
-      if (data.messages.length > 0) {
-        set({ designMessages: data.messages });
-      }
+      set({
+        designMessages: data.messages || [],
+        designSessionId: data.session_id,
+        designProjectId: projectId,
+      });
     } catch {
       // silent — will show empty on first visit
     }

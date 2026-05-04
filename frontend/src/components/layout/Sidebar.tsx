@@ -4,39 +4,19 @@ import { useEffect, useState } from "react";
 import {
   FolderOpen,
   Plus,
-  Diamond,
-  Bot,
-  Brain,
-  LayoutDashboard,
-  FileText,
-  FileStack,
   Search,
   ChevronLeft,
   ChevronRight,
-  Settings,
-  History,
-  BarChart3,
-  Mic,
   MoreHorizontal,
-  Wand2,
-  Users,
-  Server,
-  Activity,
-  Palette,
-  RefreshCw,
   Bell,
-  Archive,
-  Sparkles,
-  MessageSquare,
-  FlaskConical,
-  BookOpen,
-  CheckCircle,
 } from "lucide-react";
 import { useProjectStore } from "@/stores/projectStore";
 import { useNotificationStore } from "@/stores/notificationStore";
+import { useAuthStore } from "@/stores/authStore";
 import DarkModeToggle from "@/components/common/DarkModeToggle";
 import UserMenu from "@/components/common/UserMenu";
 import { cn, phaseLabel } from "@/lib/utils";
+import { PRIMARY_NAV_ITEMS, SECONDARY_NAV_IDS, SECONDARY_NAV_ITEMS, filterNavItemsForRole, type ViewId } from "@/lib/navigation";
 
 interface SidebarProps {
   activeView: string;
@@ -89,6 +69,7 @@ export default function Sidebar({ activeView, onViewChange, onSearchOpen }: Side
   const [newProjectName, setNewProjectName] = useState("");
   const [showSecondary, setShowSecondary] = useState(false);
   const [projectMenu, setProjectMenu] = useState<string | null>(null);
+  const { user } = useAuthStore();
 
   useEffect(() => {
     fetchProjects();
@@ -96,8 +77,7 @@ export default function Sidebar({ activeView, onViewChange, onSearchOpen }: Side
 
   // Auto-expand secondary nav when the active view is a secondary item
   useEffect(() => {
-    const secondaryIds = ["autoresearch", "backup", "meta-hyperagent", "compute", "ensemble", "metrics", "history"];
-    if (secondaryIds.includes(activeView)) {
+    if (SECONDARY_NAV_IDS.has(activeView as ViewId)) {
       setShowSecondary(true);
     }
   }, [activeView]);
@@ -117,35 +97,8 @@ export default function Sidebar({ activeView, onViewChange, onSearchOpen }: Side
     }
   };
 
-  // Primary nav: 5 items (simplified from 8)
-  const primaryNav = [
-    { id: "chat", icon: Bot, label: "Chat" },
-    { id: "findings", icon: Diamond, label: "Findings" },
-    { id: "laws", icon: BookOpen, label: "UX Laws" },
-    { id: "tasks", icon: LayoutDashboard, label: "Tasks" },
-    { id: "interviews", icon: Mic, label: "Interviews" },
-    { id: "documents", icon: FileStack, label: "Documents" },
-    { id: "context", icon: FileText, label: "Context" },
-    { id: "skills", icon: Wand2, label: "Skills" },
-    { id: "agents", icon: Users, label: "Agents" },
-    { id: "memory", icon: Brain, label: "Memory" },
-    { id: "interfaces", icon: Palette, label: "Interfaces" },
-    { id: "integrations", icon: MessageSquare, label: "Integrations" },
-    { id: "loops", icon: RefreshCw, label: "Loops" },
-    { id: "settings", icon: Settings, label: "Settings" },
-  ];
-
-  // Secondary nav: accessible via "More" or header icons
-  const secondaryNav = [
-    { id: "autoresearch", icon: FlaskConical, label: "Autoresearch" },
-    { id: "backup", icon: Archive, label: "Backup" },
-    { id: "meta-hyperagent", icon: Sparkles, label: "Meta-Agent" },
-    { id: "compute", icon: Server, label: "Compute Pool" },
-    { id: "ensemble", icon: Activity, label: "Ensemble Health" },
-    { id: "quality", icon: CheckCircle, label: "Quality Dashboard" },
-    { id: "project-settings", icon: Settings, label: "Project Settings" },
-    { id: "history", icon: History, label: "History" },
-  ];
+  const primaryNav = PRIMARY_NAV_ITEMS;
+  const secondaryNav = filterNavItemsForRole(SECONDARY_NAV_ITEMS, user?.role);
 
   return (
     <aside

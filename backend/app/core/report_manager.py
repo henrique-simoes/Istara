@@ -64,6 +64,28 @@ SYNTHESIS_SKILLS = {
 }
 
 
+def _safe_json_list(raw: str | None) -> list:
+    if not raw:
+        return []
+    try:
+        parsed = json.loads(raw)
+    except (json.JSONDecodeError, TypeError):
+        return []
+    return parsed if isinstance(parsed, list) else []
+
+
+def _merge_ids(existing: list[str], incoming: list[str]) -> list[str]:
+    """Merge IDs deterministically while preserving first-seen order."""
+    merged: list[str] = []
+    seen: set[str] = set()
+    for item in [*existing, *incoming]:
+        if not item or item in seen:
+            continue
+        seen.add(item)
+        merged.append(item)
+    return merged
+
+
 class ReportManager:
     """Manages progressive refinement of project reports."""
 
@@ -81,8 +103,8 @@ class ReportManager:
 
         report = await self._find_or_create_report(project_id, scope, layer, db)
 
-        existing = json.loads(report.finding_ids_json or "[]")
-        merged = list(set(existing + finding_ids))
+        existing = _safe_json_list(report.finding_ids_json)
+        merged = _merge_ids(existing, finding_ids)
         report.finding_ids_json = json.dumps(merged)
         report.finding_count = len(merged)
         report.version += 1
@@ -165,10 +187,11 @@ class ReportManager:
             synth = await self._find_or_create_report(project_id, "Research Synthesis", 3, db)
             all_ids = []
             for r in l2_reports:
-                ids = json.loads(r.finding_ids_json or "[]")
+                ids = _safe_json_list(r.finding_ids_json)
                 all_ids.extend(ids)
-            synth.finding_ids_json = json.dumps(list(set(all_ids)))
-            synth.finding_count = len(set(all_ids))
+            merged_ids = _merge_ids([], all_ids)
+            synth.finding_ids_json = json.dumps(merged_ids)
+            synth.finding_count = len(merged_ids)
             synth.version += 1
             synth.updated_at = datetime.now(timezone.utc)
             await db.commit()
@@ -194,17 +217,17 @@ class ReportManager:
 
     async def _generate_executive_summary(self, report, db: AsyncSession) -> None:
         """Generate an executive summary when a report has 3+ findings."""
-        if report.finding_count < 3:
+        if len(_safe_json_list(report.finding_ids_json)) < 3:
             return
         try:
             from app.core.llm_router import llm_router
 
-            finding_ids = json.loads(report.finding_ids_json or "[]")[:20]
+            finding_ids = _safe_json_list(report.finding_ids_json)[:20]
             # Load finding texts
-            from app.models.finding import Nugget, Fact, Insight
+            from app.models.finding import Fact, Insight, Nugget, Recommendation
 
             findings_text = []
-            for model_cls in [Insight, Fact, Nugget]:
+            for model_cls in [Recommendation, Insight, Fact, Nugget]:
                 result = await db.execute(
                     select(model_cls).where(model_cls.id.in_(finding_ids)).limit(15)
                 )
@@ -232,19 +255,19 @@ class ReportManager:
 
     async def _generate_mece_categories(self, report, db: AsyncSession) -> None:
         """Generate MECE categories when a report has 5+ findings."""
-        if report.finding_count < 5:
+        if len(_safe_json_list(report.finding_ids_json)) < 5:
             return
         # Skip if already categorized for this version
-        existing = json.loads(report.mece_categories_json or "[]")
+        existing = _safe_json_list(report.mece_categories_json)
         if existing:
             return
         try:
             from app.core.llm_router import llm_router
-            from app.models.finding import Nugget, Fact, Insight
+            from app.models.finding import Fact, Insight, Nugget, Recommendation
 
-            finding_ids = json.loads(report.finding_ids_json or "[]")[:20]
+            finding_ids = _safe_json_list(report.finding_ids_json)[:20]
             findings_text = []
-            for model_cls in [Insight, Fact, Nugget]:
+            for model_cls in [Recommendation, Insight, Fact, Nugget]:
                 result = await db.execute(
                     select(model_cls).where(model_cls.id.in_(finding_ids)).limit(15)
                 )
@@ -357,7 +380,7 @@ class ReportManager:
             from app.core.llm_router import llm_router
             from app.models.finding import Nugget, Fact, Insight, Recommendation
 
-            finding_ids = json.loads(report.finding_ids_json or "[]")[:50]
+            finding_ids = _safe_json_list(report.finding_ids_json)[:50]
 
             # Load all findings by type
             findings = {"nuggets": [], "facts": [], "insights": [], "recommendations": []}

@@ -97,6 +97,21 @@ SYSTEM_AGENTS = [
         "specialties": ["simulation"],
         "is_system": True,
     },
+    {
+        "id": "design-lead",
+        "name": "Piper",
+        "role": AgentRole.DESIGN_LEAD,
+        "system_prompt": (
+            "You are Piper, the Design Lead agent. You translate research "
+            "evidence into design briefs, interface concepts, and generated "
+            "screens. You ground every design decision in findings, preserve "
+            "traceability to the Atomic Research chain, and collaborate with "
+            "Pixel, Sage, Echo, and Istara before recommending interface changes."
+        ),
+        "capabilities": ["skill_execution", "findings_write", "a2a_messaging", "task_creation", "rag_retrieval"],
+        "specialties": ["design", "interfaces", "prototyping"],
+        "is_system": True,
+    },
 ]
 
 
@@ -131,11 +146,18 @@ async def seed_system_agents(db: AsyncSession) -> None:
         else:
             # Update existing system agent's name, prompt, and specialties if changed
             updated = False
+            if existing.role != agent_def["role"]:
+                existing.role = agent_def["role"]
+                updated = True
             if existing.name != agent_def["name"]:
                 existing.name = agent_def["name"]
                 updated = True
             if existing.system_prompt != agent_def["system_prompt"]:
                 existing.system_prompt = agent_def["system_prompt"]
+                updated = True
+            target_caps = json.dumps(agent_def["capabilities"])
+            if existing.capabilities != target_caps:
+                existing.capabilities = target_caps
                 updated = True
             # Ensure specialties are set for existing agents
             target_specs = json.dumps(agent_def.get("specialties", []))

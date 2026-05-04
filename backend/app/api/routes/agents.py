@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import hashlib
 import logging
+import re
 from pathlib import Path
 
 
@@ -12,19 +14,21 @@ def _get_version() -> str:
         return vf.read_text().strip() if vf.exists() else "dev"
     except Exception:
         return "dev"
-import shutil
-from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.orchestrator import meta_orchestrator
 from app.agents.ux_eval_agent import ux_eval_agent
 from app.agents.user_sim_agent import user_sim_agent
 from app.config import settings
+from app.core.improvement_governance import improvement_governance
+from app.core.permissions import require_project_access
 from app.core.resource_governor import governor
+from app.core.security_middleware import require_admin_from_request
 from app.core.context_hierarchy import context_hierarchy, ContextDocument
 from app.models.database import get_db
 from app.services import agent_service, a2a
@@ -32,6 +36,70 @@ from app.services import agent_service, a2a
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+AVATAR_CONTENT_TYPES = {
+    "image/png": ".png",
+    "image/jpeg": ".jpg",
+    "image/webp": ".webp",
+    "image/gif": ".gif",
+}
+_SAFE_AVATAR_ID_RE = re.compile(r"[^A-Za-z0-9_-]+")
+
+
+def _avatar_filename(agent_id: str, ext: str) -> str:
+    safe_id = _SAFE_AVATAR_ID_RE.sub("_", agent_id).strip("_")[:80] or "agent"
+    digest = hashlib.sha256(agent_id.encode("utf-8")).hexdigest()[:12]
+    return f"{safe_id}-{digest}{ext}"
+
+
+async def _read_upload_with_limit(file: UploadFile, max_bytes: int) -> bytes:
+    chunks: list[bytes] = []
+    total = 0
+    while True:
+        chunk = await file.read(1024 * 1024)
+        if not chunk:
+            break
+        total += len(chunk)
+        if total > max_bytes:
+            raise HTTPException(
+                status_code=413,
+                detail=f"Avatar exceeds maximum size of {max_bytes} bytes",
+            )
+        chunks.append(chunk)
+    if total == 0:
+        raise HTTPException(status_code=400, detail="Avatar file is empty")
+    return b"".join(chunks)
+
+
+def _resolve_avatar_path(avatar_path: str) -> Path:
+    root = Path(settings.agent_avatars_dir).resolve()
+    candidate = Path(avatar_path)
+    if candidate.is_absolute():
+        resolved = candidate.resolve()
+    else:
+        resolved = candidate.resolve()
+        try:
+            resolved.relative_to(root)
+        except ValueError:
+            resolved = (root / candidate).resolve()
+    try:
+        resolved.relative_to(root)
+    except ValueError:
+        raise HTTPException(status_code=403, detail="Avatar path is outside avatar storage")
+    return resolved
+
+
+async def _require_context_access(
+    db: AsyncSession,
+    request: Request,
+    doc: ContextDocument,
+    *,
+    min_role: str = "viewer",
+) -> None:
+    if doc.project_id:
+        await require_project_access(db, request, doc.project_id, min_role=min_role)
+        return
+    require_admin_from_request(request)
 
 
 # ───── Agent CRUD ─────
@@ -111,13 +179,22 @@ async def get_orchestrator_status():
 
 
 @router.get("/agents/log/recent")
-async def get_agent_log(limit: int = 50):
-    return {"log": meta_orchestrator.get_work_log(limit)}
+async def get_agent_log(agent_id: str | None = None, limit: int = 50):
+    limit = max(1, min(limit, 100))
+    log = meta_orchestrator.get_work_log(limit=limit)
+    if agent_id:
+        log = [entry for entry in log if entry.get("agent_id") == agent_id]
+    return {"log": log[-limit:]}
 
 
 @router.post("/agents", status_code=201)
-async def create_agent(data: CreateAgentRequest, db: AsyncSession = Depends(get_db)):
+async def create_agent(
+    data: CreateAgentRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
     """Create a new user agent with full persona file support."""
+    require_admin_from_request(request)
     agent = await agent_service.create_agent(
         db,
         name=data.name,
@@ -174,8 +251,14 @@ async def get_agent(agent_id: str, db: AsyncSession = Depends(get_db)):
 
 
 @router.patch("/agents/{agent_id}")
-async def update_agent(agent_id: str, data: UpdateAgentRequest, db: AsyncSession = Depends(get_db)):
+async def update_agent(
+    agent_id: str,
+    data: UpdateAgentRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
     """Update an agent's configuration."""
+    require_admin_from_request(request)
     updates = data.model_dump(exclude_unset=True)
     if "heartbeat_interval" in updates:
         updates["heartbeat_interval_seconds"] = updates.pop("heartbeat_interval")
@@ -188,7 +271,6 @@ async def update_agent(agent_id: str, data: UpdateAgentRequest, db: AsyncSession
 @router.delete("/agents/{agent_id}", status_code=204)
 async def delete_agent(agent_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     """Soft-delete an agent. Admin only."""
-    from app.core.security_middleware import require_admin_from_request
     require_admin_from_request(request)
     # Stop custom agent worker if running
     try:
@@ -201,7 +283,8 @@ async def delete_agent(agent_id: str, request: Request, db: AsyncSession = Depen
 
 
 @router.post("/agents/{agent_id}/pause")
-async def pause_agent(agent_id: str, db: AsyncSession = Depends(get_db)):
+async def pause_agent(agent_id: str, request: Request, db: AsyncSession = Depends(get_db)):
+    require_admin_from_request(request)
     from app.models.agent import AgentState
     if not await agent_service.set_agent_state(db, agent_id, AgentState.PAUSED):
         raise HTTPException(status_code=404, detail="Agent not found")
@@ -209,7 +292,8 @@ async def pause_agent(agent_id: str, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/agents/{agent_id}/resume")
-async def resume_agent(agent_id: str, db: AsyncSession = Depends(get_db)):
+async def resume_agent(agent_id: str, request: Request, db: AsyncSession = Depends(get_db)):
+    require_admin_from_request(request)
     from app.models.agent import AgentState
     if not await agent_service.set_agent_state(db, agent_id, AgentState.IDLE):
         raise HTTPException(status_code=404, detail="Agent not found")
@@ -217,16 +301,19 @@ async def resume_agent(agent_id: str, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/agents/{agent_id}/restart")
-async def restart_agent(agent_id: str, db: AsyncSession = Depends(get_db)):
+async def restart_agent(agent_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     """Reset an agent from ERROR state back to IDLE, clearing error counters."""
+    require_admin_from_request(request)
     from app.models.agent import AgentState, HeartbeatStatus
-    agent = await agent_service.get_agent(db, agent_id)
+    from app.models.agent import Agent
+
+    result = await db.execute(select(Agent).where(Agent.id == agent_id))
+    agent = result.scalar_one_or_none()
     if not agent:
         raise HTTPException(status_code=404, detail="Agent not found")
     agent.state = AgentState.IDLE
     agent.heartbeat_status = HeartbeatStatus.HEALTHY
     agent.error_count = 0
-    agent.consecutive_failures = getattr(agent, "consecutive_failures", 0)
     if hasattr(agent, "consecutive_failures"):
         agent.consecutive_failures = 0
     await db.commit()
@@ -244,27 +331,26 @@ async def set_agent_scope(
 ):
     """Set an agent's scope to 'universal' or 'project'.
     Promoting to universal requires admin role in team mode."""
-    body = await request.json()
-    new_scope = body.get("scope", "project")
-    project_id = body.get("project_id", "")
+    require_admin_from_request(request)
+    from app.models.agent import Agent
 
-    agent = await agent_service.get_agent(db, agent_id)
+    body = await request.json()
+    new_scope = str(body.get("scope") or "")
+    project_id = str(body.get("project_id") or "")
+
+    if new_scope not in {"universal", "project"}:
+        raise HTTPException(status_code=422, detail="scope must be 'universal' or 'project'")
+    if new_scope == "project" and not project_id:
+        raise HTTPException(status_code=422, detail="project_id is required for project-scoped agents")
+
+    result = await db.execute(select(Agent).where(Agent.id == agent_id))
+    agent = result.scalar_one_or_none()
     if not agent:
         raise HTTPException(status_code=404, detail="Agent not found")
 
     # System agents are always universal
     if agent.is_system:
         raise HTTPException(status_code=400, detail="System agents are always universal")
-
-    # Promoting to universal requires admin
-    if new_scope == "universal" and settings.team_mode:
-        try:
-            require_admin_from_request(request)
-        except Exception:
-            raise HTTPException(
-                status_code=403,
-                detail="Only admins can promote agents to universal scope"
-            )
 
     agent.scope = new_scope
     agent.project_id = project_id if new_scope == "project" else ""
@@ -276,7 +362,10 @@ async def set_agent_scope(
 async def request_promotion(agent_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     """Submit a request to promote a project-scoped agent to universal.
     Creates a notification for admins to review."""
-    agent = await agent_service.get_agent(db, agent_id)
+    from app.models.agent import Agent
+
+    result = await db.execute(select(Agent).where(Agent.id == agent_id))
+    agent = result.scalar_one_or_none()
     if not agent:
         raise HTTPException(status_code=404, detail="Agent not found")
 
@@ -288,12 +377,14 @@ async def request_promotion(agent_id: str, request: Request, db: AsyncSession = 
     import uuid
     notif = Notification(
         id=str(uuid.uuid4()),
+        type="agent_promotion_request",
         title=f"Agent Promotion Request: {agent.name}",
-        body=f"A user has requested that agent '{agent.name}' be promoted from project scope to universal scope.",
+        message=f"A user has requested that agent '{agent.name}' be promoted from project scope to universal scope.",
         category="agent_promotion",
         severity="info",
-        source_type="agent",
-        source_id=agent_id,
+        agent_id=agent_id,
+        action_type="review_agent_promotion",
+        action_target=agent_id,
     )
     db.add(notif)
     await db.commit()
@@ -304,23 +395,28 @@ async def request_promotion(agent_id: str, request: Request, db: AsyncSession = 
 
 
 @router.post("/agents/{agent_id}/avatar")
-async def upload_avatar(agent_id: str, file: UploadFile = File(...), db: AsyncSession = Depends(get_db)):
+async def upload_avatar(
+    agent_id: str,
+    request: Request,
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+):
     """Upload an avatar image for an agent."""
+    require_admin_from_request(request)
     agent = await agent_service.get_agent(db, agent_id)
     if not agent:
         raise HTTPException(status_code=404, detail="Agent not found")
 
-    if file.content_type not in ("image/png", "image/jpeg", "image/webp", "image/gif"):
+    ext = AVATAR_CONTENT_TYPES.get(file.content_type or "")
+    if not ext:
         raise HTTPException(status_code=400, detail="Avatar must be PNG, JPEG, WebP, or GIF")
 
-    ext = file.filename.split(".")[-1] if file.filename else "png"
-    filename = f"{agent_id}.{ext}"
-    avatar_dir = Path(settings.agent_avatars_dir)
+    content = await _read_upload_with_limit(file, settings.avatar_max_bytes)
+    filename = _avatar_filename(agent_id, ext)
+    avatar_dir = Path(settings.agent_avatars_dir).resolve()
     avatar_dir.mkdir(parents=True, exist_ok=True)
     dest = avatar_dir / filename
-
-    with open(dest, "wb") as f:
-        shutil.copyfileobj(file.file, f)
+    dest.write_bytes(content)
 
     await agent_service.update_agent(db, agent_id, {"avatar_path": str(dest)})
     return {"avatar_path": str(dest)}
@@ -332,7 +428,7 @@ async def get_avatar(agent_id: str, db: AsyncSession = Depends(get_db)):
     agent = await agent_service.get_agent(db, agent_id)
     if not agent or not agent.get("avatar_path"):
         raise HTTPException(status_code=404, detail="No avatar found")
-    path = Path(agent["avatar_path"])
+    path = _resolve_avatar_path(agent["avatar_path"])
     if not path.exists():
         raise HTTPException(status_code=404, detail="Avatar file missing")
     return FileResponse(path)
@@ -347,9 +443,8 @@ async def get_identity(agent_id: str):
     from app.core.agent_identity import (
         load_agent_identity,
         get_agent_display_name,
-        list_agent_personas,
-        PERSONAS_DIR,
         IDENTITY_FILES,
+        persona_file_path,
     )
 
     display_name = get_agent_display_name(agent_id)
@@ -358,7 +453,7 @@ async def get_identity(agent_id: str):
     # Load individual files for display
     files = {}
     for filename in IDENTITY_FILES:
-        filepath = PERSONAS_DIR / agent_id / filename
+        filepath = persona_file_path(agent_id, filename)
         if filepath.exists():
             files[filename] = filepath.read_text(encoding="utf-8")
 
@@ -372,12 +467,14 @@ async def get_identity(agent_id: str):
 
 
 @router.put("/agents/{agent_id}/identity")
-async def update_identity(agent_id: str, data: dict):
-    """Update an agent's persona MD files."""
+async def update_identity(agent_id: str, data: dict, request: Request):
+    """Update an agent's local persona overlay files."""
+    require_admin_from_request(request)
     from app.core.agent_identity import (
-        PERSONAS_DIR,
         IDENTITY_FILES,
         load_agent_identity,
+        persona_file_path,
+        writeable_persona_path,
     )
 
     files = data.get("files", {})
@@ -392,12 +489,14 @@ async def update_identity(agent_id: str, data: dict):
                 detail=f"Invalid file: {filename}. Allowed: {IDENTITY_FILES}",
             )
 
-    # Write files
-    persona_dir = PERSONAS_DIR / agent_id
-    persona_dir.mkdir(parents=True, exist_ok=True)
+    source_write = bool(data.get("source", False))
 
     for filename, content in files.items():
-        filepath = persona_dir / filename
+        try:
+            filepath = writeable_persona_path(agent_id, filename, source=source_write)
+        except PermissionError as exc:
+            raise HTTPException(status_code=403, detail=str(exc))
+        filepath.parent.mkdir(parents=True, exist_ok=True)
         filepath.write_text(content, encoding="utf-8")
 
     # Clear cache so changes take effect immediately
@@ -410,12 +509,13 @@ async def update_identity(agent_id: str, data: dict):
     identity = load_agent_identity(agent_id)
     updated_files = {}
     for filename in IDENTITY_FILES:
-        filepath = persona_dir / filename
+        filepath = persona_file_path(agent_id, filename)
         if filepath.exists():
             updated_files[filename] = filepath.read_text(encoding="utf-8")
 
     return {
         "agent_id": agent_id,
+        "write_scope": "source" if source_write else "runtime_overlay",
         "has_persona": bool(identity),
         "identity_length": len(identity),
         "files": updated_files,
@@ -456,8 +556,9 @@ async def get_learnings(
 
 
 @router.get("/agents/{agent_id}/evolution/candidates")
-async def get_evolution_candidates(agent_id: str):
+async def get_evolution_candidates(agent_id: str, request: Request):
     """Scan an agent's learnings for patterns ready for promotion."""
+    require_admin_from_request(request)
     from app.core.self_evolution import self_evolution
     candidates = await self_evolution.scan_for_promotions(agent_id)
     return {
@@ -468,20 +569,36 @@ async def get_evolution_candidates(agent_id: str):
 
 
 @router.post("/agents/{agent_id}/evolution/promote/{learning_id}")
-async def promote_learning(agent_id: str, learning_id: int, target_file: str | None = None):
+async def promote_learning(
+    agent_id: str,
+    learning_id: int,
+    request: Request,
+    target_file: str | None = None,
+):
     """Promote a specific learning into the agent's persona files."""
+    require_admin_from_request(request)
     from app.core.self_evolution import self_evolution
     result = await self_evolution.promote_learning(agent_id, learning_id, target_file)
     if not result.get("success"):
         raise HTTPException(status_code=400, detail=result.get("error", "Promotion failed"))
+    try:
+        await improvement_governance.register_self_evolution_promotion(result, applied=True)
+    except Exception:
+        pass
     return result
 
 
 @router.post("/agents/{agent_id}/evolution/auto")
-async def auto_evolve(agent_id: str):
+async def auto_evolve(agent_id: str, request: Request):
     """Run the full self-evolution cycle (auto-promote mature patterns)."""
+    require_admin_from_request(request)
     from app.core.self_evolution import self_evolution
     promotions = await self_evolution.auto_evolve(agent_id)
+    for promotion in promotions:
+        try:
+            await improvement_governance.register_self_evolution_promotion(promotion, applied=True)
+        except Exception:
+            pass
     return {
         "agent_id": agent_id,
         "promotions_applied": len(promotions),
@@ -490,8 +607,9 @@ async def auto_evolve(agent_id: str):
 
 
 @router.get("/agents/evolution/scan")
-async def scan_all_evolution():
+async def scan_all_evolution(request: Request):
     """Scan all agents for promotable learnings."""
+    require_admin_from_request(request)
     from app.core.self_evolution import self_evolution
     results = await self_evolution.scan_all_agents()
     total = sum(len(v) for v in results.values())
@@ -510,8 +628,9 @@ class RejectProposalRequest(BaseModel):
 
 
 @router.get("/agents/creation-proposals/pending")
-async def get_pending_proposals():
+async def get_pending_proposals(request: Request):
     """Get all pending agent creation proposals."""
+    require_admin_from_request(request)
     from app.core.agent_factory import AgentFactory
 
     factory = AgentFactory()
@@ -520,8 +639,9 @@ async def get_pending_proposals():
 
 
 @router.get("/agents/creation-proposals/all")
-async def get_all_proposals(limit: int = 20):
+async def get_all_proposals(request: Request, limit: int = 20):
     """Get all agent creation proposals (any status)."""
+    require_admin_from_request(request)
     from app.core.agent_factory import AgentFactory
 
     factory = AgentFactory()
@@ -530,8 +650,13 @@ async def get_all_proposals(limit: int = 20):
 
 
 @router.post("/agents/creation-proposals/{proposal_id}/approve")
-async def approve_proposal(proposal_id: str, db: AsyncSession = Depends(get_db)):
+async def approve_proposal(
+    proposal_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
     """Approve a proposal — creates the agent in DB, scaffolds persona, starts worker."""
+    require_admin_from_request(request)
     from app.core.agent_factory import AgentFactory
 
     factory = AgentFactory()
@@ -605,6 +730,30 @@ async def approve_proposal(proposal_id: str, db: AsyncSession = Depends(get_db))
     except Exception:
         pass
 
+    try:
+        governance = await improvement_governance.get_proposal_by_source(
+            source_system="memento_agent_factory",
+            source_id=proposal_id,
+        )
+        if governance and governance.status in {"draft", "proposed"}:
+            await improvement_governance.approve_proposal(
+                governance.id,
+                reviewer_id="agents-ui",
+                note="Approved via Agent Creation UI",
+            )
+        governance = await improvement_governance.get_proposal_by_source(
+            source_system="memento_agent_factory",
+            source_id=proposal_id,
+        )
+        if governance and governance.status == "approved":
+            await improvement_governance.apply_proposal(
+                governance.id,
+                actor_id="agents-ui",
+                evidence={"agent_id": agent.get("id"), "agent_name": agent.get("name")},
+            )
+    except Exception:
+        pass
+
     return {
         "status": "approved",
         "proposal": proposal,
@@ -613,8 +762,13 @@ async def approve_proposal(proposal_id: str, db: AsyncSession = Depends(get_db))
 
 
 @router.post("/agents/creation-proposals/{proposal_id}/reject")
-async def reject_proposal(proposal_id: str, data: RejectProposalRequest | None = None):
+async def reject_proposal(
+    proposal_id: str,
+    request: Request,
+    data: RejectProposalRequest | None = None,
+):
     """Reject a pending agent creation proposal."""
+    require_admin_from_request(request)
     from app.core.agent_factory import AgentFactory
 
     factory = AgentFactory()
@@ -622,6 +776,20 @@ async def reject_proposal(proposal_id: str, data: RejectProposalRequest | None =
     proposal = factory.reject_proposal(proposal_id, reason)
     if not proposal:
         raise HTTPException(status_code=404, detail="Proposal not found or not pending")
+
+    try:
+        governance = await improvement_governance.get_proposal_by_source(
+            source_system="memento_agent_factory",
+            source_id=proposal_id,
+        )
+        if governance and governance.status in {"draft", "proposed", "approved"}:
+            await improvement_governance.reject_proposal(
+                governance.id,
+                reviewer_id="agents-ui",
+                reason=reason,
+            )
+    except Exception:
+        pass
 
     return {"status": "rejected", "proposal": proposal}
 
@@ -732,7 +900,13 @@ async def get_memory(agent_id: str, db: AsyncSession = Depends(get_db)):
 
 
 @router.patch("/agents/{agent_id}/memory")
-async def update_memory(agent_id: str, updates: dict, db: AsyncSession = Depends(get_db)):
+async def update_memory(
+    agent_id: str,
+    updates: dict,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    require_admin_from_request(request)
     memory = await agent_service.update_agent_memory(db, agent_id, updates)
     return {"agent_id": agent_id, "memory": memory}
 
@@ -754,7 +928,13 @@ async def get_messages(agent_id: str, limit: int = 50, unread_only: bool = False
 
 
 @router.post("/agents/{agent_id}/messages")
-async def send_message(agent_id: str, data: A2AMessageRequest, db: AsyncSession = Depends(get_db)):
+async def send_message(
+    agent_id: str,
+    data: A2AMessageRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    require_admin_from_request(request)
     msg = await a2a.send_message(
         db,
         from_agent_id=agent_id,
@@ -778,7 +958,8 @@ async def get_ux_eval():
 
 
 @router.post("/audit/ux/run")
-async def trigger_ux_eval():
+async def trigger_ux_eval(request: Request):
+    require_admin_from_request(request)
     return await ux_eval_agent.run_evaluation()
 
 
@@ -791,7 +972,8 @@ async def get_sim_report():
 
 
 @router.post("/audit/sim/run")
-async def trigger_simulation():
+async def trigger_simulation(request: Request):
+    require_admin_from_request(request)
     return await user_sim_agent.run_simulation()
 
 
@@ -808,8 +990,9 @@ class AgentExportData(BaseModel):
 
 
 @router.get("/agents/{agent_id}/export")
-async def export_agent(agent_id: str, db: AsyncSession = Depends(get_db)):
+async def export_agent(agent_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     """Export an agent's configuration as a portable JSON config."""
+    require_admin_from_request(request)
     agent = await agent_service.get_agent(db, agent_id)
     if not agent:
         raise HTTPException(status_code=404, detail="Agent not found")
@@ -828,8 +1011,9 @@ async def export_agent(agent_id: str, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/agents/import")
-async def import_agent(data: AgentExportData, db: AsyncSession = Depends(get_db)):
+async def import_agent(data: AgentExportData, request: Request, db: AsyncSession = Depends(get_db)):
     """Import an agent from an exported config."""
+    require_admin_from_request(request)
     agent = await agent_service.create_agent(
         db,
         name=data.name,
@@ -874,10 +1058,16 @@ class ContextUpdateRequest(BaseModel):
 
 @router.get("/contexts")
 async def list_contexts(
+    request: Request,
     level_type: str | None = None,
     project_id: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
+    if project_id:
+        await require_project_access(db, request, project_id, min_role="viewer")
+    else:
+        require_admin_from_request(request)
+
     docs = await context_hierarchy.list_contexts(db, level_type, project_id)
     return {
         "contexts": [
@@ -893,7 +1083,16 @@ async def list_contexts(
 
 
 @router.post("/contexts", status_code=201)
-async def create_context(data: ContextCreateRequest, db: AsyncSession = Depends(get_db)):
+async def create_context(
+    data: ContextCreateRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    if data.project_id:
+        await require_project_access(db, request, data.project_id, min_role="researcher")
+    else:
+        require_admin_from_request(request)
+
     valid_types = {"platform", "company", "product", "project", "task", "agent"}
     if data.level_type not in valid_types:
         raise HTTPException(status_code=400, detail=f"Invalid level_type. Must be: {', '.join(valid_types)}")
@@ -905,12 +1104,12 @@ async def create_context(data: ContextCreateRequest, db: AsyncSession = Depends(
 
 
 @router.get("/contexts/{doc_id}")
-async def get_context(doc_id: str, db: AsyncSession = Depends(get_db)):
-    from sqlalchemy import select
+async def get_context(doc_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(ContextDocument).where(ContextDocument.id == doc_id))
     doc = result.scalar_one_or_none()
     if not doc:
         raise HTTPException(status_code=404, detail="Context not found")
+    await _require_context_access(db, request, doc, min_role="viewer")
     return {
         "id": doc.id, "name": doc.name, "level": doc.level,
         "level_type": doc.level_type, "content": doc.content,
@@ -920,7 +1119,18 @@ async def get_context(doc_id: str, db: AsyncSession = Depends(get_db)):
 
 
 @router.patch("/contexts/{doc_id}")
-async def update_context(doc_id: str, data: ContextUpdateRequest, db: AsyncSession = Depends(get_db)):
+async def update_context(
+    doc_id: str,
+    data: ContextUpdateRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(select(ContextDocument).where(ContextDocument.id == doc_id))
+    existing = result.scalar_one_or_none()
+    if not existing:
+        raise HTTPException(status_code=404, detail="Context not found")
+    await _require_context_access(db, request, existing, min_role="researcher")
+
     updates = data.model_dump(exclude_unset=True)
     doc = await context_hierarchy.update_context(db, doc_id, updates)
     if not doc:
@@ -929,12 +1139,23 @@ async def update_context(doc_id: str, data: ContextUpdateRequest, db: AsyncSessi
 
 
 @router.delete("/contexts/{doc_id}", status_code=204)
-async def delete_context(doc_id: str, db: AsyncSession = Depends(get_db)):
+async def delete_context(doc_id: str, request: Request, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(ContextDocument).where(ContextDocument.id == doc_id))
+    existing = result.scalar_one_or_none()
+    if not existing:
+        raise HTTPException(status_code=404, detail="Context not found")
+    await _require_context_access(db, request, existing, min_role="researcher")
+
     if not await context_hierarchy.delete_context(db, doc_id):
         raise HTTPException(status_code=404, detail="Context not found")
 
 
 @router.get("/contexts/composed/{project_id}")
-async def get_composed_context(project_id: str, db: AsyncSession = Depends(get_db)):
+async def get_composed_context(
+    project_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    await require_project_access(db, request, project_id, min_role="viewer")
     composed = await context_hierarchy.compose_context(db, project_id)
     return {"project_id": project_id, "composed_context": composed, "length": len(composed)}

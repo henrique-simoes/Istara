@@ -17,6 +17,7 @@ export default function MCPTab() {
   const [showAuditLog, setShowAuditLog] = useState(false);
   const [toggling, setToggling] = useState(false);
   const [confirmToggle, setConfirmToggle] = useState(false);
+  const [toggleError, setToggleError] = useState("");
   const [discovering, setDiscovering] = useState<string | null>(null);
 
   useEffect(() => {
@@ -30,12 +31,13 @@ export default function MCPTab() {
       return;
     }
     setToggling(true);
+    setToggleError("");
     try {
       const enabled = !mcpServerStatus?.enabled;
       await mcpApi.server.toggle(enabled);
       await fetchMCPStatus();
-    } catch {
-      // silent
+    } catch (e: any) {
+      setToggleError(e?.message || "Could not update MCP server state.");
     } finally {
       setToggling(false);
       setConfirmToggle(false);
@@ -64,6 +66,8 @@ export default function MCPTab() {
   };
 
   const serverEnabled = mcpServerStatus?.enabled;
+  const mcpLibraryInstalled = mcpServerStatus?.mcp_library_installed !== false;
+  const exposure = mcpServerStatus?.exposure;
 
   if (showServerSetup) {
     return (
@@ -137,26 +141,51 @@ export default function MCPTab() {
                 <span className="text-sm font-medium text-slate-900 dark:text-white">
                   MCP Server: {serverEnabled ? "Enabled" : "Disabled"}
                 </span>
+                <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                  {serverEnabled
+                    ? `External MCP access is on. ${exposure?.exposed_tools ?? 0} tools are allowed by policy.`
+                    : "External MCP access is off. Configure policy first, then enable the server."}
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-2">
               {confirmToggle && (
-                <span className="text-xs text-amber-600 dark:text-amber-400">Click again to confirm</span>
+                <span className="text-xs text-amber-600 dark:text-amber-400">
+                  Confirm {serverEnabled ? "disable" : "enable"}
+                </span>
               )}
               <button
                 onClick={handleToggleServer}
-                disabled={toggling}
+                disabled={toggling || (!serverEnabled && !mcpLibraryInstalled)}
                 className={cn(
-                  "px-3 py-1.5 text-xs rounded-lg transition-colors disabled:opacity-50",
+                  "px-3 py-1.5 text-xs font-medium rounded-lg transition-colors disabled:opacity-50",
                   serverEnabled
                     ? "bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400"
                     : "bg-green-50 text-green-600 hover:bg-green-100 dark:bg-green-900/20 dark:text-green-400"
                 )}
               >
-                {toggling ? "..." : serverEnabled ? "Disable" : "Enable"}
+                {toggling
+                  ? "Updating..."
+                  : confirmToggle
+                    ? `Confirm ${serverEnabled ? "Disable" : "Enable"}`
+                    : serverEnabled
+                      ? "Disable MCP Server"
+                      : "Enable MCP Server"}
               </button>
             </div>
           </div>
+
+          {!mcpLibraryInstalled && (
+            <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-200">
+              The MCP server runtime is not installed, so the server cannot be enabled until fastmcp is available.
+            </div>
+          )}
+
+          {toggleError && (
+            <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-300">
+              {toggleError}
+            </div>
+          )}
 
           <div className="flex items-center gap-3">
             <button
@@ -252,7 +281,7 @@ export default function MCPTab() {
             </div>
             <div>
               <h3 className="font-medium text-slate-900 dark:text-white mb-1">Supported Transports</h3>
-              <p>HTTP (recommended), WebSocket, and stdio are supported. HTTP is the most reliable for remote servers.</p>
+              <p>HTTP is supported for external MCP servers. Use an HTTP bridge for stdio or WebSocket MCP servers before registering them in Istara.</p>
             </div>
           </div>
         </div>

@@ -44,7 +44,9 @@ export default function ScreenPreview({ html, deviceType }: { html: string; devi
       >
         <iframe
           srcDoc={html}
-          sandbox="allow-scripts"
+          sandbox=""
+          referrerPolicy="no-referrer"
+          loading="lazy"
           title="Screen preview"
           style={{
             width: size.width,

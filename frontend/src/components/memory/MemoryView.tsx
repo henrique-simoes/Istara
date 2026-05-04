@@ -77,17 +77,21 @@ function KnowledgeBaseTab({ projectId }: { projectId: string }) {
   const [pageSize] = useState(50);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [sourceFilter, setSourceFilter] = useState("");
   const [searchResults, setSearchResults] = useState<SearchResult[] | null>(null);
   const [searching, setSearching] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchChunks = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const data = await memoryApi.list(projectId, page, pageSize);
       setChunks(data.chunks);
       setTotal(data.total);
       if (data.sources) setSources(data.sources);
-    } catch (e) {
+    } catch (e: any) {
+      setError(e.message || "Failed to fetch memory chunks");
       console.error("Failed to fetch memory chunks:", e);
     }
     setLoading(false);
@@ -103,10 +107,14 @@ function KnowledgeBaseTab({ projectId }: { projectId: string }) {
       return;
     }
     setSearching(true);
+    setError(null);
     try {
-      const data = await memoryApi.search(projectId, searchQuery);
+      const data = await memoryApi.search(projectId, searchQuery, 20, {
+        source: sourceFilter || undefined,
+      });
       setSearchResults(data.results);
-    } catch (e) {
+    } catch (e: any) {
+      setError(e.message || "Memory search failed");
       console.error("Memory search failed:", e);
     }
     setSearching(false);
@@ -114,10 +122,12 @@ function KnowledgeBaseTab({ projectId }: { projectId: string }) {
 
   const handleDeleteSource = async (sourceName: string) => {
     if (!confirm(`Delete all chunks from "${sourceName}"? This cannot be undone.`)) return;
+    setError(null);
     try {
       await memoryApi.deleteSource(projectId, sourceName);
       fetchChunks();
-    } catch (e) {
+    } catch (e: any) {
+      setError(e.message || "Delete source failed");
       console.error("Delete source failed:", e);
     }
   };
@@ -140,6 +150,19 @@ function KnowledgeBaseTab({ projectId }: { projectId: string }) {
             className="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-istara-500 text-slate-900 dark:text-slate-100"
           />
         </div>
+        <select
+          value={sourceFilter}
+          onChange={(e) => setSourceFilter(e.target.value)}
+          aria-label="Filter search by source"
+          className="max-w-[220px] px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-istara-500 text-slate-900 dark:text-slate-100"
+        >
+          <option value="">All sources</option>
+          {sources.map((source) => (
+            <option key={source.name} value={source.name}>
+              {source.name}
+            </option>
+          ))}
+        </select>
         <button
           onClick={handleSearch}
           disabled={searching}
@@ -150,7 +173,7 @@ function KnowledgeBaseTab({ projectId }: { projectId: string }) {
         </button>
         {searchResults !== null && (
           <button
-            onClick={() => { setSearchResults(null); setSearchQuery(""); }}
+            onClick={() => { setSearchResults(null); setSearchQuery(""); setSourceFilter(""); }}
             aria-label="Clear search"
             className="px-3 py-2 text-sm text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
           >
@@ -164,6 +187,13 @@ function KnowledgeBaseTab({ projectId }: { projectId: string }) {
         <span>{total} chunks total</span>
         <span>{sources.length} sources</span>
       </div>
+
+      {error && (
+        <div className="flex items-center gap-2 rounded-lg border border-yellow-200 bg-yellow-50 px-3 py-2 text-xs text-yellow-700 dark:border-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-300">
+          <AlertTriangle size={14} />
+          <span>{error}</span>
+        </div>
+      )}
 
       {/* Search Results */}
       {searchResults !== null ? (

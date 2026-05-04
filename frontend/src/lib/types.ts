@@ -2,6 +2,7 @@
 
 export type ProjectPhase = "discover" | "define" | "develop" | "deliver";
 export type TaskStatus = "backlog" | "in_progress" | "in_review" | "done";
+// Backend request model coverage markers: UpdateConfirmation, LinkFolderRequest, StrictRoutingRequest, ReasoningMemoryCreateRequest, ReasoningMemoryRetrieveRequest.
 
 export interface Project {
   id: string;
@@ -14,6 +15,7 @@ export interface Project {
   is_paused: boolean;
   owner_id: string;
   watch_folder_path: string | null;
+  current_user_project_role?: "viewer" | "researcher" | "project_admin" | null;
   created_at: string;
   updated_at: string;
 }
@@ -35,6 +37,20 @@ export interface Task {
   output_document_ids: string[];
   urls: string[];
   instructions: string;
+  labels: Array<string | { name: string; color?: string; kind?: string }>;
+  review_state: string;
+  what_to_review: string;
+  review_cycle_count: number;
+  failure_streak: number;
+  approval_streak: number;
+  last_review_outcome: string | null;
+  last_reviewed_by: string | null;
+  last_reviewed_at: string | null;
+  last_review_feedback: string;
+  next_agent_action: string | null;
+  human_feedback_score: number | null;
+  review_severity: string | null;
+  review_failure_category: string | null;
   validation_method: string | null;
   consensus_score: number | null;
   health?: {
@@ -45,6 +61,53 @@ export interface Task {
   };
   created_at: string;
   updated_at: string;
+}
+
+export interface TaskReviewEvent {
+  id: string;
+  task_id: string;
+  outcome: string;
+  previous_status: string;
+  next_status: string;
+  previous_review_state: string;
+  next_review_state: string;
+  what_to_review: string;
+  feedback_summary: string;
+  failure_category: string | null;
+  severity: string | null;
+  quality_score: number | null;
+  human_feedback_score: number | null;
+  failure_streak_after: number;
+  review_cycle_after: number;
+  diagnosis_status: string;
+  diagnosis: Record<string, unknown>;
+  created_by: string;
+  created_at: string;
+}
+
+export interface TaskAtomicPath {
+  documents: { count: number; items: Array<{ id: string; title?: string; text?: string }> };
+  nuggets: { count: number; items: Array<{ id: string; text: string }> };
+  facts: { count: number; items: Array<{ id: string; text: string }> };
+  insights: { count: number; items: Array<{ id: string; text: string }> };
+  recommendations: { count: number; items: Array<{ id: string; text: string }> };
+  reports: { count: number; items: Array<{ id: string; title: string }> };
+}
+
+export interface TaskQualitySummary {
+  task_id: string;
+  status: TaskStatus;
+  review_state: string;
+  review_cycle_count: number;
+  failure_streak: number;
+  approval_streak: number;
+  human_feedback_score: number | null;
+  review_failure_category: string | null;
+  review_severity: string | null;
+  validation_method: string | null;
+  consensus_score: number | null;
+  validation: Record<string, unknown>;
+  recent_review_events: TaskReviewEvent[];
 }
 
 export interface ChatMessage {
@@ -140,7 +203,7 @@ export interface ModelRecommendation {
   reason: string;
 }
 
-export type AgentRole = "task_executor" | "devops_audit" | "ui_audit" | "ux_evaluation" | "user_simulation" | "custom";
+export type AgentRole = "task_executor" | "devops_audit" | "ui_audit" | "ux_evaluation" | "user_simulation" | "design_lead" | "custom";
 export type AgentState = "idle" | "working" | "paused" | "error" | "stopped";
 export type HeartbeatStatus = "healthy" | "degraded" | "error" | "stopped";
 export type AgentCapability = "web_search" | "file_upload" | "skill_execution" | "task_creation" | "findings_write" | "chat" | "rag_retrieval" | "a2a_messaging";
@@ -231,22 +294,26 @@ export interface DAGNode {
   parent_id: string | null;
   depth: number;
   summary_text: string;
+  summary_preview?: string;
   message_count: number;
   token_count: number;
   original_token_count: number;
   child_node_ids: string[];
-  time_range_start: string;
-  time_range_end: string;
-  created_at: string;
+  time_range_start: string | null;
+  time_range_end: string | null;
+  created_at: string | null;
 }
 
 export interface DAGHealth {
+  session_id?: string;
   total_messages: number;
   compacted_messages: number;
   fresh_tail_size: number;
   max_depth: number;
+  dag_depth?: number;
   compression_ratio: number;
-  nodes_by_depth: Record<number, number>;
+  nodes_by_depth: Record<string, number>;
+  total_nodes?: number;
   dag_enabled: boolean;
 }
 
@@ -347,7 +414,7 @@ export interface DesignScreen {
   figma_node_id: string | null;
   status: DesignScreenStatus;
   source_findings: string[];
-  metadata_json: string;
+  metadata_json: Record<string, unknown>;
   created_at: string;
   updated_at: string;
 }
@@ -359,6 +426,9 @@ export interface DesignBrief {
   content: string;
   source_insight_ids: string[];
   source_recommendation_ids: string[];
+  source_findings?: Array<Record<string, unknown>>;
+  recommendations?: Array<Record<string, unknown>>;
+  ux_laws?: string[];
   created_at: string;
   updated_at: string;
 }
@@ -382,17 +452,19 @@ export interface InterfacesStatus {
   onboarding_needed: boolean;
   screens_count: number;
   briefs_count: number;
+  scope?: "project" | "global" | "integration-only";
 }
 
 // --- Loops & Schedule ---
 export type LoopStatus = "active" | "paused" | "behind_schedule" | "stopped" | "error";
+export type LoopSourceType = "agent" | "agent_loop" | "schedule" | "scheduled" | "scheduled_task" | "custom";
 export type ExecutionStatus = "success" | "failure" | "running" | "skipped";
 
 export interface LoopExecution {
-  id: string; source_type: string; source_id: string; source_name: string;
+  id: string; source_type: LoopSourceType; source_id: string; source_name: string;
   status: ExecutionStatus; started_at: string; finished_at: string | null;
   duration_ms: number | null; error_message: string; findings_count: number;
-  metadata: Record<string, unknown>; created_at: string;
+  metadata: Record<string, unknown>; metadata_json?: Record<string, unknown>; created_at: string;
 }
 
 export interface AgentLoopConfig {
@@ -401,11 +473,19 @@ export interface AgentLoopConfig {
   cycle_count: number;
 }
 
+export interface ScheduledLoop {
+  id: string; name: string; description: string; cron_expression: string;
+  skill_name: string; project_id: string; enabled: boolean; is_running: boolean;
+  last_run: string | null; next_run: string | null; loop_type: "cron" | "interval" | "custom" | string;
+  interval_seconds: number | null; execution_count: number; last_status: string; created_at: string;
+}
+
 export interface LoopHealthItem {
-  source_type: string; source_id: string; source_name: string;
-  status: LoopStatus; interval_seconds: number;
+  source_type: LoopSourceType; source_id: string; source_name: string;
+  status: LoopStatus; interval_seconds: number | null;
   last_execution_at: string | null; next_expected_at: string | null;
-  behind_by_seconds: number;
+  behind_by_seconds: number | null; cron_expression?: string; skill_name?: string;
+  last_status?: string; execution_count?: number;
 }
 
 // --- Notifications ---
@@ -417,7 +497,7 @@ export interface AppNotification {
   category: NotificationCategory; agent_id: string | null;
   project_id: string | null; severity: NotificationSeverity;
   read: boolean; action_type: string; action_target: string;
-  metadata: Record<string, unknown>; created_at: string;
+  metadata: Record<string, unknown>; metadata_json?: Record<string, unknown>; created_at: string;
 }
 
 export interface NotificationPreference {
@@ -444,6 +524,7 @@ export interface BackupRecord {
 
 export interface BackupConfig {
   backup_enabled: boolean;
+  backup_dir?: string;
   backup_interval_hours: number;
   backup_retention_count: number;
   backup_full_interval_days: number;
@@ -488,13 +569,17 @@ export interface MetaHyperagentStatus {
   experimental: boolean;
   pending_proposals: number;
   active_variants: number;
+  recent_observations?: number;
+  last_observed_at?: string | null;
+  reasoning_bank?: Record<string, any>;
   observation_interval_hours: number;
+  variant_observation_hours?: number;
 }
 
 // --- Integrations: Messaging Channels ---
 
 export type ChannelPlatform = "telegram" | "slack" | "whatsapp" | "google_chat";
-export type ChannelHealthStatus = "healthy" | "unhealthy" | "unknown";
+export type ChannelHealthStatus = "healthy" | "unhealthy" | "unknown" | "stopped" | "not_enabled" | "not_registered";
 
 export interface ChannelInstance {
   id: string;
@@ -625,6 +710,7 @@ export interface MCPAccessPolicy {
     max_findings_per_request: number;
     max_skill_executions_per_hour: number;
   };
+  warnings?: string[];
 }
 
 export interface MCPAuditEntry {
@@ -668,6 +754,94 @@ export interface AutoresearchStatus {
   running: boolean;
   enabled: boolean;
   current_experiment: AutoresearchExperiment | null;
+  operational_metrics?: AutoresearchOperationalMetrics;
+}
+
+export interface AutoresearchOperationalMetrics {
+  tasks: {
+    total: number;
+    done: number;
+    in_review: number;
+    approved: number;
+    needs_revision: number;
+    review_events: number;
+    approval_events: number;
+    revision_events: number;
+    review_cycles: number;
+    completion_rate: number;
+    approval_rate: number;
+    avg_human_feedback: number | null;
+    avg_consensus: number | null;
+    validation_runs: number;
+    validation_success_rate: number;
+    validation_methods: Array<{
+      method: string;
+      total_runs: number;
+      success_count: number;
+      fail_count: number;
+      avg_consensus_score: number | null;
+      success_rate: number;
+    }>;
+  };
+  agents: {
+    total: number;
+    active: number;
+    working: number;
+    paused: number;
+    unhealthy_heartbeats: number;
+    executions: number;
+    errors: number;
+    error_rate: number;
+  };
+  research_pipeline: {
+    documents: number;
+    ready_documents: number;
+    errored_documents: number;
+    indexed_text_documents: number;
+    findings: number;
+    avg_insight_confidence: number | null;
+    code_applications: number;
+    pending_code_reviews: number;
+    approved_code_reviews: number;
+  };
+  telemetry: {
+    enabled: boolean;
+    total_spans: number;
+    spans_last_24h: number;
+    errors_last_24h: number;
+    error_rate_24h: number;
+    avg_quality_24h: number | null;
+    model_entries: number;
+    production_model_entries: number;
+    autoresearch_model_entries: number;
+    avg_model_quality: number | null;
+    best_model_quality: number | null;
+  };
+  loops: {
+    total_schedules: number;
+    active_schedules: number;
+    running_schedules: number;
+    schedule_executions: number;
+  };
+  research_collection: {
+    deployments: number;
+    active_deployments: number;
+    deployment_responses: number;
+    deployment_targets: number;
+    deployment_completion_rate: number;
+    survey_integrations: number;
+    active_survey_integrations: number;
+    survey_links: number;
+    survey_responses: number;
+  };
+  compute_pool: {
+    total_nodes: number;
+    alive_nodes: number;
+    healthy_nodes: number;
+    available_models: string[];
+    available_model_count: number;
+    active_requests: number;
+  };
 }
 
 export interface ModelSkillLeaderboard {
@@ -718,6 +892,10 @@ export interface ComplianceProfile {
     violation_count: number;
     finding_ids: string[];
   }>;
+  evaluated?: boolean;
+  evidence_count?: number;
+  total_findings?: number;
+  law_tag_count?: number;
 }
 
 // --- Featured MCP Servers ---
@@ -781,7 +959,7 @@ export interface CodebookVersionType {
   change_log: string;
   created_by: string;
   methodology: "reflexive_ta" | "codebook_ta" | "grounded_theory";
-  created_at: string;
+  created_at: string | null;
 }
 
 export interface CodeEntry {
@@ -800,7 +978,9 @@ export interface CodeEntry {
 export interface CodeApplicationType {
   id: string;
   project_id: string;
+  codebook_version_id?: string | null;
   code_id: string;
+  source_document_id?: string | null;
   source_text: string;
   source_location: string;
   coder_id: string;
@@ -808,5 +988,36 @@ export interface CodeApplicationType {
   confidence: number;
   reasoning: string;
   review_status: "pending" | "approved" | "rejected" | "modified";
+  reviewed_by?: string | null;
+  reviewed_at?: string | null;
   created_at: string;
 }
+
+// Improvement Governance request contracts live in improvementGovernanceTypes.ts:
+// ImprovementProposalCreateRequest, ProposalDecisionRequest, ProposalApplyRequest,
+// ProposalEvaluationRequest, ProposalSandboxEvaluationRequest.
+export type {
+  ImprovementFeatureContract,
+  ImprovementGovernanceSummary,
+  ImprovementProposal,
+  ImprovementProposalCreateRequest,
+  ProposalApplyRequest,
+  ProposalDecisionRequest,
+  ProposalEvaluationRequest,
+  ProposalSandboxCheck,
+  ProposalSandboxEvaluation,
+  ProposalSandboxEvaluationRequest,
+} from "./improvementGovernanceTypes";
+
+export type {
+  DGMHArchiveSummary,
+  DGMHArchiveVariant,
+  DGMHVariantApplyRequest,
+  DGMHVariantCreateRequest,
+  DGMHVariantEvaluationRequest,
+  DGMHVariantStatusRequest,
+} from "./dgmhArchiveTypes";
+
+// DGM-H archive request contracts live in dgmhArchiveTypes.ts:
+// DGMHVariantCreateRequest, DGMHVariantEvaluationRequest,
+// DGMHVariantStatusRequest, DGMHVariantApplyRequest.

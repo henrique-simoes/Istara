@@ -35,6 +35,10 @@ interface ProjectStore {
   resumeProject: (id: string) => Promise<void>;
 
   activeProject: () => Project | undefined;
+  activeProjectRole: () => Project["current_user_project_role"] | undefined;
+  canReadActiveProject: () => boolean;
+  canWriteActiveProject: () => boolean;
+  canAdminActiveProject: () => boolean;
 }
 
 export const useProjectStore = create<ProjectStore>((set, get) => ({
@@ -123,4 +127,15 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     const state = get();
     return state.projects.find((p) => p.id === state.activeProjectId);
   },
+
+  activeProjectRole: () => get().activeProject()?.current_user_project_role,
+
+  canReadActiveProject: () => Boolean(get().activeProject()),
+
+  canWriteActiveProject: () => {
+    const role = get().activeProjectRole();
+    return role === "researcher" || role === "project_admin";
+  },
+
+  canAdminActiveProject: () => get().activeProjectRole() === "project_admin",
 }));

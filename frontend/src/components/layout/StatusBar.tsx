@@ -5,7 +5,7 @@ import { Wifi, WifiOff, Cpu, HardDrive } from "lucide-react";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import type { WSEvent } from "@/lib/types";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+import { API_BASE } from "@/lib/runtimeConfig";
 
 function IstaraVersion() {
   const [version, setVersion] = useState("...");
@@ -22,6 +22,7 @@ export default function StatusBar() {
   const [agentStatus, setAgentStatus] = useState("Idle");
   const [agentDetail, setAgentDetail] = useState("");
   const [llmStatus, setLlmStatus] = useState<"ok" | "slow" | "down">("ok");
+  const [serverOnline, setServerOnline] = useState<boolean | null>(null);
 
   const handleEvent = (event: WSEvent) => {
     switch (event.type) {
@@ -61,22 +62,55 @@ export default function StatusBar() {
     }
   };
 
-  const { connected } = useWebSocket(handleEvent);
+  const { connected, status: realtimeStatus, lastCloseReason } = useWebSocket(handleEvent);
+
+  useEffect(() => {
+    let cancelled = false;
+    const checkHealth = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/health`, { cache: "no-store" });
+        if (!cancelled) setServerOnline(res.ok);
+      } catch {
+        if (!cancelled) setServerOnline(false);
+      }
+    };
+    checkHealth();
+    const timer = window.setInterval(checkHealth, 10000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, []);
+
+  const connectionLabel = !serverOnline
+    ? "Server offline"
+    : connected
+      ? "Live updates connected"
+      : realtimeStatus === "auth_failed"
+        ? "Live updates need login"
+        : realtimeStatus === "connecting"
+          ? "Live updates connecting"
+          : "Live updates reconnecting";
+  const connectionTitle = connected
+    ? "Live agent, task, document, and notification updates are connected."
+    : serverOnline
+      ? `The backend HTTP API is online, but the live-events WebSocket is not connected${lastCloseReason ? `: ${lastCloseReason}` : "."}`
+      : "Istara cannot reach the backend health endpoint.";
 
   return (
     <footer className="flex items-center justify-between px-4 py-1.5 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-xs text-slate-500 dark:text-slate-400">
       <div className="flex items-center gap-4">
         {/* Connection status */}
-        <div className="flex items-center gap-1.5">
-          {connected ? (
+        <div className="flex items-center gap-1.5" title={connectionTitle}>
+          {serverOnline && connected ? (
             <>
               <Wifi size={12} className="text-green-500" />
-              <span>Connected</span>
+              <span>{connectionLabel}</span>
             </>
           ) : (
             <>
-              <WifiOff size={12} className="text-red-500" />
-              <span>Disconnected</span>
+              <WifiOff size={12} className={serverOnline ? "text-amber-500" : "text-red-500"} />
+              <span>{connectionLabel}</span>
             </>
           )}
         </div>

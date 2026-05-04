@@ -70,9 +70,17 @@ impl ProcessManager {
         // Clean up any dead processes first
         self.cleanup_dead();
 
-        // Kill orphan port holders before starting
-        kill_port_holders(8000);
-        kill_port_holders(3000);
+        let conflicts = occupied_service_ports();
+        if !conflicts.is_empty() && self.backend.is_none() && self.frontend.is_none() {
+            return Err(format!(
+                "Cannot start Istara because port(s) {} are already in use. Stop the other service first, or change Istara's configured ports.",
+                conflicts
+                    .iter()
+                    .map(u16::to_string)
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ));
+        }
 
         let backend_dir = PathBuf::from(install_dir).join("backend");
         if !backend_dir.exists() {
@@ -184,9 +192,17 @@ impl ProcessManager {
         }
         self.frontend = None;
 
-        // Also kill any orphans on the ports (catches processes started outside the tray)
-        kill_port_holders(8000);
-        kill_port_holders(3000);
+        let conflicts = occupied_service_ports();
+        if !conflicts.is_empty() {
+            return Err(format!(
+                "Managed server processes stopped, but port(s) {} are still in use by processes the tray did not start.",
+                conflicts
+                    .iter()
+                    .map(u16::to_string)
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ));
+        }
 
         eprintln!("[tray] Server stopped");
         Ok("Server stopped".to_string())
@@ -358,56 +374,9 @@ fn build_enriched_path() -> String {
 
 // ── Platform-Specific Port Cleanup ──────────────────────────────────
 
-/// Kill any process holding a specific port (cleans up orphans).
-#[cfg(unix)]
-fn kill_port_holders(port: u16) {
-    if let Ok(output) = Command::new("lsof")
-        .args(["-ti", &format!(":{}", port)])
-        .output()
-    {
-        let pids = String::from_utf8_lossy(&output.stdout);
-        for pid in pids.trim().lines() {
-            let pid = pid.trim();
-            if !pid.is_empty() {
-                let _ = Command::new("kill").arg(pid).output();
-            }
-        }
-        // Force kill after brief wait
-        std::thread::sleep(Duration::from_millis(300));
-        if let Ok(output2) = Command::new("lsof")
-            .args(["-ti", &format!(":{}", port)])
-            .output()
-        {
-            let pids2 = String::from_utf8_lossy(&output2.stdout);
-            for pid in pids2.trim().lines() {
-                let pid = pid.trim();
-                if !pid.is_empty() {
-                    let _ = Command::new("kill").args(["-9", pid]).output();
-                }
-            }
-        }
-    }
-}
-
-#[cfg(target_os = "windows")]
-fn kill_port_holders(port: u16) {
-    // Use netstat to find PIDs holding the port, then taskkill
-    if let Ok(output) = Command::new("netstat")
-        .args(["-ano", "-p", "TCP"])
-        .output()
-    {
-        let text = String::from_utf8_lossy(&output.stdout);
-        let port_str = format!(":{}", port);
-        for line in text.lines() {
-            if line.contains(&port_str) && line.contains("LISTENING") {
-                if let Some(pid) = line.split_whitespace().last() {
-                    if pid != "0" {
-                        let _ = Command::new("taskkill")
-                            .args(["/PID", pid, "/F"])
-                            .output();
-                    }
-                }
-            }
-        }
-    }
+fn occupied_service_ports() -> Vec<u16> {
+    [8000, 3000]
+        .into_iter()
+        .filter(|port| check_port(*port))
+        .collect()
 }

@@ -41,10 +41,14 @@ class CodeApplication(Base):
     def to_dict(self) -> dict:
         return {
             "id": self.id, "project_id": self.project_id,
+            "codebook_version_id": self.codebook_version_id,
             "code_id": self.code_id, "source_text": self.source_text,
+            "source_document_id": self.source_document_id,
             "source_location": self.source_location,
             "coder_id": self.coder_id, "coder_type": self.coder_type,
             "confidence": self.confidence, "reasoning": self.reasoning,
             "review_status": self.review_status,
+            "reviewed_by": self.reviewed_by,
+            "reviewed_at": self.reviewed_at.isoformat() if self.reviewed_at else None,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }

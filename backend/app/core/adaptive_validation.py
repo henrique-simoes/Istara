@@ -27,6 +27,13 @@ def _recency_weight(last_used: datetime) -> float:
     return math.exp(-0.693 * days_ago / HALF_LIFE_DAYS)
 
 
+def _sample_confidence_weight(total_runs: int) -> float:
+    """Conservatively down-weight methods with little evidence."""
+    if total_runs <= 0:
+        return 0.0
+    return min(1.0, math.sqrt(total_runs / 5))
+
+
 class AdaptiveSelector:
     """Selects the best validation method based on historical performance."""
 
@@ -71,7 +78,13 @@ class AdaptiveSelector:
                         continue
                     success_rate = m.success_count / m.total_runs
                     recency = _recency_weight(m.last_used)
-                    score = (success_rate * 0.5 + m.avg_consensus_score * 0.5) * recency * m.weight
+                    sample_confidence = _sample_confidence_weight(m.total_runs)
+                    score = (
+                        (success_rate * 0.5 + m.avg_consensus_score * 0.5)
+                        * recency
+                        * m.weight
+                        * sample_confidence
+                    )
                     if m.method in method_scores:
                         method_scores[m.method] = max(method_scores[m.method], score)
                     else:
@@ -146,6 +159,30 @@ class AdaptiveSelector:
                     db.add(metric)
 
                 await db.commit()
+            try:
+                from app.core.improvement_governance import improvement_governance
+
+                await improvement_governance.record_feature_evidence(
+                    feature="ensemble_model_and_llm_orchestration",
+                    source_system="adaptive_validation",
+                    source_id=f"{project_id}:{skill_name}:{agent_id}:{method}",
+                    project_id=project_id,
+                    agent_id=agent_id,
+                    summary="Adaptive ensemble validation outcome recorded.",
+                    evidence={
+                        "passed": success,
+                        "method": method,
+                        "skill_name": skill_name,
+                        "consensus_score": consensus_score,
+                    },
+                    metrics_after={
+                        "consensus_score": consensus_score,
+                        "success": success,
+                    },
+                    confidence=max(0.0, min(1.0, float(consensus_score))),
+                )
+            except Exception:
+                pass
 
         except Exception as e:
             logger.warning(f"Failed to record adaptive outcome: {e}")
@@ -172,6 +209,7 @@ class AdaptiveSelector:
                         "avg_consensus_score": round(m.avg_consensus_score, 4),
                         "last_used": m.last_used.isoformat(),
                         "recency_weight": round(_recency_weight(m.last_used), 4),
+                        "sample_confidence_weight": round(_sample_confidence_weight(m.total_runs), 4),
                     }
                     for m in metrics
                 ]

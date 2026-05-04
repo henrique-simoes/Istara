@@ -103,6 +103,7 @@
 
 ### Task Document Attachments
 - Task cards show document indicators, TaskEditor has attach/detach. Evaluate: does the attachment indicator provide enough information scent to be useful, or is it just noise? Is the attach/detach flow in TaskEditor intuitive — does it follow established patterns (drag-and-drop, file picker, or search-and-select)? Does cross-referencing tasks and documents reduce context switching? (Cognitive Load — fewer views to navigate between related artifacts)
+- Task review feedback loop: evaluate whether users understand that agents stop at In Review, humans approve Done, and Not Successful sends work back to Backlog or In Progress with What to Review. Track friction in the large modal, especially whether labels, atomic path, review cycles, quality metrics, and Done-to-Report feel decision-supportive rather than cluttered.
 
 ### Skills Self-Evolution Layout
 - Two-column layout for proposals with full prompt previews. Evaluate: does the side-by-side comparison support effective decision-making? Are prompt previews readable at the displayed size? Does the two-column layout work on typical researcher screen sizes, or does it feel cramped? (Aesthetic-Usability Effect — clean layout builds trust in AI-generated proposals)

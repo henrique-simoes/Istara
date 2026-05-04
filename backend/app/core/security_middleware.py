@@ -1,4 +1,4 @@
-"""Global Security Middleware — enforces JWT authentication on ALL requests.
+"""Global Security Middleware — enforces JWT authentication on protected requests.
 
 This is the primary security layer for Istara. Every request to a protected
 endpoint MUST carry a valid JWT in the Authorization header. No exceptions
@@ -8,7 +8,8 @@ Architecture:
     Request → CORS → SecurityAuthMiddleware → NetworkSecurity → Rate Limiting → Route
 
 Security model:
-    - ALL endpoints require JWT authentication by default
+    - Team-mode endpoints require JWT authentication by default
+    - Local mode attaches the built-in local admin user for local-first desktop use
     - Exempt paths: /api/health, /api/auth/login, /api/auth/register,
       /api/auth/team-status, /api/settings/status, /.well-known/agent.json
     - Exempt prefixes: /_next/, /favicon, /webhooks/, /static/, /a2a
@@ -30,6 +31,15 @@ from starlette.responses import JSONResponse
 from starlette.websockets import WebSocket
 
 logger = logging.getLogger(__name__)
+
+# Local mode intentionally has a single built-in admin identity. Route
+# dependencies already expose this identity via get_current_user; the global
+# middleware must do the same so local desktop mode can bootstrap without a JWT.
+LOCAL_ADMIN_USER = {
+    "id": "local",
+    "username": "local",
+    "role": "admin",
+}
 
 # Paths that NEVER require authentication
 EXEMPT_PATHS = {
@@ -101,6 +111,20 @@ class SecurityAuthMiddleware(BaseHTTPMiddleware):
         if request.headers.get("upgrade", "").lower() == "websocket":
             return await call_next(request)
 
+        from app.config import settings
+        if not settings.team_mode:
+            from app.core.network_security import remote_local_admin_block_reason
+
+            client_host = request.client.host if request.client else None
+            local_admin_denial = remote_local_admin_block_reason(client_host, path)
+            if local_admin_denial:
+                return JSONResponse(
+                    status_code=403,
+                    content={"detail": local_admin_denial},
+                )
+            request.state.user = LOCAL_ADMIN_USER.copy()
+            return await call_next(request)
+
         # Extract JWT from Authorization header
         auth_header = request.headers.get("authorization", "")
         token = ""
@@ -150,10 +174,28 @@ def require_admin_from_request(request: Request) -> None:
         from app.core.security_middleware import require_admin_from_request
         require_admin_from_request(request)
     """
-    user = getattr(request.state, "user", None)
-    if not user or user.get("role") != "admin":
-        from fastapi import HTTPException
-        raise HTTPException(status_code=403, detail="Admin access required.")
+    from app.core.permissions import require_global_admin
+
+    require_global_admin(request)
+
+
+def require_admin_or_localhost_for_destructive_action(request: Request, action: str) -> None:
+    """Require team admin or localhost for destructive local-mode operations."""
+    from app.config import settings
+    from app.core.network_security import _is_localhost
+
+    if settings.team_mode:
+        try:
+            require_admin_from_request(request)
+        except Exception:
+            raise PermissionError(f"Admin required to {action}")
+        return
+
+    client_host = request.client.host if request.client else None
+    if not _is_localhost(client_host):
+        raise PermissionError(
+            f"Localhost access required to {action} while team mode is disabled"
+        )
 
 
 def get_user_from_request(request: Request) -> dict:

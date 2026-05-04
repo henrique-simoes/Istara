@@ -8,6 +8,52 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). Ver
 
 ---
 
+## [Unreleased] — 2026-04-30 Stabilization Sweep
+
+See `docs/STABILIZATION_AUDIT_2026_04_30.md` for the full Compass audit note.
+
+### Added
+- **Team RBAC Permission Matrix**: Added a tracked team access contract documenting global admin, project admin, researcher, viewer, `404` concealment, and `403` forbidden-operation semantics.
+- **Compass Future Features Ledger**: Added `COMPASS_FUTURE_FEATURES.md` as a protected Compass place for future plans, deferred hardening, and feature candidates, seeded with durable token/model/compute accounting and webhook verification audit work.
+- **Admin Dashboard Foundation**: Added admin-only `/api/admin/*` aggregation endpoints and an admin-only dashboard for global users, project, access, compute, usage, and connection-string visibility.
+- **System-Wide RBAC Hardening Pass**: Extended central project/admin authorization checks across Files, Memory, Context DAG, Metrics, UX Laws compliance, Reports, Code Applications, Codebook Versions, Deployments, MCP clients, Agents, Context hierarchy, Channels, Surveys, Loops, Autoresearch, Notifications, Backup, Scheduler, and Audit routes.
+- **Final Authorization Inventory Pass**: Closed remaining security/product edges in compute pool readouts, legacy voice-transcribe, presentation slide instructions, steering queues, Meta-Hyperagent, Interfaces screens/Figma/handoff/mock endpoints, and settings telemetry/self-healing exports.
+- **Split Connection String Types**: User invite strings and compute donation strings now use explicit token kinds. User invites no longer carry relay/network credentials; compute donation strings cannot create user accounts.
+- **Piper / Design Lead**: Added `design-lead` as a first-class system agent role and documented Piper as the Istara Interface Agent.
+- **Persona Integrity Tests**: Added coverage that hardcoded system agents have complete persona file sets and that incomplete runtime personas are repaired.
+- **Meta-Agent Observation Persistence**: Recent observations now persist and are returned with status so proposal state can be explained after restarts.
+- **Autoresearch Operational Metrics**: Exposed and displayed task-review, compute, telemetry, agent, pipeline, and collection metrics in Autoresearch.
+- **Design Chat Session Continuity**: Interfaces Design Chat now tracks design session ids and preserves model responses across view changes.
+- **Readable Generated Artifacts**: Skill-generated JSON artifacts now produce researcher-readable Markdown Documents while retaining structured content for agent/RAG use.
+
+### Changed
+- **Project Access Enforcement**: Project listing/detail now scopes by team membership: global admins see all projects, while non-admin users see only invited projects.
+- **Viewer Read-Only Enforcement**: Viewers can read visible project state across Chat, Interfaces Design Chat, Tasks, Documents, Findings, and Codebooks but cannot send messages, create sessions, upload through Chat, execute skills, or mutate project data.
+- **Project Role Awareness**: Project API responses now include the current user's project role so the frontend can distinguish invited project viewers, researchers, and project admins instead of relying only on global account role.
+- **Operational Admin Console**: Admin Dashboard now includes inline global role changes, project access grants/role changes, project delete control, user invite generation, and compute donation string generation.
+- **Live Status Labeling**: Reworded the bottom-left status from vague "Realtime" language to "Live updates" and clarified that it refers to the `/ws` live-events socket, not backend or LLM health.
+- **Documents as Tag Source of Truth**: Documents now aggregate tags from document metadata, nuggets, and code applications so Interview/agent-created tags surface consistently.
+- **Codebook Fallbacks**: Findings Codebook can fall back to legacy codebooks and derive codebook content from nuggets/code applications when no explicit version exists.
+- **Task Review Drag Semantics**: Kanban drag behavior now preserves review requirements: Done is human-approved and backward movement requires Request Revision messaging.
+- **UX Laws Compliance Semantics**: UX Laws views distinguish "not evaluated" from true 100% compliance when no `ux-law:` evidence exists.
+- **MCP Server/Policy UX**: MCP server enable/disable language and access policy payload handling were clarified; grouped frontend payloads normalize into backend `allow_*` fields.
+- **Self-Evolution Verification**: Skill proposal promotion now surfaces verification state and blocks approval when verification fails.
+- **Interfaces Markdown Rendering**: Design Chat assistant output and streaming text render Markdown/GFM like the main Chat menu.
+- **Generated Document Preview**: Markdown-like Documents now render as formatted Markdown instead of monospaced raw text in the Documents preview.
+
+### Fixed
+- **Onboarding File Step**: "Add research files" now routes to Documents upload instead of remaining in Settings.
+- **Document Preview Reliability**: Text-like document preview path/content handling was tightened.
+- **Evidence Chain Empty States**: Recommendation drilldowns no longer imply a raw quote/observation exists when no supporting chain is linked.
+- **Meta-Agent Layout**: Pending proposal confidence bars are clamped to prevent layout overflow.
+- **WebSocket Recovery**: Live updates retry after stale/missing auth token states and reconnect when authentication changes.
+- **Network Discovery Validation**: Network LLM discovery ignores hosts that do not advertise real provider-shaped model ids/names.
+
+### Reverted
+- **Silent LLM Alias Deduplication**: Removed the attempted identical-catalog duplicate collapse for network LLM servers because two legitimate machines can expose the same provider, port, subnet, and model list. Future handling must use stronger host identity evidence or explicit admin review.
+
+---
+
 ## [2026.04.27] — Voice Transcription & Security Hardening
 
 ### Added

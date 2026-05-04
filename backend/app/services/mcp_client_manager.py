@@ -10,6 +10,7 @@ import json
 import logging
 import uuid
 from datetime import datetime, timezone
+from urllib.parse import urlparse
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,6 +19,7 @@ from app.core.field_encryption import decrypt_field, encrypt_field
 from app.models.mcp_server_config import MCPServerConfig
 
 logger = logging.getLogger(__name__)
+SUPPORTED_TRANSPORTS = {"http"}
 
 # ---------------------------------------------------------------------------
 # Conditional import of MCP client libraries
@@ -56,18 +58,45 @@ async def register_server(
     Returns:
         The newly created MCPServerConfig row.
     """
+    transport = transport.strip().lower()
+    if transport not in SUPPORTED_TRANSPORTS:
+        raise ValueError(
+            "Only HTTP MCP client transport is currently supported by Istara. "
+            "Start stdio or WebSocket servers behind an HTTP MCP bridge before registering them."
+        )
+    parsed = urlparse(url.strip())
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        raise ValueError("MCP server URL must be an absolute http(s) URL")
+    safe_headers = _validate_headers(headers or {})
+
     config = MCPServerConfig(
         id=str(uuid.uuid4()),
         name=name,
-        url=url,
+        url=url.strip(),
         transport=transport,
-        headers_json=encrypt_field(json.dumps(headers or {})),
+        headers_json=encrypt_field(json.dumps(safe_headers)),
     )
     db.add(config)
     await db.commit()
     await db.refresh(config)
     logger.info("Registered MCP server '%s' at %s", name, url)
     return config
+
+
+def _validate_headers(headers: dict) -> dict[str, str]:
+    """Validate MCP outbound headers before encrypting them at rest."""
+    safe: dict[str, str] = {}
+    for key, value in headers.items():
+        key_str = str(key).strip()
+        value_str = str(value)
+        if not key_str:
+            continue
+        if any(ch in key_str or ch in value_str for ch in ("\r", "\n")):
+            raise ValueError("MCP headers cannot contain newlines")
+        if len(key_str) > 128 or len(value_str) > 4096:
+            raise ValueError("MCP header key or value is too long")
+        safe[key_str] = value_str
+    return safe
 
 
 # ---------------------------------------------------------------------------

@@ -19,7 +19,7 @@ import tempfile
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 from sqlalchemy import delete, select
 
@@ -104,6 +104,41 @@ def _count_subdirs(dir_path: str | Path) -> int:
     return sum(1 for d in p.iterdir() if d.is_dir())
 
 
+def _backup_dir() -> Path:
+    """Return the configured backup directory, creating it if needed."""
+    path = Path(settings.backup_dir)
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def _safe_backup_path(filename: str) -> Path:
+    """Resolve a backup archive filename without allowing path traversal."""
+    if not filename or Path(filename).name != filename:
+        raise ValueError("Invalid backup filename")
+    path = (_backup_dir() / filename).resolve()
+    root = _backup_dir().resolve()
+    if not path.is_relative_to(root):
+        raise ValueError("Invalid backup path")
+    return path
+
+
+def _safe_extract_tar(tar: tarfile.TarFile, destination: str | Path) -> None:
+    """Extract a tar archive after rejecting traversal, links, and device files."""
+    dest = Path(destination).resolve()
+    safe_members: list[tarfile.TarInfo] = []
+    for member in tar.getmembers():
+        name = PurePosixPath(member.name)
+        if name.is_absolute() or ".." in name.parts:
+            raise ValueError(f"Unsafe archive member path: {member.name}")
+        if member.issym() or member.islnk() or member.isdev():
+            raise ValueError(f"Unsafe archive member type: {member.name}")
+        target = (dest / Path(*name.parts)).resolve()
+        if not target.is_relative_to(dest):
+            raise ValueError(f"Unsafe archive member target: {member.name}")
+        safe_members.append(member)
+    tar.extractall(dest, members=safe_members, filter="data")
+
+
 # ---------------------------------------------------------------------------
 # BackupManager
 # ---------------------------------------------------------------------------
@@ -178,7 +213,7 @@ class BackupManager:
 
         # Find the last full backup
         # If it's been more than backup_full_interval_days since last full, do full
-        state_path = Path(settings.backup_dir) / "_last_backup_state.json"
+        state_path = _backup_dir() / "_last_backup_state.json"
         if not state_path.exists():
             return "full"
 
@@ -213,8 +248,8 @@ class BackupManager:
         record_id = str(uuid.uuid4())
         now = datetime.now(timezone.utc)
         timestamp = now.strftime("%Y%m%d_%H%M%S")
-        filename = f"istara_backup_{timestamp}.tar.gz"
-        archive_path = Path(settings.backup_dir) / filename
+        filename = f"istara_backup_{timestamp}_{record_id[:8]}.tar.gz"
+        archive_path = _safe_backup_path(filename)
 
         # Create DB record (in_progress)
         async with async_session() as db:
@@ -358,7 +393,7 @@ class BackupManager:
             lance_src = "./data/lance_db"
             if Path(lance_src).is_dir():
                 lance_dest = tmp / "data" / "lance_db"
-                self._copy_dir(lance_src, str(lance_dest), checksums, backup_type, previous_checksums)
+                self._copy_dir(lance_src, str(lance_dest), "data/lance_db", checksums, backup_type, previous_checksums)
                 stores = _count_subdirs(lance_dest) if lance_dest.exists() else 0
                 components["lance_db"] = {"stores": stores}
 
@@ -366,7 +401,7 @@ class BackupManager:
             kw_src = "./data/keyword_index"
             if Path(kw_src).is_dir():
                 kw_dest = tmp / "data" / "keyword_index"
-                self._copy_dir(kw_src, str(kw_dest), checksums, backup_type, previous_checksums)
+                self._copy_dir(kw_src, str(kw_dest), "data/keyword_index", checksums, backup_type, previous_checksums)
                 kw_files = _dir_file_count(kw_dest) if kw_dest.exists() else 0
                 components["keyword_index"] = {"files": kw_files}
 
@@ -374,7 +409,7 @@ class BackupManager:
             uploads_src = settings.upload_dir
             if Path(uploads_src).is_dir():
                 uploads_dest = tmp / "data" / "uploads"
-                self._copy_dir(uploads_src, str(uploads_dest), checksums, backup_type, previous_checksums)
+                self._copy_dir(uploads_src, str(uploads_dest), "data/uploads", checksums, backup_type, previous_checksums)
                 upload_dirs = _count_subdirs(uploads_dest) if uploads_dest.exists() else 0
                 components["uploads"] = {"dirs": upload_dirs}
 
@@ -382,7 +417,7 @@ class BackupManager:
             projects_src = settings.projects_dir
             if Path(projects_src).is_dir():
                 projects_dest = tmp / "data" / "projects"
-                self._copy_dir(projects_src, str(projects_dest), checksums, backup_type, previous_checksums)
+                self._copy_dir(projects_src, str(projects_dest), "data/projects", checksums, backup_type, previous_checksums)
                 proj_count = _count_subdirs(projects_dest) if projects_dest.exists() else 0
                 components["projects"] = {"count": proj_count}
 
@@ -398,7 +433,7 @@ class BackupManager:
             personas_src = "./backend/app/agents/personas"
             if Path(personas_src).is_dir():
                 personas_dest = tmp / "backend" / "app" / "agents" / "personas"
-                self._copy_dir(personas_src, str(personas_dest), checksums, backup_type, previous_checksums)
+                self._copy_dir(personas_src, str(personas_dest), "backend/app/agents/personas", checksums, backup_type, previous_checksums)
                 persona_count = sum(1 for f in Path(personas_src).rglob("*.md"))
                 components["personas"] = {"count": persona_count}
 
@@ -406,7 +441,7 @@ class BackupManager:
             skills_src = "./backend/app/skills/definitions"
             if Path(skills_src).is_dir():
                 skills_dest = tmp / "backend" / "app" / "skills" / "definitions"
-                self._copy_dir(skills_src, str(skills_dest), checksums, backup_type, previous_checksums)
+                self._copy_dir(skills_src, str(skills_dest), "backend/app/skills/definitions", checksums, backup_type, previous_checksums)
                 skill_count = sum(1 for f in Path(skills_src).rglob("*.json"))
                 components["skills"] = {"count": skill_count}
 
@@ -472,6 +507,7 @@ class BackupManager:
         self,
         src: str,
         dest: str,
+        archive_prefix: str,
         checksums: dict[str, str],
         backup_type: str,
         previous_checksums: dict[str, str],
@@ -485,44 +521,26 @@ class BackupManager:
 
         for item in src_path.rglob("*"):
             if item.is_file():
-                rel = str(item.relative_to(Path("."))) if str(item).startswith("./") else str(item)
-                # Normalize path for manifest
-                try:
-                    rel = str(item.relative_to(Path(".")))
-                except ValueError:
-                    rel = str(item)
+                archive_key = str(
+                    PurePosixPath(archive_prefix) / PurePosixPath(item.relative_to(src_path).as_posix())
+                )
 
                 if backup_type == "incremental":
                     current_hash = _sha256_file(item)
-                    if rel in previous_checksums and previous_checksums[rel] == current_hash:
+                    if archive_key in previous_checksums and previous_checksums[archive_key] == current_hash:
                         continue  # Unchanged, skip
 
                 target = dest_path / item.relative_to(src_path)
                 target.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(str(item), str(target))
 
-                # Use the archive-relative path for checksums
-                archive_rel = str(target.relative_to(dest_path.parents[len(dest_path.parts) - 2]))
-                # Simpler: compute from what we know the archive layout will be
-                try:
-                    # The temp dir structure mirrors the source layout
-                    parts = dest_path.parts
-                    # Find the temp dir root (first component after /tmp/...)
-                    # We need the path relative to the temp root
-                    # Since we can't easily get temp root here, use src-based rel path
-                    archive_key = str(Path(src).parent / item.relative_to(src_path))
-                    # Normalize: remove leading ./
-                    if archive_key.startswith("./"):
-                        archive_key = archive_key[2:]
-                    checksums[archive_key] = _sha256_file(target)
-                except Exception:
-                    checksums[rel] = _sha256_file(target)
+                checksums[archive_key] = _sha256_file(target)
 
     # -- Incremental state ---------------------------------------------------
 
     async def _load_incremental_state(self) -> tuple[str | None, dict[str, str]]:
         """Load the last backup state for incremental comparison."""
-        state_path = Path(settings.backup_dir) / "_last_backup_state.json"
+        state_path = _backup_dir() / "_last_backup_state.json"
         if not state_path.exists():
             return None, {}
 
@@ -542,7 +560,7 @@ class BackupManager:
         timestamp: str,
     ) -> None:
         """Persist state for future incremental comparisons."""
-        state_path = Path(settings.backup_dir) / "_last_backup_state.json"
+        state_path = _backup_dir() / "_last_backup_state.json"
 
         state: dict = {}
         if state_path.exists():
@@ -577,7 +595,7 @@ class BackupManager:
             if not record:
                 raise ValueError(f"Backup record not found: {backup_id}")
 
-        archive_path = Path(settings.backup_dir) / record.filename
+        archive_path = _safe_backup_path(record.filename)
         if not archive_path.exists():
             raise FileNotFoundError(f"Archive not found: {archive_path}")
 
@@ -602,6 +620,27 @@ class BackupManager:
             logger.exception("Restore failed for backup %s", backup_id)
             raise
 
+    async def restore_uploaded_archive(self, archive_path: str | Path) -> dict:
+        """Restore directly from an uploaded archive after safe extraction checks."""
+        path = Path(archive_path)
+        if not path.exists():
+            raise FileNotFoundError(f"Archive not found: {path}")
+
+        await self._broadcast("backup_restore_started", "uploaded", {})
+        loop = asyncio.get_running_loop()
+        try:
+            restore_result = await loop.run_in_executor(
+                _executor,
+                self._restore_sync,
+                str(path),
+            )
+            await self._broadcast("backup_restore_completed", "uploaded", restore_result)
+            return {"status": "restored", **restore_result}
+        except Exception as exc:
+            await self._broadcast("backup_restore_failed", "uploaded", {"error": str(exc)[:500]})
+            logger.exception("Uploaded restore failed")
+            raise
+
     def _restore_sync(self, archive_path: str) -> dict:
         """Extract and restore backup files (blocking)."""
         restored_components: list[str] = []
@@ -609,26 +648,30 @@ class BackupManager:
         with tempfile.TemporaryDirectory(prefix="istara_restore_") as tmp_dir:
             # Extract
             with tarfile.open(archive_path, "r:gz") as tar:
-                tar.extractall(tmp_dir)
+                _safe_extract_tar(tar, tmp_dir)
 
             tmp = Path(tmp_dir)
 
             # Load and verify manifest
             manifest_path = tmp / "manifest.json"
-            if manifest_path.exists():
-                manifest = json.loads(manifest_path.read_text())
-                checksums = manifest.get("checksums", {})
+            if not manifest_path.exists():
+                raise ValueError("Backup manifest.json missing")
 
-                # Verify checksums
-                for rel_path, expected_hash in checksums.items():
-                    file_path = tmp / rel_path
-                    if file_path.exists():
-                        actual_hash = _sha256_file(file_path)
-                        if actual_hash != expected_hash:
-                            logger.warning(
-                                "Checksum mismatch during restore: %s (expected %s, got %s)",
-                                rel_path, expected_hash, actual_hash,
-                            )
+            manifest = json.loads(manifest_path.read_text())
+            checksums = manifest.get("checksums", {})
+            mismatches: list[str] = []
+
+            # Verify checksums before mutating live files.
+            for rel_path, expected_hash in checksums.items():
+                file_path = tmp / rel_path
+                if not file_path.exists():
+                    mismatches.append(f"missing: {rel_path}")
+                    continue
+                actual_hash = _sha256_file(file_path)
+                if actual_hash != expected_hash:
+                    mismatches.append(f"mismatch: {rel_path}")
+            if mismatches:
+                raise ValueError(f"Backup checksum verification failed: {', '.join(mismatches[:5])}")
 
             # Restore database
             db_src = tmp / "data" / "istara.db"
@@ -693,7 +736,7 @@ class BackupManager:
             if not record:
                 raise ValueError(f"Backup record not found: {backup_id}")
 
-        archive_path = Path(settings.backup_dir) / record.filename
+        archive_path = _safe_backup_path(record.filename)
         if not archive_path.exists():
             raise FileNotFoundError(f"Archive not found: {archive_path}")
 
@@ -724,7 +767,7 @@ class BackupManager:
         """Verify archive checksums (blocking)."""
         with tempfile.TemporaryDirectory(prefix="istara_verify_") as tmp_dir:
             with tarfile.open(archive_path, "r:gz") as tar:
-                tar.extractall(tmp_dir, filter="data")
+                _safe_extract_tar(tar, tmp_dir)
 
             # Fix permissions so git object files are readable
             for root, dirs, files in os.walk(tmp_dir):
@@ -787,12 +830,12 @@ class BackupManager:
 
             for record in to_delete:
                 # Remove archive file
-                archive_path = Path(settings.backup_dir) / record.filename
-                if archive_path.exists():
-                    try:
+                try:
+                    archive_path = _safe_backup_path(record.filename)
+                    if archive_path.exists():
                         archive_path.unlink()
-                    except OSError:
-                        logger.warning("Could not delete backup file: %s", archive_path)
+                except (OSError, ValueError):
+                    logger.warning("Could not delete backup file for record: %s", record.id)
 
                 await db.execute(
                     delete(BackupRecord).where(BackupRecord.id == record.id)
@@ -840,6 +883,7 @@ class BackupManager:
         return {
             "uncompressed_bytes": total,
             "compressed_estimate_bytes": compressed_estimate,
+            "size_bytes": compressed_estimate,
             "components": estimates,
         }
 
@@ -866,9 +910,12 @@ class BackupManager:
                 return False
 
             # Remove file
-            archive_path = Path(settings.backup_dir) / record.filename
-            if archive_path.exists():
-                archive_path.unlink()
+            try:
+                archive_path = _safe_backup_path(record.filename)
+                if archive_path.exists():
+                    archive_path.unlink()
+            except (OSError, ValueError):
+                logger.warning("Backup record has invalid archive filename: %s", record.id)
 
             await db.execute(
                 delete(BackupRecord).where(BackupRecord.id == record.id)
@@ -888,7 +935,10 @@ class BackupManager:
             if not record:
                 return None
 
-        path = Path(settings.backup_dir) / record.filename
+        try:
+            path = _safe_backup_path(record.filename)
+        except ValueError:
+            return None
         return path if path.exists() else None
 
     # -- Broadcast helper ----------------------------------------------------

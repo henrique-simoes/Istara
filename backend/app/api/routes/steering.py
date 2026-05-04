@@ -17,9 +17,10 @@ import asyncio
 import logging
 import time
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
+from app.core.security_middleware import require_admin_from_request
 from app.core.steering import SteeringMode, steering_manager
 
 router = APIRouter()
@@ -91,8 +92,9 @@ async def _validate_agent_id(agent_id: str) -> None:
 # ---------------------------------------------------------------------------
 
 @router.post("/steering/{agent_id}", response_model=dict)
-async def queue_steering_message(agent_id: str, body: SteeringMessageRequest):
+async def queue_steering_message(agent_id: str, body: SteeringMessageRequest, request: Request):
     """Queue a steering message to be injected after the current skill execution."""
+    require_admin_from_request(request)
     await _validate_agent_id(agent_id)
     await steering_manager.steer(agent_id, body.message, source=body.source)
     return {
@@ -104,11 +106,12 @@ async def queue_steering_message(agent_id: str, body: SteeringMessageRequest):
 
 
 @router.post("/steering/{agent_id}/follow-up", response_model=dict)
-async def queue_follow_up_message(agent_id: str, body: FollowUpMessageRequest):
+async def queue_follow_up_message(agent_id: str, body: FollowUpMessageRequest, request: Request):
     """Queue a follow-up message to be injected when the agent would otherwise stop.
 
     Follow-up messages are only processed when the agent has no more pending work.
     """
+    require_admin_from_request(request)
     await _validate_agent_id(agent_id)
     await steering_manager.follow_up(agent_id, body.message, source=body.source)
     return {
@@ -120,12 +123,13 @@ async def queue_follow_up_message(agent_id: str, body: FollowUpMessageRequest):
 
 
 @router.post("/steering/{agent_id}/abort", response_model=SteeringAbortResponse)
-async def abort_agent_work(agent_id: str):
+async def abort_agent_work(agent_id: str, request: Request):
     """Abort the agent's current work and clear all steering queues.
 
     This is the programmatic equivalent of pressing Escape in pi-mono.
     Queued messages are returned so the caller can restore them to the editor.
     """
+    require_admin_from_request(request)
     await _validate_agent_id(agent_id)
     cleared = await steering_manager.abort(agent_id)
 
@@ -142,16 +146,18 @@ async def abort_agent_work(agent_id: str):
 
 
 @router.get("/steering/{agent_id}/status", response_model=SteeringStatusResponse)
-async def get_steering_status(agent_id: str):
+async def get_steering_status(agent_id: str, request: Request):
     """Get steering status for an agent."""
+    require_admin_from_request(request)
     await _validate_agent_id(agent_id)
     status = steering_manager.get_status(agent_id)
     return SteeringStatusResponse(**status)
 
 
 @router.get("/steering/{agent_id}/queues", response_model=SteeringQueuesResponse)
-async def get_steering_queues(agent_id: str):
+async def get_steering_queues(agent_id: str, request: Request):
     """Get the contents of both steering queues."""
+    require_admin_from_request(request)
     await _validate_agent_id(agent_id)
     state = steering_manager._get_or_create(agent_id)
 
@@ -179,8 +185,9 @@ async def get_steering_queues(agent_id: str):
 
 
 @router.delete("/steering/{agent_id}/queues", response_model=dict)
-async def clear_steering_queues(agent_id: str):
+async def clear_steering_queues(agent_id: str, request: Request):
     """Clear all steering and follow-up queues for an agent."""
+    require_admin_from_request(request)
     await _validate_agent_id(agent_id)
     cleared = await steering_manager.clear_all(agent_id)
     return {
@@ -192,7 +199,7 @@ async def clear_steering_queues(agent_id: str):
 
 
 @router.get("/steering/{agent_id}/idle")
-async def wait_for_agent_idle(agent_id: str):
+async def wait_for_agent_idle(agent_id: str, request: Request):
     """SSE endpoint: waits until the agent finishes all work.
 
     Useful for frontend to know when to hide the steering input
@@ -200,6 +207,7 @@ async def wait_for_agent_idle(agent_id: str):
 
     Streams one event: {"agent_id": "...", "status": "idle"}
     """
+    require_admin_from_request(request)
     from fastapi.responses import StreamingResponse
 
     async def event_stream():
@@ -220,6 +228,7 @@ async def wait_for_agent_idle(agent_id: str):
 
 
 @router.get("/steering", response_model=dict)
-async def get_all_steering_status():
+async def get_all_steering_status(request: Request):
     """Get steering status for all agents."""
+    require_admin_from_request(request)
     return steering_manager.get_all_status()

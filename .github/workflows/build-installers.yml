@@ -67,10 +67,10 @@ jobs:
               istara.sh|scripts/install-istara.sh|scripts/install.sh|scripts/uninstall-istara.sh|scripts/prepare-release.sh|scripts/set-version.sh)
                 SHOULD_RELEASE=true
                 ;;
-              scripts/update_agent_md.py|scripts/check_integrity.py|scripts/check_change_obligations.py)
+              scripts/check_integrity.py|scripts/check_change_obligations.py|scripts/check_ci_governance.py|scripts/production_rehearsal.py)
                 SHOULD_RELEASE=true
                 ;;
-              AGENT_ENTRYPOINT.md|SYSTEM_PROMPT.md|SYSTEM_CHANGE_MATRIX.md|CHANGE_CHECKLIST.md|AGENT.md|COMPLETE_SYSTEM.md|SYSTEM_INTEGRITY_GUIDE.md|Tech.md|CLAUDE.md|GEMINI.md)
+              SYSTEM_PROMPT.md|SYSTEM_CHANGE_MATRIX.md|CHANGE_CHECKLIST.md|Tech.md|CLAUDE.md|GEMINI.md)
                 SHOULD_RELEASE=true
                 ;;
               backend/app/agents/personas/*)

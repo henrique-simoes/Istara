@@ -2,14 +2,16 @@
 
 import logging
 from datetime import datetime, timezone, timedelta
-from pathlib import Path
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
+from app.core.env_persistence import persist_env_value
 from app.core.hardware import detect_hardware, recommend_model
 from app.core.ollama import ollama
+from app.core.permissions import require_project_access
 from app.core.security_middleware import require_admin_from_request
 from app.models.database import get_db
 
@@ -17,32 +19,13 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
+class StrictRoutingRequest(BaseModel):
+    enabled: bool
+
+
 def _persist_env(key: str, value: str) -> None:
-    """Update a key in the .env file so the setting survives restarts.
-
-    Creates the key if it doesn't exist, updates it in-place if it does.
-    """
-    env_path = Path(".env")
-    if not env_path.exists():
-        env_path.write_text(f"{key}={value}\n")
-        return
-
-    lines = env_path.read_text().splitlines(keepends=True)
-    found = False
-    new_lines = []
-    for line in lines:
-        stripped = line.strip()
-        if stripped.startswith(f"{key}=") or stripped.startswith(f"{key} ="):
-            new_lines.append(f"{key}={value}\n")
-            found = True
-        else:
-            new_lines.append(line)
-    if not found:
-        # Ensure trailing newline before appending
-        if new_lines and not new_lines[-1].endswith("\n"):
-            new_lines[-1] += "\n"
-        new_lines.append(f"{key}={value}\n")
-    env_path.write_text("".join(new_lines))
+    """Backward-compatible wrapper for settings persistence."""
+    persist_env_value(key, value)
 
 
 def _active_model() -> str:
@@ -104,15 +87,18 @@ async def get_models():
     For LM Studio, probes the actually loaded model via a minimal chat request
     since /v1/models returns all downloaded (not just loaded) models.
     """
+    from app.core.compute_registry import compute_registry
+
     healthy = await ollama.health()
-    if not healthy:
+    registry_models = await compute_registry.list_models()
+    if not healthy and not registry_models:
         return {
             "status": "offline",
             "models": [],
             "active_model": _active_model(),
         }
 
-    models = await ollama.list_models()
+    models = registry_models or await ollama.list_models()
     active = _active_model()
 
     # For LM Studio, detect the actually loaded model
@@ -133,9 +119,7 @@ async def get_models():
     # Enrich each model with provider info from the router.
     # The LLMRouter.list_models() already attaches _server / _server_id;
     # we promote those to public fields and add provider_type.
-    from app.core.llm_router import llm_router
-
-    server_map = {s.server_id: s for s in llm_router._servers.values()}
+    server_map = {s.node_id: s for s in compute_registry._nodes.values()}
     enriched = []
     for m in models:
         server_id = m.pop("_server_id", None)
@@ -308,6 +292,26 @@ async def maintenance_status():
     }
 
 
+@router.post("/settings/strict-routing")
+async def toggle_strict_routing(data: StrictRoutingRequest, request: Request):
+    """Toggle model-aware strict routing for pooled compute. Admin only."""
+    require_admin_from_request(request)
+    enabled = data.enabled
+    settings.strict_auto_routing = enabled
+    try:
+        _persist_env("STRICT_AUTO_ROUTING", str(enabled).lower())
+        persisted = True
+    except Exception as exc:
+        logger.warning("Could not persist STRICT_AUTO_ROUTING: %s", exc)
+        persisted = False
+
+    return {
+        "strict_auto_routing": enabled,
+        "persisted": persisted,
+        "message": "Strict compute routing updated.",
+    }
+
+
 @router.get("/settings/integrations-status")
 async def integrations_status():
     """Check configuration status of design integrations (Stitch, Figma)."""
@@ -403,6 +407,7 @@ async def system_status():
         "status": "healthy" if llm_healthy else "degraded",
         "provider": settings.llm_provider,
         "team_mode": settings.team_mode,
+        "strict_auto_routing": settings.strict_auto_routing,
         "services": {
             "backend": "running",
             "llm": "connected" if llm_healthy else "disconnected",
@@ -417,8 +422,9 @@ async def system_status():
 
 
 @router.get("/settings/telemetry/status")
-async def telemetry_status():
+async def telemetry_status(request: Request):
     """Get telemetry configuration and stats."""
+    require_admin_from_request(request)
     from app.core.telemetry_export import export_telemetry
     from app.models.database import async_session
     from sqlalchemy import select, func
@@ -455,11 +461,17 @@ async def telemetry_status():
 
 @router.post("/settings/telemetry/export")
 async def export_telemetry_data(
+    request: Request,
     project_id: str | None = None,
     days: int = 7,
     include_models: bool = True,
+    db: AsyncSession = Depends(get_db),
 ):
     """Export telemetry data to local JSON files. No phone-home."""
+    if project_id:
+        await require_project_access(db, request, project_id, min_role="viewer")
+    else:
+        require_admin_from_request(request)
     from app.core.telemetry_export import export_telemetry
 
     if days < 1 or days > 90:
@@ -487,8 +499,13 @@ async def toggle_telemetry(request: Request, enabled: bool):
 
 
 @router.get("/settings/telemetry/healing")
-async def get_self_healing_evaluation(project_id: str):
+async def get_self_healing_evaluation(
+    project_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
     """Evaluate recent telemetry to detect self-healing rule violations."""
+    await require_project_access(db, request, project_id, min_role="viewer")
     from app.core.self_healing_rules import self_healing
 
     return await self_healing.evaluate_all(project_id)

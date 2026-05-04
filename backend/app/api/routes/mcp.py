@@ -11,7 +11,9 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
+from app.core.env_persistence import persist_env_value
 from app.core.security_middleware import require_admin_from_request
+from app.models.mcp_server_config import MCPServerConfig
 from app.models.database import get_db
 
 router = APIRouter()
@@ -46,6 +48,10 @@ class PolicyUpdateRequest(BaseModel):
     allowed_project_ids: list[str] | None = None
     max_findings_per_request: int | None = None
     max_skill_executions_per_hour: int | None = None
+    # Backward-compatible UI shape.
+    tools: dict | None = None
+    resources: dict | None = None
+    limits: dict | None = None
 
 
 class ClientRegisterRequest(BaseModel):
@@ -66,24 +72,56 @@ class ToolCallRequest(BaseModel):
 
 
 @router.get("/mcp/server/status")
-async def get_server_status(db: AsyncSession = Depends(get_db)):
+async def get_server_status(request: Request, db: AsyncSession = Depends(get_db)):
     """Get current MCP server status and exposure summary."""
-    from app.mcp.server import MCP_AVAILABLE
+    require_admin_from_request(request)
+    from app.mcp.server import MCP_AVAILABLE, get_runtime_status
     from app.services.mcp_security import ensure_default_policy, get_exposure_summary
 
     policy = await ensure_default_policy(db)
     exposure = await get_exposure_summary(db)
+    runtime = get_runtime_status()
+    try:
+        from app.core.improvement_governance import improvement_governance
+
+        await improvement_governance.record_feature_evidence(
+            feature="mcp_integrations_and_aura_research",
+            source_system="mcp_server",
+            source_id=f"toggle:{str(data.enabled).lower()}",
+            agent_id="mcp-server",
+            summary="MCP server exposure setting changed.",
+            evidence={
+                "passed": True,
+                "enabled": data.enabled,
+                "serving": runtime["serving"],
+                "restart_required": runtime["restart_required"],
+                "persisted": persisted,
+            },
+            metrics_after={"enabled": data.enabled, "serving": runtime["serving"]},
+        )
+    except Exception:
+        pass
 
     return {
         "enabled": settings.mcp_server_enabled,
+        "configured_enabled": runtime["configured_enabled"],
+        "serving": runtime["serving"],
+        "restart_required": runtime["restart_required"],
+        "lifecycle_state": runtime["lifecycle_state"],
         "port": settings.mcp_server_port,
         "mcp_library_installed": MCP_AVAILABLE,
         "exposure": exposure,
         "warning": (
-            "MCP server is ENABLED. External agents can access Istara data "
-            "according to the access policy."
+            "MCP server is configured as ENABLED, but this API process is not "
+            "serving the FastMCP transport yet. Restart/start the MCP entrypoint "
+            "for external agents to connect."
         )
-        if settings.mcp_server_enabled
+        if runtime["restart_required"]
+        else (
+            "MCP server is ENABLED and serving. External agents can access Istara "
+            "data according to the access policy."
+        )
+        if runtime["serving"]
         else "MCP server is disabled. No external access.",
     }
 
@@ -96,7 +134,7 @@ async def toggle_server(data: ServerToggleRequest, request: Request, db: AsyncSe
     required for the transport layer to actually start/stop listening.
     """
     require_admin_from_request(request)
-    from app.mcp.server import MCP_AVAILABLE
+    from app.mcp.server import MCP_AVAILABLE, get_runtime_status
     from app.services.mcp_security import ensure_default_policy
 
     if data.enabled and not MCP_AVAILABLE:
@@ -109,17 +147,28 @@ async def toggle_server(data: ServerToggleRequest, request: Request, db: AsyncSe
         )
 
     settings.mcp_server_enabled = data.enabled
+    try:
+        persist_env_value("MCP_SERVER_ENABLED", str(data.enabled).lower())
+        persisted = True
+    except Exception:
+        persisted = False
 
     # Ensure a default policy exists
     if data.enabled:
         await ensure_default_policy(db)
+    runtime = get_runtime_status()
 
     return {
         "enabled": settings.mcp_server_enabled,
+        "configured_enabled": runtime["configured_enabled"],
+        "serving": runtime["serving"],
+        "restart_required": runtime["restart_required"],
+        "lifecycle_state": runtime["lifecycle_state"],
         "port": settings.mcp_server_port,
+        "persisted": persisted,
         "warning": (
-            "MCP server enabled. External agents can now connect to "
-            f"port {settings.mcp_server_port}. Review the access policy."
+            "MCP server configuration enabled. Start or restart the FastMCP "
+            f"transport on port {settings.mcp_server_port} before external agents can connect."
         )
         if data.enabled
         else "MCP server disabled. External access revoked.",
@@ -127,8 +176,9 @@ async def toggle_server(data: ServerToggleRequest, request: Request, db: AsyncSe
 
 
 @router.get("/mcp/server/policy")
-async def get_policy(db: AsyncSession = Depends(get_db)):
+async def get_policy(request: Request, db: AsyncSession = Depends(get_db)):
     """Get the current MCP access policy."""
+    require_admin_from_request(request)
     from app.services.mcp_security import ensure_default_policy
 
     policy = await ensure_default_policy(db)
@@ -167,6 +217,38 @@ async def update_policy(data: PolicyUpdateRequest, request: Request, db: AsyncSe
 
     updates = data.model_dump(exclude_unset=True)
 
+    # Accept the grouped frontend shape in addition to explicit backend fields.
+    tool_name_to_field = {
+        "list_skills": "allow_list_skills",
+        "list_projects": "allow_list_projects",
+        "get_deployment_status": "allow_get_deployment_status",
+        "get_findings": "allow_get_findings",
+        "search_memory": "allow_search_memory",
+        "execute_skill": "allow_execute_skill",
+        "create_project": "allow_create_project",
+        "deploy_research": "allow_deploy_research",
+    }
+    for tool_name, config in (updates.pop("tools", None) or {}).items():
+        field_name = tool_name_to_field.get(tool_name)
+        if field_name and isinstance(config, dict) and "allowed" in config:
+            updates[field_name] = bool(config["allowed"])
+
+    resource_name_to_field = {
+        "project": "allow_project_resource",
+        "findings": "allow_findings_resource",
+        "skills": "allow_skills_resource",
+    }
+    for resource_name, config in (updates.pop("resources", None) or {}).items():
+        field_name = resource_name_to_field.get(resource_name)
+        if field_name and isinstance(config, dict) and "allowed" in config:
+            updates[field_name] = bool(config["allowed"])
+
+    limits = updates.pop("limits", None) or {}
+    if isinstance(limits, dict):
+        for key in ("allowed_project_ids", "max_findings_per_request", "max_skill_executions_per_hour"):
+            if key in limits:
+                updates[key] = limits[key]
+
     for field_name, risk in field_risk_map.items():
         if field_name in updates:
             new_val = updates[field_name]
@@ -188,6 +270,25 @@ async def update_policy(data: PolicyUpdateRequest, request: Request, db: AsyncSe
     if "max_skill_executions_per_hour" in updates and updates["max_skill_executions_per_hour"] is not None:
         policy.max_skill_executions_per_hour = updates["max_skill_executions_per_hour"]
 
+    try:
+        from app.core.improvement_governance import improvement_governance
+
+        await improvement_governance.record_feature_evidence(
+            feature="mcp_integrations_and_aura_research",
+            source_system="mcp_policy",
+            source_id="policy_update",
+            agent_id="mcp-server",
+            summary="MCP access policy was updated.",
+            evidence={
+                "passed": True,
+                "updates": updates,
+                "warnings": warnings,
+            },
+            metrics_after={"warning_count": len(warnings)},
+            db=db,
+        )
+    except Exception:
+        pass
     await db.commit()
     await db.refresh(policy)
 
@@ -199,11 +300,13 @@ async def update_policy(data: PolicyUpdateRequest, request: Request, db: AsyncSe
 
 @router.get("/mcp/server/audit")
 async def get_audit(
+    request: Request,
     limit: int = 50,
     offset: int = 0,
     db: AsyncSession = Depends(get_db),
 ):
     """Get MCP audit log entries."""
+    require_admin_from_request(request)
     from app.services.mcp_security import get_audit_log
 
     entries = await get_audit_log(db, limit=limit, offset=offset)
@@ -211,8 +314,9 @@ async def get_audit(
 
 
 @router.get("/mcp/server/exposure")
-async def get_exposure(db: AsyncSession = Depends(get_db)):
+async def get_exposure(request: Request, db: AsyncSession = Depends(get_db)):
     """Get a summary of what is currently exposed via MCP."""
+    require_admin_from_request(request)
     from app.services.mcp_security import get_exposure_summary
 
     return await get_exposure_summary(db)
@@ -225,10 +329,12 @@ async def get_exposure(db: AsyncSession = Depends(get_db)):
 
 @router.get("/mcp/clients")
 async def list_clients(
+    request: Request,
     active_only: bool = False,
     db: AsyncSession = Depends(get_db),
 ):
     """List all registered external MCP servers."""
+    require_admin_from_request(request)
     from app.services.mcp_client_manager import list_servers
 
     servers = await list_servers(db, active_only=active_only)
@@ -236,17 +342,39 @@ async def list_clients(
 
 
 @router.post("/mcp/clients", status_code=201)
-async def register_client(data: ClientRegisterRequest, db: AsyncSession = Depends(get_db)):
+async def register_client(data: ClientRegisterRequest, request: Request, db: AsyncSession = Depends(get_db)):
     """Register a new external MCP server."""
+    require_admin_from_request(request)
     from app.services.mcp_client_manager import register_server
 
-    server = await register_server(
-        db,
-        name=data.name,
-        url=data.url,
-        transport=data.transport,
-        headers=data.headers,
-    )
+    try:
+        server = await register_server(
+            db,
+            name=data.name,
+            url=data.url,
+            transport=data.transport,
+            headers=data.headers,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    try:
+        from app.core.improvement_governance import improvement_governance
+
+        await improvement_governance.record_feature_evidence(
+            feature="mcp_integrations_and_aura_research",
+            source_system="mcp_client",
+            source_id=f"register:{server.id}",
+            agent_id="mcp-client",
+            summary="External MCP server registered.",
+            evidence={
+                "passed": True,
+                "server_id": server.id,
+                "name": server.name,
+                "transport": server.transport,
+            },
+        )
+    except Exception:
+        pass
     return server.to_dict()
 
 
@@ -254,8 +382,9 @@ async def register_client(data: ClientRegisterRequest, db: AsyncSession = Depend
 
 
 @router.get("/mcp/clients/tools")
-async def list_all_client_tools(db: AsyncSession = Depends(get_db)):
+async def list_all_client_tools(request: Request, db: AsyncSession = Depends(get_db)):
     """Aggregate cached tools from ALL active external MCP servers."""
+    require_admin_from_request(request)
     from app.services.mcp_client_manager import list_all_tools
 
     tools = await list_all_tools(db)
@@ -277,8 +406,9 @@ async def unregister_client(server_id: str, request: Request, db: AsyncSession =
 
 
 @router.post("/mcp/clients/{server_id}/discover")
-async def discover_client_tools(server_id: str, db: AsyncSession = Depends(get_db)):
+async def discover_client_tools(server_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     """Connect to an external MCP server and discover its available tools."""
+    require_admin_from_request(request)
     from app.services.mcp_client_manager import MCP_CLIENT_AVAILABLE, discover_tools
 
     if not MCP_CLIENT_AVAILABLE:
@@ -287,16 +417,44 @@ async def discover_client_tools(server_id: str, db: AsyncSession = Depends(get_d
             detail="MCP client library not installed. Run: pip install mcp",
         )
 
+    server = await db.get(MCPServerConfig, server_id)
+    if not server:
+        raise HTTPException(status_code=404, detail="MCP server not found")
+
     tools = await discover_tools(db, server_id)
+    await db.refresh(server)
+    if server.health_status == "unhealthy":
+        raise HTTPException(
+            status_code=502,
+            detail=f"Tool discovery failed for MCP server '{server.name}'",
+        )
+    try:
+        from app.core.improvement_governance import improvement_governance
+
+        await improvement_governance.record_feature_evidence(
+            feature="mcp_integrations_and_aura_research",
+            source_system="mcp_client",
+            source_id=f"discover:{server_id}",
+            agent_id="mcp-client",
+            summary="External MCP tool discovery completed.",
+            evidence={
+                "passed": True,
+                "server_id": server_id,
+                "tool_count": len(tools),
+                "health_status": server.health_status,
+            },
+            metrics_after={"tool_count": len(tools)},
+        )
+    except Exception:
+        pass
     return {"server_id": server_id, "tools": tools, "count": len(tools)}
 
 
 @router.get("/mcp/clients/{server_id}/tools")
-async def get_client_tools(server_id: str, db: AsyncSession = Depends(get_db)):
+async def get_client_tools(server_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     """Get cached tools for an external MCP server (from last discovery)."""
+    require_admin_from_request(request)
     import json
-
-    from app.models.mcp_server_config import MCPServerConfig
 
     server = await db.get(MCPServerConfig, server_id)
     if not server:
@@ -318,9 +476,11 @@ async def get_client_tools(server_id: str, db: AsyncSession = Depends(get_db)):
 async def call_client_tool(
     server_id: str,
     data: ToolCallRequest,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
     """Call a tool on an external MCP server."""
+    require_admin_from_request(request)
     from app.services.mcp_client_manager import MCP_CLIENT_AVAILABLE, call_tool
 
     if not MCP_CLIENT_AVAILABLE:
@@ -334,6 +494,24 @@ async def call_client_tool(
     if "error" in result:
         raise HTTPException(status_code=502, detail=result["error"])
 
+    try:
+        from app.core.improvement_governance import improvement_governance
+
+        await improvement_governance.record_feature_evidence(
+            feature="mcp_integrations_and_aura_research",
+            source_system="mcp_client",
+            source_id=f"call:{server_id}:{data.tool_name}",
+            agent_id="mcp-client",
+            summary="External MCP tool call completed.",
+            evidence={
+                "passed": True,
+                "server_id": server_id,
+                "tool_name": data.tool_name,
+                "argument_keys": sorted((data.arguments or {}).keys()),
+            },
+        )
+    except Exception:
+        pass
     return {
         "server_id": server_id,
         "tool_name": data.tool_name,
@@ -342,8 +520,9 @@ async def call_client_tool(
 
 
 @router.get("/mcp/clients/{server_id}/health")
-async def check_client_health(server_id: str, db: AsyncSession = Depends(get_db)):
+async def check_client_health(server_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     """Check connectivity to an external MCP server."""
+    require_admin_from_request(request)
     from app.services.mcp_client_manager import health_check
 
     result = await health_check(db, server_id)
@@ -356,8 +535,9 @@ async def check_client_health(server_id: str, db: AsyncSession = Depends(get_db)
 
 
 @router.get("/mcp/featured")
-async def list_featured_servers():
+async def list_featured_servers(request: Request):
     """List pre-configured MCP servers available for one-click connection."""
+    require_admin_from_request(request)
     import json
     from pathlib import Path
 
@@ -372,8 +552,9 @@ async def list_featured_servers():
 
 
 @router.get("/mcp/featured/{server_id}")
-async def get_featured_server(server_id: str):
+async def get_featured_server(server_id: str, request: Request):
     """Get details for a featured MCP server."""
+    require_admin_from_request(request)
     import json
     from pathlib import Path
 
@@ -400,6 +581,7 @@ class ConnectFeaturedRequest(BaseModel):
 async def connect_featured_server(
     server_id: str,
     body: ConnectFeaturedRequest,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
     """Quick-connect a featured MCP server to Istara's client registry.
@@ -407,6 +589,8 @@ async def connect_featured_server(
     Creates a new MCP client config from the featured server's definition,
     optionally setting environment variables (API keys).
     """
+    require_admin_from_request(request)
+
     import json
     from pathlib import Path
     from app.services.mcp_client_manager import register_server
@@ -434,13 +618,16 @@ async def connect_featured_server(
                    f"and run: {featured.get('http_command', '')}"
         )
 
-    config = await register_server(
-        db=db,
-        name=featured["name"],
-        url=url,
-        transport="http",
-        headers={"X-Featured-Server": server_id},
-    )
+    try:
+        config = await register_server(
+            db=db,
+            name=featured["name"],
+            url=url,
+            transport="http",
+            headers={"X-Featured-Server": server_id},
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
     return {
         "message": f"Connected to {featured['name']}",
         "server": config.to_dict() if hasattr(config, "to_dict") else {"id": str(config.id), "name": config.name},

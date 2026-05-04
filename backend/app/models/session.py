@@ -51,6 +51,10 @@ class ChatSession(Base):
     messages = relationship("Message", back_populates="session", cascade="all, delete-orphan")
 
     def to_dict(self) -> dict:
+        preset = self.inference_preset
+        preset_value = preset.value if hasattr(preset, "value") else str(preset or "medium")
+        if preset_value not in INFERENCE_PRESETS:
+            preset_value = "medium"
         return {
             "id": self.id,
             "project_id": self.project_id,
@@ -58,7 +62,7 @@ class ChatSession(Base):
             "agent_id": self.agent_id,
             "model_override": self.model_override,
             "session_type": self.session_type,
-            "inference_preset": self.inference_preset.value if self.inference_preset else "medium",
+            "inference_preset": preset_value,
             "custom_temperature": self.custom_temperature,
             "custom_max_tokens": self.custom_max_tokens,
             "custom_context_window": self.custom_context_window,

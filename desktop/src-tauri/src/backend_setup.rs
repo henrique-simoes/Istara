@@ -46,7 +46,15 @@ pub fn setup_backend(install_dir: &Path, llm_provider: &str) -> Result<Vec<Strin
 
     // 4. Create data directories
     log.push("Creating data directories...".to_string());
-    for dir in ["data/uploads", "data/projects", "data/lance_db", "data/backups", "data/channel_audio"] {
+    for dir in [
+        "data/uploads",
+        "data/projects",
+        "data/lance_db",
+        "data/backups",
+        "data/channel_audio",
+        "data/channel_audio/telegram",
+        "data/channel_audio/whatsapp",
+    ] {
         fs::create_dir_all(install_dir.join(dir))
             .map_err(|e| format!("Failed to create {}: {}", dir, e))?;
     }
@@ -88,8 +96,6 @@ pub fn setup_frontend(install_dir: &Path) -> Result<Vec<String>, String> {
     let status = Command::new(&npm)
         .args(["run", "build"])
         .current_dir(&frontend_dir)
-        .env("NEXT_PUBLIC_API_URL", "http://localhost:8000")
-        .env("NEXT_PUBLIC_WS_URL", "ws://localhost:8000")
         .status()
         .map_err(|e| format!("Frontend build failed: {}", e))?;
     if !status.success() {
@@ -136,6 +142,7 @@ TEAM_MODE=false
 
 # CORS
 CORS_ORIGINS=http://localhost:3000
+CORS_ORIGIN_REGEX=https?://[^/]+:3000
 
 # RAG Configuration
 RAG_CHUNK_SIZE=1500
@@ -175,25 +182,6 @@ RESOURCE_RESERVE_CPU_PERCENT=30
 
 /// Generate a cryptographically random base64 string.
 fn generate_random_base64(bytes: usize) -> String {
-    use std::collections::hash_map::DefaultHasher;
-    use std::hash::{Hash, Hasher};
-    use std::time::SystemTime;
-
-    // Use multiple entropy sources
-    let mut data = Vec::with_capacity(bytes);
-    let now = SystemTime::now()
-        .duration_since(SystemTime::UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_nanos();
-
-    for i in 0..bytes {
-        let mut hasher = DefaultHasher::new();
-        now.hash(&mut hasher);
-        (i as u64).hash(&mut hasher);
-        std::process::id().hash(&mut hasher);
-        data.push((hasher.finish() % 256) as u8);
-    }
-
     // If openssl is available, prefer it
     if let Ok(output) = Command::new("openssl")
         .args(["rand", "-base64", &bytes.to_string()])
@@ -204,8 +192,12 @@ fn generate_random_base64(bytes: usize) -> String {
         }
     }
 
-    // Fallback to hash-based generation
-    use std::io::Write;
+    let mut data = vec![0_u8; bytes];
+    if getrandom::getrandom(&mut data).is_err() {
+        panic!("operating system random source unavailable for Istara secret generation");
+    }
+
+    // Fallback to OS entropy encoded with the standard base64 alphabet.
     let mut encoded = String::new();
     let alphabet = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     for byte in &data {

@@ -21,16 +21,17 @@ import { cn } from "@/lib/utils";
 import ViewOnboarding from "@/components/common/ViewOnboarding";
 
 function formatBytes(bytes: number): string {
-  if (bytes === 0) return "0 B";
+  if (!Number.isFinite(bytes) || bytes <= 0) return "0 B";
   const k = 1024;
-  const sizes = ["B", "KB", "MB", "GB"];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  const sizes = ["B", "KB", "MB", "GB", "TB"];
+  const i = Math.min(Math.floor(Math.log(bytes) / Math.log(k)), sizes.length - 1);
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
 }
 
 function timeAgo(dateStr: string): string {
   const now = new Date();
   const date = new Date(dateStr);
+  if (Number.isNaN(date.getTime())) return "unknown";
   const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
   if (seconds < 60) return "just now";
   if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
@@ -45,6 +46,16 @@ const STATUS_COLORS: Record<string, string> = {
   in_progress: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
 };
 
+function errorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error ? error.message : fallback;
+}
+
+function boundedNumber(value: string, fallback: number, min: number, max: number): number {
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.min(max, Math.max(min, parsed));
+}
+
 export default function BackupView() {
   const [backupList, setBackupList] = useState<BackupRecord[]>([]);
   const [config, setConfig] = useState<BackupConfig | null>(null);
@@ -57,24 +68,26 @@ export default function BackupView() {
   const [actionLoading, setActionLoading] = useState<Record<string, boolean>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [restoring, setRestoring] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const fetchAll = async () => {
     setLoading(true);
+    setError(null);
     try {
       const [list, cfg] = await Promise.all([
-        backupsApi.list().catch(() => []),
-        backupsApi.config().catch(() => null),
+        backupsApi.list(),
+        backupsApi.config(),
       ]);
       const backupArr = Array.isArray(list) ? list : (list as any)?.backups || [];
       setBackupList(backupArr);
-      if (cfg) {
-        setConfig(cfg);
-        setConfigForm(cfg);
-      }
+      setConfig(cfg);
+      setConfigForm(cfg);
     } catch (e) {
-      console.error("Failed to load backup data:", e);
+      setError(errorMessage(e, "Failed to load backup data."));
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   useEffect(() => {
@@ -83,55 +96,63 @@ export default function BackupView() {
 
   const handleCreate = async (type: "full" | "incremental") => {
     setCreating(true);
+    setError(null);
+    setNotice(null);
     try {
       await backupsApi.create(type);
       await fetchAll();
+      setNotice(`${type === "full" ? "Full" : "Incremental"} backup created.`);
     } catch (e) {
-      console.error("Failed to create backup:", e);
+      setError(errorMessage(e, "Failed to create backup."));
+    } finally {
+      setCreating(false);
     }
-    setCreating(false);
   };
 
   const handleEstimate = async () => {
+    setError(null);
     try {
       const est = await backupsApi.estimate();
       setEstimate(est);
     } catch (e) {
-      console.error("Failed to estimate:", e);
+      setError(errorMessage(e, "Failed to estimate backup size."));
     }
   };
 
   const handleRestore = async (id: string) => {
-    if (!window.confirm("Restore from this backup? All current data will be overwritten and the server will restart.")) return;
+    if (!window.confirm("Restore from this backup? All current data will be overwritten.")) return;
     setActionLoading((prev) => ({ ...prev, [`restore-${id}`]: true }));
+    setError(null);
+    setNotice(null);
     try {
       await backupsApi.restore(id);
-      // Give server time to restart
-      setTimeout(() => window.location.reload(), 5000);
+      setNotice("Restore completed. Reloading the app...");
+      setTimeout(() => window.location.reload(), 1500);
     } catch (e) {
-      console.error("Failed to restore:", e);
+      setError(errorMessage(e, "Failed to restore backup."));
+    } finally {
+      setActionLoading((prev) => ({ ...prev, [`restore-${id}`]: false }));
     }
-    setActionLoading((prev) => ({ ...prev, [`restore-${id}`]: false }));
   };
 
   const handleUploadAndRestore = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!window.confirm("Upload and restore from this backup file? All current data will be overwritten and the server will restart.")) {
+    if (!window.confirm("Upload and restore from this backup file? All current data will be overwritten.")) {
       if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
 
     setRestoring(true);
+    setError(null);
+    setNotice(null);
     try {
       await backupsApi.uploadRestore(file);
-      
-      // Success - server is restarting
-      setTimeout(() => window.location.reload(), 5000);
+      setNotice("Uploaded backup restored. Reloading the app...");
+      setTimeout(() => window.location.reload(), 1500);
     } catch (err) {
-      console.error("Restore failed", err);
-      alert("Restore failed. Check server logs.");
+      setError(errorMessage(err, "Restore failed. Check server logs."));
     } finally {
       setRestoring(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -140,37 +161,70 @@ export default function BackupView() {
 
   const handleVerify = async (id: string) => {
     setActionLoading((prev) => ({ ...prev, [`verify-${id}`]: true }));
+    setError(null);
+    setNotice(null);
     try {
       await backupsApi.verify(id);
       await fetchAll();
+      setNotice("Backup verified.");
     } catch (e) {
-      console.error("Failed to verify:", e);
+      setError(errorMessage(e, "Failed to verify backup."));
+    } finally {
+      setActionLoading((prev) => ({ ...prev, [`verify-${id}`]: false }));
     }
-    setActionLoading((prev) => ({ ...prev, [`verify-${id}`]: false }));
   };
 
   const handleDelete = async (id: string) => {
+    if (!window.confirm("Delete this backup archive? This cannot be undone.")) return;
     setActionLoading((prev) => ({ ...prev, [`delete-${id}`]: true }));
+    setError(null);
+    setNotice(null);
     try {
       await backupsApi.remove(id);
       setBackupList((prev) => prev.filter((b) => b.id !== id));
+      setNotice("Backup deleted.");
     } catch (e) {
-      console.error("Failed to delete:", e);
+      setError(errorMessage(e, "Failed to delete backup."));
+    } finally {
+      setActionLoading((prev) => ({ ...prev, [`delete-${id}`]: false }));
     }
-    setActionLoading((prev) => ({ ...prev, [`delete-${id}`]: false }));
+  };
+
+  const handleDownload = async (backup: BackupRecord) => {
+    setActionLoading((prev) => ({ ...prev, [`download-${backup.id}`]: true }));
+    setError(null);
+    try {
+      const blob = await backupsApi.download(backup.id);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = backup.filename || `istara_backup_${backup.id}.tar.gz`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setError(errorMessage(e, "Failed to download backup."));
+    } finally {
+      setActionLoading((prev) => ({ ...prev, [`download-${backup.id}`]: false }));
+    }
   };
 
   const handleSaveConfig = async () => {
     setSavingConfig(true);
+    setError(null);
+    setNotice(null);
     try {
       await backupsApi.updateConfig(configForm);
       const cfg = await backupsApi.config();
       setConfig(cfg);
       setConfigForm(cfg);
+      setNotice("Backup configuration saved.");
     } catch (e) {
-      console.error("Failed to save config:", e);
+      setError(errorMessage(e, "Failed to save configuration."));
+    } finally {
+      setSavingConfig(false);
     }
-    setSavingConfig(false);
   };
 
   if (loading) {
@@ -195,6 +249,17 @@ export default function BackupView() {
           Backup & Recovery
         </h2>
       </div>
+
+      {error && (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-900/20 dark:text-red-300">
+          {error}
+        </div>
+      )}
+      {notice && (
+        <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700 dark:border-green-900/50 dark:bg-green-900/20 dark:text-green-300">
+          {notice}
+        </div>
+      )}
 
       {/* Status Card */}
       <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
@@ -289,7 +354,7 @@ export default function BackupView() {
       {/* Estimate Result */}
       {estimate && (
         <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 text-sm text-blue-700 dark:text-blue-300">
-          Estimated backup size: <strong>{formatBytes(estimate.size_bytes || 0)}</strong>
+          Estimated backup size: <strong>{formatBytes(estimate.size_bytes || estimate.compressed_estimate_bytes || 0)}</strong>
           {estimate.components && (
             <span className="ml-2 text-blue-500">
               ({Object.keys(estimate.components).length} components)
@@ -384,13 +449,14 @@ export default function BackupView() {
                         >
                           <Trash2 size={14} />
                         </button>
-                        <a
-                          href={`/api/backups/${backup.id}/download`}
+                        <button
+                          onClick={() => handleDownload(backup)}
+                          disabled={!!actionLoading[`download-${backup.id}`]}
                           title="Download"
-                          className="p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 hover:text-purple-600 transition-colors"
+                          className="p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 hover:text-purple-600 transition-colors disabled:opacity-50"
                         >
                           <Download size={14} />
-                        </a>
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -455,10 +521,10 @@ export default function BackupView() {
                 max={168}
                 value={configForm.backup_interval_hours || 24}
                 onChange={(e) =>
-                  setConfigForm((prev) => ({
-                    ...prev,
-                    backup_interval_hours: parseInt(e.target.value) || 24,
-                  }))
+	                  setConfigForm((prev) => ({
+	                    ...prev,
+	                    backup_interval_hours: boundedNumber(e.target.value, 24, 1, 168),
+	                  }))
                 }
                 className="w-20 px-2 py-1 text-sm rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-istara-500"
               />
@@ -475,10 +541,10 @@ export default function BackupView() {
                 max={100}
                 value={configForm.backup_retention_count || 10}
                 onChange={(e) =>
-                  setConfigForm((prev) => ({
-                    ...prev,
-                    backup_retention_count: parseInt(e.target.value) || 10,
-                  }))
+	                  setConfigForm((prev) => ({
+	                    ...prev,
+	                    backup_retention_count: boundedNumber(e.target.value, 10, 1, 100),
+	                  }))
                 }
                 className="w-20 px-2 py-1 text-sm rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-istara-500"
               />
@@ -492,13 +558,13 @@ export default function BackupView() {
               <input
                 type="number"
                 min={1}
-                max={30}
+	                max={365}
                 value={configForm.backup_full_interval_days || 7}
                 onChange={(e) =>
-                  setConfigForm((prev) => ({
-                    ...prev,
-                    backup_full_interval_days: parseInt(e.target.value) || 7,
-                  }))
+	                  setConfigForm((prev) => ({
+	                    ...prev,
+	                    backup_full_interval_days: boundedNumber(e.target.value, 7, 1, 365),
+	                  }))
                 }
                 className="w-20 px-2 py-1 text-sm rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-istara-500"
               />

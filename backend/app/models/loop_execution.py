@@ -42,6 +42,7 @@ class LoopExecution(Base):
 
     def to_dict(self) -> dict:
         """Serialize to API-ready dict."""
+        metadata = self._parse_json_dict(self.metadata_json)
         return {
             "id": self.id,
             "source_type": self.source_type,
@@ -53,7 +54,8 @@ class LoopExecution(Base):
             "duration_ms": self.duration_ms,
             "error_message": self.error_message,
             "findings_count": self.findings_count,
-            "metadata_json": self._parse_json_dict(self.metadata_json),
+            "metadata": metadata,
+            "metadata_json": metadata,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
 

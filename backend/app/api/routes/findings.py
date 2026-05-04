@@ -6,7 +6,7 @@ import json
 import uuid
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,8 +14,34 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.database import get_db
 from app.models.design_screen import DesignDecision, DesignScreen
 from app.models.finding import Fact, Insight, Nugget, Recommendation
+from app.core.permissions import get_subject, is_global_admin, require_project_access
 
 router = APIRouter()
+
+
+def _parse_json_list(raw) -> list:
+    if isinstance(raw, list):
+        return raw
+    if not raw:
+        return []
+    try:
+        parsed = json.loads(raw)
+    except (json.JSONDecodeError, TypeError):
+        return []
+    return parsed if isinstance(parsed, list) else []
+
+
+async def _guard_optional_project(
+    db: AsyncSession,
+    request: Request,
+    project_id: str | None,
+    min_role: str = "viewer",
+) -> None:
+    if project_id:
+        await require_project_access(db, request, project_id, min_role=min_role)
+        return
+    if not is_global_admin(get_subject(request)):
+        raise HTTPException(status_code=422, detail="project_id is required")
 
 
 # --- Schemas ---
@@ -44,7 +70,7 @@ class NuggetResponse(BaseModel):
 
     @classmethod
     def from_orm_with_tags(cls, nugget: Nugget) -> "NuggetResponse":
-        tags = json.loads(nugget.tags) if nugget.tags else []
+        tags = _parse_json_list(nugget.tags)
         return cls(
             id=nugget.id,
             project_id=nugget.project_id,
@@ -78,7 +104,7 @@ class FactResponse(BaseModel):
 
     @classmethod
     def from_orm_with_ids(cls, fact: Fact) -> "FactResponse":
-        nugget_ids = json.loads(fact.nugget_ids) if fact.nugget_ids else []
+        nugget_ids = _parse_json_list(fact.nugget_ids)
         return cls(
             id=fact.id, project_id=fact.project_id, text=fact.text,
             nugget_ids=nugget_ids, phase=fact.phase, confidence=fact.confidence,
@@ -108,7 +134,7 @@ class InsightResponse(BaseModel):
 
     @classmethod
     def from_orm_with_ids(cls, insight: Insight) -> "InsightResponse":
-        fact_ids = json.loads(insight.fact_ids) if insight.fact_ids else []
+        fact_ids = _parse_json_list(insight.fact_ids)
         return cls(
             id=insight.id, project_id=insight.project_id, text=insight.text,
             fact_ids=fact_ids, phase=insight.phase, confidence=insight.confidence,
@@ -140,7 +166,7 @@ class RecommendationResponse(BaseModel):
 
     @classmethod
     def from_orm_with_ids(cls, rec: Recommendation) -> "RecommendationResponse":
-        insight_ids = json.loads(rec.insight_ids) if rec.insight_ids else []
+        insight_ids = _parse_json_list(rec.insight_ids)
         return cls(
             id=rec.id, project_id=rec.project_id, text=rec.text,
             insight_ids=insight_ids, phase=rec.phase, priority=rec.priority,
@@ -152,10 +178,12 @@ class RecommendationResponse(BaseModel):
 
 @router.get("/findings/nuggets", response_model=list[NuggetResponse])
 async def list_nuggets(
+    request: Request,
     project_id: str | None = None,
     phase: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
+    await _guard_optional_project(db, request, project_id, min_role="viewer")
     query = select(Nugget).order_by(Nugget.created_at.desc())
     if project_id:
         query = query.where(Nugget.project_id == project_id)
@@ -166,7 +194,8 @@ async def list_nuggets(
 
 
 @router.post("/findings/nuggets", response_model=NuggetResponse, status_code=201)
-async def create_nugget(data: NuggetCreate, db: AsyncSession = Depends(get_db)):
+async def create_nugget(data: NuggetCreate, request: Request, db: AsyncSession = Depends(get_db)):
+    await require_project_access(db, request, data.project_id, min_role="researcher")
     nugget = Nugget(
         id=str(uuid.uuid4()),
         project_id=data.project_id,
@@ -183,11 +212,12 @@ async def create_nugget(data: NuggetCreate, db: AsyncSession = Depends(get_db)):
 
 
 @router.delete("/findings/nuggets/{nugget_id}", status_code=204)
-async def delete_nugget(nugget_id: str, db: AsyncSession = Depends(get_db)):
+async def delete_nugget(nugget_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Nugget).where(Nugget.id == nugget_id))
     nugget = result.scalar_one_or_none()
     if not nugget:
         raise HTTPException(status_code=404, detail="Nugget not found")
+    await require_project_access(db, request, nugget.project_id, min_role="researcher")
     await db.delete(nugget)
     await db.commit()
 
@@ -196,10 +226,12 @@ async def delete_nugget(nugget_id: str, db: AsyncSession = Depends(get_db)):
 
 @router.get("/findings/facts", response_model=list[FactResponse])
 async def list_facts(
+    request: Request,
     project_id: str | None = None,
     phase: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
+    await _guard_optional_project(db, request, project_id, min_role="viewer")
     query = select(Fact).order_by(Fact.created_at.desc())
     if project_id:
         query = query.where(Fact.project_id == project_id)
@@ -210,7 +242,8 @@ async def list_facts(
 
 
 @router.post("/findings/facts", response_model=FactResponse, status_code=201)
-async def create_fact(data: FactCreate, db: AsyncSession = Depends(get_db)):
+async def create_fact(data: FactCreate, request: Request, db: AsyncSession = Depends(get_db)):
+    await require_project_access(db, request, data.project_id, min_role="researcher")
     fact = Fact(
         id=str(uuid.uuid4()),
         project_id=data.project_id,
@@ -225,11 +258,12 @@ async def create_fact(data: FactCreate, db: AsyncSession = Depends(get_db)):
 
 
 @router.delete("/findings/facts/{fact_id}", status_code=204)
-async def delete_fact(fact_id: str, db: AsyncSession = Depends(get_db)):
+async def delete_fact(fact_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Fact).where(Fact.id == fact_id))
     fact = result.scalar_one_or_none()
     if not fact:
         raise HTTPException(status_code=404, detail="Fact not found")
+    await require_project_access(db, request, fact.project_id, min_role="researcher")
     await db.delete(fact)
     await db.commit()
 
@@ -238,10 +272,12 @@ async def delete_fact(fact_id: str, db: AsyncSession = Depends(get_db)):
 
 @router.get("/findings/insights", response_model=list[InsightResponse])
 async def list_insights(
+    request: Request,
     project_id: str | None = None,
     phase: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
+    await _guard_optional_project(db, request, project_id, min_role="viewer")
     query = select(Insight).order_by(Insight.created_at.desc())
     if project_id:
         query = query.where(Insight.project_id == project_id)
@@ -252,7 +288,8 @@ async def list_insights(
 
 
 @router.post("/findings/insights", response_model=InsightResponse, status_code=201)
-async def create_insight(data: InsightCreate, db: AsyncSession = Depends(get_db)):
+async def create_insight(data: InsightCreate, request: Request, db: AsyncSession = Depends(get_db)):
+    await require_project_access(db, request, data.project_id, min_role="researcher")
     insight = Insight(
         id=str(uuid.uuid4()),
         project_id=data.project_id,
@@ -268,11 +305,12 @@ async def create_insight(data: InsightCreate, db: AsyncSession = Depends(get_db)
 
 
 @router.delete("/findings/insights/{insight_id}", status_code=204)
-async def delete_insight(insight_id: str, db: AsyncSession = Depends(get_db)):
+async def delete_insight(insight_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Insight).where(Insight.id == insight_id))
     insight = result.scalar_one_or_none()
     if not insight:
         raise HTTPException(status_code=404, detail="Insight not found")
+    await require_project_access(db, request, insight.project_id, min_role="researcher")
     await db.delete(insight)
     await db.commit()
 
@@ -281,10 +319,12 @@ async def delete_insight(insight_id: str, db: AsyncSession = Depends(get_db)):
 
 @router.get("/findings/recommendations", response_model=list[RecommendationResponse])
 async def list_recommendations(
+    request: Request,
     project_id: str | None = None,
     phase: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
+    await _guard_optional_project(db, request, project_id, min_role="viewer")
     query = select(Recommendation).order_by(Recommendation.created_at.desc())
     if project_id:
         query = query.where(Recommendation.project_id == project_id)
@@ -295,7 +335,8 @@ async def list_recommendations(
 
 
 @router.post("/findings/recommendations", response_model=RecommendationResponse, status_code=201)
-async def create_recommendation(data: RecommendationCreate, db: AsyncSession = Depends(get_db)):
+async def create_recommendation(data: RecommendationCreate, request: Request, db: AsyncSession = Depends(get_db)):
+    await require_project_access(db, request, data.project_id, min_role="researcher")
     rec = Recommendation(
         id=str(uuid.uuid4()),
         project_id=data.project_id,
@@ -312,11 +353,12 @@ async def create_recommendation(data: RecommendationCreate, db: AsyncSession = D
 
 
 @router.delete("/findings/recommendations/{rec_id}", status_code=204)
-async def delete_recommendation(rec_id: str, db: AsyncSession = Depends(get_db)):
+async def delete_recommendation(rec_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Recommendation).where(Recommendation.id == rec_id))
     rec = result.scalar_one_or_none()
     if not rec:
         raise HTTPException(status_code=404, detail="Recommendation not found")
+    await require_project_access(db, request, rec.project_id, min_role="researcher")
     await db.delete(rec)
     await db.commit()
 
@@ -325,11 +367,14 @@ async def delete_recommendation(rec_id: str, db: AsyncSession = Depends(get_db))
 
 @router.get("/findings/search/global")
 async def search_all_findings(
+    request: Request,
     query: str = "",
     limit: int = 20,
     db: AsyncSession = Depends(get_db),
 ):
     """Search across ALL projects' findings (text-based)."""
+    if not is_global_admin(get_subject(request)):
+        raise HTTPException(status_code=403, detail="Global findings search requires admin access")
     if not query:
         return {"results": [], "query": ""}
 
@@ -355,11 +400,13 @@ async def search_all_findings(
 @router.get("/findings/search/{project_id}")
 async def search_findings(
     project_id: str,
+    request: Request,
     query: str = "",
     top_k: int = 10,
     db: AsyncSession = Depends(get_db),
 ):
     """Semantic search across project findings using the vector store."""
+    await require_project_access(db, request, project_id, min_role="viewer")
     if not query:
         return {"results": [], "query": ""}
 
@@ -386,6 +433,7 @@ async def search_findings(
 async def get_evidence_chain(
     finding_type: str,
     finding_id: str,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
     """Get the full evidence chain for a finding — traversing links up and down."""
@@ -400,16 +448,12 @@ async def get_evidence_chain(
     finding = result.scalar_one_or_none()
     if not finding:
         raise HTTPException(status_code=404, detail="Finding not found")
+    await require_project_access(db, request, finding.project_id, min_role="viewer")
 
     chain = {"recommendation": [], "insight": [], "fact": [], "nugget": []}
 
     def parse_ids(raw):
-        if not raw:
-            return []
-        try:
-            return json.loads(raw)
-        except (json.JSONDecodeError, TypeError):
-            return []
+        return _parse_json_list(raw)
 
     project_id = finding.project_id
 
@@ -494,11 +538,53 @@ async def get_evidence_chain(
                 if any(iid in insight_id_set for iid in parse_ids(rec.insight_ids)):
                     chain["recommendation"].append(RecommendationResponse.from_orm_with_ids(rec))
 
+    supporting_counts = {
+        key: len(value)
+        for key, value in chain.items()
+        if key != finding_type
+    }
+    missing_links: list[str] = []
+    if finding_type == "recommendation":
+        if not chain["insight"]:
+            missing_links.append("recommendation_to_insight")
+        elif not chain["fact"]:
+            missing_links.append("insight_to_fact")
+        elif not chain["nugget"]:
+            missing_links.append("fact_to_nugget")
+    elif finding_type == "insight":
+        if not chain["fact"]:
+            missing_links.append("insight_to_fact")
+        elif not chain["nugget"]:
+            missing_links.append("fact_to_nugget")
+    elif finding_type == "fact" and not chain["nugget"]:
+        missing_links.append("fact_to_nugget")
+    elif finding_type == "nugget" and not chain["fact"]:
+        missing_links.append("nugget_to_fact")
+
     return {
         "finding_type": finding_type,
         "finding_id": finding_id,
         "chain": chain,
+        "diagnostics": {
+            "supporting_counts": supporting_counts,
+            "has_supporting_evidence": any(supporting_counts.values()),
+            "missing_links": missing_links,
+        },
     }
+
+
+@router.get("/findings/evidence-chain")
+async def get_evidence_chain_query(
+    finding_type: str,
+    finding_id: str,
+    request: Request,
+    extended: bool = True,
+    db: AsyncSession = Depends(get_db),
+):
+    """Compatibility endpoint for query-style evidence-chain callers."""
+    if extended:
+        return await get_evidence_chain_extended(finding_type, finding_id, request, db)
+    return await get_evidence_chain(finding_type, finding_id, request, db)
 
 
 class LinkEvidenceRequest(BaseModel):
@@ -511,6 +597,7 @@ async def link_evidence(
     finding_type: str,
     finding_id: str,
     data: LinkEvidenceRequest,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
     """Add an evidence link to a finding's _ids array.
@@ -533,6 +620,7 @@ async def link_evidence(
     finding = result.scalar_one_or_none()
     if not finding:
         raise HTTPException(status_code=404, detail="Finding not found")
+    await require_project_access(db, request, finding.project_id, min_role="researcher")
 
     # Validate the target being linked exists
     link_model = type_map.get(data.link_type)
@@ -542,6 +630,8 @@ async def link_evidence(
     link_result = await db.execute(select(link_model).where(link_model.id == data.link_id))
     link_target = link_result.scalar_one_or_none()
     if not link_target:
+        raise HTTPException(status_code=404, detail=f"Target {data.link_type} not found")
+    if link_target.project_id != finding.project_id:
         raise HTTPException(status_code=404, detail=f"Target {data.link_type} not found")
 
     # Determine which _ids field to update based on finding type and link type
@@ -587,8 +677,9 @@ async def link_evidence(
 
 
 @router.get("/findings/summary/{project_id}")
-async def get_findings_summary(project_id: str, db: AsyncSession = Depends(get_db)):
+async def get_findings_summary(project_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     """Get a summary of all findings for a project, organized by phase."""
+    await require_project_access(db, request, project_id, min_role="viewer")
     nuggets = await db.execute(select(Nugget).where(Nugget.project_id == project_id))
     facts = await db.execute(select(Fact).where(Fact.project_id == project_id))
     insights = await db.execute(select(Insight).where(Insight.project_id == project_id))
@@ -650,8 +741,8 @@ class DesignDecisionResponse(BaseModel):
 
     @classmethod
     def from_orm_with_ids(cls, dd: DesignDecision) -> "DesignDecisionResponse":
-        rec_ids = json.loads(dd.recommendation_ids) if dd.recommendation_ids else []
-        scr_ids = json.loads(dd.screen_ids) if dd.screen_ids else []
+        rec_ids = _parse_json_list(dd.recommendation_ids)
+        scr_ids = _parse_json_list(dd.screen_ids)
         return cls(
             id=dd.id,
             project_id=dd.project_id,
@@ -671,10 +762,12 @@ class DesignDecisionResponse(BaseModel):
 
 @router.get("/findings/design-decisions", response_model=list[DesignDecisionResponse])
 async def list_design_decisions(
+    request: Request,
     project_id: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     """List design decisions, optionally filtered by project."""
+    await _guard_optional_project(db, request, project_id, min_role="viewer")
     query = select(DesignDecision).order_by(DesignDecision.created_at.desc())
     if project_id:
         query = query.where(DesignDecision.project_id == project_id)
@@ -685,9 +778,11 @@ async def list_design_decisions(
 @router.post("/findings/design-decisions", response_model=DesignDecisionResponse, status_code=201)
 async def create_design_decision(
     data: DesignDecisionCreate,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
     """Create a new design decision linking recommendations to screens."""
+    await require_project_access(db, request, data.project_id, min_role="researcher")
     dd = DesignDecision(
         id=str(uuid.uuid4()),
         project_id=data.project_id,
@@ -705,12 +800,13 @@ async def create_design_decision(
 
 
 @router.delete("/findings/design-decisions/{dd_id}", status_code=204)
-async def delete_design_decision(dd_id: str, db: AsyncSession = Depends(get_db)):
+async def delete_design_decision(dd_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     """Delete a design decision."""
     result = await db.execute(select(DesignDecision).where(DesignDecision.id == dd_id))
     dd = result.scalar_one_or_none()
     if not dd:
         raise HTTPException(status_code=404, detail="Design decision not found")
+    await require_project_access(db, request, dd.project_id, min_role="researcher")
     await db.delete(dd)
     await db.commit()
 
@@ -722,6 +818,7 @@ async def delete_design_decision(dd_id: str, db: AsyncSession = Depends(get_db))
 async def get_evidence_chain_extended(
     finding_type: str,
     finding_id: str,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
     """Get the full evidence chain including DesignDecision and DesignScreen nodes.
@@ -741,6 +838,7 @@ async def get_evidence_chain_extended(
     finding = result.scalar_one_or_none()
     if not finding:
         raise HTTPException(status_code=404, detail="Finding not found")
+    await require_project_access(db, request, finding.project_id, min_role="viewer")
 
     chain: dict[str, list] = {
         "recommendation": [], "insight": [], "fact": [], "nugget": [],
@@ -748,31 +846,52 @@ async def get_evidence_chain_extended(
     }
 
     def parse_ids(raw: str | None) -> list[str]:
-        if not raw:
-            return []
-        try:
-            return json.loads(raw)
-        except (json.JSONDecodeError, TypeError):
-            return []
+        return _parse_json_list(raw)
 
     project_id = finding.project_id
 
-    # For recommendations: also find DesignDecisions that reference them
-    if finding_type == "recommendation":
-        chain["recommendation"] = [RecommendationResponse.from_orm_with_ids(finding)]
-        # Find design decisions that link this recommendation
+    async def append_design_nodes_for_recommendations(recommendation_ids: set[str]) -> None:
+        if not recommendation_ids:
+            return
+        seen_decisions: set[str] = set()
+        seen_screens: set[str] = set()
         dd_rows = await db.execute(
             select(DesignDecision).where(DesignDecision.project_id == project_id)
         )
         for dd in dd_rows.scalars().all():
-            if finding_id in parse_ids(dd.recommendation_ids):
+            if not recommendation_ids.intersection(parse_ids(dd.recommendation_ids)):
+                continue
+            if dd.id not in seen_decisions:
+                seen_decisions.add(dd.id)
                 chain["design_decision"].append(dd.to_dict())
-                # Follow to screens
-                for sid in parse_ids(dd.screen_ids):
-                    sr = await db.execute(select(DesignScreen).where(DesignScreen.id == sid))
-                    scr = sr.scalar_one_or_none()
-                    if scr:
-                        chain["design_screen"].append(scr.to_dict())
+            for sid in parse_ids(dd.screen_ids):
+                if sid in seen_screens:
+                    continue
+                sr = await db.execute(
+                    select(DesignScreen).where(
+                        DesignScreen.id == sid,
+                        DesignScreen.project_id == project_id,
+                    )
+                )
+                scr = sr.scalar_one_or_none()
+                if scr:
+                    seen_screens.add(sid)
+                    chain["design_screen"].append(scr.to_dict())
+
+    def response_id(item) -> str | None:
+        if isinstance(item, dict):
+            return item.get("id")
+        return getattr(item, "id", None)
+
+    if finding_type in {"nugget", "fact", "insight", "recommendation"}:
+        base = await get_evidence_chain(finding_type, finding_id, request, db)
+        for key in ("recommendation", "insight", "fact", "nugget"):
+            chain[key] = list(base["chain"].get(key, []))
+
+        recommendation_ids: set[str] = {
+            rid for rid in (response_id(rec) for rec in chain["recommendation"]) if rid
+        }
+        await append_design_nodes_for_recommendations(recommendation_ids)
 
     elif finding_type == "design_decision":
         chain["design_decision"] = [finding.to_dict()]
@@ -788,6 +907,13 @@ async def get_evidence_chain_extended(
             rec = rr.scalar_one_or_none()
             if rec:
                 chain["recommendation"].append(RecommendationResponse.from_orm_with_ids(rec))
+        recommendation_ids = {
+            rid for rid in (response_id(rec) for rec in chain["recommendation"]) if rid
+        }
+        if recommendation_ids:
+            base = await get_evidence_chain("recommendation", next(iter(recommendation_ids)), request, db)
+            for key in ("insight", "fact", "nugget"):
+                chain[key] = list(base["chain"].get(key, []))
 
     return {
         "finding_type": finding_type,

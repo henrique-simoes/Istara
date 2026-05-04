@@ -45,6 +45,7 @@ class Notification(Base):
 
     def to_dict(self) -> dict:
         """Serialize to API-ready dict."""
+        metadata = self._parse_json_dict(self.metadata_json)
         return {
             "id": self.id,
             "type": self.type,
@@ -57,7 +58,8 @@ class Notification(Base):
             "read": self.read,
             "action_type": self.action_type,
             "action_target": self.action_target,
-            "metadata_json": self._parse_json_dict(self.metadata_json),
+            "metadata": metadata,
+            "metadata_json": metadata,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
 

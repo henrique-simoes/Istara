@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.api.routes import (
+    admin,
     agents,
     audit,
     auth,
@@ -40,6 +41,9 @@ from app.api.routes import surveys as survey_routes
 from app.api.routes import mcp as mcp_routes
 from app.api.routes import meta_hyperagent as meta_hyperagent_routes
 from app.api.routes import autoresearch as autoresearch_routes
+from app.api.routes import reasoning_bank as reasoning_bank_routes
+from app.api.routes import improvement_governance as improvement_governance_routes
+from app.api.routes import dgmh_archive as dgmh_archive_routes
 from app.api.routes import laws as laws_routes
 from app.api.routes import reports as reports_routes
 from app.api.routes import code_applications as code_applications_routes
@@ -88,6 +92,29 @@ def _persist_env_startup(key: str, value: str, logger=None) -> None:
 
 # Global shutdown flag for graceful termination
 _shutting_down = False
+
+
+def _build_bootstrap_admin_user(
+    *,
+    user_id: str,
+    username: str,
+    password_hash: str,
+    recovery_codes_hashed: str,
+):
+    """Create the first admin record with required encrypted-field indexes."""
+    from app.core.field_encryption import hash_field
+    from app.models.user import User
+
+    email = f"{username}@istara.local"
+    return User(
+        id=user_id,
+        username=username,
+        email=email,
+        email_hash=hash_field(email),
+        password_hash=password_hash,
+        role="admin",
+        recovery_codes_hashed=recovery_codes_hashed,
+    )
 
 
 @asynccontextmanager
@@ -141,7 +168,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
                 admin_user = app_settings.admin_username or "admin"
                 admin_pass = app_settings.admin_password or _s.token_urlsafe(16)
-
                 # NIST: breach check for admin password
                 if not app_settings.admin_password and await is_password_breached(admin_pass):
                     # Auto-generated password was breached — generate a new one
@@ -153,12 +179,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                 recovery_codes = generate_recovery_codes()
                 recovery_codes_hashed = "\n".join(hash_recovery_code(c) for c in recovery_codes)
 
-                user = User(
-                    id=str(__import__("uuid").uuid4()),
+                user = _build_bootstrap_admin_user(
+                    user_id=str(__import__("uuid").uuid4()),
                     username=admin_user,
-                    email=f"{admin_user}@istara.local",
                     password_hash=hash_password(admin_pass),
-                    role="admin",
                     recovery_codes_hashed=recovery_codes_hashed,
                 )
                 db.add(user)
@@ -262,8 +286,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # Load active channel instances from database
     try:
+        from app.services.inbound_processor import process_inbound_channel_message
         from app.services.channel_service import load_active_instances
 
+        channel_router.set_handler(process_inbound_channel_message)
         async with async_session() as db:
             loaded = await load_active_instances(db)
         _log.info(f"Loaded {loaded} active channel instance(s)")
@@ -467,7 +493,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
         mh.load_confirmed_overrides()
         if app_settings.meta_hyperagent_enabled:
-            asyncio.create_task(mh.start_observation_loop())
+            mh.start()
             _log.info("Meta-hyperagent observation loop started.")
     except Exception as e:
         _log.debug(f"Meta-hyperagent startup skipped: {e}")
@@ -531,6 +557,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             await task
         except asyncio.CancelledError:
             pass
+        except Exception as e:
+            _sd_log.warning(f"Background task stopped with error during shutdown: {e}")
 
     _sd_log.info("Shutdown complete.")
 
@@ -597,20 +625,22 @@ _cors_origins = [o.strip() for o in app_settings.cors_origins.split(",") if o.st
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_cors_origins,
+    allow_origin_regex=app_settings.cors_origin_regex or None,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization", "X-Access-Token"],
 )
 
-# Network security — access token for non-localhost connections
-if app_settings.network_access_token:
-    from app.core.network_security import NetworkSecurityMiddleware
+# Network security — access token for non-localhost connections, plus a guard
+# for local-mode admin when the API is bound to a network interface.
+from app.core.network_security import NetworkSecurityMiddleware, requires_local_admin_network_guard
 
+if app_settings.network_access_token or requires_local_admin_network_guard(app_settings):
     app.add_middleware(NetworkSecurityMiddleware)
     import logging
 
     logging.getLogger(__name__).info(
-        "Network security enabled — non-localhost requests require access token"
+        "Network security enabled — non-localhost requests require access token or are denied"
     )
 
 # Rate limiting
@@ -628,6 +658,7 @@ if app_settings.rate_limit_enabled:
 
 # API routes
 app.include_router(auth.router, prefix="/api", tags=["Auth"])
+app.include_router(admin.router, prefix="/api", tags=["Admin"])
 app.include_router(webauthn_routes.router, prefix="/api", tags=["WebAuthn"])
 app.include_router(steering_routes.router, prefix="/api", tags=["Steering"])
 app.include_router(chat.router, prefix="/api", tags=["Chat"])
@@ -654,6 +685,9 @@ app.include_router(loops_routes.router, prefix="/api", tags=["Loops"])
 app.include_router(notification_routes.router, prefix="/api", tags=["Notifications"])
 app.include_router(backup_routes.router, prefix="/api", tags=["Backup"])
 app.include_router(meta_hyperagent_routes.router, prefix="/api", tags=["Meta-Hyperagent"])
+app.include_router(reasoning_bank_routes.router, prefix="/api", tags=["ReasoningBank"])
+app.include_router(improvement_governance_routes.router, prefix="/api", tags=["Improvement Governance"])
+app.include_router(dgmh_archive_routes.router, prefix="/api", tags=["DGM-H Archive"])
 app.include_router(deployment_routes.router, prefix="/api", tags=["Deployments"])
 app.include_router(survey_routes.router, prefix="/api", tags=["Surveys"])
 app.include_router(mcp_routes.router, prefix="/api", tags=["MCP"])

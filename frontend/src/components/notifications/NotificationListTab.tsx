@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import {
-  CheckCheck, Search, X, ChevronLeft, ChevronRight, Bell,
+  CheckCheck, Search, ChevronLeft, ChevronRight, Bell,
   AlertTriangle, Info, CheckCircle, XCircle, Filter,
-  Clock, Trash2,
+  Clock, Trash2, RefreshCw,
 } from "lucide-react";
 import { useNotificationStore } from "@/stores/notificationStore";
 import { useAgentStore } from "@/stores/agentStore";
@@ -52,7 +52,7 @@ export default function NotificationListTab() {
   const {
     notifications, page, totalPages, total, loading, filters,
     fetchNotifications, markRead, markAllRead, deleteNotification,
-    setFilter, clearFilters, unreadCount,
+    setFilter, clearFilters, unreadCount, error,
   } = useNotificationStore();
   const { agents, fetchAgents } = useAgentStore();
   const { projects, fetchProjects } = useProjectStore();
@@ -165,6 +165,16 @@ export default function NotificationListTab() {
               </div>
             </div>
 
+            <label className="flex items-center gap-2 py-1 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={filters.unread_only}
+                onChange={(e) => setFilter("unread_only", e.target.checked)}
+                className="rounded border-slate-300 dark:border-slate-600 text-istara-600 focus:ring-istara-500 focus:ring-offset-0"
+              />
+              <span className="text-xs text-slate-600 dark:text-slate-400">Unread only</span>
+            </label>
+
             {/* Date range */}
             <div className="grid grid-cols-2 gap-2">
               <div>
@@ -224,7 +234,7 @@ export default function NotificationListTab() {
             </span>
           </div>
           <button
-            onClick={() => markAllRead()}
+            onClick={() => markAllRead(filters.project_id || undefined)}
             className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
           >
             <CheckCheck size={14} />
@@ -232,9 +242,20 @@ export default function NotificationListTab() {
           </button>
         </div>
 
+        {error && (
+          <div className="px-4 py-2 text-xs text-red-700 bg-red-50 border-b border-red-200 dark:bg-red-900/20 dark:text-red-300 dark:border-red-900/40">
+            {error}
+          </div>
+        )}
+
         {/* Notification list */}
         <div className="flex-1 overflow-y-auto" role="list" aria-label="Notifications">
-          {notifications.length === 0 && !loading ? (
+          {loading ? (
+            <div className="flex items-center justify-center py-16 text-slate-400 dark:text-slate-500">
+              <RefreshCw size={18} className="animate-spin mr-2" />
+              Loading notifications...
+            </div>
+          ) : notifications.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-slate-400 dark:text-slate-500">
               <Bell size={40} className="mb-3 opacity-50" />
               <p className="text-sm">No notifications yet</p>
@@ -255,7 +276,7 @@ export default function NotificationListTab() {
                     }
                   }}
                   className={cn(
-                    "flex items-start gap-3 px-4 py-3 cursor-pointer border-b border-slate-100 dark:border-slate-800 transition-colors",
+                    "group flex items-start gap-3 px-4 py-3 cursor-pointer border-b border-slate-100 dark:border-slate-800 transition-colors",
                     "hover:bg-slate-50 dark:hover:bg-slate-800",
                     "focus:outline-none focus:bg-slate-100 dark:focus:bg-slate-800 focus:ring-2 focus:ring-inset focus:ring-istara-500",
                     !notification.read && "bg-blue-50/60 dark:bg-blue-900/20"
@@ -278,11 +299,11 @@ export default function NotificationListTab() {
                         {!notification.read && (
                           <span className="w-2 h-2 rounded-full bg-istara-500" aria-hidden="true" />
                         )}
-                        <button
-                          onClick={(e) => { e.stopPropagation(); deleteNotification(notification.id); }}
-                          className="p-0.5 rounded hover:bg-slate-200 dark:hover:bg-slate-700 opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-500"
-                          aria-label="Delete notification"
-                        >
+	                        <button
+	                          onClick={(e) => { e.stopPropagation(); deleteNotification(notification.id); }}
+	                          className="p-0.5 rounded hover:bg-slate-200 dark:hover:bg-slate-700 opacity-0 group-hover:opacity-100 focus:opacity-100 text-slate-400 hover:text-red-500"
+	                          aria-label="Delete notification"
+	                        >
                           <Trash2 size={12} />
                         </button>
                       </div>

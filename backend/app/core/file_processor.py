@@ -28,6 +28,7 @@ class ProcessedFile:
     error: str | None = None
     threat_level: str = "none"
     threats: list[str] = field(default_factory=list)
+    metadata: dict = field(default_factory=dict)
 
 
 def chunk_text(
@@ -316,6 +317,24 @@ def process_audio(file_path: Path) -> ProcessedFile:
 
         # 2. Transcribe
         result = transcribe_audio(wav_path)
+        transcription_metadata = {
+            "text": result.text,
+            "language": result.language,
+            "confidence": result.confidence,
+            "icr_kappa": result.icr_kappa,
+            "icr_confidence": result.icr_confidence,
+            "needs_review": result.needs_review,
+            "tags": result.tags,
+            "engine_metadata": result.metadata,
+        }
+
+        if "transcription-error" in result.tags:
+            error_type = result.metadata.get("error_type", "transcription_error")
+            return ProcessedFile(
+                source=str(file_path),
+                error=f"{error_type}: {result.text}",
+                metadata={"transcription": transcription_metadata},
+            )
 
         # 3. Detect content type (e.g. interview transcript) for specialized chunking
         content_type = detect_content_type(result.text, file_path.suffix.lower())
@@ -344,6 +363,7 @@ def process_audio(file_path: Path) -> ProcessedFile:
             total_chars=len(result.text),
             pages=1,
             threat_level="none",  # Audio is safe
+            metadata={"transcription": transcription_metadata},
         )
     except Exception as e:
         logger.error(f"Audio processing failed for {file_path}: {e}")

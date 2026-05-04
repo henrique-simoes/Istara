@@ -52,6 +52,33 @@ async def test_auth_me_enforcement():
 
 
 @pytest.mark.asyncio
+async def test_auth_users_requires_admin_role():
+    """Team user listing must not expose emails and roles to non-admin users."""
+    await init_db()
+    settings.team_mode = True
+    if not settings.jwt_secret:
+        settings.jwt_secret = "test-secret"
+
+    researcher_token = create_token("researcher-1", "researcher", "researcher")
+    admin_token = create_token("admin-1", "admin", "admin")
+    transport = ASGITransport(app=app)
+
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        denied = await ac.get(
+            "/api/auth/users",
+            headers={"Authorization": f"Bearer {researcher_token}"},
+        )
+        allowed = await ac.get(
+            "/api/auth/users",
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+
+    assert denied.status_code == 403
+    assert allowed.status_code == 200
+    assert isinstance(allowed.json(), list)
+
+
+@pytest.mark.asyncio
 async def test_local_mode_admin_bypass():
     """Verify that local mode still works as expected (intentional bypass)."""
     await init_db()
@@ -69,6 +96,39 @@ async def test_local_mode_admin_bypass():
         response = await ac.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
         assert response.status_code == 200
         assert response.json()["role"] == "admin"
+
+
+@pytest.mark.asyncio
+async def test_local_mode_protected_api_bootstraps_without_token():
+    """Local desktop mode should not strand first-run users behind JWT middleware."""
+    await init_db()
+    settings.team_mode = False
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        me_response = await ac.get("/api/auth/me")
+        assert me_response.status_code == 200
+        assert me_response.json()["role"] == "admin"
+
+        projects_response = await ac.get("/api/projects")
+        assert projects_response.status_code == 200
+        assert isinstance(projects_response.json(), list)
+
+
+def test_bootstrap_admin_user_has_required_email_hash():
+    """Fresh installs must be able to create the first admin with encrypted email enabled."""
+    from app.core.field_encryption import hash_field
+    from app.main import _build_bootstrap_admin_user
+
+    user = _build_bootstrap_admin_user(
+        user_id="admin-id",
+        username="admin",
+        password_hash="hashed-password",
+        recovery_codes_hashed="hashed-codes",
+    )
+
+    assert user.email == "admin@istara.local"
+    assert user.email_hash == hash_field("admin@istara.local")
 
 
 # ---------------------------------------------------------------------------

@@ -20,9 +20,9 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, UploadFile, File
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -33,6 +33,7 @@ from app.core.content_guard import ContentGuard
 from app.core.prompt_rag import compose_dynamic_prompt, compose_keyword_prompt
 from app.core.context_summarizer import context_summarizer
 from app.core.ollama import ollama
+from app.core.permissions import get_subject, get_visible_project_or_404, require_project_access
 from app.core.rag import build_augmented_prompt, retrieve_context
 from app.core.token_counter import context_guard
 from app.models.database import get_db, async_session
@@ -339,11 +340,19 @@ async def _generate_text_fallback(
 class ChatRequest(BaseModel):
     """Chat request body."""
 
-    message: str
-    project_id: str
+    message: str = Field(..., min_length=1, max_length=20000)
+    project_id: str = Field(..., min_length=1, max_length=36)
     session_id: str | None = None
     include_history: bool = True
-    max_history: int = 20
+    max_history: int = Field(default=20, ge=0, le=200)
+
+    @field_validator("message")
+    @classmethod
+    def normalize_message(cls, value: str) -> str:
+        message = value.strip()
+        if not message:
+            raise ValueError("Message cannot be blank")
+        return message
 
 
 class ChatMessage(BaseModel):
@@ -356,24 +365,53 @@ class ChatMessage(BaseModel):
 
 
 @router.post("/chat")
-async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db)):
+async def chat(request: ChatRequest, http_request: Request, db: AsyncSession = Depends(get_db)):
     """Send a message and get a streaming response with RAG augmentation.
 
     The response is streamed as Server-Sent Events (SSE).
     """
-    # Verify project exists
-    result = await db.execute(select(Project).where(Project.id == request.project_id))
-    project = result.scalar_one_or_none()
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
+    project = await get_visible_project_or_404(
+        db,
+        http_request,
+        request.project_id,
+        min_role="researcher",
+    )
+
+    # Resolve or create the chat session before writing messages. A caller may
+    # only use sessions that belong to the requested project and chat surface.
+    session: ChatSession | None = None
+    if request.session_id:
+        sess_result = await db.execute(
+            select(ChatSession).where(
+                ChatSession.id == request.session_id,
+                ChatSession.project_id == request.project_id,
+                ChatSession.session_type == "chat",
+            )
+        )
+        session = sess_result.scalar_one_or_none()
+        if not session:
+            raise HTTPException(status_code=404, detail="Session not found")
+    else:
+        session = ChatSession(
+            id=str(uuid.uuid4()),
+            project_id=request.project_id,
+            title=f"Chat — {request.message[:50].replace(chr(10), ' ').strip()}",
+            message_count=0,
+        )
+        db.add(session)
+        await db.commit()
+        await db.refresh(session)
+        request.session_id = session.id
 
     # Save user message
+    user_created_at = datetime.now(timezone.utc)
     user_msg = Message(
         id=str(uuid.uuid4()),
         project_id=request.project_id,
         session_id=request.session_id,
         role="user",
         content=request.message,
+        created_at=user_created_at,
     )
     db.add(user_msg)
     await db.commit()
@@ -387,19 +425,6 @@ async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db)):
             user_scan.threats,
         )
 
-    # --- Auto-create ChatSession when session_id is missing/null (Enhancement Plan Step 1) ---
-    if not request.session_id:
-        new_session = ChatSession(
-            id=str(uuid.uuid4()),
-            project_id=request.project_id,
-            title=f"Chat — {request.message[:50].replace(chr(10), ' ').strip()}",
-            message_count=0,
-            last_message_at=user_msg.created_at,
-        )
-        db.add(new_session)
-        await db.commit()
-        request.session_id = new_session.id
-
     # --- Resolve session-specific inference settings ---
     llm_temperature = 0.7
     llm_max_tokens: int | None = None
@@ -407,62 +432,60 @@ async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db)):
     session_agent_id: str | None = None
     agent_identity_prompt: str = ""
 
-    if request.session_id:
-        sess_result = await db.execute(
-            select(ChatSession).where(ChatSession.id == request.session_id)
+    if session:
+        preset_value = session.inference_preset
+        preset_key = (
+            preset_value.value if hasattr(preset_value, "value") else str(preset_value or "medium")
         )
-        session = sess_result.scalar_one_or_none()
-        if session:
-            preset_key = session.inference_preset.value if session.inference_preset else "medium"
-            preset = INFERENCE_PRESETS.get(preset_key, INFERENCE_PRESETS["medium"])
+        if preset_key not in INFERENCE_PRESETS:
+            preset_key = "medium"
+        preset = INFERENCE_PRESETS.get(preset_key, INFERENCE_PRESETS["medium"])
 
-            if preset_key == "custom":
-                llm_temperature = (
-                    session.custom_temperature if session.custom_temperature is not None else 0.7
+        if preset_key == "custom":
+            llm_temperature = (
+                session.custom_temperature if session.custom_temperature is not None else 0.7
+            )
+            llm_max_tokens = session.custom_max_tokens
+        else:
+            llm_temperature = preset["temperature"] if preset["temperature"] is not None else 0.7
+            llm_max_tokens = preset["max_tokens"]
+
+        if session.model_override:
+            llm_model = session.model_override
+
+        # Load agent identity for this session
+        # Use Prompt RAG for query-aware identity (retrieves relevant
+        # persona sections based on the user's message)
+        session_agent_id = session.agent_id
+        if session_agent_id:
+            try:
+                agent_identity_prompt = await compose_dynamic_prompt(
+                    session_agent_id,
+                    query=request.message,
+                    use_embeddings=True,
                 )
-                llm_max_tokens = session.custom_max_tokens
+            except Exception:
+                # Fall back to full identity load
+                agent_identity_prompt = load_agent_identity(session_agent_id)
+
+            if agent_identity_prompt:
+                _chat_log.info(
+                    f"Loaded agent identity for {session_agent_id} "
+                    f"({len(agent_identity_prompt)} chars, prompt-rag)"
+                )
             else:
-                llm_temperature = (
-                    preset["temperature"] if preset["temperature"] is not None else 0.7
+                # Fallback: load system_prompt from DB agent record
+                agent_result = await db.execute(
+                    select(Agent).where(Agent.id == session_agent_id)
                 )
-                llm_max_tokens = preset["max_tokens"]
+                db_agent = agent_result.scalar_one_or_none()
+                if db_agent and db_agent.system_prompt:
+                    agent_identity_prompt = db_agent.system_prompt
 
-            if session.model_override:
-                llm_model = session.model_override
-
-            # Load agent identity for this session
-            # Use Prompt RAG for query-aware identity (retrieves relevant
-            # persona sections based on the user's message)
-            session_agent_id = session.agent_id
-            if session_agent_id:
-                try:
-                    agent_identity_prompt = await compose_dynamic_prompt(
-                        session_agent_id,
-                        query=request.message,
-                        use_embeddings=True,
-                    )
-                except Exception:
-                    # Fall back to full identity load
-                    agent_identity_prompt = load_agent_identity(session_agent_id)
-
-                if agent_identity_prompt:
-                    _chat_log.info(
-                        f"Loaded agent identity for {session_agent_id} "
-                        f"({len(agent_identity_prompt)} chars, prompt-rag)"
-                    )
-                else:
-                    # Fallback: load system_prompt from DB agent record
-                    agent_result = await db.execute(
-                        select(Agent).where(Agent.id == session_agent_id)
-                    )
-                    db_agent = agent_result.scalar_one_or_none()
-                    if db_agent and db_agent.system_prompt:
-                        agent_identity_prompt = db_agent.system_prompt
-
-            # Update session message count and last_message_at
-            session.message_count = (session.message_count or 0) + 1
-            session.last_message_at = user_msg.created_at
-            await db.commit()
+        # Update session message count and last_message_at
+        session.message_count = (session.message_count or 0) + 1
+        session.last_message_at = user_created_at
+        await db.commit()
 
     # If no agent identity loaded yet, default to istara-main
     if not agent_identity_prompt:
@@ -690,14 +713,27 @@ async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db)):
             # ── Save the full assistant response ─────────────────────
             async with async_session() as save_db:
                 assistant_content = "".join(all_text_parts)
+                assistant_created_at = datetime.now(timezone.utc)
                 assistant_msg = Message(
                     id=str(uuid.uuid4()),
                     project_id=request.project_id,
                     session_id=request.session_id,
                     role="assistant",
                     content=assistant_content,
+                    created_at=assistant_created_at,
                 )
                 save_db.add(assistant_msg)
+                if request.session_id:
+                    session_result = await save_db.execute(
+                        select(ChatSession).where(
+                            ChatSession.id == request.session_id,
+                            ChatSession.project_id == request.project_id,
+                        )
+                    )
+                    saved_session = session_result.scalar_one_or_none()
+                    if saved_session:
+                        saved_session.message_count = (saved_session.message_count or 0) + 1
+                        saved_session.last_message_at = assistant_created_at
                 await save_db.commit()
 
                 # Trigger DAG compaction asynchronously
@@ -733,14 +769,29 @@ async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db)):
             if all_text_parts:
                 try:
                     async with async_session() as save_db:
+                        interrupted_created_at = datetime.now(timezone.utc)
                         msg = Message(
                             id=str(uuid.uuid4()),
                             project_id=request.project_id,
                             session_id=request.session_id,
                             role="assistant",
                             content="".join(all_text_parts) + "\n\n[Response interrupted]",
+                            created_at=interrupted_created_at,
                         )
                         save_db.add(msg)
+                        if request.session_id:
+                            session_result = await save_db.execute(
+                                select(ChatSession).where(
+                                    ChatSession.id == request.session_id,
+                                    ChatSession.project_id == request.project_id,
+                                )
+                            )
+                            saved_session = session_result.scalar_one_or_none()
+                            if saved_session:
+                                saved_session.message_count = (
+                                    saved_session.message_count or 0
+                                ) + 1
+                                saved_session.last_message_at = interrupted_created_at
                         await save_db.commit()
                 except Exception:
                     pass
@@ -771,11 +822,13 @@ async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db)):
 @router.get("/chat/history/{project_id}")
 async def get_chat_history(
     project_id: str,
+    request: Request,
     session_id: str | None = None,
-    limit: int = 50,
+    limit: int = Query(50, ge=1, le=500),
     db: AsyncSession = Depends(get_db),
 ) -> list[ChatMessage]:
     """Get chat history for a project, optionally scoped to a session."""
+    await require_project_access(db, request, project_id, min_role="viewer")
     query = select(Message).where(Message.project_id == project_id)
     if session_id:
         query = query.where(Message.session_id == session_id)
@@ -795,6 +848,7 @@ async def get_chat_history(
 
 @router.post("/chat/voice")
 async def transcribe_voice(
+    request: Request,
     audio: UploadFile = File(...),
     language: str | None = None,
 ):
@@ -803,6 +857,9 @@ async def transcribe_voice(
     Accepts audio files (wav, mp3, ogg, m4a, flac) and returns
     transcribed text with ICR confidence scores.
     """
+    if settings.team_mode and get_subject(request).role == "viewer":
+        raise HTTPException(status_code=403, detail="Viewers cannot use chat voice transcription")
+
     try:
         # Save uploaded audio to temp file
         suffix = Path(audio.filename).suffix if audio.filename else ".ogg"
@@ -836,7 +893,7 @@ async def transcribe_voice(
         }
 
     except Exception as e:
-        logger.error(f"Voice transcription failed: {e}")
+        _chat_log.error(f"Voice transcription failed: {e}")
         raise HTTPException(status_code=500, detail=f"Transcription failed: {str(e)}")
 
 
@@ -846,8 +903,9 @@ class VoiceTranscribeRequest(BaseModel):
 
 
 @router.post("/chat/voice-transcribe")
-async def voice_transcribe(request: VoiceTranscribeRequest):
+async def voice_transcribe(request: VoiceTranscribeRequest, http_request: Request, db: AsyncSession = Depends(get_db)):
     """Voice transcription endpoint (Phase Alpha)."""
+    await require_project_access(db, http_request, request.project_id, min_role="researcher")
     if request.dummy:
         return {"status": "success", "text": "Mock transcription"}
 

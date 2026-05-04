@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from app.core.agent import agent
+from app.core.improvement_governance import improvement_governance
+from app.core.permissions import require_global_admin, require_project_access
+from app.models.database import get_db
+from sqlalchemy.ext.asyncio import AsyncSession
 from app.skills.skill_manager import skill_manager
 from app.skills.registry import registry
 
@@ -113,8 +117,27 @@ async def get_all_creation_proposals(limit: int = 20):
 
 
 @router.post("/skills/creation-proposals/{proposal_id}/approve")
-async def approve_creation_proposal(proposal_id: str):
+async def approve_creation_proposal(proposal_id: str, request: Request):
     """Approve a skill creation proposal — writes definition file and registers skill."""
+    require_global_admin(request)
+    proposal = next(
+        (p for p in skill_manager.get_pending_creation_proposals() if p.id == proposal_id),
+        None,
+    )
+    if proposal is None:
+        raise HTTPException(status_code=404, detail="Creation proposal not found or not pending")
+
+    if not proposal.test_result:
+        verification = await skill_manager.verify_skill_proposal(proposal_id)
+        if not verification.get("passed"):
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "message": "Creation proposal failed verification and was not approved",
+                    "verification": verification,
+                },
+            )
+
     result = skill_manager.approve_creation_proposal(proposal_id)
     if result is None:
         raise HTTPException(status_code=404, detail="Creation proposal not found or not pending")
@@ -125,15 +148,62 @@ async def approve_creation_proposal(proposal_id: str):
     except Exception as e:
         # Skill file was written but runtime registration failed — not fatal
         pass
+    try:
+        governance = await improvement_governance.get_proposal_by_source(
+            source_system="memento_skill_factory",
+            source_id=proposal_id,
+        )
+        if governance and governance.status in {"draft", "proposed"}:
+            await improvement_governance.approve_proposal(
+                governance.id,
+                reviewer_id="skills-ui",
+                note="Approved via Skill Creation UI",
+            )
+        governance = await improvement_governance.get_proposal_by_source(
+            source_system="memento_skill_factory",
+            source_id=proposal_id,
+        )
+        if governance and governance.status == "approved":
+            await improvement_governance.apply_proposal(
+                governance.id,
+                actor_id="skills-ui",
+                evidence={"skill_name": result["name"]},
+            )
+    except Exception:
+        pass
 
     return {"status": "approved", "proposal_id": proposal_id, "skill_name": result["name"]}
 
 
+@router.post("/skills/creation-proposals/{proposal_id}/verify")
+async def verify_creation_proposal(proposal_id: str, request: Request):
+    """Run the verification gate for a pending skill creation proposal."""
+    require_global_admin(request)
+    result = await skill_manager.verify_skill_proposal(proposal_id)
+    if not result.get("passed") and result.get("issues") == ["Proposal not found or not pending"]:
+        raise HTTPException(status_code=404, detail="Creation proposal not found or not pending")
+    return result
+
+
 @router.post("/skills/creation-proposals/{proposal_id}/reject")
-async def reject_creation_proposal(proposal_id: str, reason: str = ""):
+async def reject_creation_proposal(proposal_id: str, request: Request, reason: str = ""):
     """Reject a skill creation proposal."""
+    require_global_admin(request)
     if not skill_manager.reject_creation_proposal(proposal_id, reason):
         raise HTTPException(status_code=404, detail="Creation proposal not found or not pending")
+    try:
+        governance = await improvement_governance.get_proposal_by_source(
+            source_system="memento_skill_factory",
+            source_id=proposal_id,
+        )
+        if governance and governance.status in {"draft", "proposed", "approved"}:
+            await improvement_governance.reject_proposal(
+                governance.id,
+                reviewer_id="skills-ui",
+                reason=reason,
+            )
+    except Exception:
+        pass
     return {"status": "rejected", "proposal_id": proposal_id}
 
 
@@ -153,8 +223,9 @@ async def get_skill(name: str):
 
 
 @router.post("/skills", status_code=201)
-async def create_skill(data: SkillCreateRequest):
+async def create_skill(data: SkillCreateRequest, request: Request):
     """Create a new skill definition."""
+    require_global_admin(request)
     if skill_manager.get(data.name):
         raise HTTPException(status_code=409, detail=f"Skill already exists: {data.name}")
 
@@ -163,8 +234,9 @@ async def create_skill(data: SkillCreateRequest):
 
 
 @router.patch("/skills/{name}")
-async def update_skill(name: str, data: SkillUpdateRequest):
+async def update_skill(name: str, data: SkillUpdateRequest, request: Request):
     """Update a skill definition (auto-increments version)."""
+    require_global_admin(request)
     if not skill_manager.get(name):
         raise HTTPException(status_code=404, detail=f"Skill not found: {name}")
 
@@ -177,15 +249,17 @@ async def update_skill(name: str, data: SkillUpdateRequest):
 
 
 @router.delete("/skills/{name}", status_code=204)
-async def delete_skill(name: str):
+async def delete_skill(name: str, request: Request):
     """Delete a skill (backed up, recoverable)."""
+    require_global_admin(request)
     if not skill_manager.delete_skill(name):
         raise HTTPException(status_code=404, detail=f"Skill not found: {name}")
 
 
 @router.post("/skills/{name}/toggle")
-async def toggle_skill(name: str, enabled: bool = True):
+async def toggle_skill(name: str, request: Request, enabled: bool = True):
     """Enable or disable a skill."""
+    require_global_admin(request)
     defn = skill_manager.toggle_skill(name, enabled)
     return {"name": name, "enabled": defn.enabled, "version": defn.version}
 
@@ -204,25 +278,68 @@ async def get_skill_health(name: str):
 # --- Self-Improvement Proposals ---
 
 @router.post("/skills/proposals/{proposal_id}/approve")
-async def approve_proposal(proposal_id: str):
+async def approve_proposal(proposal_id: str, request: Request):
     """Approve a skill improvement proposal (applies the change)."""
+    require_global_admin(request)
     if not skill_manager.approve_proposal(proposal_id):
         raise HTTPException(status_code=404, detail="Proposal not found or not pending")
+    try:
+        governance = await improvement_governance.get_proposal_by_source(
+            source_system="skill_evolution",
+            source_id=proposal_id,
+        )
+        if governance and governance.status in {"draft", "proposed"}:
+            await improvement_governance.approve_proposal(
+                governance.id,
+                reviewer_id="skills-ui",
+                note="Approved via Skill Evolution UI",
+            )
+        governance = await improvement_governance.get_proposal_by_source(
+            source_system="skill_evolution",
+            source_id=proposal_id,
+        )
+        if governance and governance.status == "approved":
+            await improvement_governance.apply_proposal(
+                governance.id,
+                actor_id="skills-ui",
+                evidence={"skill_proposal_id": proposal_id},
+            )
+    except Exception:
+        pass
     return {"status": "approved", "proposal_id": proposal_id}
 
 
 @router.post("/skills/proposals/{proposal_id}/reject")
-async def reject_proposal(proposal_id: str, reason: str = ""):
+async def reject_proposal(proposal_id: str, request: Request, reason: str = ""):
     """Reject a skill improvement proposal."""
+    require_global_admin(request)
     if not skill_manager.reject_proposal(proposal_id, reason):
         raise HTTPException(status_code=404, detail="Proposal not found or not pending")
+    try:
+        governance = await improvement_governance.get_proposal_by_source(
+            source_system="skill_evolution",
+            source_id=proposal_id,
+        )
+        if governance and governance.status in {"draft", "proposed", "approved"}:
+            await improvement_governance.reject_proposal(
+                governance.id,
+                reviewer_id="skills-ui",
+                reason=reason,
+            )
+    except Exception:
+        pass
     return {"status": "rejected", "proposal_id": proposal_id}
 
 
 # --- Skill Execution ---
 
 @router.post("/skills/{name}/execute")
-async def execute_skill(name: str, data: SkillExecuteRequest):
+async def execute_skill(
+    name: str,
+    data: SkillExecuteRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
     """Execute a skill on a project. Stores findings automatically.
 
     This is the main way to invoke skills — from the UI, chat, or API.
@@ -231,6 +348,7 @@ async def execute_skill(name: str, data: SkillExecuteRequest):
     """
     if not registry.get(name):
         raise HTTPException(status_code=404, detail=f"Skill not found: {name}")
+    await require_project_access(db, request, data.project_id, min_role="researcher")
 
     output = await agent.execute_skill(
         skill_name=name,
@@ -254,7 +372,12 @@ async def execute_skill(name: str, data: SkillExecuteRequest):
 
 
 @router.post("/skills/{name}/plan")
-async def plan_skill(name: str, data: SkillPlanRequest):
+async def plan_skill(
+    name: str,
+    data: SkillPlanRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
     """Generate a research plan using a skill.
 
     Returns a plan with steps, methods, and recommendations
@@ -262,6 +385,7 @@ async def plan_skill(name: str, data: SkillPlanRequest):
     """
     if not registry.get(name):
         raise HTTPException(status_code=404, detail=f"Skill not found: {name}")
+    await require_project_access(db, request, data.project_id, min_role="researcher")
 
     plan = await agent.plan_skill(
         skill_name=name,

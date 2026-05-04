@@ -17,12 +17,12 @@ Generated from the repository on version `2026.04.27`. Treat this file as the fa
 
 ## System Snapshot
 
-- Frontend: Next.js app with 23 mounted views and 15 Zustand stores.
-- Backend: FastAPI app with 40 route modules and 377 detected endpoints.
-- Data layer: 43 SQLAlchemy models plus LanceDB-backed retrieval/context systems.
+- Frontend: Next.js app with 24 mounted views and 15 Zustand stores.
+- Backend: FastAPI app with 41 route modules and 390 detected endpoints.
+- Data layer: 44 SQLAlchemy models plus LanceDB-backed retrieval/context systems.
 - Agents/personas: 6 tracked persona directories under `backend/app/agents/personas`.
 - Skills: 57 JSON-defined skills across the Double Diamond phases.
-- Regression map: 61 active test files across 4 layers.
+- Regression map: 66 active test files across 4 layers.
 
 ## Change Hotspots
 
@@ -49,6 +49,7 @@ Generated from the repository on version `2026.04.27`. Treat this file as the fa
 | Primary | `integrations` | Integrations | `IntegrationsView` |
 | Primary | `loops` | Loops | `LoopsView` |
 | Primary | `settings` | Settings | `SettingsView` |
+| Secondary | `admin` | Admin | `AdminDashboard` |
 | Secondary | `autoresearch` | Autoresearch | `AutoresearchView` |
 | Secondary | `backup` | Backup | `BackupView` |
 | Secondary | `meta-hyperagent` | Meta-Agent | `MetaHyperagentView` |
@@ -63,7 +64,7 @@ Generated from the repository on version `2026.04.27`. Treat this file as the fa
 
 | Persona ID | Description |
 |---|---|
-| `design-lead` | Design Lead -- Istara Interface Agent |
+| `design-lead` | Piper -- Istara Interface Agent |
 | `istara-devops` | Sentinel -- DevOps Audit Agent |
 | `istara-main` | Istara Research Coordinator |
 | `istara-sim` | Echo -- User Simulation Agent |
@@ -81,6 +82,7 @@ Generated from the repository on version `2026.04.27`. Treat this file as the fa
 
 | Route Module | Prefix | Endpoints |
 |---|---|---|
+| `admin.py` | `/admin` | 5 |
 | `agents.py` | `/` | 48 |
 | `audit.py` | `/` | 7 |
 | `auth.py` | `/` | 15 |
@@ -93,7 +95,7 @@ Generated from the repository on version `2026.04.27`. Treat this file as the fa
 | `codebook_versions.py` | `/codebook-versions` | 4 |
 | `codebooks.py` | `/` | 8 |
 | `compute.py` | `/` | 3 |
-| `connections.py` | `/` | 6 |
+| `connections.py` | `/` | 7 |
 | `context_dag.py` | `/` | 6 |
 | `deployments.py` | `/` | 12 |
 | `documents.py` | `/` | 10 |
@@ -114,10 +116,10 @@ Generated from the repository on version `2026.04.27`. Treat this file as the fa
 | `scheduler.py` | `/` | 5 |
 | `sessions.py` | `/` | 8 |
 | `settings.py` | `/` | 18 |
-| `skills.py` | `/` | 18 |
+| `skills.py` | `/` | 19 |
 | `steering.py` | `/` | 8 |
 | `surveys.py` | `/` | 9 |
-| `tasks.py` | `/` | 11 |
+| `tasks.py` | `/` | 17 |
 | `updates.py` | `/` | 4 |
 | `webauthn.py` | `/` | 6 |
 | `webhooks.py` | `/webhooks` | 3 |
@@ -166,6 +168,7 @@ Generated from the repository on version `2026.04.27`. Treat this file as the fa
 | `SurveyIntegration` | `survey_integrations` | yes | `backend/app/models/survey_integration.py` |
 | `SurveyLink` | `survey_links` | yes | `backend/app/models/survey_integration.py` |
 | `Task` | `tasks` | no | `backend/app/models/task.py` |
+| `TaskReviewEvent` | `task_review_events` | yes | `backend/app/models/task_review.py` |
 | `TelemetrySpan` | `telemetry_spans` | no | `backend/app/models/telemetry_span.py` |
 | `User` | `users` | no | `backend/app/models/user.py` |
 | `WebAuthnCredential` | `webauthn_credentials` | no | `backend/app/models/webauthn_credential.py` |
@@ -199,8 +202,8 @@ Generated from the repository on version `2026.04.27`. Treat this file as the fa
 
 - **Layer: Benchmarks**: `test_orchestration.py`
 - **Layer: Integration**: `test_llm_orchestration_real.py`
-- **Layer: Simulation**: `run.mjs`, `test_specific_health.mjs`
-- **Test Journeys**: `test_agents.py`, `test_auth_security.py`, `test_autoresearch.py`, `test_backup.py`, `test_browser_skills.py`, `test_business_logic.py`, `test_channel_resilience.py`, `test_channels.py`, `test_chat.py`, `test_code_applications.py`, `test_codebook_versions.py`, `test_codebooks.py`, `test_compute.py`, `test_connections.py`, `test_content_guard.py`, `test_context_dag.py`, `test_data_transformations.py`, `test_documents.py`, `test_error_handling.py`, `test_evaluation_skill.py`, `test_field_encryption.py`, `test_files.py`, `test_findings.py`, `test_integration.py`, `test_integration_agent_work_cycle.py`, `test_integration_chat_flow.py`, `test_integration_interview.py`, `test_interfaces.py`, `test_laws.py`, `test_llm_servers.py`, `test_loops.py`, `test_mcp.py`, `test_memory.py`, `test_meta_hyperagent.py`, `test_network_security.py`, `test_notifications.py`, `test_participant_simulation.py`, `test_projects.py`, `test_proxy_security.py`, `test_rate_limiter.py`, `test_research_integrity.py`, `test_self_healing_rules.py`, `test_sessions.py`, `test_settings.py`, `test_skill_definitions.py`, `test_skills.py`, `test_steering.py`, `test_surveys.py`, `test_tasks.py`, `test_telemetry.py`, `test_telemetry_export.py`, `test_transcription.py`, `test_transport_headers.py`, `test_version_comparison.py`, `test_webauthn.py`, `test_websocket.py`, `e2e_test.py`
+- **Layer: Simulation**: `run.mjs`
+- **Test Journeys**: `test_agent_personas.py`, `test_agents.py`, `test_auth_security.py`, `test_autoresearch.py`, `test_backup.py`, `test_browser_skills.py`, `test_business_logic.py`, `test_channel_resilience.py`, `test_channels.py`, `test_chat.py`, `test_client_identity.py`, `test_code_applications.py`, `test_codebook_versions.py`, `test_codebooks.py`, `test_compute.py`, `test_connections.py`, `test_content_guard.py`, `test_context_dag.py`, `test_data_transformations.py`, `test_document_preview_paths.py`, `test_documents.py`, `test_error_handling.py`, `test_evaluation_skill.py`, `test_field_encryption.py`, `test_files.py`, `test_findings.py`, `test_integration.py`, `test_integration_agent_work_cycle.py`, `test_integration_chat_flow.py`, `test_integration_interview.py`, `test_interfaces.py`, `test_laws.py`, `test_llm_servers.py`, `test_loops.py`, `test_mcp.py`, `test_memory.py`, `test_meta_hyperagent.py`, `test_network_discovery.py`, `test_network_security.py`, `test_notifications.py`, `test_participant_simulation.py`, `test_project_rbac.py`, `test_projects.py`, `test_proxy_security.py`, `test_rate_limiter.py`, `test_research_integrity.py`, `test_runtime_source_boundary.py`, `test_self_healing_rules.py`, `test_sessions.py`, `test_settings.py`, `test_skill_definitions.py`, `test_skills.py`, `test_steering.py`, `test_surveys.py`, `test_tasks.py`, `test_telemetry.py`, `test_telemetry_export.py`, `test_transcription.py`, `test_transport_headers.py`, `test_version_comparison.py`, `test_webauthn.py`, `test_websocket.py`, `e2e_test.py`
 
 ## Documentation Contract
 

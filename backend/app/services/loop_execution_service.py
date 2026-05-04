@@ -71,8 +71,11 @@ async def list_executions(
     db: AsyncSession,
     *,
     source_type: Optional[str] = None,
+    source_types: Optional[list[str]] = None,
     source_id: Optional[str] = None,
     status: Optional[str] = None,
+    started_from: Optional[datetime] = None,
+    started_to: Optional[datetime] = None,
     page: int = 1,
     page_size: int = 50,
 ) -> dict:
@@ -82,20 +85,28 @@ async def list_executions(
     """
     q = select(LoopExecution).order_by(LoopExecution.started_at.desc())
 
-    if source_type:
+    if source_types:
+        q = q.where(LoopExecution.source_type.in_(source_types))
+    elif source_type:
         q = q.where(LoopExecution.source_type == source_type)
     if source_id:
         q = q.where(LoopExecution.source_id == source_id)
     if status:
         q = q.where(LoopExecution.status == status)
+    if started_from:
+        q = q.where(LoopExecution.started_at >= started_from)
+    if started_to:
+        q = q.where(LoopExecution.started_at < started_to)
 
     # Count
     count_q = select(func.count()).select_from(q.subquery())
     total = (await db.execute(count_q)).scalar() or 0
 
     # Paginate
-    offset = (max(page, 1) - 1) * page_size
-    q = q.offset(offset).limit(page_size)
+    safe_page = max(page, 1)
+    safe_page_size = min(max(page_size, 1), 100)
+    offset = (safe_page - 1) * safe_page_size
+    q = q.offset(offset).limit(safe_page_size)
 
     result = await db.execute(q)
     items = [e.to_dict() for e in result.scalars().all()]
@@ -103,8 +114,8 @@ async def list_executions(
     return {
         "items": items,
         "total": total,
-        "page": page,
-        "page_size": page_size,
+        "page": safe_page,
+        "page_size": safe_page_size,
     }
 
 
@@ -133,6 +144,8 @@ async def get_execution_stats(
             "total": 0,
             "success_count": 0,
             "failure_count": 0,
+            "running_count": 0,
+            "skipped_count": 0,
             "success_rate": 0.0,
             "avg_duration_ms": 0.0,
         }
@@ -147,6 +160,14 @@ async def get_execution_stats(
     failure_q = select(func.count()).select_from(failure_base.subquery())
     failure_count = (await db.execute(failure_q)).scalar() or 0
 
+    running_base = base.where(LoopExecution.status == "running")
+    running_q = select(func.count()).select_from(running_base.subquery())
+    running_count = (await db.execute(running_q)).scalar() or 0
+
+    skipped_base = base.where(LoopExecution.status == "skipped")
+    skipped_q = select(func.count()).select_from(skipped_base.subquery())
+    skipped_count = (await db.execute(skipped_q)).scalar() or 0
+
     # Average duration
     avg_q = select(func.avg(LoopExecution.duration_ms))
     if source_id:
@@ -160,6 +181,8 @@ async def get_execution_stats(
         "total": total,
         "success_count": success_count,
         "failure_count": failure_count,
+        "running_count": running_count,
+        "skipped_count": skipped_count,
         "success_rate": round(success_rate, 2),
         "avg_duration_ms": round(float(avg_duration), 2),
     }

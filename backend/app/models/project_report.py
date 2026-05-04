@@ -18,6 +18,18 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.models.database import Base
 
 
+def _json_list(value: str | None) -> list:
+    import json
+
+    if not value:
+        return []
+    try:
+        parsed = json.loads(value)
+    except (json.JSONDecodeError, TypeError):
+        return []
+    return parsed if isinstance(parsed, list) else []
+
+
 class ProjectReport(Base):
     __tablename__ = "project_reports"
 
@@ -50,15 +62,16 @@ class ProjectReport(Base):
     )
 
     def to_dict(self) -> dict:
-        import json
+        finding_ids = _json_list(self.finding_ids_json)
+        mece_categories = _json_list(self.mece_categories_json)
         return {
             "id": self.id, "project_id": self.project_id,
             "title": self.title, "layer": self.layer,
             "report_type": self.report_type, "scope": self.scope,
             "executive_summary": self.executive_summary,
             "status": self.status, "version": self.version,
-            "finding_count": len(json.loads(self.finding_ids_json)) if self.finding_ids_json else 0,
-            "mece_categories": json.loads(self.mece_categories_json) if self.mece_categories_json else [],
+            "finding_count": len(finding_ids),
+            "mece_categories": mece_categories,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }

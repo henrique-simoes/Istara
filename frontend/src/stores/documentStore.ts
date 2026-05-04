@@ -98,6 +98,7 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
   },
 
   syncDocuments: async (projectId) => {
+    set({ error: null });
     try {
       const data = await documentsApi.sync(projectId);
       if (data.synced > 0) {
@@ -105,7 +106,8 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
         await get().fetchDocuments(projectId);
       }
       return data.synced;
-    } catch {
+    } catch (e: any) {
+      set({ error: e.message || "Could not sync project documents." });
       return 0;
     }
   },
@@ -117,18 +119,30 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
   selectDocument: (id) => set({ selectedDocId: id }),
 
   deleteDocument: async (id) => {
-    await documentsApi.delete(id);
-    set((s) => ({
-      documents: s.documents.filter((d) => d.id !== id),
-      total: s.total - 1,
-      selectedDocId: s.selectedDocId === id ? null : s.selectedDocId,
-    }));
+    set({ error: null });
+    try {
+      await documentsApi.delete(id);
+      set((s) => ({
+        documents: s.documents.filter((d) => d.id !== id),
+        total: Math.max(0, s.total - 1),
+        selectedDocId: s.selectedDocId === id ? null : s.selectedDocId,
+      }));
+    } catch (e: any) {
+      set({ error: e.message || "Could not delete document." });
+      throw e;
+    }
   },
 
   updateDocument: async (id, data) => {
-    const updated = await documentsApi.update(id, data);
-    set((s) => ({
-      documents: s.documents.map((d) => (d.id === id ? updated : d)),
-    }));
+    set({ error: null });
+    try {
+      const updated = await documentsApi.update(id, data);
+      set((s) => ({
+        documents: s.documents.map((d) => (d.id === id ? updated : d)),
+      }));
+    } catch (e: any) {
+      set({ error: e.message || "Could not update document." });
+      throw e;
+    }
   },
 }));

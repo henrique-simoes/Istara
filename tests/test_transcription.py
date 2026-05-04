@@ -2,6 +2,7 @@
 
 import pytest
 from unittest.mock import patch
+from types import SimpleNamespace
 
 
 # ---------------------------------------------------------------------------
@@ -59,6 +60,60 @@ def test_transcription_missing_audio_file():
     assert result.metadata["error_type"] == "audio_file_missing"
     assert result.needs_review is True
     assert "audio-file-missing" in result.tags
+
+
+def test_transcription_requires_ffmpeg_when_whisper_is_available(monkeypatch):
+    """Whisper-backed transcription reports a dependency error when ffmpeg is missing."""
+    from app.core import transcription
+    import tempfile
+
+    class FakeModel:
+        def transcribe(self, *_args, **_kwargs):
+            return {"text": "should not run"}
+
+    with tempfile.NamedTemporaryFile(suffix=".wav") as tmp:
+        monkeypatch.setattr(transcription, "_WHISPER_AVAILABLE", True)
+        monkeypatch.setattr("app.core.transcription._load_whisper_model", lambda *_args, **_kwargs: FakeModel())
+        monkeypatch.setattr("app.core.transcription.shutil.which", lambda _name: None)
+
+        result = transcription.transcribe_audio(tmp.name)
+
+    assert result.metadata["error_type"] == "audio_decoder_unavailable"
+    assert "audio-decoder-unavailable" in result.tags
+    assert result.needs_review is True
+
+
+def test_transcription_uses_detected_language_and_segment_confidence(monkeypatch):
+    """Whisper language detection and segment diagnostics are surfaced in the result."""
+    from app.core import transcription
+    import tempfile
+
+    class FakeModel:
+        def transcribe(self, *_args, **_kwargs):
+            return {
+                "text": "Eu preciso de uma busca melhor",
+                "language": "pt",
+                "segments": [
+                    {"avg_logprob": -0.08, "no_speech_prob": 0.01},
+                    {"avg_logprob": -0.18, "no_speech_prob": 0.04},
+                ],
+            }
+
+    with tempfile.NamedTemporaryFile(suffix=".wav") as tmp:
+        monkeypatch.setattr(transcription, "_WHISPER_AVAILABLE", True)
+        monkeypatch.setattr("app.core.transcription._load_whisper_model", lambda *_args, **_kwargs: FakeModel())
+        monkeypatch.setattr("app.core.transcription.shutil.which", lambda _name: "/usr/bin/ffmpeg")
+        monkeypatch.setattr(
+            "app.core.transcription._compute_transcription_icr",
+            lambda *_args, **_kwargs: SimpleNamespace(kappa=0.72, confidence="high", details={}),
+        )
+
+        result = transcription.transcribe_audio(tmp.name)
+
+    assert result.language == "pt"
+    assert result.confidence > 0.8
+    assert result.metadata["detected_language"] == "pt"
+    assert result.needs_review is False
 
 
 # ---------------------------------------------------------------------------
@@ -141,6 +196,18 @@ def test_icr_low_agreement_flags_review():
     result = compute_consensus(responses)
     # Different responses should have lower agreement
     assert result.agreement_score < 1.0
+
+
+def test_transcription_icr_without_independent_pass_is_insufficient(monkeypatch):
+    """ICR does not manufacture agreement when no alternative transcription is available."""
+    from app.core import transcription
+
+    monkeypatch.setattr("app.core.transcription._load_whisper_model", lambda *_args, **_kwargs: None)
+
+    result = transcription._compute_transcription_icr("The interface is easy to use", "/tmp/audio.wav")
+
+    assert result.confidence == "insufficient"
+    assert result.details["reason"].startswith("Single response")
 
 
 # ---------------------------------------------------------------------------

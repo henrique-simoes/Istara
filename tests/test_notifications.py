@@ -1,11 +1,19 @@
 """Tests for Notifications API routes — list, unread, mark-read, mark-all-read, preferences."""
 
+from datetime import datetime, timezone
+import uuid
+
 import pytest
 from httpx import AsyncClient, ASGITransport
+from sqlalchemy import select
+
 from app.main import app
 from app.config import settings
-from app.models.database import init_db
+from app.models.database import async_session, init_db
 from app.core.auth import create_token
+from app.models.notification import Notification
+from app.models.project import Project
+from app.models.project_member import ProjectMember
 
 
 @pytest.fixture(autouse=True)
@@ -46,3 +54,165 @@ async def test_notifications_requires_auth():
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         response = await ac.get("/api/notifications")
         assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_notifications_accept_frontend_filter_aliases(auth_headers):
+    """Frontend plural aliases and date aliases should filter the API response."""
+    await init_db()
+    marker = f"alias-{uuid.uuid4()}"
+    now = datetime.now(timezone.utc)
+    async with async_session() as db:
+        db.add_all(
+            [
+                Notification(
+                    id=str(uuid.uuid4()),
+                    type="agent_status",
+                    title=f"{marker} keep",
+                    message="agent failed",
+                    category="agent_status",
+                    severity="error",
+                    read=False,
+                    metadata_json='{"source":"test"}',
+                    created_at=now,
+                ),
+                Notification(
+                    id=str(uuid.uuid4()),
+                    type="system",
+                    title=f"{marker} skip",
+                    message="system info",
+                    category="system",
+                    severity="info",
+                    read=True,
+                    created_at=now,
+                ),
+            ]
+        )
+        await db.commit()
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.get(
+            "/api/notifications",
+            params={
+                "categories": "agent_status,system",
+                "severities": "error",
+                "unread_only": "true",
+                "from_date": now.date().isoformat(),
+                "search": marker,
+                "page": 1,
+                "page_size": 20,
+            },
+            headers=auth_headers,
+        )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["total"] == 1
+    assert data["total_pages"] == 1
+    assert data["notifications"][0]["title"] == f"{marker} keep"
+    assert data["notifications"][0]["metadata"] == {"source": "test"}
+
+
+@pytest.mark.asyncio
+async def test_project_member_notifications_are_scoped_without_admin():
+    """Project users should see and mark only their visible project notifications."""
+    await init_db()
+    settings.team_mode = True
+    user_id = f"user-{uuid.uuid4()}"
+    project_id = str(uuid.uuid4())
+    hidden_project_id = str(uuid.uuid4())
+    async with async_session() as db:
+        db.add_all(
+            [
+                Project(id=project_id, name="Visible notifications"),
+                Project(id=hidden_project_id, name="Hidden notifications"),
+                ProjectMember(
+                    id=str(uuid.uuid4()),
+                    project_id=project_id,
+                    user_id=user_id,
+                    role="viewer",
+                    added_by="test",
+                ),
+                Notification(
+                    id=str(uuid.uuid4()),
+                    type="document_created",
+                    title="visible unread",
+                    message="visible",
+                    category="document",
+                    severity="info",
+                    project_id=project_id,
+                    read=False,
+                ),
+                Notification(
+                    id=str(uuid.uuid4()),
+                    type="document_created",
+                    title="hidden unread",
+                    message="hidden",
+                    category="document",
+                    severity="info",
+                    project_id=hidden_project_id,
+                    read=False,
+                ),
+                Notification(
+                    id=str(uuid.uuid4()),
+                    type="system",
+                    title="global unread",
+                    message="global",
+                    category="system",
+                    severity="info",
+                    read=False,
+                ),
+            ]
+        )
+        await db.commit()
+
+    headers = {"Authorization": f"Bearer {create_token(user_id, 'scoped', 'researcher')}"}
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        list_response = await ac.get("/api/notifications", headers=headers)
+        count_response = await ac.get("/api/notifications/unread-count", headers=headers)
+        mark_response = await ac.post("/api/notifications/read-all", json={}, headers=headers)
+
+    assert list_response.status_code == 200
+    assert [n["title"] for n in list_response.json()["notifications"]] == ["visible unread"]
+    assert count_response.json() == {"count": 1}
+    assert mark_response.status_code == 200
+    assert mark_response.json()["count"] == 1
+
+    async with async_session() as db:
+        rows = (
+            await db.execute(
+                select(Notification.title, Notification.read).where(
+                    Notification.title.in_(["visible unread", "hidden unread", "global unread"])
+                )
+            )
+        ).all()
+    assert dict(rows) == {
+        "visible unread": True,
+        "hidden unread": False,
+        "global unread": False,
+    }
+
+
+@pytest.mark.asyncio
+async def test_notification_preferences_use_wrapped_payload_and_validate_categories(auth_headers):
+    """Preference updates should match the frontend API helper and reject orphans."""
+    await init_db()
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        ok = await ac.put(
+            "/api/notifications/preferences",
+            json={"preferences": [{"category": "system", "show_toast": False}]},
+            headers=auth_headers,
+        )
+        bad = await ac.put(
+            "/api/notifications/preferences",
+            json={"preferences": [{"category": "not_real"}]},
+            headers=auth_headers,
+        )
+
+    assert ok.status_code == 200
+    assert ok.json()["preferences"][0]["category"] == "system"
+    assert ok.json()["preferences"][0]["show_toast"] is False
+    assert bad.status_code == 400

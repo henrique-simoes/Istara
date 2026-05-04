@@ -9,7 +9,7 @@
 ### IA local para pesquisa de UX — seus dados nunca saem da sua máquina
 
 [![License: MIT](https://img.shields.io/badge/Licença-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/versão-2026.04.20.2-brightgreen.svg)](VERSION)
+[![Version](https://img.shields.io/badge/versão-2026.04.27-brightgreen.svg)](VERSION)
 [![Python](https://img.shields.io/badge/python-3.12-blue.svg)](backend/)
 [![Node](https://img.shields.io/badge/node-20-green.svg)](frontend/)
 [![Platform](https://img.shields.io/badge/plataforma-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey.svg)](installer/)
@@ -45,6 +45,7 @@
 | 💬 Canais de Mensageria | Slack, Telegram, WhatsApp — colete dados onde seus usuários estão, gerenciado pelos agentes |
 | 📊 Sincronização de Surveys | SurveyMonkey, Typeform, Google Forms — sintetize milhares de respostas em segundos, não horas |
 | 🔄 Autoresearch | Melhoria contínua automática — agentes otimizam seus próprios prompts e parâmetros de RAG |
+| 🧾 Governança de Melhorias | Mudanças de auto-evolução têm aprovação, evidências, métricas, rollback e reversão rastreáveis |
 | ✅ Saúde do Ensemble | Consenso multi-modelo, revisão adversarial e debates — cada insight sobrevive ao escrutínio |
 
 <div align="center">
@@ -230,7 +231,9 @@ ModelSkillStats(
 
 Quando a qualidade cai abaixo do limite, o Istara exibe um diff entre o prompt atual e a revisão proposta. Você aprova ou rejeita. Skills que consistentemente performam bem ganham pontuações de saúde maiores e prioridade no roteamento.
 
-> **Referências:** Zhou et al. (2026) "Memento-Skills: Let Agents Design Agents" arXiv:2603.18743; Zhang et al. (2026) "Hyperagents: DGM-H Metacognitive Self-Modification for Cross-Domain Transfer" arXiv:2603.19461
+Toda auto-melhoria agora passa por um contrato de **Governança de Melhorias** e pelo **Arquivo DGM-H**. Memórias de raciocínio e telemetria podem ser registradas automaticamente, enquanto mudanças de comportamento em prompts, configs, skills, agentes, UI, integrações, computação ou código backend viram propostas visíveis com evidências, métricas, aprovação, linhagem, pontuação de seleção de pais e rastreamento de rollback/reversão.
+
+> **Referências:** Zhou et al. (2026) "Memento-Skills: Let Agents Design Agents" arXiv:2603.18743; Zhang et al. (2026) "Hyperagents: DGM-H Metacognitive Self-Modification for Cross-Domain Transfer" arXiv:2603.19461; Ouyang et al. (2026) "ReasoningBank: Scaling Agent Self-Evolving with Reasoning Memory" arXiv:2509.25140
 
 ---
 
@@ -810,7 +813,7 @@ Veja [CONTRIBUTING.md](CONTRIBUTING.md) para instruções de configuração, gui
 ## Referências Acadêmicas
 
 <details>
-<summary><strong>Bibliografia completa (21 referências)</strong></summary>
+<summary><strong>Bibliografia completa (22 referências)</strong></summary>
 
 ### Auto-Evolução e Design de Agentes
 
@@ -838,37 +841,39 @@ Veja [CONTRIBUTING.md](CONTRIBUTING.md) para instruções de configuração, gui
 
 10. **Pan et al. (2024)** — "From RAG to Prompt RAG: Revisiting Retrieval-Augmented Generation for Long-Context Language Models" *ACL 2024*. Prompt RAG para injetar contexto recuperado no momento da inferência.
 
+11. **Ouyang et al. (2026)** — "ReasoningBank: Scaling Agent Self-Evolving with Reasoning Memory" *arXiv:2509.25140*. Memória estruturada de raciocínio para destilar trajetórias bem-sucedidas e falhas de agentes em estratégias reutilizáveis; implementada como camada compartilhada de memória de orquestração para roteamento Memento, autoresearch e observação meta-agente.
+
 ### Geração Aumentada por Recuperação
 
-11. **Lewis et al. (2020)** — "Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks" *NeurIPS 2020*. O artigo fundacional de RAG; a recuperação híbrida do Istara implementa esta arquitetura.
+12. **Lewis et al. (2020)** — "Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks" *NeurIPS 2020*. O artigo fundacional de RAG; a recuperação híbrida do Istara implementa esta arquitetura.
 
-12. **Cormack et al. (2009)** — "Reciprocal rank fusion outperforms condorcet and individual rank learning methods" *SIGIR 2009*. Algoritmo RRF mesclando rankings de busca vetorial e por palavras-chave no Istara.
+13. **Cormack et al. (2009)** — "Reciprocal rank fusion outperforms condorcet and individual rank learning methods" *SIGIR 2009*. Algoritmo RRF mesclando rankings de busca vetorial e por palavras-chave no Istara.
 
-13. **Robertson & Zaragoza (2009)** — "The Probabilistic Relevance Framework: BM25 and Beyond" *Foundations and Trends in Information Retrieval* 3(4). Componente de busca por palavras-chave BM25 da recuperação híbrida do Istara.
+14. **Robertson & Zaragoza (2009)** — "The Probabilistic Relevance Framework: BM25 and Beyond" *Foundations and Trends in Information Retrieval* 3(4). Componente de busca por palavras-chave BM25 da recuperação híbrida do Istara.
 
 ### Computação Distribuída
 
-14. **Borzunov et al. (2022)** — "Petals: Collaborative Inference and Fine-tuning of Large Models" *arXiv:2209.01188*. Arquitetura de inferência distribuída; o Compute Relay do Istara é inspirado no Petals.
+15. **Borzunov et al. (2022)** — "Petals: Collaborative Inference and Fine-tuning of Large Models" *arXiv:2209.01188*. Arquitetura de inferência distribuída; o Compute Relay do Istara é inspirado no Petals.
 
-15. **Borzunov et al. (2023)** — "Distributed Inference and Fine-tuning of Large Language Models Over the Internet" *NeurIPS 2023*.
+16. **Borzunov et al. (2023)** — "Distributed Inference and Fine-tuning of Large Language Models Over the Internet" *NeurIPS 2023*.
 
 ### Canais de Survey e Entrevista
 
-16. **AURA (2025)** — "AURA: Adaptive User Research Assistant" *arXiv:2510.27126*. Arquitetura de agente de entrevista adaptativa implantada pelo Istara em canais de mensagens.
+17. **AURA (2025)** — "AURA: Adaptive User Research Assistant" *arXiv:2510.27126*. Arquitetura de agente de entrevista adaptativa implantada pelo Istara em canais de mensagens.
 
 ### Metodologia de Pesquisa
 
-17. **Sharon & Gadbaw (2018)** — "Atomic Research" WeWork Research Operations. A cadeia de evidências Nugget→Fato→Insight→Recomendação implementada como modelo de dados central do Istara.
+18. **Sharon & Gadbaw (2018)** — "Atomic Research" WeWork Research Operations. A cadeia de evidências Nugget→Fato→Insight→Recomendação implementada como modelo de dados central do Istara.
 
-18. **Yablonski, J. (2020)** — *Laws of UX: Design Principles for Persuasive and Ethical Products*. O'Reilly Media. As 30 Leis de UX auditadas pelo verificador de conformidade do Istara.
+19. **Yablonski, J. (2020)** — *Laws of UX: Design Principles for Persuasive and Ethical Products*. O'Reilly Media. As 30 Leis de UX auditadas pelo verificador de conformidade do Istara.
 
-19. **Karpathy, A. (2026)** — "autoresearch: autonomous experiment loops for AI systems" github.com/karpathy/autoresearch. Framework de otimização autônoma; implementado como motor de autoresearch do Istara.
+20. **Karpathy, A. (2026)** — "autoresearch: autonomous experiment loops for AI systems" github.com/karpathy/autoresearch. Framework de otimização autônoma; implementado como motor de autoresearch do Istara.
 
 ### Padrões de Interoperabilidade
 
-20. **Anthropic (2024)** — "Model Context Protocol" modelcontextprotocol.io. Padrão aberto para interações LLM aumentadas por ferramentas; o Istara expõe um servidor MCP.
+21. **Anthropic (2024)** — "Model Context Protocol" modelcontextprotocol.io. Padrão aberto para interações LLM aumentadas por ferramentas; o Istara expõe um servidor MCP.
 
-21. **Google (2025)** — "Agent-to-Agent Protocol (A2A)" google.github.io/A2A. Padrão de descoberta e comunicação de agentes; o Istara publica um manifesto de descoberta A2A.
+22. **Google (2025)** — "Agent-to-Agent Protocol (A2A)" google.github.io/A2A. Padrão de descoberta e comunicação de agentes; o Istara publica um manifesto de descoberta A2A.
 
 </details>
 

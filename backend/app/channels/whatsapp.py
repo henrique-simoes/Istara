@@ -7,15 +7,21 @@ Required config keys (or environment fallbacks):
     phone_number_id / WHATSAPP_PHONE_NUMBER_ID  -- Business phone number ID
     access_token / WHATSAPP_ACCESS_TOKEN        -- Permanent or system-user token
     verify_token / WHATSAPP_VERIFY_TOKEN        -- Webhook verification token
+    app_secret / WHATSAPP_APP_SECRET            -- Meta app secret for POST HMAC
 """
 
 from __future__ import annotations
 
+import hmac
+import hashlib
 import logging
 import os
+import re
 import time
+from pathlib import Path
 
 from app.channels.base import ChannelAdapter, IncomingMessage, OutgoingMessage
+from app.config import settings
 from app.core.channel_resilience import CircuitBreaker
 
 logger = logging.getLogger(__name__)
@@ -32,6 +38,24 @@ GRAPH_API_BASE = "https://graph.facebook.com/v22.0"
 
 # WhatsApp enforces a 24-hour conversation window for business-initiated messages.
 _CONVERSATION_WINDOW_SECONDS = 24 * 60 * 60
+_SAFE_NAME_RE = re.compile(r"[^A-Za-z0-9._-]+")
+
+
+def _audio_suffix_for_mime(mime_type: str | None) -> str:
+    """Return a transcribable extension for a WhatsApp media MIME type."""
+    mime = (mime_type or "").split(";", 1)[0].strip().lower()
+    return {
+        "audio/ogg": ".ogg",
+        "audio/opus": ".ogg",
+        "audio/mpeg": ".mp3",
+        "audio/mp3": ".mp3",
+        "audio/mp4": ".m4a",
+        "audio/x-m4a": ".m4a",
+        "audio/wav": ".wav",
+        "audio/x-wav": ".wav",
+        "audio/webm": ".webm",
+        "audio/amr": ".amr",
+    }.get(mime, ".ogg")
 
 
 class WhatsAppAdapter(ChannelAdapter):
@@ -47,6 +71,9 @@ class WhatsAppAdapter(ChannelAdapter):
         )
         self._verify_token: str = self.config.get("verify_token", "") or os.getenv(
             "WHATSAPP_VERIFY_TOKEN", ""
+        )
+        self._app_secret: str = self.config.get("app_secret", "") or os.getenv(
+            "WHATSAPP_APP_SECRET", ""
         )
         self._http: httpx.AsyncClient | None = None
         # Track last inbound timestamp per chat_id for 24-hour window
@@ -65,6 +92,103 @@ class WhatsAppAdapter(ChannelAdapter):
     @property
     def enabled(self) -> bool:
         return bool(self._phone_number_id and self._access_token) and _HTTPX_AVAILABLE
+
+    @staticmethod
+    def _clean_path_component(value: str | None, default: str = "file") -> str:
+        """Return a filesystem-safe single path component."""
+        cleaned = _SAFE_NAME_RE.sub("_", value or "").strip("._-")
+        return (cleaned[:120] if cleaned else default)
+
+    @staticmethod
+    def _safe_suffix(suffix: str | None, default: str = ".bin") -> str:
+        suffix = (suffix or default).lower()
+        if not suffix.startswith("."):
+            suffix = f".{suffix}"
+        if re.fullmatch(r"\.[a-z0-9]{1,12}", suffix):
+            return suffix
+        return default
+
+    def _channel_storage_dir(self, kind: str) -> Path:
+        segment = self._clean_path_component(self.instance_id or "default", "default")
+        storage_dir = Path(settings.data_dir) / kind / segment
+        storage_dir.mkdir(parents=True, exist_ok=True)
+        return storage_dir
+
+    def _safe_download_filename(
+        self,
+        filename: str | None,
+        unique_id: str | None,
+        default_ext: str = ".bin",
+    ) -> str:
+        default_ext = self._safe_suffix(default_ext)
+        original = Path(filename or "").name
+        if not original or original in {".", ".."}:
+            original = f"{unique_id or 'whatsapp'}{default_ext}"
+
+        original_path = Path(original)
+        suffix = self._safe_suffix(original_path.suffix, default_ext)
+        stem = self._clean_path_component(original_path.stem, "whatsapp")
+        safe_unique = self._clean_path_component(unique_id, "whatsapp")
+        basename = stem if stem.startswith(safe_unique) else f"{safe_unique}_{stem}"
+        max_basename_len = max(1, 180 - len(suffix))
+        return f"{basename[:max_basename_len]}{suffix}"
+
+    @staticmethod
+    def _declared_size(item: dict | None) -> int | None:
+        size = (item or {}).get("file_size")
+        try:
+            parsed = int(size)
+        except (TypeError, ValueError):
+            return None
+        return parsed if parsed >= 0 else None
+
+    def _ensure_download_size(self, size: int | None, label: str) -> None:
+        if size is not None and size > settings.channel_attachment_max_bytes:
+            raise ValueError(
+                f"{label} exceeds WhatsApp download limit "
+                f"({size} > {settings.channel_attachment_max_bytes} bytes)"
+            )
+
+    async def _download_media(
+        self,
+        media_id: str,
+        *,
+        declared_size: int | None = None,
+        mime_type: str | None = None,
+        label: str = "WhatsApp media",
+    ) -> tuple[Path, dict]:
+        """Download WhatsApp media through the Graph API into local channel storage."""
+        if self._http is None:
+            raise RuntimeError("WhatsApp adapter is not running")
+
+        self._ensure_download_size(declared_size, label)
+        metadata_resp = await self._http.get(f"{GRAPH_API_BASE}/{media_id}")
+        metadata_resp.raise_for_status()
+        media_metadata = metadata_resp.json()
+
+        media_size = self._declared_size(media_metadata) or declared_size
+        self._ensure_download_size(media_size, label)
+
+        media_url = media_metadata.get("url")
+        if not media_url:
+            raise RuntimeError("WhatsApp media metadata did not include a download URL")
+
+        data_resp = await self._http.get(media_url)
+        data_resp.raise_for_status()
+        data = data_resp.content
+        self._ensure_download_size(len(data), label)
+
+        resolved_mime = media_metadata.get("mime_type") or mime_type
+        suffix = _audio_suffix_for_mime(resolved_mime)
+        storage_dir = self._channel_storage_dir("channel_audio")
+        filename = self._safe_download_filename(
+            f"{media_id}{suffix}",
+            media_id,
+            suffix,
+        )
+        media_path = storage_dir / filename
+        media_path.write_bytes(data)
+        return media_path, media_metadata
 
     async def start(self) -> None:
         """Start the WhatsApp adapter (webhook-based, no polling)."""
@@ -170,6 +294,20 @@ class WhatsAppAdapter(ChannelAdapter):
             return challenge
         return None
 
+    def verify_signature(self, raw_body: bytes, signature_header: str | None) -> bool:
+        """Verify Meta's X-Hub-Signature-256 HMAC for POST callbacks."""
+        if not self._app_secret or not signature_header:
+            return False
+        if not signature_header.startswith("sha256="):
+            return False
+
+        expected = "sha256=" + hmac.new(
+            self._app_secret.encode("utf-8"),
+            raw_body,
+            hashlib.sha256,
+        ).hexdigest()
+        return hmac.compare_digest(signature_header, expected)
+
     async def handle_webhook(self, data: dict) -> None:
         """Parse an incoming WhatsApp webhook payload and dispatch messages."""
         if not self._running:
@@ -226,14 +364,52 @@ class WhatsAppAdapter(ChannelAdapter):
         if msg_type == "text":
             text = wa_msg.get("text", {}).get("body", "")
         elif msg_type == "audio":
-            # Auto-transcribe audio messages
-            text = "[Audio message — transcription pending]"
+            # Download and transcribe audio messages before they enter routing.
+            text = "[Audio message - transcription unavailable]"
             content_type = "audio"
-            media_id = wa_msg.get("audio", {}).get("id", "")
+            audio = wa_msg.get("audio", {})
+            media_id = audio.get("id", "")
+            transcription_metadata: dict = {}
             if media_id:
-                attachments.append(f"whatsapp:media:{media_id}")
-                # Note: Actual transcription happens in the interview pipeline
-                # when the audio file is downloaded and processed
+                try:
+                    audio_path, media_metadata = await self._download_media(
+                        media_id,
+                        declared_size=self._declared_size(audio),
+                        mime_type=audio.get("mime_type"),
+                        label="WhatsApp audio message",
+                    )
+                    attachments.append(str(audio_path))
+
+                    from app.core.transcription import convert_audio_to_wav, transcribe_audio
+
+                    wav_path = convert_audio_to_wav(str(audio_path))
+                    result = transcribe_audio(wav_path)
+                    text = result.text
+                    if result.needs_review and "transcription-error" not in result.tags:
+                        text += "\n\n[Transcription may need review]"
+                    transcription_metadata = {
+                        "status": "error" if "transcription-error" in result.tags else "complete",
+                        "text": result.text,
+                        "language": result.language,
+                        "confidence": result.confidence,
+                        "icr_kappa": result.icr_kappa,
+                        "icr_confidence": result.icr_confidence,
+                        "needs_review": result.needs_review,
+                        "tags": result.tags,
+                        "media_id": media_id,
+                        "media_mime_type": media_metadata.get("mime_type") or audio.get("mime_type"),
+                        "engine_metadata": result.metadata,
+                    }
+                except Exception as exc:
+                    logger.exception("WhatsApp audio download/transcription failed on %s", self.name)
+                    attachments.append(f"whatsapp:media:{media_id}")
+                    transcription_metadata = {
+                        "status": "error",
+                        "media_id": media_id,
+                        "error": str(exc)[:500],
+                    }
+            else:
+                transcription_metadata = {"status": "error", "error": "missing_media_id"}
         elif msg_type == "image":
             text = wa_msg.get("image", {}).get("caption", "") or "[image]"
             content_type = "image"
@@ -262,6 +438,9 @@ class WhatsAppAdapter(ChannelAdapter):
                 "content_type": content_type,
                 "external_message_id": msg_id,
                 "message_type": msg_type,
+                **({"transcription": transcription_metadata} if msg_type == "audio" else {}),
+                **({"transcription_tags": transcription_metadata.get("tags", [])} if msg_type == "audio" else {}),
+                **({"original_text": "[audio message]"} if msg_type == "audio" else {}),
             },
         )
         await self._dispatch(msg)

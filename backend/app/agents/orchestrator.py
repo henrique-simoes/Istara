@@ -38,6 +38,7 @@ class AgentRole(str, Enum):
     UI_AUDIT = "ui_audit"
     UX_EVALUATION = "ux_evaluation"
     USER_SIMULATION = "user_simulation"
+    DESIGN_LEAD = "design_lead"
 
 
 class AgentState(str, Enum):
@@ -86,6 +87,7 @@ _ROLE_AGENT_IDS = {
     AgentRole.UI_AUDIT: "istara-ui-audit",
     AgentRole.UX_EVALUATION: "istara-ux-eval",
     AgentRole.USER_SIMULATION: "istara-sim",
+    AgentRole.DESIGN_LEAD: "design-lead",
 }
 
 # Short fallback prompts (used only if persona MD files are missing)
@@ -95,6 +97,7 @@ _FALLBACK_PROMPTS = {
     AgentRole.UI_AUDIT: "You are Pixel, the UI audit agent. You evaluate interfaces against Nielsen's heuristics and WCAG 2.2 AA standards.",
     AgentRole.UX_EVALUATION: "You are Sage, the UX evaluation agent. You evaluate the end-to-end experience from a human-centered design perspective.",
     AgentRole.USER_SIMULATION: "You are Echo, the user simulation agent. You rigorously test the platform by simulating realistic research workflows.",
+    AgentRole.DESIGN_LEAD: "You are Piper, the Design Lead agent. You translate research findings into grounded interface designs and prototypes.",
 }
 
 
@@ -137,6 +140,7 @@ class MetaOrchestrator:
             AgentRole.UI_AUDIT: "Pixel",
             AgentRole.UX_EVALUATION: "Sage",
             AgentRole.USER_SIMULATION: "Echo",
+            AgentRole.DESIGN_LEAD: "Piper",
         }
         for role in AgentRole:
             agent_id = _ROLE_AGENT_IDS.get(role, f"istara-{role.value}")
@@ -380,6 +384,15 @@ class MetaOrchestrator:
                                     task.id,
                                     routing.get("specialties_needed", []),
                                 )
+                                try:
+                                    from dataclasses import asdict
+                                    from app.core.improvement_governance import improvement_governance
+
+                                    await improvement_governance.register_agent_creation_proposal(
+                                        asdict(proposal)
+                                    )
+                                except Exception:
+                                    pass
                                 logger.info(
                                     f"Agent creation proposed: {proposal.proposed_name}"
                                 )

@@ -27,7 +27,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
 from starlette.websockets import WebSocket
 
-from app.config import settings
+from app.config import Settings, settings
 
 logger = logging.getLogger(__name__)
 
@@ -49,11 +49,51 @@ EXEMPT_PREFIXES = (
 )
 
 
+WILDCARD_BIND_HOSTS = {"0.0.0.0", "::", "[::]", ""}
+
+
 def _is_localhost(client_host: str | None) -> bool:
     """Check if the request is from localhost."""
     if not client_host:
         return False
     return client_host in ("127.0.0.1", "::1", "localhost")
+
+
+def _is_wildcard_bind(bind_host: str | None) -> bool:
+    """Return True when the configured bind host exposes the API to the network."""
+    if bind_host is None:
+        return False
+    return bind_host.strip().lower() in WILDCARD_BIND_HOSTS
+
+
+def requires_local_admin_network_guard(config: Settings = settings) -> bool:
+    """Detect the unsafe local-mode combination that needs an outer guard.
+
+    Local mode intentionally grants a built-in admin identity for desktop use.
+    That contract is only safe when the API is reachable from localhost or when
+    a network access token is configured for remote clients.
+    """
+    return (
+        not config.team_mode
+        and not config.network_access_token
+        and _is_wildcard_bind(config.bind_host)
+    )
+
+
+def remote_local_admin_block_reason(client_host: str | None, path: str) -> str | None:
+    """Return a denial reason when a remote request would receive local admin."""
+    if not requires_local_admin_network_guard():
+        return None
+    if _is_localhost(client_host):
+        return None
+    if path in {"/api/health", "/api/settings/status", "/api/auth/team-status"}:
+        return None
+    if path.startswith(EXEMPT_PREFIXES):
+        return None
+    return (
+        "Local mode is bound to a network interface without NETWORK_ACCESS_TOKEN. "
+        "Remote requests are denied to prevent implicit local-admin access."
+    )
 
 
 def _extract_token(request: Request) -> str | None:
@@ -79,22 +119,34 @@ def _extract_token(request: Request) -> str | None:
 class NetworkSecurityMiddleware(BaseHTTPMiddleware):
     """Middleware that enforces access token for non-localhost requests.
 
-    Activated when NETWORK_ACCESS_TOKEN is set in .env.
-    Disabled when empty (backward-compatible — existing setups unaffected).
+    Activated when NETWORK_ACCESS_TOKEN is set in .env, or when local mode is
+    bound to a wildcard interface without a token.
     """
 
     async def dispatch(self, request: Request, call_next):
-        # Skip if no network token configured (backward-compatible)
+        client_host = request.client.host if request.client else None
+        path = request.url.path
+
+        local_admin_denial = remote_local_admin_block_reason(client_host, path)
+        if local_admin_denial:
+            logger.warning(
+                "Network access denied: %s %s from %s (%s)",
+                request.method, path, client_host, local_admin_denial,
+            )
+            return JSONResponse(
+                status_code=403,
+                content={"detail": local_admin_denial},
+            )
+
+        # Skip if no network token configured and no unsafe local-admin exposure.
         if not settings.network_access_token:
             return await call_next(request)
 
         # Always allow localhost
-        client_host = request.client.host if request.client else None
         if _is_localhost(client_host):
             return await call_next(request)
 
         # Always allow exempt paths
-        path = request.url.path
         if path in EXEMPT_PATHS:
             return await call_next(request)
         if path.startswith(EXEMPT_PREFIXES):
@@ -125,10 +177,22 @@ def check_websocket_network_token(ws: WebSocket) -> bool:
     Call this at the start of WebSocket endpoints for non-localhost clients.
     Returns True if access is allowed, False if denied.
     """
+    client_host = ws.client.host if ws.client else None
+    local_admin_denial = remote_local_admin_block_reason(
+        client_host,
+        ws.url.path if ws.url else "",
+    )
+    if local_admin_denial:
+        logger.warning(
+            "WebSocket access denied from %s (%s)",
+            client_host,
+            local_admin_denial,
+        )
+        return False
+
     if not settings.network_access_token:
         return True  # No token configured — allow all
 
-    client_host = ws.client.host if ws.client else None
     if _is_localhost(client_host):
         return True  # Localhost always allowed
 
