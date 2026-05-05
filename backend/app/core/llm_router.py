@@ -16,6 +16,7 @@ from dataclasses import dataclass, field
 
 from app.core.compute_registry import compute_registry
 
+
 @dataclass
 class LLMServerEntry:
     """A registered LLM server (kept for backward compat with startup code).
@@ -48,6 +49,7 @@ class LLMServerEntry:
             self.last_latency_ms = node.latency_ms
             self.available_models = node.loaded_models
             self.model_capabilities = node.model_capabilities
+            self.provider_type = node.provider_type
             return result
         return False
 
@@ -64,8 +66,8 @@ class LLMServerEntry:
         if node:
             await node.close()
 
+
 # The router IS the registry — all methods (chat, chat_stream, embed,
 # check_all_health, register_server, _servers, health, etc.) are
 # provided by ComputeRegistry.
 llm_router = compute_registry
-

@@ -9,7 +9,8 @@
   },
   "scripts": {
     "start": "node index.mjs",
-    "dev": "node index.mjs --server ws://localhost:8000/ws/relay"
+    "dev": "node index.mjs --server ws://localhost:8000/ws/relay",
+    "test": "node --test \"lib/**/*.test.mjs\""
   },
   "dependencies": {
     "ws": "^8.16.0",

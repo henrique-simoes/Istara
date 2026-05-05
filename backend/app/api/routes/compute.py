@@ -3,14 +3,20 @@
 import json
 import logging
 import uuid
+from urllib.parse import urlparse, urlunparse
 
 from fastapi import APIRouter, Request, WebSocket, WebSocketDisconnect
 
-from app.core.compute_registry import ComputeNode, compute_registry
+from app.core.compute_registry import ComputeNode, compute_registry, infer_provider_type
 from app.core.security_middleware import require_admin_from_request
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+
+def _infer_relay_provider_type(provider_host: str, requested_provider: str | None) -> str:
+    """Infer the safest provider contract for a relay donor's advertised host."""
+    return infer_provider_type(requested_provider, provider_host)
 
 
 @router.get("/compute/nodes")
@@ -105,21 +111,22 @@ async def relay_websocket(ws: WebSocket):
                 ip_addr = msg.get("ip_address", "") or (ws.client.host if ws.client else "")
                 resolved_host = provider_host
                 if ip_addr and provider_host:
-                    from urllib.parse import urlparse, urlunparse
                     parsed = urlparse(provider_host)
                     if parsed.hostname in ("localhost", "127.0.0.1", "::1"):
                         netloc = f"{ip_addr}:{parsed.port}" if parsed.port else ip_addr
                         resolved_host = urlunparse(parsed._replace(netloc=netloc))
-                        logger.info(
-                            f"Relay host resolved: {provider_host} -> {resolved_host}"
-                        )
+                        logger.info(f"Relay host resolved: {provider_host} -> {resolved_host}")
+                provider_type = _infer_relay_provider_type(
+                    resolved_host or provider_host,
+                    msg.get("provider_type"),
+                )
 
                 node = ComputeNode(
                     node_id=node_id,
                     name=f"Relay: {msg.get('hostname', 'unknown')}",
                     host=resolved_host,
                     source="browser" if msg.get("user_id") == "browser" else "relay",
-                    provider_type=msg.get("provider_type", "ollama"),
+                    provider_type=provider_type,
                     is_relay=True,
                     is_healthy=True,
                     health_state="ready",
@@ -146,17 +153,14 @@ async def relay_websocket(ws: WebSocket):
                 if resolved_host:
                     try:
                         from app.core.model_capabilities import (
-                            detect_capabilities_lmstudio,
-                            detect_capabilities_ollama,
+                            detect_capabilities_generic,
                         )
-                        ptype = msg.get("provider_type", "ollama")
-                        if ptype == "ollama":
-                            caps = await detect_capabilities_ollama(resolved_host)
-                        else:
-                            caps = await detect_capabilities_lmstudio(resolved_host)
-                        node.model_capabilities = {
-                            k: v.to_dict() for k, v in caps.items()
-                        }
+
+                        caps = await detect_capabilities_generic(
+                            resolved_host,
+                            provider_type=provider_type,
+                        )
+                        node.model_capabilities = {k: v.to_dict() for k, v in caps.items()}
                         logger.info(
                             f"Relay capabilities detected immediately: "
                             f"{len(node.model_capabilities)} models"

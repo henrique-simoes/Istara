@@ -4,7 +4,7 @@ import asyncio
 
 import httpx
 import pytest
-from app.api.routes.compute import relay_websocket
+from app.api.routes.compute import _infer_relay_provider_type, relay_websocket
 from app.config import settings
 from app.core.auth import create_token
 from app.core.compute_registry import ComputeNode, ComputeRegistry, compute_registry
@@ -279,6 +279,48 @@ def test_openai_compatible_endpoint_paths_respect_provider_base_url():
     assert explicit_v1._openai_endpoint("models") == "models"
 
 
+def test_relay_provider_inference_preserves_openai_compatible_contracts():
+    assert _infer_relay_provider_type("http://10.0.10.142:1234", None) == "lmstudio"
+    assert _infer_relay_provider_type("http://10.0.10.142:1234", "ollama") == "lmstudio"
+    assert _infer_relay_provider_type("http://example.test:9999/v1", "ollama") == ("openai_compat")
+    assert _infer_relay_provider_type("http://10.0.10.142:11434", None) == "ollama"
+    assert (
+        _infer_relay_provider_type(
+            "https://generativelanguage.googleapis.com/v1beta/openai/",
+            "ollama",
+        )
+        == "gemini_openai"
+    )
+
+
+def test_register_node_skips_lower_priority_duplicate_provider_mismatch():
+    registry = ComputeRegistry()
+    lmstudio = ComputeNode(
+        node_id="lmstudio",
+        name="LM Studio",
+        host="http://10.0.10.142:1234",
+        source="network",
+        provider_type="openai_compat",
+        is_healthy=True,
+        priority=1,
+    )
+    mistaken_ollama = ComputeNode(
+        node_id="ollama-duplicate",
+        name="Mistaken Ollama",
+        host="http://10.0.10.142:1234/v1",
+        source="network",
+        provider_type="ollama",
+        is_healthy=True,
+        priority=5,
+    )
+
+    registry.register_node(lmstudio)
+    registry.register_node(mistaken_ollama)
+
+    assert list(registry._nodes) == ["lmstudio"]
+    assert registry._nodes["lmstudio"].provider_type == "openai_compat"
+
+
 def test_select_candidates_prefers_requested_model_before_score():
     registry = ComputeRegistry()
     fast_wrong_model = ComputeNode(
@@ -376,9 +418,11 @@ class _FailingChatClient:
 class _SuccessfulChatClient:
     def __init__(self):
         self.calls = 0
+        self.paths: list[str] = []
 
     async def post(self, path: str, json: dict):
         self.calls += 1
+        self.paths.append(path)
         return httpx.Response(
             200,
             request=httpx.Request("POST", f"http://test/{path}"),
@@ -439,6 +483,53 @@ async def test_chat_retries_transient_errors_before_fallback(monkeypatch):
     assert primary_client.calls == 5
     assert primary.cb_state == "open"
     assert fallback_client.calls == 1
+    assert fallback_client.paths == ["v1/chat/completions"]
+
+
+class _MislabelledOpenAIHealthClient:
+    def __init__(self):
+        self.paths: list[str] = []
+
+    async def get(self, path: str, timeout: float | None = None):
+        self.paths.append(path)
+        if path == "/api/tags":
+            return httpx.Response(
+                200,
+                request=httpx.Request("GET", "http://test/api/tags"),
+                json={"error": "Unexpected endpoint or method."},
+            )
+        if path == "v1/models":
+            return httpx.Response(
+                200,
+                request=httpx.Request("GET", "http://test/v1/models"),
+                json={"data": [{"id": "qwen3.6-35b-a3b@q5_k_xl"}]},
+            )
+        raise AssertionError(f"unexpected health path {path}")
+
+
+@pytest.mark.asyncio
+async def test_health_check_normalizes_ollama_label_for_openai_compatible_server(
+    monkeypatch,
+):
+    node = ComputeNode(
+        node_id="secondary",
+        name="Secondary",
+        host="http://10.0.10.142:1234",
+        source="network",
+        provider_type="ollama",
+        is_healthy=False,
+    )
+    client = _MislabelledOpenAIHealthClient()
+
+    async def get_client():
+        return client
+
+    monkeypatch.setattr(node, "_get_client", get_client)
+
+    assert await node.check_health() is True
+    assert node.provider_type == "lmstudio"
+    assert node.loaded_models == ["qwen3.6-35b-a3b@q5_k_xl"]
+    assert client.paths == ["v1/models"]
 
 
 @pytest.mark.asyncio
