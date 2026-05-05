@@ -1,5 +1,6 @@
 /** API client for Istara backend. */
 
+import type { DataIntegrityQuarantineRequest, LLMServerCreate, LLMServerUpdate } from "@/lib/apiRequestTypes";
 import type { ReclawDocument, DocumentContent, DocumentTag, DocumentStats, InterfacesStatus, MetaProposal, MetaVariant, MetaHyperagentStatus, ChannelInstance, ChannelMessage, ChannelConversation, ResearchDeployment, DeploymentAnalytics, SurveyIntegration, SurveyLink, MCPServerConfig, MCPAccessPolicy, MCPAuditEntry, AutoresearchStatus, AutoresearchExperiment, AutoresearchConfig, ModelSkillLeaderboard, UXLaw, LawMatch, ComplianceProfile, RadarChartData, FeaturedMCPServer, ReclawUser, ProjectReport, CodebookVersionType, CodeApplicationType, Task, TaskStatus, TaskAtomicPath, TaskQualitySummary, TaskReviewEvent } from "@/lib/types";
 import type { ReasoningMemoryItem, ReasoningBankSummary } from "@/lib/reasoningBankTypes";
 
@@ -162,6 +163,8 @@ export { chat } from "./chatApi";
 // /skills/creation-proposals/{proposal_id}/reject
 // /skills/creation-proposals/{proposal_id}/verify /skills/proposals/{proposal_id}/approve
 // /skills/proposals/{proposal_id}/reject
+// /llm-servers/{server_id} /llm-servers/{server_id}/health-check
+// /settings/data-integrity/quarantine
 
 // --- Validation Metrics ---
 
@@ -520,6 +523,13 @@ export const settings = {
 
 export const dataManagement = {
   checkIntegrity: () => request<any>("/api/settings/data-integrity"),
+  quarantineIntegrity: (dryRun = true) => {
+    const payload: DataIntegrityQuarantineRequest = { dry_run: dryRun };
+    return request<any>("/api/settings/data-integrity/quarantine", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
   exportDatabase: () => request<any>("/api/settings/export-database", { method: "POST" }),
   importDatabase: (data: any) =>
     request<any>("/api/settings/import-database", {
@@ -541,11 +551,11 @@ export const taskLocking = {
 
 export const llmServers = {
   list: () => request<any>("/api/llm-servers"),
-  add: (data: { name: string; provider_type: string; host: string; api_key?: string; priority?: number }) =>
+  add: (data: LLMServerCreate) =>
     post<any>("/api/llm-servers", data),
   healthCheck: (serverId: string) =>
     post<any>(`/api/llm-servers/${serverId}/health-check`, {}),
-  update: (serverId: string, data: Record<string, unknown>) =>
+  update: (serverId: string, data: LLMServerUpdate) =>
     patch<any>(`/api/llm-servers/${serverId}`, data),
   delete: (serverId: string) => del(`/api/llm-servers/${serverId}`),
   discover: () => post<any>("/api/llm-servers/discover", {}),

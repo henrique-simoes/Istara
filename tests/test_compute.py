@@ -2,15 +2,16 @@
 
 import asyncio
 
+import httpx
 import pytest
-from starlette.websockets import WebSocketDisconnect
-from httpx import AsyncClient, ASGITransport
-from app.main import app
+from app.api.routes.compute import relay_websocket
 from app.config import settings
-from app.models.database import init_db
 from app.core.auth import create_token
 from app.core.compute_registry import ComputeNode, ComputeRegistry, compute_registry
-from app.api.routes.compute import relay_websocket
+from app.main import app
+from app.models.database import init_db
+from httpx import ASGITransport, AsyncClient
+from starlette.websockets import WebSocketDisconnect
 
 
 @pytest.fixture(autouse=True)
@@ -335,6 +336,154 @@ def test_select_candidates_strict_model_filters_missing_models():
     candidates = registry._select_candidates(model="llama3", strict_model=True)
 
     assert [node.node_id for node in candidates] == ["requested"]
+
+
+def test_resolve_model_prefers_explicit_capability_over_advertised_fallback():
+    node = ComputeNode(
+        node_id="gemini",
+        name="Gemini",
+        host="https://generativelanguage.googleapis.com/v1beta/openai",
+        source="network",
+        provider_type="gemini_openai",
+        loaded_models=["models/gemini-2.5-flash"],
+        model_capabilities={
+            "gemini-3.1-flash-lite-preview": {
+                "supports_tools": True,
+                "context_length": 32768,
+            }
+        },
+    )
+
+    assert node._resolve_model("gemini-3.1-flash-lite-preview") == ("gemini-3.1-flash-lite-preview")
+
+
+class _FailingChatClient:
+    def __init__(self, status_code: int):
+        self.status_code = status_code
+        self.calls = 0
+
+    async def post(self, path: str, json: dict):
+        self.calls += 1
+        request = httpx.Request("POST", f"http://test/{path}")
+        response = httpx.Response(
+            self.status_code,
+            request=request,
+            json={"error": {"message": "provider overloaded"}},
+        )
+        raise httpx.HTTPStatusError("provider overloaded", request=request, response=response)
+
+
+class _SuccessfulChatClient:
+    def __init__(self):
+        self.calls = 0
+
+    async def post(self, path: str, json: dict):
+        self.calls += 1
+        return httpx.Response(
+            200,
+            request=httpx.Request("POST", f"http://test/{path}"),
+            json={
+                "choices": [
+                    {
+                        "message": {
+                            "role": "assistant",
+                            "content": "fallback answered",
+                        }
+                    }
+                ]
+            },
+        )
+
+
+@pytest.mark.asyncio
+async def test_chat_retries_transient_errors_before_fallback(monkeypatch):
+    registry = ComputeRegistry()
+    primary_client = _FailingChatClient(status_code=503)
+    fallback_client = _SuccessfulChatClient()
+
+    primary = ComputeNode(
+        node_id="gemini",
+        name="Gemini",
+        host="https://generativelanguage.googleapis.com/v1beta/openai",
+        source="network",
+        provider_type="gemini_openai",
+        is_healthy=True,
+        priority=0,
+        loaded_models=["gemini-live"],
+    )
+    fallback = ComputeNode(
+        node_id="secondary",
+        name="Secondary",
+        host="http://10.0.10.142:1234",
+        source="network",
+        provider_type="openai_compat",
+        is_healthy=True,
+        priority=10,
+        loaded_models=["qwen-live"],
+    )
+
+    async def primary_get_client():
+        return primary_client
+
+    async def fallback_get_client():
+        return fallback_client
+
+    monkeypatch.setattr(primary, "_get_client", primary_get_client)
+    monkeypatch.setattr(fallback, "_get_client", fallback_get_client)
+    registry.register_node(primary)
+    registry.register_node(fallback)
+
+    response = await registry.chat([{"role": "user", "content": "hello"}])
+
+    assert response["message"]["content"] == "fallback answered"
+    assert primary_client.calls == 5
+    assert primary.cb_state == "open"
+    assert fallback_client.calls == 1
+
+
+@pytest.mark.asyncio
+async def test_chat_does_not_retry_non_transient_http_errors(monkeypatch):
+    registry = ComputeRegistry()
+    primary_client = _FailingChatClient(status_code=401)
+    fallback_client = _SuccessfulChatClient()
+
+    primary = ComputeNode(
+        node_id="auth-fail",
+        name="Auth Fail",
+        host="https://api.example.com/v1",
+        source="network",
+        provider_type="openai_compat",
+        is_healthy=True,
+        priority=0,
+        loaded_models=["primary"],
+    )
+    fallback = ComputeNode(
+        node_id="fallback",
+        name="Fallback",
+        host="http://localhost:1234",
+        source="local",
+        provider_type="lmstudio",
+        is_healthy=True,
+        priority=10,
+        loaded_models=["fallback"],
+    )
+
+    async def primary_get_client():
+        return primary_client
+
+    async def fallback_get_client():
+        return fallback_client
+
+    monkeypatch.setattr(primary, "_get_client", primary_get_client)
+    monkeypatch.setattr(fallback, "_get_client", fallback_get_client)
+    registry.register_node(primary)
+    registry.register_node(fallback)
+
+    response = await registry.chat([{"role": "user", "content": "hello"}])
+
+    assert response["message"]["content"] == "fallback answered"
+    assert primary_client.calls == 1
+    assert fallback_client.calls == 1
 
 
 def test_record_failure_degrades_before_cooldown():

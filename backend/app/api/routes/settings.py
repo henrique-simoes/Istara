@@ -1,7 +1,7 @@
 """Settings and system info API routes."""
 
 import logging
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
@@ -21,6 +21,10 @@ logger = logging.getLogger(__name__)
 
 class StrictRoutingRequest(BaseModel):
     enabled: bool
+
+
+class DataIntegrityQuarantineRequest(BaseModel):
+    dry_run: bool = True
 
 
 def _persist_env(key: str, value: str) -> None:
@@ -189,7 +193,6 @@ async def switch_model(model_name: str, request: Request):
 async def switch_provider(provider: str, request: Request):
     """Switch the LLM provider at runtime (ollama or lmstudio). Admin only."""
     require_admin_from_request(request)
-    from fastapi import HTTPException
 
     if provider not in ("ollama", "lmstudio"):
         raise HTTPException(status_code=400, detail="Provider must be 'ollama' or 'lmstudio'")
@@ -228,8 +231,8 @@ async def maintenance_pause(reason: str = "testing", request: Request = None):
     for the test runner.
     """
     require_admin_from_request(request)
-    from app.core.resource_governor import governor
     from app.agents.orchestrator import meta_orchestrator
+    from app.core.resource_governor import governor
 
     governor.enter_maintenance(reason)
 
@@ -259,8 +262,8 @@ async def maintenance_resume(request: Request):
     The ResourceGovernor will allow new agent starts and LLM calls again.
     """
     require_admin_from_request(request)
-    from app.core.resource_governor import governor
     from app.agents.orchestrator import meta_orchestrator
+    from app.core.resource_governor import governor
 
     governor.exit_maintenance()
 
@@ -341,6 +344,19 @@ async def check_data_integrity(db: AsyncSession = Depends(get_db)):
     return report
 
 
+@router.post("/settings/data-integrity/quarantine")
+async def quarantine_data_integrity(
+    data: DataIntegrityQuarantineRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Quarantine orphaned runtime artifacts and invalid PDFs. Admin only."""
+    require_admin_from_request(request)
+    from app.core.data_integrity import quarantine_integrity_issues
+
+    return await quarantine_integrity_issues(db, dry_run=data.dry_run)
+
+
 @router.post("/settings/export-database")
 async def export_database(request: Request, db: AsyncSession = Depends(get_db)):
     """Export the entire database to a portable JSON structure. Admin only."""
@@ -373,8 +389,8 @@ async def system_status():
     rather than reading the cached health flag from the 60-second background loop.
     Auto-detects the other provider if the current one is unreachable.
     """
-    from app.core.ollama import auto_detect_provider
     import app.core.ollama as ollama_mod
+    from app.core.ollama import auto_detect_provider
 
     # Re-probe the active provider so the status is always current
     await ollama.check_all_health()
@@ -425,18 +441,17 @@ async def system_status():
 async def telemetry_status(request: Request):
     """Get telemetry configuration and stats."""
     require_admin_from_request(request)
-    from app.core.telemetry_export import export_telemetry
+    from sqlalchemy import func, select
+
     from app.models.database import async_session
-    from sqlalchemy import select, func
-    from app.models.telemetry_span import TelemetrySpan
     from app.models.model_skill_stats import ModelSkillStats
+    from app.models.telemetry_span import TelemetrySpan
 
     try:
         async with async_session() as session:
             total_spans = await session.scalar(select(func.count(TelemetrySpan.id)))
             total_models = await session.scalar(select(func.count(ModelSkillStats.id)))
-            recent_cutoff = datetime.now(timezone.utc) - timedelta(days=1)
-            from sqlalchemy import cast, DateTime
+            recent_cutoff = datetime.now(UTC) - timedelta(days=1)
 
             recent_spans = await session.scalar(
                 select(func.count(TelemetrySpan.id)).where(
