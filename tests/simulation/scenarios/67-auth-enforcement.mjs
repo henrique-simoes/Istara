@@ -8,6 +8,22 @@ export async function run(ctx) {
   const { api } = ctx;
   const checks = [];
 
+  const status = await api.get("/api/settings/status").catch(() => null);
+  if (!status?.team_mode) {
+    return {
+      checks: [
+        {
+          name: "Skip — team mode disabled",
+          passed: false,
+          detail: "JWT enforcement is only active when TEAM_MODE=true",
+        },
+      ],
+      passed: 0,
+      failed: 0,
+      skipped: true,
+    };
+  }
+
   // First, we need to login to get a JWT for authenticated tests
   let jwt = null;
   try {

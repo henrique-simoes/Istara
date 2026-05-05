@@ -10,17 +10,14 @@ compliance, debugging, and research audit requirements.
 
 import time
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import Request, Response
+from sqlalchemy import DateTime, Float, Integer, String, Text
+from sqlalchemy.orm import Mapped, mapped_column
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
-from starlette.types import ASGIApp
 
 from app.models.database import Base, async_session
-from app.models.database import engine as async_engine
-
-from sqlalchemy import Column, String, Integer, Float, DateTime, Text
-from sqlalchemy.orm import Mapped, mapped_column
 
 
 class AuditLog(Base):
@@ -30,7 +27,7 @@ class AuditLog(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     timestamp: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
     user_id: Mapped[str] = mapped_column(String(36), default="", index=True)
     method: Mapped[str] = mapped_column(String(10), default="")
@@ -71,8 +68,6 @@ async def write_audit_entry(
 ) -> None:
     """Write an audit log entry to the database."""
     try:
-        from sqlalchemy.ext.asyncio import AsyncSession
-
         async with async_session() as session:
             entry = AuditLog(
                 id=str(uuid.uuid4()),
@@ -181,9 +176,11 @@ def get_recent_audit_logs(
     import json
 
     try:
-        from sqlalchemy import select
-        from app.models.database import async_session
         import asyncio
+
+        from sqlalchemy import select
+
+        from app.models.database import async_session
 
         async def _query():
             async with async_session() as session:

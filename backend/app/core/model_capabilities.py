@@ -6,9 +6,9 @@ Detects capabilities from:
 3. Heuristic fallback: parse model name for parameter count, vision, tool support
 """
 
-import re
 import logging
-from dataclasses import dataclass, field
+import re
+from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
 

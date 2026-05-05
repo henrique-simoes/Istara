@@ -7,16 +7,17 @@ from pathlib import Path
 import aiofiles
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.core.file_processor import get_supported_extensions, process_file
+from app.core.keyword_index import KeywordIndex
 from app.core.permissions import get_visible_project_or_404
 from app.core.rag import VectorStore, ingest_chunks
-from app.models.database import get_db, async_session
+from app.models.database import async_session, get_db
 from app.models.document import Document, DocumentSource, DocumentStatus
 from app.models.project import Project
-from sqlalchemy import select
 
 # Media and image extensions that can be uploaded/served but not text-processed
 MEDIA_EXTENSIONS = {
@@ -70,7 +71,9 @@ def _path_within_roots(path: Path, roots: list[Path]) -> bool:
     return False
 
 
-async def _get_project(db: AsyncSession, request: Request, project_id: str, min_role: str = "viewer") -> Project:
+async def _get_project(
+    db: AsyncSession, request: Request, project_id: str, min_role: str = "viewer"
+) -> Project:
     return await get_visible_project_or_404(db, request, project_id, min_role=min_role)  # type: ignore[arg-type]
 
 
@@ -87,16 +90,25 @@ async def _resolve_project_folder(db, project_id: str) -> Path:
     return Path(settings.upload_dir) / project_id
 
 
-async def _resolve_project_file(db: AsyncSession, project: Project, project_id: str, filename: str) -> tuple[Path, Document | None]:
+async def _resolve_project_file(
+    db: AsyncSession, project: Project, project_id: str, filename: str
+) -> tuple[Path, Document | None]:
     safe_name = _safe_filename(filename)
     roots = _project_roots(project, project_id)
     doc_rows = (
-        await db.execute(select(Document).where(Document.project_id == project_id))
-    ).scalars().all()
+        (await db.execute(select(Document).where(Document.project_id == project_id)))
+        .scalars()
+        .all()
+    )
 
     for doc in doc_rows:
         doc_path = Path(doc.file_path or "")
-        if doc_path.name == safe_name and doc_path.exists() and doc_path.is_file() and _path_within_roots(doc_path, roots):
+        if (
+            doc_path.name == safe_name
+            and doc_path.exists()
+            and doc_path.is_file()
+            and _path_within_roots(doc_path, roots)
+        ):
             return doc_path, doc
 
     for root in roots:
@@ -130,9 +142,10 @@ async def upload_file(
     suffix = Path(file.filename or "").suffix.lower()
     all_supported = set(get_supported_extensions()) | MEDIA_EXTENSIONS
     if suffix not in all_supported:
+        supported = ", ".join(sorted(all_supported))
         raise HTTPException(
             status_code=400,
-            detail=f"Unsupported file type: {suffix}. Supported: {', '.join(sorted(all_supported))}",
+            detail=f"Unsupported file type: {suffix}. Supported: {supported}",
         )
 
     # Save file to upload directory
@@ -256,6 +269,7 @@ async def upload_file(
         "total_chars": result.total_chars,
         "pages": result.pages,
         "chunks_indexed": chunks_indexed,
+        "indexing_status": "vector" if chunks_indexed else "keyword_only",
         "threat_level": result.threat_level,
     }
     if result.threats:
@@ -277,7 +291,9 @@ async def _process_audio_background(project_id: str, doc_id: str, file_path: Pat
                 return
 
             transcription = result.metadata.get("transcription", {}) if result.metadata else {}
-            transcription_tags = transcription.get("tags") if isinstance(transcription, dict) else []
+            transcription_tags = (
+                transcription.get("tags") if isinstance(transcription, dict) else []
+            )
             if transcription_tags:
                 doc.set_tags(transcription_tags)
             if transcription:
@@ -335,23 +351,49 @@ async def _process_audio_background(project_id: str, doc_id: str, file_path: Pat
                     agent_id="transcription-pipeline",
                     summary="Audio upload was transcribed, tagged, and stored as a document.",
                     evidence={
-                        "passed": not bool(transcription.get("needs_review")) if isinstance(transcription, dict) else True,
+                        "passed": not bool(transcription.get("needs_review"))
+                        if isinstance(transcription, dict)
+                        else True,
                         "document_id": doc_id,
                         "file_name": file_path.name,
-                        "language": transcription.get("language") if isinstance(transcription, dict) else None,
-                        "requested_language": transcription.get("engine_metadata", {}).get("requested_language") if isinstance(transcription, dict) else None,
-                        "detected_language": transcription.get("engine_metadata", {}).get("detected_language") if isinstance(transcription, dict) else None,
-                        "confidence": transcription.get("confidence") if isinstance(transcription, dict) else None,
-                        "icr_kappa": transcription.get("icr_kappa") if isinstance(transcription, dict) else None,
-                        "icr_confidence": transcription.get("icr_confidence") if isinstance(transcription, dict) else None,
+                        "language": transcription.get("language")
+                        if isinstance(transcription, dict)
+                        else None,
+                        "requested_language": transcription.get("engine_metadata", {}).get(
+                            "requested_language"
+                        )
+                        if isinstance(transcription, dict)
+                        else None,
+                        "detected_language": transcription.get("engine_metadata", {}).get(
+                            "detected_language"
+                        )
+                        if isinstance(transcription, dict)
+                        else None,
+                        "confidence": transcription.get("confidence")
+                        if isinstance(transcription, dict)
+                        else None,
+                        "icr_kappa": transcription.get("icr_kappa")
+                        if isinstance(transcription, dict)
+                        else None,
+                        "icr_confidence": transcription.get("icr_confidence")
+                        if isinstance(transcription, dict)
+                        else None,
                         "tags": transcription_tags,
                     },
                     metrics_after={
-                        "confidence": transcription.get("confidence") if isinstance(transcription, dict) else None,
-                        "icr_kappa": transcription.get("icr_kappa") if isinstance(transcription, dict) else None,
-                        "needs_review": bool(transcription.get("needs_review")) if isinstance(transcription, dict) else False,
+                        "confidence": transcription.get("confidence")
+                        if isinstance(transcription, dict)
+                        else None,
+                        "icr_kappa": transcription.get("icr_kappa")
+                        if isinstance(transcription, dict)
+                        else None,
+                        "needs_review": bool(transcription.get("needs_review"))
+                        if isinstance(transcription, dict)
+                        else False,
                     },
-                    confidence=float(transcription.get("confidence", 0.5)) if isinstance(transcription, dict) else 0.5,
+                    confidence=float(transcription.get("confidence", 0.5))
+                    if isinstance(transcription, dict)
+                    else 0.5,
                     db=db,
                 )
             except Exception:
@@ -360,7 +402,10 @@ async def _process_audio_background(project_id: str, doc_id: str, file_path: Pat
 
     except Exception as e:
         import logging
-        logging.getLogger(__name__).error(f"Background audio processing failed for {file_path}: {e}")
+
+        logging.getLogger(__name__).error(
+            f"Background audio processing failed for {file_path}: {e}"
+        )
         async with async_session() as db:
             doc = await db.get(Document, doc_id)
             if doc:
@@ -377,8 +422,10 @@ async def list_files(project_id: str, request: Request, db: AsyncSession = Depen
     project_roots = _project_roots(project, project_id)
 
     doc_rows = (
-        await db.execute(select(Document).where(Document.project_id == project_id))
-    ).scalars().all()
+        (await db.execute(select(Document).where(Document.project_id == project_id)))
+        .scalars()
+        .all()
+    )
     docs_by_path_name = {Path(doc.file_path or "").name: doc for doc in doc_rows if doc.file_path}
     docs_by_file_name = {doc.file_name: doc for doc in doc_rows if doc.file_name}
 
@@ -409,7 +456,9 @@ async def list_files(project_id: str, request: Request, db: AsyncSession = Depen
                 }
                 if doc:
                     atomic_path = doc.get_atomic_path()
-                    transcription = atomic_path.get("transcription") if isinstance(atomic_path, dict) else None
+                    transcription = (
+                        atomic_path.get("transcription") if isinstance(atomic_path, dict) else None
+                    )
                     if isinstance(transcription, dict):
                         item["transcription_language"] = transcription.get("language")
                         item["transcription_needs_review"] = transcription.get("needs_review")
@@ -464,10 +513,24 @@ async def file_stats(project_id: str, request: Request, db: AsyncSession = Depen
     await _get_project(db, request, project_id, min_role="viewer")
 
     store = VectorStore(project_id)
-    count = await store.count()
+    vector_count = await store.count()
+    keyword_count = await KeywordIndex(project_id).count()
+    if vector_count and keyword_count:
+        indexing_status = "hybrid"
+    elif vector_count:
+        indexing_status = "vector_only"
+    elif keyword_count:
+        indexing_status = "keyword_only"
+    else:
+        indexing_status = "empty"
+
     return {
         "project_id": project_id,
-        "indexed_chunks": count,
+        "indexed_chunks": vector_count,
+        "keyword_chunks": keyword_count,
+        "total_chunks": vector_count,
+        "searchable_chunks": max(vector_count, keyword_count),
+        "indexing_status": indexing_status,
     }
 
 
@@ -486,7 +549,7 @@ async def get_file_content(
 
     # Text-based files: return content directly
     if suffix in {".txt", ".md", ".csv"}:
-        async with aiofiles.open(file_path, "r", errors="replace") as f:
+        async with aiofiles.open(file_path, errors="replace") as f:
             content = await f.read()
         return {"filename": filename, "type": suffix, "content": content, "size": len(content)}
 
@@ -522,7 +585,9 @@ async def get_file_content(
             "document_id": doc.id if doc else None,
             "document_status": doc.status.value if doc and doc.status else None,
             "tags": doc.get_tags() if doc else [],
-            "transcription": atomic_path.get("transcription") if isinstance(atomic_path, dict) else None,
+            "transcription": atomic_path.get("transcription")
+            if isinstance(atomic_path, dict)
+            else None,
         }
 
     return {"filename": filename, "type": suffix, "content": None, "size": 0}

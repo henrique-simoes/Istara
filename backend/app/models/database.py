@@ -125,7 +125,8 @@ async def init_db() -> None:
             "ALTER TABLE users ADD COLUMN recovery_codes_hashed TEXT",
             "ALTER TABLE users ADD COLUMN passkey_enabled BOOLEAN NOT NULL DEFAULT 0",
             "ALTER TABLE users ALTER COLUMN totp_secret TYPE TEXT",
-            # Widen password_hash for Argon2id hashes (SQLite ignores this, but needed for PostgreSQL)
+            # Widen password_hash for Argon2id hashes. SQLite ignores this, but
+            # PostgreSQL needs the larger column for Argon2id hashes.
             "ALTER TABLE users ALTER COLUMN password_hash TYPE VARCHAR(512)",
             # Email encryption support
             "ALTER TABLE users ADD COLUMN email_hash VARCHAR(64)",
@@ -149,9 +150,11 @@ async def init_db() -> None:
             "ALTER TABLE connection_strings ADD COLUMN redeemed_username VARCHAR(255)",
             "ALTER TABLE connection_strings ADD COLUMN redeemed_at DATETIME",
             "ALTER TABLE connection_strings ADD COLUMN last_validated_at DATETIME",
-            "ALTER TABLE connection_strings ADD COLUMN token_type VARCHAR(40) NOT NULL DEFAULT 'user_invite'",
+            "ALTER TABLE connection_strings ADD COLUMN token_type VARCHAR(40) "
+            "NOT NULL DEFAULT 'user_invite'",
             "ALTER TABLE connection_strings ADD COLUMN ws_url VARCHAR(1000) NOT NULL DEFAULT ''",
-            "ALTER TABLE connection_strings ADD COLUMN intended_role VARCHAR(40) NOT NULL DEFAULT 'researcher'",
+            "ALTER TABLE connection_strings ADD COLUMN intended_role VARCHAR(40) "
+            "NOT NULL DEFAULT 'researcher'",
             "ALTER TABLE connection_strings ADD COLUMN connection_string_hash VARCHAR(64)",
             # Scheduler/loops hardening columns for existing installations.
             "ALTER TABLE scheduled_tasks ADD COLUMN is_running BOOLEAN NOT NULL DEFAULT 0",
@@ -161,13 +164,17 @@ async def init_db() -> None:
             "ALTER TABLE scheduled_tasks ADD COLUMN execution_count INTEGER NOT NULL DEFAULT 0",
             "ALTER TABLE scheduled_tasks ADD COLUMN last_status VARCHAR(20) NOT NULL DEFAULT ''",
             # Checkpoint/recovery hardening.
-            "ALTER TABLE task_checkpoints ADD COLUMN agent_state VARCHAR(20) NOT NULL DEFAULT 'idle'",
+            "ALTER TABLE task_checkpoints ADD COLUMN agent_state VARCHAR(20) "
+            "NOT NULL DEFAULT 'idle'",
             # WebAuthn credential metadata and persisted challenge state.
-            "ALTER TABLE webauthn_credentials ADD COLUMN device_type VARCHAR(50) NOT NULL DEFAULT ''",
+            "ALTER TABLE webauthn_credentials ADD COLUMN device_type VARCHAR(50) "
+            "NOT NULL DEFAULT ''",
             "ALTER TABLE webauthn_credentials ADD COLUMN backed_up BOOLEAN NOT NULL DEFAULT 0",
             "ALTER TABLE webauthn_credentials ADD COLUMN user_verified BOOLEAN NOT NULL DEFAULT 0",
-            "ALTER TABLE webauthn_credentials ADD COLUMN last_used_ip VARCHAR(128) NOT NULL DEFAULT ''",
-            "ALTER TABLE webauthn_credentials ADD COLUMN last_used_user_agent VARCHAR(512) NOT NULL DEFAULT ''",
+            "ALTER TABLE webauthn_credentials ADD COLUMN last_used_ip VARCHAR(128) "
+            "NOT NULL DEFAULT ''",
+            "ALTER TABLE webauthn_credentials ADD COLUMN last_used_user_agent VARCHAR(512) "
+            "NOT NULL DEFAULT ''",
         ]
         for ddl in migrations:
             try:

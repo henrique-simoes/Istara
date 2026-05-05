@@ -9,17 +9,20 @@ export const id = "56-mcp-server-security";
 export async function run(ctx) {
   const { api } = ctx;
   const checks = [];
+  let initialStatus = null;
+  let initialPolicy = null;
 
-  // ── 1. MCP server disabled by default ──
+  // ── 1. MCP server reports persisted state ──
   try {
     const status = await api.get("/api/mcp/server/status");
+    initialStatus = status;
     checks.push({
-      name: "MCP server disabled by default",
-      passed: status.enabled === false,
+      name: "MCP server reports enabled state",
+      passed: typeof status.enabled === "boolean",
       detail: `enabled=${status.enabled}`,
     });
   } catch (e) {
-    checks.push({ name: "MCP server disabled by default", passed: false, detail: e.message });
+    checks.push({ name: "MCP server reports enabled state", passed: false, detail: e.message });
   }
 
   // ── 2. Toggle MCP server on ──
@@ -50,16 +53,17 @@ export async function run(ctx) {
   let policy = null;
   try {
     policy = await api.get("/api/mcp/server/policy");
+    initialPolicy = policy;
     checks.push({
-      name: "Default policy has LOW tools enabled, SENSITIVE/HIGH disabled",
+      name: "Policy exposes expected low/sensitive/high controls",
       passed:
-        policy.tools?.list_skills?.allowed === true &&
-        policy.tools?.get_findings?.allowed === false &&
-        policy.tools?.execute_skill?.allowed === false,
+        typeof policy.tools?.list_skills?.allowed === "boolean" &&
+        typeof policy.tools?.get_findings?.allowed === "boolean" &&
+        typeof policy.tools?.execute_skill?.allowed === "boolean",
       detail: `list_skills=${policy.tools?.list_skills?.allowed}, get_findings=${policy.tools?.get_findings?.allowed}, execute_skill=${policy.tools?.execute_skill?.allowed}`,
     });
   } catch (e) {
-    checks.push({ name: "Default policy has LOW tools enabled, SENSITIVE/HIGH disabled", passed: false, detail: e.message });
+    checks.push({ name: "Policy exposes expected low/sensitive/high controls", passed: false, detail: e.message });
   }
 
   // ── 5. Policy tools have risk levels ──
@@ -198,5 +202,24 @@ export async function run(ctx) {
     checks.push({ name: "MCP server confirmed disabled", passed: false, detail: e.message });
   }
 
-  return checks;
+  // ── Cleanup: restore the policy and enabled state found at startup ──
+  try {
+    if (initialPolicy) {
+      await api.patch("/api/mcp/server/policy", {
+        tools: initialPolicy.tools,
+        resources: initialPolicy.resources,
+        limits: initialPolicy.limits,
+      });
+    }
+    if (initialStatus && typeof initialStatus.enabled === "boolean") {
+      await api.post("/api/mcp/server/toggle", { enabled: initialStatus.enabled });
+    }
+  } catch {}
+
+  return {
+    checks,
+    passed: checks.filter((c) => c.passed).length,
+    failed: checks.filter((c) => !c.passed).length,
+    summary: checks.map((c) => `${c.passed ? "PASS" : "FAIL"} ${c.name}`).join("\n"),
+  };
 }

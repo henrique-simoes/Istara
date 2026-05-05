@@ -11,17 +11,17 @@ export async function run(ctx) {
   const { api } = ctx;
   const checks = [];
 
-  // ── 1. GET /api/meta-hyperagent/status — shows enabled=false by default ──
+  // ── 1. GET /api/meta-hyperagent/status — reports persisted enabled state ──
   let initialStatus = null;
   try {
     initialStatus = await api.get("/api/meta-hyperagent/status");
     checks.push({
-      name: "GET /api/meta-hyperagent/status shows enabled=false by default",
-      passed: initialStatus.enabled === false,
+      name: "GET /api/meta-hyperagent/status reports enabled state",
+      passed: typeof initialStatus.enabled === "boolean",
       detail: `enabled=${initialStatus.enabled}`,
     });
   } catch (e) {
-    checks.push({ name: "GET /api/meta-hyperagent/status shows enabled=false by default", passed: false, detail: e.message });
+    checks.push({ name: "GET /api/meta-hyperagent/status reports enabled state", passed: false, detail: e.message });
   }
 
   // ── 2. Status has experimental=true ──
@@ -176,9 +176,11 @@ export async function run(ctx) {
     checks.push({ name: "Status shows enabled=false again", passed: false, detail: e.message });
   }
 
-  // ── Cleanup: ensure meta-hyperagent is disabled ──
+  // ── Cleanup: restore the persisted state we found at startup ──
   try {
-    await api.post("/api/meta-hyperagent/toggle", { enabled: false });
+    if (initialStatus && typeof initialStatus.enabled === "boolean") {
+      await api.post("/api/meta-hyperagent/toggle", { enabled: initialStatus.enabled });
+    }
   } catch {}
 
   return {

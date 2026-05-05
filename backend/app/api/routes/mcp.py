@@ -13,8 +13,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.core.env_persistence import persist_env_value
 from app.core.security_middleware import require_admin_from_request
-from app.models.mcp_server_config import MCPServerConfig
 from app.models.database import get_db
+from app.models.mcp_server_config import MCPServerConfig
 
 router = APIRouter()
 
@@ -78,7 +78,7 @@ async def get_server_status(request: Request, db: AsyncSession = Depends(get_db)
     from app.mcp.server import MCP_AVAILABLE, get_runtime_status
     from app.services.mcp_security import ensure_default_policy, get_exposure_summary
 
-    policy = await ensure_default_policy(db)
+    await ensure_default_policy(db)
     exposure = await get_exposure_summary(db)
     runtime = get_runtime_status()
     return {
@@ -199,7 +199,7 @@ async def update_policy(
     require_admin_from_request(request)
     import json
 
-    from app.services.mcp_security import TOOL_RISK_LEVELS, ensure_default_policy
+    from app.services.mcp_security import ensure_default_policy
 
     policy = await ensure_default_policy(db)
     warnings: list[str] = []
@@ -608,6 +608,7 @@ async def connect_featured_server(
 
     import json
     from pathlib import Path
+
     from app.services.mcp_client_manager import register_server
 
     featured_file = Path(__file__).parent.parent.parent / "knowledge" / "featured_mcp_servers.json"

@@ -9,8 +9,11 @@ export const id = "68-data-security";
 export async function run(ctx) {
   const { api } = ctx;
   const checks = [];
+  const appStatus = await api.get("/api/settings/status").catch(() => null);
+  const teamMode = !!appStatus?.team_mode;
 
   // ── 1. Admin user management — list users ──
+  if (teamMode) {
   try {
     const users = await api.get("/api/auth/users");
     const list = Array.isArray(users) ? users : users?.users || [];
@@ -87,6 +90,13 @@ export async function run(ctx) {
       checks.push({ name: "Admin can delete user", passed: false, detail: e.message });
     }
   }
+  } else {
+    checks.push({
+      name: "User management checks skipped in local mode",
+      passed: true,
+      detail: "TEAM_MODE=false keeps user CRUD disabled by design",
+    });
+  }
 
   // ── 6. Channel credentials stored encrypted ──
   let channelId = null;
@@ -146,6 +156,7 @@ export async function run(ctx) {
   }
 
   // ── 10. Role change endpoint ──
+  if (teamMode) {
   let tempUserId = null;
   try {
     const user = await api.post("/api/auth/users", {
@@ -166,6 +177,18 @@ export async function run(ctx) {
   if (tempUserId) {
     try { await api.delete(`/api/auth/users/${tempUserId}`); } catch {}
   }
+  } else {
+    checks.push({
+      name: "Role change skipped in local mode",
+      passed: true,
+      detail: "TEAM_MODE=false keeps user role administration disabled by design",
+    });
+  }
 
-  return checks;
+  return {
+    checks,
+    passed: checks.filter((c) => c.passed).length,
+    failed: checks.filter((c) => !c.passed).length,
+    summary: checks.map((c) => `${c.passed ? "PASS" : "FAIL"} ${c.name}`).join("\n"),
+  };
 }

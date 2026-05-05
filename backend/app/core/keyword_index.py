@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Optional
 
 import aiosqlite
 
@@ -15,6 +14,7 @@ logger = logging.getLogger(__name__)
 
 class KeywordResult:
     """A single keyword search result."""
+
     def __init__(self, text: str, source: str, page: int, rank: float):
         self.text = text
         self.source = source
@@ -33,12 +33,32 @@ class KeywordIndex:
 
     async def _get_db(self) -> aiosqlite.Connection:
         db = await aiosqlite.connect(self.db_path)
+        await self._migrate_legacy_contentless_table(db)
         await db.execute(
             "CREATE VIRTUAL TABLE IF NOT EXISTS chunks_fts "
-            "USING fts5(text, source, page UNINDEXED, content='', tokenize='porter unicode61')"
+            "USING fts5(text, source UNINDEXED, page UNINDEXED, tokenize='porter unicode61')"
         )
         await db.commit()
         return db
+
+    async def _migrate_legacy_contentless_table(self, db: aiosqlite.Connection) -> None:
+        """Replace legacy contentless FTS tables that cannot return stored fields."""
+        async with db.execute(
+            "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'chunks_fts'"
+        ) as cur:
+            row = await cur.fetchone()
+
+        create_sql = str(row[0]).lower().replace(" ", "") if row and row[0] else ""
+        if "content=''" not in create_sql and 'content=""' not in create_sql:
+            return
+
+        logger.warning(
+            "Migrating legacy contentless keyword index for project %s; "
+            "files may need reprocessing to restore keyword hits.",
+            self.project_id,
+        )
+        await db.execute("DROP TABLE IF EXISTS chunks_fts")
+        await db.commit()
 
     async def add_chunks(self, chunks: list) -> int:
         """Add chunks to the keyword index. chunks should have .text, .source, .page attrs."""
@@ -73,18 +93,18 @@ class KeywordIndex:
             async with db.execute(sql, (f'"{safe_query}"', top_k)) as cur:
                 results = []
                 async for row in cur:
-                    results.append(KeywordResult(
-                        text=row[0], source=row[1], page=row[2], rank=row[3]
-                    ))
+                    results.append(
+                        KeywordResult(text=row[0], source=row[1], page=row[2], rank=row[3])
+                    )
             # If exact phrase match returns nothing, try individual terms
             if not results:
                 terms = " OR ".join(f'"{t}"' for t in query.split() if len(t) > 2)
                 if terms:
                     async with db.execute(sql, (terms, top_k)) as cur:
                         async for row in cur:
-                            results.append(KeywordResult(
-                                text=row[0], source=row[1], page=row[2], rank=row[3]
-                            ))
+                            results.append(
+                                KeywordResult(text=row[0], source=row[1], page=row[2], rank=row[3])
+                            )
             return results
         except Exception as e:
             logger.warning(f"Keyword search failed: {e}")
@@ -96,14 +116,7 @@ class KeywordIndex:
         """Delete all entries from a source file."""
         db = await self._get_db()
         try:
-            # FTS5 content='' tables need special delete handling
-            # We need to rebuild the whole index or use a content table
-            # Simpler approach: use a regular table backing the FTS
-            await db.execute(
-                "INSERT INTO chunks_fts(chunks_fts, text, source, page) "
-                "SELECT 'delete', text, source, page FROM chunks_fts WHERE source = ?",
-                (source,)
-            )
+            await db.execute("DELETE FROM chunks_fts WHERE source = ?", (source,))
             await db.commit()
         except Exception as e:
             logger.warning(f"Keyword index delete failed for {source}: {e}")
