@@ -114,21 +114,38 @@ def _request_origin(request: Request) -> str:
 
 def _cookie_origin_denial(request: Request) -> str | None:
     """Reject unsafe cross-origin requests that rely on the session cookie."""
+    return browser_origin_denial(request, require_cookie_auth=True)
+
+
+def browser_origin_denial(request: Request, *, require_cookie_auth: bool = False) -> str | None:
+    """Reject unsafe browser requests from untrusted origins.
+
+    Non-browser clients often omit Origin, Referer, and Fetch Metadata headers;
+    those remain accepted. Browser requests that declare a cross-site origin, or
+    a cross-site Fetch Metadata context, are denied before a cookie can be used
+    or minted.
+    """
     if request.method.upper() in SAFE_METHODS:
         return None
-    if not request.cookies.get("istara_session"):
+    if require_cookie_auth and not request.cookies.get("istara_session"):
         return None
 
     auth_header = request.headers.get("authorization", "")
-    if auth_header.startswith("Bearer "):
+    if require_cookie_auth and auth_header.startswith("Bearer "):
         return None
+
+    fetch_site = request.headers.get("sec-fetch-site", "").strip().lower()
+    if fetch_site == "cross-site":
+        return "Untrusted browser origin for authentication request."
 
     origin = _request_origin(request)
     if not origin:
         return None
     if origin in _trusted_origins(request):
         return None
-    return "Untrusted browser origin for cookie-authenticated request."
+    if require_cookie_auth:
+        return "Untrusted browser origin for cookie-authenticated request."
+    return "Untrusted browser origin for authentication request."
 
 
 class SecurityAuthMiddleware(BaseHTTPMiddleware):

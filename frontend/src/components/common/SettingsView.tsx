@@ -12,6 +12,7 @@ import GovernedEvolutionView from "@/components/settings/GovernedEvolutionView";
 import DonateComputeToggle from "@/components/common/DonateComputeToggle";
 import PasskeyManager from "@/components/settings/PasskeyManager";
 import TOTPManager from "@/components/settings/TOTPManager";
+import SessionManager from "@/components/settings/SessionManager";
 import { resetAllOnboarding } from "@/hooks/useViewOnboarding";
 
 export default function SettingsView() {
@@ -81,6 +82,9 @@ export default function SettingsView() {
 
       {/* Two-Factor Authentication */}
       <TOTPManager />
+
+      {/* Active Auth Sessions */}
+      <SessionManager />
 
       {/* System Status */}
       <div id="tour-target-system-status" className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
