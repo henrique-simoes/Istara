@@ -51,6 +51,9 @@ from app.api.routes import updates as update_routes
 from app.api.routes import presentation as presentation_routes
 from app.api.routes import webauthn as webauthn_routes
 from app.api.routes import steering as steering_routes
+from app.api.routes import reasoning_bank as reasoning_bank_routes
+from app.api.routes import improvement_governance as improvement_governance_routes
+from app.api.routes import dgmh_archive as dgmh_archive_routes
 from app.api.websocket import router as ws_router
 from app.channels.base import channel_router
 from app.agents.devops_agent import devops_agent
@@ -691,6 +694,11 @@ app.include_router(laws_routes.router, prefix="/api", tags=["Laws of UX"])
 app.include_router(webhook_routes.router, tags=["Webhooks"])
 app.include_router(connection_routes.router, prefix="/api", tags=["Connections"])
 app.include_router(update_routes.router, prefix="/api", tags=["Updates"])
+app.include_router(reasoning_bank_routes.router, prefix="/api", tags=["ReasoningBank"])
+app.include_router(
+    improvement_governance_routes.router, prefix="/api", tags=["Improvement Governance"]
+)
+app.include_router(dgmh_archive_routes.router, prefix="/api", tags=["DGM-H Archive"])
 app.include_router(ws_router)
 
 

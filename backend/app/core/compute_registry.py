@@ -16,14 +16,86 @@ import json
 import logging
 import time
 import uuid
+from collections.abc import AsyncGenerator
 from dataclasses import dataclass, field
-from typing import Any, AsyncGenerator
+from typing import Any
+from urllib.parse import urlparse
 
 import httpx
 
 from app.config import settings
+from app.core.compute_capacity import compute_capacity_envelope, node_capacity_score
 
 logger = logging.getLogger(__name__)
+
+TRANSIENT_HTTP_STATUS_CODES = {408, 409, 425, 429, 500, 502, 503, 504}
+TRANSIENT_CHAT_MAX_ATTEMPTS = 5
+TRANSIENT_CHAT_BASE_DELAY_S = 0.25
+TRANSIENT_CHAT_MAX_DELAY_S = 2.0
+
+
+def infer_provider_type(provider_type: str | None, host: str | None) -> str:
+    """Infer the provider contract from an LLM server URL when the label is ambiguous."""
+    requested = (provider_type or "").strip().lower()
+    if not host:
+        return requested or "openai_compat"
+    if requested and requested != "ollama":
+        return requested
+
+    parsed = urlparse(host if "://" in host else f"http://{host}")
+    path = parsed.path.rstrip("/")
+    hostname = parsed.hostname or ""
+    port = parsed.port
+
+    if "generativelanguage.googleapis.com" in hostname or path.endswith("/openai"):
+        return "gemini_openai"
+    if port == 1234:
+        return "lmstudio"
+    if path.endswith("/v1"):
+        return "openai_compat"
+    if port == 11434:
+        return "ollama"
+    return requested or "openai_compat"
+
+
+def _server_endpoint_identity(host: str) -> tuple[str, str, int | None, str]:
+    """Canonicalize an LLM server endpoint enough to catch accidental duplicates."""
+    parsed = urlparse(host if "://" in host else f"http://{host}")
+    path = parsed.path.rstrip("/")
+    if path == "/v1":
+        path = ""
+    return (
+        (parsed.scheme or "http").lower(),
+        (parsed.hostname or "").lower(),
+        parsed.port,
+        path,
+    )
+
+
+def _openai_model_ids(data: dict) -> list[str]:
+    raw_models = data.get("data")
+    if not isinstance(raw_models, list):
+        return []
+    return [
+        model_id
+        for model in raw_models
+        if isinstance(model, dict)
+        for model_id in [model.get("id")]
+        if isinstance(model_id, str) and model_id.strip()
+    ]
+
+
+def _ollama_model_names(data: dict) -> list[str]:
+    raw_models = data.get("models")
+    if not isinstance(raw_models, list):
+        return []
+    return [
+        name
+        for model in raw_models
+        if isinstance(model, dict)
+        for name in [model.get("name")]
+        if isinstance(name, str) and name.strip()
+    ]
 
 
 @dataclass
@@ -39,7 +111,7 @@ class ComputeNode:
     name: str
     host: str
     source: str  # "local" | "network" | "relay" | "browser"
-    provider_type: str  # "lmstudio" | "ollama" | "openai_compat"
+    provider_type: str  # "lmstudio" | "ollama" | "openai_compat" | "gemini_openai"
 
     # Health
     is_healthy: bool = False
@@ -73,6 +145,7 @@ class ComputeNode:
     priority: int = 10
     latency_ms: float = 0
     active_requests: int = 0
+    max_active_requests: int = 4
     is_local: bool = False
     is_relay: bool = False
 
@@ -93,6 +166,9 @@ class ComputeNode:
     # LLM client (cached)
     _client: Any = None
     api_key: str = ""
+
+    def __post_init__(self) -> None:
+        self.provider_type = infer_provider_type(self.provider_type, self.host)
 
     # --- Backward-compatibility aliases for LLMServerEntry ---
 
@@ -121,18 +197,7 @@ class ComputeNode:
         return self.name
 
     def score(self) -> float:
-        if not self.is_healthy:
-            return -1
-        if self.health_state == "cooldown" and time.time() < self.cooldown_until:
-            return -1
-        s = 100.0
-        s -= self.active_requests * 15
-        if self.latency_ms:
-            s -= min(self.latency_ms / 10, 30)
-        s -= self.priority
-        if self.ram_available_gb:
-            s += min(self.ram_available_gb * 2, 20)
-        return s
+        return node_capacity_score(self)
 
     def is_alive(self, timeout: float = 90) -> bool:
         """Backward compat with RelayNode.is_alive()."""
@@ -185,7 +250,7 @@ class ComputeNode:
 
     async def _get_client(self) -> httpx.AsyncClient:
         """Get or create an HTTP client for this node.
-        
+
         Enforces RFC 3986 trailing-slash normalization for base_url to ensure
         OpenAI-compatible relative path joining.
         """
@@ -193,14 +258,35 @@ class ComputeNode:
             headers = {}
             if self.api_key:
                 headers["Authorization"] = f"Bearer {self.api_key}"
-            
+
             # RFC 3986: Ensure base_url ends with slash for correct relative joining
             normalized_host = self.host
             if not normalized_host.endswith("/"):
                 normalized_host += "/"
-                
-            self._client = httpx.AsyncClient(base_url=normalized_host, timeout=300.0, headers=headers)
+
+            self._client = httpx.AsyncClient(
+                base_url=normalized_host, timeout=300.0, headers=headers
+            )
         return self._client
+
+    def _openai_endpoint(self, suffix: str) -> str:
+        """Return a relative OpenAI-compatible endpoint for this node's base URL.
+
+        Local LM Studio commonly exposes endpoints under `/v1/*`, while Google
+        Gemini's OpenAI-compatible base URL already includes `/v1beta/openai/`.
+        Keeping the path relative preserves any provider-specific base path.
+        """
+        clean_suffix = suffix.lstrip("/")
+        parsed = urlparse(self.host)
+        base_path = parsed.path.rstrip("/")
+        if (
+            self.provider_type == "gemini_openai"
+            or "generativelanguage.googleapis.com" in (parsed.hostname or "")
+            or base_path.endswith("/openai")
+            or base_path.endswith("/v1")
+        ):
+            return clean_suffix
+        return f"v1/{clean_suffix}"
 
     async def close(self) -> None:
         """Close the HTTP client."""
@@ -232,7 +318,7 @@ class ComputeNode:
         )
         try:
             response = await asyncio.wait_for(future, timeout=self.relay_request_timeout_s)
-        except asyncio.TimeoutError as exc:
+        except TimeoutError as exc:
             self.health_error = f"Relay request timed out after {self.relay_request_timeout_s:.0f}s"
             raise RuntimeError(self.health_error) from exc
         finally:
@@ -254,27 +340,62 @@ class ComputeNode:
             start = time.time()
             if self.provider_type == "ollama":
                 resp = await client.get("/api/tags", timeout=10.0)
+                self.latency_ms = (time.time() - start) * 1000
+                if resp.status_code == 200:
+                    try:
+                        data = resp.json()
+                        self.loaded_models = _ollama_model_names(data)
+                    except Exception:
+                        self.loaded_models = []
+                    if self.loaded_models:
+                        self.is_healthy = True
+                        self.health_state = "ready"
+                        self.health_error = ""
+                        self.consecutive_failures = 0
+                        self.last_health_check = time.time()
+                        return True
+
+                # A common misconfiguration is saving an LM Studio/OpenAI-compatible
+                # server as Ollama. LM Studio may return 200 for unknown paths, so a
+                # status-only check would keep routing the wrong endpoint forever.
+                openai_start = time.time()
+                openai_resp = await client.get(self._openai_endpoint("models"), timeout=10.0)
+                self.latency_ms = (time.time() - openai_start) * 1000
+                if openai_resp.status_code == 200:
+                    try:
+                        data = openai_resp.json()
+                        self.loaded_models = _openai_model_ids(data)
+                    except Exception:
+                        self.loaded_models = []
+                    if self.loaded_models:
+                        self.provider_type = "openai_compat"
+                        self.is_healthy = True
+                        self.health_state = "ready"
+                        self.health_error = ""
+                        self.consecutive_failures = 0
+                        self.last_health_check = time.time()
+                        logger.info(
+                            "ComputeRegistry: corrected %s provider from ollama to "
+                            "openai_compat after /v1/models succeeded.",
+                            self.name,
+                        )
+                        return True
+                resp = openai_resp
             else:
-                resp = await client.get("/v1/models", timeout=10.0)
+                resp = await client.get(self._openai_endpoint("models"), timeout=10.0)
             self.latency_ms = (time.time() - start) * 1000
             self.is_healthy = resp.status_code == 200
             if self.is_healthy:
                 try:
                     data = resp.json()
                     if self.provider_type == "ollama":
-                        raw_models = data.get("models", []) if isinstance(data, dict) else []
-                        self.loaded_models = [
-                            m.get("name", "")
-                            for m in raw_models
-                            if isinstance(m, dict) and m.get("name")
-                        ]
+                        self.loaded_models = (
+                            _ollama_model_names(data) if isinstance(data, dict) else []
+                        )
                     else:
-                        raw_models = data.get("data", []) if isinstance(data, dict) else []
-                        self.loaded_models = [
-                            m.get("id", "")
-                            for m in raw_models
-                            if isinstance(m, dict) and m.get("id")
-                        ]
+                        self.loaded_models = (
+                            _openai_model_ids(data) if isinstance(data, dict) else []
+                        )
                 except Exception:
                     self.loaded_models = []
                 if self.loaded_models:
@@ -324,6 +445,8 @@ class ComputeNode:
         non_embed = [m for m in models if "embed" not in m.lower()]
 
         if model and model != "default":
+            if model in self.model_capabilities:
+                return model
             if models and model not in models:
                 if non_embed:
                     return non_embed[0]
@@ -371,7 +494,7 @@ class ComputeNode:
                     "max_tokens": max_tokens,
                     "tools": tools,
                     "response_format": response_format,
-                }
+                },
             )
             return response.get("result", {})
 
@@ -401,7 +524,7 @@ class ComputeNode:
                 payload["max_tokens"] = max_tokens
             if tools:
                 payload["tools"] = tools
-            resp = await client.post("/v1/chat/completions", json=payload)
+            resp = await client.post(self._openai_endpoint("chat/completions"), json=payload)
             resp.raise_for_status()
             data = resp.json()
             choice = data["choices"][0]
@@ -483,7 +606,7 @@ class ComputeNode:
             tool_call_mode = False
 
             async with client.stream(
-                "POST", "/v1/chat/completions", json=payload, timeout=None
+                "POST", self._openai_endpoint("chat/completions"), json=payload, timeout=None
             ) as resp:
                 resp.raise_for_status()
                 async for line in resp.aiter_lines():
@@ -560,7 +683,10 @@ class ComputeNode:
             embeddings = resp.json().get("embeddings", [])
             return embeddings[0] if embeddings else []
         else:
-            resp = await client.post("/v1/embeddings", json={"model": embed_model, "input": text})
+            resp = await client.post(
+                self._openai_endpoint("embeddings"),
+                json={"model": embed_model, "input": text},
+            )
             resp.raise_for_status()
             items = resp.json().get("data", [])
             return items[0].get("embedding", []) if items else []
@@ -586,7 +712,10 @@ class ComputeNode:
             resp.raise_for_status()
             return resp.json().get("embeddings", [])
         else:
-            resp = await client.post("/v1/embeddings", json={"model": embed_model, "input": texts})
+            resp = await client.post(
+                self._openai_endpoint("embeddings"),
+                json={"model": embed_model, "input": texts},
+            )
             resp.raise_for_status()
             return [item.get("embedding", []) for item in resp.json().get("data", [])]
 
@@ -651,10 +780,7 @@ class ComputeRegistry:
 
     def has_available_node(self) -> bool:
         """Check if at least one compute node is available for LLM calls."""
-        for node in self._nodes.values():
-            if node.is_healthy and node.cb_is_available():
-                return True
-        return False
+        return bool(self._select_candidates())
 
     async def broadcast_llm_status(self, status: str, detail: str = "") -> None:
         """Broadcast LLM availability changes to frontend."""
@@ -671,6 +797,38 @@ class ComputeRegistry:
 
     def register_node(self, node: ComputeNode) -> None:
         """Register a ComputeNode."""
+        if node.host:
+            new_identity = _server_endpoint_identity(node.host)
+            for existing_id, existing in list(self._nodes.items()):
+                if existing_id == node.node_id or not existing.host:
+                    continue
+                if _server_endpoint_identity(existing.host) != new_identity:
+                    continue
+                if (
+                    existing.provider_type != node.provider_type
+                    and existing.priority <= node.priority
+                ):
+                    logger.info(
+                        "ComputeRegistry: skipped duplicate node '%s' (%s @ %s); "
+                        "existing node '%s' already owns that endpoint as %s.",
+                        node.name,
+                        node.provider_type,
+                        node.host,
+                        existing.name,
+                        existing.provider_type,
+                    )
+                    return
+                if existing.provider_type != node.provider_type:
+                    removed = self._nodes.pop(existing_id, None)
+                    if removed:
+                        asyncio.ensure_future(removed.close())
+                        logger.info(
+                            "ComputeRegistry: replaced duplicate node '%s' (%s) with '%s' (%s).",
+                            removed.name,
+                            removed.provider_type,
+                            node.name,
+                            node.provider_type,
+                        )
         if not node.connected_at:
             node.connected_at = time.time()
         if not node.last_heartbeat:
@@ -788,7 +946,8 @@ class ComputeRegistry:
                         caps = await detect_capabilities_generic(
                             node.host, api_key=node.api_key, provider_type=node.provider_type
                         )
-                        node.model_capabilities = {k: v.to_dict() for k, v in caps.items()}
+                        detected = {k: v.to_dict() for k, v in caps.items()}
+                        node.model_capabilities = {**node.model_capabilities, **detected}
                         logger.info(
                             f"Detected capabilities for relay {node.name}: "
                             f"{len(node.model_capabilities)} models"
@@ -809,7 +968,8 @@ class ComputeRegistry:
                     caps = await detect_capabilities_generic(
                         node.host, api_key=node.api_key, provider_type=node.provider_type
                     )
-                    node.model_capabilities = {k: v.to_dict() for k, v in caps.items()}
+                    detected = {k: v.to_dict() for k, v in caps.items()}
+                    node.model_capabilities = {**node.model_capabilities, **detected}
 
                     # Sync detected context window to global config
                     for model_name, cap in caps.items():
@@ -912,6 +1072,8 @@ class ComputeRegistry:
         require_tools: bool = False,
         require_vision: bool = False,
         min_context: int = 0,
+        model: str | None = None,
+        strict_model: bool = False,
     ) -> list[ComputeNode]:
         """Get candidate nodes sorted by score, filtered by capabilities and circuit breaker."""
         candidates = [n for n in self._nodes.values() if n.score() > 0 and n.cb_is_available()]
@@ -939,8 +1101,87 @@ class ComputeRegistry:
             if vision_capable:
                 candidates = vision_capable
 
+        if min_context > 0 and candidates:
+            context_capable = [
+                n
+                for n in candidates
+                if any(
+                    c.get("context_length", 0) >= min_context for c in n.model_capabilities.values()
+                )
+            ]
+            if context_capable:
+                candidates = context_capable
+
+        requested_model = (model or "").strip()
+        if requested_model and requested_model != "default" and candidates:
+            model_capable = [n for n in candidates if self._node_supports_model(n, requested_model)]
+            if strict_model:
+                candidates = model_capable
+            elif model_capable:
+                capable_ids = {n.node_id for n in model_capable}
+                candidates.sort(
+                    key=lambda n: (
+                        0 if n.node_id in capable_ids else 1,
+                        -n.score(),
+                    )
+                )
+                return candidates
+
         candidates.sort(key=lambda n: n.score(), reverse=True)
         return candidates
+
+    @staticmethod
+    def _model_aliases(model: str) -> set[str]:
+        base = model.strip()
+        aliases = {base}
+        if base.endswith(":latest"):
+            aliases.add(base.removesuffix(":latest"))
+        elif ":" not in base:
+            aliases.add(f"{base}:latest")
+        return aliases
+
+    @classmethod
+    def _node_supports_model(cls, node: ComputeNode, model: str) -> bool:
+        aliases = cls._model_aliases(model)
+        loaded = {str(m).strip() for m in node.loaded_models if str(m).strip()}
+        capability_keys = {str(m).strip() for m in node.model_capabilities.keys() if str(m).strip()}
+        advertised = loaded | capability_keys
+        return bool(advertised and advertised.intersection(aliases))
+
+    @staticmethod
+    def _record_success(node: ComputeNode) -> None:
+        node.consecutive_failures = 0
+        node.health_state = "ready"
+        node.health_error = ""
+        node.is_healthy = True
+        node.cb_record_success()
+
+    @staticmethod
+    def _record_failure(node: ComputeNode, error: Exception) -> None:
+        node.consecutive_failures += 1
+        node.health_error = str(error)[:200] if str(error) else "Request failed"
+        node.cb_record_failure()
+        if node.consecutive_failures >= 3:
+            node.health_state = "cooldown"
+            node.cooldown_until = time.time() + 60
+            node.is_healthy = False
+        else:
+            node.health_state = "degraded"
+
+    @staticmethod
+    def _is_transient_error(error: Exception) -> bool:
+        """Return true for provider/network failures that are worth retrying."""
+        if isinstance(error, (httpx.TimeoutException, httpx.NetworkError, TimeoutError)):
+            return True
+        response = getattr(error, "response", None)
+        status_code = getattr(response, "status_code", None)
+        return status_code in TRANSIENT_HTTP_STATUS_CODES
+
+    @staticmethod
+    def _retry_delay(attempt: int) -> float:
+        """Small bounded exponential backoff between live-provider retries."""
+        delay = TRANSIENT_CHAT_BASE_DELAY_S * (2 ** max(0, attempt - 1))
+        return min(delay, TRANSIENT_CHAT_MAX_DELAY_S)
 
     @staticmethod
     def _sanitize_messages(messages: list[dict]) -> list[dict]:
@@ -999,94 +1240,127 @@ class ComputeRegistry:
             msgs = [{"role": "system", "content": system}, *msgs]
         msgs = self._sanitize_messages(msgs)
 
-        for node in self._sorted_servers(require_tools=bool(tools)):
-            if not node.is_healthy:
-                continue
+        for node in self._select_candidates(
+            require_tools=bool(tools),
+            model=model,
+            strict_model=settings.strict_auto_routing,
+        ):
             resolved_model = node._resolve_model(model)
             logger.info(
                 f"ComputeRegistry: routing chat to {node.name} ({node.host}) model={resolved_model}"
             )
             node.active_requests += 1
             try:
-                if node.source in ("relay", "browser") and node.websocket:
-                    data = await node.chat(
-                        msgs,
-                        model=resolved_model,
-                        temperature=temperature,
-                        max_tokens=max_tokens,
-                        tools=tools,
-                        response_format=response_format,
-                    )
-                    node.consecutive_failures = 0
-                    node.health_state = "ready"
-                    node.cb_record_success()
-                    return data
+                for attempt in range(1, TRANSIENT_CHAT_MAX_ATTEMPTS + 1):
+                    try:
+                        if node.source in ("relay", "browser") and node.websocket:
+                            data = await node.chat(
+                                msgs,
+                                model=resolved_model,
+                                temperature=temperature,
+                                max_tokens=max_tokens,
+                                tools=tools,
+                                response_format=response_format,
+                            )
+                            self._record_success(node)
+                            return data
 
-                client = await node._get_client()
+                        client = await node._get_client()
 
-                if node.provider_type == "ollama":
-                    options: dict = {"temperature": temperature}
-                    if max_tokens:
-                        options["num_predict"] = max_tokens
-                    payload = {
-                        "model": resolved_model,
-                        "messages": msgs,
-                        "stream": False,
-                        "options": options,
-                    }
-                    resp = await client.post("/api/chat", json=payload)
-                    resp.raise_for_status()
-                    data = resp.json()
-                    node.consecutive_failures = 0
-                    node.health_state = "ready"
-                    node.cb_record_success()
-                    return data
-                else:
-                    payload = {
-                        "model": resolved_model,
-                        "messages": msgs,
-                        "temperature": temperature,
-                        "stream": False,
-                    }
-                    if max_tokens:
-                        payload["max_tokens"] = max_tokens
-                    if tools:
-                        payload["tools"] = tools
-                    resp = await client.post("/v1/chat/completions", json=payload)
-                    resp.raise_for_status()
-                    data = resp.json()
+                        if node.provider_type == "ollama":
+                            options: dict = {"temperature": temperature}
+                            if max_tokens:
+                                options["num_predict"] = max_tokens
+                            payload = {
+                                "model": resolved_model,
+                                "messages": msgs,
+                                "stream": False,
+                                "options": options,
+                            }
+                            resp = await client.post("/api/chat", json=payload)
+                            resp.raise_for_status()
+                            data = resp.json()
+                            self._record_success(node)
+                            return data
 
-                    choice = data["choices"][0]
-                    message = choice["message"]
-
-                    result: dict = {
-                        "message": {
-                            "role": "assistant",
-                            "content": message.get("content") or "",
+                        payload = {
+                            "model": resolved_model,
+                            "messages": msgs,
+                            "temperature": temperature,
+                            "stream": False,
                         }
-                    }
-                    if message.get("tool_calls"):
-                        result["message"]["tool_calls"] = message["tool_calls"]
-                        result["finish_reason"] = choice.get("finish_reason", "tool_calls")
+                        if max_tokens:
+                            payload["max_tokens"] = max_tokens
+                        if tools:
+                            payload["tools"] = tools
+                        resp = await client.post(
+                            node._openai_endpoint("chat/completions"),
+                            json=payload,
+                        )
+                        resp.raise_for_status()
+                        data = resp.json()
 
-                    node.consecutive_failures = 0
-                    node.health_state = "ready"
-                    node.cb_record_success()
-                    return result
+                        choice = data["choices"][0]
+                        message = choice["message"]
+
+                        result: dict = {
+                            "message": {
+                                "role": "assistant",
+                                "content": message.get("content") or "",
+                            }
+                        }
+                        if message.get("tool_calls"):
+                            result["message"]["tool_calls"] = message["tool_calls"]
+                            result["finish_reason"] = choice.get("finish_reason", "tool_calls")
+
+                        self._record_success(node)
+                        return result
+                    except Exception as e:
+                        self._record_failure(node, e)
+                        transient = self._is_transient_error(e)
+                        if attempt < TRANSIENT_CHAT_MAX_ATTEMPTS and transient:
+                            delay = self._retry_delay(attempt)
+                            logger.warning(
+                                "ComputeRegistry: transient chat failure on %s "
+                                "(attempt %s/%s); retrying in %.2fs: %s",
+                                node.name,
+                                attempt,
+                                TRANSIENT_CHAT_MAX_ATTEMPTS,
+                                delay,
+                                e,
+                            )
+                            await asyncio.sleep(delay)
+                            continue
+
+                        if hasattr(e, "response") and hasattr(e.response, "text"):
+                            logger.warning(
+                                "ComputeRegistry: chat failed on %s after %s attempt(s): "
+                                "%s | Body: %s",
+                                node.name,
+                                attempt,
+                                e,
+                                e.response.text,
+                            )
+                        else:
+                            logger.warning(
+                                "ComputeRegistry: chat failed on %s after %s attempt(s): %s",
+                                node.name,
+                                attempt,
+                                e,
+                            )
+                        break
 
             except Exception as e:
                 if hasattr(e, "response") and hasattr(e.response, "text"):
-                    logger.warning(f"ComputeRegistry: chat failed on {node.name}: {e} | Body: {e.response.text}")
+                    logger.warning(
+                        "ComputeRegistry: chat failed on %s: %s | Body: %s",
+                        node.name,
+                        e,
+                        e.response.text,
+                    )
                 else:
                     logger.warning(f"ComputeRegistry: chat failed on {node.name}: {e}")
-                node.consecutive_failures += 1
-                node.cb_record_failure()
-                if node.consecutive_failures >= 3:
-                    node.health_state = "cooldown"
-                    node.cooldown_until = time.time() + 60
-                    node.is_healthy = False
-                else:
-                    node.is_healthy = False
+                self._record_failure(node, e)
             finally:
                 node.active_requests -= 1
 
@@ -1107,9 +1381,11 @@ class ComputeRegistry:
             msgs = [{"role": "system", "content": system}, *msgs]
         msgs = self._sanitize_messages(msgs)
 
-        for node in self._sorted_servers(require_tools=bool(tools)):
-            if not node.is_healthy:
-                continue
+        for node in self._select_candidates(
+            require_tools=bool(tools),
+            model=model,
+            strict_model=settings.strict_auto_routing,
+        ):
             resolved_model = node._resolve_model(model)
             logger.info(
                 f"ComputeRegistry: routing stream to {node.name} "
@@ -1128,8 +1404,7 @@ class ComputeRegistry:
                     content = data.get("message", {}).get("content", "")
                     if content:
                         yield content
-                    node.consecutive_failures = 0
-                    node.health_state = "ready"
+                    self._record_success(node)
                     return
 
                 client = await node._get_client()
@@ -1172,7 +1447,10 @@ class ComputeRegistry:
                     tool_call_mode = False
 
                     async with client.stream(
-                        "POST", "/v1/chat/completions", json=payload, timeout=None
+                        "POST",
+                        node._openai_endpoint("chat/completions"),
+                        json=payload,
+                        timeout=None,
                     ) as resp:
                         resp.raise_for_status()
                         async for line in resp.aiter_lines():
@@ -1230,19 +1508,12 @@ class ComputeRegistry:
                             "finish_reason": "tool_calls",
                         }
 
-                node.consecutive_failures = 0
-                node.health_state = "ready"
+                self._record_success(node)
                 return
 
             except Exception as e:
                 logger.warning(f"ComputeRegistry: stream failed on {node.name}: {e}")
-                node.consecutive_failures += 1
-                if node.consecutive_failures >= 3:
-                    node.health_state = "cooldown"
-                    node.cooldown_until = time.time() + 60
-                    node.is_healthy = False
-                else:
-                    node.is_healthy = False
+                self._record_failure(node, e)
             finally:
                 node.active_requests -= 1
 
@@ -1250,16 +1521,15 @@ class ComputeRegistry:
 
     async def embed(self, text: str, model: str | None = None) -> list[float]:
         """Route an embedding request."""
-        for node in self._sorted_servers():
-            if not node.is_healthy:
-                continue
+        for node in self._select_candidates(
+            model=model,
+            strict_model=settings.strict_auto_routing,
+        ):
             node.active_requests += 1
             try:
                 if node.source in ("relay", "browser") and node.websocket:
                     result = await node.embed(text, model=model)
-                    node.consecutive_failures = 0
-                    node.health_state = "ready"
-                    node.cb_record_success()
+                    self._record_success(node)
                     return result
 
                 client = await node._get_client()
@@ -1272,7 +1542,7 @@ class ComputeRegistry:
                     )
                 else:
                     resp = await client.post(
-                        "/v1/embeddings",
+                        node._openai_endpoint("embeddings"),
                         json={"model": embed_model, "input": text},
                     )
 
@@ -1281,17 +1551,24 @@ class ComputeRegistry:
 
                 if node.provider_type == "ollama":
                     embeddings = data.get("embeddings", [])
+                    self._record_success(node)
                     return embeddings[0] if embeddings else []
                 else:
                     items = data.get("data", [])
+                    self._record_success(node)
                     return items[0].get("embedding", []) if items else []
 
             except Exception as e:
                 if hasattr(e, "response") and hasattr(e.response, "text"):
-                    logger.warning(f"ComputeRegistry: embed failed on {node.name}: {e} | Body: {e.response.text}")
+                    logger.warning(
+                        "ComputeRegistry: embed failed on %s: %s | Body: %s",
+                        node.name,
+                        e,
+                        e.response.text,
+                    )
                 else:
                     logger.warning(f"ComputeRegistry: embed failed on {node.name}: {e}")
-                node.is_healthy = False
+                self._record_failure(node, e)
             finally:
                 node.active_requests -= 1
 
@@ -1299,16 +1576,15 @@ class ComputeRegistry:
 
     async def embed_batch(self, texts: list[str], model: str | None = None) -> list[list[float]]:
         """Route a batch embedding request."""
-        for node in self._sorted_servers():
-            if not node.is_healthy:
-                continue
+        for node in self._select_candidates(
+            model=model,
+            strict_model=settings.strict_auto_routing,
+        ):
             node.active_requests += 1
             try:
                 if node.source in ("relay", "browser") and node.websocket:
                     result = await node.embed_batch(texts, model=model)
-                    node.consecutive_failures = 0
-                    node.health_state = "ready"
-                    node.cb_record_success()
+                    self._record_success(node)
                     return result
 
                 client = await node._get_client()
@@ -1320,21 +1596,28 @@ class ComputeRegistry:
                         json={"model": embed_model, "input": texts},
                     )
                     resp.raise_for_status()
+                    self._record_success(node)
                     return resp.json().get("embeddings", [])
                 else:
                     resp = await client.post(
-                        "/v1/embeddings",
+                        node._openai_endpoint("embeddings"),
                         json={"model": embed_model, "input": texts},
                     )
                     resp.raise_for_status()
+                    self._record_success(node)
                     return [item.get("embedding", []) for item in resp.json().get("data", [])]
 
             except Exception as e:
                 if hasattr(e, "response") and hasattr(e.response, "text"):
-                    logger.warning(f"ComputeRegistry: embed_batch failed on {node.name}: {e} | Body: {e.response.text}")
+                    logger.warning(
+                        "ComputeRegistry: embed_batch failed on %s: %s | Body: %s",
+                        node.name,
+                        e,
+                        e.response.text,
+                    )
                 else:
                     logger.warning(f"ComputeRegistry: embed_batch failed on {node.name}: {e}")
-                node.is_healthy = False
+                self._record_failure(node, e)
             finally:
                 node.active_requests -= 1
 
@@ -1343,9 +1626,7 @@ class ComputeRegistry:
     async def list_models(self) -> list[dict]:
         """Aggregate models from all healthy nodes."""
         all_models: list[dict] = []
-        for node in self._sorted_servers():
-            if not node.is_healthy:
-                continue
+        for node in self._select_candidates():
             try:
                 if node.source in ("relay", "browser"):
                     for name in node.loaded_models:
@@ -1365,7 +1646,7 @@ class ComputeRegistry:
                     data = resp.json()
                     models = data.get("models", [])
                 else:
-                    resp = await client.get("/v1/models", timeout=10.0)
+                    resp = await client.get(node._openai_endpoint("models"), timeout=10.0)
                     data = resp.json()
                     models = [{"name": m.get("id", ""), **m} for m in data.get("data", [])]
                 for m in models:
@@ -1421,7 +1702,9 @@ class ComputeRegistry:
 
     def total_capacity(self) -> int:
         """Total number of alive donated compute nodes (relay/browser)."""
-        return len([n for n in self._nodes.values() if n.source in ("relay", "browser") and n.is_alive()])
+        return len(
+            [n for n in self._nodes.values() if n.source in ("relay", "browser") and n.is_alive()]
+        )
 
     def available_models_list(self) -> list[str]:
         """All models available across the pool (backward compat)."""
@@ -1432,26 +1715,26 @@ class ComputeRegistry:
 
     def best_node_for(self, model: str | None = None) -> ComputeNode | None:
         """Select the best node for a given model (backward compat)."""
-        candidates = self.alive_nodes()
-        if model:
-            candidates = [n for n in candidates if model in n.loaded_models] or candidates
+        candidates = self._select_candidates(model=model)
         if not candidates:
             return None
-        return max(candidates, key=lambda n: n.score())
+        return candidates[0]
 
     # ================================================================
     # Unified Stats
     # ================================================================
 
     def get_stats(self) -> dict:
-        nodes = [n.to_dict() for n in self._nodes.values()]
-        alive = sum(1 for n in self._nodes.values() if n.is_healthy)
+        registry_nodes = list(self._nodes.values())
+        nodes = [n.to_dict() for n in registry_nodes]
+        alive = sum(1 for n in registry_nodes if n.is_healthy)
         all_models: set[str] = set()
-        for n in self._nodes.values():
+        for n in registry_nodes:
             all_models.update(n.loaded_models or [])
-        total_ram = sum(n.ram_total_gb for n in self._nodes.values())
-        avail_ram = sum(n.ram_available_gb for n in self._nodes.values())
-        total_cpu = sum(n.cpu_cores for n in self._nodes.values())
+        total_ram = sum(n.ram_total_gb for n in registry_nodes)
+        avail_ram = sum(n.ram_available_gb for n in registry_nodes)
+        total_cpu = sum(n.cpu_cores for n in registry_nodes)
+        capacity = compute_capacity_envelope(registry_nodes)
 
         if alive >= 8:
             tier = "full_swarm"
@@ -1472,6 +1755,7 @@ class ComputeRegistry:
             "total_cpu_cores": total_cpu,
             "available_models": sorted(all_models),
             "swarm_tier": tier,
+            **capacity,
             "nodes": nodes,
         }
 

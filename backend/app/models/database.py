@@ -54,6 +54,7 @@ async def init_db() -> None:
     # Import all models so they're registered with Base
     from app.models import agent, codebook, document, finding, message, project, session, task  # noqa: F401
     from app.models import user  # noqa: F401
+    from app.models.auth_session import AuthSession  # noqa: F401
     from app.models import llm_server, method_metric  # noqa: F401
     from app.models.webauthn_credential import WebAuthnCredential  # noqa: F401
     from app.core.checkpoint import TaskCheckpoint  # noqa: F401
@@ -83,6 +84,9 @@ async def init_db() -> None:
     from app.models.project_report import ProjectReport  # noqa: F401
     from app.models.project_member import ProjectMember  # noqa: F401
     from app.models.task_review import TaskReviewEvent  # noqa: F401
+    from app.models.reasoning_memory import ReasoningMemoryItem  # noqa: F401
+    from app.models.improvement_governance import ImprovementProposal  # noqa: F401
+    from app.models.dgmh_archive import DGMHArchiveVariant  # noqa: F401
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

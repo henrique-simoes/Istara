@@ -8,11 +8,12 @@ import { useAuthStore } from "@/stores/authStore";
 import UserManagement from "./UserManagement";
 import ConnectionStringPanel from "@/components/settings/ConnectionStringPanel";
 import UpdateChecker from "@/components/settings/UpdateChecker";
+import GovernedEvolutionView from "@/components/settings/GovernedEvolutionView";
 import DonateComputeToggle from "@/components/common/DonateComputeToggle";
 import PasskeyManager from "@/components/settings/PasskeyManager";
 import TOTPManager from "@/components/settings/TOTPManager";
+import SessionManager from "@/components/settings/SessionManager";
 import { resetAllOnboarding } from "@/hooks/useViewOnboarding";
-import { API_BASE } from "@/lib/runtimeConfig";
 
 export default function SettingsView() {
   const [hardware, setHardware] = useState<HardwareInfo | null>(null);
@@ -56,11 +57,14 @@ export default function SettingsView() {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto p-6 max-w-3xl mx-auto space-y-6">
+    <div className="flex-1 overflow-y-auto p-6 max-w-5xl mx-auto space-y-6">
       <h2 className="text-lg font-semibold text-slate-900 dark:text-white">⚙️ Settings</h2>
 
       {/* Software Updates */}
       <UpdateChecker />
+
+      {/* Governed Evolution */}
+      <GovernedEvolutionView />
 
       {/* Team Members */}
       <div id="tour-target-user-management">
@@ -78,6 +82,9 @@ export default function SettingsView() {
 
       {/* Two-Factor Authentication */}
       <TOTPManager />
+
+      {/* Active Auth Sessions */}
+      <SessionManager />
 
       {/* System Status */}
       <div id="tour-target-system-status" className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
@@ -315,13 +322,7 @@ export default function SettingsView() {
             onClick={async () => {
               const newState = !systemStatus?.team_mode;
               try {
-                const token = localStorage.getItem("istara_token");
-                const headers: Record<string, string> = { "Content-Type": "application/json" };
-                if (token) headers["Authorization"] = `Bearer ${token}`;
-                await fetch(
-                  `${API_BASE}/api/settings/team-mode`,
-                  { method: "POST", headers, body: JSON.stringify({ enabled: newState }) }
-                );
+                await settingsApi.toggleTeamMode(newState);
                 await fetchAll();
                 // Refresh auth store so UserManagement appears/disappears
                 await useAuthStore.getState().checkTeamStatus();

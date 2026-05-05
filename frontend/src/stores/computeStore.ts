@@ -2,7 +2,7 @@
 
 import { create } from "zustand";
 
-import { API_BASE } from "@/lib/runtimeConfig";
+import { compute } from "@/lib/api";
 
 interface ModelCapability {
   supports_tools: boolean;
@@ -39,11 +39,18 @@ interface ComputeStats {
   available_models: string[];
   nodes: ComputeNode[];
   swarm_tier?: string;
+  request_slots_total?: number;
+  request_slots_used?: number;
+  request_slots_available?: number;
+  request_slot_utilization_pct?: number;
+  saturated_nodes?: number;
+  hardware_load_pct?: number;
 }
 
 interface ComputeState {
   stats: ComputeStats | null;
   loading: boolean;
+  error: string | null;
   fetchStats: () => Promise<void>;
   fetchNodes: () => Promise<void>;
 }
@@ -51,32 +58,31 @@ interface ComputeState {
 export const useComputeStore = create<ComputeState>((set) => ({
   stats: null,
   loading: false,
+  error: null,
 
   fetchStats: async () => {
-    set({ loading: true });
+    set({ loading: true, error: null });
     try {
-      const token = localStorage.getItem("istara_token");
-      const headers: Record<string, string> = {};
-      if (token) headers["Authorization"] = `Bearer ${token}`;
-      const res = await fetch(`${API_BASE}/api/compute/stats`, { headers });
-      const data = await res.json();
-      set({ stats: data, loading: false });
-    } catch {
-      set({ loading: false });
+      const data = await compute.stats();
+      set({ stats: data, loading: false, error: null });
+    } catch (err) {
+      set({
+        loading: false,
+        error: err instanceof Error ? err.message : "Could not load compute stats",
+      });
     }
   },
 
   fetchNodes: async () => {
-    set({ loading: true });
+    set({ loading: true, error: null });
     try {
-      const token = localStorage.getItem("istara_token");
-      const headers: Record<string, string> = {};
-      if (token) headers["Authorization"] = `Bearer ${token}`;
-      const res = await fetch(`${API_BASE}/api/compute/nodes`, { headers });
-      const data = await res.json();
-      set({ stats: data, loading: false });
-    } catch {
-      set({ loading: false });
+      const data = await compute.nodes();
+      set({ stats: data, loading: false, error: null });
+    } catch (err) {
+      set({
+        loading: false,
+        error: err instanceof Error ? err.message : "Could not load compute nodes",
+      });
     }
   },
 }));

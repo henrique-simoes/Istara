@@ -1,9 +1,11 @@
 /// Dependency detection and installation for Istara setup wizard.
 /// Checks common installation paths on macOS and Windows since GUI apps
 /// don't inherit the user's shell PATH.
-
 use std::path::Path;
 use std::process::Command;
+
+const REQUIRED_NODE_MAJOR: u32 = 24;
+const NODE_VERSION: &str = "24.15.0";
 
 #[derive(serde::Serialize, serde::Deserialize, Clone)]
 pub struct DepStatus {
@@ -20,6 +22,7 @@ pub fn detect_dependencies() -> Vec<DepStatus> {
     vec![
         detect_python(),
         detect_node(),
+        detect_ffmpeg(),
         detect_lmstudio(),
         detect_ollama(),
         detect_docker(),
@@ -31,20 +34,20 @@ pub fn detect_dependencies() -> Vec<DepStatus> {
 
 #[cfg(target_os = "macos")]
 const PYTHON_PATHS: &[&str] = &[
-    "python3",                                    // system PATH (unlikely in GUI)
-    "/opt/homebrew/bin/python3",                  // Homebrew Apple Silicon
-    "/usr/local/bin/python3",                     // Homebrew Intel
-    "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",  // python.org installer
+    "python3",                   // system PATH (unlikely in GUI)
+    "/opt/homebrew/bin/python3", // Homebrew Apple Silicon
+    "/usr/local/bin/python3",    // Homebrew Intel
+    "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3", // python.org installer
     "/Library/Frameworks/Python.framework/Versions/3.11/bin/python3",
     "/Library/Frameworks/Python.framework/Versions/Current/bin/python3",
-    "/usr/bin/python3",                           // macOS built-in (may be stub)
+    "/usr/bin/python3", // macOS built-in (may be stub)
 ];
 
 #[cfg(target_os = "macos")]
 const NODE_PATHS: &[&str] = &[
     "node",
-    "/opt/homebrew/bin/node",                     // Homebrew Apple Silicon
-    "/usr/local/bin/node",                        // Homebrew Intel / nvm symlink
+    "/opt/homebrew/bin/node", // Homebrew Apple Silicon
+    "/usr/local/bin/node",    // Homebrew Intel / nvm symlink
     "/usr/local/opt/node/bin/node",
     // nvm: check common nvm locations
     // fnm: check common fnm locations
@@ -63,6 +66,13 @@ const DOCKER_PATHS: &[&str] = &[
     "/usr/local/bin/docker",
     "/opt/homebrew/bin/docker",
     "/Applications/Docker.app/Contents/Resources/bin/docker",
+];
+
+#[cfg(target_os = "macos")]
+const FFMPEG_PATHS: &[&str] = &[
+    "ffmpeg",
+    "/opt/homebrew/bin/ffmpeg",
+    "/usr/local/bin/ffmpeg",
 ];
 
 // ─── Windows common paths ────────────────────────────────────────────
@@ -96,6 +106,13 @@ const DOCKER_PATHS: &[&str] = &[
     r"C:\Program Files\Docker\Docker\resources\bin\docker.exe",
 ];
 
+#[cfg(target_os = "windows")]
+const FFMPEG_PATHS: &[&str] = &[
+    "ffmpeg",
+    r"C:\ffmpeg\bin\ffmpeg.exe",
+    r"C:\ProgramData\chocolatey\bin\ffmpeg.exe",
+];
+
 // ─── Linux fallback ──────────────────────────────────────────────────
 
 #[cfg(not(any(target_os = "macos", target_os = "windows")))]
@@ -106,6 +123,8 @@ const NODE_PATHS: &[&str] = &["node", "/usr/bin/node"];
 const OLLAMA_PATHS: &[&str] = &["ollama", "/usr/local/bin/ollama"];
 #[cfg(not(any(target_os = "macos", target_os = "windows")))]
 const DOCKER_PATHS: &[&str] = &["docker", "/usr/bin/docker"];
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
+const FFMPEG_PATHS: &[&str] = &["ffmpeg", "/usr/bin/ffmpeg", "/usr/local/bin/ffmpeg"];
 
 // ─── Detectors ───────────────────────────────────────────────────────
 
@@ -126,8 +145,7 @@ fn detect_python() -> DepStatus {
         // Check pyenv
         let pyenv_root = format!("{}/.pyenv/shims/python3", home);
         if Path::new(&pyenv_root).exists() {
-            run_version_check(&pyenv_root, &["--version"])
-                .unwrap_or((false, String::new()))
+            run_version_check(&pyenv_root, &["--version"]).unwrap_or((false, String::new()))
         } else {
             (false, String::new())
         }
@@ -143,7 +161,15 @@ fn detect_python() -> DepStatus {
 }
 
 fn detect_node() -> DepStatus {
-    let (mut detected, mut version) = try_paths(NODE_PATHS, &["--version"]);
+    let mut detected = false;
+    let mut version = String::new();
+
+    for path in NODE_PATHS {
+        if node_candidate_meets_requirement(path, &mut version) {
+            detected = true;
+            break;
+        }
+    }
 
     // Check nvm-managed Node on macOS/Linux
     if !detected {
@@ -155,9 +181,8 @@ fn detect_node() -> DepStatus {
             if let Ok(alias) = std::fs::read_to_string(&nvm_default) {
                 let ver = alias.trim();
                 let nvm_node = format!("{}/.nvm/versions/node/{}/bin/node", home, ver);
-                if let Some((d, v)) = run_version_check(&nvm_node, &["--version"]) {
-                    detected = d;
-                    version = v;
+                if node_candidate_meets_requirement(&nvm_node, &mut version) {
+                    detected = true;
                 }
             }
         }
@@ -169,12 +194,11 @@ fn detect_node() -> DepStatus {
                 for entry in entries.flatten() {
                     let node = entry.path().join("installation/bin/node");
                     if node.exists() {
-                        if let Some((d, v)) = run_version_check(
+                        if node_candidate_meets_requirement(
                             node.to_str().unwrap_or(""),
-                            &["--version"],
+                            &mut version,
                         ) {
-                            detected = d;
-                            version = v;
+                            detected = true;
                             break;
                         }
                     }
@@ -185,9 +209,65 @@ fn detect_node() -> DepStatus {
 
     DepStatus {
         id: "node".to_string(),
-        name: "Node.js 18+".to_string(),
+        name: "Node.js 24+".to_string(),
         detected,
         version,
+        required: true,
+    }
+}
+
+fn node_candidate_meets_requirement(path: &str, version: &mut String) -> bool {
+    if let Some((detected, candidate_version)) = run_version_check(path, &["--version"]) {
+        if detected {
+            if version.is_empty() {
+                *version = candidate_version.clone();
+            }
+            if node_version_meets_requirement(&candidate_version) {
+                *version = candidate_version;
+                return true;
+            }
+        }
+    }
+    false
+}
+
+fn node_version_meets_requirement(version: &str) -> bool {
+    version
+        .trim()
+        .trim_start_matches('v')
+        .split('.')
+        .next()
+        .and_then(|major| major.parse::<u32>().ok())
+        .is_some_and(|major| major >= REQUIRED_NODE_MAJOR)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::node_version_meets_requirement;
+
+    #[test]
+    fn node_requirement_accepts_node_24_and_newer() {
+        assert!(node_version_meets_requirement("v24.15.0"));
+        assert!(node_version_meets_requirement("25.0.0"));
+    }
+
+    #[test]
+    fn node_requirement_rejects_older_or_invalid_versions() {
+        assert!(!node_version_meets_requirement("v20.18.0"));
+        assert!(!node_version_meets_requirement("not-a-version"));
+        assert!(!node_version_meets_requirement(""));
+    }
+}
+
+fn detect_ffmpeg() -> DepStatus {
+    let (detected, version) = try_paths(FFMPEG_PATHS, &["-version"]);
+    let first_line = version.lines().next().unwrap_or("").to_string();
+
+    DepStatus {
+        id: "ffmpeg".to_string(),
+        name: "FFmpeg".to_string(),
+        detected,
+        version: first_line,
         required: true,
     }
 }
@@ -210,8 +290,9 @@ fn detect_lmstudio() -> DepStatus {
         .exists();
 
     #[cfg(target_os = "windows")]
-    let app_installed = Path::new(r"C:\Users\Default\AppData\Local\Programs\LM Studio\LM Studio.exe").exists()
-        || which_exists("lms");
+    let app_installed =
+        Path::new(r"C:\Users\Default\AppData\Local\Programs\LM Studio\LM Studio.exe").exists()
+            || which_exists("lms");
 
     #[cfg(not(any(target_os = "macos", target_os = "windows")))]
     let app_installed = false;
@@ -324,7 +405,11 @@ fn run_version_check(cmd: &str, args: &[&str]) -> Option<(bool, String)> {
 
 #[cfg(target_os = "windows")]
 fn which_exists(cmd: &str) -> bool {
-    Command::new("where").arg(cmd).output().map(|o| o.status.success()).unwrap_or(false)
+    Command::new("where")
+        .arg(cmd)
+        .output()
+        .map(|o| o.status.success())
+        .unwrap_or(false)
 }
 
 // ─── Install functions ───────────────────────────────────────────────
@@ -335,6 +420,7 @@ pub fn install_dependency(dep_id: String) -> Result<String, String> {
     match dep_id.as_str() {
         "python" => install_python(),
         "node" => install_node(),
+        "ffmpeg" => install_ffmpeg(),
         "ollama" => install_ollama(),
         "lmstudio" => {
             open::that("https://lmstudio.ai").map_err(|e| e.to_string())?;
@@ -354,7 +440,10 @@ fn install_python() -> Result<String, String> {
     let url = "https://www.python.org/ftp/python/3.12.8/python-3.12.8-macos11.pkg";
     let dest = "/tmp/python-3.12.8-macos11.pkg";
     download_file(url, dest)?;
-    Command::new("open").arg(dest).status().map_err(|e| e.to_string())?;
+    Command::new("open")
+        .arg(dest)
+        .status()
+        .map_err(|e| e.to_string())?;
     Ok("Python installer opened — follow the prompts".to_string())
 }
 
@@ -363,28 +452,72 @@ fn install_python() -> Result<String, String> {
     let url = "https://www.python.org/ftp/python/3.12.8/python-3.12.8-amd64.exe";
     let dest = std::env::temp_dir().join("python-3.12.8-amd64.exe");
     download_file(url, dest.to_str().unwrap())?;
-    Command::new(dest).args(["/quiet", "PrependPath=1", "Include_pip=1"])
-        .status().map_err(|e| format!("Python install failed: {}", e))?;
+    Command::new(dest)
+        .args(["/quiet", "PrependPath=1", "Include_pip=1"])
+        .status()
+        .map_err(|e| format!("Python install failed: {}", e))?;
     Ok("Python 3.12 installed".to_string())
 }
 
 #[cfg(target_os = "macos")]
 fn install_node() -> Result<String, String> {
-    let url = "https://nodejs.org/dist/v20.18.0/node-v20.18.0.pkg";
-    let dest = "/tmp/node-v20.18.0.pkg";
-    download_file(url, dest)?;
-    Command::new("open").arg(dest).status().map_err(|e| e.to_string())?;
+    let url = format!("https://nodejs.org/dist/v{NODE_VERSION}/node-v{NODE_VERSION}.pkg");
+    let dest = format!("/tmp/node-v{NODE_VERSION}.pkg");
+    download_file(&url, &dest)?;
+    Command::new("open")
+        .arg(&dest)
+        .status()
+        .map_err(|e| e.to_string())?;
     Ok("Node.js installer opened — follow the prompts".to_string())
+}
+
+#[cfg(target_os = "macos")]
+fn install_ffmpeg() -> Result<String, String> {
+    let brew = if Path::new("/opt/homebrew/bin/brew").exists() {
+        "/opt/homebrew/bin/brew"
+    } else if Path::new("/usr/local/bin/brew").exists() {
+        "/usr/local/bin/brew"
+    } else {
+        "brew"
+    };
+    let status = Command::new(brew)
+        .args(["install", "ffmpeg"])
+        .status()
+        .map_err(|e| format!("FFmpeg install failed: {}", e))?;
+    if status.success() {
+        Ok("FFmpeg installed".to_string())
+    } else {
+        Err(
+            "Homebrew could not install FFmpeg. Install Homebrew first or run: brew install ffmpeg"
+                .to_string(),
+        )
+    }
+}
+
+#[cfg(target_os = "windows")]
+fn install_ffmpeg() -> Result<String, String> {
+    if Command::new("winget")
+        .args(["install", "--id", "Gyan.FFmpeg", "-e"])
+        .status()
+        .map(|s| s.success())
+        .unwrap_or(false)
+    {
+        return Ok("FFmpeg installed".to_string());
+    }
+    open::that("https://ffmpeg.org/download.html").map_err(|e| e.to_string())?;
+    Ok("Opened FFmpeg download page".to_string())
 }
 
 #[cfg(target_os = "windows")]
 fn install_node() -> Result<String, String> {
-    let url = "https://nodejs.org/dist/v20.18.0/node-v20.18.0-x64.msi";
-    let dest = std::env::temp_dir().join("node-v20.18.0-x64.msi");
-    download_file(url, dest.to_str().unwrap())?;
-    Command::new("msiexec").args(["/i", dest.to_str().unwrap(), "/quiet", "/norestart"])
-        .status().map_err(|e| format!("Node.js install failed: {}", e))?;
-    Ok("Node.js 20 installed".to_string())
+    let url = format!("https://nodejs.org/dist/v{NODE_VERSION}/node-v{NODE_VERSION}-x64.msi");
+    let dest = std::env::temp_dir().join(format!("node-v{NODE_VERSION}-x64.msi"));
+    download_file(&url, dest.to_str().unwrap())?;
+    Command::new("msiexec")
+        .args(["/i", dest.to_str().unwrap(), "/quiet", "/norestart"])
+        .status()
+        .map_err(|e| format!("Node.js install failed: {}", e))?;
+    Ok("Node.js 24 installed".to_string())
 }
 
 #[cfg(target_os = "macos")]
@@ -405,19 +538,31 @@ fn install_ollama() -> Result<String, String> {
     let url = "https://ollama.com/download/OllamaSetup.exe";
     let dest = std::env::temp_dir().join("OllamaSetup.exe");
     download_file(url, dest.to_str().unwrap())?;
-    Command::new(dest).arg("/S").status()
+    Command::new(dest)
+        .arg("/S")
+        .status()
         .map_err(|e| format!("Ollama install failed: {}", e))?;
     Ok("Ollama installed".to_string())
 }
 
 #[cfg(not(any(target_os = "macos", target_os = "windows")))]
-fn install_python() -> Result<String, String> { Err("Use your package manager: apt install python3".to_string()) }
+fn install_python() -> Result<String, String> {
+    Err("Use your package manager: apt install python3".to_string())
+}
 #[cfg(not(any(target_os = "macos", target_os = "windows")))]
-fn install_node() -> Result<String, String> { Err("Use your package manager: apt install nodejs".to_string()) }
+fn install_node() -> Result<String, String> {
+    Err("Use your package manager: apt install nodejs".to_string())
+}
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
+fn install_ffmpeg() -> Result<String, String> {
+    Err("Use your package manager: apt install ffmpeg".to_string())
+}
 #[cfg(not(any(target_os = "macos", target_os = "windows")))]
 fn install_ollama() -> Result<String, String> {
-    Command::new("sh").args(["-c", "curl -fsSL https://ollama.com/install.sh | sh"])
-        .status().map_err(|e| e.to_string())?;
+    Command::new("sh")
+        .args(["-c", "curl -fsSL https://ollama.com/install.sh | sh"])
+        .status()
+        .map_err(|e| e.to_string())?;
     Ok("Ollama installed".to_string())
 }
 

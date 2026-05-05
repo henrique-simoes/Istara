@@ -6,15 +6,20 @@ on:
   workflow_dispatch:
 
 permissions:
+  contents: read
   issues: write
 
 jobs:
   check-upstream:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout tracked upstream marker
+        uses: actions/checkout@v4
+
       - name: Check for new commits
         id: check
         run: |
+          set -euo pipefail
           # Get latest commit from Karpathy's autoresearch
           LATEST=$(curl -s https://api.github.com/repos/karpathy/autoresearch/commits/master | jq -r '.sha')
           echo "latest_sha=$LATEST" >> $GITHUB_OUTPUT

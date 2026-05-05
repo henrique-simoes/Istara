@@ -37,12 +37,14 @@ function DAGTreeNode({
   expandingNodeId,
 }: DAGTreeNodeProps) {
   const isLoading = expandingNodeId === node.id;
+  const summaryText = node.summary_text || node.summary_preview || "";
   const truncatedSummary =
-    node.summary_text.length > 200
-      ? node.summary_text.slice(0, 200) + "..."
-      : node.summary_text;
+    summaryText.length > 200
+      ? summaryText.slice(0, 200) + "..."
+      : summaryText;
 
-  const formatTimeRange = (start: string, end: string) => {
+  const formatTimeRange = (start: string | null, end: string | null) => {
+    if (!start || !end) return "No time range";
     try {
       const s = new Date(start);
       const e = new Date(end);
@@ -73,6 +75,7 @@ function DAGTreeNode({
     <div
       role="treeitem"
       aria-expanded={expanded}
+      aria-selected={expanded}
       className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 overflow-hidden"
     >
       <button
@@ -143,9 +146,9 @@ function DAGTreeNode({
               aria-label={`Expanded content for node L${node.depth}`}
               tabIndex={0}
             >
-              {expandedContent.items.map((item) => (
+              {expandedContent.items.map((item, index) => (
                 <div
-                  key={item.id}
+                  key={item.id || `${node.id}-${index}`}
                   className={cn(
                     "p-2 rounded-lg text-xs",
                     item.type === "summary"
@@ -250,9 +253,12 @@ export default function ContextDAGView() {
     setLoading(true);
     setError(null);
     try {
-      const data = await contextDag.getStructure(activeSessionId);
-      setNodes(data.nodes);
-      setHealth(data.stats);
+      const [data, healthData] = await Promise.all([
+        contextDag.getStructure(activeSessionId),
+        contextDag.health(activeSessionId),
+      ]);
+      setNodes(Array.isArray(data.nodes) ? data.nodes : []);
+      setHealth(healthData || data.stats);
     } catch (e: any) {
       setError(e.message || "Failed to load context DAG");
       setNodes([]);
@@ -289,7 +295,8 @@ export default function ContextDAGView() {
         try {
           const result = await contextDag.expand(activeSessionId, nodeId);
           setExpandedContent((prev) => ({ ...prev, [nodeId]: result }));
-        } catch (e) {
+        } catch (e: any) {
+          setError(e.message || "Failed to expand DAG node");
           console.error("Failed to expand node:", e);
         }
         setExpandingNodeId(null);
@@ -307,7 +314,8 @@ export default function ContextDAGView() {
     try {
       const results = await contextDag.grep(activeSessionId, searchQuery);
       setSearchResults(results);
-    } catch (e) {
+    } catch (e: any) {
+      setError(e.message || "DAG search failed");
       console.error("DAG grep failed:", e);
     }
     setSearching(false);
@@ -318,7 +326,8 @@ export default function ContextDAGView() {
     try {
       await contextDag.compact(activeSessionId);
       fetchDAG();
-    } catch (e) {
+    } catch (e: any) {
+      setError(e.message || "DAG compaction failed");
       console.error("Compact failed:", e);
     }
   };
@@ -461,7 +470,7 @@ export default function ContextDAGView() {
             </div>
             <div className="p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50">
               <p className="text-lg font-bold text-slate-900 dark:text-white">
-                {health.max_depth}
+                {health.max_depth ?? health.dag_depth ?? 0}
               </p>
               <p className="text-[10px] text-slate-500">Max Depth</p>
             </div>

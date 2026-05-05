@@ -224,6 +224,22 @@ detect_npm() {
     return 1
 }
 
+detect_ffmpeg() {
+    local paths=(
+        "ffmpeg"
+        "/opt/homebrew/bin/ffmpeg"
+        "/usr/local/bin/ffmpeg"
+        "/usr/bin/ffmpeg"
+    )
+    for ff in "${paths[@]}"; do
+        if command -v "$ff" >/dev/null 2>&1 || [ -x "$ff" ]; then
+            echo "$ff"
+            return 0
+        fi
+    done
+    return 1
+}
+
 detect_git() { command -v git >/dev/null 2>&1; }
 
 get_latest_release_version() {
@@ -355,6 +371,33 @@ ensure_node() {
     ok "Node $($(detect_node) --version 2>&1) installed"
 }
 
+ensure_ffmpeg() {
+    local found_ffmpeg=""
+    found_ffmpeg=$(detect_ffmpeg 2>/dev/null) || found_ffmpeg=""
+    if [ -n "$found_ffmpeg" ]; then
+        local fver; fver=$("$found_ffmpeg" -version 2>&1 | head -1 || echo "unknown")
+        ok "$fver ($found_ffmpeg)"
+        return 0
+    fi
+
+    info "Installing FFmpeg (required for Whisper transcription)..."
+    if [ "$PLATFORM" = "macos" ]; then
+        ensure_homebrew
+        brew install ffmpeg
+    else
+        sudo apt-get update 2>/dev/null || true
+        sudo apt-get install -y ffmpeg 2>/dev/null || \
+            sudo dnf install -y ffmpeg 2>/dev/null || \
+            sudo yum install -y ffmpeg 2>/dev/null || {
+                fail "Failed to install FFmpeg. Install it with your package manager and rerun the installer."
+                exit 1
+            }
+    fi
+    found_ffmpeg=$(detect_ffmpeg 2>/dev/null) || found_ffmpeg=""
+    [ -n "$found_ffmpeg" ] || { fail "FFmpeg installed but not detected in PATH."; exit 1; }
+    ok "FFmpeg installed"
+}
+
 ensure_git() {
     detect_git && { ok "Git $(git --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')"; return 0; }
     info "Installing Git..."
@@ -406,6 +449,7 @@ ensure_git
 if [ "$MODE" = "server" ]; then
     ensure_python
     ensure_node
+    ensure_ffmpeg
 
     # Check for LLM provider
     LLM_PROVIDER=""
@@ -483,7 +527,16 @@ if [ "$MODE" = "server" ]; then
     info "Upgrading pip..."
     "$INSTALL_DIR/venv/bin/pip" install --upgrade pip 2>&1 | tail -1
     info "Installing backend dependencies (this takes 1-3 minutes)..."
-    "$INSTALL_DIR/venv/bin/pip" install -r "$INSTALL_DIR/backend/requirements.txt" 2>&1 | grep -E "^(Collecting|Installing|Successfully)" | head -20 || true
+    PIP_INSTALL_LOG="$(mktemp)"
+    if "$INSTALL_DIR/venv/bin/pip" install -r "$INSTALL_DIR/backend/requirements.txt" >"$PIP_INSTALL_LOG" 2>&1; then
+        grep -E "^(Collecting|Installing|Successfully)" "$PIP_INSTALL_LOG" | head -20 || true
+    else
+        tail -40 "$PIP_INSTALL_LOG" >&2
+        rm -f "$PIP_INSTALL_LOG"
+        fail "Backend dependency installation failed"
+        exit 1
+    fi
+    rm -f "$PIP_INSTALL_LOG"
     ok "Backend dependencies installed"
 
     # Frontend
@@ -501,7 +554,7 @@ if [ "$MODE" = "server" ]; then
 
     # Data directories
     cd "$INSTALL_DIR"
-    mkdir -p data/{uploads,projects,lance_db,backups,channel_audio}
+    mkdir -p data/{uploads,projects,lance_db,backups,channel_audio,channel_audio/telegram,channel_audio/whatsapp}
     ok "Data directories created"
 
 # ── Step 6: Configuration ──────────────────────────────────────

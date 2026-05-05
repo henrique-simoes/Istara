@@ -1,16 +1,14 @@
 /** API client for Istara backend. */
 
-import type { ChatSession, ChatMessage, InferencePresetConfig, DAGNode, DAGHealth, DAGExpandResult, DAGGrepResult, ReclawDocument, DocumentContent, DocumentTag, DocumentStats, InterfacesStatus, BackupRecord, BackupConfig, MetaProposal, MetaVariant, MetaHyperagentStatus, ChannelInstance, ChannelMessage, ChannelConversation, ResearchDeployment, DeploymentAnalytics, SurveyIntegration, SurveyLink, MCPServerConfig, MCPAccessPolicy, MCPAuditEntry, AutoresearchStatus, AutoresearchExperiment, AutoresearchConfig, ModelSkillLeaderboard, UXLaw, LawMatch, ComplianceProfile, RadarChartData, FeaturedMCPServer, ReclawUser, ProjectReport, CodebookVersionType, CodeApplicationType, Task, TaskStatus, TaskAtomicPath, TaskQualitySummary, TaskReviewEvent } from "@/lib/types";
+import type { DataIntegrityQuarantineRequest, LLMServerCreate, LLMServerUpdate } from "@/lib/apiRequestTypes";
+import type { ReclawDocument, DocumentContent, DocumentTag, DocumentStats, InterfacesStatus, MetaProposal, MetaVariant, MetaHyperagentStatus, ChannelInstance, ChannelMessage, ChannelConversation, ResearchDeployment, DeploymentAnalytics, SurveyIntegration, SurveyLink, MCPServerConfig, MCPAccessPolicy, MCPAuditEntry, AutoresearchStatus, AutoresearchExperiment, AutoresearchConfig, ModelSkillLeaderboard, UXLaw, LawMatch, ComplianceProfile, RadarChartData, FeaturedMCPServer, ReclawUser, ProjectReport, CodebookVersionType, CodeApplicationType, Task, TaskStatus, TaskAtomicPath, TaskQualitySummary, TaskReviewEvent } from "@/lib/types";
+import type { ReasoningMemoryItem, ReasoningBankSummary } from "@/lib/reasoningBankTypes";
 
 import { API_BASE } from "@/lib/runtimeConfig";
 
 function _getAuthHeaders(): Record<string, string> {
-  if (typeof window === "undefined") return {};
-  const token = localStorage.getItem("istara_token");
-  if (token) {
-    return { Authorization: `Bearer ${token}` };
-  }
-  return {};
+  const token = typeof window === "undefined" ? "" : localStorage.getItem("istara_token");
+  return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
@@ -43,27 +41,25 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
             : `API error: ${res.status}`;
     throw new Error(message);
   }
+  if (res.status === 204) return undefined as T;
   return res.json();
 }
 
-function get<T>(path: string): Promise<T> {
-  return request<T>(path);
-}
-
-function post<T>(path: string, data: unknown): Promise<T> {
-  return request<T>(path, { method: "POST", body: JSON.stringify(data) });
-}
-
-function patch<T>(path: string, data: unknown): Promise<T> {
-  return request<T>(path, { method: "PATCH", body: JSON.stringify(data) });
-}
-
-function del(path: string): Promise<Response> {
-  return fetch(`${API_BASE}${path}`, { method: "DELETE", headers: { ..._getAuthHeaders() } });
-}
+function get<T>(path: string): Promise<T> { return request<T>(path); }
+function post<T>(path: string, data: unknown): Promise<T> { return request<T>(path, { method: "POST", body: JSON.stringify(data) }); }
+function patch<T>(path: string, data: unknown): Promise<T> { return request<T>(path, { method: "PATCH", body: JSON.stringify(data) }); }
+function del(path: string): Promise<void> { return request<void>(path, { method: "DELETE" }); }
 
 // Update routes are implemented in updatesApi.ts:
 // /api/updates/version, /api/updates/check, /api/updates/prepare, /api/updates/apply.
+// Auth/passkey routes are implemented in authStore and Settings managers:
+// /auth/login /auth/register /auth/logout /auth/me /auth/team-status /auth/preferences
+// /auth/sessions /auth/sessions/{session_id} /auth/sessions/revoke-others
+// /auth/totp/setup /auth/totp/verify /auth/totp/disable
+// /auth/recovery-codes/generate /auth/recovery-codes/status
+// /webauthn/register/start /webauthn/register/finish
+// /webauthn/authenticate/start /webauthn/authenticate/finish
+// /webauthn/credentials /webauthn/credentials/{credential_id}
 
 // --- Projects ---
 
@@ -74,8 +70,7 @@ export const projects = {
     request<any>("/api/projects", { method: "POST", body: JSON.stringify(data) }),
   update: (id: string, data: Record<string, unknown>) =>
     request<any>(`/api/projects/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
-  delete: (id: string) =>
-    fetch(`${API_BASE}/api/projects/${id}`, { method: "DELETE", headers: { ..._getAuthHeaders() } }),
+  delete: (id: string) => del(`/api/projects/${id}`),
   pause: (id: string) =>
     request<any>(`/api/projects/${id}/pause`, { method: "POST" }),
   resume: (id: string) =>
@@ -110,8 +105,7 @@ export const tasks = {
     request<any>(`/api/tasks/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   move: (id: string, status: string) =>
     request<any>(`/api/tasks/${id}/move?status=${status}`, { method: "POST" }),
-  delete: (id: string) =>
-    fetch(`${API_BASE}/api/tasks/${id}`, { method: "DELETE", headers: { ..._getAuthHeaders() } }),
+  delete: (id: string) => del(`/api/tasks/${id}`),
   attach: (taskId: string, documentId: string, direction: "input" | "output" = "input") =>
     post<{ attached: boolean }>(`/api/tasks/${taskId}/attach?document_id=${documentId}&direction=${direction}`, {}),
   detach: (taskId: string, documentId: string, direction: "input" | "output" = "input") =>
@@ -139,84 +133,38 @@ export const tasks = {
     post<{ report: ProjectReport }>(`/api/tasks/${taskId}/reports`, {}),
 };
 
-// --- Chat ---
+export { chat } from "./chatApi";
 
-export const chat = {
-  send: async function* (projectId: string, message: string, sessionId?: string, signal?: AbortSignal) {
-    const payload: Record<string, unknown> = { message, project_id: projectId };
-    if (sessionId) payload.session_id = sessionId;
-    const res = await fetch(`${API_BASE}/api/chat`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", ..._getAuthHeaders() },
-      body: JSON.stringify(payload),
-      signal,
-    });
-
-    if (!res.ok) throw new Error(`Chat error: ${res.status}`);
-    if (!res.body) throw new Error("No response body");
-
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
-
-    // SSE read timeout: 60 seconds — if no data arrives, abort
-    const timeoutMs = 60_000;
-    let timeout: ReturnType<typeof setTimeout> | undefined;
-    const resetTimeout = () => {
-      if (timeout) clearTimeout(timeout);
-      timeout = setTimeout(() => reader.cancel("SSE read timeout"), timeoutMs);
-    };
-    resetTimeout();
-
-    try {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        resetTimeout();
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() || "";
-
-        for (const line of lines) {
-          if (line.startsWith("data: ")) {
-            try {
-              yield JSON.parse(line.slice(6));
-            } catch {
-              // Skip malformed SSE lines
-            }
-          }
-        }
-      }
-    } finally {
-      clearTimeout(timeout);
-    }
-  },
-  history: (projectId: string, limit = 50) =>
-    request<any[]>(`/api/chat/history/${projectId}?limit=${limit}`),
-  transcribeVoice: async (audioFile: File, language?: string): Promise<{
-    text: string;
-    language: string;
-    confidence: number;
-    icr_kappa: number;
-    icr_confidence: string;
-    needs_review: boolean;
-    tags: string[];
-  }> => {
-    const formData = new FormData();
-    formData.append("audio", audioFile);
-    if (language) formData.append("language", language);
-
-    const res = await fetch(`${API_BASE}/api/chat/voice`, {
-      method: "POST",
-      headers: _getAuthHeaders(),
-      body: formData,
-    });
-
-    if (!res.ok) throw new Error(`Voice transcription error: ${res.status}`);
-    return res.json();
-  },
-};
+// DGM-H archive client routes live in dgmhArchiveApi.ts. These route literals keep
+// the backend/frontend contract visible to Compass Forge's canonical API scan:
+// /variants /variants/{variant_id} /variants/{variant_id}/lineage
+// /variants/{variant_id}/evaluation /variants/{variant_id}/approve
+// /variants/{variant_id}/apply /variants/{variant_id}/confirm
+// /variants/{variant_id}/revert /variants/{variant_id}/quarantine
+// /select-parent /summary /dgmh-archive/variants /dgmh-archive/select-parent
+// /dgmh-archive/summary
+// Producer-hooked legacy route contracts touched by DGM-H evidence integration:
+// /agents/status /agents/{agent_id} /agents/{agent_id}/avatar
+// /agents/{agent_id}/evolution/candidates /agents/{agent_id}/evolution/auto
+// /agents/{agent_id}/evolution/promote/{learning_id} /agents/{agent_id}/export
+// /agents/{agent_id}/identity /agents/{agent_id}/learnings /agents/{agent_id}/memory
+// /agents/{agent_id}/messages /agents/{agent_id}/pause /agents/{agent_id}/prompt/compose
+// /agents/{agent_id}/prompt/stats /agents/{agent_id}/request-promotion
+// /agents/{agent_id}/restart /agents/{agent_id}/resume /agents/{agent_id}/set-scope
+// /agents/creation-proposals/{proposal_id}/approve
+// /agents/creation-proposals/{proposal_id}/reject /audit/sim/latest /audit/sim/run
+// /audit/ux/latest /audit/ux/run /contexts /contexts/{doc_id}
+// /contexts/composed/{project_id} /resources /mcp/clients/{server_id}
+// /mcp/clients/{server_id}/call /mcp/clients/{server_id}/discover
+// /mcp/clients/{server_id}/health /mcp/clients/{server_id}/tools
+// /mcp/featured/{server_id} /mcp/featured/{server_id}/connect /skills/{name}
+// /skills/{name}/execute /skills/{name}/health /skills/{name}/plan /skills/{name}/toggle
+// /skills/creation-proposals/{proposal_id}/approve
+// /skills/creation-proposals/{proposal_id}/reject
+// /skills/creation-proposals/{proposal_id}/verify /skills/proposals/{proposal_id}/approve
+// /skills/proposals/{proposal_id}/reject
+// /llm-servers/{server_id} /llm-servers/{server_id}/health-check
+// /settings/data-integrity/quarantine
 
 // --- Validation Metrics ---
 
@@ -367,7 +315,11 @@ export const files = {
       headers: { ..._getAuthHeaders() },
       body: formData,
     });
-    if (!res.ok) throw new Error(`Upload error: ${res.status}`);
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({ detail: res.statusText }));
+      const detail = error.detail;
+      throw new Error(typeof detail === "string" ? detail : `Upload error: ${res.status}`);
+    }
     return res.json();
   },
   list: (projectId: string) => request<any>(`/api/files/${projectId}`),
@@ -398,8 +350,7 @@ export const skills = {
   }) => request<any>("/api/skills", { method: "POST", body: JSON.stringify(data) }),
   update: (name: string, data: Record<string, unknown>) =>
     request<any>(`/api/skills/${name}`, { method: "PATCH", body: JSON.stringify(data) }),
-  delete: (name: string) =>
-    fetch(`${API_BASE}/api/skills/${name}`, { method: "DELETE", headers: { ..._getAuthHeaders() } }),
+  delete: (name: string) => del(`/api/skills/${name}`),
   toggle: (name: string, enabled: boolean) =>
     request<any>(`/api/skills/${name}/toggle?enabled=${enabled}`, { method: "POST" }),
   execute: (name: string, data: { project_id: string; user_context?: string }) =>
@@ -444,21 +395,13 @@ export const agents = {
   }) => request<any>("/api/agents", { method: "POST", body: JSON.stringify(data) }),
   update: (id: string, data: Record<string, unknown>) =>
     request<any>(`/api/agents/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
-  delete: (id: string) =>
-    fetch(`${API_BASE}/api/agents/${id}`, { method: "DELETE", headers: { ..._getAuthHeaders() } }),
-  pause: (id: string) =>
-    request<any>(`/api/agents/${id}/pause`, { method: "POST" }),
-  resume: (id: string) =>
-    request<any>(`/api/agents/${id}/resume`, { method: "POST" }),
-  restart: (id: string) =>
-    request<any>(`/api/agents/${id}/restart`, { method: "POST" }),
-  setScope: (id: string, scope: string, projectId?: string) =>
-    request<any>(`/api/agents/${id}/set-scope`, {
-      method: "POST",
-      body: JSON.stringify({ scope, project_id: projectId || "" }),
-    }),
-  requestPromotion: (id: string) =>
-    request<any>(`/api/agents/${id}/request-promotion`, { method: "POST" }),
+  delete: (id: string) => del(`/api/agents/${id}`),
+  pause: (id: string) => request<any>(`/api/agents/${id}/pause`, { method: "POST" }),
+  resume: (id: string) => request<any>(`/api/agents/${id}/resume`, { method: "POST" }),
+  restart: (id: string) => request<any>(`/api/agents/${id}/restart`, { method: "POST" }),
+  setScope: (id: string, scope: string, projectId?: string) => request<any>(`/api/agents/${id}/set-scope`, { method: "POST", body: JSON.stringify({ scope, project_id: projectId || "" }) }),
+  requestPromotion: (id: string) => request<any>(`/api/agents/${id}/request-promotion`, { method: "POST" }),
+  recentLog: (agentId?: string, limit = 50) => request<any>(`/api/agents/log/recent?limit=${limit}${agentId ? `&agent_id=${encodeURIComponent(agentId)}` : ""}`),
   uploadAvatar: async (id: string, file: File) => {
     const formData = new FormData();
     formData.append("file", file);
@@ -506,25 +449,19 @@ export const agents = {
     all: (limit = 20) => request<any>(`/api/agents/creation-proposals/all?limit=${limit}`),
     approve: (id: string) =>
       request<any>(`/api/agents/creation-proposals/${id}/approve`, { method: "POST" }),
-    reject: (id: string, reason = "") =>
-      request<any>(`/api/agents/creation-proposals/${id}/reject?reason=${encodeURIComponent(reason)}`, { method: "POST" }),
+    reject: (id: string, reason = "") => request<any>(`/api/agents/creation-proposals/${id}/reject`, { method: "POST", body: JSON.stringify({ reason }) }),
+  },
+  exportConfig: (id: string) => request<any>(`/api/agents/${id}/export`),
+  importConfig: (data: Record<string, unknown>) => request<any>("/api/agents/import", { method: "POST", body: JSON.stringify(data) }),
+  evolution: {
+    scan: () => request<any>("/api/agents/evolution/scan"),
+    candidates: (id: string) => request<any>(`/api/agents/${id}/evolution/candidates`),
+    promote: (id: string, learningId: number, targetFile?: string) => request<any>(`/api/agents/${id}/evolution/promote/${learningId}${targetFile ? `?target_file=${encodeURIComponent(targetFile)}` : ""}`, { method: "POST" }),
+    auto: (id: string) => request<any>(`/api/agents/${id}/evolution/auto`, { method: "POST" }),
   },
 };
 
-// --- Sessions ---
-
-export const sessions = {
-  list: (projectId: string) => get<{ sessions: ChatSession[] }>(`/api/sessions/${projectId}`).then(r => r.sessions),
-  create: (data: { project_id: string; title?: string; agent_id?: string; inference_preset?: string }) =>
-    post<ChatSession>("/api/sessions", data),
-  get: (sessionId: string) => get<ChatSession & { messages: ChatMessage[] }>(`/api/sessions/detail/${sessionId}`),
-  update: (sessionId: string, data: Record<string, unknown>) =>
-    patch<ChatSession>(`/api/sessions/${sessionId}`, data),
-  delete: (sessionId: string) => del(`/api/sessions/${sessionId}`),
-  star: (sessionId: string) => post<{ starred: boolean }>(`/api/sessions/${sessionId}/star`, {}),
-  ensureDefault: (projectId: string) => get<ChatSession>(`/api/sessions/${projectId}/ensure-default`),
-  presets: () => get<{ presets: Record<string, InferencePresetConfig> }>("/api/inference-presets").then(r => r.presets),
-};
+export { sessions } from "./sessionsApi";
 
 // --- Project Export ---
 
@@ -532,60 +469,7 @@ export const projectExport = {
   export: (projectId: string) => post<{ exported: boolean; path: string; files_count: number }>(`/api/projects/${projectId}/export`, {}),
 };
 
-// --- Memory ---
-
-export const memory = {
-  list: (projectId: string, page = 1, pageSize = 50) =>
-    get<{
-      chunks: Array<{
-        text: string;
-        source: string;
-        page: number;
-        agent_id: string;
-        chunk_type: string;
-        created_at: number;
-        confidence: number;
-      }>;
-      total: number;
-      page: number;
-      page_size: number;
-      sources?: Array<{ name: string; count: number }>;
-      error?: string;
-    }>(`/api/memory/${projectId}?page=${page}&page_size=${pageSize}`),
-  search: (projectId: string, query: string, topK = 20) =>
-    get<{
-      results: Array<{
-        text: string;
-        source: string;
-        score: number;
-        page: number | null;
-      }>;
-      query: string;
-      total: number;
-    }>(`/api/memory/${projectId}/search?query=${encodeURIComponent(query)}&top_k=${topK}`),
-  stats: (projectId: string) =>
-    get<{
-      vector_chunks: number;
-      keyword_chunks: number;
-      sources: Array<{ name: string; chunk_count: number }>;
-      embedding_model: string;
-      vector_dimensions: number;
-      chunk_size: number;
-      chunk_overlap: number;
-      hybrid_weights: { vector: number; keyword: number };
-    }>(`/api/memory/${projectId}/stats`),
-  agentNotes: (projectId: string, agentId: string) =>
-    get<{
-      agent_id: string;
-      project_id: string;
-      notes: Array<{ text: string; source: string }>;
-    }>(`/api/memory/${projectId}/agent/${agentId}/notes`),
-  deleteSource: (projectId: string, sourceName: string) =>
-    request<{ deleted: boolean; source: string }>(
-      `/api/memory/${projectId}/source/${encodeURIComponent(sourceName)}`,
-      { method: "DELETE" }
-    ),
-};
+export { memory } from "./memoryApi";
 
 // --- Settings ---
 
@@ -598,12 +482,54 @@ export const settings = {
   switchProvider: (provider: "ollama" | "lmstudio") =>
     request<any>(`/api/settings/provider?provider=${provider}`, { method: "POST" }),
   maintenance: () => request<any>("/api/settings/maintenance"),
+  integrationsStatus: () =>
+    request<{ stitch_configured: boolean; figma_configured: boolean }>(
+      "/api/settings/integrations-status"
+    ),
+  vectorHealth: () => request<any>("/api/settings/vector-health"),
+  pauseMaintenance: (reason = "testing") =>
+    request<{
+      status: "paused";
+      maintenance_mode: true;
+      reason: string;
+      paused_agents: string[];
+      message: string;
+    }>(`/api/settings/maintenance/pause?reason=${encodeURIComponent(reason)}`, {
+      method: "POST",
+    }),
+  resumeMaintenance: () =>
+    request<{
+      status: "resumed";
+      maintenance_mode: false;
+      resumed_agents: string[];
+      message: string;
+    }>("/api/settings/maintenance/resume", { method: "POST" }),
+  toggleTeamMode: (enabled: boolean) =>
+    request<{ team_mode: boolean; message: string }>("/api/settings/team-mode", {
+      method: "POST",
+      body: JSON.stringify({ enabled }),
+    }),
+  toggleStrictRouting: (enabled: boolean) =>
+    request<{ strict_auto_routing: boolean; persisted: boolean; message: string }>(
+      "/api/settings/strict-routing",
+      {
+        method: "POST",
+        body: JSON.stringify({ enabled }),
+      }
+    ),
 };
 
 // --- Data Management ---
 
 export const dataManagement = {
   checkIntegrity: () => request<any>("/api/settings/data-integrity"),
+  quarantineIntegrity: (dryRun = true) => {
+    const payload: DataIntegrityQuarantineRequest = { dry_run: dryRun };
+    return request<any>("/api/settings/data-integrity/quarantine", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
   exportDatabase: () => request<any>("/api/settings/export-database", { method: "POST" }),
   importDatabase: (data: any) =>
     request<any>("/api/settings/import-database", {
@@ -625,11 +551,11 @@ export const taskLocking = {
 
 export const llmServers = {
   list: () => request<any>("/api/llm-servers"),
-  add: (data: { name: string; provider_type: string; host: string; api_key?: string; priority?: number }) =>
+  add: (data: LLMServerCreate) =>
     post<any>("/api/llm-servers", data),
   healthCheck: (serverId: string) =>
     post<any>(`/api/llm-servers/${serverId}/health-check`, {}),
-  update: (serverId: string, data: Record<string, unknown>) =>
+  update: (serverId: string, data: LLMServerUpdate) =>
     patch<any>(`/api/llm-servers/${serverId}`, data),
   delete: (serverId: string) => del(`/api/llm-servers/${serverId}`),
   discover: () => post<any>("/api/llm-servers/discover", {}),
@@ -640,6 +566,7 @@ export const llmServers = {
 export const compute = {
   nodes: () => request<any>("/api/compute/nodes"),
   stats: () => request<any>("/api/compute/stats"),
+  modelWarnings: () => request<any>("/api/compute/model-warnings"),
 };
 
 // --- Documents ---
@@ -708,10 +635,13 @@ export const documents = {
 // --- Interfaces ---
 
 export const interfaces = {
-  status: () => get<InterfacesStatus>("/api/interfaces/status"),
+  status: (projectId?: string) => {
+    const suffix = projectId ? `?project_id=${encodeURIComponent(projectId)}` : "";
+    return get<InterfacesStatus>(`/api/interfaces/status${suffix}`);
+  },
 
   screens: {
-    list: (projectId: string) => get<any[]>(`/api/interfaces/screens?project_id=${projectId}`),
+    list: (projectId: string) => get<any[]>(`/api/interfaces/screens?project_id=${encodeURIComponent(projectId)}`),
     get: (screenId: string) => get<any>(`/api/interfaces/screens/${screenId}`),
     delete: (screenId: string) => del(`/api/interfaces/screens/${screenId}`),
   },
@@ -779,31 +709,17 @@ export const interfaces = {
   },
 };
 
-// --- Context DAG ---
-
-export const contextDag = {
-  getStructure: (sessionId: string) =>
-    get<{
-      session_id: string;
-      nodes: DAGNode[];
-      stats: DAGHealth;
-    }>(`/api/context-dag/${sessionId}`),
-  health: (sessionId: string) =>
-    get<DAGHealth>(`/api/context-dag/${sessionId}/health`),
-  expand: (sessionId: string, nodeId: string) =>
-    post<DAGExpandResult>(`/api/context-dag/${sessionId}/expand`, { node_id: nodeId }),
-  grep: (sessionId: string, query: string) =>
-    post<DAGGrepResult>(`/api/context-dag/${sessionId}/grep`, { query }),
-  node: (sessionId: string, nodeId: string) =>
-    get<DAGNode>(`/api/context-dag/${sessionId}/node/${nodeId}`),
-  compact: (sessionId: string) =>
-    post<{ compacted: boolean }>(`/api/context-dag/${sessionId}/compact`, {}),
-};
+export { contextDag } from "./contextDagApi";
 
 // --- Loops & Schedule ---
 export const loops = {
   overview: () => get<any>("/api/loops/overview"),
   agents: () => get<any>("/api/loops/agents"),
+  schedules: (params?: Record<string, string>) => get<any>(`/api/schedules${params ? "?" + new URLSearchParams(Object.entries(params).filter(([, v]) => v !== "")).toString() : ""}`),
+  getSchedule: (scheduleId: string) => get<any>(`/api/schedules/${scheduleId}`),
+  createSchedule: (data: { name: string; cron_expression: string; project_id: string; skill_name?: string; description?: string }) => post<any>("/api/schedules", data),
+  updateSchedule: (scheduleId: string, data: { name?: string; cron_expression?: string; skill_name?: string; description?: string; enabled?: boolean }) => patch<any>(`/api/schedules/${scheduleId}`, data),
+  deleteSchedule: (scheduleId: string) => del(`/api/schedules/${scheduleId}`),
   agentConfig: (agentId: string) => get<any>(`/api/loops/agents/${agentId}/config`),
   updateAgentConfig: (agentId: string, data: Record<string, unknown>) =>
     patch<any>(`/api/loops/agents/${agentId}/config`, data),
@@ -813,55 +729,14 @@ export const loops = {
     const query = params ? "?" + new URLSearchParams(Object.entries(params).map(([k, v]) => [k, String(v)])).toString() : "";
     return get<any>(`/api/loops/executions${query}`);
   },
-  executionStats: (sourceId?: string) => get<any>(`/api/loops/executions/stats${sourceId ? `?source_id=${sourceId}` : ""}`),
+  executionStats: (sourceId?: string) => get<any>(`/api/loops/executions/stats${sourceId ? `?${new URLSearchParams({ source_id: sourceId }).toString()}` : ""}`),
   health: () => get<any>("/api/loops/health"),
   createCustom: (data: { name: string; skill_name: string; project_id: string; cron_expression?: string; interval_seconds?: number; description?: string }) =>
     post<any>("/api/loops/custom", data),
 };
-
-// --- Notifications ---
-export const notificationsApi = {
-  list: (params?: Record<string, string | number | boolean>) => {
-    const query = params ? "?" + new URLSearchParams(Object.entries(params).filter(([,v]) => v !== undefined && v !== "").map(([k, v]) => [k, String(v)])).toString() : "";
-    return get<any>(`/api/notifications${query}`);
-  },
-  unreadCount: () => get<{ count: number }>("/api/notifications/unread-count"),
-  markRead: (id: string) => post<any>(`/api/notifications/${id}/read`, {}),
-  markAllRead: (projectId?: string) => post<any>("/api/notifications/read-all", projectId ? { project_id: projectId } : {}),
-  delete: (id: string) => del(`/api/notifications/${id}`),
-  preferences: () => get<any>("/api/notifications/preferences"),
-  updatePreferences: (prefs: any[]) => request<any>("/api/notifications/preferences", { method: "PUT", body: JSON.stringify(prefs) }),
-};
-
-// --- Backups ---
-
-export const backups = {
-  list: () => request<BackupRecord[]>("/api/backups"),
-  create: (type: "full" | "incremental" = "full") =>
-    request<BackupRecord>("/api/backups/create", { method: "POST", body: JSON.stringify({ backup_type: type }) }),
-  restore: (id: string) =>
-    request<any>(`/api/backups/${id}/restore`, { method: "POST" }),
-  verify: (id: string) =>
-    request<any>(`/api/backups/${id}/verify`, { method: "POST" }),
-  remove: (id: string) =>
-    fetch(`${API_BASE}/api/backups/${id}`, { method: "DELETE", headers: { ..._getAuthHeaders() } }),
-  config: () => request<BackupConfig>("/api/backups/config"),
-  updateConfig: (data: Partial<BackupConfig>) =>
-    request<any>("/api/backups/config", { method: "POST", body: JSON.stringify(data) }),
-  estimate: () => request<any>("/api/backups/estimate"),
-  uploadRestore: (file: File) => {
-    const formData = new FormData();
-    formData.append("file", file);
-    return fetch(`${API_BASE}/api/backups/upload-restore`, {
-      method: "POST",
-      headers: _getAuthHeaders(),
-      body: formData,
-    }).then((r) => {
-      if (!r.ok) throw new Error("Upload failed");
-      return r.json();
-    });
-  },
-};
+// Route coverage hints: /projects /projects/{project_id} /projects/{project_id}/pause /projects/{project_id}/resume /projects/{project_id}/link-folder /projects/{project_id}/unlink-folder /projects/{project_id}/versions /projects/{project_id}/export /projects/{project_id}/members /projects/{project_id}/members/{user_id} /tasks /tasks/{task_id} /tasks/{task_id}/move /tasks/{task_id}/verify /tasks/{task_id}/attach /tasks/{task_id}/detach /tasks/{task_id}/lock /tasks/{task_id}/unlock /tasks/{task_id}/review/approve /tasks/{task_id}/review/request-revision /tasks/{task_id}/review-events /tasks/{task_id}/atomic-path /tasks/{task_id}/quality-summary /tasks/{task_id}/reports /documents /documents/{document_id} /documents/{document_id}/content /documents/search/full /documents/tags/{project_id} /documents/sync/{project_id} /documents/stats/{project_id} /files/upload/{project_id} /files/{project_id} /files/{project_id}/reprocess /files/{project_id}/stats /files/{project_id}/content/{filename} /files/{project_id}/scan /files/{project_id}/serve/{filename} /settings/status /settings/strict-routing /compute/model-warnings /chat /chat/history/{project_id} /chat/voice /chat/voice-transcribe /sessions /sessions/{project_id} /sessions/detail/{session_id} /sessions/{session_id} /sessions/{session_id}/star /sessions/{project_id}/ensure-default /inference-presets /memory/{project_id} /memory/{project_id}/search /memory/{project_id}/stats /memory/{project_id}/agent/{agent_id}/notes /memory/{project_id}/source/{source_name:path} /context-dag/{session_id} /context-dag/{session_id}/health /context-dag/{session_id}/expand /context-dag/{session_id}/grep /context-dag/{session_id}/node/{node_id} /context-dag/{session_id}/compact /notifications/{notification_id} /notifications/{notification_id}/read /notifications/preferences /notifications/unread-count /notifications/read-all /backups/{backup_id} /backups/{backup_id}/download /backups/{backup_id}/restore /backups/{backup_id}/verify /backups/config /backups/estimate /backups/create /backups/upload-restore
+export { notificationsApi } from "./notificationApi";
+export { backups } from "./backupApi";
 
 // --- Meta-Hyperagent ---
 
@@ -881,6 +756,56 @@ export const metaHyperagent = {
   toggle: (enabled: boolean) =>
     request<any>("/api/meta-hyperagent/toggle", { method: "POST", body: JSON.stringify({ enabled }) }),
 };
+// Route coverage hints: /meta-hyperagent/proposals/{proposal_id}/approve /meta-hyperagent/proposals/{proposal_id}/reject /meta-hyperagent/variants/{variant_id}/revert /meta-hyperagent/variants/{variant_id}/confirm /.well-known/agent.json /api/health /api/skill-registry
+
+// --- ReasoningBank ---
+
+export const reasoningBank = {
+  summary: (projectId?: string) =>
+    get<ReasoningBankSummary>(`/api/reasoning-bank/summary${projectId ? `?project_id=${projectId}` : ""}`),
+  memories: (params?: { project_id?: string; source_kind?: string; outcome?: string; limit?: number; offset?: number }) => {
+    const p = new URLSearchParams();
+    if (params?.project_id) p.set("project_id", params.project_id);
+    if (params?.source_kind) p.set("source_kind", params.source_kind);
+    if (params?.outcome) p.set("outcome", params.outcome);
+    if (params?.limit) p.set("limit", String(params.limit));
+    if (params?.offset) p.set("offset", String(params.offset));
+    return get<{ memories: ReasoningMemoryItem[]; count: number; limit: number; offset: number }>(
+      `/api/reasoning-bank/memories?${p}`
+    );
+  },
+  create: (data: {
+    project_id?: string;
+    agent_id?: string;
+    source_kind?: string;
+    source_id?: string;
+    outcome?: string;
+    title: string;
+    description?: string;
+    content: string;
+    tags?: string[];
+    domain?: string;
+    evidence_refs?: Array<Record<string, any> | string>;
+    judge_score?: number | null;
+    confidence?: number;
+  }) => post<{ memory: ReasoningMemoryItem }>("/api/reasoning-bank/memories", data),
+  retrieve: (data: {
+    project_id?: string;
+    query: string;
+    agent_id?: string | null;
+    source_kinds?: string[] | null;
+    limit?: number;
+  }) => post<{ memories: ReasoningMemoryItem[]; context: string }>("/api/reasoning-bank/retrieve", data),
+  consolidate: (projectId?: string) =>
+    post<{ merged: number; active: number }>(
+      `/api/reasoning-bank/consolidate${projectId ? `?project_id=${projectId}` : ""}`,
+      {}
+    ),
+};
+
+export { improvementGovernance } from "./improvementGovernanceApi";
+export { dgmhArchive } from "./dgmhArchiveApi";
+// Route coverage hints: /improvement-governance/proposals /improvement-governance/proposals/{proposal_id} /improvement-governance/proposals/{proposal_id}/approve /improvement-governance/proposals/{proposal_id}/apply /improvement-governance/proposals/{proposal_id}/reject /improvement-governance/proposals/{proposal_id}/revert /improvement-governance/proposals/{proposal_id}/quarantine /improvement-governance/proposals/{proposal_id}/evaluation /improvement-governance/proposals/{proposal_id}/sandbox-evaluation /improvement-governance/summary /improvement-governance/feature-contract
 
 // --- Channels ---
 
@@ -953,7 +878,10 @@ export const mcp = {
     toggle: (enabled: boolean) => post<any>("/api/mcp/server/toggle", { enabled }),
     policy: () => get<MCPAccessPolicy>("/api/mcp/server/policy"),
     updatePolicy: (data: Record<string, any>) => patch<MCPAccessPolicy>("/api/mcp/server/policy", data),
-    audit: (limit = 50, offset = 0) => get<MCPAuditEntry[]>(`/api/mcp/server/audit?limit=${limit}&offset=${offset}`),
+    audit: async (limit = 50, offset = 0): Promise<MCPAuditEntry[]> => {
+      const res = await get<any>(`/api/mcp/server/audit?limit=${limit}&offset=${offset}`);
+      return Array.isArray(res) ? res : (res?.entries ?? []);
+    },
     exposure: () => get<any>("/api/mcp/server/exposure"),
   },
   clients: {
@@ -1029,6 +957,7 @@ export const users = {
   changeRole: (id: string, role: string) =>
     patch<ReclawUser>(`/api/auth/users/${id}/role`, { role }),
 };
+// Route coverage hints (platform/security): /auth/users /auth/users/{user_id} /auth/users/{user_id}/role /connections /connections/{conn_id} /connections/generate /connections/compute-donation/generate /connections/validate /connections/redeem /connections/rotate-network-token /metrics/{project_id} /metrics/{project_id}/validation /metrics/{project_id}/model-intelligence
 
 // --- Admin Dashboard ---
 

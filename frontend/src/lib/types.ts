@@ -2,7 +2,12 @@
 
 export type ProjectPhase = "discover" | "define" | "develop" | "deliver";
 export type TaskStatus = "backlog" | "in_progress" | "in_review" | "done";
-// Backend update request model coverage marker: UpdateConfirmation.
+// Backend request model coverage markers: UpdateConfirmation, LinkFolderRequest, StrictRoutingRequest,
+// ReasoningMemoryCreateRequest, ReasoningMemoryRetrieveRequest, RegisterRequest, LoginRequest,
+// TOTPSetupRequest, TOTPDisableRequest, TOTPVerifyRequest, RecoveryCodeRequest, PreferencesRequest,
+// PasskeyRegistrationStartRequest, PasskeyRegistrationFinishRequest, PasskeyAuthenticationStartRequest,
+// PasskeyAuthenticationFinishRequest, PasskeyCredentialInfo, DataIntegrityQuarantineRequest,
+// LLMServerCreate, LLMServerUpdate.
 
 export interface Project {
   id: string;
@@ -294,22 +299,26 @@ export interface DAGNode {
   parent_id: string | null;
   depth: number;
   summary_text: string;
+  summary_preview?: string;
   message_count: number;
   token_count: number;
   original_token_count: number;
   child_node_ids: string[];
-  time_range_start: string;
-  time_range_end: string;
-  created_at: string;
+  time_range_start: string | null;
+  time_range_end: string | null;
+  created_at: string | null;
 }
 
 export interface DAGHealth {
+  session_id?: string;
   total_messages: number;
   compacted_messages: number;
   fresh_tail_size: number;
   max_depth: number;
+  dag_depth?: number;
   compression_ratio: number;
-  nodes_by_depth: Record<number, number>;
+  nodes_by_depth: Record<string, number>;
+  total_nodes?: number;
   dag_enabled: boolean;
 }
 
@@ -410,7 +419,7 @@ export interface DesignScreen {
   figma_node_id: string | null;
   status: DesignScreenStatus;
   source_findings: string[];
-  metadata_json: string;
+  metadata_json: Record<string, unknown>;
   created_at: string;
   updated_at: string;
 }
@@ -422,6 +431,9 @@ export interface DesignBrief {
   content: string;
   source_insight_ids: string[];
   source_recommendation_ids: string[];
+  source_findings?: Array<Record<string, unknown>>;
+  recommendations?: Array<Record<string, unknown>>;
+  ux_laws?: string[];
   created_at: string;
   updated_at: string;
 }
@@ -445,17 +457,19 @@ export interface InterfacesStatus {
   onboarding_needed: boolean;
   screens_count: number;
   briefs_count: number;
+  scope?: "project" | "global" | "integration-only";
 }
 
 // --- Loops & Schedule ---
 export type LoopStatus = "active" | "paused" | "behind_schedule" | "stopped" | "error";
+export type LoopSourceType = "agent" | "agent_loop" | "schedule" | "scheduled" | "scheduled_task" | "custom";
 export type ExecutionStatus = "success" | "failure" | "running" | "skipped";
 
 export interface LoopExecution {
-  id: string; source_type: string; source_id: string; source_name: string;
+  id: string; source_type: LoopSourceType; source_id: string; source_name: string;
   status: ExecutionStatus; started_at: string; finished_at: string | null;
   duration_ms: number | null; error_message: string; findings_count: number;
-  metadata: Record<string, unknown>; created_at: string;
+  metadata: Record<string, unknown>; metadata_json?: Record<string, unknown>; created_at: string;
 }
 
 export interface AgentLoopConfig {
@@ -464,11 +478,19 @@ export interface AgentLoopConfig {
   cycle_count: number;
 }
 
+export interface ScheduledLoop {
+  id: string; name: string; description: string; cron_expression: string;
+  skill_name: string; project_id: string; enabled: boolean; is_running: boolean;
+  last_run: string | null; next_run: string | null; loop_type: "cron" | "interval" | "custom" | string;
+  interval_seconds: number | null; execution_count: number; last_status: string; created_at: string;
+}
+
 export interface LoopHealthItem {
-  source_type: string; source_id: string; source_name: string;
-  status: LoopStatus; interval_seconds: number;
+  source_type: LoopSourceType; source_id: string; source_name: string;
+  status: LoopStatus; interval_seconds: number | null;
   last_execution_at: string | null; next_expected_at: string | null;
-  behind_by_seconds: number;
+  behind_by_seconds: number | null; cron_expression?: string; skill_name?: string;
+  last_status?: string; execution_count?: number;
 }
 
 // --- Notifications ---
@@ -480,7 +502,7 @@ export interface AppNotification {
   category: NotificationCategory; agent_id: string | null;
   project_id: string | null; severity: NotificationSeverity;
   read: boolean; action_type: string; action_target: string;
-  metadata: Record<string, unknown>; created_at: string;
+  metadata: Record<string, unknown>; metadata_json?: Record<string, unknown>; created_at: string;
 }
 
 export interface NotificationPreference {
@@ -507,6 +529,7 @@ export interface BackupRecord {
 
 export interface BackupConfig {
   backup_enabled: boolean;
+  backup_dir?: string;
   backup_interval_hours: number;
   backup_retention_count: number;
   backup_full_interval_days: number;
@@ -553,6 +576,7 @@ export interface MetaHyperagentStatus {
   active_variants: number;
   recent_observations?: number;
   last_observed_at?: string | null;
+  reasoning_bank?: Record<string, any>;
   observation_interval_hours: number;
   variant_observation_hours?: number;
 }
@@ -560,7 +584,7 @@ export interface MetaHyperagentStatus {
 // --- Integrations: Messaging Channels ---
 
 export type ChannelPlatform = "telegram" | "slack" | "whatsapp" | "google_chat";
-export type ChannelHealthStatus = "healthy" | "unhealthy" | "unknown";
+export type ChannelHealthStatus = "healthy" | "unhealthy" | "unknown" | "stopped" | "not_enabled" | "not_registered";
 
 export interface ChannelInstance {
   id: string;
@@ -940,7 +964,7 @@ export interface CodebookVersionType {
   change_log: string;
   created_by: string;
   methodology: "reflexive_ta" | "codebook_ta" | "grounded_theory";
-  created_at: string;
+  created_at: string | null;
 }
 
 export interface CodeEntry {
@@ -959,7 +983,9 @@ export interface CodeEntry {
 export interface CodeApplicationType {
   id: string;
   project_id: string;
+  codebook_version_id?: string | null;
   code_id: string;
+  source_document_id?: string | null;
   source_text: string;
   source_location: string;
   coder_id: string;
@@ -967,5 +993,36 @@ export interface CodeApplicationType {
   confidence: number;
   reasoning: string;
   review_status: "pending" | "approved" | "rejected" | "modified";
+  reviewed_by?: string | null;
+  reviewed_at?: string | null;
   created_at: string;
 }
+
+// Improvement Governance request contracts live in improvementGovernanceTypes.ts:
+// ImprovementProposalCreateRequest, ProposalDecisionRequest, ProposalApplyRequest,
+// ProposalEvaluationRequest, ProposalSandboxEvaluationRequest.
+export type {
+  ImprovementFeatureContract,
+  ImprovementGovernanceSummary,
+  ImprovementProposal,
+  ImprovementProposalCreateRequest,
+  ProposalApplyRequest,
+  ProposalDecisionRequest,
+  ProposalEvaluationRequest,
+  ProposalSandboxCheck,
+  ProposalSandboxEvaluation,
+  ProposalSandboxEvaluationRequest,
+} from "./improvementGovernanceTypes";
+
+export type {
+  DGMHArchiveSummary,
+  DGMHArchiveVariant,
+  DGMHVariantApplyRequest,
+  DGMHVariantCreateRequest,
+  DGMHVariantEvaluationRequest,
+  DGMHVariantStatusRequest,
+} from "./dgmhArchiveTypes";
+
+// DGM-H archive request contracts live in dgmhArchiveTypes.ts:
+// DGMHVariantCreateRequest, DGMHVariantEvaluationRequest,
+// DGMHVariantStatusRequest, DGMHVariantApplyRequest.

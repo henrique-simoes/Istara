@@ -3,7 +3,7 @@
 import json
 import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -11,7 +11,8 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.field_encryption import encrypt_field, decrypt_field
+from app.core.auth_cookies import get_auth_cookie_token
+from app.core.field_encryption import decrypt_field, encrypt_field
 from app.core.security_middleware import require_admin_from_request
 from app.models.database import get_db
 from app.models.llm_server import LLMServer
@@ -51,10 +52,12 @@ async def list_llm_servers(db: AsyncSession = Depends(get_db)):
 
     # Also include live router status
     from app.core.llm_router import llm_router
+
     router_status = llm_router.list_servers()
 
     # Get live health error from compute registry nodes
     from app.core.compute_registry import compute_registry
+
     node_errors = {}
     for nid, node in compute_registry._nodes.items():
         if hasattr(node, "health_error") and node.health_error:
@@ -73,7 +76,9 @@ async def list_llm_servers(db: AsyncSession = Depends(get_db)):
                 "is_relay": s.is_relay,
                 "priority": s.priority,
                 "last_latency_ms": s.last_latency_ms,
-                "last_health_check": s.last_health_check.isoformat() if s.last_health_check else None,
+                "last_health_check": (
+                    s.last_health_check.isoformat() if s.last_health_check else None
+                ),
                 "capabilities": json.loads(s.capabilities) if s.capabilities else {},
                 "health_error": node_errors.get(s.id, ""),
             }
@@ -84,8 +89,12 @@ async def list_llm_servers(db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/llm-servers")
-async def add_llm_server(data: LLMServerCreate, request: Request, db: AsyncSession = Depends(get_db)):
-    """Add a new external LLM server. Admin required for remote servers; local servers allowed for all authenticated users."""
+async def add_llm_server(
+    data: LLMServerCreate,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Add a new external LLM server."""
     inferred_is_local = data.is_local and _is_local_host(data.host)
     # RBAC: Only admin can add non-local (remote) servers.
     # Local servers can be added by anyone to donate compute.
@@ -94,14 +103,19 @@ async def add_llm_server(data: LLMServerCreate, request: Request, db: AsyncSessi
     else:
         # Still ensure the user is authenticated
         auth_header = request.headers.get("Authorization", "")
-        token_str = auth_header.removeprefix("Bearer ").strip() if auth_header.startswith("Bearer ") else ""
+        token_str = (
+            auth_header.removeprefix("Bearer ").strip() if auth_header.startswith("Bearer ") else ""
+        )
         if not token_str:
-            token_str = request.cookies.get("istara_session", "")
+            token_str = get_auth_cookie_token(request)
         if not token_str:
             raise HTTPException(status_code=401, detail="Authentication required")
-            
+
         from app.core.auth import verify_token
-        if not verify_token(token_str):
+        from app.core.auth_sessions import validate_auth_session
+
+        payload = verify_token(token_str)
+        if not payload or not await validate_auth_session(db, payload, request):
             raise HTTPException(status_code=401, detail="Invalid token")
 
     server = LLMServer(
@@ -118,7 +132,8 @@ async def add_llm_server(data: LLMServerCreate, request: Request, db: AsyncSessi
     await db.refresh(server)
 
     # Register with the live router (decrypt key for runtime use)
-    from app.core.llm_router import llm_router, LLMServerEntry
+    from app.core.llm_router import LLMServerEntry, llm_router
+
     entry = LLMServerEntry(
         server_id=server.id,
         name=server.name,
@@ -133,11 +148,18 @@ async def add_llm_server(data: LLMServerCreate, request: Request, db: AsyncSessi
     # Run initial health check
     healthy = await entry.check_health()
     server.is_healthy = healthy
-    server.last_health_check = datetime.now(timezone.utc)
+    server.provider_type = entry.provider_type
+    server.last_health_check = datetime.now(UTC)
     server.last_latency_ms = entry.last_latency_ms
     await db.commit()
 
-    logger.info(f"Added LLM server: {server.name} ({server.provider_type} @ {server.host}) healthy={healthy}")
+    logger.info(
+        "Added LLM server: %s (%s @ %s) healthy=%s",
+        server.name,
+        server.provider_type,
+        server.host,
+        healthy,
+    )
 
     return {
         "id": server.id,
@@ -158,6 +180,7 @@ async def health_check_server(server_id: str, db: AsyncSession = Depends(get_db)
         raise HTTPException(status_code=404, detail="Server not found")
 
     from app.core.llm_router import llm_router
+
     # Look up by ID first, then by host URL (discovered servers use different IDs)
     router_server = llm_router._servers.get(server_id)
     if not router_server:
@@ -169,11 +192,13 @@ async def health_check_server(server_id: str, db: AsyncSession = Depends(get_db)
     if router_server:
         healthy = await router_server.check_health()
         server.is_healthy = healthy
-        server.last_health_check = datetime.now(timezone.utc)
+        server.provider_type = router_server.provider_type
+        server.last_health_check = datetime.now(UTC)
         server.last_latency_ms = router_server.last_latency_ms
         await db.commit()
         # Get health error from the compute node
         from app.core.compute_registry import compute_registry
+
         node = compute_registry._nodes.get(server_id)
         health_error = getattr(node, "health_error", "") if node else ""
         return {
@@ -183,7 +208,11 @@ async def health_check_server(server_id: str, db: AsyncSession = Depends(get_db)
             "health_error": health_error,
         }
 
-    return {"server_id": server_id, "healthy": False, "health_error": "Server not registered in router"}
+    return {
+        "server_id": server_id,
+        "healthy": False,
+        "health_error": "Server not registered in router",
+    }
 
 
 @router.patch("/llm-servers/{server_id}")
@@ -218,6 +247,7 @@ async def delete_llm_server(server_id: str, request: Request, db: AsyncSession =
         raise HTTPException(status_code=404, detail="Server not found")
 
     from app.core.llm_router import llm_router
+
     llm_router.unregister_server(server_id)
 
     await db.delete(server)
@@ -231,6 +261,7 @@ async def discover_network_llm_servers(request: Request):
     """Scan local network for LLM servers (LM Studio, Ollama, OpenAI-compatible)."""
     require_admin_from_request(request)
     from app.core.network_discovery import discover_and_register
+
     discovered = await discover_and_register()
     return {
         "discovered": len(discovered),

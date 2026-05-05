@@ -424,7 +424,7 @@ Istara now detects the loaded model's context window at startup and allocates to
 
 **Detection chain:**
 1. `main.py` startup probes LM Studio/Ollama for the loaded model name
-2. `model_capabilities.py` calls `/v1/models` (LM Studio) or `/api/show` (Ollama) to read `context_length`
+2. `model_capabilities.py` calls the provider-relative OpenAI-compatible `models` path (for example `/v1/models` on LM Studio or `/v1beta/openai/models` on Gemini) or `/api/show` (Ollama) to read `context_length`
 3. `compute_registry.check_all_health()` syncs detected capabilities to `settings.max_context_tokens`
 4. `config.update_context_window()` updates the global budget if the detected value differs >2x from current
 
@@ -745,7 +745,7 @@ GET  /api/settings/maintenance                                  → check curren
 4. The MetaOrchestrator force-pauses all WORKING/IDLE agents to PAUSED state
 5. On resume, agents return to IDLE and the governor resumes normal resource-based scheduling
 
-**Used by the simulation test runner** (`tests/simulation/run.mjs`) to ensure the user's configured model is exclusively available for test LLM calls — no model switching, no dual-model loading.
+**Used by the simulation test runner** (`tests/simulation/run.mjs`) to ensure live test LLM calls have exclusive access to the configured test profile — no provider switching, no dual-model loading.
 
 ### Model Recommendations
 
@@ -1025,10 +1025,19 @@ The self-evolution and prompt compression scenario includes **35 checks** specif
 
 ### Test Isolation (Single-Model Guarantee)
 
-On machines with limited RAM (8GB), LM Studio can only load one model at a time without severe performance degradation. The simulation test runner uses the **Maintenance Mode** system to guarantee exclusive model access:
+Simulation tests still pause background agent work before they run. Live LLM
+tests use an explicit OpenAI-compatible profile matrix managed by
+`tests/llm_test_config.py`: Gemini is the primary profile at
+`https://generativelanguage.googleapis.com/v1beta/openai/` with model
+`gemini-3.1-flash-lite-preview`; the optional LM Studio-compatible fallback is
+`http://10.0.10.142:1234/v1/chat/completions` with model
+`qwen3.6-35b-a3b@q5_k_xl`. API keys come only from local env or macOS Keychain.
+This keeps CI and release rehearsals from silently switching between LM Studio,
+Ollama, and cloud providers or accidentally probing stale endpoints like
+`/api/tags`.
 
 1. **Before tests start:** `POST /api/settings/maintenance/pause` — halts all Istara agent work and LLM calls
-2. **During tests:** Tests use the user's currently configured model (no model switching). Only test LLM calls hit the model.
+2. **During tests:** Mocked tests stay deterministic; live LLM tests route only through the shared Gemini/LM Studio OpenAI-compatible profile matrix.
 3. **After tests complete:** `POST /api/settings/maintenance/resume` — agents resume normal operation
 4. **Crash safety:** Signal handlers (`SIGINT`, `SIGTERM`) and the `.catch()` handler call `emergencyResume()` to ensure the backend never stays permanently paused after a test crash
 
@@ -1043,6 +1052,20 @@ The simulation runner includes built-in resilience features:
 - **Structured failure summary**: After all scenarios complete, failures are categorized (TIMED OUT, ERRORS, FAILED CHECKS) with individual check names listed
 - **JWT authentication**: All API calls in scenarios use the authenticated `ctx.api` client. Bare `fetch()` calls include `api._headers()` for JWT
 
+`testing/TESTING_STRATEGY.md` is now an active release-governance document for
+test taxonomy and hardening. It ties pytest strict markers, Playwright
+authenticated-state acceptance tests, Gemini/LM Studio OpenAI-compatible live
+LLM profiles, mutation testing, property-based testing, and agentic eval
+contracts to the CI harness. `scripts/check_test_harness.py` enforces this
+contract before the expensive backend suite runs.
+
+The agentic eval contract in `tests/agentic_eval_contract.json` maps autoresearch, ReasoningBank, Memento
+skill/agent creation, Hyperagent meta-tuning, DGM-H archive evolution,
+ensemble/LLM orchestration, ReAct tool-calling, and acceptance UI coverage to
+specific tests, simulation scenarios, and metrics such as Tool Selection
+Quality, DAG success, evidence-chain completeness, sandbox pass rate, rollback
+availability, retrieval precision, latency, and compute capacity.
+
 ---
 
 ## Configuration Reference
@@ -1053,9 +1076,10 @@ All settings are configurable via environment variables or `.env`:
 
 | Setting | Default | Description |
 |---------|---------|-------------|
-| `LLM_PROVIDER` | `lmstudio` | `"lmstudio"` or `"ollama"` |
-| `LMSTUDIO_HOST` | `http://localhost:1234` | LM Studio API endpoint |
+| `LLM_PROVIDER` | `lmstudio` | `"lmstudio"` or `"ollama"`; live LLM tests force the Gemini OpenAI-compatible profile |
+| `LMSTUDIO_HOST` | `http://localhost:1234` | LM Studio or OpenAI-compatible API endpoint |
 | `LMSTUDIO_MODEL` | `default` | Model name (auto-detected) |
+| `LMSTUDIO_API_KEY` | empty | Optional bearer token for OpenAI-compatible providers |
 | `OLLAMA_HOST` | `http://localhost:11434` | Ollama API endpoint |
 | `OLLAMA_MODEL` | `qwen3:latest` | Default chat model |
 | `OLLAMA_EMBED_MODEL` | `nomic-embed-text` | Embedding model |
@@ -1181,7 +1205,7 @@ Istara now implements a comprehensive defense-in-depth security architecture spa
 | **Breach Checking** | Have I Been Pwned k-anonymity API — only 5 SHA-1 chars sent, full hash never leaves machine | NIST SP 800-63B Rev.4 |
 | **2FA** | TOTP (RFC 6238) via pyotp — Google/Microsoft Authenticator compatible | RFC 6238 |
 | **Passkeys** | WebAuthn/FIDO2 — device-bound biometric auth (Apple Secure Enclave, Windows Hello) | NIST AAL2/AAL3 phishing-resistant |
-| **Recovery Codes** | 8 cryptographic codes per user, Argon2id hashed, one-time use | GitHub/Google pattern |
+| **Recovery Codes** | 8 cryptographic codes per user, Argon2id hashed in dedicated records, one-time use with metadata | GitHub/Google pattern |
 | **JWT** | HMAC-SHA256 with jti (revocation), mfa_verified claim, alg:none protection | RFC 7519 |
 | **Cookies** | HttpOnly, Secure, SameSite=Strict session cookies | OWASP Session Management |
 
@@ -1189,7 +1213,8 @@ Istara now implements a comprehensive defense-in-depth security architecture spa
 ```
 totp_secret: VARCHAR(64)        # TOTP shared secret
 totp_enabled: BOOLEAN           # 2FA active flag
-recovery_codes_hashed: TEXT     # Newline-separated Argon2id hashes
+recovery_codes: table           # Hashed one-time records with used/replaced metadata
+recovery_codes_hashed: TEXT     # Legacy migration column
 passkey_enabled: BOOLEAN        # WebAuthn registered
 password_hash: VARCHAR(512)     # Widened from 255 for Argon2id
 email: EncryptedType            # Fernet-encrypted PII
@@ -1644,10 +1669,26 @@ System tray application for macOS, Windows, and Linux. **Mode-aware manager only
 - CalVer for qualifying `main` pushes is derived from the latest existing release tag, not the committed `VERSION` file. This prevents same-day qualifying pushes from silently colliding on the same release version.
 
 `.github/workflows/ci.yml` enforces repository governance on pushes to `main` and pull requests:
-- Generated docs must be current: `python scripts/update_agent_md.py --check`
-- Integrity stack must be coherent: `python scripts/check_integrity.py`
+- Active governance docs must be coherent: `python scripts/check_integrity.py`
+- CI/CD governance must be self-consistent: `python scripts/check_ci_governance.py`
+- The industry-standard security benchmark must pass: `python scripts/security_benchmark.py --fail-on-threshold`
 - Change obligations must be satisfied: `python scripts/check_change_obligations.py`
 - That governance check fails when architecture/process/release-sensitive code changes without corresponding updates to `Tech.md`, tests, or Istara persona files
+- Backend CI compiles release-critical governed surfaces, runs `python scripts/production_rehearsal.py --json`, and then runs the dedicated governed evolution regression pair: `tests/test_improvement_governance.py` and `tests/test_compute.py`
+
+Legacy Compass markdown (`AGENT.md`, `AGENT_ENTRYPOINT.md`, `COMPLETE_SYSTEM.md`, and `SYSTEM_INTEGRITY_GUIDE.md`) is no longer a blocking CI/CD governance source. Those files may remain as historical references, but Compass Forge is the local-first control plane for repository onboarding, impact analysis, gates, work orders, and evidence. CI therefore guards against accidentally re-promoting the legacy generator or legacy markdown drift checks back into release governance.
+
+### Industry Security Benchmark
+
+The tracked security benchmark lives under `security/` and is active release governance, not ignored documentation. `security/SECURITY_BENCHMARK.md` documents Istara's current standard set: OWASP ASVS 5.0.0, NIST SP 800-63 Revision 4, OWASP WSTG latest, OWASP SAMM 2.0.3, NIST SSDF 1.1, CIS Controls v8.1, SLSA v1.2, OpenSSF Scorecard, WebAuthn Level 3, RFC 9700, OWASP LLM Top 10 2025, OWASP Agentic Top 10 2026, NIST AI RMF, and MITRE ATLAS. `security/control_matrix.json` maps those standards to Istara controls, statuses, severity, evidence, and auth/security trigger paths.
+
+`scripts/security_benchmark.py` renders the quantifiable scorecard used by CI, release prep, and Compass Forge evidence. The production threshold is 90 percent. Any failed control blocks release; any critical/high partial control blocks release; medium/low partials are reported as maturity work. Future auth, session, WebAuthn, connection-string, pooled-compute, MCP, webhook, LLM-provider, autoresearch, self-evolution, or agentic-memory changes must update or explicitly revalidate the benchmark package, and PR CI passes changed paths into the benchmark so `auth_security_change_detected` is visible in the scorecard.
+
+The production rehearsal is the lightweight release smoke test for the new self-improvement architecture. It verifies importability and wiring for the Improvement Governance contract, sandbox evaluation, DGM-H archive, ReasoningBank, compute capacity envelope, dependency manifest coverage, route/type contract expectations, and rollback/evidence surfaces before the full backend test suite runs. This keeps CI aligned with the production rule that autoresearch, skill evolution, agent creation, meta-agent proposals, UI changes, integrations, and backend-code mutations must become governed proposals with evidence and rollback rather than invisible mutations.
+
+Governed evolution changes are tracked in `scripts/check_change_obligations.py` through explicit patterns for autoresearch, ReasoningBank, DGM-H, Improvement Governance, sandbox evaluation, compute capacity, and their frontend/API contracts. Those changes must update one of the dedicated tests for autoresearch, ReasoningBank, DGM-H, improvement governance, meta-hyperagent, compute, or research integrity. Release detection in `.github/workflows/build-installers.yml` treats the governance scripts and production rehearsal as release-worthy because they determine what is safe to ship.
+
+`.github/workflows/track-autoresearch.yml` watches Karpathy's autoresearch upstream and creates an issue when the upstream reference changes. The workflow checks out the repository so any tracked SHA marker is available, uses read-only contents permission plus issue write permission, and routes upstream changes through the same governed evolution process before Istara adopts them.
 
 ### Secret Generation
 `scripts/generate-secrets.sh` generates ALL production secrets:
@@ -2459,7 +2500,7 @@ Istara includes a comprehensive backup system that protects all user data with m
 
 ### Meta-Hyperagent (Experimental)
 
-The Meta-Hyperagent is an experimental self-improvement layer inspired by the Hyperagents paper (DGM-H) on metacognitive self-modification. It observes Istara's own subsystems and proposes parameter optimizations:
+The Meta-Hyperagent is an experimental self-improvement layer inspired by the Hyperagents paper (DGM-H) on metacognitive self-modification. It now participates in the same governed evolution contract used by autoresearch, Memento-style skill/agent creation, ReasoningBank memory distillation, and user-visible approval/rollback flows. It observes Istara's own subsystems and proposes parameter optimizations:
 
 - **5 Observed Subsystems**: The meta-hyperagent monitors routing (task-to-agent matching accuracy), evolution (prompt promotion rate and quality), skill selection (skill-task match rate), quality evaluation (verification pass rate), and agent capabilities (capability utilization and error rates).
 
@@ -2472,6 +2513,20 @@ The Meta-Hyperagent is an experimental self-improvement layer inspired by the Hy
 - **Confirmed Overrides**: When a variant is confirmed, the parameter override is persisted to `_meta_overrides.json` and loaded at startup, making the optimization permanent until manually removed.
 
 - **Safety Mechanisms**: Value bounds prevent parameters from being set outside safe ranges. Rate limiting caps active variants at 3 simultaneously to prevent cascading instability. A full audit trail logs every proposal, approval, rejection, application, revert, and confirmation with timestamps.
+
+### System-Wide Governed Evolution Contract
+
+All self-improving producers use Improvement Governance as the central write barrier. Autoresearch, the Meta-Hyperagent, skill evolution, automatic agent creation, messaging/integration evidence hooks, and manual admin proposals can record an `ImprovementProposal` with affected surfaces, before/after state, reasoning memory IDs, metrics, evidence, approval policy, and rollback plan. Low-risk prompt/config changes may be auto-applicable after sandbox evaluation; behavior-changing updates to skills, agents, UI, integrations, compute, or backend code remain proposal-first for non-technical users.
+
+ReasoningBank is Istara's shared orchestration memory. It stores distilled success and failure traces from task execution, autoresearch experiments, skill proposals, and meta-agent observations. Retrieval feeds prompt-RAG and routing context while preserving BM25/RAG behavior: BM25 still ranks lexical matches, vector/RAG still supplies project content, prompt-RAG composes the final context, and LLMLingua-style compression should protect governance instructions, tool outputs, and selected reasoning memories rather than compressing away decision-critical evidence.
+
+The DGM-H archive is the lineage layer for evolved variants. Each accepted or candidate mutation can be represented as a `DGMHArchiveVariant` with parent linkage, mutation surface, artifact reference, score, confidence, evaluation evidence, approval/application status, rollback metadata, and quarantine/confirmation state. Parent selection uses scored lineage rather than only latest-success selection, so production changes can preserve promising alternatives without applying them blindly.
+
+Sandbox evaluation is the pre-apply safety check. It inspects the proposal surface, approval policy, rollback plan, evidence completeness, risky file/process targets, and apply evidence before allowing a proposal to move from approved to applied. The same result is persisted as proposal evidence and is exposed in the Governed Evolution UI.
+
+The compute capacity envelope is attached to the pooled compute registry so routed LLM work can account for local, network, and relay capacity in a stable way. It summarizes node count, availability, weighted capacity score, and bottlenecks, and it gives CI a concrete release check for faster and more stable hardware management.
+
+The route/type contract is maintained across backend routes, frontend API clients, and TypeScript types. New governance, ReasoningBank, and DGM-H routes must have frontend contracts and tests in the same change, and Compass Forge route/type drift warnings are treated as release-hardening evidence even when they are not yet fully blocking.
 
 ### Academic References
 
@@ -2598,11 +2653,11 @@ Connect external MCP servers to augment Istara's capabilities. Discover tools, c
 
 ## System Documentation Layer
 
-### AGENT.md — Universal Agent-Readable Spec
+### Compass Forge — Active Governance Control Plane
 
-Root-level file any AI agent can discover and parse. Contains system identity, architecture, capabilities catalog (auto-generated), agent interaction guide, security boundaries.
+Compass Forge is the active local-first control plane for repository onboarding, impact analysis, work orders, gates, evidence, and architecture freshness. CI/CD does not regenerate or block on the old Compass markdown inventory files; release governance is enforced through active process docs, `scripts/check_integrity.py`, `scripts/check_ci_governance.py`, `scripts/check_change_obligations.py`, production rehearsal, and tests.
 
-### Planner.md — Compass Workflow Control
+### Planner.md — Legacy Compass Workflow Control
 
 `planner.md` is tracked as part of Compass. Agents use it for planned, multi-agent, branch-review, stale-branch, and correction workflows. It requires role declaration, repository intelligence checks, protected Compass file preservation, correction/re-review loops when real defects are found, and a final user teaching report when the completed work changes a feature, command, output, or process.
 
@@ -2616,9 +2671,9 @@ Canonical source skills remain in `backend/app/skills/definitions/`. User-create
 
 The removed `Model_Finetuning/` and `.qwen/` tracked files are intentionally left as local ignored workspace material. Public sharing of training corpora or model artifacts must happen through a separate curated repository or release artifact, not through the application source tree.
 
-### Auto-Update Script
+### Legacy Compass Markdown
 
-`scripts/update_agent_md.py` regenerates the Capabilities Catalog by scanning API routes, skills, agents, menus, models, and MCP tools. Run after every feature addition.
+`AGENT.md`, `AGENT_ENTRYPOINT.md`, `COMPLETE_SYSTEM.md`, `SYSTEM_INTEGRITY_GUIDE.md`, and `scripts/update_agent_md.py` are legacy Compass inventory artifacts. They are optional historical references and must not be treated as blocking CI/CD governance now that Compass Forge owns repository mapping and process evidence.
 
 ### Feature Documentation
 
@@ -2844,9 +2899,9 @@ Istara uses native OpenAI-compatible function calling via the `tools` API parame
 
 **Global Authentication**: `SecurityAuthMiddleware` enforces JWT on ALL endpoints. No route can bypass it — auth is checked before any route handler runs. 150+ endpoints protected by a single middleware.
 
-**Auth Flow**: Login → JWT issued → included in all API calls (`Authorization: Bearer`) + WebSocket connections (`?token=`). Token expiration: configurable (default 24h).
+**Auth Flow**: Login → server-backed JWT issued → included in HTTP calls through `Authorization: Bearer` or the HttpOnly session cookie. HTTP endpoints no longer accept JWTs in query strings. WebSocket endpoints still accept `?token=` because browsers cannot set custom WebSocket headers reliably. Token expiration: configurable (default 24h).
 
-**Admin Bootstrap**: On first startup, admin user auto-created. Credentials printed to server console and persisted to `.env`.
+**Admin Bootstrap**: On first startup, admin user auto-created. Credentials printed to server console and persisted to `.env`. Recovery codes are stored as one-time hashed `recovery_codes` records with use/replacement metadata.
 
 **Exempt Paths** (no auth required): `/api/health`, `/api/auth/login`, `/api/auth/register`, `/api/settings/status`, `/webhooks/*`.
 
@@ -2862,6 +2917,7 @@ Istara uses native OpenAI-compatible function calling via the `tools` API parame
 | Rate Limiting | slowapi token bucket per IP | API endpoints |
 | Network Access Token | Additional token for non-localhost connections | LAN/remote |
 | WebSocket Auth | JWT via `?token=` query param | `/ws`, `/ws/relay` |
+| Auth Event Audit | `audit_log.event_type` structured events | login, logout, MFA, recovery, admin changes |
 | Admin Role Check | `require_admin_from_request()` | Sensitive operations |
 | MCP Access Policy | Per-tool permissions with audit log | MCP server |
 | Relay Auth | Network token + JWT (always, not just team mode) | Compute relay |

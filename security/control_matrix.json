@@ -1,0 +1,687 @@
+{
+  "schema_version": 1,
+  "benchmark_version": "2026.05.05",
+  "last_reviewed": "2026-05-05",
+  "owner": "Istara release governance",
+  "thresholds": {
+    "production_release": {
+      "block_fail_statuses": [
+        "fail"
+      ],
+      "block_partial_severities": [
+        "critical",
+        "high"
+      ],
+      "minimum_score_percent": 90,
+      "require_evidence_for_pass": true,
+      "partial_credit": 0.5,
+      "waived_credit": 0.5
+    },
+    "auth_security_change": {
+      "changed_path_patterns": [
+        "backend/app/api/routes/auth.py",
+        "backend/app/api/routes/webauthn.py",
+        "backend/app/api/routes/connections.py",
+        "backend/app/api/routes/mcp.py",
+        "backend/app/api/routes/llm_servers.py",
+        "backend/app/api/routes/webhooks.py",
+        "backend/app/api/routes/autoresearch.py",
+        "backend/app/api/routes/improvement_governance.py",
+        "backend/app/api/routes/meta_hyperagent.py",
+        "backend/app/api/routes/reasoning_bank.py",
+        "backend/app/core/auth*.py",
+        "backend/app/core/security*.py",
+        "backend/app/core/network_security.py",
+        "backend/app/core/permissions.py",
+        "backend/app/core/field_encryption.py",
+        "backend/app/core/connection_string.py",
+        "backend/app/core/compute_registry.py",
+        "backend/app/core/compute_capacity.py",
+        "backend/app/core/improvement_governance*.py",
+        "backend/app/core/meta_hyperagent.py",
+        "backend/app/core/reasoning_bank.py",
+        "backend/app/core/sandbox_evaluation.py",
+        "backend/app/mcp/**",
+        "backend/app/models/user.py",
+        "backend/app/models/*auth*.py",
+        "backend/app/models/*webauthn*.py",
+        "backend/app/models/*recovery*.py",
+        "backend/alembic/versions/*auth*.py",
+        "backend/alembic/versions/*webauthn*.py",
+        "backend/alembic/versions/*recovery*.py",
+        "frontend/src/stores/authStore.ts",
+        "frontend/src/components/auth/**",
+        "frontend/src/components/common/UserManagement.tsx",
+        "frontend/src/components/settings/PasskeyManager.tsx",
+        "frontend/src/components/settings/TOTPManager.tsx",
+        "frontend/src/lib/improvementGovernance*.ts",
+        "frontend/src/lib/reasoningBank*.ts",
+        "scripts/security_benchmark.py",
+        "scripts/check_change_obligations.py",
+        "scripts/check_ci_governance.py",
+        "scripts/check_integrity.py",
+        ".github/workflows/*.yml",
+        "security/**",
+        "tests/test_auth_security.py",
+        "tests/test_webauthn.py",
+        "tests/test_connections.py",
+        "tests/test_mcp*.py",
+        "tests/test_*security*.py",
+        "tests/test_improvement_governance.py",
+        "tests/test_reasoning_bank.py",
+        "tests/test_security_benchmark.py"
+      ]
+    }
+  },
+  "standards": [
+    {
+      "id": "owasp-asvs",
+      "name": "OWASP Application Security Verification Standard",
+      "current_version": "5.0.0 stable",
+      "official_url": "https://github.com/OWASP/ASVS/releases",
+      "last_checked": "2026-05-05"
+    },
+    {
+      "id": "nist-800-63",
+      "name": "NIST SP 800-63 Digital Identity Guidelines",
+      "current_version": "Revision 4 final, including SP 800-63B-4",
+      "official_url": "https://pages.nist.gov/800-63-4/",
+      "last_checked": "2026-05-05"
+    },
+    {
+      "id": "owasp-wstg",
+      "name": "OWASP Web Security Testing Guide",
+      "current_version": "Latest rolling guide; stable WSTG v4.2 for archival baseline",
+      "official_url": "https://owasp.org/www-project-web-security-testing-guide/latest/",
+      "last_checked": "2026-05-05"
+    },
+    {
+      "id": "owasp-samm",
+      "name": "OWASP Software Assurance Maturity Model",
+      "current_version": "2.0.3",
+      "official_url": "https://owasp.org/www-project-samm/",
+      "last_checked": "2026-05-05"
+    },
+    {
+      "id": "nist-ssdf",
+      "name": "NIST SP 800-218 Secure Software Development Framework",
+      "current_version": "Version 1.1",
+      "official_url": "https://csrc.nist.gov/pubs/sp/800/218/final",
+      "last_checked": "2026-05-05"
+    },
+    {
+      "id": "cis-controls",
+      "name": "CIS Critical Security Controls",
+      "current_version": "v8.1",
+      "official_url": "https://www.cisecurity.org/insights/white-papers/cis-critical-security-controls-v8-1",
+      "last_checked": "2026-05-05"
+    },
+    {
+      "id": "slsa",
+      "name": "Supply-chain Levels for Software Artifacts",
+      "current_version": "v1.2",
+      "official_url": "https://slsa.dev/spec/latest/",
+      "last_checked": "2026-05-05"
+    },
+    {
+      "id": "openssf-scorecard",
+      "name": "OpenSSF Scorecard",
+      "current_version": "Current project methodology",
+      "official_url": "https://openssf.org/scorecard/",
+      "last_checked": "2026-05-05"
+    },
+    {
+      "id": "webauthn",
+      "name": "W3C WebAuthn",
+      "current_version": "Level 3 Candidate Recommendation Snapshot, 2026-01-13",
+      "official_url": "https://www.w3.org/standards/history/webauthn-3/",
+      "last_checked": "2026-05-05"
+    },
+    {
+      "id": "oauth-bcp",
+      "name": "Best Current Practice for OAuth 2.0 Security",
+      "current_version": "RFC 9700",
+      "official_url": "https://www.rfc-editor.org/rfc/rfc9700",
+      "last_checked": "2026-05-05"
+    },
+    {
+      "id": "owasp-llm",
+      "name": "OWASP Top 10 for LLM Applications",
+      "current_version": "2025",
+      "official_url": "https://owasp.org/www-project-top-10-for-large-language-model-applications/",
+      "last_checked": "2026-05-05"
+    },
+    {
+      "id": "owasp-agentic",
+      "name": "OWASP Top 10 for Agentic Applications",
+      "current_version": "2026",
+      "official_url": "https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/",
+      "last_checked": "2026-05-05"
+    },
+    {
+      "id": "nist-ai-rmf",
+      "name": "NIST AI Risk Management Framework and Generative AI Profile",
+      "current_version": "AI RMF 1.0 plus NIST-AI-600-1",
+      "official_url": "https://www.nist.gov/itl/ai-risk-management-framework",
+      "last_checked": "2026-05-05"
+    },
+    {
+      "id": "mitre-atlas",
+      "name": "MITRE ATLAS",
+      "current_version": "Current public knowledge base",
+      "official_url": "https://atlas.mitre.org/",
+      "last_checked": "2026-05-05"
+    }
+  ],
+  "controls": [
+    {
+      "id": "AUTH-001",
+      "title": "Global API authentication middleware protects non-public endpoints",
+      "category": "authentication",
+      "required_level": "high_risk",
+      "severity": "critical",
+      "status": "pass",
+      "standards": [
+        "owasp-asvs:V2",
+        "nist-800-63:AAL2",
+        "owasp-wstg:ATHN"
+      ],
+      "evidence": [
+        "backend/app/core/security_middleware.py",
+        "backend/app/main.py",
+        "tests/test_auth_security.py"
+      ],
+      "future_change_trigger": true,
+      "notes": "Auth enforcement is centralized so route handlers cannot silently bypass JWT/session checks."
+    },
+    {
+      "id": "AUTH-002",
+      "title": "Local mode rejects remote password login unless a connection string is redeemed",
+      "category": "authentication",
+      "required_level": "high_risk",
+      "severity": "critical",
+      "status": "pass",
+      "standards": [
+        "owasp-asvs:V2.2",
+        "cis-controls:6",
+        "nist-800-63:authentication"
+      ],
+      "evidence": [
+        "backend/app/api/routes/auth.py",
+        "backend/app/api/routes/connections.py",
+        "tests/test_auth_security.py",
+        "tests/test_connections.py"
+      ],
+      "future_change_trigger": true,
+      "notes": "Preserves local-first ergonomics without turning a LAN-exposed server into an open login surface."
+    },
+    {
+      "id": "AUTH-003",
+      "title": "Trusted origin and auth cookie policy are centrally computed",
+      "category": "session",
+      "required_level": "high_risk",
+      "severity": "high",
+      "status": "pass",
+      "standards": [
+        "owasp-asvs:V3",
+        "owasp-wstg:SESS",
+        "oauth-bcp:browser-security"
+      ],
+      "evidence": [
+        "backend/app/core/auth_origins.py",
+        "backend/app/core/auth_cookies.py",
+        "backend/app/core/security_middleware.py",
+        "tests/test_auth_security.py"
+      ],
+      "future_change_trigger": true,
+      "notes": "Origin parsing and SameSite/Secure cookie decisions are not duplicated in route code."
+    },
+    {
+      "id": "AUTH-004",
+      "title": "Password authentication uses hardened password hashing and avoids plaintext retention",
+      "category": "authentication",
+      "required_level": "baseline",
+      "severity": "high",
+      "status": "pass",
+      "standards": [
+        "owasp-asvs:V2.1",
+        "nist-800-63:memorized-secrets"
+      ],
+      "evidence": [
+        "backend/app/core/auth.py",
+        "backend/app/models/user.py",
+        "tests/test_auth_security.py"
+      ],
+      "future_change_trigger": true,
+      "notes": "Password verification remains backend-owned and test-covered."
+    },
+    {
+      "id": "AUTH-005",
+      "title": "TOTP and recovery codes are governed by auditable lifecycle controls",
+      "category": "mfa",
+      "required_level": "high_risk",
+      "severity": "high",
+      "status": "pass",
+      "standards": [
+        "owasp-asvs:V2.8",
+        "nist-800-63:AAL2",
+        "owasp-wstg:ATHN"
+      ],
+      "evidence": [
+        "backend/app/api/routes/auth.py",
+        "backend/app/core/recovery_codes.py",
+        "backend/app/core/auth_audit.py",
+        "backend/alembic/versions/013_recovery_code_audit_events.py",
+        "tests/test_auth_security.py"
+      ],
+      "future_change_trigger": true,
+      "notes": "2FA setup, verification, recovery code use, and audit events are release-sensitive."
+    },
+    {
+      "id": "AUTH-006",
+      "title": "WebAuthn/passkey registration and login bind challenges to user, RP, origin, and expiry",
+      "category": "webauthn",
+      "required_level": "high_risk",
+      "severity": "critical",
+      "status": "pass",
+      "standards": [
+        "webauthn:level-3",
+        "nist-800-63:phishing-resistant",
+        "owasp-asvs:V2.8"
+      ],
+      "evidence": [
+        "backend/app/api/routes/webauthn.py",
+        "backend/app/models/webauthn_challenge.py",
+        "backend/app/models/webauthn_credential.py",
+        "tests/test_webauthn.py"
+      ],
+      "future_change_trigger": true,
+      "notes": "Challenge replay, credential ownership, RP ID, and origin behavior are tested."
+    },
+    {
+      "id": "AUTH-007",
+      "title": "JWT/session validation rejects stale, invalid, or revoked authentication state",
+      "category": "session",
+      "required_level": "high_risk",
+      "severity": "high",
+      "status": "pass",
+      "standards": [
+        "owasp-asvs:V3",
+        "nist-800-63:session-management",
+        "owasp-wstg:SESS"
+      ],
+      "evidence": [
+        "backend/app/core/auth_sessions.py",
+        "backend/app/core/auth.py",
+        "frontend/src/stores/authStore.ts",
+        "tests/test_auth_security.py"
+      ],
+      "future_change_trigger": true,
+      "notes": "Frontend and backend agree on expired/invalid session handling."
+    },
+    {
+      "id": "AUTHZ-001",
+      "title": "Role and project permissions are centralized and tested",
+      "category": "authorization",
+      "required_level": "high_risk",
+      "severity": "critical",
+      "status": "pass",
+      "standards": [
+        "owasp-asvs:V4",
+        "owasp-wstg:ATHZ",
+        "cis-controls:6"
+      ],
+      "evidence": [
+        "backend/app/core/permissions.py",
+        "backend/app/api/routes/projects.py",
+        "tests/test_project_rbac.py",
+        "tests/test_auth_security.py"
+      ],
+      "future_change_trigger": true,
+      "notes": "Global admin, project admin, researcher, viewer, and legacy role mappings are governed."
+    },
+    {
+      "id": "AUTHZ-002",
+      "title": "Administrative user management APIs require administrator authority",
+      "category": "authorization",
+      "required_level": "high_risk",
+      "severity": "high",
+      "status": "pass",
+      "standards": [
+        "owasp-asvs:V4",
+        "cis-controls:5",
+        "nist-800-63:account-lifecycle"
+      ],
+      "evidence": [
+        "backend/app/api/routes/auth.py",
+        "frontend/src/components/common/UserManagement.tsx",
+        "tests/test_auth_security.py"
+      ],
+      "future_change_trigger": true,
+      "notes": "User create/list/delete/role mutation stay admin-only and UI-backed for non-technical users."
+    },
+    {
+      "id": "API-001",
+      "title": "CORS, trusted host, proxy, and transport headers are constrained",
+      "category": "api-security",
+      "required_level": "baseline",
+      "severity": "high",
+      "status": "pass",
+      "standards": [
+        "owasp-asvs:V14",
+        "owasp-wstg:CONF",
+        "cis-controls:4"
+      ],
+      "evidence": [
+        "backend/app/core/security_middleware.py",
+        "backend/app/config.py",
+        "tests/test_transport_headers.py",
+        "tests/test_network_security.py"
+      ],
+      "future_change_trigger": true,
+      "notes": "Transport and origin policy are treated as a release surface."
+    },
+    {
+      "id": "SECRETS-001",
+      "title": "Secrets and generated credentials are excluded from source and generated with sufficient entropy",
+      "category": "secrets",
+      "required_level": "baseline",
+      "severity": "critical",
+      "status": "pass",
+      "standards": [
+        "owasp-asvs:V6",
+        "cis-controls:3",
+        "nist-ssdf:PW.4"
+      ],
+      "evidence": [
+        ".gitignore",
+        "scripts/generate-secrets.sh",
+        "tests/test_updates_security.py",
+        "security/control_matrix.json"
+      ],
+      "future_change_trigger": true,
+      "notes": "Runtime secrets, LLM test keys, model data, audio, and generated scorecards must stay local."
+    },
+    {
+      "id": "DATA-001",
+      "title": "Sensitive provider and integration fields are encrypted at rest",
+      "category": "data-protection",
+      "required_level": "high_risk",
+      "severity": "high",
+      "status": "pass",
+      "standards": [
+        "owasp-asvs:V6",
+        "cis-controls:3",
+        "nist-ssdf:PW.4"
+      ],
+      "evidence": [
+        "backend/app/core/field_encryption.py",
+        "backend/app/api/routes/llm_servers.py",
+        "backend/app/models/database.py",
+        "tests/test_field_encryption.py",
+        "tests/test_llm_servers.py"
+      ],
+      "future_change_trigger": true,
+      "notes": "LLM server API keys and integration secrets are not stored as plaintext configuration."
+    },
+    {
+      "id": "CONN-001",
+      "title": "Connection strings and pooled compute joining are one-time, scoped, and auditable",
+      "category": "connection-strings",
+      "required_level": "high_risk",
+      "severity": "critical",
+      "status": "pass",
+      "standards": [
+        "owasp-asvs:V2",
+        "owasp-asvs:V3",
+        "cis-controls:6"
+      ],
+      "evidence": [
+        "backend/app/core/connection_string.py",
+        "backend/app/api/routes/connections.py",
+        "backend/app/core/compute_registry.py",
+        "tests/test_connections.py",
+        "tests/test_compute.py"
+      ],
+      "future_change_trigger": true,
+      "notes": "Connection string lifecycle is part of auth, not a separate trust path."
+    },
+    {
+      "id": "MCP-001",
+      "title": "MCP tools require explicit policy, auth, and audit logging",
+      "category": "tool-security",
+      "required_level": "high_risk",
+      "severity": "critical",
+      "status": "pass",
+      "standards": [
+        "owasp-asvs:V4",
+        "owasp-llm:tool-use",
+        "owasp-agentic:tool-permissions"
+      ],
+      "evidence": [
+        "backend/app/api/routes/mcp.py",
+        "backend/app/mcp/server.py",
+        "tests/test_mcp.py",
+        "tests/simulation/scenarios/56-mcp-server-security.mjs"
+      ],
+      "future_change_trigger": true,
+      "notes": "Tool execution must remain policy-mediated and visible to audit processes."
+    },
+    {
+      "id": "WEBHOOK-001",
+      "title": "Inbound webhook and channel events are verified before processing",
+      "category": "integrations",
+      "required_level": "high_risk",
+      "severity": "high",
+      "status": "pass",
+      "standards": [
+        "owasp-asvs:V13",
+        "owasp-wstg:API",
+        "cis-controls:6"
+      ],
+      "evidence": [
+        "backend/app/api/routes/channels.py",
+        "backend/app/api/routes/surveys.py",
+        "tests/test_webhooks_security.py",
+        "tests/test_channel_file_security.py"
+      ],
+      "future_change_trigger": true,
+      "notes": "WhatsApp, Telegram, survey, and future inbound integrations must not bypass ingress validation."
+    },
+    {
+      "id": "AI-001",
+      "title": "LLM provider access, prompt-RAG, and tool context preserve security instructions and boundaries",
+      "category": "ai-security",
+      "required_level": "high_risk",
+      "severity": "high",
+      "status": "pass",
+      "standards": [
+        "owasp-llm:prompt-injection",
+        "owasp-llm:sensitive-information-disclosure",
+        "nist-ai-rmf:govern"
+      ],
+      "evidence": [
+        "backend/app/core/content_guard.py",
+        "backend/app/core/model_capabilities.py",
+        "backend/app/core/compute_registry.py",
+        "tests/test_content_guard.py",
+        "tests/test_llm_servers.py"
+      ],
+      "future_change_trigger": true,
+      "notes": "BM25/RAG/prompt-RAG/LLMLingua changes must not compress away governance, tool, or credential boundaries."
+    },
+    {
+      "id": "AI-002",
+      "title": "Autoresearch, skill evolution, Hyperagent/DGM-H, and agent creation require proposal evidence and rollback",
+      "category": "agentic-governance",
+      "required_level": "high_risk",
+      "severity": "critical",
+      "status": "pass",
+      "standards": [
+        "owasp-agentic:agent-authorization",
+        "nist-ai-rmf:manage",
+        "owasp-samm:governance"
+      ],
+      "evidence": [
+        "backend/app/core/improvement_governance.py",
+        "backend/app/core/sandbox_evaluation.py",
+        "backend/app/core/dgmh_archive.py",
+        "tests/test_improvement_governance.py",
+        "tests/test_dgmh_archive.py",
+        "scripts/production_rehearsal.py"
+      ],
+      "future_change_trigger": true,
+      "notes": "Production self-evolution is allowed only as governed proposals with UI approval, evidence, metrics, and rollback lineage."
+    },
+    {
+      "id": "AI-003",
+      "title": "ReasoningBank memories are governed, traceable, and retrieval-safe",
+      "category": "agentic-memory",
+      "required_level": "high_risk",
+      "severity": "high",
+      "status": "pass",
+      "standards": [
+        "owasp-llm:data-and-model-poisoning",
+        "owasp-agentic:memory-poisoning",
+        "nist-ai-rmf:map"
+      ],
+      "evidence": [
+        "backend/app/core/reasoning_bank.py",
+        "backend/app/api/routes/reasoning_bank.py",
+        "frontend/src/lib/reasoningBankApi.ts",
+        "tests/test_reasoning_bank.py",
+        "tests/test_research_integrity.py"
+      ],
+      "future_change_trigger": true,
+      "notes": "Reasoning memories may influence orchestration and therefore need provenance, visibility, and rollback-aware use."
+    },
+    {
+      "id": "AUDIT-001",
+      "title": "Security-relevant actions emit audit events without leaking sensitive values",
+      "category": "audit-logging",
+      "required_level": "baseline",
+      "severity": "high",
+      "status": "pass",
+      "standards": [
+        "owasp-asvs:V7",
+        "cis-controls:8",
+        "nist-ssdf:RV.1"
+      ],
+      "evidence": [
+        "backend/app/core/audit_middleware.py",
+        "backend/app/core/auth_audit.py",
+        "backend/app/api/routes/audit.py",
+        "tests/test_auth_security.py",
+        "tests/test_telemetry.py"
+      ],
+      "future_change_trigger": true,
+      "notes": "Audit evidence is required for auth factor changes, approvals, security failures, and high-risk mutations."
+    },
+    {
+      "id": "CI-001",
+      "title": "CI enforces integrity, change obligations, production rehearsal, and security benchmark",
+      "category": "ci-cd",
+      "required_level": "baseline",
+      "severity": "high",
+      "status": "pass",
+      "standards": [
+        "nist-ssdf:PO.3",
+        "nist-ssdf:PS.3",
+        "owasp-samm:verification"
+      ],
+      "evidence": [
+        ".github/workflows/ci.yml",
+        "scripts/check_integrity.py",
+        "scripts/check_ci_governance.py",
+        "scripts/check_change_obligations.py",
+        "scripts/security_benchmark.py",
+        "tests/test_security_benchmark.py"
+      ],
+      "future_change_trigger": true,
+      "notes": "CI must fail when the security benchmark or active governance contract becomes stale."
+    },
+    {
+      "id": "CI-002",
+      "title": "Release preparation runs local security benchmark before versioning",
+      "category": "release-governance",
+      "required_level": "baseline",
+      "severity": "medium",
+      "status": "pass",
+      "standards": [
+        "nist-ssdf:PS.3",
+        "cis-controls:17",
+        "slsa:source"
+      ],
+      "evidence": [
+        "scripts/prepare-release.sh",
+        "scripts/security_benchmark.py",
+        "security/SECURITY_BENCHMARK.md"
+      ],
+      "future_change_trigger": true,
+      "notes": "Local release prep now mirrors CI instead of relying on tribal knowledge."
+    },
+    {
+      "id": "SUPPLY-001",
+      "title": "Supply-chain provenance and repository posture are tracked but not fully externally attested",
+      "category": "supply-chain",
+      "required_level": "baseline",
+      "severity": "medium",
+      "status": "partial",
+      "standards": [
+        "slsa:v1.2",
+        "openssf-scorecard:repository",
+        "nist-ssdf:PS.2"
+      ],
+      "evidence": [
+        ".github/workflows/ci.yml",
+        ".github/workflows/build-installers.yml",
+        "scripts/check_ci_governance.py",
+        "security/SECURITY_BENCHMARK.md"
+      ],
+      "future_change_trigger": true,
+      "notes": "CI and release detection are governed. Full provenance attestations and external Scorecard automation remain a tracked maturity item."
+    },
+    {
+      "id": "TEST-001",
+      "title": "Security test method is mapped to WSTG/ASVS but still needs periodic external rehearsal",
+      "category": "verification",
+      "required_level": "baseline",
+      "severity": "medium",
+      "status": "partial",
+      "standards": [
+        "owasp-wstg:testing-framework",
+        "owasp-asvs:verification",
+        "owasp-samm:verification"
+      ],
+      "evidence": [
+        "tests/test_auth_security.py",
+        "tests/test_webauthn.py",
+        "tests/test_webhooks_security.py",
+        "tests/test_security_benchmark.py",
+        "security/SECURITY_BENCHMARK.md"
+      ],
+      "future_change_trigger": true,
+      "notes": "Automated regression coverage is strong for internal release gating. Independent pentest/red-team rehearsal is still required for external assurance."
+    },
+    {
+      "id": "OPS-001",
+      "title": "Incident response and vulnerability disclosure are documented as future operational maturity work",
+      "category": "operations",
+      "required_level": "baseline",
+      "severity": "low",
+      "status": "partial",
+      "standards": [
+        "cis-controls:17",
+        "owasp-samm:operations",
+        "nist-ssdf:RV.2"
+      ],
+      "evidence": [
+        "security/SECURITY_BENCHMARK.md",
+        "Tech.md",
+        "CHANGE_CHECKLIST.md"
+      ],
+      "future_change_trigger": false,
+      "notes": "The code gate exists. Formal disclosure policy, tabletop cadence, and external audit calendar should be added before broad enterprise deployment."
+    }
+  ]
+}

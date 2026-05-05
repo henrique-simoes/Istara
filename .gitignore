@@ -103,7 +103,13 @@ current_plans.md
 old_plans.md
 .rtk/
 
-# Local model training and release artifacts — NEVER TRACK THESE IN GIT
+# Documentation snapshots are local/Compass Forge archival material.
+docs/
+
+# Generated security benchmark artifacts are CI/local evidence, not source.
+security/security_scorecard.json
+
+# Local model training, weights, media, and release artifacts — NEVER TRACK THESE IN GIT.
 # Protected by pre-commit hook. If you need to share models, use releases/artifacts.
 /LLMs/
 /Model_Finetuning/
@@ -122,3 +128,6 @@ backend/data/skills/
 
 # Local tool settings. Keep checked-in examples outside this folder if needed.
 .qwen/
+.compass-forge/
+.mcp.json
+opencode.json
