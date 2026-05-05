@@ -1026,14 +1026,18 @@ The self-evolution and prompt compression scenario includes **35 checks** specif
 ### Test Isolation (Single-Model Guarantee)
 
 Simulation tests still pause background agent work before they run. Live LLM
-tests use a single external OpenAI-compatible Gemini profile rather than a
-local model fallback: base URL `https://generativelanguage.googleapis.com/v1beta/openai/`,
-model `gemini-3.1-flash-lite-preview`, and API key from local env or macOS
-Keychain. This keeps CI and release rehearsals from silently switching between
-LM Studio, Ollama, and cloud providers.
+tests use an explicit OpenAI-compatible profile matrix managed by
+`tests/llm_test_config.py`: Gemini is the primary profile at
+`https://generativelanguage.googleapis.com/v1beta/openai/` with model
+`gemini-3.1-flash-lite-preview`; the optional LM Studio-compatible fallback is
+`http://10.0.10.142:1234/v1/chat/completions` with model
+`qwen3.6-35b-a3b@q5_k_xl`. API keys come only from local env or macOS Keychain.
+This keeps CI and release rehearsals from silently switching between LM Studio,
+Ollama, and cloud providers or accidentally probing stale endpoints like
+`/api/tags`.
 
 1. **Before tests start:** `POST /api/settings/maintenance/pause` — halts all Istara agent work and LLM calls
-2. **During tests:** Mocked tests stay deterministic; live LLM tests route only to the Gemini OpenAI-compatible test profile.
+2. **During tests:** Mocked tests stay deterministic; live LLM tests route only through the shared Gemini/LM Studio OpenAI-compatible profile matrix.
 3. **After tests complete:** `POST /api/settings/maintenance/resume` — agents resume normal operation
 4. **Crash safety:** Signal handlers (`SIGINT`, `SIGTERM`) and the `.catch()` handler call `emergencyResume()` to ensure the backend never stays permanently paused after a test crash
 
@@ -1047,6 +1051,20 @@ The simulation runner includes built-in resilience features:
 - **No-skip guarantee**: Every scenario runs regardless of prior failures. The runner never bails early
 - **Structured failure summary**: After all scenarios complete, failures are categorized (TIMED OUT, ERRORS, FAILED CHECKS) with individual check names listed
 - **JWT authentication**: All API calls in scenarios use the authenticated `ctx.api` client. Bare `fetch()` calls include `api._headers()` for JWT
+
+`testing/TESTING_STRATEGY.md` is now an active release-governance document for
+test taxonomy and hardening. It ties pytest strict markers, Playwright
+authenticated-state acceptance tests, Gemini/LM Studio OpenAI-compatible live
+LLM profiles, mutation testing, property-based testing, and agentic eval
+contracts to the CI harness. `scripts/check_test_harness.py` enforces this
+contract before the expensive backend suite runs.
+
+The agentic eval contract in `tests/agentic_eval_contract.json` maps autoresearch, ReasoningBank, Memento
+skill/agent creation, Hyperagent meta-tuning, DGM-H archive evolution,
+ensemble/LLM orchestration, ReAct tool-calling, and acceptance UI coverage to
+specific tests, simulation scenarios, and metrics such as Tool Selection
+Quality, DAG success, evidence-chain completeness, sandbox pass rate, rollback
+availability, retrieval precision, latency, and compute capacity.
 
 ---
 

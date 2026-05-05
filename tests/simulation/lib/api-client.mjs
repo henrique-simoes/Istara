@@ -10,6 +10,21 @@
  */
 
 const API_BASE = process.env.ISTARA_API_URL || "http://localhost:8000";
+let authToken = process.env.ISTARA_TEST_AUTH_TOKEN || "";
+
+export function setAuthToken(token) {
+  authToken = token || "";
+}
+
+export function getApiBase() {
+  return API_BASE;
+}
+
+export function authHeaders(extra = {}) {
+  const headers = { ...extra };
+  if (authToken) headers.Authorization = `Bearer ${authToken}`;
+  return headers;
+}
 
 // ---------------------------------------------------------------------------
 // Internal request helper
@@ -24,7 +39,7 @@ async function request(path, options) {
   const url = `${API_BASE}${path}`;
 
   const res = await fetch(url, {
-    headers: { "Content-Type": "application/json", ...options?.headers },
+    headers: authHeaders({ "Content-Type": "application/json", ...options?.headers }),
     ...options,
   });
 
@@ -54,7 +69,7 @@ async function request(path, options) {
 async function requestVoid(path, options) {
   const url = `${API_BASE}${path}`;
   const res = await fetch(url, {
-    headers: { "Content-Type": "application/json", ...options?.headers },
+    headers: authHeaders({ "Content-Type": "application/json", ...options?.headers }),
     ...options,
   });
   if (!res.ok) {
@@ -182,7 +197,7 @@ export const chat = {
     const url = `${API_BASE}/api/chat`;
     const res = await fetch(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: authHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify({ message, project_id: projectId }),
     });
 
@@ -278,6 +293,7 @@ export const files = {
 
     const res = await fetch(`${API_BASE}/api/files/upload/${projectId}`, {
       method: "POST",
+      headers: authHeaders(),
       body: formData,
       // Let fetch set the multipart Content-Type with boundary
     });
