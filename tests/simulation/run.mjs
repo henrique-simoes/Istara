@@ -572,9 +572,8 @@ async function main() {
   const scenarios = await loadScenarios();
   const evaluators = skipEval ? [] : await loadEvaluators();
 
-  // Pause all Istara agent/LLM operations so the model is free for testing.
-  // Tests use the user's currently configured model — no model switching needed.
-  // This prevents LM Studio from loading two models on limited RAM.
+  // Pause all Istara agent/LLM operations so live test calls have exclusive
+  // access to the configured test profile and local providers do not compete.
   let maintenancePaused = false;
   try {
     const pauseRes = await fetch(`${API_BASE}/api/settings/maintenance/pause?reason=simulation-tests`, {

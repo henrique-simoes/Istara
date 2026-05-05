@@ -14,3 +14,13 @@ Run `compass-forge gate before` and `compass-forge gate after` for meaningful ch
 Attach command, gate, and review evidence before marking tasks done.
 Do not silently mutate external repos, global agent config, or generated integration files.
 <!-- compass-forge:end -->
+
+## Security Benchmark Gate
+
+Auth, authorization, session, WebAuthn, connection string, pooled compute, MCP, webhook, LLM-provider, autoresearch, self-evolution, and agentic-memory changes must run the tracked security benchmark:
+
+```bash
+python scripts/security_benchmark.py --fail-on-threshold
+```
+
+Update `security/control_matrix.json`, `security/SECURITY_BENCHMARK.md`, and `tests/test_security_benchmark.py` when a security control, evidence path, standard version, or trigger pattern changes. Attach the scorecard output as Compass Forge command evidence before finishing security-sensitive tasks.

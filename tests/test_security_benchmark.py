@@ -1,0 +1,71 @@
+from __future__ import annotations
+
+import copy
+from pathlib import Path
+
+from scripts.security_benchmark import evaluate_matrix, load_matrix
+
+ROOT = Path(__file__).resolve().parent.parent
+
+
+def test_security_benchmark_current_matrix_passes_release_gate() -> None:
+    matrix = load_matrix(ROOT / "security" / "control_matrix.json")
+
+    result = evaluate_matrix(matrix)
+
+    assert result.passed is True
+    assert result.scorecard["status"] == "pass"
+    assert (
+        result.scorecard["score_percent"] >= result.scorecard["minimum_score_percent"]
+    )
+    assert result.scorecard["blocked_controls"] == []
+
+
+def test_security_benchmark_detects_auth_security_changed_path() -> None:
+    matrix = load_matrix(ROOT / "security" / "control_matrix.json")
+
+    result = evaluate_matrix(matrix, changed_paths=["backend/app/api/routes/auth.py"])
+
+    assert result.passed is True
+    assert result.scorecard["auth_security_change_detected"] is True
+    assert result.scorecard["triggered_paths"] == ["backend/app/api/routes/auth.py"]
+
+
+def test_security_benchmark_blocks_failed_control() -> None:
+    matrix = load_matrix(ROOT / "security" / "control_matrix.json")
+    modified = copy.deepcopy(matrix)
+    modified["controls"][0]["status"] = "fail"
+
+    result = evaluate_matrix(modified)
+
+    assert result.passed is False
+    assert any(
+        control["id"] == modified["controls"][0]["id"]
+        for control in result.scorecard["blocked_controls"]
+    )
+
+
+def test_security_benchmark_blocks_high_severity_partial_control() -> None:
+    matrix = load_matrix(ROOT / "security" / "control_matrix.json")
+    modified = copy.deepcopy(matrix)
+    modified["controls"][0]["status"] = "partial"
+    modified["controls"][0]["severity"] = "high"
+
+    result = evaluate_matrix(modified)
+
+    assert result.passed is False
+    assert any(
+        control["reason"] == "critical/high partial control"
+        for control in result.scorecard["blocked_controls"]
+    )
+
+
+def test_security_benchmark_requires_evidence_for_pass_controls() -> None:
+    matrix = load_matrix(ROOT / "security" / "control_matrix.json")
+    modified = copy.deepcopy(matrix)
+    modified["controls"][0]["evidence"] = []
+
+    result = evaluate_matrix(modified)
+
+    assert result.passed is False
+    assert "pass controls require evidence" in result.scorecard["validation_issues"][0]

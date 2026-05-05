@@ -1,8 +1,8 @@
-"""Connection string codec — tamper-proof bundles for client→server setup.
+"""Connection string codec — tamper-proof bundles for client-to-server setup.
 
 A connection string contains everything a client needs to connect:
-server URL, WebSocket URL, network access token, and a pre-minted JWT.
-Signed with HMAC-SHA256 so only the originating server can create valid strings.
+server URL, WebSocket URL, type, nonce, and expiration. User invite strings
+never mint a login token; redemption creates the server-backed session.
 
 Format:  rcl_<base64url(JSON payload)>.<base64url(HMAC-SHA256 signature)>
 """
@@ -11,10 +11,11 @@ import hashlib
 import hmac
 import json
 import logging
+import secrets
 import time
 
 from app.config import settings
-from app.core.auth import _b64decode, _b64encode, create_token
+from app.core.auth import _b64decode, _b64encode
 
 logger = logging.getLogger(__name__)
 
@@ -49,32 +50,25 @@ def create_connection_string(
     Bundles:
     - server_url: HTTPS URL for the web UI
     - ws_url: WSS URL for relay WebSocket (derived from server_url)
-    - jwt: pre-minted JWT for web UI login
     - expires_at: Unix timestamp
     - label: human-readable label (e.g. "Alice's laptop")
     """
     expires_at = int(time.time()) + (expires_hours * 3600)
+    issued_at = int(time.time())
 
     # Derive WebSocket URL from server URL
     relay_ws_url = ws_url or server_url.replace("https://", "wss://").replace("http://", "ws://")
     if not relay_ws_url.endswith("/ws/relay"):
         relay_ws_url = relay_ws_url.rstrip("/") + "/ws/relay"
 
-    # Mint a JWT for the invited user (pre-auth)
-    # The JWT sub is "invite-<timestamp>" — redeemed when user registers
-    jwt_token = create_token(
-        user_id=f"invite-{int(time.time())}",
-        username=label or "invited",
-        role=role,
-    )
-
     payload = {
         "v": 1,
         "kind": "user_invite",
         "server_url": server_url.rstrip("/"),
         "ws_url": relay_ws_url,
-        "jwt": jwt_token,
+        "nonce": secrets.token_urlsafe(18),
         "role": role,
+        "issued_at": issued_at,
         "expires_at": expires_at,
         "label": label,
     }
@@ -135,7 +129,7 @@ def decode_connection_string(conn_str: str) -> dict | None:
         if not conn_str.startswith(PREFIX):
             return None
 
-        body = conn_str[len(PREFIX):]
+        body = conn_str[len(PREFIX) :]
         parts = body.split(".")
         if len(parts) != 2:
             return None

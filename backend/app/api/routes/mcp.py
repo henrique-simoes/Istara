@@ -81,27 +81,6 @@ async def get_server_status(request: Request, db: AsyncSession = Depends(get_db)
     policy = await ensure_default_policy(db)
     exposure = await get_exposure_summary(db)
     runtime = get_runtime_status()
-    try:
-        from app.core.improvement_governance import improvement_governance
-
-        await improvement_governance.record_feature_evidence(
-            feature="mcp_integrations_and_aura_research",
-            source_system="mcp_server",
-            source_id=f"toggle:{str(data.enabled).lower()}",
-            agent_id="mcp-server",
-            summary="MCP server exposure setting changed.",
-            evidence={
-                "passed": True,
-                "enabled": data.enabled,
-                "serving": runtime["serving"],
-                "restart_required": runtime["restart_required"],
-                "persisted": persisted,
-            },
-            metrics_after={"enabled": data.enabled, "serving": runtime["serving"]},
-        )
-    except Exception:
-        pass
-
     return {
         "enabled": settings.mcp_server_enabled,
         "configured_enabled": runtime["configured_enabled"],
@@ -127,7 +106,9 @@ async def get_server_status(request: Request, db: AsyncSession = Depends(get_db)
 
 
 @router.post("/mcp/server/toggle")
-async def toggle_server(data: ServerToggleRequest, request: Request, db: AsyncSession = Depends(get_db)):
+async def toggle_server(
+    data: ServerToggleRequest, request: Request, db: AsyncSession = Depends(get_db)
+):
     """Enable or disable the MCP server. Admin only.
 
     NOTE: This updates the in-memory setting. A full restart may be
@@ -157,6 +138,27 @@ async def toggle_server(data: ServerToggleRequest, request: Request, db: AsyncSe
     if data.enabled:
         await ensure_default_policy(db)
     runtime = get_runtime_status()
+    try:
+        from app.core.improvement_governance import improvement_governance
+
+        await improvement_governance.record_feature_evidence(
+            feature="mcp_integrations_and_aura_research",
+            source_system="mcp_server",
+            source_id=f"toggle:{str(data.enabled).lower()}",
+            agent_id="mcp-server",
+            summary="MCP server exposure setting changed.",
+            evidence={
+                "passed": True,
+                "enabled": data.enabled,
+                "serving": runtime["serving"],
+                "restart_required": runtime["restart_required"],
+                "persisted": persisted,
+            },
+            metrics_after={"enabled": data.enabled, "serving": runtime["serving"]},
+            db=db,
+        )
+    except Exception:
+        pass
 
     return {
         "enabled": settings.mcp_server_enabled,
@@ -186,7 +188,9 @@ async def get_policy(request: Request, db: AsyncSession = Depends(get_db)):
 
 
 @router.patch("/mcp/server/policy")
-async def update_policy(data: PolicyUpdateRequest, request: Request, db: AsyncSession = Depends(get_db)):
+async def update_policy(
+    data: PolicyUpdateRequest, request: Request, db: AsyncSession = Depends(get_db)
+):
     """Update the MCP access policy. Admin only.
 
     Only provided fields are changed. SENSITIVE and HIGH-risk changes
@@ -245,7 +249,11 @@ async def update_policy(data: PolicyUpdateRequest, request: Request, db: AsyncSe
 
     limits = updates.pop("limits", None) or {}
     if isinstance(limits, dict):
-        for key in ("allowed_project_ids", "max_findings_per_request", "max_skill_executions_per_hour"):
+        for key in (
+            "allowed_project_ids",
+            "max_findings_per_request",
+            "max_skill_executions_per_hour",
+        ):
             if key in limits:
                 updates[key] = limits[key]
 
@@ -267,7 +275,10 @@ async def update_policy(data: PolicyUpdateRequest, request: Request, db: AsyncSe
     if "max_findings_per_request" in updates and updates["max_findings_per_request"] is not None:
         policy.max_findings_per_request = updates["max_findings_per_request"]
 
-    if "max_skill_executions_per_hour" in updates and updates["max_skill_executions_per_hour"] is not None:
+    if (
+        "max_skill_executions_per_hour" in updates
+        and updates["max_skill_executions_per_hour"] is not None
+    ):
         policy.max_skill_executions_per_hour = updates["max_skill_executions_per_hour"]
 
     try:
@@ -342,7 +353,9 @@ async def list_clients(
 
 
 @router.post("/mcp/clients", status_code=201)
-async def register_client(data: ClientRegisterRequest, request: Request, db: AsyncSession = Depends(get_db)):
+async def register_client(
+    data: ClientRegisterRequest, request: Request, db: AsyncSession = Depends(get_db)
+):
     """Register a new external MCP server."""
     require_admin_from_request(request)
     from app.services.mcp_client_manager import register_server
@@ -406,7 +419,9 @@ async def unregister_client(server_id: str, request: Request, db: AsyncSession =
 
 
 @router.post("/mcp/clients/{server_id}/discover")
-async def discover_client_tools(server_id: str, request: Request, db: AsyncSession = Depends(get_db)):
+async def discover_client_tools(
+    server_id: str, request: Request, db: AsyncSession = Depends(get_db)
+):
     """Connect to an external MCP server and discover its available tools."""
     require_admin_from_request(request)
     from app.services.mcp_client_manager import MCP_CLIENT_AVAILABLE, discover_tools
@@ -614,8 +629,8 @@ async def connect_featured_server(
         raise HTTPException(
             status_code=400,
             detail=f"Featured server '{server_id}' has no HTTP URL. "
-                   f"Install with: pip install {featured.get('package', server_id)} "
-                   f"and run: {featured.get('http_command', '')}"
+            f"Install with: pip install {featured.get('package', server_id)} "
+            f"and run: {featured.get('http_command', '')}",
         )
 
     try:
@@ -630,7 +645,9 @@ async def connect_featured_server(
         raise HTTPException(status_code=422, detail=str(exc))
     return {
         "message": f"Connected to {featured['name']}",
-        "server": config.to_dict() if hasattr(config, "to_dict") else {"id": str(config.id), "name": config.name},
+        "server": config.to_dict()
+        if hasattr(config, "to_dict")
+        else {"id": str(config.id), "name": config.name},
         "setup_instructions": {
             "install": f"pip install {featured.get('package', server_id)}",
             "run": featured.get("http_command", ""),

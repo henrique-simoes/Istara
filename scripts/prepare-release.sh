@@ -22,6 +22,9 @@ python scripts/check_integrity.py
 echo "==> Checking CI/CD governance"
 python scripts/check_ci_governance.py
 
+echo "==> Checking security benchmark"
+python scripts/security_benchmark.py --fail-on-threshold --output security/security_scorecard.json
+
 echo "==> Running production rehearsal"
 python scripts/production_rehearsal.py --json
 

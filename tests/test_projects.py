@@ -1,6 +1,7 @@
 """Tests for Projects API routes — CRUD, members, versions, pause/resume."""
 
 import pytest
+import uuid
 from httpx import AsyncClient, ASGITransport
 from app.main import app
 from app.config import settings
@@ -31,6 +32,7 @@ def auth_headers():
 # Project Listing
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_projects_list_returns_list(auth_headers):
     """GET /api/projects returns a list."""
@@ -56,6 +58,7 @@ async def test_projects_list_requires_auth():
 # ---------------------------------------------------------------------------
 # Project Get/Pause/Resume
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_project_get_nonexistent_returns_404(auth_headers):
@@ -91,6 +94,7 @@ async def test_project_resume_nonexistent_returns_404(auth_headers):
 # Project Versions
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_project_versions_returns_list(auth_headers):
     """GET /api/projects/{id}/versions returns a list."""
@@ -107,7 +111,7 @@ async def test_project_versions_returns_list(auth_headers):
 async def test_link_folder_rejects_filesystem_root(auth_headers):
     """Folder linking should not allow broad system roots as project watch folders."""
     await init_db()
-    project = Project(id="link-root-project", name="Link Root Project")
+    project = Project(id=f"link-root-project-{uuid.uuid4().hex[:8]}", name="Link Root Project")
     async with async_session() as db:
         db.add(project)
         await db.commit()
@@ -127,7 +131,7 @@ async def test_link_folder_rejects_filesystem_root(auth_headers):
 async def test_link_folder_persists_resolved_directory(auth_headers, tmp_path):
     """Valid linked folders should be persisted as the project watch folder."""
     await init_db()
-    project = Project(id="link-valid-project", name="Link Valid Project")
+    project = Project(id=f"link-valid-project-{uuid.uuid4().hex[:8]}", name="Link Valid Project")
     linked_dir = tmp_path / "research-files"
     linked_dir.mkdir()
     async with async_session() as db:

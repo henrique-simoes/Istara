@@ -10,6 +10,7 @@ export default function TOTPManager() {
   const { user, token, fetchMe } = useAuthStore();
   const [secret, setSecret] = useState("");
   const [provisioningUri, setProvisioningUri] = useState("");
+  const [setupExpiresAt, setSetupExpiresAt] = useState("");
   const [code, setCode] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -38,6 +39,7 @@ export default function TOTPManager() {
       const data = await res.json();
       setSecret(data.secret || "");
       setProvisioningUri(data.provisioning_uri || "");
+      setSetupExpiresAt(data.expires_at || "");
       setCurrentPassword("");
       setMessage("Add this secret to your authenticator app, then enter the 6-digit code.");
     } catch (e) {
@@ -66,6 +68,7 @@ export default function TOTPManager() {
       }
       setSecret("");
       setProvisioningUri("");
+      setSetupExpiresAt("");
       setCode("");
       setMessage("Two-factor authentication is enabled.");
       await fetchMe();
@@ -125,6 +128,11 @@ export default function TOTPManager() {
               {secret}
             </code>
           </div>
+          {setupExpiresAt && (
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Setup expires {new Date(setupExpiresAt).toLocaleTimeString()}.
+            </p>
+          )}
           <div>
             <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">
               Provisioning URI

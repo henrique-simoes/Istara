@@ -33,11 +33,25 @@ export interface AuthSession {
   auth_method: string;
   mfa_verified: boolean;
   ip_address: string;
+  ip_hash?: string;
   user_agent: string;
+  user_agent_hash?: string;
+  device_label?: string;
   created_at: string | null;
   last_seen_at: string | null;
   expires_at: string | null;
   current: boolean;
+}
+
+interface PasskeyCredential {
+  id: string;
+  label: string;
+  created_at: string | null;
+  last_used_at: string | null;
+  authenticator_type: string | null;
+  device_type?: string;
+  backed_up?: boolean;
+  user_verified?: boolean;
 }
 
 interface SessionRevokeResult {
@@ -69,7 +83,7 @@ interface AuthState {
   // Passkey / WebAuthn
   loginWithPasskey: (username: string) => Promise<void>;
   registerPasskey: () => Promise<void>;
-  listPasskeys: () => Promise<Array<{ id: string; label: string; created_at: string; last_used_at: string | null; authenticator_type: string | null }>>;
+  listPasskeys: () => Promise<PasskeyCredential[]>;
   deletePasskey: (credentialId: string) => Promise<void>;
 }
 

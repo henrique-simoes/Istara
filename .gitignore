@@ -106,6 +106,9 @@ old_plans.md
 # Documentation snapshots are local/Compass Forge archival material.
 docs/
 
+# Generated security benchmark artifacts are CI/local evidence, not source.
+security/security_scorecard.json
+
 # Local model training, weights, media, and release artifacts — NEVER TRACK THESE IN GIT.
 # Protected by pre-commit hook. If you need to share models, use releases/artifacts.
 /LLMs/

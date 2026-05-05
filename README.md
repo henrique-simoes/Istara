@@ -333,8 +333,11 @@ Result streamed back to requesting agent
 Connect your entire team with a single string:
 
 ```
-istara://team@yourserver:8000?token=JWT_HERE
+rcl_<signed-user-or-compute-invite>
 ```
+
+User invite strings no longer contain a pre-minted login JWT; they redeem into a
+server-backed session and one-time recovery codes.
 
 > **References:** Borzunov et al. (2022) "Petals: Collaborative Inference and Fine-tuning of Large Models" arXiv:2209.01188; Borzunov et al. (2023) "Distributed Inference and Fine-tuning of Large Language Models Over the Internet" NeurIPS 2023
 
@@ -811,6 +814,7 @@ python scripts/check_integrity.py
 
 # Verify CI/CD governance and production rehearsal
 python scripts/check_ci_governance.py
+python scripts/security_benchmark.py --fail-on-threshold
 python scripts/production_rehearsal.py --json
 ```
 

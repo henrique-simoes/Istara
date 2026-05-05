@@ -294,7 +294,7 @@ function InviteForm({
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()))
       newErrors.email = "Enter a valid email address";
     if (!password) newErrors.password = "Password is required";
-    else if (password.length < 6) newErrors.password = "At least 6 characters";
+    else if (password.length < 8) newErrors.password = "At least 8 characters";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };

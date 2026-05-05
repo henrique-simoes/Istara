@@ -12,6 +12,8 @@ REQUIRED_SNIPPETS: dict[str, dict[str, str]] = {
     ".github/workflows/ci.yml": {
         "CI self-check": "python scripts/check_ci_governance.py",
         "Node 24 frontend runtime": 'node-version: "24"',
+        "security benchmark": "python scripts/security_benchmark.py --fail-on-threshold",
+        "security scorecard artifact": "istara-security-scorecard",
         "production rehearsal": "python ../scripts/production_rehearsal.py --json",
         "governed evolution regression tests": (
             "pytest ../tests/test_improvement_governance.py ../tests/test_compute.py -q"
@@ -19,6 +21,7 @@ REQUIRED_SNIPPETS: dict[str, dict[str, str]] = {
         "governed surface compile check": (
             "python -m compileall -q app ../scripts/production_rehearsal.py"
         ),
+        "security benchmark compile check": "../scripts/security_benchmark.py",
         "changed-file Ruff gate": "python ../scripts/check_ruff_changed.py",
         "change obligations": "python scripts/check_change_obligations.py",
         "integrity check": "python scripts/check_integrity.py",
@@ -28,6 +31,8 @@ REQUIRED_SNIPPETS: dict[str, dict[str, str]] = {
         "production rehearsal release trigger": "scripts/production_rehearsal.py",
         "CI governance release trigger": "scripts/check_ci_governance.py",
         "change obligation release trigger": "scripts/check_change_obligations.py",
+        "security benchmark release trigger": "scripts/security_benchmark.py",
+        "security benchmark docs release trigger": "security/*",
     },
     ".nvmrc": {
         "Node 24 local runtime": "24",
@@ -53,6 +58,7 @@ REQUIRED_SNIPPETS: dict[str, dict[str, str]] = {
     "scripts/prepare-release.sh": {
         "integrity release prep": "python scripts/check_integrity.py",
         "CI governance release prep": "python scripts/check_ci_governance.py",
+        "security benchmark release prep": "python scripts/security_benchmark.py --fail-on-threshold",
         "production rehearsal release prep": "python scripts/production_rehearsal.py --json",
     },
     ".github/workflows/track-autoresearch.yml": {
@@ -63,11 +69,14 @@ REQUIRED_SNIPPETS: dict[str, dict[str, str]] = {
     "scripts/check_change_obligations.py": {
         "governed evolution patterns": "GOVERNED_EVOLUTION_PATTERNS",
         "governed evolution test ownership": "GOVERNED_EVOLUTION_TEST_FILES",
+        "security benchmark patterns": "SECURITY_BENCHMARK_PATTERNS",
+        "security benchmark files": "SECURITY_BENCHMARK_FILES",
         "production rehearsal obligation": "scripts/production_rehearsal.py",
         "CI governance obligation": "scripts/check_ci_governance.py",
     },
     "scripts/check_integrity.py": {
         "legacy Compass guard": "LEGACY_COMPASS_DOCS",
+        "security benchmark governance doc": "SECURITY_BENCHMARK_MD",
         "backend dependency alignment": "BACKEND_DEPENDENCY_MARKERS",
         "governed evolution Tech freshness": '"governed evolution"',
         "sandbox evaluation Tech freshness": '"sandbox evaluation"',
@@ -75,6 +84,22 @@ REQUIRED_SNIPPETS: dict[str, dict[str, str]] = {
         "ReasoningBank Tech freshness": '"reasoningbank"',
         "DGM-H Tech freshness": '"dgm-h"',
         "compute capacity Tech freshness": '"compute capacity"',
+        "security benchmark Tech freshness": '"security benchmark"',
+    },
+    "scripts/security_benchmark.py": {
+        "benchmark evaluator": "def evaluate_matrix",
+        "changed path file input": "changed-paths-file",
+        "release threshold": "minimum_score_percent",
+    },
+    "security/SECURITY_BENCHMARK.md": {
+        "ASVS benchmark": "OWASP ASVS",
+        "NIST identity benchmark": "NIST SP 800-63",
+        "Compass Forge contract": "Compass Forge Contract",
+    },
+    "security/control_matrix.json": {
+        "ASVS standard mapping": "owasp-asvs",
+        "NIST identity mapping": "nist-800-63",
+        "security trigger patterns": "changed_path_patterns",
     },
     "Tech.md": {
         "governed evolution documentation": "governed evolution",
@@ -84,6 +109,7 @@ REQUIRED_SNIPPETS: dict[str, dict[str, str]] = {
         "DGM-H documentation": "dgm-h",
         "compute capacity documentation": "compute capacity",
         "route/type contract documentation": "route/type contract",
+        "security benchmark documentation": "security benchmark",
     },
 }
 
@@ -141,7 +167,9 @@ def main() -> int:
         text = path.read_text(encoding="utf-8").lower()
         for label, snippet in snippets.items():
             if snippet.lower() in text:
-                issues.append(f"{relative_path}: still references {label} (`{snippet}`)")
+                issues.append(
+                    f"{relative_path}: still references {label} (`{snippet}`)"
+                )
 
     if issues:
         print("CI/CD governance check failed:")

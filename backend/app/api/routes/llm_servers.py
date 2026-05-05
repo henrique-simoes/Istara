@@ -3,7 +3,7 @@
 import json
 import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -11,6 +11,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.auth_cookies import get_auth_cookie_token
 from app.core.field_encryption import decrypt_field, encrypt_field
 from app.core.security_middleware import require_admin_from_request
 from app.models.database import get_db
@@ -73,7 +74,9 @@ async def list_llm_servers(db: AsyncSession = Depends(get_db)):
                 "is_relay": s.is_relay,
                 "priority": s.priority,
                 "last_latency_ms": s.last_latency_ms,
-                "last_health_check": s.last_health_check.isoformat() if s.last_health_check else None,
+                "last_health_check": (
+                    s.last_health_check.isoformat() if s.last_health_check else None
+                ),
                 "capabilities": json.loads(s.capabilities) if s.capabilities else {},
                 "health_error": node_errors.get(s.id, ""),
             }
@@ -84,8 +87,12 @@ async def list_llm_servers(db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/llm-servers")
-async def add_llm_server(data: LLMServerCreate, request: Request, db: AsyncSession = Depends(get_db)):
-    """Add a new external LLM server. Admin required for remote servers; local servers allowed for all authenticated users."""
+async def add_llm_server(
+    data: LLMServerCreate,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Add a new external LLM server."""
     inferred_is_local = data.is_local and _is_local_host(data.host)
     # RBAC: Only admin can add non-local (remote) servers.
     # Local servers can be added by anyone to donate compute.
@@ -94,9 +101,13 @@ async def add_llm_server(data: LLMServerCreate, request: Request, db: AsyncSessi
     else:
         # Still ensure the user is authenticated
         auth_header = request.headers.get("Authorization", "")
-        token_str = auth_header.removeprefix("Bearer ").strip() if auth_header.startswith("Bearer ") else ""
+        token_str = (
+            auth_header.removeprefix("Bearer ").strip()
+            if auth_header.startswith("Bearer ")
+            else ""
+        )
         if not token_str:
-            token_str = request.cookies.get("istara_session", "")
+            token_str = get_auth_cookie_token(request)
         if not token_str:
             raise HTTPException(status_code=401, detail="Authentication required")
 
@@ -136,11 +147,17 @@ async def add_llm_server(data: LLMServerCreate, request: Request, db: AsyncSessi
     # Run initial health check
     healthy = await entry.check_health()
     server.is_healthy = healthy
-    server.last_health_check = datetime.now(timezone.utc)
+    server.last_health_check = datetime.now(UTC)
     server.last_latency_ms = entry.last_latency_ms
     await db.commit()
 
-    logger.info(f"Added LLM server: {server.name} ({server.provider_type} @ {server.host}) healthy={healthy}")
+    logger.info(
+        "Added LLM server: %s (%s @ %s) healthy=%s",
+        server.name,
+        server.provider_type,
+        server.host,
+        healthy,
+    )
 
     return {
         "id": server.id,
@@ -172,7 +189,7 @@ async def health_check_server(server_id: str, db: AsyncSession = Depends(get_db)
     if router_server:
         healthy = await router_server.check_health()
         server.is_healthy = healthy
-        server.last_health_check = datetime.now(timezone.utc)
+        server.last_health_check = datetime.now(UTC)
         server.last_latency_ms = router_server.last_latency_ms
         await db.commit()
         # Get health error from the compute node
@@ -186,7 +203,11 @@ async def health_check_server(server_id: str, db: AsyncSession = Depends(get_db)
             "health_error": health_error,
         }
 
-    return {"server_id": server_id, "healthy": False, "health_error": "Server not registered in router"}
+    return {
+        "server_id": server_id,
+        "healthy": False,
+        "health_error": "Server not registered in router",
+    }
 
 
 @router.patch("/llm-servers/{server_id}")

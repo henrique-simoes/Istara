@@ -89,6 +89,24 @@ async def test_webauthn_authenticate_start_is_public_but_validated():
 
 
 @pytest.mark.asyncio
+async def test_webauthn_authenticate_start_rejects_untrusted_browser_origin():
+    """Passkey sign-in ceremonies should share the auth trusted-origin gate."""
+    await init_db()
+    settings.team_mode = True
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.post(
+            "/api/webauthn/authenticate/start",
+            json={"username": "anyone"},
+            headers={"Origin": "https://evil.example"},
+        )
+
+    assert response.status_code == 403
+    assert "Untrusted browser origin" in response.json()["detail"]
+
+
+@pytest.mark.asyncio
 async def test_webauthn_register_start_returns_browser_options():
     """Registration start should work with the installed webauthn package API."""
     await init_db()
@@ -128,18 +146,34 @@ async def test_webauthn_register_start_returns_browser_options():
     public_key = response.json()["publicKey"]
     assert public_key["rp"]["id"] == "localhost"
     assert public_key["user"]["name"] == username
+    assert public_key["authenticatorSelection"]["userVerification"] == "required"
     assert public_key["challenge"]
 
 
-def test_webauthn_challenges_are_scoped_by_ceremony():
+@pytest.mark.asyncio
+async def test_webauthn_challenges_are_scoped_by_ceremony():
     """Registration and authentication challenges cannot overwrite each other."""
     from app.api.routes.webauthn import _get_and_clear_challenge, _store_challenge
 
-    _store_challenge("registration", "user-1", b"registration")
-    _store_challenge("authentication", "user-1", b"authentication")
+    await init_db()
+    suffix = "challenge-scope"
+    async with async_session() as db:
+        user = User(
+            id=suffix,
+            username=suffix,
+            email=f"{suffix}@example.com",
+            email_hash=hash_field(f"{suffix}@example.com"),
+            password_hash=hash_password("xK9#mP2$vL7nQ4@wR1!"),
+            role="researcher",
+        )
+        await db.merge(user)
+        await db.commit()
+        await _store_challenge(db, "registration", suffix, b"registration")
+        await _store_challenge(db, "authentication", suffix, b"authentication")
 
-    assert _get_and_clear_challenge("registration", "user-1") == b"registration"
-    assert _get_and_clear_challenge("authentication", "user-1") == b"authentication"
+        assert await _get_and_clear_challenge(db, "registration", suffix) == b"registration"
+        assert await _get_and_clear_challenge(db, "authentication", suffix) == b"authentication"
+        assert await _get_and_clear_challenge(db, "registration", suffix) is None
 
 
 def test_webauthn_expected_origins_are_configurable():
@@ -153,4 +187,20 @@ def test_webauthn_expected_origins_are_configurable():
     assert _expected_origins() == [
         "https://istara.example.com",
         "https://app.istara.example.com",
+    ]
+
+
+def test_webauthn_expected_origins_require_secure_rp_compatible_origins():
+    """Passkey verification should ignore origins that browsers cannot bind to the RP."""
+    from app.api.routes.webauthn import _expected_origins
+
+    settings.webauthn_rp_id = "istara.example.com"
+    settings.webauthn_origins = (
+        "https://istara.example.com, http://istara.example.com, "
+        "https://evil.example.com, https://research.istara.example.com"
+    )
+
+    assert _expected_origins() == [
+        "https://istara.example.com",
+        "https://research.istara.example.com",
     ]

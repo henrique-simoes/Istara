@@ -34,10 +34,11 @@ def get_runtime_status() -> dict:
         "configured_enabled": settings.mcp_server_enabled,
         "serving": serving,
         "restart_required": bool(settings.mcp_server_enabled and not serving),
-        "lifecycle_state": "serving" if serving else (
-            "restart_required" if settings.mcp_server_enabled else "disabled"
-        ),
+        "lifecycle_state": "serving"
+        if serving
+        else ("restart_required" if settings.mcp_server_enabled else "disabled"),
     }
+
 
 # ---------------------------------------------------------------------------
 # Conditional import of fastmcp
@@ -45,6 +46,7 @@ def get_runtime_status() -> dict:
 
 try:
     from fastmcp import FastMCP  # type: ignore[import-untyped]
+
     MCP_AVAILABLE = True
 except ImportError:
     MCP_AVAILABLE = False
@@ -125,6 +127,7 @@ if MCP_AVAILABLE:
 
         async def _handler(db, args):
             from app.skills.registry import registry
+
             skills = registry.list_all()
             return {
                 "skills": [
@@ -230,8 +233,7 @@ if MCP_AVAILABLE:
                 )
                 items = rows.scalars().all()
                 results[name] = [
-                    {"id": i.id, "text": i.text, "phase": getattr(i, "phase", "")}
-                    for i in items
+                    {"id": i.id, "text": i.text, "phase": getattr(i, "phase", "")} for i in items
                 ]
 
             return {
@@ -260,6 +262,7 @@ if MCP_AVAILABLE:
         async def _handler(db, args):
             try:
                 from app.core.rag import retrieve_context
+
                 # Use the first available project or a global search
                 ctx = await retrieve_context("", args["query"], top_k=args.get("top_k", 5))
                 return {
@@ -279,7 +282,9 @@ if MCP_AVAILABLE:
     # ---- High-risk tools --------------------------------------------------
 
     @mcp.tool()
-    async def execute_skill(skill_name: str, project_id: str, parameters: dict | None = None) -> dict:
+    async def execute_skill(
+        skill_name: str, project_id: str, parameters: dict | None = None
+    ) -> dict:
         """Execute a UXR skill on a project.
 
         HIGH RISK: Modifies data and may trigger external actions.
@@ -366,12 +371,106 @@ if MCP_AVAILABLE:
         """
 
         async def _handler(db, args):
-            # Placeholder: actual deployment logic depends on the target
+            from sqlalchemy import select as sa_select
+
+            from app.core.report_manager import report_manager
+            from app.models.finding import Fact, Insight, Nugget, Recommendation
+            from app.models.project import Project
+            from app.models.project_report import ProjectReport
+
+            pid = args["project_id"]
+            deployment_target = str(args.get("target", "report") or "report").lower()
+            if deployment_target not in {"report", "export", "presentation"}:
+                return {"error": f"Unsupported deployment target: {deployment_target}"}
+
+            project = await db.get(Project, pid)
+            if not project:
+                return {"error": "Project not found", "project_id": pid}
+
+            await report_manager._check_synthesis_trigger(pid, db)
+            reports_result = await db.execute(
+                sa_select(ProjectReport)
+                .where(ProjectReport.project_id == pid)
+                .order_by(ProjectReport.layer.desc(), ProjectReport.updated_at.desc())
+            )
+            reports = reports_result.scalars().all()
+            latest_report = reports[0] if reports else None
+
+            if deployment_target == "report":
+                return {
+                    "status": "report_materialized",
+                    "project_id": pid,
+                    "reports": [report.to_dict() for report in reports],
+                    "count": len(reports),
+                    "warning": "HIGH RISK: Report generation/refinement was requested via MCP.",
+                }
+
+            if deployment_target == "presentation":
+                if not latest_report:
+                    return {
+                        "status": "no_report_available",
+                        "project_id": pid,
+                        "slides": [],
+                        "warning": "HIGH RISK: Presentation requested but no report exists yet.",
+                    }
+                return {
+                    "status": "presentation_brief_ready",
+                    "project_id": pid,
+                    "report_id": latest_report.id,
+                    "slides": [
+                        {
+                            "title": "Situation",
+                            "content": project.description or latest_report.title,
+                        },
+                        {
+                            "title": "Executive Summary",
+                            "content": latest_report.executive_summary or latest_report.title,
+                        },
+                        {
+                            "title": "Recommendations",
+                            "content": "Use the latest recommendations export for the action plan.",
+                        },
+                    ],
+                    "warning": "HIGH RISK: Presentation material was generated via MCP.",
+                }
+
+            export: dict[str, Any] = {
+                "project": {
+                    "id": project.id,
+                    "name": project.name,
+                    "description": project.description,
+                    "phase": str(getattr(project.phase, "value", project.phase)),
+                },
+                "reports": [report.to_dict() for report in reports[:10]],
+                "findings": {},
+            }
+            for label, model in {
+                "nuggets": Nugget,
+                "facts": Fact,
+                "insights": Insight,
+                "recommendations": Recommendation,
+            }.items():
+                rows = await db.execute(
+                    sa_select(model)
+                    .where(model.project_id == pid)
+                    .order_by(model.created_at.desc())
+                    .limit(50)
+                )
+                export["findings"][label] = [
+                    {
+                        "id": item.id,
+                        "text": item.text,
+                        "phase": getattr(item, "phase", ""),
+                        "confidence": getattr(item, "confidence", None),
+                    }
+                    for item in rows.scalars().all()
+                ]
+
             return {
-                "status": "deployment_initiated",
-                "project_id": args["project_id"],
-                "target": args.get("target", "report"),
-                "warning": "HIGH RISK: Research deployment initiated.",
+                "status": "export_ready",
+                "project_id": pid,
+                "export": export,
+                "warning": "HIGH RISK: Export data contains research material.",
             }
 
         return await _gated_call(

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import AsyncGenerator
 
 from fastapi import FastAPI, Request
@@ -113,7 +114,7 @@ def _build_bootstrap_admin_user(
         email_hash=hash_field(email),
         password_hash=password_hash,
         role="admin",
-        recovery_codes_hashed=recovery_codes_hashed,
+        recovery_codes_hashed=None,
     )
 
 
@@ -124,6 +125,16 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Startup
     app_settings.ensure_dirs()
     app_settings.ensure_secrets()
+    try:
+        from app.core.auth_origins import security_configuration_warnings
+
+        _auth_log = __import__("logging").getLogger(__name__)
+        for warning in security_configuration_warnings(app_settings):
+            _auth_log.warning("Auth security configuration: %s", warning)
+    except Exception as e:
+        __import__("logging").getLogger(__name__).warning(
+            "Auth security configuration check skipped: %s", e
+        )
 
     # Ensure data encryption key exists (auto-generated on first run)
     try:
@@ -154,10 +165,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     try:
         from app.models.user import User
         from app.core.auth import (
-            hash_password, create_token,
-            generate_recovery_codes, hash_recovery_code,
+            hash_password,
+            generate_recovery_codes,
             is_password_breached,
         )
+        from app.core.recovery_codes import replace_recovery_codes
         from sqlalchemy import select, func
 
         async with async_session() as db:
@@ -173,19 +185,25 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                     # Auto-generated password was breached — generate a new one
                     admin_pass = _s.token_urlsafe(16)
                     _log = __import__("logging").getLogger(__name__)
-                    _log.warning("Auto-generated admin password was found in a breach. Generated a new one.")
+                    _log.warning(
+                        "Auto-generated admin password was found in a breach. Generated a new one."
+                    )
 
                 # Generate recovery codes for admin user
                 recovery_codes = generate_recovery_codes()
-                recovery_codes_hashed = "\n".join(hash_recovery_code(c) for c in recovery_codes)
-
                 user = _build_bootstrap_admin_user(
                     user_id=str(__import__("uuid").uuid4()),
                     username=admin_user,
                     password_hash=hash_password(admin_pass),
-                    recovery_codes_hashed=recovery_codes_hashed,
+                    recovery_codes_hashed="",
                 )
                 db.add(user)
+                await replace_recovery_codes(
+                    db,
+                    user_id=user.id,
+                    codes=recovery_codes,
+                    created_by_user_id=user.id,
+                )
                 await db.commit()
                 _log = __import__("logging").getLogger(__name__)
                 _log.info("=" * 60)
@@ -355,7 +373,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         _log.warning(f"Health check failed: {e}")
 
     # Auto-detect LLM provider: try configured first, fall back to the other
-    from app.core.ollama import ollama, auto_detect_provider
+    from app.core.ollama import auto_detect_provider
 
     try:
         await auto_detect_provider()
@@ -612,9 +630,15 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["X-XSS-Protection"] = "1; mode=block"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-        response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()"
-        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains; preload"
-        response.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; font-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self';"
+        response.headers["Permissions-Policy"] = (
+            "camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()"
+        )
+        response.headers["Strict-Transport-Security"] = (
+            "max-age=31536000; includeSubDomains; preload"
+        )
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; font-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self';"
+        )
         return response
 
 
@@ -686,7 +710,9 @@ app.include_router(notification_routes.router, prefix="/api", tags=["Notificatio
 app.include_router(backup_routes.router, prefix="/api", tags=["Backup"])
 app.include_router(meta_hyperagent_routes.router, prefix="/api", tags=["Meta-Hyperagent"])
 app.include_router(reasoning_bank_routes.router, prefix="/api", tags=["ReasoningBank"])
-app.include_router(improvement_governance_routes.router, prefix="/api", tags=["Improvement Governance"])
+app.include_router(
+    improvement_governance_routes.router, prefix="/api", tags=["Improvement Governance"]
+)
 app.include_router(dgmh_archive_routes.router, prefix="/api", tags=["DGM-H Archive"])
 app.include_router(deployment_routes.router, prefix="/api", tags=["Deployments"])
 app.include_router(survey_routes.router, prefix="/api", tags=["Surveys"])

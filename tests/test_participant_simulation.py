@@ -90,8 +90,11 @@ class TestParticipantSimulationModule:
 
     def test_generate_cohort(self):
         from app.core.participant_simulation import (
-            generate_participant_cohort, ParticipantProfile, ParticipantStrategy,
+            generate_participant_cohort,
+            ParticipantProfile,
+            ParticipantStrategy,
         )
+
         cohort = generate_participant_cohort(5)
         assert len(cohort) == 5
         assert all(isinstance(p, ParticipantProfile) for p in cohort)
@@ -173,9 +176,7 @@ class TestParticipantSimulationModule:
             scenario_type="prisoners_dilemma",
             payoffs=prisoner_dilemma_payoffs(),
         )
-        assert (
-            choose_action(p, scenario, opponent_last_action="cooperate") == "cooperate"
-        )
+        assert choose_action(p, scenario, opponent_last_action="cooperate") == "cooperate"
         assert choose_action(p, scenario, opponent_last_action="defect") == "defect"
 
     def test_run_simulation_round(self):
@@ -215,6 +216,7 @@ class TestAuditMiddleware:
         assert "duration_ms" in columns
         assert "ip_address" in columns
         assert "project_id" in columns
+        assert "event_type" in columns
 
     def test_audit_log_skip_paths(self):
         from app.core.audit_middleware import SKIP_PATHS, SKIP_PREFIXES
