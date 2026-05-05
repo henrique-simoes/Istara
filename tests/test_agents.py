@@ -1,11 +1,11 @@
 """Tests for Agents API routes — CRUD, identity, memory, messages, proposals."""
 
 import pytest
-from httpx import AsyncClient, ASGITransport
-from app.main import app
 from app.config import settings
-from app.models.database import init_db
 from app.core.auth import create_token
+from app.main import app
+from app.models.database import init_db
+from httpx import ASGITransport, AsyncClient
 
 
 @pytest.fixture(autouse=True)
@@ -184,6 +184,48 @@ async def test_agent_skill_selection_reaches_semantic_fallback(monkeypatch):
     )
 
     assert await orchestrator._select_skill(task) is sentinel_skill
+
+
+def test_agent_complex_auto_task_attempts_research_plan():
+    """Multi-stage auto-routed work should reach the DAG planner before skill selection."""
+    from app.core.agent import AgentOrchestrator
+    from app.models.task import Task
+
+    orchestrator = AgentOrchestrator()
+    task = Task(
+        id="complex-plan-task",
+        project_id="complex-plan-project",
+        title="Strategic Market Disruption & UX Spec Creation",
+        description=(
+            "Conduct a multi-stage investigation for our new AI product: "
+            "1. Deep-dive into linear.app and asana.com to map their architectures. "
+            "2. Contrast their interface layouts against UX standards. "
+            "3. Generate a visionary product spec with disruptive features."
+        ),
+        skill_name="",
+    )
+
+    assert orchestrator._should_attempt_research_plan(task) is True
+
+
+def test_agent_explicit_skill_skips_research_plan_probe():
+    """User-selected skills should not pay the planning cost unless they opt in later."""
+    from app.core.agent import AgentOrchestrator
+    from app.models.task import Task
+
+    orchestrator = AgentOrchestrator()
+    task = Task(
+        id="explicit-skill-task",
+        project_id="explicit-skill-project",
+        title="Strategic Market Disruption & UX Spec Creation",
+        description=(
+            "Conduct a multi-stage investigation: 1. compare competitors. "
+            "2. contrast UX standards. 3. generate product strategy."
+        ),
+        skill_name="browser-competitive-benchmark",
+    )
+
+    assert orchestrator._should_attempt_research_plan(task) is False
 
 
 def test_agent_factory_uses_meta_coverage_threshold(monkeypatch):

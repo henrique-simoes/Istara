@@ -10,8 +10,8 @@ Usage:
 """
 
 import argparse
-import json
 import os
+import secrets
 import sys
 import time
 from pathlib import Path
@@ -28,6 +28,115 @@ FIXTURES = Path(__file__).parent / "fixtures"
 # Test results tracking
 results = []
 start_time = time.time()
+
+
+def read_backend_env() -> dict[str, str]:
+    """Read ignored backend/.env values used by local E2E harnesses."""
+    env_path = Path(__file__).parent.parent / "backend" / ".env"
+    if not env_path.exists():
+        return {}
+
+    values: dict[str, str] = {}
+    for raw_line in env_path.read_text().splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        values[key.strip()] = value.strip().strip('"').strip("'")
+    return values
+
+
+def persist_backend_env_value(key: str, value: str) -> None:
+    """Persist generated E2E bootstrap credentials to ignored backend/.env."""
+    env_path = Path(__file__).parent.parent / "backend" / ".env"
+    lines = env_path.read_text().splitlines() if env_path.exists() else []
+    prefix = f"{key}="
+    for index, line in enumerate(lines):
+        if line.startswith(prefix):
+            lines[index] = f"{key}={value}"
+            break
+    else:
+        lines.append(f"{key}={value}")
+    env_path.write_text("\n".join(lines) + "\n")
+
+
+def authenticate_or_bootstrap_admin(client: httpx.Client) -> None:
+    """Authenticate in team mode, creating the first admin only on a fresh server."""
+    backend_env = read_backend_env()
+    admin_user = (
+        os.environ.get("ISTARA_ADMIN_USER")
+        or os.environ.get("ADMIN_USERNAME")
+        or backend_env.get("ADMIN_USERNAME")
+        or "admin"
+    )
+    admin_pass = (
+        os.environ.get("ISTARA_ADMIN_PASSWORD")
+        or os.environ.get("ADMIN_PASSWORD")
+        or backend_env.get("ADMIN_PASSWORD")
+        or ""
+    )
+
+    def try_login(username: str, password: str) -> bool:
+        if not password:
+            return False
+        login_resp = client.post(
+            "/api/auth/login",
+            json={"username": username, "password": password},
+        )
+        if login_resp.status_code != 200:
+            return False
+        token = login_resp.json().get("token") or login_resp.json().get("access_token", "")
+        if not token:
+            return False
+        client.headers["Authorization"] = f"Bearer {token}"
+        print("  ✅ Authenticated with configured admin credentials")
+        return True
+
+    if try_login(admin_user, admin_pass):
+        return
+
+    status_resp = client.get("/api/auth/team-status")
+    if status_resp.status_code != 200:
+        print("  ⚠️  Could not read team auth status; continuing without auth")
+        return
+    status = status_resp.json()
+    if not status.get("team_mode"):
+        return
+
+    if status.get("has_users"):
+        raise RuntimeError(
+            "TEAM_MODE=true and users already exist, but no working admin credentials were "
+            "found. Set ISTARA_ADMIN_PASSWORD or ADMIN_PASSWORD before running E2E."
+        )
+
+    bootstrap_pass = (
+        os.environ.get("ISTARA_E2E_BOOTSTRAP_PASSWORD")
+        or admin_pass
+        or f"e2e-{secrets.token_urlsafe(18)}"
+    )
+    register_resp = client.post(
+        "/api/auth/register",
+        json={
+            "username": admin_user,
+            "email": f"{admin_user}@istara.local",
+            "password": bootstrap_pass,
+            "display_name": "Istara E2E Admin",
+        },
+        headers={"User-Agent": "IstaraE2E/Bootstrap"},
+    )
+    if register_resp.status_code != 200:
+        raise RuntimeError(
+            f"Fresh team-mode admin bootstrap failed: HTTP {register_resp.status_code} "
+            f"{register_resp.text[:200]}"
+        )
+
+    token = register_resp.json().get("token", "")
+    if not token:
+        raise RuntimeError("Fresh team-mode admin bootstrap did not return a token.")
+    client.headers["Authorization"] = f"Bearer {token}"
+    persist_backend_env_value("ADMIN_USERNAME", admin_user)
+    persist_backend_env_value("ADMIN_PASSWORD", bootstrap_pass)
+    print("  ✅ Bootstrapped first team-mode admin for E2E")
 
 
 def run_test_step(name, fn):
@@ -68,27 +177,7 @@ def main():
     # =========================================================
     print("\n🔐 Phase 0: Authentication")
 
-    admin_user = os.environ.get("ISTARA_ADMIN_USER", "admin")
-    admin_pass = os.environ.get("ISTARA_ADMIN_PASSWORD", "")
-
-    if not admin_pass:
-        env_path = Path(__file__).parent.parent / "backend" / ".env"
-        if env_path.exists():
-            for line in env_path.read_text().splitlines():
-                if line.startswith("ADMIN_PASSWORD="):
-                    admin_pass = line.split("=", 1)[1].strip()
-                    break
-    
-    if admin_pass:
-        try:
-            login_resp = client.post("/api/auth/login", json={"username": admin_user, "password": admin_pass})
-            if login_resp.status_code == 200:
-                token = login_resp.json().get("token") or login_resp.json().get("access_token", "")
-                if token:
-                    client.headers["Authorization"] = f"Bearer {token}"
-                    print("  ✅ Authenticated with configured admin credentials")
-        except Exception as e:
-            print(f"  ⚠️  Login error: {e}")
+    authenticate_or_bootstrap_admin(client)
 
     # =========================================================
     # PHASE 1: System Health
@@ -106,24 +195,51 @@ def main():
     # =========================================================
     print("\n📁 Phase 2: Project Setup")
 
-    project = run_test_step("Create project", lambda: assert_ok(client.post("/api/projects", json={
-        "name": "Onboarding Redesign Study",
-        "description": "Investigating onboarding drop-off for our PM tool.",
-    })))
+    project = run_test_step(
+        "Create project",
+        lambda: assert_ok(
+            client.post(
+                "/api/projects",
+                json={
+                    "name": "Onboarding Redesign Study",
+                    "description": "Investigating onboarding drop-off for our PM tool.",
+                },
+            )
+        ),
+    )
     project_id = project["id"] if project else None
 
     if project_id:
         run_test_step("Get project", lambda: assert_ok(client.get(f"/api/projects/{project_id}")))
-        run_test_step("Set company context", lambda: assert_ok(client.patch(f"/api/projects/{project_id}", json={"company_context": "Acme SaaS"})))
+        run_test_step(
+            "Set company context",
+            lambda: assert_ok(
+                client.patch(
+                    f"/api/projects/{project_id}",
+                    json={"company_context": "Acme SaaS"},
+                )
+            ),
+        )
 
     # =========================================================
     # PHASE 3: Context Hierarchy
     # =========================================================
     print("\n📜 Phase 3: Context Hierarchy")
 
-    run_test_step("Create company context doc", lambda: assert_ok(client.post("/api/contexts", json={
-        "name": "Company Culture", "level_type": "company", "content": "User-centric.", "priority": 10
-    })))
+    run_test_step(
+        "Create company context doc",
+        lambda: assert_ok(
+            client.post(
+                "/api/contexts",
+                json={
+                    "name": "Company Culture",
+                    "level_type": "company",
+                    "content": "User-centric.",
+                    "priority": 10,
+                },
+            )
+        ),
+    )
 
     # =========================================================
     # PHASE 4: File Upload
@@ -133,7 +249,10 @@ def main():
     if project_id:
         for f in sorted(FIXTURES.glob("*")):
             if f.is_file():
-                run_test_step(f"Upload {f.name}", lambda file=f: upload_file(client, project_id, file))
+                run_test_step(
+                    f"Upload {f.name}",
+                    lambda file=f: upload_file(client, project_id, file),
+                )
 
     # =========================================================
     # PHASE 5: Chat & Skill Execution
@@ -141,39 +260,71 @@ def main():
     print("\n💬 Phase 5: Chat & Skill Execution")
 
     if project_id:
-        run_test_step("Chat — analyze", lambda: chat_message(client, project_id, "Analyze transcripts."))
-        run_test_step("Direct skill execute", lambda: assert_ok(client.post("/api/skills/survey-design/execute", json={
-            "project_id": project_id, "user_context": "Design survey"
-        })))
+        run_test_step(
+            "Chat — analyze",
+            lambda: chat_message(client, project_id, "Analyze transcripts."),
+        )
+        run_test_step(
+            "Direct skill execute",
+            lambda: assert_ok(
+                client.post(
+                    "/api/skills/survey-design/execute",
+                    json={"project_id": project_id, "user_context": "Design survey"},
+                )
+            ),
+        )
 
     # =========================================================
     # PHASE 12: Steering
     # =========================================================
     print("\n🎯 Phase 12: Mid-Execution Steering")
 
-    run_test_step("Get steering status", lambda: assert_ok(client.get("/api/steering/istara-main/status")))
+    run_test_step(
+        "Get steering status",
+        lambda: assert_ok(client.get("/api/steering/istara-main/status")),
+    )
 
     # =========================================================
     # PHASE 14: Browser Research & Formal Evaluation
     # =========================================================
     print("\n🌐 Phase 14: Browser Research & Formal Evaluation")
 
-    run_test_step("Automated Browser Skill registered", lambda: assert_true(
-        any(s["name"] == "competitive-analysis" for s in assert_ok(client.get("/api/skills"))["skills"])
-    ))
-    run_test_step("Formal Evaluation Skill registered", lambda: assert_true(
-        any(s["name"] == "evaluate-research" for s in assert_ok(client.get("/api/skills"))["skills"])
-    ))
+    run_test_step(
+        "Automated Browser Skill registered",
+        lambda: assert_true(
+            any(
+                s["name"] == "competitive-analysis"
+                for s in assert_ok(client.get("/api/skills"))["skills"]
+            )
+        ),
+    )
+    run_test_step(
+        "Formal Evaluation Skill registered",
+        lambda: assert_true(
+            any(
+                s["name"] == "evaluate-research"
+                for s in assert_ok(client.get("/api/skills"))["skills"]
+            )
+        ),
+    )
 
     # =========================================================
     # PHASE 25: Voice Transcription
     # =========================================================
     print("\n🎙️ Phase 25: Voice Transcription")
 
-    run_test_step("Voice transcription initialization", lambda: assert_ok(client.post("/api/chat/voice-transcribe", json={
-        "project_id": project_id if project_id else "0",
-        "dummy": True,
-    })))
+    run_test_step(
+        "Voice transcription initialization",
+        lambda: assert_ok(
+            client.post(
+                "/api/chat/voice-transcribe",
+                json={
+                    "project_id": project_id if project_id else "0",
+                    "dummy": True,
+                },
+            )
+        ),
+    )
 
     # =========================================================
     # RESULTS
@@ -193,21 +344,32 @@ def main():
 def assert_ok(response):
     if response.status_code >= 400:
         raise Exception(f"HTTP {response.status_code}: {response.text[:200]}")
-    if response.status_code == 204: return None
-    try: return response.json()
-    except: return None
+    if response.status_code == 204:
+        return None
+    try:
+        return response.json()
+    except ValueError:
+        return None
+
 
 def assert_true(condition):
-    if not condition: raise Exception("Assertion failed")
+    if not condition:
+        raise Exception("Assertion failed")
     return True
+
 
 def upload_file(client, project_id, file_path):
     with open(file_path, "rb") as f:
         resp = client.post(f"/api/files/upload/{project_id}", files={"file": (file_path.name, f)})
     return assert_ok(resp)
 
+
 def chat_message(client, project_id, message):
-    resp = client.post("/api/chat", json={"message": message, "project_id": project_id}, timeout=120.0)
+    resp = client.post(
+        "/api/chat",
+        json={"message": message, "project_id": project_id},
+        timeout=120.0,
+    )
     return assert_ok(resp)
 
 
