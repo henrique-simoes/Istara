@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import hashlib
 import time
 import uuid
 from datetime import UTC, datetime
@@ -54,6 +55,32 @@ def _request_user_agent(request: Request | None) -> str:
     if request is None:
         return ""
     return request.headers.get("user-agent", "")[:512]
+
+
+def _sha256_preview(value: str) -> str:
+    if not value:
+        return ""
+    return hashlib.sha256(value.encode("utf-8")).hexdigest()[:16]
+
+
+def _device_label(user_agent: str) -> str:
+    """Return a coarse device label without storing a full parser dependency."""
+    ua = (user_agent or "").lower()
+    if not ua:
+        return "Unknown device"
+    if "iphone" in ua:
+        return "iPhone"
+    if "ipad" in ua:
+        return "iPad"
+    if "android" in ua:
+        return "Android"
+    if "windows" in ua:
+        return "Windows"
+    if "mac os" in ua or "macintosh" in ua:
+        return "Mac"
+    if "linux" in ua:
+        return "Linux"
+    return "Browser session"
 
 
 async def issue_auth_session_token(
@@ -201,7 +228,10 @@ def _session_to_public_dict(session: AuthSession, current_session_id: str) -> di
         "auth_method": session.auth_method,
         "mfa_verified": bool(session.mfa_verified),
         "ip_address": session.ip_address,
+        "ip_hash": _sha256_preview(session.ip_address or ""),
         "user_agent": session.user_agent,
+        "user_agent_hash": _sha256_preview(session.user_agent or ""),
+        "device_label": _device_label(session.user_agent or ""),
         "created_at": session.created_at.isoformat() if session.created_at else None,
         "last_seen_at": session.last_seen_at.isoformat() if session.last_seen_at else None,
         "expires_at": session.expires_at.isoformat() if session.expires_at else None,
@@ -226,9 +256,7 @@ async def list_active_auth_sessions(
         .order_by(AuthSession.last_seen_at.desc(), AuthSession.created_at.desc())
     )
     sessions = [
-        session
-        for session in result.scalars().all()
-        if (_aware(session.expires_at) or now) > now
+        session for session in result.scalars().all() if (_aware(session.expires_at) or now) > now
     ]
     return [_session_to_public_dict(session, current_session_id) for session in sessions]
 
@@ -281,4 +309,5 @@ async def revoke_user_auth_sessions(db: AsyncSession, user_id: str) -> int:
         .where(AuthSession.user_id == user_id, AuthSession.revoked_at.is_(None))
         .values(revoked_at=now)
     )
+    await db.commit()
     return int(result.rowcount or 0)

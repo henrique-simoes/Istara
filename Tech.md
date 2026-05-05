@@ -424,7 +424,7 @@ Istara now detects the loaded model's context window at startup and allocates to
 
 **Detection chain:**
 1. `main.py` startup probes LM Studio/Ollama for the loaded model name
-2. `model_capabilities.py` calls `/v1/models` (LM Studio) or `/api/show` (Ollama) to read `context_length`
+2. `model_capabilities.py` calls the provider-relative OpenAI-compatible `models` path (for example `/v1/models` on LM Studio or `/v1beta/openai/models` on Gemini) or `/api/show` (Ollama) to read `context_length`
 3. `compute_registry.check_all_health()` syncs detected capabilities to `settings.max_context_tokens`
 4. `config.update_context_window()` updates the global budget if the detected value differs >2x from current
 
@@ -745,7 +745,7 @@ GET  /api/settings/maintenance                                  → check curren
 4. The MetaOrchestrator force-pauses all WORKING/IDLE agents to PAUSED state
 5. On resume, agents return to IDLE and the governor resumes normal resource-based scheduling
 
-**Used by the simulation test runner** (`tests/simulation/run.mjs`) to ensure the user's configured model is exclusively available for test LLM calls — no model switching, no dual-model loading.
+**Used by the simulation test runner** (`tests/simulation/run.mjs`) to ensure live test LLM calls have exclusive access to the configured test profile — no provider switching, no dual-model loading.
 
 ### Model Recommendations
 
@@ -1025,10 +1025,15 @@ The self-evolution and prompt compression scenario includes **35 checks** specif
 
 ### Test Isolation (Single-Model Guarantee)
 
-On machines with limited RAM (8GB), LM Studio can only load one model at a time without severe performance degradation. The simulation test runner uses the **Maintenance Mode** system to guarantee exclusive model access:
+Simulation tests still pause background agent work before they run. Live LLM
+tests use a single external OpenAI-compatible Gemini profile rather than a
+local model fallback: base URL `https://generativelanguage.googleapis.com/v1beta/openai/`,
+model `gemini-3.1-flash-lite-preview`, and API key from local env or macOS
+Keychain. This keeps CI and release rehearsals from silently switching between
+LM Studio, Ollama, and cloud providers.
 
 1. **Before tests start:** `POST /api/settings/maintenance/pause` — halts all Istara agent work and LLM calls
-2. **During tests:** Tests use the user's currently configured model (no model switching). Only test LLM calls hit the model.
+2. **During tests:** Mocked tests stay deterministic; live LLM tests route only to the Gemini OpenAI-compatible test profile.
 3. **After tests complete:** `POST /api/settings/maintenance/resume` — agents resume normal operation
 4. **Crash safety:** Signal handlers (`SIGINT`, `SIGTERM`) and the `.catch()` handler call `emergencyResume()` to ensure the backend never stays permanently paused after a test crash
 
@@ -1053,9 +1058,10 @@ All settings are configurable via environment variables or `.env`:
 
 | Setting | Default | Description |
 |---------|---------|-------------|
-| `LLM_PROVIDER` | `lmstudio` | `"lmstudio"` or `"ollama"` |
-| `LMSTUDIO_HOST` | `http://localhost:1234` | LM Studio API endpoint |
+| `LLM_PROVIDER` | `lmstudio` | `"lmstudio"` or `"ollama"`; live LLM tests force the Gemini OpenAI-compatible profile |
+| `LMSTUDIO_HOST` | `http://localhost:1234` | LM Studio or OpenAI-compatible API endpoint |
 | `LMSTUDIO_MODEL` | `default` | Model name (auto-detected) |
+| `LMSTUDIO_API_KEY` | empty | Optional bearer token for OpenAI-compatible providers |
 | `OLLAMA_HOST` | `http://localhost:11434` | Ollama API endpoint |
 | `OLLAMA_MODEL` | `qwen3:latest` | Default chat model |
 | `OLLAMA_EMBED_MODEL` | `nomic-embed-text` | Embedding model |
@@ -1181,7 +1187,7 @@ Istara now implements a comprehensive defense-in-depth security architecture spa
 | **Breach Checking** | Have I Been Pwned k-anonymity API — only 5 SHA-1 chars sent, full hash never leaves machine | NIST SP 800-63B Rev.4 |
 | **2FA** | TOTP (RFC 6238) via pyotp — Google/Microsoft Authenticator compatible | RFC 6238 |
 | **Passkeys** | WebAuthn/FIDO2 — device-bound biometric auth (Apple Secure Enclave, Windows Hello) | NIST AAL2/AAL3 phishing-resistant |
-| **Recovery Codes** | 8 cryptographic codes per user, Argon2id hashed, one-time use | GitHub/Google pattern |
+| **Recovery Codes** | 8 cryptographic codes per user, Argon2id hashed in dedicated records, one-time use with metadata | GitHub/Google pattern |
 | **JWT** | HMAC-SHA256 with jti (revocation), mfa_verified claim, alg:none protection | RFC 7519 |
 | **Cookies** | HttpOnly, Secure, SameSite=Strict session cookies | OWASP Session Management |
 
@@ -1189,7 +1195,8 @@ Istara now implements a comprehensive defense-in-depth security architecture spa
 ```
 totp_secret: VARCHAR(64)        # TOTP shared secret
 totp_enabled: BOOLEAN           # 2FA active flag
-recovery_codes_hashed: TEXT     # Newline-separated Argon2id hashes
+recovery_codes: table           # Hashed one-time records with used/replaced metadata
+recovery_codes_hashed: TEXT     # Legacy migration column
 passkey_enabled: BOOLEAN        # WebAuthn registered
 password_hash: VARCHAR(512)     # Widened from 255 for Argon2id
 email: EncryptedType            # Fernet-encrypted PII
@@ -1646,11 +1653,18 @@ System tray application for macOS, Windows, and Linux. **Mode-aware manager only
 `.github/workflows/ci.yml` enforces repository governance on pushes to `main` and pull requests:
 - Active governance docs must be coherent: `python scripts/check_integrity.py`
 - CI/CD governance must be self-consistent: `python scripts/check_ci_governance.py`
+- The industry-standard security benchmark must pass: `python scripts/security_benchmark.py --fail-on-threshold`
 - Change obligations must be satisfied: `python scripts/check_change_obligations.py`
 - That governance check fails when architecture/process/release-sensitive code changes without corresponding updates to `Tech.md`, tests, or Istara persona files
 - Backend CI compiles release-critical governed surfaces, runs `python scripts/production_rehearsal.py --json`, and then runs the dedicated governed evolution regression pair: `tests/test_improvement_governance.py` and `tests/test_compute.py`
 
 Legacy Compass markdown (`AGENT.md`, `AGENT_ENTRYPOINT.md`, `COMPLETE_SYSTEM.md`, and `SYSTEM_INTEGRITY_GUIDE.md`) is no longer a blocking CI/CD governance source. Those files may remain as historical references, but Compass Forge is the local-first control plane for repository onboarding, impact analysis, gates, work orders, and evidence. CI therefore guards against accidentally re-promoting the legacy generator or legacy markdown drift checks back into release governance.
+
+### Industry Security Benchmark
+
+The tracked security benchmark lives under `security/` and is active release governance, not ignored documentation. `security/SECURITY_BENCHMARK.md` documents Istara's current standard set: OWASP ASVS 5.0.0, NIST SP 800-63 Revision 4, OWASP WSTG latest, OWASP SAMM 2.0.3, NIST SSDF 1.1, CIS Controls v8.1, SLSA v1.2, OpenSSF Scorecard, WebAuthn Level 3, RFC 9700, OWASP LLM Top 10 2025, OWASP Agentic Top 10 2026, NIST AI RMF, and MITRE ATLAS. `security/control_matrix.json` maps those standards to Istara controls, statuses, severity, evidence, and auth/security trigger paths.
+
+`scripts/security_benchmark.py` renders the quantifiable scorecard used by CI, release prep, and Compass Forge evidence. The production threshold is 90 percent. Any failed control blocks release; any critical/high partial control blocks release; medium/low partials are reported as maturity work. Future auth, session, WebAuthn, connection-string, pooled-compute, MCP, webhook, LLM-provider, autoresearch, self-evolution, or agentic-memory changes must update or explicitly revalidate the benchmark package, and PR CI passes changed paths into the benchmark so `auth_security_change_detected` is visible in the scorecard.
 
 The production rehearsal is the lightweight release smoke test for the new self-improvement architecture. It verifies importability and wiring for the Improvement Governance contract, sandbox evaluation, DGM-H archive, ReasoningBank, compute capacity envelope, dependency manifest coverage, route/type contract expectations, and rollback/evidence surfaces before the full backend test suite runs. This keeps CI aligned with the production rule that autoresearch, skill evolution, agent creation, meta-agent proposals, UI changes, integrations, and backend-code mutations must become governed proposals with evidence and rollback rather than invisible mutations.
 
@@ -2867,9 +2881,9 @@ Istara uses native OpenAI-compatible function calling via the `tools` API parame
 
 **Global Authentication**: `SecurityAuthMiddleware` enforces JWT on ALL endpoints. No route can bypass it — auth is checked before any route handler runs. 150+ endpoints protected by a single middleware.
 
-**Auth Flow**: Login → JWT issued → included in all API calls (`Authorization: Bearer`) + WebSocket connections (`?token=`). Token expiration: configurable (default 24h).
+**Auth Flow**: Login → server-backed JWT issued → included in HTTP calls through `Authorization: Bearer` or the HttpOnly session cookie. HTTP endpoints no longer accept JWTs in query strings. WebSocket endpoints still accept `?token=` because browsers cannot set custom WebSocket headers reliably. Token expiration: configurable (default 24h).
 
-**Admin Bootstrap**: On first startup, admin user auto-created. Credentials printed to server console and persisted to `.env`.
+**Admin Bootstrap**: On first startup, admin user auto-created. Credentials printed to server console and persisted to `.env`. Recovery codes are stored as one-time hashed `recovery_codes` records with use/replacement metadata.
 
 **Exempt Paths** (no auth required): `/api/health`, `/api/auth/login`, `/api/auth/register`, `/api/settings/status`, `/webhooks/*`.
 
@@ -2885,6 +2899,7 @@ Istara uses native OpenAI-compatible function calling via the `tools` API parame
 | Rate Limiting | slowapi token bucket per IP | API endpoints |
 | Network Access Token | Additional token for non-localhost connections | LAN/remote |
 | WebSocket Auth | JWT via `?token=` query param | `/ws`, `/ws/relay` |
+| Auth Event Audit | `audit_log.event_type` structured events | login, logout, MFA, recovery, admin changes |
 | Admin Role Check | `require_admin_from_request()` | Sensitive operations |
 | MCP Access Policy | Per-tool permissions with audit log | MCP server |
 | Relay Auth | Network token + JWT (always, not just team mode) | Compute relay |

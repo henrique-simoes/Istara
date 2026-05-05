@@ -7,21 +7,25 @@ hardware authenticator verification.
 
 import json
 import logging
-import time
 import uuid
-from datetime import UTC, datetime
+from base64 import urlsafe_b64decode, urlsafe_b64encode
+from datetime import UTC, datetime, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.core.auth import verify_token
+from app.core.auth_cookies import get_auth_cookie_token, set_auth_cookie
+from app.core.auth_origins import webauthn_expected_origins
 from app.core.auth_sessions import issue_auth_session_token, validate_auth_session
 from app.core.client_identity import BoundedWindowRateLimiter, get_client_ip
+from app.core.security_middleware import browser_origin_denial
 from app.models.database import get_db
 from app.models.user import User
+from app.models.webauthn_challenge import WebAuthnChallenge
 from app.models.webauthn_credential import WebAuthnCredential
 
 router = APIRouter()
@@ -62,33 +66,79 @@ except ImportError:
     )
 
 # ---------------------------------------------------------------------------
-# Challenge storage — in-memory with TTL for stateless HTTP
+# Challenge storage — persisted and single-use for multi-worker deployments.
 # ---------------------------------------------------------------------------
 
-_challenges: dict[str, dict] = {}  # purpose:user_id -> {challenge, expires_at}
 _CHALLENGE_TTL = 120  # seconds
 
 
-def _challenge_key(purpose: str, user_id: str) -> str:
-    return f"{purpose}:{user_id}"
+def _encode_challenge(challenge: bytes) -> str:
+    if _WEBAUTHN_AVAILABLE:
+        return bytes_to_base64url(challenge)
+    return urlsafe_b64encode(challenge).rstrip(b"=").decode()
 
 
-def _store_challenge(purpose: str, user_id: str, challenge: bytes) -> None:
+def _decode_challenge(challenge: str) -> bytes:
+    if _WEBAUTHN_AVAILABLE:
+        return base64url_to_bytes(challenge)
+    padding = "=" * ((4 - len(challenge) % 4) % 4)
+    return urlsafe_b64decode((challenge + padding).encode())
+
+
+async def _store_challenge(
+    db: AsyncSession,
+    purpose: str,
+    user_id: str,
+    challenge: bytes,
+) -> None:
     """Store a challenge for a user with a TTL."""
-    _challenges[_challenge_key(purpose, user_id)] = {
-        "challenge": challenge,
-        "expires_at": time.time() + _CHALLENGE_TTL,
-    }
+    now = datetime.now(UTC)
+    await db.execute(
+        update(WebAuthnChallenge)
+        .where(
+            WebAuthnChallenge.user_id == user_id,
+            WebAuthnChallenge.purpose == purpose,
+            WebAuthnChallenge.consumed_at.is_(None),
+        )
+        .values(consumed_at=now)
+    )
+    db.add(
+        WebAuthnChallenge(
+            id=str(uuid.uuid4()),
+            user_id=user_id,
+            purpose=purpose,
+            challenge=_encode_challenge(challenge),
+            created_at=now,
+            expires_at=now + timedelta(seconds=_CHALLENGE_TTL),
+        )
+    )
+    await db.commit()
 
 
-def _get_and_clear_challenge(purpose: str, user_id: str) -> bytes | None:
+async def _get_and_clear_challenge(
+    db: AsyncSession,
+    purpose: str,
+    user_id: str,
+) -> bytes | None:
     """Retrieve and remove a challenge. Returns None if expired/missing."""
-    entry = _challenges.pop(_challenge_key(purpose, user_id), None)
+    now = datetime.now(UTC)
+    result = await db.execute(
+        select(WebAuthnChallenge)
+        .where(
+            WebAuthnChallenge.user_id == user_id,
+            WebAuthnChallenge.purpose == purpose,
+            WebAuthnChallenge.consumed_at.is_(None),
+            WebAuthnChallenge.expires_at > now,
+        )
+        .order_by(WebAuthnChallenge.created_at.desc())
+        .limit(1)
+    )
+    entry = result.scalar_one_or_none()
     if entry is None:
         return None
-    if time.time() > entry["expires_at"]:
-        return None
-    return entry["challenge"]
+    entry.consumed_at = now
+    await db.commit()
+    return _decode_challenge(entry.challenge)
 
 
 _webauthn_limiter = BoundedWindowRateLimiter()
@@ -135,9 +185,12 @@ class PasskeyAuthenticationFinishRequest(BaseModel):
 class PasskeyCredentialInfo(BaseModel):
     id: str
     label: str
-    created_at: str
+    created_at: str | None
     last_used_at: str | None
     authenticator_type: str | None
+    device_type: str = ""
+    backed_up: bool = False
+    user_verified: bool = False
 
 
 # ---------------------------------------------------------------------------
@@ -149,7 +202,7 @@ async def _token_from_request(request: Request, db: AsyncSession) -> dict:
     auth_header = request.headers.get("Authorization", "")
     token = auth_header.removeprefix("Bearer ").strip() if auth_header.startswith("Bearer ") else ""
     if not token:
-        token = request.cookies.get("istara_session", "")
+        token = get_auth_cookie_token(request)
     if not token:
         raise HTTPException(status_code=401, detail="Unauthorized")
     token_data = verify_token(token)
@@ -175,11 +228,14 @@ def _rp_name() -> str:
 
 def _expected_origins() -> list[str]:
     """Return trusted origins for WebAuthn ceremony verification."""
-    raw = settings.webauthn_origins.strip() or settings.cors_origins
-    origins = [origin.strip().rstrip("/") for origin in raw.split(",") if origin.strip()]
-    if not origins:
-        origins = ["http://localhost:3000", "http://127.0.0.1:3000"]
-    return origins
+    return webauthn_expected_origins(settings)
+
+
+def _require_trusted_webauthn_origin(request: Request) -> None:
+    """Reject passkey ceremony requests from untrusted browser origins."""
+    denial = browser_origin_denial(request)
+    if denial:
+        raise HTTPException(status_code=403, detail=denial)
 
 
 def _check_webauthn_rate(request: Request, scope: str) -> None:
@@ -270,6 +326,7 @@ async def webauthn_register_start(
     """Start WebAuthn registration — returns challenge options for the browser."""
     if not _WEBAUTHN_AVAILABLE:
         raise HTTPException(status_code=503, detail="WebAuthn not available")
+    _require_trusted_webauthn_origin(request)
     _check_webauthn_rate(request, "register-start")
     token_data = await _token_from_request(request, db)
 
@@ -302,13 +359,13 @@ async def webauthn_register_start(
             authenticator_selection=AuthenticatorSelectionCriteria(
                 authenticator_attachment=AuthenticatorAttachment.PLATFORM,
                 resident_key=ResidentKeyRequirement.PREFERRED,
-                user_verification=UserVerificationRequirement.PREFERRED,
+                user_verification=UserVerificationRequirement.REQUIRED,
             ),
             attestation=AttestationConveyancePreference.NONE,
         )
 
         # Store challenge for verification in finish step
-        _store_challenge("registration", user.id, options.challenge)
+        await _store_challenge(db, "registration", user.id, options.challenge)
 
         return {"publicKey": json.loads(options_to_json(options))}
     except Exception as e:
@@ -325,13 +382,14 @@ async def webauthn_register_finish(
     """Finish WebAuthn registration — verify cryptographic attestation and store credential."""
     if not _WEBAUTHN_AVAILABLE:
         raise HTTPException(status_code=503, detail="WebAuthn not available")
+    _require_trusted_webauthn_origin(request)
     _check_webauthn_rate(request, "register-finish")
     token_data = await _token_from_request(request, db)
     if token_data.get("sub") != body.user_id:
         raise HTTPException(status_code=403, detail="Cannot register a passkey for another user")
 
     # Retrieve the stored challenge
-    challenge = _get_and_clear_challenge("registration", body.user_id)
+    challenge = await _get_and_clear_challenge(db, "registration", body.user_id)
     if challenge is None:
         raise HTTPException(
             status_code=400,
@@ -345,6 +403,7 @@ async def webauthn_register_finish(
             expected_rp_id=_rp_id(),
             expected_origin=_expected_origins(),
             expected_challenge=challenge,
+            require_user_verification=True,
         )
 
         # Store the verified credential
@@ -359,6 +418,9 @@ async def webauthn_register_finish(
             client_data_json=body.client_data_json,
             label=body.authenticator_attachment or "Passkey",
             authenticator_type=body.authenticator_attachment,
+            device_type=str(getattr(verification, "credential_device_type", "") or ""),
+            backed_up=bool(getattr(verification, "credential_backed_up", False)),
+            user_verified=bool(getattr(verification, "user_verified", False)),
             transports=json.dumps(body.transports or []),
         )
         db.add(credential)
@@ -386,6 +448,7 @@ async def webauthn_authenticate_start(
     """Start WebAuthn authentication — returns challenge options."""
     if not _WEBAUTHN_AVAILABLE:
         raise HTTPException(status_code=503, detail="WebAuthn not available")
+    _require_trusted_webauthn_origin(request)
     _check_webauthn_rate(request, "authenticate-start")
 
     result = await db.execute(select(User).where(User.username == body.username))
@@ -409,11 +472,11 @@ async def webauthn_authenticate_start(
         options = generate_authentication_options(
             rp_id=_rp_id(),
             allow_credentials=allow_credentials,
-            user_verification=UserVerificationRequirement.PREFERRED,
+            user_verification=UserVerificationRequirement.REQUIRED,
         )
 
         # Store challenge for verification in finish step
-        _store_challenge("authentication", user.id, options.challenge)
+        await _store_challenge(db, "authentication", user.id, options.challenge)
 
         return {
             "user_id": user.id,
@@ -428,15 +491,17 @@ async def webauthn_authenticate_start(
 async def webauthn_authenticate_finish(
     body: PasskeyAuthenticationFinishRequest,
     request: Request,
+    response: Response,
     db: AsyncSession = Depends(get_db),
 ):
     """Finish WebAuthn authentication — verify cryptographic signature and return token."""
     if not _WEBAUTHN_AVAILABLE:
         raise HTTPException(status_code=503, detail="WebAuthn not available")
+    _require_trusted_webauthn_origin(request)
     _check_webauthn_rate(request, "authenticate-finish")
 
     # Retrieve the stored challenge
-    challenge = _get_and_clear_challenge("authentication", body.user_id)
+    challenge = await _get_and_clear_challenge(db, "authentication", body.user_id)
     if challenge is None:
         raise HTTPException(
             status_code=400,
@@ -465,11 +530,17 @@ async def webauthn_authenticate_finish(
             expected_origin=_expected_origins(),
             expected_challenge=challenge,
             credential_current_sign_count=credential.sign_count,
+            require_user_verification=True,
         )
 
         # Update sign count and last_used timestamp
         credential.last_used_at = datetime.now(UTC)
         credential.sign_count = verification.new_sign_count
+        credential.user_verified = bool(
+            getattr(verification, "user_verified", credential.user_verified)
+        )
+        credential.last_used_ip = get_client_ip(request, settings.trusted_proxy_hosts)[:128]
+        credential.last_used_user_agent = request.headers.get("user-agent", "")[:512]
         await db.commit()
 
         # Look up the user
@@ -486,6 +557,7 @@ async def webauthn_authenticate_finish(
             auth_method="passkey",
             mfa_verified=True,
         )
+        set_auth_cookie(response, token)
         return {
             "token": token,
             "user": {
@@ -528,6 +600,9 @@ async def list_credentials(
             created_at=c.created_at.isoformat() if c.created_at else None,
             last_used_at=c.last_used_at.isoformat() if c.last_used_at else None,
             authenticator_type=c.authenticator_type,
+            device_type=c.device_type,
+            backed_up=c.backed_up,
+            user_verified=c.user_verified,
         )
         for c in credentials
     ]

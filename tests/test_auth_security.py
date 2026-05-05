@@ -1,6 +1,7 @@
 import pytest
 from app.config import settings
 from app.core.auth import create_token
+from app.core.auth_cookies import AUTH_COOKIE_NAME, LEGACY_AUTH_COOKIE_NAME
 from app.main import app
 from app.models.database import init_db
 from httpx import ASGITransport, AsyncClient
@@ -9,15 +10,19 @@ from httpx import ASGITransport, AsyncClient
 @pytest.fixture(autouse=True)
 def reset_settings():
     """Reset settings after each test."""
-    from app.api.routes.auth import _login_limiter
+    from app.api.routes.auth import _login_limiter, _mfa_limiter
 
     original_team_mode = settings.team_mode
     original_jwt_secret = settings.jwt_secret
+    original_cors_origin_regex = settings.cors_origin_regex
     _login_limiter.clear()
+    _mfa_limiter.clear()
     yield
     settings.team_mode = original_team_mode
     settings.jwt_secret = original_jwt_secret
+    settings.cors_origin_regex = original_cors_origin_regex
     _login_limiter.clear()
+    _mfa_limiter.clear()
 
 
 @pytest.mark.asyncio
@@ -40,6 +45,25 @@ async def test_team_status_insecure_flag():
         response = await ac.get("/api/auth/team-status")
         assert response.status_code == 200
         assert response.json()["insecure"] is False
+        assert "security_warnings" in response.json()
+
+
+@pytest.mark.asyncio
+async def test_team_status_reports_origin_hardening_warnings():
+    """Team status should expose actionable production auth configuration warnings."""
+    await init_db()
+    original_regex = settings.cors_origin_regex
+    settings.team_mode = True
+    settings.cors_origin_regex = r"https?://[^/]+:3000"
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.get("/api/auth/team-status")
+
+    settings.cors_origin_regex = original_regex
+    assert response.status_code == 200
+    warnings = response.json()["security_warnings"]
+    assert any("CORS_ORIGIN_REGEX allows arbitrary hosts" in warning for warning in warnings)
 
 
 @pytest.mark.asyncio
@@ -133,6 +157,7 @@ def test_bootstrap_admin_user_has_required_email_hash():
 
     assert user.email == "admin@istara.local"
     assert user.email_hash == hash_field("admin@istara.local")
+    assert user.recovery_codes_hashed is None
 
 
 async def _create_team_user(
@@ -248,9 +273,14 @@ async def test_login_sets_session_cookie():
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         response = await ac.post("/api/auth/login", json={"username": "testuser", "password": ""})
         assert response.status_code == 200
-        # Check that the Set-Cookie header is present
-        cookies = response.cookies
-        assert "istara_session" in cookies, "Login should set istara_session cookie"
+        assert AUTH_COOKIE_NAME in response.cookies, "Login should set hardened session cookie"
+        set_cookie = response.headers.get("set-cookie", "")
+        assert f"{AUTH_COOKIE_NAME}=" in set_cookie
+        assert "HttpOnly" in set_cookie
+        assert "Secure" in set_cookie
+        assert "SameSite=strict" in set_cookie
+        assert "Path=/" in set_cookie
+        assert f"{LEGACY_AUTH_COOKIE_NAME}=" in set_cookie
 
 
 @pytest.mark.asyncio
@@ -284,7 +314,7 @@ async def test_cookie_auth_rejects_untrusted_origin_on_state_change():
     token = create_token("admin-1", "admin", "admin")
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        ac.cookies.set("istara_session", token)
+        ac.cookies.set(AUTH_COOKIE_NAME, token)
         response = await ac.put(
             "/api/auth/preferences",
             json={"preferences": {"theme": "dark"}},
@@ -293,6 +323,24 @@ async def test_cookie_auth_rejects_untrusted_origin_on_state_change():
 
     assert response.status_code == 403
     assert "Untrusted browser origin" in response.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_legacy_session_cookie_still_accepted_during_transition():
+    """Existing browser sessions using the old cookie name should still read."""
+    await init_db()
+    settings.team_mode = True
+    if not settings.jwt_secret:
+        settings.jwt_secret = "test-secret"
+
+    token = create_token("admin-1", "admin", "admin")
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        ac.cookies.set(LEGACY_AUTH_COOKIE_NAME, token)
+        response = await ac.get("/api/auth/me")
+
+    assert response.status_code == 200
+    assert response.json()["username"] == "admin"
 
 
 @pytest.mark.asyncio
@@ -317,10 +365,10 @@ async def test_login_rejects_cross_site_browser_attempts_before_cookie_creation(
         )
 
     assert origin_response.status_code == 403
-    assert "istara_session" not in origin_response.cookies
+    assert AUTH_COOKIE_NAME not in origin_response.cookies
     assert "Untrusted browser origin" in origin_response.json()["detail"]
     assert fetch_metadata_response.status_code == 403
-    assert "istara_session" not in fetch_metadata_response.cookies
+    assert AUTH_COOKIE_NAME not in fetch_metadata_response.cookies
     assert "Untrusted browser origin" in fetch_metadata_response.json()["detail"]
 
 
@@ -345,7 +393,7 @@ async def test_register_rejects_untrusted_browser_origin_before_user_creation():
         )
 
     assert response.status_code == 403
-    assert "istara_session" not in response.cookies
+    assert AUTH_COOKIE_NAME not in response.cookies
     assert "Untrusted browser origin" in response.json()["detail"]
 
 
@@ -452,7 +500,9 @@ async def test_auth_sessions_list_and_revoke_specific_other_session():
         session_ids = {session["id"] for session in sessions}
         assert first_payload["sid"] in session_ids
         assert second_payload["sid"] in session_ids
-        assert [session["id"] for session in sessions if session["current"]] == [first_payload["sid"]]
+        assert [session["id"] for session in sessions if session["current"]] == [
+            first_payload["sid"]
+        ]
         assert all("token" not in session for session in sessions)
         assert all("token_jti" not in session for session in sessions)
 
@@ -594,6 +644,54 @@ async def test_bound_session_uses_current_user_role():
         assert denied.status_code == 403
 
 
+@pytest.mark.asyncio
+async def test_http_query_token_is_rejected_for_auth_me():
+    """HTTP auth should not accept JWTs in query strings."""
+    await init_db()
+    settings.team_mode = True
+    if not settings.jwt_secret:
+        settings.jwt_secret = "test-secret"
+
+    token = create_token("query-user", "query-user", "admin")
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.get(f"/api/auth/me?token={token}")
+
+    assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_last_admin_protection_rejects_zero_admin_outcome(monkeypatch):
+    """Admin management should not strand a team with zero admin accounts."""
+    from fastapi import HTTPException
+
+    from app.api.routes import auth as auth_routes
+    from app.models.user import User
+
+    async def one_admin(_db):
+        return 1
+
+    monkeypatch.setattr(auth_routes, "_admin_count", one_admin)
+    user = User(
+        id="last-admin",
+        username="last-admin",
+        email="last-admin@example.com",
+        email_hash="hash",
+        password_hash="hash",
+        role="admin",
+    )
+
+    with pytest.raises(HTTPException) as exc:
+        await auth_routes._ensure_not_last_admin_demoted_or_deleted(
+            None,
+            user,
+            new_role="viewer",
+        )
+
+    assert exc.value.status_code == 400
+    assert "admin" in exc.value.detail.lower()
+
+
 # ---------------------------------------------------------------------------
 # 2FA / MFA tests
 # ---------------------------------------------------------------------------
@@ -694,6 +792,7 @@ async def test_login_with_totp_code_succeeds():
         secret = totp_setup.json()["secret"]
 
         import pyotp
+        import time
 
         code = pyotp.TOTP(secret).now()
         await ac.post(
@@ -709,13 +808,193 @@ async def test_login_with_totp_code_succeeds():
             json={
                 "username": username,
                 "password": "xK9#mP2$vL7nQ4@wR1!",
-                "totp_code": pyotp.TOTP(secret).now(),
+                "totp_code": pyotp.TOTP(secret).at(int(time.time()) + 30),
             },
         )
         assert login.status_code == 200
         data = login.json()
         assert "token" in data
         assert data.get("requires_2fa") is not True
+
+
+@pytest.mark.asyncio
+async def test_totp_code_replay_is_rejected():
+    """Accepted TOTP counters should not be reusable inside the tolerance window."""
+    await init_db()
+    settings.team_mode = True
+    if not settings.jwt_secret:
+        settings.jwt_secret = "test-secret"
+
+    import pyotp
+    import time
+    import uuid
+
+    username = f"mfareplay_{uuid.uuid4().hex[:8]}"
+    email = f"mfareplay_{uuid.uuid4().hex[:8]}@example.com"
+    password = "xK9#mP2$vL7nQ4@wR1!"
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        reg = await ac.post(
+            "/api/auth/register",
+            json={"username": username, "email": email, "password": password},
+        )
+        token = reg.json()["token"]
+        setup = await ac.post(
+            "/api/auth/totp/setup",
+            json={"current_password": password},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        secret = setup.json()["secret"]
+        totp = pyotp.TOTP(secret)
+        await ac.post(
+            "/api/auth/totp/verify",
+            json={"totp_code": totp.now()},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        await ac.post("/api/auth/logout", headers={"Authorization": f"Bearer {token}"})
+
+        login_code = totp.at(int(time.time()) + 30)
+        first = await ac.post(
+            "/api/auth/login",
+            json={"username": username, "password": password, "totp_code": login_code},
+        )
+        replay = await ac.post(
+            "/api/auth/login",
+            json={"username": username, "password": password, "totp_code": login_code},
+        )
+
+    assert first.status_code == 200
+    assert replay.status_code == 401
+    assert "already been used" in replay.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_recovery_code_is_table_backed_and_single_use():
+    """Recovery codes should stay as auditable one-time records, not deleted strings."""
+    await init_db()
+    settings.team_mode = True
+    if not settings.jwt_secret:
+        settings.jwt_secret = "test-secret"
+
+    import pyotp
+    import uuid
+
+    username = f"recovery_{uuid.uuid4().hex[:8]}"
+    email = f"recovery_{uuid.uuid4().hex[:8]}@example.com"
+    password = "xK9#mP2$vL7nQ4@wR1!"
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        reg = await ac.post(
+            "/api/auth/register",
+            json={"username": username, "email": email, "password": password},
+        )
+        assert reg.status_code == 200
+        recovery_code = reg.json()["recovery_codes"][0]
+        token = reg.json()["token"]
+
+        from app.models.database import async_session
+        from app.models.recovery_code import RecoveryCode
+        from app.models.user import User
+        from sqlalchemy import select
+
+        async with async_session() as db:
+            user = (await db.execute(select(User).where(User.username == username))).scalar_one()
+            records = (
+                (await db.execute(select(RecoveryCode).where(RecoveryCode.user_id == user.id)))
+                .scalars()
+                .all()
+            )
+            assert len(records) == 8
+            assert user.recovery_codes_hashed is None
+
+        setup = await ac.post(
+            "/api/auth/totp/setup",
+            json={"current_password": password},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        secret = setup.json()["secret"]
+        await ac.post(
+            "/api/auth/totp/verify",
+            json={"totp_code": pyotp.TOTP(secret).now()},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        await ac.post("/api/auth/logout", headers={"Authorization": f"Bearer {token}"})
+
+        first = await ac.post(
+            "/api/auth/login",
+            json={"username": username, "password": password, "recovery_code": recovery_code},
+        )
+        second = await ac.post(
+            "/api/auth/login",
+            json={"username": username, "password": password, "recovery_code": recovery_code},
+        )
+        assert first.status_code == 200
+        assert second.status_code == 401
+
+        status = await ac.get(
+            "/api/auth/recovery-codes/status",
+            headers={"Authorization": f"Bearer {first.json()['token']}"},
+        )
+        assert status.status_code == 200
+        assert status.json() == {"remaining": 7, "total": 8}
+
+        async with async_session() as db:
+            user = (await db.execute(select(User).where(User.username == username))).scalar_one()
+            used = (
+                (
+                    await db.execute(
+                        select(RecoveryCode).where(
+                            RecoveryCode.user_id == user.id,
+                            RecoveryCode.used_at.is_not(None),
+                        )
+                    )
+                )
+                .scalars()
+                .all()
+            )
+            assert len(used) == 1
+            assert used[0].used_ip_hash
+
+
+@pytest.mark.asyncio
+async def test_auth_events_are_written_to_audit_log():
+    """Auth-critical events should be first-class audit entries."""
+    await init_db()
+    settings.team_mode = True
+    if not settings.jwt_secret:
+        settings.jwt_secret = "test-secret"
+
+    import uuid
+
+    username = f"auditlogin_{uuid.uuid4().hex[:8]}"
+    email = f"auditlogin_{uuid.uuid4().hex[:8]}@example.com"
+    password = "xK9#mP2$vL7nQ4@wR1!"
+    await _create_team_user(username=username, email=email, password=password)
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        login = await ac.post("/api/auth/login", json={"username": username, "password": password})
+        assert login.status_code == 200
+
+    from app.core.audit_middleware import AuditLog
+    from app.models.database import async_session
+    from sqlalchemy import select
+
+    async with async_session() as db:
+        event = (
+            await db.execute(
+                select(AuditLog).where(
+                    AuditLog.event_type == "auth.login.success",
+                    AuditLog.user_id == f"user-{username}",
+                )
+            )
+        ).scalar_one_or_none()
+
+    assert event is not None
+    assert event.method == "AUTH"
+    assert username in event.details
 
 
 @pytest.mark.asyncio

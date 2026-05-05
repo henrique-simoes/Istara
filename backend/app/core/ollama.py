@@ -230,6 +230,7 @@ def _init_llm_router():
             name="Local LM Studio",
             provider_type="lmstudio",
             host=settings.lmstudio_host,
+            api_key=settings.lmstudio_api_key,
             priority=1,
             is_local=True,
         )
@@ -261,6 +262,7 @@ def _init_llm_router():
             name="Local LM Studio (fallback)",
             provider_type="lmstudio",
             host=settings.lmstudio_host,
+            api_key=settings.lmstudio_api_key,
             priority=5,
             is_local=True,
         )
@@ -285,6 +287,7 @@ async def load_persisted_servers_async():
         from app.models.database import async_session
         from app.models.llm_server import LLMServer
         from app.core.llm_router import llm_router, LLMServerEntry
+        from app.core.field_encryption import decrypt_field
         from sqlalchemy import select
 
         async with async_session() as db:
@@ -299,7 +302,7 @@ async def load_persisted_servers_async():
                         name=s.name,
                         provider_type=s.provider_type,
                         host=s.host,
-                        api_key=s.api_key,
+                        api_key=decrypt_field(s.api_key) if s.api_key else "",
                         priority=s.priority,
                         is_local=s.is_local,
                     )

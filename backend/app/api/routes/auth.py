@@ -12,10 +12,11 @@ Supports:
 import json
 import logging
 import uuid
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import String, cast, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
@@ -25,13 +26,14 @@ from app.core.auth import (
     generate_totp_provisioning_uri,
     generate_totp_secret,
     hash_password,
-    hash_recovery_code,
     is_password_breached,
     needs_rehash,
     verify_password,
-    verify_recovery_code,
-    verify_totp,
+    verify_totp_with_counter,
 )
+from app.core.auth_audit import record_auth_event
+from app.core.auth_cookies import clear_auth_cookies, get_auth_cookie_token, set_auth_cookie
+from app.core.auth_origins import security_configuration_warnings
 from app.core.auth_sessions import (
     current_auth_session_id,
     is_session_bound,
@@ -45,6 +47,11 @@ from app.core.auth_sessions import (
 )
 from app.core.client_identity import BoundedWindowRateLimiter, get_client_ip
 from app.core.field_encryption import hash_field
+from app.core.recovery_codes import (
+    consume_recovery_code,
+    recovery_code_status,
+    replace_recovery_codes,
+)
 from app.core.security_middleware import browser_origin_denial, require_admin_from_request
 from app.models.database import async_session, get_db
 from app.models.user import User
@@ -56,8 +63,12 @@ logger = logging.getLogger(__name__)
 # In-memory login rate limiter
 # ---------------------------------------------------------------------------
 _login_limiter = BoundedWindowRateLimiter()
+_mfa_limiter = BoundedWindowRateLimiter()
 MAX_LOGIN_ATTEMPTS = 5
 LOGIN_WINDOW = 60  # seconds
+MAX_MFA_ATTEMPTS = 6
+MFA_WINDOW = 300
+TOTP_SETUP_TTL_MINUTES = 10
 
 
 async def _check_login_rate(request: Request):
@@ -69,6 +80,19 @@ async def _check_login_rate(request: Request):
     ):
         raise HTTPException(
             status_code=429, detail="Too many login attempts. Try again in 60 seconds."
+        )
+
+
+def _check_mfa_rate(request: Request, user_id: str) -> None:
+    client_ip = get_client_ip(request, settings.trusted_proxy_hosts)
+    if _mfa_limiter.is_limited(
+        f"{user_id}:{client_ip}",
+        limit=MAX_MFA_ATTEMPTS,
+        window_seconds=MFA_WINDOW,
+    ):
+        raise HTTPException(
+            status_code=429,
+            detail="Too many verification attempts. Try again shortly.",
         )
 
 
@@ -143,20 +167,12 @@ def is_request_local(request: Request) -> bool:
 
 def _set_auth_cookie(response: Response, token: str):
     """Set an HttpOnly, Secure, SameSite=Strict cookie with the auth token."""
-    response.set_cookie(
-        key="istara_session",
-        value=token,
-        httponly=True,
-        secure=True,
-        samesite="strict",
-        max_age=settings.jwt_expire_minutes * 60,
-        path="/api",
-    )
+    set_auth_cookie(response, token)
 
 
 def _clear_auth_cookie(response: Response):
     """Clear the auth cookie."""
-    response.delete_cookie(key="istara_session", path="/api")
+    clear_auth_cookies(response)
 
 
 def _user_to_dict(user: User) -> dict:
@@ -180,7 +196,7 @@ def _token_from_request(request: Request) -> str:
         auth_header.removeprefix("Bearer ").strip() if auth_header.startswith("Bearer ") else ""
     )
     if not token_str:
-        token_str = request.cookies.get("istara_session", "")
+        token_str = get_auth_cookie_token(request)
     if not token_str:
         raise HTTPException(status_code=401, detail="Authentication required")
     return token_str
@@ -227,6 +243,69 @@ def _require_trusted_auth_origin(request: Request) -> None:
     denial = browser_origin_denial(request)
     if denial:
         raise HTTPException(status_code=403, detail=denial)
+
+
+def _as_utc(value: datetime | None) -> datetime | None:
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        return value.replace(tzinfo=UTC)
+    return value
+
+
+def _role_value(role: object) -> str:
+    return str(getattr(role, "value", role))
+
+
+async def _admin_count(db: AsyncSession) -> int:
+    result = await db.execute(
+        select(func.count()).select_from(User).where(func.lower(cast(User.role, String)) == "admin")
+    )
+    return int(result.scalar_one() or 0)
+
+
+async def _ensure_not_last_admin_demoted_or_deleted(
+    db: AsyncSession,
+    user: User,
+    *,
+    new_role: str | None = None,
+) -> None:
+    old_role = _role_value(user.role)
+    if old_role != "admin":
+        return
+    if new_role == "admin":
+        return
+    if await _admin_count(db) <= 1:
+        raise HTTPException(status_code=400, detail="At least one admin account must remain.")
+
+
+def _verify_totp_for_user(user: User, code: str) -> None:
+    """Verify a TOTP code and reject replay of accepted counters."""
+    verified, counter = verify_totp_with_counter(user.totp_secret or "", code)
+    if not verified or counter is None:
+        raise HTTPException(status_code=401, detail="Invalid TOTP code.")
+    last_counter = getattr(user, "totp_last_accepted_counter", None)
+    if last_counter is not None and counter <= last_counter:
+        raise HTTPException(status_code=401, detail="TOTP code has already been used.")
+    user.totp_last_accepted_counter = counter
+
+
+async def _replace_user_recovery_codes(
+    db: AsyncSession,
+    user: User,
+    codes: list[str],
+    request: Request | None,
+    *,
+    created_by_user_id: str = "",
+) -> None:
+    user.recovery_codes_hashed = None
+    await replace_recovery_codes(
+        db,
+        user_id=user.id,
+        codes=codes,
+        request=request,
+        created_by_user_id=created_by_user_id,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -278,9 +357,7 @@ async def register(req: RegisterRequest, response: Response, request: Request):
         count_result = await db.execute(select(User))
         is_first = len(count_result.scalars().all()) == 0
 
-        # Generate recovery codes
         recovery_codes = generate_recovery_codes()
-        recovery_codes_hashed = "\n".join(hash_recovery_code(c) for c in recovery_codes)
 
         user = User(
             id=str(uuid.uuid4()),
@@ -290,9 +367,11 @@ async def register(req: RegisterRequest, response: Response, request: Request):
             password_hash=hash_password(req.password),
             role="admin" if is_first else "researcher",
             display_name=req.display_name or req.username,
-            recovery_codes_hashed=recovery_codes_hashed,
         )
         db.add(user)
+        await _replace_user_recovery_codes(
+            db, user, recovery_codes, request, created_by_user_id=user.id
+        )
         await db.commit()
 
         token = await issue_auth_session_token(
@@ -303,6 +382,16 @@ async def register(req: RegisterRequest, response: Response, request: Request):
         )
         _set_auth_cookie(response, token)
         logger.info(f"User registered: {user.username} (role={user.role})")
+        await record_auth_event(
+            request,
+            "auth.register.success",
+            user_id=user.id,
+            details={
+                "username": user.username,
+                "role": _role_value(user.role),
+                "first_user": is_first,
+            },
+        )
 
         return {
             "token": token,
@@ -338,6 +427,12 @@ async def login(
             )
         token = create_token("local", req.username or "local", "admin")
         _set_auth_cookie(response, token)
+        await record_auth_event(
+            request,
+            "auth.local_login.success",
+            user_id="local",
+            details={"username": req.username or "local"},
+        )
         return {
             "token": token,
             "user": {
@@ -357,6 +452,12 @@ async def login(
     user = result.scalar_one_or_none()
 
     if not user or not verify_password(req.password, user.password_hash):
+        await record_auth_event(
+            request,
+            "auth.login.failed",
+            status_code=401,
+            details={"username": req.username, "reason": "invalid_credentials"},
+        )
         raise HTTPException(status_code=401, detail="Invalid username or password.")
 
     # Upgrade password hash if needed (PBKDF2 → Argon2id)
@@ -371,27 +472,56 @@ async def login(
         # User has TOTP enabled — must provide a valid TOTP code or recovery code
         if req.recovery_code:
             # Recovery code flow
-            if not user.recovery_codes_hashed:
-                raise HTTPException(status_code=401, detail="No recovery codes configured.")
-            codes = user.recovery_codes_hashed.split("\n")
-            matched = False
-            for i, hashed in enumerate(codes):
-                if verify_recovery_code(req.recovery_code, hashed):
-                    # Remove used code
-                    codes.pop(i)
-                    user.recovery_codes_hashed = "\n".join(codes)
-                    matched = True
-                    break
+            _check_mfa_rate(request, user.id)
+            matched = await consume_recovery_code(
+                db, user=user, code=req.recovery_code, request=request
+            )
             if not matched:
+                await record_auth_event(
+                    request,
+                    "auth.mfa.recovery_code.failed",
+                    user_id=user.id,
+                    status_code=401,
+                    details={"username": user.username},
+                )
                 raise HTTPException(status_code=401, detail="Invalid recovery code.")
             mfa_verified = True
             logger.info(f"User {user.username} logged in with recovery code")
+            await record_auth_event(
+                request,
+                "auth.mfa.recovery_code.used",
+                user_id=user.id,
+                details={"username": user.username},
+            )
         elif req.totp_code:
-            if not verify_totp(user.totp_secret, req.totp_code):
-                raise HTTPException(status_code=401, detail="Invalid TOTP code.")
+            _check_mfa_rate(request, user.id)
+            try:
+                _verify_totp_for_user(user, req.totp_code)
+            except HTTPException:
+                await record_auth_event(
+                    request,
+                    "auth.mfa.totp.failed",
+                    user_id=user.id,
+                    status_code=401,
+                    details={"username": user.username},
+                )
+                raise
             mfa_verified = True
+            await record_auth_event(
+                request,
+                "auth.mfa.totp.verified",
+                user_id=user.id,
+                details={"username": user.username},
+            )
         else:
             # No TOTP code or recovery code provided — return 401 with 2FA required flag
+            await record_auth_event(
+                request,
+                "auth.login.mfa_required",
+                user_id=user.id,
+                status_code=202,
+                details={"username": user.username, "methods": ["totp", "recovery_code"]},
+            )
             return {
                 "requires_2fa": True,
                 "methods": ["totp", "recovery_code"],
@@ -405,6 +535,16 @@ async def login(
         mfa_verified=mfa_verified,
     )
     _set_auth_cookie(response, token)
+    await record_auth_event(
+        request,
+        "auth.login.success",
+        user_id=user.id,
+        details={
+            "username": user.username,
+            "auth_method": "password",
+            "mfa_verified": mfa_verified,
+        },
+    )
     return {
         "token": token,
         "user": _user_to_dict(user),
@@ -421,6 +561,12 @@ async def logout(response: Response, request: Request, db: AsyncSession = Depend
         payload = verify_token(token)
         if payload:
             await revoke_auth_session_for_payload(db, payload)
+            await record_auth_event(
+                request,
+                "auth.logout",
+                user_id=str(payload.get("sub") or ""),
+                details={"session_bound": is_session_bound(payload)},
+            )
     except HTTPException:
         pass
     _clear_auth_cookie(response)
@@ -509,11 +655,20 @@ async def totp_setup(
 
     # Store secret but don't enable yet (requires verification)
     user.totp_secret = secret
+    user.totp_pending_expires_at = datetime.now(UTC) + timedelta(minutes=TOTP_SETUP_TTL_MINUTES)
+    user.totp_last_accepted_counter = None
     await db.commit()
+    await record_auth_event(
+        request,
+        "auth.totp.setup_started",
+        user_id=user.id,
+        details={"username": user.username, "expires_at": user.totp_pending_expires_at},
+    )
 
     return {
         "secret": secret,
         "provisioning_uri": uri,
+        "expires_at": user.totp_pending_expires_at.isoformat(),
         "message": (
             "Scan the QR code with your authenticator app, then verify with /auth/totp/verify"
         ),
@@ -530,12 +685,25 @@ async def totp_verify(req: TOTPVerifyRequest, request: Request, db: AsyncSession
         raise HTTPException(status_code=404, detail="User not found")
     if not user.totp_secret:
         raise HTTPException(status_code=400, detail="TOTP not set up. Call /auth/totp/setup first.")
+    pending_expires_at = _as_utc(getattr(user, "totp_pending_expires_at", None))
+    if not user.totp_enabled and pending_expires_at and pending_expires_at <= datetime.now(UTC):
+        user.totp_secret = None
+        user.totp_pending_expires_at = None
+        await db.commit()
+        raise HTTPException(status_code=400, detail="TOTP setup expired. Start setup again.")
 
-    if not verify_totp(user.totp_secret, req.totp_code):
-        raise HTTPException(status_code=401, detail="Invalid TOTP code.")
+    _check_mfa_rate(request, user.id)
+    _verify_totp_for_user(user, req.totp_code)
 
     user.totp_enabled = True
+    user.totp_pending_expires_at = None
     await db.commit()
+    await record_auth_event(
+        request,
+        "auth.totp.enabled",
+        user_id=user.id,
+        details={"username": user.username},
+    )
 
     return {
         "success": True,
@@ -560,7 +728,15 @@ async def totp_disable(
 
     user.totp_enabled = False
     user.totp_secret = None
+    user.totp_last_accepted_counter = None
+    user.totp_pending_expires_at = None
     await db.commit()
+    await record_auth_event(
+        request,
+        "auth.totp.disabled",
+        user_id=user.id,
+        details={"username": user.username},
+    )
 
     return {"success": True, "message": "TOTP 2FA disabled."}
 
@@ -589,9 +765,20 @@ async def generate_recovery_codes_endpoint(
     _require_current_password(user, req.current_password)
 
     codes = generate_recovery_codes()
-    codes_hashed = "\n".join(hash_recovery_code(c) for c in codes)
-    user.recovery_codes_hashed = codes_hashed
+    await _replace_user_recovery_codes(
+        db,
+        user,
+        codes,
+        request,
+        created_by_user_id=user.id,
+    )
     await db.commit()
+    await record_auth_event(
+        request,
+        "auth.recovery_codes.generated",
+        user_id=user.id,
+        details={"username": user.username, "count": len(codes)},
+    )
 
     return {
         "recovery_codes": codes,
@@ -608,9 +795,9 @@ async def recovery_codes_status(request: Request, db: AsyncSession = Depends(get
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    codes = (user.recovery_codes_hashed or "").split("\n")
-    remaining = len([c for c in codes if c.strip()])
-    return {"remaining": remaining, "total": 8}
+    status = await recovery_code_status(db, user)
+    await db.commit()
+    return status
 
 
 # ---------------------------------------------------------------------------
@@ -626,9 +813,7 @@ async def get_me(request: Request):
     auth_header = request.headers.get("authorization", "")
     token = auth_header.removeprefix("Bearer ").strip()
     if not token:
-        token = request.cookies.get("istara_session", "")
-    if not token:
-        token = request.query_params.get("token", "")
+        token = get_auth_cookie_token(request)
 
     if not token:
         if not settings.team_mode:
@@ -737,6 +922,7 @@ async def team_status(request: Request):
         "registration_enabled": settings.team_mode,
         "has_users": has_users,
         "insecure": insecure,
+        "security_warnings": security_configuration_warnings(settings),
     }
 
 
@@ -795,9 +981,8 @@ async def create_user(
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=409, detail="Username or email already exists")
 
-    # Generate recovery codes for the new user
     recovery_codes = generate_recovery_codes()
-    recovery_codes_hashed = "\n".join(hash_recovery_code(c) for c in recovery_codes)
+    actor = getattr(request.state, "user", {}) or {}
 
     user = User(
         id=str(uuid.uuid4()),
@@ -807,11 +992,27 @@ async def create_user(
         password_hash=hash_password(body.password),
         role="researcher",
         display_name=body.display_name or body.username,
-        recovery_codes_hashed=recovery_codes_hashed,
     )
     db.add(user)
+    await _replace_user_recovery_codes(
+        db,
+        user,
+        recovery_codes,
+        request,
+        created_by_user_id=str(actor.get("id") or ""),
+    )
     await db.commit()
     logger.info("Admin created user: %s", user.username)
+    await record_auth_event(
+        request,
+        "auth.admin.user_created",
+        user_id=str(actor.get("id") or ""),
+        details={
+            "created_user_id": user.id,
+            "created_username": user.username,
+            "role": "researcher",
+        },
+    )
     return {
         "id": user.id,
         "username": user.username,
@@ -834,10 +1035,19 @@ async def delete_user(
     user = await db.get(User, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+    await _ensure_not_last_admin_demoted_or_deleted(db, user)
     await revoke_user_auth_sessions(db, user_id)
+    actor = getattr(request.state, "user", {}) or {}
+    deleted_username = user.username
     await db.delete(user)
     await db.commit()
-    logger.info("Admin deleted user: %s (id=%s)", user.username, user_id)
+    logger.info("Admin deleted user: %s (id=%s)", deleted_username, user_id)
+    await record_auth_event(
+        request,
+        "auth.admin.user_deleted",
+        user_id=str(actor.get("id") or ""),
+        details={"deleted_user_id": user_id, "deleted_username": deleted_username},
+    )
     return {"deleted": True}
 
 
@@ -856,11 +1066,28 @@ async def change_role(
     user = await db.get(User, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+    await _ensure_not_last_admin_demoted_or_deleted(db, user, new_role=new_role)
+    actor = getattr(request.state, "user", {}) or {}
+    old_role = _role_value(user.role)
     user.role = new_role
+    revoked_count = await revoke_user_auth_sessions(db, user_id)
     await db.commit()
     logger.info("Admin changed role for %s to %s", user.username, new_role)
+    await record_auth_event(
+        request,
+        "auth.admin.role_changed",
+        user_id=str(actor.get("id") or ""),
+        details={
+            "target_user_id": user.id,
+            "target_username": user.username,
+            "old_role": old_role,
+            "new_role": new_role,
+            "revoked_sessions": revoked_count,
+        },
+    )
     return {
         "id": user.id,
         "username": user.username,
         "role": new_role,
+        "revoked_sessions": revoked_count,
     }

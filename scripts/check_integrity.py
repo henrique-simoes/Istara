@@ -7,11 +7,15 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 TECH_MD = ROOT / "Tech.md"
+SECURITY_BENCHMARK_MD = ROOT / "security" / "SECURITY_BENCHMARK.md"
+SECURITY_CONTROL_MATRIX = ROOT / "security" / "control_matrix.json"
 ACTIVE_GOVERNANCE_DOCS = [
     TECH_MD,
     ROOT / "CHANGE_CHECKLIST.md",
     ROOT / "SYSTEM_CHANGE_MATRIX.md",
     ROOT / "SYSTEM_PROMPT.md",
+    SECURITY_BENCHMARK_MD,
+    SECURITY_CONTROL_MATRIX,
 ]
 LEGACY_COMPASS_DOCS = [
     ROOT / "AGENT.md",
@@ -34,13 +38,17 @@ def check_exists(issues: list[str]) -> None:
 
 def check_legacy_compass_not_active(issues: list[str]) -> None:
     """Guard against accidentally re-promoting legacy Compass markdown to CI truth."""
-    ci_text = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8").lower()
+    ci_text = (
+        (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8").lower()
+    )
     build_text = (
         (ROOT / ".github" / "workflows" / "build-installers.yml")
         .read_text(encoding="utf-8")
         .lower()
     )
-    release_text = (ROOT / "scripts" / "prepare-release.sh").read_text(encoding="utf-8").lower()
+    release_text = (
+        (ROOT / "scripts" / "prepare-release.sh").read_text(encoding="utf-8").lower()
+    )
 
     legacy_names = {path.name.lower() for path in LEGACY_COMPASS_DOCS}
     for name in sorted(legacy_names):
@@ -107,6 +115,7 @@ def check_tech_md_freshness(issues: list[str]) -> None:
         "reasoningbank": "ReasoningBank shared orchestration memory",
         "dgm-h": "DGM-H archive evolution and rollback lineage",
         "route/type contract": "Route/type contract governance",
+        "security benchmark": "Industry-standard auth/security benchmark",
     }
 
     missing = []
@@ -123,8 +132,12 @@ def check_tech_md_freshness(issues: list[str]) -> None:
 
 def check_backend_dependency_alignment(issues: list[str]) -> None:
     """Verify source-install and editable-install dependency manifests stay aligned."""
-    requirements_text = (ROOT / "backend" / "requirements.txt").read_text(encoding="utf-8").lower()
-    pyproject_text = (ROOT / "backend" / "pyproject.toml").read_text(encoding="utf-8").lower()
+    requirements_text = (
+        (ROOT / "backend" / "requirements.txt").read_text(encoding="utf-8").lower()
+    )
+    pyproject_text = (
+        (ROOT / "backend" / "pyproject.toml").read_text(encoding="utf-8").lower()
+    )
 
     missing = []
     for marker, description in BACKEND_DEPENDENCY_MARKERS.items():

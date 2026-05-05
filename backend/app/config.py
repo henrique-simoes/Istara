@@ -45,7 +45,7 @@ class Settings(BaseSettings):
 
     # CORS (comma-separated origins)
     cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
-    cors_origin_regex: str = r"https?://[^/]+:3000"
+    cors_origin_regex: str = ""
 
     # Admin bootstrap (auto-created on first startup if no users exist)
     admin_username: str = "admin"

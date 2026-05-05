@@ -8,9 +8,12 @@ import ConfirmDialog from "@/components/common/ConfirmDialog";
 interface Passkey {
   id: string;
   label: string;
-  created_at: string;
+  created_at: string | null;
   last_used_at: string | null;
   authenticator_type: string | null;
+  device_type?: string;
+  backed_up?: boolean;
+  user_verified?: boolean;
 }
 
 export default function PasskeyManager() {
@@ -111,9 +114,26 @@ export default function PasskeyManager() {
                     {pk.label || "Passkey"}
                   </p>
                   <p className="text-xs text-slate-400 dark:text-slate-500">
-                    Created {new Date(pk.created_at).toLocaleDateString()}
+                    Created {pk.created_at ? new Date(pk.created_at).toLocaleDateString() : "unknown"}
                     {pk.last_used_at && ` · Last used ${new Date(pk.last_used_at).toLocaleDateString()}`}
                   </p>
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    {pk.device_type && (
+                      <span className="rounded bg-slate-200 dark:bg-slate-800 px-1.5 py-0.5 text-[10px] text-slate-600 dark:text-slate-300">
+                        {pk.device_type}
+                      </span>
+                    )}
+                    {pk.user_verified && (
+                      <span className="rounded bg-green-100 dark:bg-green-950/40 px-1.5 py-0.5 text-[10px] text-green-700 dark:text-green-300">
+                        Verified
+                      </span>
+                    )}
+                    {pk.backed_up && (
+                      <span className="rounded bg-blue-100 dark:bg-blue-950/40 px-1.5 py-0.5 text-[10px] text-blue-700 dark:text-blue-300">
+                        Synced
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
               <button

@@ -18,6 +18,7 @@ import time
 import uuid
 from dataclasses import dataclass, field
 from typing import Any, AsyncGenerator
+from urllib.parse import urlparse
 
 import httpx
 
@@ -40,7 +41,7 @@ class ComputeNode:
     name: str
     host: str
     source: str  # "local" | "network" | "relay" | "browser"
-    provider_type: str  # "lmstudio" | "ollama" | "openai_compat"
+    provider_type: str  # "lmstudio" | "ollama" | "openai_compat" | "gemini_openai"
 
     # Health
     is_healthy: bool = False
@@ -176,7 +177,7 @@ class ComputeNode:
 
     async def _get_client(self) -> httpx.AsyncClient:
         """Get or create an HTTP client for this node.
-        
+
         Enforces RFC 3986 trailing-slash normalization for base_url to ensure
         OpenAI-compatible relative path joining.
         """
@@ -184,14 +185,35 @@ class ComputeNode:
             headers = {}
             if self.api_key:
                 headers["Authorization"] = f"Bearer {self.api_key}"
-            
+
             # RFC 3986: Ensure base_url ends with slash for correct relative joining
             normalized_host = self.host
             if not normalized_host.endswith("/"):
                 normalized_host += "/"
-                
-            self._client = httpx.AsyncClient(base_url=normalized_host, timeout=300.0, headers=headers)
+
+            self._client = httpx.AsyncClient(
+                base_url=normalized_host, timeout=300.0, headers=headers
+            )
         return self._client
+
+    def _openai_endpoint(self, suffix: str) -> str:
+        """Return a relative OpenAI-compatible endpoint for this node's base URL.
+
+        Local LM Studio commonly exposes endpoints under `/v1/*`, while Google
+        Gemini's OpenAI-compatible base URL already includes `/v1beta/openai/`.
+        Keeping the path relative preserves any provider-specific base path.
+        """
+        clean_suffix = suffix.lstrip("/")
+        parsed = urlparse(self.host)
+        base_path = parsed.path.rstrip("/")
+        if (
+            self.provider_type == "gemini_openai"
+            or "generativelanguage.googleapis.com" in (parsed.hostname or "")
+            or base_path.endswith("/openai")
+            or base_path.endswith("/v1")
+        ):
+            return clean_suffix
+        return f"v1/{clean_suffix}"
 
     async def close(self) -> None:
         """Close the HTTP client."""
@@ -246,7 +268,7 @@ class ComputeNode:
             if self.provider_type == "ollama":
                 resp = await client.get("/api/tags", timeout=10.0)
             else:
-                resp = await client.get("/v1/models", timeout=10.0)
+                resp = await client.get(self._openai_endpoint("models"), timeout=10.0)
             self.latency_ms = (time.time() - start) * 1000
             self.is_healthy = resp.status_code == 200
             if self.is_healthy:
@@ -362,7 +384,7 @@ class ComputeNode:
                     "max_tokens": max_tokens,
                     "tools": tools,
                     "response_format": response_format,
-                }
+                },
             )
             return response.get("result", {})
 
@@ -392,7 +414,7 @@ class ComputeNode:
                 payload["max_tokens"] = max_tokens
             if tools:
                 payload["tools"] = tools
-            resp = await client.post("/v1/chat/completions", json=payload)
+            resp = await client.post(self._openai_endpoint("chat/completions"), json=payload)
             resp.raise_for_status()
             data = resp.json()
             choice = data["choices"][0]
@@ -474,7 +496,7 @@ class ComputeNode:
             tool_call_mode = False
 
             async with client.stream(
-                "POST", "/v1/chat/completions", json=payload, timeout=None
+                "POST", self._openai_endpoint("chat/completions"), json=payload, timeout=None
             ) as resp:
                 resp.raise_for_status()
                 async for line in resp.aiter_lines():
@@ -551,7 +573,10 @@ class ComputeNode:
             embeddings = resp.json().get("embeddings", [])
             return embeddings[0] if embeddings else []
         else:
-            resp = await client.post("/v1/embeddings", json={"model": embed_model, "input": text})
+            resp = await client.post(
+                self._openai_endpoint("embeddings"),
+                json={"model": embed_model, "input": text},
+            )
             resp.raise_for_status()
             items = resp.json().get("data", [])
             return items[0].get("embedding", []) if items else []
@@ -577,7 +602,10 @@ class ComputeNode:
             resp.raise_for_status()
             return resp.json().get("embeddings", [])
         else:
-            resp = await client.post("/v1/embeddings", json={"model": embed_model, "input": texts})
+            resp = await client.post(
+                self._openai_endpoint("embeddings"),
+                json={"model": embed_model, "input": texts},
+            )
             resp.raise_for_status()
             return [item.get("embedding", []) for item in resp.json().get("data", [])]
 
@@ -934,8 +962,7 @@ class ComputeRegistry:
                 n
                 for n in candidates
                 if any(
-                    c.get("context_length", 0) >= min_context
-                    for c in n.model_capabilities.values()
+                    c.get("context_length", 0) >= min_context for c in n.model_capabilities.values()
                 )
             ]
             if context_capable:
@@ -1105,7 +1132,10 @@ class ComputeRegistry:
                         payload["max_tokens"] = max_tokens
                     if tools:
                         payload["tools"] = tools
-                    resp = await client.post("/v1/chat/completions", json=payload)
+                    resp = await client.post(
+                        node._openai_endpoint("chat/completions"),
+                        json=payload,
+                    )
                     resp.raise_for_status()
                     data = resp.json()
 
@@ -1127,7 +1157,9 @@ class ComputeRegistry:
 
             except Exception as e:
                 if hasattr(e, "response") and hasattr(e.response, "text"):
-                    logger.warning(f"ComputeRegistry: chat failed on {node.name}: {e} | Body: {e.response.text}")
+                    logger.warning(
+                        f"ComputeRegistry: chat failed on {node.name}: {e} | Body: {e.response.text}"
+                    )
                 else:
                     logger.warning(f"ComputeRegistry: chat failed on {node.name}: {e}")
                 self._record_failure(node, e)
@@ -1217,7 +1249,10 @@ class ComputeRegistry:
                     tool_call_mode = False
 
                     async with client.stream(
-                        "POST", "/v1/chat/completions", json=payload, timeout=None
+                        "POST",
+                        node._openai_endpoint("chat/completions"),
+                        json=payload,
+                        timeout=None,
                     ) as resp:
                         resp.raise_for_status()
                         async for line in resp.aiter_lines():
@@ -1309,7 +1344,7 @@ class ComputeRegistry:
                     )
                 else:
                     resp = await client.post(
-                        "/v1/embeddings",
+                        node._openai_endpoint("embeddings"),
                         json={"model": embed_model, "input": text},
                     )
 
@@ -1327,7 +1362,9 @@ class ComputeRegistry:
 
             except Exception as e:
                 if hasattr(e, "response") and hasattr(e.response, "text"):
-                    logger.warning(f"ComputeRegistry: embed failed on {node.name}: {e} | Body: {e.response.text}")
+                    logger.warning(
+                        f"ComputeRegistry: embed failed on {node.name}: {e} | Body: {e.response.text}"
+                    )
                 else:
                     logger.warning(f"ComputeRegistry: embed failed on {node.name}: {e}")
                 self._record_failure(node, e)
@@ -1362,7 +1399,7 @@ class ComputeRegistry:
                     return resp.json().get("embeddings", [])
                 else:
                     resp = await client.post(
-                        "/v1/embeddings",
+                        node._openai_endpoint("embeddings"),
                         json={"model": embed_model, "input": texts},
                     )
                     resp.raise_for_status()
@@ -1371,7 +1408,9 @@ class ComputeRegistry:
 
             except Exception as e:
                 if hasattr(e, "response") and hasattr(e.response, "text"):
-                    logger.warning(f"ComputeRegistry: embed_batch failed on {node.name}: {e} | Body: {e.response.text}")
+                    logger.warning(
+                        f"ComputeRegistry: embed_batch failed on {node.name}: {e} | Body: {e.response.text}"
+                    )
                 else:
                     logger.warning(f"ComputeRegistry: embed_batch failed on {node.name}: {e}")
                 self._record_failure(node, e)
@@ -1403,7 +1442,7 @@ class ComputeRegistry:
                     data = resp.json()
                     models = data.get("models", [])
                 else:
-                    resp = await client.get("/v1/models", timeout=10.0)
+                    resp = await client.get(node._openai_endpoint("models"), timeout=10.0)
                     data = resp.json()
                     models = [{"name": m.get("id", ""), **m} for m in data.get("data", [])]
                 for m in models:
@@ -1459,7 +1498,9 @@ class ComputeRegistry:
 
     def total_capacity(self) -> int:
         """Total number of alive donated compute nodes (relay/browser)."""
-        return len([n for n in self._nodes.values() if n.source in ("relay", "browser") and n.is_alive()])
+        return len(
+            [n for n in self._nodes.values() if n.source in ("relay", "browser") and n.is_alive()]
+        )
 
     def available_models_list(self) -> list[str]:
         """All models available across the pool (backward compat)."""

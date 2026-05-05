@@ -34,6 +34,9 @@ _EXPORTS: dict[str, tuple[str, str]] = {
     "ImprovementProposal": ("app.models.improvement_governance", "ImprovementProposal"),
     "DGMHArchiveVariant": ("app.models.dgmh_archive", "DGMHArchiveVariant"),
     "AuthSession": ("app.models.auth_session", "AuthSession"),
+    "RecoveryCode": ("app.models.recovery_code", "RecoveryCode"),
+    "WebAuthnChallenge": ("app.models.webauthn_challenge", "WebAuthnChallenge"),
+    "WebAuthnCredential": ("app.models.webauthn_credential", "WebAuthnCredential"),
 }
 
 __all__ = sorted(_EXPORTS)
