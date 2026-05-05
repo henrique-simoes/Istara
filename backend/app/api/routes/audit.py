@@ -116,6 +116,7 @@ async def get_audit_logs(
     project_id: str | None = None,
     method: str | None = None,
     path_prefix: str | None = None,
+    event_type: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     """Get recent system audit log entries.
@@ -133,6 +134,8 @@ async def get_audit_logs(
         stmt = stmt.where(AuditLog.method == method)
     if path_prefix:
         stmt = stmt.where(AuditLog.path.startswith(path_prefix))
+    if event_type:
+        stmt = stmt.where(AuditLog.event_type == event_type)
 
     result = await db.execute(stmt)
     rows = result.scalars().all()
@@ -142,6 +145,12 @@ async def get_audit_logs(
         count_stmt = count_stmt.where(AuditLog.user_id == user_id)
     if project_id:
         count_stmt = count_stmt.where(AuditLog.project_id == project_id)
+    if method:
+        count_stmt = count_stmt.where(AuditLog.method == method)
+    if path_prefix:
+        count_stmt = count_stmt.where(AuditLog.path.startswith(path_prefix))
+    if event_type:
+        count_stmt = count_stmt.where(AuditLog.event_type == event_type)
     total = (await db.execute(count_stmt)).scalar() or 0
 
     return {
@@ -159,6 +168,8 @@ async def get_audit_logs(
                 "duration_ms": round(r.duration_ms, 2),
                 "ip_address": r.ip_address,
                 "project_id": r.project_id,
+                "event_type": r.event_type,
+                "details": r.details,
             }
             for r in rows
         ],

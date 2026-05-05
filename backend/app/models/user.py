@@ -3,7 +3,7 @@
 import enum
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, Enum, Integer, String, Text, Boolean
+from sqlalchemy import Boolean, DateTime, Enum, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.database import Base
@@ -31,10 +31,16 @@ class User(Base):
     preferences: Mapped[str] = mapped_column(Text, default="{}")  # JSON: theme, ui density, etc.
 
     # Multi-factor authentication (MFA)
-    totp_secret: Mapped[str | None] = mapped_column(String(64), nullable=True, default=None)
+    totp_secret: Mapped[str | None] = mapped_column(EncryptedType, nullable=True, default=None)
     totp_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    totp_last_accepted_counter: Mapped[int | None] = mapped_column(
+        Integer, nullable=True, default=None
+    )
+    totp_pending_expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, default=None
+    )
 
-    # Recovery codes (stored as newline-separated Argon2id hashes)
+    # Legacy recovery codes column. New installs use recovery_codes records.
     recovery_codes_hashed: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
 
     # WebAuthn / Passkey support

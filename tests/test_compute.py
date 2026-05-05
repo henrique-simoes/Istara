@@ -250,6 +250,34 @@ def test_select_candidates_filters_saturated_nodes_and_prefers_score():
     assert [node.node_id for node in candidates] == ["available"]
 
 
+def test_openai_compatible_endpoint_paths_respect_provider_base_url():
+    gemini = ComputeNode(
+        node_id="gemini",
+        name="Gemini",
+        host="https://generativelanguage.googleapis.com/v1beta/openai",
+        source="network",
+        provider_type="gemini_openai",
+    )
+    lmstudio = ComputeNode(
+        node_id="lmstudio",
+        name="LM Studio",
+        host="http://localhost:1234",
+        source="local",
+        provider_type="lmstudio",
+    )
+    explicit_v1 = ComputeNode(
+        node_id="openai",
+        name="OpenAI-compatible",
+        host="https://api.example.com/v1",
+        source="network",
+        provider_type="openai_compat",
+    )
+
+    assert gemini._openai_endpoint("chat/completions") == "chat/completions"
+    assert lmstudio._openai_endpoint("chat/completions") == "v1/chat/completions"
+    assert explicit_v1._openai_endpoint("models") == "models"
+
+
 def test_select_candidates_prefers_requested_model_before_score():
     registry = ComputeRegistry()
     fast_wrong_model = ComputeNode(

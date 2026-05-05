@@ -21,7 +21,9 @@ class WebAuthnCredential(Base):
     __tablename__ = "webauthn_credentials"
 
     id: Mapped[str] = mapped_column(String(255), primary_key=True)
-    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    user_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
     credential_id: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
     credential_public_key: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
     sign_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
@@ -36,13 +38,24 @@ class WebAuthnCredential(Base):
     label: Mapped[str] = mapped_column(String(100), default="Passkey", nullable=False)
 
     # Device attestation — what type of authenticator created this
-    authenticator_type: Mapped[str | None] = mapped_column(String(50), nullable=True, default=None)  # "platform" | "cross-platform"
+    authenticator_type: Mapped[str | None] = mapped_column(
+        String(50), nullable=True, default=None
+    )  # "platform" | "cross-platform"
+    device_type: Mapped[str] = mapped_column(String(50), default="", nullable=False)
+    backed_up: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    user_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    last_used_ip: Mapped[str] = mapped_column(String(128), default="", nullable=False)
+    last_used_user_agent: Mapped[str] = mapped_column(String(512), default="", nullable=False)
 
     # Revocation
     revoked: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, default=None)
+    revoked_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, default=None
+    )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
-    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, default=None)
+    last_used_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, default=None
+    )

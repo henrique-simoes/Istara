@@ -6,16 +6,18 @@ from __future__ import annotations
 import argparse
 import fnmatch
 import subprocess
-import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 
 TECH_REQUIRED_PATTERNS = [
     ".github/workflows/*.yml",
+    "security/*.md",
+    "security/*.json",
     "scripts/check_change_obligations.py",
     "scripts/check_ci_governance.py",
     "scripts/check_integrity.py",
+    "scripts/security_benchmark.py",
     "scripts/production_rehearsal.py",
     "scripts/set-version.sh",
     "backend/app/api/routes/updates.py",
@@ -48,6 +50,7 @@ TEST_REQUIRED_PATTERNS = [
     "frontend/src/lib/reasoningBank*.ts",
     "scripts/production_rehearsal.py",
     "scripts/check_ci_governance.py",
+    "scripts/security_benchmark.py",
 ]
 
 PERSONA_REQUIRED_PATTERNS = [
@@ -107,6 +110,53 @@ GOVERNED_EVOLUTION_TEST_FILES = {
     "tests/test_research_integrity.py",
 }
 
+SECURITY_BENCHMARK_PATTERNS = [
+    "backend/app/api/routes/auth.py",
+    "backend/app/api/routes/webauthn.py",
+    "backend/app/api/routes/connections.py",
+    "backend/app/api/routes/mcp.py",
+    "backend/app/api/routes/llm_servers.py",
+    "backend/app/api/routes/webhooks.py",
+    "backend/app/core/auth*.py",
+    "backend/app/core/security*.py",
+    "backend/app/core/auth_sessions.py",
+    "backend/app/core/auth_cookies.py",
+    "backend/app/core/auth_origins.py",
+    "backend/app/core/permissions.py",
+    "backend/app/core/field_encryption.py",
+    "backend/app/core/connection_string.py",
+    "backend/app/core/compute_registry.py",
+    "backend/app/core/compute_capacity.py",
+    "backend/app/core/improvement_governance*.py",
+    "backend/app/core/meta_hyperagent.py",
+    "backend/app/core/reasoning_bank.py",
+    "backend/app/core/sandbox_evaluation.py",
+    "backend/app/mcp/*.py",
+    "backend/app/models/user.py",
+    "backend/app/models/*auth*.py",
+    "backend/app/models/*webauthn*.py",
+    "backend/app/models/*recovery*.py",
+    "backend/alembic/versions/*auth*.py",
+    "backend/alembic/versions/*webauthn*.py",
+    "backend/alembic/versions/*recovery*.py",
+    "frontend/src/stores/authStore.ts",
+    "frontend/src/components/auth/*.tsx",
+    "frontend/src/components/auth/**/*.tsx",
+    "frontend/src/components/common/UserManagement.tsx",
+    "frontend/src/components/settings/PasskeyManager.tsx",
+    "frontend/src/components/settings/TOTPManager.tsx",
+    "scripts/security_benchmark.py",
+    "security/*.md",
+    "security/*.json",
+]
+
+SECURITY_BENCHMARK_FILES = {
+    "security/SECURITY_BENCHMARK.md",
+    "security/control_matrix.json",
+    "scripts/security_benchmark.py",
+    "tests/test_security_benchmark.py",
+}
+
 
 def run_git_diff(base: str, head: str) -> list[str]:
     result = subprocess.run(
@@ -140,15 +190,33 @@ def main() -> int:
     changed_set = set(changed)
     issues: list[str] = []
 
-    tech_triggers = sorted(path for path in changed if matches_any(path, TECH_REQUIRED_PATTERNS))
-    test_triggers = sorted(path for path in changed if matches_any(path, TEST_REQUIRED_PATTERNS))
-    persona_triggers = sorted(path for path in changed if matches_any(path, PERSONA_REQUIRED_PATTERNS))
-    governed_triggers = sorted(path for path in changed if matches_any(path, GOVERNED_EVOLUTION_PATTERNS))
+    tech_triggers = sorted(
+        path for path in changed if matches_any(path, TECH_REQUIRED_PATTERNS)
+    )
+    test_triggers = sorted(
+        path for path in changed if matches_any(path, TEST_REQUIRED_PATTERNS)
+    )
+    persona_triggers = sorted(
+        path for path in changed if matches_any(path, PERSONA_REQUIRED_PATTERNS)
+    )
+    governed_triggers = sorted(
+        path for path in changed if matches_any(path, GOVERNED_EVOLUTION_PATTERNS)
+    )
+    security_triggers = sorted(
+        path for path in changed if matches_any(path, SECURITY_BENCHMARK_PATTERNS)
+    )
 
     tech_changed = "Tech.md" in changed_set
     tests_changed = any(path.startswith("tests/") for path in changed)
-    governed_tests_changed = bool(changed_set.intersection(GOVERNED_EVOLUTION_TEST_FILES))
-    personas_changed = any(path.startswith("backend/app/agents/personas/") for path in changed)
+    governed_tests_changed = bool(
+        changed_set.intersection(GOVERNED_EVOLUTION_TEST_FILES)
+    )
+    security_benchmark_changed = bool(
+        changed_set.intersection(SECURITY_BENCHMARK_FILES)
+    )
+    personas_changed = any(
+        path.startswith("backend/app/agents/personas/") for path in changed
+    )
 
     if tech_triggers and not tech_changed:
         issues.append(
@@ -167,6 +235,14 @@ def main() -> int:
             "Governed evolution changes must update the dedicated autoresearch, "
             "ReasoningBank, DGM-H, improvement governance, or compute tests.\n"
             f"Triggered by: {', '.join(governed_triggers[:8])}"
+        )
+
+    if security_triggers and not security_benchmark_changed:
+        issues.append(
+            "Auth/security-sensitive changes must update or explicitly revalidate the "
+            "security benchmark package (`security/`, `scripts/security_benchmark.py`, "
+            "or `tests/test_security_benchmark.py`).\n"
+            f"Triggered by: {', '.join(security_triggers[:8])}"
         )
 
     if persona_triggers and not personas_changed:

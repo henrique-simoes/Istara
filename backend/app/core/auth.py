@@ -14,6 +14,7 @@ import logging
 import secrets
 import time
 from base64 import urlsafe_b64decode, urlsafe_b64encode
+from datetime import UTC, datetime, timedelta
 
 from app.config import settings
 
@@ -30,7 +31,7 @@ try:
     _ARGON2_AVAILABLE = True
     _ph = PasswordHasher(
         time_cost=3,
-        memory_cost=65536,    # 64 MB
+        memory_cost=65536,  # 64 MB
         parallelism=4,
         hash_len=32,
         salt_len=16,
@@ -118,6 +119,7 @@ def needs_rehash(password_hash: str) -> bool:
 # JWT token handling (HMAC-SHA256, no external deps — upgrade path in Phase 7)
 # ---------------------------------------------------------------------------
 
+
 def _b64encode(data: bytes) -> str:
     return urlsafe_b64encode(data).rstrip(b"=").decode()
 
@@ -193,6 +195,7 @@ def verify_token(token: str) -> dict | None:
 # Recovery codes — cryptographically secure, one-time use
 # ---------------------------------------------------------------------------
 
+
 def generate_recovery_codes(count: int = 8, code_length: int = 16) -> list[str]:
     """Generate cryptographically secure recovery codes.
 
@@ -202,7 +205,7 @@ def generate_recovery_codes(count: int = 8, code_length: int = 16) -> list[str]:
     codes = []
     for _ in range(count):
         raw = "".join(secrets.choice(chars) for _ in range(code_length))
-        formatted = "-".join(raw[i:i + 4] for i in range(0, code_length, 4))
+        formatted = "-".join(raw[i : i + 4] for i in range(0, code_length, 4))
         codes.append(formatted)
     return codes
 
@@ -223,13 +226,11 @@ def verify_recovery_code(code: str, hashed: str) -> bool:
 
 try:
     import pyotp
+
     _PYOTP_AVAILABLE = True
 except ImportError:
     _PYOTP_AVAILABLE = False
-    logger.warning(
-        "pyotp not installed — TOTP 2FA unavailable. "
-        "Install with: pip install pyotp"
-    )
+    logger.warning("pyotp not installed — TOTP 2FA unavailable. Install with: pip install pyotp")
 
 
 def generate_totp_secret() -> str | None:
@@ -239,7 +240,9 @@ def generate_totp_secret() -> str | None:
     return pyotp.random_base32()
 
 
-def generate_totp_provisioning_uri(secret: str, username: str, issuer: str = "Istara") -> str | None:
+def generate_totp_provisioning_uri(
+    secret: str, username: str, issuer: str = "Istara"
+) -> str | None:
     """Generate an OTP provisioning URI for QR code display."""
     if not _PYOTP_AVAILABLE:
         return None
@@ -248,18 +251,44 @@ def generate_totp_provisioning_uri(secret: str, username: str, issuer: str = "Is
 
 def verify_totp(secret: str, token: str) -> bool:
     """Verify a TOTP token with ±30 second tolerance window."""
+    verified, _counter = verify_totp_with_counter(secret, token)
+    return verified
+
+
+def verify_totp_with_counter(
+    secret: str,
+    token: str,
+    *,
+    valid_window: int = 1,
+    now: datetime | None = None,
+) -> tuple[bool, int | None]:
+    """Verify a TOTP token and return the accepted time-step counter.
+
+    Returning the counter lets callers reject replay of a code that was already
+    accepted inside the tolerance window.
+    """
     if not _PYOTP_AVAILABLE:
-        return False
+        return False, None
     try:
+        if not secret or not token:
+            return False, None
         totp = pyotp.TOTP(secret)
-        return totp.verify(token, valid_window=1)  # ±30 seconds
+        base = now or datetime.now(UTC)
+        if base.tzinfo is None:
+            base = base.replace(tzinfo=UTC)
+        for offset in range(-valid_window, valid_window + 1):
+            candidate = base + timedelta(seconds=offset * totp.interval)
+            if totp.verify(token, for_time=candidate, valid_window=0):
+                return True, int(totp.timecode(candidate))
+        return False, None
     except Exception:
-        return False
+        return False, None
 
 
 # ---------------------------------------------------------------------------
 # Breach password checking — k-anonymity (Have I Been Pwned)
 # ---------------------------------------------------------------------------
+
 
 async def is_password_breached(password: str) -> bool:
     """Check if a password has appeared in a known data breach.
@@ -275,6 +304,7 @@ async def is_password_breached(password: str) -> bool:
 
     try:
         import httpx
+
         async with httpx.AsyncClient(timeout=10.0) as client:
             resp = await client.get(f"https://api.pwnedpasswords.com/range/{prefix}")
             if resp.status_code != 200:

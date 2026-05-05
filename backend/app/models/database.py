@@ -64,10 +64,12 @@ async def init_db() -> None:
         "app.models.session",
         "app.models.task",
         "app.models.user",
+        "app.models.recovery_code",
         "app.models.auth_session",
         "app.models.llm_server",
         "app.models.method_metric",
         "app.models.webauthn_credential",
+        "app.models.webauthn_challenge",
         "app.core.checkpoint",
         "app.core.context_hierarchy",
         "app.core.scheduler",
@@ -118,8 +120,11 @@ async def init_db() -> None:
             # MFA / 2FA columns
             "ALTER TABLE users ADD COLUMN totp_secret VARCHAR(64)",
             "ALTER TABLE users ADD COLUMN totp_enabled BOOLEAN NOT NULL DEFAULT 0",
+            "ALTER TABLE users ADD COLUMN totp_last_accepted_counter INTEGER",
+            "ALTER TABLE users ADD COLUMN totp_pending_expires_at DATETIME",
             "ALTER TABLE users ADD COLUMN recovery_codes_hashed TEXT",
             "ALTER TABLE users ADD COLUMN passkey_enabled BOOLEAN NOT NULL DEFAULT 0",
+            "ALTER TABLE users ALTER COLUMN totp_secret TYPE TEXT",
             # Widen password_hash for Argon2id hashes (SQLite ignores this, but needed for PostgreSQL)
             "ALTER TABLE users ALTER COLUMN password_hash TYPE VARCHAR(512)",
             # Email encryption support
@@ -155,6 +160,14 @@ async def init_db() -> None:
             "ALTER TABLE scheduled_tasks ADD COLUMN interval_seconds INTEGER",
             "ALTER TABLE scheduled_tasks ADD COLUMN execution_count INTEGER NOT NULL DEFAULT 0",
             "ALTER TABLE scheduled_tasks ADD COLUMN last_status VARCHAR(20) NOT NULL DEFAULT ''",
+            # Checkpoint/recovery hardening.
+            "ALTER TABLE task_checkpoints ADD COLUMN agent_state VARCHAR(20) NOT NULL DEFAULT 'idle'",
+            # WebAuthn credential metadata and persisted challenge state.
+            "ALTER TABLE webauthn_credentials ADD COLUMN device_type VARCHAR(50) NOT NULL DEFAULT ''",
+            "ALTER TABLE webauthn_credentials ADD COLUMN backed_up BOOLEAN NOT NULL DEFAULT 0",
+            "ALTER TABLE webauthn_credentials ADD COLUMN user_verified BOOLEAN NOT NULL DEFAULT 0",
+            "ALTER TABLE webauthn_credentials ADD COLUMN last_used_ip VARCHAR(128) NOT NULL DEFAULT ''",
+            "ALTER TABLE webauthn_credentials ADD COLUMN last_used_user_agent VARCHAR(512) NOT NULL DEFAULT ''",
         ]
         for ddl in migrations:
             try:
@@ -169,6 +182,29 @@ async def init_db() -> None:
             )
         except Exception:
             pass  # Table already exists
+
+        try:
+            await conn.run_sync(
+                lambda c: Base.metadata.tables["webauthn_challenges"].create(c, checkfirst=True)
+            )
+        except Exception:
+            pass  # Table already exists
+
+        try:
+            await conn.run_sync(
+                lambda c: Base.metadata.tables["recovery_codes"].create(c, checkfirst=True)
+            )
+        except Exception:
+            pass  # Table already exists
+
+        try:
+            await conn.execute(
+                sa.text(
+                    "ALTER TABLE audit_log ADD COLUMN event_type VARCHAR(80) NOT NULL DEFAULT ''"
+                )
+            )
+        except Exception:
+            pass  # Column already exists or audit_log has not been created yet
 
         try:
             await conn.run_sync(

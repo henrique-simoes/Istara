@@ -13,7 +13,7 @@ Security model:
     - Exempt paths: /api/health, /api/auth/login, /api/auth/register,
       /api/auth/team-status, /api/settings/status, /.well-known/agent.json
     - Exempt prefixes: /_next/, /favicon, /webhooks/, /static/, /a2a
-    - WebSocket: JWT via ?token= query parameter
+    - WebSocket handlers validate their own JWT query tokens before accepting
     - Admin-only operations checked via request.state.user.role
 
 This middleware makes per-route Depends(get_current_user) unnecessary — auth is
@@ -24,11 +24,13 @@ authenticated user's info.
 from __future__ import annotations
 
 import logging
-from urllib.parse import urlparse
 
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
+
+from app.core.auth_cookies import get_auth_cookie_token, has_auth_cookie
+from app.core.auth_origins import configured_trusted_origins, request_origin
 
 logger = logging.getLogger(__name__)
 
@@ -91,25 +93,7 @@ def _trusted_origins(request: Request) -> set[str]:
     """Return configured browser origins allowed to use cookie auth."""
     from app.config import settings
 
-    origins = {
-        origin.strip().rstrip("/") for origin in settings.cors_origins.split(",") if origin.strip()
-    }
-    origins.add(f"{request.url.scheme}://{request.url.netloc}".rstrip("/"))
-    return origins
-
-
-def _request_origin(request: Request) -> str:
-    """Return the browser Origin or Referer origin for CSRF checks."""
-    origin = request.headers.get("origin", "").strip()
-    if origin:
-        return origin.rstrip("/")
-    referer = request.headers.get("referer", "").strip()
-    if not referer:
-        return ""
-    parsed = urlparse(referer)
-    if not parsed.scheme or not parsed.netloc:
-        return ""
-    return f"{parsed.scheme}://{parsed.netloc}".rstrip("/")
+    return configured_trusted_origins(settings)
 
 
 def _cookie_origin_denial(request: Request) -> str | None:
@@ -127,7 +111,7 @@ def browser_origin_denial(request: Request, *, require_cookie_auth: bool = False
     """
     if request.method.upper() in SAFE_METHODS:
         return None
-    if require_cookie_auth and not request.cookies.get("istara_session"):
+    if require_cookie_auth and not has_auth_cookie(request):
         return None
 
     auth_header = request.headers.get("authorization", "")
@@ -138,7 +122,7 @@ def browser_origin_denial(request: Request, *, require_cookie_auth: bool = False
     if fetch_site == "cross-site":
         return "Untrusted browser origin for authentication request."
 
-    origin = _request_origin(request)
+    origin = request_origin(request)
     if not origin:
         return None
     if origin in _trusted_origins(request):
@@ -151,9 +135,9 @@ def browser_origin_denial(request: Request, *, require_cookie_auth: bool = False
 class SecurityAuthMiddleware(BaseHTTPMiddleware):
     """Global JWT authentication enforcement.
 
-    Every non-exempt request must provide a valid JWT token via:
-    - Authorization: Bearer <token> header (HTTP requests)
-    - ?token=<token> query parameter (WebSocket connections)
+    Every non-exempt HTTP request must provide a valid JWT token via:
+    - Authorization: Bearer <token> header
+    - HttpOnly session cookie
 
     On success: attaches user info to request.state.user
     On failure: returns 401 Unauthorized JSON response
@@ -206,11 +190,7 @@ class SecurityAuthMiddleware(BaseHTTPMiddleware):
 
         # Fallback 1: HttpOnly session cookie (cookie-based auth)
         if not token:
-            token = request.cookies.get("istara_session", "")
-
-        # Fallback 2: query parameter (for non-browser clients)
-        if not token:
-            token = request.query_params.get("token", "")
+            token = get_auth_cookie_token(request)
 
         if not token:
             return JSONResponse(

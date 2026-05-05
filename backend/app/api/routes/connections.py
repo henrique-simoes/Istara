@@ -13,7 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
-from app.core.auth import create_token, hash_password
+from app.core.auth import create_token, generate_recovery_codes, hash_password
 from app.core.auth_sessions import issue_auth_session_token
 from app.core.client_identity import BoundedWindowRateLimiter, get_client_ip
 from app.core.connection_string import (
@@ -24,6 +24,7 @@ from app.core.connection_string import (
     preview_connection_string,
 )
 from app.core.field_encryption import hash_field
+from app.core.recovery_codes import replace_recovery_codes
 from app.core.security_middleware import require_admin_from_request
 from app.models.connection_string import ConnectionString
 from app.models.database import get_db
@@ -31,8 +32,11 @@ from app.models.database import get_db
 router = APIRouter()
 logger = logging.getLogger(__name__)
 _validation_limiter = BoundedWindowRateLimiter()
+_redeem_limiter = BoundedWindowRateLimiter()
 VALIDATION_RATE_LIMIT = 30
 VALIDATION_RATE_WINDOW_S = 60
+REDEEM_RATE_LIMIT = 10
+REDEEM_RATE_WINDOW_S = 300
 
 
 def _strip_text(value: object) -> str:
@@ -130,7 +134,9 @@ async def generate_connection_string(
         try:
             require_admin_from_request(request)
         except Exception:
-            raise HTTPException(status_code=403, detail="Admin required to generate connection strings")
+            raise HTTPException(
+                status_code=403, detail="Admin required to generate connection strings"
+            )
 
     if not data.server_url:
         raise HTTPException(status_code=400, detail="server_url is required")
@@ -201,7 +207,9 @@ async def generate_compute_donation_string(
         try:
             require_admin_from_request(request)
         except Exception:
-            raise HTTPException(status_code=403, detail="Admin required to generate compute donation strings")
+            raise HTTPException(
+                status_code=403, detail="Admin required to generate compute donation strings"
+            )
 
     if not data.server_url:
         raise HTTPException(status_code=400, detail="server_url is required")
@@ -268,7 +276,9 @@ async def list_connection_strings(request: Request, db: AsyncSession = Depends(g
 
 
 @router.delete("/connections/{conn_id}")
-async def revoke_connection_string(conn_id: str, request: Request, db: AsyncSession = Depends(get_db)):
+async def revoke_connection_string(
+    conn_id: str, request: Request, db: AsyncSession = Depends(get_db)
+):
     """Revoke a connection string. Admin only."""
     require_admin_from_request(request)
     conn = await db.get(ConnectionString, conn_id)
@@ -318,18 +328,33 @@ async def redeem_connection_string(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
-    """Redeem a connection string — creates a user account and returns auth tokens.
-    The user can then access the web UI with the JWT and connect a relay with the
-    network token."""
+    """Redeem a user invite connection string.
+
+    Redemption creates the account and returns a server-backed auth token.
+    User invite strings do not carry relay credentials; compute donation
+    strings are the separate relay bootstrap path.
+    """
+    client_id = get_client_ip(request, settings.trusted_proxy_hosts)
+    if _is_redeem_rate_limited(client_id):
+        raise HTTPException(
+            status_code=429, detail="Too many redemption attempts. Try again shortly."
+        )
+
     payload = decode_connection_string(data.connection_string)
     if not payload:
         raise HTTPException(status_code=400, detail="Invalid or expired connection string")
     conn, reason = await _get_connection_string_status(db, data.connection_string)
     if conn is None:
         raise HTTPException(status_code=400, detail=_connection_error_message(reason))
+    if payload.get("server_url", "").rstrip("/") != conn.server_url.rstrip("/"):
+        raise HTTPException(status_code=400, detail="Connection string server mismatch")
+    if payload.get("kind", conn.token_type) != conn.token_type:
+        raise HTTPException(status_code=400, detail="Connection string type mismatch")
     token_type = payload.get("kind", conn.token_type or "user_invite")
     if token_type != "user_invite":
-        raise HTTPException(status_code=400, detail="Compute donation strings cannot create user accounts")
+        raise HTTPException(
+            status_code=400, detail="Compute donation strings cannot create user accounts"
+        )
 
     if not data.username.strip():
         raise HTTPException(status_code=400, detail="Username is required")
@@ -390,6 +415,8 @@ async def redeem_connection_string(
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=409, detail="Username or email already exists")
 
+    recovery_codes = generate_recovery_codes()
+
     user = User(
         id=str(uuid.uuid4()),
         username=data.username.strip(),
@@ -400,6 +427,14 @@ async def redeem_connection_string(
         display_name=data.display_name.strip() or data.username.strip(),
     )
     db.add(user)
+    user.recovery_codes_hashed = None
+    await replace_recovery_codes(
+        db,
+        user_id=user.id,
+        codes=recovery_codes,
+        request=request,
+        created_by_user_id="connection-string",
+    )
     conn.is_redeemed = True
     conn.redeemed_by_user_id = user.id
     conn.redeemed_username = user.username
@@ -445,6 +480,7 @@ async def redeem_connection_string(
             "role": user.role.value,
             "display_name": user.display_name,
         },
+        "recovery_codes": recovery_codes,
     }
 
 
@@ -463,6 +499,7 @@ async def rotate_network_token(request: Request, db: AsyncSession = Depends(get_
 
     # Persist to .env
     from app.api.routes.settings import _persist_env
+
     _persist_env("NETWORK_ACCESS_TOKEN", new_token)
 
     result = await db.execute(select(ConnectionString).where(ConnectionString.is_active.is_(True)))
@@ -492,13 +529,16 @@ async def rotate_network_token(request: Request, db: AsyncSession = Depends(get_
     # Broadcast to connected relays so they know the token changed
     try:
         from app.core.compute_registry import compute_registry
+
         for node in list(compute_registry._nodes.values()):
             if node.websocket and node.source == "relay":
                 try:
-                    await node.websocket.send_json({
-                        "type": "token_rotated",
-                        "message": "Network access token has been rotated. Reconnect with a new connection string.",
-                    })
+                    await node.websocket.send_json(
+                        {
+                            "type": "token_rotated",
+                            "message": "Network access token has been rotated. Reconnect with a new connection string.",
+                        }
+                    )
                 except Exception:
                     pass
     except Exception:
@@ -555,6 +595,14 @@ def _is_validation_rate_limited(client_id: str) -> bool:
         client_id,
         limit=VALIDATION_RATE_LIMIT,
         window_seconds=VALIDATION_RATE_WINDOW_S,
+    )
+
+
+def _is_redeem_rate_limited(client_id: str) -> bool:
+    return _redeem_limiter.is_limited(
+        client_id,
+        limit=REDEEM_RATE_LIMIT,
+        window_seconds=REDEEM_RATE_WINDOW_S,
     )
 
 

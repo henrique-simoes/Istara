@@ -122,17 +122,35 @@ Benchmarks are mandatory for changes to `AgentOrchestrator`, `A2A`, or `steering
 
 The suite runner (`test_full_orchestration_suite`) asserts all benchmarks pass. In CI, a single failure fails the entire suite.
 
-### Model-Specific Testing Notes
+### Live LLM Testing Notes
 
-Benchmarks can be run against various local models by configuring `LLM_PROVIDER` and the corresponding host/model settings before running:
+Mocked orchestration benchmarks remain provider-independent, but every live LLM
+test path uses the same OpenAI-compatible Gemini profile:
 
-| Model | Provider | Settings |
-|-------|----------|---------|
-| Llama 3 (8B) | LM Studio | `LMSTUDIO_MODEL=llama-3-8b`, `LMSTUDIO_HOST=http://localhost:1234` |
-| Qwen 2.5 (7B/14B) | Ollama | `OLLAMA_MODEL=qwen2.5:latest`, `LLM_PROVIDER=ollama` |
-| Gemma 3 (4B/12B) | LM Studio/Ollama | Configure model name in respective settings |
+| Setting | Value |
+|---|---|
+| Base URL | `https://generativelanguage.googleapis.com/v1beta/openai/` |
+| Model | `gemini-3.1-flash-lite-preview` |
+| Secret source | `ISTARA_LLM_TEST_API_KEY`, `GEMINI_API_KEY`, `GOOGLE_API_KEY`, or macOS Keychain service `istara-gemini-openai-compatible-tests` |
 
-The benchmarks are **model-agnostic** — they test orchestration logic, not model quality. Results should be consistent regardless of which local model is configured.
+Do not commit live API keys. The live Layer 5 benchmark stays opt-in:
+
+```bash
+ISTARA_RUN_REAL_LLM_BENCHMARK=1 pytest tests/integration/test_llm_orchestration_real.py -q
+```
+
+---
+
+## Security Benchmark Gate
+
+Istara's auth/security benchmark is tracked under `security/` and must pass for release-sensitive work:
+
+```bash
+python scripts/security_benchmark.py --fail-on-threshold
+pytest tests/test_security_benchmark.py -q
+```
+
+For auth, WebAuthn, sessions, connection strings, pooled compute, MCP, webhook, LLM-provider, autoresearch, self-evolution, or agentic-memory changes, update or explicitly revalidate `security/control_matrix.json`, `security/SECURITY_BENCHMARK.md`, and `tests/test_security_benchmark.py`. CI uploads `security/security_scorecard.json` as the `istara-security-scorecard` artifact.
 
 ---
 

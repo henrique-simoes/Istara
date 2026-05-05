@@ -1,0 +1,78 @@
+# Istara Security Benchmark
+
+Last reviewed: 2026-05-05
+
+This benchmark is the release gate for Istara changes that touch authentication, authorization, sessions, passkeys, secrets, connection strings, pooled compute, MCP/tool execution, webhooks, LLM provider access, autoresearch, self-evolution, or agentic orchestration.
+
+It is intentionally stricter than a checklist. Each control has a status, severity, standard mapping, and evidence entry in `security/control_matrix.json`. CI runs `python scripts/security_benchmark.py --fail-on-threshold`; Compass Forge work on auth/security must attach that scorecard as evidence before the task is marked complete.
+
+## Current Standard Set
+
+These are the standards Istara uses as the May 5, 2026 baseline:
+
+| Standard | Current version used here | Why it is used |
+|---|---:|---|
+| OWASP ASVS | 5.0.0 stable | Application security verification requirements. ASVS Level 2 is Istara's baseline; Level 3 applies to auth, admin, agent mutation, MCP, connection strings, and compute-pool surfaces. |
+| NIST SP 800-63 | Revision 4 final, including SP 800-63B-4 | Identity, authenticator, session, MFA, and authenticator lifecycle rigor. Istara targets AAL2 for normal team deployments and AAL3-compatible controls where passkeys/hardware authenticators are available. |
+| OWASP WSTG | Latest rolling guide, with stable WSTG v4.2 as the archival baseline | Security test method for auth, session, input, error handling, configuration, and API testing. |
+| OWASP SAMM | 2.0.3 | Secure SDLC maturity framing and measurable process improvement. |
+| NIST SP 800-218 SSDF | Version 1.1 | Secure software development practices for CI, review, release evidence, and vulnerability reduction. |
+| CIS Controls | v8.1 | Operational security baseline, including governance, audit logging, vulnerability management, and secrets handling. |
+| SLSA | v1.2 | Supply-chain provenance and source/build integrity targets. |
+| OpenSSF Scorecard | Current project methodology | Repository security posture signals and dependency/release hygiene. |
+| W3C WebAuthn | Level 3 Candidate Recommendation Snapshot, 2026-01-13; Level 2 remains the stable broad-support reference | Passkey and public-key credential behavior. |
+| IETF OAuth Security BCP | RFC 9700 | OAuth/OpenID-style provider integration and token handling guidance where OpenAI-compatible or third-party auth flows are added. |
+| OWASP Top 10 for LLM Applications | 2025 | LLM application risks: prompt injection, sensitive disclosure, tool abuse, supply-chain and model/provider boundaries. |
+| OWASP Top 10 for Agentic Applications | 2026 | Agentic AI risks for autonomous tool use, memory, delegation, permissions, and human approval. |
+| NIST AI RMF | AI RMF 1.0 plus NIST-AI-600-1 GenAI Profile | AI risk governance for agentic orchestration, evaluation, telemetry, and rollback. |
+| MITRE ATLAS | Current public knowledge base | Adversarial AI technique mapping for future red-team scenarios. |
+
+## Release Bar
+
+Istara uses a scored gate rather than a pass/fail spreadsheet:
+
+- `pass` receives full credit.
+- `partial` receives half credit but blocks release if the control is `critical` or `high` severity.
+- `fail` blocks release.
+- `na` is excluded from the denominator.
+- `waived` receives half credit and must include explicit evidence and rationale.
+- The production threshold is 90 percent or higher.
+
+The score is a hard, repeatable internal benchmark. It is not a substitute for an independent penetration test, FIDO certification, dependency audit, or red-team exercise. Those external checks are represented as maturity controls so Istara can track them honestly instead of pretending CI can prove them.
+
+## Required Process For Auth Or Security Changes
+
+Any change matching the security-sensitive path patterns in `security/control_matrix.json` must:
+
+1. Run `python scripts/security_benchmark.py --fail-on-threshold`.
+2. Update `security/control_matrix.json` when the control status, evidence, path coverage, or standard mapping changes.
+3. Update this document when the benchmark method or standard version changes.
+4. Add or update tests for changed behavior.
+5. Attach the scorecard output to the Compass Forge task evidence.
+6. Run `compass-forge gate before` and `compass-forge gate after` around meaningful changes.
+
+For PRs, CI also passes the changed-file list into the benchmark. If a touched path is auth/security-sensitive, the scorecard reports `auth_security_change_detected: true` and blocks on critical/high partials or any failures.
+
+## Istara-Specific High-Risk Surfaces
+
+The following areas are always treated as ASVS Level 3 style surfaces even when the deployment is local-first:
+
+- Login, registration, logout, token refresh, JWT parsing, session invalidation, auth cookies, and recovery codes.
+- TOTP and WebAuthn/passkey registration, challenge storage, replay prevention, origin/RP validation, credential ownership, and credential revocation.
+- Team mode, local mode remote-login rejection, role and project permission checks, user management, and admin APIs.
+- Connection strings, relay/node joining, pooled compute credentials, LLM server API keys, and encrypted provider secrets.
+- MCP client/server tools, webhook ingress, channel integrations, WhatsApp/Telegram connectors, and any public callback endpoint.
+- Autoresearch, skill evolution, Hyperagent/DGM-H proposals, Memento-style agent creation, ReasoningBank memories, rollback, and proposal approval.
+- Prompt-RAG, vector/RAG, BM25, LLMLingua-style compression, model routing, ensemble/consensus, telemetry, and audit logs where prompt or memory content may affect tool use.
+
+## Compass Forge Contract
+
+Compass Forge remains the local-first control plane. For security work:
+
+- Run `compass-forge agent-brief` and `compass-forge intelligence impact` before implementation.
+- Use a Compass Forge work order for the implementation task.
+- Run the security benchmark before finishing the task.
+- Attach command evidence for the benchmark and tests.
+- Treat new Compass Forge warnings on security-sensitive files as release-hardening evidence even when they are not yet blocking.
+
+The legacy Compass markdown inventory files are not part of this benchmark. They may exist under ignored local documentation, but active security governance lives in this tracked `security/` package, `AGENTS.md`, CI, release scripts, and Compass Forge evidence.

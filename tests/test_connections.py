@@ -8,7 +8,11 @@ from app.config import settings
 from app.models.database import init_db
 from app.models.database import async_session
 from app.core.auth import create_token
-from app.core.connection_string import create_connection_string, decode_connection_string, hash_connection_string
+from app.core.connection_string import (
+    create_connection_string,
+    decode_connection_string,
+    hash_connection_string,
+)
 from app.api.routes import connections as connection_routes
 from app.models.connection_string import ConnectionString
 
@@ -18,10 +22,12 @@ def reset_settings():
     original_team_mode = settings.team_mode
     original_jwt_secret = settings.jwt_secret
     connection_routes._validation_limiter.clear()
+    connection_routes._redeem_limiter.clear()
     yield
     settings.team_mode = original_team_mode
     settings.jwt_secret = original_jwt_secret
     connection_routes._validation_limiter.clear()
+    connection_routes._redeem_limiter.clear()
 
 
 @pytest.fixture
@@ -97,6 +103,8 @@ def test_connection_string_keeps_http_and_websocket_urls_separate():
     assert payload is not None
     assert payload["server_url"] == "https://istara.example.com"
     assert payload["ws_url"] == "wss://relay.example.com/ws/relay"
+    assert "jwt" not in payload
+    assert payload["nonce"]
 
 
 @pytest.mark.asyncio
@@ -184,6 +192,57 @@ async def test_connection_string_lifecycle_tracks_validation_and_redemption(auth
 
 
 @pytest.mark.asyncio
+async def test_team_connection_string_redemption_generates_recovery_codes(auth_headers):
+    await init_db()
+    settings.team_mode = True
+    import uuid
+
+    suffix = uuid.uuid4().hex[:8]
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        generated = await ac.post(
+            "/api/connections/generate",
+            headers=auth_headers,
+            json={
+                "server_url": "http://server.test:3000",
+                "label": "Team Invite",
+                "expires_hours": 24,
+            },
+        )
+        assert generated.status_code == 200
+        redeemed = await ac.post(
+            "/api/connections/redeem",
+            json={
+                "connection_string": generated.json()["connection_string"],
+                "username": f"team_redeemer_{suffix}",
+                "password": "xK9#mP2$vL7nQ4@wR1!",
+                "email": f"team_redeemer_{suffix}@example.com",
+            },
+        )
+
+    assert redeemed.status_code == 200
+    body = redeemed.json()
+    assert body["network_token"] == ""
+    assert len(body["recovery_codes"]) == 8
+    assert "token" in body
+
+    from app.models.recovery_code import RecoveryCode
+    from app.models.user import User
+
+    async with async_session() as db:
+        user = (
+            await db.execute(select(User).where(User.username == f"team_redeemer_{suffix}"))
+        ).scalar_one()
+        records = (
+            (await db.execute(select(RecoveryCode).where(RecoveryCode.user_id == user.id)))
+            .scalars()
+            .all()
+        )
+        assert len(records) == 8
+        assert user.recovery_codes_hashed is None
+
+
+@pytest.mark.asyncio
 async def test_connection_string_revoked_and_expired_fail_clearly(auth_headers):
     await init_db()
     transport = ASGITransport(app=app)
@@ -228,7 +287,9 @@ async def test_connection_string_revoked_and_expired_fail_clearly(auth_headers):
 
 
 @pytest.mark.asyncio
-async def test_network_token_rotation_invalidates_active_connection_strings(auth_headers, monkeypatch):
+async def test_network_token_rotation_invalidates_active_connection_strings(
+    auth_headers, monkeypatch
+):
     await init_db()
     original_network_token = settings.network_access_token
     monkeypatch.setattr("app.api.routes.settings._persist_env", lambda key, value: None)

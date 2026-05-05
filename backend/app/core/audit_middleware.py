@@ -41,6 +41,7 @@ class AuditLog(Base):
     user_agent: Mapped[str] = mapped_column(String(500), default="")
     request_body_hash: Mapped[str] = mapped_column(String(64), default="")
     project_id: Mapped[str] = mapped_column(String(36), default="", index=True)
+    event_type: Mapped[str] = mapped_column(String(80), default="", index=True)
     details: Mapped[str] = mapped_column(Text, default="")
 
 
@@ -65,6 +66,7 @@ async def write_audit_entry(
     user_agent: str = "",
     request_body_hash: str = "",
     project_id: str = "",
+    event_type: str = "",
     details: str = "",
 ) -> None:
     """Write an audit log entry to the database."""
@@ -83,6 +85,7 @@ async def write_audit_entry(
                 user_agent=user_agent[:500],
                 request_body_hash=request_body_hash,
                 project_id=project_id,
+                event_type=event_type[:80],
                 details=details[:2000],
             )
             session.add(entry)
@@ -152,6 +155,7 @@ class AuditLogMiddleware(BaseHTTPMiddleware):
             user_agent=request.headers.get("user-agent", "")[:500],
             request_body_hash="",
             project_id=project_id,
+            event_type="http.request",
         )
 
         if response is not None:
@@ -207,6 +211,7 @@ def get_recent_audit_logs(
                         "duration_ms": r.duration_ms,
                         "ip_address": r.ip_address,
                         "project_id": r.project_id,
+                        "event_type": r.event_type,
                     }
                     for r in rows
                 ]

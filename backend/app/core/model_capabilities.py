@@ -42,7 +42,7 @@ def detect_from_name(model_name: str) -> ModelCapability:
     cap = ModelCapability(name=model_name)
 
     # Parameter count from name
-    param_match = re.search(r'(\d+\.?\d*)\s*[bB]', model_name)
+    param_match = re.search(r"(\d+\.?\d*)\s*[bB]", model_name)
     if param_match:
         cap.parameter_count = f"{param_match.group(1)}B"
 
@@ -78,7 +78,7 @@ def detect_from_name(model_name: str) -> ModelCapability:
 
     # Quantization from name
     quant_match = re.search(
-        r'(Q\d+_\w+|q\d+|GGUF|MLX|F16|FP16|INT8|INT4)',
+        r"(Q\d+_\w+|q\d+|GGUF|MLX|F16|FP16|INT8|INT4)",
         model_name,
         re.IGNORECASE,
     )
@@ -90,48 +90,75 @@ def detect_from_name(model_name: str) -> ModelCapability:
     return cap
 
 
-async def detect_capabilities_generic(host: str | None, api_key: str = "", provider_type: str = "openai_compat") -> dict[str, ModelCapability]:
+def _openai_endpoint(host: str, provider_type: str, suffix: str) -> str:
+    from urllib.parse import urlparse
+
+    clean_suffix = suffix.lstrip("/")
+    parsed = urlparse(host)
+    base_path = parsed.path.rstrip("/")
+    if (
+        provider_type == "gemini_openai"
+        or "generativelanguage.googleapis.com" in (parsed.hostname or "")
+        or base_path.endswith("/openai")
+        or base_path.endswith("/v1")
+    ):
+        return clean_suffix
+    return f"v1/{clean_suffix}"
+
+
+async def detect_capabilities_generic(
+    host: str | None,
+    api_key: str = "",
+    provider_type: str = "openai_compat",
+) -> dict[str, ModelCapability]:
     """Empirically detect model capabilities from any OpenAI-compatible API.
-    
+
     Follows Berkeley Function Calling Leaderboard (BFCL) patterns:
     1. Metadata discovery (GET /v1/models)
     2. Dynamic probing (test chat completion with dummy tool)
     """
     if not host:
         return {}
-        
+
     import httpx
+
     result: dict[str, ModelCapability] = {}
-    
+
     # RFC 3986 Normalization for detection client
     if not host.endswith("/"):
         host += "/"
-        
+
     headers = {}
     if api_key:
         headers["Authorization"] = f"Bearer {api_key}"
-        
+
     async with httpx.AsyncClient(timeout=10.0, headers=headers) as client:
         # 1. Metadata Discovery
         try:
-            models_path = "api/tags" if provider_type == "ollama" else "v1/models"
+            models_path = (
+                "api/tags"
+                if provider_type == "ollama"
+                else _openai_endpoint(host, provider_type, "models")
+            )
             resp = await client.get(f"{host}{models_path}")
             if resp.status_code == 200:
                 data = resp.json()
-                models = data.get("models", []) if provider_type == "ollama" else data.get("data", [])
-                
+                models = (
+                    data.get("models", []) if provider_type == "ollama" else data.get("data", [])
+                )
+
                 for m in models:
                     model_id = m.get("name" if provider_type == "ollama" else "id", "")
                     if not model_id:
                         continue
-                    
+
                     cap = detect_from_name(model_id)
                     cap.source = provider_type
-                    
+
                     # Metadata context length
                     if m.get("max_tokens"):
                         cap.context_length = m["max_tokens"]
-                    
+
                     result[model_id] = cap
         except Exception as e:
             logger.debug(f"Metadata discovery failed for {host}: {e}")
@@ -140,27 +167,33 @@ async def detect_capabilities_generic(host: str | None, api_key: str = "", provi
         # Select the most likely primary model to probe
         if not result:
             return result
-            
+
         probe_model = list(result.keys())[0]
         try:
             # Standardized probe payload for tool support verification
             probe_payload = {
                 "model": probe_model,
                 "messages": [{"role": "user", "content": "Respond 'ok'."}],
-                "tools": [{
-                    "type": "function",
-                    "function": {
-                        "name": "probe_tool",
-                        "description": "A dummy tool to verify tool-calling support.",
-                        "parameters": {"type": "object", "properties": {}}
+                "tools": [
+                    {
+                        "type": "function",
+                        "function": {
+                            "name": "probe_tool",
+                            "description": "A dummy tool to verify tool-calling support.",
+                            "parameters": {"type": "object", "properties": {}},
+                        },
                     }
-                }],
-                "max_tokens": 5
+                ],
+                "max_tokens": 5,
             }
-            
-            chat_path = "api/chat" if provider_type == "ollama" else "v1/chat/completions"
+
+            chat_path = (
+                "api/chat"
+                if provider_type == "ollama"
+                else _openai_endpoint(host, provider_type, "chat/completions")
+            )
             probe_resp = await client.post(f"{host}{chat_path}", json=probe_payload)
-            
+
             # If the server accepts the tools parameter without error, mark tool support
             if probe_resp.status_code == 200:
                 for cap in result.values():
@@ -169,8 +202,8 @@ async def detect_capabilities_generic(host: str | None, api_key: str = "", provi
                 # Most servers return 400 if 'tools' is unknown/unsupported
                 for cap in result.values():
                     cap.supports_tools = False
-                    
+
         except Exception as e:
             logger.debug(f"Dynamic tool probe failed for {host}: {e}")
-            
+
     return result

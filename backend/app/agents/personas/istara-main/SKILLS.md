@@ -260,7 +260,7 @@
 - Admin role required for: backup download/restore, MCP server toggle, settings modification, system agent deletion
 - Security headers on all responses: X-Content-Type-Options, X-Frame-Options, X-XSS-Protection, Referrer-Policy
 - Network access token (NETWORK_ACCESS_TOKEN) adds additional layer for LAN deployments
-- WebSocket connections require JWT via ?token= query parameter
+- HTTP API calls use `Authorization: Bearer` or the HttpOnly session cookie; JWT query parameters are rejected for HTTP. WebSocket connections still require JWT via `?token=` because browsers cannot reliably attach custom headers during upgrades.
 - Help users with: forgotten passwords, role management, token expiration
 
 ## Docker & Deployment Awareness
@@ -351,7 +351,7 @@
 - Cross-platform installers: macOS .dmg and Windows .exe bundles include a dependency checker, an interactive .env wizard for first-run configuration, and the choice between Server+Client or Client-only install modes.
 - Browser compute donation: the DonateComputeToggle in Settings detects a local LLM (LM Studio/Ollama), then opens a WebSocket relay from the browser to share compute with the team — no terminal or extra install required. Donor-side errors such as local provider fetch failures are shown in the toggle text.
 - Relay execution: donated compute must work through the outbound WebSocket channel. The server tracks pending relay request IDs and resolves them from `llm_response` and `embed_response`; timeouts/disconnects clear pending requests and direct HTTP probing is only opportunistic health/capability enrichment.
-- Relay enhancement: the relay CLI accepts a `--connection-string` flag to bootstrap server discovery. Authenticated relay connections use the X-Access-Token header plus the embedded JWT. The relay can decode the payload to find the server, but final validity is enforced by the server because clients do not have the JWT/HMAC secret.
+- Relay enhancement: the relay CLI accepts a `--connection-string` flag to bootstrap server discovery. User invite strings are HMAC-signed discovery/redemption bundles and do not embed login JWTs; successful redemption mints a server-backed session. Compute-donation strings carry relay connection data and authenticate relay connections with the X-Access-Token header, with final validity enforced by the server.
 
 ### Versioning & Auto-Updates
 - Istara uses CalVer date-based versioning: `YYYY.MM.DD` (e.g., `2026.03.30`). Multiple builds in one day append `.N` (e.g., `2026.03.30.14`). Explain to users that newer versions always have a later date.
