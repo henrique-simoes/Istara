@@ -601,7 +601,7 @@ export default function InterviewView() {
     onComplete?: (toolsUsed: string[]) => void,
   ): Promise<{ error: string | null }> => {
     let result = "";
-    let toolsUsed: string[] = [];
+    const toolsUsed: string[] = [];
     try {
       for await (const event of chatApi.send(projectId, message)) {
         if (event.type === "chunk") {
