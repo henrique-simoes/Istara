@@ -28,6 +28,24 @@ interface RegisterResult {
   recovery_codes: string[];
 }
 
+export interface AuthSession {
+  id: string;
+  auth_method: string;
+  mfa_verified: boolean;
+  ip_address: string;
+  user_agent: string;
+  created_at: string | null;
+  last_seen_at: string | null;
+  expires_at: string | null;
+  current: boolean;
+}
+
+interface SessionRevokeResult {
+  status: string;
+  revoked: boolean;
+  revoked_current: boolean;
+}
+
 interface AuthState {
   user: User | null;
   token: string | null;
@@ -39,11 +57,14 @@ interface AuthState {
   login: (username: string, password: string) => Promise<LoginResult>;
   verify2FA: (username: string, password: string, code: string, method: "totp" | "recovery_code") => Promise<void>;
   register: (username: string, email: string, password: string, displayName?: string) => Promise<RegisterResult>;
-  logout: () => void;
+  logout: () => Promise<void>;
   checkTeamStatus: () => Promise<{ team_mode: boolean; has_users: boolean; insecure: boolean }>;
   fetchMe: () => Promise<boolean>;
   updatePreferences: (prefs: Record<string, unknown>) => Promise<void>;
   getAuthHeaders: () => Record<string, string>;
+  listAuthSessions: () => Promise<AuthSession[]>;
+  revokeAuthSession: (sessionId: string) => Promise<SessionRevokeResult>;
+  revokeOtherAuthSessions: () => Promise<{ status: string; revoked_count: number }>;
 
   // Passkey / WebAuthn
   loginWithPasskey: (username: string) => Promise<void>;
@@ -148,14 +169,24 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
-  logout: () => {
+  logout: async () => {
+    const token = get().token || (typeof window !== "undefined" ? localStorage.getItem("istara_token") : null);
+    try {
+      await fetch(`${API_BASE}/api/auth/logout`, {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        credentials: "include",
+      });
+    } catch {
+      // Local state is still cleared if the server is unavailable.
+    }
+    if (typeof window !== "undefined") {
       localStorage.removeItem("istara_token");
       localStorage.removeItem("istara_auth_user_id");
       window.dispatchEvent(new Event("istara:auth-changed"));
-      set({ user: null, token: null });
-    if (typeof window !== "undefined") {
       window.location.reload();
     }
+    set({ user: null, token: null });
   },
 
   checkTeamStatus: async () => {
@@ -248,6 +279,50 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       return { Authorization: `Bearer ${token}` };
     }
     return {};
+  },
+
+  listAuthSessions: async () => {
+    const { token } = get();
+    if (!token) throw new Error("Not authenticated");
+    const res = await fetch(`${API_BASE}/api/auth/sessions`, {
+      headers: { Authorization: `Bearer ${token}` },
+      credentials: "include",
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: "Failed to list sessions" }));
+      throw new Error(err.detail || "Failed to list sessions");
+    }
+    return res.json();
+  },
+
+  revokeAuthSession: async (sessionId) => {
+    const { token } = get();
+    if (!token) throw new Error("Not authenticated");
+    const res = await fetch(`${API_BASE}/api/auth/sessions/${sessionId}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+      credentials: "include",
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: "Failed to revoke session" }));
+      throw new Error(err.detail || "Failed to revoke session");
+    }
+    return res.json();
+  },
+
+  revokeOtherAuthSessions: async () => {
+    const { token } = get();
+    if (!token) throw new Error("Not authenticated");
+    const res = await fetch(`${API_BASE}/api/auth/sessions/revoke-others`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      credentials: "include",
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: "Failed to revoke sessions" }));
+      throw new Error(err.detail || "Failed to revoke sessions");
+    }
+    return res.json();
   },
 
   // --- Passkey / WebAuthn ---

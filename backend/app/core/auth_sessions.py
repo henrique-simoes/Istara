@@ -190,6 +190,89 @@ async def revoke_auth_session_for_payload(
     return bool(result.rowcount)
 
 
+def current_auth_session_id(payload: dict[str, Any]) -> str:
+    """Return the bound auth session id carried by a token payload."""
+    return str(payload.get(SESSION_ID_CLAIM) or "")
+
+
+def _session_to_public_dict(session: AuthSession, current_session_id: str) -> dict[str, Any]:
+    return {
+        "id": session.id,
+        "auth_method": session.auth_method,
+        "mfa_verified": bool(session.mfa_verified),
+        "ip_address": session.ip_address,
+        "user_agent": session.user_agent,
+        "created_at": session.created_at.isoformat() if session.created_at else None,
+        "last_seen_at": session.last_seen_at.isoformat() if session.last_seen_at else None,
+        "expires_at": session.expires_at.isoformat() if session.expires_at else None,
+        "current": session.id == current_session_id,
+    }
+
+
+async def list_active_auth_sessions(
+    db: AsyncSession,
+    user_id: str,
+    *,
+    current_session_id: str = "",
+) -> list[dict[str, Any]]:
+    """List non-revoked, non-expired auth sessions for a user without tokens."""
+    now = datetime.now(UTC)
+    result = await db.execute(
+        select(AuthSession)
+        .where(
+            AuthSession.user_id == user_id,
+            AuthSession.revoked_at.is_(None),
+        )
+        .order_by(AuthSession.last_seen_at.desc(), AuthSession.created_at.desc())
+    )
+    sessions = [
+        session
+        for session in result.scalars().all()
+        if (_aware(session.expires_at) or now) > now
+    ]
+    return [_session_to_public_dict(session, current_session_id) for session in sessions]
+
+
+async def revoke_auth_session_by_id(
+    db: AsyncSession,
+    user_id: str,
+    session_id: str,
+) -> bool:
+    """Revoke one active auth session owned by a user."""
+    now = datetime.now(UTC)
+    result = await db.execute(
+        update(AuthSession)
+        .where(
+            AuthSession.id == session_id,
+            AuthSession.user_id == user_id,
+            AuthSession.revoked_at.is_(None),
+        )
+        .values(revoked_at=now)
+    )
+    await db.commit()
+    return bool(result.rowcount)
+
+
+async def revoke_other_auth_sessions(
+    db: AsyncSession,
+    user_id: str,
+    current_session_id: str,
+) -> int:
+    """Revoke active sessions for a user except the current session."""
+    now = datetime.now(UTC)
+    result = await db.execute(
+        update(AuthSession)
+        .where(
+            AuthSession.user_id == user_id,
+            AuthSession.id != current_session_id,
+            AuthSession.revoked_at.is_(None),
+        )
+        .values(revoked_at=now)
+    )
+    await db.commit()
+    return int(result.rowcount or 0)
+
+
 async def revoke_user_auth_sessions(db: AsyncSession, user_id: str) -> int:
     """Revoke every active auth session for a user."""
     now = datetime.now(UTC)

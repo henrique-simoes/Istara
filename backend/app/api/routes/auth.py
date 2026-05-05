@@ -33,15 +33,19 @@ from app.core.auth import (
     verify_totp,
 )
 from app.core.auth_sessions import (
+    current_auth_session_id,
     is_session_bound,
     issue_auth_session_token,
+    list_active_auth_sessions,
+    revoke_auth_session_by_id,
     revoke_auth_session_for_payload,
+    revoke_other_auth_sessions,
     revoke_user_auth_sessions,
     validate_auth_session,
 )
 from app.core.client_identity import BoundedWindowRateLimiter, get_client_ip
 from app.core.field_encryption import hash_field
-from app.core.security_middleware import require_admin_from_request
+from app.core.security_middleware import browser_origin_denial, require_admin_from_request
 from app.models.database import async_session, get_db
 from app.models.user import User
 
@@ -218,6 +222,13 @@ def _require_current_password(user: User, current_password: str) -> None:
         raise HTTPException(status_code=401, detail="Invalid current password.")
 
 
+def _require_trusted_auth_origin(request: Request) -> None:
+    """Reject browser login/register attempts from untrusted origins."""
+    denial = browser_origin_denial(request)
+    if denial:
+        raise HTTPException(status_code=403, detail=denial)
+
+
 # ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
@@ -233,6 +244,8 @@ async def register(req: RegisterRequest, response: Response, request: Request):
     - Check against known breaches
     - Generate recovery codes
     """
+    _require_trusted_auth_origin(request)
+
     if not settings.team_mode:
         raise HTTPException(
             status_code=400, detail="Registration requires team mode. Enable TEAM_MODE=true."
@@ -310,6 +323,7 @@ async def login(
     - Password + recovery code (account recovery)
     - Automatic password hash upgrade on login (PBKDF2 → Argon2id)
     """
+    _require_trusted_auth_origin(request)
     await _check_login_rate(request)
 
     # Local mode — issue a local-admin token without DB lookup
@@ -411,6 +425,55 @@ async def logout(response: Response, request: Request, db: AsyncSession = Depend
         pass
     _clear_auth_cookie(response)
     return {"status": "ok"}
+
+
+def _require_bound_session_payload(payload: dict) -> tuple[str, str]:
+    if not is_session_bound(payload):
+        raise HTTPException(
+            status_code=400,
+            detail="Active session management requires a server-backed session.",
+        )
+    user_id = str(payload.get("sub") or "")
+    session_id = current_auth_session_id(payload)
+    if not user_id or not session_id:
+        raise HTTPException(status_code=401, detail="Invalid authentication session.")
+    return user_id, session_id
+
+
+@router.get("/auth/sessions")
+async def list_auth_sessions(request: Request, db: AsyncSession = Depends(get_db)):
+    """List active server-backed auth sessions for the current user."""
+    payload = await _token_payload_from_request(request, db)
+    if not is_session_bound(payload):
+        return []
+    user_id, session_id = _require_bound_session_payload(payload)
+    return await list_active_auth_sessions(db, user_id, current_session_id=session_id)
+
+
+@router.post("/auth/sessions/revoke-others")
+async def revoke_other_sessions(request: Request, db: AsyncSession = Depends(get_db)):
+    """Revoke every active auth session except the current one."""
+    payload = await _token_payload_from_request(request, db)
+    user_id, session_id = _require_bound_session_payload(payload)
+    revoked_count = await revoke_other_auth_sessions(db, user_id, session_id)
+    return {"status": "ok", "revoked_count": revoked_count}
+
+
+@router.delete("/auth/sessions/{session_id}")
+async def revoke_auth_session(
+    session_id: str,
+    request: Request,
+    response: Response,
+    db: AsyncSession = Depends(get_db),
+):
+    """Revoke one auth session owned by the current user."""
+    payload = await _token_payload_from_request(request, db)
+    user_id, current_session_id = _require_bound_session_payload(payload)
+    revoked = await revoke_auth_session_by_id(db, user_id, session_id)
+    revoked_current = revoked and session_id == current_session_id
+    if revoked_current:
+        _clear_auth_cookie(response)
+    return {"status": "ok", "revoked": revoked, "revoked_current": revoked_current}
 
 
 # ---------------------------------------------------------------------------

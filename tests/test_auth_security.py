@@ -9,11 +9,15 @@ from httpx import ASGITransport, AsyncClient
 @pytest.fixture(autouse=True)
 def reset_settings():
     """Reset settings after each test."""
+    from app.api.routes.auth import _login_limiter
+
     original_team_mode = settings.team_mode
     original_jwt_secret = settings.jwt_secret
+    _login_limiter.clear()
     yield
     settings.team_mode = original_team_mode
     settings.jwt_secret = original_jwt_secret
+    _login_limiter.clear()
 
 
 @pytest.mark.asyncio
@@ -292,6 +296,60 @@ async def test_cookie_auth_rejects_untrusted_origin_on_state_change():
 
 
 @pytest.mark.asyncio
+async def test_login_rejects_cross_site_browser_attempts_before_cookie_creation():
+    """Auth-exempt login should still reject browser CSRF signals."""
+    await init_db()
+    settings.team_mode = False
+    if not settings.jwt_secret:
+        settings.jwt_secret = "test-secret"
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        origin_response = await ac.post(
+            "/api/auth/login",
+            json={"username": "testuser", "password": ""},
+            headers={"Origin": "https://evil.example"},
+        )
+        fetch_metadata_response = await ac.post(
+            "/api/auth/login",
+            json={"username": "testuser", "password": ""},
+            headers={"Sec-Fetch-Site": "cross-site", "Sec-Fetch-Mode": "navigate"},
+        )
+
+    assert origin_response.status_code == 403
+    assert "istara_session" not in origin_response.cookies
+    assert "Untrusted browser origin" in origin_response.json()["detail"]
+    assert fetch_metadata_response.status_code == 403
+    assert "istara_session" not in fetch_metadata_response.cookies
+    assert "Untrusted browser origin" in fetch_metadata_response.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_register_rejects_untrusted_browser_origin_before_user_creation():
+    """Team registration should not mint a first session for an untrusted origin."""
+    await init_db()
+    settings.team_mode = True
+    if not settings.jwt_secret:
+        settings.jwt_secret = "test-secret"
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.post(
+            "/api/auth/register",
+            json={
+                "username": "origin_attack",
+                "email": "origin_attack@example.com",
+                "password": "xK9#mP2$vL7nQ4@wR1!",
+            },
+            headers={"Origin": "https://evil.example"},
+        )
+
+    assert response.status_code == 403
+    assert "istara_session" not in response.cookies
+    assert "Untrusted browser origin" in response.json()["detail"]
+
+
+@pytest.mark.asyncio
 async def test_login_creates_revocable_server_auth_session():
     """Team-mode login should create a server-backed session that logout revokes."""
     await init_db()
@@ -341,6 +399,154 @@ async def test_login_creates_revocable_server_auth_session():
             session = await db.get(AuthSession, payload["sid"])
             assert session is not None
             assert session.revoked_at is not None
+
+        revoked = await ac.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
+        assert revoked.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_auth_sessions_list_and_revoke_specific_other_session():
+    """Users can inspect active sessions without token leakage and revoke another device."""
+    await init_db()
+    settings.team_mode = True
+    if not settings.jwt_secret:
+        settings.jwt_secret = "test-secret"
+
+    import uuid
+
+    username = f"sessionlist_{uuid.uuid4().hex[:8]}"
+    email = f"{username}@example.com"
+    password = "xK9#mP2$vL7nQ4@wR1!"
+    await _create_team_user(username=username, email=email, password=password)
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        first_login = await ac.post(
+            "/api/auth/login",
+            json={"username": username, "password": password},
+            headers={"User-Agent": "IstaraTest/first"},
+        )
+        second_login = await ac.post(
+            "/api/auth/login",
+            json={"username": username, "password": password},
+            headers={"User-Agent": "IstaraTest/second"},
+        )
+        assert first_login.status_code == 200
+        assert second_login.status_code == 200
+        first_token = first_login.json()["token"]
+        second_token = second_login.json()["token"]
+
+        from app.core.auth import verify_token
+
+        first_payload = verify_token(first_token)
+        second_payload = verify_token(second_token)
+        assert first_payload is not None
+        assert second_payload is not None
+
+        sessions_response = await ac.get(
+            "/api/auth/sessions",
+            headers={"Authorization": f"Bearer {first_token}"},
+        )
+        assert sessions_response.status_code == 200
+        sessions = sessions_response.json()
+        session_ids = {session["id"] for session in sessions}
+        assert first_payload["sid"] in session_ids
+        assert second_payload["sid"] in session_ids
+        assert [session["id"] for session in sessions if session["current"]] == [first_payload["sid"]]
+        assert all("token" not in session for session in sessions)
+        assert all("token_jti" not in session for session in sessions)
+
+        revoke = await ac.delete(
+            f"/api/auth/sessions/{second_payload['sid']}",
+            headers={"Authorization": f"Bearer {first_token}"},
+        )
+        assert revoke.status_code == 200
+        assert revoke.json()["revoked"] is True
+        assert revoke.json()["revoked_current"] is False
+
+        revoked = await ac.get("/api/auth/me", headers={"Authorization": f"Bearer {second_token}"})
+        active = await ac.get("/api/auth/me", headers={"Authorization": f"Bearer {first_token}"})
+        assert revoked.status_code == 401
+        assert active.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_auth_sessions_revoke_others_keeps_current_session():
+    """The revoke-others endpoint should preserve the caller's session."""
+    await init_db()
+    settings.team_mode = True
+    if not settings.jwt_secret:
+        settings.jwt_secret = "test-secret"
+
+    import uuid
+
+    username = f"sessionothers_{uuid.uuid4().hex[:8]}"
+    email = f"{username}@example.com"
+    password = "xK9#mP2$vL7nQ4@wR1!"
+    await _create_team_user(username=username, email=email, password=password)
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        first_login = await ac.post(
+            "/api/auth/login",
+            json={"username": username, "password": password},
+        )
+        second_login = await ac.post(
+            "/api/auth/login",
+            json={"username": username, "password": password},
+        )
+        first_token = first_login.json()["token"]
+        second_token = second_login.json()["token"]
+
+        revoke = await ac.post(
+            "/api/auth/sessions/revoke-others",
+            headers={"Authorization": f"Bearer {first_token}"},
+        )
+        assert revoke.status_code == 200
+        assert revoke.json()["revoked_count"] >= 1
+
+        current = await ac.get("/api/auth/me", headers={"Authorization": f"Bearer {first_token}"})
+        other = await ac.get("/api/auth/me", headers={"Authorization": f"Bearer {second_token}"})
+        assert current.status_code == 200
+        assert other.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_auth_session_revoke_current_invalidates_token():
+    """Revoking the current auth session should invalidate the active token."""
+    await init_db()
+    settings.team_mode = True
+    if not settings.jwt_secret:
+        settings.jwt_secret = "test-secret"
+
+    import uuid
+
+    username = f"sessioncurrent_{uuid.uuid4().hex[:8]}"
+    email = f"{username}@example.com"
+    password = "xK9#mP2$vL7nQ4@wR1!"
+    await _create_team_user(username=username, email=email, password=password)
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        login = await ac.post(
+            "/api/auth/login",
+            json={"username": username, "password": password},
+        )
+        assert login.status_code == 200
+        token = login.json()["token"]
+
+        from app.core.auth import verify_token
+
+        payload = verify_token(token)
+        assert payload is not None
+
+        revoke = await ac.delete(
+            f"/api/auth/sessions/{payload['sid']}",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert revoke.status_code == 200
+        assert revoke.json()["revoked"] is True
+        assert revoke.json()["revoked_current"] is True
 
         revoked = await ac.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
         assert revoked.status_code == 401
