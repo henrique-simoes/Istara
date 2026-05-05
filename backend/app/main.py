@@ -3,14 +3,26 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import AsyncGenerator
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from starlette.middleware.base import BaseHTTPMiddleware
 
+from app.agents.custom_worker import (
+    load_custom_agents_from_db,
+)
+from app.agents.custom_worker import (
+    stop_custom_agent as stop_custom_worker,
+)
+from app.agents.devops_agent import devops_agent
+from app.agents.orchestrator import meta_orchestrator
+from app.agents.ui_audit_agent import ui_audit_agent
+from app.agents.user_sim_agent import user_sim_agent
+from app.agents.ux_eval_agent import ux_eval_agent
 from app.api.routes import (
     admin,
     agents,
@@ -19,7 +31,6 @@ from app.api.routes import (
     channels,
     chat,
     codebooks,
-    context_dag as context_dag_routes,
     documents,
     files,
     findings,
@@ -28,49 +39,50 @@ from app.api.routes import (
     memory,
     metrics,
     projects,
-    scheduler as scheduler_routes,
     sessions,
     settings,
     skills,
     tasks,
 )
-from app.api.routes import backup as backup_routes
-from app.api.routes import compute as compute_routes
-from app.api.routes import deployments as deployment_routes
-from app.api.routes import loops as loops_routes, notifications as notification_routes
-from app.api.routes import surveys as survey_routes
-from app.api.routes import mcp as mcp_routes
-from app.api.routes import meta_hyperagent as meta_hyperagent_routes
 from app.api.routes import autoresearch as autoresearch_routes
-from app.api.routes import reasoning_bank as reasoning_bank_routes
-from app.api.routes import improvement_governance as improvement_governance_routes
-from app.api.routes import dgmh_archive as dgmh_archive_routes
-from app.api.routes import laws as laws_routes
-from app.api.routes import reports as reports_routes
+from app.api.routes import backup as backup_routes
 from app.api.routes import code_applications as code_applications_routes
 from app.api.routes import codebook_versions as codebook_versions_routes
-from app.api.routes import webhooks as webhook_routes
+from app.api.routes import compute as compute_routes
 from app.api.routes import connections as connection_routes
-from app.api.routes import updates as update_routes
+from app.api.routes import (
+    context_dag as context_dag_routes,
+)
+from app.api.routes import deployments as deployment_routes
+from app.api.routes import dgmh_archive as dgmh_archive_routes
+from app.api.routes import improvement_governance as improvement_governance_routes
+from app.api.routes import laws as laws_routes
+from app.api.routes import loops as loops_routes
+from app.api.routes import mcp as mcp_routes
+from app.api.routes import meta_hyperagent as meta_hyperagent_routes
+from app.api.routes import notifications as notification_routes
 from app.api.routes import presentation as presentation_routes
-from app.api.routes import webauthn as webauthn_routes
+from app.api.routes import reasoning_bank as reasoning_bank_routes
+from app.api.routes import reports as reports_routes
+from app.api.routes import (
+    scheduler as scheduler_routes,
+)
 from app.api.routes import steering as steering_routes
+from app.api.routes import surveys as survey_routes
+from app.api.routes import updates as update_routes
+from app.api.routes import webauthn as webauthn_routes
+from app.api.routes import webhooks as webhook_routes
 from app.api.websocket import router as ws_router
 from app.channels.base import channel_router
-from app.agents.devops_agent import devops_agent
-from app.agents.ui_audit_agent import ui_audit_agent
-from app.agents.ux_eval_agent import ux_eval_agent
-from app.agents.user_sim_agent import user_sim_agent
-from app.agents.orchestrator import meta_orchestrator
-from app.agents.custom_worker import (
-    load_custom_agents_from_db,
-    stop_custom_agent as stop_custom_worker,
-)
 from app.config import settings as app_settings
 from app.core.agent import agent as agent_orchestrator
+from app.core.agent_hooks import register_builtin_hooks
+from app.core.audit_middleware import AuditLogMiddleware
 from app.core.backup_manager import backup_manager
 from app.core.file_watcher import FileWatcher
+from app.core.network_security import NetworkSecurityMiddleware, requires_local_admin_network_guard
 from app.core.scheduler import scheduler
+from app.core.security_middleware import SecurityAuthMiddleware
 from app.models.database import async_session, init_db
 from app.services.agent_service import seed_system_agents
 from app.services.heartbeat import heartbeat_manager
@@ -163,14 +175,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # Bootstrap admin user if none exists
     try:
-        from app.models.user import User
+        from sqlalchemy import func, select
+
         from app.core.auth import (
-            hash_password,
             generate_recovery_codes,
+            hash_password,
             is_password_breached,
         )
         from app.core.recovery_codes import replace_recovery_codes
-        from sqlalchemy import select, func
+        from app.models.user import User
 
         async with async_session() as db:
             user_count = await db.execute(select(func.count(User.id)))
@@ -259,10 +272,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Startup cleanup: remove orphaned sessions/messages whose project no longer exists
     _cleanup_log = _startup_log.getLogger("startup.cleanup")
     try:
-        from sqlalchemy import delete as sa_delete, select as sa_select
-        from app.models.session import ChatSession
+        from sqlalchemy import delete as sa_delete
+        from sqlalchemy import select as sa_select
+
         from app.models.message import Message
         from app.models.project import Project
+        from app.models.session import ChatSession
 
         async with async_session() as db:
             # Find all project IDs that actually exist
@@ -304,8 +319,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # Load active channel instances from database
     try:
-        from app.services.inbound_processor import process_inbound_channel_message
         from app.services.channel_service import load_active_instances
+        from app.services.inbound_processor import process_inbound_channel_message
 
         channel_router.set_handler(process_inbound_channel_message)
         async with async_session() as db:
@@ -316,7 +331,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # Register configured local LLM server FIRST (before discovery)
     try:
-        from app.core.compute_registry import compute_registry, ComputeNode
+        from app.core.compute_registry import ComputeNode, compute_registry
 
         local_host = (
             app_settings.lmstudio_host
@@ -442,7 +457,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                         if cap.context_length and cap.context_length > 0:
                             app_settings.update_context_window(cap.context_length)
                             _log.info(
-                                f"Detected context window: {cap.context_length} tokens for {model_name}"
+                                "Detected context window: %s tokens for %s",
+                                cap.context_length,
+                                model_name,
                             )
                             break
                 except Exception as e:
@@ -475,7 +492,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                     _log.warning(f"Data integrity: {w}")
                 _log.warning(
                     "Run POST /api/settings/data-integrity for full report. "
-                    "If you recently switched databases, use /api/settings/import-database to restore data."
+                    "If you recently switched databases, use "
+                    "/api/settings/import-database to restore data."
                 )
             else:
                 _log.info("Data integrity check passed — no orphaned data.")
@@ -601,24 +619,11 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Global JWT authentication enforcement — ALL endpoints require auth
-from app.core.security_middleware import SecurityAuthMiddleware
-
 app.add_middleware(SecurityAuthMiddleware)
-
-# Audit log middleware — persistent trail of all API requests
-from app.core.audit_middleware import AuditLogMiddleware
 
 app.add_middleware(AuditLogMiddleware)
 
-# Agent lifecycle hooks — telemetry and model performance tracking
-from app.core.agent_hooks import register_builtin_hooks
-
 register_builtin_hooks()
-
-
-# Security headers — prevent clickjacking, MIME sniffing, and XSS
-from starlette.middleware.base import BaseHTTPMiddleware
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
@@ -637,7 +642,10 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             "max-age=31536000; includeSubDomains; preload"
         )
         response.headers["Content-Security-Policy"] = (
-            "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; font-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self';"
+            "default-src 'self'; script-src 'self'; "
+            "style-src 'self' 'unsafe-inline'; img-src 'self' data:; "
+            "connect-src 'self'; font-src 'self'; frame-ancestors 'none'; "
+            "base-uri 'self'; form-action 'self';"
         )
         return response
 
@@ -655,10 +663,6 @@ app.add_middleware(
     allow_headers=["Content-Type", "Authorization", "X-Access-Token"],
 )
 
-# Network security — access token for non-localhost connections, plus a guard
-# for local-mode admin when the API is bound to a network interface.
-from app.core.network_security import NetworkSecurityMiddleware, requires_local_admin_network_guard
-
 if app_settings.network_access_token or requires_local_admin_network_guard(app_settings):
     app.add_middleware(NetworkSecurityMiddleware)
     import logging
@@ -673,8 +677,8 @@ if app_settings.rate_limit_enabled:
         from app.core.rate_limiter import limiter
 
         app.state.limiter = limiter
-        from slowapi.errors import RateLimitExceeded
         from slowapi import _rate_limit_exceeded_handler
+        from slowapi.errors import RateLimitExceeded
 
         app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
     except ImportError:
@@ -748,7 +752,10 @@ async def agent_card():
     """A2A Protocol: Agent Card discovery endpoint."""
     return {
         "name": "Istara",
-        "description": "Local-first AI agent for UX Research — analyzes interviews, surveys, usability tests and more using 40+ research skills.",
+        "description": (
+            "Local-first AI agent for UX Research — analyzes interviews, surveys, "
+            "usability tests and more using 40+ research skills."
+        ),
         "url": "http://localhost:8000",
         "version": ISTARA_VERSION,
         "protocol_version": "0.1",
@@ -761,7 +768,10 @@ async def agent_card():
             {
                 "id": "ux-research",
                 "name": "UX Research Analysis",
-                "description": "Analyzes user interviews, surveys, usability tests, and field studies to extract insights and recommendations.",
+                "description": (
+                    "Analyzes user interviews, surveys, usability tests, and field "
+                    "studies to extract insights and recommendations."
+                ),
                 "tags": ["ux", "research", "analysis", "interviews", "surveys"],
                 "examples": [
                     "Analyze these interview transcripts",

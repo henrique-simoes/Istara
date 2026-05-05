@@ -8,12 +8,11 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import lancedb
-import pyarrow as pa
 
 from app.config import settings
 from app.core.content_guard import ContentGuard
 from app.core.embeddings import EmbeddedChunk, TextChunk, embed_chunks, embed_text
-from app.core.keyword_index import KeywordIndex, KeywordResult
+from app.core.keyword_index import KeywordIndex
 
 _guard = ContentGuard()
 
@@ -58,7 +57,7 @@ class VectorStore:
 
     def _ensure_table(self) -> bool:
         """Check if the chunks table exists."""
-        return self.table_name in self.db.table_names()
+        return self.table_name in self.db.list_tables().tables
 
     def _table_has_column(self, column: str) -> bool:
         """Check whether the existing table has *column*."""
@@ -311,6 +310,47 @@ async def hybrid_search(
     return results
 
 
+async def _keyword_only_search(
+    project_id: str,
+    query: str,
+    top_k: int | None = None,
+    *,
+    source_filter: str | None = None,
+    file_type_filter: str | None = None,
+    agent_id: str | None = None,
+) -> list[RetrievalResult]:
+    """Fallback retrieval path for installs where embeddings are unavailable."""
+    if agent_id is not None:
+        # The keyword index does not currently store agent ownership. Returning
+        # empty results keeps agent-scoped retrieval from leaking unscoped hits.
+        return []
+
+    k = top_k or settings.rag_top_k
+    keyword_results = await KeywordIndex(project_id).search(query, top_k=k * 2)
+
+    if source_filter:
+        keyword_results = [kr for kr in keyword_results if kr.source == source_filter]
+    if file_type_filter:
+        normalized_file_type = file_type_filter.lstrip(".").lower()
+        keyword_results = [
+            kr
+            for kr in keyword_results
+            if Path(kr.source).suffix.lstrip(".").lower() == normalized_file_type
+        ]
+
+    results: list[RetrievalResult] = []
+    for rank, kr in enumerate(keyword_results[:k], 1):
+        results.append(
+            RetrievalResult(
+                text=kr.text,
+                source=kr.source,
+                page=kr.page if kr.page else None,
+                score=1.0 / rank,
+            )
+        )
+    return results
+
+
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
@@ -335,19 +375,26 @@ async def ingest_chunks(
     if not chunks:
         return 0
 
-    embedded = await embed_chunks(chunks)
-    confidence = 0.8 if agent_id else 1.0
-    store = VectorStore(project_id)
-    count = await store.add_chunks(embedded, agent_id=agent_id, confidence=confidence)
-
-    # Also index in the keyword store for hybrid search
+    # Always preserve keyword searchability. Vector embeddings depend on local
+    # or network compute and should not make document ingestion fail outright.
     try:
         kw_index = KeywordIndex(project_id)
         await kw_index.add_chunks(chunks)
     except Exception as e:
         logger.warning(f"Keyword indexing failed (non-fatal): {e}")
 
-    return count
+    try:
+        embedded = await embed_chunks(chunks)
+        confidence = 0.8 if agent_id else 1.0
+        store = VectorStore(project_id)
+        return await store.add_chunks(embedded, agent_id=agent_id, confidence=confidence)
+    except Exception as e:
+        logger.warning(
+            "Vector ingestion unavailable for project %s; keyword index remains searchable: %s",
+            project_id,
+            e,
+        )
+        return 0
 
 
 async def retrieve_context(
@@ -369,16 +416,31 @@ async def retrieve_context(
     Returns:
         RAGContext with retrieved documents and formatted context.
     """
-    query_vector = await embed_text(query)
-    results = await hybrid_search(
-        project_id,
-        query,
-        query_vector,
-        top_k=top_k,
-        source_filter=source_filter,
-        file_type_filter=file_type_filter,
-        agent_id=agent_id,
-    )
+    try:
+        query_vector = await embed_text(query)
+        results = await hybrid_search(
+            project_id,
+            query,
+            query_vector,
+            top_k=top_k,
+            source_filter=source_filter,
+            file_type_filter=file_type_filter,
+            agent_id=agent_id,
+        )
+    except Exception as e:
+        logger.warning(
+            "Embedding retrieval unavailable for project %s; falling back to keyword search: %s",
+            project_id,
+            e,
+        )
+        results = await _keyword_only_search(
+            project_id,
+            query,
+            top_k=top_k,
+            source_filter=source_filter,
+            file_type_filter=file_type_filter,
+            agent_id=agent_id,
+        )
 
     # Format context for the LLM — wrap each chunk in untrusted delimiters
     context_parts = []

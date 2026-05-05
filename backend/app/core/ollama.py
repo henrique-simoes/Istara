@@ -1,7 +1,7 @@
 """Async Ollama client for model management and inference."""
 
 import json
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
 
 import httpx
 
@@ -221,7 +221,7 @@ def _create_llm_client():
 
 def _init_llm_router():
     """Initialize the LLM router with the local provider as default server."""
-    from app.core.llm_router import llm_router, LLMServerEntry
+    from app.core.llm_router import LLMServerEntry, llm_router
 
     # Register the local provider
     if settings.llm_provider == "lmstudio":
@@ -284,11 +284,12 @@ def _load_persisted_servers():
 async def load_persisted_servers_async():
     """Load persisted LLM servers from DB into the live router."""
     try:
+        from sqlalchemy import select
+
+        from app.core.field_encryption import decrypt_field
+        from app.core.llm_router import LLMServerEntry, llm_router
         from app.models.database import async_session
         from app.models.llm_server import LLMServer
-        from app.core.llm_router import llm_router, LLMServerEntry
-        from app.core.field_encryption import decrypt_field
-        from sqlalchemy import select
 
         async with async_session() as db:
             result = await db.execute(select(LLMServer).order_by(LLMServer.priority))
@@ -364,4 +365,6 @@ _init_llm_router()
 # failover. All code that imports `from app.core.ollama import ollama`
 # automatically gets router-based fallback to network-discovered and
 # external LLM servers.
-from app.core.compute_registry import compute_registry as ollama  # noqa: E402
+from app.core.compute_registry import compute_registry  # noqa: E402
+
+ollama = compute_registry

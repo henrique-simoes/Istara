@@ -140,8 +140,10 @@ def security_configuration_warnings(settings_obj: Any) -> list[str]:
     explicit_webauthn = bool((getattr(settings_obj, "webauthn_origins", "") or "").strip())
     team_mode = bool(getattr(settings_obj, "team_mode", False))
 
-    if team_mode and trusted_origins and all(
-        _host_is_loopback(urlparse(origin).hostname or "") for origin in trusted_origins
+    if (
+        team_mode
+        and trusted_origins
+        and all(_host_is_loopback(urlparse(origin).hostname or "") for origin in trusted_origins)
     ):
         warnings.append(
             "Team mode only trusts localhost origins. Configure CORS_ORIGINS and "
@@ -162,10 +164,7 @@ def security_configuration_warnings(settings_obj: Any) -> list[str]:
             )
 
     candidate_origins = (
-        [
-            normalize_origin(raw)
-            for raw in _split_csv(getattr(settings_obj, "webauthn_origins", ""))
-        ]
+        [normalize_origin(raw) for raw in _split_csv(getattr(settings_obj, "webauthn_origins", ""))]
         if explicit_webauthn
         else cors_origins
     )

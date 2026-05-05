@@ -1,14 +1,14 @@
 """Audit API routes — DevOps, UI audit agent, and system audit log endpoints."""
 
 from fastapi import APIRouter, Depends, Query, Request
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.devops_agent import devops_agent
 from app.agents.ui_audit_agent import ui_audit_agent
+from app.core.audit_middleware import AuditLog
 from app.core.security_middleware import require_admin_from_request
 from app.models.database import get_db
-from app.core.audit_middleware import AuditLog
 
 router = APIRouter()
 

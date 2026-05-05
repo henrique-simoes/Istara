@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 try:
     from argon2 import PasswordHasher, Type
-    from argon2.exceptions import VerifyMismatchError, VerificationError
+    from argon2.exceptions import VerificationError, VerifyMismatchError
 
     _ARGON2_AVAILABLE = True
     _ph = PasswordHasher(
