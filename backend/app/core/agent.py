@@ -19,43 +19,43 @@ import asyncio
 import json
 import logging
 import math
+import re
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from sqlalchemy import case, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import settings
-from app.core.datetime_utils import ensure_utc
-from app.core.steering import steering_manager
-from app.core.ollama import ollama
-from app.core.rag import retrieve_context, ingest_chunks
-from app.core.self_check import verify_claim, Confidence
-from app.core.file_processor import process_file
-from app.core.embeddings import TextChunk
-from app.core.context_hierarchy import context_hierarchy
-from app.core.resource_governor import governor
-from app.core.telemetry import telemetry_recorder
-from app.models.database import async_session
-from app.models.project import Project
-from app.models.task import Task, TaskStatus
-from app.models.finding import Nugget, Fact, Insight, Recommendation
-from app.models.agent import Agent, AgentState
 from app.api.websocket import (
     broadcast_agent_status,
-    broadcast_task_progress,
-    broadcast_suggestion,
-    broadcast_task_queue_update,
-    broadcast_finding_created,
     broadcast_agent_thinking,
+    broadcast_finding_created,
     broadcast_plan_progress,
+    broadcast_suggestion,
+    broadcast_task_progress,
+    broadcast_task_queue_update,
 )
-from app.core.checkpoint import create_checkpoint, update_checkpoint, complete_checkpoint
-from app.skills.registry import registry
-from app.skills.base import SkillInput, SkillOutput
+from app.config import settings
 from app.core.agent_hooks import agent_hooks
+from app.core.checkpoint import complete_checkpoint, create_checkpoint, update_checkpoint
+from app.core.context_hierarchy import context_hierarchy
+from app.core.datetime_utils import ensure_utc
+from app.core.embeddings import TextChunk
+from app.core.ollama import ollama
+from app.core.rag import ingest_chunks, retrieve_context
+from app.core.resource_governor import governor
+from app.core.self_check import Confidence, verify_claim
+from app.core.steering import steering_manager
+from app.core.telemetry import telemetry_recorder
+from app.models.agent import Agent, AgentState
+from app.models.database import async_session
+from app.models.finding import Fact, Insight, Nugget, Recommendation
+from app.models.project import Project
+from app.models.task import Task, TaskStatus
+from app.skills.base import SkillInput, SkillOutput
+from app.skills.registry import registry
 from app.skills.skill_manager import skill_manager
 
 logger = logging.getLogger(__name__)
@@ -125,6 +125,42 @@ class AgentOrchestrator:
     def agent_id(self) -> str:
         return self._agent_id
 
+    def _should_attempt_research_plan(self, task: Task) -> bool:
+        """Return True when an auto-routed task is complex enough for DAG planning."""
+        if task.skill_name:
+            return False
+
+        text = "\n".join(
+            [
+                task.title or "",
+                task.description or "",
+                getattr(task, "instructions", "") or "",
+            ]
+        )
+        normalized = text.lower()
+        if len(normalized.strip()) < 160:
+            return False
+
+        enumerated_steps = len(re.findall(r"(?:^|\s)\d+[.)]\s+", normalized)) >= 2
+        bullet_steps = len(re.findall(r"(?m)^\s*[-*]\s+", text)) >= 2
+        complex_markers = (
+            "multi-stage",
+            "multi step",
+            "multi-step",
+            "deep-dive",
+            "decompose",
+            "investigation",
+            "contrast",
+            "compare",
+            "synthesize",
+            "generate",
+            "strategy",
+            "visionary",
+        )
+        marker_hits = sum(1 for marker in complex_markers if marker in normalized)
+
+        return enumerated_steps or bullet_steps or marker_hits >= 2 or len(normalized) >= 360
+
     async def start(self) -> None:
         """Start the autonomous work loop."""
         self._running = True
@@ -159,7 +195,7 @@ class AgentOrchestrator:
             try:
                 await asyncio.wait_for(self._wake_event.wait(), timeout=interval)
                 self._wake_event.clear()
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 pass
 
     def wake(self) -> None:
@@ -211,7 +247,11 @@ class AgentOrchestrator:
         next_review_state: str = "system_failed",
     ) -> None:
         """Expose agent/self-verification failure to humans instead of hiding it as Done."""
-        from app.core.task_review import SYSTEM_FAILED, diagnose_review_event, record_task_review_event
+        from app.core.task_review import (
+            SYSTEM_FAILED,
+            diagnose_review_event,
+            record_task_review_event,
+        )
 
         event = await record_task_review_event(
             db,
@@ -238,7 +278,7 @@ class AgentOrchestrator:
                     agent_row.state = state
                     agent_row.current_task = current_task
                     if state == AgentState.WORKING:
-                        agent_row.last_heartbeat_at = datetime.now(timezone.utc)
+                        agent_row.last_heartbeat_at = datetime.now(UTC)
                     await db.commit()
         except Exception as e:
             logger.error(f"Failed to persist agent state: {e}")
@@ -289,7 +329,9 @@ class AgentOrchestrator:
             # 2. Get the project context
             project = await self._get_project(db, task.project_id)
             if not project:
-                logger.warning(f"Project not found for task {task.id} — sending to review (orphaned)")
+                logger.warning(
+                    f"Project not found for task {task.id} — sending to review (orphaned)"
+                )
                 task.agent_notes = f"Project not found: {task.project_id}"
                 await self._record_system_failed_review(
                     db,
@@ -362,9 +404,6 @@ class AgentOrchestrator:
         This mirrors pi-mono's pattern where steering messages are
         delivered after the current turn completes.
         """
-        from app.core.steering import SteeringMessage
-        from app.models.task import Task, TaskStatus
-        from app.skills.registry import load_skill
 
         message_text = msg.message if hasattr(msg, "message") else str(msg)
         source = msg.source if hasattr(msg, "source") else "user"
@@ -377,8 +416,8 @@ class AgentOrchestrator:
 
         try:
             # Create a temporary skill input from the steering message
-            from app.skills.skill_manager import skill_manager
             from app.skills.registry import SkillInput
+            from app.skills.skill_manager import skill_manager
 
             # Try to find an appropriate skill based on the message content
             skill = None
@@ -418,14 +457,17 @@ class AgentOrchestrator:
                     messages=[
                         {
                             "role": "system",
-                            "content": "You are Istara's main agent. Respond helpfully to the user's steering message.",
+                            "content": (
+                                "You are Istara's main agent. Respond helpfully to the "
+                                "user's steering message."
+                            ),
                         },
                         {"role": "user", "content": message_text},
                     ]
                 )
                 reply = response.get("message", {}).get("content", "")
                 await broadcast_agent_status("idle", f"Steering response: {reply[:200]}...")
-        except asyncio.TimeoutError:
+        except TimeoutError:
             logger.warning("Steering message execution timed out")
             await broadcast_agent_status("warning", "Steering message timed out after 2 minutes")
         except Exception as e:
@@ -437,7 +479,7 @@ class AgentOrchestrator:
         if task.last_retry_at and (task.retry_count or 0) > 0:
             # Backoff delays: [5, 15, 45, 120] seconds (capped at 120)
             backoff = min(5 * (3 ** (task.retry_count - 1)), 120)
-            elapsed = (datetime.now(timezone.utc) - ensure_utc(task.last_retry_at)).total_seconds()
+            elapsed = (datetime.now(UTC) - ensure_utc(task.last_retry_at)).total_seconds()
             if elapsed < backoff:
                 return True
         return False
@@ -514,7 +556,10 @@ class AgentOrchestrator:
                     from_agent_id=self._agent_id,
                     to_agent_id=msg_from,
                     message_type="report",
-                    content=f"Consulting-grade MECE reporting completed for project {project_id}. Updated {updated_count} reports.",
+                    content=(
+                        "Consulting-grade MECE reporting completed for project "
+                        f"{project_id}. Updated {updated_count} reports."
+                    ),
                     metadata={"project_id": project_id, "task_id": task_id},
                 )
         except Exception as e:
@@ -564,13 +609,15 @@ class AgentOrchestrator:
             rag = await retrieve_context(
                 task.project_id, task.title + " " + (task.description or "")
             )
+            specialties_label = ", ".join(specialties) if specialties else "UX research"
 
             llm_messages = [
                 {
                     "role": "system",
                     "content": (
-                        f"You are {self._agent_id}, a specialist in: {', '.join(specialties) if specialties else 'UX research'}. "
-                        f"Provide expert analysis. You are collaborating with {msg_from} on task '{task.title}'."
+                        f"You are {self._agent_id}, a specialist in: {specialties_label}. "
+                        f"Provide expert analysis. You are collaborating with {msg_from} "
+                        f"on task '{task.title}'."
                     ),
                 },
             ]
@@ -630,8 +677,7 @@ class AgentOrchestrator:
         for a response. Synthesizes both perspectives into a refined output.
         """
         try:
-            from app.services.a2a import send_message, get_messages
-            from app.core.agent_identity import get_capability_card
+            from app.services.a2a import get_messages, send_message
 
             # Find a collaborator — prefer devops for data quality, ux-eval for UX
             collaborators = ["istara-devops", "istara-ux-eval", "istara-ui-audit"]
@@ -643,7 +689,10 @@ class AgentOrchestrator:
                 from_agent_id=self._agent_id,
                 to_agent_id=target,
                 message_type="debate_request",
-                content=f"I need a critical review of this analysis.\n\nTask: {task.title}\n\nOutput:\n{output.summary[:1500]}",
+                content=(
+                    "I need a critical review of this analysis.\n\n"
+                    f"Task: {task.title}\n\nOutput:\n{output.summary[:1500]}"
+                ),
                 metadata={"task_id": task.id, "context_id": context_id},
             )
             logger.info(f"A2A debate initiated with {target} for task {task.id}")
@@ -666,11 +715,18 @@ class AgentOrchestrator:
                             messages=[
                                 {
                                     "role": "system",
-                                    "content": "Synthesize two perspectives on the same research analysis into a single improved output.",
+                                    "content": (
+                                        "Synthesize two perspectives on the same research "
+                                        "analysis into a single improved output."
+                                    ),
                                 },
                                 {
                                     "role": "user",
-                                    "content": f"Original analysis:\n{output.summary[:1000]}\n\nCritique from {target}:\n{critique[:1000]}\n\nProduce a refined analysis that addresses the critique.",
+                                    "content": (
+                                        f"Original analysis:\n{output.summary[:1000]}\n\n"
+                                        f"Critique from {target}:\n{critique[:1000]}\n\n"
+                                        "Produce a refined analysis that addresses the critique."
+                                    ),
                                 },
                             ]
                         )
@@ -702,7 +758,11 @@ class AgentOrchestrator:
                 messages=[
                     {
                         "role": "system",
-                        "content": f"You are {self._agent_id}, a critical reviewer. Identify gaps, unsupported claims, missing perspectives, and areas for improvement. Be constructive but rigorous.",
+                        "content": (
+                            f"You are {self._agent_id}, a critical reviewer. Identify gaps, "
+                            "unsupported claims, missing perspectives, and areas for "
+                            "improvement. Be constructive but rigorous."
+                        ),
                     },
                     {"role": "user", "content": content},
                 ]
@@ -735,7 +795,6 @@ class AgentOrchestrator:
         2. Send via A2A messaging for user review
         """
         try:
-            from app.api.websocket import broadcast_task_progress
             from app.services.a2a import send_message as a2a_send
 
             async with async_session() as db:
@@ -795,7 +854,7 @@ class AgentOrchestrator:
                 or_(
                     Task.locked_by.is_(None),
                     Task.locked_by == self._agent_id,
-                    Task.lock_expires_at < datetime.now(timezone.utc),
+                    Task.lock_expires_at < datetime.now(UTC),
                 ),
             )
             .order_by(priority_order, Task.position.asc(), Task.created_at.asc())
@@ -846,17 +905,19 @@ class AgentOrchestrator:
             project.id, task.title + " " + (task.description or ""), top_k=5
         )
 
-        # ── Plan-and-Execute: decompose complex tasks before executing ──
-        # If the task has no explicit skill and has a substantive description,
-        # create a research plan first. Simple tasks skip planning.
-        skill = await self._select_skill(task)
-        if not skill:
-            # Complex task — create plan, then execute step by step
+        # ── Plan-and-Execute: decompose complex auto-routed tasks before skill selection ──
+        # Explicitly selected skills run directly. Complex auto tasks attempt a
+        # DAG plan first so a broad keyword match does not collapse a multi-step
+        # investigation into one oversized skill call.
+        if self._should_attempt_research_plan(task):
             plan = await self._create_research_plan(task, project, rag_context)
             if plan and len(plan.steps) > 1:
                 await self._execute_planned_task(db, task, project, plan, rag_context)
                 await complete_checkpoint(db, task.id)
                 return
+
+        skill = await self._select_skill(task)
+        if not skill:
             # Simple task or planning failed — fall back to ReAct loop
             await self._execute_general_task(db, task, project)
             await complete_checkpoint(db, task.id)
@@ -900,10 +961,9 @@ class AgentOrchestrator:
             skill_input.files = [
                 str(f)
                 for f in folder.iterdir()
-                if f.is_file() and f.suffix.lower() in {
-                    ".txt", ".md", ".pdf", ".docx", ".csv",
-                    ".mp3", ".wav", ".m4a", ".ogg"
-                }
+                if f.is_file()
+                and f.suffix.lower()
+                in {".txt", ".md", ".pdf", ".docx", ".csv", ".mp3", ".wav", ".m4a", ".ogg"}
             ]
 
         await broadcast_task_progress(task.id, 0.3, f"Running {skill.display_name}...")
@@ -930,7 +990,7 @@ class AgentOrchestrator:
             # Execute the skill (with timeout protection)
             try:
                 output = await asyncio.wait_for(skill.execute(skill_input), timeout=600)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 output = SkillOutput(
                     success=False, summary="Skill timed out after 10 minutes.", errors=["timeout"]
                 )
@@ -955,15 +1015,16 @@ class AgentOrchestrator:
             # Validates findings using multi-perspective methods before storing.
             # Self-MoA works with a single server (varies temperature).
             try:
+                import json as _json
+
                 from app.core.adaptive_validation import AdaptiveSelector
                 from app.core.validation import (
-                    self_moa,
                     adversarial_review,
+                    debate_rounds,
                     dual_run,
                     full_ensemble,
-                    debate_rounds,
+                    self_moa,
                 )
-                import json as _json
 
                 selector = AdaptiveSelector()
                 method = await selector.select_method(project.id, skill.name, self.agent_id)
@@ -1000,7 +1061,9 @@ class AgentOrchestrator:
 
                         val_result = await asyncio.wait_for(
                             fn(**validation_kwargs),
-                            timeout=max(1, int(getattr(settings, "validation_timeout_seconds", 120))),
+                            timeout=max(
+                                1, int(getattr(settings, "validation_timeout_seconds", 120))
+                            ),
                         )
                         task.validation_method = method
                         task.validation_result = _json.dumps(
@@ -1025,7 +1088,9 @@ class AgentOrchestrator:
                             val_result.consensus.agreement_score >= 0.5,
                         )
                         logger.info(
-                            f"Validation [{method}]: score={val_result.consensus.agreement_score:.2f}"
+                            "Validation [%s]: score=%.2f",
+                            method,
+                            val_result.consensus.agreement_score,
                         )
 
                         await agent_hooks.fire(
@@ -1168,6 +1233,9 @@ class AgentOrchestrator:
                 if health.get("executions", 0) >= 3 and health.get("avg_quality", 1.0) < 0.5:
                     # Ask LLM to reflect on why the skill is underperforming
                     improvement_text = ""
+                    avg_quality = health.get("avg_quality", 0)
+                    execution_count = health["executions"]
+                    output_preview = (output.summary or "")[:300]
                     try:
                         reflection = await ollama.chat(
                             messages=[
@@ -1175,11 +1243,13 @@ class AgentOrchestrator:
                                     "role": "user",
                                     "content": (
                                         f"Skill '{skill.name}' has been underperforming "
-                                        f"(quality: {health.get('avg_quality', 0):.0%} over {health['executions']} runs).\n"
+                                        f"(quality: {avg_quality:.0%} over "
+                                        f"{execution_count} runs).\n"
                                         f"Last task: '{task.title}'\n"
-                                        f"Last output (first 300 chars): {(output.summary or '')[:300]}\n"
+                                        f"Last output (first 300 chars): {output_preview}\n"
                                         f"Errors: {output.errors}\n\n"
-                                        "How should the skill's execution prompt be improved to produce better results? "
+                                        "How should the skill's execution prompt be improved "
+                                        "to produce better results? "
                                         "Be specific and concise (2-3 sentences)."
                                     ),
                                 },
@@ -1188,7 +1258,9 @@ class AgentOrchestrator:
                         )
                         improvement_text = reflection.get("message", {}).get("content", "")
                     except Exception:
-                        improvement_text = f"Low quality ({health['avg_quality']:.0%}) after {health['executions']} runs"
+                        improvement_text = (
+                            f"Low quality ({avg_quality:.0%}) after {execution_count} runs"
+                        )
 
                     skill_def = skill_manager.get(skill.name)
                     proposal = skill_manager.propose_improvement(
@@ -1198,7 +1270,10 @@ class AgentOrchestrator:
                         if isinstance(skill_def, dict)
                         else "",
                         proposed_value=improvement_text[:500],
-                        reason=f"LLM reflection: quality {health['avg_quality']:.0%} after {health['executions']} runs",
+                        reason=(
+                            f"LLM reflection: quality {avg_quality:.0%} after "
+                            f"{execution_count} runs"
+                        ),
                         confidence=0.6,
                     )
                     try:
@@ -1210,8 +1285,11 @@ class AgentOrchestrator:
                     except Exception:
                         pass
                     await broadcast_suggestion(
-                        f"Skill '{skill.display_name}' needs improvement (quality: {health['avg_quality']:.0%}). "
-                        f"An improvement proposal has been created. Check Agents → Skill Proposals.",
+                        (
+                            f"Skill '{skill.display_name}' needs improvement "
+                            f"(quality: {avg_quality:.0%}). An improvement proposal "
+                            "has been created. Check Agents → Skill Proposals."
+                        ),
                         project.id,
                     )
             except Exception:
@@ -1233,9 +1311,8 @@ class AgentOrchestrator:
             # Checkpoint: complete (remove checkpoint)
             await complete_checkpoint(db, task.id)
 
-            logger.info(
-                f"Task {'completed' if verified else 'needs review'}: {task.title} — {output.summary}"
-            )
+            state_label = "completed" if verified else "needs review"
+            logger.info("Task %s: %s — %s", state_label, task.title, output.summary)
 
         except Exception as e:
             error_msg = str(e)
@@ -1304,7 +1381,7 @@ class AgentOrchestrator:
 
             # Retry logic with backoff
             task.retry_count = (task.retry_count or 0) + 1
-            task.last_retry_at = datetime.now(timezone.utc)
+            task.last_retry_at = datetime.now(UTC)
             task.agent_notes = f"Error: {error_msg}{resolution_hint}"
 
             if task.retry_count < (task.max_retries or 3):
@@ -1313,7 +1390,10 @@ class AgentOrchestrator:
                 await self._persist_agent_state(AgentState.ERROR, error_msg)
                 await broadcast_agent_status(
                     "warning",
-                    f"Task retry {task.retry_count}/{task.max_retries or 3}: {task.title} — {error_msg[:80]}",
+                    (
+                        f"Task retry {task.retry_count}/{task.max_retries or 3}: "
+                        f"{task.title} — {error_msg[:80]}"
+                    ),
                 )
             else:
                 task.progress = 1.0
@@ -1326,7 +1406,10 @@ class AgentOrchestrator:
                 await self._persist_agent_state(AgentState.ERROR, error_msg)
                 await broadcast_agent_status(
                     "error",
-                    f"Task failed after {task.retry_count} retries: {task.title} — {error_msg[:80]}",
+                    (
+                        f"Task failed after {task.retry_count} retries: "
+                        f"{task.title} — {error_msg[:80]}"
+                    ),
                 )
 
             # Leave checkpoint in place for crash recovery awareness
@@ -1393,8 +1476,11 @@ class AgentOrchestrator:
             "description": f"Autonomously proposed skill based on task: {task.title}",
             "phase": skill.phase.value if skill else "discover",
             "skill_type": "mixed",
-            "plan_prompt": f"Create a research plan for: {{context}}",
-            "execute_prompt": f"Analyze the following data for patterns and insights.\nContext: {{context}}\n\nData:\n{{content}}",
+            "plan_prompt": "Create a research plan for: {context}",
+            "execute_prompt": (
+                "Analyze the following data for patterns and insights.\n"
+                "Context: {context}\n\nData:\n{content}"
+            ),
             "output_schema": output.summary[:500] if output.summary else "Standard findings output",
         }
 
@@ -1409,13 +1495,14 @@ class AgentOrchestrator:
             try:
                 from app.core.improvement_governance import improvement_governance
 
-                await improvement_governance.register_skill_creation_proposal(
-                    proposal.to_dict()
-                )
+                await improvement_governance.register_skill_creation_proposal(proposal.to_dict())
             except Exception:
                 pass
             await broadcast_suggestion(
-                f"New skill proposed: '{proposed_definition['display_name']}' — review in Skill Creation Proposals.",
+                (
+                    f"New skill proposed: '{proposed_definition['display_name']}' — "
+                    "review in Skill Creation Proposals."
+                ),
                 task.project_id,
             )
         except ValueError as e:
@@ -1448,7 +1535,6 @@ class AgentOrchestrator:
             "ux audit": "browser-ux-audit",
             "site audit": "browser-ux-audit",
             "accessibility check": "browser-accessibility-check",
-            "wcag": "browser-accessibility-check",
             "a11y": "browser-accessibility-check",
             "competitive benchmark": "browser-competitive-benchmark",
             "competitor audit": "browser-competitive-benchmark",
@@ -1525,7 +1611,6 @@ class AgentOrchestrator:
         description embeddings.  Returns the best match above the current
         cosine similarity threshold, or None.
         """
-        import math
 
         all_skills = registry.list_all()
         if not all_skills:
@@ -1605,7 +1690,6 @@ class AgentOrchestrator:
                 if not agent:
                     return True  # Unknown agent — allow
 
-                caps = json.loads(agent.capabilities) if agent.capabilities else []
                 # If agent has "skill_execution" capability but no explicit allowed_skills
                 # in memory, allow all skills
                 memory = json.loads(agent.memory) if agent.memory else {}
@@ -1640,7 +1724,7 @@ class AgentOrchestrator:
         user_msg = "\n\n".join(user_parts)
 
         # Tool-augmented ReAct loop — same tools available in chat
-        MAX_AGENT_TOOL_ITERATIONS = 5
+        max_agent_tool_iterations = 5
         messages = [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_msg},
@@ -1655,8 +1739,8 @@ class AgentOrchestrator:
         except ImportError:
             use_tools = False
 
-        for iteration in range(MAX_AGENT_TOOL_ITERATIONS + 1):
-            if use_tools and iteration < MAX_AGENT_TOOL_ITERATIONS:
+        for iteration in range(max_agent_tool_iterations + 1):
+            if use_tools and iteration < max_agent_tool_iterations:
                 response = await ollama.chat(messages=messages, tools=OPENAI_TOOLS)
             else:
                 response = await ollama.chat(messages=messages)
@@ -1665,7 +1749,7 @@ class AgentOrchestrator:
             content = msg.get("content", "")
             tool_calls = msg.get("tool_calls", [])
 
-            if tool_calls and iteration < MAX_AGENT_TOOL_ITERATIONS and use_tools:
+            if tool_calls and iteration < max_agent_tool_iterations and use_tools:
                 # Append assistant message with tool calls
                 messages.append(
                     {"role": "assistant", "content": content or "", "tool_calls": tool_calls}
@@ -1759,7 +1843,8 @@ class AgentOrchestrator:
         try:
             skill_names = [s.name for s in registry.list_all()[:25]]
             plan_prompt = (
-                "You are a research planning agent. Decompose this task into 2-5 concrete steps.\n\n"
+                "You are a research planning agent. Decompose this task into 2-5 "
+                "concrete steps.\n\n"
                 f"Task: {task.title}\n"
                 f"Description: {task.description or 'No description'}\n"
                 f"Instructions: {getattr(task, 'instructions', '') or 'None'}\n"
@@ -1770,7 +1855,8 @@ class AgentOrchestrator:
                 "- skill_name: which skill to use (or null for general reasoning)\n"
                 "- depends_on: list of step IDs this step depends on (empty [] if independent)\n\n"
                 "Steps with empty depends_on can run in parallel.\n\n"
-                'Respond with JSON: {"steps": [{"id": "step_1", "description": "...", "skill_name": "...", "depends_on": []}]}\n'
+                'Respond with JSON: {"steps": [{"id": "step_1", '
+                '"description": "...", "skill_name": "...", "depends_on": []}]}\n'
                 'If this is a simple task that doesn\'t need decomposition, respond: {"steps": []}'
             )
             response = await ollama.chat(
@@ -1952,13 +2038,16 @@ class AgentOrchestrator:
                         {"role": "system", "content": system_prompt},
                         {
                             "role": "user",
-                            "content": f"Research step: {step.description}\n\nContext from previous steps:\n{prev_context}",
+                            "content": (
+                                f"Research step: {step.description}\n\n"
+                                f"Context from previous steps:\n{prev_context}"
+                            ),
                         },
                     ]
                 )
                 step.result = response.get("message", {}).get("content", "")
             step.status = "completed"
-        except asyncio.TimeoutError:
+        except TimeoutError:
             step.status = "failed"
             step.result = "Step timed out after 5 minutes"
             raise
@@ -2179,8 +2268,13 @@ class AgentOrchestrator:
                 )
                 readable_content = readable_artifact["content"]
                 chunks = [
-                    TextChunk(text=readable_content[:2000], source=f"skill:{task.skill_name}:{readable_artifact['file_name']}"),
-                    TextChunk(text=content[:2000], source=f"skill:{task.skill_name}:{filename}:raw"),
+                    TextChunk(
+                        text=readable_content[:2000],
+                        source=f"skill:{task.skill_name}:{readable_artifact['file_name']}",
+                    ),
+                    TextChunk(
+                        text=content[:2000], source=f"skill:{task.skill_name}:{filename}:raw"
+                    ),
                 ]
                 await ingest_chunks(project_id, chunks)
                 # Create a Document record so artifacts appear in Documents view
@@ -2310,7 +2404,10 @@ class AgentOrchestrator:
                 verified = result.get("verified", True)
                 reason = result.get("reason", "LLM reflection passed")
                 logger.info(
-                    f"LLM reflection: verified={verified}, confidence={result.get('confidence', '?')}, reason={reason}"
+                    "LLM reflection: verified=%s, confidence=%s, reason=%s",
+                    verified,
+                    result.get("confidence", "?"),
+                    reason,
                 )
                 return verified, reason
             # If no JSON found, trust heuristic result

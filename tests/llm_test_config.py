@@ -14,8 +14,12 @@ import pytest
 
 GEMINI_OPENAI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai/"
 GEMINI_TEST_MODEL = "gemini-3.1-flash-lite-preview"
+SECONDARY_OPENAI_BASE_URL = "http://10.0.10.142:1234"
+SECONDARY_TEST_MODEL = "qwen3.6-35b-a3b@q5_k_xl"
 KEYCHAIN_SERVICE = "istara-gemini-openai-compatible-tests"
+SECONDARY_KEYCHAIN_SERVICE = "istara-secondary-openai-compatible-tests"
 KEY_ENV_NAMES = ("ISTARA_LLM_TEST_API_KEY", "GEMINI_API_KEY", "GOOGLE_API_KEY")
+SECONDARY_KEY_ENV_NAMES = ("ISTARA_SECONDARY_LLM_TEST_API_KEY", "ISTARA_LMSTUDIO_TEST_API_KEY")
 
 
 def _read_env_secret(env_name: str) -> str:
@@ -23,8 +27,8 @@ def _read_env_secret(env_name: str) -> str:
     return os.getenv(env_name, "").strip()
 
 
-def _read_keychain_secret() -> str:
-    """Read the local Gemini test key from macOS Keychain when available."""
+def _read_keychain_secret(service: str = KEYCHAIN_SERVICE) -> str:
+    """Read a local live-test key from macOS Keychain when available."""
     if os.name != "posix" or not os.path.exists("/usr/bin/security"):
         return ""
     account = os.getenv("USER", "istara")
@@ -36,7 +40,7 @@ def _read_keychain_secret() -> str:
                 "-a",
                 account,
                 "-s",
-                KEYCHAIN_SERVICE,
+                service,
                 "-w",
             ],
             check=False,
@@ -59,6 +63,15 @@ def get_live_llm_api_key() -> str:
     return _read_keychain_secret()
 
 
+def get_secondary_live_llm_api_key() -> str:
+    """Return the fallback live-test API key without exposing it in code."""
+    for env_name in SECONDARY_KEY_ENV_NAMES:
+        api_key = _read_env_secret(env_name)
+        if api_key:
+            return api_key
+    return _read_keychain_secret(SECONDARY_KEYCHAIN_SERVICE)
+
+
 def require_live_llm_api_key() -> str:
     """Return the API key or skip the live LLM test with an explicit reason."""
     api_key = get_live_llm_api_key()
@@ -76,15 +89,18 @@ def configure_gemini_settings(settings, api_key: str) -> None:
     settings.lmstudio_host = GEMINI_OPENAI_BASE_URL
     settings.lmstudio_model = GEMINI_TEST_MODEL
     settings.lmstudio_api_key = api_key
-    settings.strict_auto_routing = True
+    # Live tests need deterministic primary routing but must still allow the
+    # secondary provider to take over after Gemini transient retries fail.
+    settings.strict_auto_routing = False
 
 
 def configure_gemini_compute_registry(*, clear_existing: bool = True):
-    """Register the single Gemini live-test node and return it."""
+    """Register Gemini plus an optional secondary OpenAI-compatible fallback."""
     from app.config import settings
     from app.core.compute_registry import ComputeNode, compute_registry
 
     api_key = require_live_llm_api_key()
+    secondary_api_key = get_secondary_live_llm_api_key()
     configure_gemini_settings(settings, api_key)
 
     if clear_existing:
@@ -114,4 +130,29 @@ def configure_gemini_compute_registry(*, clear_existing: bool = True):
         },
     )
     compute_registry.register_node(node)
-    return node
+    nodes = [node]
+
+    if secondary_api_key:
+        fallback = ComputeNode(
+            node_id="secondary-openai-compatible-live-test",
+            name="Secondary OpenAI-Compatible Live Test",
+            host=SECONDARY_OPENAI_BASE_URL,
+            source="network",
+            provider_type="openai_compat",
+            api_key=secondary_api_key,
+            priority=10,
+            is_local=False,
+            is_healthy=True,
+            loaded_models=[SECONDARY_TEST_MODEL],
+            model_capabilities={
+                SECONDARY_TEST_MODEL: {
+                    "supports_tools": True,
+                    "supports_vision": False,
+                    "context_length": 32768,
+                }
+            },
+        )
+        compute_registry.register_node(fallback)
+        nodes.append(fallback)
+
+    return nodes

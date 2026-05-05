@@ -6,7 +6,8 @@ export type TaskStatus = "backlog" | "in_progress" | "in_review" | "done";
 // ReasoningMemoryCreateRequest, ReasoningMemoryRetrieveRequest, RegisterRequest, LoginRequest,
 // TOTPSetupRequest, TOTPDisableRequest, TOTPVerifyRequest, RecoveryCodeRequest, PreferencesRequest,
 // PasskeyRegistrationStartRequest, PasskeyRegistrationFinishRequest, PasskeyAuthenticationStartRequest,
-// PasskeyAuthenticationFinishRequest, PasskeyCredentialInfo.
+// PasskeyAuthenticationFinishRequest, PasskeyCredentialInfo, DataIntegrityQuarantineRequest,
+// LLMServerCreate, LLMServerUpdate.
 
 export interface Project {
   id: string;

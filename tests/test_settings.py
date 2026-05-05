@@ -1,11 +1,11 @@
 """Tests for Settings API routes — hardware, models, status, maintenance, data integrity."""
 
 import pytest
-from httpx import AsyncClient, ASGITransport
-from app.main import app
 from app.config import settings
-from app.models.database import init_db
 from app.core.auth import create_token
+from app.main import app
+from app.models.database import init_db
+from httpx import ASGITransport, AsyncClient
 
 
 @pytest.fixture(autouse=True)
@@ -13,12 +13,16 @@ def reset_settings():
     original_team_mode = settings.team_mode
     original_jwt_secret = settings.jwt_secret
     original_data_dir = settings.data_dir
+    original_upload_dir = settings.upload_dir
+    original_lance_db_path = settings.lance_db_path
     original_runtime_personas_dir = settings.runtime_personas_dir
     original_strict_auto_routing = settings.strict_auto_routing
     yield
     settings.team_mode = original_team_mode
     settings.jwt_secret = original_jwt_secret
     settings.data_dir = original_data_dir
+    settings.upload_dir = original_upload_dir
+    settings.lance_db_path = original_lance_db_path
     settings.runtime_personas_dir = original_runtime_personas_dir
     settings.strict_auto_routing = original_strict_auto_routing
 
@@ -125,3 +129,54 @@ async def test_data_integrity_uses_runtime_paths_for_clean_install(tmp_path):
     warning_text = "\n".join(report["warnings"])
     assert "keyword index files have no matching project" not in warning_text
     assert "persona directories have no matching agent record" not in warning_text
+
+
+@pytest.mark.asyncio
+async def test_data_integrity_detects_invalid_uploaded_pdfs(tmp_path):
+    """Integrity check should catch PDFs that will fail downstream parsing."""
+    from app.core.data_integrity import run_integrity_check
+    from app.models.database import async_session
+
+    await init_db()
+    settings.data_dir = str(tmp_path / "data")
+    settings.upload_dir = str(tmp_path / "data" / "uploads")
+    settings.lance_db_path = str(tmp_path / "data" / "lance")
+    settings.runtime_personas_dir = str(tmp_path / "data" / "personas")
+
+    bad_pdf = tmp_path / "data" / "uploads" / "missing-project" / "broken.pdf"
+    bad_pdf.parent.mkdir(parents=True)
+    bad_pdf.write_bytes(b"not a real pdf")
+
+    async with async_session() as db:
+        report = await run_integrity_check(db)
+
+    assert "missing-project/broken.pdf" in report["invalid_files"]["pdfs"]
+    assert any("uploaded PDF files" in warning for warning in report["warnings"])
+
+
+@pytest.mark.asyncio
+async def test_data_integrity_quarantine_moves_orphans_and_invalid_pdfs(tmp_path):
+    """Repair action quarantines data rather than deleting it."""
+    from app.core.data_integrity import quarantine_integrity_issues
+    from app.models.database import async_session
+
+    await init_db()
+    settings.data_dir = str(tmp_path / "data")
+    settings.upload_dir = str(tmp_path / "data" / "uploads")
+    settings.lance_db_path = str(tmp_path / "data" / "lance")
+    settings.runtime_personas_dir = str(tmp_path / "data" / "personas")
+
+    orphan_upload = tmp_path / "data" / "uploads" / "missing-project"
+    orphan_upload.mkdir(parents=True)
+    bad_pdf = orphan_upload / "broken.pdf"
+    bad_pdf.write_bytes(b"%PDF-1.7\nmissing eof")
+
+    async with async_session() as db:
+        dry_run = await quarantine_integrity_issues(db, dry_run=True)
+        assert orphan_upload.exists()
+        result = await quarantine_integrity_issues(db, dry_run=False)
+
+    assert dry_run["actions"]
+    assert result["moved"] >= 1
+    assert not orphan_upload.exists()
+    assert any(action["kind"] == "uploads" for action in result["actions"])

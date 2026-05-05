@@ -28,6 +28,11 @@ from app.core.compute_capacity import compute_capacity_envelope, node_capacity_s
 
 logger = logging.getLogger(__name__)
 
+TRANSIENT_HTTP_STATUS_CODES = {408, 409, 425, 429, 500, 502, 503, 504}
+TRANSIENT_CHAT_MAX_ATTEMPTS = 5
+TRANSIENT_CHAT_BASE_DELAY_S = 0.25
+TRANSIENT_CHAT_MAX_DELAY_S = 2.0
+
 
 @dataclass
 class ComputeNode:
@@ -338,6 +343,8 @@ class ComputeNode:
         non_embed = [m for m in models if "embed" not in m.lower()]
 
         if model and model != "default":
+            if model in self.model_capabilities:
+                return model
             if models and model not in models:
                 if non_embed:
                     return non_embed[0]
@@ -805,7 +812,8 @@ class ComputeRegistry:
                         caps = await detect_capabilities_generic(
                             node.host, api_key=node.api_key, provider_type=node.provider_type
                         )
-                        node.model_capabilities = {k: v.to_dict() for k, v in caps.items()}
+                        detected = {k: v.to_dict() for k, v in caps.items()}
+                        node.model_capabilities = {**node.model_capabilities, **detected}
                         logger.info(
                             f"Detected capabilities for relay {node.name}: "
                             f"{len(node.model_capabilities)} models"
@@ -826,7 +834,8 @@ class ComputeRegistry:
                     caps = await detect_capabilities_generic(
                         node.host, api_key=node.api_key, provider_type=node.provider_type
                     )
-                    node.model_capabilities = {k: v.to_dict() for k, v in caps.items()}
+                    detected = {k: v.to_dict() for k, v in caps.items()}
+                    node.model_capabilities = {**node.model_capabilities, **detected}
 
                     # Sync detected context window to global config
                     for model_name, cap in caps.items():
@@ -1026,6 +1035,21 @@ class ComputeRegistry:
             node.health_state = "degraded"
 
     @staticmethod
+    def _is_transient_error(error: Exception) -> bool:
+        """Return true for provider/network failures that are worth retrying."""
+        if isinstance(error, (httpx.TimeoutException, httpx.NetworkError, TimeoutError)):
+            return True
+        response = getattr(error, "response", None)
+        status_code = getattr(response, "status_code", None)
+        return status_code in TRANSIENT_HTTP_STATUS_CODES
+
+    @staticmethod
+    def _retry_delay(attempt: int) -> float:
+        """Small bounded exponential backoff between live-provider retries."""
+        delay = TRANSIENT_CHAT_BASE_DELAY_S * (2 ** max(0, attempt - 1))
+        return min(delay, TRANSIENT_CHAT_MAX_DELAY_S)
+
+    @staticmethod
     def _sanitize_messages(messages: list[dict]) -> list[dict]:
         """Clean messages for LLM API compatibility."""
         sanitized = []
@@ -1093,68 +1117,104 @@ class ComputeRegistry:
             )
             node.active_requests += 1
             try:
-                if node.source in ("relay", "browser") and node.websocket:
-                    data = await node.chat(
-                        msgs,
-                        model=resolved_model,
-                        temperature=temperature,
-                        max_tokens=max_tokens,
-                        tools=tools,
-                        response_format=response_format,
-                    )
-                    self._record_success(node)
-                    return data
+                for attempt in range(1, TRANSIENT_CHAT_MAX_ATTEMPTS + 1):
+                    try:
+                        if node.source in ("relay", "browser") and node.websocket:
+                            data = await node.chat(
+                                msgs,
+                                model=resolved_model,
+                                temperature=temperature,
+                                max_tokens=max_tokens,
+                                tools=tools,
+                                response_format=response_format,
+                            )
+                            self._record_success(node)
+                            return data
 
-                client = await node._get_client()
+                        client = await node._get_client()
 
-                if node.provider_type == "ollama":
-                    options: dict = {"temperature": temperature}
-                    if max_tokens:
-                        options["num_predict"] = max_tokens
-                    payload = {
-                        "model": resolved_model,
-                        "messages": msgs,
-                        "stream": False,
-                        "options": options,
-                    }
-                    resp = await client.post("/api/chat", json=payload)
-                    resp.raise_for_status()
-                    data = resp.json()
-                    self._record_success(node)
-                    return data
-                else:
-                    payload = {
-                        "model": resolved_model,
-                        "messages": msgs,
-                        "temperature": temperature,
-                        "stream": False,
-                    }
-                    if max_tokens:
-                        payload["max_tokens"] = max_tokens
-                    if tools:
-                        payload["tools"] = tools
-                    resp = await client.post(
-                        node._openai_endpoint("chat/completions"),
-                        json=payload,
-                    )
-                    resp.raise_for_status()
-                    data = resp.json()
+                        if node.provider_type == "ollama":
+                            options: dict = {"temperature": temperature}
+                            if max_tokens:
+                                options["num_predict"] = max_tokens
+                            payload = {
+                                "model": resolved_model,
+                                "messages": msgs,
+                                "stream": False,
+                                "options": options,
+                            }
+                            resp = await client.post("/api/chat", json=payload)
+                            resp.raise_for_status()
+                            data = resp.json()
+                            self._record_success(node)
+                            return data
 
-                    choice = data["choices"][0]
-                    message = choice["message"]
-
-                    result: dict = {
-                        "message": {
-                            "role": "assistant",
-                            "content": message.get("content") or "",
+                        payload = {
+                            "model": resolved_model,
+                            "messages": msgs,
+                            "temperature": temperature,
+                            "stream": False,
                         }
-                    }
-                    if message.get("tool_calls"):
-                        result["message"]["tool_calls"] = message["tool_calls"]
-                        result["finish_reason"] = choice.get("finish_reason", "tool_calls")
+                        if max_tokens:
+                            payload["max_tokens"] = max_tokens
+                        if tools:
+                            payload["tools"] = tools
+                        resp = await client.post(
+                            node._openai_endpoint("chat/completions"),
+                            json=payload,
+                        )
+                        resp.raise_for_status()
+                        data = resp.json()
 
-                    self._record_success(node)
-                    return result
+                        choice = data["choices"][0]
+                        message = choice["message"]
+
+                        result: dict = {
+                            "message": {
+                                "role": "assistant",
+                                "content": message.get("content") or "",
+                            }
+                        }
+                        if message.get("tool_calls"):
+                            result["message"]["tool_calls"] = message["tool_calls"]
+                            result["finish_reason"] = choice.get("finish_reason", "tool_calls")
+
+                        self._record_success(node)
+                        return result
+                    except Exception as e:
+                        self._record_failure(node, e)
+                        transient = self._is_transient_error(e)
+                        if attempt < TRANSIENT_CHAT_MAX_ATTEMPTS and transient:
+                            delay = self._retry_delay(attempt)
+                            logger.warning(
+                                "ComputeRegistry: transient chat failure on %s "
+                                "(attempt %s/%s); retrying in %.2fs: %s",
+                                node.name,
+                                attempt,
+                                TRANSIENT_CHAT_MAX_ATTEMPTS,
+                                delay,
+                                e,
+                            )
+                            await asyncio.sleep(delay)
+                            continue
+
+                        if hasattr(e, "response") and hasattr(e.response, "text"):
+                            logger.warning(
+                                "ComputeRegistry: chat failed on %s after %s attempt(s): "
+                                "%s | Body: %s",
+                                node.name,
+                                attempt,
+                                e,
+                                e.response.text,
+                            )
+                        else:
+                            logger.warning(
+                                "ComputeRegistry: chat failed on %s after %s attempt(s): %s",
+                                node.name,
+                                attempt,
+                                e,
+                            )
+                        break
 
             except Exception as e:
                 if hasattr(e, "response") and hasattr(e.response, "text"):

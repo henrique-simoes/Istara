@@ -12,9 +12,11 @@ Reports warnings but does NOT delete orphaned data (user must decide).
 from __future__ import annotations
 
 import logging
+import shutil
+from datetime import UTC, datetime
 from pathlib import Path
 
-from sqlalchemy import select, text
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
@@ -33,6 +35,9 @@ async def run_integrity_check(db: AsyncSession) -> dict:
             "uploads": [],
             "personas": [],
         },
+        "invalid_files": {
+            "pdfs": [],
+        },
         "warnings": [],
     }
 
@@ -44,15 +49,18 @@ async def run_integrity_check(db: AsyncSession) -> dict:
 
         orphaned_lance = [d for d in lance_dirs if d not in db_projects]
         report["orphans"]["lance_db"] = orphaned_lance
-        report["checks"].append({
-            "name": "LanceDB vector stores",
-            "total": len(lance_dirs),
-            "orphaned": len(orphaned_lance),
-            "status": "warning" if orphaned_lance else "ok",
-        })
+        report["checks"].append(
+            {
+                "name": "LanceDB vector stores",
+                "total": len(lance_dirs),
+                "orphaned": len(orphaned_lance),
+                "status": "warning" if orphaned_lance else "ok",
+            }
+        )
         if orphaned_lance:
             report["warnings"].append(
-                f"{len(orphaned_lance)} LanceDB directories have no matching project in the database"
+                f"{len(orphaned_lance)} LanceDB directories have no matching project "
+                "in the database"
             )
 
     # 2. Check keyword indexes. Keep this tied to the configured runtime data
@@ -63,12 +71,14 @@ async def run_integrity_check(db: AsyncSession) -> dict:
 
         orphaned_kw = [f for f in keyword_files if f not in db_projects]
         report["orphans"]["keyword_index"] = orphaned_kw
-        report["checks"].append({
-            "name": "Keyword indexes (BM25)",
-            "total": len(keyword_files),
-            "orphaned": len(orphaned_kw),
-            "status": "warning" if orphaned_kw else "ok",
-        })
+        report["checks"].append(
+            {
+                "name": "Keyword indexes (BM25)",
+                "total": len(keyword_files),
+                "orphaned": len(orphaned_kw),
+                "status": "warning" if orphaned_kw else "ok",
+            }
+        )
         if orphaned_kw:
             report["warnings"].append(
                 f"{len(orphaned_kw)} keyword index files have no matching project"
@@ -81,15 +91,36 @@ async def run_integrity_check(db: AsyncSession) -> dict:
 
         orphaned_uploads = [d for d in upload_dirs if d not in db_projects]
         report["orphans"]["uploads"] = orphaned_uploads
-        report["checks"].append({
-            "name": "Upload directories",
-            "total": len(upload_dirs),
-            "orphaned": len(orphaned_uploads),
-            "status": "warning" if orphaned_uploads else "ok",
-        })
+        report["checks"].append(
+            {
+                "name": "Upload directories",
+                "total": len(upload_dirs),
+                "orphaned": len(orphaned_uploads),
+                "status": "warning" if orphaned_uploads else "ok",
+            }
+        )
         if orphaned_uploads:
             report["warnings"].append(
                 f"{len(orphaned_uploads)} upload directories have no matching project"
+            )
+
+        invalid_pdfs = [
+            str(path.relative_to(upload_path))
+            for path in upload_path.rglob("*.pdf")
+            if path.is_file() and not _looks_like_pdf(path)
+        ]
+        report["invalid_files"]["pdfs"] = invalid_pdfs
+        report["checks"].append(
+            {
+                "name": "Uploaded PDF files",
+                "total": len(list(upload_path.rglob("*.pdf"))),
+                "invalid": len(invalid_pdfs),
+                "status": "warning" if invalid_pdfs else "ok",
+            }
+        )
+        if invalid_pdfs:
+            report["warnings"].append(
+                f"{len(invalid_pdfs)} uploaded PDF files failed lightweight integrity checks"
             )
 
     # 4. Check runtime persona overlays. Shipped source personas are application
@@ -99,19 +130,26 @@ async def run_integrity_check(db: AsyncSession) -> dict:
         persona_dirs = [d.name for d in persona_path.iterdir() if d.is_dir()]
         db_agents = await _get_agent_ids(db)
         # System agents are always valid
-        system_agents = {"istara-main", "istara-devops", "istara-ui-audit", "istara-ux-eval", "istara-sim"}
+        system_agents = {
+            "istara-main",
+            "istara-devops",
+            "istara-ui-audit",
+            "istara-ux-eval",
+            "istara-sim",
+        }
 
         orphaned_personas = [
-            d for d in persona_dirs
-            if d not in db_agents and d not in system_agents
+            d for d in persona_dirs if d not in db_agents and d not in system_agents
         ]
         report["orphans"]["personas"] = orphaned_personas
-        report["checks"].append({
-            "name": "Agent persona directories",
-            "total": len(persona_dirs),
-            "orphaned": len(orphaned_personas),
-            "status": "warning" if orphaned_personas else "ok",
-        })
+        report["checks"].append(
+            {
+                "name": "Agent persona directories",
+                "total": len(persona_dirs),
+                "orphaned": len(orphaned_personas),
+                "status": "warning" if orphaned_personas else "ok",
+            }
+        )
         if orphaned_personas:
             report["warnings"].append(
                 f"{len(orphaned_personas)} persona directories have no matching agent record"
@@ -122,6 +160,55 @@ async def run_integrity_check(db: AsyncSession) -> dict:
         report["status"] = "warning"
 
     return report
+
+
+async def quarantine_integrity_issues(db: AsyncSession, *, dry_run: bool = True) -> dict:
+    """Move orphaned runtime artifacts and invalid PDFs into data/quarantine.
+
+    This is intentionally a quarantine, not a delete. Users can inspect or restore
+    the moved artifacts after the repair pass.
+    """
+    report = await run_integrity_check(db)
+    timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+    quarantine_root = Path(settings.data_dir) / "quarantine" / timestamp
+    actions: list[dict] = []
+
+    def add_action(kind: str, source: Path) -> None:
+        if not source.exists():
+            return
+        destination = quarantine_root / kind / source.name
+        actions.append(
+            {
+                "kind": kind,
+                "source": str(source),
+                "destination": str(destination),
+                "moved": False,
+            }
+        )
+        if dry_run:
+            return
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.move(str(source), str(destination))
+        actions[-1]["moved"] = True
+
+    for project_id in report["orphans"]["lance_db"]:
+        add_action("lance_db", Path(settings.lance_db_path) / project_id)
+    for project_id in report["orphans"]["keyword_index"]:
+        add_action("keyword_index", Path(settings.data_dir) / "keyword_index" / f"{project_id}.db")
+    for project_id in report["orphans"]["uploads"]:
+        add_action("uploads", Path(settings.upload_dir) / project_id)
+    for agent_id in report["orphans"]["personas"]:
+        add_action("personas", Path(settings.runtime_personas_dir) / agent_id)
+    for pdf_path in report["invalid_files"]["pdfs"]:
+        add_action("invalid_pdfs", Path(settings.upload_dir) / pdf_path)
+
+    return {
+        "dry_run": dry_run,
+        "quarantine_root": str(quarantine_root),
+        "actions": actions,
+        "moved": sum(1 for action in actions if action["moved"]),
+        "report": report,
+    }
 
 
 async def _get_project_ids(db: AsyncSession) -> set:
@@ -140,3 +227,19 @@ async def _get_agent_ids(db: AsyncSession) -> set:
         return {row[0] for row in result.fetchall()}
     except Exception:
         return set()
+
+
+def _looks_like_pdf(path: Path) -> bool:
+    """Cheap PDF sanity check: valid header and EOF marker near the tail."""
+    try:
+        with path.open("rb") as handle:
+            header = handle.read(8)
+            if not header.startswith(b"%PDF-"):
+                return False
+            handle.seek(0, 2)
+            size = handle.tell()
+            handle.seek(max(0, size - 2048))
+            tail = handle.read()
+            return b"%%EOF" in tail
+    except OSError:
+        return False
