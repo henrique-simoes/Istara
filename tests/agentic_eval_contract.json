@@ -1,0 +1,145 @@
+{
+  "schema_version": 1,
+  "purpose": "Release-facing test evidence for Istara's system-wide autoresearch, ReasoningBank, Memento, Hyperagent, DGM-H, orchestration, and UI acceptance contracts.",
+  "reference_alignment": [
+    "pytest registered markers and strict marker validation",
+    "Playwright authenticated browser-state testing",
+    "Gemini OpenAI-compatible chat completions",
+    "LM Studio OpenAI-compatible chat completions",
+    "OpenAI Evals-style model/system evals",
+    "Inspect AI task/dataset/solver/scorer eval decomposition",
+    "BFCL-inspired tool-calling accuracy",
+    "SWE-bench-inspired repository task resolution evidence",
+    "mutation testing with mutmut and StrykerJS as staged quality gates",
+    "property-based testing with Hypothesis for deterministic invariants"
+  ],
+  "contracts": [
+    {
+      "id": "autoresearch",
+      "features": ["karpathy_autoresearch", "governed_evolution"],
+      "unit_tests": ["tests/test_autoresearch.py", "tests/test_research_integrity.py"],
+      "integration_tests": ["scripts/production_rehearsal.py"],
+      "simulation_scenarios": [
+        "tests/simulation/scenarios/61-autoresearch-isolation.mjs",
+        "tests/simulation/scenarios/70-research-integrity.mjs"
+      ],
+      "eval_metrics": [
+        "hypothesis_quality_delta",
+        "confidence_interval_gate",
+        "sandbox_pass_rate",
+        "rollback_available",
+        "evidence_chain_completeness"
+      ]
+    },
+    {
+      "id": "reasoning_bank",
+      "features": ["reasoning_bank", "prompt_rag", "llmlingua_protected_context"],
+      "unit_tests": ["tests/test_reasoning_bank.py", "tests/test_rag_resilience.py"],
+      "integration_tests": ["scripts/production_rehearsal.py"],
+      "simulation_scenarios": ["tests/simulation/scenarios/23-memory-view.mjs"],
+      "eval_metrics": [
+        "retrieval_precision_at_k",
+        "memory_distillation_traceability",
+        "protected_context_survival",
+        "rollback_lineage"
+      ]
+    },
+    {
+      "id": "memento_skills_and_agent_creation",
+      "features": ["memento_skills", "agent_factory", "approval_required_mutations"],
+      "unit_tests": ["tests/test_skills.py", "tests/test_agents.py", "tests/test_improvement_governance.py"],
+      "integration_tests": ["scripts/production_rehearsal.py"],
+      "simulation_scenarios": [
+        "tests/simulation/scenarios/41-skill-creation.mjs",
+        "tests/simulation/scenarios/44-agent-factory.mjs"
+      ],
+      "eval_metrics": [
+        "proposal_quality_score",
+        "approval_visibility",
+        "skill_execution_success",
+        "rollback_available"
+      ]
+    },
+    {
+      "id": "hyperagent_meta_tuning",
+      "features": ["meta_hyperagent", "governed_evolution", "approval_required_mutations"],
+      "unit_tests": ["tests/test_meta_hyperagent.py", "tests/test_improvement_governance.py"],
+      "integration_tests": ["scripts/production_rehearsal.py"],
+      "simulation_scenarios": ["tests/simulation/scenarios/52-meta-hyperagent.mjs"],
+      "eval_metrics": [
+        "observation_to_proposal_rate",
+        "risk_classification_accuracy",
+        "sandbox_pass_rate",
+        "admin_review_visibility"
+      ]
+    },
+    {
+      "id": "dgmh_archive_evolution",
+      "features": ["dgmh_archive", "variant_lineage", "rollback"],
+      "unit_tests": ["tests/test_dgmh_archive.py", "tests/test_improvement_governance.py"],
+      "integration_tests": ["scripts/production_rehearsal.py"],
+      "simulation_scenarios": ["tests/simulation/scenarios/52-meta-hyperagent.mjs"],
+      "eval_metrics": [
+        "archive_lineage_integrity",
+        "ancestor_replay_success",
+        "fitness_delta",
+        "rollback_available"
+      ]
+    },
+    {
+      "id": "ensemble_llm_orchestration",
+      "features": ["ensemble_model", "compute_registry", "live_llm_fallback"],
+      "unit_tests": ["tests/test_compute.py", "tests/test_harness_config.py"],
+      "integration_tests": ["tests/integration/test_llm_orchestration_real.py"],
+      "simulation_scenarios": [
+        "tests/simulation/scenarios/35-ensemble-validation.mjs",
+        "tests/simulation/scenarios/36-llm-servers.mjs",
+        "tests/simulation/scenarios/37-ensemble-health-view.mjs"
+      ],
+      "eval_metrics": [
+        "tool_selection_quality",
+        "dag_success",
+        "provider_fallback_success",
+        "latency_p95",
+        "compute_capacity_available_slots"
+      ]
+    },
+    {
+      "id": "tool_calling_react",
+      "features": ["system_action_tools", "react_loop", "agentic_tool_calling"],
+      "unit_tests": ["tests/benchmarks/test_orchestration.py", "tests/test_chat.py"],
+      "integration_tests": ["tests/integration/test_llm_orchestration_real.py"],
+      "simulation_scenarios": [
+        "tests/simulation/scenarios/31-task-documents-tools.mjs",
+        "tests/simulation/scenarios/71-plan-and-execute.mjs",
+        "tests/simulation/scenarios/73-a2a-debate-and-reports.mjs"
+      ],
+      "eval_metrics": [
+        "tool_name_accuracy",
+        "argument_schema_validity",
+        "multi_turn_recovery",
+        "evidence_chain_completeness"
+      ]
+    },
+    {
+      "id": "acceptance_ui_simulation",
+      "features": ["ui_menus", "browser_acceptance", "auth_state_reuse"],
+      "unit_tests": ["tests/test_harness_config.py"],
+      "integration_tests": ["tests/e2e_test.py"],
+      "simulation_scenarios": [
+        "tests/simulation/scenarios/45-interfaces-menu.mjs",
+        "tests/simulation/scenarios/69-user-management-ui.mjs",
+        "tests/simulation/scenarios/74-2fa-login-flow.mjs",
+        "tests/simulation/scenarios/77-voice-transcription.mjs",
+        "tests/simulation/scenarios/78-real-time-voice.mjs"
+      ],
+      "eval_metrics": [
+        "menu_coverage",
+        "auth_flow_success",
+        "wcag_critical_violations",
+        "scenario_pass_rate",
+        "user_visible_rollback"
+      ]
+    }
+  ]
+}

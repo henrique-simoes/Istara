@@ -27,13 +27,18 @@ from tests.llm_test_config import (
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 logger = logging.getLogger("IstaraIntegrationBenchmark")
 
-pytestmark = pytest.mark.skipif(
-    os.getenv("ISTARA_RUN_REAL_LLM_BENCHMARK") != "1",
-    reason=(
-        "Live LLM orchestration benchmark is opt-in; set "
-        "ISTARA_RUN_REAL_LLM_BENCHMARK=1 and configure the Gemini live-test API key."
+pytestmark = [
+    pytest.mark.live_llm,
+    pytest.mark.agentic_eval,
+    pytest.mark.benchmark,
+    pytest.mark.skipif(
+        os.getenv("ISTARA_RUN_REAL_LLM_BENCHMARK") != "1",
+        reason=(
+            "Live LLM orchestration benchmark is opt-in; set "
+            "ISTARA_RUN_REAL_LLM_BENCHMARK=1 and configure the Gemini live-test API key."
+        ),
     ),
-)
+]
 
 
 @pytest.fixture(autouse=True)
@@ -51,7 +56,9 @@ async def setup_db():
     # Force health check on all nodes to ensure they are ready
     await compute_registry.check_all_health()
     nodes_after = compute_registry.list_servers()
-    logger.info(f"Compute Nodes after health check: {json.dumps(nodes_after, indent=2)}")
+    logger.info(
+        f"Compute Nodes after health check: {json.dumps(nodes_after, indent=2)}"
+    )
 
 
 @pytest.mark.asyncio
@@ -80,7 +87,9 @@ async def test_real_llm_orchestration_benchmark():
         f"Gemini OpenAI-compatible at {GEMINI_OPENAI_BASE_URL} model={GEMINI_TEST_MODEL}"
     )
     if get_secondary_live_llm_api_key():
-        provider_line += f" with fallback {SECONDARY_OPENAI_BASE_URL} model={SECONDARY_TEST_MODEL}"
+        provider_line += (
+            f" with fallback {SECONDARY_OPENAI_BASE_URL} model={SECONDARY_TEST_MODEL}"
+        )
     print(provider_line)
 
     async with async_session() as session:
@@ -142,15 +151,21 @@ async def test_real_llm_orchestration_benchmark():
         async with async_session() as session:
             task_result = await session.execute(select(Task).where(Task.id == task_id))
             task_to_execute = task_result.scalar_one()
-            project_result = await session.execute(select(Project).where(Project.id == project_id))
+            project_result = await session.execute(
+                select(Project).where(Project.id == project_id)
+            )
             project_to_execute = project_result.scalar_one()
             await asyncio.wait_for(
-                orchestrator._execute_task(session, task_to_execute, project_to_execute),
+                orchestrator._execute_task(
+                    session, task_to_execute, project_to_execute
+                ),
                 timeout=600.0,
             )
             executed = True
         cycle_time = time.monotonic() - cycle_start
-        bench_results["latency_metrics"].append({"op": "work_cycle", "time": cycle_time})
+        bench_results["latency_metrics"].append(
+            {"op": "work_cycle", "time": cycle_time}
+        )
 
         if not executed:
             print("❌ Orchestrator failed to execute any task.")
@@ -163,13 +178,19 @@ async def test_real_llm_orchestration_benchmark():
             task = result.scalar_one()
 
             # Check Findings (Evidence Chain)
-            res_n = await session.execute(select(Nugget).where(Nugget.project_id == project_id))
+            res_n = await session.execute(
+                select(Nugget).where(Nugget.project_id == project_id)
+            )
             nuggets = res_n.scalars().all()
-            res_i = await session.execute(select(Insight).where(Insight.project_id == project_id))
+            res_i = await session.execute(
+                select(Insight).where(Insight.project_id == project_id)
+            )
             insights = res_i.scalars().all()
 
             bench_results["findings_count"] = len(nuggets) + len(insights)
-            print(f"📊 Findings generated: {len(nuggets)} nuggets, {len(insights)} insights.")
+            print(
+                f"📊 Findings generated: {len(nuggets)} nuggets, {len(insights)} insights."
+            )
 
             # TSQ Check: Did it use appropriate skills in the DAG?
             # We check the agent_notes which contains the Research Plan JSON for planned tasks
@@ -184,7 +205,9 @@ async def test_real_llm_orchestration_benchmark():
                     print("⚠️ Task executed via ReAct instead of DAG decomposition.")
                 else:
                     bench_results["tsq_score"] = 20.0
-                    print("❌ No advanced orchestration (DAG/ReAct) detected in output.")
+                    print(
+                        "❌ No advanced orchestration (DAG/ReAct) detected in output."
+                    )
                     if task.agent_notes:
                         print(f"RAW AGENT NOTES: {task.agent_notes[:500]}...")
 
@@ -202,7 +225,10 @@ async def test_real_llm_orchestration_benchmark():
             if task.status in (TaskStatus.IN_REVIEW, TaskStatus.DONE) and (
                 bench_results["findings_count"] >= 1
                 or bench_results["dag_success"]
-                or (bench_results["tsq_score"] >= 80.0 and bench_results["reasoning_score"] >= 60.0)
+                or (
+                    bench_results["tsq_score"] >= 80.0
+                    and bench_results["reasoning_score"] >= 60.0
+                )
             ):
                 # Finding persistence is covered elsewhere; this live gate is
                 # primarily for model-backed orchestration quality.
@@ -212,14 +238,18 @@ async def test_real_llm_orchestration_benchmark():
             print("\n" + "=" * 60)
             print(f"FINAL BENCHMARK SCORECARD: {bench_results['status']}")
             print(f"- TSQ (Tool Selection Quality): {bench_results['tsq_score']}%")
-            print(f"- DAG Decomposition: {'YES' if bench_results['dag_success'] else 'NO'}")
+            print(
+                f"- DAG Decomposition: {'YES' if bench_results['dag_success'] else 'NO'}"
+            )
             print(f"- Reasoning Quality: {bench_results['reasoning_score']}%")
             print(f"- Total Findings: {bench_results['findings_count']}")
             print(f"- Total Latency: {total_elapsed:.2f}s")
             print("=" * 60)
 
     except TimeoutError:
-        logger.error("❌ BENCHMARK TIMEOUT: Real LLM inference took longer than 10 minutes.")
+        logger.error(
+            "❌ BENCHMARK TIMEOUT: Real LLM inference took longer than 10 minutes."
+        )
     except Exception as e:
         logger.error(f"❌ BENCHMARK ERROR: {e}", exc_info=True)
 
@@ -227,4 +257,6 @@ async def test_real_llm_orchestration_benchmark():
     assert bench_results["status"] == "PASS", (
         f"Benchmark failed with status {bench_results['status']}"
     )
-    assert bench_results["tsq_score"] >= 80.0, "Orchestration logic (TSQ) fell below threshold"
+    assert bench_results["tsq_score"] >= 80.0, (
+        "Orchestration logic (TSQ) fell below threshold"
+    )

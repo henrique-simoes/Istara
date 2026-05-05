@@ -17,8 +17,10 @@ TECH_REQUIRED_PATTERNS = [
     "scripts/check_change_obligations.py",
     "scripts/check_ci_governance.py",
     "scripts/check_integrity.py",
+    "scripts/check_test_harness.py",
     "scripts/security_benchmark.py",
     "scripts/production_rehearsal.py",
+    "testing/TESTING_STRATEGY.md",
     "scripts/set-version.sh",
     "backend/app/api/routes/updates.py",
     "backend/app/core/*.py",
@@ -50,7 +52,13 @@ TEST_REQUIRED_PATTERNS = [
     "frontend/src/lib/reasoningBank*.ts",
     "scripts/production_rehearsal.py",
     "scripts/check_ci_governance.py",
+    "scripts/check_test_harness.py",
     "scripts/security_benchmark.py",
+    "tests/agentic_eval_contract.json",
+    "tests/llm_test_config.py",
+    "tests/simulation/run.mjs",
+    "tests/simulation/lib/*.mjs",
+    "testing/TESTING_STRATEGY.md",
 ]
 
 PERSONA_REQUIRED_PATTERNS = [
@@ -98,9 +106,13 @@ GOVERNED_EVOLUTION_PATTERNS = [
     "frontend/src/lib/improvementGovernance*.ts",
     "frontend/src/lib/reasoningBank*.ts",
     "scripts/production_rehearsal.py",
+    "scripts/check_test_harness.py",
+    "tests/agentic_eval_contract.json",
 ]
 
 GOVERNED_EVOLUTION_TEST_FILES = {
+    "tests/agentic_eval_contract.json",
+    "tests/test_agentic_eval_contract.py",
     "tests/test_autoresearch.py",
     "tests/test_compute.py",
     "tests/test_dgmh_archive.py",
@@ -108,6 +120,7 @@ GOVERNED_EVOLUTION_TEST_FILES = {
     "tests/test_meta_hyperagent.py",
     "tests/test_reasoning_bank.py",
     "tests/test_research_integrity.py",
+    "tests/test_harness_config.py",
 }
 
 SECURITY_BENCHMARK_PATTERNS = [

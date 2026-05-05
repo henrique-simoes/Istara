@@ -26,8 +26,8 @@ const singleScenario = args.includes("--scenario") ? args[args.indexOf("--scenar
 const skipEval = args.includes("--skip-eval");
 const skipSkills = args.includes("--skip-skills");
 
-const API_BASE = "http://localhost:8000";
-const FRONTEND = "http://localhost:3000";
+const API_BASE = process.env.ISTARA_API_URL || "http://localhost:8000";
+const FRONTEND = process.env.ISTARA_FRONTEND_URL || "http://localhost:3000";
 
 // ── Timeout Configuration ──────────────────────────────────
 // Generous timeouts to ensure the runner NEVER gets killed by timeouts.
@@ -298,6 +298,11 @@ async function loadScenarios() {
     "68-data-security",
     "69-user-management-ui",
     "70-mid-execution-steering",
+    "70-research-integrity",
+    "71-plan-and-execute",
+    "72-circuit-breaker-health",
+    "73-a2a-debate-and-reports",
+    "76-long-horizon-trajectory",
     "77-voice-transcription",
     "78-real-time-voice",
     "75-participant-simulation",
@@ -554,7 +559,7 @@ async function main() {
 
   // Inject JWT token into browser localStorage so the frontend authenticates
   if (apiClient._token) {
-    await page.goto("http://localhost:3000", { waitUntil: "domcontentloaded" });
+    await page.goto(FRONTEND, { waitUntil: "domcontentloaded" });
     await page.evaluate((token) => {
       localStorage.setItem("istara_token", token);
     }, apiClient._token);
