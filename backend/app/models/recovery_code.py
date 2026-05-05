@@ -1,6 +1,6 @@
 """One-time account recovery code model."""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import DateTime, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
@@ -21,7 +21,7 @@ class RecoveryCode(Base):
     batch_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
     created_by_user_id: Mapped[str] = mapped_column(String(36), default="", nullable=False)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
     )
     replaced_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True, default=None

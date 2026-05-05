@@ -207,9 +207,14 @@ Duration: 30 minutes
   try {
     const stats = await api.get(`/api/files/${ctx.projectId}/stats`);
     const chunks = stats.total_chunks || stats.indexed_chunks || 0;
-    checks.push({ name: "Chunks indexed", passed: chunks > 0, detail: `${chunks} chunks` });
+    const searchable = stats.searchable_chunks || stats.keyword_chunks || chunks;
+    checks.push({
+      name: "Chunks searchable",
+      passed: searchable > 0,
+      detail: `${chunks} vector chunks, ${stats.keyword_chunks || 0} keyword chunks (${stats.indexing_status || "unknown"})`,
+    });
   } catch (e) {
-    checks.push({ name: "Chunks indexed", passed: false, detail: e.message });
+    checks.push({ name: "Chunks searchable", passed: false, detail: e.message });
   }
 
   // Verify in UI — navigate to chat and check

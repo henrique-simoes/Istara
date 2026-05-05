@@ -150,6 +150,7 @@ if MCP_AVAILABLE:
 
         async def _handler(db, args):
             from sqlalchemy import select as sa_select
+
             from app.models.project import Project
 
             result = await db.execute(
@@ -169,6 +170,7 @@ if MCP_AVAILABLE:
 
         async def _handler(db, args):
             from sqlalchemy import select as sa_select
+
             from app.models.research_deployment import ResearchDeployment
 
             result = await db.execute(
@@ -199,6 +201,7 @@ if MCP_AVAILABLE:
 
         async def _handler(db, args: dict[str, Any]):
             from sqlalchemy import select as sa_select
+
             from app.models.finding import Fact, Insight, Nugget, Recommendation
             from app.services.mcp_security import get_default_policy
 
@@ -272,7 +275,9 @@ if MCP_AVAILABLE:
                         for r in ctx.retrieved
                     ],
                     "count": len(ctx.retrieved),
-                    "warning": "SENSITIVE: Memory search results may contain private research data.",
+                    "warning": (
+                        "SENSITIVE: Memory search results may contain private research data."
+                    ),
                 }
             except Exception as exc:
                 return {"query": args["query"], "results": [], "error": str(exc)}
@@ -298,7 +303,6 @@ if MCP_AVAILABLE:
 
         async def _handler(db, args):
             from app.core.agent import agent
-            from app.skills.base import SkillInput
 
             output = await agent.execute_skill(
                 skill_name=args["skill_name"],
@@ -337,6 +341,7 @@ if MCP_AVAILABLE:
 
         async def _handler(db, args):
             import uuid as _uuid
+
             from app.models.project import Project
 
             project = Project(

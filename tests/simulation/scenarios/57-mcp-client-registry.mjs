@@ -63,8 +63,8 @@ export async function run(ctx) {
       const health = await api.get(`/api/mcp/clients/${testServer.id}/health`);
       checks.push({
         name: "GET /api/mcp/clients/{id}/health returns status",
-        passed: health.health_status !== undefined || health.status !== undefined,
-        detail: `status=${health.health_status || health.status}`,
+        passed: typeof health.healthy === "boolean",
+        detail: `healthy=${health.healthy}, error=${health.error || ""}`,
       });
     } catch (e) {
       // Health check may fail if no real server — that's OK
@@ -160,12 +160,17 @@ export async function run(ctx) {
     });
     cleanup.serverIds.push(wsServer.id);
     checks.push({
-      name: "WebSocket transport type accepted",
-      passed: wsServer.transport === "websocket",
-      detail: `transport=${wsServer.transport}`,
+      name: "WebSocket transport rejected until HTTP bridge is used",
+      passed: false,
+      detail: "Expected 422, got success",
     });
   } catch (e) {
-    checks.push({ name: "WebSocket transport type accepted", passed: false, detail: e.message });
+    const rejected = e.message.includes("422") || e.message.includes("Only HTTP");
+    checks.push({
+      name: "WebSocket transport rejected until HTTP bridge is used",
+      passed: rejected,
+      detail: e.message,
+    });
   }
 
   // ── Cleanup ──
@@ -173,5 +178,10 @@ export async function run(ctx) {
     try { await api.delete(`/api/mcp/clients/${id}`); } catch (_) {}
   }
 
-  return checks;
+  return {
+    checks,
+    passed: checks.filter((c) => c.passed).length,
+    failed: checks.filter((c) => !c.passed).length,
+    summary: checks.map((c) => `${c.passed ? "PASS" : "FAIL"} ${c.name}`).join("\n"),
+  };
 }

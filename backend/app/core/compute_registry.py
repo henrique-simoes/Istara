@@ -16,8 +16,9 @@ import json
 import logging
 import time
 import uuid
+from collections.abc import AsyncGenerator
 from dataclasses import dataclass, field
-from typing import Any, AsyncGenerator
+from typing import Any
 from urllib.parse import urlparse
 
 import httpx
@@ -245,7 +246,7 @@ class ComputeNode:
         )
         try:
             response = await asyncio.wait_for(future, timeout=self.relay_request_timeout_s)
-        except asyncio.TimeoutError as exc:
+        except TimeoutError as exc:
             self.health_error = f"Relay request timed out after {self.relay_request_timeout_s:.0f}s"
             raise RuntimeError(self.health_error) from exc
         finally:
@@ -1158,7 +1159,10 @@ class ComputeRegistry:
             except Exception as e:
                 if hasattr(e, "response") and hasattr(e.response, "text"):
                     logger.warning(
-                        f"ComputeRegistry: chat failed on {node.name}: {e} | Body: {e.response.text}"
+                        "ComputeRegistry: chat failed on %s: %s | Body: %s",
+                        node.name,
+                        e,
+                        e.response.text,
                     )
                 else:
                     logger.warning(f"ComputeRegistry: chat failed on {node.name}: {e}")
@@ -1363,7 +1367,10 @@ class ComputeRegistry:
             except Exception as e:
                 if hasattr(e, "response") and hasattr(e.response, "text"):
                     logger.warning(
-                        f"ComputeRegistry: embed failed on {node.name}: {e} | Body: {e.response.text}"
+                        "ComputeRegistry: embed failed on %s: %s | Body: %s",
+                        node.name,
+                        e,
+                        e.response.text,
                     )
                 else:
                     logger.warning(f"ComputeRegistry: embed failed on {node.name}: {e}")
@@ -1409,7 +1416,10 @@ class ComputeRegistry:
             except Exception as e:
                 if hasattr(e, "response") and hasattr(e.response, "text"):
                     logger.warning(
-                        f"ComputeRegistry: embed_batch failed on {node.name}: {e} | Body: {e.response.text}"
+                        "ComputeRegistry: embed_batch failed on %s: %s | Body: %s",
+                        node.name,
+                        e,
+                        e.response.text,
                     )
                 else:
                     logger.warning(f"ComputeRegistry: embed_batch failed on {node.name}: {e}")

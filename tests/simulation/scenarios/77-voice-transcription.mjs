@@ -31,16 +31,33 @@ export async function run(ctx) {
   // 2. Mic button is visible and accessible in ChatView
   try {
     await page.goto("http://localhost:3000", { waitUntil: "load", timeout: 15000 });
+    await page
+      .waitForFunction(() => localStorage.getItem("istara_auth_user_id"), {
+        timeout: 5000,
+      })
+      .catch(() => {});
+    await page.evaluate(() => {
+      const userId = localStorage.getItem("istara_auth_user_id") || "anonymous";
+      localStorage.setItem(`istara_tour_completed_${userId}`, "true");
+      localStorage.setItem("istara_tour_completed_anonymous", "true");
+      localStorage.removeItem("istara_tour_state");
+      localStorage.setItem("istara_active_view", "chat");
+    });
+    await page.reload({ waitUntil: "networkidle", timeout: 15000 });
     
     // Ensure we are in the Chat view — click sidebar link if needed
-    const chatLink = page.locator('nav a[href="/chat"], nav button:has-text("Chat")').first();
+    const chatLink = page
+      .locator('button[aria-label="Chat"], nav a[href="/chat"], nav button:has-text("Chat")')
+      .first();
     if (await chatLink.isVisible()) {
       await chatLink.click();
       await page.waitForTimeout(2000);
     }
     
-    // Wait for the button with aria-label="Voice input" to be visible
-    const micButton = page.locator('button[aria-label="Voice input"]');
+    // Wait for the voice button; idle state uses "Start recording".
+    const micButton = page
+      .locator('button[aria-label="Start recording"], button[aria-label="Voice input"], button[title*="Voice"]')
+      .first();
     await micButton.waitFor({ state: "visible", timeout: 10000 }).catch(() => {});
     
     const isVisible = await micButton.isVisible().catch(() => false);

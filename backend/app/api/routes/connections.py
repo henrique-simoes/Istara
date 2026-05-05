@@ -3,7 +3,7 @@
 import logging
 import secrets
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Literal
 from urllib.parse import urlparse
 
@@ -160,7 +160,7 @@ async def generate_connection_string(
         server_url=data.server_url,
         ws_url=data.ws_url or "",
         intended_role=data.role,
-        expires_at=datetime.now(timezone.utc) + timedelta(hours=data.expires_hours),
+        expires_at=datetime.now(UTC) + timedelta(hours=data.expires_hours),
     )
     db.add(new_conn)
     await db.commit()
@@ -231,7 +231,7 @@ async def generate_compute_donation_string(
         server_url=data.server_url,
         ws_url=payload.get("ws_url", data.ws_url or ""),
         intended_role="compute_node",
-        expires_at=datetime.now(timezone.utc) + timedelta(hours=data.expires_hours),
+        expires_at=datetime.now(UTC) + timedelta(hours=data.expires_hours),
     )
     db.add(new_conn)
     await db.commit()
@@ -309,7 +309,7 @@ async def validate_connection_string(
     conn, reason = await _get_connection_string_status(db, data.connection_string)
     if conn is None:
         return {"valid": False, "error": _connection_error_message(reason)}
-    conn.last_validated_at = datetime.now(timezone.utc)
+    conn.last_validated_at = datetime.now(UTC)
     await db.commit()
 
     return {
@@ -368,7 +368,7 @@ async def redeem_connection_string(
         conn.is_redeemed = True
         conn.redeemed_by_user_id = "local"
         conn.redeemed_username = data.username.strip()
-        conn.redeemed_at = datetime.now(timezone.utc)
+        conn.redeemed_at = datetime.now(UTC)
         await db.commit()
         try:
             from app.core.improvement_governance import improvement_governance
@@ -438,7 +438,7 @@ async def redeem_connection_string(
     conn.is_redeemed = True
     conn.redeemed_by_user_id = user.id
     conn.redeemed_username = user.username
-    conn.redeemed_at = datetime.now(timezone.utc)
+    conn.redeemed_at = datetime.now(UTC)
     await db.commit()
     try:
         from app.core.improvement_governance import improvement_governance
@@ -514,7 +514,7 @@ async def rotate_network_token(request: Request, db: AsyncSession = Depends(get_
         await improvement_governance.record_feature_evidence(
             feature="pooled_compute_connection_strings",
             source_system="connection_strings",
-            source_id=f"rotate_network_token:{datetime.now(timezone.utc).isoformat()}",
+            source_id=f"rotate_network_token:{datetime.now(UTC).isoformat()}",
             agent_id="connection-string-service",
             summary="Network access token rotated and active connection strings revoked.",
             evidence={
@@ -536,7 +536,10 @@ async def rotate_network_token(request: Request, db: AsyncSession = Depends(get_
                     await node.websocket.send_json(
                         {
                             "type": "token_rotated",
-                            "message": "Network access token has been rotated. Reconnect with a new connection string.",
+                            "message": (
+                                "Network access token has been rotated. "
+                                "Reconnect with a new connection string."
+                            ),
                         }
                     )
                 except Exception:
@@ -586,8 +589,8 @@ def _connection_expired(conn: ConnectionString) -> bool:
         return True
     expires_at = conn.expires_at
     if expires_at.tzinfo is None:
-        expires_at = expires_at.replace(tzinfo=timezone.utc)
-    return expires_at < datetime.now(timezone.utc)
+        expires_at = expires_at.replace(tzinfo=UTC)
+    return expires_at < datetime.now(UTC)
 
 
 def _is_validation_rate_limited(client_id: str) -> bool:
@@ -619,8 +622,8 @@ async def _get_connection_string_status(
         return None, "redeemed"
     expires_at = conn.expires_at
     if expires_at.tzinfo is None:
-        expires_at = expires_at.replace(tzinfo=timezone.utc)
-    if expires_at < datetime.now(timezone.utc):
+        expires_at = expires_at.replace(tzinfo=UTC)
+    if expires_at < datetime.now(UTC):
         return None, "expired"
     return conn, "ok"
 

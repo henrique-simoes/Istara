@@ -12,7 +12,18 @@ export async function run(ctx) {
   }
 
   if (!ctx.llmConnected) {
-    return { checks: [{ name: "Skip — LLM not connected", passed: false, detail: "Chat requires LLM" }], passed: 0, failed: 1, skipped: true };
+    return {
+      checks: [
+        {
+          name: "Skip — LLM not connected",
+          passed: false,
+          detail: "Chat UI requires a configured LLM for response-quality assertions",
+        },
+      ],
+      passed: 0,
+      failed: 0,
+      skipped: true,
+    };
   }
 
   // Navigate to Chat

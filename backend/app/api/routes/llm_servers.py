@@ -52,10 +52,12 @@ async def list_llm_servers(db: AsyncSession = Depends(get_db)):
 
     # Also include live router status
     from app.core.llm_router import llm_router
+
     router_status = llm_router.list_servers()
 
     # Get live health error from compute registry nodes
     from app.core.compute_registry import compute_registry
+
     node_errors = {}
     for nid, node in compute_registry._nodes.items():
         if hasattr(node, "health_error") and node.health_error:
@@ -102,9 +104,7 @@ async def add_llm_server(
         # Still ensure the user is authenticated
         auth_header = request.headers.get("Authorization", "")
         token_str = (
-            auth_header.removeprefix("Bearer ").strip()
-            if auth_header.startswith("Bearer ")
-            else ""
+            auth_header.removeprefix("Bearer ").strip() if auth_header.startswith("Bearer ") else ""
         )
         if not token_str:
             token_str = get_auth_cookie_token(request)
@@ -133,6 +133,7 @@ async def add_llm_server(
 
     # Register with the live router (decrypt key for runtime use)
     from app.core.llm_router import LLMServerEntry, llm_router
+
     entry = LLMServerEntry(
         server_id=server.id,
         name=server.name,
@@ -178,6 +179,7 @@ async def health_check_server(server_id: str, db: AsyncSession = Depends(get_db)
         raise HTTPException(status_code=404, detail="Server not found")
 
     from app.core.llm_router import llm_router
+
     # Look up by ID first, then by host URL (discovered servers use different IDs)
     router_server = llm_router._servers.get(server_id)
     if not router_server:
@@ -194,6 +196,7 @@ async def health_check_server(server_id: str, db: AsyncSession = Depends(get_db)
         await db.commit()
         # Get health error from the compute node
         from app.core.compute_registry import compute_registry
+
         node = compute_registry._nodes.get(server_id)
         health_error = getattr(node, "health_error", "") if node else ""
         return {
@@ -242,6 +245,7 @@ async def delete_llm_server(server_id: str, request: Request, db: AsyncSession =
         raise HTTPException(status_code=404, detail="Server not found")
 
     from app.core.llm_router import llm_router
+
     llm_router.unregister_server(server_id)
 
     await db.delete(server)
@@ -255,6 +259,7 @@ async def discover_network_llm_servers(request: Request):
     """Scan local network for LLM servers (LM Studio, Ollama, OpenAI-compatible)."""
     require_admin_from_request(request)
     from app.core.network_discovery import discover_and_register
+
     discovered = await discover_and_register()
     return {
         "discovered": len(discovered),
