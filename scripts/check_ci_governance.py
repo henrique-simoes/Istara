@@ -13,8 +13,10 @@ REQUIRED_SNIPPETS: dict[str, dict[str, str]] = {
         "CI self-check": "python scripts/check_ci_governance.py",
         "Node 24 frontend runtime": 'node-version: "24"',
         "security benchmark": "python scripts/security_benchmark.py --fail-on-threshold",
+        "test harness governance": "python scripts/check_test_harness.py",
         "security scorecard artifact": "istara-security-scorecard",
         "production rehearsal": "python ../scripts/production_rehearsal.py --json",
+        "agentic eval contract smoke tests": "tests/test_agentic_eval_contract.py",
         "governed evolution regression tests": (
             "pytest ../tests/test_improvement_governance.py ../tests/test_compute.py -q"
         ),
@@ -22,6 +24,7 @@ REQUIRED_SNIPPETS: dict[str, dict[str, str]] = {
             "python -m compileall -q app ../scripts/production_rehearsal.py"
         ),
         "security benchmark compile check": "../scripts/security_benchmark.py",
+        "test harness compile check": "../scripts/check_test_harness.py",
         "changed-file Ruff gate": "python ../scripts/check_ruff_changed.py",
         "change obligations": "python scripts/check_change_obligations.py",
         "integrity check": "python scripts/check_integrity.py",
@@ -30,9 +33,11 @@ REQUIRED_SNIPPETS: dict[str, dict[str, str]] = {
         "Node 24 installer runtime": "node-version: 24",
         "production rehearsal release trigger": "scripts/production_rehearsal.py",
         "CI governance release trigger": "scripts/check_ci_governance.py",
+        "test harness release trigger": "scripts/check_test_harness.py",
         "change obligation release trigger": "scripts/check_change_obligations.py",
         "security benchmark release trigger": "scripts/security_benchmark.py",
         "security benchmark docs release trigger": "security/*",
+        "testing strategy release trigger": "testing/*",
     },
     ".nvmrc": {
         "Node 24 local runtime": "24",
@@ -58,6 +63,7 @@ REQUIRED_SNIPPETS: dict[str, dict[str, str]] = {
     "scripts/prepare-release.sh": {
         "integrity release prep": "python scripts/check_integrity.py",
         "CI governance release prep": "python scripts/check_ci_governance.py",
+        "test harness release prep": "python scripts/check_test_harness.py",
         "security benchmark release prep": "python scripts/security_benchmark.py --fail-on-threshold",
         "production rehearsal release prep": "python scripts/production_rehearsal.py --json",
     },
@@ -73,6 +79,7 @@ REQUIRED_SNIPPETS: dict[str, dict[str, str]] = {
         "security benchmark files": "SECURITY_BENCHMARK_FILES",
         "production rehearsal obligation": "scripts/production_rehearsal.py",
         "CI governance obligation": "scripts/check_ci_governance.py",
+        "test harness obligation": "scripts/check_test_harness.py",
     },
     "scripts/check_integrity.py": {
         "legacy Compass guard": "LEGACY_COMPASS_DOCS",
@@ -85,6 +92,20 @@ REQUIRED_SNIPPETS: dict[str, dict[str, str]] = {
         "DGM-H Tech freshness": '"dgm-h"',
         "compute capacity Tech freshness": '"compute capacity"',
         "security benchmark Tech freshness": '"security benchmark"',
+        "agentic eval contract Tech freshness": '"agentic eval contract"',
+        "mutation testing Tech freshness": '"mutation testing"',
+    },
+    "scripts/check_test_harness.py": {
+        "LLM profile audit": "check_llm_profiles",
+        "simulation runner audit": "check_simulation_runner",
+        "agentic eval manifest audit": "check_agentic_eval_contract",
+    },
+    "testing/TESTING_STRATEGY.md": {
+        "pytest strict marker strategy": "--strict-markers",
+        "Gemini live LLM profile": "gemini-3.1-flash-lite-preview",
+        "LM Studio fallback profile": "qwen3.6-35b-a3b",
+        "mutation testing strategy": "mutation testing",
+        "agentic eval contract strategy": "agentic eval contract",
     },
     "scripts/security_benchmark.py": {
         "benchmark evaluator": "def evaluate_matrix",

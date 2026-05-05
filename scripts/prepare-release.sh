@@ -22,6 +22,9 @@ python scripts/check_integrity.py
 echo "==> Checking CI/CD governance"
 python scripts/check_ci_governance.py
 
+echo "==> Checking test harness governance"
+python scripts/check_test_harness.py
+
 echo "==> Checking security benchmark"
 python scripts/security_benchmark.py --fail-on-threshold --output security/security_scorecard.json
 

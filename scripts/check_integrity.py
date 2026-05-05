@@ -9,6 +9,7 @@ ROOT = Path(__file__).resolve().parent.parent
 TECH_MD = ROOT / "Tech.md"
 SECURITY_BENCHMARK_MD = ROOT / "security" / "SECURITY_BENCHMARK.md"
 SECURITY_CONTROL_MATRIX = ROOT / "security" / "control_matrix.json"
+TESTING_STRATEGY_MD = ROOT / "testing" / "TESTING_STRATEGY.md"
 ACTIVE_GOVERNANCE_DOCS = [
     TECH_MD,
     ROOT / "CHANGE_CHECKLIST.md",
@@ -16,6 +17,7 @@ ACTIVE_GOVERNANCE_DOCS = [
     ROOT / "SYSTEM_PROMPT.md",
     SECURITY_BENCHMARK_MD,
     SECURITY_CONTROL_MATRIX,
+    TESTING_STRATEGY_MD,
 ]
 LEGACY_COMPASS_DOCS = [
     ROOT / "AGENT.md",
@@ -116,6 +118,10 @@ def check_tech_md_freshness(issues: list[str]) -> None:
         "dgm-h": "DGM-H archive evolution and rollback lineage",
         "route/type contract": "Route/type contract governance",
         "security benchmark": "Industry-standard auth/security benchmark",
+        "agentic eval contract": "Agentic eval contract",
+        "mutation testing": "Mutation testing strategy",
+        "gemini-3.1-flash-lite-preview": "Gemini live LLM test profile",
+        "qwen3.6-35b-a3b": "LM Studio fallback live LLM test profile",
     }
 
     missing = []
@@ -151,6 +157,30 @@ def check_backend_dependency_alignment(issues: list[str]) -> None:
         )
 
 
+def check_testing_strategy_freshness(issues: list[str]) -> None:
+    """Verify testing strategy remains aligned to current harness gates."""
+    strategy_text = TESTING_STRATEGY_MD.read_text(encoding="utf-8").lower()
+    required_topics = {
+        "--strict-markers": "pytest strict markers",
+        "playwright": "Playwright acceptance testing",
+        "gemini-3.1-flash-lite-preview": "Gemini live LLM test model",
+        "qwen3.6-35b-a3b": "LM Studio fallback test model",
+        "mutation testing": "mutation testing",
+        "hypothesis": "property-based testing",
+        "agentic eval contract": "agentic eval contract",
+        "tool selection quality": "agentic tool-calling metric",
+    }
+    missing = [
+        description
+        for keyword, description in required_topics.items()
+        if keyword not in strategy_text
+    ]
+    if missing:
+        issues.append(
+            f"TESTING_STRATEGY.md: Missing documentation for: {', '.join(missing)}."
+        )
+
+
 def main() -> int:
     issues: list[str] = []
 
@@ -165,6 +195,7 @@ def main() -> int:
 
     check_legacy_compass_not_active(issues)
     check_tech_md_freshness(issues)
+    check_testing_strategy_freshness(issues)
     check_backend_dependency_alignment(issues)
 
     if issues:

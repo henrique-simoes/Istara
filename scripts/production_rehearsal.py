@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import argparse
 import contextlib
-import io
 import json
 import sys
 from pathlib import Path
@@ -16,7 +15,9 @@ if str(BACKEND) not in sys.path:
     sys.path.insert(0, str(BACKEND))
 
 
-def record(checks: list[dict], name: str, passed: bool, detail: dict | None = None) -> None:
+def record(
+    checks: list[dict], name: str, passed: bool, detail: dict | None = None
+) -> None:
     checks.append({"name": name, "passed": passed, "detail": detail or {}})
 
 
@@ -40,9 +41,16 @@ def rehearse() -> dict:
         "/api/ws/relay",
     }
     missing_routes = sorted(required_routes - actual_routes)
-    record(checks, "critical_api_routes_registered", not missing_routes, {"missing": missing_routes})
+    record(
+        checks,
+        "critical_api_routes_registered",
+        not missing_routes,
+        {"missing": missing_routes},
+    )
 
-    feature_names = {item["feature"] for item in improvement_governance.feature_contract_matrix()}
+    feature_names = {
+        item["feature"] for item in improvement_governance.feature_contract_matrix()
+    }
     required_features = {
         "interviews_audio_upload_transcription_tagging_documents",
         "memento_skills_and_agent_creation",
@@ -59,6 +67,31 @@ def rehearse() -> dict:
         "feature_contract_matrix_complete",
         required_features <= feature_names,
         {"missing": sorted(required_features - feature_names)},
+    )
+
+    agentic_contract_path = ROOT / "tests" / "agentic_eval_contract.json"
+    required_agentic_contracts = {
+        "autoresearch",
+        "reasoning_bank",
+        "memento_skills_and_agent_creation",
+        "hyperagent_meta_tuning",
+        "dgmh_archive_evolution",
+        "ensemble_llm_orchestration",
+        "tool_calling_react",
+        "acceptance_ui_simulation",
+    }
+    if agentic_contract_path.exists():
+        agentic_manifest = json.loads(agentic_contract_path.read_text(encoding="utf-8"))
+        agentic_contracts = {
+            contract.get("id") for contract in agentic_manifest.get("contracts", [])
+        }
+    else:
+        agentic_contracts = set()
+    record(
+        checks,
+        "agentic_eval_contract_manifest_complete",
+        required_agentic_contracts <= agentic_contracts,
+        {"missing": sorted(required_agentic_contracts - agentic_contracts)},
     )
 
     sandbox = sandbox_evaluation.evaluate_payload(
@@ -126,7 +159,8 @@ def rehearse() -> dict:
     record(
         checks,
         "compute_capacity_envelope_reports_slots",
-        envelope["request_slots_total"] == 6 and envelope["request_slots_available"] == 3,
+        envelope["request_slots_total"] == 6
+        and envelope["request_slots_available"] == 3,
         envelope,
     )
 
@@ -156,18 +190,25 @@ def rehearse() -> dict:
         {"files": [str(path.relative_to(ROOT)) for path in install_files]},
     )
 
-    backend_requirements = (ROOT / "backend/requirements.txt").read_text(encoding="utf-8")
+    backend_requirements = (ROOT / "backend/requirements.txt").read_text(
+        encoding="utf-8"
+    )
     installer = (ROOT / "scripts/install-istara.sh").read_text(encoding="utf-8")
     required_dependency_markers = ["webauthn", "openai-whisper", "pydub"]
     missing_dependency_markers = [
-        marker for marker in required_dependency_markers if marker not in backend_requirements
+        marker
+        for marker in required_dependency_markers
+        if marker not in backend_requirements
     ]
     ffmpeg_managed = "ensure_ffmpeg" in installer and "ffmpeg" in installer
     record(
         checks,
         "production_dependency_manifests_cover_security_and_audio",
         not missing_dependency_markers and ffmpeg_managed,
-        {"missing_requirements": missing_dependency_markers, "ffmpeg_managed": ffmpeg_managed},
+        {
+            "missing_requirements": missing_dependency_markers,
+            "ffmpeg_managed": ffmpeg_managed,
+        },
     )
 
     passed = all(check["passed"] for check in checks)

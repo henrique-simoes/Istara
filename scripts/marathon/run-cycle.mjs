@@ -25,8 +25,8 @@ const ISSUES_DIR = join(LOG_DIR, "issues");
 const STATE_FILE = join(LOG_DIR, ".marathon-state.json");
 const MARATHON_LOG = join(LOG_DIR, "MARATHON_LOG.md");
 
-const API_BASE = "http://localhost:8000";
-const FRONTEND_BASE = "http://localhost:3000";
+const API_BASE = process.env.ISTARA_API_URL || "http://localhost:8000";
+const FRONTEND_BASE = process.env.ISTARA_FRONTEND_URL || "http://localhost:3000";
 
 // JWT auth token (populated by authenticate())
 let AUTH_TOKEN = null;
@@ -206,7 +206,7 @@ async function runCustomChecks(checkNames) {
         ];
         for (const ep of endpoints) {
           try {
-            const res = await fetch(`${API_BASE}${ep}`);
+            const res = await fetch(`${API_BASE}${ep}`, { headers: authHeaders() });
             results.push({
               check: `API ${ep}`,
               passed: res.ok,
@@ -224,7 +224,7 @@ async function runCustomChecks(checkNames) {
         const tables = ["projects", "skills", "agents"];
         for (const table of tables) {
           try {
-            const res = await fetch(`${API_BASE}/api/${table}`);
+            const res = await fetch(`${API_BASE}/api/${table}`, { headers: authHeaders() });
             const data = await res.json();
             const count = Array.isArray(data) ? data.length : (data?.[table]?.length || 0);
             results.push({
@@ -240,7 +240,7 @@ async function runCustomChecks(checkNames) {
       }
       case "network_discovery": {
         try {
-          const res = await fetch(`${API_BASE}/api/llm-servers`);
+          const res = await fetch(`${API_BASE}/api/llm-servers`, { headers: authHeaders() });
           if (res.ok) {
             const servers = await res.json();
             const list = Array.isArray(servers) ? servers : servers?.servers || [];

@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import os
 import subprocess
+from dataclasses import dataclass
+from urllib.parse import urlparse
 
 import pytest
 
@@ -19,7 +21,65 @@ SECONDARY_TEST_MODEL = "qwen3.6-35b-a3b@q5_k_xl"
 KEYCHAIN_SERVICE = "istara-gemini-openai-compatible-tests"
 SECONDARY_KEYCHAIN_SERVICE = "istara-secondary-openai-compatible-tests"
 KEY_ENV_NAMES = ("ISTARA_LLM_TEST_API_KEY", "GEMINI_API_KEY", "GOOGLE_API_KEY")
-SECONDARY_KEY_ENV_NAMES = ("ISTARA_SECONDARY_LLM_TEST_API_KEY", "ISTARA_LMSTUDIO_TEST_API_KEY")
+SECONDARY_KEY_ENV_NAMES = (
+    "ISTARA_SECONDARY_LLM_TEST_API_KEY",
+    "ISTARA_LMSTUDIO_TEST_API_KEY",
+)
+
+
+@dataclass(frozen=True)
+class LiveLLMProfile:
+    """OpenAI-compatible profile used by live tests and harness scripts."""
+
+    name: str
+    provider_type: str
+    base_url: str
+    model: str
+    key_env_names: tuple[str, ...]
+    keychain_service: str
+    required: bool = False
+
+    def endpoint(self, suffix: str) -> str:
+        """Return a provider-correct OpenAI-compatible endpoint URL."""
+        return openai_compatible_endpoint(self.base_url, suffix)
+
+
+def openai_compatible_endpoint(base_url: str, suffix: str) -> str:
+    """Append OpenAI-compatible suffixes without creating Ollama-style paths."""
+    clean_base = base_url.rstrip("/")
+    clean_suffix = suffix.lstrip("/")
+    parsed = urlparse(clean_base if "://" in clean_base else f"http://{clean_base}")
+    base_path = parsed.path.rstrip("/")
+    already_openai_compatible = (
+        parsed.hostname == "generativelanguage.googleapis.com"
+        or base_path.endswith("/openai")
+        or base_path.endswith("/v1")
+    )
+    if already_openai_compatible:
+        return f"{clean_base}/{clean_suffix}"
+    return f"{clean_base}/v1/{clean_suffix}"
+
+
+PRIMARY_LLM_PROFILE = LiveLLMProfile(
+    name="gemini-openai-compatible",
+    provider_type="gemini_openai",
+    base_url=GEMINI_OPENAI_BASE_URL,
+    model=GEMINI_TEST_MODEL,
+    key_env_names=KEY_ENV_NAMES,
+    keychain_service=KEYCHAIN_SERVICE,
+    required=True,
+)
+
+SECONDARY_LLM_PROFILE = LiveLLMProfile(
+    name="secondary-openai-compatible",
+    provider_type="openai_compat",
+    base_url=SECONDARY_OPENAI_BASE_URL,
+    model=SECONDARY_TEST_MODEL,
+    key_env_names=SECONDARY_KEY_ENV_NAMES,
+    keychain_service=SECONDARY_KEYCHAIN_SERVICE,
+)
+
+LIVE_LLM_PROFILES = (PRIMARY_LLM_PROFILE, SECONDARY_LLM_PROFILE)
 
 
 def _read_env_secret(env_name: str) -> str:
@@ -54,22 +114,23 @@ def _read_keychain_secret(service: str = KEYCHAIN_SERVICE) -> str:
     return result.stdout.strip() if result.returncode == 0 else ""
 
 
-def get_live_llm_api_key() -> str:
-    """Return the configured live-test API key without exposing it in code."""
-    for env_name in KEY_ENV_NAMES:
+def get_profile_api_key(profile: LiveLLMProfile) -> str:
+    """Return a profile's configured API key without exposing it in code."""
+    for env_name in profile.key_env_names:
         api_key = _read_env_secret(env_name)
         if api_key:
             return api_key
-    return _read_keychain_secret()
+    return _read_keychain_secret(profile.keychain_service)
+
+
+def get_live_llm_api_key() -> str:
+    """Return the configured live-test API key without exposing it in code."""
+    return get_profile_api_key(PRIMARY_LLM_PROFILE)
 
 
 def get_secondary_live_llm_api_key() -> str:
     """Return the fallback live-test API key without exposing it in code."""
-    for env_name in SECONDARY_KEY_ENV_NAMES:
-        api_key = _read_env_secret(env_name)
-        if api_key:
-            return api_key
-    return _read_keychain_secret(SECONDARY_KEYCHAIN_SERVICE)
+    return get_profile_api_key(SECONDARY_LLM_PROFILE)
 
 
 def require_live_llm_api_key() -> str:
@@ -113,16 +174,16 @@ def configure_gemini_compute_registry(*, clear_existing: bool = True):
     node = ComputeNode(
         node_id="gemini-openai-compatible-live-test",
         name="Gemini OpenAI-Compatible Live Test",
-        host=GEMINI_OPENAI_BASE_URL.rstrip("/"),
+        host=PRIMARY_LLM_PROFILE.base_url.rstrip("/"),
         source="network",
-        provider_type="gemini_openai",
+        provider_type=PRIMARY_LLM_PROFILE.provider_type,
         api_key=api_key,
         priority=0,
         is_local=False,
         is_healthy=True,
-        loaded_models=[GEMINI_TEST_MODEL],
+        loaded_models=[PRIMARY_LLM_PROFILE.model],
         model_capabilities={
-            GEMINI_TEST_MODEL: {
+            PRIMARY_LLM_PROFILE.model: {
                 "supports_tools": True,
                 "supports_vision": False,
                 "context_length": 32768,
@@ -136,16 +197,16 @@ def configure_gemini_compute_registry(*, clear_existing: bool = True):
         fallback = ComputeNode(
             node_id="secondary-openai-compatible-live-test",
             name="Secondary OpenAI-Compatible Live Test",
-            host=SECONDARY_OPENAI_BASE_URL,
+            host=SECONDARY_LLM_PROFILE.base_url,
             source="network",
-            provider_type="openai_compat",
+            provider_type=SECONDARY_LLM_PROFILE.provider_type,
             api_key=secondary_api_key,
             priority=10,
             is_local=False,
             is_healthy=True,
-            loaded_models=[SECONDARY_TEST_MODEL],
+            loaded_models=[SECONDARY_LLM_PROFILE.model],
             model_capabilities={
-                SECONDARY_TEST_MODEL: {
+                SECONDARY_LLM_PROFILE.model: {
                     "supports_tools": True,
                     "supports_vision": False,
                     "context_length": 32768,
