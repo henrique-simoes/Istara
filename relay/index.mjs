@@ -70,11 +70,14 @@ if (connStr) {
   console.log("🔗 Istara Relay starting...");
   console.log(`   Server: ${opts.server}`);
 }
-console.log(`   Provider: ${opts.provider}`);
-console.log(`   LLM Host: ${opts.llmHost}`);
 
 const stateMachine = new StateMachine();
 const llmProxy = new LLMProxy(opts.provider, opts.llmHost, opts.llmApiKey);
+console.log(
+  `   Provider: ${llmProxy.providerType}`
+  + (llmProxy.providerType !== opts.provider ? ` (inferred from ${opts.llmHost})` : "")
+);
+console.log(`   LLM Host: ${opts.llmHost}`);
 
 // Gather initial system info for registration
 const stats = await getSystemStats();

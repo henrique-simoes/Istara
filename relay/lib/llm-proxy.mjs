@@ -3,11 +3,54 @@
  * Supports optional API key for servers that require authentication.
  */
 
+export function inferProviderType(providerType, host) {
+  const requested = (providerType || "").trim().toLowerCase();
+  const rawHost = (host || "").trim();
+  if (requested && requested !== "ollama") return requested;
+  if (!rawHost) return requested || "openai_compat";
+
+  let parsed;
+  try {
+    parsed = new URL(rawHost.includes("://") ? rawHost : `http://${rawHost}`);
+  } catch {
+    return requested || "openai_compat";
+  }
+
+  const path = parsed.pathname.replace(/\/+$/, "");
+  if (parsed.hostname.includes("generativelanguage.googleapis.com") || path.endsWith("/openai")) {
+    return "gemini_openai";
+  }
+  if (parsed.port === "1234") return "lmstudio";
+  if (path.endsWith("/v1")) return "openai_compat";
+  if (parsed.port === "11434") return "ollama";
+  return requested || "openai_compat";
+}
+
 export class LLMProxy {
   constructor(providerType, host, apiKey) {
-    this.providerType = providerType; // ollama | lmstudio
-    this.host = host.replace(/\/$/, "");
+    this.host = (host || "").replace(/\/+$/, "");
+    this.providerType = inferProviderType(providerType, this.host);
     this.apiKey = apiKey || "";
+  }
+
+  _openAIUrl(suffix) {
+    const cleanSuffix = suffix.replace(/^\/+/, "");
+    let parsed;
+    try {
+      parsed = new URL(this.host.includes("://") ? this.host : `http://${this.host}`);
+    } catch {
+      return `${this.host}/v1/${cleanSuffix}`;
+    }
+    const basePath = parsed.pathname.replace(/\/+$/, "");
+    const hasOpenAIBase = (
+      this.providerType === "gemini_openai"
+      || parsed.hostname.includes("generativelanguage.googleapis.com")
+      || basePath.endsWith("/openai")
+      || basePath.endsWith("/v1")
+    );
+    return hasOpenAIBase
+      ? `${this.host}/${cleanSuffix}`
+      : `${this.host}/v1/${cleanSuffix}`;
   }
 
   /** Build headers with optional auth. */
@@ -23,7 +66,7 @@ export class LLMProxy {
     try {
       const url = this.providerType === "ollama"
         ? `${this.host}/api/tags`
-        : `${this.host}/v1/models`;
+        : this._openAIUrl("models");
 
       const res = await fetch(url, {
         headers: this._headers(),
@@ -62,7 +105,7 @@ export class LLMProxy {
       if (!res.ok) throw new Error(await res.text());
       return await res.json();
     } else {
-      // OpenAI-compatible (LM Studio)
+      // OpenAI-compatible (LM Studio, Gemini, and compatible local servers)
       const payload = {
         model: model || "default",
         messages,
@@ -71,7 +114,7 @@ export class LLMProxy {
       };
       if (max_tokens) payload.max_tokens = max_tokens;
 
-      const res = await fetch(`${this.host}/v1/chat/completions`, {
+      const res = await fetch(this._openAIUrl("chat/completions"), {
         method: "POST",
         headers: this._headers(),
         body: JSON.stringify(payload),
@@ -100,7 +143,7 @@ export class LLMProxy {
       return data.embeddings?.[0] || [];
     }
 
-    const res = await fetch(`${this.host}/v1/embeddings`, {
+    const res = await fetch(this._openAIUrl("embeddings"), {
       method: "POST",
       headers: this._headers(),
       body: JSON.stringify({ model, input }),

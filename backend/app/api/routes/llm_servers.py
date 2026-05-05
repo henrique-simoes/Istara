@@ -148,6 +148,7 @@ async def add_llm_server(
     # Run initial health check
     healthy = await entry.check_health()
     server.is_healthy = healthy
+    server.provider_type = entry.provider_type
     server.last_health_check = datetime.now(UTC)
     server.last_latency_ms = entry.last_latency_ms
     await db.commit()
@@ -191,6 +192,7 @@ async def health_check_server(server_id: str, db: AsyncSession = Depends(get_db)
     if router_server:
         healthy = await router_server.check_health()
         server.is_healthy = healthy
+        server.provider_type = router_server.provider_type
         server.last_health_check = datetime.now(UTC)
         server.last_latency_ms = router_server.last_latency_ms
         await db.commit()

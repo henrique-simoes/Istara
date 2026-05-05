@@ -34,6 +34,70 @@ TRANSIENT_CHAT_BASE_DELAY_S = 0.25
 TRANSIENT_CHAT_MAX_DELAY_S = 2.0
 
 
+def infer_provider_type(provider_type: str | None, host: str | None) -> str:
+    """Infer the provider contract from an LLM server URL when the label is ambiguous."""
+    requested = (provider_type or "").strip().lower()
+    if not host:
+        return requested or "openai_compat"
+    if requested and requested != "ollama":
+        return requested
+
+    parsed = urlparse(host if "://" in host else f"http://{host}")
+    path = parsed.path.rstrip("/")
+    hostname = parsed.hostname or ""
+    port = parsed.port
+
+    if "generativelanguage.googleapis.com" in hostname or path.endswith("/openai"):
+        return "gemini_openai"
+    if port == 1234:
+        return "lmstudio"
+    if path.endswith("/v1"):
+        return "openai_compat"
+    if port == 11434:
+        return "ollama"
+    return requested or "openai_compat"
+
+
+def _server_endpoint_identity(host: str) -> tuple[str, str, int | None, str]:
+    """Canonicalize an LLM server endpoint enough to catch accidental duplicates."""
+    parsed = urlparse(host if "://" in host else f"http://{host}")
+    path = parsed.path.rstrip("/")
+    if path == "/v1":
+        path = ""
+    return (
+        (parsed.scheme or "http").lower(),
+        (parsed.hostname or "").lower(),
+        parsed.port,
+        path,
+    )
+
+
+def _openai_model_ids(data: dict) -> list[str]:
+    raw_models = data.get("data")
+    if not isinstance(raw_models, list):
+        return []
+    return [
+        model_id
+        for model in raw_models
+        if isinstance(model, dict)
+        for model_id in [model.get("id")]
+        if isinstance(model_id, str) and model_id.strip()
+    ]
+
+
+def _ollama_model_names(data: dict) -> list[str]:
+    raw_models = data.get("models")
+    if not isinstance(raw_models, list):
+        return []
+    return [
+        name
+        for model in raw_models
+        if isinstance(model, dict)
+        for name in [model.get("name")]
+        if isinstance(name, str) and name.strip()
+    ]
+
+
 @dataclass
 class ComputeNode:
     """A single compute resource.
@@ -102,6 +166,9 @@ class ComputeNode:
     # LLM client (cached)
     _client: Any = None
     api_key: str = ""
+
+    def __post_init__(self) -> None:
+        self.provider_type = infer_provider_type(self.provider_type, self.host)
 
     # --- Backward-compatibility aliases for LLMServerEntry ---
 
@@ -273,6 +340,47 @@ class ComputeNode:
             start = time.time()
             if self.provider_type == "ollama":
                 resp = await client.get("/api/tags", timeout=10.0)
+                self.latency_ms = (time.time() - start) * 1000
+                if resp.status_code == 200:
+                    try:
+                        data = resp.json()
+                        self.loaded_models = _ollama_model_names(data)
+                    except Exception:
+                        self.loaded_models = []
+                    if self.loaded_models:
+                        self.is_healthy = True
+                        self.health_state = "ready"
+                        self.health_error = ""
+                        self.consecutive_failures = 0
+                        self.last_health_check = time.time()
+                        return True
+
+                # A common misconfiguration is saving an LM Studio/OpenAI-compatible
+                # server as Ollama. LM Studio may return 200 for unknown paths, so a
+                # status-only check would keep routing the wrong endpoint forever.
+                openai_start = time.time()
+                openai_resp = await client.get(self._openai_endpoint("models"), timeout=10.0)
+                self.latency_ms = (time.time() - openai_start) * 1000
+                if openai_resp.status_code == 200:
+                    try:
+                        data = openai_resp.json()
+                        self.loaded_models = _openai_model_ids(data)
+                    except Exception:
+                        self.loaded_models = []
+                    if self.loaded_models:
+                        self.provider_type = "openai_compat"
+                        self.is_healthy = True
+                        self.health_state = "ready"
+                        self.health_error = ""
+                        self.consecutive_failures = 0
+                        self.last_health_check = time.time()
+                        logger.info(
+                            "ComputeRegistry: corrected %s provider from ollama to "
+                            "openai_compat after /v1/models succeeded.",
+                            self.name,
+                        )
+                        return True
+                resp = openai_resp
             else:
                 resp = await client.get(self._openai_endpoint("models"), timeout=10.0)
             self.latency_ms = (time.time() - start) * 1000
@@ -281,19 +389,13 @@ class ComputeNode:
                 try:
                     data = resp.json()
                     if self.provider_type == "ollama":
-                        raw_models = data.get("models", []) if isinstance(data, dict) else []
-                        self.loaded_models = [
-                            m.get("name", "")
-                            for m in raw_models
-                            if isinstance(m, dict) and m.get("name")
-                        ]
+                        self.loaded_models = (
+                            _ollama_model_names(data) if isinstance(data, dict) else []
+                        )
                     else:
-                        raw_models = data.get("data", []) if isinstance(data, dict) else []
-                        self.loaded_models = [
-                            m.get("id", "")
-                            for m in raw_models
-                            if isinstance(m, dict) and m.get("id")
-                        ]
+                        self.loaded_models = (
+                            _openai_model_ids(data) if isinstance(data, dict) else []
+                        )
                 except Exception:
                     self.loaded_models = []
                 if self.loaded_models:
@@ -695,6 +797,38 @@ class ComputeRegistry:
 
     def register_node(self, node: ComputeNode) -> None:
         """Register a ComputeNode."""
+        if node.host:
+            new_identity = _server_endpoint_identity(node.host)
+            for existing_id, existing in list(self._nodes.items()):
+                if existing_id == node.node_id or not existing.host:
+                    continue
+                if _server_endpoint_identity(existing.host) != new_identity:
+                    continue
+                if (
+                    existing.provider_type != node.provider_type
+                    and existing.priority <= node.priority
+                ):
+                    logger.info(
+                        "ComputeRegistry: skipped duplicate node '%s' (%s @ %s); "
+                        "existing node '%s' already owns that endpoint as %s.",
+                        node.name,
+                        node.provider_type,
+                        node.host,
+                        existing.name,
+                        existing.provider_type,
+                    )
+                    return
+                if existing.provider_type != node.provider_type:
+                    removed = self._nodes.pop(existing_id, None)
+                    if removed:
+                        asyncio.ensure_future(removed.close())
+                        logger.info(
+                            "ComputeRegistry: replaced duplicate node '%s' (%s) with '%s' (%s).",
+                            removed.name,
+                            removed.provider_type,
+                            node.name,
+                            node.provider_type,
+                        )
         if not node.connected_at:
             node.connected_at = time.time()
         if not node.last_heartbeat:
