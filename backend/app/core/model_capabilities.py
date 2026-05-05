@@ -207,3 +207,19 @@ async def detect_capabilities_generic(
             logger.debug(f"Dynamic tool probe failed for {host}: {e}")
 
     return result
+
+
+async def detect_capabilities_lmstudio(
+    host: str | None,
+    api_key: str = "",
+) -> dict[str, ModelCapability]:
+    """Detect capabilities from an LM Studio/OpenAI-compatible server."""
+    return await detect_capabilities_generic(host, api_key, provider_type="lmstudio")
+
+
+async def detect_capabilities_ollama(
+    host: str | None,
+    api_key: str = "",
+) -> dict[str, ModelCapability]:
+    """Detect capabilities from an Ollama server."""
+    return await detect_capabilities_generic(host, api_key, provider_type="ollama")
