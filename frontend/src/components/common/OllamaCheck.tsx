@@ -18,7 +18,7 @@ export default function OllamaCheck({ onRetry }: OllamaCheckProps) {
           LLM Provider Not Connected
         </h1>
         <p className="text-slate-500 mb-6">
-          Istara needs a local LLM provider (LM Studio or Ollama) running to power the AI.
+          Istara needs a local or compatible LLM provider running to power the AI.
           It provides the language models that analyze your research data.
         </p>
 
@@ -34,7 +34,7 @@ export default function OllamaCheck({ onRetry }: OllamaCheckProps) {
           </div>
           <div className="flex items-center gap-2 text-slate-400 text-xs mb-2">
             <Terminal size={12} />
-            <span>Or use Ollama</span>
+            <span>Ollama or OpenAI-compatible server</span>
           </div>
           <div className="font-mono text-sm space-y-1">
             <p className="text-slate-400"># Start Ollama</p>
@@ -53,7 +53,7 @@ export default function OllamaCheck({ onRetry }: OllamaCheckProps) {
         </button>
 
         <p className="text-xs text-slate-400 mt-4">
-          Set LLM_PROVIDER=lmstudio or LLM_PROVIDER=ollama in your backend .env file.
+          Set LLM_PROVIDER to lmstudio, ollama, openai_compat, vllm, sglang, llamacpp, mlx, or anthropic.
         </p>
       </div>
     </div>

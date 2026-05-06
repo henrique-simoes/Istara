@@ -184,7 +184,9 @@ export async function run(ctx) {
 
   // ── 11-14. UI Checks ───────────────────────────────────────
   try {
-    await page.goto("http://localhost:3000", { waitUntil: "networkidle", timeout: 30000 });
+    await page.goto(ctx.frontendUrl, { waitUntil: "domcontentloaded", timeout: 30000 });
+    await page.waitForSelector('button[aria-label="Chat"], button[aria-label="Tasks"], main', { timeout: 15000 }).catch(() => {});
+    await page.waitForTimeout(1000);
 
     // 11. Tasks view loads
     const tasksNav = await page.locator('button[aria-label="Tasks"]').first();
@@ -193,24 +195,34 @@ export async function run(ctx) {
       await page.waitForTimeout(1000);
       check(11, "Tasks view navigable", true, "Tasks nav clicked");
     } else {
-      check(11, "Tasks view navigable", false, "Tasks nav not visible");
+      await page.keyboard.down("Meta");
+      await page.keyboard.press("3");
+      await page.keyboard.up("Meta");
+      await page.waitForTimeout(1000);
+      let tasksHeading = await page.locator('h2:has-text("Tasks"), text=Backlog, text="Research Workflow"').first().isVisible({ timeout: 3000 }).catch(() => false);
+      if (!tasksHeading) {
+        await page.evaluate(() => window.dispatchEvent(new CustomEvent("istara:navigate", { detail: "tasks" })));
+        await page.waitForTimeout(1000);
+        tasksHeading = await page.locator('h2:has-text("Tasks"), text=Backlog, text="Research Workflow"').first().isVisible({ timeout: 3000 }).catch(() => false);
+      }
+      check(11, "Tasks view navigable", tasksHeading, tasksHeading ? "Opened via keyboard shortcut" : "Tasks nav not visible");
     }
 
     // 12-14. Scan compiled JS for new fields, UI sections, and chat actions
-    // Fetch the page source directly (server-side) to avoid browser fetch issues
-    const pageRes = await fetch("http://localhost:3000");
-    const pageHtml = await pageRes.text();
-    // Extract all script src URLs from HTML
-    const srcRe = /script[^>]+src="([^"]+)"/g;
-    let match;
-    let allText = pageHtml;
-    while ((match = srcRe.exec(pageHtml)) !== null) {
-      try {
-        const scriptRes = await fetch(`http://localhost:3000${match[1]}`);
-        const scriptText = await scriptRes.text();
-        allText += scriptText;
-      } catch { /* skip */ }
-    }
+    // Read source files directly; compiled Next chunks are not a stable contract.
+    const fs = await import("fs");
+    const path = await import("path");
+    const sourceFiles = [
+      "frontend/src/lib/types.ts",
+      "frontend/src/lib/api.ts",
+      "frontend/src/components/kanban/TaskEditor.tsx",
+      "frontend/src/components/kanban/KanbanBoard.tsx",
+      "frontend/src/components/layout/RightPanel.tsx",
+      "frontend/src/components/chat/ChatView.tsx",
+    ];
+    const allText = sourceFiles
+      .map((file) => fs.readFileSync(path.join(process.cwd(), file), "utf8"))
+      .join("\n");
 
     const hasNewFields = allText.includes("input_document_ids") && allText.includes("output_document_ids");
     const hasAttachUI = allText.includes("Attached Documents") || allText.includes("attach");
@@ -262,14 +274,30 @@ export async function run(ctx) {
 
     // Now navigate to Tasks view and check for document indicators on cards
     if (page) {
-      await page.goto("http://localhost:3000", { waitUntil: "networkidle", timeout: 15000 });
+      await page.goto(ctx.frontendUrl, { waitUntil: "domcontentloaded", timeout: 15000 });
+      await page.waitForSelector('button[aria-label="Chat"], button[aria-label="Tasks"], main', { timeout: 15000 }).catch(() => {});
       await page.waitForTimeout(1000);
 
       const tasksNav = page.locator('button[aria-label="Tasks"]').first();
+      let tasksOpened = false;
       if (await tasksNav.isVisible({ timeout: 3000 })) {
         await tasksNav.click();
         await page.waitForTimeout(2000);
+        tasksOpened = true;
+      } else {
+        await page.keyboard.down("Meta");
+        await page.keyboard.press("3");
+        await page.keyboard.up("Meta");
+        await page.waitForTimeout(1500);
+        tasksOpened = await page.locator('h2:has-text("Tasks"), text=Backlog, text="Research Workflow"').first().isVisible({ timeout: 3000 }).catch(() => false);
+        if (!tasksOpened) {
+          await page.evaluate(() => window.dispatchEvent(new CustomEvent("istara:navigate", { detail: "tasks" })));
+          await page.waitForTimeout(1000);
+          tasksOpened = await page.locator('h2:has-text("Tasks"), text=Backlog, text="Research Workflow"').first().isVisible({ timeout: 3000 }).catch(() => false);
+        }
+      }
 
+      if (tasksOpened) {
         // Look for document indicators on task cards
         const indicatorInfo = await page.evaluate(() => {
           const body = document.body.innerText.toLowerCase();
@@ -302,7 +330,7 @@ export async function run(ctx) {
           indicatorInfo.docIconCount > 0 || indicatorInfo.cardsWithDocIndicator > 0 || indicatorInfo.bodyHasDocRef,
           `doc_icons=${indicatorInfo.docIconCount}, cards_with_indicator=${indicatorInfo.cardsWithDocIndicator}/${indicatorInfo.totalTaskCards}`);
       } else {
-        check(15, "Phase 4E: Task cards show document indicators", false, "Tasks nav not visible");
+        check(15, "Phase 4E: Task cards show document indicators", false, "Tasks view not reachable");
       }
     } else {
       check(15, "Phase 4E: Task cards show document indicators", false, "No page context");

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { ChevronLeft, ChevronRight, Palette, ExternalLink, AlertTriangle, CheckCircle2, Sparkles } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ChevronLeft, ChevronRight, Palette, ExternalLink, AlertTriangle, CheckCircle2, Sparkles, X } from "lucide-react";
 import { interfaces as interfacesApi } from "@/lib/api";
 import { useInterfacesStore } from "@/stores/interfacesStore";
 import { cn } from "@/lib/utils";
@@ -64,6 +64,14 @@ export default function InterfacesOnboarding() {
     dismissOnboarding();
   };
 
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") dismissOnboarding();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [dismissOnboarding]);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
       <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden">
@@ -75,7 +83,16 @@ export default function InterfacesOnboarding() {
           />
         </div>
 
-        <div className="p-6">
+        <div className="relative p-6">
+          <button
+            type="button"
+            onClick={dismissOnboarding}
+            aria-label="Skip Interfaces setup"
+            className="absolute right-3 top-3 rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+          >
+            <X size={16} />
+          </button>
+
           {/* Welcome */}
           {currentStep === "welcome" && (
             <div className="text-center py-4">

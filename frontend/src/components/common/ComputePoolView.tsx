@@ -12,6 +12,8 @@ import {
   AlertTriangle,
   Camera,
   Wrench,
+  FileJson,
+  Volume2,
   Globe,
   Monitor,
   Radio,
@@ -404,8 +406,11 @@ export default function ComputePoolView() {
                                 <ModelBadges
                                   supportsTools={caps.supports_tools}
                                   supportsVision={caps.supports_vision}
+                                  supportsAudio={Boolean(caps.supports_audio)}
+                                  supportsJson={Boolean(caps.supports_json)}
                                   parameterCount={caps.parameter_count}
                                   contextLength={caps.context_length}
+                                  isLoaded={caps.is_loaded}
                                 />
                               ) : (
                                 <span className="text-xs text-slate-400 italic">
@@ -445,13 +450,19 @@ export default function ComputePoolView() {
 function ModelBadges({
   supportsTools,
   supportsVision,
+  supportsAudio,
+  supportsJson,
   parameterCount,
   contextLength,
+  isLoaded,
 }: {
   supportsTools: boolean;
   supportsVision: boolean;
+  supportsAudio?: boolean;
+  supportsJson?: boolean;
   parameterCount: string | null;
   contextLength: number | null;
+  isLoaded?: boolean | null;
 }) {
   const formatContext = (len: number) => {
     if (len >= 1000) return `${Math.round(len / 1000)}K ctx`;
@@ -467,6 +478,21 @@ function ModelBadges({
           aria-label={`${parameterCount} parameters`}
         >
           {parameterCount}
+        </span>
+      )}
+
+      {/* Tool support */}
+      {isLoaded != null && (
+        <span
+          className={cn(
+            "inline-flex px-1.5 py-0.5 text-[10px] font-medium rounded",
+            isLoaded
+              ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
+              : "bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+          )}
+          aria-label={isLoaded ? "Model loaded in memory" : "Model available but not loaded"}
+        >
+          {isLoaded ? "loaded" : "available"}
         </span>
       )}
 
@@ -492,6 +518,26 @@ function ModelBadges({
         >
           <Camera size={9} aria-hidden="true" />
           vision
+        </span>
+      )}
+
+      {supportsAudio && (
+        <span
+          className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-medium rounded bg-sky-50 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400"
+          aria-label="Supports audio input"
+        >
+          <Volume2 size={9} aria-hidden="true" />
+          audio
+        </span>
+      )}
+
+      {supportsJson && (
+        <span
+          className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-medium rounded bg-teal-50 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400"
+          aria-label="Supports structured JSON output"
+        >
+          <FileJson size={9} aria-hidden="true" />
+          json
         </span>
       )}
 

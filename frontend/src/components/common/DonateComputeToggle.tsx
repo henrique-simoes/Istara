@@ -1,17 +1,23 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Cpu, Wifi, WifiOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 import { WS_BASE } from "@/lib/runtimeConfig";
+import {
+  detectLocalLLM,
+  openAIUrl,
+  providerLabel,
+  type LocalLLMDetection,
+} from "@/lib/modelProviders";
 
 /**
  * Browser-based compute donation toggle.
  *
  * When enabled, opens a WebSocket to /ws/relay and registers as a
  * browser compute node. Proxies LLM requests from the server to a
- * local Ollama/LM Studio instance.
+ * local model-server instance.
  *
  * Limitation: browser tabs are throttled when backgrounded, so this
  * is a convenience feature. For reliable donation, use the desktop app.
@@ -19,27 +25,73 @@ import { WS_BASE } from "@/lib/runtimeConfig";
 export default function DonateComputeToggle() {
   const [enabled, setEnabled] = useState(false);
   const [connected, setConnected] = useState(false);
-  const [localLLM, setLocalLLM] = useState<string | null>(null);
+  const [localLLM, setLocalLLM] = useState<LocalLLMDetection | null>(null);
   const [donationError, setDonationError] = useState<string>("");
   const wsRef = useRef<WebSocket | null>(null);
 
   // Detect local LLM on mount
   useEffect(() => {
     async function detectLLM() {
-      // Try LM Studio
-      try {
-        const res = await fetch("http://localhost:1234/v1/models", { signal: AbortSignal.timeout(2000) });
-        if (res.ok) { setLocalLLM("lmstudio"); return; }
-      } catch {}
-      // Try Ollama
-      try {
-        const res = await fetch("http://localhost:11434/api/tags", { signal: AbortSignal.timeout(2000) });
-        if (res.ok) { setLocalLLM("ollama"); return; }
-      } catch {}
-      setLocalLLM(null);
+      setLocalLLM(await detectLocalLLM());
     }
     detectLLM();
   }, []);
+
+  const fetchModelProbe = useCallback(async (): Promise<Pick<LocalLLMDetection, "models" | "modelCapabilities">> => {
+    try {
+      if (localLLM?.providerType === "ollama") {
+        const res = await fetch(`${localLLM.host}/api/tags`);
+        const data = await res.json();
+        const models = (data.models || []).map((m: any) => m.name).filter(Boolean);
+        return {
+          models,
+          modelCapabilities: Object.fromEntries(
+            models.map((model: string) => [
+              model,
+              localLLM.modelCapabilities[model] || {
+                name: model,
+                source: "ollama",
+                supports_tools: false,
+                supports_vision: false,
+                supports_audio: false,
+                supports_json: false,
+                context_length: 4096,
+                parameter_count: "unknown",
+                is_loaded: null,
+              },
+            ])
+          ),
+        };
+      }
+      const endpoint =
+        localLLM?.providerType === "lmstudio"
+          ? `${localLLM.host}/api/v1/models`
+          : openAIUrl(localLLM?.host || "", localLLM?.providerType || "openai_compat", "models");
+      const res = await fetch(endpoint);
+      const data = await res.json();
+      const rawModels = localLLM?.providerType === "lmstudio" ? data.models || [] : data.data || [];
+      const models = rawModels.map((m: any) => m.key || m.id || m.name).filter(Boolean);
+      return {
+        models,
+        modelCapabilities: Object.fromEntries(
+          models.map((model: string) => [
+            model,
+            localLLM?.modelCapabilities[model] || {
+              name: model,
+              source: localLLM?.providerType || "openai_compat",
+              supports_tools: false,
+              supports_vision: false,
+              supports_audio: false,
+              supports_json: false,
+              context_length: 4096,
+              parameter_count: "unknown",
+              is_loaded: null,
+            },
+          ])
+        ),
+      };
+    } catch { return { models: [], modelCapabilities: {} }; }
+  }, [localLLM]);
 
   // Manage WebSocket connection
   useEffect(() => {
@@ -62,14 +114,15 @@ export default function DonateComputeToggle() {
       setConnected(true);
       setDonationError("");
       // Register as browser node
-      const models = await fetchModels();
+      const modelProbe = await fetchModelProbe();
       ws.send(JSON.stringify({
         type: "register",
         hostname: `Browser (${navigator.userAgent.split(" ").pop()})`,
         user_id: "browser",
-        provider_type: localLLM === "ollama" ? "ollama" : "lmstudio",
-        provider_host: localLLM === "ollama" ? "http://localhost:11434" : "http://localhost:1234",
-        loaded_models: models,
+        provider_type: localLLM.providerType,
+        provider_host: localLLM.host,
+        loaded_models: modelProbe.models,
+        model_capabilities: modelProbe.modelCapabilities,
         ram_total_gb: (navigator as any).deviceMemory || 0,
         cpu_cores: navigator.hardwareConcurrency || 0,
       }));
@@ -112,13 +165,14 @@ export default function DonateComputeToggle() {
     // Heartbeat
     const heartbeat = setInterval(async () => {
       if (ws.readyState === WebSocket.OPEN) {
-        const models = await fetchModels();
+        const modelProbe = await fetchModelProbe();
         ws.send(JSON.stringify({
           type: "heartbeat",
           stats: {
             ram_available_gb: 0,
             cpu_load_pct: 0,
-            loaded_models: models,
+            loaded_models: modelProbe.models,
+            model_capabilities: modelProbe.modelCapabilities,
             state: "idle",
           },
         }));
@@ -131,28 +185,17 @@ export default function DonateComputeToggle() {
       wsRef.current = null;
       setConnected(false);
     };
-  }, [enabled, localLLM]);
+  }, [enabled, fetchModelProbe, localLLM]);
 
-  async function fetchModels(): Promise<string[]> {
+  async function proxyRequest(msg: any, provider: LocalLLMDetection) {
     try {
-      if (localLLM === "ollama") {
-        const res = await fetch("http://localhost:11434/api/tags");
-        const data = await res.json();
-        return (data.models || []).map((m: any) => m.name);
-      } else {
-        const res = await fetch("http://localhost:1234/v1/models");
-        const data = await res.json();
-        return (data.data || []).map((m: any) => m.id);
-      }
-    } catch { return []; }
-  }
+      const host = provider.host;
+      const endpoint =
+        provider.providerType === "ollama"
+          ? `${host}/api/chat`
+          : openAIUrl(host, provider.providerType, "chat/completions");
 
-  async function proxyRequest(msg: any, provider: string) {
-    try {
-      const host = provider === "ollama" ? "http://localhost:11434" : "http://localhost:1234";
-      const endpoint = provider === "ollama" ? "/api/chat" : "/v1/chat/completions";
-
-      const body = provider === "ollama"
+      const body = provider.providerType === "ollama"
         ? { model: msg.model, messages: msg.messages, stream: false }
         : {
             model: msg.model,
@@ -164,7 +207,7 @@ export default function DonateComputeToggle() {
             response_format: msg.response_format,
           };
 
-      const res = await fetch(`${host}${endpoint}`, {
+      const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -173,7 +216,7 @@ export default function DonateComputeToggle() {
       if (!res.ok) {
         return { error: data?.error?.message || data?.error || `HTTP ${res.status}` };
       }
-      if (provider === "ollama") {
+      if (provider.providerType === "ollama") {
         return data;
       }
       const choice = data?.choices?.[0] || {};
@@ -194,14 +237,17 @@ export default function DonateComputeToggle() {
     }
   }
 
-  async function proxyEmbedding(msg: any, provider: string) {
+  async function proxyEmbedding(msg: any, provider: LocalLLMDetection) {
     try {
-      const host = provider === "ollama" ? "http://localhost:11434" : "http://localhost:1234";
-      const endpoint = provider === "ollama" ? "/api/embed" : "/v1/embeddings";
-      const body = provider === "ollama"
+      const host = provider.host;
+      const endpoint =
+        provider.providerType === "ollama"
+          ? `${host}/api/embed`
+          : openAIUrl(host, provider.providerType, "embeddings");
+      const body = provider.providerType === "ollama"
         ? { model: msg.model, input: msg.input }
         : { model: msg.model, input: msg.input };
-      const res = await fetch(`${host}${endpoint}`, {
+      const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -210,7 +256,7 @@ export default function DonateComputeToggle() {
       if (!res.ok) {
         return { error: data?.error?.message || data?.error || `HTTP ${res.status}` };
       }
-      if (provider === "ollama") {
+      if (provider.providerType === "ollama") {
         if (Array.isArray(msg.input)) return data.embeddings || [];
         return data.embeddings?.[0] || [];
       }
@@ -235,7 +281,7 @@ export default function DonateComputeToggle() {
             ? donationError
             : connected
             ? "Sharing your local LLM with the server"
-            : localLLM === "ollama" ? "Ollama detected" : "LM Studio detected"
+            : `${providerLabel(localLLM.providerType)} detected`
           }
         </p>
       </div>

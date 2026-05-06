@@ -3,7 +3,7 @@
  * Istara Relay — Donate LLM compute to the Istara network.
  *
  * Connects outbound via WebSocket (NAT-friendly — no inbound ports needed).
- * Reports hardware stats and forwards LLM requests to local Ollama/LM Studio.
+ * Reports hardware stats and forwards LLM requests to local or compatible model servers.
  *
  * Usage:
  *   istara-relay --server ws://your-server:8000/ws/relay --token <jwt>
@@ -14,7 +14,7 @@ import { program } from "commander";
 import { createConnection } from "./lib/connection.mjs";
 import { StateMachine } from "./lib/state-machine.mjs";
 import { startHeartbeat, getSystemStats } from "./lib/heartbeat.mjs";
-import { LLMProxy } from "./lib/llm-proxy.mjs";
+import { LLMProxy, detectLocalLLM } from "./lib/llm-proxy.mjs";
 import { decodeConnectionString } from "./lib/connection-string.mjs";
 
 program
@@ -24,13 +24,14 @@ program
   .option("-s, --server <url>", "Istara server WebSocket URL", "ws://localhost:8000/ws/relay")
   .option("-t, --token <jwt>", "JWT authentication token", "")
   .option("-c, --connection-string <string>", "Connection string (replaces --server and --token)")
-  .option("-p, --provider <type>", "LLM provider: ollama or lmstudio", "ollama")
+  .option("-p, --provider <type>", "LLM provider: ollama, lmstudio, openai_compat, vllm, sglang, llamacpp, mlx, anthropic", "ollama")
   .option("-h, --llm-host <url>", "Local LLM server URL", "http://localhost:11434")
   .option("-k, --llm-api-key <key>", "API key for local LLM server (if auth required)", "")
   .option("-i, --heartbeat-interval <seconds>", "Heartbeat interval", "30")
   .parse();
 
 const opts = program.opts();
+const optionSource = (name) => program.getOptionValueSource?.(name) || "default";
 
 // Load config from ~/.istara/config.json if it exists
 const configPath = `${process.env.HOME || process.env.USERPROFILE}/.istara/config.json`;
@@ -64,7 +65,7 @@ if (connStr) {
   console.log(`   Label: ${decoded.label || "unnamed"}`);
 } else {
   // Use config values for individual opts if available
-  if (!opts.server && config.ws_url) opts.server = config.ws_url;
+  if (optionSource("server") === "default" && config.ws_url) opts.server = config.ws_url;
   if (!opts.token && config.token) opts.token = config.token;
   
   console.log("🔗 Istara Relay starting...");
@@ -72,12 +73,57 @@ if (connStr) {
 }
 
 const stateMachine = new StateMachine();
+
+const configProvider = config.provider || config.llm_provider || "";
+const configHost = config.llm_host || config.llmHost || "";
+const configApiKey = config.llm_api_key || config.llmApiKey || "";
+const providerWasConfigured = optionSource("provider") !== "default" || Boolean(configProvider);
+const hostWasConfigured = optionSource("llmHost") !== "default" || Boolean(configHost);
+
+if (optionSource("provider") === "default" && configProvider) {
+  opts.provider = configProvider;
+}
+if (optionSource("llmHost") === "default" && configHost) {
+  opts.llmHost = configHost;
+}
+if (optionSource("llmApiKey") === "default" && configApiKey) {
+  opts.llmApiKey = configApiKey;
+}
+if (!hostWasConfigured && providerWasConfigured) {
+  const defaultHosts = {
+    ollama: "http://localhost:11434",
+    lmstudio: "http://localhost:1234",
+    llamacpp: "http://localhost:8080",
+    vllm: "http://localhost:8000",
+    sglang: "http://localhost:30000",
+    mlx: "http://localhost:8080",
+    anthropic: "https://api.anthropic.com",
+  };
+  opts.llmHost = defaultHosts[String(opts.provider || "").toLowerCase()] || opts.llmHost;
+}
+
+let initialProbe = null;
+if (!providerWasConfigured && !hostWasConfigured) {
+  const detected = await detectLocalLLM({ apiKey: opts.llmApiKey });
+  if (detected) {
+    opts.provider = detected.providerType;
+    opts.llmHost = detected.host;
+    initialProbe = detected;
+    console.log(`   Detected local LLM: ${detected.providerType} at ${detected.host}`);
+  } else {
+    console.warn(
+      "⚠️  No local model server detected yet. "
+      + "Start one locally and the relay heartbeat will advertise models once reachable.",
+    );
+  }
+}
+
 const llmProxy = new LLMProxy(opts.provider, opts.llmHost, opts.llmApiKey);
 console.log(
   `   Provider: ${llmProxy.providerType}`
   + (llmProxy.providerType !== opts.provider ? ` (inferred from ${opts.llmHost})` : "")
 );
-console.log(`   LLM Host: ${opts.llmHost}`);
+console.log(`   LLM Host: ${llmProxy.host}`);
 
 // Gather initial system info for registration
 const stats = await getSystemStats();
@@ -90,7 +136,8 @@ const ws = createConnection(opts.server, {
     stateMachine.transition("idle");
 
     // Register with server
-    const models = await llmProxy.listModels();
+    const modelProbe = initialProbe ?? await llmProxy.probeModels();
+    const models = modelProbe.models || [];
     ws.send(JSON.stringify({
       type: "register",
       hostname: stats.hostname,
@@ -100,8 +147,9 @@ const ws = createConnection(opts.server, {
       gpu_name: stats.gpu_name,
       gpu_vram_mb: stats.gpu_vram_mb,
       loaded_models: models,
-      provider_type: opts.provider,
-      provider_host: opts.llmHost,
+      model_capabilities: modelProbe.modelCapabilities || {},
+      provider_type: llmProxy.providerType,
+      provider_host: llmProxy.host,
     }));
 
     // Start heartbeat
@@ -142,6 +190,23 @@ const ws = createConnection(opts.server, {
         } catch (err) {
           ws.send(JSON.stringify({
             type: "embed_response",
+            request_id: msg.request_id,
+            error: err.message,
+          }));
+        }
+        stateMachine.transition("idle");
+      } else if (msg.type === "load_model_request") {
+        stateMachine.transition("donating");
+        try {
+          const result = await llmProxy.loadModel(msg.model);
+          ws.send(JSON.stringify({
+            type: "load_model_response",
+            request_id: msg.request_id,
+            result,
+          }));
+        } catch (err) {
+          ws.send(JSON.stringify({
+            type: "load_model_response",
             request_id: msg.request_id,
             error: err.message,
           }));

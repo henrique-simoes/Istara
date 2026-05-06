@@ -123,7 +123,7 @@ export async function run(ctx) {
   }
 
   // 8. UI verification — navigate to Kanban
-  await page.goto("http://localhost:3000", { waitUntil: "networkidle" });
+  await page.goto(ctx.frontendUrl, { waitUntil: "domcontentloaded" });
   await page.waitForTimeout(1500);
 
   const projectBtn = page.locator("text=[SIM]").first();

@@ -214,7 +214,7 @@ export default function ToastNotification() {
       {/* Toast notifications */}
       {toasts.length > 0 && (
         <div
-          className="fixed bottom-16 right-4 z-50 space-y-2 max-w-sm"
+          className="fixed right-4 top-4 z-50 space-y-2 max-w-sm"
           role="status"
           aria-live="polite"
           aria-label="Toast notifications"

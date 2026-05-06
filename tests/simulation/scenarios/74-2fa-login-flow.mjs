@@ -21,8 +21,25 @@ export async function run(ctx) {
 
   // 2. UI: Verify login page renders
   try {
-    await page.goto("http://localhost:3000", { waitUntil: "networkidle", timeout: 15000 });
-    const usernameInput = await page.locator('input[aria-label="Username"]').isVisible({ timeout: 5000 }).catch(() => false);
+    await page.goto(ctx.frontendUrl, { waitUntil: "domcontentloaded", timeout: 15000 });
+    await page.evaluate(() => {
+      localStorage.removeItem("istara_token");
+      localStorage.removeItem("istara_auth_user_id");
+      localStorage.removeItem("istara_tour_state");
+    });
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await Promise.any([
+      page.locator('input#login-username').first().waitFor({ state: "visible", timeout: 15000 }),
+      page.locator('input[aria-label="Username"]').first().waitFor({ state: "visible", timeout: 15000 }),
+      page.locator('input[autocomplete="username"]').first().waitFor({ state: "visible", timeout: 15000 }),
+    ]).catch(() => {});
+    const usernameInput = await page.locator('input#login-username, input[aria-label="Username"], input[autocomplete="username"]')
+      .evaluateAll((els) => els.some((el) => {
+        const rect = el.getBoundingClientRect();
+        const style = window.getComputedStyle(el);
+        return rect.width > 0 && rect.height > 0 && style.visibility !== "hidden" && style.display !== "none";
+      }))
+      .catch(() => false);
     checks.push({
       name: "Login page renders username input",
       passed: usernameInput,
@@ -34,8 +51,9 @@ export async function run(ctx) {
 
   // 3. UI: Verify passkey button is present in team mode
   try {
+    await page.waitForSelector('button:has-text("Sign in with Passkey")', { timeout: 15000 }).catch(() => {});
     const passkeyBtn = await page.getByRole("button", { name: /sign in with passkey/i })
-      .isVisible({ timeout: 3000 }).catch(() => false);
+      .isVisible().catch(() => false);
     checks.push({
       name: "Passkey sign-in button visible",
       passed: passkeyBtn,
@@ -47,7 +65,7 @@ export async function run(ctx) {
 
   // 4. UI: Verify security headers on the page response
   try {
-    const resp = await page.context().request.get("http://localhost:3000");
+    const resp = await page.context().request.get(ctx.frontendUrl);
     const csp = resp.headers()["content-security-policy"];
     const hsts = resp.headers()["strict-transport-security"];
     checks.push({

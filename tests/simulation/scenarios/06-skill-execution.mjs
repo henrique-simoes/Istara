@@ -8,7 +8,7 @@ export async function run(ctx) {
   const checks = [];
 
   // Navigate to Skills view
-  await page.goto("http://localhost:3000", { waitUntil: "networkidle" });
+  await page.goto(ctx.frontendUrl, { waitUntil: "domcontentloaded" });
   await page.waitForTimeout(1000);
 
   const skillsNav = page.locator('button[aria-label="Skills"]').first();

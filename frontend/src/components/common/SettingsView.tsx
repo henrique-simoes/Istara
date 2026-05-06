@@ -14,6 +14,11 @@ import PasskeyManager from "@/components/settings/PasskeyManager";
 import TOTPManager from "@/components/settings/TOTPManager";
 import SessionManager from "@/components/settings/SessionManager";
 import { resetAllOnboarding } from "@/hooks/useViewOnboarding";
+import {
+  MODEL_PROVIDER_OPTIONS,
+  defaultHostForProvider,
+  providerLabel,
+} from "@/lib/modelProviders";
 
 export default function SettingsView() {
   const [hardware, setHardware] = useState<HardwareInfo | null>(null);
@@ -209,14 +214,7 @@ export default function SettingsView() {
           <h3 className="font-medium text-slate-900 dark:text-white mb-3">Available Models</h3>
           <div className="space-y-2">
             {models.models.map((model: any) => {
-              const providerLabel =
-                model.provider_type === "ollama"
-                  ? "Ollama"
-                  : model.provider_type === "lmstudio"
-                  ? "LM Studio"
-                  : model.provider_type === "openai_compat"
-                  ? "OpenAI Compatible"
-                  : model.provider_type || "Unknown";
+              const label = providerLabel(model.provider_type);
               return (
                 <div
                   key={`${model.name}-${model.server_name || ""}`}
@@ -239,7 +237,7 @@ export default function SettingsView() {
                         </span>
                       )}
                       <span className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded px-1.5 py-0.5">
-                        {providerLabel}
+                        {label}
                       </span>
                     </div>
                   </div>
@@ -275,7 +273,9 @@ export default function SettingsView() {
         <p className="text-xs text-slate-500 mb-3">
           {systemStatus?.provider === "lmstudio"
             ? "Load models through LM Studio's UI, or enter a model name to switch."
-            : "Download a new model from the Ollama registry."}
+            : systemStatus?.provider === "ollama"
+            ? "Download a new model from the Ollama registry."
+            : "Use the provider's model manager, or enter an advertised model name to switch."}
         </p>
         <div className="flex gap-2">
           <input
@@ -502,6 +502,7 @@ function LLMServersSection() {
   const [newType, setNewType] = useState("openai_compat");
   const [newApiKey, setNewApiKey] = useState("");
   const [addError, setAddError] = useState<string | null>(null);
+  const selectedProvider = MODEL_PROVIDER_OPTIONS.find((option) => option.value === newType);
 
   const fetchServers = async () => {
     try {
@@ -597,7 +598,7 @@ function LLMServersSection() {
       </div>
 
       <p className="text-xs text-slate-500 mb-3">
-        Connect to any Ollama, LM Studio, or OpenAI-compatible LLM server.
+        Connect to Ollama, LM Studio, Anthropic, or any OpenAI-compatible model server.
       </p>
 
       {showAdd && (
@@ -611,21 +612,34 @@ function LLMServersSection() {
           />
           <input
             type="text"
-            placeholder="Host URL (e.g. http://192.168.1.100:1234)"
+            placeholder="Host URL (e.g. http://192.168.1.100:1234 or https://api.anthropic.com)"
             value={newHost}
             onChange={(e) => setNewHost(e.target.value)}
             className="w-full px-2 py-1.5 text-sm rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-istara-500"
           />
           <select
             value={newType}
-            onChange={(e) => setNewType(e.target.value)}
+            onChange={(e) => {
+              const nextType = e.target.value;
+              setNewType(nextType);
+              if (!newHost.trim()) {
+                setNewHost(defaultHostForProvider(nextType));
+              }
+            }}
             className="w-full px-2 py-1.5 text-sm rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-istara-500"
             aria-label="Provider type"
           >
-            <option value="openai_compat">OpenAI Compatible</option>
-            <option value="lmstudio">LM Studio</option>
-            <option value="ollama">Ollama</option>
+            {MODEL_PROVIDER_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
           </select>
+          {selectedProvider && (
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              {selectedProvider.description}
+            </p>
+          )}
           <input
             type="password"
             placeholder="API key (leave blank if server has no auth)"
@@ -656,7 +670,9 @@ function LLMServersSection() {
                   {s.name}
                   {s.has_api_key && <span title="API key configured"><Lock size={10} className="text-slate-400" /></span>}
                 </div>
-                <div className="text-xs text-slate-400 truncate">{s.host} ({s.provider_type})</div>
+                <div className="text-xs text-slate-400 truncate">
+                  {s.host} ({providerLabel(s.provider_type)})
+                </div>
                 {!s.is_healthy && s.health_error && (
                   <div className="text-xs text-red-500 mt-0.5 truncate" title={s.health_error}>{s.health_error.length > 60 ? s.health_error.slice(0, 60) + "…" : s.health_error}</div>
                 )}
@@ -681,7 +697,7 @@ function LLMServersSection() {
         </div>
       ) : (
         <p className="text-sm text-slate-400">
-          No external servers. Local Ollama/LM Studio detected automatically.
+          No external servers. Local and OpenAI-compatible servers can be added here.
         </p>
       )}
     </div>

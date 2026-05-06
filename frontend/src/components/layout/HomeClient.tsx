@@ -382,20 +382,20 @@ export default function HomeClient() {
     <div className="h-screen flex flex-col">
       <div className="flex-1 flex overflow-hidden">
         {/* Sidebar: hidden on mobile, visible on lg+ */}
-        <div className="hidden lg:flex">
+        <div className="hidden shrink-0 lg:flex">
           <Sidebar
             activeView={activeView}
             onViewChange={setActiveView}
             onSearchOpen={() => setSearchOpen(true)}
           />
         </div>
-        <main className="flex-1 flex flex-col overflow-hidden pb-14 lg:pb-0" id="main-content">
+        <main className="flex-1 min-w-0 flex flex-col overflow-hidden pb-14 lg:pb-0" id="main-content">
           <ErrorBoundary>
             {renderView()}
           </ErrorBoundary>
         </main>
         {/* Right panel: hidden on mobile */}
-        <div className="hidden xl:flex">
+        <div className="hidden shrink-0 xl:flex">
           <RightPanel
             activeView={activeView}
             collapsed={rightPanelCollapsed}

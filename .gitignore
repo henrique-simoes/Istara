@@ -50,7 +50,13 @@ Thumbs.db
 .coverage
 htmlcov/
 .pytest_cache/
+.hypothesis/
 coverage/
+mutants/
+.mutmut-cache
+.stryker-tmp/
+reports/mutation/
+frontend/reports/mutation/
 
 # Build
 *.log

@@ -98,7 +98,7 @@ export async function run(ctx) {
   }
 
   // 7. UI: navigate to Chat view and check session sidebar
-  await page.goto("http://localhost:3000", { waitUntil: "networkidle" });
+  await page.goto(ctx.frontendUrl, { waitUntil: "domcontentloaded" });
   await page.waitForTimeout(1500);
 
   // Select the SIM project

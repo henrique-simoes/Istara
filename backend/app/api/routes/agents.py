@@ -935,14 +935,17 @@ async def send_message(
     db: AsyncSession = Depends(get_db),
 ):
     require_admin_from_request(request)
-    msg = await a2a.send_message(
-        db,
-        from_agent_id=agent_id,
-        to_agent_id=data.to_agent_id,
-        message_type=data.message_type,
-        content=data.content,
-        metadata=data.metadata,
-    )
+    try:
+        msg = await a2a.send_message(
+            db,
+            from_agent_id=agent_id,
+            to_agent_id=data.to_agent_id,
+            message_type=data.message_type,
+            content=data.content,
+            metadata=data.metadata,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     return msg
 
 

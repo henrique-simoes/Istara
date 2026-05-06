@@ -9,24 +9,51 @@ export async function run(ctx) {
 
   try {
     // 1. Navigate to Chat directly
-    await page.goto("http://localhost:3000/chat", { waitUntil: "load", timeout: 15000 });
-    await page.waitForTimeout(2000);
-    checks.push({ name: "Navigated to Chat", passed: page.url().includes("/chat"), detail: page.url() });
+    await page.goto(ctx.frontendUrl, { waitUntil: "domcontentloaded", timeout: 15000 });
+    await page.evaluate(() => localStorage.setItem("istara_active_view", "chat")).catch(() => {});
+    await page.reload({ waitUntil: "domcontentloaded", timeout: 15000 }).catch(() => {});
+    await page.waitForSelector('button[aria-label="Chat"], main', { timeout: 15000 }).catch(() => {});
+    await page.evaluate(() => window.dispatchEvent(new CustomEvent("istara:navigate", { detail: "chat" })));
+    await Promise.any([
+      page.locator('button[aria-label="Start recording"]').first().waitFor({ state: "visible", timeout: 15000 }),
+      page.locator('textarea[placeholder*="Ask about your research"]').first().waitFor({ state: "visible", timeout: 15000 }),
+      page.getByText("Your Research Assistant").first().waitFor({ state: "visible", timeout: 15000 }),
+    ]).catch(() => {});
+    // Next dev renders the controls before React has always finished binding
+    // delegated event handlers. Give hydration a short, explicit settle window
+    // before clicking the microphone control.
+    await page.waitForTimeout(1500);
+    const chatVisible = await page.locator(
+      'button[aria-label="Start recording"], textarea[placeholder*="Ask about your research"]'
+    ).evaluateAll((els) => els.some((el) => {
+      const rect = el.getBoundingClientRect();
+      const style = window.getComputedStyle(el);
+      return rect.width > 0 && rect.height > 0 && style.visibility !== "hidden" && style.display !== "none";
+    })).catch(() => false);
+    checks.push({ name: "Navigated to Chat", passed: chatVisible, detail: page.url() });
 
-    // 2. Locate Mic Button — use the new aria-label we added
-    const micButton = page.locator('button[aria-label="Voice input"]');
+    // 2. Locate Mic Button
+    const micButton = page.locator('button[aria-label="Start recording"], button[title="Voice input"]').first();
     await micButton.waitFor({ state: "visible", timeout: 10000 }).catch(() => {});
+    await page.waitForFunction(() => {
+      const button = document.querySelector('button[aria-label="Start recording"], button[title="Voice input"]');
+      return button && !(button instanceof HTMLButtonElement && button.disabled);
+    }, null, { timeout: 10000 }).catch(() => {});
     const isVisible = await micButton.isVisible();
+    const isEnabled = await micButton.isEnabled().catch(() => false);
     checks.push({
       name: "Mic button visible",
-      passed: isVisible,
-      detail: isVisible ? "Found" : "Not found",
+      passed: isVisible && isEnabled,
+      detail: isVisible ? (isEnabled ? "Found and enabled" : "Found but disabled") : "Not found",
     });
 
-    if (isVisible) {
+    if (isVisible && isEnabled) {
       // 3. Start Recording
       await micButton.click();
-      await page.waitForTimeout(1000);
+      await Promise.any([
+        page.locator('button[aria-label="Stop recording"]').first().waitFor({ state: "visible", timeout: 10000 }),
+        page.getByText("Recording voice...").first().waitFor({ state: "visible", timeout: 10000 }),
+      ]).catch(() => {});
       
       const isRecording = await page.locator('button[aria-label="Stop recording"]').isVisible() || 
                           await page.locator('text=Recording voice...').isVisible();

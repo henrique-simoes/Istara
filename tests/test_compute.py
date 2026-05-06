@@ -5,10 +5,12 @@ import asyncio
 import httpx
 import pytest
 from app.api.routes.compute import _infer_relay_provider_type, relay_websocket
+from app.api.routes import settings as settings_routes
 from app.config import settings
 from app.core.auth import create_token
 from app.core.compute_registry import ComputeNode, ComputeRegistry, compute_registry
-from app.main import app
+from app.core.lmstudio import LMStudioClient, configured_lmstudio_model_is_authoritative
+from app.main import app, _build_configured_local_llm_node
 from app.models.database import init_db
 from httpx import ASGITransport, AsyncClient
 from starlette.websockets import WebSocketDisconnect
@@ -18,9 +20,17 @@ from starlette.websockets import WebSocketDisconnect
 def reset_settings():
     original_team_mode = settings.team_mode
     original_jwt_secret = settings.jwt_secret
+    original_provider = settings.llm_provider
+    original_lmstudio_host = settings.lmstudio_host
+    original_lmstudio_model = settings.lmstudio_model
+    original_lmstudio_api_key = settings.lmstudio_api_key
     yield
     settings.team_mode = original_team_mode
     settings.jwt_secret = original_jwt_secret
+    settings.llm_provider = original_provider
+    settings.lmstudio_host = original_lmstudio_host
+    settings.lmstudio_model = original_lmstudio_model
+    settings.lmstudio_api_key = original_lmstudio_api_key
 
 
 @pytest.fixture
@@ -29,6 +39,96 @@ def auth_headers():
         settings.jwt_secret = "test-secret"
     token = create_token("user1", "testuser", "admin")
     return {"Authorization": f"Bearer {token}"}
+
+
+def test_configured_local_lmstudio_node_preserves_api_key_and_model(monkeypatch):
+    monkeypatch.setattr(settings, "llm_provider", "lmstudio")
+    monkeypatch.setattr(
+        settings,
+        "lmstudio_host",
+        "https://generativelanguage.googleapis.com/v1beta/openai/",
+    )
+    monkeypatch.setattr(settings, "lmstudio_model", "gemini-3.1-flash-lite-preview")
+    monkeypatch.setattr(settings, "lmstudio_api_key", "test-key")
+
+    node = _build_configured_local_llm_node()
+
+    assert node._openai_endpoint("chat/completions") == "chat/completions"
+    assert node.api_key == "test-key"
+    assert node.loaded_models == ["gemini-3.1-flash-lite-preview"]
+
+
+def test_configured_lmstudio_model_is_authoritative(monkeypatch):
+    monkeypatch.setattr(settings, "lmstudio_model", "gemini-3.1-flash-lite-preview")
+    assert configured_lmstudio_model_is_authoritative()
+    assert not configured_lmstudio_model_is_authoritative("default")
+
+
+@pytest.mark.asyncio
+async def test_lmstudio_model_probe_uses_configured_openai_model(monkeypatch):
+    monkeypatch.setattr(settings, "lmstudio_model", "gemini-3.1-flash-lite-preview")
+
+    class FakeClient:
+        def __init__(self):
+            self.payload = None
+
+        async def post(self, path, *, json, timeout):
+            self.payload = json
+            return httpx.Response(
+                200,
+                request=httpx.Request("POST", f"http://test{path}"),
+                json={"model": json["model"], "choices": []},
+            )
+
+    fake = FakeClient()
+    client = LMStudioClient("https://generativelanguage.googleapis.com/v1beta/openai/")
+
+    async def get_client():
+        return fake
+
+    monkeypatch.setattr(client, "_get_client", get_client)
+
+    assert await client.detect_loaded_model(force=True) == "gemini-3.1-flash-lite-preview"
+    assert fake.payload["model"] == "gemini-3.1-flash-lite-preview"
+
+
+@pytest.mark.asyncio
+async def test_settings_models_preserves_configured_lmstudio_model(monkeypatch):
+    monkeypatch.setattr(settings, "llm_provider", "lmstudio")
+    monkeypatch.setattr(settings, "lmstudio_model", "gemini-3.1-flash-lite-preview")
+
+    class MismatchedProbeClient(LMStudioClient):
+        def __init__(self):
+            super().__init__("https://generativelanguage.googleapis.com/v1beta/openai/")
+            self.detect_calls = 0
+
+        async def health(self):
+            return True
+
+        async def list_models(self):
+            return [{"name": "models/gemini-2.5-flash"}]
+
+        async def detect_loaded_model(self, force: bool = False):
+            self.detect_calls += 1
+            return "models/gemini-2.5-flash"
+
+    fake_client = MismatchedProbeClient()
+
+    async def no_registry_models():
+        return []
+
+    def fail_persist(*_args, **_kwargs):
+        raise AssertionError("Configured LM Studio model should not be auto-persisted")
+
+    monkeypatch.setattr(settings_routes, "ollama", fake_client)
+    monkeypatch.setattr(compute_registry, "list_models", no_registry_models)
+    monkeypatch.setattr(settings_routes, "_persist_env", fail_persist)
+
+    response = await settings_routes.get_models()
+
+    assert response["active_model"] == "gemini-3.1-flash-lite-preview"
+    assert settings.lmstudio_model == "gemini-3.1-flash-lite-preview"
+    assert fake_client.detect_calls == 0
 
 
 @pytest.mark.asyncio
@@ -399,6 +499,45 @@ def test_resolve_model_prefers_explicit_capability_over_advertised_fallback():
     assert node._resolve_model("gemini-3.1-flash-lite-preview") == ("gemini-3.1-flash-lite-preview")
 
 
+def test_configured_openai_primary_uses_pinned_model_when_models_list_is_broader(monkeypatch):
+    monkeypatch.setattr(
+        settings,
+        "lmstudio_host",
+        "https://generativelanguage.googleapis.com/v1beta/openai/",
+    )
+    monkeypatch.setattr(settings, "lmstudio_model", "gemini-3.1-flash-lite-preview")
+    node = ComputeNode(
+        node_id="gemini",
+        name="Gemini",
+        host="https://generativelanguage.googleapis.com/v1beta/openai",
+        source="local",
+        provider_type="lmstudio",
+        loaded_models=["models/gemini-2.5-flash", "models/gemini-2.5-pro"],
+    )
+
+    assert node._resolve_model(None) == "gemini-3.1-flash-lite-preview"
+    assert node._resolve_model("gemini-3.1-flash-lite-preview") == "gemini-3.1-flash-lite-preview"
+
+
+def test_network_openai_fallback_keeps_own_advertised_model(monkeypatch):
+    monkeypatch.setattr(
+        settings,
+        "lmstudio_host",
+        "https://generativelanguage.googleapis.com/v1beta/openai/",
+    )
+    monkeypatch.setattr(settings, "lmstudio_model", "gemini-3.1-flash-lite-preview")
+    node = ComputeNode(
+        node_id="secondary",
+        name="Secondary",
+        host="http://10.0.10.142:1234",
+        source="network",
+        provider_type="openai_compat",
+        loaded_models=["qwen3.6-35b-a3b@q5_k_xl"],
+    )
+
+    assert node._resolve_model(None) == "qwen3.6-35b-a3b@q5_k_xl"
+
+
 class _FailingChatClient:
     def __init__(self, status_code: int):
         self.status_code = status_code
@@ -437,6 +576,67 @@ class _SuccessfulChatClient:
                 ]
             },
         )
+
+
+class _FailingStreamResponse:
+    def __init__(self, path: str, status_code: int):
+        self.path = path
+        self.status_code = status_code
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb):
+        return False
+
+    def raise_for_status(self):
+        request = httpx.Request("POST", f"http://test/{self.path}")
+        response = httpx.Response(
+            self.status_code,
+            request=request,
+            json={"error": {"message": "stream provider overloaded"}},
+        )
+        raise httpx.HTTPStatusError("stream provider overloaded", request=request, response=response)
+
+    async def aiter_lines(self):
+        if False:
+            yield ""
+
+
+class _FailingStreamClient:
+    def __init__(self, status_code: int):
+        self.status_code = status_code
+        self.calls = 0
+
+    def stream(self, method: str, path: str, json: dict, timeout=None):
+        self.calls += 1
+        return _FailingStreamResponse(path, self.status_code)
+
+
+class _SuccessfulStreamResponse:
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb):
+        return False
+
+    def raise_for_status(self):
+        return None
+
+    async def aiter_lines(self):
+        yield 'data: {"choices":[{"delta":{"content":"fallback streamed"}}]}'
+        yield "data: [DONE]"
+
+
+class _SuccessfulStreamClient:
+    def __init__(self):
+        self.calls = 0
+        self.paths: list[str] = []
+
+    def stream(self, method: str, path: str, json: dict, timeout=None):
+        self.calls += 1
+        self.paths.append(path)
+        return _SuccessfulStreamResponse()
 
 
 @pytest.mark.asyncio
@@ -484,6 +684,102 @@ async def test_chat_retries_transient_errors_before_fallback(monkeypatch):
     assert primary.cb_state == "open"
     assert fallback_client.calls == 1
     assert fallback_client.paths == ["v1/chat/completions"]
+
+
+@pytest.mark.asyncio
+async def test_chat_can_rescue_registered_unhealthy_fallback_after_primary_failure(monkeypatch):
+    registry = ComputeRegistry()
+    primary_client = _FailingChatClient(status_code=503)
+    fallback_client = _SuccessfulChatClient()
+
+    primary = ComputeNode(
+        node_id="gemini",
+        name="Gemini",
+        host="https://generativelanguage.googleapis.com/v1beta/openai",
+        source="network",
+        provider_type="gemini_openai",
+        is_healthy=True,
+        priority=0,
+        loaded_models=["gemini-live"],
+    )
+    fallback = ComputeNode(
+        node_id="secondary",
+        name="Secondary",
+        host="http://10.0.10.142:1234",
+        source="network",
+        provider_type="openai_compat",
+        is_healthy=False,
+        health_state="unreachable",
+        priority=10,
+        loaded_models=["qwen-live"],
+    )
+
+    async def primary_get_client():
+        return primary_client
+
+    async def fallback_get_client():
+        return fallback_client
+
+    monkeypatch.setattr(primary, "_get_client", primary_get_client)
+    monkeypatch.setattr(fallback, "_get_client", fallback_get_client)
+    registry.register_node(primary)
+    registry.register_node(fallback)
+
+    response = await registry.chat([{"role": "user", "content": "hello"}])
+
+    assert response["message"]["content"] == "fallback answered"
+    assert primary_client.calls == 5
+    assert fallback_client.calls == 1
+    assert fallback.is_healthy is True
+
+
+@pytest.mark.asyncio
+async def test_chat_stream_retries_transient_errors_before_fallback(monkeypatch):
+    registry = ComputeRegistry()
+    primary_client = _FailingStreamClient(status_code=503)
+    fallback_client = _SuccessfulStreamClient()
+
+    primary = ComputeNode(
+        node_id="gemini",
+        name="Gemini",
+        host="https://generativelanguage.googleapis.com/v1beta/openai",
+        source="network",
+        provider_type="gemini_openai",
+        is_healthy=True,
+        priority=0,
+        loaded_models=["gemini-live"],
+    )
+    fallback = ComputeNode(
+        node_id="secondary",
+        name="Secondary",
+        host="http://10.0.10.142:1234",
+        source="network",
+        provider_type="openai_compat",
+        is_healthy=False,
+        health_state="unreachable",
+        priority=10,
+        loaded_models=["qwen-live"],
+    )
+
+    async def primary_get_client():
+        return primary_client
+
+    async def fallback_get_client():
+        return fallback_client
+
+    monkeypatch.setattr(primary, "_get_client", primary_get_client)
+    monkeypatch.setattr(fallback, "_get_client", fallback_get_client)
+    registry.register_node(primary)
+    registry.register_node(fallback)
+
+    chunks = [chunk async for chunk in registry.chat_stream([{"role": "user", "content": "hello"}])]
+
+    assert chunks == ["fallback streamed"]
+    assert primary_client.calls == 5
+    assert primary.cb_state == "open"
+    assert fallback_client.calls == 1
+    assert fallback_client.paths == ["v1/chat/completions"]
+    assert fallback.is_healthy is True
 
 
 class _MislabelledOpenAIHealthClient:
@@ -598,6 +894,56 @@ def test_record_failure_degrades_before_cooldown():
 
     assert node.is_healthy is False
     assert node.health_state == "cooldown"
+
+
+def test_auxiliary_failure_does_not_trip_chat_availability():
+    node = ComputeNode(
+        node_id="node",
+        name="Node",
+        host="http://localhost:1234",
+        source="local",
+        provider_type="lmstudio",
+        is_healthy=True,
+    )
+
+    for _ in range(5):
+        ComputeRegistry._record_auxiliary_failure(node, RuntimeError("embedding quota"))
+
+    assert node.is_healthy is True
+    assert node.health_state == "degraded"
+    assert node.consecutive_failures == 0
+    assert node.cb_state == "closed"
+
+
+@pytest.mark.asyncio
+async def test_embedding_failure_does_not_cooldown_chat_node(monkeypatch):
+    registry = ComputeRegistry()
+    embedding_client = _FailingChatClient(status_code=429)
+    node = ComputeNode(
+        node_id="gemini",
+        name="Gemini",
+        host="https://generativelanguage.googleapis.com/v1beta/openai",
+        source="network",
+        provider_type="gemini_openai",
+        is_healthy=True,
+        priority=0,
+        loaded_models=["gemini-live"],
+    )
+
+    async def node_get_client():
+        return embedding_client
+
+    monkeypatch.setattr(node, "_get_client", node_get_client)
+    registry.register_node(node)
+
+    with pytest.raises(RuntimeError, match="No compute nodes available for batch embedding"):
+        await registry.embed_batch(["quota-limited text"])
+
+    assert embedding_client.calls == 1
+    assert node.is_healthy is True
+    assert node.health_state == "degraded"
+    assert node.consecutive_failures == 0
+    assert node.cb_state == "closed"
 
 
 def test_compute_stats_include_capacity_envelope():

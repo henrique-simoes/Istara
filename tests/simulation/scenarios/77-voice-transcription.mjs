@@ -30,7 +30,7 @@ export async function run(ctx) {
 
   // 2. Mic button is visible and accessible in ChatView
   try {
-    await page.goto("http://localhost:3000", { waitUntil: "load", timeout: 15000 });
+    await page.goto(ctx.frontendUrl, { waitUntil: "load", timeout: 15000 });
     await page
       .waitForFunction(() => localStorage.getItem("istara_auth_user_id"), {
         timeout: 5000,
@@ -43,7 +43,7 @@ export async function run(ctx) {
       localStorage.removeItem("istara_tour_state");
       localStorage.setItem("istara_active_view", "chat");
     });
-    await page.reload({ waitUntil: "networkidle", timeout: 15000 });
+    await page.reload({ waitUntil: "domcontentloaded", timeout: 15000 });
     
     // Ensure we are in the Chat view — click sidebar link if needed
     const chatLink = page

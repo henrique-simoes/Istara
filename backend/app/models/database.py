@@ -95,6 +95,7 @@ async def init_db() -> None:
         "app.models.reasoning_memory",
         "app.models.improvement_governance",
         "app.models.dgmh_archive",
+        "app.core.agent_learning",
         "app.core.audit_middleware",
         "app.models.telemetry_span",
         "app.models.project_report",

@@ -27,7 +27,7 @@ export async function run(ctx) {
   }
 
   // Navigate to Chat
-  await page.goto("http://localhost:3000", { waitUntil: "networkidle" });
+  await page.goto(ctx.frontendUrl, { waitUntil: "domcontentloaded" });
   await page.waitForTimeout(1000);
 
   // Select project
@@ -89,7 +89,7 @@ export async function run(ctx) {
 
   // Use type() for realistic keystroke events that trigger React onChange.
   // fill() sometimes doesn't fire React synthetic events properly.
-  await chatInput.click();
+  await chatInput.click({ timeout: 5000 });
   await chatInput.fill("");
   await page.waitForTimeout(100);
   await chatInput.type(msg1, { delay: 5 });
@@ -117,7 +117,11 @@ export async function run(ctx) {
     );
   } catch { /* proceed anyway */ }
 
-  await sendBtn.click();
+  if (!(await sendBtn.isEnabled({ timeout: 3000 }).catch(() => false))) {
+    checks.push({ name: "Send button enabled for first message", passed: false, detail: "Send remained disabled after typing" });
+    return { checks, passed: checks.filter((c) => c.passed).length, failed: checks.filter((c) => !c.passed).length };
+  }
+  await sendBtn.click({ timeout: 5000 });
 
   // Wait for response (streaming)
   try {
@@ -139,7 +143,7 @@ export async function run(ctx) {
 
   // Message 2: Trigger a skill
   const msg2 = "Run a thematic analysis on the interview data";
-  await chatInput.click();
+  await chatInput.click({ timeout: 5000 });
   await chatInput.fill("");
   await page.waitForTimeout(100);
   await chatInput.type(msg2, { delay: 5 });
@@ -165,7 +169,11 @@ export async function run(ctx) {
     );
   } catch { /* proceed anyway */ }
 
-  await sendBtn.click();
+  if (!(await sendBtn.isEnabled({ timeout: 3000 }).catch(() => false))) {
+    checks.push({ name: "Send button enabled for skill message", passed: false, detail: "Send remained disabled after typing" });
+    return { checks, passed: checks.filter((c) => c.passed).length, failed: checks.filter((c) => !c.passed).length };
+  }
+  await sendBtn.click({ timeout: 5000 });
   try {
     await page.waitForTimeout(3000);
     await page.waitForFunction(

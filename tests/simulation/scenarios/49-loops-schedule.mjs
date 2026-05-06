@@ -201,13 +201,15 @@ export async function run(ctx) {
   try {
     const stats = await api.get("/api/loops/executions/stats");
     const hasExpectedFields =
-      stats.total_agents !== undefined &&
-      stats.total_agent_executions !== undefined &&
-      stats.total_schedules !== undefined;
+      stats.total !== undefined &&
+      stats.success !== undefined &&
+      stats.failure !== undefined &&
+      stats.running !== undefined &&
+      stats.success_rate !== undefined;
     checks.push({
       name: "GET /api/loops/executions/stats returns stats with expected fields",
       passed: hasExpectedFields,
-      detail: `total_agents=${stats.total_agents}, total_executions=${stats.total_agent_executions}, total_schedules=${stats.total_schedules}`,
+      detail: `total=${stats.total}, success=${stats.success}, failure=${stats.failure}, running=${stats.running}, success_rate=${stats.success_rate}`,
     });
   } catch (e) {
     checks.push({ name: "GET /api/loops/executions/stats returns stats with expected fields", passed: false, detail: e.message });

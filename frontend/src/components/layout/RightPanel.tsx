@@ -38,7 +38,7 @@ export default function RightPanel({ activeView, collapsed, onToggle }: RightPan
     return (
       <button
         onClick={onToggle}
-        className="w-10 border-l border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800"
+      className="w-10 shrink-0 border-l border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800"
         title="Show panel"
       >
         <ChevronRight size={16} className="text-slate-400 rotate-180" />
@@ -258,7 +258,7 @@ export default function RightPanel({ activeView, collapsed, onToggle }: RightPan
   const projectScopedViews = new Set(["chat", "findings", "tasks", "context", "documents", "history"]);
 
   return (
-    <aside className="w-72 border-l border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 flex flex-col overflow-hidden">
+    <aside className="w-72 shrink-0 border-l border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 flex flex-col overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between p-3 border-b border-slate-200 dark:border-slate-800">
         <span className="text-xs font-semibold uppercase text-slate-500">Context</span>

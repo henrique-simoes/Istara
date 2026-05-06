@@ -193,7 +193,7 @@ export default function ChatSessionsSidebar({ projectId }: ChatSessionsSidebarPr
   }, [menuOpenId]);
 
   return (
-    <div className="w-56 flex flex-col border-r border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50">
+    <div className="w-56 shrink-0 flex flex-col border-r border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50">
       {/* Header */}
       <div className="flex items-center justify-between p-3 border-b border-slate-200 dark:border-slate-800">
         <h3 className="text-xs font-semibold text-slate-500 uppercase">Chats</h3>

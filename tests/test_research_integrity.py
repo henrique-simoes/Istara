@@ -870,6 +870,39 @@ class TestReportManager:
         assert report.layer == 3
         assert report.report_type == "synthesis"
 
+    async def test_l4_report_uses_derived_finding_count(self, db_session):
+        """L4 generation should not depend on a non-persisted finding_count column."""
+        manager = ReportManager()
+        l3 = ProjectReport(
+            id="report-l3-derived-count",
+            project_id="proj-rm-l4-derived",
+            title="Research Synthesis",
+            layer=3,
+            report_type="synthesis",
+            scope="Research Synthesis",
+            finding_ids_json=json.dumps([f"f-{i}" for i in range(10)]),
+        )
+        db_session.add(l3)
+        await db_session.commit()
+        await db_session.refresh(l3)
+
+        with (
+            patch.object(manager, "_generate_executive_summary", new=AsyncMock()),
+            patch.object(manager, "_generate_mece_categories", new=AsyncMock()),
+            patch.object(manager, "_compose_full_report", new=AsyncMock()),
+        ):
+            await manager._generate_l4_report("proj-rm-l4-derived", l3, db_session)
+
+        result = await db_session.execute(
+            select(ProjectReport).where(
+                ProjectReport.project_id == "proj-rm-l4-derived",
+                ProjectReport.layer == 4,
+            )
+        )
+        l4 = result.scalar_one()
+        assert l4.to_dict()["finding_count"] == 10
+        assert json.loads(l4.finding_ids_json) == [f"f-{i}" for i in range(10)]
+
     async def test_get_project_reports(self, db_session):
         """get_project_reports returns reports ordered by layer desc."""
         manager = ReportManager()

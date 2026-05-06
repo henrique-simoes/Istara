@@ -816,6 +816,11 @@ python scripts/check_integrity.py
 python scripts/check_ci_governance.py
 python scripts/security_benchmark.py --fail-on-threshold
 python scripts/production_rehearsal.py --json
+
+# Run deterministic property and mutation gates
+pytest tests/test_property_contracts.py -q
+python scripts/run_backend_mutation.py
+(cd frontend && npm run test:unit && npm run test:mutation)
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions, code style guide, and the change checklist.

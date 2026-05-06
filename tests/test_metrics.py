@@ -13,7 +13,7 @@ from app.models.project import Project
 
 
 @pytest.mark.asyncio
-async def test_validation_metrics_aggregate_method_contexts_with_intervals():
+async def test_validation_metrics_aggregate_method_contexts_with_intervals(admin_auth_headers):
     await init_db()
     project_id = f"metrics-{uuid.uuid4()}"
     now = datetime.now(timezone.utc)
@@ -54,7 +54,10 @@ async def test_validation_metrics_aggregate_method_contexts_with_intervals():
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.get(f"/api/metrics/{project_id}/validation")
+        response = await ac.get(
+            f"/api/metrics/{project_id}/validation",
+            headers=admin_auth_headers,
+        )
 
     assert response.status_code == 200
     body = response.json()

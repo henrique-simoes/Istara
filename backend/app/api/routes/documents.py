@@ -640,11 +640,22 @@ async def sync_project_documents(
 
     supported = set(get_supported_extensions()) | MEDIA_EXTENSIONS
 
-    # Get existing document file_paths to avoid duplicates
+    # Get existing document file paths to avoid duplicates. Older documents may
+    # only have a filename, so keep that as a legacy fallback without letting
+    # same-named files in different linked folders block each other.
     existing_result = await db.execute(
-        select(Document.file_name).where(Document.project_id == project_id)
+        select(Document.file_name, Document.file_path).where(Document.project_id == project_id)
     )
-    existing_files = {r for r in existing_result.scalars().all()}
+    existing_paths: set[str] = set()
+    existing_names_without_path: set[str] = set()
+    for file_name, stored_path in existing_result.all():
+        if stored_path:
+            try:
+                existing_paths.add(str(Path(stored_path).expanduser().resolve()))
+            except OSError:
+                existing_paths.add(str(Path(stored_path).expanduser()))
+        elif file_name:
+            existing_names_without_path.add(file_name)
 
     synced = 0
     total_chunks_indexed = 0
@@ -653,7 +664,11 @@ async def sync_project_documents(
             continue
         if file_path.suffix.lower() not in supported:
             continue
-        if file_path.name in existing_files:
+        try:
+            resolved_file_path = str(file_path.expanduser().resolve())
+        except OSError:
+            resolved_file_path = str(file_path.expanduser())
+        if resolved_file_path in existing_paths or file_path.name in existing_names_without_path:
             continue
 
         stat = file_path.stat()

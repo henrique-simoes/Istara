@@ -102,7 +102,7 @@ Date: 2024-02-10
   }
 
   // 5. UI — navigate to Interviews and check file appears
-  await page.goto("http://localhost:3000", { waitUntil: "networkidle" });
+  await page.goto(ctx.frontendUrl, { waitUntil: "domcontentloaded" });
   await page.waitForTimeout(1500);
 
   // Select project

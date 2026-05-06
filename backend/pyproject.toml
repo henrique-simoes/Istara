@@ -56,6 +56,8 @@ browser = [
 dev = [
     "pytest>=8.0.0",
     "pytest-asyncio>=0.24.0",
+    "hypothesis>=6.100.0",
+    "mutmut>=3.2.0",
     "httpx>=0.28.0",
     "ruff>=0.8.0",
 ]
@@ -78,3 +80,11 @@ select = ["E", "F", "I", "N", "W", "UP"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+
+[tool.mutmut]
+paths_to_mutate = ["app/core/compute_capacity.py"]
+source_paths = ["app/core/compute_capacity.py"]
+pytest_add_cli_args_test_selection = ["tests/test_compute_capacity_properties.py"]
+pytest_add_cli_args = ["-q"]
+use_setproctitle = false
+debug = false

@@ -556,8 +556,8 @@ export async function run(ctx) {
     const t2 = await api.patch(`/api/tasks/${task.id}`, { status: "in_review" });
     const ir = t2.status === "in_review";
 
-    // in_review → done
-    const t3 = await api.patch(`/api/tasks/${task.id}`, { status: "done" });
+    // in_review → done now goes through the review-aware Kanban move endpoint.
+    const t3 = await api.post(`/api/tasks/${task.id}/move?status=done`, {});
     const done = t3.status === "done";
 
     // Cleanup
@@ -614,11 +614,11 @@ export async function run(ctx) {
   await safeCheck("[Security] CORS headers present", async () => {
     const res = await fetch("http://localhost:8000/api/health", {
       method: "OPTIONS",
-      headers: { Origin: "http://localhost:3000" },
+      headers: { Origin: ctx.frontendUrl },
     });
 
     const cors = res.headers.get("access-control-allow-origin");
-    const passed = cors === "http://localhost:3000" || cors === "*";
+    const passed = cors === ctx.frontendUrl || cors === "*";
 
     return {
       name: "[Security] CORS headers present",

@@ -122,16 +122,29 @@ export async function run(ctx) {
 
   // ── 5. UI — Identity tab visible in Agents view ──
   try {
-    await page.goto("http://localhost:3000", { waitUntil: "networkidle", timeout: 10000 });
+    await page.goto(ctx.frontendUrl, { waitUntil: "domcontentloaded", timeout: 10000 });
+    await page.waitForSelector('button[aria-label="Agents"], button[aria-label="Chat"], main', { timeout: 15000 }).catch(() => {});
     await page.waitForTimeout(2000);
 
-    // Navigate to Agents view using keyboard shortcut
-    await page.keyboard.press("Meta+7");
+    // Navigate to Agents view using the visible nav, keyboard shortcut, or app event fallback.
+    const agentsNav = page.locator('button[aria-label="Agents"]').first();
+    if (await agentsNav.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await agentsNav.click();
+    } else {
+      await page.keyboard.down("Meta");
+      await page.keyboard.press("8");
+      await page.keyboard.up("Meta");
+      await page.waitForTimeout(500);
+      await page.evaluate(() => window.dispatchEvent(new CustomEvent("istara:navigate", { detail: "agents" })));
+    }
     await page.waitForTimeout(2000);
 
     // Look for any agent card to click on — try multiple selectors
     let agentFound = false;
     const agentSelectors = [
+      'button[data-agent-id="istara-main"][data-agent-card="true"]',
+      '[data-agent-id="istara-main"] button[data-agent-card="true"]',
+      'button[aria-label="Open Istara agent details"]',
       'text=Istara',
       '[data-agent-id="istara-main"]',
       'text=Sentinel',
@@ -151,8 +164,8 @@ export async function run(ctx) {
     if (agentFound) {
       // Look for Identity tab with case-insensitive matching
       const tabSelectors = [
-        'button:has-text("Identity")',
         'button:has-text("identity")',
+        'button:has-text("Identity")',
         '[role="tab"]:has-text("Identity")',
         'text=Identity',
       ];

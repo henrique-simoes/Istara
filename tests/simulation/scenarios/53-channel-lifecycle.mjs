@@ -246,7 +246,7 @@ export async function run(ctx) {
   if (ctx.page) {
     try {
       const page = ctx.page;
-      await page.goto("http://localhost:3000", { waitUntil: "networkidle", timeout: 15000 });
+      await page.goto(ctx.frontendUrl, { waitUntil: "domcontentloaded", timeout: 15000 });
       await page.waitForTimeout(1500);
 
       // Navigate to Integrations view
