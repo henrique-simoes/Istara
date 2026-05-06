@@ -32,6 +32,7 @@ async def send_message(
     - consult, report, alert, delegate, debate_request, debate_response
     - collaboration_request, collaboration_response
     - task_request, status, response
+    - finding, request, broadcast, a2a_task
     """
     # Validate message_type against allowed whitelist
     ALLOWED_MESSAGE_TYPES = {
@@ -46,6 +47,10 @@ async def send_message(
         "task_request",    # Task assignment via A2A
         "status",          # Agent status update
         "response",        # Response to previous message
+        "finding",         # Research finding broadcast/notification
+        "request",         # Generic request preserved for legacy agents
+        "broadcast",       # Explicit all-agent announcement
+        "a2a_task",        # JSON-RPC task envelope
     }
 
     # Normalize type (lowercase) for consistent validation

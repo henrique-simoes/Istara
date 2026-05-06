@@ -209,7 +209,7 @@ export async function run(ctx) {
   // ── UI Tests ──
 
   // 12. Navigate to Agents view
-  await page.goto("http://localhost:3000", { waitUntil: "networkidle" });
+  await page.goto(ctx.frontendUrl, { waitUntil: "domcontentloaded" });
   await page.waitForTimeout(1500);
 
   // Try Cmd+7 shortcut

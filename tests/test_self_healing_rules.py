@@ -90,8 +90,11 @@ class TestSelfHealingRules:
 
         rules = SelfHealingRules()
         mock_session = AsyncMock()
+        mock_session.__aenter__.return_value = mock_session
+        mock_scalars = MagicMock()
+        mock_scalars.all.return_value = []
         mock_result = MagicMock()
-        mock_result.scalars = MagicMock(return_value=AsyncMock(return_value=[]))
+        mock_result.scalars.return_value = mock_scalars
         mock_session.execute = AsyncMock(return_value=mock_result)
 
         with patch.object(rules, "_get_session", return_value=mock_session):

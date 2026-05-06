@@ -85,7 +85,7 @@ export async function run(ctx) {
 
   // Create tasks with different priorities and skill assignments
   const taskDefs = [
-    { title: "Analyze interview transcripts", skill: "user-interviews", priority: "critical" },
+    { title: "Analyze interview transcripts", skill: "user-interviews", priority: "high" },
     { title: "Run thematic analysis on responses", skill: "thematic-analysis", priority: "high" },
     { title: "Generate user personas", skill: "persona-creation", priority: "high" },
     { title: "Evaluate checkout usability", skill: "usability-testing", priority: "medium" },
@@ -124,17 +124,18 @@ export async function run(ctx) {
 
   // ── Step 4: Verify task priority ordering ──
 
-  await safeCheck("Priority ordering — critical tasks first", async () => {
+  await safeCheck("Priority ordering — high priority tasks first", async () => {
     const resp = await api.get(`/api/tasks?project_id=${projectId}&status=backlog`);
     const tasks = Array.isArray(resp) ? resp : resp.tasks || [];
     const simTasks = tasks.filter((t) => t.title.startsWith("[SIM-21]"));
 
     if (simTasks.length < 2) {
-      return { name: "Priority ordering — critical tasks first", passed: true, detail: "Not enough tasks to check ordering" };
+      return { name: "Priority ordering — high priority tasks first", passed: true, detail: "Not enough tasks to check ordering" };
     }
 
-    // Check that critical/high are before low
-    const priorities = { critical: 0, high: 1, medium: 2, low: 3 };
+    // Check that high/medium are before low. Task priority is constrained to
+    // high/medium/low by the production task contract.
+    const priorities = { high: 1, medium: 2, low: 3 };
     let inOrder = true;
     for (let i = 1; i < simTasks.length; i++) {
       const prev = priorities[simTasks[i - 1].priority] ?? 2;
@@ -146,7 +147,7 @@ export async function run(ctx) {
     }
 
     return {
-      name: "Priority ordering — critical tasks first",
+      name: "Priority ordering — high priority tasks first",
       passed: true, // Priority ordering is in the agent pick, not API list
       detail: `${simTasks.length} tasks, priorities: ${simTasks.map((t) => t.priority).join(", ")}`,
     };

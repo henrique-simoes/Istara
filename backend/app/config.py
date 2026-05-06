@@ -1,8 +1,35 @@
 """Istara application configuration."""
 
 from pathlib import Path
+import subprocess
 
 from pydantic_settings import BaseSettings
+
+
+_BACKEND_DIR = Path(__file__).resolve().parent.parent
+_BACKEND_ENV_FILES = (
+    str(_BACKEND_DIR / ".env"),
+    str(_BACKEND_DIR / ".env.local"),
+)
+
+
+def _read_macos_keychain_secret(service: str) -> str:
+    """Read a local secret from macOS Keychain without logging its value."""
+    if not service or not Path("/usr/bin/security").exists():
+        return ""
+    try:
+        result = subprocess.run(
+            ["/usr/bin/security", "find-generic-password", "-s", service, "-w"],
+            capture_output=True,
+            text=True,
+            timeout=3,
+            check=False,
+        )
+    except Exception:
+        return ""
+    if result.returncode != 0:
+        return ""
+    return result.stdout.strip()
 
 
 class Settings(BaseSettings):
@@ -21,6 +48,14 @@ class Settings(BaseSettings):
     lmstudio_model: str = "default"
     lmstudio_embed_model: str = "default"
     lmstudio_api_key: str = ""
+
+    # Optional authenticated fallback for OpenAI-compatible secondary servers.
+    # Used after the primary provider exhausts its retry budget.
+    llm_fallback_host: str = ""
+    llm_fallback_provider: str = "openai_compat"
+    llm_fallback_model: str = ""
+    llm_fallback_api_key: str = ""
+    llm_fallback_api_key_keychain_service: str = "istara-secondary-openai-compatible-tests"
 
     # Database
     database_url: str = "sqlite+aiosqlite:///./data/istara.db"
@@ -151,7 +186,20 @@ class Settings(BaseSettings):
     telemetry_enabled: bool = False
     telemetry_export_dir: str = "./data/telemetry_exports"
 
-    model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
+    model_config = {
+        "env_file": _BACKEND_ENV_FILES,
+        "env_file_encoding": "utf-8",
+        "extra": "ignore",
+    }
+
+    def resolve_llm_fallback_api_key(self) -> str:
+        """Return fallback API key from env first, then the configured keychain service."""
+        configured_key = self.llm_fallback_api_key.strip()
+        if configured_key:
+            return configured_key
+        return _read_macos_keychain_secret(
+            self.llm_fallback_api_key_keychain_service.strip()
+        )
 
     def ensure_dirs(self) -> None:
         """Create required directories if they don't exist."""

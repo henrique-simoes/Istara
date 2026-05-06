@@ -329,7 +329,7 @@ export function assertUrlContains(page, substring) {
  */
 export async function clickAndWait(page, selector, timeout = 10_000) {
   await Promise.all([
-    page.waitForLoadState("networkidle", { timeout }),
+    page.waitForLoadState("domcontentloaded", { timeout }),
     page.click(selector),
   ]);
 }

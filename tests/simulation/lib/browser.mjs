@@ -28,6 +28,9 @@ export async function launch(headless = true) {
       "--disable-gpu",
       "--no-sandbox",
       "--disable-setuid-sandbox",
+      "--use-fake-ui-for-media-stream",
+      "--use-fake-device-for-media-stream",
+      "--mute-audio",
     ],
   });
 
@@ -44,6 +47,7 @@ export async function launch(headless = true) {
   // Set a reasonable default timeout for all actions (15 s)
   context.setDefaultTimeout(15_000);
   context.setDefaultNavigationTimeout(30_000);
+  await context.grantPermissions(["microphone"], { origin: new URL(BASE_URL).origin }).catch(() => {});
 
   const page = await context.newPage();
 
@@ -127,7 +131,7 @@ export async function close(browser) {
  * @param {string}                     path  URL path relative to BASE_URL (default "/")
  */
 export async function navigateTo(page, path = "/") {
-  await page.goto(path, { waitUntil: "networkidle" });
+  await page.goto(path, { waitUntil: "domcontentloaded" });
 }
 
 /**

@@ -70,13 +70,14 @@ class NuggetResponse(BaseModel):
 
     @classmethod
     def from_orm_with_tags(cls, nugget: Nugget) -> "NuggetResponse":
-        tags = _parse_json_list(nugget.tags)
+        tags = _parse_json_list(nugget.tags) or ["untagged"]
+        source_location = nugget.source_location or nugget.source or "unknown"
         return cls(
             id=nugget.id,
             project_id=nugget.project_id,
             text=nugget.text,
             source=nugget.source,
-            source_location=nugget.source_location,
+            source_location=source_location,
             tags=tags,
             phase=nugget.phase,
             confidence=nugget.confidence,
@@ -201,8 +202,8 @@ async def create_nugget(data: NuggetCreate, request: Request, db: AsyncSession =
         project_id=data.project_id,
         text=data.text,
         source=data.source,
-        source_location=data.source_location,
-        tags=json.dumps(data.tags),
+        source_location=data.source_location or data.source or "unknown",
+        tags=json.dumps(data.tags or ["untagged"]),
         phase=data.phase,
     )
     db.add(nugget)

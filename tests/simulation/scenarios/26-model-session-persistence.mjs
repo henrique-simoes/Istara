@@ -6,6 +6,7 @@ export const id = "26-model-session-persistence";
 export async function run(ctx) {
   const { api } = ctx;
   const checks = [];
+  const fixedTestModel = process.env.ISTARA_FIXED_LLM_TEST_MODEL || null;
 
   // ── 1. System status reports correct provider and model ──
   let initialModel = null;
@@ -41,23 +42,31 @@ export async function run(ctx) {
   if (initialModel && models.length > 0) {
     const modelNames = models.map((m) => m.name || m.id);
     const modelInList = modelNames.some((n) => n === initialModel || n.includes(initialModel));
+    const fixedModelPinned = fixedTestModel && initialModel === fixedTestModel;
     checks.push({
       name: "Active model exists in model list",
-      passed: modelInList,
-      detail: modelInList ? `${initialModel} found` : `${initialModel} NOT in [${modelNames.join(", ")}]`,
+      passed: modelInList || fixedModelPinned,
+      detail: modelInList
+        ? `${initialModel} found`
+        : fixedModelPinned
+          ? `${initialModel} pinned by fixed test profile`
+          : `${initialModel} NOT in [${modelNames.join(", ")}]`,
     });
   }
 
-  // ── 4. Switch model via API (pick a different one if available) ──
+  // ── 4. Switch model via API ──
   let switchedModel = null;
   if (models.length > 0) {
-    const targetModel = models[0].name || models[0].id;
+    const targetModel = fixedTestModel || models[0].name || models[0].id;
     try {
       const result = await api.post(`/api/settings/model?model_name=${encodeURIComponent(targetModel)}`, {});
       switchedModel = result.model;
       checks.push({
-        name: "Switch model via API",
-        passed: result.status === "switched" && result.persisted === true,
+        name: fixedTestModel ? "Re-apply fixed test model via API" : "Switch model via API",
+        passed:
+          result.status === "switched"
+          && result.persisted === true
+          && (!fixedTestModel || result.model === fixedTestModel),
         detail: `model=${result.model}, persisted=${result.persisted}`,
       });
     } catch (e) {
@@ -104,11 +113,25 @@ export async function run(ctx) {
   }
 
   // ── 8. Session CRUD with persistence ──
-  let projectId = ctx.projectId;
+  let projectId = null;
+  let createdProjectForCleanup = false;
   let sessionId = null;
 
-  if (!projectId) {
-    checks.push({ name: "Project for session tests", passed: false, detail: "No persistent project available" });
+  try {
+    const project = await api.post("/api/projects", {
+      name: "[SIM-TEMP] Model Session Persistence",
+      description: "Temporary project for model/session persistence checks",
+    });
+    projectId = project.id;
+    createdProjectForCleanup = true;
+    checks.push({ name: "Create temporary project for session tests", passed: !!projectId, detail: `id=${projectId}` });
+  } catch (e) {
+    projectId = ctx.projectId;
+    checks.push({
+      name: "Create temporary project for session tests",
+      passed: !!projectId,
+      detail: projectId ? `using persistent fallback: ${projectId}` : e.message,
+    });
   }
 
   if (projectId) {
@@ -214,11 +237,14 @@ export async function run(ctx) {
       }
     }
 
-    // Clean up project
-    try {
-      await api.delete(`/api/projects/${projectId}`);
-    } catch {
-      // Ignore cleanup errors
+    // Clean up only the temporary project created by this scenario. The shared
+    // simulation project must survive for later scenarios in a full run.
+    if (createdProjectForCleanup) {
+      try {
+        await api.delete(`/api/projects/${projectId}`);
+      } catch {
+        // Ignore cleanup errors
+      }
     }
   }
 

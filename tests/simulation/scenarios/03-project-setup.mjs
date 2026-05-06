@@ -12,7 +12,7 @@ export async function run(ctx) {
   }
 
   // Navigate to Context view
-  await page.goto("http://localhost:3000", { waitUntil: "networkidle" });
+  await page.goto(ctx.frontendUrl, { waitUntil: "domcontentloaded" });
   await page.waitForTimeout(1000);
 
   // Select the simulation project in sidebar

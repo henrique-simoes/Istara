@@ -220,7 +220,7 @@ export async function run(ctx) {
     const result = await (async (url, body) => { const r = await fetch("http://localhost:8000" + url, { method: "PUT", headers: api._headers(), body: JSON.stringify(body) }); if (!r.ok) throw new Error("PUT " + url + ": " + r.status); return r.json(); })("/api/notifications/preferences", {
       preferences: [
         {
-          category: "sim_test_category",
+          category: "system",
           show_toast: false,
           show_center: true,
           email_forward: false,
@@ -228,7 +228,7 @@ export async function run(ctx) {
       ],
     });
     const updated = result.preferences || [];
-    const found = updated.some((p) => p.category === "sim_test_category" && p.show_toast === false);
+    const found = updated.some((p) => p.category === "system" && p.show_toast === false);
     checks.push({
       name: "PUT /api/notifications/preferences updates and returns preferences",
       passed: found,
@@ -292,6 +292,15 @@ export async function run(ctx) {
   }
   // Mark all notifications as read to leave system clean
   try { await api.post("/api/notifications/read-all", {}); } catch {}
+  try {
+    await fetch("http://localhost:8000/api/notifications/preferences", {
+      method: "PUT",
+      headers: api._headers(),
+      body: JSON.stringify({
+        preferences: [{ category: "system", show_toast: true, show_center: true, email_forward: false }],
+      }),
+    });
+  } catch {}
 
   return {
     checks,

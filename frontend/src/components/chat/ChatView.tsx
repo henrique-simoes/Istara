@@ -557,19 +557,20 @@ export default function ChatView() {
   };
 
   return (
-    <div className="flex-1 flex min-h-0 overflow-hidden">
-      <ViewOnboarding viewId="chat" title="Your Research Assistant" description="Chat with your AI agent about research. Upload files, ask questions, or run analysis skills. Agents understand your project context." chatPrompt="What can I do in Chat?" />
+    <div className="flex-1 min-w-0 flex min-h-0 overflow-hidden">
       {activeProjectId && (
         <ChatSessionsSidebar projectId={activeProjectId} />
       )}
 
       {/* Main chat area */}
       <div
-        className={cn("flex-1 flex flex-col min-h-0 overflow-hidden", dragOver && "ring-2 ring-istara-500 ring-inset bg-istara-50/50 dark:bg-istara-900/10")}
+        className={cn("flex-1 min-w-0 flex flex-col min-h-0 overflow-hidden", dragOver && "ring-2 ring-istara-500 ring-inset bg-istara-50/50 dark:bg-istara-900/10")}
         onDragOver={(e) => { e.preventDefault(); if (canWrite) setDragOver(true); }}
         onDragLeave={() => setDragOver(false)}
         onDrop={handleDrop}
       >
+        <ViewOnboarding viewId="chat" title="Your Research Assistant" description="Chat with your AI agent about research. Upload files, ask questions, or run analysis skills. Agents understand your project context." chatPrompt="What can I do in Chat?" />
+
         {/* Toolbar */}
         <ChatToolbar
           activeSession={activeSession}

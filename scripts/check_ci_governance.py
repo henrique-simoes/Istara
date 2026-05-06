@@ -17,6 +17,8 @@ REQUIRED_SNIPPETS: dict[str, dict[str, str]] = {
         "security scorecard artifact": "istara-security-scorecard",
         "production rehearsal": "python ../scripts/production_rehearsal.py --json",
         "agentic eval contract smoke tests": "tests/test_agentic_eval_contract.py",
+        "property-based contract tests": "pytest ../tests/test_property_contracts.py -q",
+        "backend mutation gate": "python ../scripts/run_backend_mutation.py",
         "governed evolution regression tests": (
             "pytest ../tests/test_improvement_governance.py ../tests/test_compute.py -q"
         ),
@@ -25,7 +27,10 @@ REQUIRED_SNIPPETS: dict[str, dict[str, str]] = {
         ),
         "security benchmark compile check": "../scripts/security_benchmark.py",
         "test harness compile check": "../scripts/check_test_harness.py",
+        "backend mutation wrapper compile check": "../scripts/run_backend_mutation.py",
         "changed-file Ruff gate": "python ../scripts/check_ruff_changed.py",
+        "frontend unit test gate": "npm run test:unit",
+        "frontend mutation test gate": "npm run test:mutation",
         "change obligations": "python scripts/check_change_obligations.py",
         "integrity check": "python scripts/check_integrity.py",
     },
@@ -99,6 +104,7 @@ REQUIRED_SNIPPETS: dict[str, dict[str, str]] = {
         "LLM profile audit": "check_llm_profiles",
         "simulation runner audit": "check_simulation_runner",
         "agentic eval manifest audit": "check_agentic_eval_contract",
+        "mutation property harness audit": "check_mutation_property_harness",
     },
     "testing/TESTING_STRATEGY.md": {
         "pytest strict marker strategy": "--strict-markers",

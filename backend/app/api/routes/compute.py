@@ -140,6 +140,7 @@ async def relay_websocket(ws: WebSocket):
                     gpu_name=msg.get("gpu_name", ""),
                     gpu_vram_mb=msg.get("gpu_vram_mb", 0),
                     loaded_models=msg.get("loaded_models", []),
+                    model_capabilities=msg.get("model_capabilities", {}),
                 )
                 compute_registry.register_node(node)
 
@@ -150,7 +151,7 @@ async def relay_websocket(ws: WebSocket):
 
                 # Immediately detect model capabilities so the relay is
                 # usable for streaming without waiting for the 60s health loop.
-                if resolved_host:
+                if resolved_host and not node.model_capabilities:
                     try:
                         from app.core.model_capabilities import (
                             detect_capabilities_generic,
@@ -175,7 +176,7 @@ async def relay_websocket(ws: WebSocket):
                 stats = msg.get("stats", {})
                 compute_registry.update_heartbeat(node_id, stats)
 
-            elif msg_type in ("llm_response", "embed_response"):
+            elif msg_type in ("llm_response", "embed_response", "load_model_response"):
                 # Response to a forwarded donor request — dispatch to waiting handler
                 request_id = msg.get("request_id", "")
                 if node and request_id:

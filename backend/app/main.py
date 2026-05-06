@@ -103,6 +103,59 @@ def _persist_env_startup(key: str, value: str, logger=None) -> None:
             logger.warning(f"Could not persist {key} to .env: {e}")
 
 
+def _build_configured_local_llm_node():
+    """Build the configured local LLM node with auth/model metadata intact."""
+    from app.core.compute_registry import ComputeNode
+
+    local_type = app_settings.llm_provider
+    local_host = app_settings.lmstudio_host if local_type == "lmstudio" else app_settings.ollama_host
+    model_name = app_settings.lmstudio_model if local_type == "lmstudio" else app_settings.ollama_model
+    api_key = app_settings.lmstudio_api_key if local_type == "lmstudio" else ""
+    loaded_models = [model_name] if model_name and model_name != "default" else []
+
+    return ComputeNode(
+        node_id=f"local-{local_type}",
+        name=f"Local {local_type.title()}",
+        host=local_host,
+        source="local",
+        provider_type=local_type,
+        priority=1,
+        is_local=True,
+        is_healthy=True,  # Assume healthy; health loop will verify
+        api_key=api_key,
+        loaded_models=loaded_models,
+    )
+
+
+def _build_configured_fallback_llm_node():
+    """Build an optional authenticated fallback LLM node from settings."""
+    fallback_host = (app_settings.llm_fallback_host or "").strip()
+    if not fallback_host:
+        return None
+
+    from app.core.compute_registry import ComputeNode, infer_provider_type
+
+    fallback_provider = infer_provider_type(
+        app_settings.llm_fallback_provider,
+        fallback_host,
+    )
+    fallback_model = (app_settings.llm_fallback_model or "").strip()
+    loaded_models = [fallback_model] if fallback_model and fallback_model != "default" else []
+
+    return ComputeNode(
+        node_id="configured-llm-fallback",
+        name="Configured LLM Fallback",
+        host=fallback_host,
+        source="network",
+        provider_type=fallback_provider,
+        priority=5,
+        is_local=False,
+        is_healthy=True,
+        api_key=app_settings.resolve_llm_fallback_api_key(),
+        loaded_models=loaded_models,
+    )
+
+
 # Global shutdown flag for graceful termination
 _shutting_down = False
 
@@ -331,29 +384,19 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # Register configured local LLM server FIRST (before discovery)
     try:
-        from app.core.compute_registry import ComputeNode, compute_registry
+        from app.core.compute_registry import compute_registry
 
-        local_host = (
-            app_settings.lmstudio_host
-            if app_settings.llm_provider == "lmstudio"
-            else app_settings.ollama_host
-        )
-        local_type = app_settings.llm_provider
+        local_node = _build_configured_local_llm_node()
         # Check if already registered (ollama.py _init_llm_router may have done this)
         existing_hosts = {n.host for n in compute_registry._nodes.values()}
-        if local_host not in existing_hosts:
-            local_node = ComputeNode(
-                node_id=f"local-{local_type}",
-                name=f"Local {local_type.title()}",
-                host=local_host,
-                source="local",
-                provider_type=local_type,
-                priority=1,
-                is_local=True,
-                is_healthy=True,  # Assume healthy; health loop will verify
-            )
+        if local_node.host not in existing_hosts:
             compute_registry.register_node(local_node)
-            _log.info(f"Registered local LLM server: {local_host}")
+            _log.info(f"Registered local LLM server: {local_node.host}")
+            existing_hosts.add(local_node.host)
+        fallback_node = _build_configured_fallback_llm_node()
+        if fallback_node and fallback_node.host not in existing_hosts:
+            compute_registry.register_node(fallback_node)
+            _log.info(f"Registered configured LLM fallback: {fallback_node.host}")
     except Exception as e:
         _log.warning(f"Local LLM registration failed: {e}")
 
@@ -420,21 +463,33 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                 # /v1/models lists all downloaded models, not just loaded ones.
                 # The only reliable detection is a minimal chat probe — the
                 # response's 'model' field reveals which model is serving.
-                from app.core.lmstudio import LMStudioClient
+                from app.core.lmstudio import (
+                    LMStudioClient,
+                    configured_lmstudio_model_is_authoritative,
+                )
 
                 lms_client = (
                     current_client
                     if isinstance(current_client, LMStudioClient)
                     else LMStudioClient()
                 )
-                loaded = await lms_client.detect_loaded_model(force=True)
-                if loaded and loaded != app_settings.lmstudio_model:
-                    app_settings.lmstudio_model = loaded
-                    _log.info(f"LM Studio active model detected: {loaded}")
-                    _persist_env_startup("LMSTUDIO_MODEL", loaded, _log)
-                elif loaded:
-                    _log.info(f"LM Studio model confirmed: {loaded}")
-                elif not loaded:
+                configured_model_locked = configured_lmstudio_model_is_authoritative()
+                loaded = None
+                if configured_model_locked:
+                    _log.info(
+                        "LM Studio configured model preserved: %s",
+                        app_settings.lmstudio_model,
+                    )
+                else:
+                    loaded = await lms_client.detect_loaded_model(force=True)
+                    if loaded and loaded != app_settings.lmstudio_model:
+                        app_settings.lmstudio_model = loaded
+                        _log.info(f"LM Studio active model detected: {loaded}")
+                        _persist_env_startup("LMSTUDIO_MODEL", loaded, _log)
+                    elif loaded:
+                        _log.info(f"LM Studio model confirmed: {loaded}")
+
+                if not configured_model_locked and not loaded:
                     # Fallback: pick from model list if probe fails
                     active = app_settings.lmstudio_model
                     non_embed = [n for n in model_names if "embed" not in n.lower()]

@@ -12,7 +12,7 @@ export async function run(ctx) {
   }
 
   // Navigate to Tasks
-  await page.goto("http://localhost:3000", { waitUntil: "networkidle" });
+  await page.goto(ctx.frontendUrl, { waitUntil: "domcontentloaded" });
   await page.waitForTimeout(1000);
 
   const projectBtn = page.locator("text=[SIM]").first();
@@ -56,7 +56,7 @@ export async function run(ctx) {
   }
 
   // Refresh UI
-  await page.reload({ waitUntil: "networkidle" });
+  await page.reload({ waitUntil: "domcontentloaded" });
   await page.waitForTimeout(1500);
 
   // Click Tasks nav again after reload
@@ -67,7 +67,7 @@ export async function run(ctx) {
 
   // Check tasks visible in UI
   for (const task of testTasks) {
-    const visible = await page.locator(`text=${task.title}`).isVisible({ timeout: 2000 }).catch(() => false);
+    const visible = await page.locator(`text=${task.title}`).first().isVisible({ timeout: 2000 }).catch(() => false);
     checks.push({ name: `Task visible in UI: ${task.title.substring(6)}`, passed: visible, detail: "" });
   }
 

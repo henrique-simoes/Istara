@@ -1,11 +1,13 @@
 """Tests for Findings API routes — nuggets, facts, insights, recommendations."""
 
 import pytest
+import uuid
 from httpx import AsyncClient, ASGITransport
 from app.main import app
 from app.config import settings
-from app.models.database import init_db
+from app.models.database import async_session, init_db
 from app.core.auth import create_token
+from app.models.project import Project
 
 
 @pytest.fixture(autouse=True)
@@ -49,6 +51,33 @@ async def test_nuggets_requires_auth():
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         response = await ac.get("/api/findings/nuggets")
         assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_nugget_creation_normalizes_integrity_fields(auth_headers):
+    """New and legacy nuggets expose source_location and tags for research integrity."""
+    await init_db()
+    project_id = f"findings-project-{uuid.uuid4()}"
+    async with async_session() as db:
+        db.add(Project(id=project_id, name="Findings Integrity Project"))
+        await db.commit()
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.post(
+            "/api/findings/nuggets",
+            headers=auth_headers,
+            json={
+                "project_id": project_id,
+                "text": "Participants want clearer onboarding.",
+                "source": "interview-01",
+            },
+        )
+
+    assert response.status_code == 201
+    payload = response.json()
+    assert payload["source_location"] == "interview-01"
+    assert payload["tags"] == ["untagged"]
 
 
 # ---------------------------------------------------------------------------

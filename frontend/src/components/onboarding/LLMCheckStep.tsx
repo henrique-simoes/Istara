@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { CheckCircle2, AlertTriangle, ExternalLink, Loader2 } from "lucide-react";
+import { detectLocalLLM, providerLabel } from "@/lib/modelProviders";
 
 /**
  * Onboarding step: check if a local LLM provider is running.
@@ -9,7 +10,7 @@ import { CheckCircle2, AlertTriangle, ExternalLink, Loader2 } from "lucide-react
  */
 export default function LLMCheckStep() {
   const [checking, setChecking] = useState(true);
-  const [provider, setProvider] = useState<"lmstudio" | "ollama" | null>(null);
+  const [provider, setProvider] = useState<string | null>(null);
   const [modelCount, setModelCount] = useState(0);
 
   useEffect(() => {
@@ -29,11 +30,10 @@ export default function LLMCheckStep() {
       } catch {}
       // Fallback: try direct Ollama detection if backend is unavailable
       try {
-        const res = await fetch("http://localhost:11434/api/tags", { signal: AbortSignal.timeout(2000) });
-        if (res.ok) {
-          const data = await res.json();
-          setProvider("ollama");
-          setModelCount((data.models || []).length);
+        const detected = await detectLocalLLM();
+        if (detected) {
+          setProvider(detected.providerType);
+          setModelCount(detected.modelCount);
           setChecking(false);
           return;
         }
@@ -59,7 +59,7 @@ export default function LLMCheckStep() {
           <CheckCircle2 size={24} className="text-green-600 shrink-0" />
           <div>
             <p className="text-sm font-medium text-green-800 dark:text-green-300">
-              {provider === "lmstudio" ? "LM Studio" : "Ollama"} detected
+              {providerLabel(provider)} detected
             </p>
             <p className="text-xs text-green-600 dark:text-green-400 mt-0.5">
               {modelCount} model{modelCount !== 1 ? "s" : ""} available. Ready for research.
@@ -79,7 +79,7 @@ export default function LLMCheckStep() {
             No local LLM server detected
           </p>
           <p className="text-xs text-amber-600 dark:text-amber-400 mt-1 leading-relaxed">
-            Istara needs a local LLM to power its AI agents. Install one of these:
+            Istara can use a local or compatible LLM server to power its AI agents.
           </p>
         </div>
       </div>
@@ -106,6 +106,30 @@ export default function LLMCheckStep() {
           <div>
             <span className="font-medium text-slate-900 dark:text-white">Ollama</span>
             <span className="block text-xs text-slate-400">CLI, lightweight</span>
+          </div>
+        </a>
+        <a
+          href="https://github.com/ggml-org/llama.cpp"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-2 p-3 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-sm"
+        >
+          <ExternalLink size={14} className="text-istara-500" />
+          <div>
+            <span className="font-medium text-slate-900 dark:text-white">llama.cpp</span>
+            <span className="block text-xs text-slate-400">server, low overhead</span>
+          </div>
+        </a>
+        <a
+          href="https://docs.vllm.ai/serving/openai_compatible_server.html"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-2 p-3 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-sm"
+        >
+          <ExternalLink size={14} className="text-istara-500" />
+          <div>
+            <span className="font-medium text-slate-900 dark:text-white">OpenAI-compatible</span>
+            <span className="block text-xs text-slate-400">vLLM, SGLang, MLX</span>
           </div>
         </a>
       </div>

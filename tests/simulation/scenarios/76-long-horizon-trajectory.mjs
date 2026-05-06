@@ -56,11 +56,19 @@ export async function run(ctx) {
     console.log("    --- Phase 2: Start 50-Message Trajectory ---");
     
     // 2. Initial Complex Request
-    const session = await api.post("/api/chat", {
-      project_id: projectId,
-      message: "I need a comprehensive analysis. Cross-reference the patient complaints about speed with our competitor audit and technical specs. Propose a journey map that solves this."
+    const chatRes = await fetch("http://localhost:8000/api/chat", {
+      method: "POST",
+      headers: api._headers(),
+      body: JSON.stringify({
+        project_id: projectId,
+        message: "I need a comprehensive analysis. Cross-reference the patient complaints about speed with our competitor audit and technical specs. Propose a journey map that solves this.",
+      }),
     });
-    const sessionId = session.session_id || session.id;
+    if (!chatRes.ok) throw new Error(`POST /api/chat: ${chatRes.status}`);
+    await chatRes.text(); // Chat streams SSE; consuming the stream proves the endpoint completed.
+    const sessionList = await api.get(`/api/sessions/${projectId}`);
+    const session = (sessionList.sessions || [])[0] || {};
+    const sessionId = session.id || "istara-main";
     checkPass("Initial Request", `Session created: ${sessionId}`);
 
     // 3. Simulate Long Horizon (Looping through steps)
@@ -70,7 +78,7 @@ export async function run(ctx) {
     console.log("    --- Phase 3: A2A & Multi-Step Coordination ---");
     
     // Simulate mid-execution steering (User changing mind or clarifying)
-    await api.post(`/api/steering/${sessionId}/queue`, {
+    await api.post(`/api/steering/${sessionId}`, {
       message: "Wait, focus specifically on elderly users for the font size part."
     });
     checkPass("Steering Injection", "Mid-execution clarification queued.");

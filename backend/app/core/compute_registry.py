@@ -8,7 +8,7 @@ Architecture:
 - Network nodes: added by network_discovery
 - Relay nodes: added by WebSocket connections
 
-Routing: capability filter -> score -> retry 3x -> cooldown -> failover
+Routing: capability filter -> score -> retry 5x -> cooldown -> failover
 """
 
 import asyncio
@@ -25,6 +25,7 @@ import httpx
 
 from app.config import settings
 from app.core.compute_capacity import compute_capacity_envelope, node_capacity_score
+from app.core.model_capabilities import ANTHROPIC_PROVIDERS, provider_auth_headers
 
 logger = logging.getLogger(__name__)
 
@@ -32,11 +33,28 @@ TRANSIENT_HTTP_STATUS_CODES = {408, 409, 425, 429, 500, 502, 503, 504}
 TRANSIENT_CHAT_MAX_ATTEMPTS = 5
 TRANSIENT_CHAT_BASE_DELAY_S = 0.25
 TRANSIENT_CHAT_MAX_DELAY_S = 2.0
+PROVIDER_ALIASES = {
+    "openai": "openai_compat",
+    "openai-compatible": "openai_compat",
+    "openai_compatible": "openai_compat",
+    "lm_studio": "lmstudio",
+    "lm-studio": "lmstudio",
+    "llama.cpp": "llamacpp",
+    "llama-cpp": "llamacpp",
+    "mlx_lm": "mlx",
+    "anthropic-compatible": "anthropic_compat",
+    "anthropic_compatible": "anthropic_compat",
+}
+
+
+def normalize_provider_type(provider_type: str | None) -> str:
+    requested = (provider_type or "").strip().lower()
+    return PROVIDER_ALIASES.get(requested, requested)
 
 
 def infer_provider_type(provider_type: str | None, host: str | None) -> str:
     """Infer the provider contract from an LLM server URL when the label is ambiguous."""
-    requested = (provider_type or "").strip().lower()
+    requested = normalize_provider_type(provider_type)
     if not host:
         return requested or "openai_compat"
     if requested and requested != "ollama":
@@ -49,6 +67,8 @@ def infer_provider_type(provider_type: str | None, host: str | None) -> str:
 
     if "generativelanguage.googleapis.com" in hostname or path.endswith("/openai"):
         return "gemini_openai"
+    if "anthropic.com" in hostname:
+        return "anthropic"
     if port == 1234:
         return "lmstudio"
     if path.endswith("/v1"):
@@ -72,8 +92,8 @@ def _server_endpoint_identity(host: str) -> tuple[str, str, int | None, str]:
     )
 
 
-def _openai_model_ids(data: dict) -> list[str]:
-    raw_models = data.get("data")
+def _openai_model_ids(data: dict | list) -> list[str]:
+    raw_models = data.get("data") if isinstance(data, dict) else data
     if not isinstance(raw_models, list):
         return []
     return [
@@ -196,6 +216,10 @@ class ComputeNode:
     def hostname(self) -> str:
         return self.name
 
+    @property
+    def is_anthropic(self) -> bool:
+        return self.provider_type in ANTHROPIC_PROVIDERS
+
     def score(self) -> float:
         return node_capacity_score(self)
 
@@ -255,9 +279,7 @@ class ComputeNode:
         OpenAI-compatible relative path joining.
         """
         if self._client is None or self._client.is_closed:
-            headers = {}
-            if self.api_key:
-                headers["Authorization"] = f"Bearer {self.api_key}"
+            headers = provider_auth_headers(self.provider_type, self.api_key)
 
             # RFC 3986: Ensure base_url ends with slash for correct relative joining
             normalized_host = self.host
@@ -287,6 +309,147 @@ class ComputeNode:
         ):
             return clean_suffix
         return f"v1/{clean_suffix}"
+
+    @staticmethod
+    def _anthropic_content(content: Any) -> str | list[dict]:
+        """Translate common OpenAI multimodal blocks into Anthropic content blocks."""
+        if isinstance(content, str):
+            return content
+        if not isinstance(content, list):
+            return str(content)
+
+        blocks: list[dict] = []
+        for item in content:
+            if not isinstance(item, dict):
+                blocks.append({"type": "text", "text": str(item)})
+                continue
+            item_type = str(item.get("type") or "").lower()
+            if item_type in {"text", "input_text"}:
+                text = item.get("text") or item.get("content") or ""
+                if text:
+                    blocks.append({"type": "text", "text": str(text)})
+                continue
+            image_url = item.get("image_url") or item.get("input_image") or item.get("image")
+            url = ""
+            if isinstance(image_url, dict):
+                url = str(image_url.get("url") or image_url.get("data") or "")
+            elif isinstance(image_url, str):
+                url = image_url
+            if not url:
+                continue
+            if url.startswith("data:") and ";base64," in url:
+                header, encoded = url.split(";base64,", 1)
+                media_type = header.removeprefix("data:") or "image/png"
+                blocks.append(
+                    {
+                        "type": "image",
+                        "source": {
+                            "type": "base64",
+                            "media_type": media_type,
+                            "data": encoded,
+                        },
+                    }
+                )
+            else:
+                blocks.append({"type": "image", "source": {"type": "url", "url": url}})
+        return blocks or ""
+
+    @classmethod
+    def _anthropic_messages(cls, messages: list[dict]) -> tuple[str, list[dict]]:
+        system_parts: list[str] = []
+        converted: list[dict] = []
+        for msg in messages:
+            role = msg.get("role")
+            content = msg.get("content")
+            if role == "system":
+                if content:
+                    system_parts.append(str(content))
+                continue
+            if role == "tool":
+                converted.append({"role": "user", "content": f"Tool result: {content}"})
+                continue
+            if role not in ("user", "assistant"):
+                continue
+            converted.append({"role": role, "content": cls._anthropic_content(content)})
+        return "\n\n".join(system_parts), converted
+
+    @staticmethod
+    def _anthropic_tools(tools: list[dict] | None) -> list[dict] | None:
+        if not tools:
+            return None
+        converted: list[dict] = []
+        for tool in tools:
+            fn = tool.get("function") if isinstance(tool, dict) else None
+            if not isinstance(fn, dict):
+                continue
+            name = fn.get("name")
+            if not name:
+                continue
+            converted.append(
+                {
+                    "name": name,
+                    "description": fn.get("description", ""),
+                    "input_schema": fn.get(
+                        "parameters",
+                        {"type": "object", "properties": {}},
+                    ),
+                }
+            )
+        return converted or None
+
+    @classmethod
+    def _anthropic_payload(
+        cls,
+        messages: list[dict],
+        model: str,
+        temperature: float,
+        max_tokens: int | None,
+        tools: list[dict] | None = None,
+    ) -> dict:
+        system_text, converted_messages = cls._anthropic_messages(messages)
+        payload: dict = {
+            "model": model,
+            "messages": converted_messages,
+            "max_tokens": max_tokens or 1024,
+            "temperature": temperature,
+        }
+        if system_text:
+            payload["system"] = system_text
+        converted_tools = cls._anthropic_tools(tools)
+        if converted_tools:
+            payload["tools"] = converted_tools
+        return payload
+
+    @staticmethod
+    def _normalize_anthropic_response(data: dict) -> dict:
+        text_parts: list[str] = []
+        tool_calls: list[dict] = []
+        for block in data.get("content", []) if isinstance(data, dict) else []:
+            if not isinstance(block, dict):
+                continue
+            if block.get("type") == "text":
+                text_parts.append(str(block.get("text") or ""))
+            elif block.get("type") == "tool_use":
+                tool_calls.append(
+                    {
+                        "id": block.get("id") or "",
+                        "type": "function",
+                        "function": {
+                            "name": block.get("name") or "",
+                            "arguments": json.dumps(block.get("input") or {}),
+                        },
+                    }
+                )
+        result: dict = {
+            "message": {
+                "role": "assistant",
+                "content": "".join(text_parts),
+            }
+        }
+        if tool_calls:
+            result["message"]["tool_calls"] = tool_calls
+            result["finish_reason"] = "tool_calls"
+        return result
 
     async def close(self) -> None:
         """Close the HTTP client."""
@@ -393,9 +556,7 @@ class ComputeNode:
                             _ollama_model_names(data) if isinstance(data, dict) else []
                         )
                     else:
-                        self.loaded_models = (
-                            _openai_model_ids(data) if isinstance(data, dict) else []
-                        )
+                        self.loaded_models = _openai_model_ids(data)
                 except Exception:
                     self.loaded_models = []
                 if self.loaded_models:
@@ -439,23 +600,119 @@ class ComputeNode:
             self.health_error = str(e)[:200] if str(e) else "Unknown error"
         return self.is_healthy
 
-    def _resolve_model(self, model: str | None) -> str:
+    def _capability_supports(self, model_name: str, capability: str) -> bool:
+        caps = self.model_capabilities.get(model_name)
+        return bool(isinstance(caps, dict) and caps.get(capability))
+
+    def _models_supporting(self, capability: str) -> list[str]:
+        supported: list[str] = []
+        for model_name, caps in self.model_capabilities.items():
+            if isinstance(caps, dict) and caps.get(capability):
+                supported.append(model_name)
+        return supported
+
+    def _models_marked_loaded(self) -> set[str]:
+        loaded = {str(model).strip() for model in self.loaded_models if str(model).strip()}
+        for model_name, caps in self.model_capabilities.items():
+            if isinstance(caps, dict) and caps.get("is_loaded"):
+                loaded.add(str(model_name).strip())
+        return loaded
+
+    def _resolve_model(self, model: str | None, require_vision: bool = False) -> str:
         """Resolve the model name — use what's available on this node."""
         models = self.loaded_models or []
         non_embed = [m for m in models if "embed" not in m.lower()]
+        configured_lmstudio_host = settings.lmstudio_host.rstrip("/")
+        is_configured_lmstudio = (
+            self.provider_type != "ollama"
+            and configured_lmstudio_host
+            and self.host.rstrip("/") == configured_lmstudio_host
+        )
+        if require_vision:
+            vision_models = [m for m in self._models_supporting("supports_vision") if m]
+            loaded = self._models_marked_loaded()
+            if model and model != "default" and self._capability_supports(
+                model, "supports_vision"
+            ):
+                return model
+            loaded_vision = [m for m in vision_models if m in loaded]
+            if loaded_vision:
+                return loaded_vision[0]
+            if vision_models:
+                return vision_models[0]
 
         if model and model != "default":
+            if is_configured_lmstudio:
+                return model
             if model in self.model_capabilities:
                 return model
             if models and model not in models:
                 if non_embed:
                     return non_embed[0]
             return model
+        if (
+            is_configured_lmstudio
+            and settings.lmstudio_model
+            and settings.lmstudio_model != "default"
+        ):
+            return settings.lmstudio_model
         if non_embed:
             return non_embed[0]
         if self.provider_type == "ollama":
             return settings.ollama_model
         return settings.lmstudio_model
+
+    async def load_model(self, model: str) -> bool:
+        """Load a model on this node when the provider exposes a load contract."""
+        requested = (model or "").strip()
+        if not requested:
+            return False
+
+        caps = self.model_capabilities.get(requested)
+        if isinstance(caps, dict) and caps.get("is_loaded"):
+            return True
+
+        if self.source in ("relay", "browser") and self.websocket:
+            response = await self._request_over_websocket(
+                "load_model_request",
+                {"model": requested},
+            )
+            result = response.get("result", {})
+            if isinstance(result, dict):
+                models = result.get("models")
+                if isinstance(models, list):
+                    self.loaded_models = [str(m) for m in models if str(m).strip()]
+                model_capabilities = result.get("model_capabilities")
+                if isinstance(model_capabilities, dict):
+                    self.model_capabilities = {
+                        **self.model_capabilities,
+                        **model_capabilities,
+                    }
+            self._mark_model_loaded(requested)
+            return True
+
+        if self.provider_type == "lmstudio":
+            client = await self._get_client()
+            resp = await client.post(
+                "api/v1/models/load",
+                json={"model": requested, "echo_load_config": True},
+                timeout=None,
+            )
+            resp.raise_for_status()
+            self._mark_model_loaded(requested)
+            return True
+
+        return True
+
+    def _mark_model_loaded(self, model: str) -> None:
+        requested = model.strip()
+        if not requested:
+            return
+        if requested not in self.loaded_models:
+            self.loaded_models.append(requested)
+        caps = self.model_capabilities.get(requested)
+        if isinstance(caps, dict):
+            caps["is_loaded"] = True
 
     def _resolve_embed_model(self, model: str | None) -> str:
         """Resolve embedding model — prefer embedding-specific models."""
@@ -513,6 +770,17 @@ class ComputeNode:
             resp = await client.post("/api/chat", json=payload)
             resp.raise_for_status()
             return resp.json()
+        elif self.is_anthropic:
+            payload = self._anthropic_payload(
+                msgs,
+                self._resolve_model(model),
+                temperature,
+                max_tokens,
+                tools,
+            )
+            resp = await client.post(self._openai_endpoint("messages"), json=payload)
+            resp.raise_for_status()
+            return self._normalize_anthropic_response(resp.json())
         else:
             payload = {
                 "model": self._resolve_model(model),
@@ -569,6 +837,25 @@ class ComputeNode:
             return
 
         client = await self._get_client()
+
+        if self.is_anthropic:
+            result = await self.chat(
+                messages,
+                model=model,
+                system=system,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                tools=tools,
+            )
+            content = result.get("message", {}).get("content", "")
+            if content:
+                yield content
+            if result.get("message", {}).get("tool_calls"):
+                yield {
+                    "tool_calls": result["message"]["tool_calls"],
+                    "finish_reason": result.get("finish_reason", "tool_calls"),
+                }
+            return
 
         if self.provider_type == "ollama":
             options: dict = {"temperature": temperature}
@@ -676,6 +963,8 @@ class ComputeNode:
 
         client = await self._get_client()
         embed_model = self._resolve_embed_model(model)
+        if self.is_anthropic:
+            raise RuntimeError("Anthropic-compatible servers do not expose Istara embeddings")
 
         if self.provider_type == "ollama":
             resp = await client.post("/api/embed", json={"model": embed_model, "input": text})
@@ -706,6 +995,8 @@ class ComputeNode:
 
         client = await self._get_client()
         embed_model = self._resolve_embed_model(model)
+        if self.is_anthropic:
+            raise RuntimeError("Anthropic-compatible servers do not expose Istara embeddings")
 
         if self.provider_type == "ollama":
             resp = await client.post("/api/embed", json={"model": embed_model, "input": texts})
@@ -907,6 +1198,9 @@ class ComputeRegistry:
         node.ram_available_gb = stats.get("ram_available_gb", node.ram_available_gb)
         node.cpu_load_pct = stats.get("cpu_load_pct", node.cpu_load_pct)
         node.loaded_models = stats.get("loaded_models", node.loaded_models)
+        model_capabilities = stats.get("model_capabilities")
+        if isinstance(model_capabilities, dict):
+            node.model_capabilities = {**node.model_capabilities, **model_capabilities}
         node.state = stats.get("state", node.state)
         node.last_heartbeat = time.time()
         node.is_healthy = True
@@ -1050,8 +1344,7 @@ class ComputeRegistry:
                 for s in servers
                 if any(c.get("supports_vision") for c in s.model_capabilities.values())
             ]
-            if filtered:
-                servers = filtered
+            servers = filtered
         if min_context > 0:
             filtered = [
                 s
@@ -1074,9 +1367,21 @@ class ComputeRegistry:
         min_context: int = 0,
         model: str | None = None,
         strict_model: bool = False,
+        include_unhealthy: bool = False,
     ) -> list[ComputeNode]:
         """Get candidate nodes sorted by score, filtered by capabilities and circuit breaker."""
         candidates = [n for n in self._nodes.values() if n.score() > 0 and n.cb_is_available()]
+        if include_unhealthy:
+            candidate_ids = {n.node_id for n in candidates}
+            rescue_candidates = [
+                n
+                for n in self._nodes.values()
+                if n.node_id not in candidate_ids
+                and n.cb_is_available()
+                and n.active_requests < n.max_active_requests
+                and n.health_state not in {"auth_required", "cooldown"}
+            ]
+            candidates.extend(rescue_candidates)
 
         if require_tools and candidates:
             tool_capable = [
@@ -1098,8 +1403,7 @@ class ComputeRegistry:
                 for n in candidates
                 if any(c.get("supports_vision") for c in n.model_capabilities.values())
             ]
-            if vision_capable:
-                candidates = vision_capable
+            candidates = vision_capable
 
         if min_context > 0 and candidates:
             context_capable = [
@@ -1148,6 +1452,45 @@ class ComputeRegistry:
         advertised = loaded | capability_keys
         return bool(advertised and advertised.intersection(aliases))
 
+    @classmethod
+    def _node_supports_vision_model(cls, node: ComputeNode, model: str | None) -> bool:
+        if not model or model == "default":
+            return any(c.get("supports_vision") for c in node.model_capabilities.values())
+        aliases = cls._model_aliases(model)
+        for model_name, caps in node.model_capabilities.items():
+            if str(model_name).strip() in aliases and caps.get("supports_vision"):
+                return True
+        return False
+
+    @staticmethod
+    def _content_requires_vision(content: Any) -> bool:
+        if isinstance(content, list):
+            return any(ComputeRegistry._content_requires_vision(item) for item in content)
+        if isinstance(content, dict):
+            item_type = str(content.get("type", "")).lower()
+            if item_type in {"image", "image_url", "input_image"}:
+                return True
+            if "image_url" in content or "input_image" in content:
+                return True
+            return any(
+                ComputeRegistry._content_requires_vision(value)
+                for value in content.values()
+                if isinstance(value, (dict, list))
+            )
+        return False
+
+    @staticmethod
+    def _messages_require_vision(messages: list[dict]) -> bool:
+        return any(
+            ComputeRegistry._content_requires_vision(msg.get("content")) for msg in messages
+        )
+
+    async def _ensure_node_model_ready(self, node: ComputeNode, model: str) -> bool:
+        caps = node.model_capabilities.get(model)
+        if isinstance(caps, dict) and caps.get("is_loaded") is False:
+            return await node.load_model(model)
+        return True
+
     @staticmethod
     def _record_success(node: ComputeNode) -> None:
         node.consecutive_failures = 0
@@ -1166,6 +1509,19 @@ class ComputeRegistry:
             node.cooldown_until = time.time() + 60
             node.is_healthy = False
         else:
+            node.health_state = "degraded"
+
+    @staticmethod
+    def _record_auxiliary_failure(node: ComputeNode, error: Exception) -> None:
+        """Record a non-routing failure without taking the chat node offline.
+
+        Embedding quotas and retrieval-side failures should degrade RAG quality,
+        but they must not make a healthy chat model unavailable to skills,
+        planning, or orchestration. Those callers already fall back to keyword
+        search when embeddings fail.
+        """
+        node.health_error = str(error)[:200] if str(error) else "Auxiliary request failed"
+        if node.is_healthy and node.health_state != "cooldown":
             node.health_state = "degraded"
 
     @staticmethod
@@ -1213,12 +1569,21 @@ class ComputeRegistry:
             content = msg.get("content")
             if content is None or (isinstance(content, str) and not content.strip()):
                 continue
-            sanitized.append({"role": role, "content": str(content)})
+            if isinstance(content, (dict, list)):
+                sanitized.append({"role": role, "content": content})
+            else:
+                sanitized.append({"role": role, "content": str(content)})
 
         # Merge consecutive system messages
         merged: list[dict] = []
         for msg in sanitized:
-            if merged and msg["role"] == "system" and merged[-1]["role"] == "system":
+            if (
+                merged
+                and msg["role"] == "system"
+                and merged[-1]["role"] == "system"
+                and isinstance(msg["content"], str)
+                and isinstance(merged[-1]["content"], str)
+            ):
                 merged[-1]["content"] += "\n\n" + msg["content"]
             else:
                 merged.append(msg)
@@ -1239,13 +1604,23 @@ class ComputeRegistry:
         if system:
             msgs = [{"role": "system", "content": system}, *msgs]
         msgs = self._sanitize_messages(msgs)
+        require_vision = self._messages_require_vision(msgs)
 
         for node in self._select_candidates(
             require_tools=bool(tools),
+            require_vision=require_vision,
             model=model,
             strict_model=settings.strict_auto_routing,
+            include_unhealthy=True,
         ):
-            resolved_model = node._resolve_model(model)
+            if (
+                require_vision
+                and model
+                and model != "default"
+                and not self._node_supports_vision_model(node, model)
+            ):
+                continue
+            resolved_model = node._resolve_model(model, require_vision=require_vision)
             logger.info(
                 f"ComputeRegistry: routing chat to {node.name} ({node.host}) model={resolved_model}"
             )
@@ -1254,6 +1629,8 @@ class ComputeRegistry:
                 for attempt in range(1, TRANSIENT_CHAT_MAX_ATTEMPTS + 1):
                     try:
                         if node.source in ("relay", "browser") and node.websocket:
+                            if require_vision:
+                                await self._ensure_node_model_ready(node, resolved_model)
                             data = await node.chat(
                                 msgs,
                                 model=resolved_model,
@@ -1266,6 +1643,8 @@ class ComputeRegistry:
                             return data
 
                         client = await node._get_client()
+                        if require_vision:
+                            await self._ensure_node_model_ready(node, resolved_model)
 
                         if node.provider_type == "ollama":
                             options: dict = {"temperature": temperature}
@@ -1280,6 +1659,17 @@ class ComputeRegistry:
                             resp = await client.post("/api/chat", json=payload)
                             resp.raise_for_status()
                             data = resp.json()
+                            self._record_success(node)
+                            return data
+
+                        if node.is_anthropic:
+                            data = await node.chat(
+                                msgs,
+                                model=resolved_model,
+                                temperature=temperature,
+                                max_tokens=max_tokens,
+                                tools=tools,
+                            )
                             self._record_success(node)
                             return data
 
@@ -1360,10 +1750,12 @@ class ComputeRegistry:
                     )
                 else:
                     logger.warning(f"ComputeRegistry: chat failed on {node.name}: {e}")
-                self._record_failure(node, e)
+                self._record_auxiliary_failure(node, e)
             finally:
                 node.active_requests -= 1
 
+        if require_vision:
+            raise RuntimeError("No vision-capable compute nodes available for image chat")
         raise RuntimeError("No compute nodes available for chat")
 
     async def chat_stream(
@@ -1380,143 +1772,227 @@ class ComputeRegistry:
         if system:
             msgs = [{"role": "system", "content": system}, *msgs]
         msgs = self._sanitize_messages(msgs)
+        require_vision = self._messages_require_vision(msgs)
 
         for node in self._select_candidates(
             require_tools=bool(tools),
+            require_vision=require_vision,
             model=model,
             strict_model=settings.strict_auto_routing,
+            include_unhealthy=True,
         ):
-            resolved_model = node._resolve_model(model)
+            if (
+                require_vision
+                and model
+                and model != "default"
+                and not self._node_supports_vision_model(node, model)
+            ):
+                continue
+            resolved_model = node._resolve_model(model, require_vision=require_vision)
             logger.info(
                 f"ComputeRegistry: routing stream to {node.name} "
                 f"({node.host}) model={resolved_model}"
             )
             node.active_requests += 1
             try:
-                if node.source in ("relay", "browser") and node.websocket:
-                    data = await node.chat(
-                        msgs,
-                        model=resolved_model,
-                        temperature=temperature,
-                        max_tokens=max_tokens,
-                        tools=tools,
-                    )
-                    content = data.get("message", {}).get("content", "")
-                    if content:
-                        yield content
-                    self._record_success(node)
-                    return
+                for attempt in range(1, TRANSIENT_CHAT_MAX_ATTEMPTS + 1):
+                    emitted_chunk = False
+                    try:
+                        if node.source in ("relay", "browser") and node.websocket:
+                            if require_vision:
+                                await self._ensure_node_model_ready(node, resolved_model)
+                            data = await node.chat(
+                                msgs,
+                                model=resolved_model,
+                                temperature=temperature,
+                                max_tokens=max_tokens,
+                                tools=tools,
+                            )
+                            content = data.get("message", {}).get("content", "")
+                            if content:
+                                emitted_chunk = True
+                                yield content
+                            self._record_success(node)
+                            return
 
-                client = await node._get_client()
+                        client = await node._get_client()
+                        if require_vision:
+                            await self._ensure_node_model_ready(node, resolved_model)
 
-                if node.provider_type == "ollama":
-                    options: dict = {"temperature": temperature}
-                    if max_tokens:
-                        options["num_predict"] = max_tokens
-                    payload = {
-                        "model": resolved_model,
-                        "messages": msgs,
-                        "stream": True,
-                        "options": options,
-                    }
-                    async with client.stream(
-                        "POST", "/api/chat", json=payload, timeout=None
-                    ) as resp:
-                        resp.raise_for_status()
-                        async for line in resp.aiter_lines():
-                            if line.strip():
-                                data = json.loads(line)
-                                content = data.get("message", {}).get("content", "")
-                                if content:
-                                    yield content
-                                if data.get("done", False):
-                                    break
-                else:
-                    payload = {
-                        "model": resolved_model,
-                        "messages": msgs,
-                        "temperature": temperature,
-                        "stream": True,
-                    }
-                    if max_tokens:
-                        payload["max_tokens"] = max_tokens
-                    if tools:
-                        payload["tools"] = tools
+                        if node.provider_type == "ollama":
+                            options: dict = {"temperature": temperature}
+                            if max_tokens:
+                                options["num_predict"] = max_tokens
+                            payload = {
+                                "model": resolved_model,
+                                "messages": msgs,
+                                "stream": True,
+                                "options": options,
+                            }
+                            async with client.stream(
+                                "POST", "/api/chat", json=payload, timeout=None
+                            ) as resp:
+                                resp.raise_for_status()
+                                async for line in resp.aiter_lines():
+                                    if line.strip():
+                                        data = json.loads(line)
+                                        content = data.get("message", {}).get("content", "")
+                                        if content:
+                                            emitted_chunk = True
+                                            yield content
+                                        if data.get("done", False):
+                                            break
+                        elif node.is_anthropic:
+                            data = await node.chat(
+                                msgs,
+                                model=resolved_model,
+                                temperature=temperature,
+                                max_tokens=max_tokens,
+                                tools=tools,
+                            )
+                            content = data.get("message", {}).get("content", "")
+                            if content:
+                                emitted_chunk = True
+                                yield content
+                            if data.get("message", {}).get("tool_calls"):
+                                emitted_chunk = True
+                                yield {
+                                    "tool_calls": data["message"]["tool_calls"],
+                                    "finish_reason": data.get("finish_reason", "tool_calls"),
+                                }
+                        else:
+                            payload = {
+                                "model": resolved_model,
+                                "messages": msgs,
+                                "temperature": temperature,
+                                "stream": True,
+                            }
+                            if max_tokens:
+                                payload["max_tokens"] = max_tokens
+                            if tools:
+                                payload["tools"] = tools
 
-                    accumulated_tool_calls: list[dict] = []
-                    tool_call_mode = False
+                            accumulated_tool_calls: list[dict] = []
+                            tool_call_mode = False
 
-                    async with client.stream(
-                        "POST",
-                        node._openai_endpoint("chat/completions"),
-                        json=payload,
-                        timeout=None,
-                    ) as resp:
-                        resp.raise_for_status()
-                        async for line in resp.aiter_lines():
-                            line = line.strip()
-                            if not line or not line.startswith("data: "):
-                                continue
-                            data_str = line[6:]
-                            if data_str == "[DONE]":
-                                break
-                            try:
-                                data = json.loads(data_str)
-                                choice = data.get("choices", [{}])[0]
-                                delta = choice.get("delta", {})
-                                finish = choice.get("finish_reason")
+                            async with client.stream(
+                                "POST",
+                                node._openai_endpoint("chat/completions"),
+                                json=payload,
+                                timeout=None,
+                            ) as resp:
+                                resp.raise_for_status()
+                                async for line in resp.aiter_lines():
+                                    line = line.strip()
+                                    if not line or not line.startswith("data: "):
+                                        continue
+                                    data_str = line[6:]
+                                    if data_str == "[DONE]":
+                                        break
+                                    try:
+                                        data = json.loads(data_str)
+                                        choice = data.get("choices", [{}])[0]
+                                        delta = choice.get("delta", {})
+                                        finish = choice.get("finish_reason")
 
-                                if delta.get("tool_calls"):
-                                    tool_call_mode = True
-                                    for tc_delta in delta["tool_calls"]:
-                                        idx = tc_delta.get("index", 0)
-                                        while len(accumulated_tool_calls) <= idx:
-                                            accumulated_tool_calls.append(
-                                                {
-                                                    "id": "",
-                                                    "type": "function",
-                                                    "function": {
-                                                        "name": "",
-                                                        "arguments": "",
-                                                    },
-                                                }
-                                            )
-                                        tc = accumulated_tool_calls[idx]
-                                        if tc_delta.get("id"):
-                                            tc["id"] = tc_delta["id"]
-                                        fn = tc_delta.get("function", {})
-                                        if fn.get("name"):
-                                            tc["function"]["name"] = fn["name"]
-                                        if fn.get("arguments"):
-                                            tc["function"]["arguments"] += fn["arguments"]
-                                    continue
+                                        if delta.get("tool_calls"):
+                                            tool_call_mode = True
+                                            for tc_delta in delta["tool_calls"]:
+                                                idx = tc_delta.get("index", 0)
+                                                while len(accumulated_tool_calls) <= idx:
+                                                    accumulated_tool_calls.append(
+                                                        {
+                                                            "id": "",
+                                                            "type": "function",
+                                                            "function": {
+                                                                "name": "",
+                                                                "arguments": "",
+                                                            },
+                                                        }
+                                                    )
+                                                tc = accumulated_tool_calls[idx]
+                                                if tc_delta.get("id"):
+                                                    tc["id"] = tc_delta["id"]
+                                                fn = tc_delta.get("function", {})
+                                                if fn.get("name"):
+                                                    tc["function"]["name"] = fn["name"]
+                                                if fn.get("arguments"):
+                                                    tc["function"]["arguments"] += fn[
+                                                        "arguments"
+                                                    ]
+                                            continue
 
-                                content = delta.get("content", "")
-                                if content:
-                                    yield content
+                                        content = delta.get("content", "")
+                                        if content:
+                                            emitted_chunk = True
+                                            yield content
 
-                                if finish == "tool_calls" or (finish == "stop" and tool_call_mode):
-                                    break
-                            except (json.JSONDecodeError, IndexError, KeyError):
-                                continue
+                                        if finish == "tool_calls" or (
+                                            finish == "stop" and tool_call_mode
+                                        ):
+                                            break
+                                    except (json.JSONDecodeError, IndexError, KeyError):
+                                        continue
 
-                    if accumulated_tool_calls and any(
-                        tc["function"]["name"] for tc in accumulated_tool_calls
-                    ):
-                        yield {
-                            "tool_calls": accumulated_tool_calls,
-                            "finish_reason": "tool_calls",
-                        }
+                            if accumulated_tool_calls and any(
+                                tc["function"]["name"] for tc in accumulated_tool_calls
+                            ):
+                                emitted_chunk = True
+                                yield {
+                                    "tool_calls": accumulated_tool_calls,
+                                    "finish_reason": "tool_calls",
+                                }
 
-                self._record_success(node)
-                return
+                        self._record_success(node)
+                        return
+                    except Exception as e:
+                        self._record_failure(node, e)
+                        transient = self._is_transient_error(e)
+                        if (
+                            not emitted_chunk
+                            and attempt < TRANSIENT_CHAT_MAX_ATTEMPTS
+                            and transient
+                        ):
+                            delay = self._retry_delay(attempt)
+                            logger.warning(
+                                "ComputeRegistry: transient stream failure on %s "
+                                "(attempt %s/%s); retrying in %.2fs: %s",
+                                node.name,
+                                attempt,
+                                TRANSIENT_CHAT_MAX_ATTEMPTS,
+                                delay,
+                                e,
+                            )
+                            await asyncio.sleep(delay)
+                            continue
+
+                        if hasattr(e, "response") and hasattr(e.response, "text"):
+                            logger.warning(
+                                "ComputeRegistry: stream failed on %s after %s "
+                                "attempt(s): %s | Body: %s",
+                                node.name,
+                                attempt,
+                                e,
+                                e.response.text,
+                            )
+                        else:
+                            logger.warning(
+                                "ComputeRegistry: stream failed on %s after %s "
+                                "attempt(s): %s",
+                                node.name,
+                                attempt,
+                                e,
+                            )
+                        break
 
             except Exception as e:
                 logger.warning(f"ComputeRegistry: stream failed on {node.name}: {e}")
-                self._record_failure(node, e)
+                self._record_auxiliary_failure(node, e)
             finally:
                 node.active_requests -= 1
 
+        if require_vision:
+            raise RuntimeError("No vision-capable compute nodes available for image chat")
         raise RuntimeError("No compute nodes available for streaming")
 
     async def embed(self, text: str, model: str | None = None) -> list[float]:
@@ -1525,6 +2001,8 @@ class ComputeRegistry:
             model=model,
             strict_model=settings.strict_auto_routing,
         ):
+            if node.is_anthropic:
+                continue
             node.active_requests += 1
             try:
                 if node.source in ("relay", "browser") and node.websocket:
@@ -1568,7 +2046,7 @@ class ComputeRegistry:
                     )
                 else:
                     logger.warning(f"ComputeRegistry: embed failed on {node.name}: {e}")
-                self._record_failure(node, e)
+                self._record_auxiliary_failure(node, e)
             finally:
                 node.active_requests -= 1
 
@@ -1580,6 +2058,8 @@ class ComputeRegistry:
             model=model,
             strict_model=settings.strict_auto_routing,
         ):
+            if node.is_anthropic:
+                continue
             node.active_requests += 1
             try:
                 if node.source in ("relay", "browser") and node.websocket:
@@ -1617,7 +2097,7 @@ class ComputeRegistry:
                     )
                 else:
                     logger.warning(f"ComputeRegistry: embed_batch failed on {node.name}: {e}")
-                self._record_failure(node, e)
+                self._record_auxiliary_failure(node, e)
             finally:
                 node.active_requests -= 1
 
@@ -1630,14 +2110,7 @@ class ComputeRegistry:
             try:
                 if node.source in ("relay", "browser"):
                     for name in node.loaded_models:
-                        all_models.append(
-                            {
-                                "name": name,
-                                "id": name,
-                                "_server": node.name,
-                                "_server_id": node.node_id,
-                            }
-                        )
+                        all_models.append(self._model_record_for_node(node, name))
                     continue
 
                 client = await node._get_client()
@@ -1652,10 +2125,70 @@ class ComputeRegistry:
                 for m in models:
                     m["_server"] = node.name
                     m["_server_id"] = node.node_id
+                    model_id = m.get("id") or m.get("name")
+                    if isinstance(model_id, str):
+                        caps = node.model_capabilities.get(model_id)
+                        if isinstance(caps, dict):
+                            m.update(
+                                {
+                                    "supports_tools": caps.get("supports_tools", False),
+                                    "supports_vision": caps.get("supports_vision", False),
+                                    "supports_audio": caps.get("supports_audio", False),
+                                    "supports_json": caps.get("supports_json", False),
+                                    "context_length": caps.get("context_length"),
+                                    "trained_context_length": caps.get(
+                                        "trained_context_length"
+                                    ),
+                                    "loaded_context_length": caps.get("loaded_context_length"),
+                                    "parameter_count": caps.get("parameter_count"),
+                                    "quantization": caps.get("quantization"),
+                                    "is_loaded": caps.get("is_loaded"),
+                                    "endpoint_family": caps.get("endpoint_family"),
+                                    "capabilities": {
+                                        "tools": caps.get("supports_tools", False),
+                                        "vision": caps.get("supports_vision", False),
+                                        "audio": caps.get("supports_audio", False),
+                                        "json": caps.get("supports_json", False),
+                                    },
+                                }
+                            )
                 all_models.extend(models)
             except Exception:
                 pass
         return all_models
+
+    @staticmethod
+    def _model_record_for_node(node: ComputeNode, name: str) -> dict:
+        record: dict = {
+            "name": name,
+            "id": name,
+            "_server": node.name,
+            "_server_id": node.node_id,
+        }
+        caps = node.model_capabilities.get(name)
+        if isinstance(caps, dict):
+            record.update(
+                {
+                    "supports_tools": caps.get("supports_tools", False),
+                    "supports_vision": caps.get("supports_vision", False),
+                    "supports_audio": caps.get("supports_audio", False),
+                    "supports_json": caps.get("supports_json", False),
+                    "context_length": caps.get("context_length"),
+                    "trained_context_length": caps.get("trained_context_length"),
+                    "loaded_context_length": caps.get("loaded_context_length"),
+                    "parameter_count": caps.get("parameter_count"),
+                    "quantization": caps.get("quantization"),
+                    "is_loaded": caps.get("is_loaded"),
+                    "endpoint_family": caps.get("endpoint_family"),
+                    "capabilities": {
+                        "tools": caps.get("supports_tools", False),
+                        "vision": caps.get("supports_vision", False),
+                        "audio": caps.get("supports_audio", False),
+                        "json": caps.get("supports_json", False),
+                    },
+                }
+            )
+        return record
 
     async def list_models_async(self) -> list[dict]:
         """Async alias for list_models (backward compat)."""

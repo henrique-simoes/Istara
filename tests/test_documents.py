@@ -2,7 +2,9 @@
 
 import pytest
 import uuid
+from pathlib import Path
 from httpx import AsyncClient, ASGITransport
+from sqlalchemy import select
 from app.main import app
 from app.config import settings
 from app.models.database import async_session, init_db
@@ -80,6 +82,62 @@ async def test_documents_sync_returns_response(auth_headers):
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         response = await ac.post("/api/documents/sync/test-project", headers=auth_headers)
         assert response.status_code in (200, 422, 404, 500, 502)
+
+
+@pytest.mark.asyncio
+async def test_documents_sync_dedupes_by_resolved_path_not_filename(
+    auth_headers, tmp_path, monkeypatch
+):
+    """Linked-folder sync must not ignore different files that share a basename."""
+    await init_db()
+    monkeypatch.setattr(settings, "lance_db_path", str(tmp_path / "lance"))
+
+    project_id = f"doc-sync-project-{uuid.uuid4()}"
+    first_dir = tmp_path / "first"
+    second_dir = tmp_path / "second"
+    first_dir.mkdir()
+    second_dir.mkdir()
+    first_file = first_dir / "same-name.txt"
+    second_file = second_dir / "same-name.txt"
+    first_file.write_text("", encoding="utf-8")
+    second_file.write_text("", encoding="utf-8")
+
+    existing_doc = Document(
+        id=str(uuid.uuid4()),
+        project_id=project_id,
+        title="Existing Same Name",
+        file_name=first_file.name,
+        file_path=str(first_file),
+        file_type=".txt",
+        file_size=0,
+        source=DocumentSource.PROJECT_FILE,
+        status=DocumentStatus.READY,
+    )
+
+    async with async_session() as db:
+        db.add(Project(id=project_id, name="Document Sync Project", watch_folder_path=str(second_dir)))
+        db.add(existing_doc)
+        await db.commit()
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.post(f"/api/documents/sync/{project_id}", headers=auth_headers)
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["synced"] == 1
+
+    async with async_session() as db:
+        result = await db.execute(
+            select(Document).where(
+                Document.project_id == project_id,
+                Document.file_name == "same-name.txt",
+            )
+        )
+        docs = result.scalars().all()
+
+    assert len(docs) == 2
+    assert str(second_file.resolve()) in {Path(doc.file_path).resolve().as_posix() for doc in docs}
 
 
 @pytest.mark.asyncio

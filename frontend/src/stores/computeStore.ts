@@ -7,8 +7,16 @@ import { compute } from "@/lib/api";
 interface ModelCapability {
   supports_tools: boolean;
   supports_vision: boolean;
+  supports_audio?: boolean;
+  supports_json?: boolean;
   parameter_count: string | null;
   context_length: number | null;
+  trained_context_length?: number | null;
+  loaded_context_length?: number | null;
+  quantization?: string | null;
+  is_loaded?: boolean | null;
+  source?: string | null;
+  endpoint_family?: string | null;
 }
 
 interface ComputeNode {

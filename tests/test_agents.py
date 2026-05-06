@@ -125,6 +125,66 @@ async def test_agent_restart_scope_and_promotion_routes_use_persistent_agent(aut
 
 
 @pytest.mark.asyncio
+async def test_a2a_accepts_system_message_type_contract(auth_headers):
+    """A2A validation should allow message types emitted by Istara scenarios and JSON-RPC."""
+    await init_db()
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        created_a = await ac.post(
+            "/api/agents",
+            headers=auth_headers,
+            json={
+                "name": "A2A Contract Alpha",
+                "role": "custom",
+                "system_prompt": "Temporary A2A contract test agent.",
+                "capabilities": ["a2a_messaging"],
+            },
+        )
+        created_b = await ac.post(
+            "/api/agents",
+            headers=auth_headers,
+            json={
+                "name": "A2A Contract Beta",
+                "role": "custom",
+                "system_prompt": "Temporary A2A contract test recipient.",
+                "capabilities": ["a2a_messaging"],
+            },
+        )
+        assert created_a.status_code == 201
+        assert created_b.status_code == 201
+        agent_a = created_a.json()["id"]
+        agent_b = created_b.json()["id"]
+
+        try:
+            for message_type in ("finding", "request", "broadcast", "a2a_task"):
+                response = await ac.post(
+                    f"/api/agents/{agent_a}/messages",
+                    headers=auth_headers,
+                    json={
+                        "to_agent_id": None if message_type == "broadcast" else agent_b,
+                        "message_type": message_type,
+                        "content": f"Contract probe for {message_type}",
+                    },
+                )
+                assert response.status_code == 200
+                assert response.json()["message_type"] == message_type
+
+            invalid = await ac.post(
+                f"/api/agents/{agent_a}/messages",
+                headers=auth_headers,
+                json={
+                    "to_agent_id": agent_b,
+                    "message_type": "not_allowed",
+                    "content": "Invalid message type should be a client error.",
+                },
+            )
+            assert invalid.status_code == 400
+        finally:
+            await ac.delete(f"/api/agents/{agent_a}", headers=auth_headers)
+            await ac.delete(f"/api/agents/{agent_b}", headers=auth_headers)
+
+
+@pytest.mark.asyncio
 async def test_agent_recent_log_filters_by_agent(auth_headers):
     """The recent-log endpoint should return the documented log key and honor agent_id."""
     await init_db()
@@ -206,6 +266,54 @@ def test_agent_complex_auto_task_attempts_research_plan():
     )
 
     assert orchestrator._should_attempt_research_plan(task) is True
+
+
+@pytest.mark.asyncio
+async def test_agent_research_plan_parses_dag_dependencies(monkeypatch):
+    """The planner should preserve ordered steps and dependency edges from LLM JSON."""
+    from types import SimpleNamespace
+
+    import app.core.agent as agent_module
+    from app.core.agent import AgentOrchestrator
+    from app.models.task import Task
+
+    async def fake_chat(*_args, **_kwargs):
+        return {
+            "message": {
+                "content": (
+                    '{"steps": ['
+                    '{"id": "step_1", "description": "Analyze transcripts", '
+                    '"skill_name": "user-interviews", "depends_on": []}, '
+                    '{"id": "step_2", "description": "Synthesize recommendations", '
+                    '"skill_name": null, "depends_on": ["step_1"]}'
+                    "]}"
+                )
+            }
+        }
+
+    monkeypatch.setattr(agent_module.ollama, "chat", fake_chat)
+
+    task = Task(
+        id="plan-parse-task",
+        project_id="plan-parse-project",
+        title="Comprehensive UX Analysis",
+        description=(
+            "Analyze user interview transcripts, identify survey issues, contrast "
+            "competitors, and synthesize recommendations."
+        ),
+        skill_name="",
+    )
+
+    plan = await AgentOrchestrator()._create_research_plan(
+        task,
+        SimpleNamespace(id="plan-parse-project"),
+        SimpleNamespace(has_context=False, context_text=""),
+    )
+
+    assert plan is not None
+    assert [step.id for step in plan.steps] == ["step_1", "step_2"]
+    assert plan.steps[1].depends_on == ["step_1"]
+    assert plan.steps[0].skill_name == "user-interviews"
 
 
 def test_agent_explicit_skill_skips_research_plan_probe():

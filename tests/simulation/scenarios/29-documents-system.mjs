@@ -256,15 +256,28 @@ export async function run(ctx) {
 
     linkedFolderPath = path.join(os.tmpdir(), `istara-test-${Date.now()}`);
     fs.mkdirSync(linkedFolderPath, { recursive: true });
-    fs.writeFileSync(path.join(linkedFolderPath, "external-test.txt"), "External folder test content");
+    const externalFileName = `external-test-${Date.now()}.txt`;
+    fs.writeFileSync(path.join(linkedFolderPath, externalFileName), "External folder test content");
 
     const linkRes = await api.post(`/api/projects/${projectId}/link-folder`, { folder_path: linkedFolderPath });
     check(14, "Link external folder succeeds", linkRes.status === "linked", `path=${linkRes.watch_folder_path}`);
 
-    const syncRes = await api.post(`/api/documents/sync/${projectId}`, {});
+    const beforeSync = await api.post(`/api/documents/sync/${projectId}`, {});
+    let syncRes = beforeSync;
+    if ((syncRes.synced || 0) < 1) {
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const nextSync = await api.post(`/api/documents/sync/${projectId}`, {});
+        if ((nextSync.synced || 0) >= 1 || (nextSync.total || 0) > (beforeSync.total || 0)) {
+          syncRes = nextSync;
+          break;
+        }
+        syncRes = nextSync;
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      }
+    }
     check(14, "Sync finds files in linked external folder",
-      "synced" in syncRes && syncRes.synced >= 1,
-      `synced=${syncRes.synced}, total=${syncRes.total}`);
+      "synced" in syncRes && (syncRes.synced >= 1 || syncRes.total > (beforeSync.total || 0)),
+      `file=${externalFileName}, synced=${syncRes.synced}, total=${syncRes.total}, before_total=${beforeSync.total}`);
 
     // Cleanup: unlink folder
     await api.post(`/api/projects/${projectId}/unlink-folder`, {});
@@ -334,7 +347,7 @@ export async function run(ctx) {
   // ──────────────────────────────────────────────────────────────────
   try {
     // Navigate fresh to the app
-    await page.goto("http://localhost:3000", { waitUntil: "networkidle", timeout: 10000 });
+    await page.goto(ctx.frontendUrl, { waitUntil: "domcontentloaded", timeout: 10000 });
     await page.waitForTimeout(2000);
     // The sidebar is only visible on lg+ (1280px viewport in test runner)
     const docsBtn = await page.$('button[aria-label="Documents"]');
@@ -528,7 +541,7 @@ export async function run(ctx) {
   // ──────────────────────────────────────────────────────────────────
   try {
     // First navigate away to Chat
-    await page.goto("http://localhost:3000", { waitUntil: "networkidle", timeout: 10000 });
+    await page.goto(ctx.frontendUrl, { waitUntil: "domcontentloaded", timeout: 10000 });
     await page.waitForTimeout(1500);
     const chatBtn = await page.$('button[aria-label="Chat"]');
     if (chatBtn) {
