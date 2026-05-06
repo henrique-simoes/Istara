@@ -11,6 +11,7 @@ export async function run(ctx) {
   const checks = [];
   const appStatus = await api.get("/api/settings/status").catch(() => null);
   const teamMode = !!appStatus?.team_mode;
+  const suffix = `${Date.now()}-${Math.floor(Math.random() * 10000)}`;
 
   // ── 1. Admin user management — list users ──
   if (teamMode) {
@@ -30,15 +31,15 @@ export async function run(ctx) {
   let testUserId = null;
   try {
     const user = await api.post("/api/auth/users", {
-      username: "sim-test-user",
-      email: "sim@test.local",
-      password: "test-password-123",
+      username: `sim-test-user-${suffix}`,
+      email: `sim-${suffix}@test.local`,
+      password: `Istara-Sim-${suffix}-Passphrase!`,
       display_name: "SIM Test User",
     });
     testUserId = user.id;
     checks.push({
       name: "Admin can create user via API",
-      passed: !!user.id && user.username === "sim-test-user",
+      passed: !!user.id && user.username === `sim-test-user-${suffix}`,
       detail: `Created user ${user.id}`,
     });
   } catch (e) {
@@ -65,8 +66,8 @@ export async function run(ctx) {
   try {
     await api.post("/api/auth/users", {
       username: "admin",
-      email: "dup@test.local",
-      password: "test",
+      email: `dup-${suffix}@test.local`,
+      password: `Istara-Duplicate-${suffix}-Passphrase!`,
     });
     checks.push({ name: "Duplicate username rejected", passed: false, detail: "Should have failed" });
   } catch (e) {
@@ -160,9 +161,9 @@ export async function run(ctx) {
   let tempUserId = null;
   try {
     const user = await api.post("/api/auth/users", {
-      username: "sim-role-test",
-      email: "role@test.local",
-      password: "test-123",
+      username: `sim-role-test-${suffix}`,
+      email: `role-${suffix}@test.local`,
+      password: `Istara-Role-${suffix}-Passphrase!`,
     });
     tempUserId = user.id;
     const updated = await api.patch(`/api/auth/users/${user.id}/role`, { role: "viewer" });

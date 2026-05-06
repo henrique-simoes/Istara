@@ -105,19 +105,24 @@ export default function Sidebar({ activeView, onViewChange, onSearchOpen }: Side
       role="navigation"
       aria-label="Main navigation"
       className={cn(
-        "flex flex-col border-r border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 transition-all duration-300",
+        "shrink-0 flex flex-col border-r border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 transition-all duration-300",
         collapsed ? "w-16" : "w-64"
       )}
     >
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-800">
+      <div
+        className={cn(
+          "flex border-b border-slate-200 dark:border-slate-800",
+          collapsed ? "flex-col items-center gap-2 p-2" : "items-center justify-between p-4"
+        )}
+      >
         {!collapsed && (
           <div className="flex items-center gap-2">
             <span className="text-xl">🐾</span>
             <span className="font-bold text-lg text-slate-900 dark:text-white">Istara</span>
           </div>
         )}
-        <div className="flex items-center gap-1">
+        <div className={cn("flex items-center gap-1", collapsed && "flex-col")}>
           <NotificationBell onViewChange={onViewChange} />
           <DarkModeToggle />
           <button
@@ -253,12 +258,20 @@ export default function Sidebar({ activeView, onViewChange, onSearchOpen }: Side
           <div className="space-y-0.5" role="listbox" aria-label="Projects">
             {projects.map((project) => (
               <div key={project.id} className="relative group">
-                <button
+                <div
                   onClick={() => setActiveProject(project.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      setActiveProject(project.id);
+                    }
+                  }}
                   onContextMenu={(e) => { e.preventDefault(); setProjectMenu(projectMenu === project.id ? null : project.id); }}
                   role="option"
                   aria-selected={activeProjectId === project.id}
+                  tabIndex={0}
                   className={cn(
+                    "cursor-pointer",
                     "flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm transition-colors",
                     project.is_paused && "opacity-60",
                     activeProjectId === project.id
@@ -280,7 +293,7 @@ export default function Sidebar({ activeView, onViewChange, onSearchOpen }: Side
                   >
                     <MoreHorizontal size={12} />
                   </button>
-                </button>
+                </div>
                 {projectMenu === project.id && (
                   <div className="absolute left-8 top-full mt-1 z-50 w-36 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 py-1 text-xs">
                     <button

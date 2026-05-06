@@ -996,9 +996,16 @@ export default function AgentsView() {
                 {systemAgents.map((agent) => {
                   const expanded = expandedAgent === agent.id;
                   return (
-                    <div key={agent.id} className="rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700">
+                    <div
+                      key={agent.id}
+                      data-agent-id={agent.id}
+                      className="rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700"
+                    >
                       <button
                         onClick={() => setExpandedAgent(expanded ? null : agent.id)}
+                        aria-label={`Open ${agent.name} agent details`}
+                        data-agent-id={agent.id}
+                        data-agent-card="true"
                         className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
                       >
                         <AgentAvatar agent={agent} size="sm" />
@@ -1084,9 +1091,16 @@ export default function AgentsView() {
                   {userAgents.map((agent) => {
                     const expanded = expandedAgent === agent.id;
                     return (
-                      <div key={agent.id} className="rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700">
+                      <div
+                        key={agent.id}
+                        data-agent-id={agent.id}
+                        className="rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700"
+                      >
                         <button
                           onClick={() => setExpandedAgent(expanded ? null : agent.id)}
+                          aria-label={`Open ${agent.name} agent details`}
+                          data-agent-id={agent.id}
+                          data-agent-card="true"
                           className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
                         >
                           <AgentAvatar agent={agent} />

@@ -105,11 +105,17 @@ async def get_models():
     models = registry_models or await ollama.list_models()
     active = _active_model()
 
-    # For LM Studio, detect the actually loaded model
+    # For LM Studio, detect the actually loaded model only when the operator
+    # has not pinned a concrete model. Managed OpenAI-compatible endpoints may
+    # report aliases or broader provider defaults, but explicit config must
+    # remain the routing source of truth.
     if settings.llm_provider == "lmstudio":
-        from app.core.lmstudio import LMStudioClient
+        from app.core.lmstudio import (
+            LMStudioClient,
+            configured_lmstudio_model_is_authoritative,
+        )
 
-        if isinstance(ollama, LMStudioClient):
+        if isinstance(ollama, LMStudioClient) and not configured_lmstudio_model_is_authoritative():
             loaded = await ollama.detect_loaded_model()
             if loaded and loaded != active:
                 settings.lmstudio_model = loaded
@@ -119,6 +125,15 @@ async def get_models():
                     _persist_env("LMSTUDIO_MODEL", loaded)
                 except Exception:
                     pass
+        elif not models and configured_lmstudio_model_is_authoritative(active):
+            models = [
+                {
+                    "name": active,
+                    "model": active,
+                    "size": 0,
+                    "details": {"source": "configured"},
+                }
+            ]
 
     # Enrich each model with provider info from the router.
     # The LLMRouter.list_models() already attaches _server / _server_id;
@@ -403,13 +418,18 @@ async def system_status():
 
     active = _active_model()
 
-    # For LM Studio, detect the actually loaded model (not just config)
+    # For LM Studio, detect the actually loaded model only when no concrete
+    # model was configured. Explicit OpenAI-compatible model config is
+    # authoritative for routing and should not drift after status checks.
     if llm_healthy and settings.llm_provider == "lmstudio":
         import app.core.ollama as ollama_mod
-        from app.core.lmstudio import LMStudioClient
+        from app.core.lmstudio import (
+            LMStudioClient,
+            configured_lmstudio_model_is_authoritative,
+        )
 
         client = ollama_mod.ollama
-        if isinstance(client, LMStudioClient):
+        if isinstance(client, LMStudioClient) and not configured_lmstudio_model_is_authoritative():
             loaded = await client.detect_loaded_model()
             if loaded and loaded != active:
                 settings.lmstudio_model = loaded

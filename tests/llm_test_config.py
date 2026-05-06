@@ -10,6 +10,7 @@ from __future__ import annotations
 import os
 import subprocess
 from dataclasses import dataclass
+from typing import Any
 from urllib.parse import urlparse
 
 import pytest
@@ -25,6 +26,10 @@ SECONDARY_KEY_ENV_NAMES = (
     "ISTARA_SECONDARY_LLM_TEST_API_KEY",
     "ISTARA_LMSTUDIO_TEST_API_KEY",
 )
+PRIMARY_LIVE_LLM_MAX_ATTEMPTS = 5
+SECONDARY_LIVE_LLM_MAX_ATTEMPTS = 1
+LIVE_LLM_TEST_TEMPERATURE = 0
+LIVE_LLM_TEST_MAX_TOKENS = 8
 
 
 @dataclass(frozen=True)
@@ -42,6 +47,19 @@ class LiveLLMProfile:
     def endpoint(self, suffix: str) -> str:
         """Return a provider-correct OpenAI-compatible endpoint URL."""
         return openai_compatible_endpoint(self.base_url, suffix)
+
+
+@dataclass(frozen=True)
+class LiveLLMCompletionResult:
+    """Result metadata for the live-test Gemini-first fallback contract."""
+
+    profile_name: str
+    model: str
+    endpoint: str
+    response: Any
+    primary_attempts: int
+    fallback_used: bool
+    errors: tuple[str, ...]
 
 
 def openai_compatible_endpoint(base_url: str, suffix: str) -> str:
@@ -153,6 +171,87 @@ def configure_gemini_settings(settings, api_key: str) -> None:
     # Live tests need deterministic primary routing but must still allow the
     # secondary provider to take over after Gemini transient retries fail.
     settings.strict_auto_routing = False
+
+
+async def post_live_llm_chat_completion(
+    client: Any,
+    *,
+    messages: list[dict] | None = None,
+    temperature: float = LIVE_LLM_TEST_TEMPERATURE,
+    max_tokens: int = LIVE_LLM_TEST_MAX_TOKENS,
+    primary_attempts: int = PRIMARY_LIVE_LLM_MAX_ATTEMPTS,
+    secondary_attempts: int = SECONDARY_LIVE_LLM_MAX_ATTEMPTS,
+) -> LiveLLMCompletionResult:
+    """Call Gemini first, then fallback only after five failed Gemini attempts.
+
+    This helper is the shared live-test contract. It prevents individual tests
+    from probing provider-specific discovery paths or silently trying the local
+    fallback before Gemini has exhausted its retry budget.
+    """
+    if primary_attempts != PRIMARY_LIVE_LLM_MAX_ATTEMPTS:
+        raise ValueError("Live tests must use the five-attempt Gemini retry budget.")
+
+    primary_api_key = require_live_llm_api_key()
+    secondary_api_key = get_secondary_live_llm_api_key()
+    payload_messages = messages or [{"role": "user", "content": "Reply with ok."}]
+    errors: list[str] = []
+
+    async def post_profile(profile: LiveLLMProfile, api_key: str) -> Any:
+        return await client.post(
+            profile.endpoint("chat/completions"),
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": profile.model,
+                "messages": payload_messages,
+                "temperature": temperature,
+                "max_tokens": max_tokens,
+            },
+        )
+
+    for attempt in range(1, primary_attempts + 1):
+        try:
+            response = await post_profile(PRIMARY_LLM_PROFILE, primary_api_key)
+            if getattr(response, "status_code", 500) < 400:
+                return LiveLLMCompletionResult(
+                    profile_name=PRIMARY_LLM_PROFILE.name,
+                    model=PRIMARY_LLM_PROFILE.model,
+                    endpoint=PRIMARY_LLM_PROFILE.endpoint("chat/completions"),
+                    response=response,
+                    primary_attempts=attempt,
+                    fallback_used=False,
+                    errors=tuple(errors),
+                )
+            errors.append(f"{PRIMARY_LLM_PROFILE.name} attempt {attempt}: HTTP {response.status_code}")
+        except Exception as exc:  # pragma: no cover - exercised through fake clients
+            errors.append(f"{PRIMARY_LLM_PROFILE.name} attempt {attempt}: {type(exc).__name__}: {exc}")
+
+    if not secondary_api_key:
+        raise RuntimeError(
+            f"{PRIMARY_LLM_PROFILE.name} failed after {primary_attempts} attempts "
+            "and no secondary live-test API key is configured."
+        )
+
+    for attempt in range(1, secondary_attempts + 1):
+        try:
+            response = await post_profile(SECONDARY_LLM_PROFILE, secondary_api_key)
+            if getattr(response, "status_code", 500) < 400:
+                return LiveLLMCompletionResult(
+                    profile_name=SECONDARY_LLM_PROFILE.name,
+                    model=SECONDARY_LLM_PROFILE.model,
+                    endpoint=SECONDARY_LLM_PROFILE.endpoint("chat/completions"),
+                    response=response,
+                    primary_attempts=primary_attempts,
+                    fallback_used=True,
+                    errors=tuple(errors),
+                )
+            errors.append(f"{SECONDARY_LLM_PROFILE.name} attempt {attempt}: HTTP {response.status_code}")
+        except Exception as exc:  # pragma: no cover - exercised through fake clients
+            errors.append(f"{SECONDARY_LLM_PROFILE.name} attempt {attempt}: {type(exc).__name__}: {exc}")
+
+    raise RuntimeError("Live LLM test providers failed: " + " | ".join(errors[-8:]))
 
 
 def configure_gemini_compute_registry(*, clear_existing: bool = True):

@@ -7,6 +7,7 @@
  *   node run.mjs --headless=false   # Watch in browser
  *   node run.mjs --scenario 01     # Single scenario
  *   node run.mjs --skip-eval        # Skip accessibility/heuristic evaluators
+ *   node run.mjs --scenario-timeout-ms 7200000 # Override per-scenario timeout
  */
 
 import { chromium } from "playwright";
@@ -25,14 +26,31 @@ const headless = !args.includes("--headless=false");
 const singleScenario = args.includes("--scenario") ? args[args.indexOf("--scenario") + 1] : null;
 const skipEval = args.includes("--skip-eval");
 const skipSkills = args.includes("--skip-skills");
+const scenarioTimeoutArgIndex = args.indexOf("--scenario-timeout-ms");
+
+function parsePositiveInteger(value, fallback, label) {
+  if (value === undefined || value === null || value === "") return fallback;
+  const parsed = Number.parseInt(String(value), 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    console.warn(`Invalid ${label}=${value}; using ${fallback}.`);
+    return fallback;
+  }
+  return parsed;
+}
 
 const API_BASE = process.env.ISTARA_API_URL || "http://localhost:8000";
 const FRONTEND = process.env.ISTARA_FRONTEND_URL || "http://localhost:3000";
 
 // ── Timeout Configuration ──────────────────────────────────
-// Generous timeouts to ensure the runner NEVER gets killed by timeouts.
-// Per-scenario: 30 minutes. Total run: no global limit (scenarios run sequentially).
-const SCENARIO_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes per scenario
+// Per-scenario defaults stay bounded for regular CI, but long live-LLM rehearsals
+// can opt into larger budgets without changing test code.
+const DEFAULT_SCENARIO_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes per scenario
+const SCENARIO_TIMEOUT_MS = parsePositiveInteger(
+  process.env.ISTARA_SCENARIO_TIMEOUT_MS ||
+    (scenarioTimeoutArgIndex >= 0 ? args[scenarioTimeoutArgIndex + 1] : undefined),
+  DEFAULT_SCENARIO_TIMEOUT_MS,
+  "scenario timeout"
+);
 const PLAYWRIGHT_NAV_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes for page navigations
 const PLAYWRIGHT_ACTION_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes for actions/selectors
 
@@ -75,6 +93,7 @@ function stopCaffeinate() {
 
 const apiClient = {
   _token: null,
+  _userId: null,
 
   async authenticate() {
     // Try to login with admin credentials from env or .env file
@@ -96,14 +115,34 @@ const apiClient = {
     }
 
     try {
-      const res = await fetch(`${API_BASE}/api/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
-      });
+      let res = null;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        res = await fetch(`${API_BASE}/api/auth/login`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username, password }),
+        });
+        if (res.status !== 429) break;
+        const retryAfter = Number(res.headers.get("retry-after") || "0");
+        const waitMs = Math.max(retryAfter * 1000, 65_000);
+        console.warn(`  ⚠ Auth rate-limited; retrying in ${Math.round(waitMs / 1000)}s`);
+        await new Promise((resolve) => setTimeout(resolve, waitMs));
+      }
       if (res.ok) {
         const data = await res.json();
         this._token = data.token || data.access_token;
+        this._userId = data.user?.id || null;
+        if (!this._userId && this._token) {
+          try {
+            const meRes = await fetch(`${API_BASE}/api/auth/me`, {
+              headers: this._headers(),
+            });
+            if (meRes.ok) {
+              const me = await meRes.json();
+              this._userId = me.id || null;
+            }
+          } catch {}
+        }
         console.log("  \u2705 Authenticated as admin");
       } else {
         console.warn(`  \u26A0 Auth failed: ${res.status}`);
@@ -545,12 +584,18 @@ async function main() {
   // Launch browser with generous timeouts so nothing times out prematurely
   const browser = await chromium.launch({
     headless,
-    args: ["--no-sandbox"],
+    args: [
+      "--no-sandbox",
+      "--use-fake-ui-for-media-stream",
+      "--use-fake-device-for-media-stream",
+      "--mute-audio",
+    ],
   });
   const context = await browser.newContext({
     viewport: { width: 1280, height: 800 },
     colorScheme: "dark",
   });
+  await context.grantPermissions(["microphone"], { origin: new URL(FRONTEND).origin }).catch(() => {});
   context.setDefaultTimeout(PLAYWRIGHT_ACTION_TIMEOUT_MS);
   context.setDefaultNavigationTimeout(PLAYWRIGHT_NAV_TIMEOUT_MS);
   const page = await context.newPage();
@@ -560,9 +605,17 @@ async function main() {
   // Inject JWT token into browser localStorage so the frontend authenticates
   if (apiClient._token) {
     await page.goto(FRONTEND, { waitUntil: "domcontentloaded" });
-    await page.evaluate((token) => {
+    await page.evaluate(({ token, userId }) => {
       localStorage.setItem("istara_token", token);
-    }, apiClient._token);
+      localStorage.removeItem("istara_tour_state");
+      if (userId) {
+        localStorage.setItem("istara_auth_user_id", userId);
+        localStorage.setItem(`istara_tour_completed_${userId}`, "true");
+      } else {
+        localStorage.setItem("istara_tour_completed_anonymous", "true");
+      }
+    }, { token: apiClient._token, userId: apiClient._userId });
+    await page.reload({ waitUntil: "domcontentloaded" });
     console.log("  ✅ JWT token injected into browser");
   }
 
@@ -647,6 +700,19 @@ async function main() {
       simProjectId = created.id;
       console.log(`  Created new project: ${simProjectId}`);
     }
+
+    if (simProjectId) {
+      await page.evaluate(({ projectId, userId }) => {
+        localStorage.setItem("istara-active-project", projectId);
+        localStorage.removeItem("istara_tour_state");
+        if (userId) {
+          localStorage.setItem(`istara_tour_completed_${userId}`, "true");
+        } else {
+          localStorage.setItem("istara_tour_completed_anonymous", "true");
+        }
+      }, { projectId: simProjectId, userId: apiClient._userId });
+      await page.goto(FRONTEND, { waitUntil: "domcontentloaded" });
+    }
   } catch (e) {
     console.log(`  Project setup failed: ${e.message} — scenarios will create as needed`);
   }
@@ -658,6 +724,8 @@ async function main() {
     screenshot: screenshotFn,
     generators,
     projectId: simProjectId,
+    frontendUrl: FRONTEND,
+    token: apiClient._token,
     llmConnected: settingsStatus?.services?.llm === "connected",
   };
 
@@ -684,10 +752,18 @@ async function main() {
           )
         ),
       ]);
+      const normalizedResult = Array.isArray(result)
+        ? {
+            checks: result,
+            passed: result.filter((check) => check?.passed).length,
+            failed: result.filter((check) => !check?.passed).length,
+            summary: result.map((check) => `${check?.passed ? "PASS" : "FAIL"} ${check?.name || "Unnamed check"}`).join("\n"),
+          }
+        : result;
       const elapsed = ((Date.now() - scenarioStart) / 1000).toFixed(1);
-      scenarioResults.push({ id: scenario.id, name: scenario.name, result, elapsed });
-      const status = result.failed > 0 ? "FAIL" : result.skipped ? "SKIP" : "PASS";
-      console.log(`${status} (${result.passed}/${result.passed + result.failed}) [${elapsed}s]`);
+      scenarioResults.push({ id: scenario.id, name: scenario.name, result: normalizedResult, elapsed });
+      const status = normalizedResult.failed > 0 ? "FAIL" : normalizedResult.skipped ? "SKIP" : "PASS";
+      console.log(`${status} (${normalizedResult.passed}/${normalizedResult.passed + normalizedResult.failed}) [${elapsed}s]`);
     } catch (e) {
       const elapsed = ((Date.now() - scenarioStart) / 1000).toFixed(1);
       const isTimeout = e.message.startsWith("TIMEOUT");

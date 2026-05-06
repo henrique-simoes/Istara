@@ -9,6 +9,7 @@ This factory creates concrete skill classes from config dicts.
 """
 
 import json
+import logging
 import re
 from pathlib import Path
 from typing import Any
@@ -16,6 +17,8 @@ from typing import Any
 from app.core.ollama import ollama
 from app.core.file_processor import process_file
 from app.skills.base import BaseSkill, SkillInput, SkillOutput, SkillPhase, SkillType
+
+logger = logging.getLogger(__name__)
 
 
 def _make_schema_strict(schema: Any) -> dict:
@@ -125,6 +128,43 @@ def _parse_json_response(text: str) -> dict:
     return {}
 
 
+def _format_prompt_template(template: str, **values: str) -> str:
+    """Substitute Istara prompt tokens without interpreting literal braces.
+
+    Skill definitions often include JSON examples, formulas, or tags such as
+    ``ux-law:{id}``. Python ``str.format`` treats those as replacement fields,
+    so generated skills must only replace the runtime tokens Istara owns.
+    """
+    formatted = template
+    for key, value in values.items():
+        formatted = formatted.replace("{" + key + "}", value)
+    return formatted
+
+
+def _fallback_plan(
+    *,
+    skill_name: str,
+    display: str,
+    desc: str,
+    phase: SkillPhase,
+    context: str,
+) -> str:
+    """Build a deterministic plan when the LLM cannot provide one."""
+    scoped_context = (context or "General UX research").strip()
+    return (
+        f"# {display} Plan\n\n"
+        f"Skill: `{skill_name}`\n"
+        f"Phase: `{phase.value}`\n\n"
+        f"Objective: {desc}\n\n"
+        f"Context: {scoped_context[:500]}\n\n"
+        "1. Confirm the research question, available evidence, and decision to support.\n"
+        "2. Review the supplied artifacts and separate direct observations from interpretation.\n"
+        "3. Extract evidence-backed findings with source labels and confidence notes.\n"
+        "4. Synthesize patterns into actionable insights and recommendations.\n"
+        "5. Report limitations, missing data, and next validation steps."
+    )
+
+
 def create_skill(
     skill_name: str,
     display: str,
@@ -172,13 +212,33 @@ def create_skill(
         async def plan(self, skill_input: SkillInput) -> dict:
             ctx = skill_input.project_context or skill_input.user_context or "General UX research"
             urls_str = ", ".join(skill_input.urls) if skill_input.urls else ""
-            prompt = plan_prompt.format(
-                context=ctx, user_context=skill_input.user_context or "", urls=urls_str
+            prompt = _format_prompt_template(
+                plan_prompt,
+                context=ctx,
+                user_context=skill_input.user_context or "",
+                urls=urls_str,
             )
-            resp = await ollama.chat(
-                messages=[{"role": "user", "content": prompt}], temperature=0.7
+            fallback = _fallback_plan(
+                skill_name=self.name,
+                display=self.display_name,
+                desc=self.description,
+                phase=self.phase,
+                context=ctx,
             )
-            return {"skill": self.name, "plan": resp.get("message", {}).get("content", "")}
+            try:
+                resp = await ollama.chat(
+                    messages=[{"role": "user", "content": prompt}], temperature=0.7
+                )
+                plan = (resp.get("message", {}).get("content", "") or "").strip()
+            except Exception as e:
+                logger.warning("Skill %s plan fell back after LLM failure: %s", self.name, e)
+                return {"skill": self.name, "plan": fallback, "fallback": True}
+
+            if not plan:
+                logger.warning("Skill %s plan fell back after empty LLM response.", self.name)
+                return {"skill": self.name, "plan": fallback, "fallback": True}
+
+            return {"skill": self.name, "plan": plan}
 
         async def execute(self, skill_input: SkillInput) -> SkillOutput:
             content = _extract_text_from_files(skill_input.files) if skill_input.files else ""
@@ -205,6 +265,13 @@ def create_skill(
             data_content = content or (skill_input.user_context or "N/A")[:10000]
 
             # SOTA Prompt Construction (Anthropic/OpenAI hybrid)
+            methodology = _format_prompt_template(
+                execute_prompt,
+                context=(ctx or "N/A")[:2000],
+                content="[RESEARCH_DATA_BELOW]",
+                urls=", ".join(skill_input.urls) if skill_input.urls else "",
+                urls_section="",
+            )
             full_prompt = (
                 f"<skill_context>\n"
                 f"Name: {self.name}\n"
@@ -212,7 +279,7 @@ def create_skill(
                 f"Phase: {self.phase.value}\n"
                 f"</skill_context>\n\n"
                 f"<research_methodology>\n"
-                f"{execute_prompt.format(context=(ctx or 'N/A')[:2000], content='[RESEARCH_DATA_BELOW]', urls=', '.join(skill_input.urls) if skill_input.urls else '', urls_section='')}\n"
+                f"{methodology}\n"
                 f"</research_methodology>\n\n"
                 f"<research_data>\n"
                 f"{data_content}\n"
@@ -241,8 +308,6 @@ def create_skill(
                     }
                 }
             except Exception as e:
-                import logging
-                logger = logging.getLogger(__name__)
                 logger.warning(f"Skill {self.name} failed to prepare strict schema: {e}")
 
             resp = await ollama.chat(
@@ -258,12 +323,11 @@ def create_skill(
             clean_content = re.sub(r"<thinking>.*?</thinking>", "", raw_content, flags=re.DOTALL).strip()
             
             json_success = False
-            try:
-                data = _parse_json_response(clean_content)
+            data = _parse_json_response(clean_content)
+            if data:
                 json_success = True
-            except Exception as e:
-                logger.warning(f"Skill {self.name} failed to parse JSON: {e}")
-                data = {}
+            else:
+                logger.warning("Skill %s returned non-JSON or empty JSON output.", self.name)
             
             # Attach json_success to output for telemetry via hooks
             # (Note: SkillOutput doesn't have json_success, so we use metadata if available or rely on context in orchestrator)

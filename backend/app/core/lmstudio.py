@@ -9,6 +9,12 @@ import httpx
 from app.config import settings
 
 
+def configured_lmstudio_model_is_authoritative(model: str | None = None) -> bool:
+    """Return true when a configured LM Studio/OpenAI model should not be auto-replaced."""
+    configured = model if model is not None else settings.lmstudio_model
+    return bool(configured and configured != "default")
+
+
 class LMStudioClient:
     """Async client for LM Studio's OpenAI-compatible API.
 
@@ -78,13 +84,17 @@ class LMStudioClient:
 
         try:
             client = await self._get_client()
+            payload = {
+                "messages": [{"role": "user", "content": "hi"}],
+                "max_tokens": 1,
+                "stream": False,
+            }
+            if settings.lmstudio_model and settings.lmstudio_model != "default":
+                payload["model"] = settings.lmstudio_model
+
             resp = await client.post(
                 "/v1/chat/completions",
-                json={
-                    "messages": [{"role": "user", "content": "hi"}],
-                    "max_tokens": 1,
-                    "stream": False,
-                },
+                json=payload,
                 timeout=15.0,
             )
             if resp.status_code == 200:

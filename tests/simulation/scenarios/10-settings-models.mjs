@@ -8,7 +8,7 @@ export async function run(ctx) {
   const checks = [];
 
   // Navigate to Settings via More menu
-  await page.goto("http://localhost:3000", { waitUntil: "networkidle" });
+  await page.goto(ctx.frontendUrl, { waitUntil: "domcontentloaded" });
   await page.waitForTimeout(1000);
 
   const moreBtn = page.locator('button[aria-label="More views"]').first();
@@ -21,10 +21,13 @@ export async function run(ctx) {
   await settingsNav.click();
   await page.waitForTimeout(1500);
 
-  // Verify Settings sections load
-  const sections = ["System Status", "Hardware", "Recommended Model"];
+  // Verify Settings sections load. The current settings page is longer than
+  // one viewport, so scroll target sections into view before asserting them.
+  const sections = ["Software Updates", "Governed Evolution", "Team Members", "Connection Strings", "System Status", "Hardware (Server)", "Recommended Model"];
   for (const section of sections) {
-    const visible = await page.locator(`text=${section}`).first().isVisible({ timeout: 2000 }).catch(() => false);
+    const sectionLocator = page.locator(`text=${section}`).first();
+    await sectionLocator.scrollIntoViewIfNeeded({ timeout: 2000 }).catch(() => {});
+    const visible = await sectionLocator.isVisible({ timeout: 2000 }).catch(() => false);
     checks.push({ name: `Section: ${section}`, passed: visible, detail: "" });
   }
   await screenshot("10-settings-view");
@@ -69,7 +72,9 @@ export async function run(ctx) {
   }
 
   // Check Available Models section in UI
-  const modelsSection = await page.locator("text=Available Models").first().isVisible({ timeout: 2000 }).catch(() => false);
+  const availableModels = page.locator("text=Available Models").first();
+  await availableModels.scrollIntoViewIfNeeded({ timeout: 2000 }).catch(() => {});
+  const modelsSection = await availableModels.isVisible({ timeout: 2000 }).catch(() => false);
   checks.push({ name: "Available Models section", passed: modelsSection, detail: "" });
 
   // Check Pull New Model input

@@ -86,6 +86,10 @@ def _merge_ids(existing: list[str], incoming: list[str]) -> list[str]:
     return merged
 
 
+def _finding_count(report) -> int:
+    return len(_safe_json_list(getattr(report, "finding_ids_json", None)))
+
+
 class ReportManager:
     """Manages progressive refinement of project reports."""
 
@@ -106,7 +110,6 @@ class ReportManager:
         existing = _safe_json_list(report.finding_ids_json)
         merged = _merge_ids(existing, finding_ids)
         report.finding_ids_json = json.dumps(merged)
-        report.finding_count = len(merged)
         report.version += 1
         report.status = "in_progress"
         report.updated_at = datetime.now(timezone.utc)
@@ -130,7 +133,7 @@ class ReportManager:
             len(finding_ids),
             report.title,
             report.version,
-            report.finding_count,
+            len(merged),
         )
 
         # Generate executive summary when report has enough findings
@@ -191,7 +194,6 @@ class ReportManager:
                 all_ids.extend(ids)
             merged_ids = _merge_ids([], all_ids)
             synth.finding_ids_json = json.dumps(merged_ids)
-            synth.finding_count = len(merged_ids)
             synth.version += 1
             synth.updated_at = datetime.now(timezone.utc)
             await db.commit()
@@ -202,7 +204,7 @@ class ReportManager:
             )
 
             # Auto-generate L4 final report when L3 has 10+ findings
-            if synth.finding_count >= 10:
+            if len(merged_ids) >= 10:
                 await self._generate_l4_report(project_id, synth, db)
 
     async def get_project_reports(self, project_id: str, db: AsyncSession) -> list[dict]:
@@ -323,10 +325,10 @@ class ReportManager:
             )
         )
         existing_l4 = result.scalar_one_or_none()
+        finding_count = _finding_count(l3_report)
 
         if existing_l4:
             existing_l4.finding_ids_json = l3_report.finding_ids_json
-            existing_l4.finding_count = l3_report.finding_count
             existing_l4.version += 1
             existing_l4.updated_at = datetime.now(timezone.utc)
             l4 = existing_l4
@@ -340,7 +342,6 @@ class ReportManager:
                 scope="Final Report",
                 status="draft",
                 finding_ids_json=l3_report.finding_ids_json,
-                finding_count=l3_report.finding_count,
             )
             db.add(l4)
 
@@ -358,7 +359,7 @@ class ReportManager:
         logger.info(
             "ReportManager: L4 report %s with %d findings",
             "updated" if existing_l4 else "created",
-            l4.finding_count,
+            finding_count,
         )
 
     # ── Template-Driven Report Composition ──────────────────────────

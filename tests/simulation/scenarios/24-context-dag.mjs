@@ -17,6 +17,7 @@ export async function run(ctx) {
     const session = await api.post("/api/sessions", {
       project_id: ctx.projectId,
       title: "[SIM] DAG Test Session",
+      inference_preset: "medium",
     });
     sessionId = session.id;
     checks.push({ name: "Create test session", passed: !!sessionId, detail: `session=${sessionId}` });
@@ -85,7 +86,8 @@ export async function run(ctx) {
   }
 
   // ── 6. Navigate to Memory → Context History in UI ──
-  await page.goto("http://localhost:3000", { waitUntil: "networkidle" });
+  await page.goto(ctx.frontendUrl, { waitUntil: "domcontentloaded" });
+  await page.waitForSelector('button[aria-label="Memory"], button[aria-label="Chat"], main', { timeout: 15000 }).catch(() => {});
   await page.waitForTimeout(1500);
 
   // Select the project
@@ -97,8 +99,16 @@ export async function run(ctx) {
 
   // Click Memory nav
   const memoryNav = page.locator('button[aria-label="Memory"]').first();
-  if (await memoryNav.isVisible({ timeout: 3000 }).catch(() => false)) {
-    await memoryNav.click();
+  let memoryReachable = await memoryNav.isVisible({ timeout: 3000 }).catch(() => false);
+  if (!memoryReachable) {
+    await page.evaluate(() => window.dispatchEvent(new CustomEvent("istara:navigate", { detail: "memory" })));
+    await page.waitForTimeout(1000);
+    memoryReachable = await page.locator('h2:has-text("Memory"), text="Knowledge Base"').first().isVisible({ timeout: 3000 }).catch(() => false);
+  }
+  if (memoryReachable) {
+    if (await memoryNav.isVisible({ timeout: 500 }).catch(() => false)) {
+      await memoryNav.click();
+    }
     await page.waitForTimeout(1000);
 
     // ── 7. Switch to Context History tab ──

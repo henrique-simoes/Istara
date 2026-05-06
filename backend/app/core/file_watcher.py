@@ -14,6 +14,7 @@ from app.core.embeddings import embed_chunks
 from app.core.file_processor import get_supported_extensions, process_file
 from app.core.rag import VectorStore
 from app.api.websocket import broadcast_file_processed, broadcast_suggestion
+from app.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +26,7 @@ class FileWatcher:
         self._running = False
         self._watched_dirs: dict[str, str] = {}  # dir_path → project_id
         self._processed_files: dict[str, float] = {}  # file_path → last_modified
-        self._state_file = Path("data/watcher_state.json")
+        self._state_file = Path(settings.data_dir) / "watcher_state.json"
         self._load_state()
 
     def _load_state(self) -> None:

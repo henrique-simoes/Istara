@@ -7,7 +7,58 @@ export async function run(ctx) {
   const { page, screenshot } = ctx;
   const checks = [];
 
-  await page.goto("http://localhost:3000", { waitUntil: "networkidle" });
+  async function dismissBlockingOverlay() {
+    const hasOverlay = async () => page.locator(".fixed.inset-0").first().isVisible({ timeout: 300 }).catch(() => false);
+    if (!(await hasOverlay())) return;
+
+    for (let i = 0; i < 2; i++) {
+      await page.keyboard.press("Escape").catch(() => {});
+      await page.waitForTimeout(200);
+      if (!(await hasOverlay())) return;
+    }
+
+    const closeCandidates = [
+      'button[aria-label="Skip Interfaces setup"]',
+      'button[aria-label*="Close"]',
+      'button[aria-label*="Dismiss"]',
+      'button:has-text("Skip")',
+      'button:has-text("Get Started")',
+      'button:has-text("Got it")',
+      'button:has-text("Continue")',
+    ];
+
+    for (const selector of closeCandidates) {
+      const candidate = page.locator(selector).first();
+      if (await candidate.isVisible({ timeout: 300 }).catch(() => false)) {
+        await candidate.click({ timeout: 1000 }).catch(() => {});
+        await page.waitForTimeout(300);
+        if (!(await hasOverlay())) return;
+      }
+    }
+  }
+
+  async function clickNavButton(label) {
+    await dismissBlockingOverlay();
+    const btn = page.locator(`button[aria-label="${label}"]`).first();
+    if (!(await btn.isVisible({ timeout: 1000 }).catch(() => false))) {
+      return { clicked: false, selected: null, detail: "not visible" };
+    }
+    try {
+      await btn.click({ timeout: 3000 });
+    } catch {
+      await dismissBlockingOverlay();
+      await btn.click({ timeout: 3000 });
+    }
+    await page.waitForTimeout(800);
+    await dismissBlockingOverlay();
+    return {
+      clicked: true,
+      selected: await btn.getAttribute("aria-selected").catch(() => null),
+      detail: "",
+    };
+  }
+
+  await page.goto(ctx.frontendUrl, { waitUntil: "domcontentloaded" });
   await page.waitForTimeout(1500);
 
   // Test sidebar nav items exist
@@ -36,7 +87,7 @@ export async function run(ctx) {
   // Test More button reveals secondary nav (Settings moved to primary nav in Phase 2B)
   const moreBtn = page.locator('button[aria-label="More views"]').first();
   if (await moreBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
-    await moreBtn.click();
+    await moreBtn.click({ timeout: 3000 });
     await page.waitForTimeout(500);
     const secondaryItems = [
       "Autoresearch",
@@ -57,7 +108,7 @@ export async function run(ctx) {
 
   // Desktop secondary nav should auto-expand when returning to a secondary view.
   await page.evaluate(() => localStorage.setItem("istara_active_view", "quality"));
-  await page.reload({ waitUntil: "networkidle" });
+  await page.reload({ waitUntil: "domcontentloaded" });
   await page.waitForTimeout(1000);
   const restoredQuality = await page.locator('button[aria-label="Quality Dashboard"][aria-selected="true"]').first().isVisible({ timeout: 2000 }).catch(() => false);
   checks.push({
@@ -68,12 +119,9 @@ export async function run(ctx) {
 
   // Test view switching via clicks
   for (const view of navItems) {
-    const btn = page.locator(`button[aria-label="${view}"]`).first();
-    if (await btn.isVisible({ timeout: 1000 }).catch(() => false)) {
-      await btn.click();
-      await page.waitForTimeout(800);
-      const isSelected = await btn.getAttribute("aria-selected");
-      checks.push({ name: `View switch: ${view}`, passed: isSelected === "true", detail: `aria-selected=${isSelected}` });
+    const result = await clickNavButton(view);
+    if (result.clicked) {
+      checks.push({ name: `View switch: ${view}`, passed: result.selected === "true", detail: `aria-selected=${result.selected}` });
     }
   }
 
@@ -90,7 +138,7 @@ export async function run(ctx) {
   // Mobile navigation: primary bar plus More sheet must expose every hidden view.
   {
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto("http://localhost:3000", { waitUntil: "networkidle" });
+    await page.goto(ctx.frontendUrl, { waitUntil: "domcontentloaded" });
     await page.waitForTimeout(1000);
 
     const mobileBar = page.locator('nav[aria-label="Mobile navigation"]').first();
@@ -105,7 +153,7 @@ export async function run(ctx) {
 
     const mobileMore = mobileBar.locator('button[aria-label="More views"]').first();
     if (await mobileMore.isVisible({ timeout: 1000 }).catch(() => false)) {
-      await mobileMore.click();
+      await mobileMore.click({ timeout: 3000 });
       await page.waitForTimeout(500);
       const mobileMenu = page.locator('[role="dialog"][aria-label="Mobile navigation menu"]').first();
       const moreItems = [
@@ -139,16 +187,17 @@ export async function run(ctx) {
     }
 
     await page.setViewportSize({ width: 1280, height: 900 });
-    await page.goto("http://localhost:3000", { waitUntil: "networkidle" });
+    await page.goto(ctx.frontendUrl, { waitUntil: "domcontentloaded" });
     await page.waitForTimeout(1000);
   }
 
   // ── Phase 0: View Persistence ──
   // Navigate to Documents view, verify it was saved to localStorage
   {
+    await dismissBlockingOverlay();
     const docsBtn = page.locator('button[aria-label="Documents"]').first();
     if (await docsBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
-      await docsBtn.click();
+      await docsBtn.click({ timeout: 3000 });
       await page.waitForTimeout(800);
 
       // Check localStorage for persisted view
@@ -169,7 +218,7 @@ export async function run(ctx) {
       });
 
       // Navigate away and back — verify persistence across reload
-      await page.reload({ waitUntil: "networkidle" });
+      await page.reload({ waitUntil: "domcontentloaded" });
       await page.waitForTimeout(1500);
       const restoredView = await page.evaluate(() => localStorage.getItem("istara_active_view"));
       checks.push({
@@ -185,7 +234,7 @@ export async function run(ctx) {
   // ── Phase 2B: Settings Visibility in Primary Nav ──
   // Settings should appear in primary nav, not hidden behind "More"
   {
-    await page.goto("http://localhost:3000", { waitUntil: "networkidle" });
+    await page.goto(ctx.frontendUrl, { waitUntil: "domcontentloaded" });
     await page.waitForTimeout(1000);
 
     const settingsBtn = page.locator('button[aria-label="Settings"]').first();
@@ -215,6 +264,7 @@ export async function run(ctx) {
 
   // Test Cmd+K search modal
   // Click body first to ensure focus is not trapped in a view component
+  await dismissBlockingOverlay();
   await page.locator("body").click({ position: { x: 400, y: 300 } });
   await page.waitForTimeout(300);
   await page.keyboard.press("Meta+k");
@@ -233,6 +283,7 @@ export async function run(ctx) {
 
   // Test sidebar collapse/expand
   try {
+    await dismissBlockingOverlay();
     const collapseBtn = page.locator('button[aria-label="Collapse sidebar"]').first();
     if (await collapseBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
       try {
@@ -249,7 +300,7 @@ export async function run(ctx) {
       checks.push({ name: "Sidebar collapse", passed: collapsed, detail: "" });
 
       if (collapsed) {
-        await expandBtn.click();
+        await expandBtn.click({ timeout: 3000 });
         await page.waitForTimeout(500);
       }
     }
@@ -258,15 +309,16 @@ export async function run(ctx) {
   }
 
   // Test dark mode toggle
+  await dismissBlockingOverlay();
   const darkToggle = page.locator('button[aria-label*="dark"], button[aria-label*="theme"], button[aria-label*="mode"]').first();
   if (await darkToggle.isVisible({ timeout: 2000 }).catch(() => false)) {
-    await darkToggle.click();
+    await darkToggle.click({ timeout: 3000 });
     await page.waitForTimeout(500);
     await screenshot("09-light-mode");
     checks.push({ name: "Dark mode toggle", passed: true, detail: "" });
 
     // Toggle back
-    await darkToggle.click();
+    await darkToggle.click({ timeout: 3000 });
     await page.waitForTimeout(500);
   }
 
@@ -301,6 +353,7 @@ export async function run(ctx) {
       }
       return true;
     },
+    undefined,
     { timeout: 5000 }
   ).catch(() => {});
 

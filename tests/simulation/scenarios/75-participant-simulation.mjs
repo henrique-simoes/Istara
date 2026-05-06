@@ -9,9 +9,17 @@ export async function run(ctx) {
 
   // 1. Participant simulation module imports
   try {
-    const resp = await api.post("/api/chat", {
-      message: "What is the participant-simulation skill?",
-      session_id: "sim-test",
+    const projectResp = await api.get("/api/projects");
+    const projects = projectResp.projects || projectResp || [];
+    const projectId = ctx.projectId || (projects.length > 0 ? projects[0].id : null);
+    const resp = await fetch("http://localhost:8000/api/chat", {
+      method: "POST",
+      headers: api._headers(),
+      body: JSON.stringify({
+        message: "What is the participant-simulation skill?",
+        project_id: projectId,
+        include_history: false,
+      }),
     });
     checks.push({
       name: "Chat responds with skill knowledge",
@@ -27,8 +35,8 @@ export async function run(ctx) {
     const resp = await api.get("/api/audit/logs?limit=5");
     checks.push({
       name: "Audit log endpoint responds",
-      passed: resp.status === 200 || resp.status === 401,
-      detail: `Status: ${resp.status}`,
+      passed: resp !== null && typeof resp === "object",
+      detail: `entries=${(resp.logs || resp.items || resp || []).length ?? "unknown"}`,
     });
   } catch (e) {
     checks.push({ name: "Audit log endpoint responds", passed: false, detail: e.message });
@@ -42,8 +50,8 @@ export async function run(ctx) {
     const resp = await api.get(`/api/metrics/${projectId}/validation`);
     checks.push({
       name: "Validation metrics endpoint responds",
-      passed: resp.status === 200 || resp.status === 404,
-      detail: `Status: ${resp.status}`,
+      passed: resp !== null && typeof resp === "object",
+      detail: `keys=${Object.keys(resp || {}).join(",")}`,
     });
   } catch (e) {
     checks.push({ name: "Validation metrics endpoint responds", passed: false, detail: e.message });

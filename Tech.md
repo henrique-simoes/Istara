@@ -1032,7 +1032,9 @@ tests use an explicit OpenAI-compatible profile matrix managed by
 `gemini-3.1-flash-lite-preview`; the optional LM Studio-compatible fallback is
 `http://10.0.10.142:1234/v1/chat/completions` with model
 `qwen3.6-35b-a3b@q5_k_xl`. API keys come only from local env or macOS Keychain.
-This keeps CI and release rehearsals from silently switching between LM Studio,
+Each live test spends exactly five Gemini chat-completion attempts through
+`post_live_llm_chat_completion()` before it may use the secondary server. This
+keeps CI and release rehearsals from silently switching between LM Studio,
 Ollama, and cloud providers or accidentally probing stale endpoints like
 `/api/tags`.
 
@@ -1058,6 +1060,14 @@ authenticated-state acceptance tests, Gemini/LM Studio OpenAI-compatible live
 LLM profiles, mutation testing, property-based testing, and agentic eval
 contracts to the CI harness. `scripts/check_test_harness.py` enforces this
 contract before the expensive backend suite runs.
+
+The mutation/property layer is executable, not only documented: backend CI runs
+Hypothesis invariants in `tests/test_property_contracts.py` and
+`scripts/run_backend_mutation.py` against `app/core/compute_capacity.py`;
+frontend CI runs Vitest unit tests and StrykerJS mutation testing against
+`src/lib/runtimeConfig.ts`. These targets are small by design so mutation
+testing can become blocking without making every PR wait on the entire product
+surface.
 
 The agentic eval contract in `tests/agentic_eval_contract.json` maps autoresearch, ReasoningBank, Memento
 skill/agent creation, Hyperagent meta-tuning, DGM-H archive evolution,

@@ -23,7 +23,8 @@ logger = logging.getLogger(__name__)
 
 class LLMServerCreate(BaseModel):
     name: str
-    provider_type: str = "openai_compat"  # ollama | lmstudio | openai_compat
+    # ollama | lmstudio | openai_compat | vllm | sglang | llamacpp | mlx | anthropic
+    provider_type: str = "openai_compat"
     host: str
     api_key: str = ""
     is_local: bool = True
@@ -32,6 +33,7 @@ class LLMServerCreate(BaseModel):
 
 class LLMServerUpdate(BaseModel):
     name: str | None = None
+    provider_type: str | None = None
     host: str | None = None
     api_key: str | None = None
     priority: int | None = None
@@ -42,6 +44,38 @@ def _is_local_host(host: str) -> bool:
     parsed = urlparse(host if "://" in host else f"http://{host}")
     hostname = (parsed.hostname or "").lower()
     return hostname in {"localhost", "127.0.0.1", "::1"}
+
+
+def _runtime_entry_for_server(server: LLMServer):
+    """Build the live router entry for a persisted LLM server."""
+    from app.core.llm_router import LLMServerEntry
+
+    return LLMServerEntry(
+        server_id=server.id,
+        name=server.name,
+        provider_type=server.provider_type,
+        host=server.host,
+        api_key=decrypt_field(server.api_key) if server.api_key else "",
+        priority=server.priority,
+        is_local=server.is_local,
+    )
+
+
+async def _register_and_probe_server(server: LLMServer) -> tuple[object, bool]:
+    """Refresh a persisted server in the live compute registry and probe it."""
+    from app.core.llm_router import llm_router
+
+    llm_router.unregister_server(server.id)
+    entry = _runtime_entry_for_server(server)
+    llm_router.register_server(entry)
+
+    healthy = await entry.check_health()
+    server.is_healthy = healthy
+    server.provider_type = entry.provider_type
+    server.last_health_check = datetime.now(UTC)
+    server.last_latency_ms = entry.last_latency_ms
+    server.capabilities = json.dumps(entry.model_capabilities or {})
+    return entry, healthy
 
 
 @router.get("/llm-servers")
@@ -131,26 +165,8 @@ async def add_llm_server(
     await db.commit()
     await db.refresh(server)
 
-    # Register with the live router (decrypt key for runtime use)
-    from app.core.llm_router import LLMServerEntry, llm_router
-
-    entry = LLMServerEntry(
-        server_id=server.id,
-        name=server.name,
-        provider_type=server.provider_type,
-        host=server.host,
-        api_key=decrypt_field(server.api_key) if server.api_key else "",
-        priority=server.priority,
-        is_local=server.is_local,
-    )
-    llm_router.register_server(entry)
-
-    # Run initial health check
-    healthy = await entry.check_health()
-    server.is_healthy = healthy
-    server.provider_type = entry.provider_type
-    server.last_health_check = datetime.now(UTC)
-    server.last_latency_ms = entry.last_latency_ms
+    # Register with the live compute registry and run the initial probe.
+    _, healthy = await _register_and_probe_server(server)
     await db.commit()
 
     logger.info(
@@ -189,12 +205,27 @@ async def health_check_server(server_id: str, db: AsyncSession = Depends(get_db)
                 router_server = entry
                 break
 
+    if not router_server:
+        router_server, healthy = await _register_and_probe_server(server)
+        await db.commit()
+
+        from app.core.compute_registry import compute_registry
+
+        node = compute_registry._nodes.get(server_id)
+        return {
+            "server_id": server_id,
+            "healthy": healthy,
+            "latency_ms": router_server.last_latency_ms,
+            "health_error": getattr(node, "health_error", "") if node else "",
+        }
+
     if router_server:
         healthy = await router_server.check_health()
         server.is_healthy = healthy
         server.provider_type = router_server.provider_type
         server.last_health_check = datetime.now(UTC)
         server.last_latency_ms = router_server.last_latency_ms
+        server.capabilities = json.dumps(router_server.model_capabilities or {})
         await db.commit()
         # Get health error from the compute node
         from app.core.compute_registry import compute_registry
@@ -227,14 +258,36 @@ async def update_llm_server(
         raise HTTPException(status_code=404, detail="Server not found")
 
     update_data = data.model_dump(exclude_unset=True)
+    for optional_text_field in ("name", "provider_type", "host"):
+        if update_data.get(optional_text_field) is None:
+            update_data.pop(optional_text_field, None)
     # Encrypt API key if being updated
-    if "api_key" in update_data and update_data["api_key"]:
-        update_data["api_key"] = encrypt_field(update_data["api_key"])
+    if "api_key" in update_data:
+        update_data["api_key"] = (
+            encrypt_field(update_data["api_key"]) if update_data["api_key"] else ""
+        )
+    if "host" in update_data and update_data["host"]:
+        update_data["host"] = update_data["host"].rstrip("/")
     for field, value in update_data.items():
         setattr(server, field, value)
     await db.commit()
+    await db.refresh(server)
 
-    return {"id": server.id, "updated": True}
+    entry, healthy = await _register_and_probe_server(server)
+    await db.commit()
+
+    from app.core.compute_registry import compute_registry
+
+    node = compute_registry._nodes.get(server_id)
+    return {
+        "id": server.id,
+        "updated": True,
+        "provider_type": server.provider_type,
+        "host": server.host,
+        "is_healthy": healthy,
+        "last_latency_ms": entry.last_latency_ms,
+        "health_error": getattr(node, "health_error", "") if node else "",
+    }
 
 
 @router.delete("/llm-servers/{server_id}")

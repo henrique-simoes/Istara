@@ -218,7 +218,7 @@ Duration: 30 minutes
   }
 
   // Verify in UI — navigate to chat and check
-  await page.goto("http://localhost:3000", { waitUntil: "networkidle" });
+  await page.goto(ctx.frontendUrl, { waitUntil: "domcontentloaded" });
   await page.waitForTimeout(1000);
   await screenshot("04-after-upload");
 

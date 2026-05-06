@@ -86,7 +86,8 @@ export function startHeartbeat(ws, intervalMs, llmProxy) {
   setInterval(async () => {
     try {
       const stats = await getSystemStats();
-      const models = await llmProxy.listModels();
+      const modelProbe = await llmProxy.probeModels();
+      const models = modelProbe.models || [];
 
       ws.send(JSON.stringify({
         type: "heartbeat",
@@ -94,6 +95,7 @@ export function startHeartbeat(ws, intervalMs, llmProxy) {
           ram_available_gb: stats.ram_available_gb,
           cpu_load_pct: stats.cpu_load_pct,
           loaded_models: models,
+          model_capabilities: modelProbe.modelCapabilities || {},
           state: "idle",
         },
       }));

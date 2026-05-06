@@ -525,14 +525,22 @@ class AgentOrchestrator:
                 project_id = data.get("project_id")
                 task_id = data.get("task_id")
 
-                # 1. Ensure MECE categorization on all eligible L2/L3 reports
+                # 1. Ensure MECE categorization on all eligible L2/L3 reports.
+                # ProjectReport derives finding counts from finding_ids_json, so
+                # filter in Python instead of relying on a transient ORM attribute.
                 result = await db.execute(
                     select(ProjectReport).where(
                         ProjectReport.project_id == project_id,
-                        ProjectReport.finding_count >= 3,  # Minimum findings for meaningful MECE
                     )
                 )
-                reports = result.scalars().all()
+                reports = []
+                for report in result.scalars().all():
+                    try:
+                        finding_ids = json.loads(report.finding_ids_json or "[]")
+                    except (json.JSONDecodeError, TypeError):
+                        finding_ids = []
+                    if isinstance(finding_ids, list) and len(finding_ids) >= 3:
+                        reports.append(report)
                 updated_count = 0
                 for report in reports:
                     # Force update to consulting-grade MECE
@@ -2506,7 +2514,7 @@ class AgentOrchestrator:
                 return output
 
             except Exception as e:
-                logger.error(f"Manual skill execution failed: {e}")
+                logger.exception("Manual skill execution failed")
                 await broadcast_agent_status("error", str(e))
                 return SkillOutput(success=False, summary=f"Execution failed: {e}", errors=[str(e)])
 

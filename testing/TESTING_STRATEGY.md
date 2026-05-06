@@ -44,8 +44,9 @@ stay aligned with Compass Forge, CI, and the production behavior described in
    acceptance with authenticated API and browser state.
 5. Live LLM evals: `scripts/test_llm_integration.py` and
    `tests/integration/test_llm_orchestration_real.py` use Gemini as primary and
-   the LM Studio/OpenAI-compatible server as optional fallback. Secrets must come
-   from environment variables or macOS Keychain only.
+   the LM Studio/OpenAI-compatible server as optional fallback. Every live test
+   must spend exactly five Gemini chat-completion attempts before falling back.
+   Secrets must come from environment variables or macOS Keychain only.
 6. Agentic eval contract: `tests/agentic_eval_contract.json` maps autoresearch,
    ReasoningBank, Memento skill/agent creation, Hyperagent, DGM-H, ensemble
    orchestration, ReAct tool-calling, and acceptance UI to test evidence and
@@ -67,18 +68,30 @@ The secondary fallback server uses:
 - Model: `qwen3.6-35b-a3b@q5_k_xl`
 
 The profile helper in `tests/llm_test_config.py` is the only source of truth for
-test endpoint construction. `scripts/check_test_harness.py` blocks stale
-`/api/tags` and `/output_schema` references in LLM test wiring.
+test endpoint construction and retry/fallback behavior. `PRIMARY_LIVE_LLM_MAX_ATTEMPTS`
+is fixed at `5`; `post_live_llm_chat_completion()` is the shared helper for
+live test probes. `scripts/check_test_harness.py` blocks stale `/api/tags` and
+`/output_schema` references in LLM test wiring.
 
-## Mutation and Property Testing Roadmap
+## Mutation and Property Testing Gates
 
-Mutation testing starts as a non-blocking nightly or local release-candidate
-gate so the team can baseline equivalent mutants and slow modules. Backend
-targets should start with deterministic security, routing, ReasoningBank,
-compute, and governance modules. Frontend mutation testing should wait until
-Vitest or Playwright component coverage exists for the target surfaces. Once a
-module has stable coverage, mutation score thresholds can become blocking for
-that module only.
+Mutation testing is now executable in CI for scoped, deterministic targets:
+
+- Backend: `backend/pyproject.toml` configures `mutmut` with `paths_to_mutate`
+  against
+  `app/core/compute_capacity.py`. The normal CI property gate runs
+  `tests/test_property_contracts.py`; mutmut uses the equivalent
+  `backend/tests/test_compute_capacity_properties.py` selection because its
+  isolated mutant workspace runs from the backend directory. CI runs
+  `scripts/run_backend_mutation.py`, which wraps mutmut, disables its
+  fork-child process-title update on macOS, and keeps worker concurrency
+  bounded.
+- Frontend: `frontend/stryker.config.json` configures StrykerJS with the Vitest
+  runner against `src/lib/runtimeConfig.ts`, backed by
+  `frontend/src/lib/runtimeConfig.test.ts`. CI runs `npm run test:unit` and
+  `npm run test:mutation`.
+- Governance: `scripts/check_test_harness.py` verifies mutmut, Hypothesis,
+  Vitest, Stryker, CI commands, and harness files stay wired.
 
 Property-based tests should cover deterministic invariants rather than live
 model behavior: URI normalization, connection-string parsing, RBAC permission

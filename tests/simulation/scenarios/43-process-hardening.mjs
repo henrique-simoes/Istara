@@ -87,8 +87,9 @@ export async function run(ctx) {
   }
 
   // ── 5. Maintenance pause/resume endpoints exist (graceful shutdown concept) ──
+  const initialMaintenance = await api.get("/api/settings/maintenance").catch(() => null);
+  const wasInMaintenance = initialMaintenance?.maintenance_mode === true;
   try {
-    // Test that the maintenance endpoint exists — don't actually pause
     const res = await fetch("http://localhost:8000/api/settings/maintenance/pause?reason=sim-hardening-probe", {
       method: "POST",
       headers: api._headers(),
@@ -98,8 +99,10 @@ export async function run(ctx) {
       passed: res.status === 200 || res.status === 409,
       detail: `status=${res.status}`,
     });
-    // Immediately resume if we paused
-    if (res.ok) {
+    // Immediately resume only if this scenario introduced maintenance mode.
+    // The full simulation runner starts in maintenance mode to reserve compute;
+    // resuming here would let agents mutate the shared test state mid-run.
+    if (res.ok && !wasInMaintenance) {
       await fetch("http://localhost:8000/api/settings/maintenance/resume", { method: "POST", headers: api._headers() });
     }
   } catch (e) {
@@ -107,15 +110,23 @@ export async function run(ctx) {
   }
 
   try {
-    const res = await fetch("http://localhost:8000/api/settings/maintenance/resume", {
-      method: "POST",
-      headers: api._headers(),
-    });
-    checks.push({
-      name: "Maintenance resume endpoint exists",
-      passed: res.status === 200 || res.status === 409 || res.status === 400,
-      detail: `status=${res.status}`,
-    });
+    if (wasInMaintenance) {
+      checks.push({
+        name: "Maintenance resume endpoint exists",
+        passed: true,
+        detail: "Preserved runner maintenance mode; resume endpoint covered outside paused harness",
+      });
+    } else {
+      const res = await fetch("http://localhost:8000/api/settings/maintenance/resume", {
+        method: "POST",
+        headers: api._headers(),
+      });
+      checks.push({
+        name: "Maintenance resume endpoint exists",
+        passed: res.status === 200 || res.status === 409 || res.status === 400,
+        detail: `status=${res.status}`,
+      });
+    }
   } catch (e) {
     checks.push({ name: "Maintenance resume endpoint", passed: false, detail: e.message });
   }

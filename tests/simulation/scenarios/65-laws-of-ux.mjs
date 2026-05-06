@@ -212,7 +212,7 @@ export async function run(ctx) {
       if (ctx.page) {
         const page = ctx.page;
         try {
-          await page.goto("http://localhost:3000", { waitUntil: "networkidle", timeout: 15000 });
+          await page.goto(ctx.frontendUrl, { waitUntil: "domcontentloaded", timeout: 15000 });
           await page.waitForTimeout(1500);
 
           // Navigate to a view where UX law badges would appear (Findings or Skills)

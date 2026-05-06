@@ -385,6 +385,17 @@ const DATA_MAP = {
   sus: susData,
 };
 
+function positiveIntegerEnv(name, fallback) {
+  const raw = process.env[name];
+  if (!raw) return fallback;
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
+  return parsed;
+}
+
+const SKILL_EXECUTE_TIMEOUT_MS = positiveIntegerEnv("ISTARA_SKILL_EXECUTE_TIMEOUT_MS", 120000);
+const SKILL_PLAN_TIMEOUT_MS = positiveIntegerEnv("ISTARA_SKILL_PLAN_TIMEOUT_MS", 60000);
+
 export async function run(ctx) {
   const { api } = ctx;
   const checks = [];
@@ -559,7 +570,7 @@ export async function run(ctx) {
               user_context: richContext,
               files: skillFiles,
             }),
-            120000,
+            SKILL_EXECUTE_TIMEOUT_MS,
             `${skill.name} execute`
           );
           const elapsed = Date.now() - startTime;
@@ -598,7 +609,7 @@ export async function run(ctx) {
               project_id: projectId,
               user_context: skill.context,
             }),
-            60000,
+            SKILL_PLAN_TIMEOUT_MS,
             `${skill.name} plan`
           );
 
@@ -629,7 +640,11 @@ export async function run(ctx) {
   // ── Step 5: Skill health check ──
   await safeCheck("Skills health — all skills have health data", async () => {
     const health = await api.get("/api/skills/health/all");
-    const healthEntries = Object.keys(health);
+    const healthEntries = Array.isArray(health)
+      ? health
+      : Array.isArray(health?.skills)
+        ? health.skills
+        : Object.values(health || {});
 
     return {
       name: "Skills health — all skills have health data",

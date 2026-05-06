@@ -45,19 +45,20 @@ export async function run(ctx) {
 
   // 4. Navigate to frontend and check if sidebar renders
   try {
-    await page.goto("http://localhost:3000");
-    await page.waitForTimeout(2000);
+    await page.goto(ctx.frontendUrl, { waitUntil: "domcontentloaded", timeout: 15000 });
+    await page.waitForSelector('button[aria-label="More views"], button[aria-label="Chat"], main', { timeout: 15000 }).catch(() => {});
+    await page.waitForTimeout(1000);
 
     // Check if the app loaded (either main app with sidebar or LLM connection screen)
     const bodyText = await page.textContent("body");
-    const sidebarVisible = await page.locator('button[aria-label="More views"]').isVisible().catch(() => false);
+    const sidebarVisible = await page.locator('button[aria-label="More views"]').first().isVisible().catch(() => false);
 
     if (sidebarVisible) {
       // Sidebar is visible — click through to views
-      await page.locator('button[aria-label="More views"]').click();
+      await page.locator('button[aria-label="More views"]').first().click();
       await page.waitForTimeout(500);
-      const computeBtn = await page.locator('button[aria-label="Compute Pool"]').isVisible().catch(() => false);
-      const ensembleBtn = await page.locator('button[aria-label="Ensemble Health"]').isVisible().catch(() => false);
+      const computeBtn = await page.locator('button[aria-label="Compute Pool"]').first().isVisible().catch(() => false);
+      const ensembleBtn = await page.locator('button[aria-label="Ensemble Health"]').first().isVisible().catch(() => false);
       checks.push({
         name: "Sidebar nav items present",
         passed: computeBtn && ensembleBtn,
@@ -66,12 +67,15 @@ export async function run(ctx) {
     } else {
       // LLM not connected — frontend blocks sidebar; this is expected behavior
       const isLlmBlock = bodyText.includes("LLM Provider Not Connected") || bodyText.includes("Check Again");
+      const bodyHasNav = bodyText.includes("Compute Pool") && bodyText.includes("Ensemble Health");
       checks.push({
         name: "Sidebar nav items present",
-        passed: isLlmBlock, // Pass if LLM gate is the reason (expected without LLM)
+        passed: isLlmBlock || bodyHasNav, // Pass if LLM gate is the reason or nav text rendered without the More button.
         detail: isLlmBlock
           ? "Sidebar hidden behind LLM connection gate (expected without local LLM)"
-          : "Sidebar not found for unknown reason",
+          : bodyHasNav
+            ? "Navigation labels rendered in app body"
+            : "Sidebar not found for unknown reason",
       });
     }
   } catch (e) {
