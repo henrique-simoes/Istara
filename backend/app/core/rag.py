@@ -65,10 +65,37 @@ class VectorStore:
             return False
         try:
             table = self.db.open_table(self.table_name)
-            schema = table.schema
-            return column in [f.name for f in schema]
+            return column in self._table_columns(table)
         except Exception:
             return False
+
+    def _table_columns(self, table=None) -> set[str]:
+        """Return existing table columns, if a table schema can be read."""
+        try:
+            if table is None:
+                if not self._ensure_table():
+                    return set()
+                table = self.db.open_table(self.table_name)
+            return {field.name for field in table.schema}
+        except Exception:
+            return set()
+
+    def _records_for_existing_schema(self, table, records: list[dict]) -> list[dict]:
+        """Drop optional metadata fields unsupported by legacy LanceDB tables."""
+        columns = self._table_columns(table)
+        if not columns:
+            return records
+
+        missing_columns = sorted(set(records[0]) - columns)
+        if missing_columns:
+            logger.debug(
+                "Vector store %s/%s lacks metadata columns %s; writing legacy-compatible rows",
+                self.project_id,
+                self.table_name,
+                ", ".join(missing_columns),
+            )
+
+        return [{key: value for key, value in record.items() if key in columns} for record in records]
 
     async def add_chunks(
         self,
@@ -108,7 +135,7 @@ class VectorStore:
 
         if self._ensure_table():
             table = self.db.open_table(self.table_name)
-            table.add(records)
+            table.add(self._records_for_existing_schema(table, records))
         else:
             self.db.create_table(self.table_name, records)
 

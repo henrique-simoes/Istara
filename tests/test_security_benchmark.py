@@ -15,6 +15,9 @@ def test_security_benchmark_current_matrix_passes_release_gate() -> None:
 
     assert result.passed is True
     assert result.scorecard["status"] == "pass"
+    assert result.scorecard["score_percent"] >= 98
+    assert result.scorecard["counts"]["partial"] == 0
+    assert result.scorecard["minimum_score_percent"] >= 98
     assert (
         result.scorecard["score_percent"] >= result.scorecard["minimum_score_percent"]
     )

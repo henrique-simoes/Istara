@@ -45,6 +45,9 @@ jobs:
       - name: Check test harness governance
         run: python scripts/check_test_harness.py
 
+      - name: Check release security readiness
+        run: python scripts/security_release_readiness.py
+
       - name: Check security benchmark
         run: python scripts/security_benchmark.py --fail-on-threshold --output security/security_scorecard.json
 
@@ -90,7 +93,7 @@ jobs:
           pip install -e ".[dev]"
 
       - name: Compile governed release surfaces
-        run: python -m compileall -q app ../scripts/production_rehearsal.py ../scripts/check_ci_governance.py ../scripts/check_change_obligations.py ../scripts/check_integrity.py ../scripts/check_ruff_changed.py ../scripts/security_benchmark.py ../scripts/check_test_harness.py ../scripts/run_backend_mutation.py
+        run: python -m compileall -q app ../scripts/production_rehearsal.py ../scripts/check_ci_governance.py ../scripts/check_change_obligations.py ../scripts/check_integrity.py ../scripts/check_ruff_changed.py ../scripts/security_benchmark.py ../scripts/security_release_readiness.py ../scripts/check_test_harness.py ../scripts/run_backend_mutation.py
 
       - name: Run production rehearsal
         run: python ../scripts/production_rehearsal.py --json

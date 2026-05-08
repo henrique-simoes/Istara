@@ -22,6 +22,7 @@ import {
 import { cn } from "@/lib/utils";
 import { validation, telemetry } from "@/lib/api";
 import { useProjectStore } from "@/stores/projectStore";
+import ViewOnboarding from "@/components/common/ViewOnboarding";
 
 interface MethodStatRow {
   method: string;
@@ -243,6 +244,7 @@ export default function EnsembleHealthView() {
           Multi-model validation status and consensus metrics
         </p>
       </div>
+      <ViewOnboarding viewId="ensemble" title="Ensemble Health" description="Inspect validation methods, agreement thresholds, consensus history, and model ensemble behavior for the active project." chatPrompt="How do ensemble validations work?" />
 
       {!projectId && (
         <div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">

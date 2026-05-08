@@ -25,6 +25,9 @@ python scripts/check_ci_governance.py
 echo "==> Checking test harness governance"
 python scripts/check_test_harness.py
 
+echo "==> Checking release security readiness"
+python scripts/security_release_readiness.py
+
 echo "==> Checking security benchmark"
 python scripts/security_benchmark.py --fail-on-threshold --output security/security_scorecard.json
 

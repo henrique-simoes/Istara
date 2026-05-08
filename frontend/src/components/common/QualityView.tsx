@@ -12,6 +12,7 @@ import {
 import { cn } from "@/lib/utils";
 import { validation } from "@/lib/api";
 import { useProjectStore } from "@/stores/projectStore";
+import ViewOnboarding from "@/components/common/ViewOnboarding";
 
 interface MethodStat {
   method: string;
@@ -98,6 +99,7 @@ export default function QualityView() {
           <span className="text-xs font-semibold text-istara-700 dark:text-istara-300">Phase Beta Verified</span>
         </div>
       </div>
+      <ViewOnboarding viewId="quality" title="Quality Dashboard" description="Track research rigor, model intelligence, benchmark health, confidence intervals, and validation quality over time." chatPrompt="How do I interpret quality metrics?" />
 
       {!projectId && (
         <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">

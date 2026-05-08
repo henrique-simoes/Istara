@@ -5,6 +5,7 @@ import { History, Bot, User, RotateCcw, ChevronDown, ChevronRight, FileText } fr
 import { useProjectStore } from "@/stores/projectStore";
 import { projects as projectsApi } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import ViewOnboarding from "@/components/common/ViewOnboarding";
 
 interface VersionEntry {
   commit_hash: string;
@@ -58,6 +59,7 @@ export default function VersionHistory() {
           <History size={20} />
           🔄 Version History
         </h2>
+        <ViewOnboarding viewId="history" title="Project History" description="Review project changes, agent-authored commits, affected files, and rollback points for this workspace." chatPrompt="How should I use project history?" />
 
         {loading ? (
           <div className="flex items-center justify-center py-12 text-slate-400">

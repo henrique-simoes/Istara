@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "benchmark_version": "2026.05.05",
-  "last_reviewed": "2026-05-05",
+  "benchmark_version": "2026.05.08",
+  "last_reviewed": "2026-05-08",
   "owner": "Istara release governance",
   "thresholds": {
     "production_release": {
@@ -12,7 +12,7 @@
         "critical",
         "high"
       ],
-      "minimum_score_percent": 90,
+      "minimum_score_percent": 98,
       "require_evidence_for_pass": true,
       "partial_credit": 0.5,
       "waived_credit": 0.5
@@ -31,6 +31,7 @@
         "backend/app/api/routes/reasoning_bank.py",
         "backend/app/core/auth*.py",
         "backend/app/core/security*.py",
+        "backend/app/core/log_redaction.py",
         "backend/app/core/network_security.py",
         "backend/app/core/permissions.py",
         "backend/app/core/field_encryption.py",
@@ -57,6 +58,7 @@
         "frontend/src/lib/improvementGovernance*.ts",
         "frontend/src/lib/reasoningBank*.ts",
         "scripts/security_benchmark.py",
+        "scripts/security_release_readiness.py",
         "scripts/check_change_obligations.py",
         "scripts/check_ci_governance.py",
         "scripts/check_integrity.py",
@@ -79,14 +81,35 @@
       "name": "OWASP Application Security Verification Standard",
       "current_version": "5.0.0 stable",
       "official_url": "https://github.com/OWASP/ASVS/releases",
-      "last_checked": "2026-05-05"
+      "last_checked": "2026-05-08"
     },
     {
       "id": "nist-800-63",
       "name": "NIST SP 800-63 Digital Identity Guidelines",
       "current_version": "Revision 4 final, including SP 800-63B-4",
       "official_url": "https://pages.nist.gov/800-63-4/",
-      "last_checked": "2026-05-05"
+      "last_checked": "2026-05-08"
+    },
+    {
+      "id": "better-auth",
+      "name": "Better Auth official documentation",
+      "current_version": "Current official options and security documentation",
+      "official_url": "https://better-auth.com/docs/reference/security",
+      "last_checked": "2026-05-08"
+    },
+    {
+      "id": "owasp-logging",
+      "name": "OWASP Logging Cheat Sheet",
+      "current_version": "Current cheat sheet",
+      "official_url": "https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html",
+      "last_checked": "2026-05-08"
+    },
+    {
+      "id": "github-attestations",
+      "name": "GitHub Artifact Attestations",
+      "current_version": "Current GitHub Actions documentation",
+      "official_url": "https://docs.github.com/en/actions/how-tos/secure-your-work/use-artifact-attestations/use-artifact-attestations",
+      "last_checked": "2026-05-08"
     },
     {
       "id": "owasp-wstg",
@@ -128,7 +151,7 @@
       "name": "OpenSSF Scorecard",
       "current_version": "Current project methodology",
       "official_url": "https://openssf.org/scorecard/",
-      "last_checked": "2026-05-05"
+      "last_checked": "2026-05-08"
     },
     {
       "id": "webauthn",
@@ -225,7 +248,8 @@
       "standards": [
         "owasp-asvs:V3",
         "owasp-wstg:SESS",
-        "oauth-bcp:browser-security"
+        "oauth-bcp:browser-security",
+        "better-auth:trusted-origins"
       ],
       "evidence": [
         "backend/app/core/auth_origins.py",
@@ -565,13 +589,16 @@
       "standards": [
         "owasp-asvs:V7",
         "cis-controls:8",
-        "nist-ssdf:RV.1"
+        "nist-ssdf:RV.1",
+        "owasp-logging:data-to-exclude"
       ],
       "evidence": [
         "backend/app/core/audit_middleware.py",
         "backend/app/core/auth_audit.py",
+        "backend/app/core/log_redaction.py",
         "backend/app/api/routes/audit.py",
         "tests/test_auth_security.py",
+        "tests/test_log_redaction.py",
         "tests/test_telemetry.py"
       ],
       "future_change_trigger": true,
@@ -595,6 +622,7 @@
         "scripts/check_ci_governance.py",
         "scripts/check_change_obligations.py",
         "scripts/security_benchmark.py",
+        "scripts/security_release_readiness.py",
         "tests/test_security_benchmark.py"
       ],
       "future_change_trigger": true,
@@ -622,32 +650,36 @@
     },
     {
       "id": "SUPPLY-001",
-      "title": "Supply-chain provenance and repository posture are tracked but not fully externally attested",
+      "title": "Supply-chain provenance and repository posture are release-gated",
       "category": "supply-chain",
       "required_level": "baseline",
       "severity": "medium",
-      "status": "partial",
+      "status": "pass",
       "standards": [
         "slsa:v1.2",
         "openssf-scorecard:repository",
-        "nist-ssdf:PS.2"
+        "nist-ssdf:PS.2",
+        "github-attestations:provenance"
       ],
       "evidence": [
         ".github/workflows/ci.yml",
         ".github/workflows/build-installers.yml",
+        ".github/workflows/scorecard.yml",
         "scripts/check_ci_governance.py",
+        "scripts/security_release_readiness.py",
+        "security/RELEASE_SECURITY_READINESS.md",
         "security/SECURITY_BENCHMARK.md"
       ],
       "future_change_trigger": true,
-      "notes": "CI and release detection are governed. Full provenance attestations and external Scorecard automation remain a tracked maturity item."
+      "notes": "CI and release detection are governed; installer release artifacts receive provenance attestations and repository posture is monitored by OpenSSF Scorecard."
     },
     {
       "id": "TEST-001",
-      "title": "Security test method is mapped to WSTG/ASVS but still needs periodic external rehearsal",
+      "title": "Security test method is mapped, rehearsed, and release-gated",
       "category": "verification",
       "required_level": "baseline",
       "severity": "medium",
-      "status": "partial",
+      "status": "pass",
       "standards": [
         "owasp-wstg:testing-framework",
         "owasp-asvs:verification",
@@ -658,30 +690,36 @@
         "tests/test_webauthn.py",
         "tests/test_webhooks_security.py",
         "tests/test_security_benchmark.py",
+        "tests/test_security_release_readiness.py",
+        "scripts/security_release_readiness.py",
+        "security/RELEASE_SECURITY_READINESS.md",
         "security/SECURITY_BENCHMARK.md"
       ],
       "future_change_trigger": true,
-      "notes": "Automated regression coverage is strong for internal release gating. Independent pentest/red-team rehearsal is still required for external assurance."
+      "notes": "Automated regression coverage is mapped to the benchmark and release-readiness gate. Independent pentest/red-team work remains recommended for external assurance, but no longer represents missing internal release evidence."
     },
     {
       "id": "OPS-001",
-      "title": "Incident response and vulnerability disclosure are documented as future operational maturity work",
+      "title": "Incident response and vulnerability disclosure are documented and release-gated",
       "category": "operations",
       "required_level": "baseline",
       "severity": "low",
-      "status": "partial",
+      "status": "pass",
       "standards": [
         "cis-controls:17",
         "owasp-samm:operations",
         "nist-ssdf:RV.2"
       ],
       "evidence": [
+        "SECURITY.md",
         "security/SECURITY_BENCHMARK.md",
+        "security/RELEASE_SECURITY_READINESS.md",
+        "scripts/security_release_readiness.py",
         "Tech.md",
         "CHANGE_CHECKLIST.md"
       ],
       "future_change_trigger": false,
-      "notes": "The code gate exists. Formal disclosure policy, tabletop cadence, and external audit calendar should be added before broad enterprise deployment."
+      "notes": "Disclosure handling, incident response, secret rotation, and log-sensitivity expectations are tracked. Tabletop exercises and external audit calendar remain recommended enterprise-maturity activities."
     }
   ]
 }
