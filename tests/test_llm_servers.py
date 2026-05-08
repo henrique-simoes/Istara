@@ -219,3 +219,66 @@ async def test_researcher_can_add_remote_shared_llm_server(researcher_headers, m
         body = response.json()
         assert body["host"] == "http://192.168.1.25:11434"
         assert body["is_healthy"] is True
+
+
+@pytest.mark.asyncio
+async def test_llm_server_registration_rejects_public_plaintext_url(researcher_headers):
+    await init_db()
+    settings.team_mode = True
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.post(
+            "/api/llm-servers",
+            headers=researcher_headers,
+            json={
+                "name": "Public Plaintext",
+                "provider_type": "openai_compat",
+                "host": "http://example.com/v1",
+            },
+        )
+
+    assert response.status_code == 422
+    assert "must use HTTPS" in response.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_llm_server_registration_rejects_embedded_credentials(researcher_headers):
+    await init_db()
+    settings.team_mode = True
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.post(
+            "/api/llm-servers",
+            headers=researcher_headers,
+            json={
+                "name": "Credential URL",
+                "provider_type": "openai_compat",
+                "host": "https://user:secret@example.com/v1",
+            },
+        )
+
+    assert response.status_code == 422
+    assert "embedded credentials" in response.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_llm_server_registration_rejects_sensitive_query_tokens(researcher_headers):
+    await init_db()
+    settings.team_mode = True
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.post(
+            "/api/llm-servers",
+            headers=researcher_headers,
+            json={
+                "name": "Query Token",
+                "provider_type": "openai_compat",
+                "host": "https://example.com/v1?api_key=secret",
+            },
+        )
+
+    assert response.status_code == 422
+    assert "query parameters" in response.json()["detail"]

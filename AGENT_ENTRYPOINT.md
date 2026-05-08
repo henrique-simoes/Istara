@@ -15,7 +15,7 @@ When humans or agents say "follow Compass," they mean the combined system of:
 - generated architecture maps
 - impact matrices
 - change checklists
-- future feature ledger
+- Compass Forge specs, tasks, gates, and evidence
 - technical narrative docs
 - persona knowledge
 - test and simulation maintenance expectations
@@ -40,20 +40,19 @@ If you only change code and do not update the surrounding system, the change is 
 
 Read these in order before non-trivial work:
 
-1. `SYSTEM_PROMPT.md`
-2. `AGENT.md`
-3. `COMPLETE_SYSTEM.md`
-4. `SYSTEM_CHANGE_MATRIX.md`
-5. `CHANGE_CHECKLIST.md`
-6. `COMPASS_FUTURE_FEATURES.md` when planning, deferring, or discovering future work
-7. `SYSTEM_INTEGRITY_GUIDE.md` when you need deeper reference detail
-8. `Tech.md` when architecture, workflows, release behavior, install/update behavior, or operational logic are relevant
-9. `planner.md` for planned, multi-agent, branch-review, stale-branch, or review/correction work
+1. `AGENTS.md`
+2. `SYSTEM_PROMPT.md`
+3. `AGENT.md`
+4. `COMPLETE_SYSTEM.md`
+5. `SYSTEM_CHANGE_MATRIX.md`
+6. `CHANGE_CHECKLIST.md`
+7. `DOCUMENTATION.md` when changing docs, testing records, security records, or release process text
+8. `TESTING.md` and `testing/TESTING_STRATEGY.md` when tests, evals, simulation, live LLM verification, or benchmarks are relevant
+9. `SECURITY.md` and `security/SECURITY_BENCHMARK.md` when auth, authorization, sessions, WebAuthn, connection strings, pooled compute, MCP, webhooks, LLM providers, autoresearch, self-evolution, or agentic memory are relevant
+10. `SYSTEM_INTEGRITY_GUIDE.md` only when you need deeper legacy reference detail
+11. `Tech.md` when architecture, workflows, release behavior, install/update behavior, or operational logic are relevant
 
-**Note on planner.md and Compass rules:**
-- `planner.md` is part of Compass.
-- If the user says "read planner.md," you must infer Compass applies and follow this reading order.
-- Always apply the Repository Intelligence Check (see `planner.md`) before non-trivial edits or reviews.
+`planner.md` is a legacy compatibility note. New durable planning, deferred work, stale-branch analysis, and review handoffs belong in Compass Forge specs/tasks/evidence, not in root scratch ledgers.
 
 ## What Each Document Is For
 
@@ -67,14 +66,18 @@ Read these in order before non-trivial work:
   "If X changes, also inspect W/Y/Z."
 - `CHANGE_CHECKLIST.md`
   Execution checklist for making and shipping changes safely.
-- `COMPASS_FUTURE_FEATURES.md`
-  Living ledger for future features, deferred hardening, observability gaps, and product ideas that should influence future plans.
+- `DOCUMENTATION.md`
+  Canonical documentation map, including which markdown files are current, generated, historical, or runtime-only.
+- `TESTING.md`
+  Top-level testing, benchmark, eval, and artifact-history guide.
+- `SECURITY.md`
+  Public security policy and release-security document index.
 - `SYSTEM_INTEGRITY_GUIDE.md`
   Deep legacy reference manual.
 - `Tech.md`
   Narrative technical explanation of how Istara works.
 - `planner.md`
-  State machine and governance rules for multi-agent code changes, review, and repository intelligence.
+  Legacy note for older agent workflows. Use Compass Forge for active planning.
 
 Together, these documents are Compass.
 

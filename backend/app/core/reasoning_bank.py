@@ -16,6 +16,7 @@ from typing import Any
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.content_guard import ContentGuard
 from app.models.database import async_session
 from app.models.reasoning_memory import ReasoningMemoryItem
 
@@ -33,13 +34,14 @@ _SECRET_PATTERNS = [
     re.compile(r"\b[A-Za-z0-9_=-]{48,}\b"),
 ]
 _TOKEN_RE = re.compile(r"[a-z0-9][a-z0-9_-]{2,}", re.IGNORECASE)
+_guard = ContentGuard()
 
 
 def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
 
-def _clean_text(value: Any, *, max_chars: int = 4000) -> str:
+def _clean_text(value: Any, *, max_chars: int = 4000, mark_prompt_risk: bool = True) -> str:
     if value is None:
         text = ""
     elif isinstance(value, str):
@@ -52,6 +54,12 @@ def _clean_text(value: Any, *, max_chars: int = 4000) -> str:
     text = text.replace("\x00", " ").strip()
     for pattern in _SECRET_PATTERNS:
         text = pattern.sub("[REDACTED]", text)
+    if mark_prompt_risk:
+        scan = _guard.scan_text(text)
+        text = scan.cleaned_text
+        if scan.threat_level in ("medium", "high"):
+            threats = ", ".join(scan.threats[:3])
+            text = f"[UNTRUSTED_MEMORY_CONTENT threat_level={scan.threat_level}: {threats}] {text}"
     return text[:max_chars]
 
 
@@ -394,7 +402,11 @@ class ReasoningMemoryService:
             return ""
         lines = ["## Relevant Reasoning Memory"]
         for memory in memories:
-            content = _clean_text(memory.get("content", ""), max_chars=500)
+            memory_id = str(memory.get("id", ""))
+            content = _guard.wrap_untrusted(
+                _clean_text(memory.get("content", ""), max_chars=500),
+                source=f"reasoning_memory:{memory_id}",
+            )
             lines.append(
                 f"- [{memory.get('outcome')}/{memory.get('source_kind')}] "
                 f"{memory.get('title')} (confidence {memory.get('confidence', 0):.2f}): {content}"

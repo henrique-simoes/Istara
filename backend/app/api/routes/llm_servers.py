@@ -11,6 +11,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.endpoint_security import EndpointPolicy, normalized_service_url, redacted_endpoint_label
 from app.core.field_encryption import decrypt_field, encrypt_field
 from app.core.permissions import require_global_role
 from app.models.database import get_db
@@ -129,13 +130,20 @@ async def add_llm_server(
 ):
     """Add a new external LLM server."""
     require_global_role(request, "viewer")
-    inferred_is_local = _is_local_host(data.host)
+    try:
+        normalized_host = normalized_service_url(
+            data.host,
+            EndpointPolicy(service_name="LLM server"),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    inferred_is_local = _is_local_host(normalized_host)
 
     server = LLMServer(
         id=str(uuid.uuid4()),
         name=data.name,
         provider_type=data.provider_type,
-        host=data.host.rstrip("/"),
+        host=normalized_host,
         api_key=encrypt_field(data.api_key) if data.api_key else "",
         is_local=inferred_is_local,
         priority=data.priority,
@@ -152,7 +160,7 @@ async def add_llm_server(
         "Added LLM server: %s (%s @ %s) healthy=%s",
         server.name,
         server.provider_type,
-        server.host,
+        redacted_endpoint_label(server.host),
         healthy,
     )
 
@@ -246,7 +254,14 @@ async def update_llm_server(
             encrypt_field(update_data["api_key"]) if update_data["api_key"] else ""
         )
     if "host" in update_data and update_data["host"]:
-        update_data["host"] = update_data["host"].rstrip("/")
+        try:
+            update_data["host"] = normalized_service_url(
+                update_data["host"],
+                EndpointPolicy(service_name="LLM server"),
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        update_data["is_local"] = _is_local_host(update_data["host"])
     for field, value in update_data.items():
         setattr(server, field, value)
     await db.commit()

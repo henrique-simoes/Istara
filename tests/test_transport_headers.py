@@ -1,11 +1,14 @@
 """Tests for transport security headers — HSTS, CSP, X-Frame-Options, etc."""
 
 import pytest
+from types import SimpleNamespace
 from httpx import AsyncClient, ASGITransport
 from app.main import app
 from app.config import settings
 from app.models.database import init_db
 from app.core.auth import create_token
+from app.core.auth_origins import production_security_configuration_issues
+from app.core.security_headers import SECURITY_HEADERS, validate_security_headers
 
 
 @pytest.mark.asyncio
@@ -84,3 +87,40 @@ async def test_security_headers_on_protected_endpoint():
         assert response.status_code == 200
         assert response.headers.get("x-frame-options") == "DENY"
         assert response.headers.get("x-content-type-options") == "nosniff"
+
+
+def test_security_header_contract_validates_csp_and_hsts():
+    assert validate_security_headers(SECURITY_HEADERS) == []
+
+
+def test_production_auth_config_audit_flags_insecure_defaults():
+    insecure = SimpleNamespace(
+        istara_runtime_profile="public",
+        team_mode=False,
+        jwt_secret="short",
+        cors_origins="http://localhost:3000",
+        webauthn_origins="http://localhost:3000",
+        webauthn_rp_id="localhost",
+        cors_origin_regex=r"https?://[^/]+:3000",
+    )
+
+    issues = production_security_configuration_issues(insecure)
+
+    assert any("TEAM_MODE" in issue for issue in issues)
+    assert any("JWT_SECRET" in issue for issue in issues)
+    assert any("HTTPS" in issue for issue in issues)
+    assert any("RP ID" in issue for issue in issues)
+
+
+def test_production_auth_config_audit_accepts_exact_https_domain():
+    secure = SimpleNamespace(
+        istara_runtime_profile="public",
+        team_mode=True,
+        jwt_secret="x" * 48,
+        cors_origins="https://istara.example.com",
+        webauthn_origins="https://istara.example.com",
+        webauthn_rp_id="istara.example.com",
+        cors_origin_regex="",
+    )
+
+    assert production_security_configuration_issues(secure) == []

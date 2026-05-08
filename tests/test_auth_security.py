@@ -160,6 +160,66 @@ def test_bootstrap_admin_user_has_required_email_hash():
     assert user.recovery_codes_hashed is None
 
 
+@pytest.mark.asyncio
+async def test_public_registration_bootstraps_first_admin_and_closes():
+    """Public registration is a one-time first-admin bootstrap flow."""
+    await init_db()
+    await _clear_auth_accounts()
+    settings.team_mode = True
+    if not settings.jwt_secret:
+        settings.jwt_secret = "test-secret"
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        before = await ac.get("/api/auth/team-status")
+        reg = await ac.post(
+            "/api/auth/register",
+            json={
+                "username": "bootstrap_admin",
+                "email": "bootstrap_admin@example.com",
+                "password": "xK9#mP2$vL7nQ4@wR1!",
+            },
+        )
+        after = await ac.get("/api/auth/team-status")
+
+    assert before.status_code == 200
+    assert before.json()["has_users"] is False
+    assert before.json()["registration_enabled"] is True
+    assert reg.status_code == 200
+    assert reg.json()["user"]["role"] == "admin"
+    assert after.json()["has_users"] is True
+    assert after.json()["registration_enabled"] is False
+
+
+@pytest.mark.asyncio
+async def test_public_registration_rejects_post_bootstrap_accounts():
+    """Additional accounts must be created by admin workflow or invite strings."""
+    await init_db()
+    await _clear_auth_accounts()
+    settings.team_mode = True
+    if not settings.jwt_secret:
+        settings.jwt_secret = "test-secret"
+    await _create_team_user(
+        username="existing_admin",
+        email="existing_admin@example.com",
+        password="xK9#mP2$vL7nQ4@wR1!",
+    )
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.post(
+            "/api/auth/register",
+            json={
+                "username": "driveby_user",
+                "email": "driveby@example.com",
+                "password": "xK9#mP2$vL7nQ4@wR1!",
+            },
+        )
+
+    assert response.status_code == 403
+    assert "first admin account" in response.json()["detail"]
+
+
 async def _create_team_user(
     *,
     username: str,
@@ -183,6 +243,29 @@ async def _create_team_user(
             display_name=username,
         )
         db.add(user)
+        await db.commit()
+
+
+async def _clear_auth_accounts() -> None:
+    """Remove account records so public registration tests exercise first-user bootstrap."""
+    from sqlalchemy import delete
+
+    from app.models.auth_session import AuthSession
+    from app.models.database import async_session
+    from app.models.recovery_code import RecoveryCode
+    from app.models.user import User
+    from app.models.webauthn_challenge import WebAuthnChallenge
+    from app.models.webauthn_credential import WebAuthnCredential
+
+    async with async_session() as db:
+        for model in (
+            AuthSession,
+            RecoveryCode,
+            WebAuthnChallenge,
+            WebAuthnCredential,
+            User,
+        ):
+            await db.execute(delete(model))
         await db.commit()
 
 
@@ -701,6 +784,7 @@ async def test_last_admin_protection_rejects_zero_admin_outcome(monkeypatch):
 async def test_login_returns_requires_2fa_when_totp_enabled():
     """Verify that login returns requires_2fa when TOTP is enabled and no code provided."""
     await init_db()
+    await _clear_auth_accounts()
     settings.team_mode = True
     if not settings.jwt_secret:
         settings.jwt_secret = "test-secret"
@@ -762,6 +846,7 @@ async def test_login_returns_requires_2fa_when_totp_enabled():
 async def test_login_with_totp_code_succeeds():
     """Verify that login with correct TOTP code returns token."""
     await init_db()
+    await _clear_auth_accounts()
     settings.team_mode = True
     if not settings.jwt_secret:
         settings.jwt_secret = "test-secret"
@@ -821,6 +906,7 @@ async def test_login_with_totp_code_succeeds():
 async def test_totp_code_replay_is_rejected():
     """Accepted TOTP counters should not be reusable inside the tolerance window."""
     await init_db()
+    await _clear_auth_accounts()
     settings.team_mode = True
     if not settings.jwt_secret:
         settings.jwt_secret = "test-secret"
@@ -873,6 +959,7 @@ async def test_totp_code_replay_is_rejected():
 async def test_recovery_code_is_table_backed_and_single_use():
     """Recovery codes should stay as auditable one-time records, not deleted strings."""
     await init_db()
+    await _clear_auth_accounts()
     settings.team_mode = True
     if not settings.jwt_secret:
         settings.jwt_secret = "test-secret"
@@ -1001,6 +1088,7 @@ async def test_auth_events_are_written_to_audit_log():
 async def test_totp_setup_requires_current_password():
     """Changing MFA state requires a password confirmation."""
     await init_db()
+    await _clear_auth_accounts()
     settings.team_mode = True
     if not settings.jwt_secret:
         settings.jwt_secret = "test-secret"

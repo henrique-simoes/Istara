@@ -1804,7 +1804,7 @@ Agents now poll their A2A inbox every work cycle via `_process_a2a_inbox()`. Col
 - **L4 auto-generation**: When L3 synthesis reaches 10+ findings, L4 final report auto-created with template-driven document composition.
 - **Template-driven L4 composition** (Elicit-style Extract→Structure→Synthesize→Compose→Cite pipeline): 8-section report template — Executive Summary, Methodology, Key Findings (evidence table), Supporting Evidence (citation table), Recommendations (priority table), MECE Analysis, Confidence & Validation (ensemble metrics), Limitations & Gaps (LLM-generated). Creates a Document record (`final_research_report.md`) visible in Documents view.
 - **Circuit breaker on compute nodes**: Three-state (CLOSED/OPEN/HALF_OPEN). 5 consecutive failures → OPEN (60s cooldown). `_select_candidates()` filters out unavailable nodes. `cb_record_success/failure` called in chat routing. Agent pauses when `has_available_node()` returns false. Frontend StatusBar shows red/yellow/green banners via WebSocket events.
-- **Architecture evolution tracking**: `docs/ARCHITECTURE_EVOLUTION.md` documents every version's changes with before/after tables and industry standard references.
+- **Architecture evolution tracking**: durable process and architecture references now live in `DOCUMENTATION.md`, `Tech.md`, Compass Forge specs/tasks/evidence, and curated release history such as `testing/TEST_HISTORY.md`.
 
 **Complete data flow:**
 ```
@@ -2021,7 +2021,7 @@ Istara supports both local (single-user, no auth) and team modes:
 - **Auth middleware**: `get_current_user()` FastAPI dependency — returns local user in local mode, verifies JWT in team mode.
 - **Preferences**: Stored per-user as JSON, covering theme, keyboard shortcuts, and UI customization.
 
-Team authorization now uses a central permission layer (`backend/app/core/permissions.py`) rather than scattered route-local role checks. The policy combines global RBAC, project relationship checks, and operation attributes. Global admins manage all projects and system settings; project members only see invited projects. Uninvited project access returns `404`, while forbidden mutations inside visible projects return `403`. Viewers are read-only across the locked-down project surfaces: Chat, sessions, Interfaces Design Chat, Tasks, Documents, Findings, Codebooks, and project-scoped Skill execution/planning. Legacy project role `member` maps to `researcher`; legacy project role `admin` maps to `project_admin`. The canonical permission contract lives in `docs/TEAM_RBAC_PERMISSION_MATRIX.md`.
+Team authorization now uses a central permission layer (`backend/app/core/permissions.py`) rather than scattered route-local role checks. The policy combines global RBAC, project relationship checks, and operation attributes. Global admins manage all projects and system settings; project members only see invited projects. Uninvited project access returns `404`, while forbidden mutations inside visible projects return `403`. Viewers are read-only across the locked-down project surfaces: Chat, sessions, Interfaces Design Chat, Tasks, Documents, Findings, Codebooks, and project-scoped Skill execution/planning. Legacy project role `member` maps to `researcher`; legacy project role `admin` maps to `project_admin`. The canonical permission behavior is maintained through `backend/app/core/permissions.py`, route-level security tests, `SYSTEM_CHANGE_MATRIX.md`, and release security evidence.
 
 **Files**: `backend/app/models/user.py`, `backend/app/core/auth.py`, `backend/app/api/routes/auth.py`, `backend/app/api/middleware/auth.py`
 
@@ -2677,7 +2677,7 @@ Source personas in `backend/app/agents/personas/` are shipped defaults. Runtime 
 
 Canonical source skills remain in `backend/app/skills/definitions/`. User-created skills, approved autonomous skill proposals, usage stats, and skill improvement proposal state write to `backend/data/skills/` by default. The skill loader reads both source definitions and runtime overlays, with local overlays taking precedence. Mutating checked-in skill definitions requires `ALLOW_SOURCE_SKILL_MUTATION=true`.
 
-The removed `Model_Finetuning/` and `.qwen/` tracked files are intentionally left as local ignored workspace material. Public sharing of training corpora or model artifacts must happen through a separate curated repository or release artifact, not through the application source tree.
+`Model_Finetuning/` and `LLMs/` are protected local ignored workspace material. Public sharing of training corpora or model artifacts must happen through a separate curated repository or release artifact, not through the application source tree.
 
 ### Legacy Compass Markdown
 
@@ -2685,7 +2685,7 @@ The removed `Model_Finetuning/` and `.qwen/` tracked files are intentionally lef
 
 ### Feature Documentation
 
-`docs/features/` contains detailed guides for messaging-integrations, survey-integrations, mcp-integration, research-deployments, and system-overview.
+Feature and process documentation is indexed in `DOCUMENTATION.md`. Add new durable guides only when they have a clear owner and are linked from that map; do not recreate ignored `docs/` scratch folders for active release knowledge.
 
 ---
 
@@ -3116,7 +3116,7 @@ All outbound channel calls are protected by:
 
 ## Stabilization Sweep (2026-04-30)
 
-The April 30 stabilization pass aligned backend persistence, frontend surfaces, and Compass expectations across several cross-cutting systems. The full audit is tracked in `docs/STABILIZATION_AUDIT_2026_04_30.md`; this section records the architecture-level rules future agents must preserve.
+The April 30 stabilization pass aligned backend persistence, frontend surfaces, and Compass expectations across several cross-cutting systems. The architecture-level rules future agents must preserve are kept in this section and in Compass Forge evidence; later release baselines are summarized in `testing/TEST_HISTORY.md`.
 
 ### Cross-System State Lifetimes
 

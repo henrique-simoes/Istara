@@ -4,6 +4,11 @@ Last reviewed: 2026-05-08
 
 This document records the release-hardening checks that sit around Istara's code-level security benchmark. It maps the current implementation to official guidance and keeps the public-release process repeatable.
 
+Use this with `SECURITY.md`, `security/SECURITY_BENCHMARK.md`,
+`security/ISTARA_SECURITY_ASSESSMENT_2026-05-08.md`, and
+`testing/TEST_HISTORY.md`. Raw scorecards and local runtime findings stay
+gitignored; release-relevant summaries belong in the tracked history.
+
 ## Official References Checked
 
 | Area | Reference | Istara release expectation |
@@ -31,6 +36,8 @@ The production security benchmark threshold is 98 percent. Partial controls are 
 ## Auth And Session Review Checklist
 
 - Trusted origins and cookie settings are centralized and tested.
+- Public/release profiles must pass the production auth audit: team mode on, strong JWT secret, exact HTTPS browser origins, production WebAuthn RP ID, and no CORS regex.
+- Production responses must pass the backend security-header contract for CSP, HSTS, frame denial, nosniff, referrer policy, and restrictive browser permissions.
 - Local mode rejects remote password login unless a valid connection string is redeemed.
 - WebAuthn/passkey registration and assertion verification validate origin/RP expectations.
 - TOTP and recovery-code lifecycle changes are audited.
@@ -43,14 +50,25 @@ Better Auth is not the runtime library for Istara, but its official guidance is 
 
 - Startup registers only the configured local provider and optional configured fallback; it must not autoload multiple heavy models.
 - Live test profiles use a gitignored endpoint and a single fixed model id.
+- User-added LLM provider URLs must not contain embedded credentials, sensitive query strings, metadata-service targets, or public plaintext HTTP endpoints.
 - Compute donation connection strings are one-time, signed, and do not embed reusable login tokens.
 - Resource reporting is tested through backend and frontend contracts.
 - Provider and model-selection changes run compute registry, LLM server, and test harness governance checks.
+
+## Agentic And Integration Ingress Checklist
+
+- A2A JSON-RPC mutation requires auth, actor traceability, body/metadata caps, per-client rate limits, replay rejection, and audit events.
+- Team-mode agent-card discovery requires authenticated researcher access unless explicitly disabled for a deployment.
+- Webhook ingress must verify platform signatures or shared tokens and reject exact replay within the configured replay window.
+- MCP client URLs must pass the same endpoint-safety policy as LLM servers, and cached MCP tool descriptors must be bounded and prompt-sanitized.
+- RAG and ReasoningBank context must remain wrapped as untrusted data before model prompts or agent planners consume it.
 
 ## Data Integrity And Packaging Checklist
 
 - Runtime data, vector indexes, local databases, uploaded files, logs, eval results, `LLMs/`, and `Model_Finetuning/` must stay out of public commits and installer source bundles.
 - Invalid documents and orphaned vector/index directories are reported or quarantined through admin-visible flows, not silently deleted.
+- Uploaded files are streamed, signature-checked, optionally scanner-checked, and quarantined before RAG ingestion when prompt-injection or scanner signals are present.
+- Backups redact `.env` values and exclude secret-like files, private keys, `LLMs/`, and `Model_Finetuning/` when copying user-controlled directories.
 - Clean installs create runtime folders only at runtime.
 - Release packaging excludes backend `.env`, local data, virtual environments, build caches, node modules, and simulation/eval outputs.
 

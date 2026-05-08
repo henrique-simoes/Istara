@@ -16,6 +16,13 @@ Istara treats authentication, authorization, WebAuthn/passkeys, recovery codes, 
 
 The release owner should acknowledge a report within three business days, triage severity, create a private fix branch or local Compass Forge work order, run the tracked security benchmark, and publish a patched release when the fix is verified. Critical issues should receive a mitigation notice as soon as a safe workaround exists.
 
+## Security Documentation
+
+- `security/SECURITY_BENCHMARK.md` defines the release security control matrix, benchmark threshold, evidence rules, and standards mapping.
+- `security/RELEASE_SECURITY_READINESS.md` is the release checklist for auth configuration, transport headers, endpoint validation, uploads, backups, MCP, LLM providers, webhooks, and log redaction.
+- `security/ISTARA_SECURITY_ASSESSMENT_2026-05-08.md` is the current release-hardening assessment and follow-up backlog.
+- `TESTING.md` and `testing/TEST_HISTORY.md` describe how security evidence is logged without committing raw scorecards, private URLs, secrets, or runtime data.
+
 ## Incident Response
 
 For suspected exploitation:

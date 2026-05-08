@@ -15,6 +15,7 @@ from app.core.file_processor import get_supported_extensions, process_file
 from app.core.keyword_index import KeywordIndex
 from app.core.permissions import get_visible_project_or_404
 from app.core.rag import VectorStore, ingest_chunks
+from app.core.upload_security import UploadSecurityVerdict, scan_upload_file
 from app.models.database import async_session, get_db
 from app.models.document import Document, DocumentSource, DocumentStatus
 from app.models.project import Project
@@ -69,6 +70,75 @@ def _path_within_roots(path: Path, roots: list[Path]) -> bool:
         except (OSError, ValueError):
             continue
     return False
+
+
+def _display_title(filename: str | None, fallback: str) -> str:
+    return (filename or fallback).rsplit(".", 1)[0].replace("-", " ").replace("_", " ").title()
+
+
+def _set_upload_security(doc: Document, verdict: UploadSecurityVerdict) -> None:
+    atomic_path = doc.get_atomic_path()
+    atomic_path["upload_security"] = verdict.to_metadata()
+    doc.set_atomic_path(atomic_path)
+    if verdict.warnings:
+        doc.set_tags(sorted(set([*doc.get_tags(), *verdict.warnings])))
+
+
+async def _store_quarantined_document(
+    db: AsyncSession,
+    *,
+    project_id: str,
+    original_filename: str | None,
+    safe_filename: str,
+    file_path: Path,
+    suffix: str,
+    file_size: int,
+    verdict: UploadSecurityVerdict,
+    content_text: str = "",
+) -> Document:
+    doc = Document(
+        id=str(uuid.uuid4()),
+        project_id=project_id,
+        title=_display_title(original_filename, safe_filename),
+        description=f"Upload quarantined: {verdict.reason or 'security review required'}",
+        file_name=original_filename or safe_filename,
+        file_path=str(file_path),
+        file_type=suffix,
+        file_size=file_size,
+        source=DocumentSource.USER_UPLOAD,
+        status=DocumentStatus.QUARANTINED,
+        content_text=content_text,
+        content_preview=content_text[:2000],
+    )
+    _set_upload_security(doc, verdict)
+    db.add(doc)
+    await db.commit()
+    return doc
+
+
+async def _save_upload_with_limit(file: UploadFile, file_path: Path, max_bytes: int) -> int:
+    """Stream an upload to disk while enforcing a hard size limit."""
+    total = 0
+    try:
+        async with aiofiles.open(file_path, "wb") as f:
+            while True:
+                chunk = await file.read(1024 * 1024)
+                if not chunk:
+                    break
+                total += len(chunk)
+                if total > max_bytes:
+                    raise HTTPException(
+                        status_code=413,
+                        detail=f"Upload exceeds maximum size of {max_bytes} bytes",
+                    )
+                await f.write(chunk)
+    except HTTPException:
+        try:
+            file_path.unlink(missing_ok=True)
+        except OSError:
+            pass
+        raise
+    return total
 
 
 async def _get_project(
@@ -156,27 +226,47 @@ async def upload_file(
     safe_filename = f"{file_id}{suffix}"
     file_path = project_upload_dir / safe_filename
 
-    async with aiofiles.open(file_path, "wb") as f:
-        content = await file.read()
-        await f.write(content)
+    file_size = await _save_upload_with_limit(file, file_path, settings.upload_max_bytes)
+    initial_verdict = scan_upload_file(
+        file_path,
+        declared_content_type=file.content_type or "",
+    )
+
+    if not initial_verdict.allowed:
+        doc = await _store_quarantined_document(
+            db,
+            project_id=project_id,
+            original_filename=file.filename,
+            safe_filename=safe_filename,
+            file_path=file_path,
+            suffix=suffix,
+            file_size=file_size,
+            verdict=initial_verdict,
+        )
+        return {
+            "status": "quarantined",
+            "file_id": file_id,
+            "doc_id": doc.id,
+            "filename": file.filename,
+            "saved_as": safe_filename,
+            "reason": initial_verdict.reason,
+            "upload_security": initial_verdict.to_metadata(),
+        }
 
     # Media files (Images/Video): store only, skip text extraction
     if suffix in MEDIA_EXTENSIONS and suffix not in AUDIO_EXTENSIONS:
         doc = Document(
             id=str(uuid.uuid4()),
             project_id=project_id,
-            title=(file.filename or "")
-            .rsplit(".", 1)[0]
-            .replace("-", " ")
-            .replace("_", " ")
-            .title(),
+            title=_display_title(file.filename, safe_filename),
             file_name=file.filename or safe_filename,
             file_path=str(file_path),
             file_type=suffix,
-            file_size=len(content),
+            file_size=file_size,
             source=DocumentSource.USER_UPLOAD,
             status=DocumentStatus.READY,
         )
+        _set_upload_security(doc, initial_verdict)
         db.add(doc)
         await db.commit()
         return {
@@ -195,18 +285,15 @@ async def upload_file(
         doc = Document(
             id=doc_id,
             project_id=project_id,
-            title=(file.filename or "")
-            .rsplit(".", 1)[0]
-            .replace("-", " ")
-            .replace("_", " ")
-            .title(),
+            title=_display_title(file.filename, safe_filename),
             file_name=file.filename or safe_filename,
             file_path=str(file_path),
             file_type=suffix,
-            file_size=len(content),
+            file_size=file_size,
             source=DocumentSource.USER_UPLOAD,
             status=DocumentStatus.PROCESSING,
         )
+        _set_upload_security(doc, initial_verdict)
         db.add(doc)
         await db.commit()
 
@@ -241,23 +328,61 @@ async def upload_file(
     await store.delete_by_source(file_path.name)
 
     # Ingest chunks into vector store
-    chunks_indexed = await ingest_chunks(project_id, result.chunks)
     content_text = "\n\n".join(c.text for c in result.chunks)
+    content_verdict = scan_upload_file(
+        file_path,
+        declared_content_type=file.content_type or "",
+        extracted_text=content_text,
+        run_external_scanner=False,
+    )
+    content_verdict.scanner_enabled = initial_verdict.scanner_enabled
+    content_verdict.scanner_exit_code = initial_verdict.scanner_exit_code
+    content_verdict.scanner_output = initial_verdict.scanner_output
+    content_verdict.warnings = sorted(set([*initial_verdict.warnings, *content_verdict.warnings]))
+    if not content_verdict.allowed:
+        doc = await _store_quarantined_document(
+            db,
+            project_id=project_id,
+            original_filename=file.filename,
+            safe_filename=safe_filename,
+            file_path=file_path,
+            suffix=suffix,
+            file_size=file_size,
+            verdict=content_verdict,
+            content_text=content_text,
+        )
+        return {
+            "status": "quarantined",
+            "file_id": file_id,
+            "doc_id": doc.id,
+            "filename": file.filename,
+            "saved_as": safe_filename,
+            "total_chars": result.total_chars,
+            "pages": result.pages,
+            "chunks_indexed": 0,
+            "reason": content_verdict.reason,
+            "threat_level": content_verdict.threat_level,
+            "threats": content_verdict.threats,
+            "upload_security": content_verdict.to_metadata(),
+        }
+
+    chunks_indexed = await ingest_chunks(project_id, result.chunks)
 
     # Create a Document record so the file appears in Documents view immediately
     doc = Document(
         id=str(uuid.uuid4()),
         project_id=project_id,
-        title=(file.filename or "").rsplit(".", 1)[0].replace("-", " ").replace("_", " ").title(),
+        title=_display_title(file.filename, safe_filename),
         file_name=file.filename or safe_filename,
         file_path=str(file_path),
         file_type=suffix,
-        file_size=len(content),
+        file_size=file_size,
         source=DocumentSource.USER_UPLOAD,
         status=DocumentStatus.READY,
         content_text=content_text,
         content_preview=content_text[:2000],
     )
+    _set_upload_security(doc, content_verdict)
     db.add(doc)
     await db.commit()
 
@@ -327,11 +452,29 @@ async def _process_audio_background(project_id: str, doc_id: str, file_path: Pat
                 await db.commit()
                 return
 
+            content_text = "\n\n".join(c.text for c in result.chunks)
+            content_verdict = scan_upload_file(
+                file_path,
+                extracted_text=content_text,
+                run_external_scanner=False,
+            )
+            if not content_verdict.allowed:
+                doc.status = DocumentStatus.QUARANTINED
+                doc.description = (
+                    "Upload quarantined after transcription: "
+                    f"{content_verdict.reason or 'security review required'}"
+                )
+                doc.content_text = content_text
+                doc.content_preview = content_text[:2000]
+                _set_upload_security(doc, content_verdict)
+                await db.commit()
+                return
+
             # 2. Ingest chunks into vector store
             await ingest_chunks(project_id, result.chunks)
 
             # 3. Update document record
-            doc.content_text = "\n\n".join(c.text for c in result.chunks)
+            doc.content_text = content_text
             doc.content_preview = doc.content_text[:2000]
             if isinstance(transcription, dict):
                 doc.description = (
@@ -488,6 +631,21 @@ async def reprocess_files(project_id: str, request: Request, db: AsyncSession = 
             result = process_file(file_path)
             if result.error:
                 errors.append({"file": file_path.name, "error": result.error})
+                continue
+            content_text = "\n\n".join(c.text for c in result.chunks)
+            verdict = scan_upload_file(
+                file_path,
+                extracted_text=content_text,
+                run_external_scanner=False,
+            )
+            if not verdict.allowed:
+                errors.append(
+                    {
+                        "file": file_path.name,
+                        "error": verdict.reason or "security review required",
+                        "status": "quarantined",
+                    }
+                )
                 continue
 
             if result.chunks:

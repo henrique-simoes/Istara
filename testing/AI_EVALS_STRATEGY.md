@@ -136,6 +136,7 @@ architecture-specific probes.
 Tracked files:
 
 - `testing/AI_EVALS_STRATEGY.md`: this strategy.
+- `testing/TEST_HISTORY.md`: curated release-baseline summaries.
 - `tests/evals/registry.json`: machine-readable suites, metrics, thresholds,
   references, and commands.
 - `tests/evals/cases/core_eval_cases.json`: small core live/static cases.
@@ -162,6 +163,10 @@ The manifest must include:
 - Model id and boolean endpoint/key configuration flags.
 - A private endpoint fingerprint may be stored, but never the endpoint or token.
 - Exact command arguments and suite selection.
+
+When an eval run becomes a release baseline, summarize it in
+`testing/TEST_HISTORY.md` with the artifact path and residual risks instead of
+copying raw result markdown into tracked docs.
 
 ## Operating Commands
 

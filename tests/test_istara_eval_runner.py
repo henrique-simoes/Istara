@@ -138,7 +138,7 @@ def test_live_cases_pin_thinking_mode_off_for_json_benchmarks():
     cases = runner.read_json(runner.DEFAULT_CASES)["live_cases"]
 
     assert all(case.get("thinking_mode") == "off" for case in cases)
-    script = Path("scripts/run_istara_evals.py").read_text(encoding="utf-8")
+    script = Path(runner.__file__).read_text(encoding="utf-8")
     assert "compute_registry.chat" in script
     assert "thinking_mode=case.get" in script
 

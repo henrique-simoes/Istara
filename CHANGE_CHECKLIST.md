@@ -12,10 +12,10 @@ Before making ANY change:
 
 - [ ] Read `SYSTEM_PROMPT.md` for the repo-wide agent contract
 - [ ] Run Compass Forge status/brief/impact for non-trivial work
-- [ ] Read `planner.md` for planned, multi-agent, branch-review, stale-branch, or review/correction work
+- [ ] Create or use the active Compass Forge spec/tasks/work order for planned, multi-agent, branch-review, stale-branch, or review/correction work
 - [ ] Read `SYSTEM_CHANGE_MATRIX.md` for dependent surfaces that must move with this change
 - [ ] Read `CHANGELOG.md` to understand recent system evolution
-- [ ] Read `COMPASS_FUTURE_FEATURES.md` when planning, deferring, or discovering future work
+- [ ] Record deferred work in Compass Forge tasks/spec notes or the appropriate tracked strategy document
 - [ ] Decide which parts of Compass must change so the next agent understands the new reality
 - [ ] Decide whether this work creates, updates, ships, or supersedes a future-feature ledger entry
 - [ ] Decide whether `Tech.md` must change because the architecture/process/release story changed
@@ -545,7 +545,7 @@ Before pushing to production:
 ### Testing & Review
 
 - [ ] Changes pushed to the correct review target: `staging` by default, or a review/integration branch for stale/divergent work
-- [ ] **Stale branch check:** Verify the branch is not on the `planner.md` deprecated list before treating it as a merge candidate
+- [ ] **Stale branch check:** Verify branch age, divergence, and deleted/resurrected paths with Compass Forge and `git` before treating it as a merge candidate
 - [ ] TESTING.md updated — entry added under "Awaiting Review"
 - [ ] Changes tested locally on the branch that contains the proposed change (`git checkout <branch> && ./istara.sh start`)
 - [ ] E2E tests pass: `ISTARA_ADMIN_USER=<user> ISTARA_ADMIN_PASSWORD=<pass> python tests/e2e_test.py`

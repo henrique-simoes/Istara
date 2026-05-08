@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuthStore } from "@/stores/authStore";
 import { useRouter } from "next/navigation";
 
@@ -11,8 +11,20 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [error, setError] = useState("");
-  const { login, register, loading } = useAuthStore();
+  const [hasUsers, setHasUsers] = useState(true);
+  const { login, register, loading, checkTeamStatus } = useAuthStore();
   const router = useRouter();
+
+  useEffect(() => {
+    let cancelled = false;
+    checkTeamStatus().then((status) => {
+      if (cancelled) return;
+      setHasUsers(status.has_users);
+      if (status.has_users) setMode("login");
+      if (!status.has_users) setMode("register");
+    });
+    return () => { cancelled = true; };
+  }, [checkTeamStatus]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,6 +33,9 @@ export default function LoginPage() {
       if (mode === "login") {
         await login(username, password);
       } else {
+        if (hasUsers) {
+          throw new Error("Public registration is only available for the first admin. Ask an admin for a connection string.");
+        }
         await register(username, email, password, displayName);
       }
       router.push("/");
@@ -51,18 +66,20 @@ export default function LoginPage() {
           >
             Sign In
           </button>
-          <button
-            role="tab"
-            aria-selected={mode === "register"}
-            onClick={() => setMode("register")}
-            className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${
-              mode === "register"
-                ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm"
-                : "text-slate-500"
-            }`}
-          >
-            Register
-          </button>
+          {!hasUsers && (
+            <button
+              role="tab"
+              aria-selected={mode === "register"}
+              onClick={() => setMode("register")}
+              className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${
+                mode === "register"
+                  ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm"
+                  : "text-slate-500"
+              }`}
+            >
+              Create Admin
+            </button>
+          )}
         </div>
 
         {error && (
@@ -139,7 +156,7 @@ export default function LoginPage() {
             disabled={loading}
             className="w-full py-2.5 bg-istara-600 hover:bg-istara-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-istara-500 focus:ring-offset-2"
           >
-            {loading ? "Please wait..." : mode === "login" ? "Sign In" : "Create Account"}
+            {loading ? "Please wait..." : mode === "login" ? "Sign In" : "Create Admin Account"}
           </button>
         </form>
       </div>
