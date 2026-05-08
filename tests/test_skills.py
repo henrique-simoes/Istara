@@ -1,7 +1,13 @@
 """Tests for Skills API routes — CRUD, execute, health, proposals."""
 
+import asyncio
+
 import pytest
+from fastapi import HTTPException
 from httpx import AsyncClient, ASGITransport
+from starlette.requests import Request
+
+from app.api.routes import skills as skills_route
 from app.main import app
 from app.config import settings
 from app.models.database import init_db
@@ -83,3 +89,61 @@ async def test_skill_proposals_pending_returns_list(auth_headers):
         response = await ac.get("/api/skills/proposals/pending", headers=auth_headers)
         assert response.status_code == 200
         assert isinstance(response.json(), dict)
+
+
+class _SlowSkillAgent:
+    async def execute_skill(self, **kwargs):
+        await asyncio.sleep(5)
+
+    async def plan_skill(self, **kwargs):
+        await asyncio.sleep(5)
+
+
+def _request() -> Request:
+    return Request({"type": "http", "method": "POST", "path": "/", "headers": []})
+
+
+@pytest.mark.asyncio
+async def test_execute_skill_enforces_route_timeout(monkeypatch):
+    """Skill execution cancels at the route budget instead of orphaning LLM work."""
+
+    async def allow_project_access(*args, **kwargs):
+        return None
+
+    monkeypatch.setattr(skills_route.registry, "get", lambda name: object())
+    monkeypatch.setattr(skills_route, "require_project_access", allow_project_access)
+    monkeypatch.setattr(skills_route, "agent", _SlowSkillAgent())
+
+    with pytest.raises(HTTPException) as exc:
+        await skills_route.execute_skill(
+            "slow-skill",
+            skills_route.SkillExecuteRequest(project_id="project-1", timeout_seconds=0.1),
+            _request(),
+            db=None,
+        )
+
+    assert exc.value.status_code == 504
+    assert "timed out" in exc.value.detail
+
+
+@pytest.mark.asyncio
+async def test_plan_skill_enforces_route_timeout(monkeypatch):
+    """Skill planning uses the same bounded server-side timeout path."""
+
+    async def allow_project_access(*args, **kwargs):
+        return None
+
+    monkeypatch.setattr(skills_route.registry, "get", lambda name: object())
+    monkeypatch.setattr(skills_route, "require_project_access", allow_project_access)
+    monkeypatch.setattr(skills_route, "agent", _SlowSkillAgent())
+
+    with pytest.raises(HTTPException) as exc:
+        await skills_route.plan_skill(
+            "slow-skill",
+            skills_route.SkillPlanRequest(project_id="project-1", timeout_seconds=0.1),
+            _request(),
+            db=None,
+        )
+
+    assert exc.value.status_code == 504
+    assert "timed out" in exc.value.detail

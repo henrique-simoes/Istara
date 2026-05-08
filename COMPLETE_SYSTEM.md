@@ -18,11 +18,11 @@ Generated from the repository on version `2026.04.27`. This document is meant to
 
 ## Repository Architecture Snapshot
 
-- FastAPI backend with 41 route modules and 390 detected endpoints.
+- FastAPI backend with 45 route modules and 429 detected endpoints.
 - Next.js frontend with 24 mounted views and 15 Zustand stores.
-- 44 SQLAlchemy models in `backend/app/models`.
+- 51 SQLAlchemy models in `backend/app/models`.
 - 6 tracked persona directories and 57 JSON-defined skills.
-- 66 active test files across 4 regression layers.
+- 92 active test files across 4 regression layers.
 
 ## Backend Route Inventory
 
@@ -31,7 +31,7 @@ Generated from the repository on version `2026.04.27`. This document is meant to
 | `admin.py` | `/admin` | 5 |
 | `agents.py` | `/` | 48 |
 | `audit.py` | `/` | 7 |
-| `auth.py` | `/` | 15 |
+| `auth.py` | `/` | 18 |
 | `autoresearch.py` | `/autoresearch` | 9 |
 | `backup.py` | `/` | 10 |
 | `channels.py` | `/` | 11 |
@@ -44,10 +44,12 @@ Generated from the repository on version `2026.04.27`. This document is meant to
 | `connections.py` | `/` | 7 |
 | `context_dag.py` | `/` | 6 |
 | `deployments.py` | `/` | 12 |
+| `dgmh_archive.py` | `/dgmh-archive` | 12 |
 | `documents.py` | `/` | 10 |
 | `files.py` | `/` | 7 |
-| `findings.py` | `/` | 21 |
-| `interfaces.py` | `/` | 21 |
+| `findings.py` | `/` | 22 |
+| `improvement_governance.py` | `/improvement-governance` | 12 |
+| `interfaces.py` | `/` | 22 |
 | `laws.py` | `/laws` | 6 |
 | `llm_servers.py` | `/` | 6 |
 | `loops.py` | `/` | 10 |
@@ -56,12 +58,14 @@ Generated from the repository on version `2026.04.27`. This document is meant to
 | `meta_hyperagent.py` | `/` | 9 |
 | `metrics.py` | `/` | 3 |
 | `notifications.py` | `/` | 7 |
+| `permission_requests.py` | `/` | 3 |
 | `presentation.py` | `/presentation` | 1 |
 | `projects.py` | `/` | 15 |
+| `reasoning_bank.py` | `/reasoning-bank` | 5 |
 | `reports.py` | `/reports` | 1 |
 | `scheduler.py` | `/` | 5 |
 | `sessions.py` | `/` | 8 |
-| `settings.py` | `/` | 18 |
+| `settings.py` | `/` | 20 |
 | `skills.py` | `/` | 19 |
 | `steering.py` | `/` | 8 |
 | `surveys.py` | `/` | 9 |
@@ -75,7 +79,7 @@ Generated from the repository on version `2026.04.27`. This document is meant to
 - **admin**: `GET /api/admin/overview`, `GET /api/admin/projects`, `GET /api/admin/users`, `GET /api/admin/access`, `GET /api/admin/connection-strings`
 - **agents**: `GET /api/agents`, `GET /api/agents/capacity`, `GET /api/agents/heartbeat/status`, `GET /api/agents/a2a/log`, `GET /api/agents/status`, `GET /api/agents/log/recent`, `POST /api/agents`, `GET /api/agents/{agent_id}`, `PATCH /api/agents/{agent_id}`, `DELETE /api/agents/{agent_id}`, `POST /api/agents/{agent_id}/pause`, `POST /api/agents/{agent_id}/resume`, `POST /api/agents/{agent_id}/restart`, `POST /api/agents/{agent_id}/set-scope`, `POST /api/agents/{agent_id}/request-promotion`, `POST /api/agents/{agent_id}/avatar`, `GET /api/agents/{agent_id}/avatar`, `GET /api/agents/{agent_id}/identity`, `PUT /api/agents/{agent_id}/identity`, `GET /api/agents/personas/list`, `GET /api/agents/{agent_id}/learnings`, `GET /api/agents/{agent_id}/evolution/candidates`, `POST /api/agents/{agent_id}/evolution/promote/{learning_id}`, `POST /api/agents/{agent_id}/evolution/auto`, `GET /api/agents/evolution/scan`, `GET /api/agents/creation-proposals/pending`, `GET /api/agents/creation-proposals/all`, `POST /api/agents/creation-proposals/{proposal_id}/approve`, `POST /api/agents/creation-proposals/{proposal_id}/reject`, `GET /api/agents/{agent_id}/prompt/stats`, `POST /api/agents/{agent_id}/prompt/compose`, `GET /api/agents/{agent_id}/memory`, `PATCH /api/agents/{agent_id}/memory`, `GET /api/agents/{agent_id}/messages`, `POST /api/agents/{agent_id}/messages`, `GET /api/audit/ux/latest`, `POST /api/audit/ux/run`, `GET /api/audit/sim/latest`, `POST /api/audit/sim/run`, `GET /api/agents/{agent_id}/export`, `POST /api/agents/import`, `GET /api/resources`, `GET /api/contexts`, `POST /api/contexts`, `GET /api/contexts/{doc_id}`, `PATCH /api/contexts/{doc_id}`, `DELETE /api/contexts/{doc_id}`, `GET /api/contexts/composed/{project_id}`
 - **audit**: `GET /api/audit/devops/latest`, `GET /api/audit/devops/history`, `POST /api/audit/devops/run`, `GET /api/audit/ui/latest`, `GET /api/audit/ui/history`, `POST /api/audit/ui/run`, `GET /api/audit/logs`
-- **auth**: `POST /api/auth/register`, `POST /api/auth/login`, `POST /api/auth/logout`, `POST /api/auth/totp/setup`, `POST /api/auth/totp/verify`, `POST /api/auth/totp/disable`, `POST /api/auth/recovery-codes/generate`, `GET /api/auth/recovery-codes/status`, `GET /api/auth/me`, `PUT /api/auth/preferences`, `GET /api/auth/team-status`, `GET /api/auth/users`, `POST /api/auth/users`, `DELETE /api/auth/users/{user_id}`, `PATCH /api/auth/users/{user_id}/role`
+- **auth**: `POST /api/auth/register`, `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/sessions`, `POST /api/auth/sessions/revoke-others`, `DELETE /api/auth/sessions/{session_id}`, `POST /api/auth/totp/setup`, `POST /api/auth/totp/verify`, `POST /api/auth/totp/disable`, `POST /api/auth/recovery-codes/generate`, `GET /api/auth/recovery-codes/status`, `GET /api/auth/me`, `PUT /api/auth/preferences`, `GET /api/auth/team-status`, `GET /api/auth/users`, `POST /api/auth/users`, `DELETE /api/auth/users/{user_id}`, `PATCH /api/auth/users/{user_id}/role`
 - **autoresearch**: `GET /api/autoresearch/status`, `GET /api/autoresearch/experiments`, `GET /api/autoresearch/experiments/{experiment_id}`, `POST /api/autoresearch/start`, `POST /api/autoresearch/stop`, `GET /api/autoresearch/config`, `PATCH /api/autoresearch/config`, `GET /api/autoresearch/leaderboard`, `POST /api/autoresearch/toggle`
 - **backup**: `GET /api/backups`, `POST /api/backups/create`, `POST /api/backups/{backup_id}/restore`, `POST /api/backups/{backup_id}/verify`, `DELETE /api/backups/{backup_id}`, `GET /api/backups/config`, `POST /api/backups/config`, `GET /api/backups/estimate`, `POST /api/backups/upload-restore`, `GET /api/backups/{backup_id}/download`
 - **channels**: `GET /api/channels`, `POST /api/channels`, `GET /api/channels/{instance_id}`, `PATCH /api/channels/{instance_id}`, `DELETE /api/channels/{instance_id}`, `POST /api/channels/{instance_id}/start`, `POST /api/channels/{instance_id}/stop`, `GET /api/channels/{instance_id}/health`, `GET /api/channels/{instance_id}/messages`, `GET /api/channels/{instance_id}/conversations`, `POST /api/channels/{instance_id}/send`
@@ -88,10 +92,12 @@ Generated from the repository on version `2026.04.27`. This document is meant to
 - **connections**: `POST /api/connections/generate`, `POST /api/connections/compute-donation/generate`, `GET /api/connections`, `DELETE /api/connections/{conn_id}`, `POST /api/connections/validate`, `POST /api/connections/redeem`, `POST /api/connections/rotate-network-token`
 - **context_dag**: `GET /api/context-dag/{session_id}`, `GET /api/context-dag/{session_id}/health`, `POST /api/context-dag/{session_id}/expand`, `POST /api/context-dag/{session_id}/grep`, `GET /api/context-dag/{session_id}/node/{node_id}`, `POST /api/context-dag/{session_id}/compact`
 - **deployments**: `POST /api/deployments`, `GET /api/deployments`, `GET /api/deployments/overview`, `GET /api/deployments/{deployment_id}`, `GET /api/deployments/{deployment_id}/analytics`, `POST /api/deployments/{deployment_id}/activate`, `POST /api/deployments/{deployment_id}/pause`, `POST /api/deployments/{deployment_id}/complete`, `POST /api/deployments/{deployment_id}/respond`, `GET /api/deployments/{deployment_id}/conversations`, `GET /api/deployments/{deployment_id}/conversations/{conversation_id}`, `GET /api/deployments/{deployment_id}/conversations/{conversation_id}/transcript`
+- **dgmh_archive**: `GET /api/dgmh-archive/variants`, `POST /api/dgmh-archive/variants`, `GET /api/dgmh-archive/variants/{variant_id}`, `GET /api/dgmh-archive/variants/{variant_id}/lineage`, `POST /api/dgmh-archive/variants/{variant_id}/evaluation`, `POST /api/dgmh-archive/variants/{variant_id}/approve`, `POST /api/dgmh-archive/variants/{variant_id}/apply`, `POST /api/dgmh-archive/variants/{variant_id}/confirm`, `POST /api/dgmh-archive/variants/{variant_id}/revert`, `POST /api/dgmh-archive/variants/{variant_id}/quarantine`, `GET /api/dgmh-archive/select-parent`, `GET /api/dgmh-archive/summary`
 - **documents**: `GET /api/documents`, `GET /api/documents/{document_id}`, `POST /api/documents`, `PATCH /api/documents/{document_id}`, `DELETE /api/documents/{document_id}`, `GET /api/documents/{document_id}/content`, `GET /api/documents/search/full`, `GET /api/documents/tags/{project_id}`, `POST /api/documents/sync/{project_id}`, `GET /api/documents/stats/{project_id}`
 - **files**: `POST /api/files/upload/{project_id}`, `GET /api/files/{project_id}`, `POST /api/files/{project_id}/reprocess`, `GET /api/files/{project_id}/stats`, `GET /api/files/{project_id}/content/{filename}`, `POST /api/files/{project_id}/scan`, `GET /api/files/{project_id}/serve/{filename}`
-- **findings**: `GET /api/findings/nuggets`, `POST /api/findings/nuggets`, `DELETE /api/findings/nuggets/{nugget_id}`, `GET /api/findings/facts`, `POST /api/findings/facts`, `DELETE /api/findings/facts/{fact_id}`, `GET /api/findings/insights`, `POST /api/findings/insights`, `DELETE /api/findings/insights/{insight_id}`, `GET /api/findings/recommendations`, `POST /api/findings/recommendations`, `DELETE /api/findings/recommendations/{rec_id}`, `GET /api/findings/search/global`, `GET /api/findings/search/{project_id}`, `GET /api/findings/{finding_type}/{finding_id}/evidence-chain`, `PATCH /api/findings/{finding_type}/{finding_id}/link`, `GET /api/findings/summary/{project_id}`, `GET /api/findings/design-decisions`, `POST /api/findings/design-decisions`, `DELETE /api/findings/design-decisions/{dd_id}`, `GET /api/findings/{finding_type}/{finding_id}/evidence-chain-extended`
-- **interfaces**: `GET /api/interfaces/design-chat/{project_id}/history`, `POST /api/interfaces/design-chat`, `GET /api/interfaces/screens`, `GET /api/interfaces/screens/{screen_id}`, `POST /api/interfaces/screens/generate`, `POST /api/interfaces/screens/edit`, `POST /api/interfaces/screens/variant`, `DELETE /api/interfaces/screens/{screen_id}`, `POST /api/interfaces/figma/import`, `POST /api/interfaces/figma/export`, `GET /api/interfaces/figma/design-system/{file_key}`, `GET /api/interfaces/handoff/briefs`, `POST /api/interfaces/handoff/brief`, `POST /api/interfaces/handoff/dev-spec`, `GET /api/interfaces/status`, `POST /api/interfaces/configure/stitch`, `POST /api/interfaces/configure/figma`, `POST /api/interfaces/mock/generate`, `POST /api/interfaces/mock/edit`, `POST /api/interfaces/mock/variants`, `POST /api/interfaces/mock/figma-import`
+- **findings**: `GET /api/findings/nuggets`, `POST /api/findings/nuggets`, `DELETE /api/findings/nuggets/{nugget_id}`, `GET /api/findings/facts`, `POST /api/findings/facts`, `DELETE /api/findings/facts/{fact_id}`, `GET /api/findings/insights`, `POST /api/findings/insights`, `DELETE /api/findings/insights/{insight_id}`, `GET /api/findings/recommendations`, `POST /api/findings/recommendations`, `DELETE /api/findings/recommendations/{rec_id}`, `GET /api/findings/search/global`, `GET /api/findings/search/{project_id}`, `GET /api/findings/{finding_type}/{finding_id}/evidence-chain`, `GET /api/findings/evidence-chain`, `PATCH /api/findings/{finding_type}/{finding_id}/link`, `GET /api/findings/summary/{project_id}`, `GET /api/findings/design-decisions`, `POST /api/findings/design-decisions`, `DELETE /api/findings/design-decisions/{dd_id}`, `GET /api/findings/{finding_type}/{finding_id}/evidence-chain-extended`
+- **improvement_governance**: `GET /api/improvement-governance/proposals`, `GET /api/improvement-governance/proposals/{proposal_id}`, `POST /api/improvement-governance/proposals`, `POST /api/improvement-governance/proposals/{proposal_id}/approve`, `POST /api/improvement-governance/proposals/{proposal_id}/apply`, `POST /api/improvement-governance/proposals/{proposal_id}/reject`, `POST /api/improvement-governance/proposals/{proposal_id}/revert`, `POST /api/improvement-governance/proposals/{proposal_id}/quarantine`, `POST /api/improvement-governance/proposals/{proposal_id}/evaluation`, `POST /api/improvement-governance/proposals/{proposal_id}/sandbox-evaluation`, `GET /api/improvement-governance/summary`, `GET /api/improvement-governance/feature-contract`
+- **interfaces**: `GET /api/interfaces/design-chat/{project_id}/history`, `POST /api/interfaces/design-chat`, `GET /api/interfaces/screens`, `GET /api/interfaces/screens/{screen_id}`, `POST /api/interfaces/screens/generate`, `POST /api/interfaces/screens/edit`, `POST /api/interfaces/screens/variant`, `DELETE /api/interfaces/screens/{screen_id}`, `POST /api/interfaces/figma/import`, `POST /api/interfaces/figma/export`, `GET /api/interfaces/figma/design-system/{file_key}`, `GET /api/interfaces/figma/components/{file_key}`, `GET /api/interfaces/handoff/briefs`, `POST /api/interfaces/handoff/brief`, `POST /api/interfaces/handoff/dev-spec`, `GET /api/interfaces/status`, `POST /api/interfaces/configure/stitch`, `POST /api/interfaces/configure/figma`, `POST /api/interfaces/mock/generate`, `POST /api/interfaces/mock/edit`, `POST /api/interfaces/mock/variants`, `POST /api/interfaces/mock/figma-import`
 - **laws**: `GET /api/laws`, `GET /api/laws/by-heuristic/{heuristic_id}`, `GET /api/laws/match`, `GET /api/laws/compliance/{project_id}`, `GET /api/laws/compliance/{project_id}/radar`, `GET /api/laws/{law_id}`
 - **llm_servers**: `GET /api/llm-servers`, `POST /api/llm-servers`, `POST /api/llm-servers/{server_id}/health-check`, `PATCH /api/llm-servers/{server_id}`, `DELETE /api/llm-servers/{server_id}`, `POST /api/llm-servers/discover`
 - **loops**: `GET /api/loops/overview`, `GET /api/loops/agents`, `GET /api/loops/agents/{agent_id}/config`, `PATCH /api/loops/agents/{agent_id}/config`, `POST /api/loops/agents/{agent_id}/pause`, `POST /api/loops/agents/{agent_id}/resume`, `GET /api/loops/executions`, `GET /api/loops/executions/stats`, `GET /api/loops/health`, `POST /api/loops/custom`
@@ -100,12 +106,14 @@ Generated from the repository on version `2026.04.27`. This document is meant to
 - **meta_hyperagent**: `GET /api/meta-hyperagent/status`, `GET /api/meta-hyperagent/proposals`, `POST /api/meta-hyperagent/proposals/{proposal_id}/approve`, `POST /api/meta-hyperagent/proposals/{proposal_id}/reject`, `GET /api/meta-hyperagent/variants`, `POST /api/meta-hyperagent/variants/{variant_id}/revert`, `POST /api/meta-hyperagent/variants/{variant_id}/confirm`, `GET /api/meta-hyperagent/observations`, `POST /api/meta-hyperagent/toggle`
 - **metrics**: `GET /api/metrics/{project_id}`, `GET /api/metrics/{project_id}/validation`, `GET /api/metrics/{project_id}/model-intelligence`
 - **notifications**: `GET /api/notifications`, `GET /api/notifications/unread-count`, `POST /api/notifications/{notification_id}/read`, `POST /api/notifications/read-all`, `DELETE /api/notifications/{notification_id}`, `GET /api/notifications/preferences`, `PUT /api/notifications/preferences`
+- **permission_requests**: `POST /api/permission-requests`, `GET /api/permission-requests`, `PATCH /api/permission-requests/{request_id}`
 - **presentation**: `GET /api/presentation/reports/{report_id}/slide-instructions`
 - **projects**: `GET /api/projects`, `POST /api/projects`, `GET /api/projects/{project_id}`, `PATCH /api/projects/{project_id}`, `POST /api/projects/{project_id}/pause`, `POST /api/projects/{project_id}/resume`, `POST /api/projects/{project_id}/link-folder`, `POST /api/projects/{project_id}/unlink-folder`, `DELETE /api/projects/{project_id}`, `GET /api/projects/{project_id}/versions`, `POST /api/projects/{project_id}/export`, `GET /api/projects/{project_id}/members`, `POST /api/projects/{project_id}/members`, `DELETE /api/projects/{project_id}/members/{user_id}`, `PATCH /api/projects/{project_id}/members/{user_id}`
+- **reasoning_bank**: `GET /api/reasoning-bank/memories`, `POST /api/reasoning-bank/memories`, `POST /api/reasoning-bank/retrieve`, `POST /api/reasoning-bank/consolidate`, `GET /api/reasoning-bank/summary`
 - **reports**: `GET /api/reports/{project_id}`
 - **scheduler**: `POST /api/schedules`, `GET /api/schedules`, `GET /api/schedules/{schedule_id}`, `PATCH /api/schedules/{schedule_id}`, `DELETE /api/schedules/{schedule_id}`
 - **sessions**: `GET /api/sessions/{project_id}`, `POST /api/sessions`, `GET /api/sessions/detail/{session_id}`, `PATCH /api/sessions/{session_id}`, `DELETE /api/sessions/{session_id}`, `POST /api/sessions/{session_id}/star`, `GET /api/inference-presets`, `GET /api/sessions/{project_id}/ensure-default`
-- **settings**: `GET /api/settings/hardware`, `GET /api/settings/models`, `POST /api/settings/model`, `POST /api/settings/provider`, `POST /api/settings/maintenance/pause`, `POST /api/settings/maintenance/resume`, `GET /api/settings/maintenance`, `GET /api/settings/integrations-status`, `GET /api/settings/vector-health`, `GET /api/settings/data-integrity`, `POST /api/settings/export-database`, `POST /api/settings/import-database`, `GET /api/settings/status`, `GET /api/settings/telemetry/status`, `POST /api/settings/telemetry/export`, `POST /api/settings/telemetry/toggle`, `GET /api/settings/telemetry/healing`, `POST /api/settings/team-mode`
+- **settings**: `GET /api/settings/hardware`, `GET /api/settings/models`, `POST /api/settings/model`, `POST /api/settings/provider`, `POST /api/settings/maintenance/pause`, `POST /api/settings/maintenance/resume`, `GET /api/settings/maintenance`, `POST /api/settings/strict-routing`, `GET /api/settings/integrations-status`, `GET /api/settings/vector-health`, `GET /api/settings/data-integrity`, `POST /api/settings/data-integrity/quarantine`, `POST /api/settings/export-database`, `POST /api/settings/import-database`, `GET /api/settings/status`, `GET /api/settings/telemetry/status`, `POST /api/settings/telemetry/export`, `POST /api/settings/telemetry/toggle`, `GET /api/settings/telemetry/healing`, `POST /api/settings/team-mode`
 - **skills**: `GET /api/skills`, `GET /api/skills/health/all`, `GET /api/skills/proposals/pending`, `GET /api/skills/proposals/all`, `GET /api/skills/creation-proposals/pending`, `GET /api/skills/creation-proposals/all`, `POST /api/skills/creation-proposals/{proposal_id}/approve`, `POST /api/skills/creation-proposals/{proposal_id}/verify`, `POST /api/skills/creation-proposals/{proposal_id}/reject`, `GET /api/skills/{name}`, `POST /api/skills`, `PATCH /api/skills/{name}`, `DELETE /api/skills/{name}`, `POST /api/skills/{name}/toggle`, `GET /api/skills/{name}/health`, `POST /api/skills/proposals/{proposal_id}/approve`, `POST /api/skills/proposals/{proposal_id}/reject`, `POST /api/skills/{name}/execute`, `POST /api/skills/{name}/plan`
 - **steering**: `POST /api/steering/{agent_id}`, `POST /api/steering/{agent_id}/follow-up`, `POST /api/steering/{agent_id}/abort`, `GET /api/steering/{agent_id}/status`, `GET /api/steering/{agent_id}/queues`, `DELETE /api/steering/{agent_id}/queues`, `GET /api/steering/{agent_id}/idle`, `GET /api/steering`
 - **surveys**: `GET /api/surveys/integrations`, `POST /api/surveys/integrations`, `DELETE /api/surveys/integrations/{integration_id}`, `GET /api/surveys/integrations/{integration_id}/surveys`, `POST /api/surveys/integrations/{integration_id}/create`, `POST /api/surveys/links`, `GET /api/surveys/links`, `POST /api/surveys/links/{link_id}/sync`, `GET /api/surveys/links/{link_id}/responses`
@@ -121,6 +129,7 @@ Generated from the repository on version `2026.04.27`. This document is meant to
 | `Agent` | `agents` | yes | `backend/app/models/agent.py` |
 | `A2AMessage` | `a2a_messages` | yes | `backend/app/models/agent.py` |
 | `AgentLoopConfig` | `agent_loop_configs` | yes | `backend/app/models/agent_loop_config.py` |
+| `AuthSession` | `auth_sessions` | no | `backend/app/models/auth_session.py` |
 | `AutoresearchExperiment` | `autoresearch_experiments` | yes | `backend/app/models/autoresearch_experiment.py` |
 | `BackupRecord` | `backup_records` | yes | `backend/app/models/backup.py` |
 | `ChannelConversation` | `channel_conversations` | yes | `backend/app/models/channel_conversation.py` |
@@ -135,11 +144,13 @@ Generated from the repository on version `2026.04.27`. This document is meant to
 | `DesignScreen` | `design_screens` | yes | `backend/app/models/design_screen.py` |
 | `DesignBrief` | `design_briefs` | yes | `backend/app/models/design_screen.py` |
 | `DesignDecision` | `design_decisions` | yes | `backend/app/models/design_screen.py` |
+| `DGMHArchiveVariant` | `dgmh_archive_variants` | yes | `backend/app/models/dgmh_archive.py` |
 | `Document` | `documents` | yes | `backend/app/models/document.py` |
 | `Nugget` | `nuggets` | no | `backend/app/models/finding.py` |
 | `Fact` | `facts` | no | `backend/app/models/finding.py` |
 | `Insight` | `insights` | no | `backend/app/models/finding.py` |
 | `Recommendation` | `recommendations` | no | `backend/app/models/finding.py` |
+| `ImprovementProposal` | `improvement_proposals` | yes | `backend/app/models/improvement_governance.py` |
 | `LLMServer` | `llm_servers` | no | `backend/app/models/llm_server.py` |
 | `LoopExecution` | `loop_executions` | yes | `backend/app/models/loop_execution.py` |
 | `MCPAccessPolicy` | `mcp_access_policies` | yes | `backend/app/models/mcp_access_policy.py` |
@@ -150,9 +161,12 @@ Generated from the repository on version `2026.04.27`. This document is meant to
 | `ModelSkillStats` | `model_skill_stats` | yes | `backend/app/models/model_skill_stats.py` |
 | `Notification` | `notifications` | yes | `backend/app/models/notification.py` |
 | `NotificationPreference` | `notification_preferences` | yes | `backend/app/models/notification.py` |
+| `PermissionRequest` | `permission_requests` | yes | `backend/app/models/permission_request.py` |
 | `Project` | `projects` | no | `backend/app/models/project.py` |
 | `ProjectMember` | `project_members` | yes | `backend/app/models/project_member.py` |
 | `ProjectReport` | `project_reports` | yes | `backend/app/models/project_report.py` |
+| `ReasoningMemoryItem` | `reasoning_memory_items` | yes | `backend/app/models/reasoning_memory.py` |
+| `RecoveryCode` | `recovery_codes` | no | `backend/app/models/recovery_code.py` |
 | `ResearchDeployment` | `research_deployments` | yes | `backend/app/models/research_deployment.py` |
 | `ChatSession` | `chat_sessions` | yes | `backend/app/models/session.py` |
 | `SurveyIntegration` | `survey_integrations` | yes | `backend/app/models/survey_integration.py` |
@@ -161,6 +175,7 @@ Generated from the repository on version `2026.04.27`. This document is meant to
 | `TaskReviewEvent` | `task_review_events` | yes | `backend/app/models/task_review.py` |
 | `TelemetrySpan` | `telemetry_spans` | no | `backend/app/models/telemetry_span.py` |
 | `User` | `users` | no | `backend/app/models/user.py` |
+| `WebAuthnChallenge` | `webauthn_challenges` | no | `backend/app/models/webauthn_challenge.py` |
 | `WebAuthnCredential` | `webauthn_credentials` | no | `backend/app/models/webauthn_credential.py` |
 
 ## Frontend View and Navigation Inventory
@@ -243,7 +258,7 @@ Generated from the repository on version `2026.04.27`. This document is meant to
 - **Layer: Benchmarks**: `test_orchestration.py`
 - **Layer: Integration**: `test_llm_orchestration_real.py`
 - **Layer: Simulation**: `run.mjs`
-- **Test Journeys**: `test_agent_personas.py`, `test_agents.py`, `test_auth_security.py`, `test_autoresearch.py`, `test_backup.py`, `test_browser_skills.py`, `test_business_logic.py`, `test_channel_resilience.py`, `test_channels.py`, `test_chat.py`, `test_client_identity.py`, `test_code_applications.py`, `test_codebook_versions.py`, `test_codebooks.py`, `test_compute.py`, `test_connections.py`, `test_content_guard.py`, `test_context_dag.py`, `test_data_transformations.py`, `test_document_preview_paths.py`, `test_documents.py`, `test_error_handling.py`, `test_evaluation_skill.py`, `test_field_encryption.py`, `test_files.py`, `test_findings.py`, `test_integration.py`, `test_integration_agent_work_cycle.py`, `test_integration_chat_flow.py`, `test_integration_interview.py`, `test_interfaces.py`, `test_laws.py`, `test_llm_servers.py`, `test_loops.py`, `test_mcp.py`, `test_memory.py`, `test_meta_hyperagent.py`, `test_network_discovery.py`, `test_network_security.py`, `test_notifications.py`, `test_participant_simulation.py`, `test_project_rbac.py`, `test_projects.py`, `test_proxy_security.py`, `test_rate_limiter.py`, `test_research_integrity.py`, `test_runtime_source_boundary.py`, `test_self_healing_rules.py`, `test_sessions.py`, `test_settings.py`, `test_skill_definitions.py`, `test_skills.py`, `test_steering.py`, `test_surveys.py`, `test_tasks.py`, `test_telemetry.py`, `test_telemetry_export.py`, `test_transcription.py`, `test_transport_headers.py`, `test_version_comparison.py`, `test_webauthn.py`, `test_websocket.py`, `e2e_test.py`
+- **Test Journeys**: `test_adaptive_validation.py`, `test_agent_avatar_security.py`, `test_agent_personas.py`, `test_agentic_eval_contract.py`, `test_agents.py`, `test_auth_security.py`, `test_autoresearch.py`, `test_backup.py`, `test_browser_skills.py`, `test_business_logic.py`, `test_channel_file_security.py`, `test_channel_inbound.py`, `test_channel_resilience.py`, `test_channels.py`, `test_chat.py`, `test_client_identity.py`, `test_code_applications.py`, `test_codebook_versions.py`, `test_codebooks.py`, `test_compute.py`, `test_compute_registry_hardening.py`, `test_compute_registry_model_loading.py`, `test_compute_vision_routing.py`, `test_connections.py`, `test_content_guard.py`, `test_context_dag.py`, `test_data_transformations.py`, `test_database_schema_bootstrap.py`, `test_dgmh_archive.py`, `test_document_preview_paths.py`, `test_documents.py`, `test_error_handling.py`, `test_evaluation_skill.py`, `test_field_encryption.py`, `test_file_watcher_config.py`, `test_files.py`, `test_findings.py`, `test_harness_config.py`, `test_improvement_governance.py`, `test_integration.py`, `test_integration_agent_work_cycle.py`, `test_integration_chat_flow.py`, `test_integration_interview.py`, `test_interfaces.py`, `test_istara_eval_runner.py`, `test_laws.py`, `test_llm_fallback_config.py`, `test_llm_output.py`, `test_llm_servers.py`, `test_loops.py`, `test_mcp.py`, `test_memory.py`, `test_meta_hyperagent.py`, `test_metrics.py`, `test_model_provider_contract.py`, `test_network_discovery.py`, `test_network_security.py`, `test_notifications.py`, `test_participant_simulation.py`, `test_project_rbac.py`, `test_projects.py`, `test_property_contracts.py`, `test_proxy_security.py`, `test_rag_resilience.py`, `test_rate_limiter.py`, `test_reasoning_bank.py`, `test_reports.py`, `test_research_integrity.py`, `test_runtime_source_boundary.py`, `test_security_benchmark.py`, `test_self_healing_rules.py`, `test_sessions.py`, `test_settings.py`, `test_skill_definitions.py`, `test_skill_factory.py`, `test_skills.py`, `test_steering.py`, `test_surveys.py`, `test_tasks.py`, `test_telemetry.py`, `test_telemetry_export.py`, `test_transcription.py`, `test_transport_headers.py`, `test_updates_security.py`, `test_version_comparison.py`, `test_webauthn.py`, `test_webhooks_security.py`, `test_websocket.py`, `e2e_test.py`
 
 ## What Agents Must Check Before Editing
 

@@ -32,6 +32,7 @@ from app.core.agent_identity import load_agent_identity, get_agent_display_name
 from app.core.content_guard import ContentGuard
 from app.core.prompt_rag import compose_dynamic_prompt, compose_keyword_prompt
 from app.core.context_summarizer import context_summarizer
+from app.core.llm_thinking import ThinkingMode, apply_thinking_control, normalize_thinking_mode
 from app.core.ollama import ollama
 from app.core.permissions import get_subject, get_visible_project_or_404, require_project_access
 from app.core.rag import build_augmented_prompt, retrieve_context
@@ -345,6 +346,7 @@ class ChatRequest(BaseModel):
     session_id: str | None = None
     include_history: bool = True
     max_history: int = Field(default=20, ge=0, le=200)
+    thinking_mode: ThinkingMode | None = None
 
     @field_validator("message")
     @classmethod
@@ -429,6 +431,7 @@ async def chat(request: ChatRequest, http_request: Request, db: AsyncSession = D
     llm_temperature = 0.7
     llm_max_tokens: int | None = None
     llm_model: str | None = None
+    llm_thinking_mode = normalize_thinking_mode(request.thinking_mode)
     session_agent_id: str | None = None
     agent_identity_prompt: str = ""
 
@@ -452,6 +455,8 @@ async def chat(request: ChatRequest, http_request: Request, db: AsyncSession = D
 
         if session.model_override:
             llm_model = session.model_override
+        if request.thinking_mode is None:
+            llm_thinking_mode = normalize_thinking_mode(getattr(session, "thinking_mode", None))
 
         # Load agent identity for this session
         # Use Prompt RAG for query-aware identity (retrieves relevant
@@ -620,6 +625,7 @@ async def chat(request: ChatRequest, http_request: Request, db: AsyncSession = D
     # client doesn't receive a separate `system=` param that would create
     # duplicate system messages (root cause of LM Studio 400 errors).
     messages = [{"role": "system", "content": system_prompt}, *messages]
+    messages = apply_thinking_control(messages, llm_thinking_mode)
 
     async def generate():
         """Stream the LLM response with native tool-calling loop.

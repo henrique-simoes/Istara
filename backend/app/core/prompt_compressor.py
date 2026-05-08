@@ -34,6 +34,8 @@ from app.core.context_policy import get_protected_blocks, PROTECTED_TAGS
 
 logger = logging.getLogger(__name__)
 
+PROTECTED_PLACEHOLDER_RE = re.compile(r"\[\[PROTECTED_[0-9a-f]{8}\]\]")
+
 
 # ---------------------------------------------------------------------------
 # Protection logic — swaps tags for UUIDs to bypass heuristic pruning
@@ -388,6 +390,9 @@ def _sentence_importance(sentence: str, position: float) -> float:
     words = sentence.split()
     if not words:
         return 0.0
+
+    if PROTECTED_PLACEHOLDER_RE.search(sentence):
+        return 1.0
 
     # Average word importance
     avg_word_imp = sum(_word_importance(w) for w in words) / len(words)

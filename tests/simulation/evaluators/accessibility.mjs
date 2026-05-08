@@ -28,13 +28,13 @@ export async function evaluate(ctx) {
 
   const allViolations = [];
 
-  await page.goto("http://localhost:3000", { waitUntil: "networkidle" });
+  await page.goto(ctx.frontendUrl || "http://localhost:3000", { waitUntil: "domcontentloaded" });
   await page.waitForTimeout(2000);
 
   for (const view of views) {
     const navBtn = page.locator(view.nav).first();
     if (await navBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
-      await navBtn.click();
+      await navBtn.click({ timeout: 2000 });
       await page.waitForTimeout(1500);
     }
 

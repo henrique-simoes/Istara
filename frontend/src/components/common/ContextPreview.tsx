@@ -1,9 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Eye, EyeOff, Loader2, Brain, ChevronDown, ChevronRight } from "lucide-react";
+import { useEffect, useState, useCallback } from "react";
+import { Eye, EyeOff, Loader2, Brain } from "lucide-react";
 import { useProjectStore } from "@/stores/projectStore";
-import { cn } from "@/lib/utils";
 
 import { API_BASE } from "@/lib/runtimeConfig";
 
@@ -18,7 +17,7 @@ export default function ContextPreview() {
   const [expanded, setExpanded] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchComposed = async () => {
+  const fetchComposed = useCallback(async () => {
     if (!activeProjectId) return;
     setLoading(true);
     setError(null);
@@ -34,13 +33,13 @@ export default function ContextPreview() {
       setError(e.message);
     }
     setLoading(false);
-  };
+  }, [activeProjectId]);
 
   useEffect(() => {
     if (expanded && activeProjectId) {
       fetchComposed();
     }
-  }, [expanded, activeProjectId]);
+  }, [expanded, activeProjectId, fetchComposed]);
 
   return (
     <div className="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">

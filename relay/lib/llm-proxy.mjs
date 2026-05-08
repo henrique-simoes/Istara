@@ -5,6 +5,39 @@
 
 export const ANTHROPIC_VERSION = "2023-06-01";
 export const ANTHROPIC_PROVIDERS = new Set(["anthropic", "anthropic_compat"]);
+const THINK_OPEN = "<think>";
+const THINK_CLOSE = "</think>";
+const GEMMA_THOUGHT_OPEN = "<|channel>thought";
+const GEMMA_THOUGHT_CLOSE = "<channel|>";
+const THINKING_BLOCKS = [
+  [THINK_OPEN, THINK_CLOSE],
+  [GEMMA_THOUGHT_OPEN, GEMMA_THOUGHT_CLOSE],
+];
+const VISIBLE_CONTROL_TOKENS = [
+  "<|think|>",
+  "<turn|>",
+  "<end_of_turn>",
+  "<bos>",
+  "<eos>",
+];
+const NON_VISIBLE_CONTENT_TYPES = new Set([
+  "thinking",
+  "redacted_thinking",
+  "reasoning",
+  "reasoning_content",
+  "thought",
+  "thought_signature",
+]);
+const NON_VISIBLE_MESSAGE_KEYS = new Set([
+  ...NON_VISIBLE_CONTENT_TYPES,
+  "thoughtSignature",
+]);
+const THINKING_MODES = new Set(["server_default", "off", "auto", "on"]);
+const THINKING_DIRECTIVES = {
+  off: "Istara thinking mode is OFF. Answer directly. Do not emit chain-of-thought, hidden reasoning, scratchpads, <think> blocks, or thought-channel markup. Return only the final user-visible answer.",
+  auto: "Istara thinking mode is AUTO. Follow the model/server default for any private reasoning, but never reveal raw reasoning, scratchpads, <think> blocks, or thought-channel markup. Return only the final answer.",
+  on: "Istara thinking mode is ON. Use private reasoning internally if this model/server supports it, but never reveal raw reasoning, scratchpads, <think> blocks, or thought-channel markup. Return only the final answer.",
+};
 const PROVIDER_ALIASES = new Map([
   ["openai", "openai_compat"],
   ["openai-compatible", "openai_compat"],
@@ -17,6 +50,103 @@ const PROVIDER_ALIASES = new Map([
   ["anthropic-compatible", "anthropic_compat"],
   ["anthropic_compatible", "anthropic_compat"],
 ]);
+
+export function stripThinkingBlocks(text = "") {
+  if (!text) return text || "";
+  if (!THINKING_BLOCKS.some(([open]) => text.includes(open))) {
+    return stripVisibleControlTokens(text);
+  }
+
+  let output = "";
+  let index = 0;
+  while (index < text.length) {
+    const found = firstThinkingOpen(text, index);
+    if (!found) {
+      output += text.slice(index);
+      break;
+    }
+    const { start, open, close } = found;
+    output += text.slice(index, start);
+    const end = text.indexOf(close, start + open.length);
+    if (end === -1) break;
+    index = end + close.length;
+    while (index < text.length && /\s/.test(text[index])) index += 1;
+  }
+  return stripVisibleControlTokens(output);
+}
+
+function firstThinkingOpen(text, index) {
+  let found = null;
+  for (const [open, close] of THINKING_BLOCKS) {
+    const start = text.indexOf(open, index);
+    if (start === -1) continue;
+    if (!found || start < found.start) found = { start, open, close };
+  }
+  return found;
+}
+
+function stripVisibleControlTokens(text = "") {
+  let output = text;
+  for (const token of VISIBLE_CONTROL_TOKENS) {
+    output = output.replaceAll(token, "");
+  }
+  return output;
+}
+
+function visibleContentFromMessage(message = {}) {
+  const content = message?.content;
+  if (typeof content === "string") return stripThinkingBlocks(content).trim();
+  if (!Array.isArray(content)) return content == null ? "" : stripThinkingBlocks(String(content)).trim();
+
+  const visible = [];
+  for (const block of content) {
+    if (!block || typeof block !== "object") {
+      visible.push(String(block));
+      continue;
+    }
+    const type = String(block.type || "").toLowerCase();
+    if (NON_VISIBLE_CONTENT_TYPES.has(type)) continue;
+    if (block.thought === true || block.thinking === true) continue;
+    if (["text", "output_text", "input_text", ""].includes(type)) {
+      const text = block.text ?? block.content ?? "";
+      if (text) visible.push(String(text));
+    }
+  }
+  return stripThinkingBlocks(visible.join("")).trim();
+}
+
+function visibleMessageFromMessage(message = {}) {
+  const normalized = { ...(message || {}) };
+  normalized.role = normalized.role || "assistant";
+  normalized.content = visibleContentFromMessage(message);
+  for (const key of NON_VISIBLE_MESSAGE_KEYS) {
+    delete normalized[key];
+  }
+  return normalized;
+}
+
+export function normalizeThinkingMode(value) {
+  const mode = String(value || "server_default").trim().toLowerCase().replaceAll("-", "_");
+  return THINKING_MODES.has(mode) ? mode : "server_default";
+}
+
+export function applyThinkingControl(messages = [], thinkingMode = "server_default") {
+  const mode = normalizeThinkingMode(thinkingMode);
+  const directive = THINKING_DIRECTIVES[mode];
+  const controlled = (messages || []).map((message) => ({ ...(message || {}) }));
+  if (!directive) return controlled;
+  if (controlled.some((message) => (
+    message.role === "system" && String(message.content || "").includes("Istara thinking mode is ")
+  ))) {
+    return controlled;
+  }
+  if (controlled[0]?.role === "system") {
+    controlled[0].content = `${controlled[0].content || ""}\n\n${directive}`;
+  } else {
+    controlled.unshift({ role: "system", content: directive });
+  }
+  return controlled;
+}
 
 export function normalizeProviderType(providerType) {
   const requested = (providerType || "").trim().toLowerCase();
@@ -449,7 +579,7 @@ export class LLMProxy {
         });
       }
     }
-    const result = { message: { role: "assistant", content: text.join("") } };
+    const result = { message: { role: "assistant", content: stripThinkingBlocks(text.join("")).trim() } };
     if (toolCalls.length) {
       result.message.tool_calls = toolCalls;
       result.finish_reason = "tool_calls";
@@ -527,7 +657,8 @@ export class LLMProxy {
   }
 
   async handleRequest(msg) {
-    const { messages, model, temperature, max_tokens, tools } = msg;
+    const { model, temperature, max_tokens, tools, response_format } = msg;
+    const messages = applyThinkingControl(msg.messages || [], msg.thinking_mode);
 
     if (this.providerType === "ollama") {
       const payload = {
@@ -537,6 +668,8 @@ export class LLMProxy {
         options: { temperature: temperature || 0.7 },
       };
       if (max_tokens) payload.options.num_predict = max_tokens;
+      if (tools) payload.tools = tools;
+      if (response_format) payload.format = response_format.json_schema || response_format;
 
       const res = await fetch(`${this.host}/api/chat`, {
         method: "POST",
@@ -544,7 +677,11 @@ export class LLMProxy {
         body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error(await res.text());
-      return await res.json();
+      const data = await res.json();
+      if (data?.message) {
+        data.message = visibleMessageFromMessage(data.message);
+      }
+      return data;
     } else {
       // OpenAI-compatible (LM Studio, Gemini, and compatible local servers)
       if (ANTHROPIC_PROVIDERS.has(this.providerType)) {
@@ -569,6 +706,8 @@ export class LLMProxy {
         stream: false,
       };
       if (max_tokens) payload.max_tokens = max_tokens;
+      if (tools) payload.tools = tools;
+      if (response_format) payload.response_format = response_format;
 
       const res = await fetch(this._openAIUrl("chat/completions"), {
         method: "POST",
@@ -578,8 +717,18 @@ export class LLMProxy {
       if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
       // Normalize to Ollama format
-      const content = data.choices?.[0]?.message?.content || "";
-      return { message: { role: "assistant", content } };
+      const message = data.choices?.[0]?.message || {};
+      const result = {
+        message: {
+          role: "assistant",
+          content: visibleContentFromMessage(message),
+        },
+      };
+      if (message.tool_calls?.length) {
+        result.message.tool_calls = message.tool_calls;
+        result.finish_reason = data.choices?.[0]?.finish_reason || "tool_calls";
+      }
+      return result;
     }
   }
 
@@ -613,13 +762,18 @@ export class LLMProxy {
     return Array.isArray(input) ? embeddings : embeddings[0] || [];
   }
 
-  async loadModel(model) {
+  async loadModel(model, { contextLength, allowUnload = false } = {}) {
     if (!model) throw new Error("No model provided to load");
     if (this.providerType === "lmstudio") {
+      const payload = { model, echo_load_config: true };
+      if (contextLength) {
+        if (allowUnload) await this.unloadLoadedLMStudioInstances();
+        payload.context_length = contextLength;
+      }
       const res = await fetch(this._nativeLMStudioUrl("models/load"), {
         method: "POST",
         headers: this._headers(),
-        body: JSON.stringify({ model, echo_load_config: true }),
+        body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error(await res.text());
       await res.json();
@@ -631,6 +785,35 @@ export class LLMProxy {
       throw new Error(`Model ${model} is not available on this ${this.providerType} server`);
     }
     return { models: probe.models, model_capabilities: probe.modelCapabilities };
+  }
+
+  async unloadLoadedLMStudioInstances() {
+    let data;
+    try {
+      const res = await fetch(this._nativeLMStudioUrl("models"), {
+        method: "GET",
+        headers: this._headers(),
+      });
+      if (!res.ok) return;
+      data = await res.json();
+    } catch {
+      return;
+    }
+
+    const models = data?.models || data?.data || [];
+    const unloaded = new Set();
+    for (const model of models) {
+      for (const instance of model?.loaded_instances || []) {
+        const instanceId = instance?.id || instance?.instance_id;
+        if (!instanceId || unloaded.has(instanceId)) continue;
+        const res = await fetch(this._nativeLMStudioUrl("models/unload"), {
+          method: "POST",
+          headers: this._headers(),
+          body: JSON.stringify({ instance_id: instanceId }),
+        });
+        if (res.ok) unloaded.add(instanceId);
+      }
+    }
   }
 }
 

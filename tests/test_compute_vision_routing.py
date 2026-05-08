@@ -138,7 +138,7 @@ async def test_list_models_includes_capability_metadata_for_relay_nodes():
     node = ComputeNode(
         node_id="relay",
         name="Relay",
-        host="http://10.0.10.142:1234",
+        host="http://192.0.2.142:1234",
         source="relay",
         provider_type="lmstudio",
         is_healthy=True,

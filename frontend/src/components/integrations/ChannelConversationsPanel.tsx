@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { RefreshCw, User, Clock, MessageSquare } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { RefreshCw, User } from "lucide-react";
 import { channels as channelsApi } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import type { ChannelConversation } from "@/lib/types";
@@ -22,7 +22,7 @@ export default function ChannelConversationsPanel({ channelId }: ChannelConversa
   const [loading, setLoading] = useState(true);
   const [stateFilter, setStateFilter] = useState<string | null>(null);
 
-  const fetchConversations = async () => {
+  const fetchConversations = useCallback(async () => {
     setLoading(true);
     try {
       const data = await channelsApi.conversations(channelId);
@@ -32,11 +32,11 @@ export default function ChannelConversationsPanel({ channelId }: ChannelConversa
     } finally {
       setLoading(false);
     }
-  };
+  }, [channelId]);
 
   useEffect(() => {
     fetchConversations();
-  }, [channelId]);
+  }, [fetchConversations]);
 
   const filtered = stateFilter
     ? conversations.filter((c) => c.state === stateFilter)

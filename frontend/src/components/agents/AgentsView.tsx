@@ -11,16 +11,11 @@ import {
   Upload,
   ChevronRight,
   ChevronDown,
-  Settings,
   MessageSquare,
   Brain,
-  Activity,
-  Shield,
   AlertTriangle,
   CheckCircle2,
   XCircle,
-  Cpu,
-  HardDrive,
   ArrowRight,
   RefreshCw,
   Database,
@@ -30,388 +25,16 @@ import {
   RotateCcw,
 } from "lucide-react";
 import { useAgentStore } from "@/stores/agentStore";
-import { agents as agentsApi, memory as memoryApi, steering as steeringApi } from "@/lib/api";
+import { agents as agentsApi, memory as memoryApi } from "@/lib/api";
 import { useProjectStore } from "@/stores/projectStore";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import SteeringInput from "@/components/common/SteeringInput";
 import { cn } from "@/lib/utils";
 import ViewOnboarding from "@/components/common/ViewOnboarding";
-import type {
-  Agent,
-  AgentCapability,
-  AgentRole,
-  HeartbeatStatus,
-} from "@/lib/types";
-
-const ROLE_LABELS: Record<AgentRole, string> = {
-  task_executor: "Task Executor",
-  devops_audit: "DevOps Audit",
-  ui_audit: "UI Audit",
-  ux_evaluation: "UX Evaluation",
-  user_simulation: "User Simulation",
-  design_lead: "Design Lead",
-  custom: "Custom",
-};
-
-const ROLE_COLORS: Record<AgentRole, string> = {
-  task_executor: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
-  devops_audit: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
-  ui_audit: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400",
-  ux_evaluation: "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400",
-  user_simulation: "bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-400",
-  design_lead: "bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400",
-  custom: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
-};
-
-const ALL_CAPABILITIES: { id: AgentCapability; label: string; description: string }[] = [
-  { id: "chat", label: "Chat", description: "Participate in conversations" },
-  { id: "skill_execution", label: "Run Skills", description: "Execute UX research skills" },
-  { id: "task_creation", label: "Create Tasks", description: "Add tasks to Kanban board" },
-  { id: "findings_write", label: "Write Findings", description: "Create nuggets, facts, insights" },
-  { id: "rag_retrieval", label: "RAG Search", description: "Search uploaded documents" },
-  { id: "a2a_messaging", label: "A2A Messaging", description: "Communicate with other agents" },
-  { id: "file_upload", label: "File Upload", description: "Upload and process files" },
-  { id: "web_search", label: "Web Search", description: "Search the web for information" },
-];
-
-const STATE_COLORS: Record<string, string> = {
-  idle: "text-slate-500",
-  working: "text-blue-500",
-  paused: "text-yellow-500",
-  error: "text-red-500",
-  stopped: "text-slate-400",
-};
-
-function HeartbeatDot({ status, isActive, size = "sm" }: { status: HeartbeatStatus; isActive?: boolean; size?: "sm" | "md" }) {
-  const sizeClass = size === "md" ? "w-3 h-3" : "w-2 h-2";
-  const colors: Record<string, string> = {
-    healthy: "bg-green-500",
-    degraded: "bg-yellow-500",
-    error: "bg-red-500",
-    stopped: "bg-slate-400",
-  };
-
-  // Active agents with "stopped" heartbeat (no heartbeat sent yet) should show green
-  const effectiveStatus = (isActive && (status === "stopped" || !colors[status])) ? "healthy" : (colors[status] ? status : "stopped");
-  const color = colors[effectiveStatus] || "bg-green-500";
-
-  return (
-    <span className="relative inline-flex">
-      <span className={cn("rounded-full", sizeClass, color)} />
-      {(effectiveStatus === "healthy") && (
-        <span className={cn("absolute rounded-full animate-ping opacity-75", sizeClass, color)} />
-      )}
-    </span>
-  );
-}
-
-function AgentAvatar({ agent, size = "md" }: { agent: Agent; size?: "sm" | "md" | "lg" }) {
-  const sizeClasses = { sm: "w-8 h-8 text-xs", md: "w-10 h-10 text-sm", lg: "w-14 h-14 text-lg" };
-  const initial = agent.name.charAt(0).toUpperCase();
-  const bgColors = [
-    "bg-blue-500", "bg-green-500", "bg-purple-500", "bg-orange-500",
-    "bg-pink-500", "bg-cyan-500", "bg-indigo-500", "bg-teal-500",
-  ];
-  const colorIdx = agent.name.charCodeAt(0) % bgColors.length;
-
-  if (agent.avatar_path) {
-    return (
-      <img
-        src={agentsApi.avatarUrl(agent.id)}
-        alt={agent.name}
-        className={cn("rounded-full object-cover", sizeClasses[size])}
-      />
-    );
-  }
-
-  return (
-    <div
-      className={cn(
-        "rounded-full flex items-center justify-center text-white font-semibold",
-        sizeClasses[size],
-        bgColors[colorIdx]
-      )}
-    >
-      {initial}
-    </div>
-  );
-}
-
-// ─── Wizard ───
-
-function CreateAgentWizard({ onDone }: { onDone: () => void }) {
-  const { createAgent, fetchCapacity, capacity } = useAgentStore();
-  const [step, setStep] = useState(0);
-  const [name, setName] = useState("");
-  const [role, setRole] = useState<AgentRole>("custom");
-  const [prompt, setPrompt] = useState("");
-  const [capabilities, setCapabilities] = useState<AgentCapability[]>([
-    "skill_execution", "task_creation", "findings_write", "chat", "rag_retrieval", "a2a_messaging",
-  ]);
-  const [heartbeatInterval, setHeartbeatInterval] = useState(60);
-  const [creating, setCreating] = useState(false);
-
-  useEffect(() => {
-    if (step === 3) fetchCapacity();
-  }, [step, fetchCapacity]);
-
-  const toggleCapability = (cap: AgentCapability) => {
-    setCapabilities((prev) =>
-      prev.includes(cap) ? prev.filter((c) => c !== cap) : [...prev, cap]
-    );
-  };
-
-  const handleCreate = async () => {
-    if (!name.trim()) return;
-    setCreating(true);
-    try {
-      await createAgent({
-        name: name.trim(),
-        role,
-        system_prompt: prompt,
-        capabilities,
-        heartbeat_interval: heartbeatInterval,
-      });
-      onDone();
-    } catch (e: any) {
-      alert(e.message);
-    }
-    setCreating(false);
-  };
-
-  const steps = ["Identity", "Role & Prompt", "Capabilities", "Hardware Check", "Review"];
-
-  return (
-    <div className="space-y-6">
-      {/* Progress */}
-      <div className="flex items-center gap-2">
-        {steps.map((s, i) => (
-          <div key={s} className="flex items-center gap-2">
-            <button
-              onClick={() => i < step && setStep(i)}
-              className={cn(
-                "w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium transition-colors",
-                i === step
-                  ? "bg-istara-600 text-white"
-                  : i < step
-                  ? "bg-istara-100 text-istara-700 dark:bg-istara-900/30 dark:text-istara-400"
-                  : "bg-slate-100 text-slate-400 dark:bg-slate-800"
-              )}
-            >
-              {i + 1}
-            </button>
-            {i < steps.length - 1 && (
-              <div className={cn("w-6 h-0.5", i < step ? "bg-istara-400" : "bg-slate-200 dark:bg-slate-700")} />
-            )}
-          </div>
-        ))}
-      </div>
-      <p className="text-xs text-slate-500">{steps[step]}</p>
-
-      {/* Step 1: Identity */}
-      {step === 0 && (
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Agent Name</label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Research Assistant, Interview Analyst..."
-              className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-istara-500"
-              autoFocus
-            />
-          </div>
-          <p className="text-xs text-slate-400">
-            You can upload an avatar after creation from the agent detail panel.
-          </p>
-        </div>
-      )}
-
-      {/* Step 2: Role & System Prompt */}
-      {step === 1 && (
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Role</label>
-            <select
-              value={role}
-              onChange={(e) => setRole(e.target.value as AgentRole)}
-              className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-istara-500"
-            >
-              {Object.entries(ROLE_LABELS).map(([key, label]) => (
-                <option key={key} value={key}>{label}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">System Prompt</label>
-            <textarea
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              placeholder="Describe what this agent should do, its personality, and any specific instructions..."
-              rows={6}
-              className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-istara-500 resize-none"
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Step 3: Capabilities */}
-      {step === 2 && (
-        <div className="space-y-3">
-          <p className="text-xs text-slate-500">Toggle which capabilities this agent has access to.</p>
-          {ALL_CAPABILITIES.map((cap) => (
-            <label key={cap.id} className="flex items-center justify-between p-3 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer">
-              <div>
-                <p className="text-sm font-medium text-slate-700 dark:text-slate-300">{cap.label}</p>
-                <p className="text-xs text-slate-400">{cap.description}</p>
-              </div>
-              <input
-                type="checkbox"
-                checked={capabilities.includes(cap.id)}
-                onChange={() => toggleCapability(cap.id)}
-                className="w-4 h-4 rounded border-slate-300 text-istara-600 focus:ring-istara-500"
-              />
-            </label>
-          ))}
-          <div className="pt-2">
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-              Heartbeat Interval (seconds)
-            </label>
-            <input
-              type="number"
-              value={heartbeatInterval}
-              onChange={(e) => setHeartbeatInterval(parseInt(e.target.value) || 60)}
-              min={10}
-              max={3600}
-              className="w-32 px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Step 4: Hardware Check */}
-      {step === 3 && (
-        <div className="space-y-4">
-          {capacity ? (
-            <div className={cn(
-              "p-4 rounded-lg border",
-              capacity.can_create
-                ? "border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/20"
-                : "border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-900/20"
-            )}>
-              <div className="flex items-center gap-2 mb-2">
-                {capacity.can_create ? (
-                  <CheckCircle2 size={18} className="text-green-600" />
-                ) : (
-                  <AlertTriangle size={18} className="text-yellow-600" />
-                )}
-                <span className="font-medium text-sm">{capacity.reason}</span>
-              </div>
-              <div className="grid grid-cols-2 gap-3 mt-3">
-                <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
-                  <Users size={14} />
-                  <span>{capacity.current_agents}/{capacity.max_agents} agents</span>
-                </div>
-                <div className="text-xs text-slate-600 dark:text-slate-400">
-                  <div className="flex items-center gap-2 mb-1">
-                    <HardDrive size={14} />
-                    <span>{capacity.ram_available_gb}GB free of {capacity.ram_total_gb}GB RAM</span>
-                  </div>
-                  <div className="w-full h-1.5 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
-                    <div
-                      className={cn("h-full rounded-full transition-all", {
-                        "bg-green-500": capacity.ram_available_gb / capacity.ram_total_gb > 0.3,
-                        "bg-yellow-500": capacity.ram_available_gb / capacity.ram_total_gb <= 0.3 && capacity.ram_available_gb / capacity.ram_total_gb > 0.1,
-                        "bg-red-500": capacity.ram_available_gb / capacity.ram_total_gb <= 0.1,
-                      })}
-                      style={{ width: `${Math.round(((capacity.ram_total_gb - capacity.ram_available_gb) / capacity.ram_total_gb) * 100)}%` }}
-                    />
-                  </div>
-                  <p className="text-[10px] text-slate-400 mt-0.5">
-                    {Math.round(((capacity.ram_total_gb - capacity.ram_available_gb) / capacity.ram_total_gb) * 100)}% used
-                  </p>
-                </div>
-                <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
-                  <Cpu size={14} />
-                  <span>{capacity.cpu_cores} CPU cores</span>
-                </div>
-                <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
-                  <Activity size={14} />
-                  <span>Pressure: {capacity.pressure}</span>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <p className="text-sm text-slate-400">Checking hardware capacity...</p>
-          )}
-          {capacity && !capacity.can_create && (
-            <p className="text-xs text-yellow-600 dark:text-yellow-400">
-              You can still create the agent, but it may not run optimally. Consider pausing unused agents first.
-            </p>
-          )}
-        </div>
-      )}
-
-      {/* Step 5: Review */}
-      {step === 4 && (
-        <div className="space-y-3">
-          <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50 space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="text-slate-500">Name</span>
-              <span className="font-medium text-slate-900 dark:text-white">{name || "—"}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-slate-500">Role</span>
-              <span className={cn("text-xs px-2 py-0.5 rounded-full", ROLE_COLORS[role])}>{ROLE_LABELS[role]}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-slate-500">Capabilities</span>
-              <span className="text-slate-700 dark:text-slate-300">{capabilities.length} enabled</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-slate-500">Heartbeat</span>
-              <span className="text-slate-700 dark:text-slate-300">every {heartbeatInterval}s</span>
-            </div>
-          </div>
-          {prompt && (
-            <div>
-              <p className="text-xs text-slate-500 mb-1">System Prompt</p>
-              <p className="text-xs text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-800/50 p-2 rounded line-clamp-4">{prompt}</p>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Navigation */}
-      <div className="flex justify-between pt-2">
-        <button
-          onClick={() => step > 0 ? setStep(step - 1) : onDone()}
-          className="px-4 py-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
-        >
-          {step === 0 ? "Cancel" : "Back"}
-        </button>
-        {step < 4 ? (
-          <button
-            onClick={() => setStep(step + 1)}
-            disabled={step === 0 && !name.trim()}
-            className="flex items-center gap-1 px-4 py-2 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700 disabled:opacity-50"
-          >
-            Next <ArrowRight size={14} />
-          </button>
-        ) : (
-          <button
-            onClick={handleCreate}
-            disabled={creating || !name.trim()}
-            className="px-4 py-2 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700 disabled:opacity-50"
-          >
-            {creating ? "Creating..." : "Create Agent"}
-          </button>
-        )}
-      </div>
-    </div>
-  );
-}
+import type { Agent } from "@/lib/types";
+import { AgentAvatar, HeartbeatDot } from "./AgentVisuals";
+import { ALL_CAPABILITIES, ROLE_COLORS, ROLE_LABELS, STATE_COLORS } from "./agentViewConfig";
+import CreateAgentWizard from "./CreateAgentWizard";
 
 // ─── Recent Errors ───
 
@@ -724,7 +347,7 @@ function AgentDetail({ agent }: { agent: Agent }) {
                                 }
                                 setIdentitySaving(false);
                               }}
-                              disabled={identitySaving}
+                              disabled={identitySaving || !identityDirty}
                               className="flex items-center gap-1 px-2 py-1 text-xs bg-green-100 text-green-700 rounded hover:bg-green-200 dark:bg-green-900/80 dark:text-green-300"
                             >
                               <Save size={10} /> {identitySaving ? "Saving..." : "Save"}
@@ -907,7 +530,6 @@ export default function AgentsView() {
     updateAgentStatus,
     fetchA2ALog,
     a2aMessages,
-    loading,
   } = useAgentStore();
   const [activeTab, setActiveTab] = useState<"agents" | "a2a" | "proposals" | "create">("agents");
   const [expandedAgent, setExpandedAgent] = useState<string | null>(null);

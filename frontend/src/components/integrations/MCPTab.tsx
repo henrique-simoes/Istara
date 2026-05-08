@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AlertTriangle, Shield, Plug, Plus, Server, RefreshCw, Trash2, Wrench, Activity } from "lucide-react";
+import { AlertTriangle, Shield, Plus, Server, RefreshCw, Trash2, Wrench, Activity } from "lucide-react";
 import { mcp as mcpApi } from "@/lib/api";
 import { useIntegrationsStore } from "@/stores/integrationsStore";
 import { cn } from "@/lib/utils";

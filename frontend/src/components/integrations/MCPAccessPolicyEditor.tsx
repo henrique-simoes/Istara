@@ -13,7 +13,7 @@ const RISK_BADGE: Record<string, { label: string; classes: string }> = {
 };
 
 export default function MCPAccessPolicyEditor() {
-  const [policy, setPolicy] = useState<MCPAccessPolicy | null>(null);
+  const [, setPolicy] = useState<MCPAccessPolicy | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);

@@ -125,3 +125,33 @@ async def test_update_session_rejects_unbounded_custom_settings(auth_headers):
 
     assert create_response.status_code == 201
     assert update_response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_session_thinking_mode_round_trips(auth_headers):
+    await init_db()
+    project = await _seed_project()
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        create_response = await ac.post(
+            "/api/sessions",
+            headers=auth_headers,
+            json={"project_id": project.id, "title": "Thinking", "thinking_mode": "off"},
+        )
+        session_id = create_response.json()["id"]
+        update_response = await ac.patch(
+            f"/api/sessions/{session_id}",
+            headers=auth_headers,
+            json={"thinking_mode": "on"},
+        )
+        invalid_response = await ac.patch(
+            f"/api/sessions/{session_id}",
+            headers=auth_headers,
+            json={"thinking_mode": "show_raw_thoughts"},
+        )
+
+    assert create_response.status_code == 201
+    assert create_response.json()["thinking_mode"] == "off"
+    assert update_response.status_code == 200
+    assert update_response.json()["thinking_mode"] == "on"
+    assert invalid_response.status_code == 422

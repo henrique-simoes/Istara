@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Key, Trash2, RefreshCw, Shield, Fingerprint } from "lucide-react";
 import { useAuthStore } from "@/stores/authStore";
 import ConfirmDialog from "@/components/common/ConfirmDialog";
@@ -24,7 +24,7 @@ export default function PasskeyManager() {
   const [error, setError] = useState("");
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
-  const fetchPasskeys = async () => {
+  const fetchPasskeys = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
@@ -35,11 +35,11 @@ export default function PasskeyManager() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [listPasskeys]);
 
   useEffect(() => {
     fetchPasskeys();
-  }, []);
+  }, [fetchPasskeys]);
 
   const handleRegister = async () => {
     setRegistering(true);

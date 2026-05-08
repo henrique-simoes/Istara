@@ -263,9 +263,11 @@ export async function run(ctx) {
   }
 
   // Test Cmd+K search modal
-  // Click body first to ensure focus is not trapped in a view component
+  // Click the viewport directly first to ensure focus is not trapped in a view component.
+  // `locator("body").click()` can fail actionability checks on pages where the
+  // app root owns the full viewport and the body has no visible box.
   await dismissBlockingOverlay();
-  await page.locator("body").click({ position: { x: 400, y: 300 } });
+  await page.mouse.click(400, 300);
   await page.waitForTimeout(300);
   await page.keyboard.press("Meta+k");
   await page.waitForTimeout(800);

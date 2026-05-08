@@ -179,6 +179,47 @@ async def test_viewer_can_read_visible_project_but_cannot_update_it():
 
 
 @pytest.mark.asyncio
+async def test_researcher_permission_request_is_reviewed_by_project_admin():
+    await init_db()
+    project = await _seed_project(f"Permission Request {uuid.uuid4()}")
+    researcher_id = f"researcher-request-{uuid.uuid4()}"
+    project_admin_id = f"project-admin-request-{uuid.uuid4()}"
+    await _seed_member(project.id, researcher_id, "researcher")
+    await _seed_member(project.id, project_admin_id, "project_admin")
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        created = await ac.post(
+            "/api/permission-requests",
+            headers=_headers(researcher_id, "researcher", "researcher"),
+            json={
+                "project_id": project.id,
+                "action": "project.folder",
+                "title": "Request folder change",
+                "details": "Please link the moderated study folder.",
+            },
+        )
+        assert created.status_code == 201
+        request_id = created.json()["id"]
+
+        listed = await ac.get(
+            f"/api/permission-requests?project_id={project.id}&status=pending",
+            headers=_headers(project_admin_id, "project-admin", "researcher"),
+        )
+        assert listed.status_code == 200
+        assert any(item["id"] == request_id for item in listed.json()["requests"])
+
+        reviewed = await ac.patch(
+            f"/api/permission-requests/{request_id}",
+            headers=_headers(project_admin_id, "project-admin", "researcher"),
+            json={"status": "approved", "review_note": "Approved for this study."},
+        )
+        assert reviewed.status_code == 200
+        assert reviewed.json()["status"] == "approved"
+        assert reviewed.json()["reviewer_user_id"] == project_admin_id
+
+
+@pytest.mark.asyncio
 async def test_viewer_can_read_chat_history_but_cannot_send_chat_or_create_session():
     await init_db()
     project = await _seed_project(f"Viewer Chat {uuid.uuid4()}")
@@ -504,7 +545,7 @@ async def test_mcp_policy_and_client_registry_are_admin_only():
 
 
 @pytest.mark.asyncio
-async def test_compute_steering_and_meta_hyperagent_are_admin_only():
+async def test_compute_is_researcher_visible_but_steering_and_meta_hyperagent_are_admin_only():
     await init_db()
 
     transport = ASGITransport(app=app)
@@ -519,7 +560,7 @@ async def test_compute_steering_and_meta_hyperagent_are_admin_only():
             headers=_headers("admin-system", "admin", "admin"),
         )
 
-    assert compute_response.status_code == 403
+    assert compute_response.status_code == 200
     assert steering_response.status_code == 403
     assert meta_response.status_code == 403
     assert admin_response.status_code == 200

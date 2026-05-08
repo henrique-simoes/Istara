@@ -97,21 +97,23 @@ def check_llm_profiles(issues: list[str]) -> None:
     config = read("tests/llm_test_config.py")
     script = read("scripts/test_llm_integration.py")
     required = {
-        "Gemini OpenAI base": "https://generativelanguage.googleapis.com/v1beta/openai/",
-        "Gemini test model": "gemini-3.1-flash-lite-preview",
-        "secondary base": "http://10.0.10.142:1234",
-        "secondary model": "qwen3.6-35b-a3b@q5_k_xl",
+        "private live base env": "ISTARA_LIVE_LLM_BASE_URL",
+        "fixed live model": "google/gemma-4-e4b",
         "endpoint helper": "openai_compatible_endpoint",
         "profile matrix": "LIVE_LLM_PROFILES",
         "primary retry budget": "PRIMARY_LIVE_LLM_MAX_ATTEMPTS = 5",
-        "Gemini-first helper": "post_live_llm_chat_completion",
+        "single-profile helper": "post_live_llm_chat_completion",
     }
     for label, snippet in required.items():
         if snippet not in config:
             issues.append(f"tests/llm_test_config.py: missing {label}")
     if "post_live_llm_chat_completion" not in script:
         issues.append(
-            "scripts/test_llm_integration.py: must exercise the Gemini-first fallback helper"
+            "scripts/test_llm_integration.py: must exercise the shared live LLM helper"
+        )
+    if "pytest.skip.Exception" not in script:
+        issues.append(
+            "scripts/test_llm_integration.py: standalone live LLM script must report missing-key skips cleanly"
         )
     forbidden_endpoint_snippets = ["/api/tags", "/output_schema"]
     combined = config + script
@@ -120,6 +122,8 @@ def check_llm_profiles(issues: list[str]) -> None:
             issues.append(
                 f"LLM test harness still references stale endpoint `{snippet}`"
             )
+    if "10.0.10." in combined:
+        issues.append("LLM test harness must not commit private live-test server addresses")
 
 
 def check_simulation_runner(issues: list[str]) -> None:
@@ -130,9 +134,15 @@ def check_simulation_runner(issues: list[str]) -> None:
         path.read_text(encoding="utf-8")
         for path in sorted((ROOT / "tests" / "simulation" / "scenarios").glob("*.mjs"))
     )
+    scenario20 = read("tests/simulation/scenarios/20-all-skills-comprehensive.mjs")
+    evaluator_sources = "\n".join(
+        path.read_text(encoding="utf-8")
+        for path in sorted((ROOT / "tests" / "simulation" / "evaluators").glob("*.mjs"))
+    )
     simulation_sources = "\n".join(
         path.read_text(encoding="utf-8")
         for path in [
+            *sorted((ROOT / "tests" / "simulation" / "evaluators").glob("*.mjs")),
             *sorted((ROOT / "tests" / "simulation" / "lib").glob("*.mjs")),
             *sorted((ROOT / "tests" / "simulation" / "scenarios").glob("*.mjs")),
         ]
@@ -152,6 +162,10 @@ def check_simulation_runner(issues: list[str]) -> None:
         issues.append(
             "tests/simulation/run.mjs: authenticated regression runs must mark guided tour complete"
         )
+    if "llm_readiness" not in runner or "llmReadiness" not in runner:
+        issues.append(
+            "tests/simulation/run.mjs: simulation context must carry backend chat-readiness status"
+        )
     if "ISTARA_FIXED_LLM_TEST_MODEL" not in simulation_sources:
         issues.append(
             "tests/simulation: model/session scenario must honor the fixed live-test LLM model"
@@ -160,10 +174,23 @@ def check_simulation_runner(issues: list[str]) -> None:
         issues.append(
             "tests/simulation: scenarios must not wait for networkidle in the realtime authenticated UI"
         )
+    if ".click();" in evaluator_sources or ".click().catch" in evaluator_sources:
+        issues.append(
+            "tests/simulation/evaluators: evaluator clicks must use bounded Playwright timeouts"
+        )
     if "http://localhost:3000" in scenario_sources:
         issues.append(
             "tests/simulation/scenarios: scenarios must use ctx.frontendUrl instead of hardcoded localhost"
         )
+    for snippet in (
+        "ISTARA_SCENARIO20_SKILL_LIMIT",
+        "ISTARA_SCENARIO20_SKILL_SEED",
+        "Scenario 20 skill selection",
+    ):
+        if snippet not in scenario20:
+            issues.append(
+                f"tests/simulation/scenarios/20-all-skills-comprehensive.mjs: missing `{snippet}`"
+            )
     for snippet in ("setAuthToken", "authHeaders", "ISTARA_TEST_AUTH_TOKEN"):
         if snippet not in client:
             issues.append(f"tests/simulation/lib/api-client.mjs: missing `{snippet}`")

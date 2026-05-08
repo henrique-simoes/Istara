@@ -1026,20 +1026,18 @@ The self-evolution and prompt compression scenario includes **35 checks** specif
 ### Test Isolation (Single-Model Guarantee)
 
 Simulation tests still pause background agent work before they run. Live LLM
-tests use an explicit OpenAI-compatible profile matrix managed by
-`tests/llm_test_config.py`: Gemini is the primary profile at
-`https://generativelanguage.googleapis.com/v1beta/openai/` with model
-`gemini-3.1-flash-lite-preview`; the optional LM Studio-compatible fallback is
-`http://10.0.10.142:1234/v1/chat/completions` with model
-`qwen3.6-35b-a3b@q5_k_xl`. API keys come only from local env or macOS Keychain.
-Each live test spends exactly five Gemini chat-completion attempts through
-`post_live_llm_chat_completion()` before it may use the secondary server. This
+tests use one explicit OpenAI-compatible profile managed by
+`tests/llm_test_config.py`: the private base URL comes from the gitignored
+`ISTARA_LIVE_LLM_BASE_URL` environment value, the model is fixed to
+`google/gemma-4-e4b`, and API keys come only from local env or macOS Keychain.
+Each live test uses `post_live_llm_chat_completion()` against that single
+profile, with no committed fallback server and no model discovery probe. This
 keeps CI and release rehearsals from silently switching between LM Studio,
 Ollama, and cloud providers or accidentally probing stale endpoints like
 `/api/tags`.
 
 1. **Before tests start:** `POST /api/settings/maintenance/pause` — halts all Istara agent work and LLM calls
-2. **During tests:** Mocked tests stay deterministic; live LLM tests route only through the shared Gemini/LM Studio OpenAI-compatible profile matrix.
+2. **During tests:** Mocked tests stay deterministic; live LLM tests route only through the shared single OpenAI-compatible profile.
 3. **After tests complete:** `POST /api/settings/maintenance/resume` — agents resume normal operation
 4. **Crash safety:** Signal handlers (`SIGINT`, `SIGTERM`) and the `.catch()` handler call `emergencyResume()` to ensure the backend never stays permanently paused after a test crash
 

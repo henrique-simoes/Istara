@@ -108,8 +108,7 @@ REQUIRED_SNIPPETS: dict[str, dict[str, str]] = {
     },
     "testing/TESTING_STRATEGY.md": {
         "pytest strict marker strategy": "--strict-markers",
-        "Gemini live LLM profile": "gemini-3.1-flash-lite-preview",
-        "LM Studio fallback profile": "qwen3.6-35b-a3b",
+        "Private main live LLM profile": "google/gemma-4-e4b",
         "mutation testing strategy": "mutation testing",
         "agentic eval contract strategy": "agentic eval contract",
     },

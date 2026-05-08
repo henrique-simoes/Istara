@@ -6,7 +6,7 @@ import { useAutoresearchStore } from "@/stores/autoresearchStore";
 import { cn } from "@/lib/utils";
 
 export default function ConfigPanel() {
-  const { config, status, fetchConfig, fetchStatus, updateConfig, toggle } =
+  const { config, fetchConfig, fetchStatus, updateConfig, toggle } =
     useAutoresearchStore();
 
   useEffect(() => {

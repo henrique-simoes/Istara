@@ -2,14 +2,17 @@
 
 import { useState } from "react";
 import { ExternalLink, Save, Loader2, CheckCircle2, XCircle, Download, Layers } from "lucide-react";
-import { interfaces as interfacesApi } from "@/lib/api";
+import { interfaces as interfacesApi, permissionRequests } from "@/lib/api";
 import { useInterfacesStore } from "@/stores/interfacesStore";
 import { useProjectStore } from "@/stores/projectStore";
+import { useAuthStore } from "@/stores/authStore";
 import PrivacyWarningBanner from "./PrivacyWarningBanner";
 
 export default function FigmaTab() {
   const { status, privacyAcknowledged, acknowledgePrivacy } = useInterfacesStore();
-  const { activeProjectId } = useProjectStore();
+  const { activeProjectId, canAdminActiveProject } = useProjectStore();
+  const { user } = useAuthStore();
+  const canManageIntegrations = user?.role === "admin" || canAdminActiveProject();
 
   // Configuration
   const [apiToken, setApiToken] = useState("");
@@ -44,7 +47,22 @@ export default function FigmaTab() {
     setStitchError(null);
     setStitchSaved(false);
     try {
-      await interfacesApi.configure.stitch({ api_key: stitchKey.trim() });
+      if (canManageIntegrations) {
+        await interfacesApi.configure.stitch({
+          api_key: stitchKey.trim(),
+          project_id: activeProjectId || undefined,
+        });
+      } else if (activeProjectId) {
+        await permissionRequests.create({
+          project_id: activeProjectId,
+          action: "interfaces.stitch.configure",
+          title: "Configure Stitch API",
+          details: "Request permission to configure the project Stitch API key.",
+          payload_summary: "Secret value intentionally omitted from request log.",
+        });
+      } else {
+        throw new Error("Select a project before requesting Stitch configuration.");
+      }
       setStitchSaved(true);
       setStitchKey("");
       useInterfacesStore.getState().fetchStatus(activeProjectId || undefined);
@@ -61,7 +79,22 @@ export default function FigmaTab() {
     setTokenError(null);
     setTokenSaved(false);
     try {
-      await interfacesApi.configure.figma({ api_token: apiToken.trim() });
+      if (canManageIntegrations) {
+        await interfacesApi.configure.figma({
+          api_token: apiToken.trim(),
+          project_id: activeProjectId || undefined,
+        });
+      } else if (activeProjectId) {
+        await permissionRequests.create({
+          project_id: activeProjectId,
+          action: "interfaces.figma.configure",
+          title: "Configure Figma token",
+          details: "Request permission to configure the project Figma API token.",
+          payload_summary: "Secret value intentionally omitted from request log.",
+        });
+      } else {
+        throw new Error("Select a project before requesting Figma configuration.");
+      }
       setTokenSaved(true);
       setApiToken("");
       useInterfacesStore.getState().fetchStatus(activeProjectId || undefined);
@@ -143,12 +176,12 @@ export default function FigmaTab() {
               className="flex items-center gap-1.5 px-4 py-2 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {savingToken ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-              Save
+              {canManageIntegrations ? "Save" : "Request"}
             </button>
           </div>
 
           {tokenSaved && (
-            <p className="text-sm text-green-600 dark:text-green-400 mt-2">Token saved successfully.</p>
+            <p className="text-sm text-green-600 dark:text-green-400 mt-2">{canManageIntegrations ? "Token saved successfully." : "Request sent to project admins."}</p>
           )}
           {tokenError && (
             <p className="text-sm text-red-600 dark:text-red-400 mt-2">{tokenError}</p>
@@ -197,12 +230,12 @@ export default function FigmaTab() {
               className="flex items-center gap-1.5 px-4 py-2 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {savingStitch ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-              Save
+              {canManageIntegrations ? "Save" : "Request"}
             </button>
           </div>
 
           {stitchSaved && (
-            <p className="text-sm text-green-600 dark:text-green-400 mt-2">Google API key saved successfully.</p>
+            <p className="text-sm text-green-600 dark:text-green-400 mt-2">{canManageIntegrations ? "Google API key saved successfully." : "Request sent to project admins."}</p>
           )}
           {stitchError && (
             <p className="text-sm text-red-600 dark:text-red-400 mt-2">{stitchError}</p>

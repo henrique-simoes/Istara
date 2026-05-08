@@ -6,8 +6,15 @@ export async function evaluate(ctx) {
   const { page, screenshot } = ctx;
   const scores = [];
 
-  await page.goto("http://localhost:3000", { waitUntil: "networkidle" });
+  await page.goto(ctx.frontendUrl || "http://localhost:3000", { waitUntil: "domcontentloaded" });
   await page.waitForTimeout(2000);
+
+  async function clickIfVisible(selector) {
+    const target = page.locator(selector).first();
+    if (await target.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await target.click({ timeout: 1000 }).catch(() => {});
+    }
+  }
 
   // H1: Visibility of system status
   const statusBar = await page.locator("text=Connected").isVisible().catch(() => false);
@@ -30,7 +37,7 @@ export async function evaluate(ctx) {
     if (await page.locator(`text=${term}`).first().isVisible({ timeout: 500 }).catch(() => false)) uxTermCount++;
   }
   // Navigate to Findings to check
-  await page.locator('button[aria-label="Findings"]').first().click().catch(() => {});
+  await clickIfVisible('button[aria-label="Findings"]');
   await page.waitForTimeout(1000);
   for (const term of uxTerms) {
     if (await page.locator(`text=${term}`).first().isVisible({ timeout: 500 }).catch(() => false)) uxTermCount++;
@@ -44,7 +51,7 @@ export async function evaluate(ctx) {
   });
 
   // H3: User control and freedom
-  await page.locator('button[aria-label="Chat"]').first().click().catch(() => {});
+  await clickIfVisible('button[aria-label="Chat"]');
   await page.waitForTimeout(800);
   const hasBackActions = await page.locator('button[aria-label*="close"], button[aria-label*="cancel"], button[aria-label*="back"]').count();
   const hasDeleteConfirm = true; // ConfirmDialog exists in codebase

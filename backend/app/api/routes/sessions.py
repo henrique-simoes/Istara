@@ -14,6 +14,7 @@ from app.models.database import get_db
 from app.models.session import ChatSession, InferencePreset, INFERENCE_PRESETS
 from app.models.message import Message
 from app.core.permissions import require_project_access
+from app.core.llm_thinking import ThinkingMode, normalize_thinking_mode
 
 router = APIRouter()
 
@@ -24,6 +25,7 @@ class CreateSessionRequest(BaseModel):
     agent_id: str | None = Field(default=None, max_length=255)
     model_override: str | None = Field(default=None, max_length=255)
     inference_preset: InferencePreset = InferencePreset.MEDIUM
+    thinking_mode: ThinkingMode = "server_default"
 
     @field_validator("title")
     @classmethod
@@ -42,6 +44,7 @@ class UpdateSessionRequest(BaseModel):
     custom_temperature: float | None = Field(default=None, ge=0.0, le=2.0)
     custom_max_tokens: int | None = Field(default=None, ge=1, le=65536)
     custom_context_window: int | None = Field(default=None, ge=512, le=262144)
+    thinking_mode: ThinkingMode | None = None
     starred: bool | None = None
     archived: bool | None = None
 
@@ -86,6 +89,7 @@ async def create_session(data: CreateSessionRequest, request: Request, db: Async
         agent_id=data.agent_id,
         model_override=data.model_override,
         inference_preset=data.inference_preset,
+        thinking_mode=normalize_thinking_mode(data.thinking_mode),
     )
     db.add(session)
     await db.commit()
@@ -140,6 +144,8 @@ async def update_session(
 
     updates = data.model_dump(exclude_unset=True)
     for key, value in updates.items():
+        if key == "thinking_mode":
+            value = normalize_thinking_mode(value)
         setattr(session, key, value)
 
     await db.commit()

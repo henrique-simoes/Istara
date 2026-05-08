@@ -11,9 +11,8 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.auth_cookies import get_auth_cookie_token
 from app.core.field_encryption import decrypt_field, encrypt_field
-from app.core.security_middleware import require_admin_from_request
+from app.core.permissions import require_global_role
 from app.models.database import get_db
 from app.models.llm_server import LLMServer
 
@@ -129,28 +128,8 @@ async def add_llm_server(
     db: AsyncSession = Depends(get_db),
 ):
     """Add a new external LLM server."""
-    inferred_is_local = data.is_local and _is_local_host(data.host)
-    # RBAC: Only admin can add non-local (remote) servers.
-    # Local servers can be added by anyone to donate compute.
-    if not inferred_is_local:
-        require_admin_from_request(request)
-    else:
-        # Still ensure the user is authenticated
-        auth_header = request.headers.get("Authorization", "")
-        token_str = (
-            auth_header.removeprefix("Bearer ").strip() if auth_header.startswith("Bearer ") else ""
-        )
-        if not token_str:
-            token_str = get_auth_cookie_token(request)
-        if not token_str:
-            raise HTTPException(status_code=401, detail="Authentication required")
-
-        from app.core.auth import verify_token
-        from app.core.auth_sessions import validate_auth_session
-
-        payload = verify_token(token_str)
-        if not payload or not await validate_auth_session(db, payload, request):
-            raise HTTPException(status_code=401, detail="Invalid token")
+    require_global_role(request, "viewer")
+    inferred_is_local = _is_local_host(data.host)
 
     server = LLMServer(
         id=str(uuid.uuid4()),
@@ -251,7 +230,7 @@ async def update_llm_server(
     server_id: str, data: LLMServerUpdate, request: Request, db: AsyncSession = Depends(get_db)
 ):
     """Update an LLM server's configuration."""
-    require_admin_from_request(request)
+    require_global_role(request, "viewer")
     result = await db.execute(select(LLMServer).where(LLMServer.id == server_id))
     server = result.scalar_one_or_none()
     if not server:
@@ -293,7 +272,7 @@ async def update_llm_server(
 @router.delete("/llm-servers/{server_id}")
 async def delete_llm_server(server_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     """Remove an LLM server."""
-    require_admin_from_request(request)
+    require_global_role(request, "viewer")
     result = await db.execute(select(LLMServer).where(LLMServer.id == server_id))
     server = result.scalar_one_or_none()
     if not server:
@@ -312,7 +291,7 @@ async def delete_llm_server(server_id: str, request: Request, db: AsyncSession =
 @router.post("/llm-servers/discover")
 async def discover_network_llm_servers(request: Request):
     """Scan local network for LLM servers (LM Studio, Ollama, OpenAI-compatible)."""
-    require_admin_from_request(request)
+    require_global_role(request, "viewer")
     from app.core.network_discovery import discover_and_register
 
     discovered = await discover_and_register()

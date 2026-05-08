@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Send, Paperclip, Loader2, StopCircle, Upload, User, Settings2, Bot, Zap, ChevronDown, HelpCircle, X, AlertTriangle, FolderOpen, FileText, Mic, Activity } from "lucide-react";
+import { Send, Paperclip, Loader2, StopCircle, Upload, Bot, Zap, ChevronDown, X, AlertTriangle, FolderOpen, FileText, Mic, Activity, BrainCircuit } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useChatStore } from "@/stores/chatStore";
@@ -12,43 +12,10 @@ import { useAuthStore } from "@/stores/authStore";
 import { useVoiceRecorder } from "@/hooks/useVoiceRecorder";
 import { cn, formatDate } from "@/lib/utils";
 import { files as filesApi, documents as documentsApi, steering as steeringApi } from "@/lib/api";
-import { ChatSkeleton } from "@/components/common/LoadingSkeleton";
+import type { ThinkingMode } from "@/lib/types";
 import ViewOnboarding from "@/components/common/ViewOnboarding";
 import ChatSessionsSidebar from "./ChatSessionsSidebar";
-
-/* ── Chat Avatars ── */
-
-function UserAvatar() {
-  return (
-    <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center flex-shrink-0">
-      <User size={16} className="text-slate-500 dark:text-slate-400" />
-    </div>
-  );
-}
-
-function AgentAvatar({ name }: { name?: string }) {
-  const label = name || "Istara";
-  return (
-    <div className="w-8 h-8 rounded-full bg-istara-100 dark:bg-istara-900/40 flex items-center justify-center flex-shrink-0" title={label}>
-      <span className="text-sm">🐾</span>
-    </div>
-  );
-}
-
-/* ── Inference Preset Selector ── */
-
-const PRESET_INFO: Record<string, { icon: string; label: string; desc: string }> = {
-  lightweight: { icon: "⚡", label: "Lightweight", desc: "Fast, minimal reasoning. Quick questions." },
-  medium: { icon: "⚖️", label: "Medium", desc: "Balanced speed and depth. Most tasks." },
-  high: { icon: "🧠", label: "High", desc: "Deep reasoning, large context. Complex analysis." },
-  custom: { icon: "🔧", label: "Custom", desc: "Your own temperature, tokens, context." },
-};
-
-const REASONING_PRESETS: Record<string, { temperature: number; maxTokens: number; topP: number }> = {
-  quick: { temperature: 0.3, maxTokens: 1024, topP: 0.8 },
-  balanced: { temperature: 0.7, maxTokens: 2048, topP: 0.9 },
-  deep: { temperature: 0.9, maxTokens: 4096, topP: 0.95 },
-};
+import { AgentAvatar, PRESET_INFO, REASONING_PRESETS, THINKING_INFO, UserAvatar } from "./chatViewParts";
 
 function CustomLLMPanel({
   session,
@@ -217,11 +184,14 @@ function ChatToolbar({
   const [showPresets, setShowPresets] = useState(false);
   const [showAgents, setShowAgents] = useState(false);
   const [showCustomPanel, setShowCustomPanel] = useState(false);
+  const [showThinking, setShowThinking] = useState(false);
 
   if (!activeSession) return null;
 
   const currentPreset = activeSession.inference_preset || "medium";
   const presetInfo = PRESET_INFO[currentPreset] || PRESET_INFO.medium;
+  const currentThinking = (activeSession.thinking_mode || "server_default") as ThinkingMode;
+  const thinkingInfo = THINKING_INFO[currentThinking] || THINKING_INFO.server_default;
   const assignedAgent = agents.find((a: any) => a.id === activeSession.agent_id);
 
   return (
@@ -229,7 +199,7 @@ function ChatToolbar({
       {/* Agent selector */}
       <div className="relative">
         <button
-          onClick={() => { setShowAgents(!showAgents); setShowPresets(false); }}
+          onClick={() => { setShowAgents(!showAgents); setShowPresets(false); setShowThinking(false); }}
           className="flex items-center gap-1.5 px-2 py-1 rounded-md hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
         >
           <Bot size={12} className="text-slate-500" />
@@ -276,7 +246,7 @@ function ChatToolbar({
       {/* Preset selector */}
       <div className="relative">
         <button
-          onClick={() => { setShowPresets(!showPresets); setShowAgents(false); }}
+          onClick={() => { setShowPresets(!showPresets); setShowAgents(false); setShowThinking(false); }}
           className="flex items-center gap-1.5 px-2 py-1 rounded-md hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
         >
           <Zap size={12} className="text-slate-500" />
@@ -322,6 +292,49 @@ function ChatToolbar({
             onUpdate={onUpdateSession}
             onClose={() => setShowCustomPanel(false)}
           />
+        )}
+      </div>
+
+      <div className="w-px h-4 bg-slate-200 dark:bg-slate-700" />
+
+      {/* Thinking selector */}
+      <div className="relative">
+        <button
+          onClick={() => { setShowThinking(!showThinking); setShowAgents(false); setShowPresets(false); setShowCustomPanel(false); }}
+          className="flex items-center gap-1.5 px-2 py-1 rounded-md hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+          title="Thinking mode"
+        >
+          <BrainCircuit size={12} className="text-slate-500" />
+          <span className="text-slate-600 dark:text-slate-400">
+            Thinking: {thinkingInfo.label}
+          </span>
+          <ChevronDown size={10} className="text-slate-400" />
+        </button>
+        {showThinking && (
+          <div className="absolute top-full left-0 mt-1 z-50 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg py-1 min-w-[240px]">
+            {(Object.keys(THINKING_INFO) as ThinkingMode[]).map((mode) => (
+              <button
+                key={mode}
+                onClick={() => {
+                  onUpdateSession({ thinking_mode: mode });
+                  setShowThinking(false);
+                }}
+                className={cn(
+                  "w-full text-left px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-700",
+                  currentThinking === mode && "bg-istara-50 dark:bg-istara-900/20"
+                )}
+              >
+                <div className="flex items-center gap-2">
+                  <BrainCircuit size={12} className="text-slate-500" />
+                  <span className="font-medium text-slate-900 dark:text-white">{THINKING_INFO[mode].label}</span>
+                  {currentThinking === mode && (
+                    <span className="ml-auto text-istara-600 text-[10px]">Active</span>
+                  )}
+                </div>
+                <p className="text-[10px] text-slate-500 mt-0.5 ml-5">{THINKING_INFO[mode].desc}</p>
+              </button>
+            ))}
+          </div>
         )}
       </div>
 

@@ -1,0 +1,3 @@
+{
+  "scope-boundary": "Stabilization only. Do not add new product behavior unless a failing audit or test proves an integration correction or test harness correction is required. Preserve the current intended contracts from the large active diff: single-model live LLM profile using google/gemma-4-e4b, thinking controls, structured schema adapter, ReAct skill routing, permission/onboarding roles, monolith splits, eval harness, and DB/report hardening. Complete all 9 stabilization items and subitems with concrete command/file evidence. Update tests only where they no longer reflect backend behavior. Prepare main for careful push after completion audit and green evidence. Do not expose private endpoint values, and do not delete LLMs/ or Model_Finetuning/."
+}

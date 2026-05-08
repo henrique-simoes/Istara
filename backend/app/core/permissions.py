@@ -18,6 +18,13 @@ from app.models.project import Project
 from app.models.project_member import ProjectMember
 
 ProjectRole = Literal["viewer", "researcher", "project_admin"]
+GlobalRole = Literal["viewer", "researcher", "admin"]
+
+GLOBAL_ROLE_RANK: dict[str, int] = {
+    "viewer": 0,
+    "researcher": 1,
+    "admin": 2,
+}
 
 PROJECT_ROLE_RANK: dict[str, int] = {
     "viewer": 0,
@@ -59,6 +66,16 @@ def is_global_admin(subject: Subject) -> bool:
     return subject.role == "admin"
 
 
+def global_role_rank(role: str | None) -> int:
+    return GLOBAL_ROLE_RANK.get((role or "").strip(), -1)
+
+
+def has_global_role(subject: Subject, min_role: GlobalRole = "viewer") -> bool:
+    if not settings.team_mode:
+        return True
+    return global_role_rank(subject.role) >= global_role_rank(min_role)
+
+
 def normalize_project_role(role: str | None) -> ProjectRole:
     return NORMALIZED_PROJECT_ROLE.get((role or "").strip(), "viewer")
 
@@ -72,6 +89,20 @@ def require_global_admin(request: Request) -> Subject:
     subject = get_subject(request)
     if not is_global_admin(subject):
         raise HTTPException(status_code=403, detail="Global admin access required.")
+    return subject
+
+
+def require_global_role(request: Request, min_role: GlobalRole = "viewer") -> Subject:
+    """Require an authenticated global role at or above ``min_role``.
+
+    In local desktop mode every request runs as the built-in local admin. In
+    team mode the security middleware has already authenticated the request and
+    attached the user context; this helper enforces the requested role tier.
+    """
+    subject = get_subject(request)
+    if not has_global_role(subject, min_role):
+        role_label = "authenticated user" if min_role == "viewer" else f"global {min_role}"
+        raise HTTPException(status_code=403, detail=f"{role_label.capitalize()} access required.")
     return subject
 
 
@@ -114,6 +145,11 @@ async def can_access_project(
     if role is None:
         return False
     return project_role_rank(role) >= project_role_rank(min_role)
+
+
+async def can_admin_project(db: AsyncSession, request: Request, project_id: str) -> bool:
+    """Return whether the subject can administer project-scoped settings."""
+    return await can_access_project(db, request, project_id, min_role="project_admin")
 
 
 async def require_project_access(

@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.datetime_utils import ensure_utc
 from app.core.scheduler import CronParser, ScheduledTask
-from app.core.security_middleware import require_admin_from_request
+from app.core.permissions import require_global_role, require_project_access
 from app.models.agent import Agent, AgentState
 from app.models.database import get_db
 from app.models.loop_execution import LoopExecution
@@ -201,7 +201,7 @@ def _loop_config_for_agent(agent: Agent) -> dict:
 @router.get("/loops/overview")
 async def loops_overview(request: Request, db: AsyncSession = Depends(get_db)):
     """Consolidated overview: agents with loop configs, schedules, and health summary."""
-    require_admin_from_request(request)
+    require_global_role(request, "researcher")
     # Agents
     agent_result = await db.execute(
         select(Agent).where(Agent.is_active.is_(True)).order_by(Agent.created_at)
@@ -255,7 +255,7 @@ async def loops_overview(request: Request, db: AsyncSession = Depends(get_db)):
 @router.get("/loops/agents")
 async def list_loop_agents(request: Request, db: AsyncSession = Depends(get_db)):
     """List all agents with their loop configurations."""
-    require_admin_from_request(request)
+    require_global_role(request, "researcher")
     result = await db.execute(
         select(Agent).where(Agent.is_active.is_(True)).order_by(Agent.created_at)
     )
@@ -265,7 +265,7 @@ async def list_loop_agents(request: Request, db: AsyncSession = Depends(get_db))
 @router.get("/loops/agents/{agent_id}/config")
 async def get_loop_config(agent_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     """Get loop configuration for a specific agent."""
-    require_admin_from_request(request)
+    require_global_role(request, "researcher")
     result = await db.execute(select(Agent).where(Agent.id == agent_id))
     agent_model = result.scalar_one_or_none()
     if not agent_model:
@@ -281,7 +281,7 @@ async def update_loop_config(
     db: AsyncSession = Depends(get_db),
 ):
     """Update an agent's loop configuration (interval, paused state, skills)."""
-    require_admin_from_request(request)
+    require_global_role(request, "researcher")
     result = await db.execute(select(Agent).where(Agent.id == agent_id))
     agent = result.scalar_one_or_none()
     if not agent:
@@ -327,7 +327,7 @@ async def update_loop_config(
 @router.post("/loops/agents/{agent_id}/pause")
 async def pause_agent_loop(agent_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     """Pause an agent's loop."""
-    require_admin_from_request(request)
+    require_global_role(request, "researcher")
     if not await agent_service.set_agent_state(db, agent_id, AgentState.PAUSED):
         raise HTTPException(status_code=404, detail="Agent not found")
     return {"agent_id": agent_id, "status": "paused"}
@@ -336,7 +336,7 @@ async def pause_agent_loop(agent_id: str, request: Request, db: AsyncSession = D
 @router.post("/loops/agents/{agent_id}/resume")
 async def resume_agent_loop(agent_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     """Resume an agent's loop."""
-    require_admin_from_request(request)
+    require_global_role(request, "researcher")
     if not await agent_service.set_agent_state(db, agent_id, AgentState.IDLE):
         raise HTTPException(status_code=404, detail="Agent not found")
     return {"agent_id": agent_id, "status": "resumed"}
@@ -355,7 +355,7 @@ async def list_executions(
     db: AsyncSession = Depends(get_db),
 ):
     """Paginated execution history across agents and schedules."""
-    require_admin_from_request(request)
+    require_global_role(request, "researcher")
     if status and status not in VALID_EXECUTION_STATUSES:
         allowed = ", ".join(sorted(VALID_EXECUTION_STATUSES))
         raise HTTPException(status_code=422, detail=f"status must be one of: {allowed}")
@@ -389,7 +389,7 @@ async def execution_stats(
     db: AsyncSession = Depends(get_db),
 ):
     """Aggregated execution statistics."""
-    require_admin_from_request(request)
+    require_global_role(request, "researcher")
     stats = await get_execution_stats(db, source_id=source_id)
     return {
         "total": stats["total"],
@@ -406,7 +406,7 @@ async def execution_stats(
 @router.get("/loops/health")
 async def loops_health(request: Request, db: AsyncSession = Depends(get_db)):
     """Loop health dashboard — unified status for all loop sources."""
-    require_admin_from_request(request)
+    require_global_role(request, "researcher")
     health_items: list[dict] = []
     now = datetime.now(timezone.utc)
 
@@ -476,13 +476,13 @@ async def create_custom_loop(
     db: AsyncSession = Depends(get_db),
 ):
     """Create a custom loop as a ScheduledTask with loop_type metadata."""
-    require_admin_from_request(request)
     name = data.name.strip()
     skill_name = data.skill_name.strip()
     project_id = data.project_id.strip()
     description = data.description.strip()
     if not name or not skill_name or not project_id:
         raise HTTPException(status_code=422, detail="name, skill_name, and project_id are required")
+    await require_project_access(db, request, project_id, min_role="researcher")
 
     # Determine cron expression: explicit or derived from interval
     cron_expr = data.cron_expression.strip() if data.cron_expression else None

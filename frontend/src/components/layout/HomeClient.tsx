@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Sidebar from "@/components/layout/Sidebar";
 import RightPanel from "@/components/layout/RightPanel";
 import StatusBar from "@/components/layout/StatusBar";
@@ -41,7 +41,6 @@ import { useProjectStore } from "@/stores/projectStore";
 import { useAuthStore } from "@/stores/authStore";
 import { useSessionStore } from "@/stores/sessionStore";
 import { useAgentStore } from "@/stores/agentStore";
-import { settings as settingsApi } from "@/lib/api";
 import { API_BASE } from "@/lib/runtimeConfig";
 import { VIEW_NAMES, isKnownView, isProjectRequiredView, isViewAllowed } from "@/lib/navigation";
 
@@ -79,7 +78,7 @@ export default function HomeClient() {
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [authenticated, setAuthenticated] = useState<boolean | null>(null);
   const [tourReady, setTourReady] = useState(false);
-  const { projects, activeProjectId, fetchProjects } = useProjectStore();
+  const { activeProjectId, fetchProjects } = useProjectStore();
   const user = useAuthStore((s) => s.user);
   const userRole = user?.role || null;
 
@@ -94,7 +93,7 @@ export default function HomeClient() {
     }
   }, [activeView, userRole]);
 
-  async function bootstrapAuth() {
+  const bootstrapAuth = useCallback(async () => {
     setTourReady(false);
     const authStore = useAuthStore.getState();
     const status = await authStore.checkTeamStatus();
@@ -118,7 +117,7 @@ export default function HomeClient() {
     }
     setAuthenticated(valid);
     return valid;
-  }
+  }, []);
 
   // Check authentication on mount
   useEffect(() => {
@@ -214,7 +213,8 @@ export default function HomeClient() {
 
       const store = useProjectStore.getState();
       const tourState = useTourStore.getState();
-      const hasProjects = store.projects.length > 0;
+      const hasSelectedProject = Boolean(store.activeProjectId);
+      const hasProjects = store.projects.length > 0 || hasSelectedProject;
       const forceFirstRun = !hasProjects;
       const tourCompleted = isTourCompleted();
 

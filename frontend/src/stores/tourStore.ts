@@ -16,10 +16,10 @@ function getCompletedKey(): string {
 }
 
 /** Total number of logical steps (some may be skipped based on role/context). */
-export const TOUR_TOTAL_STEPS = 10;
+export const TOUR_TOTAL_STEPS = 16;
 
 /** Steps that only admins see (team management). */
-const ADMIN_ONLY_STEPS = new Set([2, 3, 4]);
+const ADMIN_ONLY_STEPS = new Set([2, 3, 4, 13]);
 
 /** Steps that require no project to exist yet (project setup). */
 const PROJECT_SETUP_STEPS = new Set([0, 1]);

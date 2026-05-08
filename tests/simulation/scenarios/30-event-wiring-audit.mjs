@@ -10,8 +10,15 @@
  * is properly called by agent workers.
  */
 
+import { readFileSync } from "fs";
+import { dirname, join } from "path";
+import { fileURLToPath } from "url";
+
 export const name = "Event Wiring Audit";
 export const id = "30-event-wiring-audit";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const REPO_ROOT = join(__dirname, "..", "..", "..");
 
 export async function run(ctx) {
   const { api, page } = ctx;
@@ -169,14 +176,12 @@ export async function run(ctx) {
   // Static check against source files. Next's compiled chunks are noisy and can
   // hide string literals behind transforms, so use the repository source.
   try {
-    const fs = await import("fs");
-    const path = await import("path");
     const sourceFiles = [
       "frontend/src/components/common/ToastNotification.tsx",
       "frontend/src/lib/types.ts",
     ];
     const allText = sourceFiles
-      .map((file) => fs.readFileSync(path.join(process.cwd(), file), "utf8"))
+      .map((file) => readFileSync(join(REPO_ROOT, file), "utf8"))
       .join("\n");
     const hasFinding = allText.includes("finding_created");
     const hasDocCreated = allText.includes("document_created");

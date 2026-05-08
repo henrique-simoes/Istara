@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { ChevronLeft, ChevronRight, CheckCircle2, X, Plus, Trash2, Rocket } from "lucide-react";
 import { deployments as deploymentsApi } from "@/lib/api";
 import { useIntegrationsStore } from "@/stores/integrationsStore";
+import { useProjectStore } from "@/stores/projectStore";
 import { cn } from "@/lib/utils";
 
 const STEPS = ["type", "questions", "adaptive", "channels", "targets", "deploy"] as const;
@@ -21,6 +22,7 @@ interface DeploymentWizardProps {
 
 export default function DeploymentWizard({ onClose }: DeploymentWizardProps) {
   const { channelInstances, fetchChannels } = useIntegrationsStore();
+  const { activeProjectId } = useProjectStore();
   const [currentStep, setCurrentStep] = useState<Step>("type");
   const [deploymentType, setDeploymentType] = useState<string | null>(null);
   const [name, setName] = useState("");
@@ -33,8 +35,8 @@ export default function DeploymentWizard({ onClose }: DeploymentWizardProps) {
   const [deployed, setDeployed] = useState(false);
 
   useEffect(() => {
-    fetchChannels();
-  }, [fetchChannels]);
+    fetchChannels(undefined, activeProjectId || undefined);
+  }, [activeProjectId, fetchChannels]);
 
   const stepIndex = STEPS.indexOf(currentStep);
   const goBack = () => { if (stepIndex > 0) setCurrentStep(STEPS[stepIndex - 1]); };
@@ -58,6 +60,7 @@ export default function DeploymentWizard({ onClose }: DeploymentWizardProps) {
     setDeploying(true);
     try {
       await deploymentsApi.create({
+        project_id: activeProjectId,
         name: name || `${deploymentType} deployment`,
         deployment_type: deploymentType,
         questions: questions.filter((q) => q.text.trim()),

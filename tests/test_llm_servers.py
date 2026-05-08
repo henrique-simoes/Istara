@@ -171,19 +171,38 @@ async def test_health_check_reregisters_persisted_server_if_runtime_node_is_miss
 
 
 @pytest.mark.asyncio
-async def test_llm_server_discovery_requires_admin(researcher_headers):
+async def test_researcher_can_discover_shared_llm_servers(researcher_headers, monkeypatch):
     await init_db()
     settings.team_mode = True
+
+    async def fake_discover_and_register():
+        return [{"name": "LAN Studio", "host": "http://10.0.0.10:1234"}]
+
+    monkeypatch.setattr(
+        "app.core.network_discovery.discover_and_register",
+        fake_discover_and_register,
+    )
+
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         response = await ac.post("/api/llm-servers/discover", headers=researcher_headers)
-        assert response.status_code == 403
+        assert response.status_code == 200
+        assert response.json()["discovered"] == 1
 
 
 @pytest.mark.asyncio
-async def test_non_admin_cannot_add_remote_server_marked_local(researcher_headers):
+async def test_researcher_can_add_remote_shared_llm_server(researcher_headers, monkeypatch):
     await init_db()
     settings.team_mode = True
+
+    async def fake_health(self):
+        self.is_healthy = True
+        self.latency_ms = 3.0
+        self.loaded_models = ["donated-model"]
+        self.model_capabilities = {"donated-model": {"supports_tools": True}}
+        return True
+
+    monkeypatch.setattr(ComputeNode, "check_health", fake_health)
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         response = await ac.post(
@@ -196,4 +215,7 @@ async def test_non_admin_cannot_add_remote_server_marked_local(researcher_header
                 "is_local": True,
             },
         )
-        assert response.status_code == 403
+        assert response.status_code == 200
+        body = response.json()
+        assert body["host"] == "http://192.168.1.25:11434"
+        assert body["is_healthy"] is True

@@ -120,8 +120,7 @@ def check_tech_md_freshness(issues: list[str]) -> None:
         "security benchmark": "Industry-standard auth/security benchmark",
         "agentic eval contract": "Agentic eval contract",
         "mutation testing": "Mutation testing strategy",
-        "gemini-3.1-flash-lite-preview": "Gemini live LLM test profile",
-        "qwen3.6-35b-a3b": "LM Studio fallback live LLM test profile",
+        "google/gemma-4-e4b": "Private main live LLM test profile",
     }
 
     missing = []
@@ -163,8 +162,7 @@ def check_testing_strategy_freshness(issues: list[str]) -> None:
     required_topics = {
         "--strict-markers": "pytest strict markers",
         "playwright": "Playwright acceptance testing",
-        "gemini-3.1-flash-lite-preview": "Gemini live LLM test model",
-        "qwen3.6-35b-a3b": "LM Studio fallback test model",
+        "google/gemma-4-e4b": "Private main live LLM test model",
         "mutation testing": "mutation testing",
         "hypothesis": "property-based testing",
         "agentic eval contract": "agentic eval contract",

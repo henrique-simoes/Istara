@@ -62,6 +62,7 @@ frontend/reports/mutation/
 *.log
 *.tsbuildinfo
 tests/simulation/.results/
+tests/evals/.results/
 
 # Custom agent personas (UUID-named dirs created at runtime by custom agents)
 backend/app/agents/personas/[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-*/

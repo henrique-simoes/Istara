@@ -13,7 +13,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.permissions import get_subject, is_global_admin, require_project_access
 from app.core.field_encryption import decrypt_field, encrypt_field
-from app.core.security_middleware import require_admin_from_request
 from app.models.database import get_db
 from app.models.survey_integration import SurveyIntegration, SurveyLink
 
@@ -72,6 +71,21 @@ def _get_adapter(integration: SurveyIntegration):
         )
 
 
+def _is_demo_integration(integration: SurveyIntegration) -> bool:
+    """Return true for explicit local/demo integrations used in simulations."""
+    if integration.name.startswith("SIM:"):
+        return True
+    raw = decrypt_field(integration.config_json) if integration.config_json else "{}"
+    try:
+        config = json.loads(raw)
+    except json.JSONDecodeError:
+        return False
+    return any(
+        isinstance(value, str) and value.startswith("sim-")
+        for value in config.values()
+    )
+
+
 async def _get_integration(db: AsyncSession, integration_id: str) -> SurveyIntegration:
     result = await db.execute(
         select(SurveyIntegration).where(SurveyIntegration.id == integration_id)
@@ -92,6 +106,19 @@ async def _get_link(db: AsyncSession, link_id: str) -> SurveyLink:
     return link
 
 
+async def _require_integration_admin(
+    db: AsyncSession,
+    request: Request,
+    integration: SurveyIntegration,
+) -> None:
+    subject = get_subject(request)
+    if is_global_admin(subject):
+        return
+    if not integration.project_id:
+        raise HTTPException(status_code=403, detail="Global admin access required.")
+    await require_project_access(db, request, integration.project_id, min_role="project_admin")
+
+
 # ---------------------------------------------------------------------------
 # Integration CRUD
 # ---------------------------------------------------------------------------
@@ -101,13 +128,20 @@ async def _get_link(db: AsyncSession, link_id: str) -> SurveyLink:
 async def list_integrations(
     request: Request,
     platform: str | None = None,
+    project_id: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     """List all configured survey platform integrations."""
-    require_admin_from_request(request)
+    subject = get_subject(request)
+    if project_id:
+        await require_project_access(db, request, project_id, min_role="project_admin")
+    elif not is_global_admin(subject):
+        raise HTTPException(status_code=400, detail="project_id is required")
     query = select(SurveyIntegration).order_by(SurveyIntegration.created_at.desc())
     if platform:
         query = query.where(SurveyIntegration.platform == platform)
+    if project_id:
+        query = query.where(SurveyIntegration.project_id == project_id)
     result = await db.execute(query)
     integrations = result.scalars().all()
     return {
@@ -123,7 +157,13 @@ async def create_integration(
     db: AsyncSession = Depends(get_db),
 ):
     """Create a new survey platform integration."""
-    require_admin_from_request(request)
+    subject = get_subject(request)
+    if is_global_admin(subject):
+        pass
+    elif data.project_id:
+        await require_project_access(db, request, data.project_id, min_role="project_admin")
+    else:
+        raise HTTPException(status_code=400, detail="project_id is required")
     if data.platform not in SUPPORTED_PLATFORMS:
         raise HTTPException(
             status_code=400,
@@ -151,8 +191,8 @@ async def delete_integration(
     db: AsyncSession = Depends(get_db),
 ):
     """Remove a survey platform integration and its linked surveys."""
-    require_admin_from_request(request)
     integration = await _get_integration(db, integration_id)
+    await _require_integration_admin(db, request, integration)
     await db.delete(integration)
     await db.commit()
 
@@ -169,8 +209,8 @@ async def list_platform_surveys(
     db: AsyncSession = Depends(get_db),
 ):
     """List surveys available on the connected platform."""
-    require_admin_from_request(request)
     integration = await _get_integration(db, integration_id)
+    await _require_integration_admin(db, request, integration)
     adapter = _get_adapter(integration)
 
     try:
@@ -196,8 +236,8 @@ async def create_platform_survey(
     db: AsyncSession = Depends(get_db),
 ):
     """Create a new survey on the connected platform from Istara data."""
-    require_admin_from_request(request)
     integration = await _get_integration(db, integration_id)
+    await _require_integration_admin(db, request, integration)
     adapter = _get_adapter(integration)
 
     try:
@@ -226,9 +266,10 @@ async def create_link(
     db: AsyncSession = Depends(get_db),
 ):
     """Link an external survey to a Istara project for response ingestion."""
-    await require_project_access(db, request, data.project_id, min_role="researcher")
+    await require_project_access(db, request, data.project_id, min_role="project_admin")
     # Verify integration exists
-    await _get_integration(db, data.integration_id)
+    integration = await _get_integration(db, data.integration_id)
+    await _require_integration_admin(db, request, integration)
 
     link = SurveyLink(
         id=str(uuid.uuid4()),
@@ -284,6 +325,16 @@ async def sync_responses(
 
     # Resolve integration for adapter
     integration = await _get_integration(db, link.integration_id)
+    if _is_demo_integration(integration):
+        integration.last_sync_at = datetime.now(timezone.utc)
+        await db.commit()
+        return {
+            "status": "no_new_responses",
+            "link_id": link_id,
+            "responses_fetched": 0,
+            "demo": True,
+        }
+
     adapter = _get_adapter(integration)
 
     try:
@@ -327,6 +378,16 @@ async def get_link_responses(
     link = await _get_link(db, link_id)
     await require_project_access(db, request, link.project_id, min_role="viewer")
     integration = await _get_integration(db, link.integration_id)
+    if _is_demo_integration(integration):
+        return {
+            "link_id": link_id,
+            "survey_id": link.external_survey_id,
+            "survey_name": link.external_survey_name,
+            "responses": [],
+            "count": 0,
+            "demo": True,
+        }
+
     adapter = _get_adapter(integration)
 
     try:

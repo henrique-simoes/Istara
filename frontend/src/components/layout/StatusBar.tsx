@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Wifi, WifiOff, Cpu, HardDrive } from "lucide-react";
+import { Wifi, WifiOff, Cpu } from "lucide-react";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import type { WSEvent } from "@/lib/types";
 

@@ -14,7 +14,9 @@ import { chromium } from "playwright";
 import { mkdirSync, writeFileSync, readFileSync, existsSync, symlinkSync, unlinkSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
-import { spawn } from "child_process";
+import { spawn, spawnSync } from "child_process";
+import http from "http";
+import https from "https";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const RESULTS_DIR = join(__dirname, ".results");
@@ -40,6 +42,64 @@ function parsePositiveInteger(value, fallback, label) {
 
 const API_BASE = process.env.ISTARA_API_URL || "http://localhost:8000";
 const FRONTEND = process.env.ISTARA_FRONTEND_URL || "http://localhost:3000";
+const FIXED_TEST_MODEL = (process.env.ISTARA_FIXED_LLM_TEST_MODEL || "google/gemma-4-e4b").trim();
+
+let fixedModelOriginal = null;
+let fixedModelApplied = false;
+
+function requestJson(method, url, { headers = {}, body = null, timeoutMs = 0, label = "" } = {}) {
+  return new Promise((resolve, reject) => {
+    const target = new URL(url);
+    const transport = target.protocol === "https:" ? https : http;
+    const payload = body === null || body === undefined ? null : JSON.stringify(body);
+    const requestHeaders = { ...headers };
+    if (payload !== null && !("Content-Length" in requestHeaders)) {
+      requestHeaders["Content-Length"] = Buffer.byteLength(payload);
+    }
+
+    const req = transport.request(
+      target,
+      {
+        method,
+        headers: requestHeaders,
+      },
+      (res) => {
+        const chunks = [];
+        res.setEncoding("utf8");
+        res.on("data", (chunk) => chunks.push(chunk));
+        res.on("end", () => {
+          const text = chunks.join("");
+          if (res.statusCode < 200 || res.statusCode >= 300) {
+            reject(new Error(`${method} ${target.pathname}${target.search}: ${res.statusCode}`));
+            return;
+          }
+          if (!text) {
+            resolve({});
+            return;
+          }
+          try {
+            resolve(JSON.parse(text));
+          } catch (e) {
+            reject(new Error(`${method} ${target.pathname}${target.search}: invalid JSON (${e.message})`));
+          }
+        });
+      }
+    );
+
+    req.on("error", reject);
+    if (timeoutMs > 0) {
+      req.setTimeout(timeoutMs, () => {
+        req.destroy(
+          new Error(`TIMEOUT: ${label || `${method} ${target.pathname}`} exceeded ${timeoutMs}ms`)
+        );
+      });
+    }
+    if (payload !== null) {
+      req.write(payload);
+    }
+    req.end();
+  });
+}
 
 // ── Timeout Configuration ──────────────────────────────────
 // Per-scenario defaults stay bounded for regular CI, but long live-LLM rehearsals
@@ -51,8 +111,14 @@ const SCENARIO_TIMEOUT_MS = parsePositiveInteger(
   DEFAULT_SCENARIO_TIMEOUT_MS,
   "scenario timeout"
 );
+const AUTH_MAX_ATTEMPTS = parsePositiveInteger(
+  process.env.ISTARA_AUTH_MAX_ATTEMPTS,
+  10,
+  "auth max attempts"
+);
 const PLAYWRIGHT_NAV_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes for page navigations
 const PLAYWRIGHT_ACTION_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes for actions/selectors
+const DESKTOP_VIEWPORT = { width: 1280, height: 800 };
 
 // ── Keep Computer Awake (macOS caffeinate) ─────────────────
 let caffeinateProcess = null;
@@ -89,43 +155,150 @@ function stopCaffeinate() {
   }
 }
 
+async function ensureBrowserScenarioState(page, { projectId = null, activeView = "chat" } = {}) {
+  if (!apiClient._token) return false;
+
+  const frontendOrigin = new URL(FRONTEND).origin;
+  if (!page.url().startsWith(frontendOrigin)) {
+    await page.goto(FRONTEND, { waitUntil: "domcontentloaded" });
+  }
+
+  await page.setViewportSize(DESKTOP_VIEWPORT).catch(() => {});
+  await page.evaluate(
+    ({ token, userId, projectId: selectedProjectId, activeView: selectedView }) => {
+      localStorage.setItem("istara_token", token);
+      localStorage.removeItem("istara_tour_state");
+      if (userId) {
+        localStorage.setItem("istara_auth_user_id", userId);
+        localStorage.setItem(`istara_tour_completed_${userId}`, "true");
+      } else {
+        localStorage.removeItem("istara_auth_user_id");
+        localStorage.setItem("istara_tour_completed_anonymous", "true");
+      }
+      if (selectedProjectId) {
+        localStorage.setItem("istara-active-project", selectedProjectId);
+      }
+      if (selectedView) {
+        localStorage.setItem("istara_active_view", selectedView);
+      }
+      window.dispatchEvent(new Event("istara:auth-changed"));
+    },
+    {
+      token: apiClient._token,
+      userId: apiClient._userId,
+      projectId,
+      activeView,
+    }
+  );
+  await page.reload({ waitUntil: "domcontentloaded" });
+  return true;
+}
+
 // ── API Client ──────────────────────────────────────────────
 
 const apiClient = {
   _token: null,
   _userId: null,
 
+  _useLocalSignedToken(username) {
+    if (!["1", "true", "yes"].includes(String(process.env.ISTARA_E2E_ALLOW_LOCAL_TOKEN || "").toLowerCase())) {
+      return false;
+    }
+    const backendPath = join(__dirname, "../../backend");
+    const script = [
+      "import sys",
+      `sys.path.insert(0, ${JSON.stringify(backendPath)})`,
+      "from app.core.auth import create_token",
+      `print(create_token("simulation-admin", ${JSON.stringify(username)}, "admin", mfa_verified=True))`,
+    ].join("\n");
+
+    const candidates = [
+      process.env.PYTHON,
+      process.env.PYTHON_EXECUTABLE,
+      "python",
+      "python3",
+    ].filter(Boolean);
+
+    let lastError = "";
+    for (const pythonBin of candidates) {
+      const result = spawnSync(pythonBin, ["-c", script], {
+        encoding: "utf-8",
+        env: process.env,
+        stdio: ["ignore", "pipe", "pipe"],
+      });
+      if (result.status !== 0) {
+        lastError = (result.stderr || result.error?.message || "").trim();
+        continue;
+      }
+      const token = (result.stdout || "").trim();
+      if (!token) {
+        lastError = `${pythonBin} returned an empty token`;
+        continue;
+      }
+      this._token = token;
+      this._userId = "simulation-admin";
+      console.log("  ✅ Authenticated with local signed simulation token");
+      return true;
+    }
+
+    console.warn(`  ⚠ Local signed token fallback failed: ${lastError.substring(0, 160)}`);
+    return false;
+  },
+
   async authenticate() {
-    // Try to login with admin credentials from env or .env file
-    const username = process.env.ADMIN_USERNAME || "admin";
+    // Try to login with admin credentials from env or the backend env files.
+    // Match app precedence: local overrides are tried before shared defaults.
+    const envFiles = [
+      "../../backend/.env.local",
+      "../../backend/.env",
+      "../../.env.local",
+      "../../.env",
+    ];
+    const envValue = (key) => {
+      for (const relPath of envFiles) {
+        try {
+          const envContent = readFileSync(
+            join(dirname(fileURLToPath(import.meta.url)), relPath),
+            "utf-8"
+          );
+          const match = envContent.match(new RegExp(`^${key}=(.+)$`, "m"));
+          if (match) return match[1].trim();
+        } catch {}
+      }
+      return "";
+    };
+    const username = process.env.ADMIN_USERNAME || envValue("ADMIN_USERNAME") || "admin";
     let password = process.env.ADMIN_PASSWORD || "";
 
-    // Read password from .env file if not set in environment
+    // Read password from env files if not set in environment
     if (!password) {
-      try {
-        const envContent = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "../../backend/.env"), "utf-8");
-        const match = envContent.match(/ADMIN_PASSWORD=(.+)/);
-        if (match) password = match[1].trim();
-      } catch {}
+      password = envValue("ADMIN_PASSWORD");
     }
 
     if (!password) {
+      if (this._useLocalSignedToken(username)) return;
       console.warn("  \u26A0 No ADMIN_PASSWORD found \u2014 tests may fail auth");
       return;
     }
 
     try {
       let res = null;
-      for (let attempt = 0; attempt < 3; attempt++) {
+      for (let attempt = 0; attempt < AUTH_MAX_ATTEMPTS; attempt++) {
         res = await fetch(`${API_BASE}/api/auth/login`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ username, password }),
         });
-        if (res.status !== 429) break;
+        if (![429, 500, 502, 503, 504].includes(res.status)) break;
+        if (attempt + 1 >= AUTH_MAX_ATTEMPTS) break;
         const retryAfter = Number(res.headers.get("retry-after") || "0");
-        const waitMs = Math.max(retryAfter * 1000, 65_000);
-        console.warn(`  ⚠ Auth rate-limited; retrying in ${Math.round(waitMs / 1000)}s`);
+        const transientWaitMs = Math.min(30_000, 1_000 * 2 ** attempt);
+        const waitMs = res.status === 429
+          ? Math.max(retryAfter * 1000, 65_000)
+          : transientWaitMs;
+        console.warn(
+          `  ⚠ Auth transient status ${res.status}; retrying in ${Math.round(waitMs / 1000)}s`
+        );
         await new Promise((resolve) => setTimeout(resolve, waitMs));
       }
       if (res.ok) {
@@ -146,9 +319,11 @@ const apiClient = {
         console.log("  \u2705 Authenticated as admin");
       } else {
         console.warn(`  \u26A0 Auth failed: ${res.status}`);
+        this._useLocalSignedToken(username);
       }
     } catch (e) {
       console.warn(`  \u26A0 Auth error: ${e.message}`);
+      this._useLocalSignedToken(username);
     }
   },
 
@@ -163,14 +338,17 @@ const apiClient = {
     if (!res.ok) throw new Error(`GET ${path}: ${res.status}`);
     return res.json();
   },
-  async post(path, body) {
-    const res = await fetch(`${API_BASE}${path}`, {
-      method: "POST",
-      headers: this._headers(),
-      body: JSON.stringify(body),
-    });
-    if (!res.ok) throw new Error(`POST ${path}: ${res.status}`);
-    return res.json();
+  async post(path, body, options = {}) {
+    try {
+      return await requestJson("POST", `${API_BASE}${path}`, {
+        headers: this._headers(),
+        body,
+        timeoutMs: options.timeoutMs,
+        label: options.label || `POST ${path}`,
+      });
+    } catch (e) {
+      throw e;
+    }
   },
   async patch(path, body) {
     const res = await fetch(`${API_BASE}${path}`, {
@@ -378,6 +556,77 @@ async function loadEvaluators() {
   return evaluators;
 }
 
+async function applyFixedTestModel() {
+  if (!FIXED_TEST_MODEL) return null;
+
+  const statusRes = await fetch(`${API_BASE}/api/settings/models`, {
+    headers: apiClient._headers(),
+  });
+  if (!statusRes.ok) {
+    throw new Error(`Could not inspect active model before fixed-model test run (${statusRes.status})`);
+  }
+
+  const before = await statusRes.json();
+  const activeBefore = before.active_model || "";
+  if (activeBefore === FIXED_TEST_MODEL) {
+    console.log(`  Using fixed test model: ${FIXED_TEST_MODEL}`);
+    return FIXED_TEST_MODEL;
+  }
+
+  fixedModelOriginal = activeBefore || null;
+  const switchRes = await fetch(
+    `${API_BASE}/api/settings/model?model_name=${encodeURIComponent(FIXED_TEST_MODEL)}`,
+    {
+      method: "POST",
+      headers: apiClient._headers(),
+    }
+  );
+  if (!switchRes.ok) {
+    throw new Error(`Could not apply fixed test model ${FIXED_TEST_MODEL} (${switchRes.status})`);
+  }
+
+  const switched = await switchRes.json();
+  if (switched.status !== "switched" || switched.model !== FIXED_TEST_MODEL) {
+    throw new Error(`Fixed test model switch returned unexpected response: ${JSON.stringify(switched)}`);
+  }
+
+  const verifyRes = await fetch(`${API_BASE}/api/settings/models`, {
+    headers: apiClient._headers(),
+  });
+  const verify = verifyRes.ok ? await verifyRes.json() : {};
+  if (verify.active_model && verify.active_model !== FIXED_TEST_MODEL) {
+    throw new Error(`Fixed test model did not stick: expected ${FIXED_TEST_MODEL}, got ${verify.active_model}`);
+  }
+
+  fixedModelApplied = true;
+  console.log(`  Applied fixed test model: ${FIXED_TEST_MODEL}`);
+  return FIXED_TEST_MODEL;
+}
+
+async function restoreFixedTestModel() {
+  if (!fixedModelApplied || !fixedModelOriginal || fixedModelOriginal === FIXED_TEST_MODEL) {
+    return;
+  }
+
+  try {
+    const restoreRes = await fetch(
+      `${API_BASE}/api/settings/model?model_name=${encodeURIComponent(fixedModelOriginal)}`,
+      {
+        method: "POST",
+        headers: apiClient._headers(),
+      }
+    );
+    if (restoreRes.ok) {
+      console.log(`  Restored original model: ${fixedModelOriginal}`);
+      fixedModelApplied = false;
+    } else {
+      console.log(`  Could not restore original model ${fixedModelOriginal} (${restoreRes.status})`);
+    }
+  } catch (e) {
+    console.log(`  Could not restore original model ${fixedModelOriginal}: ${e.message}`);
+  }
+}
+
 // ── Report Generation ───────────────────────────────────────
 
 function generateReport(runDir, scenarioResults, evalResults, duration) {
@@ -574,6 +823,7 @@ async function main() {
   try {
     settingsStatus = await apiClient.get("/api/settings/status");
     console.log(`  LLM: ${settingsStatus?.services?.llm || "unknown"}`);
+    console.log(`  LLM chat-ready: ${settingsStatus?.llm_readiness?.chat_ready === true}`);
   } catch (e) {
     console.log(`  LLM status unavailable: ${e.message}`);
   }
@@ -592,7 +842,7 @@ async function main() {
     ],
   });
   const context = await browser.newContext({
-    viewport: { width: 1280, height: 800 },
+    viewport: DESKTOP_VIEWPORT,
     colorScheme: "dark",
   });
   await context.grantPermissions(["microphone"], { origin: new URL(FRONTEND).origin }).catch(() => {});
@@ -645,14 +895,14 @@ async function main() {
     } else {
       console.log(`  Maintenance pause failed (${pauseRes.status}), tests may compete with agents for model`);
     }
-    // Log which model tests will use
-    const modelsRes = await fetch(`${API_BASE}/api/settings/models`, { headers: apiClient._headers() });
-    if (modelsRes.ok) {
-      const modelsData = await modelsRes.json();
-      console.log(`  Using model: ${modelsData.active_model || "unknown"} (user-configured)`);
-    }
   } catch (e) {
     console.log(`  Maintenance pause skipped: ${e.message}`);
+  }
+
+  try {
+    await applyFixedTestModel();
+  } catch (e) {
+    throw new Error(`Fixed test model setup failed: ${e.message}`);
   }
 
   // ── Persistent Simulation Project ─────────────────────────
@@ -702,16 +952,7 @@ async function main() {
     }
 
     if (simProjectId) {
-      await page.evaluate(({ projectId, userId }) => {
-        localStorage.setItem("istara-active-project", projectId);
-        localStorage.removeItem("istara_tour_state");
-        if (userId) {
-          localStorage.setItem(`istara_tour_completed_${userId}`, "true");
-        } else {
-          localStorage.setItem("istara_tour_completed_anonymous", "true");
-        }
-      }, { projectId: simProjectId, userId: apiClient._userId });
-      await page.goto(FRONTEND, { waitUntil: "domcontentloaded" });
+      await ensureBrowserScenarioState(page, { projectId: simProjectId, activeView: "chat" });
     }
   } catch (e) {
     console.log(`  Project setup failed: ${e.message} — scenarios will create as needed`);
@@ -727,6 +968,9 @@ async function main() {
     frontendUrl: FRONTEND,
     token: apiClient._token,
     llmConnected: settingsStatus?.services?.llm === "connected",
+    llmReadiness: settingsStatus?.llm_readiness || null,
+    runDir,
+    fixedTestModel: FIXED_TEST_MODEL,
   };
 
   // ── Run ALL scenarios — never skip, never bail early ──────
@@ -736,15 +980,38 @@ async function main() {
   console.log(`  Per-scenario timeout: ${SCENARIO_TIMEOUT_MS / 60000} minutes\n`);
 
   const scenarioResults = [];
+  const scenarioProgress = new Map();
+
+  function recordScenarioProgress(scenarioId, partial = {}) {
+    const snapshot = {
+      id: scenarioId,
+      updatedAt: new Date().toISOString(),
+      ...partial,
+    };
+    scenarioProgress.set(scenarioId, snapshot);
+    try {
+      writeFileSync(
+        join(runDir, `scenario-${scenarioId}-progress.json`),
+        JSON.stringify(snapshot, null, 2)
+      );
+    } catch {}
+  }
+
   for (const scenario of scenarios) {
     if (singleScenario && !scenario.id.includes(singleScenario)) continue;
 
     process.stdout.write(`  ${scenario.id}: ${scenario.name}... `);
     const scenarioStart = Date.now();
+    const scenarioCtx = {
+      ...ctx,
+      scenarioId: scenario.id,
+      reportProgress: (partial) => recordScenarioProgress(scenario.id, partial),
+    };
     try {
+      await ensureBrowserScenarioState(page, { projectId: simProjectId, activeView: "chat" });
       // Wrap scenario.run in a timeout — never let a single scenario hang the runner
       const result = await Promise.race([
-        scenario.run(ctx),
+        scenario.run(scenarioCtx),
         new Promise((_, reject) =>
           setTimeout(
             () => reject(new Error(`TIMEOUT after ${SCENARIO_TIMEOUT_MS / 60000} minutes`)),
@@ -767,10 +1034,26 @@ async function main() {
     } catch (e) {
       const elapsed = ((Date.now() - scenarioStart) / 1000).toFixed(1);
       const isTimeout = e.message.startsWith("TIMEOUT");
+      const progress = scenarioProgress.get(scenario.id) || {};
+      const partialChecks = Array.isArray(progress.checks) ? progress.checks : [];
+      const checks = [
+        ...partialChecks,
+        {
+          name: isTimeout ? "Scenario timed out" : "Scenario error",
+          passed: false,
+          detail: e.message,
+        },
+      ];
       scenarioResults.push({
         id: scenario.id,
         name: scenario.name,
-        result: { checks: [], passed: 0, failed: 1 },
+        result: {
+          checks,
+          passed: checks.filter((check) => check?.passed).length,
+          failed: checks.filter((check) => !check?.passed).length,
+          partial: partialChecks.length > 0,
+          summary: progress.summary || "",
+        },
         error: e.message,
         elapsed,
         timedOut: isTimeout,
@@ -883,6 +1166,9 @@ async function main() {
 
   console.log();
 
+  // Restore the operator's model choice before bringing background work back.
+  await restoreFixedTestModel();
+
   // Resume Istara operations after simulation tests complete
   if (maintenancePaused) {
     try {
@@ -906,6 +1192,7 @@ async function main() {
 // Safety: resume Istara operations and stop caffeinate on crash or interrupt
 async function emergencyCleanup() {
   stopCaffeinate();
+  await restoreFixedTestModel();
   try {
     await fetch(`${API_BASE}/api/settings/maintenance/resume`, {
       method: "POST",

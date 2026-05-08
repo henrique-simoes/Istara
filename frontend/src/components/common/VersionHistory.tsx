@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { History, Bot, User, RotateCcw, ChevronDown, ChevronRight, FileText } from "lucide-react";
 import { useProjectStore } from "@/stores/projectStore";
 import { projects as projectsApi } from "@/lib/api";
-import { cn, formatDate } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 
 interface VersionEntry {
   commit_hash: string;

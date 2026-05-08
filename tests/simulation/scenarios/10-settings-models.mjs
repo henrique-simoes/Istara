@@ -19,7 +19,8 @@ export async function run(ctx) {
 
   const settingsNav = page.locator('button[aria-label="Settings"]').first();
   await settingsNav.click();
-  await page.waitForTimeout(1500);
+  await page.locator("text=Loading system info").waitFor({ state: "detached", timeout: 30000 }).catch(() => {});
+  await page.locator("text=System Status").first().waitFor({ state: "visible", timeout: 30000 });
 
   // Verify Settings sections load. The current settings page is longer than
   // one viewport, so scroll target sections into view before asserting them.

@@ -3,6 +3,7 @@
 import pytest
 from httpx import AsyncClient, ASGITransport
 from app.main import app
+from app.api.routes.chat import ChatRequest
 from app.config import settings
 from app.models.database import init_db
 from app.core.auth import create_token
@@ -145,3 +146,16 @@ async def test_chat_rejects_blank_message_before_project_lookup():
             headers={"Authorization": f"Bearer {token}"},
         )
         assert response.status_code == 422
+
+
+def test_chat_request_accepts_only_supported_thinking_modes():
+    request = ChatRequest.model_validate(
+        {"message": "hello", "project_id": "project-1", "thinking_mode": "auto"}
+    )
+
+    assert request.thinking_mode == "auto"
+
+    with pytest.raises(Exception):
+        ChatRequest.model_validate(
+            {"message": "hello", "project_id": "project-1", "thinking_mode": "show_raw"}
+        )

@@ -1,6 +1,7 @@
 import asyncio
 import httpx
 import logging
+import pytest
 import sys
 from pathlib import Path
 
@@ -19,7 +20,7 @@ async def test_llm_connectivity():
     failures = 0
     async with httpx.AsyncClient(timeout=10.0) as client:
         logger.info(
-            "Testing Gemini-first live LLM contract: %s primary attempts before fallback.",
+            "Testing single-server live LLM contract: up to %s attempt(s).",
             PRIMARY_LIVE_LLM_MAX_ATTEMPTS,
         )
         try:
@@ -29,8 +30,11 @@ async def test_llm_connectivity():
                 result.profile_name,
                 result.endpoint,
                 result.model,
-                " after Gemini fallback" if result.fallback_used else "",
+                "",
             )
+        except pytest.skip.Exception as exc:
+            logger.warning("Live LLM connectivity skipped: %s", exc)
+            return
         except Exception as exc:
             logger.error("Live LLM connectivity failed: %s", exc)
             failures += 1

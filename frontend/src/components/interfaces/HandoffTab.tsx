@@ -5,7 +5,7 @@ import { FileOutput, Loader2, ChevronDown, ChevronRight, FileText } from "lucide
 import { interfaces as interfacesApi } from "@/lib/api";
 import { useInterfacesStore } from "@/stores/interfacesStore";
 import { useProjectStore } from "@/stores/projectStore";
-import { cn, formatDate } from "@/lib/utils";
+import { formatDate } from "@/lib/utils";
 
 export default function HandoffTab() {
   const { screens, briefs, fetchScreens, fetchBriefs } = useInterfacesStore();

@@ -11,11 +11,9 @@ stay aligned with Compass Forge, CI, and the production behavior described in
   https://docs.pytest.org/en/stable/how-to/mark.html
 - Browser acceptance tests follow Playwright's authenticated-state model:
   https://playwright.dev/docs/auth
-- Primary live LLM tests use Gemini's OpenAI-compatible base URL:
-  https://ai.google.dev/gemini-api/docs/openai
-- Secondary live LLM fallback tests use LM Studio's OpenAI-compatible chat
-  completions endpoint:
-  https://lmstudio.ai/docs/developer/openai-compat/chat-completions
+- Live LLM tests use one private OpenAI-compatible profile configured through
+  gitignored environment only. The checked-in contract fixes the model id but
+  never stores the endpoint or token.
 - Backend mutation testing is staged around mutmut:
   https://mutmut.readthedocs.io/en/latest/
 - Frontend and relay mutation testing are staged around StrykerJS:
@@ -23,8 +21,9 @@ stay aligned with Compass Forge, CI, and the production behavior described in
 - Property-based tests should use Hypothesis where deterministic invariants can
   be generated safely:
   https://hypothesis.readthedocs.io/
-- Agentic eval design is aligned with OpenAI Evals and Inspect AI concepts:
-  https://github.com/openai/evals and https://inspect.aisi.org.uk/
+- Agentic eval design is aligned with OpenAI Evals, Inspect AI, HELM, Ragas,
+  TruLens, BFCL, tau-bench, GAIA, WebArena, SWE-bench, LLMLingua, RULER,
+  LoCoMo, and Memento Skills. See `testing/AI_EVALS_STRATEGY.md`.
 - Tool-calling evals should track BFCL-style function-call correctness:
   https://sky.cs.berkeley.edu/project/berkeley-function-calling-leaderboard/
 
@@ -42,36 +41,52 @@ stay aligned with Compass Forge, CI, and the production behavior described in
 4. Simulation acceptance: `tests/simulation/run.mjs` exercises menus,
    submenus, auth, data flows, agentic features, voice/transcription, and UI
    acceptance with authenticated API and browser state.
-5. Live LLM evals: `scripts/test_llm_integration.py` and
-   `tests/integration/test_llm_orchestration_real.py` use Gemini as primary and
-   the LM Studio/OpenAI-compatible server as optional fallback. Every live test
-   must spend exactly five Gemini chat-completion attempts before falling back.
-   Secrets must come from environment variables or macOS Keychain only.
+5. Live LLM evals: `scripts/test_llm_integration.py`,
+   `tests/integration/test_llm_orchestration_real.py`, and
+   `scripts/run_istara_evals.py` use the same single private
+   OpenAI-compatible profile. There is no secondary model probing in tests.
+   Secrets must come from gitignored environment files, environment variables,
+   or macOS Keychain only.
 6. Agentic eval contract: `tests/agentic_eval_contract.json` maps autoresearch,
    ReasoningBank, Memento skill/agent creation, Hyperagent, DGM-H, ensemble
    orchestration, ReAct tool-calling, and acceptance UI to test evidence and
    quantifiable metrics.
+7. Versioned AI eval registry: `tests/evals/registry.json` and
+   `tests/evals/cases/core_eval_cases.json` define repeatable subsystem evals.
+   Raw run outputs go under gitignored `tests/evals/.results/`.
 
 ## LLM Test Contract
 
 Live tests must never infer provider endpoints from browser probes, Ollama
-paths, or generic discovery URLs. Gemini calls use:
+paths, or generic discovery URLs. They use one OpenAI-compatible profile:
 
-- Base URL: `https://generativelanguage.googleapis.com/v1beta/openai/`
-- Chat endpoint: `/chat/completions`
-- Model: `gemini-3.1-flash-lite-preview`
-
-The secondary fallback server uses:
-
-- Base URL: `http://10.0.10.142:1234`
+- Base URL: `ISTARA_LIVE_LLM_BASE_URL` from a gitignored local env file
 - Chat endpoint: `/v1/chat/completions`
-- Model: `qwen3.6-35b-a3b@q5_k_xl`
+- Model: `google/gemma-4-e4b`
 
 The profile helper in `tests/llm_test_config.py` is the only source of truth for
-test endpoint construction and retry/fallback behavior. `PRIMARY_LIVE_LLM_MAX_ATTEMPTS`
+test endpoint construction and retry behavior. `PRIMARY_LIVE_LLM_MAX_ATTEMPTS`
 is fixed at `5`; `post_live_llm_chat_completion()` is the shared helper for
-live test probes. `scripts/check_test_harness.py` blocks stale `/api/tags` and
-`/output_schema` references in LLM test wiring.
+live test probes. `scripts/run_istara_evals.py` uses the same profile and writes
+only boolean configuration flags plus a private endpoint fingerprint. It must
+not write the endpoint or token. `scripts/check_test_harness.py` blocks stale
+`/api/tags` and `/output_schema` references plus committed private server
+addresses in LLM test wiring.
+
+## Versioned AI Eval Runner
+
+Use the eval runner whenever Compass Forge or the user asks to run, extend, or
+compare AI evaluations:
+
+```bash
+python scripts/run_istara_evals.py --suite all --require-live-llm
+```
+
+The runner currently covers classic LLM behavior, RAG, Prompt RAG, LLMLingua
+compression, DAG/ReAct planning, ReasoningBank, Memento Skills, Meta
+Hyperagent, thinking-output controls, and voice transcription contracts. It
+writes `manifest.json`, `summary.json`, `results.jsonl`, and `report.md` under
+`tests/evals/.results/` for later comparison.
 
 ## Mutation and Property Testing Gates
 

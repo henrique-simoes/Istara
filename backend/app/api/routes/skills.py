@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
+import asyncio
+import json
+
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
+from app.config import settings
 from app.core.agent import agent
 from app.core.improvement_governance import improvement_governance
-from app.core.permissions import require_global_admin, require_project_access
+from app.core.permissions import require_global_admin, require_global_role, require_project_access
 from app.models.database import get_db
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.skills.skill_manager import skill_manager
@@ -17,16 +21,35 @@ from app.skills.registry import registry
 router = APIRouter()
 
 
+def _bounded_timeout(
+    requested: float | None,
+    *,
+    default_seconds: float,
+    max_seconds: float,
+) -> float:
+    if requested is None:
+        value = default_seconds
+    else:
+        value = requested
+    try:
+        value = float(value)
+    except (TypeError, ValueError):
+        value = default_seconds
+    return max(0.1, min(value, max_seconds))
+
+
 class SkillExecuteRequest(BaseModel):
     project_id: str
     files: list[str] = []
     parameters: dict = {}
     user_context: str = ""
+    timeout_seconds: float | None = None
 
 
 class SkillPlanRequest(BaseModel):
     project_id: str
     user_context: str = ""
+    timeout_seconds: float | None = None
 
 
 class SkillCreateRequest(BaseModel):
@@ -119,7 +142,7 @@ async def get_all_creation_proposals(limit: int = 20):
 @router.post("/skills/creation-proposals/{proposal_id}/approve")
 async def approve_creation_proposal(proposal_id: str, request: Request):
     """Approve a skill creation proposal — writes definition file and registers skill."""
-    require_global_admin(request)
+    require_global_role(request, "researcher")
     proposal = next(
         (p for p in skill_manager.get_pending_creation_proposals() if p.id == proposal_id),
         None,
@@ -178,7 +201,7 @@ async def approve_creation_proposal(proposal_id: str, request: Request):
 @router.post("/skills/creation-proposals/{proposal_id}/verify")
 async def verify_creation_proposal(proposal_id: str, request: Request):
     """Run the verification gate for a pending skill creation proposal."""
-    require_global_admin(request)
+    require_global_role(request, "researcher")
     result = await skill_manager.verify_skill_proposal(proposal_id)
     if not result.get("passed") and result.get("issues") == ["Proposal not found or not pending"]:
         raise HTTPException(status_code=404, detail="Creation proposal not found or not pending")
@@ -188,7 +211,7 @@ async def verify_creation_proposal(proposal_id: str, request: Request):
 @router.post("/skills/creation-proposals/{proposal_id}/reject")
 async def reject_creation_proposal(proposal_id: str, request: Request, reason: str = ""):
     """Reject a skill creation proposal."""
-    require_global_admin(request)
+    require_global_role(request, "researcher")
     if not skill_manager.reject_creation_proposal(proposal_id, reason):
         raise HTTPException(status_code=404, detail="Creation proposal not found or not pending")
     try:
@@ -225,7 +248,7 @@ async def get_skill(name: str):
 @router.post("/skills", status_code=201)
 async def create_skill(data: SkillCreateRequest, request: Request):
     """Create a new skill definition."""
-    require_global_admin(request)
+    require_global_role(request, "researcher")
     if skill_manager.get(data.name):
         raise HTTPException(status_code=409, detail=f"Skill already exists: {data.name}")
 
@@ -259,7 +282,7 @@ async def delete_skill(name: str, request: Request):
 @router.post("/skills/{name}/toggle")
 async def toggle_skill(name: str, request: Request, enabled: bool = True):
     """Enable or disable a skill."""
-    require_global_admin(request)
+    require_global_role(request, "researcher")
     defn = skill_manager.toggle_skill(name, enabled)
     return {"name": name, "enabled": defn.enabled, "version": defn.version}
 
@@ -280,7 +303,7 @@ async def get_skill_health(name: str):
 @router.post("/skills/proposals/{proposal_id}/approve")
 async def approve_proposal(proposal_id: str, request: Request):
     """Approve a skill improvement proposal (applies the change)."""
-    require_global_admin(request)
+    require_global_role(request, "researcher")
     if not skill_manager.approve_proposal(proposal_id):
         raise HTTPException(status_code=404, detail="Proposal not found or not pending")
     try:
@@ -312,7 +335,7 @@ async def approve_proposal(proposal_id: str, request: Request):
 @router.post("/skills/proposals/{proposal_id}/reject")
 async def reject_proposal(proposal_id: str, request: Request, reason: str = ""):
     """Reject a skill improvement proposal."""
-    require_global_admin(request)
+    require_global_role(request, "researcher")
     if not skill_manager.reject_proposal(proposal_id, reason):
         raise HTTPException(status_code=404, detail="Proposal not found or not pending")
     try:
@@ -350,13 +373,36 @@ async def execute_skill(
         raise HTTPException(status_code=404, detail=f"Skill not found: {name}")
     await require_project_access(db, request, data.project_id, min_role="researcher")
 
-    output = await agent.execute_skill(
-        skill_name=name,
-        project_id=data.project_id,
-        files=data.files,
-        parameters=data.parameters,
-        user_context=data.user_context,
+    timeout_seconds = _bounded_timeout(
+        data.timeout_seconds,
+        default_seconds=settings.skill_execute_timeout_seconds,
+        max_seconds=settings.skill_execute_max_timeout_seconds,
     )
+    try:
+        output = await asyncio.wait_for(
+            agent.execute_skill(
+                skill_name=name,
+                project_id=data.project_id,
+                files=data.files,
+                parameters=data.parameters,
+                user_context=data.user_context,
+            ),
+            timeout=timeout_seconds,
+        )
+    except asyncio.TimeoutError:
+        raise HTTPException(
+            status_code=504,
+            detail=f"Skill execution timed out after {timeout_seconds:.3g}s",
+        )
+
+    schema_budget = None
+    for artifact_name, artifact_content in output.artifacts.items():
+        if artifact_name.endswith("_schema_budget.json") and isinstance(artifact_content, str):
+            try:
+                schema_budget = json.loads(artifact_content)
+            except Exception:
+                schema_budget = {"parse_error": True}
+            break
 
     return {
         "success": output.success,
@@ -368,6 +414,8 @@ async def execute_skill(
         "suggestions": output.suggestions,
         "errors": output.errors,
         "artifacts": list(output.artifacts.keys()),
+        "schema_budget": schema_budget,
+        "json_success": output.json_success,
     }
 
 
@@ -387,11 +435,25 @@ async def plan_skill(
         raise HTTPException(status_code=404, detail=f"Skill not found: {name}")
     await require_project_access(db, request, data.project_id, min_role="researcher")
 
-    plan = await agent.plan_skill(
-        skill_name=name,
-        project_id=data.project_id,
-        user_context=data.user_context,
+    timeout_seconds = _bounded_timeout(
+        data.timeout_seconds,
+        default_seconds=settings.skill_plan_timeout_seconds,
+        max_seconds=settings.skill_plan_max_timeout_seconds,
     )
+    try:
+        plan = await asyncio.wait_for(
+            agent.plan_skill(
+                skill_name=name,
+                project_id=data.project_id,
+                user_context=data.user_context,
+            ),
+            timeout=timeout_seconds,
+        )
+    except asyncio.TimeoutError:
+        raise HTTPException(
+            status_code=504,
+            detail=f"Skill plan timed out after {timeout_seconds:.3g}s",
+        )
 
     if "error" in plan:
         raise HTTPException(status_code=400, detail=plan["error"])

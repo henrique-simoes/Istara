@@ -1,7 +1,7 @@
 "use client";
 
 import { create } from "zustand";
-import type { ChatMessage } from "@/lib/types";
+import type { ChatMessage, ThinkingMode } from "@/lib/types";
 import { chat as chatApi, sessions as sessionsApi } from "@/lib/api";
 import { useAgentStore } from "@/stores/agentStore";
 import { useSessionStore } from "@/stores/sessionStore";
@@ -14,7 +14,12 @@ interface ChatStore {
   abortController: AbortController | null;
 
   fetchHistory: (projectId: string, sessionId?: string) => Promise<void>;
-  sendMessage: (projectId: string, content: string, sessionId?: string) => Promise<void>;
+  sendMessage: (
+    projectId: string,
+    content: string,
+    sessionId?: string,
+    thinkingMode?: ThinkingMode
+  ) => Promise<void>;
   cancelStreaming: () => void;
   clearMessages: () => void;
 }
@@ -49,7 +54,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     }
   },
 
-  sendMessage: async (projectId, content, sessionId) => {
+  sendMessage: async (projectId, content, sessionId, thinkingMode) => {
     // Cancel any existing stream first
     const existing = get().abortController;
     if (existing) {
@@ -79,7 +84,14 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       let messageId = "";
       let sources: any[] = [];
 
-      for await (const event of chatApi.send(projectId, content, sessionId, controller.signal)) {
+      const activeThinkingMode = thinkingMode || useSessionStore.getState().activeSession()?.thinking_mode;
+      for await (const event of chatApi.send(
+        projectId,
+        content,
+        sessionId,
+        controller.signal,
+        activeThinkingMode
+      )) {
         if (event.type === "chunk") {
           fullContent += event.content;
           set({ streamingContent: fullContent });

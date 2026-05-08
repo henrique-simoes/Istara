@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Clock, RotateCcw, Filter, CheckCircle, FileText, MessageSquare, ListTodo, ChevronDown } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { Clock, RotateCcw, Filter, CheckCircle, FileText, ListTodo, ChevronDown } from "lucide-react";
 import { useProjectStore } from "@/stores/projectStore";
 import { findings as findingsApi, tasks as tasksApi } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -40,12 +40,7 @@ export default function AgentTimeline() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showFilter, setShowFilter] = useState(false);
 
-  useEffect(() => {
-    if (!activeProjectId) return;
-    loadTimeline();
-  }, [activeProjectId]);
-
-  const loadTimeline = async () => {
+  const loadTimeline = useCallback(async () => {
     if (!activeProjectId) return;
     setLoading(true);
     try {
@@ -81,7 +76,12 @@ export default function AgentTimeline() {
       console.error("Failed to load timeline:", e);
     }
     setLoading(false);
-  };
+  }, [activeProjectId]);
+
+  useEffect(() => {
+    if (!activeProjectId) return;
+    loadTimeline();
+  }, [activeProjectId, loadTimeline]);
 
   const toggleSelect = (id: string) => {
     setSelectedIds((prev) => {
@@ -90,11 +90,6 @@ export default function AgentTimeline() {
       else next.add(id);
       return next;
     });
-  };
-
-  const selectAll = () => {
-    const filtered = filteredEntries.map((e) => e.id);
-    setSelectedIds(new Set(filtered));
   };
 
   const handleRollback = async () => {

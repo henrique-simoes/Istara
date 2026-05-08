@@ -1,0 +1,128 @@
+{
+  "schema_version": 1,
+  "registry_id": "istara-ai-evals",
+  "registry_version": "2026-05-07",
+  "compass_spec": "CF-SPEC-26",
+  "default_model": "google/gemma-4-e4b",
+  "result_contract": {
+    "tracked_definition_files": [
+      "testing/AI_EVALS_STRATEGY.md",
+      "tests/evals/registry.json",
+      "tests/evals/cases/core_eval_cases.json",
+      "scripts/run_istara_evals.py"
+    ],
+    "ignored_result_root": "tests/evals/.results",
+    "secret_policy": "Never store the live endpoint URL or API token in tracked files or run artifacts."
+  },
+  "suites": [
+    {
+      "id": "classic_llm",
+      "type": "live_llm",
+      "description": "Instruction following, JSON shape, visible-output hygiene, and deterministic short-answer behavior.",
+      "metrics": ["json_validity", "required_key_coverage", "exact_match", "latency_ms"],
+      "thresholds": {"pass_rate": 0.8},
+      "references": [
+        "https://github.com/openai/evals",
+        "https://crfm.stanford.edu/helm/",
+        "https://github.com/EleutherAI/lm-evaluation-harness"
+      ]
+    },
+    {
+      "id": "rag",
+      "type": "static_system",
+      "description": "Synthetic retrieval with gold documents, distractors, BM25 fallback, and source coverage.",
+      "metrics": ["context_precision_at_k", "context_recall_at_k", "source_coverage", "groundedness_proxy"],
+      "thresholds": {"pass_rate": 0.8},
+      "references": [
+        "https://docs.ragas.io/en/stable/concepts/metrics/available_metrics/",
+        "https://www.trulens.org/getting_started/core_concepts/rag_triad/"
+      ]
+    },
+    {
+      "id": "prompt_rag",
+      "type": "static_system",
+      "description": "Query-aware persona section retrieval with identity anchor survival and distractor suppression.",
+      "metrics": ["identity_anchor_survival", "section_recall", "distractor_exclusion", "token_budget_fit"],
+      "thresholds": {"pass_rate": 0.8},
+      "references": ["https://arxiv.org/abs/2404.06654"]
+    },
+    {
+      "id": "llmlingua",
+      "type": "static_system",
+      "description": "LLMLingua-inspired compression ratio, protected-context survival, and critical-term retention.",
+      "metrics": ["compression_ratio", "protected_context_survival", "critical_term_recall"],
+      "thresholds": {"pass_rate": 0.8},
+      "references": [
+        "https://arxiv.org/abs/2310.05736",
+        "https://www.microsoft.com/en-us/research/project/llmlingua/longllmlingua/"
+      ]
+    },
+    {
+      "id": "dag_react",
+      "type": "live_llm_and_static",
+      "description": "Plan decomposition, acyclic dependencies, ReAct-style tool choices, and trajectory-valid outputs.",
+      "metrics": ["dag_validity", "tool_name_accuracy", "argument_schema_validity", "trajectory_score"],
+      "thresholds": {"pass_rate": 0.75},
+      "references": [
+        "https://arxiv.org/abs/2210.03629",
+        "https://sky.cs.berkeley.edu/project/berkeley-function-calling-leaderboard/",
+        "https://platform.openai.com/docs/guides/trace-grading"
+      ]
+    },
+    {
+      "id": "memory_reasoning_bank",
+      "type": "static_system",
+      "description": "Trace distillation, redaction, retrieval-readiness, and reusable success/failure memory checks.",
+      "metrics": ["distillation_traceability", "secret_redaction", "outcome_tagging", "retrieval_precision_proxy"],
+      "thresholds": {"pass_rate": 0.8},
+      "references": [
+        "https://arxiv.org/abs/2402.17753",
+        "https://arxiv.org/abs/2602.16313"
+      ]
+    },
+    {
+      "id": "memento_skills",
+      "type": "static_system",
+      "description": "Skill schema coverage, enabled/toggle readiness, approval lifecycle evidence, and skill memory readiness.",
+      "metrics": ["skill_schema_validity", "skill_coverage", "approval_lineage", "execution_prompt_coverage"],
+      "thresholds": {"pass_rate": 0.8},
+      "references": ["https://github.com/Memento-Teams/Memento-Skills"]
+    },
+    {
+      "id": "meta_hyperagent",
+      "type": "static_system",
+      "description": "Observation/proposal safety, parameter bounds, active-variant cap, and governance hooks.",
+      "metrics": ["bounds_enforcement", "variant_limit_enforcement", "proposal_evidence_coverage", "rollback_readiness"],
+      "thresholds": {"pass_rate": 0.8},
+      "references": ["https://inspect.aisi.org.uk/"]
+    },
+    {
+      "id": "thinking_output",
+      "type": "static_system",
+      "description": "Thinking-mode controls and family-specific hidden-reasoning marker stripping.",
+      "metrics": ["mode_normalization", "marker_registry_coverage", "visible_output_safety"],
+      "thresholds": {"pass_rate": 0.9},
+      "references": ["https://platform.openai.com/docs/guides/agent-evals"]
+    },
+    {
+      "id": "voice_transcription",
+      "type": "static_system",
+      "description": "Whisper dependency status, typed transcription errors, ICR readiness, and spoken-research tagging.",
+      "metrics": ["dependency_status", "typed_failure_coverage", "tagging_precision_proxy", "review_flag_coverage"],
+      "thresholds": {"pass_rate": 0.8},
+      "references": ["https://inspect.aisi.org.uk/"]
+    },
+    {
+      "id": "orchestration_benchmarks",
+      "type": "benchmark_runner",
+      "description": "Existing Istara long-horizon DAG, tool-calling, A2A consensus, and steering benchmarks.",
+      "metrics": ["dag_success", "tool_selection_quality", "consensus_accuracy", "steering_latency_ms"],
+      "thresholds": {"pass_rate": 0.8},
+      "commands": ["python tests/benchmarks/run_benchmarks.py --json tests/evals/.results/orchestration-benchmark.json"],
+      "references": [
+        "https://arxiv.org/abs/2308.03688",
+        "https://arxiv.org/abs/2406.12045"
+      ]
+    }
+  ]
+}

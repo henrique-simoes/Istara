@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Power, PowerOff, Heart, MessageSquare, Clock } from "lucide-react";
+import { Power, PowerOff, MessageSquare, Clock } from "lucide-react";
 import { channels as channelsApi } from "@/lib/api";
 import { useIntegrationsStore } from "@/stores/integrationsStore";
+import { useProjectStore } from "@/stores/projectStore";
 import { cn } from "@/lib/utils";
 import type { ChannelInstance } from "@/lib/types";
 
@@ -28,6 +29,7 @@ interface ChannelInstanceCardProps {
 
 export default function ChannelInstanceCard({ instance, onSelect, selected }: ChannelInstanceCardProps) {
   const { fetchChannels } = useIntegrationsStore();
+  const { activeProjectId } = useProjectStore();
   const [toggling, setToggling] = useState(false);
   const meta = PLATFORM_META[instance.platform] || { label: instance.platform, color: "text-slate-500", bg: "bg-slate-100" };
 
@@ -40,7 +42,7 @@ export default function ChannelInstanceCard({ instance, onSelect, selected }: Ch
       } else {
         await channelsApi.start(instance.id);
       }
-      await fetchChannels();
+      await fetchChannels(undefined, activeProjectId || undefined);
     } catch {
       // silently fail
     } finally {

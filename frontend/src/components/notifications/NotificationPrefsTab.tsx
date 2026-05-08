@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Save, Settings2 } from "lucide-react";
+import { Save } from "lucide-react";
 import { useNotificationStore } from "@/stores/notificationStore";
 import { cn } from "@/lib/utils";
 import type { NotificationCategory, NotificationPreference } from "@/lib/types";

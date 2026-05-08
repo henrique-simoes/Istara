@@ -173,6 +173,41 @@ async def test_handoff_briefs_hydrate_evidence_payload(auth_headers):
 
 
 @pytest.mark.asyncio
+async def test_handoff_brief_generation_creates_hydrated_brief(auth_headers):
+    """Brief generation creates a persisted handoff brief with resolved evidence."""
+    await init_db()
+    project = await _seed_project("Brief Generation")
+    insight = await _seed_insight(project.id)
+    rec = await _seed_recommendation(project.id)
+    existing_brief = DesignBrief(
+        id=str(uuid.uuid4()),
+        project_id=project.id,
+        title="Earlier Brief",
+        content="Existing brief content",
+        source_insight_ids="[]",
+        source_recommendation_ids="[]",
+    )
+    async with async_session() as db:
+        db.add(existing_brief)
+        await db.commit()
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.post(
+            "/api/interfaces/handoff/brief",
+            headers=auth_headers,
+            json={"project_id": project.id},
+        )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["success"] is True
+    assert payload["brief_id"]
+    assert payload["brief"]["source_findings"][0]["id"] == insight.id
+    assert payload["brief"]["recommendations"][0]["id"] == rec.id
+
+
+@pytest.mark.asyncio
 async def test_handoff_dev_spec_resolves_source_findings(auth_headers):
     """Developer specs include deterministic content and resolved evidence."""
     await init_db()

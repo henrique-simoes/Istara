@@ -1,8 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, MessageSquare, Filter } from "lucide-react";
+import { Plus, MessageSquare } from "lucide-react";
 import { useIntegrationsStore } from "@/stores/integrationsStore";
+import { useProjectStore } from "@/stores/projectStore";
+import { useAuthStore } from "@/stores/authStore";
+import { permissionRequests } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import ChannelInstanceCard from "./ChannelInstanceCard";
 import ChannelSetupWizard from "./ChannelSetupWizard";
@@ -25,14 +28,18 @@ export default function MessagingTab() {
     fetchChannels,
     selectInstance,
   } = useIntegrationsStore();
+  const { activeProjectId, canAdminActiveProject } = useProjectStore();
+  const { user } = useAuthStore();
 
   const [platformFilter, setPlatformFilter] = useState<string | null>(null);
   const [showWizard, setShowWizard] = useState(false);
   const [detailView, setDetailView] = useState<"messages" | "conversations">("messages");
 
+  const canManageChannels = user?.role === "admin" || canAdminActiveProject();
+
   useEffect(() => {
-    fetchChannels(platformFilter || undefined);
-  }, [fetchChannels, platformFilter]);
+    fetchChannels(platformFilter || undefined, activeProjectId || undefined);
+  }, [activeProjectId, fetchChannels, platformFilter]);
 
   const selectedInstance = channelInstances.find((c) => c.id === selectedInstanceId);
 
@@ -41,7 +48,7 @@ export default function MessagingTab() {
       <ChannelSetupWizard
         onClose={() => {
           setShowWizard(false);
-          fetchChannels();
+          fetchChannels(undefined, activeProjectId || undefined);
         }}
       />
     );
@@ -56,11 +63,22 @@ export default function MessagingTab() {
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold text-slate-900 dark:text-white">Channels</h2>
             <button
-              onClick={() => setShowWizard(true)}
+              onClick={async () => {
+                if (canManageChannels) {
+                  setShowWizard(true);
+                } else if (activeProjectId) {
+                  await permissionRequests.create({
+                    project_id: activeProjectId,
+                    action: "channels.integration.create",
+                    title: "Connect messaging channel",
+                    details: "Request permission to connect a project messaging channel.",
+                  });
+                }
+              }}
               className="flex items-center gap-1 px-2.5 py-1.5 text-xs bg-istara-600 text-white rounded-lg hover:bg-istara-700 transition-colors"
             >
               <Plus size={12} />
-              Add Channel
+              {canManageChannels ? "Add Channel" : "Request Channel"}
             </button>
           </div>
 

@@ -18,7 +18,7 @@ import {
 import { useProjectStore } from "@/stores/projectStore";
 import { findings as findingsApi } from "@/lib/api";
 import type { FindingsSummary, Nugget, Fact, Insight, Recommendation, ProjectPhase } from "@/lib/types";
-import { cn, confidenceColor, phaseLabel } from "@/lib/utils";
+import { cn, confidenceColor } from "@/lib/utils";
 import AtomicDrilldown from "./AtomicDrilldown";
 import LawBadge from "@/components/laws/LawBadge";
 import ViewOnboarding from "@/components/common/ViewOnboarding";
@@ -111,8 +111,6 @@ export default function FindingsView({ navigationFilter = null }: FindingsViewPr
   const phaseFacts = facts.filter((f) => f.phase === activePhase);
   const phaseInsights = insights.filter((i) => i.phase === activePhase);
   const phaseRecs = recommendations.filter((r) => r.phase === activePhase);
-  const phaseStats = summary?.by_phase[activePhase];
-
   /** Count evidence links for a finding based on its type */
   const getEvidenceLinkCount = (item: any, sectionId: string): number => {
     const parseIds = (raw: string | string[] | undefined | null): string[] => {

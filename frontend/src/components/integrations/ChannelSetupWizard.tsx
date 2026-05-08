@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ChevronLeft, ChevronRight, CheckCircle2, AlertCircle, X, Send, Hash, MessageCircle, MessageSquare } from "lucide-react";
 import { channels as channelsApi } from "@/lib/api";
+import { useProjectStore } from "@/stores/projectStore";
 import { cn } from "@/lib/utils";
 
 const STEPS = ["platform", "credentials", "name", "test", "done"] as const;
@@ -48,6 +49,7 @@ interface ChannelSetupWizardProps {
 }
 
 export default function ChannelSetupWizard({ onClose }: ChannelSetupWizardProps) {
+  const { activeProjectId } = useProjectStore();
   const [currentStep, setCurrentStep] = useState<Step>("platform");
   const [selectedPlatform, setSelectedPlatform] = useState<string | null>(null);
   const [credentials, setCredentials] = useState<Record<string, string>>({});
@@ -77,6 +79,7 @@ export default function ChannelSetupWizard({ onClose }: ChannelSetupWizardProps)
         platform: selectedPlatform,
         name: channelName || `${selectedPlatform}-channel`,
         config: credentials,
+        project_id: activeProjectId || undefined,
       });
       instanceId = instance.id;
       const start = await channelsApi.start(instance.id);

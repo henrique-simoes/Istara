@@ -57,6 +57,7 @@ export interface NavItem {
   label: string;
   shortLabel?: string;
   adminOnly?: boolean;
+  minRole?: "viewer" | "researcher" | "admin";
 }
 
 export const PRIMARY_NAV_ITEMS: NavItem[] = [
@@ -72,16 +73,16 @@ export const PRIMARY_NAV_ITEMS: NavItem[] = [
   { id: "memory", icon: Brain, label: "Memory" },
   { id: "interfaces", icon: Palette, label: "Interfaces" },
   { id: "integrations", icon: MessageSquare, label: "Integrations" },
-  { id: "loops", icon: RefreshCw, label: "Loops" },
+  { id: "loops", icon: RefreshCw, label: "Loops", minRole: "researcher" },
   { id: "settings", icon: Settings, label: "Settings" },
 ];
 
 export const SECONDARY_NAV_ITEMS: NavItem[] = [
   { id: "admin", icon: Shield, label: "Admin", adminOnly: true },
-  { id: "autoresearch", icon: FlaskConical, label: "Autoresearch" },
-  { id: "backup", icon: Archive, label: "Backup" },
-  { id: "meta-hyperagent", icon: Sparkles, label: "Meta-Agent" },
-  { id: "compute", icon: Server, label: "Compute Pool" },
+  { id: "autoresearch", icon: FlaskConical, label: "Autoresearch", minRole: "researcher" },
+  { id: "backup", icon: Archive, label: "Backup", adminOnly: true },
+  { id: "meta-hyperagent", icon: Sparkles, label: "Meta-Agent", adminOnly: true },
+  { id: "compute", icon: Server, label: "Compute Pool", minRole: "researcher" },
   { id: "ensemble", icon: Activity, label: "Ensemble Health" },
   { id: "quality", icon: CheckCircle, label: "Quality Dashboard" },
   { id: "project-settings", icon: Settings, label: "Project Settings" },
@@ -123,13 +124,25 @@ export const VIEW_NAMES: Record<string, string> = ALL_NAV_ITEMS.reduce(
 
 export const SECONDARY_NAV_IDS = new Set<ViewId>(SECONDARY_NAV_ITEMS.map((item) => item.id));
 
+function roleRank(role?: string | null): number {
+  if (role === "admin") return 2;
+  if (role === "researcher") return 1;
+  return 0;
+}
+
+function itemAllowedForRole(item: NavItem, role?: string | null): boolean {
+  if (item.adminOnly && role !== "admin") return false;
+  if (item.minRole && roleRank(role) < roleRank(item.minRole)) return false;
+  return true;
+}
+
 export function filterNavItemsForRole(items: NavItem[], role?: string | null): NavItem[] {
-  return items.filter((item) => !item.adminOnly || role === "admin");
+  return items.filter((item) => itemAllowedForRole(item, role));
 }
 
 export function isViewAllowed(viewId: string, role?: string | null): boolean {
   const item = ALL_NAV_ITEMS.find((candidate) => candidate.id === viewId);
-  return Boolean(item && (!item.adminOnly || role === "admin"));
+  return Boolean(item && itemAllowedForRole(item, role));
 }
 
 export function mobilePrimaryItemsForRole(role?: string | null): NavItem[] {

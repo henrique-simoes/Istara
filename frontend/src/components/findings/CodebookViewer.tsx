@@ -7,7 +7,6 @@ import {
   ChevronRight,
   Tag,
   AlertCircle,
-  Loader2,
 } from "lucide-react";
 import { codebookVersions as codebookApi, codebooks as legacyCodebookApi } from "@/lib/api";
 import type { CodebookVersionType, CodeEntry } from "@/lib/types";

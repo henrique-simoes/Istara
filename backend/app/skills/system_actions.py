@@ -13,12 +13,10 @@ Architecture:
 
 import json
 import logging
-import re
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlparse
 
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -31,6 +29,12 @@ from app.models.project import Project
 from app.models.document import Document
 from app.models.finding import Nugget, Fact, Insight, Recommendation
 from app.models.agent import Agent
+from app.skills.system_web_context_actions import (
+    _exec_browse_website,
+    _exec_context_expand,
+    _exec_context_grep,
+    _exec_web_fetch,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -1094,155 +1098,6 @@ async def _exec_sync_project_documents(params: dict, project_id: str, agent_id: 
             await db.commit()
 
         return f"Synced project folder: {new_count} new document(s) registered, {len(files)} total files."
-
-
-async def _exec_web_fetch(params: dict, project_id: str, agent_id: str) -> str:
-    """Fetch a web page and convert to readable text."""
-    import httpx as _httpx
-
-    url = params.get("url", "")
-    max_chars = params.get("max_chars", 4000)
-
-    # Security: validate URL scheme
-    parsed = urlparse(url)
-    if parsed.scheme not in ("http", "https"):
-        return json.dumps({"error": "Only http:// and https:// URLs are supported"})
-
-    # Security: block private/internal IPs
-    hostname = parsed.hostname or ""
-    blocked_hosts = {"localhost", "127.0.0.1", "0.0.0.0", "::1", "169.254.169.254"}
-    if hostname in blocked_hosts:
-        return json.dumps({"error": "Cannot fetch internal/private network URLs for security"})
-    if hostname.startswith("10.") or hostname.startswith("192.168.") or hostname.startswith("172."):
-        # Block 172.16.0.0/12 range (172.16-31.x.x)
-        parts = hostname.split(".")
-        if hostname.startswith("172.") and len(parts) >= 2:
-            try:
-                second_octet = int(parts[1])
-                if 16 <= second_octet <= 31:
-                    return json.dumps(
-                        {"error": "Cannot fetch internal/private network URLs for security"}
-                    )
-            except ValueError:
-                pass
-        if hostname.startswith("10.") or hostname.startswith("192.168."):
-            return json.dumps({"error": "Cannot fetch internal/private network URLs for security"})
-
-    try:
-        async with _httpx.AsyncClient(timeout=15.0, follow_redirects=True) as client:
-            resp = await client.get(
-                url,
-                headers={"User-Agent": "Istara/1.0 (UX Research Agent)"},
-            )
-            resp.raise_for_status()
-
-            content_type = resp.headers.get("content-type", "")
-
-            if "text/html" in content_type:
-                # Convert HTML to readable text
-                try:
-                    from html2text import HTML2Text
-
-                    h = HTML2Text()
-                    h.ignore_links = False
-                    h.ignore_images = True
-                    h.body_width = 0
-                    text = h.handle(resp.text)
-                except ImportError:
-                    # Fallback: strip tags with regex
-                    text = re.sub(r"<[^>]+>", "", resp.text)
-                    text = re.sub(r"\s+", " ", text).strip()
-            else:
-                text = resp.text
-
-            # Truncate to max_chars
-            if len(text) > max_chars:
-                text = (
-                    text[:max_chars]
-                    + f"\n\n[Truncated -- showing first {max_chars} of {len(text)} characters]"
-                )
-
-            return json.dumps(
-                {
-                    "url": str(resp.url),
-                    "status": resp.status_code,
-                    "content_length": len(text),
-                    "content": text,
-                }
-            )
-    except _httpx.HTTPStatusError as e:
-        return json.dumps(
-            {"error": f"HTTP {e.response.status_code}: {e.response.reason_phrase}", "url": url}
-        )
-    except Exception as e:
-        return json.dumps({"error": str(e), "url": url})
-
-
-async def _exec_browse_website(params: dict, project_id: str, agent_id: str) -> dict:
-    """Execute browse_website tool."""
-    from app.services.browser_service import browse_website, BROWSER_AVAILABLE
-
-    if not BROWSER_AVAILABLE:
-        return {
-            "error": "browser-use not installed. Install: pip install browser-use langchain-openai"
-        }
-
-    url = params.get("url", "")
-    task = params.get("task", "")
-    max_steps = params.get("max_steps", 10)
-
-    if not url:
-        return {"error": "url is required"}
-    if not task:
-        return {"error": "task is required"}
-
-    return await browse_website(url=url, task=task, max_steps=max_steps)
-
-
-async def _exec_context_expand(params: dict, project_id: str, agent_id: str) -> str:
-    """Execute context_expand tool."""
-    from app.core.context_tools import context_expand
-
-    # Note: tools called by agents usually operate in the context of their current session.
-    # However, system_actions doesn't always have session_id.
-    # We'll need to find the active session for this project/agent.
-    async with async_session() as db:
-        from app.models.session import ChatSession
-
-        result = await db.execute(
-            select(ChatSession.id)
-            .where(ChatSession.project_id == project_id)
-            .order_by(ChatSession.updated_at.desc())
-            .limit(1)
-        )
-        session_id = result.scalar()
-
-    if not session_id:
-        return "Error: No active session found for this project."
-
-    return await context_expand(session_id=session_id, node_id=params["node_id"])
-
-
-async def _exec_context_grep(params: dict, project_id: str, agent_id: str) -> str:
-    """Execute context_grep tool."""
-    from app.core.context_tools import context_grep
-
-    async with async_session() as db:
-        from app.models.session import ChatSession
-
-        result = await db.execute(
-            select(ChatSession.id)
-            .where(ChatSession.project_id == project_id)
-            .order_by(ChatSession.updated_at.desc())
-            .limit(1)
-        )
-        session_id = result.scalar()
-
-    if not session_id:
-        return "Error: No active session found for this project."
-
-    return await context_grep(session_id=session_id, query=params["query"])
-
 
 # ── Executor Registry ─────────────────────────────────────────────
 
