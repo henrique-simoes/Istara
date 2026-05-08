@@ -30,6 +30,18 @@ def _json_list(value: str | None) -> list:
     return parsed if isinstance(parsed, list) else []
 
 
+def _json_dict(value: str | None) -> dict:
+    import json
+
+    if not value:
+        return {}
+    try:
+        parsed = json.loads(value)
+    except (json.JSONDecodeError, TypeError):
+        return {}
+    return parsed if isinstance(parsed, dict) else {}
+
+
 class ProjectReport(Base):
     __tablename__ = "project_reports"
 
@@ -64,11 +76,13 @@ class ProjectReport(Base):
     def to_dict(self) -> dict:
         finding_ids = _json_list(self.finding_ids_json)
         mece_categories = _json_list(self.mece_categories_json)
+        content = _json_dict(self.content_json)
         return {
             "id": self.id, "project_id": self.project_id,
             "title": self.title, "layer": self.layer,
             "report_type": self.report_type, "scope": self.scope,
             "executive_summary": self.executive_summary,
+            "content": content,
             "status": self.status, "version": self.version,
             "finding_count": len(finding_ids),
             "mece_categories": mece_categories,

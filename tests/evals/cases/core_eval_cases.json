@@ -1,0 +1,83 @@
+{
+  "schema_version": 1,
+  "live_cases": [
+    {
+      "id": "classic_json_contract",
+      "suite": "classic_llm",
+      "kind": "chat_completion",
+      "thinking_mode": "off",
+      "max_tokens": 160,
+      "messages": [
+        {
+          "role": "system",
+          "content": "Return JSON only. Do not include markdown, comments, or prose outside the JSON object."
+        },
+        {
+          "role": "user",
+          "content": "Set answer to AURORA. Set evidence to instruction. Return exactly the keys answer and evidence."
+        }
+      ],
+      "checks": {
+        "json_object": true,
+        "json_keys": ["answer", "evidence"],
+        "field_equals": {"answer": "AURORA", "evidence": "instruction"}
+      }
+    },
+    {
+      "id": "tool_choice_memory_search",
+      "suite": "dag_react",
+      "kind": "chat_completion",
+      "thinking_mode": "off",
+      "max_tokens": 260,
+      "messages": [
+        {
+          "role": "system",
+          "content": "Return compact JSON only with no markdown. The JSON schema is {\"tool_name\": string, \"arguments\": {\"query\": string, \"top_k\": number}}."
+        },
+        {
+          "role": "user",
+          "content": "Available tools: search_memory(query, top_k), retrieve_document(source), create_task(title). The user asks: what did we learn earlier about checkout friction? Choose the best tool and arguments."
+        }
+      ],
+      "checks": {
+        "json_object": true,
+        "json_keys": ["tool_name", "arguments"],
+        "field_equals": {"tool_name": "search_memory"},
+        "nested_contains": {"arguments.query": "checkout"}
+      }
+    },
+    {
+      "id": "dag_react_json_plan",
+      "suite": "dag_react",
+      "kind": "chat_completion",
+      "thinking_mode": "off",
+      "max_tokens": 360,
+      "messages": [
+        {
+          "role": "system",
+          "content": "Return compact JSON only with no markdown. Required schema: {\"nodes\":[{\"id\":\"retrieve\",\"action\":string},{\"id\":\"analyze\",\"action\":string},{\"id\":\"synthesize\",\"action\":string}],\"edges\":[[\"retrieve\",\"analyze\"],[\"analyze\",\"synthesize\"]]}. Include both keys nodes and edges."
+        },
+        {
+          "role": "user",
+          "content": "Plan how to answer a research question using retrieved documents, thematic analysis, and final synthesis."
+        }
+      ],
+      "checks": {
+        "json_object": true,
+        "json_keys": ["nodes", "edges"],
+        "dag": true,
+        "contains_any": ["retrieve", "theme", "synthesis"]
+      }
+    }
+  ],
+  "static_cases": [
+    {"id": "rag_keyword_gold", "suite": "rag"},
+    {"id": "prompt_rag_identity_and_relevance", "suite": "prompt_rag"},
+    {"id": "llmlingua_protected_context", "suite": "llmlingua"},
+    {"id": "reasoning_bank_distillation_redaction", "suite": "memory_reasoning_bank"},
+    {"id": "memento_skill_definition_coverage", "suite": "memento_skills"},
+    {"id": "meta_hyperagent_bounds", "suite": "meta_hyperagent"},
+    {"id": "thinking_marker_sanitization", "suite": "thinking_output"},
+    {"id": "voice_transcription_contract", "suite": "voice_transcription"}
+  ]
+}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { Activity, Pause, AlertTriangle, Clock, RefreshCw } from "lucide-react";
+import { Activity, AlertTriangle, Clock, RefreshCw } from "lucide-react";
 import { useLoopsStore } from "@/stores/loopsStore";
 import { cn } from "@/lib/utils";
 import type { LoopHealthItem, LoopStatus } from "@/lib/types";

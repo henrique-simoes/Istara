@@ -61,7 +61,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
               const { useAuthStore } = await import("@/stores/authStore");
               await useAuthStore.getState().login("local", "");
               if (!cancelled) await onLogin();
-            } catch (err) {
+            } catch {
               if (!cancelled) setError("Failed to start local mode.");
             }
           }
@@ -78,7 +78,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
 
     checkServer();
     return () => { cancelled = true; };
-  }, []);
+  }, [onLogin]);
 
   // Auto-focus username input
   useEffect(() => {
@@ -231,6 +231,10 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
         } catch (err) {
           setError(err instanceof Error ? err.message : "Invalid connection string");
         } finally { setLoading(false); }
+        return;
+      }
+      if (joinValidated?.token_type === "compute_donation") {
+        setError("This connection string is for compute donation, not account creation.");
         return;
       }
       if (!username.trim() || !password.trim()) { setError("Choose a username and password."); return; }
@@ -531,6 +535,8 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
   }
 
   // ── Team mode: login / register / join ────────────────────
+  const joinIsComputeDonation = mode === "join" && joinValidated?.token_type === "compute_donation";
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950 px-4">
       <div className="w-full max-w-md">
@@ -605,20 +611,41 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
               </div>
             )}
             {mode === "join" && joinValidated && (
-              <div className="rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 p-3 text-sm">
-                <p className="text-green-700 dark:text-green-400 font-medium">Server verified ✓</p>
-                <p className="text-green-600 dark:text-green-500 text-xs mt-1">
-                  {joinValidated.server_url} {joinValidated.label && `(${joinValidated.label})`}
-                </p>
-                <p className="text-slate-500 text-xs mt-2">
-                  Choose a username and password for your new account.
-                  {teamMode && (
-                    <span>
-                      {" "}If your admin already created one for you, <button type="button" onClick={() => { setMode("login"); setError(""); setJoinValidated(null); }} className="text-istara-600 dark:text-istara-400 font-medium hover:underline">go to Sign In</button> instead.
-                    </span>
-                  )}
-                </p>
-              </div>
+              joinIsComputeDonation ? (
+                <div className="rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-3 text-sm">
+                  <p className="text-amber-700 dark:text-amber-400 font-medium">
+                    Compute donation string verified
+                  </p>
+                  <p className="text-slate-500 text-xs mt-2">
+                    Run the relay with this string. If no local LLM server is installed, the relay connects idle until LM Studio, Ollama, or another supported server starts.
+                  </p>
+                  <code className="mt-2 block rounded bg-white/70 dark:bg-slate-900/70 border border-amber-200 dark:border-amber-800 p-2 text-[10px] font-mono text-slate-700 dark:text-slate-300 break-all select-all">
+                    istara-relay --connection-string "{connectionString.trim()}"
+                  </code>
+                  <button
+                    type="button"
+                    onClick={() => { setConnectionString(""); setJoinValidated(null); setError(""); }}
+                    className="mt-2 text-xs text-amber-700 dark:text-amber-300 font-medium hover:underline"
+                  >
+                    Paste a different string
+                  </button>
+                </div>
+              ) : (
+                <div className="rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 p-3 text-sm">
+                  <p className="text-green-700 dark:text-green-400 font-medium">Server verified ✓</p>
+                  <p className="text-green-600 dark:text-green-500 text-xs mt-1">
+                    {joinValidated.server_url} {joinValidated.label && `(${joinValidated.label})`}
+                  </p>
+                  <p className="text-slate-500 text-xs mt-2">
+                    Choose a username and password for your new account.
+                    {teamMode && (
+                      <span>
+                        {" "}If your admin already created one for you, <button type="button" onClick={() => { setMode("login"); setError(""); setJoinValidated(null); }} className="text-istara-600 dark:text-istara-400 font-medium hover:underline">go to Sign In</button> instead.
+                      </span>
+                    )}
+                  </p>
+                </div>
+              )
             )}
 
             {/* 2FA Step */}
@@ -673,7 +700,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
             )}
 
             {/* Username — shown for login, register, and join (after validation) */}
-            {loginStep !== "2fa" && (mode !== "join" || joinValidated) && (
+            {loginStep !== "2fa" && !joinIsComputeDonation && (mode !== "join" || joinValidated) && (
             <div>
               <label
                 htmlFor="login-username"
@@ -696,7 +723,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
             </div>
             )}
 
-            {loginStep !== "2fa" && (mode === "register" || (mode === "join" && joinValidated)) && (
+            {loginStep !== "2fa" && !joinIsComputeDonation && (mode === "register" || (mode === "join" && joinValidated)) && (
               <div>
                 <label
                   htmlFor="login-email"
@@ -719,7 +746,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
             )}
 
             {/* Password — only in team mode */}
-            {loginStep !== "2fa" && (mode !== "join" || joinValidated) && (
+            {loginStep !== "2fa" && !joinIsComputeDonation && (mode !== "join" || joinValidated) && (
             <div>
               <label
                 htmlFor="login-password"
@@ -751,27 +778,29 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
               </div>
             )}
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-2.5 px-4 rounded-lg bg-istara-600 hover:bg-istara-700 active:bg-istara-800 text-white font-medium transition focus:outline-none focus:ring-2 focus:ring-istara-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? (
-                <span className="inline-flex items-center gap-2">
-                  <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                  </svg>
-                  {mode === "register" ? "Creating account..." : mode === "join" ? "Connecting..." : loginStep === "2fa" ? "Verifying..." : "Signing in..."}
-                </span>
-              ) : (
-                mode === "join"
-                  ? (joinValidated ? "Create Account & Connect" : "Verify Connection")
-                  : mode === "register" ? "Create Account"
-                  : loginStep === "2fa" ? "Verify"
-                  : "Sign In"
-              )}
-            </button>
+            {!joinIsComputeDonation && (
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-2.5 px-4 rounded-lg bg-istara-600 hover:bg-istara-700 active:bg-istara-800 text-white font-medium transition focus:outline-none focus:ring-2 focus:ring-istara-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loading ? (
+                  <span className="inline-flex items-center gap-2">
+                    <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    {mode === "register" ? "Creating account..." : mode === "join" ? "Connecting..." : loginStep === "2fa" ? "Verifying..." : "Signing in..."}
+                  </span>
+                ) : (
+                  mode === "join"
+                    ? (joinValidated ? "Create Account & Connect" : "Verify Connection")
+                    : mode === "register" ? "Create Account"
+                    : loginStep === "2fa" ? "Verify"
+                    : "Sign In"
+                )}
+              </button>
+            )}
 
             {/* Passkey login option */}
             {mode === "login" && loginStep === "credentials" && teamMode && (

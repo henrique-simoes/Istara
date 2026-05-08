@@ -8,8 +8,8 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.permissions import get_subject, is_global_admin, require_project_access
 from app.core.scheduler import CronParser, ScheduledTask
-from app.core.security_middleware import require_admin_from_request
 from app.models.database import get_db
 
 router = APIRouter()
@@ -68,7 +68,6 @@ class ScheduleResponse(BaseModel):
 @router.post("/schedules", response_model=ScheduleResponse, status_code=201)
 async def create_schedule(data: ScheduleCreate, request: Request, db: AsyncSession = Depends(get_db)):
     """Create a new scheduled task."""
-    require_admin_from_request(request)
     name = data.name.strip()
     project_id = data.project_id.strip()
     skill_name = data.skill_name.strip()
@@ -76,6 +75,7 @@ async def create_schedule(data: ScheduleCreate, request: Request, db: AsyncSessi
     cron_expression = data.cron_expression.strip()
     if not name or not project_id:
         raise HTTPException(status_code=422, detail="name and project_id are required")
+    await require_project_access(db, request, project_id, min_role="researcher")
 
     # Validate cron expression
     try:
@@ -113,7 +113,11 @@ async def list_schedules(
     db: AsyncSession = Depends(get_db),
 ):
     """List all scheduled tasks, optionally filtered by project."""
-    require_admin_from_request(request)
+    subject = get_subject(request)
+    if project_id:
+        await require_project_access(db, request, project_id, min_role="viewer")
+    elif not is_global_admin(subject):
+        raise HTTPException(status_code=400, detail="project_id is required")
     query = select(ScheduledTask).order_by(ScheduledTask.created_at)
     if project_id:
         query = query.where(ScheduledTask.project_id == project_id)
@@ -124,13 +128,13 @@ async def list_schedules(
 @router.get("/schedules/{schedule_id}", response_model=ScheduleResponse)
 async def get_schedule(schedule_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     """Get a scheduled task by ID."""
-    require_admin_from_request(request)
     result = await db.execute(
         select(ScheduledTask).where(ScheduledTask.id == schedule_id)
     )
     task = result.scalar_one_or_none()
     if not task:
         raise HTTPException(status_code=404, detail="Scheduled task not found")
+    await require_project_access(db, request, task.project_id, min_role="viewer")
     return task
 
 
@@ -142,13 +146,13 @@ async def update_schedule(
     db: AsyncSession = Depends(get_db),
 ):
     """Update a scheduled task (enable/disable, change cron, etc.)."""
-    require_admin_from_request(request)
     result = await db.execute(
         select(ScheduledTask).where(ScheduledTask.id == schedule_id)
     )
     task = result.scalar_one_or_none()
     if not task:
         raise HTTPException(status_code=404, detail="Scheduled task not found")
+    await require_project_access(db, request, task.project_id, min_role="researcher")
 
     update_data = data.model_dump(exclude_unset=True)
     for key in ("name", "cron_expression", "skill_name", "description"):
@@ -190,13 +194,13 @@ async def update_schedule(
 @router.delete("/schedules/{schedule_id}", status_code=204)
 async def delete_schedule(schedule_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     """Delete a scheduled task."""
-    require_admin_from_request(request)
     result = await db.execute(
         select(ScheduledTask).where(ScheduledTask.id == schedule_id)
     )
     task = result.scalar_one_or_none()
     if not task:
         raise HTTPException(status_code=404, detail="Scheduled task not found")
+    await require_project_access(db, request, task.project_id, min_role="researcher")
 
     await db.delete(task)
     await db.commit()

@@ -27,16 +27,16 @@ interface IntegrationsStore {
   error: string | null;
 
   setActiveTab: (tab: IntegrationsTab) => void;
-  fetchChannels: (platform?: string) => Promise<void>;
+  fetchChannels: (platform?: string, projectId?: string) => Promise<void>;
   fetchDeployments: (projectId?: string) => Promise<void>;
-  fetchSurveyIntegrations: () => Promise<void>;
+  fetchSurveyIntegrations: (projectId?: string) => Promise<void>;
   fetchMCPStatus: () => Promise<void>;
   fetchMCPClients: () => Promise<void>;
   selectInstance: (id: string | null) => void;
   selectDeployment: (id: string | null) => void;
 }
 
-export const useIntegrationsStore = create<IntegrationsStore>((set, get) => ({
+export const useIntegrationsStore = create<IntegrationsStore>((set) => ({
   activeTab: "overview",
   channelInstances: [],
   selectedInstanceId: null,
@@ -53,10 +53,10 @@ export const useIntegrationsStore = create<IntegrationsStore>((set, get) => ({
 
   setActiveTab: (tab) => set({ activeTab: tab }),
 
-  fetchChannels: async (platform) => {
+  fetchChannels: async (platform, projectId) => {
     set({ channelLoading: true, error: null });
     try {
-      const list = await channels.list(platform);
+      const list = await channels.list(platform, projectId);
       set({ channelInstances: list, channelLoading: false });
     } catch (e: any) {
       set({ channelLoading: false, error: e.message });
@@ -73,10 +73,10 @@ export const useIntegrationsStore = create<IntegrationsStore>((set, get) => ({
     }
   },
 
-  fetchSurveyIntegrations: async () => {
+  fetchSurveyIntegrations: async (projectId) => {
     set({ surveyLoading: true, error: null });
     try {
-      const list = await surveys.integrations.list();
+      const list = await surveys.integrations.list(projectId);
       set({ surveyIntegrations: list, surveyLoading: false });
     } catch (e: any) {
       set({ surveyLoading: false, error: e.message });

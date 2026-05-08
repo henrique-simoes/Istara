@@ -10,8 +10,15 @@
  * - KanbanBoard document/URL indicators
  */
 
+import { readFileSync } from "fs";
+import { dirname, join } from "path";
+import { fileURLToPath } from "url";
+
 export const name = "Task-Document Linking & System Tools";
 export const id = "31-task-documents-tools";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const REPO_ROOT = join(__dirname, "..", "..", "..");
 
 export async function run(ctx) {
   const { api, page } = ctx;
@@ -210,8 +217,6 @@ export async function run(ctx) {
 
     // 12-14. Scan compiled JS for new fields, UI sections, and chat actions
     // Read source files directly; compiled Next chunks are not a stable contract.
-    const fs = await import("fs");
-    const path = await import("path");
     const sourceFiles = [
       "frontend/src/lib/types.ts",
       "frontend/src/lib/api.ts",
@@ -221,7 +226,7 @@ export async function run(ctx) {
       "frontend/src/components/chat/ChatView.tsx",
     ];
     const allText = sourceFiles
-      .map((file) => fs.readFileSync(path.join(process.cwd(), file), "utf8"))
+      .map((file) => readFileSync(join(REPO_ROOT, file), "utf8"))
       .join("\n");
 
     const hasNewFields = allText.includes("input_document_ids") && allText.includes("output_document_ids");

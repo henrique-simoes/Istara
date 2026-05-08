@@ -15,12 +15,8 @@ from app.skills.registry import load_default_skills
 from sqlalchemy import select
 
 from tests.llm_test_config import (
-    GEMINI_OPENAI_BASE_URL,
-    GEMINI_TEST_MODEL,
-    SECONDARY_OPENAI_BASE_URL,
-    SECONDARY_TEST_MODEL,
-    configure_gemini_compute_registry,
-    get_secondary_live_llm_api_key,
+    configure_live_compute_registry,
+    current_primary_llm_profile,
 )
 
 # Setup logging
@@ -35,7 +31,7 @@ pytestmark = [
         os.getenv("ISTARA_RUN_REAL_LLM_BENCHMARK") != "1",
         reason=(
             "Live LLM orchestration benchmark is opt-in; set "
-            "ISTARA_RUN_REAL_LLM_BENCHMARK=1 and configure the Gemini live-test API key."
+            "ISTARA_RUN_REAL_LLM_BENCHMARK=1 and configure the private live-test LLM env."
         ),
     ),
 ]
@@ -46,7 +42,7 @@ async def setup_db():
     """Ensure database is initialized and skills are loaded."""
     await init_db()
     load_default_skills()
-    configure_gemini_compute_registry(clear_existing=True)
+    configure_live_compute_registry(clear_existing=True)
 
     from app.core.compute_registry import compute_registry
 
@@ -82,15 +78,8 @@ async def test_real_llm_orchestration_benchmark():
     logger.info("=" * 60)
 
     # 1. Setup Environment
-    provider_line = (
-        "Using live LLM provider: "
-        f"Gemini OpenAI-compatible at {GEMINI_OPENAI_BASE_URL} model={GEMINI_TEST_MODEL}"
-    )
-    if get_secondary_live_llm_api_key():
-        provider_line += (
-            f" with fallback {SECONDARY_OPENAI_BASE_URL} model={SECONDARY_TEST_MODEL}"
-        )
-    print(provider_line)
+    profile = current_primary_llm_profile()
+    print(f"Using live LLM provider: {profile.name} model={profile.model}")
 
     async with async_session() as session:
         # Create a real project

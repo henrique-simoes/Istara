@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { Copy, Check, Key, RefreshCw, Loader2, Shield, Trash2, Clock, Globe } from "lucide-react";
+import { Copy, Check, Key, Loader2, Shield, Trash2, Clock } from "lucide-react";
 import { useAuthStore } from "@/stores/authStore";
 import { cn, formatDate } from "@/lib/utils";
 
@@ -29,6 +29,7 @@ export default function ConnectionStringPanel() {
   const [tokenType, setTokenType] = useState<"user_invite" | "compute_donation">("user_invite");
   const [role, setRole] = useState<"researcher" | "viewer" | "admin">("researcher");
   const [connectionString, setConnectionString] = useState("");
+  const [generatedTokenType, setGeneratedTokenType] = useState<"user_invite" | "compute_donation">("user_invite");
   const [activeStrings, setActiveStrings] = useState<ActiveConnectionString[]>([]);
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -90,6 +91,7 @@ export default function ConnectionStringPanel() {
       }
       const data = await res.json();
       setConnectionString(data.connection_string);
+      setGeneratedTokenType(tokenType);
       setLabel("");
       loadActiveStrings();
       // Notify guided tour
@@ -139,6 +141,7 @@ export default function ConnectionStringPanel() {
         throw new Error(data.detail || "Token rotation failed");
       }
       setConnectionString("");
+      setGeneratedTokenType("user_invite");
       loadActiveStrings();
     } catch (e: any) {
       setError(e.message);
@@ -282,6 +285,25 @@ export default function ConnectionStringPanel() {
             >
               {copied ? <Check size={14} className="text-green-600" /> : <Copy size={14} />}
             </button>
+          </div>
+          <div className="mt-2 rounded-md border border-istara-200 dark:border-istara-800 bg-white/70 dark:bg-slate-900/60 p-2">
+            {generatedTokenType === "compute_donation" ? (
+              <>
+                <div className="text-[10px] font-bold uppercase tracking-wider text-istara-600 dark:text-istara-400 mb-1">
+                  Relay command
+                </div>
+                <code className="block text-[10px] font-mono text-slate-700 dark:text-slate-300 break-all select-all">
+                  istara-relay --connection-string "{connectionString}"
+                </code>
+                <p className="mt-1.5 text-[11px] text-slate-500 dark:text-slate-400">
+                  Without LM Studio, Ollama, or another supported local server, the relay connects idle and advertises models after one appears.
+                </p>
+              </>
+            ) : (
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                Team members paste this on the Sign In screen through Join Server.
+              </p>
+            )}
           </div>
         </div>
       )}

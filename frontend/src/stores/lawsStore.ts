@@ -24,7 +24,7 @@ interface LawsStore {
   setSearchQuery: (q: string) => void;
 }
 
-export const useLawsStore = create<LawsStore>((set, get) => ({
+export const useLawsStore = create<LawsStore>((set) => ({
   activeTab: "catalog",
   laws: [],
   selectedLawId: null,

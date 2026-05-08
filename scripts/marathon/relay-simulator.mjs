@@ -12,14 +12,40 @@
  *   node scripts/marathon/relay-simulator.mjs                    # Default settings
  *   node scripts/marathon/relay-simulator.mjs --duration 60      # Run for 60 seconds
  *   node scripts/marathon/relay-simulator.mjs --nodes 3          # Simulate 3 nodes
+ *   node scripts/marathon/relay-simulator.mjs --connection-string rcl_...
  */
 
 import WebSocket from "ws";
+import { decodeConnectionString } from "../../relay/lib/connection-string.mjs";
 
-const SERVER = process.env.ISTARA_SERVER || "ws://localhost:8000/ws/relay";
 const args = process.argv.slice(2);
-const duration = args.includes("--duration") ? parseInt(args[args.indexOf("--duration") + 1]) || 30 : 30;
-const nodeCount = args.includes("--nodes") ? parseInt(args[args.indexOf("--nodes") + 1]) || 1 : 1;
+
+function argValue(name, fallback = "") {
+  const index = args.indexOf(name);
+  return index >= 0 ? args[index + 1] || fallback : fallback;
+}
+
+const connectionString = argValue("--connection-string", process.env.ISTARA_CONNECTION_STRING || "");
+const decodedConnection = connectionString ? decodeConnectionString(connectionString) : null;
+
+function deriveRelayWsUrl(url) {
+  if (!url) return "";
+  let relayUrl = url.replace(/^https:\/\//, "wss://").replace(/^http:\/\//, "ws://");
+  if (!relayUrl.endsWith("/ws/relay")) relayUrl = `${relayUrl.replace(/\/+$/, "")}/ws/relay`;
+  return relayUrl;
+}
+
+const SERVER = decodedConnection?.wsUrl
+  || deriveRelayWsUrl(decodedConnection?.serverUrl || "")
+  || process.env.ISTARA_SERVER
+  || "ws://localhost:8000/ws/relay";
+const networkToken = argValue(
+  "--network-token",
+  decodedConnection?.networkToken || process.env.ISTARA_NETWORK_TOKEN || "",
+);
+const jwtToken = argValue("--token", decodedConnection?.jwt || process.env.ISTARA_RELAY_JWT || "");
+const duration = parseInt(argValue("--duration", "30"), 10) || 30;
+const nodeCount = parseInt(argValue("--nodes", "1"), 10) || 1;
 
 const SIMULATED_NODES = [
   {
@@ -57,7 +83,10 @@ const SIMULATED_NODES = [
 function connectNode(nodeConfig, nodeIndex) {
   return new Promise((resolve) => {
     console.log(`  [Node ${nodeIndex}] Connecting to ${SERVER}...`);
-    const ws = new WebSocket(SERVER);
+    const headers = {};
+    if (networkToken) headers["X-Access-Token"] = networkToken;
+    if (jwtToken) headers.Authorization = `Bearer ${jwtToken}`;
+    const ws = new WebSocket(SERVER, { headers });
     let heartbeatInterval = null;
     let nodeId = null;
 
@@ -96,10 +125,32 @@ function connectNode(nodeConfig, nodeIndex) {
             ws.send(JSON.stringify({
               type: "llm_response",
               request_id: msg.request_id,
-              content: "[Simulated response from relay node]",
-              model: nodeConfig.loaded_models[0],
+              result: {
+                message: {
+                  role: "assistant",
+                  content: "[Simulated response from relay node]",
+                },
+                model: nodeConfig.loaded_models[0],
+              },
             }));
           }, 500);
+        } else if (msg.type === "embed_request") {
+          ws.send(JSON.stringify({
+            type: "embed_response",
+            request_id: msg.request_id,
+            result: [0.1, 0.2, 0.3],
+          }));
+        } else if (msg.type === "load_model_request") {
+          const loaded = Array.from(new Set([...nodeConfig.loaded_models, msg.model].filter(Boolean)));
+          nodeConfig.loaded_models = loaded;
+          ws.send(JSON.stringify({
+            type: "load_model_response",
+            request_id: msg.request_id,
+            result: {
+              models: loaded,
+              model_capabilities: {},
+            },
+          }));
         }
       } catch { /* ignore parse errors */ }
     });
@@ -129,6 +180,7 @@ async function main() {
   console.log(`   Server: ${SERVER}`);
   console.log(`   Nodes: ${Math.min(nodeCount, SIMULATED_NODES.length)}`);
   console.log(`   Duration: ${duration}s\n`);
+  console.log(`   Auth: ${networkToken ? "network token" : jwtToken ? "JWT" : "none"}\n`);
 
   const nodes = SIMULATED_NODES.slice(0, nodeCount);
   const promises = nodes.map((config, i) => connectNode(config, i + 1));

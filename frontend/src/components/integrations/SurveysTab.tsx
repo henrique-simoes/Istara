@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Plus, FileQuestion, ExternalLink, RefreshCw, Trash2, Link2 } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { Plus, FileQuestion, RefreshCw, Trash2, Link2 } from "lucide-react";
 import { useIntegrationsStore } from "@/stores/integrationsStore";
-import { surveys as surveysApi } from "@/lib/api";
+import { useProjectStore } from "@/stores/projectStore";
+import { permissionRequests, surveys as surveysApi } from "@/lib/api";
+import { useAuthStore } from "@/stores/authStore";
 import { cn } from "@/lib/utils";
 import SurveySetupWizard from "./SurveySetupWizard";
 import type { SurveyLink } from "@/lib/types";
@@ -16,27 +18,30 @@ const PLATFORM_META: Record<string, { label: string; color: string; bg: string }
 
 export default function SurveysTab() {
   const { surveyIntegrations, surveyLoading, fetchSurveyIntegrations } = useIntegrationsStore();
+  const { activeProjectId, canAdminActiveProject } = useProjectStore();
+  const { user } = useAuthStore();
   const [showWizard, setShowWizard] = useState(false);
   const [linkedSurveys, setLinkedSurveys] = useState<SurveyLink[]>([]);
   const [linksLoading, setLinksLoading] = useState(false);
   const [syncing, setSyncing] = useState<string | null>(null);
+  const canManageSurveyIntegrations = user?.role === "admin" || canAdminActiveProject();
 
-  useEffect(() => {
-    fetchSurveyIntegrations();
-    fetchLinks();
-  }, [fetchSurveyIntegrations]);
-
-  const fetchLinks = async () => {
+  const fetchLinks = useCallback(async () => {
     setLinksLoading(true);
     try {
-      const links = await surveysApi.links.list();
+      const links = await surveysApi.links.list(activeProjectId || undefined);
       setLinkedSurveys(links);
     } catch {
       // silent
     } finally {
       setLinksLoading(false);
     }
-  };
+  }, [activeProjectId]);
+
+  useEffect(() => {
+    fetchSurveyIntegrations(activeProjectId || undefined);
+    fetchLinks();
+  }, [activeProjectId, fetchSurveyIntegrations, fetchLinks]);
 
   const handleSync = async (linkId: string) => {
     setSyncing(linkId);
@@ -52,11 +57,35 @@ export default function SurveysTab() {
 
   const handleDeleteIntegration = async (id: string) => {
     try {
-      await surveysApi.integrations.delete(id);
-      await fetchSurveyIntegrations();
+      if (canManageSurveyIntegrations) {
+        await surveysApi.integrations.delete(id);
+      } else if (activeProjectId) {
+        await permissionRequests.create({
+          project_id: activeProjectId,
+          action: "surveys.integration.delete",
+          title: "Remove survey integration",
+          details: "Request permission to remove a survey platform integration.",
+          payload_summary: `Integration id: ${id}`,
+        });
+      }
+      await fetchSurveyIntegrations(activeProjectId || undefined);
     } catch {
       // silent
     }
+  };
+
+  const handleConnectPlatform = async () => {
+    if (canManageSurveyIntegrations) {
+      setShowWizard(true);
+      return;
+    }
+    if (!activeProjectId) return;
+    await permissionRequests.create({
+      project_id: activeProjectId,
+      action: "surveys.integration.create",
+      title: "Connect survey platform",
+      details: "Request permission to connect SurveyMonkey, Google Forms, or Typeform for this project.",
+    });
   };
 
   if (showWizard) {
@@ -64,7 +93,7 @@ export default function SurveysTab() {
       <SurveySetupWizard
         onClose={() => {
           setShowWizard(false);
-          fetchSurveyIntegrations();
+          fetchSurveyIntegrations(activeProjectId || undefined);
         }}
       />
     );
@@ -81,11 +110,11 @@ export default function SurveysTab() {
           </p>
         </div>
         <button
-          onClick={() => setShowWizard(true)}
+          onClick={handleConnectPlatform}
           className="flex items-center gap-1.5 px-3 py-2 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700 transition-colors"
         >
           <Plus size={14} />
-          Connect Platform
+          {canManageSurveyIntegrations ? "Connect Platform" : "Request Platform"}
         </button>
       </div>
 
@@ -104,10 +133,10 @@ export default function SurveysTab() {
             Connect SurveyMonkey, Google Forms, or Typeform to pull in survey responses.
           </p>
           <button
-            onClick={() => setShowWizard(true)}
+            onClick={handleConnectPlatform}
             className="px-4 py-2 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700 transition-colors"
           >
-            Connect First Platform
+            {canManageSurveyIntegrations ? "Connect First Platform" : "Request Platform Access"}
           </button>
         </div>
       ) : (

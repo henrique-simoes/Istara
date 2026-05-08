@@ -32,6 +32,7 @@ class ChatSession(Base):
     custom_temperature: Mapped[float | None] = mapped_column(nullable=True)
     custom_max_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
     custom_context_window: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    thinking_mode: Mapped[str] = mapped_column(String(20), default="server_default")
     session_type: Mapped[str] = mapped_column(String(20), default="chat")
     starred: Mapped[bool] = mapped_column(Boolean, default=False)
     archived: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -66,6 +67,7 @@ class ChatSession(Base):
             "custom_temperature": self.custom_temperature,
             "custom_max_tokens": self.custom_max_tokens,
             "custom_context_window": self.custom_context_window,
+            "thinking_mode": self.thinking_mode or "server_default",
             "starred": self.starred,
             "archived": self.archived,
             "message_count": self.message_count,

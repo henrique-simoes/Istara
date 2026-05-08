@@ -1,4 +1,5 @@
 import { API_BASE } from "@/lib/runtimeConfig";
+import type { ThinkingMode } from "@/lib/types";
 
 function authHeaders(): Record<string, string> {
   const token = typeof window === "undefined" ? "" : localStorage.getItem("istara_token");
@@ -20,10 +21,12 @@ export const chat = {
     projectId: string,
     message: string,
     sessionId?: string,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    thinkingMode?: ThinkingMode
   ) {
     const payload: Record<string, unknown> = { message, project_id: projectId };
     if (sessionId) payload.session_id = sessionId;
+    if (thinkingMode) payload.thinking_mode = thinkingMode;
     const res = await fetch(`${API_BASE}/api/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json", ...authHeaders() },

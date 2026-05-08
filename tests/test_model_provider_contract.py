@@ -7,6 +7,7 @@ from app.core.compute_registry import ComputeNode, infer_provider_type
 from app.core.model_capabilities import (
     _apply_ollama_show_metadata,
     _capability_from_openai_model,
+    detect_capabilities_generic,
     provider_auth_headers,
 )
 
@@ -83,6 +84,58 @@ def test_ollama_show_metadata_distinguishes_trained_and_loaded_context():
     assert cap.context_length == 8192
 
 
+class _CapabilityDiscoveryClient:
+    def __init__(self):
+        self.posts: list[tuple[str, dict]] = []
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb):
+        return False
+
+    async def get(self, url: str):
+        return httpx.Response(
+            200,
+            request=httpx.Request("GET", url),
+            json={"data": [{"id": "qwen3:7b", "max_model_len": 32768}]},
+        )
+
+    async def post(self, url: str, json: dict):
+        self.posts.append((url, json))
+        return httpx.Response(200, request=httpx.Request("POST", url), json={})
+
+
+@pytest.mark.asyncio
+async def test_capability_detection_is_passive_unless_active_probe_enabled(monkeypatch):
+    client = _CapabilityDiscoveryClient()
+    monkeypatch.setattr(httpx, "AsyncClient", lambda *args, **kwargs: client)
+
+    caps = await detect_capabilities_generic(
+        "http://localhost:1234",
+        provider_type="openai_compat",
+        active_probe=False,
+    )
+
+    assert "qwen3:7b" in caps
+    assert client.posts == []
+
+
+@pytest.mark.asyncio
+async def test_capability_detection_active_probe_is_explicit(monkeypatch):
+    client = _CapabilityDiscoveryClient()
+    monkeypatch.setattr(httpx, "AsyncClient", lambda *args, **kwargs: client)
+
+    await detect_capabilities_generic(
+        "http://localhost:1234",
+        provider_type="openai_compat",
+        active_probe=True,
+    )
+
+    assert client.posts
+    assert client.posts[0][1]["model"] == "qwen3:7b"
+
+
 class _AnthropicClient:
     def __init__(self):
         self.path = ""
@@ -94,7 +147,13 @@ class _AnthropicClient:
         return httpx.Response(
             200,
             request=httpx.Request("POST", f"https://api.anthropic.com/{path}"),
-            json={"content": [{"type": "text", "text": "anthropic ok"}]},
+            json={
+                "content": [
+                    {"type": "thinking", "thinking": "private reasoning"},
+                    {"type": "redacted_thinking", "data": "opaque"},
+                    {"type": "text", "text": "anthropic ok"},
+                ]
+            },
         )
 
 

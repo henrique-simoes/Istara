@@ -60,7 +60,7 @@ export default function AtomicDrilldown({ projectId, finding: initialFinding, on
   const [diagnostics, setDiagnostics] = useState<ChainDiagnostics>({});
   const [loading, setLoading] = useState(true);
   // Navigation history for breadcrumb traversal
-  const [history, setHistory] = useState<Array<{ id: string; type: FindingType; text: string }>>([initialFinding]);
+  const [_history, setHistory] = useState<Array<{ id: string; type: FindingType; text: string }>>([initialFinding]);
   // Link evidence state
   const [showLinkPanel, setShowLinkPanel] = useState(false);
   const [linkSearch, setLinkSearch] = useState("");

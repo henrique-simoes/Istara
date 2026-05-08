@@ -22,6 +22,7 @@ import { useComputeStore } from "@/stores/computeStore";
 import { cn } from "@/lib/utils";
 import ViewOnboarding from "@/components/common/ViewOnboarding";
 import { compute as computeApi, settings as settingsApi } from "@/lib/api";
+import { useAuthStore } from "@/stores/authStore";
 
 const SWARM_TIERS: Record<string, { label: string; color: string; description: string }> = {
   full_swarm: {
@@ -74,6 +75,12 @@ const SOURCE_BADGES: Record<string, { label: string; icon: typeof Monitor; class
   },
 };
 
+function formatGb(value?: number | null): string {
+  return Number.isFinite(value) && Number(value) > 0
+    ? `${Number(value).toFixed(1)} GB`
+    : "Unknown";
+}
+
 interface ModelWarning {
   model: string;
   server: string;
@@ -82,7 +89,8 @@ interface ModelWarning {
 }
 
 export default function ComputePoolView() {
-  const { stats, loading, error, fetchStats } = useComputeStore();
+  const { stats, error, fetchStats } = useComputeStore();
+  const { user } = useAuthStore();
   const [warnings, setWarnings] = useState<ModelWarning[]>([]);
   const [showWarnings, setShowWarnings] = useState(false);
   const [strictRouting, setStrictRouting] = useState(false);
@@ -126,6 +134,7 @@ export default function ComputePoolView() {
   const tier = stats?.swarm_tier
     ? SWARM_TIERS[stats.swarm_tier] || SWARM_TIERS.local_only
     : SWARM_TIERS.local_only;
+  const canManageCompute = user?.role === "admin";
 
   return (
     <div className="flex-1 overflow-y-auto">
@@ -233,8 +242,8 @@ export default function ComputePoolView() {
         <StatCard
           icon={HardDrive}
           label="Total RAM"
-          value={`${stats?.total_ram_gb?.toFixed(1) || 0} GB`}
-          sub={`${stats?.available_ram_gb?.toFixed(1) || 0} GB free`}
+          value={formatGb(stats?.total_ram_gb)}
+          sub={`${formatGb(stats?.available_ram_gb)} free`}
         />
         <StatCard
           icon={Cpu}
@@ -251,7 +260,7 @@ export default function ComputePoolView() {
       </div>
       
       {/* Strict Auto-Routing Toggle */}
-      <div className="p-4 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 flex items-center justify-between">
+      <div id="tour-target-compute-routing" className="p-4 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 flex items-center justify-between">
         <div>
           <h3 className="font-semibold text-slate-900 dark:text-white flex items-center gap-2">
             <Radio size={16} className="text-istara-600" />
@@ -263,13 +272,18 @@ export default function ComputePoolView() {
           </p>
         </div>
         <button
-          onClick={toggleStrictRouting}
+          onClick={() => {
+            if (canManageCompute) void toggleStrictRouting();
+          }}
+          disabled={!canManageCompute}
           className={cn(
             "relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-istara-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900 shrink-0",
+            !canManageCompute && "cursor-not-allowed opacity-60",
             strictRouting ? "bg-istara-600" : "bg-slate-200 dark:bg-slate-700"
           )}
           role="switch"
           aria-checked={strictRouting}
+          aria-label={canManageCompute ? "Toggle strict auto-routing" : "Strict auto-routing is read-only"}
         >
           <span
             className={cn(
@@ -279,6 +293,11 @@ export default function ComputePoolView() {
           />
         </button>
       </div>
+      {!canManageCompute && (
+        <p className="-mt-4 text-xs text-slate-500 dark:text-slate-400">
+          Researchers can inspect compute capacity and model health here. Global admins control routing changes.
+        </p>
+      )}
 
       {/* Available Models */}
       {stats?.available_models && stats.available_models.length > 0 && (
@@ -361,7 +380,7 @@ export default function ComputePoolView() {
 
                   {/* Resource summary */}
                   <div className="text-xs text-slate-500 mb-3">
-                    {node.ram_available_gb?.toFixed(1)} GB free | CPU {node.cpu_load_pct?.toFixed(0)}%
+                    {formatGb(node.ram_available_gb)} free | CPU {node.cpu_load_pct?.toFixed(0) || "0"}%
                   </div>
 
                   {(node.source === "relay" || node.source === "browser") && (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ArrowRight, ArrowLeft, RefreshCw } from "lucide-react";
 import { channels as channelsApi } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -14,7 +14,7 @@ export default function ChannelMessagesPanel({ channelId }: ChannelMessagesPanel
   const [messages, setMessages] = useState<ChannelMessage[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchMessages = async () => {
+  const fetchMessages = useCallback(async () => {
     setLoading(true);
     try {
       const data = await channelsApi.messages(channelId);
@@ -24,11 +24,11 @@ export default function ChannelMessagesPanel({ channelId }: ChannelMessagesPanel
     } finally {
       setLoading(false);
     }
-  };
+  }, [channelId]);
 
   useEffect(() => {
     fetchMessages();
-  }, [channelId]);
+  }, [fetchMessages]);
 
   if (loading) {
     return (

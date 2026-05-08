@@ -6,7 +6,7 @@ export const id = "26-model-session-persistence";
 export async function run(ctx) {
   const { api } = ctx;
   const checks = [];
-  const fixedTestModel = process.env.ISTARA_FIXED_LLM_TEST_MODEL || null;
+  const fixedTestModel = ctx.fixedTestModel || process.env.ISTARA_FIXED_LLM_TEST_MODEL || null;
 
   // ── 1. System status reports correct provider and model ──
   let initialModel = null;

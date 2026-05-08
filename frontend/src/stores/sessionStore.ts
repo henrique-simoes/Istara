@@ -1,7 +1,7 @@
 "use client";
 
 import { create } from "zustand";
-import type { ChatSession, InferencePreset, InferencePresetConfig } from "@/lib/types";
+import type { ChatSession, InferencePresetConfig } from "@/lib/types";
 import { sessions as sessionsApi } from "@/lib/api";
 
 // Persist activeSessionId to localStorage so it survives page refreshes

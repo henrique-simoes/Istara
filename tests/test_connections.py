@@ -108,6 +108,44 @@ def test_connection_string_keeps_http_and_websocket_urls_separate():
 
 
 @pytest.mark.asyncio
+async def test_compute_donation_string_validates_but_cannot_redeem_user_account(auth_headers):
+    await init_db()
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        generated = await ac.post(
+            "/api/connections/compute-donation/generate",
+            headers=auth_headers,
+            json={
+                "server_url": "http://server.test:3000",
+                "ws_url": "ws://server.test:8000/ws/relay",
+                "label": "Donor Laptop",
+            },
+        )
+        assert generated.status_code == 200
+        conn_str = generated.json()["connection_string"]
+
+        validation = await ac.post(
+            "/api/connections/validate",
+            json={"connection_string": conn_str},
+        )
+        redemption = await ac.post(
+            "/api/connections/redeem",
+            json={
+                "connection_string": conn_str,
+                "username": "donor",
+                "password": "password123",
+            },
+        )
+
+    assert validation.status_code == 200
+    assert validation.json()["valid"] is True
+    assert validation.json()["token_type"] == "compute_donation"
+    assert validation.json()["ws_url"] == "ws://server.test:8000/ws/relay"
+    assert redemption.status_code == 400
+    assert redemption.json()["detail"] == "Compute donation strings cannot create user accounts"
+
+
+@pytest.mark.asyncio
 async def test_connection_string_lifecycle_tracks_validation_and_redemption(auth_headers):
     await init_db()
     original_team_mode = settings.team_mode

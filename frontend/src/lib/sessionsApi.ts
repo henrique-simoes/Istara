@@ -1,4 +1,4 @@
-import type { ChatMessage, ChatSession, InferencePresetConfig } from "@/lib/types";
+import type { ChatMessage, ChatSession, InferencePresetConfig, ThinkingMode } from "@/lib/types";
 import { API_BASE } from "@/lib/runtimeConfig";
 
 function authHeaders(): Record<string, string> {
@@ -24,6 +24,7 @@ export const sessions = {
     title?: string;
     agent_id?: string;
     inference_preset?: string;
+    thinking_mode?: ThinkingMode;
   }) => json<ChatSession>("/api/sessions", { method: "POST", body: JSON.stringify(data) }),
   get: (sessionId: string) =>
     json<ChatSession & { messages: ChatMessage[] }>(`/api/sessions/detail/${sessionId}`),

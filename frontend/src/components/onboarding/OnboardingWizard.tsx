@@ -84,8 +84,6 @@ export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) 
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const currentStep = STEPS[step];
-
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
       <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden">

@@ -181,6 +181,18 @@ class ResourceGovernor:
             paused=False,
         )
 
+    @staticmethod
+    def _pressure_label(res: SystemResources, budget: ResourceBudget, maintenance: bool) -> str:
+        if maintenance:
+            return "maintenance"
+        if budget.paused or res.ram_used_pct > 95 or res.disk_used_pct > 95:
+            return "critical"
+        if res.ram_used_pct > 85 and res.cpu_load_pct > 80:
+            return "high"
+        if res.ram_used_pct > 85 or res.cpu_load_pct > 80 or res.disk_used_pct > 90:
+            return "elevated"
+        return "normal"
+
     # --- Agent lifecycle ---
 
     def can_start_agent(self, agent_id: str) -> tuple[bool, str]:
@@ -221,8 +233,10 @@ class ResourceGovernor:
         """Get full resource governor status."""
         res = self.get_resources()
         budget = self.compute_budget()
+        pressure = self._pressure_label(res, budget, self._maintenance_mode)
 
         return {
+            "pressure": pressure,
             "resources": {
                 "ram_total_gb": res.ram_total_gb,
                 "ram_available_gb": res.ram_available_gb,

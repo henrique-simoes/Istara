@@ -7,6 +7,9 @@ import httpx
 
 from app.config import settings
 from app.core.env_persistence import persist_env_value
+from app.core.llm_output import ThinkingContentFilter, visible_assistant_message
+from app.core.llm_thinking import apply_thinking_control
+from app.core.llm_schema_adapter import provider_response_format_fields
 
 
 class OllamaClient:
@@ -91,11 +94,13 @@ class OllamaClient:
         max_tokens: int | None = None,
         tools: list[dict] | None = None,
         response_format: dict | None = None,
+        thinking_mode: str | None = None,
     ) -> dict:
         """Non-streaming chat completion."""
         msgs = list(messages)
         if system:
             msgs = [{"role": "system", "content": system}, *msgs]
+        msgs = apply_thinking_control(msgs, thinking_mode)
         msgs = self._sanitize_messages(msgs)
 
         options: dict = {"temperature": temperature}
@@ -111,13 +116,16 @@ class OllamaClient:
         if tools:
             payload["tools"] = tools
         if response_format:
-            # Ollama uses 'format' (JSON schema) instead of OpenAI's 'response_format'
-            payload["format"] = response_format.get("json_schema", response_format)
+            payload.update(provider_response_format_fields("ollama", response_format))
 
         client = await self._get_client()
         resp = await client.post("/api/chat", json=payload)
         resp.raise_for_status()
-        return resp.json()
+        data = resp.json()
+        message = data.get("message")
+        if isinstance(message, dict):
+            data["message"] = visible_assistant_message(message)
+        return data
 
     async def chat_stream(
         self,
@@ -128,11 +136,13 @@ class OllamaClient:
         max_tokens: int | None = None,
         tools: list[dict] | None = None,
         response_format: dict | None = None,
+        thinking_mode: str | None = None,
     ) -> AsyncGenerator[str, None]:
         """Streaming chat completion — yields content chunks."""
         msgs = list(messages)
         if system:
             msgs = [{"role": "system", "content": system}, *msgs]
+        msgs = apply_thinking_control(msgs, thinking_mode)
         msgs = self._sanitize_messages(msgs)
 
         options: dict = {"temperature": temperature}
@@ -148,19 +158,22 @@ class OllamaClient:
         if tools:
             payload["tools"] = tools
         if response_format:
-            # Ollama uses 'format' (JSON schema) instead of OpenAI's 'response_format'
-            payload["format"] = response_format.get("json_schema", response_format)
+            payload.update(provider_response_format_fields("ollama", response_format))
 
         client = await self._get_client()
+        content_filter = ThinkingContentFilter()
         async with client.stream("POST", "/api/chat", json=payload, timeout=None) as resp:
             resp.raise_for_status()
             async for line in resp.aiter_lines():
                 if line.strip():
                     data = json.loads(line)
-                    content = data.get("message", {}).get("content", "")
+                    content = content_filter.push(data.get("message", {}).get("content", ""))
                     if content:
                         yield content
                     if data.get("done", False):
+                        remaining = content_filter.flush()
+                        if remaining:
+                            yield remaining
                         return
 
     async def embed(self, text: str, model: str | None = None) -> list[float]:

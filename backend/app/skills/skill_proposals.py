@@ -1,0 +1,81 @@
+"""Update proposal workflow for existing skills."""
+
+from __future__ import annotations
+
+import json
+import logging
+from datetime import datetime, timezone
+
+from app.core.checkpoint import atomic_write
+from app.skills.skill_models import SkillUpdateProposal
+
+logger = logging.getLogger(__name__)
+
+
+class SkillProposalMixin:
+    def propose_improvement(
+        self,
+        skill_name: str,
+        field: str,
+        current_value: str,
+        proposed_value: str,
+        reason: str,
+        confidence: float = 0.5,
+    ) -> SkillUpdateProposal:
+        """Create a proposed improvement for user review."""
+        proposal = SkillUpdateProposal(
+            skill_name,
+            field,
+            current_value,
+            proposed_value,
+            reason,
+            confidence,
+        )
+        self._proposals.append(proposal)
+        self._save_proposals()
+        logger.info("Proposed improvement for %s.%s: %s", skill_name, field, reason)
+        return proposal
+
+    def get_pending_proposals(self) -> list[SkillUpdateProposal]:
+        return [p for p in self._proposals if p.status == "pending"]
+
+    def get_all_proposals(self, limit: int = 50) -> list[SkillUpdateProposal]:
+        return self._proposals[-limit:]
+
+    def approve_proposal(self, proposal_id: str) -> bool:
+        """Approve and apply a proposed improvement."""
+        for proposal in self._proposals:
+            if proposal.id == proposal_id and proposal.status == "pending":
+                proposal.status = "approved"
+                proposal.reviewed_at = datetime.now(timezone.utc).isoformat()
+                try:
+                    self.update_skill(
+                        proposal.skill_name,
+                        {proposal.field: proposal.proposed_value},
+                        f"Self-improvement applied: {proposal.reason}",
+                    )
+                except Exception as e:
+                    logger.error("Failed to apply proposal %s: %s", proposal_id, e)
+                    proposal.status = "failed"
+                self._save_proposals()
+                return True
+        return False
+
+    def reject_proposal(self, proposal_id: str, reason: str = "") -> bool:
+        """Reject a proposed improvement."""
+        for proposal in self._proposals:
+            if proposal.id == proposal_id and proposal.status == "pending":
+                proposal.status = "rejected"
+                proposal.reviewed_at = datetime.now(timezone.utc).isoformat()
+                if reason:
+                    proposal.reason += f" [Rejected: {reason}]"
+                self._save_proposals()
+                return True
+        return False
+
+    def _save_proposals(self) -> None:
+        self.ensure_definitions_dir()
+        atomic_write(
+            self._proposals_file,
+            json.dumps([p.to_dict() for p in self._proposals], indent=2),
+        )

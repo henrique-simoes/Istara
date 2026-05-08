@@ -19,6 +19,10 @@ from app.models.database import Base, async_session
 logger = logging.getLogger(__name__)
 
 
+class PermanentScheduleError(RuntimeError):
+    """A schedule configuration error that will not recover by retrying."""
+
+
 # ---------------------------------------------------------------------------
 # SQLAlchemy model
 # ---------------------------------------------------------------------------
@@ -233,8 +237,19 @@ class Scheduler:
                 exec_status = "success"
                 exec_error = ""
 
+                permanent_failure = False
                 try:
                     await self._execute(task, db)
+                except PermanentScheduleError as exc:
+                    permanent_failure = True
+                    exec_status = "failure"
+                    exec_error = str(exc)
+                    logger.error(
+                        "Disabling scheduled task %s (%s): %s",
+                        task.id,
+                        task.name,
+                        exec_error,
+                    )
                 except Exception as exc:
                     exec_status = "failure"
                     exec_error = str(exc)
@@ -263,6 +278,11 @@ class Scheduler:
 
                 # Update timestamps regardless of success
                 task.last_run = now
+                if permanent_failure:
+                    task.enabled = False
+                    task.next_run = None
+                    continue
+
                 try:
                     task.next_run = CronParser.next_run_after(task.cron_expression, now)
                 except ValueError:
@@ -303,13 +323,19 @@ class Scheduler:
 
             skill = registry.get(task.skill_name)
             if skill is None:
-                raise ValueError(f"Skill {task.skill_name!r} not found for scheduled task {task.id}")
+                raise PermanentScheduleError(
+                    f"Skill {task.skill_name!r} not found for scheduled task {task.id}"
+                )
 
             skill_input = SkillInput(
                 project_id=task.project_id,
                 parameters={"scheduled": True, "schedule_id": task.id},
             )
-            await skill.execute(skill_input)
+            output = await skill.execute(skill_input)
+            if getattr(output, "success", True) is False:
+                errors = "; ".join(str(error) for error in getattr(output, "errors", []) or [])
+                summary = getattr(output, "summary", "") or "Skill execution failed"
+                raise RuntimeError(errors or summary)
         else:
             # No skill — broadcast a reminder via WebSocket
             from app.api.websocket import broadcast_suggestion

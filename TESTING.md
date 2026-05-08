@@ -125,19 +125,29 @@ The suite runner (`test_full_orchestration_suite`) asserts all benchmarks pass. 
 ### Live LLM Testing Notes
 
 Mocked orchestration benchmarks remain provider-independent, but every live LLM
-test path uses the same OpenAI-compatible Gemini profile:
+test path uses the same private OpenAI-compatible profile and shared
+gitignored-env loader:
 
 | Setting | Value |
 |---|---|
-| Base URL | `https://generativelanguage.googleapis.com/v1beta/openai/` |
-| Model | `gemini-3.1-flash-lite-preview` |
-| Secret source | `ISTARA_LLM_TEST_API_KEY`, `GEMINI_API_KEY`, `GOOGLE_API_KEY`, or macOS Keychain service `istara-gemini-openai-compatible-tests` |
+| Base URL | `ISTARA_LIVE_LLM_BASE_URL` from a gitignored local env file |
+| Model | `google/gemma-4-e4b` |
+| Secret source | `ISTARA_LIVE_LLM_API_KEY`, `ISTARA_LLM_TEST_API_KEY`, or macOS Keychain service `istara-live-openai-compatible-tests` |
+
+Live evals register that single profile in `compute_registry` and call
+`compute_registry.chat` so routing, retry, model-readiness, thinking-mode, and
+visible-output behavior match user serving. Eval artifacts should stay under
+`tests/evals/.results/`; custom output directories outside that ignored tree
+require `--allow-unignored-output`.
 
 Do not commit live API keys. The live Layer 5 benchmark stays opt-in:
 
 ```bash
 ISTARA_RUN_REAL_LLM_BENCHMARK=1 pytest tests/integration/test_llm_orchestration_real.py -q
 ```
+
+The standalone long-horizon backend benchmark also fails closed unless
+`ADMIN_PASSWORD` is provided by the environment or a gitignored `.env.local`.
 
 ---
 

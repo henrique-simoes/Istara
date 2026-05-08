@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Plus, Star, Trash2, Pencil, MoreHorizontal, MessageSquare, Bot } from "lucide-react";
+import { Plus, Star, Trash2, Pencil, MoreHorizontal, MessageSquare } from "lucide-react";
 import { useSessionStore } from "@/stores/sessionStore";
 import { useAgentStore } from "@/stores/agentStore";
 import { cn } from "@/lib/utils";

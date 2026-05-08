@@ -23,7 +23,7 @@ def test_configured_openai_compatible_fallback_preserves_auth_and_model():
         settings.llm_fallback_api_key_keychain_service,
     )
     try:
-        settings.llm_fallback_host = "http://10.0.10.142:1234"
+        settings.llm_fallback_host = "http://192.0.2.142:1234"
         settings.llm_fallback_provider = "openai_compat"
         settings.llm_fallback_model = "qwen3.6-35b-a3b@q5_k_xl"
         settings.llm_fallback_api_key = "test-key"
@@ -56,7 +56,7 @@ def test_configured_fallback_can_read_key_from_keychain(monkeypatch):
         settings.llm_fallback_api_key_keychain_service,
     )
     try:
-        settings.llm_fallback_host = "http://10.0.10.142:1234"
+        settings.llm_fallback_host = "http://192.0.2.142:1234"
         settings.llm_fallback_provider = "openai_compat"
         settings.llm_fallback_model = "qwen3.6-35b-a3b@q5_k_xl"
         settings.llm_fallback_api_key = ""

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { AlertCircle } from "lucide-react";
 
 interface AutoSaveWarningProps {

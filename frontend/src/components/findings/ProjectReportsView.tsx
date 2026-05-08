@@ -5,7 +5,6 @@ import {
   FileStack,
   AlertCircle,
   Layers,
-  TriangleAlert,
   ArrowUpRight,
   Presentation,
   ClipboardCopy,

@@ -1,6 +1,5 @@
 "use client";
 
-import { cn } from "@/lib/utils";
 import type { NotificationCategory } from "@/lib/types";
 
 const ALL_CATEGORIES: { id: NotificationCategory; label: string }[] = [

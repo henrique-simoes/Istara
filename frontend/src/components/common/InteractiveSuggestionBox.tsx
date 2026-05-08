@@ -59,8 +59,6 @@ export default function InteractiveSuggestionBox({
         setMessages((prev) => [...prev, { role: "user", content }]);
       }
 
-      // Add a placeholder assistant message
-      const assistantIdx = isInitial ? 0 : -1; // Will append
       setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
 
       try {

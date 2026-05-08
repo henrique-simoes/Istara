@@ -18,11 +18,11 @@ Generated from the repository on version `2026.04.27`. Treat this file as the fa
 ## System Snapshot
 
 - Frontend: Next.js app with 24 mounted views and 15 Zustand stores.
-- Backend: FastAPI app with 41 route modules and 390 detected endpoints.
-- Data layer: 44 SQLAlchemy models plus LanceDB-backed retrieval/context systems.
+- Backend: FastAPI app with 45 route modules and 429 detected endpoints.
+- Data layer: 51 SQLAlchemy models plus LanceDB-backed retrieval/context systems.
 - Agents/personas: 6 tracked persona directories under `backend/app/agents/personas`.
 - Skills: 57 JSON-defined skills across the Double Diamond phases.
-- Regression map: 66 active test files across 4 layers.
+- Regression map: 92 active test files across 4 layers.
 
 ## Change Hotspots
 
@@ -85,7 +85,7 @@ Generated from the repository on version `2026.04.27`. Treat this file as the fa
 | `admin.py` | `/admin` | 5 |
 | `agents.py` | `/` | 48 |
 | `audit.py` | `/` | 7 |
-| `auth.py` | `/` | 15 |
+| `auth.py` | `/` | 18 |
 | `autoresearch.py` | `/autoresearch` | 9 |
 | `backup.py` | `/` | 10 |
 | `channels.py` | `/` | 11 |
@@ -98,10 +98,12 @@ Generated from the repository on version `2026.04.27`. Treat this file as the fa
 | `connections.py` | `/` | 7 |
 | `context_dag.py` | `/` | 6 |
 | `deployments.py` | `/` | 12 |
+| `dgmh_archive.py` | `/dgmh-archive` | 12 |
 | `documents.py` | `/` | 10 |
 | `files.py` | `/` | 7 |
-| `findings.py` | `/` | 21 |
-| `interfaces.py` | `/` | 21 |
+| `findings.py` | `/` | 22 |
+| `improvement_governance.py` | `/improvement-governance` | 12 |
+| `interfaces.py` | `/` | 22 |
 | `laws.py` | `/laws` | 6 |
 | `llm_servers.py` | `/` | 6 |
 | `loops.py` | `/` | 10 |
@@ -110,12 +112,14 @@ Generated from the repository on version `2026.04.27`. Treat this file as the fa
 | `meta_hyperagent.py` | `/` | 9 |
 | `metrics.py` | `/` | 3 |
 | `notifications.py` | `/` | 7 |
+| `permission_requests.py` | `/` | 3 |
 | `presentation.py` | `/presentation` | 1 |
 | `projects.py` | `/` | 15 |
+| `reasoning_bank.py` | `/reasoning-bank` | 5 |
 | `reports.py` | `/reports` | 1 |
 | `scheduler.py` | `/` | 5 |
 | `sessions.py` | `/` | 8 |
-| `settings.py` | `/` | 18 |
+| `settings.py` | `/` | 20 |
 | `skills.py` | `/` | 19 |
 | `steering.py` | `/` | 8 |
 | `surveys.py` | `/` | 9 |
@@ -131,6 +135,7 @@ Generated from the repository on version `2026.04.27`. Treat this file as the fa
 | `Agent` | `agents` | yes | `backend/app/models/agent.py` |
 | `A2AMessage` | `a2a_messages` | yes | `backend/app/models/agent.py` |
 | `AgentLoopConfig` | `agent_loop_configs` | yes | `backend/app/models/agent_loop_config.py` |
+| `AuthSession` | `auth_sessions` | no | `backend/app/models/auth_session.py` |
 | `AutoresearchExperiment` | `autoresearch_experiments` | yes | `backend/app/models/autoresearch_experiment.py` |
 | `BackupRecord` | `backup_records` | yes | `backend/app/models/backup.py` |
 | `ChannelConversation` | `channel_conversations` | yes | `backend/app/models/channel_conversation.py` |
@@ -145,11 +150,13 @@ Generated from the repository on version `2026.04.27`. Treat this file as the fa
 | `DesignScreen` | `design_screens` | yes | `backend/app/models/design_screen.py` |
 | `DesignBrief` | `design_briefs` | yes | `backend/app/models/design_screen.py` |
 | `DesignDecision` | `design_decisions` | yes | `backend/app/models/design_screen.py` |
+| `DGMHArchiveVariant` | `dgmh_archive_variants` | yes | `backend/app/models/dgmh_archive.py` |
 | `Document` | `documents` | yes | `backend/app/models/document.py` |
 | `Nugget` | `nuggets` | no | `backend/app/models/finding.py` |
 | `Fact` | `facts` | no | `backend/app/models/finding.py` |
 | `Insight` | `insights` | no | `backend/app/models/finding.py` |
 | `Recommendation` | `recommendations` | no | `backend/app/models/finding.py` |
+| `ImprovementProposal` | `improvement_proposals` | yes | `backend/app/models/improvement_governance.py` |
 | `LLMServer` | `llm_servers` | no | `backend/app/models/llm_server.py` |
 | `LoopExecution` | `loop_executions` | yes | `backend/app/models/loop_execution.py` |
 | `MCPAccessPolicy` | `mcp_access_policies` | yes | `backend/app/models/mcp_access_policy.py` |
@@ -160,9 +167,12 @@ Generated from the repository on version `2026.04.27`. Treat this file as the fa
 | `ModelSkillStats` | `model_skill_stats` | yes | `backend/app/models/model_skill_stats.py` |
 | `Notification` | `notifications` | yes | `backend/app/models/notification.py` |
 | `NotificationPreference` | `notification_preferences` | yes | `backend/app/models/notification.py` |
+| `PermissionRequest` | `permission_requests` | yes | `backend/app/models/permission_request.py` |
 | `Project` | `projects` | no | `backend/app/models/project.py` |
 | `ProjectMember` | `project_members` | yes | `backend/app/models/project_member.py` |
 | `ProjectReport` | `project_reports` | yes | `backend/app/models/project_report.py` |
+| `ReasoningMemoryItem` | `reasoning_memory_items` | yes | `backend/app/models/reasoning_memory.py` |
+| `RecoveryCode` | `recovery_codes` | no | `backend/app/models/recovery_code.py` |
 | `ResearchDeployment` | `research_deployments` | yes | `backend/app/models/research_deployment.py` |
 | `ChatSession` | `chat_sessions` | yes | `backend/app/models/session.py` |
 | `SurveyIntegration` | `survey_integrations` | yes | `backend/app/models/survey_integration.py` |
@@ -171,6 +181,7 @@ Generated from the repository on version `2026.04.27`. Treat this file as the fa
 | `TaskReviewEvent` | `task_review_events` | yes | `backend/app/models/task_review.py` |
 | `TelemetrySpan` | `telemetry_spans` | no | `backend/app/models/telemetry_span.py` |
 | `User` | `users` | no | `backend/app/models/user.py` |
+| `WebAuthnChallenge` | `webauthn_challenges` | no | `backend/app/models/webauthn_challenge.py` |
 | `WebAuthnCredential` | `webauthn_credentials` | no | `backend/app/models/webauthn_credential.py` |
 
 ## Frontend State Stores
@@ -203,7 +214,7 @@ Generated from the repository on version `2026.04.27`. Treat this file as the fa
 - **Layer: Benchmarks**: `test_orchestration.py`
 - **Layer: Integration**: `test_llm_orchestration_real.py`
 - **Layer: Simulation**: `run.mjs`
-- **Test Journeys**: `test_agent_personas.py`, `test_agents.py`, `test_auth_security.py`, `test_autoresearch.py`, `test_backup.py`, `test_browser_skills.py`, `test_business_logic.py`, `test_channel_resilience.py`, `test_channels.py`, `test_chat.py`, `test_client_identity.py`, `test_code_applications.py`, `test_codebook_versions.py`, `test_codebooks.py`, `test_compute.py`, `test_connections.py`, `test_content_guard.py`, `test_context_dag.py`, `test_data_transformations.py`, `test_document_preview_paths.py`, `test_documents.py`, `test_error_handling.py`, `test_evaluation_skill.py`, `test_field_encryption.py`, `test_files.py`, `test_findings.py`, `test_integration.py`, `test_integration_agent_work_cycle.py`, `test_integration_chat_flow.py`, `test_integration_interview.py`, `test_interfaces.py`, `test_laws.py`, `test_llm_servers.py`, `test_loops.py`, `test_mcp.py`, `test_memory.py`, `test_meta_hyperagent.py`, `test_network_discovery.py`, `test_network_security.py`, `test_notifications.py`, `test_participant_simulation.py`, `test_project_rbac.py`, `test_projects.py`, `test_proxy_security.py`, `test_rate_limiter.py`, `test_research_integrity.py`, `test_runtime_source_boundary.py`, `test_self_healing_rules.py`, `test_sessions.py`, `test_settings.py`, `test_skill_definitions.py`, `test_skills.py`, `test_steering.py`, `test_surveys.py`, `test_tasks.py`, `test_telemetry.py`, `test_telemetry_export.py`, `test_transcription.py`, `test_transport_headers.py`, `test_version_comparison.py`, `test_webauthn.py`, `test_websocket.py`, `e2e_test.py`
+- **Test Journeys**: `test_adaptive_validation.py`, `test_agent_avatar_security.py`, `test_agent_personas.py`, `test_agentic_eval_contract.py`, `test_agents.py`, `test_auth_security.py`, `test_autoresearch.py`, `test_backup.py`, `test_browser_skills.py`, `test_business_logic.py`, `test_channel_file_security.py`, `test_channel_inbound.py`, `test_channel_resilience.py`, `test_channels.py`, `test_chat.py`, `test_client_identity.py`, `test_code_applications.py`, `test_codebook_versions.py`, `test_codebooks.py`, `test_compute.py`, `test_compute_registry_hardening.py`, `test_compute_registry_model_loading.py`, `test_compute_vision_routing.py`, `test_connections.py`, `test_content_guard.py`, `test_context_dag.py`, `test_data_transformations.py`, `test_database_schema_bootstrap.py`, `test_dgmh_archive.py`, `test_document_preview_paths.py`, `test_documents.py`, `test_error_handling.py`, `test_evaluation_skill.py`, `test_field_encryption.py`, `test_file_watcher_config.py`, `test_files.py`, `test_findings.py`, `test_harness_config.py`, `test_improvement_governance.py`, `test_integration.py`, `test_integration_agent_work_cycle.py`, `test_integration_chat_flow.py`, `test_integration_interview.py`, `test_interfaces.py`, `test_istara_eval_runner.py`, `test_laws.py`, `test_llm_fallback_config.py`, `test_llm_output.py`, `test_llm_servers.py`, `test_loops.py`, `test_mcp.py`, `test_memory.py`, `test_meta_hyperagent.py`, `test_metrics.py`, `test_model_provider_contract.py`, `test_network_discovery.py`, `test_network_security.py`, `test_notifications.py`, `test_participant_simulation.py`, `test_project_rbac.py`, `test_projects.py`, `test_property_contracts.py`, `test_proxy_security.py`, `test_rag_resilience.py`, `test_rate_limiter.py`, `test_reasoning_bank.py`, `test_reports.py`, `test_research_integrity.py`, `test_runtime_source_boundary.py`, `test_security_benchmark.py`, `test_self_healing_rules.py`, `test_sessions.py`, `test_settings.py`, `test_skill_definitions.py`, `test_skill_factory.py`, `test_skills.py`, `test_steering.py`, `test_surveys.py`, `test_tasks.py`, `test_telemetry.py`, `test_telemetry_export.py`, `test_transcription.py`, `test_transport_headers.py`, `test_updates_security.py`, `test_version_comparison.py`, `test_webauthn.py`, `test_webhooks_security.py`, `test_websocket.py`, `e2e_test.py`
 
 ## Documentation Contract
 

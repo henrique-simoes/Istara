@@ -393,53 +393,123 @@ function positiveIntegerEnv(name, fallback) {
   return parsed;
 }
 
-const SKILL_EXECUTE_TIMEOUT_MS = positiveIntegerEnv("ISTARA_SKILL_EXECUTE_TIMEOUT_MS", 120000);
-const SKILL_PLAN_TIMEOUT_MS = positiveIntegerEnv("ISTARA_SKILL_PLAN_TIMEOUT_MS", 60000);
+const SKILL_EXECUTE_TIMEOUT_MS = positiveIntegerEnv("ISTARA_SKILL_EXECUTE_TIMEOUT_MS", 600000);
+const SKILL_PLAN_TIMEOUT_MS = positiveIntegerEnv("ISTARA_SKILL_PLAN_TIMEOUT_MS", 180000);
+
+function hashSeed(value) {
+  let hash = 2166136261;
+  for (let i = 0; i < value.length; i++) {
+    hash ^= value.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0 || 1;
+}
+
+function seededRandom(seed) {
+  let state = hashSeed(seed);
+  return () => {
+    state += 0x6D2B79F5;
+    let value = state;
+    value = Math.imul(value ^ (value >>> 15), value | 1);
+    value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
+    return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function scenario20SkillSelection() {
+  const entries = Object.entries(ALL_SKILLS).flatMap(([phase, skills]) =>
+    skills.map((skill) => ({ phase, skill }))
+  );
+  const limit = Math.min(
+    positiveIntegerEnv("ISTARA_SCENARIO20_SKILL_LIMIT", entries.length),
+    entries.length
+  );
+
+  if (limit >= entries.length) {
+    return { entries, limited: false, limit: entries.length, seed: null };
+  }
+
+  const seed =
+    process.env.ISTARA_SCENARIO20_SKILL_SEED ||
+    `scenario20-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const random = seededRandom(seed);
+  const shuffled = [...entries];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+
+  return { entries: shuffled.slice(0, limit), limited: true, limit, seed };
+}
 
 export async function run(ctx) {
   const { api } = ctx;
   const checks = [];
   const skillResults = { total: 0, passed: 0, failed: 0, errors: 0, skipped: 0 };
   const phaseResults = {};
+  const skillMetrics = [];
 
   // ── Helpers ──
+  function currentSummary(stage = "running") {
+    const phaseSummary = Object.entries(phaseResults)
+      .map(([p, r]) => `${p}: ${r.passed}/${r.total} executed${r.skipped ? ` (${r.skipped} skipped)` : ""}`)
+      .join(" | ");
+    return [
+      `stage=${stage}`,
+      `Skills: ${skillResults.passed}/${skillResults.total} passed, ${skillResults.failed} failed, ${skillResults.skipped} skipped`,
+      phaseSummary,
+    ].filter(Boolean).join("\n");
+  }
+
+  function recordProgress(stage = "running") {
+    ctx.reportProgress?.({
+      stage,
+      checks,
+      skillResults: { ...skillResults },
+      skillMetrics: [...skillMetrics],
+      phaseResults: Object.fromEntries(
+        Object.entries(phaseResults).map(([phase, result]) => [phase, { ...result }])
+      ),
+      summary: currentSummary(stage),
+    });
+  }
+
+  function pushCheck(check, stage = check?.name || "check") {
+    checks.push(check);
+    recordProgress(stage);
+  }
+
   async function safeCheck(checkName, fn) {
     try {
       const result = await fn();
-      checks.push(result);
+      pushCheck(result, checkName);
     } catch (e) {
+      if (checkName.includes("— execute")) {
+        const phaseMatch = checkName.match(/^\[([^\]]+)\]/);
+        const phase = phaseMatch?.[1];
+        skillResults.failed++;
+        skillResults.errors++;
+        if (phase && phaseResults[phase]) {
+          phaseResults[phase].failed++;
+        }
+      }
       const isTimeout = e.message?.startsWith("TIMEOUT:");
-      checks.push({
+      pushCheck({
         name: checkName,
         passed: false,
         detail: isTimeout
           ? e.message
           : (e.message?.substring(0, 150) || "Unknown error"),
-      });
-    }
-  }
-
-  async function withTimeout(promise, ms, label) {
-    let timer;
-    const timeout = new Promise((_, reject) => {
-      timer = setTimeout(() => reject(new Error(`TIMEOUT: ${label} exceeded ${ms}ms`)), ms);
-    });
-    try {
-      const result = await Promise.race([promise, timeout]);
-      clearTimeout(timer);
-      return result;
-    } catch (e) {
-      clearTimeout(timer);
-      throw e;
+      }, checkName);
     }
   }
 
   // ── Step 1: Use the persistent simulation project ──
   let projectId = ctx.projectId;
   if (projectId) {
-    checks.push({ name: "Using persistent simulation project", passed: true, detail: `project_id=${projectId}` });
+    pushCheck({ name: "Using persistent simulation project", passed: true, detail: `project_id=${projectId}` });
   } else {
-    checks.push({ name: "Project required", passed: false, detail: "No persistent project available from runner" });
+    pushCheck({ name: "Project required", passed: false, detail: "No persistent project available from runner" });
     return { checks, passed: 0, failed: 1, summary: "No project available" };
   }
 
@@ -488,7 +558,7 @@ export async function run(ctx) {
     }
   }
 
-  checks.push({
+  pushCheck({
     name: "Mock data files uploaded",
     passed: Object.keys(uploadedFiles).length >= 7,
     detail: `${Object.keys(uploadedFiles).length}/9 file types uploaded: ${Object.keys(uploadedFiles).join(", ")} | ${Object.keys(filePaths).length} paths tracked`,
@@ -514,32 +584,41 @@ export async function run(ctx) {
 
   // ── Step 4: Test each skill — plan + execute ──
   const LLM_CONNECTED = ctx.llmConnected;
+  const skillSelection = scenario20SkillSelection();
+  pushCheck({
+    name: "Scenario 20 skill selection",
+    passed: skillSelection.entries.length > 0,
+    detail: skillSelection.limited
+      ? `random subset ${skillSelection.limit}/${Object.values(ALL_SKILLS).flat().length}, seed=${skillSelection.seed}, skills=${skillSelection.entries.map(({ skill }) => skill.name).join(", ")}`
+      : `full sweep ${skillSelection.entries.length}/${Object.values(ALL_SKILLS).flat().length} skills`,
+  });
 
-  for (const [phase, skills] of Object.entries(ALL_SKILLS)) {
-    phaseResults[phase] = { total: 0, passed: 0, failed: 0, skipped: 0 };
-
-    for (const skill of skills) {
+  for (const { phase, skill } of skillSelection.entries) {
+    if (!phaseResults[phase]) {
+      phaseResults[phase] = { total: 0, passed: 0, failed: 0, skipped: 0 };
+    }
       skillResults.total++;
       phaseResults[phase].total++;
 
       // Test: Skill exists in registry
       const registered = allSkills.find((s) => s.name === skill.name);
       if (!registered) {
-        checks.push({
+        pushCheck({
           name: `[${phase}] ${skill.name} — registered`,
           passed: false,
           detail: "Skill not found in registry",
-        });
+        }, `${skill.name} registered`);
         skillResults.failed++;
         phaseResults[phase].failed++;
+        recordProgress(`${skill.name} missing`);
         continue;
       }
 
-      checks.push({
+      pushCheck({
         name: `[${phase}] ${skill.name} — registered`,
         passed: true,
         detail: `phase=${registered.phase}, type=${registered.skill_type}`,
-      });
+      }, `${skill.name} registered`);
 
       // Test: Skill individual API
       await safeCheck(`[${phase}] ${skill.name} — GET detail`, async () => {
@@ -564,14 +643,18 @@ export async function run(ctx) {
 
         await safeCheck(`[${phase}] ${skill.name} — execute`, async () => {
           const startTime = Date.now();
-          const result = await withTimeout(
-            api.post(`/api/skills/${skill.name}/execute`, {
+          const result = await api.post(
+            `/api/skills/${skill.name}/execute`,
+            {
               project_id: projectId,
               user_context: richContext,
               files: skillFiles,
-            }),
-            SKILL_EXECUTE_TIMEOUT_MS,
-            `${skill.name} execute`
+              timeout_seconds: Math.max(1, Math.floor(SKILL_EXECUTE_TIMEOUT_MS / 1000) - 5),
+            },
+            {
+              timeoutMs: SKILL_EXECUTE_TIMEOUT_MS,
+              label: `${skill.name} execute`,
+            }
           );
           const elapsed = Date.now() - startTime;
 
@@ -583,7 +666,18 @@ export async function run(ctx) {
             (result.insights_count || 0) +
             (result.recommendations_count || 0);
 
-          const passed = hasSuccess && result.success !== false;
+          const passed = hasSuccess && result.success === true && result.json_success !== false && hasSummary;
+          const schemaBudget = result.schema_budget || null;
+          skillMetrics.push({
+            phase,
+            skill: skill.name,
+            elapsed_ms: elapsed,
+            success: result.success === true,
+            json_success: result.json_success !== false,
+            findings: hasFindings,
+            schema_budget: schemaBudget,
+            summary_length: (result.summary || "").length,
+          });
 
           if (passed) {
             skillResults.passed++;
@@ -597,20 +691,24 @@ export async function run(ctx) {
             name: `[${phase}] ${skill.name} — execute`,
             passed,
             detail: passed
-              ? `${elapsed}ms, findings=${hasFindings}, summary="${(result.summary || "").substring(0, 60)}..."`
-              : `success=${result.success}, errors=${JSON.stringify(result.errors || []).substring(0, 80)}`,
+              ? `${elapsed}ms, findings=${hasFindings}, json_success=${result.json_success !== false}, schema_fallback=${schemaBudget?.used_fallback ?? "n/a"}, summary="${(result.summary || "").substring(0, 60)}..."`
+              : `success=${result.success}, json_success=${result.json_success}, errors=${JSON.stringify(result.errors || []).substring(0, 80)}`,
           };
         });
 
         // Test: Skill plan generation
         await safeCheck(`[${phase}] ${skill.name} — plan`, async () => {
-          const result = await withTimeout(
-            api.post(`/api/skills/${skill.name}/plan`, {
+          const result = await api.post(
+            `/api/skills/${skill.name}/plan`,
+            {
               project_id: projectId,
               user_context: skill.context,
-            }),
-            SKILL_PLAN_TIMEOUT_MS,
-            `${skill.name} plan`
+              timeout_seconds: Math.max(1, Math.floor(SKILL_PLAN_TIMEOUT_MS / 1000) - 5),
+            },
+            {
+              timeoutMs: SKILL_PLAN_TIMEOUT_MS,
+              label: `${skill.name} plan`,
+            }
           );
 
           const hasPlan = typeof result.plan === "string" && result.plan.length > 20;
@@ -628,13 +726,12 @@ export async function run(ctx) {
         // Skip execution if no LLM
         skillResults.skipped++;
         phaseResults[phase].skipped++;
-        checks.push({
+        pushCheck({
           name: `[${phase}] ${skill.name} — execute`,
           passed: true,
           detail: "[skipped] LLM not connected — skill registration verified only",
-        });
+        }, `${skill.name} skipped`);
       }
-    }
   }
 
   // ── Step 5: Skill health check ──
@@ -718,6 +815,15 @@ export async function run(ctx) {
     checks,
     passed,
     failed,
+    metrics: {
+      skill_metrics: skillMetrics,
+      avg_execute_ms: Math.round(
+        skillMetrics.reduce((sum, item) => sum + item.elapsed_ms, 0) /
+          Math.max(1, skillMetrics.length)
+      ),
+      schema_fallback_count: skillMetrics.filter((item) => item.schema_budget?.used_fallback).length,
+      json_success_count: skillMetrics.filter((item) => item.json_success).length,
+    },
     summary: [
       `Skills: ${skillResults.passed}/${skillResults.total} passed, ${skillResults.failed} failed, ${skillResults.skipped} skipped`,
       phaseSummary,

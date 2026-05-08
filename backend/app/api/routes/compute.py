@@ -8,7 +8,7 @@ from urllib.parse import urlparse, urlunparse
 from fastapi import APIRouter, Request, WebSocket, WebSocketDisconnect
 
 from app.core.compute_registry import ComputeNode, compute_registry, infer_provider_type
-from app.core.security_middleware import require_admin_from_request
+from app.core.permissions import require_global_role
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -22,7 +22,7 @@ def _infer_relay_provider_type(provider_host: str, requested_provider: str | Non
 @router.get("/compute/nodes")
 async def list_compute_nodes(request: Request):
     """List all compute nodes from the unified registry."""
-    require_admin_from_request(request)
+    require_global_role(request, "researcher")
     stats = compute_registry.get_stats()
     return {
         "total_nodes": stats["total_nodes"],
@@ -34,14 +34,14 @@ async def list_compute_nodes(request: Request):
 @router.get("/compute/stats")
 async def compute_stats(request: Request):
     """Unified compute stats — all nodes from the single registry."""
-    require_admin_from_request(request)
+    require_global_role(request, "researcher")
     return compute_registry.get_stats()
 
 
 @router.get("/compute/model-warnings")
 async def model_warnings(request: Request):
     """Check loaded models for capability limitations relevant to Istara."""
-    require_admin_from_request(request)
+    require_global_role(request, "researcher")
     return {"warnings": compute_registry.get_warnings()}
 
 
@@ -136,12 +136,17 @@ async def relay_websocket(ws: WebSocket):
                     ip_address=ip_addr,
                     provider_host=provider_host,
                     ram_total_gb=msg.get("ram_total_gb", 0),
+                    ram_available_gb=msg.get("ram_available_gb", 0),
                     cpu_cores=msg.get("cpu_cores", 0),
+                    cpu_load_pct=msg.get("cpu_load_pct", 0),
                     gpu_name=msg.get("gpu_name", ""),
                     gpu_vram_mb=msg.get("gpu_vram_mb", 0),
                     loaded_models=msg.get("loaded_models", []),
                     model_capabilities=msg.get("model_capabilities", {}),
                 )
+                if msg.get("health_error"):
+                    node.health_error = str(msg["health_error"])[:200]
+                    node.health_state = "no_model_server" if not node.loaded_models else "degraded"
                 compute_registry.register_node(node)
 
                 # Deduplicate: remove network-discovered nodes that
@@ -160,6 +165,7 @@ async def relay_websocket(ws: WebSocket):
                         caps = await detect_capabilities_generic(
                             resolved_host,
                             provider_type=provider_type,
+                            active_probe=False,
                         )
                         node.model_capabilities = {k: v.to_dict() for k, v in caps.items()}
                         logger.info(

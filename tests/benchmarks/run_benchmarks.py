@@ -47,7 +47,9 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 # Add backend to path
-sys.path.insert(0, str(Path(__file__).parents[2] / "backend"))
+ROOT = Path(__file__).parents[2]
+sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / "backend"))
 
 logging.basicConfig(
     level=logging.INFO,

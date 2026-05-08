@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight, Palette, ExternalLink, AlertTriangle, CheckCircle2, Sparkles, X } from "lucide-react";
-import { interfaces as interfacesApi } from "@/lib/api";
+import { interfaces as interfacesApi, permissionRequests } from "@/lib/api";
 import { useInterfacesStore } from "@/stores/interfacesStore";
+import { useProjectStore } from "@/stores/projectStore";
+import { useAuthStore } from "@/stores/authStore";
 import { cn } from "@/lib/utils";
 
 const STEPS = ["welcome", "stitch", "figma", "privacy", "done"] as const;
@@ -11,6 +13,9 @@ type Step = typeof STEPS[number];
 
 export default function InterfacesOnboarding() {
   const { dismissOnboarding, acknowledgePrivacy } = useInterfacesStore();
+  const { activeProjectId, canAdminActiveProject } = useProjectStore();
+  const { user } = useAuthStore();
+  const canManageIntegrations = user?.role === "admin" || canAdminActiveProject();
   const [currentStep, setCurrentStep] = useState<Step>("welcome");
   const [stitchKey, setStitchKey] = useState("");
   const [figmaToken, setFigmaToken] = useState("");
@@ -36,7 +41,22 @@ export default function InterfacesOnboarding() {
     setSavingStitch(true);
     setStitchError(null);
     try {
-      await interfacesApi.configure.stitch({ api_key: stitchKey.trim() });
+      if (canManageIntegrations) {
+        await interfacesApi.configure.stitch({
+          api_key: stitchKey.trim(),
+          project_id: activeProjectId || undefined,
+        });
+      } else if (activeProjectId) {
+        await permissionRequests.create({
+          project_id: activeProjectId,
+          action: "interfaces.stitch.configure",
+          title: "Configure Stitch API",
+          details: "Request permission to configure the project Stitch API key.",
+          payload_summary: "Secret value intentionally omitted from request log.",
+        });
+      } else {
+        throw new Error("Select a project before requesting Stitch configuration.");
+      }
       setStitchSaved(true);
     } catch (e: any) {
       setStitchError(e.message);
@@ -50,7 +70,22 @@ export default function InterfacesOnboarding() {
     setSavingFigma(true);
     setFigmaError(null);
     try {
-      await interfacesApi.configure.figma({ api_token: figmaToken.trim() });
+      if (canManageIntegrations) {
+        await interfacesApi.configure.figma({
+          api_token: figmaToken.trim(),
+          project_id: activeProjectId || undefined,
+        });
+      } else if (activeProjectId) {
+        await permissionRequests.create({
+          project_id: activeProjectId,
+          action: "interfaces.figma.configure",
+          title: "Configure Figma token",
+          details: "Request permission to configure the project Figma API token.",
+          payload_summary: "Secret value intentionally omitted from request log.",
+        });
+      } else {
+        throw new Error("Select a project before requesting Figma configuration.");
+      }
       setFigmaSaved(true);
     } catch (e: any) {
       setFigmaError(e.message);

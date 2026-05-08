@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { BarChart3, Target, TrendingUp, CheckCircle, MessageSquare, Loader2, AlertCircle } from "lucide-react";
+import { BarChart3, Target, CheckCircle, Loader2, AlertCircle } from "lucide-react";
 import { useProjectStore } from "@/stores/projectStore";
 import { cn } from "@/lib/utils";
 import { ApiError } from "@/hooks/useApiCall";

@@ -8,6 +8,14 @@ const config = defineConfig([
   {
     rules: {
       "@typescript-eslint/no-explicit-any": "off",
+      "@typescript-eslint/no-unused-vars": [
+        "warn",
+        {
+          "argsIgnorePattern": "^_",
+          "caughtErrorsIgnorePattern": "^_",
+          "varsIgnorePattern": "^_"
+        }
+      ],
       "@typescript-eslint/no-require-imports": "off",
       "react-hooks/immutability": "off",
       "react-hooks/purity": "off",

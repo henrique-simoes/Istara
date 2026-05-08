@@ -7,7 +7,6 @@ import { useProjectStore } from "@/stores/projectStore";
 import { laws as lawsApi } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import type { LawCategory, UXLaw, ComplianceProfile } from "@/lib/types";
-import LawBadge from "./LawBadge";
 
 const CATEGORY_META: {
   id: LawCategory;

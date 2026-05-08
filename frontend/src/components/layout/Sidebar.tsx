@@ -297,7 +297,11 @@ export default function Sidebar({ activeView, onViewChange, onSearchOpen }: Side
                 {projectMenu === project.id && (
                   <div className="absolute left-8 top-full mt-1 z-50 w-36 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 py-1 text-xs">
                     <button
-                      onClick={() => { project.is_paused ? resumeProject(project.id) : pauseProject(project.id); setProjectMenu(null); }}
+                      onClick={() => {
+                        if (project.is_paused) resumeProject(project.id);
+                        else pauseProject(project.id);
+                        setProjectMenu(null);
+                      }}
                       className="w-full text-left px-3 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300"
                     >
                       {project.is_paused ? "Resume" : "Pause"}

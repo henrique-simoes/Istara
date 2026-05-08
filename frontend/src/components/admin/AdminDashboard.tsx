@@ -1,9 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Activity, Copy, Cpu, FolderOpen, KeyRound, Lock, RefreshCw, Shield, Trash2, UserCog, Users } from "lucide-react";
+import { Activity, Check, Copy, Cpu, FolderOpen, KeyRound, Lock, RefreshCw, Shield, Trash2, UserCog, Users, XCircle } from "lucide-react";
 
-import { admin as adminApi } from "@/lib/api";
+import { admin as adminApi, permissionRequests } from "@/lib/api";
+import type { PermissionRequestItem } from "@/lib/types";
 import { useAuthStore } from "@/stores/authStore";
 
 function MetricCard({ label, value, icon: Icon, note }: { label: string; value: string | number; icon: any; note?: string }) {
@@ -28,6 +29,7 @@ export default function AdminDashboard() {
   const [users, setUsers] = useState<any[]>([]);
   const [memberships, setMemberships] = useState<any[]>([]);
   const [connections, setConnections] = useState<{ user_invites: any[]; compute_donations: any[] } | null>(null);
+  const [requests, setRequests] = useState<PermissionRequestItem[]>([]);
   const [inviteRole, setInviteRole] = useState("researcher");
   const [inviteLabel, setInviteLabel] = useState("");
   const [generatedString, setGeneratedString] = useState("");
@@ -44,18 +46,20 @@ export default function AdminDashboard() {
     setLoading(true);
     setError("");
     try {
-      const [overviewData, projectData, userData, accessData, connectionData] = await Promise.all([
+      const [overviewData, projectData, userData, accessData, connectionData, requestData] = await Promise.all([
         adminApi.overview(),
         adminApi.projects(),
         adminApi.users(),
         adminApi.access(),
         adminApi.connectionStrings(),
+        permissionRequests.list({ status: "pending" }),
       ]);
       setOverview(overviewData);
       setProjects(projectData.projects || []);
       setUsers(userData.users || []);
       setMemberships(accessData.memberships || []);
       setConnections(connectionData);
+      setRequests(requestData.requests || []);
     } catch (err: any) {
       setError(err.message || "Could not load admin dashboard.");
     } finally {
@@ -109,6 +113,11 @@ export default function AdminDashboard() {
     await load();
   };
 
+  const reviewRequest = async (id: string, status: "approved" | "rejected") => {
+    await permissionRequests.review(id, { status });
+    await load();
+  };
+
   const deleteProject = async (projectId: string) => {
     if (!confirm("Delete this project and all associated data? This cannot be undone.")) return;
     await adminApi.deleteProject(projectId);
@@ -149,6 +158,36 @@ export default function AdminDashboard() {
           <MetricCard label="Compute" value={overview?.compute?.healthy_llm_servers ?? "—"} icon={Cpu} note={`${overview?.compute?.llm_servers ?? 0} LLM servers, ${overview?.compute?.relay_nodes ?? 0} relay nodes`} />
           <MetricCard label="Tasks" value={overview?.tasks?.total ?? "—"} icon={Activity} note={taskSummary} />
         </div>
+
+        <section className="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+          <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-white"><Shield size={16} /> Permission Requests</h2>
+          {requests.length === 0 ? (
+            <p className="text-sm text-slate-500 dark:text-slate-400">No pending project admin requests.</p>
+          ) : (
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {requests.slice(0, 12).map((item) => {
+                const project = projects.find((candidate) => candidate.id === item.project_id);
+                return (
+                  <div key={item.id} className="rounded-md border border-slate-100 p-3 text-sm dark:border-slate-800">
+                    <div className="font-medium text-slate-900 dark:text-white">{item.title || item.action}</div>
+                    <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                      {project?.name || item.project_id} · {item.requester_username || item.requester_user_id}
+                    </div>
+                    {item.details && <p className="mt-2 line-clamp-2 text-xs text-slate-600 dark:text-slate-300">{item.details}</p>}
+                    <div className="mt-3 flex gap-2">
+                      <button onClick={() => reviewRequest(item.id, "approved")} className="inline-flex items-center gap-1 rounded-md bg-green-600 px-2 py-1 text-xs font-medium text-white hover:bg-green-700">
+                        <Check size={12} /> Approve
+                      </button>
+                      <button onClick={() => reviewRequest(item.id, "rejected")} className="inline-flex items-center gap-1 rounded-md border border-slate-200 px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800">
+                        <XCircle size={12} /> Reject
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
 
         <div className="grid gap-4 xl:grid-cols-3">
           <section className="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900 xl:col-span-2">

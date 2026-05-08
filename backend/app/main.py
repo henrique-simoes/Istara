@@ -61,6 +61,7 @@ from app.api.routes import loops as loops_routes
 from app.api.routes import mcp as mcp_routes
 from app.api.routes import meta_hyperagent as meta_hyperagent_routes
 from app.api.routes import notifications as notification_routes
+from app.api.routes import permission_requests as permission_request_routes
 from app.api.routes import presentation as presentation_routes
 from app.api.routes import reasoning_bank as reasoning_bank_routes
 from app.api.routes import reports as reports_routes
@@ -507,7 +508,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                 try:
                     from app.core.model_capabilities import detect_capabilities_lmstudio
 
-                    caps = await detect_capabilities_lmstudio(app_settings.lmstudio_host)
+                    caps = await detect_capabilities_lmstudio(
+                        app_settings.lmstudio_host,
+                        active_probe=False,
+                    )
                     for model_name, cap in caps.items():
                         if cap.context_length and cap.context_length > 0:
                             app_settings.update_context_window(cap.context_length)
@@ -560,20 +564,30 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     watcher_task = asyncio.create_task(watcher.start())
     app.state.file_watcher = watcher
 
-    # Start all agents and orchestrator
-    bg_tasks = [
-        asyncio.create_task(devops_agent.start()),
-        asyncio.create_task(ui_audit_agent.start()),
-        asyncio.create_task(ux_eval_agent.start()),
-        asyncio.create_task(user_sim_agent.start()),
-        asyncio.create_task(agent_orchestrator.start()),
-        asyncio.create_task(meta_orchestrator.start()),
-        asyncio.create_task(heartbeat_manager.start()),
-        asyncio.create_task(scheduler.start()),
-    ]
+    disable_background_agents = os.environ.get(
+        "ISTARA_DISABLE_BACKGROUND_AGENTS", ""
+    ).lower() in {"1", "true", "yes"}
+
+    # Start all agents and orchestrator unless a live harness explicitly needs
+    # exclusive model access from process start.
+    if disable_background_agents:
+        _log.info("Background agents and scheduler disabled for this process.")
+        bg_tasks = []
+    else:
+        bg_tasks = [
+            asyncio.create_task(devops_agent.start()),
+            asyncio.create_task(ui_audit_agent.start()),
+            asyncio.create_task(ux_eval_agent.start()),
+            asyncio.create_task(user_sim_agent.start()),
+            asyncio.create_task(agent_orchestrator.start()),
+            asyncio.create_task(meta_orchestrator.start()),
+            asyncio.create_task(heartbeat_manager.start()),
+            asyncio.create_task(scheduler.start()),
+        ]
 
     # Start custom agent workers from DB
-    await load_custom_agents_from_db()
+    if not disable_background_agents:
+        await load_custom_agents_from_db()
 
     # Start backup scheduler
     asyncio.create_task(backup_manager.start_scheduled())
@@ -583,7 +597,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         from app.core.meta_hyperagent import meta_hyperagent as mh
 
         mh.load_confirmed_overrides()
-        if app_settings.meta_hyperagent_enabled:
+        if app_settings.meta_hyperagent_enabled and not disable_background_agents:
             mh.start()
             _log.info("Meta-hyperagent observation loop started.")
     except Exception as e:
@@ -766,6 +780,7 @@ app.include_router(compute_routes.router, prefix="/api", tags=["Compute"])
 app.include_router(interfaces.router, prefix="/api", tags=["Interfaces"])
 app.include_router(loops_routes.router, prefix="/api", tags=["Loops"])
 app.include_router(notification_routes.router, prefix="/api", tags=["Notifications"])
+app.include_router(permission_request_routes.router, prefix="/api", tags=["Permission Requests"])
 app.include_router(backup_routes.router, prefix="/api", tags=["Backup"])
 app.include_router(meta_hyperagent_routes.router, prefix="/api", tags=["Meta-Hyperagent"])
 app.include_router(reasoning_bank_routes.router, prefix="/api", tags=["ReasoningBank"])

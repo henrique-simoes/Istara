@@ -3,6 +3,7 @@
 from importlib import import_module
 from pathlib import Path
 
+from sqlalchemy import event
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.pool import NullPool
@@ -23,7 +24,10 @@ _engine_kwargs: dict = {"echo": False}
 if _is_sqlite:
     db_path = settings.database_url.replace("sqlite+aiosqlite:///", "")
     Path(db_path).parent.mkdir(parents=True, exist_ok=True)
-    _engine_kwargs["connect_args"] = {"check_same_thread": False}
+    _engine_kwargs["connect_args"] = {
+        "check_same_thread": False,
+        "timeout": max(1.0, settings.sqlite_busy_timeout_ms / 1000),
+    }
     # NullPool prevents "database is locked" and "Event loop is closed" issues
     # across tests by closing connections immediately.
     _engine_kwargs["poolclass"] = NullPool
@@ -37,6 +41,28 @@ else:
     _engine_kwargs.setdefault("connect_args", {})["ssl"] = _pg_ssl_ctx
 
 engine = create_async_engine(settings.database_url, **_engine_kwargs)
+
+
+if _is_sqlite:
+    _sqlite_busy_timeout_ms = max(1000, int(settings.sqlite_busy_timeout_ms))
+
+    @event.listens_for(engine.sync_engine, "connect")
+    def _configure_sqlite_connection(dbapi_connection, _connection_record) -> None:
+        """Tune SQLite for concurrent agent/report writes.
+
+        Istara's local/dev profile can have UI requests, simulation runs, and
+        background agents writing at the same time. WAL plus a busy timeout
+        makes those writes queue briefly instead of immediately poisoning a
+        long-running session with "database is locked".
+        """
+        cursor = dbapi_connection.cursor()
+        try:
+            cursor.execute(f"PRAGMA busy_timeout={_sqlite_busy_timeout_ms}")
+            if ":memory:" not in settings.database_url:
+                cursor.execute("PRAGMA journal_mode=WAL")
+                cursor.execute("PRAGMA synchronous=NORMAL")
+        finally:
+            cursor.close()
 
 async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
@@ -100,6 +126,7 @@ async def init_db() -> None:
         "app.models.telemetry_span",
         "app.models.project_report",
         "app.models.project_member",
+        "app.models.permission_request",
         "app.models.task_review",
     ):
         import_module(module_name)
@@ -118,6 +145,8 @@ async def init_db() -> None:
             "ALTER TABLE agents ADD COLUMN scope VARCHAR(10) NOT NULL DEFAULT 'universal'",
             "ALTER TABLE agents ADD COLUMN project_id VARCHAR(36) NOT NULL DEFAULT ''",
             "ALTER TABLE projects ADD COLUMN watch_folder_path VARCHAR(1000)",
+            "ALTER TABLE chat_sessions ADD COLUMN thinking_mode VARCHAR(20) "
+            "NOT NULL DEFAULT 'server_default'",
             # MFA / 2FA columns
             "ALTER TABLE users ADD COLUMN totp_secret VARCHAR(64)",
             "ALTER TABLE users ADD COLUMN totp_enabled BOOLEAN NOT NULL DEFAULT 0",
@@ -217,6 +246,13 @@ async def init_db() -> None:
         try:
             await conn.run_sync(
                 lambda c: Base.metadata.tables["task_review_events"].create(c, checkfirst=True)
+            )
+        except Exception:
+            pass  # Table already exists
+
+        try:
+            await conn.run_sync(
+                lambda c: Base.metadata.tables["permission_requests"].create(c, checkfirst=True)
             )
         except Exception:
             pass  # Table already exists

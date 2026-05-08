@@ -13,7 +13,7 @@ import fs from "fs";
 import { program } from "commander";
 import { createConnection } from "./lib/connection.mjs";
 import { StateMachine } from "./lib/state-machine.mjs";
-import { startHeartbeat, getSystemStats } from "./lib/heartbeat.mjs";
+import { buildRegistrationPayload, startHeartbeat, getSystemStats } from "./lib/heartbeat.mjs";
 import { LLMProxy, detectLocalLLM } from "./lib/llm-proxy.mjs";
 import { decodeConnectionString } from "./lib/connection-string.mjs";
 
@@ -112,8 +112,11 @@ if (!providerWasConfigured && !hostWasConfigured) {
     console.log(`   Detected local LLM: ${detected.providerType} at ${detected.host}`);
   } else {
     console.warn(
-      "⚠️  No local model server detected yet. "
-      + "Start one locally and the relay heartbeat will advertise models once reachable.",
+      "⚠️  No local model server detected yet. The relay will connect in idle mode.",
+    );
+    console.warn(
+      "   Install/start LM Studio, Ollama, llama.cpp, vLLM, SGLang, or MLX, "
+      + "then keep this relay running; heartbeats will advertise models once reachable.",
     );
   }
 }
@@ -137,20 +140,13 @@ const ws = createConnection(opts.server, {
 
     // Register with server
     const modelProbe = initialProbe ?? await llmProxy.probeModels();
-    const models = modelProbe.models || [];
-    ws.send(JSON.stringify({
-      type: "register",
-      hostname: stats.hostname,
-      user_id: opts.token ? "authenticated" : "anonymous",
-      ram_total_gb: stats.ram_total_gb,
-      cpu_cores: stats.cpu_cores,
-      gpu_name: stats.gpu_name,
-      gpu_vram_mb: stats.gpu_vram_mb,
-      loaded_models: models,
-      model_capabilities: modelProbe.modelCapabilities || {},
-      provider_type: llmProxy.providerType,
-      provider_host: llmProxy.host,
-    }));
+    ws.send(JSON.stringify(buildRegistrationPayload({
+      stats,
+      modelProbe,
+      providerType: llmProxy.providerType,
+      providerHost: llmProxy.host,
+      userId: opts.token ? "authenticated" : "anonymous",
+    })));
 
     // Start heartbeat
     startHeartbeat(ws, parseInt(opts.heartbeatInterval) * 1000, llmProxy);
@@ -198,7 +194,10 @@ const ws = createConnection(opts.server, {
       } else if (msg.type === "load_model_request") {
         stateMachine.transition("donating");
         try {
-          const result = await llmProxy.loadModel(msg.model);
+          const result = await llmProxy.loadModel(msg.model, {
+            contextLength: msg.context_length,
+            allowUnload: msg.allow_unload === true,
+          });
           ws.send(JSON.stringify({
             type: "load_model_response",
             request_id: msg.request_id,

@@ -68,7 +68,7 @@ let nextId = 0;
 
 export default function ToastNotification() {
   const [toasts, setToasts] = useState<Toast[]>([]);
-  const [history, setHistory] = useState<NotificationHistoryItem[]>([]);
+  const [_history, setHistory] = useState<NotificationHistoryItem[]>([]);
 
   const addToHistory = useCallback((toast: Toast) => {
     const item: NotificationHistoryItem = {

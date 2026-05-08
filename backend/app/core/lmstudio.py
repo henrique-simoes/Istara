@@ -7,6 +7,8 @@ from typing import AsyncGenerator
 import httpx
 
 from app.config import settings
+from app.core.llm_output import ThinkingContentFilter, visible_assistant_content
+from app.core.llm_schema_adapter import provider_response_format_fields
 
 
 def configured_lmstudio_model_is_authoritative(model: str | None = None) -> bool:
@@ -188,7 +190,7 @@ class LMStudioClient:
         if tools:
             payload["tools"] = tools
         if response_format:
-            payload["response_format"] = response_format
+            payload.update(provider_response_format_fields("lmstudio", response_format))
 
         client = await self._get_client()
         resp = await client.post("/v1/chat/completions", json=payload)
@@ -201,7 +203,7 @@ class LMStudioClient:
         result: dict = {
             "message": {
                 "role": "assistant",
-                "content": message.get("content") or "",
+                "content": visible_assistant_content(message),
             }
         }
 
@@ -245,7 +247,7 @@ class LMStudioClient:
         if tools:
             payload["tools"] = tools
         if response_format:
-            payload["response_format"] = response_format
+            payload.update(provider_response_format_fields("lmstudio", response_format))
 
         client = await self._get_client()
 
@@ -253,6 +255,7 @@ class LMStudioClient:
         # stream tool calls in multiple chunks or as a single chunk).
         accumulated_tool_calls: list[dict] = []
         tool_call_mode = False
+        content_filter = ThinkingContentFilter()
 
         async with client.stream(
             "POST", "/v1/chat/completions", json=payload, timeout=None
@@ -296,7 +299,7 @@ class LMStudioClient:
                         continue
 
                     # Regular content delta
-                    content = delta.get("content", "")
+                    content = content_filter.push(delta.get("content", ""))
                     if content:
                         yield content
 
@@ -308,6 +311,9 @@ class LMStudioClient:
                     continue
 
         # If we accumulated tool calls, yield them as a structured dict
+        remaining = content_filter.flush()
+        if remaining:
+            yield remaining
         if accumulated_tool_calls and any(tc["function"]["name"] for tc in accumulated_tool_calls):
             yield {
                 "tool_calls": accumulated_tool_calls,

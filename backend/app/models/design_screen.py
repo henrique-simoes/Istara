@@ -9,6 +9,7 @@ from sqlalchemy import DateTime, Float, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.database import Base
+from app.models.project import Project as _Project  # noqa: F401 - registers relationship target
 
 
 class DesignScreen(Base):

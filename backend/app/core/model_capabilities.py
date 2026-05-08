@@ -485,6 +485,7 @@ async def detect_capabilities_generic(
     host: str | None,
     api_key: str = "",
     provider_type: str = "openai_compat",
+    active_probe: bool | None = None,
 ) -> dict[str, ModelCapability]:
     """Empirically detect model capabilities from any OpenAI-compatible API.
 
@@ -496,8 +497,11 @@ async def detect_capabilities_generic(
         return {}
 
     import httpx
+    from app.config import settings
 
     result: dict[str, ModelCapability] = {}
+    if active_probe is None:
+        active_probe = settings.llm_capability_active_probe_enabled
 
     # RFC 3986 Normalization for detection client
     if not host.endswith("/"):
@@ -551,6 +555,8 @@ async def detect_capabilities_generic(
             logger.debug(f"Metadata discovery failed for {host}: {e}")
 
         # 2. Dynamic Probing (Active Verification)
+        if not active_probe:
+            return result
         if provider_type in ANTHROPIC_PROVIDERS:
             return result
         # Select the most likely primary model to probe
@@ -597,14 +603,26 @@ async def detect_capabilities_generic(
 async def detect_capabilities_lmstudio(
     host: str | None,
     api_key: str = "",
+    active_probe: bool | None = None,
 ) -> dict[str, ModelCapability]:
     """Detect capabilities from an LM Studio/OpenAI-compatible server."""
-    return await detect_capabilities_generic(host, api_key, provider_type="lmstudio")
+    return await detect_capabilities_generic(
+        host,
+        api_key,
+        provider_type="lmstudio",
+        active_probe=active_probe,
+    )
 
 
 async def detect_capabilities_ollama(
     host: str | None,
     api_key: str = "",
+    active_probe: bool | None = None,
 ) -> dict[str, ModelCapability]:
     """Detect capabilities from an Ollama server."""
-    return await detect_capabilities_generic(host, api_key, provider_type="ollama")
+    return await detect_capabilities_generic(
+        host,
+        api_key,
+        provider_type="ollama",
+        active_probe=active_probe,
+    )

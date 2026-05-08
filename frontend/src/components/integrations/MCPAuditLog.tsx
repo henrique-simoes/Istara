@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Activity, RefreshCw, CheckCircle2, XCircle, Clock } from "lucide-react";
 import { mcp as mcpApi } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -11,7 +11,7 @@ export default function MCPAuditLog() {
   const [loading, setLoading] = useState(true);
   const [limit, setLimit] = useState(50);
 
-  const fetchAudit = async () => {
+  const fetchAudit = useCallback(async () => {
     setLoading(true);
     try {
       const data = await mcpApi.server.audit(limit);
@@ -21,11 +21,11 @@ export default function MCPAuditLog() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [limit]);
 
   useEffect(() => {
     fetchAudit();
-  }, [limit]);
+  }, [fetchAudit]);
 
   return (
     <div className="p-6 space-y-4">

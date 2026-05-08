@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState, type ReactNode } from "react";
-import { useTourStore, TOUR_TOTAL_STEPS } from "@/stores/tourStore";
+import { useTourStore } from "@/stores/tourStore";
 import { settings as settingsApi } from "@/lib/api";
 import TourPopover from "./TourPopover";
 
@@ -175,7 +175,106 @@ const STEPS: StepDef[] = [
     ],
     spotlight: true,
   },
-  // Step 8: LLM Model Check
+  // Step 8: Skills
+  {
+    view: "skills",
+    targetSelector: null,
+    placement: "bottom",
+    title: "Create and Govern Skills",
+    getDescription: (tour: TourStore, _e: ExtraInfo) =>
+      tour.role === "viewer" ? (
+        <p>Browse the research skills available in this project. Researchers can create, approve, and toggle skills when they are responsible for the workflow.</p>
+      ) : (
+        <p>Create new research skills, review proposals, approve improvements, and toggle which skills agents can use for project work.</p>
+      ),
+    getActions: (tour: TourStore, _e: ExtraInfo) => [
+      { label: "Next", onClick: () => tour.nextStep(), variant: "primary" as const },
+    ],
+    spotlight: true,
+  },
+  // Step 9: Loops and Schedules
+  {
+    view: "loops",
+    targetSelector: null,
+    placement: "bottom",
+    title: "Loops and Schedules",
+    getDescription: (_t: TourStore, _e: ExtraInfo) => (
+      <p>
+        Configure recurring research loops and scheduled skill runs for the active project. Researchers can manage these project workflows; admins still govern system-wide safety.
+      </p>
+    ),
+    getActions: (tour: TourStore, _e: ExtraInfo) => [
+      { label: "Next", onClick: () => tour.nextStep(), variant: "primary" as const },
+    ],
+    spotlight: true,
+  },
+  // Step 10: Autoresearch
+  {
+    view: "autoresearch",
+    targetSelector: null,
+    placement: "bottom",
+    title: "Autoresearch Experiments",
+    getDescription: (_t: TourStore, _e: ExtraInfo) => (
+      <p>
+        Run governed experiments for prompts, RAG settings, model temperature, personas, and research-question banks. Use this when you want measured improvements, not guesswork.
+      </p>
+    ),
+    getActions: (tour: TourStore, _e: ExtraInfo) => [
+      { label: "Next", onClick: () => tour.nextStep(), variant: "primary" as const },
+    ],
+    spotlight: true,
+  },
+  // Step 11: Compute Pool
+  {
+    view: "compute",
+    targetSelector: "#tour-target-compute-routing",
+    placement: "bottom",
+    title: "Compute Pool",
+    getDescription: (tour: TourStore, _e: ExtraInfo) =>
+      tour.role === "admin" ? (
+        <p>Monitor donated LLM servers, relay nodes, model capabilities, and routing health. Admins can change strict routing when the hardware envelope supports it.</p>
+      ) : (
+        <p>Monitor shared LLM servers, relay nodes, model capabilities, and routing health. Researchers can inspect compute capacity while admins control routing changes.</p>
+      ),
+    getActions: (tour: TourStore, _e: ExtraInfo) => [
+      { label: "Next", onClick: () => tour.nextStep(), variant: "primary" as const },
+    ],
+    spotlight: true,
+  },
+  // Step 12: Project Settings and Requests
+  {
+    view: "project-settings",
+    targetSelector: null,
+    placement: "bottom",
+    title: "Project Settings",
+    getDescription: (tour: TourStore, _e: ExtraInfo) =>
+      tour.role === "admin" ? (
+        <p>Manage project folders, team access, exports, and pending permission requests for this project.</p>
+      ) : (
+        <p>Review project health and send permission requests when you need a project admin to change folders, team access, exports, or project state.</p>
+      ),
+    getActions: (tour: TourStore, _e: ExtraInfo) => [
+      { label: "Next", onClick: () => tour.nextStep(), variant: "primary" as const },
+    ],
+    spotlight: true,
+  },
+  // Step 13: Admin Dashboard
+  {
+    view: "admin",
+    targetSelector: null,
+    placement: "bottom",
+    title: "Admin Dashboard",
+    getDescription: (_t: TourStore, _e: ExtraInfo) => (
+      <p>
+        Use the admin dashboard for global user roles, project access, invite strings, compute donation strings, and the cross-project permission request queue.
+      </p>
+    ),
+    getActions: (tour: TourStore, _e: ExtraInfo) => [
+      { label: "Next", onClick: () => tour.nextStep(), variant: "primary" as const },
+    ],
+    spotlight: true,
+  },
+  // Step 14: LLM Model Check
   {
     view: "settings",
     targetSelector: "#tour-target-system-status",
@@ -211,7 +310,7 @@ const STEPS: StepDef[] = [
         : [],
     spotlight: true,
   },
-  // Step 9: Chat — final step
+  // Step 15: Chat — final step
   {
     view: "chat",
     targetSelector: null,
@@ -304,9 +403,9 @@ export default function GuidedTour({ setActiveView, currentView }: GuidedTourPro
     };
   }, [setConnectionStringGenerated, setTeamModeEnabled]);
 
-  // Poll LLM status on step 8
+  // Poll LLM status on the LLM model step
   useEffect(() => {
-    if (!tour.active || step !== 8) {
+    if (!tour.active || step !== 14) {
       if (pollRef.current) clearInterval(pollRef.current);
       return;
     }
@@ -331,7 +430,7 @@ export default function GuidedTour({ setActiveView, currentView }: GuidedTourPro
 
   // Auto-dismiss final step after 10 seconds
   useEffect(() => {
-    if (tour.active && step === 9) {
+    if (tour.active && step === 15) {
       autoDismissRef.current = setTimeout(() => completeTour(), 10000);
     }
     return () => {
@@ -350,14 +449,14 @@ export default function GuidedTour({ setActiveView, currentView }: GuidedTourPro
   // Count visible steps for progress display
   const visibleSteps = STEPS.filter((_, i) => {
     if (tour.hasExistingProjects && i <= 1) return false;
-    if (tour.role !== "admin" && [2, 3, 4].includes(i)) return false;
+    if (tour.role !== "admin" && [2, 3, 4, 13].includes(i)) return false;
     if (!tour.teamModeEnabled && [3, 4].includes(i)) return false;
     return true;
   }).length;
 
   const visibleIndex = STEPS.slice(0, step + 1).filter((_, i) => {
     if (tour.hasExistingProjects && i <= 1) return false;
-    if (tour.role !== "admin" && [2, 3, 4].includes(i)) return false;
+    if (tour.role !== "admin" && [2, 3, 4, 13].includes(i)) return false;
     if (!tour.teamModeEnabled && [3, 4].includes(i)) return false;
     return true;
   }).length - 1;

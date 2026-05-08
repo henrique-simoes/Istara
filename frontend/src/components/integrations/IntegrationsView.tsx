@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { MessageSquare, BarChart3, FileQuestion, Plug, Rocket, Loader2 } from "lucide-react";
 import { useIntegrationsStore } from "@/stores/integrationsStore";
+import { useProjectStore } from "@/stores/projectStore";
 import { cn } from "@/lib/utils";
 import ErrorBoundary from "@/components/common/ErrorBoundary";
 import ViewOnboarding from "@/components/common/ViewOnboarding";
@@ -23,13 +24,14 @@ const TABS: { id: IntegrationsTab; icon: any; label: string }[] = [
 ];
 
 export default function IntegrationsView() {
-  const { activeTab, setActiveTab, fetchChannels, channelLoading, error } = useIntegrationsStore();
+  const { activeTab, setActiveTab, fetchChannels } = useIntegrationsStore();
+  const { activeProjectId } = useProjectStore();
   const [initialLoading, setInitialLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
     setInitialLoading(true);
-    fetchChannels()
+    fetchChannels(undefined, activeProjectId || undefined)
       .catch((err: unknown) => {
         console.error("IntegrationsView: failed to fetch channels", err);
       })
@@ -37,7 +39,7 @@ export default function IntegrationsView() {
         if (!cancelled) setInitialLoading(false);
       });
     return () => { cancelled = true; };
-  }, [fetchChannels]);
+  }, [activeProjectId, fetchChannels]);
 
   // Clear error when switching tabs so one tab's error doesn't block others
   const handleTabChange = (tab: IntegrationsTab) => {

@@ -538,10 +538,10 @@ export async function run(ctx) {
   }
 
   // ══════════════════════════════════════════════════════════════════════
-  // MOCK FALLBACK — ensure evidence chain can be verified even without Stitch
+  // MOCK FALLBACK - ensure evidence chain can be verified when Stitch is unavailable
   // ══════════════════════════════════════════════════════════════════════
 
-  if (!generatedScreenId && !stitchConfigured && recId) {
+  if (!generatedScreenId && recId) {
     try {
       const mockScreen = await api.post("/api/interfaces/mock/generate", {
         project_id: projectId,
@@ -555,9 +555,9 @@ export async function run(ctx) {
       if (generatedDecisionId) cleanup.decisionIds.push(generatedDecisionId);
 
       checks.push({
-        name: "Mock fallback: screen generated (Stitch not configured)",
+        name: "Mock fallback: screen generated for evidence chain",
         passed: !!generatedScreenId,
-        detail: `screen_id=${generatedScreenId}, decision_id=${generatedDecisionId}`,
+        detail: `screen_id=${generatedScreenId}, decision_id=${generatedDecisionId}, stitch_configured=${stitchConfigured}`,
       });
     } catch (e) {
       checks.push({

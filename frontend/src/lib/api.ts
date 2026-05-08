@@ -1,54 +1,11 @@
 /** API client for Istara backend. */
 
 import type { DataIntegrityQuarantineRequest, LLMServerCreate, LLMServerUpdate } from "@/lib/apiRequestTypes";
-import type { ReclawDocument, DocumentContent, DocumentTag, DocumentStats, InterfacesStatus, MetaProposal, MetaVariant, MetaHyperagentStatus, ChannelInstance, ChannelMessage, ChannelConversation, ResearchDeployment, DeploymentAnalytics, SurveyIntegration, SurveyLink, MCPServerConfig, MCPAccessPolicy, MCPAuditEntry, AutoresearchStatus, AutoresearchExperiment, AutoresearchConfig, ModelSkillLeaderboard, UXLaw, LawMatch, ComplianceProfile, RadarChartData, FeaturedMCPServer, ReclawUser, ProjectReport, CodebookVersionType, CodeApplicationType, Task, TaskStatus, TaskAtomicPath, TaskQualitySummary, TaskReviewEvent } from "@/lib/types";
+import type { ReclawDocument, DocumentContent, DocumentTag, DocumentStats, InterfacesStatus, MetaProposal, MetaVariant, MetaHyperagentStatus, ChannelInstance, ChannelMessage, ChannelConversation, ResearchDeployment, DeploymentAnalytics, SurveyIntegration, SurveyLink, MCPServerConfig, MCPAccessPolicy, MCPAuditEntry, AutoresearchStatus, AutoresearchExperiment, AutoresearchConfig, ModelSkillLeaderboard, UXLaw, LawMatch, ComplianceProfile, RadarChartData, FeaturedMCPServer, ReclawUser, ProjectReport, Task, TaskStatus, TaskAtomicPath, TaskQualitySummary, TaskReviewEvent, PermissionRequestItem } from "@/lib/types";
 import type { ReasoningMemoryItem, ReasoningBankSummary } from "@/lib/reasoningBankTypes";
 
 import { API_BASE } from "@/lib/runtimeConfig";
-
-function _getAuthHeaders(): Record<string, string> {
-  const token = typeof window === "undefined" ? "" : localStorage.getItem("istara_token");
-  return token ? { Authorization: `Bearer ${token}` } : {};
-}
-
-async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
-    headers: { "Content-Type": "application/json", ..._getAuthHeaders(), ...options?.headers },
-    ...options,
-  });
-  if (res.status === 401) {
-    // Only clear token and signal re-auth — do NOT reload (causes infinite loop)
-    const hadToken = !!localStorage.getItem("istara_token");
-    localStorage.removeItem("istara_token");
-    if (hadToken && typeof window !== "undefined") {
-      // Token was present but expired/invalid — dispatch event for auth gate
-      window.dispatchEvent(new Event("istara:auth-changed"));
-      window.dispatchEvent(new Event("istara:auth-expired"));
-    }
-    throw new Error("Authentication required");
-  }
-  if (!res.ok) {
-    const error = await res.json().catch(() => ({ detail: res.statusText }));
-    // FastAPI validation errors return detail as array of objects, not string
-    const detail = error.detail;
-    const message =
-      typeof detail === "string"
-        ? detail
-        : Array.isArray(detail)
-          ? detail.map((d: any) => d.msg || d.message || JSON.stringify(d)).join("; ")
-          : typeof detail === "object" && detail !== null
-            ? JSON.stringify(detail)
-            : `API error: ${res.status}`;
-    throw new Error(message);
-  }
-  if (res.status === 204) return undefined as T;
-  return res.json();
-}
-
-function get<T>(path: string): Promise<T> { return request<T>(path); }
-function post<T>(path: string, data: unknown): Promise<T> { return request<T>(path, { method: "POST", body: JSON.stringify(data) }); }
-function patch<T>(path: string, data: unknown): Promise<T> { return request<T>(path, { method: "PATCH", body: JSON.stringify(data) }); }
-function del(path: string): Promise<void> { return request<void>(path, { method: "DELETE" }); }
+import { authHeaders as _getAuthHeaders, del, get, patch, post, request } from "@/lib/apiClient";
 
 // Update routes are implemented in updatesApi.ts:
 // /api/updates/version, /api/updates/check, /api/updates/prepare, /api/updates/apply.
@@ -671,8 +628,8 @@ export const interfaces = {
   },
 
   configure: {
-    stitch: (data: { api_key: string }) => post<any>("/api/interfaces/configure/stitch", data),
-    figma: (data: { api_token: string }) => post<any>("/api/interfaces/configure/figma", data),
+    stitch: (data: { api_key: string; project_id?: string }) => post<any>("/api/interfaces/configure/stitch", data),
+    figma: (data: { api_token: string; project_id?: string }) => post<any>("/api/interfaces/configure/figma", data),
   },
 
   designChat: {
@@ -810,8 +767,11 @@ export { dgmhArchive } from "./dgmhArchiveApi";
 // --- Channels ---
 
 export const channels = {
-  list: (platform?: string) => {
-    const params = platform ? `?platform=${platform}` : "";
+  list: (platform?: string, projectId?: string) => {
+    const query = new URLSearchParams();
+    if (platform) query.set("platform", platform);
+    if (projectId) query.set("project_id", projectId);
+    const params = query.toString() ? `?${query.toString()}` : "";
     return get<ChannelInstance[]>(`/api/channels${params}`);
   },
   get: (id: string) => get<ChannelInstance>(`/api/channels/${id}`),
@@ -852,11 +812,12 @@ export const deployments = {
 
 export const surveys = {
   integrations: {
-    list: async (): Promise<SurveyIntegration[]> => {
-      const res = await get<any>("/api/surveys/integrations");
+    list: async (projectId?: string): Promise<SurveyIntegration[]> => {
+      const suffix = projectId ? `?project_id=${encodeURIComponent(projectId)}` : "";
+      const res = await get<any>(`/api/surveys/integrations${suffix}`);
       return Array.isArray(res) ? res : (res?.integrations ?? []);
     },
-    create: (data: { platform: string; name: string; config: Record<string, any> }) =>
+    create: (data: { platform: string; name: string; config: Record<string, any>; project_id?: string }) =>
       post<SurveyIntegration>("/api/surveys/integrations", data),
     delete: (id: string) => del(`/api/surveys/integrations/${id}`),
     surveys: (id: string) => get<any[]>(`/api/surveys/integrations/${id}/surveys`),
@@ -868,6 +829,28 @@ export const surveys = {
     sync: (id: string) => post<any>(`/api/surveys/links/${id}/sync`, {}),
     responses: (id: string) => get<any[]>(`/api/surveys/links/${id}/responses`),
   },
+};
+
+// --- Permission Requests ---
+
+export const permissionRequests = {
+  list: (params: { project_id?: string; status?: string; mine?: boolean } = {}) => {
+    const query = new URLSearchParams();
+    if (params.project_id) query.set("project_id", params.project_id);
+    if (params.status) query.set("status", params.status);
+    if (params.mine) query.set("mine", "true");
+    const suffix = query.toString() ? `?${query.toString()}` : "";
+    return get<{ requests: PermissionRequestItem[]; count: number }>(`/api/permission-requests${suffix}`);
+  },
+  create: (data: {
+    project_id: string;
+    action: string;
+    title?: string;
+    details?: string;
+    payload_summary?: string;
+  }) => post<PermissionRequestItem>("/api/permission-requests", data),
+  review: (id: string, data: { status: "approved" | "rejected"; review_note?: string }) =>
+    patch<PermissionRequestItem>(`/api/permission-requests/${id}`, data),
 };
 
 // --- MCP ---
@@ -985,109 +968,11 @@ export const admin = {
 
 // --- Research Integrity ---
 
-export const reports = {
-  list: (projectId: string) => get<ProjectReport[]>(`/api/reports/${projectId}`),
-};
-
-export const presentation = {
-  slideInstructions: (reportId: string) =>
-    get<{
-      report_id: string;
-      title: string;
-      instructions: string;
-      methodology: string;
-    }>(`/api/presentation/reports/${reportId}/slide-instructions`),
-};
-
-export const codebookVersions = {
-  list: (projectId: string) => get<CodebookVersionType[]>(`/api/codebook-versions/${projectId}`),
-  latest: (projectId: string) => get<CodebookVersionType>(`/api/codebook-versions/${projectId}/latest`),
-  create: (data: {
-    project_id: string;
-    version: string;
-    codes: unknown[];
-    change_log: string;
-    methodology?: string;
-  }) => post<CodebookVersionType>("/api/codebook-versions", data),
-};
-
-export const codebooks = {
-  list: (projectId: string) => get<any[]>(`/api/codebooks?project_id=${projectId}`),
-};
-
-export const codeApplications = {
-  list: (projectId: string, status?: string) =>
-    get<CodeApplicationType[]>(`/api/code-applications/${projectId}${status ? `?status=${status}` : ""}`),
-  pending: (projectId: string) =>
-    get<CodeApplicationType[]>(`/api/code-applications/${projectId}/pending`),
-  review: (applicationId: string, reviewStatus: string, reviewedBy?: string) =>
-    patch<CodeApplicationType>(`/api/code-applications/${applicationId}/review`, {
-      review_status: reviewStatus,
-      reviewed_by: reviewedBy || "user",
-    }),
-  bulkApprove: (projectId: string, minConfidence?: number) =>
-    post<{ approved_count: number }>(`/api/code-applications/${projectId}/bulk-approve?min_confidence=${minConfidence || 0.9}`, {}),
-};
-
-// --- Steering (mid-execution message injection) ---
-
-export const steering = {
-  /** Queue a steering message to be injected after current skill completes. */
-  send: (agentId: string, message: string, mode: "one-at-a-time" | "all" = "one-at-a-time") =>
-    post<{ status: string; agent_id: string; queue_count: number; message: string }>(
-      `/api/steering/${agentId}`,
-      { message, mode },
-    ),
-
-  /** Queue a follow-up message to be injected when agent finishes all work. */
-  followUp: (agentId: string, message: string, mode: "one-at-a-time" | "all" = "one-at-a-time") =>
-    post<{ status: string; agent_id: string; queue_count: number; message: string }>(
-      `/api/steering/${agentId}/follow-up`,
-      { message, mode },
-    ),
-
-  /** Abort current agent work and clear all queues. */
-  abort: (agentId: string) =>
-    post<{ agent_id: string; cleared_steering_count: number; cleared_follow_up_count: number }>(
-      `/api/steering/${agentId}/abort`,
-      {},
-    ),
-
-  /** Get steering status (working state, queue counts). */
-  getStatus: (agentId: string) =>
-    get<{
-      agent_id: string;
-      is_working: boolean;
-      steering_queue_count: number;
-      follow_up_queue_count: number;
-      steering_mode: string;
-      follow_up_mode: string;
-      has_queued_messages: boolean;
-    }>(`/api/steering/${agentId}/status`),
-
-  /** Get the contents of both steering queues. */
-  getQueues: (agentId: string) =>
-    get<{
-      agent_id: string;
-      steering_queue: { message: string; source: string; timestamp: number }[];
-      follow_up_queue: { message: string; source: string; timestamp: number }[];
-    }>(`/api/steering/${agentId}/queues`),
-
-  /** Clear all steering and follow-up queues. */
-  clear: (agentId: string) =>
-    del(`/api/steering/${agentId}/queues`),
-
-  /** Wait until agent finishes all work (SSE endpoint). */
-  waitForIdle: (agentId: string, signal?: AbortSignal) =>
-    fetch(`${API_BASE}/api/steering/${agentId}/idle`, { signal }),
-
-  /** Get steering status for all agents. */
-  getAllStatus: () =>
-    get<Record<string, {
-      agent_id: string;
-      is_working: boolean;
-      steering_queue_count: number;
-      follow_up_queue_count: number;
-      has_queued_messages: boolean;
-    }>>("/api/steering"),
-};
+export {
+  codeApplications,
+  codebookVersions,
+  codebooks,
+  presentation,
+  reports,
+  steering,
+} from "./researchIntegrityApi";

@@ -50,7 +50,6 @@ export default function LeaderboardTab() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {skillNames.map((skillName) => {
             const entries = bySkill[skillName];
-            const best = entries[0];
 
             return (
               <div

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { MessageSquare, Rocket, FileQuestion, Plug, ArrowRight, Activity } from "lucide-react";
 import { useIntegrationsStore } from "@/stores/integrationsStore";
+import { useProjectStore } from "@/stores/projectStore";
 import { cn } from "@/lib/utils";
 
 interface StatCard {
@@ -14,12 +15,12 @@ interface StatCard {
 }
 
 export default function IntegrationsOverview() {
+  const { activeProjectId } = useProjectStore();
   const {
     channelInstances,
     deploymentsList,
     surveyIntegrations,
     mcpClients,
-    channelLoading,
     fetchChannels,
     fetchDeployments,
     fetchSurveyIntegrations,
@@ -31,12 +32,12 @@ export default function IntegrationsOverview() {
 
   useEffect(() => {
     Promise.all([
-      fetchChannels(),
+      fetchChannels(undefined, activeProjectId || undefined),
       fetchDeployments(),
-      fetchSurveyIntegrations(),
+      fetchSurveyIntegrations(activeProjectId || undefined),
       fetchMCPClients(),
     ]).finally(() => setLoaded(true));
-  }, [fetchChannels, fetchDeployments, fetchSurveyIntegrations, fetchMCPClients]);
+  }, [activeProjectId, fetchChannels, fetchDeployments, fetchSurveyIntegrations, fetchMCPClients]);
 
   const activeChannels = (channelInstances || []).filter((c) => c.is_active).length;
   const activeDeployments = (deploymentsList || []).filter((d) => d.state === "active").length;

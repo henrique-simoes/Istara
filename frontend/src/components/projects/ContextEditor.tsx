@@ -75,6 +75,7 @@ export default function ContextEditor() {
     setSaving(true);
     try {
       await updateProject(activeProjectId, { [field]: values[field] });
+      setHasChanges(false);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (e) {
@@ -88,6 +89,7 @@ export default function ContextEditor() {
     setSaving(true);
     try {
       await updateProject(activeProjectId, values);
+      setHasChanges(false);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (e) {
@@ -173,9 +175,10 @@ export default function ContextEditor() {
                 <div className="border-t border-slate-200 dark:border-slate-700 p-4">
                   <textarea
                     value={values[section.field] || ""}
-                    onChange={(e) =>
-                      setValues({ ...values, [section.field]: e.target.value })
-                    }
+                    onChange={(e) => {
+                      setValues({ ...values, [section.field]: e.target.value });
+                      setHasChanges(true);
+                    }}
                     placeholder={section.placeholder}
                     rows={8}
                     className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 p-3 text-sm font-mono leading-relaxed focus:outline-none focus:ring-2 focus:ring-istara-500 focus:border-transparent resize-y"

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ChevronLeft, ChevronRight, CheckCircle2, AlertCircle, X, ClipboardList, FormInput, FileType } from "lucide-react";
 import { surveys as surveysApi } from "@/lib/api";
+import { useProjectStore } from "@/stores/projectStore";
 import { cn } from "@/lib/utils";
 
 const STEPS = ["platform", "credentials", "test", "done"] as const;
@@ -25,6 +26,7 @@ interface SurveySetupWizardProps {
 }
 
 export default function SurveySetupWizard({ onClose }: SurveySetupWizardProps) {
+  const { activeProjectId } = useProjectStore();
   const [currentStep, setCurrentStep] = useState<Step>("platform");
   const [selectedPlatform, setSelectedPlatform] = useState<string | null>(null);
   const [credentials, setCredentials] = useState<Record<string, string>>({});
@@ -46,6 +48,7 @@ export default function SurveySetupWizard({ onClose }: SurveySetupWizardProps) {
         platform: selectedPlatform,
         name: `${PLATFORMS.find((p) => p.id === selectedPlatform)?.label} Integration`,
         config: credentials,
+        project_id: activeProjectId || undefined,
       });
       setTestResult("success");
       goNext();

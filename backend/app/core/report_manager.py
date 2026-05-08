@@ -16,11 +16,22 @@ import json
 import logging
 import uuid
 from datetime import datetime, timezone
+from types import SimpleNamespace
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
+
+
+async def _rollback_after_report_error(db: AsyncSession, context: str, exc: Exception) -> None:
+    """Clear failed report transactions so caller sessions stay usable."""
+    logger.warning("%s failed: %s", context, exc)
+    try:
+        await db.rollback()
+    except Exception as rollback_exc:
+        logger.debug("%s rollback failed: %s", context, rollback_exc)
+
 
 SCOPE_MAP = {
     "user-interviews": "Interview Analysis",
@@ -135,12 +146,22 @@ class ReportManager:
             report.version,
             len(merged),
         )
+        report_snapshot = SimpleNamespace(
+            id=report.id,
+            title=report.title,
+            scope=report.scope,
+            version=report.version,
+            executive_summary=report.executive_summary,
+            mece_categories_json=report.mece_categories_json,
+            content_json=report.content_json,
+            finding_ids_json=report.finding_ids_json,
+        )
 
         # Generate executive summary when report has enough findings
-        await self._generate_executive_summary(report, db)
+        await self._generate_executive_summary(report_snapshot, db)
 
         # Generate MECE categories when report has 5+ findings
-        await self._generate_mece_categories(report, db)
+        await self._generate_mece_categories(report_snapshot, db)
 
         await self._check_synthesis_trigger(project_id, db)
 
@@ -219,12 +240,15 @@ class ReportManager:
 
     async def _generate_executive_summary(self, report, db: AsyncSession) -> None:
         """Generate an executive summary when a report has 3+ findings."""
-        if len(_safe_json_list(report.finding_ids_json)) < 3:
+        report_id = report.id
+        report_title = report.title
+        report_scope = report.scope
+        finding_ids = _safe_json_list(report.finding_ids_json)[:20]
+        if len(finding_ids) < 3:
             return
         try:
             from app.core.llm_router import llm_router
 
-            finding_ids = _safe_json_list(report.finding_ids_json)[:20]
             # Load finding texts
             from app.models.finding import Fact, Insight, Nugget, Recommendation
 
@@ -235,10 +259,11 @@ class ReportManager:
                 )
                 for f in result.scalars().all():
                     findings_text.append(f.text if hasattr(f, "text") else str(f))
+            await db.rollback()
             if not findings_text:
                 return
             summary_prompt = (
-                f"Create a professional consulting-grade executive summary for the '{report.scope}' study using the SCR (Situation-Complication-Resolution) framework.\n\n"
+                f"Create a professional consulting-grade executive summary for the '{report_scope}' study using the SCR (Situation-Complication-Resolution) framework.\n\n"
                 f"Context: {len(findings_text)} key findings extracted.\n"
                 "Findings:\n"
                 + "\n".join(f"- {t[:200]}" for t in findings_text[:15])
@@ -249,25 +274,32 @@ class ReportManager:
             )
             summary = response.get("message", {}).get("content", "")
             if summary and len(summary) > 20:
-                report.executive_summary = summary
+                from app.models.project_report import ProjectReport
+
+                fresh_report = await db.get(ProjectReport, report_id)
+                if fresh_report is None:
+                    return
+                fresh_report.executive_summary = summary
                 await db.commit()
-                logger.info("ReportManager: executive summary generated for '%s'", report.title)
+                logger.info("ReportManager: executive summary generated for '%s'", report_title)
         except Exception as e:
-            logger.debug(f"Executive summary generation skipped: {e}")
+            await _rollback_after_report_error(db, "Executive summary generation", e)
 
     async def _generate_mece_categories(self, report, db: AsyncSession) -> None:
         """Generate MECE categories when a report has 5+ findings."""
-        if len(_safe_json_list(report.finding_ids_json)) < 5:
+        report_id = report.id
+        report_title = report.title
+        finding_ids = _safe_json_list(report.finding_ids_json)[:20]
+        existing_categories = _safe_json_list(report.mece_categories_json)
+        if len(finding_ids) < 5:
             return
         # Skip if already categorized for this version
-        existing = _safe_json_list(report.mece_categories_json)
-        if existing:
+        if existing_categories:
             return
         try:
             from app.core.llm_router import llm_router
             from app.models.finding import Fact, Insight, Nugget, Recommendation
 
-            finding_ids = _safe_json_list(report.finding_ids_json)[:20]
             findings_text = []
             for model_cls in [Recommendation, Insight, Fact, Nugget]:
                 result = await db.execute(
@@ -277,6 +309,7 @@ class ReportManager:
                     fid = f.id if hasattr(f, "id") else ""
                     ftxt = f.text if hasattr(f, "text") else str(f)
                     findings_text.append({"id": fid, "text": ftxt[:100]})
+            await db.rollback()
             if len(findings_text) < 3:
                 return
             mece_prompt = (
@@ -299,15 +332,20 @@ class ReportManager:
             json_match = re.search(r"\[.*\]", content, re.DOTALL)
             if json_match:
                 categories = json.loads(json_match.group())
-                report.mece_categories_json = json.dumps(categories)
+                from app.models.project_report import ProjectReport
+
+                fresh_report = await db.get(ProjectReport, report_id)
+                if fresh_report is None:
+                    return
+                fresh_report.mece_categories_json = json.dumps(categories)
                 await db.commit()
                 logger.info(
                     "ReportManager: MECE categories generated for '%s' (%d categories)",
-                    report.title,
+                    report_title,
                     len(categories),
                 )
         except Exception as e:
-            logger.debug(f"MECE categorization skipped: {e}")
+            await _rollback_after_report_error(db, "MECE categorization", e)
 
     async def _generate_l4_report(self, project_id: str, l3_report, db: AsyncSession) -> None:
         """Auto-generate L4 final report with template-driven document composition.
@@ -348,13 +386,26 @@ class ReportManager:
         await db.commit()
         if not existing_l4:
             await db.refresh(l4)
+        l4_id = l4.id
+        l4_snapshot = SimpleNamespace(
+            id=l4.id,
+            title=l4.title,
+            scope=l4.scope,
+            version=l4.version,
+            executive_summary=l4.executive_summary,
+            mece_categories_json=l4.mece_categories_json,
+            content_json=l4.content_json,
+            finding_ids_json=l4.finding_ids_json,
+        )
 
         # Generate executive summary and MECE categories
-        await self._generate_executive_summary(l4, db)
-        await self._generate_mece_categories(l4, db)
+        await self._generate_executive_summary(l4_snapshot, db)
+        await self._generate_mece_categories(l4_snapshot, db)
 
         # Generate full document via template-driven composition
-        await self._compose_full_report(l4, project_id, db)
+        fresh_l4 = await db.get(ProjectReport, l4_id)
+        if fresh_l4 is not None:
+            await self._compose_full_report(fresh_l4, project_id, db)
 
         logger.info(
             "ReportManager: L4 report %s with %d findings",
@@ -381,6 +432,15 @@ class ReportManager:
             from app.core.llm_router import llm_router
             from app.models.finding import Nugget, Fact, Insight, Recommendation
 
+            report_id = report.id
+            report_snapshot = SimpleNamespace(
+                id=report.id,
+                title=report.title,
+                version=report.version,
+                executive_summary=report.executive_summary,
+                mece_categories_json=report.mece_categories_json,
+                content_json=report.content_json,
+            )
             finding_ids = _safe_json_list(report.finding_ids_json)[:50]
 
             # Load all findings by type
@@ -414,18 +474,19 @@ class ReportManager:
                 )
             )
             methodologies = [r.scope for r in l2_result.scalars().all()]
+            await db.rollback()
 
             # Compose each section
             sections = []
             for template in self.REPORT_TEMPLATE:
                 section_content = await self._compose_section(
-                    template, findings, report, methodologies, llm_router
+                    template, findings, report_snapshot, methodologies, llm_router
                 )
                 if section_content:
                     sections.append(f"## {template['section']}\n\n{section_content}")
 
             # Assemble full document
-            full_doc = f"# {report.title}\n\n" + "\n\n---\n\n".join(sections)
+            full_doc = f"# {report_snapshot.title}\n\n" + "\n\n---\n\n".join(sections)
 
             # ── Iterative refinement loop (max 2 passes) ──
             # LLM scores each section, identifies the weakest, and re-composes it.
@@ -469,14 +530,14 @@ class ReportManager:
                             refined = await self._compose_section(
                                 template,
                                 findings,
-                                report,
+                                report_snapshot,
                                 methodologies,
                                 llm_router,
                                 refinement_hint=suggestion,
                             )
                             if refined:
                                 sections[i] = f"## {template['section']}\n\n{refined}"
-                                full_doc = f"# {report.title}\n\n" + "\n\n---\n\n".join(sections)
+                                full_doc = f"# {report_snapshot.title}\n\n" + "\n\n---\n\n".join(sections)
                                 logger.info(
                                     f"Report refined: section '{weakest}' (pass {pass_num + 1})"
                                 )
@@ -486,15 +547,20 @@ class ReportManager:
                     break
 
             # Store in content_json
-            content = json.loads(report.content_json or "{}")
+            from app.models.project_report import ProjectReport
+
+            fresh_report = await db.get(ProjectReport, report_id)
+            if fresh_report is None:
+                return
+            content = json.loads(fresh_report.content_json or report_snapshot.content_json or "{}")
             content["full_document"] = full_doc
             content["sections"] = [t["section"] for t in self.REPORT_TEMPLATE]
             content["generated_at"] = datetime.now(timezone.utc).isoformat()
             content["refinement_passes"] = (
                 min(pass_num + 1, MAX_REFINEMENT_PASSES) if "pass_num" in dir() else 0
             )
-            report.content_json = json.dumps(content)
-            report.status = "review"
+            fresh_report.content_json = json.dumps(content)
+            fresh_report.status = "review"
             await db.commit()
 
             # Create a Document record for the report
@@ -504,7 +570,7 @@ class ReportManager:
                 doc = Document(
                     id=str(uuid.uuid4()),
                     project_id=project_id,
-                    title=f"Final Research Report (v{report.version})",
+                    title=f"Final Research Report (v{fresh_report.version})",
                     file_name="final_research_report.md",
                     source="agent_output",
                     content_preview=full_doc[:500],
@@ -514,10 +580,10 @@ class ReportManager:
                 await db.commit()
                 logger.info("ReportManager: report document created")
             except Exception as e:
-                logger.debug(f"Report document creation skipped: {e}")
+                await _rollback_after_report_error(db, "Report document creation", e)
 
         except Exception as e:
-            logger.warning(f"Full report composition failed: {e}")
+            await _rollback_after_report_error(db, "Full report composition", e)
 
     async def _compose_section(
         self,

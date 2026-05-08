@@ -700,7 +700,12 @@ class MetaHyperagent:
 
         if parameter_path == "agent.skill_similarity_threshold":
             import app.core.agent as ag
+            import app.core.agent_execution as ae
+            import app.core.agent_models as am
+
             ag._META_SKILL_SIMILARITY_THRESHOLD = value
+            ae._META_SKILL_SIMILARITY_THRESHOLD = value
+            am._META_SKILL_SIMILARITY_THRESHOLD = value
             logger.info(f"Meta-hyperagent: set agent._META_SKILL_SIMILARITY_THRESHOLD = {value}")
             return
 

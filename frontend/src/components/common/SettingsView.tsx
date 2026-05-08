@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Cpu, HardDrive, Monitor, Wifi, WifiOff, RefreshCw, Plus, Server, Trash2, Users, Lock, Gauge, Download, ToggleLeft, ToggleRight } from "lucide-react";
+import { Cpu, HardDrive, Monitor, Wifi, WifiOff, RefreshCw, Plus, Server, Trash2, Users, Lock, Gauge, Download } from "lucide-react";
 import { settings as settingsApi, llmServers, telemetry as telemetryApi } from "@/lib/api";
 import type { HardwareInfo, ModelRecommendation } from "@/lib/types";
 import { useAuthStore } from "@/stores/authStore";
@@ -20,28 +20,31 @@ import {
   providerLabel,
 } from "@/lib/modelProviders";
 
+function formatGb(value?: number | null): string {
+  return Number.isFinite(value) && Number(value) > 0
+    ? `${Number(value).toFixed(1)} GB`
+    : "Unknown";
+}
+
 export default function SettingsView() {
   const [hardware, setHardware] = useState<HardwareInfo | null>(null);
   const [recommendation, setRecommendation] = useState<ModelRecommendation | null>(null);
   const [systemStatus, setSystemStatus] = useState<any>(null);
   const [models, setModels] = useState<any>(null);
-  const [servers, setServers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchAll = async () => {
     setLoading(true);
     try {
-      const [hw, status, mdl, srv] = await Promise.all([
+      const [hw, status, mdl] = await Promise.all([
         settingsApi.hardware(),
         settingsApi.status(),
         settingsApi.models(),
-        llmServers.list().catch(() => ({ servers: [] })),
       ]);
       setHardware(hw.hardware);
       setRecommendation(hw.recommendation);
       setSystemStatus(status);
       setModels(mdl);
-      setServers(srv.servers || []);
     } catch (e) {
       console.error("Failed to load settings:", e);
     }
@@ -149,11 +152,11 @@ export default function SettingsView() {
             </div>
             <div>
               <p className="text-slate-500">Total RAM</p>
-              <p className="font-medium text-slate-900 dark:text-white">{hardware.total_ram_gb} GB</p>
+              <p className="font-medium text-slate-900 dark:text-white">{formatGb(hardware.total_ram_gb)}</p>
             </div>
             <div>
               <p className="text-slate-500">Available for Istara</p>
-              <p className="font-medium text-istara-600">{hardware.istara_ram_budget_gb} GB</p>
+              <p className="font-medium text-istara-600">{formatGb(hardware.istara_ram_budget_gb)}</p>
             </div>
             {hardware.gpu && (
               <>

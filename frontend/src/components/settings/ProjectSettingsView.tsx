@@ -13,13 +13,14 @@
 
 import { useEffect, useState, useCallback } from "react";
 import {
-  Settings2, BarChart3, Target, CheckCircle, AlertCircle, Loader2,
+  Settings2, Target, CheckCircle, Loader2,
   Users, UserPlus, MoreVertical, Trash2, Pause, Play, FolderOpen,
-  Download, AlertTriangle, X, Pencil, Check,
+  Download, AlertTriangle, X, Pencil, Check, Send,
 } from "lucide-react";
 import { useProjectStore } from "@/stores/projectStore";
 import { useAuthStore } from "@/stores/authStore";
-import { projects as projectsApi, users as usersApi } from "@/lib/api";
+import { permissionRequests, users as usersApi } from "@/lib/api";
+import type { PermissionRequestItem } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import ViewOnboarding from "@/components/common/ViewOnboarding";
 
@@ -64,10 +65,20 @@ function timeAgo(iso: string | null): string {
 // ── Main Component ──
 
 export default function ProjectSettingsView() {
-  const { activeProjectId, activeProject, updateProject, pauseProject, resumeProject, deleteProject } = useProjectStore();
+  const {
+    activeProjectId,
+    activeProject,
+    canAdminActiveProject,
+    updateProject,
+    pauseProject,
+    resumeProject,
+    deleteProject,
+  } = useProjectStore();
   const { user, teamMode } = useAuthStore();
   const project = activeProject();
-  const isAdmin = user?.role === "admin";
+  const isGlobalAdmin = user?.role === "admin";
+  const canManageProject = isGlobalAdmin || canAdminActiveProject();
+  const canRequestProjectAdmin = !canManageProject && Boolean(activeProjectId);
 
   // Metrics
   const [metrics, setMetrics] = useState<ProjectMetrics | null>(null);
@@ -91,6 +102,8 @@ export default function ProjectSettingsView() {
   // Link folder
   const [folderInput, setFolderInput] = useState("");
   const [linkingFolder, setLinkingFolder] = useState(false);
+  const [requestingAction, setRequestingAction] = useState<string | null>(null);
+  const [projectRequests, setProjectRequests] = useState<PermissionRequestItem[]>([]);
 
   // Fetch metrics
   useEffect(() => {
@@ -118,11 +131,67 @@ export default function ProjectSettingsView() {
 
   useEffect(() => { fetchMembers(); }, [fetchMembers]);
 
+  const fetchProjectRequests = useCallback(async () => {
+    if (!activeProjectId || !canManageProject) {
+      setProjectRequests([]);
+      return;
+    }
+    try {
+      const data = await permissionRequests.list({ project_id: activeProjectId, status: "pending" });
+      setProjectRequests(data.requests || []);
+    } catch {
+      setProjectRequests([]);
+    }
+  }, [activeProjectId, canManageProject]);
+
+  useEffect(() => { fetchProjectRequests(); }, [fetchProjectRequests]);
+
   // Handlers
   const handleSaveName = async () => {
     if (!editName.trim() || !activeProjectId) return;
     await updateProject(activeProjectId, { name: editName.trim() });
     setEditingName(false);
+  };
+
+  const requestProjectAdminAction = async (
+    action: string,
+    title: string,
+    details: string,
+    payloadSummary = "",
+  ) => {
+    if (!activeProjectId || requestingAction) return;
+    setRequestingAction(action);
+    try {
+      await permissionRequests.create({
+        project_id: activeProjectId,
+        action,
+        title,
+        details,
+        payload_summary: payloadSummary,
+      });
+      window.dispatchEvent(new CustomEvent("istara:toast", {
+        detail: {
+          type: "success",
+          title: "Request Sent",
+          message: "Project admins can review it from their request queue.",
+        },
+      }));
+    } catch (err: any) {
+      window.dispatchEvent(new CustomEvent("istara:toast", {
+        detail: {
+          type: "warning",
+          title: "Request Failed",
+          message: err.message || "Could not create the permission request.",
+        },
+      }));
+    } finally {
+      setRequestingAction(null);
+    }
+  };
+
+  const reviewProjectRequest = async (id: string, status: "approved" | "rejected") => {
+    await permissionRequests.review(id, { status });
+    await fetchProjectRequests();
   };
 
   const handleTogglePause = async () => {
@@ -148,7 +217,7 @@ export default function ProjectSettingsView() {
       await fetch(`${API_BASE}/api/projects/${activeProjectId}/members`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ..._authHeaders() },
-        body: JSON.stringify({ user_id: userId, role: "member" }),
+        body: JSON.stringify({ user_id: userId, role: "researcher" }),
       });
       setShowAddMember(false);
       fetchMembers();
@@ -221,16 +290,29 @@ export default function ProjectSettingsView() {
               ) : (
                 <div className="flex items-center gap-2">
                   <h2 className="text-lg font-semibold text-slate-900 dark:text-white">{project.name}</h2>
-                  {isAdmin && (
+                  {canManageProject ? (
                     <button onClick={() => { setEditName(project.name); setEditingName(true); }} className="p-1 text-slate-400 hover:text-slate-600 rounded" aria-label="Edit project name">
                       <Pencil size={14} />
                     </button>
-                  )}
+                  ) : canRequestProjectAdmin ? (
+                    <button
+                      onClick={() => requestProjectAdminAction(
+                        "project.rename",
+                        "Rename project",
+                        `Request to rename project "${project.name}".`,
+                      )}
+                      disabled={requestingAction === "project.rename"}
+                      className="p-1 text-slate-400 hover:text-istara-600 rounded disabled:opacity-50"
+                      aria-label="Request project rename"
+                    >
+                      <Send size={14} />
+                    </button>
+                  ) : null}
                 </div>
               )}
             </div>
             <div className="flex items-center gap-2">
-              {isAdmin && (
+              {canManageProject ? (
                 <button
                   onClick={handleTogglePause}
                   className={cn(
@@ -242,7 +324,19 @@ export default function ProjectSettingsView() {
                 >
                   {project.is_paused ? <><Play size={14} /> Resume</> : <><Pause size={14} /> Pause</>}
                 </button>
-              )}
+              ) : canRequestProjectAdmin ? (
+                <button
+                  onClick={() => requestProjectAdminAction(
+                    project.is_paused ? "project.resume" : "project.pause",
+                    project.is_paused ? "Resume project" : "Pause project",
+                    `Request to ${project.is_paused ? "resume" : "pause"} project "${project.name}".`,
+                  )}
+                  disabled={requestingAction === (project.is_paused ? "project.resume" : "project.pause")}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                >
+                  <Send size={14} /> Request
+                </button>
+              ) : null}
               <span className={cn(
                 "px-2 py-1 rounded text-xs font-medium capitalize",
                 project.is_paused ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400" : "bg-istara-100 text-istara-700 dark:bg-istara-900/30 dark:text-istara-400"
@@ -255,6 +349,61 @@ export default function ProjectSettingsView() {
             <p className="text-sm text-slate-500 mt-2 ml-8">{project.description}</p>
           )}
         </div>
+
+        {canRequestProjectAdmin && (
+          <div id="tour-target-project-requests" className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+            <h3 className="font-medium text-slate-900 dark:text-white flex items-center gap-2 mb-2">
+              <Send size={16} /> Project Admin Requests
+            </h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
+              Project admins manage folders, team access, exports, and destructive project changes. Send a request when you need one of those actions.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {[
+                ["project.folder", "Request Folder Change", "Request a project folder add, change, or unlink."],
+                ["project.members", "Request Member Change", "Request project team access or role changes."],
+                ["project.export", "Request Export", "Request a project export."],
+              ].map(([action, label, details]) => (
+                <button
+                  key={action}
+                  onClick={() => requestProjectAdminAction(action, label, details, `Project: ${project.name}`)}
+                  disabled={requestingAction === action}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-900"
+                >
+                  <Send size={14} />
+                  {requestingAction === action ? "Sending..." : label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {canManageProject && projectRequests.length > 0 && (
+          <div id="tour-target-project-requests" className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+            <h3 className="font-medium text-slate-900 dark:text-white flex items-center gap-2 mb-3">
+              <Send size={16} /> Pending Project Requests
+            </h3>
+            <div className="space-y-2">
+              {projectRequests.map((item) => (
+                <div key={item.id} className="flex items-center justify-between gap-3 rounded-lg border border-slate-100 p-3 text-sm dark:border-slate-700">
+                  <div className="min-w-0">
+                    <div className="font-medium text-slate-900 dark:text-white">{item.title || item.action}</div>
+                    <div className="text-xs text-slate-500 dark:text-slate-400">{item.requester_username || item.requester_user_id}</div>
+                    {item.details && <p className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400">{item.details}</p>}
+                  </div>
+                  <div className="flex shrink-0 gap-2">
+                    <button onClick={() => reviewProjectRequest(item.id, "approved")} className="rounded-md bg-green-600 px-2 py-1 text-xs font-medium text-white hover:bg-green-700">
+                      Approve
+                    </button>
+                    <button onClick={() => reviewProjectRequest(item.id, "rejected")} className="rounded-md border border-slate-200 px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-900">
+                      Reject
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* ── Research Metrics ── */}
         {metricsLoading ? (
@@ -347,7 +496,7 @@ export default function ProjectSettingsView() {
               <h3 className="font-medium text-slate-900 dark:text-white flex items-center gap-2">
                 <Users size={16} /> Team Access
               </h3>
-              {isAdmin && (
+              {canManageProject && (
                 <button onClick={openAddMember} className="flex items-center gap-1 px-2.5 py-1 text-xs bg-istara-600 text-white rounded-lg hover:bg-istara-700">
                   <UserPlus size={12} /> Add Member
                 </button>
@@ -396,23 +545,23 @@ export default function ProjectSettingsView() {
                     </div>
                     <span className={cn(
                       "px-2 py-0.5 rounded text-[10px] font-medium capitalize",
-                      m.role === "admin" ? "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"
+                      m.role === "project_admin" || m.role === "admin" ? "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"
                         : m.role === "viewer" ? "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400"
                           : "bg-istara-100 text-istara-700 dark:bg-istara-900/30 dark:text-istara-400"
                     )}>
                       {m.role}
                     </span>
                     <span className="text-[10px] text-slate-400 w-16 text-right">{timeAgo(m.last_active)}</span>
-                    {isAdmin && (
+                    {canManageProject && (
                       <div className="relative">
                         <button onClick={() => setMemberMenu(memberMenu === m.user_id ? null : m.user_id)} className="p-1 rounded text-slate-400 hover:text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity">
                           <MoreVertical size={14} />
                         </button>
                         {memberMenu === m.user_id && (
                           <div className="absolute right-0 top-8 w-44 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg z-10 py-1">
-                            {["admin", "member", "viewer"].filter((r) => r !== m.role).map((r) => (
+                            {["project_admin", "researcher", "viewer"].filter((r) => r !== m.role).map((r) => (
                               <button key={r} onClick={() => handleChangeRole(m.user_id, r)} className="w-full text-left px-3 py-1.5 text-sm hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 capitalize">
-                                Set as {r}
+                                Set as {r.replace("_", " ")}
                               </button>
                             ))}
                             <hr className="my-1 border-slate-200 dark:border-slate-700" />
@@ -438,7 +587,7 @@ export default function ProjectSettingsView() {
           {project.watch_folder_path ? (
             <div className="flex items-center justify-between">
               <code className="text-sm text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-900 px-2 py-1 rounded truncate">{project.watch_folder_path}</code>
-              {isAdmin && (
+              {canManageProject && (
                 <button
                   onClick={async () => {
                     await fetch(`${API_BASE}/api/projects/${activeProjectId}/unlink-folder`, { method: "POST", headers: { "Content-Type": "application/json", ..._authHeaders() } });
@@ -451,7 +600,7 @@ export default function ProjectSettingsView() {
                 </button>
               )}
             </div>
-          ) : isAdmin ? (
+          ) : canManageProject ? (
             <div className="flex items-center gap-2">
               <input
                 type="text"
@@ -505,16 +654,37 @@ export default function ProjectSettingsView() {
                 {linkingFolder ? "Linking..." : "Link Folder"}
               </button>
             </div>
+          ) : canRequestProjectAdmin ? (
+            <button
+              onClick={() => requestProjectAdminAction(
+                "project.folder",
+                "Link project folder",
+                `Request a project folder for "${project.name}".`,
+              )}
+              disabled={requestingAction === "project.folder"}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-900"
+            >
+              <Send size={14} />
+              {requestingAction === "project.folder" ? "Sending..." : "Request Folder Link"}
+            </button>
           ) : (
-            <p className="text-sm text-slate-400">No folder linked. Ask an admin to link a project folder.</p>
+            <p className="text-sm text-slate-400">No folder linked.</p>
           )}
         </div>
 
-        {/* ── Danger Zone ── */}
-        {isAdmin && (
-          <div className="bg-red-50 dark:bg-red-900/10 rounded-xl border border-red-200 dark:border-red-800 p-5">
-            <h3 className="font-medium text-red-800 dark:text-red-300 flex items-center gap-2 mb-3">
-              <AlertTriangle size={16} /> Danger Zone
+        {/* ── Export and Destructive Actions ── */}
+        {canManageProject && (
+          <div className={cn(
+            "rounded-xl border p-5",
+            isGlobalAdmin
+              ? "bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800"
+              : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700"
+          )}>
+            <h3 className={cn(
+              "font-medium flex items-center gap-2 mb-3",
+              isGlobalAdmin ? "text-red-800 dark:text-red-300" : "text-slate-900 dark:text-white"
+            )}>
+              <AlertTriangle size={16} /> {isGlobalAdmin ? "Danger Zone" : "Project Actions"}
             </h3>
             <div className="flex items-center gap-3">
               <button
@@ -527,15 +697,17 @@ export default function ProjectSettingsView() {
               >
                 <Download size={14} /> Export
               </button>
-              <button
-                onClick={() => setShowDelete(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700"
-              >
-                <Trash2 size={14} /> Delete Project
-              </button>
+              {isGlobalAdmin && (
+                <button
+                  onClick={() => setShowDelete(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700"
+                >
+                  <Trash2 size={14} /> Delete Project
+                </button>
+              )}
             </div>
 
-            {showDelete && (
+            {isGlobalAdmin && showDelete && (
               <div className="mt-4 p-3 bg-white dark:bg-slate-800 rounded-lg border border-red-300 dark:border-red-700">
                 <p className="text-sm text-red-700 dark:text-red-400 mb-2">
                   Type <strong>{project.name}</strong> to confirm deletion. This cannot be undone.

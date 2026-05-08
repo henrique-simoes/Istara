@@ -33,6 +33,7 @@ PERSONAS = BACKEND / "agents" / "personas"
 ROUTES = BACKEND / "api" / "routes"
 MODELS = BACKEND / "models"
 STORES = FRONTEND / "stores"
+NAVIGATION_FILE = FRONTEND / "lib" / "navigation.ts"
 WEBSOCKET_FILE = BACKEND / "api" / "websocket.py"
 DESKTOP_SRC = ROOT / "desktop" / "src-tauri" / "src"
 RELAY_ROOT = ROOT / "relay"
@@ -188,24 +189,34 @@ def scan_skill_definitions() -> list[dict[str, str]]:
 def scan_navigation() -> dict[str, list[dict[str, str]]]:
     sidebar = FRONTEND / "components" / "layout" / "Sidebar.tsx"
     navigation = {"primary": [], "secondary": [], "utility": []}
-    if not sidebar.exists():
+    source = NAVIGATION_FILE if NAVIGATION_FILE.exists() else sidebar
+    if not source.exists():
         return navigation
 
-    content = read_text(sidebar)
+    content = read_text(source)
 
     def parse_block(name: str) -> list[dict[str, str]]:
-        block_match = re.search(rf"{name}\s*=\s*\[(.*?)\]\s*;", content, re.DOTALL)
+        block_match = re.search(
+            rf"(?:export\s+const\s+)?{name}(?:\s*:\s*[^=]+)?\s*=\s*\[(.*?)\]\s*;",
+            content,
+            re.DOTALL,
+        )
         if not block_match:
             return []
         block = block_match.group(1)
         items = []
-        for item in re.finditer(r'{\s*id:\s*"([^"]+)",\s*icon:\s*[^,]+,\s*label:\s*"([^"]+)"\s*}', block):
-            items.append({"id": item.group(1), "label": item.group(2)})
+        for item in re.finditer(r"{([^{}]+)}", block, re.DOTALL):
+            id_match = re.search(r'id:\s*"([^"]+)"', item.group(1))
+            label_match = re.search(r'label:\s*"([^"]+)"', item.group(1))
+            if id_match and label_match:
+                items.append({"id": id_match.group(1), "label": label_match.group(1)})
         return items
 
-    navigation["primary"] = parse_block("primaryNav")
-    navigation["secondary"] = parse_block("secondaryNav")
-    navigation["utility"] = [{"id": "notifications", "label": "Notifications"}]
+    navigation["primary"] = parse_block("PRIMARY_NAV_ITEMS") or parse_block("primaryNav")
+    navigation["secondary"] = parse_block("SECONDARY_NAV_ITEMS") or parse_block("secondaryNav")
+    navigation["utility"] = parse_block("UTILITY_NAV_ITEMS") or [
+        {"id": "notifications", "label": "Notifications"}
+    ]
     return navigation
 
 
@@ -254,7 +265,14 @@ def scan_websocket_events() -> list[str]:
 def scan_simple_module_names(directory: Path, suffixes: tuple[str, ...]) -> list[str]:
     if not directory.exists():
         return []
-    return sorted(path.stem for path in directory.iterdir() if path.is_file() and path.suffix in suffixes and not path.name.startswith("_"))
+    return sorted(
+        path.stem
+        for path in directory.iterdir()
+        if path.is_file()
+        and path.suffix in suffixes
+        and not path.name.startswith("_")
+        and not path.stem.endswith(".test")
+    )
 
 
 def build_inventory() -> dict[str, object]:

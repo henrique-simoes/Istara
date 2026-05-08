@@ -8,9 +8,9 @@ export async function evaluate(ctx) {
 
   // Page load time
   const pageStart = Date.now();
-  await page.goto("http://localhost:3000", { waitUntil: "networkidle" });
+  await page.goto(ctx.frontendUrl || "http://localhost:3000", { waitUntil: "domcontentloaded" });
   const pageLoadMs = Date.now() - pageStart;
-  metrics.push({ name: "Page load (networkidle)", value: pageLoadMs, unit: "ms", threshold: 5000 });
+  metrics.push({ name: "Page load (domcontentloaded)", value: pageLoadMs, unit: "ms", threshold: 5000 });
 
   // View switch times
   const views = ["Findings", "Tasks", "Skills", "Context", "Chat"];
@@ -18,7 +18,7 @@ export async function evaluate(ctx) {
     const start = Date.now();
     const btn = page.locator(`button[aria-label="${view}"]`).first();
     if (await btn.isVisible({ timeout: 1000 }).catch(() => false)) {
-      await btn.click();
+      await btn.click({ timeout: 1000 });
       await page.waitForTimeout(500);
     }
     const switchMs = Date.now() - start;
@@ -54,8 +54,9 @@ export async function evaluate(ctx) {
     for (const m of perfMetrics.metrics) {
       cwvMap[m.name] = m.value;
     }
-    if (cwvMap.DomContentLoaded) {
-      metrics.push({ name: "DOMContentLoaded", value: Math.round(cwvMap.DomContentLoaded * 1000), unit: "ms", threshold: 3000 });
+    if (cwvMap.DomContentLoaded && cwvMap.NavigationStart) {
+      const domContentLoadedMs = Math.round((cwvMap.DomContentLoaded - cwvMap.NavigationStart) * 1000);
+      metrics.push({ name: "DOMContentLoaded", value: domContentLoadedMs, unit: "ms", threshold: 3000 });
     }
     if (cwvMap.LayoutCount) {
       metrics.push({ name: "Layout count", value: cwvMap.LayoutCount, unit: "count", threshold: 100 });

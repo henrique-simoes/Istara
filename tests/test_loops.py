@@ -13,6 +13,8 @@ from app.core.scheduler import ScheduledTask, scheduler
 from app.core.auth import create_token
 from app.models.database import async_session, init_db
 from app.models.loop_execution import LoopExecution
+from app.models.project import Project
+from app.models.project_member import ProjectMember
 from app.services.loop_execution_service import record_execution
 
 
@@ -31,6 +33,29 @@ def auth_headers():
         settings.jwt_secret = "test-secret"
     token = create_token("user1", "testuser", "admin")
     return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture
+def researcher_headers():
+    if not settings.jwt_secret:
+        settings.jwt_secret = "test-secret"
+    token = create_token("researcher-loops", "researcher", "researcher")
+    return {"Authorization": f"Bearer {token}"}
+
+
+async def _seed_project_member(project_id: str, user_id: str, role: str) -> None:
+    async with async_session() as db:
+        db.add(Project(id=project_id, name=f"Loops {project_id}"))
+        db.add(
+            ProjectMember(
+                id=str(uuid.uuid4()),
+                project_id=project_id,
+                user_id=user_id,
+                role=role,
+                added_by="test",
+            )
+        )
+        await db.commit()
 
 
 @pytest.mark.asyncio
@@ -230,6 +255,36 @@ async def test_schedule_crud_and_cron_validation(auth_headers):
 
 
 @pytest.mark.asyncio
+async def test_researcher_can_manage_project_schedule(researcher_headers):
+    await init_db()
+    settings.team_mode = True
+    project_id = f"project-{uuid.uuid4()}"
+    await _seed_project_member(project_id, "researcher-loops", "researcher")
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        created = await ac.post(
+            "/api/schedules",
+            headers=researcher_headers,
+            json={
+                "name": "Researcher Weekly Review",
+                "cron_expression": "0 9 * * 1",
+                "project_id": project_id,
+                "skill_name": "ux_evaluation",
+            },
+        )
+        assert created.status_code == 201
+        schedule = created.json()
+
+        updated = await ac.patch(
+            f"/api/schedules/{schedule['id']}",
+            headers=researcher_headers,
+            json={"enabled": False},
+        )
+        assert updated.status_code == 200
+        assert updated.json()["enabled"] is False
+
+
+@pytest.mark.asyncio
 async def test_execution_history_uses_persisted_records_and_aliases(auth_headers):
     """Execution history should return persisted rows with table-ready fields."""
     await init_db()
@@ -276,7 +331,7 @@ async def test_execution_history_uses_persisted_records_and_aliases(auth_headers
 
 @pytest.mark.asyncio
 async def test_scheduler_records_missing_skill_as_failure(auth_headers):
-    """A due schedule with an unknown skill should not be reported as a success."""
+    """A due schedule with an unknown skill should fail once and then disable itself."""
     await init_db()
     schedule_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc)
@@ -299,6 +354,8 @@ async def test_scheduler_records_missing_skill_as_failure(auth_headers):
             select(ScheduledTask).where(ScheduledTask.id == schedule_id)
         )).scalar_one()
         assert task.is_running is False
+        assert task.enabled is False
+        assert task.next_run is None
         assert task.execution_count >= 1
         assert task.last_status == "failure"
         execution = (await db.execute(
@@ -306,3 +363,15 @@ async def test_scheduler_records_missing_skill_as_failure(auth_headers):
         )).scalars().first()
         assert execution is not None
         assert execution.status == "failure"
+
+    await scheduler._tick()
+
+    async with async_session() as db:
+        task = (await db.execute(
+            select(ScheduledTask).where(ScheduledTask.id == schedule_id)
+        )).scalar_one()
+        executions = (await db.execute(
+            select(LoopExecution).where(LoopExecution.source_id == schedule_id)
+        )).scalars().all()
+        assert task.execution_count == 1
+        assert len(executions) == 1

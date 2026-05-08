@@ -37,6 +37,14 @@ def auth_headers():
     return {"Authorization": f"Bearer {token}"}
 
 
+@pytest.fixture
+def researcher_headers():
+    if not settings.jwt_secret:
+        settings.jwt_secret = "test-secret"
+    token = create_token("researcher1", "researcher", "researcher")
+    return {"Authorization": f"Bearer {token}"}
+
+
 @pytest.mark.asyncio
 async def test_autoresearch_status_returns_response(auth_headers):
     """GET /api/autoresearch/status returns autoresearch status."""
@@ -56,6 +64,22 @@ async def test_autoresearch_status_requires_auth():
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         response = await ac.get("/api/autoresearch/status")
         assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_researcher_can_configure_autoresearch(researcher_headers):
+    await init_db()
+    settings.team_mode = True
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.patch(
+            "/api/autoresearch/config",
+            headers=researcher_headers,
+            json={"enabled": True, "max_experiments_per_run": 2},
+        )
+    assert response.status_code == 200
+    assert response.json()["enabled"] is True
+    assert response.json()["max_experiments_per_run"] == 2
 
 
 @pytest.mark.asyncio

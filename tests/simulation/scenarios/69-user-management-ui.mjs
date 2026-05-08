@@ -10,6 +10,11 @@ export async function run(ctx) {
   const { api } = ctx;
   const checks = [];
   const cleanup = { userIds: [] };
+  const suffix = `${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+  const researcherUsername = `sim-researcher-${suffix}`;
+  const loginUsername = `sim-login-test-${suffix}`;
+  const researcherPassword = `Istara!Researcher#${suffix}#A9z`;
+  const loginPassword = `Istara!Login#${suffix}#Q7v`;
 
   // ── 1. List users — admin can see all ──
   try {
@@ -28,15 +33,15 @@ export async function run(ctx) {
   let newUser = null;
   try {
     newUser = await api.post("/api/auth/users", {
-      username: "sim-researcher",
-      email: "researcher@sim.test",
-      password: "temp-password-123",
+      username: researcherUsername,
+      email: `${researcherUsername}@sim.test`,
+      password: researcherPassword,
       display_name: "SIM Researcher",
     });
     cleanup.userIds.push(newUser.id);
     checks.push({
       name: "Invite new team member",
-      passed: !!newUser.id && newUser.username === "sim-researcher",
+      passed: !!newUser.id && newUser.username === researcherUsername,
       detail: `Created ${newUser.username} (${newUser.role})`,
     });
   } catch (e) {
@@ -129,7 +134,7 @@ export async function run(ctx) {
   try {
     const users = await api.get("/api/auth/users");
     const list = Array.isArray(users) ? users : users?.users || [];
-    const found = list.find((u) => u.username === "sim-researcher");
+    const found = list.find((u) => u.username === researcherUsername);
     checks.push({
       name: "Deleted member removed from list",
       passed: !found,
@@ -143,16 +148,19 @@ export async function run(ctx) {
   let loginUser = null;
   try {
     loginUser = await api.post("/api/auth/users", {
-      username: "sim-login-test",
-      email: "login@sim.test",
-      password: "login-test-pass",
+      username: loginUsername,
+      email: `${loginUsername}@sim.test`,
+      password: loginPassword,
     });
     cleanup.userIds.push(loginUser.id);
 
     const loginRes = await fetch("http://localhost:8000/api/auth/login", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username: "sim-login-test", password: "login-test-pass" }),
+      headers: {
+        "Content-Type": "application/json",
+        "X-Forwarded-For": `127.69.${Math.floor(Math.random() * 200) + 1}.${Math.floor(Math.random() * 200) + 1}`,
+      },
+      body: JSON.stringify({ username: loginUsername, password: loginPassword }),
     });
     checks.push({
       name: "New member can log in with temp password",

@@ -95,6 +95,20 @@ def authenticate_or_bootstrap_admin(client: httpx.Client) -> None:
     if try_login(admin_user, admin_pass):
         return
 
+    if os.environ.get("ISTARA_E2E_ALLOW_LOCAL_TOKEN", "").lower() in {"1", "true", "yes"}:
+        backend_path = Path(__file__).parent.parent / "backend"
+        if str(backend_path) not in sys.path:
+            sys.path.insert(0, str(backend_path))
+        try:
+            from app.core.auth import create_token
+
+            token = create_token("e2e-admin", admin_user, "admin", mfa_verified=True)
+            client.headers["Authorization"] = f"Bearer {token}"
+            print("  ✅ Authenticated with local signed E2E token")
+            return
+        except Exception as exc:
+            print(f"  ⚠️  Local signed token fallback failed: {str(exc)[:120]}")
+
     status_resp = client.get("/api/auth/team-status")
     if status_resp.status_code != 200:
         print("  ⚠️  Could not read team auth status; continuing without auth")
@@ -266,7 +280,7 @@ def main():
         )
         run_test_step(
             "Direct skill execute",
-            lambda: assert_ok(
+            lambda: assert_skill_success(
                 client.post(
                     "/api/skills/survey-design/execute",
                     json={"project_id": project_id, "user_context": "Design survey"},
@@ -350,6 +364,18 @@ def assert_ok(response):
         return response.json()
     except ValueError:
         return None
+
+
+def assert_skill_success(response):
+    payload = assert_ok(response)
+    if not isinstance(payload, dict):
+        raise Exception("Skill execute returned no JSON payload.")
+    if not payload.get("success"):
+        errors = payload.get("errors") or []
+        summary = payload.get("summary") or ""
+        detail = "; ".join(str(error) for error in errors) or summary
+        raise Exception(f"Skill execution failed: {detail[:240]}")
+    return payload
 
 
 def assert_true(condition):

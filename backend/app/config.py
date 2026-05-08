@@ -48,6 +48,11 @@ class Settings(BaseSettings):
     lmstudio_model: str = "default"
     lmstudio_embed_model: str = "default"
     lmstudio_api_key: str = ""
+    lmstudio_auto_load_enabled: bool = True
+    lmstudio_auto_context_reload: bool = False
+    lmstudio_max_load_attempts_per_request: int = 1
+    lmstudio_allow_unload_on_reload: bool = False
+    llm_capability_active_probe_enabled: bool = False
 
     # Optional authenticated fallback for OpenAI-compatible secondary servers.
     # Used after the primary provider exhausts its retry budget.
@@ -60,6 +65,7 @@ class Settings(BaseSettings):
     # Database
     database_url: str = "sqlite+aiosqlite:///./data/istara.db"
     lance_db_path: str = "./data/lance_db"
+    sqlite_busy_timeout_ms: int = 30000
 
     # Files
     upload_dir: str = "./data/uploads"
@@ -116,6 +122,21 @@ class Settings(BaseSettings):
     resource_reserve_ram_gb: float = 4.0
     resource_reserve_cpu_percent: int = 30
     strict_auto_routing: bool = False
+
+    # Skill request budgets. Routes enforce these before the client gives up so
+    # cancelled simulations and UI calls do not leave orphaned LLM work running.
+    skill_execute_timeout_seconds: float = 600.0
+    skill_execute_max_timeout_seconds: float = 900.0
+    skill_plan_timeout_seconds: float = 180.0
+    skill_plan_max_timeout_seconds: float = 300.0
+    skill_execute_context_limit_tokens: int = 4096
+    skill_execute_max_output_tokens: int = 1024
+    skill_execute_item_limit: int = 4
+    skill_schema_prompt_char_limit: int = 4000
+    skill_execute_max_schema_tokens: int = 1200
+    agent_react_skill_candidate_limit: int = 6
+    agent_react_skill_tool_timeout_seconds: float = 300.0
+    agent_react_skill_min_candidate_score: float = 0.12
 
     # File watcher
     file_watch_interval_seconds: int = 5

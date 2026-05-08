@@ -1,5 +1,7 @@
 """Tests for Surveys API routes — integrations, links, sync, responses."""
 
+import uuid
+
 import pytest
 from httpx import AsyncClient, ASGITransport
 from app.main import app
@@ -56,3 +58,59 @@ async def test_surveys_links_returns_list(auth_headers):
         response = await ac.get("/api/surveys/links", headers=auth_headers)
         assert response.status_code == 200
         assert isinstance(response.json(), dict)
+
+
+@pytest.mark.asyncio
+async def test_demo_survey_link_sync_and_responses_do_not_call_platform(auth_headers, monkeypatch):
+    """Simulation/demo survey integrations stay local and deterministic."""
+    await init_db()
+    project_id = f"survey-demo-{uuid.uuid4()}"
+
+    def fail_adapter(_integration):
+        raise AssertionError("demo integrations must not instantiate a platform adapter")
+
+    monkeypatch.setattr("app.api.routes.surveys._get_adapter", fail_adapter)
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        integration_response = await ac.post(
+            "/api/surveys/integrations",
+            headers=auth_headers,
+            json={
+                "platform": "typeform",
+                "name": "SIM: Scenario 55",
+                "config": {"token": "sim-token"},
+                "project_id": project_id,
+            },
+        )
+        assert integration_response.status_code == 201
+        integration_id = integration_response.json()["id"]
+
+        link_response = await ac.post(
+            "/api/surveys/links",
+            headers=auth_headers,
+            json={
+                "integration_id": integration_id,
+                "project_id": project_id,
+                "external_survey_id": "sim-survey-001",
+                "external_survey_name": "Demo Survey",
+            },
+        )
+        assert link_response.status_code == 201
+        link_id = link_response.json()["id"]
+
+        sync_response = await ac.post(
+            f"/api/surveys/links/{link_id}/sync",
+            headers=auth_headers,
+        )
+        responses_response = await ac.get(
+            f"/api/surveys/links/{link_id}/responses",
+            headers=auth_headers,
+        )
+
+    assert sync_response.status_code == 200
+    assert sync_response.json()["demo"] is True
+    assert sync_response.json()["responses_fetched"] == 0
+    assert responses_response.status_code == 200
+    assert responses_response.json()["demo"] is True
+    assert responses_response.json()["responses"] == []

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Cpu, Wifi, WifiOff } from "lucide-react";
+import { Cpu, RefreshCw, Wifi, WifiOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 import { WS_BASE } from "@/lib/runtimeConfig";
@@ -11,6 +11,15 @@ import {
   providerLabel,
   type LocalLLMDetection,
 } from "@/lib/modelProviders";
+
+function browserTotalRamGb() {
+  return Number((navigator as any).deviceMemory || 0);
+}
+
+function browserAvailableRamGb() {
+  const total = browserTotalRamGb();
+  return total ? Math.round(Math.max(0.5, total * 0.5) * 10) / 10 : 0;
+}
 
 /**
  * Browser-based compute donation toggle.
@@ -26,16 +35,23 @@ export default function DonateComputeToggle() {
   const [enabled, setEnabled] = useState(false);
   const [connected, setConnected] = useState(false);
   const [localLLM, setLocalLLM] = useState<LocalLLMDetection | null>(null);
+  const [detecting, setDetecting] = useState(true);
   const [donationError, setDonationError] = useState<string>("");
   const wsRef = useRef<WebSocket | null>(null);
 
+  const detectLLM = useCallback(async () => {
+    setDetecting(true);
+    try {
+      setLocalLLM(await detectLocalLLM());
+    } finally {
+      setDetecting(false);
+    }
+  }, []);
+
   // Detect local LLM on mount
   useEffect(() => {
-    async function detectLLM() {
-      setLocalLLM(await detectLocalLLM());
-    }
     detectLLM();
-  }, []);
+  }, [detectLLM]);
 
   const fetchModelProbe = useCallback(async (): Promise<Pick<LocalLLMDetection, "models" | "modelCapabilities">> => {
     try {
@@ -123,8 +139,10 @@ export default function DonateComputeToggle() {
         provider_host: localLLM.host,
         loaded_models: modelProbe.models,
         model_capabilities: modelProbe.modelCapabilities,
-        ram_total_gb: (navigator as any).deviceMemory || 0,
+        ram_total_gb: browserTotalRamGb(),
+        ram_available_gb: browserAvailableRamGb(),
         cpu_cores: navigator.hardwareConcurrency || 0,
+        cpu_load_pct: 0,
       }));
     };
 
@@ -169,10 +187,13 @@ export default function DonateComputeToggle() {
         ws.send(JSON.stringify({
           type: "heartbeat",
           stats: {
-            ram_available_gb: 0,
+            ram_total_gb: browserTotalRamGb(),
+            ram_available_gb: browserAvailableRamGb(),
+            cpu_cores: navigator.hardwareConcurrency || 0,
             cpu_load_pct: 0,
             loaded_models: modelProbe.models,
             model_capabilities: modelProbe.modelCapabilities,
+            health_error: modelProbe.models.length ? "" : "No local models advertised",
             state: "idle",
           },
         }));
@@ -267,7 +288,33 @@ export default function DonateComputeToggle() {
     }
   }
 
-  if (!localLLM) return null; // No local LLM detected — don't show toggle
+  if (!localLLM) {
+    return (
+      <div className="flex items-center gap-3 p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
+        <Cpu size={16} className="text-slate-400 shrink-0" />
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
+            Donate Compute
+          </p>
+          <p className="text-xs text-slate-400">
+            {detecting
+              ? "Looking for a local LLM server"
+              : "No local LLM server detected on this device"}
+          </p>
+        </div>
+        <button
+          onClick={detectLLM}
+          disabled={detecting}
+          className="p-1.5 rounded-md text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-50"
+          aria-label="Refresh local LLM detection"
+        >
+          <RefreshCw size={14} className={detecting ? "animate-spin" : ""} />
+        </button>
+      </div>
+    );
+  }
+
+  const hasAdvertisedModels = localLLM.modelCount > 0;
 
   return (
     <div className="flex items-center gap-3 p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
@@ -281,7 +328,9 @@ export default function DonateComputeToggle() {
             ? donationError
             : connected
             ? "Sharing your local LLM with the server"
-            : `${providerLabel(localLLM.providerType)} detected`
+            : hasAdvertisedModels
+            ? `${providerLabel(localLLM.providerType)} detected`
+            : `${providerLabel(localLLM.providerType)} detected, no models advertised`
           }
         </p>
       </div>
@@ -293,9 +342,11 @@ export default function DonateComputeToggle() {
         )}
         <button
           onClick={() => setEnabled(!enabled)}
+          disabled={!hasAdvertisedModels}
           className={cn(
             "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
-            enabled ? "bg-istara-600" : "bg-slate-300 dark:bg-slate-600"
+            enabled ? "bg-istara-600" : "bg-slate-300 dark:bg-slate-600",
+            !hasAdvertisedModels && "opacity-50 cursor-not-allowed"
           )}
           role="switch"
           aria-checked={enabled}

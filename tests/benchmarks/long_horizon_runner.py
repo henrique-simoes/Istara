@@ -3,21 +3,54 @@ import httpx
 import os
 import time
 import json
+from pathlib import Path
 
 API_BASE = "http://localhost:8000"
+ROOT = Path(__file__).resolve().parents[2]
+ADMIN_PASSWORD_ENV_FILES = (
+    ROOT / ".env.local",
+    ROOT / "backend" / ".env.local",
+)
+
+
+def _parse_admin_password(raw_line: str) -> str:
+    line = raw_line.strip()
+    if line.startswith("export "):
+        line = line[len("export "):].strip()
+    if not line.startswith("ADMIN_PASSWORD="):
+        return ""
+    value = line.split("=", 1)[1].strip()
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
+        value = value[1:-1]
+    return value
+
+
+def load_admin_password() -> str:
+    for path in ADMIN_PASSWORD_ENV_FILES:
+        if not path.exists() or not path.is_file():
+            continue
+        for raw_line in path.read_text(encoding="utf-8").splitlines():
+            file_password = _parse_admin_password(raw_line)
+            if file_password:
+                return file_password
+
+    raise RuntimeError(
+        "Long-horizon benchmark requires ADMIN_PASSWORD in the environment "
+        "or a gitignored .env.local file."
+    )
+
 
 async def main():
     print("🚀 Starting Long-Horizon Orchestration Benchmark...")
     
     # 1. Get Admin Token
-    admin_pass = "Jnoc1MaTEQVpklDI0BYoqw"
-    try:
-        with open("backend/.env.local", "r") as f:
-            for line in f:
-                if line.startswith("ADMIN_PASSWORD="):
-                    admin_pass = line.strip().split("=", 1)[1]
-    except FileNotFoundError:
-        pass
+    admin_pass = os.getenv("ADMIN_PASSWORD", "").strip()
+    if not admin_pass:
+        try:
+            admin_pass = load_admin_password()
+        except RuntimeError as exc:
+            print(f"❌ {exc}")
+            return
         
     async with httpx.AsyncClient(timeout=300) as client:
         print("🔐 Authenticating...")

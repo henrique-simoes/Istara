@@ -17,6 +17,7 @@ def reset_settings():
     original_lance_db_path = settings.lance_db_path
     original_runtime_personas_dir = settings.runtime_personas_dir
     original_strict_auto_routing = settings.strict_auto_routing
+    original_active_probe = settings.llm_capability_active_probe_enabled
     yield
     settings.team_mode = original_team_mode
     settings.jwt_secret = original_jwt_secret
@@ -25,6 +26,7 @@ def reset_settings():
     settings.lance_db_path = original_lance_db_path
     settings.runtime_personas_dir = original_runtime_personas_dir
     settings.strict_auto_routing = original_strict_auto_routing
+    settings.llm_capability_active_probe_enabled = original_active_probe
 
 
 @pytest.fixture
@@ -46,6 +48,43 @@ async def test_settings_status_returns_response(auth_headers):
         assert response.status_code == 200
         assert isinstance(response.json(), dict)
         assert response.json()["strict_auto_routing"] is True
+
+
+class _ReachableButNotChatReadyRegistry:
+    def __init__(self):
+        self.check_all_health_calls = 0
+        self.ensure_kwargs = {}
+
+    async def check_all_health(self):
+        self.check_all_health_calls += 1
+        return {"node": True}
+
+    async def health(self):
+        return True
+
+    async def ensure_chat_ready(self, model=None, **kwargs):
+        self.ensure_kwargs = kwargs
+        return False
+
+
+@pytest.mark.asyncio
+async def test_settings_status_reports_llm_disconnected_until_chat_ready(monkeypatch):
+    from app.api.routes import settings as settings_routes
+    import app.core.ollama as ollama_module
+
+    fake_registry = _ReachableButNotChatReadyRegistry()
+    monkeypatch.setattr(settings_routes, "ollama", fake_registry)
+    monkeypatch.setattr(ollama_module, "ollama", fake_registry)
+
+    response = await settings_routes.system_status()
+
+    assert response["llm_readiness"] == {"reachable": True, "chat_ready": False}
+    assert response["services"]["llm"] == "disconnected"
+    assert response["status"] == "degraded"
+    assert fake_registry.ensure_kwargs["probe_lmstudio"] is False
+    assert fake_registry.ensure_kwargs["allow_model_load"] is False
+    assert fake_registry.ensure_kwargs["refresh_health"] is False
+    assert fake_registry.check_all_health_calls == 0
 
 
 @pytest.mark.asyncio

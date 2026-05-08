@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback, useMemo } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
+import Image from "next/image";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { API_BASE } from "@/lib/runtimeConfig";
@@ -9,7 +10,6 @@ import {
   Search,
   Filter,
   X,
-  ChevronDown,
   RefreshCw,
   Upload,
   Tag,
@@ -26,8 +26,6 @@ import {
   FileVideo,
   File,
   FolderInput,
-  CheckCircle,
-  AlertCircle,
   Loader2,
   ChevronRight,
   PanelRightClose,
@@ -125,7 +123,6 @@ export default function DocumentsView() {
     stats,
     loading,
     error,
-    total,
     page,
     totalPages,
     searchQuery,
@@ -1008,7 +1005,14 @@ function DocumentPreview({
               {content?.media_url && (
                 <div className="flex flex-col items-center justify-center py-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800">
                   {content.type && [".jpg", ".jpeg", ".png", ".gif"].includes(content.type) ? (
-                    <img src={`${API_BASE}${content.media_url}`} alt={doc.title} className="max-h-96 rounded-lg" />
+                    <Image
+                      src={`${API_BASE}${content.media_url}`}
+                      alt={doc.title}
+                      width={768}
+                      height={384}
+                      unoptimized
+                      className="max-h-96 w-auto rounded-lg object-contain"
+                    />
                   ) : content.type && [".mp3", ".wav", ".m4a", ".ogg"].includes(content.type) ? (
                     <audio controls src={`${API_BASE}${content.media_url}`} className="w-full max-w-lg" />
                   ) : content.type && [".mp4", ".webm", ".mov"].includes(content.type) ? (

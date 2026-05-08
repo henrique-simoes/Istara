@@ -15,7 +15,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
-from app.core.security_middleware import require_admin_from_request
+from app.core.permissions import require_global_role, require_project_access
 from app.models.database import get_db
 from app.models.agent import Agent, AgentState, HeartbeatStatus
 from app.models.code_application import CodeApplication
@@ -376,7 +376,7 @@ async def _build_operational_metrics(db: AsyncSession) -> dict:
 @router.get("/status")
 async def autoresearch_status(request: Request, db: AsyncSession = Depends(get_db)):
     """Get autoresearch engine status and current experiment."""
-    require_admin_from_request(request)
+    require_global_role(request, "researcher")
     engine = _get_engine()
     current = engine.get_current_experiment()
     return {
@@ -396,7 +396,7 @@ async def list_experiments(
     offset: int = 0,
 ):
     """Get paginated experiment history with optional filters."""
-    require_admin_from_request(request)
+    require_global_role(request, "researcher")
     engine = _get_engine()
     experiments = await engine.get_experiments(
         loop_type=loop_type,
@@ -410,7 +410,7 @@ async def list_experiments(
 @router.get("/experiments/{experiment_id}")
 async def get_experiment(experiment_id: str, request: Request):
     """Get a single experiment by ID."""
-    require_admin_from_request(request)
+    require_global_role(request, "researcher")
     engine = _get_engine()
     experiment = await engine.get_experiment(experiment_id)
     if not experiment:
@@ -419,9 +419,17 @@ async def get_experiment(experiment_id: str, request: Request):
 
 
 @router.post("/start")
-async def start_experiment(body: StartExperimentRequest, request: Request, background_tasks: BackgroundTasks):
+async def start_experiment(
+    body: StartExperimentRequest,
+    request: Request,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db),
+):
     """Start an autoresearch experiment loop in the background."""
-    require_admin_from_request(request)
+    if body.project_id:
+        await require_project_access(db, request, body.project_id, min_role="researcher")
+    else:
+        require_global_role(request, "researcher")
     engine = _get_engine()
 
     if engine.is_running:
@@ -463,7 +471,7 @@ async def start_experiment(body: StartExperimentRequest, request: Request, backg
 @router.post("/stop")
 async def stop_experiment(request: Request):
     """Stop the currently running experiment loop."""
-    require_admin_from_request(request)
+    require_global_role(request, "researcher")
     engine = _get_engine()
 
     if not engine.is_running:
@@ -476,7 +484,7 @@ async def stop_experiment(request: Request):
 @router.get("/config")
 async def get_config(request: Request):
     """Get autoresearch configuration."""
-    require_admin_from_request(request)
+    require_global_role(request, "researcher")
     return {
         "enabled": getattr(settings, "autoresearch_enabled", False),
         "max_experiments_per_run": getattr(settings, "autoresearch_max_experiments_per_run", 20),
@@ -489,7 +497,7 @@ async def get_config(request: Request):
 @router.patch("/config")
 async def update_config(body: ConfigUpdate, request: Request):
     """Update autoresearch configuration."""
-    require_admin_from_request(request)
+    require_global_role(request, "researcher")
     if body.enabled is not None:
         settings.autoresearch_enabled = body.enabled
     if body.max_experiments_per_run is not None:
@@ -521,7 +529,7 @@ async def update_config(body: ConfigUpdate, request: Request):
 @router.get("/leaderboard")
 async def get_leaderboard(request: Request):
     """Get best model+temperature leaderboard per skill."""
-    require_admin_from_request(request)
+    require_global_role(request, "researcher")
     engine = _get_engine()
     return await engine.get_leaderboard()
 
@@ -529,7 +537,7 @@ async def get_leaderboard(request: Request):
 @router.post("/toggle")
 async def toggle_autoresearch(body: ToggleRequest, request: Request):
     """Enable or disable autoresearch."""
-    require_admin_from_request(request)
+    require_global_role(request, "researcher")
     settings.autoresearch_enabled = body.enabled
 
     engine = _get_engine()

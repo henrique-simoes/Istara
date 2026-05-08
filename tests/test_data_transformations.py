@@ -145,3 +145,96 @@ def test_keyword_index_imports():
     from app.core.keyword_index import KeywordIndex
     index = KeywordIndex(project_id="test-project")
     assert index is not None
+
+
+def test_prompt_compressor_preserves_protected_blocks_under_tight_budget():
+    from app.core.prompt_compressor import compress_prompt
+
+    protected = (
+        "<research_methodology>"
+        "CRITICAL_BRAUN_CLARKE_CODEBOOK_ALPHA must remain intact."
+        "</research_methodology>"
+    )
+    filler = " ".join(
+        "It is important to note that the team should very carefully review notes."
+        for _ in range(35)
+    )
+
+    compressed = compress_prompt(
+        f"# Identity\nKeep evidence.\n\n## Method\n{protected}\n\n## Notes\n{filler}",
+        max_chars=900,
+    )
+
+    assert len(compressed) < len(filler)
+    assert protected in compressed
+
+
+def test_prompt_rag_keyword_prompt_does_not_select_zero_overlap_core_sections(tmp_path):
+    from app.core.prompt_rag import compose_keyword_prompt
+
+    original_runtime_personas = settings.runtime_personas_dir
+    settings.runtime_personas_dir = str(tmp_path)
+    agent_id = "eval-agent"
+    persona_dir = tmp_path / agent_id
+    persona_dir.mkdir()
+
+    try:
+        (persona_dir / "CORE.md").write_text(
+            "# Eval Agent\n\n"
+            "## Identity\n"
+            "You are Eval Agent.\n\n"
+            "## Values\n"
+            "Use evidence.\n\n"
+            "## Irrelevant Billing Protocol\n"
+            "Discuss invoice aging only when asked.\n",
+            encoding="utf-8",
+        )
+        (persona_dir / "SKILLS.md").write_text(
+            "## Usability Interview Planning\n"
+            "Use interview guides, recruiting criteria, consent, and note templates.\n",
+            encoding="utf-8",
+        )
+
+        prompt = compose_keyword_prompt(
+            agent_id,
+            "Plan usability interviews and synthesize the evidence.",
+            max_tokens=400,
+            top_k=3,
+        )
+    finally:
+        settings.runtime_personas_dir = original_runtime_personas
+
+    assert "You are Eval Agent" in prompt
+    assert "Usability Interview Planning" in prompt
+    assert "Irrelevant Billing Protocol" not in prompt
+
+
+def test_prompt_rag_keyword_similarity_prioritizes_interview_domains():
+    from app.core.prompt_rag import PromptSection, _keyword_similarity, _tokenize
+
+    query_tokens = _tokenize("How to conduct and analyze user interviews")
+    interview_section = PromptSection(
+        agent_id="eval-agent",
+        filename="SKILLS.md",
+        header="### Voice Transcription Pipeline",
+        content=(
+            "Transcribe participant audio, preserve transcript timestamps, "
+            "and summarize interview evidence."
+        ),
+    )
+    generic_section = PromptSection(
+        agent_id="eval-agent",
+        filename="MEMORY.md",
+        header="### User Preferences",
+        content=(
+            "Track user preferences and recurring analysis notes for future "
+            "assistant responses."
+        ),
+    )
+
+    assert "interview" in query_tokens
+    assert "user" not in query_tokens
+    assert _keyword_similarity(query_tokens, interview_section) > _keyword_similarity(
+        query_tokens,
+        generic_section,
+    )

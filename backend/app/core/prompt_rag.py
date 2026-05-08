@@ -47,6 +47,68 @@ IDENTITY_ANCHOR_MAX_TOKENS = 600
 # How many dynamic sections to retrieve per query
 DEFAULT_DYNAMIC_SECTIONS = 8
 
+PROMPT_RAG_STOPWORDS = {
+    "about",
+    "analyze",
+    "analysis",
+    "and",
+    "are",
+    "but",
+    "conduct",
+    "create",
+    "describe",
+    "explain",
+    "for",
+    "from",
+    "generate",
+    "help",
+    "how",
+    "need",
+    "needs",
+    "only",
+    "please",
+    "provide",
+    "the",
+    "this",
+    "that",
+    "use",
+    "user",
+    "using",
+    "when",
+    "with",
+    "you",
+    "your",
+}
+
+PROMPT_RAG_DOMAIN_ALIASES = {
+    "interview": {
+        "interview",
+        "interviews",
+        "moderator",
+        "participant",
+        "respondent",
+        "transcript",
+        "transcription",
+    },
+    "survey": {
+        "likert",
+        "nps",
+        "questionnaire",
+        "respondent",
+        "survey",
+        "surveys",
+    },
+    "usability": {
+        "heuristic",
+        "moderator",
+        "participant",
+        "sus",
+        "task",
+        "test",
+        "usability",
+    },
+}
+
 
 # ---------------------------------------------------------------------------
 # Section chunking
@@ -160,9 +222,47 @@ def index_agent_sections(agent_id: str) -> list[PromptSection]:
 # Similarity scoring (lightweight, no embedding dependency)
 # ---------------------------------------------------------------------------
 
+def _normalize_keyword_token(token: str) -> str:
+    """Normalize light keyword variants without pulling in a stemmer."""
+    if len(token) > 5 and token.endswith("ies"):
+        return f"{token[:-3]}y"
+    if len(token) > 4 and token.endswith("s"):
+        return token[:-1]
+    return token
+
+
 def _tokenize(text: str) -> set[str]:
     """Simple word tokenization for keyword overlap scoring."""
-    return set(re.findall(r'\b\w{3,}\b', text.lower()))
+    tokens: set[str] = set()
+    for raw_token in re.findall(r'\b\w{3,}\b', text.lower()):
+        token = _normalize_keyword_token(raw_token)
+        if token and token not in PROMPT_RAG_STOPWORDS:
+            tokens.add(token)
+    return tokens
+
+
+def _domain_keyword_boost(
+    query_tokens: set[str],
+    section_tokens: set[str],
+    header_tokens: set[str],
+) -> float:
+    """Boost sections that use known research-domain synonyms.
+
+    Keyword Prompt RAG intentionally stays deterministic and dependency-free.
+    This small alias table catches common Istara research terms where the
+    query and section naturally use different words, such as interview vs.
+    transcript/transcription.
+    """
+    boost = 0.0
+    for domain_token, aliases in PROMPT_RAG_DOMAIN_ALIASES.items():
+        normalized_aliases = {_normalize_keyword_token(alias) for alias in aliases}
+        if query_tokens.isdisjoint(normalized_aliases | {domain_token}):
+            continue
+        if not header_tokens.isdisjoint(normalized_aliases):
+            boost += 0.12
+        elif not section_tokens.isdisjoint(normalized_aliases):
+            boost += 0.04
+    return boost
 
 
 def _keyword_similarity(query_tokens: set[str], section: PromptSection) -> float:
@@ -186,9 +286,7 @@ def _keyword_similarity(query_tokens: set[str], section: PromptSection) -> float
     if header_overlap:
         score += 0.3 * len(header_overlap) / max(len(query_tokens), 1)
 
-    # Boost for CORE.md sections (identity is always relevant)
-    if section.filename == "CORE.md":
-        score += 0.1
+    score += _domain_keyword_boost(query_tokens, section_tokens, header_tokens)
 
     return min(score, 1.0)
 
@@ -366,6 +464,8 @@ async def compose_dynamic_prompt(
     for score, section in scored_sections[:top_k * 2]:  # Oversample for budget fit
         if len(selected_sections) >= top_k:
             break
+        if score <= 0:
+            continue
         if used_tokens + section.token_estimate > remaining_budget:
             continue
         selected_sections.append(section)
@@ -435,6 +535,8 @@ def compose_keyword_prompt(
     for score, section in scored[:top_k * 2]:
         if len(selected) >= top_k:
             break
+        if score <= 0:
+            continue
         if used + section.token_estimate > remaining:
             continue
         selected.append(section)

@@ -11,7 +11,7 @@ from app.config import settings
 from app.core.env_persistence import persist_env_value
 from app.core.hardware import detect_hardware, recommend_model
 from app.core.ollama import ollama
-from app.core.permissions import require_project_access
+from app.core.permissions import require_global_role, require_project_access
 from app.core.security_middleware import require_admin_from_request
 from app.models.database import get_db
 
@@ -162,8 +162,8 @@ async def get_models():
 
 @router.post("/settings/model")
 async def switch_model(model_name: str, request: Request):
-    """Switch the active model at runtime (pulls if using Ollama and not available). Admin only."""
-    require_admin_from_request(request)
+    """Switch the active model at runtime (pulls if using Ollama and not available)."""
+    require_global_role(request, "researcher")
     models = await ollama.list_models()
     model_names = [m.get("name", "") for m in models]
 
@@ -206,8 +206,8 @@ async def switch_model(model_name: str, request: Request):
 
 @router.post("/settings/provider")
 async def switch_provider(provider: str, request: Request):
-    """Switch the LLM provider at runtime (ollama or lmstudio). Admin only."""
-    require_admin_from_request(request)
+    """Switch the LLM provider at runtime (ollama or lmstudio)."""
+    require_global_role(request, "researcher")
 
     if provider not in ("ollama", "lmstudio"):
         raise HTTPException(status_code=400, detail="Provider must be 'ollama' or 'lmstudio'")
@@ -400,28 +400,35 @@ async def import_database(
 async def system_status():
     """Get overall system status.
 
-    Re-probes the active LLM provider on demand so the status is always fresh,
-    rather than reading the cached health flag from the 60-second background loop.
-    Auto-detects the other provider if the current one is unreachable.
+    Read the cached LLM health maintained by the compute registry health loop.
+    This endpoint is called often by the UI, so it must not deep-scan every
+    donated server or trigger model loading.
     """
     import app.core.ollama as ollama_mod
-    from app.core.ollama import auto_detect_provider
-
-    # Re-probe the active provider so the status is always current
-    await ollama.check_all_health()
-    llm_healthy = await ollama.health()
-
-    # If current provider is down, try auto-detecting the other
-    if not llm_healthy:
-        await auto_detect_provider()
-        llm_healthy = await ollama_mod.ollama.health()
 
     active = _active_model()
+
+    # Use cached health from the background loop. A status poll should never
+    # load models or serially probe many donated/offline endpoints.
+    llm_healthy = await ollama.health()
+
+    llm_ready = llm_healthy
+    if llm_healthy and hasattr(ollama_mod.ollama, "ensure_chat_ready"):
+        try:
+            llm_ready = await ollama_mod.ollama.ensure_chat_ready(
+                model=active,
+                probe_lmstudio=False,
+                allow_model_load=False,
+                refresh_health=False,
+            )
+        except Exception as exc:
+            logger.warning("LLM chat-readiness probe failed: %s", exc)
+            llm_ready = False
 
     # For LM Studio, detect the actually loaded model only when no concrete
     # model was configured. Explicit OpenAI-compatible model config is
     # authoritative for routing and should not drift after status checks.
-    if llm_healthy and settings.llm_provider == "lmstudio":
+    if llm_ready and settings.llm_provider == "lmstudio":
         import app.core.ollama as ollama_mod
         from app.core.lmstudio import (
             LMStudioClient,
@@ -440,13 +447,17 @@ async def system_status():
                     pass
 
     return {
-        "status": "healthy" if llm_healthy else "degraded",
+        "status": "healthy" if llm_ready else "degraded",
         "provider": settings.llm_provider,
         "team_mode": settings.team_mode,
         "strict_auto_routing": settings.strict_auto_routing,
+        "llm_readiness": {
+            "reachable": llm_healthy,
+            "chat_ready": llm_ready,
+        },
         "services": {
             "backend": "running",
-            "llm": "connected" if llm_healthy else "disconnected",
+            "llm": "connected" if llm_ready else "disconnected",
         },
         "config": {
             "model": active,

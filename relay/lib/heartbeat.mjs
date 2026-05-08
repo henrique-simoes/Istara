@@ -82,6 +82,31 @@ export async function getSystemStats() {
   return stats;
 }
 
+export function buildRegistrationPayload({
+  stats,
+  modelProbe = {},
+  providerType,
+  providerHost,
+  userId,
+}) {
+  const models = modelProbe.models || [];
+  return {
+    type: "register",
+    hostname: stats.hostname,
+    user_id: userId,
+    ram_total_gb: stats.ram_total_gb,
+    ram_available_gb: stats.ram_available_gb,
+    cpu_cores: stats.cpu_cores,
+    gpu_name: stats.gpu_name,
+    gpu_vram_mb: stats.gpu_vram_mb,
+    loaded_models: models,
+    model_capabilities: modelProbe.modelCapabilities || {},
+    health_error: modelProbe.ok ? "" : (modelProbe.error || "No local LLM server detected"),
+    provider_type: providerType,
+    provider_host: providerHost,
+  };
+}
+
 export function startHeartbeat(ws, intervalMs, llmProxy) {
   setInterval(async () => {
     try {
@@ -92,10 +117,17 @@ export function startHeartbeat(ws, intervalMs, llmProxy) {
       ws.send(JSON.stringify({
         type: "heartbeat",
         stats: {
+          ram_total_gb: stats.ram_total_gb,
           ram_available_gb: stats.ram_available_gb,
+          cpu_cores: stats.cpu_cores,
           cpu_load_pct: stats.cpu_load_pct,
+          gpu_name: stats.gpu_name,
+          gpu_vram_mb: stats.gpu_vram_mb,
           loaded_models: models,
           model_capabilities: modelProbe.modelCapabilities || {},
+          health_error: modelProbe.ok
+            ? ""
+            : (modelProbe.error || "No local LLM server detected"),
           state: "idle",
         },
       }));
