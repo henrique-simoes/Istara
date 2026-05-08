@@ -185,8 +185,7 @@ detect_node() {
         "/opt/homebrew/bin/node"
         "/usr/local/bin/node"
         "/opt/homebrew/opt/node/bin/node"
-        "/opt/homebrew/opt/node@20/bin/node"
-        "/opt/homebrew/opt/node@22/bin/node"
+        "/opt/homebrew/opt/node@24/bin/node"
     )
     # nvm
     [ -f "$HOME/.nvm/alias/default" ] && {
@@ -202,7 +201,7 @@ detect_node() {
     for nd in "${paths[@]}"; do
         if command -v "$nd" >/dev/null 2>&1 || [ -x "$nd" ]; then
             local ver; ver=$("$nd" --version 2>&1 | grep -oE '[0-9]+' | head -1)
-            if [ "${ver:-0}" -ge 18 ]; then
+            if [ "${ver:-0}" -ge 24 ]; then
                 echo "$nd"; return 0
             fi
         fi
@@ -218,7 +217,7 @@ detect_npm() {
     fi
     command -v npm >/dev/null 2>&1 && { echo "npm"; return 0; }
     # Check keg-only Homebrew paths
-    for keg in "/opt/homebrew/opt/node/bin/npm" "/opt/homebrew/opt/node@22/bin/npm" "/opt/homebrew/opt/node@20/bin/npm"; do
+    for keg in "/opt/homebrew/opt/node/bin/npm" "/opt/homebrew/opt/node@24/bin/npm"; do
         [ -x "$keg" ] && { echo "$keg"; return 0; }
     done
     return 1
@@ -344,18 +343,17 @@ ensure_node() {
         esac
         return 0
     fi
-    info "Installing Node.js..."
+    info "Installing Node.js 24 or newer..."
     ensure_homebrew
-    # Install 'node' (main formula, links properly) not 'node@20' (keg-only, link conflicts)
+    # Install 'node' (main formula, links properly). Istara requires Node 24+.
     brew install node 2>/dev/null || {
-        # If main formula fails, try node@22 or node@20 and add keg path
-        brew install node@22 2>/dev/null || brew install node@20 2>/dev/null || {
+        brew install node@24 2>/dev/null || {
             fail "Failed to install Node.js via Homebrew"
             exit 1
         }
     }
     # Add Homebrew keg-only node paths if needed
-    for keg in node node@22 node@20; do
+    for keg in node node@24; do
         local keg_path; keg_path="$(brew --prefix "$keg" 2>/dev/null)/bin" || continue
         if [ -x "$keg_path/node" ]; then
             export PATH="$keg_path:$PATH"
@@ -365,7 +363,7 @@ ensure_node() {
     # Verify it actually works
     found_node=$(detect_node 2>/dev/null) || found_node=""
     if [ -z "$found_node" ]; then
-        fail "Node.js installed but not found in PATH. Try: brew link --overwrite node"
+        fail "Node.js 24+ installed but not found in PATH. Try: brew link --overwrite node"
         exit 1
     fi
     ok "Node $($(detect_node) --version 2>&1) installed"

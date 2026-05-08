@@ -3,7 +3,7 @@
 import pytest
 from app.config import settings
 from app.core import rag
-from app.core.embeddings import TextChunk
+from app.core.embeddings import EmbeddedChunk, TextChunk
 from app.core.keyword_index import KeywordIndex
 
 
@@ -62,3 +62,46 @@ async def test_retrieve_context_falls_back_to_keyword_search(tmp_path, monkeypat
     assert context.has_context
     assert context.retrieved[0].source == "checkout-notes.md"
     assert "billing previews" in context.context_text
+
+
+@pytest.mark.asyncio
+async def test_vector_store_add_chunks_tolerates_legacy_table_schema(tmp_path, monkeypatch):
+    """Older LanceDB tables should keep ingesting when newer metadata fields exist."""
+    monkeypatch.setattr(settings, "lance_db_path", str(tmp_path / "lance"))
+
+    store = rag.VectorStore("rag-legacy-schema")
+    store.db.create_table(
+        store.table_name,
+        [
+            {
+                "vector": [0.1, 0.2, 0.3],
+                "text": "Legacy checkout evidence.",
+                "source": "legacy.txt",
+                "page": 1,
+                "position": 0,
+            }
+        ],
+    )
+
+    added = await store.add_chunks(
+        [
+            EmbeddedChunk(
+                chunk=TextChunk(
+                    text="New checkout evidence from an agent-owned ingest.",
+                    source="new.txt",
+                    page=2,
+                    position=1,
+                ),
+                vector=[0.2, 0.3, 0.4],
+            )
+        ],
+        agent_id="istara-main",
+        confidence=0.8,
+    )
+
+    rows = store.db.open_table(store.table_name).to_pandas()
+    assert added == 1
+    assert len(rows) == 2
+    assert "agent_id" not in rows.columns
+    assert "confidence" not in rows.columns
+    assert "New checkout evidence from an agent-owned ingest." in set(rows["text"])

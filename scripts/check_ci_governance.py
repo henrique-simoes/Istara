@@ -13,6 +13,7 @@ REQUIRED_SNIPPETS: dict[str, dict[str, str]] = {
         "CI self-check": "python scripts/check_ci_governance.py",
         "Node 24 frontend runtime": 'node-version: "24"',
         "security benchmark": "python scripts/security_benchmark.py --fail-on-threshold",
+        "release security readiness": "python scripts/security_release_readiness.py",
         "test harness governance": "python scripts/check_test_harness.py",
         "security scorecard artifact": "istara-security-scorecard",
         "production rehearsal": "python ../scripts/production_rehearsal.py --json",
@@ -26,6 +27,7 @@ REQUIRED_SNIPPETS: dict[str, dict[str, str]] = {
             "python -m compileall -q app ../scripts/production_rehearsal.py"
         ),
         "security benchmark compile check": "../scripts/security_benchmark.py",
+        "release security readiness compile check": "../scripts/security_release_readiness.py",
         "test harness compile check": "../scripts/check_test_harness.py",
         "backend mutation wrapper compile check": "../scripts/run_backend_mutation.py",
         "changed-file Ruff gate": "python ../scripts/check_ruff_changed.py",
@@ -41,8 +43,19 @@ REQUIRED_SNIPPETS: dict[str, dict[str, str]] = {
         "test harness release trigger": "scripts/check_test_harness.py",
         "change obligation release trigger": "scripts/check_change_obligations.py",
         "security benchmark release trigger": "scripts/security_benchmark.py",
+        "release security readiness release trigger": "scripts/security_release_readiness.py",
         "security benchmark docs release trigger": "security/*",
         "testing strategy release trigger": "testing/*",
+        "artifact attestation action": "actions/attest-build-provenance",
+        "attestation permission": "attestations: write",
+        "OIDC attestation permission": "id-token: write",
+    },
+    ".github/workflows/scorecard.yml": {
+        "OpenSSF Scorecard action": "ossf/scorecard-action",
+        "Scorecard SARIF upload": "github/codeql-action/upload-sarif",
+        "read-only contents permission": "contents: read",
+        "security-events permission": "security-events: write",
+        "OIDC permission": "id-token: write",
     },
     ".nvmrc": {
         "Node 24 local runtime": "24",
@@ -70,7 +83,13 @@ REQUIRED_SNIPPETS: dict[str, dict[str, str]] = {
         "CI governance release prep": "python scripts/check_ci_governance.py",
         "test harness release prep": "python scripts/check_test_harness.py",
         "security benchmark release prep": "python scripts/security_benchmark.py --fail-on-threshold",
+        "release security readiness release prep": "python scripts/security_release_readiness.py",
         "production rehearsal release prep": "python scripts/production_rehearsal.py --json",
+    },
+    "scripts/install-istara.sh": {
+        "Node 24 install requirement": "Node.js 24 or newer",
+        "Node 24 detection": "-ge 24",
+        "Node 24 Homebrew fallback": "node@24",
     },
     ".github/workflows/track-autoresearch.yml": {
         "repository checkout": "actions/checkout@v4",
@@ -116,6 +135,25 @@ REQUIRED_SNIPPETS: dict[str, dict[str, str]] = {
         "benchmark evaluator": "def evaluate_matrix",
         "changed path file input": "changed-paths-file",
         "release threshold": "minimum_score_percent",
+    },
+    "scripts/security_release_readiness.py": {
+        "readiness evaluator": "def evaluate_readiness",
+        "Better Auth readiness": "better-auth",
+        "OpenSSF readiness": "openssf scorecard",
+        "attestation readiness": "attest-build-provenance",
+    },
+    "SECURITY.md": {
+        "vulnerability disclosure": "Reporting a Vulnerability",
+        "incident response": "Incident Response",
+        "log redaction policy": "Logs are treated as sensitive data",
+    },
+    "security/RELEASE_SECURITY_READINESS.md": {
+        "Better Auth mapping": "Better Auth",
+        "OWASP ASVS mapping": "OWASP ASVS",
+        "NIST identity mapping": "NIST SP 800-63",
+        "WebAuthn mapping": "W3C WebAuthn",
+        "supply-chain mapping": "OpenSSF Scorecard",
+        "LLM single-model guard": "must not autoload multiple heavy models",
     },
     "security/SECURITY_BENCHMARK.md": {
         "ASVS benchmark": "OWASP ASVS",
@@ -167,6 +205,10 @@ FORBIDDEN_SNIPPETS: dict[str, dict[str, str]] = {
     },
     "scripts/prepare-release.sh": {
         "legacy Compass doc generation": "scripts/update_agent_md.py",
+    },
+    "scripts/install-istara.sh": {
+        "Node 20 fallback": "node@20",
+        "Node 22 fallback": "node@22",
     },
 }
 

@@ -15,6 +15,10 @@ BLOCKED_PREFIXES = (
     "LLMs/",
     "backend/data/",
     "data/",
+    "storage/",
+    "uploads/",
+    "tests/evals/.results/",
+    "tests/simulation/.results/",
     "Istara-Projects/",
     ".qwen/",
 )
@@ -41,6 +45,7 @@ BLOCKED_EXACT = {
     "backend/.env",
     "backend/.env.local",
     "frontend/.env.local",
+    ".istara-backend.log",
     ".env",
     ".env.local",
     "current_plans.md",

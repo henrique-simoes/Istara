@@ -1,9 +1,9 @@
 /** Scenario 20 — Comprehensive Skills Test:
- *  Exercises ALL 45 skills with appropriate mock data per skill type.
+ *  Exercises every currently registered skill with appropriate mock data.
  *  Tests plan + execute for every registered skill.
  */
 
-export const name = "Comprehensive Skills Test (All 45)";
+export const name = "Comprehensive Skills Test (All Registered Skills)";
 export const id = "20-all-skills-comprehensive";
 
 // ── Mock data generators for each skill type ──
@@ -311,10 +311,13 @@ SUS010,3,3,3,3,3,3,3,3,3,3
 `;
 }
 
-// ── All 45 skills grouped by phase with appropriate mock data and context ──
+// ── Skill fixture hints grouped by phase with appropriate mock data/context ──
+// Runtime selection is built from /api/skills so this scenario follows the
+// current backend catalog. These fixtures provide better prompts/data for known
+// skills; newly registered skills receive a phase-appropriate fallback.
 
 const ALL_SKILLS = {
-  // DISCOVER (11 skills)
+  // DISCOVER
   discover: [
     { name: "user-interviews", context: "Analyze mobile banking interview transcript for pain points, needs, and opportunities.", data: "interview" },
     { name: "contextual-inquiry", context: "Analyze co-working space field observations for workflow patterns and environment factors.", data: "field" },
@@ -327,8 +330,11 @@ const ALL_SKILLS = {
     { name: "analytics-review", context: "Analyze website analytics data for funnel performance, drop-offs, and anomalies.", data: "analytics" },
     { name: "ab-test-analysis", context: "Analyze A/B test data from signup page conversion experiment.", data: "analytics" },
     { name: "accessibility-audit", context: "Audit the checkout flow for WCAG 2.1 AA compliance issues.", data: "usability" },
+    { name: "browser-competitive-benchmark", context: "Benchmark competitor websites for project management UX patterns, IA, pricing visibility, and onboarding quality.", data: "competitor" },
+    { name: "channel-research-deployment", context: "Review a mixed-channel research deployment plan for consent, cadence, targeting, ingestion, webhook readiness, and participant response quality.", data: "survey" },
+    { name: "transcribe-audio", context: "Evaluate transcription readiness for a research interview and summarize the transcript quality, tagging needs, and atomic-research integration steps.", data: "interview" },
   ],
-  // DEFINE (12 skills)
+  // DEFINE
   define: [
     { name: "thematic-analysis", context: "Perform thematic coding on interview transcripts about mobile banking experience.", data: "interview" },
     { name: "affinity-mapping", context: "Cluster research nuggets from interviews and surveys into affinity groups.", data: "interview" },
@@ -342,8 +348,9 @@ const ALL_SKILLS = {
     { name: "taxonomy-generator", context: "Generate taxonomy of user needs and pain points from research data.", data: "interview" },
     { name: "interview-question-generator", context: "Generate follow-up interview questions based on initial findings.", data: "interview" },
     { name: "kappa-thematic-analysis", context: "Perform dual-coding reliability analysis on interview theme coding.", data: "interview" },
+    { name: "participant-simulation", context: "Simulate participant behavior for a mobile banking usability study, including satisficing, social desirability bias, and strategic disclosure patterns.", data: "usability" },
   ],
-  // DEVELOP (10 skills)
+  // DEVELOP
   develop: [
     { name: "usability-testing", context: "Generate usability test plan and analyze checkout flow test results.", data: "usability" },
     { name: "heuristic-evaluation", context: "Evaluate the mobile banking app against Nielsen's 10 heuristics.", data: "usability" },
@@ -355,8 +362,13 @@ const ALL_SKILLS = {
     { name: "design-critique", context: "Expert review of the mobile banking app's visual design and interaction patterns.", data: "usability" },
     { name: "design-system-audit", context: "Audit the design system for consistency — buttons, colors, typography, spacing.", data: "usability" },
     { name: "workshop-facilitation", context: "Plan and facilitate a design thinking workshop on improving onboarding.", data: "interview" },
+    { name: "browser-accessibility-check", context: "Audit a representative product page for WCAG 2.2 AA issues, severity, evidence, and remediation priority.", data: "usability" },
+    { name: "browser-ux-audit", context: "Run a live-site-style UX audit against checkout and onboarding flows using heuristics, accessibility, and Laws of UX.", data: "usability" },
+    { name: "stitch-design", context: "Generate a high-fidelity mobile banking dashboard design prompt from research insights and product constraints.", data: "interview" },
+    { name: "stitch-enhance-prompt", context: "Improve a rough prompt for a mobile banking quick-transfer screen into a structured, high-fidelity design prompt.", data: "interview" },
+    { name: "ux-law-compliance", context: "Evaluate the checkout flow against Laws of UX and produce compliance scores with evidence-chained recommendations.", data: "usability" },
   ],
-  // DELIVER (12 skills)
+  // DELIVER
   deliver: [
     { name: "nps-analysis", context: "Analyze NPS survey results — score distribution, segment analysis, verbatim themes.", data: "nps" },
     { name: "sus-umux-scoring", context: "Calculate and interpret SUS scores from 10 participant questionnaires.", data: "sus" },
@@ -370,6 +382,10 @@ const ALL_SKILLS = {
     { name: "research-retro", context: "Conduct retrospective on the mobile banking research project — what worked, what didn't.", data: "interview" },
     { name: "survey-ai-detection", context: "Detect potentially AI-generated responses in survey data.", data: "survey" },
     { name: "survey-generator", context: "Generate a post-launch satisfaction survey for the mobile banking app.", data: "interview" },
+    { name: "evaluate-research", context: "Evaluate a research synthesis for rigor, evidence quality, clarity, bias risk, and actionability.", data: "interview" },
+    { name: "research-quality-evaluation", context: "Run an LLM-as-judge research quality evaluation over the provided findings and recommendations.", data: "interview" },
+    { name: "stitch-design-system", context: "Synthesize design-system documentation from the provided mobile banking UI audit and usability findings.", data: "usability" },
+    { name: "stitch-react-components", context: "Convert a generated mobile banking screen specification into React component guidance with tokens and validation notes.", data: "usability" },
   ],
 };
 
@@ -384,6 +400,19 @@ const DATA_MAP = {
   nps: npsData,
   sus: susData,
 };
+
+const DEFAULT_DATA_BY_PHASE = {
+  discover: "interview",
+  define: "interview",
+  develop: "usability",
+  deliver: "analytics",
+};
+
+const SKILL_FIXTURE_BY_NAME = new Map(
+  Object.values(ALL_SKILLS)
+    .flat()
+    .map((skill) => [skill.name, skill])
+);
 
 function positiveIntegerEnv(name, fallback) {
   const raw = process.env[name];
@@ -416,17 +445,53 @@ function seededRandom(seed) {
   };
 }
 
-function scenario20SkillSelection() {
-  const entries = Object.entries(ALL_SKILLS).flatMap(([phase, skills]) =>
-    skills.map((skill) => ({ phase, skill }))
+function fallbackContextForSkill(skill, dataKey) {
+  const display = skill.display_name || skill.name;
+  return [
+    `Execute ${display} against representative Istara simulation research data.`,
+    `Use the provided ${dataKey} evidence, preserve traceability, and return the skill's normalized output.`,
+  ].join(" ");
+}
+
+function staticSkillCatalogEntries() {
+  return Object.entries(ALL_SKILLS).flatMap(([phase, skills]) =>
+    skills.map((skill) => ({ phase, skill, hasFixture: true }))
   );
+}
+
+function registeredSkillCatalogEntries(registeredSkills) {
+  const entries = (registeredSkills || [])
+    .filter((skill) => skill?.name && skill.enabled !== false)
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map((registered) => {
+      const phase = registered.phase || "discover";
+      const fixture = SKILL_FIXTURE_BY_NAME.get(registered.name);
+      const data = fixture?.data || DEFAULT_DATA_BY_PHASE[phase] || "interview";
+      const context = fixture?.context || fallbackContextForSkill(registered, data);
+      return {
+        phase,
+        hasFixture: Boolean(fixture),
+        skill: {
+          ...fixture,
+          name: registered.name,
+          context,
+          data,
+        },
+      };
+    });
+
+  return entries.length > 0 ? entries : staticSkillCatalogEntries();
+}
+
+function scenario20SkillSelection(registeredSkills = []) {
+  const entries = registeredSkillCatalogEntries(registeredSkills);
   const limit = Math.min(
     positiveIntegerEnv("ISTARA_SCENARIO20_SKILL_LIMIT", entries.length),
     entries.length
   );
 
   if (limit >= entries.length) {
-    return { entries, limited: false, limit: entries.length, seed: null };
+    return { entries, limited: false, limit: entries.length, seed: null, total: entries.length };
   }
 
   const seed =
@@ -439,7 +504,7 @@ function scenario20SkillSelection() {
     [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
   }
 
-  return { entries: shuffled.slice(0, limit), limited: true, limit, seed };
+  return { entries: shuffled.slice(0, limit), limited: true, limit, seed, total: entries.length };
 }
 
 export async function run(ctx) {
@@ -584,13 +649,14 @@ export async function run(ctx) {
 
   // ── Step 4: Test each skill — plan + execute ──
   const LLM_CONNECTED = ctx.llmConnected;
-  const skillSelection = scenario20SkillSelection();
+  const skillSelection = scenario20SkillSelection(allSkills);
+  const fixtureCount = skillSelection.entries.filter((entry) => entry.hasFixture).length;
   pushCheck({
     name: "Scenario 20 skill selection",
     passed: skillSelection.entries.length > 0,
     detail: skillSelection.limited
-      ? `random subset ${skillSelection.limit}/${Object.values(ALL_SKILLS).flat().length}, seed=${skillSelection.seed}, skills=${skillSelection.entries.map(({ skill }) => skill.name).join(", ")}`
-      : `full sweep ${skillSelection.entries.length}/${Object.values(ALL_SKILLS).flat().length} skills`,
+      ? `random subset ${skillSelection.limit}/${skillSelection.total}, seed=${skillSelection.seed}, fixture_hints=${fixtureCount}/${skillSelection.entries.length}, skills=${skillSelection.entries.map(({ skill }) => skill.name).join(", ")}`
+      : `full sweep ${skillSelection.entries.length}/${skillSelection.total} registered skills, fixture_hints=${fixtureCount}/${skillSelection.entries.length}`,
   });
 
   for (const { phase, skill } of skillSelection.entries) {

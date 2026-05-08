@@ -81,6 +81,7 @@ from app.core.agent_hooks import register_builtin_hooks
 from app.core.audit_middleware import AuditLogMiddleware
 from app.core.backup_manager import backup_manager
 from app.core.file_watcher import FileWatcher
+from app.core.log_redaction import install_sensitive_log_redaction
 from app.core.network_security import NetworkSecurityMiddleware, requires_local_admin_network_guard
 from app.core.scheduler import scheduler
 from app.core.security_middleware import SecurityAuthMiddleware
@@ -89,6 +90,8 @@ from app.services.agent_service import seed_system_agents
 from app.services.heartbeat import heartbeat_manager
 from app.skills.registry import load_default_skills
 from app.skills.skill_manager import skill_manager
+
+install_sensitive_log_redaction()
 
 
 def _persist_env_startup(key: str, value: str, logger=None) -> None:
@@ -184,6 +187,39 @@ def _build_bootstrap_admin_user(
     )
 
 
+def _write_initial_admin_credentials_file(
+    *,
+    username: str,
+    password: str,
+    recovery_codes: list[str],
+):
+    """Write first-start credentials to an owner-only runtime file."""
+    import os
+    import stat
+
+    path = Path(app_settings.data_dir) / "initial-admin-credentials.txt"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        "\n".join(
+            [
+                "Istara initial admin credentials",
+                "",
+                f"Username: {username}",
+                f"Password: {password}",
+                "",
+                "Recovery codes:",
+                *[f"- {code}" for code in recovery_codes],
+                "",
+                "Delete this file after the admin password and recovery codes are stored safely.",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    os.chmod(path, stat.S_IRUSR | stat.S_IWUSR)
+    return path
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Application startup and shutdown lifecycle."""
@@ -273,13 +309,17 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                 )
                 await db.commit()
                 _log = __import__("logging").getLogger(__name__)
+                credentials_path = _write_initial_admin_credentials_file(
+                    username=admin_user,
+                    password=admin_pass,
+                    recovery_codes=recovery_codes,
+                )
                 _log.info("=" * 60)
                 _log.info("  ADMIN USER CREATED (first startup)")
                 _log.info(f"  Username: {admin_user}")
-                _log.info(f"  Password: {admin_pass}")
-                _log.info(f"  Recovery codes: {', '.join(recovery_codes)}")
+                _log.info("  Initial credentials saved to owner-only file: %s", credentials_path)
                 _log.info("  Change this password after first login!")
-                _log.info("  Save these recovery codes — they are shown only once!")
+                _log.info("  Delete the credentials file after secure storage.")
                 _log.info("=" * 60)
                 # Persist to .env if auto-generated
                 if not app_settings.admin_password:

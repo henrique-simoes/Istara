@@ -13,6 +13,7 @@ import DonateComputeToggle from "@/components/common/DonateComputeToggle";
 import PasskeyManager from "@/components/settings/PasskeyManager";
 import TOTPManager from "@/components/settings/TOTPManager";
 import SessionManager from "@/components/settings/SessionManager";
+import ViewOnboarding from "@/components/common/ViewOnboarding";
 import { resetAllOnboarding } from "@/hooks/useViewOnboarding";
 import {
   MODEL_PROVIDER_OPTIONS,
@@ -67,6 +68,7 @@ export default function SettingsView() {
   return (
     <div className="flex-1 overflow-y-auto p-6 max-w-5xl mx-auto space-y-6">
       <h2 className="text-lg font-semibold text-slate-900 dark:text-white">⚙️ Settings</h2>
+      <ViewOnboarding viewId="settings" title="System Settings" description="Configure model providers, connection strings, authentication factors, sessions, updates, and local compute donation." chatPrompt="What should I configure first in settings?" />
 
       {/* Software Updates */}
       <UpdateChecker />

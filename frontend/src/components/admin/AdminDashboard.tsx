@@ -6,6 +6,7 @@ import { Activity, Check, Copy, Cpu, FolderOpen, KeyRound, Lock, RefreshCw, Shie
 import { admin as adminApi, permissionRequests } from "@/lib/api";
 import type { PermissionRequestItem } from "@/lib/types";
 import { useAuthStore } from "@/stores/authStore";
+import ViewOnboarding from "@/components/common/ViewOnboarding";
 
 function MetricCard({ label, value, icon: Icon, note }: { label: string; value: string | number; icon: any; note?: string }) {
   return (
@@ -149,6 +150,8 @@ export default function AdminDashboard() {
             Refresh
           </button>
         </div>
+
+        <ViewOnboarding viewId="admin" title="Admin Console" description="Manage users, project access, permission requests, invite strings, compute donation strings, and system-wide release controls." chatPrompt="What can global admins manage here?" />
 
         {error && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300">{error}</div>}
 
