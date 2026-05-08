@@ -8,18 +8,24 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import uuid
 from datetime import datetime, timezone
-from urllib.parse import urlparse
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.content_guard import ContentGuard
+from app.core.endpoint_security import EndpointPolicy, normalized_service_url, redacted_endpoint_label
 from app.core.field_encryption import decrypt_field, encrypt_field
 from app.models.mcp_server_config import MCPServerConfig
 
 logger = logging.getLogger(__name__)
 SUPPORTED_TRANSPORTS = {"http"}
+_guard = ContentGuard()
+_TOOL_NAME_RE = re.compile(r"^[A-Za-z0-9_.:-]{1,128}$")
+MAX_MCP_TOOL_DESCRIPTION_CHARS = 1000
+MAX_MCP_TOOL_SCHEMA_BYTES = 16 * 1024
 
 # ---------------------------------------------------------------------------
 # Conditional import of MCP client libraries
@@ -64,22 +70,25 @@ async def register_server(
             "Only HTTP MCP client transport is currently supported by Istara. "
             "Start stdio or WebSocket servers behind an HTTP MCP bridge before registering them."
         )
-    parsed = urlparse(url.strip())
-    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+    if "://" not in (url or ""):
         raise ValueError("MCP server URL must be an absolute http(s) URL")
+    normalized_url = normalized_service_url(
+        url,
+        EndpointPolicy(service_name="MCP server"),
+    )
     safe_headers = _validate_headers(headers or {})
 
     config = MCPServerConfig(
         id=str(uuid.uuid4()),
         name=name,
-        url=url.strip(),
+        url=normalized_url,
         transport=transport,
         headers_json=encrypt_field(json.dumps(safe_headers)),
     )
     db.add(config)
     await db.commit()
     await db.refresh(config)
-    logger.info("Registered MCP server '%s' at %s", name, url)
+    logger.info("Registered MCP server '%s' at %s", name, redacted_endpoint_label(normalized_url))
     return config
 
 
@@ -97,6 +106,47 @@ def _validate_headers(headers: dict) -> dict[str, str]:
             raise ValueError("MCP header key or value is too long")
         safe[key_str] = value_str
     return safe
+
+
+def _safe_tool_descriptor(tool) -> dict | None:
+    """Return a bounded, prompt-safe MCP tool descriptor."""
+    name = str(getattr(tool, "name", "") or "").strip()
+    if not _TOOL_NAME_RE.match(name):
+        logger.warning("Dropping MCP tool with invalid name: %r", name[:80])
+        return None
+
+    description = str(getattr(tool, "description", "") or "")
+    scan = _guard.scan_text(description)
+    safe_description = scan.cleaned_text[:MAX_MCP_TOOL_DESCRIPTION_CHARS]
+    warnings: list[str] = []
+    if scan.threat_level in ("medium", "high"):
+        warnings.append("description_prompt_injection_indicators")
+        safe_description = (
+            "[Istara security: tool description contained instruction-like content "
+            "and was sanitized.] "
+            + safe_description
+        )[:MAX_MCP_TOOL_DESCRIPTION_CHARS]
+
+    input_schema = getattr(tool, "inputSchema", None) or {}
+    if not isinstance(input_schema, dict):
+        input_schema = {}
+        warnings.append("invalid_input_schema")
+    encoded_schema = json.dumps(input_schema, sort_keys=True, default=str).encode("utf-8")
+    if len(encoded_schema) > MAX_MCP_TOOL_SCHEMA_BYTES:
+        input_schema = {
+            "type": "object",
+            "properties": {},
+            "additionalProperties": True,
+            "x-istara-warning": "Original MCP tool schema exceeded Istara's cache limit.",
+        }
+        warnings.append("input_schema_truncated")
+
+    return {
+        "name": name,
+        "description": safe_description,
+        "input_schema": input_schema,
+        "risk_warnings": warnings,
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -129,12 +179,10 @@ async def discover_tools(db: AsyncSession, server_id: str) -> list[dict]:
                 await session.initialize()
                 result = await session.list_tools()
                 tools = [
-                    {
-                        "name": t.name,
-                        "description": t.description or "",
-                        "input_schema": t.inputSchema or {},
-                    }
+                    descriptor
                     for t in result.tools
+                    for descriptor in [_safe_tool_descriptor(t)]
+                    if descriptor is not None
                 ]
                 server.tools_json = json.dumps(tools)
                 server.last_discovery_at = datetime.now(timezone.utc)

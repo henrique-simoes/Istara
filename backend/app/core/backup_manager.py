@@ -7,6 +7,7 @@ project repos, agent personas, skill definitions, and configuration files.
 from __future__ import annotations
 
 import asyncio
+import fnmatch
 import hashlib
 import json
 import logging
@@ -31,6 +32,26 @@ logger = logging.getLogger(__name__)
 
 # Thread pool for blocking I/O (SQLite VACUUM, checksums, tar creation)
 _executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="backup")
+BACKUP_EXCLUDED_NAMES = {
+    ".env",
+    ".env.local",
+    ".env.production",
+    ".env.development",
+    "id_rsa",
+    "id_dsa",
+    "id_ecdsa",
+    "id_ed25519",
+    "LLMs",
+    "Model_Finetuning",
+}
+BACKUP_EXCLUDED_GLOBS = (
+    "*.pem",
+    "*.key",
+    "*.p12",
+    "*.pfx",
+    "*.crt",
+    "*.cert",
+)
 
 
 # ---------------------------------------------------------------------------
@@ -102,6 +123,14 @@ def _count_subdirs(dir_path: str | Path) -> int:
     if not p.is_dir():
         return 0
     return sum(1 for d in p.iterdir() if d.is_dir())
+
+
+def _is_backup_excluded(path: Path) -> bool:
+    for part in path.parts:
+        if part in BACKUP_EXCLUDED_NAMES:
+            return True
+    name = path.name
+    return any(fnmatch.fnmatch(name, pattern) for pattern in BACKUP_EXCLUDED_GLOBS)
 
 
 def _backup_dir() -> Path:
@@ -477,6 +506,8 @@ class BackupManager:
                 "file_count": file_count,
                 "checksums": checksums,
                 "components": components,
+                "excluded_names": sorted(BACKUP_EXCLUDED_NAMES),
+                "excluded_globs": list(BACKUP_EXCLUDED_GLOBS),
             }
 
             manifest_path = tmp / "manifest.json"
@@ -521,8 +552,11 @@ class BackupManager:
 
         for item in src_path.rglob("*"):
             if item.is_file():
+                relative_path = item.relative_to(src_path)
+                if _is_backup_excluded(relative_path):
+                    continue
                 archive_key = str(
-                    PurePosixPath(archive_prefix) / PurePosixPath(item.relative_to(src_path).as_posix())
+                    PurePosixPath(archive_prefix) / PurePosixPath(relative_path.as_posix())
                 )
 
                 if backup_type == "incremental":
@@ -530,7 +564,7 @@ class BackupManager:
                     if archive_key in previous_checksums and previous_checksums[archive_key] == current_hash:
                         continue  # Unchanged, skip
 
-                target = dest_path / item.relative_to(src_path)
+                target = dest_path / relative_path
                 target.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(str(item), str(target))
 

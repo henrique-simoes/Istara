@@ -8,8 +8,8 @@ Use it with:
 - `SYSTEM_PROMPT.md` for repo-wide operating rules
 - Compass Forge status/brief/impact/gates for the current repository map
 - `CHANGE_CHECKLIST.md` for step-by-step execution
-- `COMPASS_FUTURE_FEATURES.md` for future plans, deferred hardening, and feature candidates
-- `planner.md` for planned, multi-agent, branch-review, stale-branch, or review/correction workflows
+- `DOCUMENTATION.md`, `TESTING.md`, and `SECURITY.md` when docs, verification history, or release/security process changes
+- Compass Forge specs/tasks/evidence for future plans, deferred hardening, stale-branch analysis, and review/correction workflows
 
 The rule is simple: no change is local unless proven otherwise.
 
@@ -34,8 +34,8 @@ For any non-trivial change, check these six surfaces:
 | Background jobs/events | websocket broadcasters, frontend listeners, notification handling, loops/autoresearch views | Async systems fail indirectly |
 | Persona or skill behavior | persona files, skill definitions, routing/recommendation logic, tests, docs | Agent behavior changes without architectural memory |
 | Release/update flow | version script, workflows, updater routes, desktop tray update logic, docs | Shipping/install/update path breaks |
-| Compass Forge doctrine | prompts, `planner.md`, checklists, Tech narrative, personas, Compass Forge evidence, scenarios | Future agents inherit the wrong operating model |
-| deferred feature or future plan | `COMPASS_FUTURE_FEATURES.md`, `current_plans.md` if execution starts, `CHANGELOG.md` if shipped | Product memory disappears between sessions |
+| Compass Forge doctrine | prompts, `AGENTS.md`, checklists, Tech narrative, personas, Compass Forge evidence, scenarios | Future agents inherit the wrong operating model |
+| deferred feature or future plan | Compass Forge spec/task notes, relevant tracked strategy doc, `CHANGELOG.md` if shipped | Product memory disappears between sessions |
 
 ## Backend Matrix
 
@@ -45,7 +45,7 @@ For any non-trivial change, check these six surfaces:
 |---|---|
 | `backend/app/api/routes/*.py` endpoint or payload | `backend/app/main.py`, `frontend/src/lib/api.ts`, `frontend/src/lib/types.ts`, relevant store(s), relevant view/component(s), e2e/simulation scenarios, Compass Forge route/type drift |
 | route auth/role rules | `backend/app/core/security_middleware.py`, `backend/app/core/auth.py`, `frontend/src/components/auth/LoginScreen.tsx`, auth-dependent UX, security tests |
-| project-scoped authorization | `backend/app/core/permissions.py`, `backend/app/models/project_member.py`, all affected project-scoped routes, frontend read-only/disabled states, `docs/TEAM_RBAC_PERMISSION_MATRIX.md`, security tests for `404` concealment and `403` forbidden mutations |
+| project-scoped authorization | `backend/app/core/permissions.py`, `backend/app/models/project_member.py`, all affected project-scoped routes, frontend read-only/disabled states, `Tech.md` role/RBAC sections, security tests for `404` concealment and `403` forbidden mutations |
 | system/admin route authorization | `backend/app/core/security_middleware.py`, MCP routes, backup routes, scheduler/autoresearch/loop/agent/channel/survey/audit routes, Admin Dashboard affordances, tests proving non-admins receive `403` for sensitive global reads and mutations |
 | interface/design route authorization | `backend/app/api/routes/interfaces.py`, Design Chat, screens, Figma import/export/config, handoff generation, mock endpoints, project-role frontend controls, tests for viewer read-only and researcher mutation behavior |
 | admin dashboard or `/api/admin/*` | `backend/app/core/permissions.py`, all aggregate source models, `frontend/src/components/admin/AdminDashboard.tsx`, admin-only nav visibility, metric empty/not-collected states, tests proving non-admins receive `403` |
@@ -146,7 +146,7 @@ For any non-trivial change, check these six surfaces:
 | persona files in `backend/app/agents/personas/*` | any docs/prompts that describe agent behavior, tests/simulations that rely on that persona, Compass Forge freshness if tracked inventory changes |
 | skill definition JSON | skills API/routes, planning/execution flows, reports, recommendation logic, `scripts/validate_skills.py`, simulation/e2e coverage |
 | removed legacy skill generator/export modules | do not reintroduce them as sources of truth; keep `definitions/*.json` canonical; run `python scripts/validate_skills.py` |
-| system prompt / repo instructions | `SYSTEM_PROMPT.md`, `planner.md`, wrappers (`CLAUDE.md`, `GEMINI.md`), checklist references, docs describing the workflow |
+| system prompt / repo instructions | `SYSTEM_PROMPT.md`, `AGENTS.md`, wrappers (`CLAUDE.md`, `GEMINI.md`, `QWEN.md`), checklist references, docs describing the workflow |
 | agent orchestration/routing | task routing keywords, specialty assumptions, chat/session creation, audit behavior |
 
 ## Testing Matrix
@@ -173,7 +173,7 @@ If a change would confuse a future agent reading the UI or API map, it probably 
 | If You Change | Must Also Inspect |
 |---|---|
 | architecture shape | Compass Forge map/impact/gate, `Tech.md` if the narrative architecture changed |
-| workflow/process expectations | `SYSTEM_PROMPT.md`, `planner.md`, `CHANGE_CHECKLIST.md`, model wrappers, contributor docs |
+| workflow/process expectations | `SYSTEM_PROMPT.md`, `AGENTS.md`, `CHANGE_CHECKLIST.md`, model wrappers, contributor docs |
 | release/update behavior | `Tech.md`, release workflow docs, updater descriptions, versioning script references |
 | user-facing capabilities | README/wiki/docs feature docs where applicable |
 | Istara-agent understanding of a feature | relevant persona files in `backend/app/agents/personas/`, prompt/process docs, Compass Forge freshness if inventory changed |
@@ -205,7 +205,7 @@ These are repo doctrines, not optional suggestions.
 | Doctrine | What It Means In Practice |
 |---|---|
 | Compass Forge must stay current | If a change alters how agents should understand, navigate, test, release, install, or preserve Istara, refresh/gate Compass Forge and update the active docs in the same change |
-| Planner is Compass context | If work uses planned, multi-agent, branch-review, stale-branch, or correction flow, `planner.md` must be read and preserved with the rest of Compass |
+| Legacy planner compatibility | `planner.md` is a migration note only; new planned, multi-agent, branch-review, stale-branch, or correction flow must use Compass Forge specs/tasks/evidence |
 | Update `Tech.md` when the system meaningfully changes | If architecture, process, versioning, update flow, installer flow, or subsystem behavior changed, the narrative technical reference must change too |
 | Update the testing suite for future changes | Do not only verify the current change manually; extend `tests/e2e_test.py`, `tests/simulation/scenarios/`, fixtures, or assertions so the feature remains protected later |
 | Add scenarios when change scope demands it | If existing simulation coverage no longer describes the changed flow well, add a new scenario instead of forcing the change into unrelated old coverage |

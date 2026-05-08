@@ -9,6 +9,7 @@ Supports:
 - WebAuthn/Passkey integration (via webauthn.py routes)
 """
 
+import asyncio
 import json
 import logging
 import uuid
@@ -64,6 +65,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 _login_limiter = BoundedWindowRateLimiter()
 _mfa_limiter = BoundedWindowRateLimiter()
+_registration_lock = asyncio.Lock()
 MAX_LOGIN_ATTEMPTS = 5
 LOGIN_WINDOW = 60  # seconds
 MAX_MFA_ATTEMPTS = 6
@@ -346,58 +348,68 @@ async def register(req: RegisterRequest, response: Response, request: Request):
             ),
         )
 
-    async with async_session() as db:
-        email_hash = hash_field(req.email)
-        existing = await db.execute(
-            select(User).where((User.username == req.username) | (User.email_hash == email_hash))
-        )
-        if existing.scalars().first():
-            raise HTTPException(status_code=409, detail="Username or email already exists.")
+    async with _registration_lock:
+        async with async_session() as db:
+            existing_user = await db.execute(select(User.id).limit(1))
+            if existing_user.scalar_one_or_none() is not None:
+                raise HTTPException(
+                    status_code=403,
+                    detail=(
+                        "Public registration is only available for the first admin account. "
+                        "Ask an admin for an invite connection string."
+                    ),
+                )
 
-        count_result = await db.execute(select(User))
-        is_first = len(count_result.scalars().all()) == 0
+            email_hash = hash_field(req.email)
+            existing = await db.execute(
+                select(User).where(
+                    (User.username == req.username) | (User.email_hash == email_hash)
+                )
+            )
+            if existing.scalars().first():
+                raise HTTPException(status_code=409, detail="Username or email already exists.")
 
-        recovery_codes = generate_recovery_codes()
+            recovery_codes = generate_recovery_codes()
 
-        user = User(
-            id=str(uuid.uuid4()),
-            username=req.username,
-            email=req.email,
-            email_hash=email_hash,
-            password_hash=hash_password(req.password),
-            role="admin" if is_first else "researcher",
-            display_name=req.display_name or req.username,
-        )
-        db.add(user)
-        await _replace_user_recovery_codes(
-            db, user, recovery_codes, request, created_by_user_id=user.id
-        )
-        await db.commit()
+            user = User(
+                id=str(uuid.uuid4()),
+                username=req.username,
+                email=req.email,
+                email_hash=email_hash,
+                password_hash=hash_password(req.password),
+                role="admin",
+                display_name=req.display_name or req.username,
+            )
+            db.add(user)
+            await _replace_user_recovery_codes(
+                db, user, recovery_codes, request, created_by_user_id=user.id
+            )
+            await db.commit()
 
-        token = await issue_auth_session_token(
-            db,
-            user,
-            request,
-            auth_method="register",
-        )
-        _set_auth_cookie(response, token)
-        logger.info(f"User registered: {user.username} (role={user.role})")
-        await record_auth_event(
-            request,
-            "auth.register.success",
-            user_id=user.id,
-            details={
-                "username": user.username,
-                "role": _role_value(user.role),
-                "first_user": is_first,
-            },
-        )
+            token = await issue_auth_session_token(
+                db,
+                user,
+                request,
+                auth_method="register",
+            )
+            _set_auth_cookie(response, token)
+            logger.info(f"User registered: {user.username} (role={user.role})")
+            await record_auth_event(
+                request,
+                "auth.register.success",
+                user_id=user.id,
+                details={
+                    "username": user.username,
+                    "role": _role_value(user.role),
+                    "first_user": True,
+                },
+            )
 
-        return {
-            "token": token,
-            "recovery_codes": recovery_codes,  # Shown ONCE — user must save these
-            "user": _user_to_dict(user),
-        }
+            return {
+                "token": token,
+                "recovery_codes": recovery_codes,  # Shown ONCE — user must save these
+                "user": _user_to_dict(user),
+            }
 
 
 @router.post("/auth/login")
@@ -919,7 +931,7 @@ async def team_status(request: Request):
 
     return {
         "team_mode": settings.team_mode,
-        "registration_enabled": settings.team_mode,
+        "registration_enabled": settings.team_mode and not has_users,
         "has_users": has_users,
         "insecure": insecure,
         "security_warnings": security_configuration_warnings(settings),

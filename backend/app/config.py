@@ -71,6 +71,10 @@ class Settings(BaseSettings):
     upload_dir: str = "./data/uploads"
     projects_dir: str = "./data/projects"
     agent_avatars_dir: str = "./data/agent_avatars"
+    upload_max_bytes: int = 100 * 1024 * 1024
+    upload_scanner_command: str = ""
+    upload_scanner_timeout_seconds: int = 30
+    upload_quarantine_on_prompt_injection: bool = True
     avatar_max_bytes: int = 5 * 1024 * 1024
     channel_attachment_max_bytes: int = 25 * 1024 * 1024
 
@@ -106,6 +110,11 @@ class Settings(BaseSettings):
     # Rate limiting
     rate_limit_enabled: bool = True
     rate_limit_default: str = "200/minute"
+    a2a_rate_limit_per_minute: int = 60
+    a2a_tasks_send_rate_limit_per_minute: int = 12
+    a2a_replay_ttl_seconds: int = 300
+    a2a_agent_card_auth_required_team_mode: bool = True
+    webhook_replay_ttl_seconds: int = 300
     # Comma-separated exact hosts/IPs or CIDRs whose forwarded client headers
     # may be trusted for rate limiting and request identity.
     trusted_proxy_hosts: str = "127.0.0.1,::1,localhost"

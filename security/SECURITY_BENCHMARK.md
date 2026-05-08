@@ -6,6 +6,13 @@ This benchmark is the release gate for Istara changes that touch authentication,
 
 It is intentionally stricter than a checklist. Each control has a status, severity, standard mapping, and evidence entry in `security/control_matrix.json`. CI runs `python scripts/security_benchmark.py --fail-on-threshold`; Compass Forge work on auth/security must attach that scorecard as evidence before the task is marked complete.
 
+Related tracked docs:
+
+- `SECURITY.md` for vulnerability reporting and incident response.
+- `security/RELEASE_SECURITY_READINESS.md` for release-candidate checks around auth, headers, endpoint validation, uploads, backups, MCP, LLM providers, and logs.
+- `security/ISTARA_SECURITY_ASSESSMENT_2026-05-08.md` for the current release-hardening assessment.
+- `testing/TEST_HISTORY.md` for curated security/eval baselines without raw private artifacts.
+
 ## Current Standard Set
 
 These are the standards Istara uses as the May 8, 2026 baseline:
@@ -62,12 +69,22 @@ For PRs, CI also passes the changed-file list into the benchmark. If a touched p
 The following areas are always treated as ASVS Level 3 style surfaces even when the deployment is local-first:
 
 - Login, registration, logout, token refresh, JWT parsing, session invalidation, auth cookies, and recovery codes.
+- First-admin bootstrap, invite/connection-string account creation, and the rule that public registration closes after bootstrap.
 - TOTP and WebAuthn/passkey registration, challenge storage, replay prevention, origin/RP validation, credential ownership, and credential revocation.
 - Team mode, local mode remote-login rejection, role and project permission checks, user management, and admin APIs.
+- File upload, document ingestion, folder linking, media preview/serve paths, and any user-controlled artifact that enters RAG/vector/BM25 storage.
 - Connection strings, relay/node joining, pooled compute credentials, LLM server API keys, and encrypted provider secrets.
 - MCP client/server tools, webhook ingress, channel integrations, WhatsApp/Telegram connectors, and any public callback endpoint.
-- Autoresearch, skill evolution, Hyperagent/DGM-H proposals, Memento-style agent creation, ReasoningBank memories, rollback, and proposal approval.
+- A2A JSON-RPC, autoresearch, skill evolution, Hyperagent/DGM-H proposals, Memento-style agent creation, ReasoningBank memories, rollback, and proposal approval.
 - Prompt-RAG, vector/RAG, BM25, LLMLingua-style compression, model routing, ensemble/consensus, telemetry, and audit logs where prompt or memory content may affect tool use.
+
+Release hardening for these surfaces now includes exact replay rejection for
+webhook and A2A mutation ingress, optional upload scanner hooks, deterministic
+file-signature checks, quarantine before RAG ingestion, production CSP/HSTS and
+auth-origin validation, MCP/LLM endpoint URL validation, prompt-sanitized MCP
+tool descriptors, untrusted ReasoningBank retrieval wrapping, and backup
+exclusion of secret-like files plus protected local `LLMs/` and
+`Model_Finetuning/` artifact folders.
 
 ## Compass Forge Contract
 

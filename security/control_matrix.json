@@ -20,8 +20,10 @@
     "auth_security_change": {
       "changed_path_patterns": [
         "backend/app/api/routes/auth.py",
+        "backend/app/api/routes/a2a.py",
         "backend/app/api/routes/webauthn.py",
         "backend/app/api/routes/connections.py",
+        "backend/app/api/routes/files.py",
         "backend/app/api/routes/mcp.py",
         "backend/app/api/routes/llm_servers.py",
         "backend/app/api/routes/webhooks.py",
@@ -33,6 +35,10 @@
         "backend/app/core/security*.py",
         "backend/app/core/log_redaction.py",
         "backend/app/core/network_security.py",
+        "backend/app/core/replay_cache.py",
+        "backend/app/core/endpoint_security.py",
+        "backend/app/core/upload_security.py",
+        "backend/app/core/backup_manager.py",
         "backend/app/core/permissions.py",
         "backend/app/core/field_encryption.py",
         "backend/app/core/connection_string.py",
@@ -42,7 +48,11 @@
         "backend/app/core/meta_hyperagent.py",
         "backend/app/core/reasoning_bank.py",
         "backend/app/core/sandbox_evaluation.py",
+        "backend/app/main.py",
         "backend/app/mcp/**",
+        "backend/app/services/mcp_client_manager.py",
+        "backend/app/services/a2a.py",
+        "backend/app/models/agent.py",
         "backend/app/models/user.py",
         "backend/app/models/*auth*.py",
         "backend/app/models/*webauthn*.py",
@@ -51,6 +61,7 @@
         "backend/alembic/versions/*webauthn*.py",
         "backend/alembic/versions/*recovery*.py",
         "frontend/src/stores/authStore.ts",
+        "frontend/src/app/login/page.tsx",
         "frontend/src/components/auth/**",
         "frontend/src/components/common/UserManagement.tsx",
         "frontend/src/components/settings/PasskeyManager.tsx",
@@ -65,9 +76,15 @@
         ".github/workflows/*.yml",
         "security/**",
         "tests/test_auth_security.py",
+        "tests/test_a2a_security.py",
         "tests/test_webauthn.py",
         "tests/test_connections.py",
+        "tests/test_files.py",
+        "tests/test_backup.py",
+        "tests/test_llm_servers.py",
         "tests/test_mcp*.py",
+        "tests/test_rag_resilience.py",
+        "tests/test_transport_headers.py",
         "tests/test_*security*.py",
         "tests/test_improvement_governance.py",
         "tests/test_reasoning_bank.py",
@@ -344,6 +361,27 @@
       "notes": "Frontend and backend agree on expired/invalid session handling."
     },
     {
+      "id": "AUTH-008",
+      "title": "Public registration is limited to first-admin bootstrap",
+      "category": "account-lifecycle",
+      "required_level": "high_risk",
+      "severity": "critical",
+      "status": "pass",
+      "standards": [
+        "owasp-asvs:V2",
+        "owasp-asvs:V4",
+        "nist-800-63:account-lifecycle"
+      ],
+      "evidence": [
+        "backend/app/api/routes/auth.py",
+        "frontend/src/components/auth/LoginScreen.tsx",
+        "frontend/src/app/login/page.tsx",
+        "tests/test_auth_security.py"
+      ],
+      "future_change_trigger": true,
+      "notes": "After the first admin exists, new users must come through admin management or invite/connection-string workflows."
+    },
+    {
       "id": "AUTHZ-001",
       "title": "Role and project permissions are centralized and tested",
       "category": "authorization",
@@ -398,12 +436,58 @@
       ],
       "evidence": [
         "backend/app/core/security_middleware.py",
+        "backend/app/core/security_headers.py",
+        "backend/app/core/auth_origins.py",
         "backend/app/config.py",
         "tests/test_transport_headers.py",
         "tests/test_network_security.py"
       ],
       "future_change_trigger": true,
-      "notes": "Transport and origin policy are treated as a release surface."
+      "notes": "Transport, production CSP/HSTS, trusted origins, and production auth configuration are treated as release surfaces."
+    },
+    {
+      "id": "API-002",
+      "title": "File uploads are streamed, scanned, and quarantined before RAG ingestion",
+      "category": "api-security",
+      "required_level": "high_risk",
+      "severity": "high",
+      "status": "pass",
+      "standards": [
+        "owasp-asvs:V12",
+        "owasp-wstg:INPV",
+        "cis-controls:3"
+      ],
+      "evidence": [
+        "backend/app/api/routes/files.py",
+        "backend/app/core/upload_security.py",
+        "backend/app/config.py",
+        "tests/test_files.py",
+        "tests/test_documents.py",
+        "tests/test_rag_resilience.py"
+      ],
+      "future_change_trigger": true,
+      "notes": "Uploads enforce extension allowlists, project authorization, containment, bounded streaming, deterministic signature checks, optional scanner hooks, and prompt-injection quarantine before vector/BM25 ingestion."
+    },
+    {
+      "id": "DATA-002",
+      "title": "Backup and export paths exclude secrets and protected local artifacts",
+      "category": "data-protection",
+      "required_level": "high_risk",
+      "severity": "high",
+      "status": "pass",
+      "standards": [
+        "owasp-asvs:V6",
+        "cis-controls:3",
+        "nist-ssdf:PS.3"
+      ],
+      "evidence": [
+        "backend/app/core/backup_manager.py",
+        "tests/test_backup.py",
+        "security/RELEASE_SECURITY_READINESS.md",
+        "security/control_matrix.json"
+      ],
+      "future_change_trigger": true,
+      "notes": "Backups redact backend .env content and skip secret-like files, private keys, LLMs/, and Model_Finetuning/ from copied directories while preserving restore integrity checks."
     },
     {
       "id": "SECRETS-001",
@@ -441,12 +525,13 @@
       "evidence": [
         "backend/app/core/field_encryption.py",
         "backend/app/api/routes/llm_servers.py",
+        "backend/app/core/endpoint_security.py",
         "backend/app/models/database.py",
         "tests/test_field_encryption.py",
         "tests/test_llm_servers.py"
       ],
       "future_change_trigger": true,
-      "notes": "LLM server API keys and integration secrets are not stored as plaintext configuration."
+      "notes": "LLM server API keys and integration secrets are encrypted at rest, and user-configured provider URLs reject embedded credentials, sensitive query tokens, metadata endpoints, and public plaintext transport."
     },
     {
       "id": "CONN-001",
@@ -484,12 +569,13 @@
       ],
       "evidence": [
         "backend/app/api/routes/mcp.py",
+        "backend/app/services/mcp_client_manager.py",
         "backend/app/mcp/server.py",
         "tests/test_mcp.py",
         "tests/simulation/scenarios/56-mcp-server-security.mjs"
       ],
       "future_change_trigger": true,
-      "notes": "Tool execution must remain policy-mediated and visible to audit processes."
+      "notes": "Tool execution must remain policy-mediated and visible to audit processes; external MCP URLs and cached tool descriptors are validated, bounded, and prompt-sanitized."
     },
     {
       "id": "WEBHOOK-001",
@@ -504,13 +590,14 @@
         "cis-controls:6"
       ],
       "evidence": [
+        "backend/app/api/routes/webhooks.py",
         "backend/app/api/routes/channels.py",
         "backend/app/api/routes/surveys.py",
         "tests/test_webhooks_security.py",
         "tests/test_channel_file_security.py"
       ],
       "future_change_trigger": true,
-      "notes": "WhatsApp, Telegram, survey, and future inbound integrations must not bypass ingress validation."
+      "notes": "WhatsApp, Telegram, survey, and future inbound integrations must not bypass ingress validation, signature/token checks, or bounded replay protection."
     },
     {
       "id": "AI-001",
@@ -526,13 +613,18 @@
       ],
       "evidence": [
         "backend/app/core/content_guard.py",
+        "backend/app/core/rag.py",
+        "backend/app/core/upload_security.py",
+        "backend/app/core/endpoint_security.py",
         "backend/app/core/model_capabilities.py",
         "backend/app/core/compute_registry.py",
         "tests/test_content_guard.py",
-        "tests/test_llm_servers.py"
+        "tests/test_llm_servers.py",
+        "tests/test_files.py",
+        "tests/test_rag_resilience.py"
       ],
       "future_change_trigger": true,
-      "notes": "BM25/RAG/prompt-RAG/LLMLingua changes must not compress away governance, tool, or credential boundaries."
+      "notes": "BM25/RAG/prompt-RAG/LLMLingua changes must not compress away governance, tool, or credential boundaries; retrieved context remains wrapped as untrusted and suspicious uploads are quarantined before indexing."
     },
     {
       "id": "AI-002",
@@ -577,7 +669,30 @@
         "tests/test_research_integrity.py"
       ],
       "future_change_trigger": true,
-      "notes": "Reasoning memories may influence orchestration and therefore need provenance, visibility, and rollback-aware use."
+      "notes": "Reasoning memories may influence orchestration and therefore need provenance, visibility, prompt-injection marking, untrusted retrieval wrapping, and rollback-aware use."
+    },
+    {
+      "id": "AI-004",
+      "title": "A2A JSON-RPC mutation requires authenticated and bounded access",
+      "category": "agentic-governance",
+      "required_level": "high_risk",
+      "severity": "critical",
+      "status": "pass",
+      "standards": [
+        "owasp-agentic:agent-authorization",
+        "owasp-agentic:tool-permissions",
+        "owasp-llm:excessive-agency"
+      ],
+      "evidence": [
+        "backend/app/main.py",
+        "backend/app/api/routes/a2a.py",
+        "backend/app/core/replay_cache.py",
+        "backend/app/services/a2a.py",
+        "backend/app/core/network_security.py",
+        "tests/test_a2a_security.py"
+      ],
+      "future_change_trigger": true,
+      "notes": "The non-/api A2A protocol now uses route-level auth, optional team-mode agent-card auth, local-mode network-token semantics, request size caps, metadata limits, per-client rate limits, replay rejection, audit events, and actor traceability."
     },
     {
       "id": "AUDIT-001",

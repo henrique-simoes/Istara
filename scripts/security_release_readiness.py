@@ -5,11 +5,16 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from dataclasses import dataclass
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 ROOT = Path(__file__).resolve().parent.parent
+BACKEND = ROOT / "backend"
+if str(BACKEND) not in sys.path:
+    sys.path.insert(0, str(BACKEND))
 
 
 @dataclass(frozen=True)
@@ -167,6 +172,34 @@ def evaluate_readiness() -> dict[str, Any]:
     for required in ("better-auth", "owasp-logging", "github-attestations"):
         if required not in standards:
             issues.append(f"security/control_matrix.json: missing {required} standard")
+
+    try:
+        from app.core.security_headers import SECURITY_HEADERS, validate_security_headers
+
+        issues.extend(
+            f"security headers: {issue}" for issue in validate_security_headers(SECURITY_HEADERS)
+        )
+    except Exception as exc:  # pragma: no cover - defensive CLI path
+        issues.append(f"security headers contract unreadable: {exc}")
+
+    try:
+        from app.core.auth_origins import production_security_configuration_issues
+
+        secure_production_config = SimpleNamespace(
+            istara_runtime_profile="public",
+            team_mode=True,
+            jwt_secret="x" * 48,
+            cors_origins="https://istara.example.com",
+            webauthn_origins="https://istara.example.com",
+            webauthn_rp_id="istara.example.com",
+            cors_origin_regex="",
+        )
+        issues.extend(
+            f"production auth config: {issue}"
+            for issue in production_security_configuration_issues(secure_production_config)
+        )
+    except Exception as exc:  # pragma: no cover - defensive CLI path
+        issues.append(f"production auth config audit unreadable: {exc}")
 
     return {
         "status": "pass" if not issues else "fail",

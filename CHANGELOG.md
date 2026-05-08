@@ -10,11 +10,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). Ver
 
 ## [Unreleased] — 2026-04-30 Stabilization Sweep
 
-See `docs/STABILIZATION_AUDIT_2026_04_30.md` for the full Compass audit note.
+The detailed scratch audit note has been retired. Durable stabilization context
+now lives in `Tech.md`, `TESTING.md`, `testing/TEST_HISTORY.md`, and Compass
+Forge evidence.
 
 ### Added
-- **Team RBAC Permission Matrix**: Added a tracked team access contract documenting global admin, project admin, researcher, viewer, `404` concealment, and `403` forbidden-operation semantics.
-- **Compass Future Features Ledger**: Added `COMPASS_FUTURE_FEATURES.md` as a protected Compass place for future plans, deferred hardening, and feature candidates, seeded with durable token/model/compute accounting and webhook verification audit work.
+- **Team RBAC Permission Contract**: Added central permission behavior documenting global admin, project admin, researcher, viewer, `404` concealment, and `403` forbidden-operation semantics.
+- **Compass Forge Planning Evidence**: Future plans, deferred hardening, and feature candidates now live in Compass Forge specs/tasks/evidence or domain strategy docs instead of root scratch ledgers.
 - **Admin Dashboard Foundation**: Added admin-only `/api/admin/*` aggregation endpoints and an admin-only dashboard for global users, project, access, compute, usage, and connection-string visibility.
 - **System-Wide RBAC Hardening Pass**: Extended central project/admin authorization checks across Files, Memory, Context DAG, Metrics, UX Laws compliance, Reports, Code Applications, Codebook Versions, Deployments, MCP clients, Agents, Context hierarchy, Channels, Surveys, Loops, Autoresearch, Notifications, Backup, Scheduler, and Audit routes.
 - **Final Authorization Inventory Pass**: Closed remaining security/product edges in compute pool readouts, legacy voice-transcribe, presentation slide instructions, steering queues, Meta-Hyperagent, Interfaces screens/Figma/handoff/mock endpoints, and settings telemetry/self-healing exports.

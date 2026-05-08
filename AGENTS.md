@@ -29,3 +29,9 @@ Update `security/control_matrix.json`, `security/SECURITY_BENCHMARK.md`, and `te
 ## Protected Local Artifact Folders
 
 `LLMs/` and `Model_Finetuning/` are local, gitignored model/training artifact folders. Never delete, prune, move, or clean them during agent work.
+
+## Live LLM and Model Loading Safety
+
+Do not start live backend/frontend servers, send chat-completion probes, or trigger model loading without explicit user permission. Passive LLM status/discovery checks must stay passive. Active model loading belongs only on deliberate request paths and must be bounded to one configured target so agent work never loads multiple heavy models at once.
+
+Use gitignored environment files, process environment, or macOS Keychain for live LLM endpoints and tokens. Never commit or paste private LLM server URLs, tokens, connection strings, or endpoint fingerprints that could identify a private server.

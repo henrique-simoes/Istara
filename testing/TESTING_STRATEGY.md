@@ -88,6 +88,22 @@ Hyperagent, thinking-output controls, and voice transcription contracts. It
 writes `manifest.json`, `summary.json`, `results.jsonl`, and `report.md` under
 `tests/evals/.results/` for later comparison.
 
+## Artifact History and Retention
+
+Tracked docs should contain curated summaries, not raw run dumps. Store raw
+outputs under the gitignored result roots:
+
+- `tests/evals/.results/` for eval manifests, summaries, JSONL results, and
+  reports.
+- `tests/simulation/.results/` for scenario reports, screenshots, and traces.
+- `security/security_scorecard.json` locally or CI artifacts for benchmark
+  scorecards.
+- ignored benchmark output directories for transient JSON reports.
+
+When a run becomes a release baseline, add a compact entry to
+`testing/TEST_HISTORY.md` with date, scope, git SHA when available, dirty/clean
+state, command evidence or artifact paths, pass/fail counts, and residual risks.
+
 ## Mutation and Property Testing Gates
 
 Mutation testing is now executable in CI for scoped, deterministic targets:

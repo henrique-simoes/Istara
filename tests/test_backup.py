@@ -12,6 +12,7 @@ from app.config import settings
 from app.models.backup import BackupRecord
 from app.models.database import async_session, init_db
 from app.core.auth import create_token
+from app.core.backup_manager import BackupManager
 
 
 @pytest.fixture(autouse=True)
@@ -155,3 +156,31 @@ async def test_backup_download_rejects_record_filename_traversal(auth_headers, t
         response = await ac.get(f"/api/backups/{backup_id}/download", headers=auth_headers)
 
     assert response.status_code == 404
+
+
+def test_backup_copy_excludes_secret_and_local_model_artifacts(tmp_path):
+    src = tmp_path / "src"
+    dest = tmp_path / "dest"
+    src.mkdir()
+    (src / "notes.txt").write_text("safe", encoding="utf-8")
+    (src / ".env").write_text("TOKEN=secret", encoding="utf-8")
+    (src / "private.pem").write_text("secret", encoding="utf-8")
+    model_dir = src / "LLMs"
+    model_dir.mkdir()
+    (model_dir / "model.gguf").write_bytes(b"large local model")
+
+    checksums: dict[str, str] = {}
+    BackupManager()._copy_dir(
+        str(src),
+        str(dest),
+        "archive",
+        checksums,
+        "full",
+        {},
+    )
+
+    assert (dest / "notes.txt").exists()
+    assert not (dest / ".env").exists()
+    assert not (dest / "private.pem").exists()
+    assert not (dest / "LLMs").exists()
+    assert sorted(checksums) == ["archive/notes.txt"]
