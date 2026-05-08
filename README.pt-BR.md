@@ -15,7 +15,7 @@
 [![Platform](https://img.shields.io/badge/plataforma-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey.svg)](installer/)
 [![GitHub](https://img.shields.io/badge/GitHub-henrique--simoes%2FIstara-181717?logo=github)](https://github.com/henrique-simoes/Istara)
 
-[**Instalar em 1 Minuto**](#instalar) · [**Arquitetura**](#arquitetura) · [**Skills de Pesquisa**](#53-skills-de-pesquisa) · [**Agentes**](#5-agentes-de-ia) · [**Referências**](#referências-acadêmicas) · [**Contribuir**](CONTRIBUTING.md)
+[**Instalar em 1 Minuto**](#instalar) · [**Arquitetura**](#arquitetura) · [**Testes**](TESTING.md) · [**Segurança**](SECURITY.md) · [**Mapa de Docs**](DOCUMENTATION.md) · [**Referências**](#referências-acadêmicas-e-padrões) · [**Contribuir**](CONTRIBUTING.md)
 
 ---
 
@@ -48,49 +48,54 @@
 | 🧾 Governança de Melhorias | Mudanças de auto-evolução têm aprovação, evidências, métricas, rollback e reversão rastreáveis |
 | ✅ Saúde do Ensemble | Consenso multi-modelo, revisão adversarial e debates — cada insight sobrevive ao escrutínio |
 
+<details>
+<summary><strong>Ver screenshots do produto</strong></summary>
+
 <div align="center">
   <p><strong>Chat Inteligente:</strong> Converse com o contexto da sua pesquisa. Pergunte sobre achados, faça brainstorm com os agentes e obtenha respostas instantâneas baseadas nos seus dados.</p>
-  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.37.30.png" width="600" />
-  
+  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.37.30.png" width="900" />
+
   <p><strong>Achados de Pesquisa Atômica:</strong> Extraia automaticamente nuggets, fatos, insights e recomendações. Cada afirmação é vinculada à sua fonte original para rastreabilidade total.</p>
-  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.37.34.png" width="600" />
-  
+  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.37.34.png" width="900" />
+
   <p><strong>Conformidade com Leis de UX:</strong> Audite seus designs contra mais de 30 princípios psicológicos e heurísticas de Nielsen. Veja exatamente onde sua UI brilha ou precisa melhorar.</p>
-  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.38.34.png" width="600" />
-  
+  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.38.34.png" width="900" />
+
   <p><strong>Gestão Autônoma de Tarefas:</strong> Um poderoso quadro Kanban onde os agentes assumem tarefas, executam skills e reportam o progresso em tempo real.</p>
-  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.38.47.png" width="600" />
-  
+  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.38.47.png" width="900" />
+
   <p><strong>Atribuição Multi-Agente:</strong> Escolha o melhor agente para o trabalho. Direcione tarefas para especialistas como Pixel para auditorias de UI ou Sage para avaliação de UX.</p>
-  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.38.54.png" width="600" />
-  
+  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.38.54.png" width="900" />
+
   <p><strong>Entrevistas e Transcrições:</strong> Istara pode transcrever, categorizar, analisar, relacionar e gerar relatórios de várias entrevistas ao mesmo tempo — incluindo mensagens de voz do WhatsApp e Telegram com transcrição automática Whisper e scoring de confiabilidade inter-codificador. Encontre insights compartilhados em todo o seu grupo de participantes!</p>
-  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.01.png" width="600" />
-  
+  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.01.png" width="900" />
+
   <p><strong>Motor de Contexto:</strong> Baseie seus agentes na cultura da sua empresa, objetivos do projeto e diretrizes específicas. Quanto mais eles sabem, melhor eles performam.</p>
-  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.08.png" width="600" />
-  
+  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.08.png" width="900" />
+
   <p><strong>Catálogo de Skills:</strong> Mais de 50 skills de pesquisa prontas para uso. De Análise Competitiva a Card Sorting, seus agentes estão equipados para qualquer desafio de pesquisa.</p>
-  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.11.png" width="600" />
-  
+  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.11.png" width="900" />
+
   <p><strong>Enxame Agentic:</strong> Conheça sua equipe—Cleo, Sentinel, Pixel, Sage e Echo. Cinco agentes especializados que aprendem uns com os outros e evoluem a cada tarefa.</p>
-  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.16.png" width="600" />
-  
+  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.16.png" width="900" />
+
   <p><strong>Integração Google Stitch & Figma:</strong> Gere telas com IA, conecte ao Figma para specs de handoff, audite componentes e feche a lacuna entre intenção de design e implementação.</p>
-  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.28.png" width="600" />
-  
+  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.28.png" width="900" />
+
   <p><strong>Canais de Mensageria:</strong> Implante sua pesquisa diretamente no Slack, Telegram ou WhatsApp. Colete dados onde seus usuários estão, gerenciado inteiramente por seus agentes.</p>
-  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.36.png" width="600" />
-  
+  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.36.png" width="900" />
+
   <p><strong>Integrações de Pesquisa (Surveys):</strong> Puxe dados do SurveyMonkey, Typeform ou Google Forms. Deixe que os agentes detectem bots de IA e sintetizem milhares de respostas em segundos.</p>
-  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.40.png" width="600" />
-  
+  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.40.png" width="900" />
+
   <p><strong>Motor de Autoresearch:</strong> Ative loops de melhoria contínua. Assista enquanto seus agentes otimizam seus próprios prompts e parâmetros de RAG para melhores resultados.</p>
-  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.59.png" width="600" />
-  
+  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.59.png" width="900" />
+
   <p><strong>Saúde do Ensemble:</strong> Confiança através da verificação. Istara usa consenso multi-modelo, revisão adversarial e rodadas de debate para garantir que cada insight seja sólido como uma rocha.</p>
-  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.40.15.png" width="600" />
+  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.40.15.png" width="900" />
 </div>
+
+</details>
 
 ---
 
@@ -147,6 +152,39 @@ Abra [http://localhost:3000](http://localhost:3000) após iniciar. O assistente 
 
 ---
 
+## Postura de Release, Testes e Segurança
+
+O processo de release público do Istara agora é orientado por evidências. O
+desenvolvimento passa por work orders, análise de impacto e gates do Compass
+Forge; o histórico de testes fica em baselines curadas, não em registros
+temporários espalhados.
+
+- **Testes e evals:** veja [TESTING.md](TESTING.md),
+  [testing/TESTING_STRATEGY.md](testing/TESTING_STRATEGY.md),
+  [testing/AI_EVALS_STRATEGY.md](testing/AI_EVALS_STRATEGY.md) e
+  [testing/TEST_HISTORY.md](testing/TEST_HISTORY.md). A suite cobre contratos
+  backend, build/tipos/lint/unit do frontend, relay, simulação, benchmarks de
+  orquestração, checagens live de LLM com perfil único, RAG, Prompt RAG,
+  LLMLingua, DAG/ReAct, ReasoningBank, Memento Skills, Meta Hyperagents,
+  controles de saída de pensamento e contratos de voz.
+- **Segurança:** veja [SECURITY.md](SECURITY.md),
+  [security/SECURITY_BENCHMARK.md](security/SECURITY_BENCHMARK.md),
+  [security/RELEASE_SECURITY_READINESS.md](security/RELEASE_SECURITY_READINESS.md)
+  e [a avaliação atual](security/ISTARA_SECURITY_ASSESSMENT_2026-05-08.md).
+  O gate de release mapeia controles para OWASP ASVS, NIST SP 800-63-4,
+  orientação do Better Auth, WebAuthn, OAuth Security BCP, riscos OWASP para
+  LLMs/agentes, NIST AI RMF, SSDF, SLSA, OpenSSF Scorecard e GitHub Artifact
+  Attestations.
+- **Testes live de LLM:** testes live usam um único perfil OpenAI-compatible
+  gitignored e o modelo fixo `google/gemma-4-e4b`. Endpoints e tokens privados
+  nunca são commitados, e os testes não devem procurar nem carregar múltiplos
+  modelos pesados.
+- **Organização da documentação:** veja [DOCUMENTATION.md](DOCUMENTATION.md)
+  para o mapa canônico de docs atuais, docs geradas, notas de compatibilidade,
+  histórico de testes, evidências de segurança e markdown runtime ignorado.
+
+---
+
 ## Por Que o Istara Existe
 
 Pesquisadores de UX merecem ferramentas que respeitam seus dados, garantem rigor metodológico e melhoram com o uso — não plataformas SaaS que fazem upload de transcrições para servidores externos, cobram por usuário, e esquecem tudo no momento em que você fecha a aba.
@@ -192,7 +230,7 @@ Os cinco agentes integrados carregam, cada um, quatro arquivos de persona evolut
 | `istara-devops` | **Sentinel** | Guardião de integridade de dados — monitora saúde, audita registros órfãos, executa verificações |
 | `istara-ui-audit` | **Pixel** | Especialista em conformidade WCAG — heurísticas de Nielsen, pontuação de acessibilidade |
 | `istara-ux-eval` | **Sage** | Analista de carga cognitiva — jornadas de usuário, detecção de fricção em fluxos |
-| `istara-sim` | **Echo** | Testadora end-to-end — simula usuários, executa 66 cenários de regressão |
+| `istara-sim` | **Echo** | Testadora end-to-end — simula usuários, executa 75 cenários de regressão |
 
 A persona de cada agente é armazenada em quatro arquivos — `CORE.md` (identidade), `SKILLS.md` (capacidades), `PROTOCOLS.md` (regras de comportamento), `MEMORY.md` (aprendizados acumulados) — e **todos os quatro evoluem conforme o agente trabalha**.
 
@@ -520,7 +558,7 @@ create_project()      get_deployment_status()
 
 Ambas as interfaces são controladas por `MCPAccessPolicy` com permissões por ferramenta, autenticação JWT e log completo de auditoria.
 
-> **Referências:** Anthropic (2024) "Model Context Protocol" modelcontextprotocol.io; Google (2025) "Agent-to-Agent Protocol" google.github.io/A2A
+> **Referências:** Model Context Protocol (2025) "MCP Specification" modelcontextprotocol.io; Agent2Agent Project (2026) "A2A Protocol Specification" a2a-protocol.org
 
 ---
 
@@ -546,12 +584,12 @@ O Istara é **zero-trust por padrão**:
 │  22 visões · Onboarding contextual por visão · Modo escuro/claro    │
 │  Estado Zustand · Conformidade WCAG 2.1 AA · Bandeja Tauri          │
 └────────────────────────────┬────────────────────────────────────────┘
-                             │ REST (337 endpoints) + WebSocket (16 eventos)
+                             │ REST (400+ endpoints) + WebSocket (16 eventos)
 ┌────────────────────────────▼────────────────────────────────────────┐
 │                         BACKEND (FastAPI)                           │
 │                                                                     │
 │  ┌────────────┐  ┌────────────┐  ┌─────────────┐  ┌─────────────┐  │
-│  │  337 REST  │  │ WebSocket  │  │ Servidor MCP│  │ Protocolo   │  │
+│  │ 400+ REST  │  │ WebSocket  │  │ Servidor MCP│  │ Protocolo   │  │
 │  │  endpoints │  │  Manager   │  │  (opt-in)   │  │ A2A         │  │
 │  └──────┬─────┘  └──────┬─────┘  └──────┬──────┘  └──────┬──────┘  │
 │         └───────────────┴───────────────┴─────────────────┘        │
@@ -738,9 +776,9 @@ Sage analisa jornadas de usuário em busca de carga cognitiva, fricção de flux
 
 ### Echo (`istara-sim`) — Testadora End-to-End
 
-Echo é a agente de garantia de qualidade. Ela executa a suíte de teste de simulação com 66 cenários, realiza testes de regressão em fluxos de trabalho de pesquisa, e valida que mudanças no sistema não quebram pipelines de pesquisa existentes.
+Echo é a agente de garantia de qualidade. Ela executa a suíte de teste de simulação com 75 cenários, realiza testes de regressão em fluxos de trabalho de pesquisa, e valida que mudanças no sistema não quebram pipelines de pesquisa existentes.
 
-**Capacidades principais:** Suite de testes E2E com 66 cenários · Testes de regressão · Simulação de usuário · Validação de endpoints de API · Benchmarking de performance
+**Capacidades principais:** Suite de testes E2E com 75 cenários · Testes de regressão · Simulação de usuário · Validação de endpoints de API · Benchmarking de performance
 
 </details>
 
@@ -749,7 +787,7 @@ Echo é a agente de garantia de qualidade. Ela executa a suíte de teste de simu
 ## Screenshots
 
 <!-- TODO: Adicionar screenshots após o primeiro deploy público -->
-*Screenshots em breve — veja [docs/](docs/) para diagramas de arquitetura.*
+*Referências adicionais de arquitetura e processo estão em [DOCUMENTATION.md](DOCUMENTATION.md).*
 
 ---
 
@@ -759,7 +797,7 @@ Echo é a agente de garantia de qualidade. Ela executa a suíte de teste de simu
 istara/
 ├── backend/                   # Backend FastAPI (Python 3.12)
 │   └── app/
-│       ├── api/               # 337 endpoints REST + manager WebSocket
+│       ├── api/               # 400+ endpoints REST + manager WebSocket
 │       ├── agents/            # Personas dos agentes (CORE, SKILLS, PROTOCOLS, MEMORY)
 │       ├── core/              # Orquestrador, RAG, motor de evolução, autoresearch
 │       ├── models/            # 51+ modelos SQLAlchemy 2.0
@@ -769,13 +807,15 @@ istara/
 │   └── src/
 │       ├── components/        # 22 visões + componentes UI compartilhados
 │       ├── stores/            # Gerenciamento de estado Zustand
-│       └── lib/               # Cliente API (337 endpoints tipados), tipos
+│       └── lib/               # Cliente API, helpers de rota, tipos compartilhados
 ├── desktop/                   # Aplicativo Tauri v2 para bandeja do sistema
 ├── installer/                 # Configs de build macOS DMG + Windows NSIS + Linux AppImage
 ├── relay/                     # Servidor relay WebSocket para doação de computação
 ├── skills/                    # Arquivos de definição de skill (SKILL.md por skill)
+├── security/                  # Matriz de benchmark, checklist de release e avaliações
+├── testing/                   # Estratégia de testes, evals, benchmarks e histórico
 ├── tests/
-│   └── simulation/            # Suite de testes E2E com 66 cenários de simulação
+│   └── simulation/            # Suite de testes E2E com 75 cenários de simulação
 └── scripts/                   # Verificações de integridade, atualizadores de MEMORY.md de agentes
 ```
 
@@ -796,24 +836,28 @@ O Istara tem licença MIT e aceita ativamente contribuições. Áreas de alto im
 # Execute a suite de testes do backend
 pytest tests/
 
-# Execute o agente de simulação E2E com 66 cenários
+# Execute o agente de simulação E2E com 75 cenários
 node tests/simulation/run.mjs
 
 # Verifique a integridade do sistema antes de commitar
 python scripts/check_integrity.py
 
-# Atualize a documentação de capacidades dos agentes
-python scripts/update_agent_md.py
+# Verifique governança, segurança e release
+python scripts/check_ci_governance.py
+python scripts/security_benchmark.py --fail-on-threshold
+python scripts/security_release_readiness.py
+python scripts/production_rehearsal.py --json
 ```
 
 Veja [CONTRIBUTING.md](CONTRIBUTING.md) para instruções de configuração, guia de estilo de código e checklist de mudanças.
+Veja [TESTING.md](TESTING.md), [SECURITY.md](SECURITY.md) e [DOCUMENTATION.md](DOCUMENTATION.md) antes de mudanças sensíveis para release.
 
 ---
 
-## Referências Acadêmicas
+## Referências Acadêmicas e Padrões
 
 <details>
-<summary><strong>Bibliografia completa (22 referências)</strong></summary>
+<summary><strong>Bibliografia e padrões completos (38 referências)</strong></summary>
 
 ### Auto-Evolução e Design de Agentes
 
@@ -871,9 +915,45 @@ Veja [CONTRIBUTING.md](CONTRIBUTING.md) para instruções de configuração, gui
 
 ### Padrões de Interoperabilidade
 
-21. **Anthropic (2024)** — "Model Context Protocol" modelcontextprotocol.io. Padrão aberto para interações LLM aumentadas por ferramentas; o Istara expõe um servidor MCP.
+21. **Model Context Protocol (2025)** — "MCP Specification" modelcontextprotocol.io. Padrão aberto para interações LLM aumentadas por ferramentas; o Istara expõe um servidor MCP.
 
-22. **Google (2025)** — "Agent-to-Agent Protocol (A2A)" google.github.io/A2A. Padrão de descoberta e comunicação de agentes; o Istara publica um manifesto de descoberta A2A.
+22. **Agent2Agent Project (2026)** — "Agent2Agent (A2A) Protocol Specification" a2a-protocol.org. Padrão de descoberta e comunicação de agentes; o Istara publica um manifesto de descoberta A2A.
+
+### Avaliação e Benchmarks
+
+23. **OpenAI (2026)** — "Evals" github.com/openai/evals e documentação da API de Evals da OpenAI. Modelo de framework e registry para avaliações repetíveis de LLMs e sistemas.
+
+24. **UK AI Security Institute (2026)** — "Inspect AI" inspect.aisi.org.uk. Padrão de harness de avaliação para avaliações reprodutíveis de modelos e agentes.
+
+25. **Liang et al. (2022)** — "Holistic Evaluation of Language Models" Stanford CRFM HELM. Inspiração de avaliação multi-métrica para baselines versionadas do Istara.
+
+26. **Es et al. (2023)** — "RAGAS: Automated Evaluation of Retrieval Augmented Generation" *arXiv:2309.15217*. Base para avaliação de RAG em fidelidade, relevância de contexto e relevância da resposta.
+
+27. **Berkeley Sky Computing Lab (2026)** — "Berkeley Function Calling Leaderboard (BFCL) V4" gorilla.cs.berkeley.edu. Inspiração de benchmark para correção de chamadas de ferramentas/funções nos testes ReAct e schemas de skills do Istara.
+
+28. **Yao et al. (2024)** — "tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains" *arXiv:2406.12045*. Inspiração para avaliação multi-turno de ferramenta-agente-usuário nas simulações e fluxos agentic do Istara.
+
+### Segurança, Identidade e Padrões de Release
+
+29. **OWASP (2025)** — "Application Security Verification Standard 5.0.0" owasp.org. Baseline de segurança de aplicação para a matriz de benchmark do Istara.
+
+30. **NIST (2025)** — "Digital Identity Guidelines, SP 800-63-4 and SP 800-63B-4" pages.nist.gov. Orientação de identidade, autenticadores, MFA, passkeys e sessão.
+
+31. **Better Auth (2026)** — "Security" better-auth.com/docs/reference/security. Referência comparativa para base URLs, trusted origins, sessões, salvaguardas CSRF, rate limiting e tratamento de segredos.
+
+32. **W3C (2026)** — "Web Authentication: An API for accessing Public Key Credentials, Level 3" w3.org/TR/webauthn-3. Referência de passkeys/WebAuthn para validação de origem/RP e credenciais de chave pública.
+
+33. **IETF (2025)** — "OAuth 2.0 Security Best Current Practice, RFC 9700" datatracker.ietf.org. Orientação de segurança para integrações OAuth/OpenID-style.
+
+34. **OWASP GenAI Security Project (2025)** — "OWASP Top 10 for LLM Applications 2025" genai.owasp.org. Modelo de ameaças para prompt injection, vazamento sensível, fronteiras de modelo/provedor e abuso de ferramentas.
+
+35. **NIST (2023–2026)** — "AI Risk Management Framework 1.0" e recursos do perfil GenAI. Governança de risco de IA para orquestração agentic, telemetria, avaliação e rollback.
+
+36. **Model Context Protocol (2025)** — "MCP Specification 2025-11-25" modelcontextprotocol.io. Modelo de ferramentas, prompts, recursos, autorização e trust/safety para integrações MCP.
+
+37. **Agent2Agent Project (2026)** — "Agent2Agent (A2A) Protocol Specification" a2a-protocol.org. Referência de descoberta por agent-card e interoperabilidade JSON-RPC.
+
+38. **OpenSSF / SLSA / GitHub (2026)** — OpenSSF Scorecard, SLSA v1.2 e GitHub Artifact Attestations. Referências de postura de supply chain e proveniência de release para hardening de instaladores.
 
 </details>
 

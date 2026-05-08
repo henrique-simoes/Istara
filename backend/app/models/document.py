@@ -16,6 +16,7 @@ class DocumentStatus(str, enum.Enum):
     PENDING = "pending"
     PROCESSING = "processing"
     READY = "ready"
+    QUARANTINED = "quarantined"
     ERROR = "error"
 
 

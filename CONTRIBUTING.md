@@ -24,8 +24,10 @@ npm install && npm run dev
 - `backend/` — Python FastAPI backend
 - `frontend/` — Next.js React frontend
 - `skills/` — UXR skill definitions (SKILL.md + references + scripts)
+- `testing/` — test strategy, eval strategy, and curated baseline history
+- `security/` — release security benchmark, readiness checklist, and assessments
 - `scripts/` — Utility scripts
-- `docs/` — Documentation
+- `DOCUMENTATION.md` — canonical documentation map
 
 ## Branching & Pull Requests
 
@@ -41,7 +43,7 @@ feature branch → PR → staging → PR → main
 
 ### ⚠️ Stale Branch Notice (2026-04-28)
 
-Multiple legacy branches exist locally (e.g., `feat/voice-transcription`, `review/p*`, `fix-ci-validation`) but are **significantly behind `main` (46–124 commits)** and must not be merged wholesale. See `planner.md` "Deprecated Branches" for the full list. Treat them as historical artifacts only — salvage by cherry-pick or create fresh branches from `staging` if any work is still needed.
+Multiple legacy branches may exist locally. Do not merge stale branches wholesale. Check divergence with `git`, run Compass Forge impact/gates, and salvage only intentional commits by cherry-pick or by creating a fresh branch from the current base.
 
 ### For multi-commit work (3+ commits):
 ```bash

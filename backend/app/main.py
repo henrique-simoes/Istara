@@ -7,9 +7,8 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.agents.custom_worker import (
@@ -24,6 +23,7 @@ from app.agents.ui_audit_agent import ui_audit_agent
 from app.agents.user_sim_agent import user_sim_agent
 from app.agents.ux_eval_agent import ux_eval_agent
 from app.api.routes import (
+    a2a as a2a_routes,
     admin,
     agents,
     audit,
@@ -85,6 +85,7 @@ from app.core.log_redaction import install_sensitive_log_redaction
 from app.core.network_security import NetworkSecurityMiddleware, requires_local_admin_network_guard
 from app.core.scheduler import scheduler
 from app.core.security_middleware import SecurityAuthMiddleware
+from app.core.version import read_istara_version
 from app.models.database import async_session, init_db
 from app.services.agent_service import seed_system_agents
 from app.services.heartbeat import heartbeat_manager
@@ -228,11 +229,16 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     app_settings.ensure_dirs()
     app_settings.ensure_secrets()
     try:
-        from app.core.auth_origins import security_configuration_warnings
+        from app.core.auth_origins import (
+            production_security_configuration_issues,
+            security_configuration_warnings,
+        )
 
         _auth_log = __import__("logging").getLogger(__name__)
         for warning in security_configuration_warnings(app_settings):
             _auth_log.warning("Auth security configuration: %s", warning)
+        for issue in production_security_configuration_issues(app_settings):
+            _auth_log.error("Production auth security configuration: %s", issue)
     except Exception as e:
         __import__("logging").getLogger(__name__).warning(
             "Auth security configuration check skipped: %s", e
@@ -708,18 +714,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     _sd_log.info("Shutdown complete.")
 
 
-# Read version from VERSION file (CalVer: YYYY.MM.DD)
-def _read_version() -> str:
-    try:
-        vf = Path(__file__).resolve().parents[2] / "VERSION"
-        if vf.exists():
-            return vf.read_text().strip()
-    except Exception:
-        pass
-    return "dev"
-
-
-ISTARA_VERSION = _read_version()
+ISTARA_VERSION = read_istara_version()
 
 app = FastAPI(
     title="Istara",
@@ -739,23 +734,10 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     """Inject security-hardening HTTP headers into every response."""
 
     async def dispatch(self, request, call_next):
+        from app.core.security_headers import apply_security_headers
+
         response = await call_next(request)
-        response.headers["X-Content-Type-Options"] = "nosniff"
-        response.headers["X-Frame-Options"] = "DENY"
-        response.headers["X-XSS-Protection"] = "1; mode=block"
-        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-        response.headers["Permissions-Policy"] = (
-            "camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()"
-        )
-        response.headers["Strict-Transport-Security"] = (
-            "max-age=31536000; includeSubDomains; preload"
-        )
-        response.headers["Content-Security-Policy"] = (
-            "default-src 'self'; script-src 'self'; "
-            "style-src 'self' 'unsafe-inline'; img-src 'self' data:; "
-            "connect-src 'self'; font-src 'self'; frame-ancestors 'none'; "
-            "base-uri 'self'; form-action 'self';"
-        )
+        apply_security_headers(response.headers)
         return response
 
 
@@ -841,6 +823,7 @@ app.include_router(webhook_routes.router, tags=["Webhooks"])
 app.include_router(connection_routes.router, prefix="/api", tags=["Connections"])
 app.include_router(update_routes.router, prefix="/api", tags=["Updates"])
 app.include_router(ws_router)
+app.include_router(a2a_routes.router, tags=["A2A"])
 
 
 @app.get("/api/health")
@@ -855,130 +838,3 @@ async def list_registered_skills():
     from app.skills.registry import registry
 
     return registry.to_dict()
-
-
-@app.get("/.well-known/agent.json")
-async def agent_card():
-    """A2A Protocol: Agent Card discovery endpoint."""
-    return {
-        "name": "Istara",
-        "description": (
-            "Local-first AI agent for UX Research — analyzes interviews, surveys, "
-            "usability tests and more using 40+ research skills."
-        ),
-        "url": "http://localhost:8000",
-        "version": ISTARA_VERSION,
-        "protocol_version": "0.1",
-        "capabilities": {
-            "streaming": False,
-            "push_notifications": False,
-            "state_transition_history": True,
-        },
-        "skills": [
-            {
-                "id": "ux-research",
-                "name": "UX Research Analysis",
-                "description": (
-                    "Analyzes user interviews, surveys, usability tests, and field "
-                    "studies to extract insights and recommendations."
-                ),
-                "tags": ["ux", "research", "analysis", "interviews", "surveys"],
-                "examples": [
-                    "Analyze these interview transcripts",
-                    "Run thematic analysis on survey responses",
-                    "Create personas from research data",
-                ],
-            }
-        ],
-        "default_input_modes": ["text/plain", "application/json"],
-        "default_output_modes": ["application/json"],
-    }
-
-
-@app.post("/a2a")
-async def a2a_jsonrpc(request: Request):
-    """A2A Protocol: JSON-RPC 2.0 endpoint for agent-to-agent communication."""
-    try:
-        body = await request.json()
-    except Exception:
-        return JSONResponse(
-            status_code=400,
-            content={
-                "jsonrpc": "2.0",
-                "error": {"code": -32700, "message": "Parse error"},
-                "id": None,
-            },
-        )
-
-    method = body.get("method", "")
-    params = body.get("params", {})
-    req_id = body.get("id")
-
-    if method == "tasks/send":
-        # Create a task from A2A message
-        from app.models.database import async_session as a2a_session
-        from app.services import a2a as a2a_svc
-
-        async with a2a_session() as db:
-            msg = await a2a_svc.send_message(
-                db,
-                from_agent_id=params.get("from", "external"),
-                to_agent_id=params.get("to", "istara-main"),
-                message_type="a2a_task",
-                content=params.get("message", {}).get("text", ""),
-                metadata=params.get("message", {}).get("metadata"),
-            )
-            return {
-                "jsonrpc": "2.0",
-                "result": {"id": msg["id"], "status": "submitted"},
-                "id": req_id,
-            }
-
-    elif method == "tasks/get":
-        task_id = params.get("id")
-        from app.models.database import async_session as a2a_session
-        from app.services import a2a as a2a_svc
-
-        async with a2a_session() as db:
-            messages = await a2a_svc.get_full_log(db, limit=200)
-            task = next((m for m in messages if m["id"] == task_id), None)
-            if task:
-                return {"jsonrpc": "2.0", "result": task, "id": req_id}
-            return JSONResponse(
-                status_code=404,
-                content={
-                    "jsonrpc": "2.0",
-                    "error": {"code": -32001, "message": "Task not found"},
-                    "id": req_id,
-                },
-            )
-
-    elif method == "tasks/list":
-        from app.models.database import async_session as a2a_session
-        from app.services import a2a as a2a_svc
-
-        async with a2a_session() as db:
-            messages = await a2a_svc.get_full_log(db, limit=params.get("limit", 50))
-            return {"jsonrpc": "2.0", "result": {"tasks": messages}, "id": req_id}
-
-    elif method == "tasks/cancel":
-        return {"jsonrpc": "2.0", "result": {"status": "canceled"}, "id": req_id}
-
-    elif method == "agent/discover":
-        # Return list of available agents
-        from app.models.database import async_session as a2a_session
-        from app.services import agent_service
-
-        async with a2a_session() as db:
-            agents = await agent_service.list_agents(db)
-            return {"jsonrpc": "2.0", "result": {"agents": agents}, "id": req_id}
-
-    else:
-        return JSONResponse(
-            status_code=400,
-            content={
-                "jsonrpc": "2.0",
-                "error": {"code": -32601, "message": f"Method not found: {method}"},
-                "id": req_id,
-            },
-        )

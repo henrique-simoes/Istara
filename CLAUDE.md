@@ -26,7 +26,7 @@ These directives govern how you think, plan, manage memory, write code, and prot
 
 You must maintain continuity across sessions, prevent context decay, and learn from user corrections.
 
-* **The Gotchas File:** If it doesn't exist, create `gotchas.md` in the project root. Every time the user corrects a mistake or clarifies a preference, log it here immediately. Always silently review `gotchas.md` at session start.
+* **Durable Corrections:** User corrections and safety constraints belong in `AGENTS.md`, Compass Forge specs/tasks, or the relevant tracked process document. Do not create one-off root scratch files for session memory.
 * **Context Decay Prevention:** Auto-compaction destroys your memory of file contents. If a conversation exceeds 10 messages, **re-read any file** before editing it again.
 * **Proactive State Saving:** If you notice context degradation (hallucinating variables, forgetting file structures), proactively save the session state to `context-log.md` so a fresh agent fork can pick up cleanly.
 * **Token Optimization:** Before structural refactors on files >300 LOC, remove dead props, unused exports/imports, and debug logs. Commit this cleanup separately. Dead code wastes tokens.

@@ -13,6 +13,8 @@ Security model:
     - Exempt paths: /api/health, /api/auth/login, /api/auth/register,
       /api/auth/team-status, /api/settings/status, /.well-known/agent.json
     - Exempt prefixes: /_next/, /favicon, /webhooks/, /static/, /a2a
+      (/a2a performs route-level JSON-RPC auth because it is intentionally
+      outside the /api namespace)
     - WebSocket handlers validate their own JWT query tokens before accepting
     - Admin-only operations checked via request.state.user.role
 
@@ -65,7 +67,7 @@ EXEMPT_PREFIXES = (
     "/favicon",  # Browser icon
     "/webhooks/",  # External platform webhooks (have their own verification)
     "/static/",  # Static files
-    "/a2a",  # A2A Protocol — agent-to-agent communication (open by spec)
+    "/a2a",  # A2A JSON-RPC performs route-level auth outside /api middleware.
 )
 
 SAFE_METHODS = {"GET", "HEAD", "OPTIONS", "TRACE"}

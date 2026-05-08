@@ -15,7 +15,7 @@
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey.svg)](installer/)
 [![GitHub](https://img.shields.io/badge/GitHub-henrique--simoes%2FIstara-181717?logo=github)](https://github.com/henrique-simoes/Istara)
 
-[**Install in 1 Minute**](#install) · [**Architecture**](#architecture) · [**Research Skills**](#53-research-skills) · [**Agents**](#5-ai-agents) · [**References**](#academic-references) · [**Contributing**](CONTRIBUTING.md)
+[**Install in 1 Minute**](#install) · [**Architecture**](#architecture) · [**Testing**](TESTING.md) · [**Security**](SECURITY.md) · [**Docs Map**](DOCUMENTATION.md) · [**References**](#academic-references-and-standards) · [**Contributing**](CONTRIBUTING.md)
 
 ---
 
@@ -49,55 +49,54 @@
 | 🧾 Improvement Governance | Self-evolution changes are tracked with approval, evidence, metrics, rollback, and revert state |
 | ✅ Ensemble Health | Multi-model consensus, adversarial review, debate rounds — every insight rock solid |
 
+<details>
+<summary><strong>View product screenshots</strong></summary>
+
 <div align="center">
-    <p><strong>Multi-Agent Assignment:</strong> Choose the best agent for the job. Route tasks to specialists like Pixel for UI audits or Sage for UX evaluation.</p>
-  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.38.54.png" width="1600" />
+  <p><strong>Intelligent Chat:</strong> Talk to your research context. Ask about findings, brainstorm with agents, and get instant answers grounded in your data.</p>
+  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.37.30.png" width="1600" />
+
+  <p><strong>Atomic Research Findings:</strong> Automatically extract nuggets, facts, insights, and recommendations. Every claim is linked to its original source for total traceability.</p>
+  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.37.34.png" width="1600" />
+
+  <p><strong>Laws of UX Compliance:</strong> Audit your designs against 30+ psychological principles and Nielsen heuristics. See exactly where your UI excels or needs improvement.</p>
+  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.38.34.png" width="1600" />
 
   <p><strong>Autonomous Task Management:</strong> A powerful Kanban board where agents pick up tasks, execute skills, and report progress in real-time.</p>
   <img src="Screenshots/Screenshot%202026-04-02%20at%2016.38.47.png" width="1600" />
 
+  <p><strong>Multi-Agent Assignment:</strong> Choose the best agent for the job. Route tasks to specialists like Pixel for UI audits or Sage for UX evaluation.</p>
+  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.38.54.png" width="1600" />
+
   <p><strong>Interviews & Transcripts:</strong> Istara can transcribe, tag, analyze, relate, and generate reports from many interviews at once — including voice messages from WhatsApp and Telegram with automatic Whisper transcription and inter-coder reliability scoring. Find insights shared across your entire participant pool!</p>
   <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.01.png" width="1600" />
-  
+
   <p><strong>Context Engine:</strong> Ground your agents in your company culture, project goals, and specific guardrails. The more they know, the better they perform.</p>
   <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.08.png" width="1600" />
-  
+
   <p><strong>Skill Catalog:</strong> Over 50 research skills ready to go. From Competitive Analysis to Card Sorting, your agents are equipped for any research challenge.</p>
   <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.11.png" width="1600" />
 
   <p><strong>Agentic Swarm:</strong> Meet your team—Cleo, Sentinel, Pixel, Sage, and Echo. Five specialized agents that learn from each other and evolve with every task.</p>
   <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.16.png" width="1600" />
 
+  <p><strong>Google Stitch & Figma Integration:</strong> Generate screens with AI, connect Figma for handoff specs, audit components, and close the gap between design intent and dev implementation.</p>
+  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.28.png" width="1600" />
+
   <p><strong>Messaging Channels:</strong> Deploy your research directly to Slack, Telegram, or WhatsApp. Collect data where your users are, managed entirely by your agents.</p>
   <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.36.png" width="1600" />
 
+  <p><strong>Survey Integrations:</strong> Pull data from SurveyMonkey, Typeform, or Google Forms. Let agents detect AI bots and synthesize thousands of responses in seconds.</p>
+  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.40.png" width="1600" />
+
   <p><strong>Autoresearch Engine:</strong> Enable continuous self-improvement loops. Watch as your agents optimize their own prompts and RAG parameters for better results.</p>
   <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.59.png" width="1600" />
-  
+
   <p><strong>Ensemble Health:</strong> Trust through verification. Istara uses multi-model consensus, adversarial review, and debate rounds to ensure every insight is rock solid.</p>
   <img src="Screenshots/Screenshot%202026-04-02%20at%2016.40.15.png" width="1600" />
 </div>
-  
-  <p><strong>Intelligent Chat:</strong> Talk to your research context. Ask about findings, brainstorm with agents, and get instant answers grounded in your data.</p>
-  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.37.30.png" width="1600" />
-  
-  <p><strong>Atomic Research Findings:</strong> Automatically extract nuggets, facts, insights, and recommendations. Every claim is linked to its original source for total traceability.</p>
-  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.37.34.png" width="1600" />
-  
-  <p><strong>Laws of UX Compliance:</strong> Audit your designs against 30+ psychological principles and Nielsen heuristics. See exactly where your UI excels or needs improvement.</p>
-  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.38.34.png" width="1600" />
-  
-  <p><strong>Interviews & Transcripts:</strong> Istara can transcribe, tag, analyze, relate, and generate reports from many interviews at once. Find insights shared across your entire participant pool!</p>
-  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.01.png" width="1600" />
-  
-  <p><strong>Context Engine:</strong> Ground your agents in your company culture, project goals, and specific guardrails. The more they know, the better they perform.</p>
-  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.08.png" width="1600" />
-  
-  <p><strong>Google Stitch & Figma Integration:</strong> Generate screens with AI, connect Figma for handoff specs, audit components, and close the gap between design intent and dev implementation.</p>
-  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.28.png" width="1600" />
-  
-  <p><strong>Survey Integrations:</strong> Pull data from SurveyMonkey, Typeform, or Google Forms. Let agents detect AI bots and synthesize thousands of responses in seconds.</p>
-  <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.40.png" width="1600" />
+
+</details>
 
 ---
 ![](https://istara.goatcounter.com/count?p=/count-install)
@@ -154,6 +153,37 @@ Open [http://localhost:3000](http://localhost:3000) after starting. The onboardi
 
 ---
 
+## Release, Testing, and Security Posture
+
+Istara's public-release process is now evidence-first. Development runs through
+Compass Forge work orders, impact analysis, and gates; test history is kept as
+curated release baselines instead of scattered temporary logs.
+
+- **Testing and evals:** see [TESTING.md](TESTING.md),
+  [testing/TESTING_STRATEGY.md](testing/TESTING_STRATEGY.md),
+  [testing/AI_EVALS_STRATEGY.md](testing/AI_EVALS_STRATEGY.md), and
+  [testing/TEST_HISTORY.md](testing/TEST_HISTORY.md). The suite covers backend
+  contracts, frontend build/type/lint/unit checks, relay tests, simulation,
+  orchestration benchmarks, live single-profile LLM checks, RAG, Prompt RAG,
+  LLMLingua, DAG/ReAct, ReasoningBank, Memento Skills, Meta Hyperagents,
+  thinking-output controls, and voice contracts.
+- **Security:** see [SECURITY.md](SECURITY.md),
+  [security/SECURITY_BENCHMARK.md](security/SECURITY_BENCHMARK.md),
+  [security/RELEASE_SECURITY_READINESS.md](security/RELEASE_SECURITY_READINESS.md),
+  and [the current assessment](security/ISTARA_SECURITY_ASSESSMENT_2026-05-08.md).
+  The release gate maps controls to OWASP ASVS, NIST SP 800-63-4, Better Auth
+  guidance, WebAuthn, OAuth security guidance, OWASP LLM/agentic risks, NIST AI
+  RMF, SSDF, SLSA, OpenSSF Scorecard, and GitHub Artifact Attestations.
+- **Live LLM testing:** live tests use one gitignored OpenAI-compatible profile
+  and the fixed test model id `google/gemma-4-e4b`. Private endpoints and tokens
+  are never committed, and tests must not probe or autoload multiple heavy
+  models.
+- **Documentation organization:** see [DOCUMENTATION.md](DOCUMENTATION.md) for
+  the canonical map of current docs, generated docs, compatibility notes,
+  testing history, security evidence, and ignored runtime markdown.
+
+---
+
 ## Why Istara Exists
 
 UX researchers deserve tools that respect their data, enforce methodological rigor, and improve through use — not SaaS platforms that upload transcripts to foreign servers, charge per seat, and forget everything the moment you close the tab.
@@ -199,7 +229,7 @@ The five built-in agents each carry four evolving persona files:
 | `istara-devops` | **Sentinel** | Data integrity guardian — monitors health, audits orphaned records, runs checks |
 | `istara-ui-audit` | **Pixel** | WCAG compliance expert — Nielsen heuristics, accessibility scoring |
 | `istara-ux-eval` | **Sage** | Cognitive load analyst — user journeys, workflow friction detection |
-| `istara-sim` | **Echo** | End-to-end tester — simulates users, runs 66 regression scenarios |
+| `istara-sim` | **Echo** | End-to-end tester — simulates users, runs 75 regression scenarios |
 
 Each agent's persona is stored in four files — `CORE.md` (identity), `SKILLS.md` (capabilities), `PROTOCOLS.md` (behavioral rules), `MEMORY.md` (accumulated learnings) — and **all four evolve as the agent works**.
 
@@ -530,7 +560,7 @@ create_project()      get_deployment_status()
 
 Both interfaces are gated by `MCPAccessPolicy` with per-tool permissions, JWT authentication, and full audit logging.
 
-> **References:** Anthropic (2024) "Model Context Protocol" modelcontextprotocol.io; Google (2025) "Agent-to-Agent Protocol" google.github.io/A2A
+> **References:** Model Context Protocol (2025) "MCP Specification" modelcontextprotocol.io; Agent2Agent Project (2026) "A2A Protocol Specification" a2a-protocol.org
 
 ---
 
@@ -556,12 +586,12 @@ Istara is **zero-trust by default**:
 │  22 views · Contextual onboarding per view · Dark/light mode        │
 │  Zustand state · WCAG 2.1 AA compliant · Tauri system tray          │
 └────────────────────────────┬────────────────────────────────────────┘
-                             │ REST (337 endpoints) + WebSocket (16 events)
+                             │ REST (400+ endpoints) + WebSocket (16 events)
 ┌────────────────────────────▼────────────────────────────────────────┐
 │                         BACKEND (FastAPI)                           │
 │                                                                     │
 │  ┌────────────┐  ┌────────────┐  ┌─────────────┐  ┌─────────────┐  │
-│  │  337 REST  │  │ WebSocket  │  │ MCP Server  │  │ A2A Protocol│  │
+│  │ 400+ REST  │  │ WebSocket  │  │ MCP Server  │  │ A2A Protocol│  │
 │  │  endpoints │  │  Manager   │  │  (opt-in)   │  │  Discovery  │  │
 │  └──────┬─────┘  └──────┬─────┘  └──────┬──────┘  └──────┬──────┘  │
 │         └───────────────┴───────────────┴─────────────────┘        │
@@ -748,9 +778,9 @@ Sage analyzes user journeys for cognitive load, workflow friction, and mental mo
 
 ### Echo (`istara-sim`) — End-to-End Tester
 
-Echo is the quality assurance agent. She runs the 66-scenario simulation test suite, performs regression testing on research workflows, and validates that system changes don't break existing research pipelines.
+Echo is the quality assurance agent. She runs the 75-scenario simulation test suite, performs regression testing on research workflows, and validates that system changes don't break existing research pipelines.
 
-**Core capabilities:** 66-scenario E2E test suite · Regression testing · User simulation · API endpoint validation · Performance benchmarking
+**Core capabilities:** 75-scenario E2E test suite · Regression testing · User simulation · API endpoint validation · Performance benchmarking
 
 </details>
 
@@ -759,7 +789,7 @@ Echo is the quality assurance agent. She runs the 66-scenario simulation test su
 ## Screenshots
 
 <!-- TODO: Add screenshots after first public deployment -->
-*Screenshots coming soon — see [docs/](docs/) for architecture diagrams.*
+*Additional architecture and process references are listed in [DOCUMENTATION.md](DOCUMENTATION.md).*
 
 ---
 
@@ -769,7 +799,7 @@ Echo is the quality assurance agent. She runs the 66-scenario simulation test su
 istara/
 ├── backend/                   # FastAPI backend (Python 3.12)
 │   └── app/
-│       ├── api/               # 337 REST endpoints + WebSocket manager
+│       ├── api/               # 400+ REST endpoints + WebSocket manager
 │       ├── agents/            # Agent personas (CORE, SKILLS, PROTOCOLS, MEMORY)
 │       ├── core/              # Orchestrator, RAG, evolution engine, autoresearch
 │       ├── models/            # 51+ SQLAlchemy 2.0 models
@@ -779,13 +809,15 @@ istara/
 │   └── src/
 │       ├── components/        # 22 views + shared UI components
 │       ├── stores/            # Zustand state management
-│       └── lib/               # API client (337 endpoints typed), types
+│       └── lib/               # API client, route helpers, shared types
 ├── desktop/                   # Tauri v2 system tray application
 ├── installer/                 # macOS DMG + Windows NSIS + Linux AppImage configs
 ├── relay/                     # Compute donation WebSocket relay server
 ├── skills/                    # Skill definition files (SKILL.md per skill)
+├── security/                  # Security benchmark matrix, release checklist, assessments
+├── testing/                   # Testing, eval, benchmark, and historical baseline strategy
 ├── tests/
-│   └── simulation/            # 66-scenario E2E simulation test suite
+│   └── simulation/            # 75-scenario E2E simulation test suite
 └── scripts/                   # Integrity checks, agent MEMORY.md updaters
 ```
 
@@ -806,7 +838,7 @@ Istara is MIT-licensed and actively welcomes contributions. High-impact areas:
 # Run the backend test suite
 pytest tests/
 
-# Run the 66-scenario E2E simulation agent
+# Run the 75-scenario E2E simulation agent
 node tests/simulation/run.mjs
 
 # Verify system integrity before committing
@@ -824,13 +856,14 @@ python scripts/run_backend_mutation.py
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions, code style guide, and the change checklist.
+See [TESTING.md](TESTING.md), [SECURITY.md](SECURITY.md), and [DOCUMENTATION.md](DOCUMENTATION.md) before release-sensitive changes.
 
 ---
 ![](https://istara.goatcounter.com/count?p=/count-features-bottom)
-## Academic References
+## Academic References and Standards
 
 <details>
-<summary><strong>Full bibliography (22 references)</strong></summary>
+<summary><strong>Full bibliography and standards (38 references)</strong></summary>
 
 ### Agent Self-Evolution and Design
 
@@ -888,9 +921,45 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions, code style guide,
 
 ### Interoperability Standards
 
-21. **Anthropic (2024)** — "Model Context Protocol" modelcontextprotocol.io. Open standard for tool-augmented LLM interactions; Istara exposes an MCP server.
+21. **Model Context Protocol (2025)** — "MCP Specification" modelcontextprotocol.io. Open standard for tool-augmented LLM interactions; Istara exposes an MCP server.
 
-22. **Google (2025)** — "Agent-to-Agent Protocol (A2A)" google.github.io/A2A. Agent discovery and communication standard; Istara publishes an A2A discovery manifest.
+22. **Agent2Agent Project (2026)** — "Agent2Agent (A2A) Protocol Specification" a2a-protocol.org. Agent discovery and communication standard; Istara publishes an A2A discovery manifest.
+
+### Evaluation and Benchmarking
+
+23. **OpenAI (2026)** — "Evals" github.com/openai/evals and OpenAI Evals API documentation. Framework and registry model for repeatable LLM/system evaluations.
+
+24. **UK AI Security Institute (2026)** — "Inspect AI" inspect.aisi.org.uk. Evaluation harness pattern for reproducible model and agent assessments.
+
+25. **Liang et al. (2022)** — "Holistic Evaluation of Language Models" Stanford CRFM HELM. Multi-metric evaluation inspiration for Istara's versioned eval baselines.
+
+26. **Es et al. (2023)** — "RAGAS: Automated Evaluation of Retrieval Augmented Generation" *arXiv:2309.15217*. RAG evaluation framing for faithfulness, context relevance, and answer relevance.
+
+27. **Berkeley Sky Computing Lab (2026)** — "Berkeley Function Calling Leaderboard (BFCL) V4" gorilla.cs.berkeley.edu. Tool/function-call correctness benchmark inspiration for Istara ReAct and skill schema tests.
+
+28. **Yao et al. (2024)** — "tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains" *arXiv:2406.12045*. Multi-turn tool-agent-user evaluation inspiration for Istara simulation and agentic workflows.
+
+### Security, Identity, and Release Standards
+
+29. **OWASP (2025)** — "Application Security Verification Standard 5.0.0" owasp.org. Application security baseline for Istara's benchmark matrix.
+
+30. **NIST (2025)** — "Digital Identity Guidelines, SP 800-63-4 and SP 800-63B-4" pages.nist.gov. Identity, authenticator, MFA, passkey, and session guidance.
+
+31. **Better Auth (2026)** — "Security" better-auth.com/docs/reference/security. Comparative authentication guidance for base URLs, trusted origins, sessions, CSRF safeguards, rate limiting, and secret handling.
+
+32. **W3C (2026)** — "Web Authentication: An API for accessing Public Key Credentials, Level 3" w3.org/TR/webauthn-3. Passkey/WebAuthn reference for origin/RP validation and public-key credential behavior.
+
+33. **IETF (2025)** — "OAuth 2.0 Security Best Current Practice, RFC 9700" datatracker.ietf.org. OAuth/OpenID-style provider security guidance.
+
+34. **OWASP GenAI Security Project (2025)** — "OWASP Top 10 for LLM Applications 2025" genai.owasp.org. Prompt injection, sensitive disclosure, model/provider, and tool-abuse threat model.
+
+35. **NIST (2023–2026)** — "AI Risk Management Framework 1.0" and GenAI profile resources. AI risk governance for agentic orchestration, telemetry, evaluation, and rollback.
+
+36. **Model Context Protocol (2025)** — "MCP Specification 2025-11-25" modelcontextprotocol.io. Tool, prompt, resource, authorization, and trust/safety model for MCP integrations.
+
+37. **Agent2Agent Project (2026)** — "Agent2Agent (A2A) Protocol Specification" a2a-protocol.org. Agent-card discovery and JSON-RPC interoperability reference.
+
+38. **OpenSSF / SLSA / GitHub (2026)** — OpenSSF Scorecard, SLSA v1.2, and GitHub Artifact Attestations. Supply-chain posture and release provenance references for installer hardening.
 
 </details>
 

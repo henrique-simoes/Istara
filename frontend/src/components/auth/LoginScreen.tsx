@@ -85,6 +85,12 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
     usernameRef.current?.focus();
   }, [mode]);
 
+  useEffect(() => {
+    if (teamMode && hasUsers && mode === "register") {
+      setMode("login");
+    }
+  }, [teamMode, hasUsers, mode]);
+
   const reset2FA = () => {
     setLoginStep("credentials");
     setMfaMethods([]);
@@ -290,6 +296,10 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
 
     // Registration flow
     if (mode === "register") {
+      if (hasUsers) {
+        setError("Public registration is only available for the first admin. Ask an admin for a connection string.");
+        return;
+      }
       setLoading(true);
       try {
         const res = await fetch(`${API_BASE}/api/auth/register`, {
@@ -550,7 +560,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
               {mode === "register" && !hasUsers
                 ? "Create Admin Account"
                 : mode === "register"
-                ? "Create Account"
+                ? "Registration Closed"
                 : mode === "join"
                 ? "Join Server"
                 : loginStep === "2fa"
@@ -795,7 +805,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
                 ) : (
                   mode === "join"
                     ? (joinValidated ? "Create Account & Connect" : "Verify Connection")
-                    : mode === "register" ? "Create Account"
+                    : mode === "register" ? "Create Admin Account"
                     : loginStep === "2fa" ? "Verify"
                     : "Sign In"
                 )}
@@ -851,11 +861,11 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
                     className="text-istara-600 dark:text-istara-400 font-medium hover:underline">Sign in</button>
                 </p>
               )}
-              {mode !== "register" && (
+              {mode !== "register" && !hasUsers && (
                 <p className="text-xs text-slate-400 dark:text-slate-500">
-                  New to this server?{" "}
+                  Fresh server?{" "}
                   <button type="button" onClick={() => { setMode("register"); setError(""); setJoinValidated(null); }}
-                    className="text-istara-600 dark:text-istara-400 font-medium hover:underline">Create an account</button>
+                    className="text-istara-600 dark:text-istara-400 font-medium hover:underline">Create admin account</button>
                 </p>
               )}
               {mode !== "join" && (

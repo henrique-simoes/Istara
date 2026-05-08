@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import ipaddress
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from urllib.parse import urlparse
 
-from fastapi import Request
+if TYPE_CHECKING:
+    from fastapi import Request
 
 LOCALHOST_HOSTS = {"localhost"}
 LOOPBACK_IPS = {"127.0.0.1", "::1"}
@@ -182,3 +183,38 @@ def security_configuration_warnings(settings_obj: Any) -> list[str]:
         warnings.append("No configured WebAuthn origins are valid for the current RP ID.")
 
     return warnings
+
+
+def production_security_configuration_issues(settings_obj: Any) -> list[str]:
+    """Return fail-closed issues for production/team auth configuration."""
+    issues: list[str] = []
+    runtime_profile = (getattr(settings_obj, "istara_runtime_profile", "") or "").lower()
+    production_like = runtime_profile in {"public", "production"}
+    team_mode = bool(getattr(settings_obj, "team_mode", False))
+    if not production_like:
+        return issues
+
+    trusted_origins = sorted(configured_trusted_origins(settings_obj))
+    jwt_secret = str(getattr(settings_obj, "jwt_secret", "") or "")
+    rp_id = (getattr(settings_obj, "webauthn_rp_id", "") or "localhost").strip().lower()
+    cors_regex = (getattr(settings_obj, "cors_origin_regex", "") or "").strip()
+
+    if not team_mode:
+        issues.append("Production/public profile must enable TEAM_MODE.")
+    if not jwt_secret or jwt_secret == "istara-dev-secret-change-in-production" or len(jwt_secret) < 32:
+        issues.append("Production/public profile requires a strong JWT_SECRET.")
+    if not trusted_origins:
+        issues.append("Production/public profile requires exact trusted browser origins.")
+    for origin in trusted_origins:
+        parsed = urlparse(origin)
+        host = parsed.hostname or ""
+        if parsed.scheme != "https":
+            issues.append(f"Production trusted origin must use HTTPS: {origin}")
+        if _host_is_loopback(host):
+            issues.append(f"Production trusted origin must not be loopback-only: {origin}")
+    if rp_id == "localhost" or _host_is_loopback(rp_id):
+        issues.append("Production WebAuthn RP ID must be the deployed domain, not localhost.")
+    if cors_regex:
+        issues.append("Production/public profile must use exact CORS_ORIGINS, not regex.")
+
+    return issues
