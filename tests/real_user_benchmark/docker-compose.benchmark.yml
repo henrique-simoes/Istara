@@ -1,0 +1,77 @@
+name: istara-real-user-benchmark
+
+services:
+  ollama:
+    container_name: istara-benchmark-ollama
+    volumes:
+      - istara_benchmark_ollama:/root/.ollama
+
+  backend:
+    container_name: istara-benchmark-backend
+    build:
+      args:
+        - INSTALL_WHISPER=${ISTARA_BENCHMARK_INSTALL_WHISPER:-false}
+    ports:
+      - "${ISTARA_BENCHMARK_API_PORT:-18000}:8000"
+    volumes:
+      - istara_benchmark_backend_data:/app/data
+      - istara_benchmark_watch:/app/watch:ro
+      - ./tests/real_user_benchmark/.results:/benchmark-results:ro
+    environment:
+      - DATABASE_URL=sqlite+aiosqlite:///./data/istara.db
+      - LANCE_DB_PATH=./data/lance_db
+      - UPLOAD_DIR=./data/uploads
+      - PROJECTS_DIR=./data/projects
+      - LLM_PROVIDER=${ISTARA_BENCHMARK_SERVER_LLM_PROVIDER:-ollama}
+      - LMSTUDIO_AUTO_LOAD_ENABLED=${ISTARA_BENCHMARK_LMSTUDIO_AUTO_LOAD_ENABLED:-false}
+      - LMSTUDIO_AUTO_CONTEXT_RELOAD=${ISTARA_BENCHMARK_LMSTUDIO_AUTO_CONTEXT_RELOAD:-false}
+      - STRICT_AUTO_ROUTING=${ISTARA_BENCHMARK_STRICT_AUTO_ROUTING:-false}
+      - LMSTUDIO_MAX_LOAD_ATTEMPTS_PER_REQUEST=${ISTARA_BENCHMARK_LMSTUDIO_MAX_LOAD_ATTEMPTS_PER_REQUEST:-1}
+      - LLM_CAPABILITY_ACTIVE_PROBE_ENABLED=false
+      - LMSTUDIO_HOST=${ISTARA_BENCHMARK_SERVER_LMSTUDIO_HOST:-http://host.docker.internal:1234}
+      - LMSTUDIO_MODEL=${ISTARA_BENCHMARK_SERVER_LMSTUDIO_MODEL:-default}
+      - LMSTUDIO_API_KEY=${ISTARA_BENCHMARK_SERVER_LMSTUDIO_API_KEY:-}
+      - TEAM_MODE=${ISTARA_BENCHMARK_TEAM_MODE:-true}
+      - ADMIN_USERNAME=${ISTARA_BENCHMARK_ADMIN_USERNAME:-admin}
+      - ADMIN_PASSWORD=${ISTARA_BENCHMARK_ADMIN_PASSWORD:-IstaraBenchmarkAdmin123!}
+      - RATE_LIMIT_ENABLED=false
+      - JWT_SECRET=istara-real-user-benchmark-jwt-secret
+      - NETWORK_ACCESS_TOKEN=${NETWORK_ACCESS_TOKEN:-}
+      - CORS_ORIGINS=http://localhost:${ISTARA_BENCHMARK_FRONTEND_PORT:-13000},http://127.0.0.1:${ISTARA_BENCHMARK_FRONTEND_PORT:-13000}
+      - WEBAUTHN_ORIGINS=http://localhost:${ISTARA_BENCHMARK_FRONTEND_PORT:-13000},http://127.0.0.1:${ISTARA_BENCHMARK_FRONTEND_PORT:-13000}
+      - AUTORESEARCH_ENABLED=${AUTORESEARCH_ENABLED:-false}
+      - MCP_SERVER_ENABLED=${MCP_SERVER_ENABLED:-false}
+      - ISTARA_DISABLE_BACKGROUND_AGENTS=${ISTARA_BENCHMARK_DISABLE_BACKGROUND_AGENTS:-false}
+      - OLLAMA_HOST=${ISTARA_BENCHMARK_SERVER_OLLAMA_HOST:-http://ollama:11434}
+      - OLLAMA_MODEL=${ISTARA_BENCHMARK_LLM_MODEL:-qwen3:latest}
+    networks:
+      backend-net:
+      data-net:
+      frontend-net:
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    deploy:
+      resources:
+        limits:
+          pids: 200
+
+  frontend:
+    container_name: istara-benchmark-frontend
+    ports:
+      - "${ISTARA_BENCHMARK_FRONTEND_PORT:-13000}:3000"
+    build:
+      args:
+        - NEXT_PUBLIC_API_URL=http://localhost:${ISTARA_BENCHMARK_API_PORT:-18000}
+        - NEXT_PUBLIC_WS_URL=ws://localhost:${ISTARA_BENCHMARK_API_PORT:-18000}
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:${ISTARA_BENCHMARK_API_PORT:-18000}
+      - NEXT_PUBLIC_WS_URL=ws://localhost:${ISTARA_BENCHMARK_API_PORT:-18000}
+    deploy:
+      resources:
+        limits:
+          pids: 100
+
+volumes:
+  istara_benchmark_ollama:
+  istara_benchmark_backend_data:
+  istara_benchmark_watch:
