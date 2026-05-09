@@ -1,0 +1,3100 @@
+#!/usr/bin/env node
+
+import { existsSync, readFileSync } from "fs";
+import { createHash, randomBytes } from "crypto";
+import { dirname, join, resolve } from "path";
+import { fileURLToPath } from "url";
+import { spawnSync } from "child_process";
+import { createInterface } from "readline/promises";
+
+import { IstaraApiClient } from "./lib/api-client.mjs";
+import { generateCorpus, PROJECT_CONTEXT } from "./lib/corpus.mjs";
+import { runIntegrationMatrix } from "./lib/integration-discovery.mjs";
+import { BenchmarkLogger, makeRunId } from "./lib/logger.mjs";
+import { buildChatTurns, buildTaskPlan, reviewerAssessment } from "./lib/persona.mjs";
+import { runUiJourney } from "./lib/playwright-ui.mjs";
+import { scoreRun, writeScorecardMarkdown } from "./lib/scoring.mjs";
+import { inferProviderType } from "../../relay/lib/llm-proxy.mjs";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const repoRoot = resolve(__dirname, "../..");
+const systemPromptPath = join(__dirname, "system-prompt.md");
+const benchmarkRegistryPath = join(__dirname, "benchmark-registry.json");
+const systemPromptContent = readFileSync(systemPromptPath, "utf8");
+const benchmarkRegistry = JSON.parse(readFileSync(benchmarkRegistryPath, "utf8"));
+const systemPromptHash = createHash("sha256").update(systemPromptContent).digest("hex");
+const systemPromptVersion = systemPromptContent.match(/^Version:\s*(.+)$/m)?.[1]?.trim() || "unknown";
+const LIVE_LLM_ENV_FILES = [
+  join(repoRoot, ".env"),
+  join(repoRoot, ".env.local"),
+  join(repoRoot, "backend", ".env"),
+  join(repoRoot, "backend", ".env.local"),
+];
+const LIVE_LLM_ENV_KEYS = new Set([
+  "ISTARA_LIVE_LLM_BASE_URL",
+  "ISTARA_PRIMARY_LLM_TEST_BASE_URL",
+  "LMSTUDIO_HOST",
+  "ISTARA_LIVE_LLM_API_KEY",
+  "ISTARA_LLM_TEST_API_KEY",
+  "ISTARA_PRIMARY_LLM_TEST_API_KEY",
+  "LMSTUDIO_API_KEY",
+  "ISTARA_LIVE_LLM_KEYCHAIN_SERVICE",
+]);
+const LIVE_LLM_BASE_URL_KEYS = [
+  "ISTARA_LIVE_LLM_BASE_URL",
+  "ISTARA_PRIMARY_LLM_TEST_BASE_URL",
+  "LMSTUDIO_HOST",
+];
+const LIVE_LLM_API_KEY_KEYS = [
+  "ISTARA_LIVE_LLM_API_KEY",
+  "ISTARA_LLM_TEST_API_KEY",
+  "ISTARA_PRIMARY_LLM_TEST_API_KEY",
+  "LMSTUDIO_API_KEY",
+];
+const PRIMARY_TEST_MODEL = "google/gemma-4-e4b";
+const FUTURE_QWEN_DONOR_MODEL = "Qwen3.5-4B";
+const DEFAULT_LIVE_LLM_KEYCHAIN_SERVICE = "istara-live-openai-compatible-tests";
+const startupConfigWarnings = [];
+
+function arg(name, fallback = null) {
+  const index = process.argv.indexOf(`--${name}`);
+  if (index >= 0) return process.argv[index + 1] || "true";
+  return fallback;
+}
+
+function hasFlag(name) {
+  return process.argv.includes(`--${name}`);
+}
+
+function intArg(name, fallback) {
+  const value = arg(name, process.env[`ISTARA_BENCHMARK_${name.toUpperCase().replace(/-/g, "_")}`]);
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function floatEnv(name, fallback) {
+  const parsed = Number.parseFloat(process.env[name]);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function boolEnv(name, fallback = false) {
+  const value = process.env[name];
+  if (value === undefined || value === "") return fallback;
+  return ["1", "true", "yes", "on"].includes(String(value).toLowerCase());
+}
+
+function parseEnvAssignment(rawLine, allowedKeys = null) {
+  let line = rawLine.trim();
+  if (!line || line.startsWith("#") || !line.includes("=")) return null;
+  if (line.startsWith("export ")) line = line.slice("export ".length).trim();
+  const index = line.indexOf("=");
+  const key = line.slice(0, index).trim();
+  if (allowedKeys && !allowedKeys.has(key)) return null;
+  let value = line.slice(index + 1).trim();
+  if (value.length >= 2 && value[0] === value[value.length - 1] && ["'", "\""].includes(value[0])) {
+    value = value.slice(1, -1);
+  }
+  return [key, value];
+}
+
+function loadBackendEnv() {
+  const files = [
+    join(repoRoot, "backend", ".env"),
+    join(repoRoot, "backend", ".env.local"),
+  ];
+  const values = {};
+  const sources = {};
+  for (const file of files) {
+    try {
+      const content = readFileSync(file, "utf8");
+      for (const line of content.split(/\r?\n/)) {
+        const parsed = parseEnvAssignment(line);
+        if (!parsed) continue;
+        const [key, value] = parsed;
+        values[key] = value;
+        sources[key] = file.replace(`${repoRoot}/`, "");
+      }
+    } catch {}
+  }
+  values.__sources = sources;
+  return values;
+}
+
+function configuredValue(config, key, fallback = "") {
+  return (process.env[key] ?? config[key] ?? fallback ?? "").trim();
+}
+
+function loadLiveLlmEnv() {
+  const values = {};
+  const sources = {};
+  const loadedFiles = [];
+  for (const key of LIVE_LLM_ENV_KEYS) {
+    if (Object.prototype.hasOwnProperty.call(process.env, key)) {
+      values[key] = process.env[key] || "";
+      sources[key] = "process-env";
+    }
+  }
+  for (const file of LIVE_LLM_ENV_FILES) {
+    if (!existsSync(file)) continue;
+    let loaded = false;
+    try {
+      const content = readFileSync(file, "utf8");
+      for (const line of content.split(/\r?\n/)) {
+        const parsed = parseEnvAssignment(line, LIVE_LLM_ENV_KEYS);
+        if (!parsed) continue;
+        const [key, value] = parsed;
+        if (!Object.prototype.hasOwnProperty.call(values, key)) {
+          values[key] = value;
+          sources[key] = file.replace(`${repoRoot}/`, "");
+        }
+        loaded = true;
+      }
+    } catch {}
+    if (loaded) loadedFiles.push(file.replace(`${repoRoot}/`, ""));
+  }
+  values.__sources = sources;
+  values.__loadedFiles = loadedFiles;
+  return values;
+}
+
+function pickFirstPresent(config, keys) {
+  for (const key of keys) {
+    if (Object.prototype.hasOwnProperty.call(config, key)) {
+      return {
+        key,
+        value: String(config[key] || "").trim(),
+        source: config.__sources?.[key] || "configured",
+      };
+    }
+  }
+  return { key: "", value: "", source: "unset" };
+}
+
+function pickFirstNonEmpty(config, keys) {
+  for (const key of keys) {
+    const value = String(config[key] || "").trim();
+    if (value) {
+      return {
+        key,
+        value,
+        source: config.__sources?.[key] || "configured",
+      };
+    }
+  }
+  return { key: "", value: "", source: "unset" };
+}
+
+function readKeychainSecret(service) {
+  if (!existsSync("/usr/bin/security")) return "";
+  try {
+    const result = spawnSync("/usr/bin/security", [
+      "find-generic-password",
+      "-a",
+      process.env.USER || "istara",
+      "-s",
+      service || DEFAULT_LIVE_LLM_KEYCHAIN_SERVICE,
+      "-w",
+    ], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+      timeout: 5000,
+    });
+    return result.status === 0 ? result.stdout.trim() : "";
+  } catch {
+    return "";
+  }
+}
+
+function liveLlmProfileFromTestingContract() {
+  const env = loadLiveLlmEnv();
+  const base = pickFirstPresent(env, LIVE_LLM_BASE_URL_KEYS);
+  const key = pickFirstNonEmpty(env, LIVE_LLM_API_KEY_KEYS);
+  const keychainService = String(env.ISTARA_LIVE_LLM_KEYCHAIN_SERVICE || DEFAULT_LIVE_LLM_KEYCHAIN_SERVICE).trim();
+  let apiKey = key.value;
+  let apiKeySource = key.source;
+  if (!apiKey) {
+    apiKey = readKeychainSecret(keychainService);
+    apiKeySource = apiKey ? "macos-keychain" : "unset";
+  }
+  return {
+    baseUrl: base.value,
+    baseUrlKey: base.key,
+    baseUrlSource: base.source,
+    apiKey,
+    apiKeySource,
+    keychainServiceConfigured: keychainService !== DEFAULT_LIVE_LLM_KEYCHAIN_SERVICE,
+    keychainServiceSource: env.__sources?.ISTARA_LIVE_LLM_KEYCHAIN_SERVICE || "default",
+    model: PRIMARY_TEST_MODEL,
+    modelSource: "tests/llm_test_config.py:PRIMARY_TEST_MODEL",
+    loadedEnvFiles: env.__loadedFiles || [],
+  };
+}
+
+function replaceLocalhostForContainer(url) {
+  if (!url) return url;
+  try {
+    const parsed = new URL(url);
+    if (["localhost", "127.0.0.1", "::1"].includes(parsed.hostname)) {
+      parsed.hostname = "host.docker.internal";
+    }
+    return parsed.toString().replace(/\/$/, "");
+  } catch {
+    return url;
+  }
+}
+
+function stripOpenAIPathForNativeLMStudio(url, provider) {
+  if (provider !== "lmstudio" || !url) return url;
+  try {
+    const parsed = new URL(url);
+    const path = parsed.pathname.replace(/\/+$/, "");
+    if (path === "/v1") {
+      parsed.pathname = "";
+      return parsed.toString().replace(/\/$/, "");
+    }
+  } catch {}
+  return url.replace(/\/$/, "");
+}
+
+function hostSummary(url) {
+  try {
+    const parsed = new URL(url);
+    const local = ["localhost", "127.0.0.1", "::1"].includes(parsed.hostname);
+    return {
+      configured: Boolean(url),
+      scheme: parsed.protocol.replace(":", ""),
+      host_kind: local ? "localhost" : parsed.hostname === "host.docker.internal" ? "docker-host" : "non-localhost",
+      port_set: Boolean(parsed.port),
+      has_path: Boolean(parsed.pathname && parsed.pathname !== "/"),
+    };
+  } catch {
+    return { configured: Boolean(url), parseable: false };
+  }
+}
+
+function parseJsonConfig(raw, source) {
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch (error) {
+    startupConfigWarnings.push({
+      source,
+      error: `Invalid JSON: ${error.message}`,
+    });
+    return null;
+  }
+}
+
+function readJsonConfigFile(filePath, source) {
+  if (!filePath) return null;
+  try {
+    return parseJsonConfig(readFileSync(resolve(filePath), "utf8"), source);
+  } catch (error) {
+    startupConfigWarnings.push({
+      source,
+      error: `Could not read ${filePath}: ${error.message}`,
+    });
+    return null;
+  }
+}
+
+function asArray(value) {
+  if (!value) return [];
+  return Array.isArray(value) ? value : [value];
+}
+
+function parseConnectionStringList(raw) {
+  if (!raw) return [];
+  const trimmed = String(raw).trim();
+  if (!trimmed) return [];
+  if (trimmed.startsWith("[") || trimmed.startsWith("{")) {
+    const parsed = parseJsonConfig(trimmed, "connection-string-list");
+    if (Array.isArray(parsed)) return parsed.map(String).map((item) => item.trim()).filter(Boolean);
+    if (parsed && typeof parsed === "object") {
+      return asArray(
+        parsed.connection_strings
+          || parsed.connectionStrings
+          || parsed.compute_donations
+          || parsed.computeDonations
+          || parsed.user_invites
+          || parsed.userInvites,
+      ).map(String).map((item) => item.trim()).filter(Boolean);
+    }
+    return [];
+  }
+  return trimmed.split(/\r?\n|[,|]/).map((item) => item.trim()).filter(Boolean);
+}
+
+function base64UrlEncode(text) {
+  return Buffer.from(text, "utf8").toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+
+function decodeConnectionStringPayloadUnsafe(connectionString) {
+  const value = String(connectionString || "");
+  if (!value.startsWith("rcl_")) return null;
+  const body = value.slice("rcl_".length);
+  const parts = body.split(".");
+  if (parts.length !== 2) return null;
+  try {
+    const padded = parts[0].padEnd(parts[0].length + ((4 - (parts[0].length % 4)) % 4), "=");
+    const payload = JSON.parse(Buffer.from(padded.replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("utf8"));
+    return { payload, signature: parts[1] };
+  } catch {
+    return null;
+  }
+}
+
+function rewriteRelayConnectionStringForContainer(connectionString) {
+  const decoded = decodeConnectionStringPayloadUnsafe(connectionString);
+  if (!decoded) return { connectionString, rewritten: false };
+  const payload = { ...decoded.payload };
+  const before = {
+    server_url: payload.server_url || "",
+    ws_url: payload.ws_url || "",
+  };
+  if (payload.server_url) payload.server_url = replaceLocalhostForContainer(payload.server_url);
+  if (payload.ws_url) payload.ws_url = replaceLocalhostForContainer(payload.ws_url);
+  const rewritten = before.server_url !== payload.server_url || before.ws_url !== payload.ws_url;
+  if (!rewritten) return { connectionString, rewritten: false };
+  const payloadB64 = base64UrlEncode(JSON.stringify(payload));
+  return {
+    connectionString: `rcl_${payloadB64}.${decoded.signature}`,
+    rewritten: true,
+    before: {
+      server_url: hostSummary(before.server_url),
+      ws_url: hostSummary(before.ws_url),
+    },
+    after: {
+      server_url: hostSummary(payload.server_url),
+      ws_url: hostSummary(payload.ws_url),
+    },
+    note: "Relay CLI does not verify the connection-string HMAC; rewriting localhost lets a container reach an external host-server while preserving the embedded network token. User invite strings are not rewritten because the server validates their HMAC.",
+  };
+}
+
+function rememberConnectionStringSensitiveValues(connectionString) {
+  const decoded = decodeConnectionStringPayloadUnsafe(connectionString);
+  if (!decoded?.payload) return;
+  for (const value of [
+    decoded.payload.server_url,
+    decoded.payload.ws_url,
+    decoded.payload.network_token,
+    decoded.payload.jwt,
+  ]) {
+    if (typeof value === "string" && value.trim()) extraSensitiveLogValues.add(value.trim());
+  }
+}
+
+function firstNonEmpty(...values) {
+  for (const value of values) {
+    if (value === undefined || value === null) continue;
+    const stringValue = String(value).trim();
+    if (stringValue) return stringValue;
+  }
+  return "";
+}
+
+function envDonorValue(index, keys) {
+  for (const key of keys) {
+    const value = process.env[`ISTARA_BENCHMARK_DONOR_${index}_${key}`];
+    if (value !== undefined && String(value).trim()) {
+      return {
+        value: String(value).trim(),
+        source: `ISTARA_BENCHMARK_DONOR_${index}_${key}`,
+      };
+    }
+  }
+  return { value: "", source: "" };
+}
+
+function loadConfiguredDonorProfiles() {
+  const profiles = [];
+  const fileConfig = readJsonConfigFile(
+    process.env.ISTARA_BENCHMARK_DONOR_PROFILES_FILE,
+    "ISTARA_BENCHMARK_DONOR_PROFILES_FILE",
+  );
+  const inlineConfig = parseJsonConfig(
+    process.env.ISTARA_BENCHMARK_DONOR_PROFILES_JSON || "",
+    "ISTARA_BENCHMARK_DONOR_PROFILES_JSON",
+  );
+  for (const config of [fileConfig, inlineConfig]) {
+    if (!config) continue;
+    const list = Array.isArray(config)
+      ? config
+      : (config.donor_profiles || config.donorProfiles || config.donors || []);
+    for (const item of asArray(list)) {
+      if (item && typeof item === "object") profiles.push(item);
+    }
+  }
+  return profiles;
+}
+
+function modelFamilyFromId(model) {
+  const value = String(model || "").toLowerCase();
+  if (value.includes("gemma")) return "gemma";
+  if (value.includes("qwen")) return "qwen";
+  if (value.includes("llama")) return "llama";
+  if (value.includes("mistral")) return "mistral";
+  if (value.includes("claude")) return "anthropic";
+  return value ? "other" : "unset";
+}
+
+const startSandbox = hasFlag("start-sandbox") || ["1", "true", "yes"].includes(String(process.env.ISTARA_BENCHMARK_START_SANDBOX || "").toLowerCase());
+const skipSandbox = ["1", "true", "yes"].includes(String(process.env.ISTARA_BENCHMARK_SKIP_SANDBOX || "").toLowerCase());
+const mode = arg("mode", process.env.ISTARA_BENCHMARK_MODE || "probe");
+const runId = arg("run-id", makeRunId());
+const resultsRoot = resolve(arg("results-dir", process.env.ISTARA_BENCHMARK_RESULTS_DIR || join(__dirname, ".results")));
+const externalConnectionStringMode = boolEnv("ISTARA_BENCHMARK_EXTERNAL_CONNECTION_STRINGS", false)
+  || boolEnv("ISTARA_BENCHMARK_INTERACTIVE_CONNECTION_STRINGS", false)
+  || Boolean(
+    process.env.ISTARA_BENCHMARK_CONNECTION_STRINGS_FILE
+      || process.env.ISTARA_BENCHMARK_COMPUTE_CONNECTION_STRINGS
+      || process.env.ISTARA_BENCHMARK_COMPUTE_CONNECTION_STRING
+      || process.env.ISTARA_BENCHMARK_USER_INVITE_CONNECTION_STRINGS
+      || process.env.ISTARA_BENCHMARK_USER_INVITE_CONNECTION_STRING,
+  );
+const startClientSandboxes = boolEnv(
+  "ISTARA_BENCHMARK_START_CLIENT_SANDBOXES",
+  startSandbox || externalConnectionStringMode || (mode !== "plan-only" && boolEnv("ISTARA_BENCHMARK_REQUIRE_COMPUTE_DONATION", true)),
+);
+let runtimeResearcherCount = intArg("researcher-count", 1);
+const backendEnv = loadBackendEnv();
+const liveLlmProfile = liveLlmProfileFromTestingContract();
+const requireComputeDonation = boolEnv("ISTARA_BENCHMARK_REQUIRE_COMPUTE_DONATION", mode !== "plan-only");
+const requireLiveChat = boolEnv("ISTARA_BENCHMARK_REQUIRE_LIVE_CHAT", requireComputeDonation || mode === "full");
+const forceDonatedChat = boolEnv("ISTARA_BENCHMARK_FORCE_DONATED_CHAT", requireComputeDonation);
+const defaultApiBase = startSandbox && !skipSandbox ? "http://localhost:18000" : "http://localhost:8000";
+const defaultFrontendUrl = startSandbox && !skipSandbox ? "http://localhost:13000" : "http://localhost:3000";
+const apiBase = (process.env.ISTARA_API_URL || defaultApiBase).replace(/\/$/, "");
+const frontendUrl = (process.env.ISTARA_FRONTEND_URL || defaultFrontendUrl).replace(/\/$/, "");
+const benchmarkAdminUsername = process.env.ISTARA_BENCHMARK_ADMIN_USERNAME || process.env.ISTARA_ADMIN_USERNAME || process.env.ADMIN_USERNAME || "admin";
+const benchmarkAdminPassword = (
+  process.env.ISTARA_BENCHMARK_ADMIN_PASSWORD ||
+  process.env.ISTARA_ADMIN_PASSWORD ||
+  process.env.ADMIN_PASSWORD ||
+  (startSandbox && !skipSandbox ? "IstaraBenchmarkAdmin123!" : "")
+).trim();
+const benchmarkTeamMode = (
+  process.env.ISTARA_BENCHMARK_TEAM_MODE ||
+  (startSandbox && !skipSandbox ? "true" : "")
+).trim();
+const freshSandbox = !["0", "false", "no"].includes(
+  String(process.env.ISTARA_BENCHMARK_FRESH_SANDBOX ?? "1").toLowerCase(),
+);
+const backgroundAgentsDisabled = (
+  process.env.ISTARA_BENCHMARK_DISABLE_BACKGROUND_AGENTS ||
+  (mode === "probe" ? "true" : "false")
+).trim();
+const benchmarkNetworkToken = (
+  process.env.ISTARA_NETWORK_ACCESS_TOKEN ||
+  process.env.NETWORK_ACCESS_TOKEN ||
+  process.env.ISTARA_BENCHMARK_NETWORK_ACCESS_TOKEN ||
+  (requireComputeDonation && startSandbox && !skipSandbox ? `ruben-${randomBytes(24).toString("base64url")}` : "") ||
+  ""
+).trim();
+const configuredLmStudioHost = (
+  liveLlmProfile.baseUrl ||
+  configuredValue(backendEnv, "LMSTUDIO_HOST", "http://host.docker.internal:1234")
+).trim();
+const configuredLmStudioHostSource = liveLlmProfile.baseUrl
+  ? liveLlmProfile.baseUrlSource
+  : backendEnv.__sources?.LMSTUDIO_HOST || "default";
+const relayLlmHostRaw = (
+  process.env.ISTARA_BENCHMARK_RELAY_LLM_HOST ||
+  configuredLmStudioHost
+).trim();
+const relayLlmHostSource = process.env.ISTARA_BENCHMARK_RELAY_LLM_HOST
+  ? "ISTARA_BENCHMARK_RELAY_LLM_HOST"
+  : configuredLmStudioHostSource;
+const relayLlmHostForContainer = replaceLocalhostForContainer(relayLlmHostRaw);
+const explicitRelayLlmProvider = (process.env.ISTARA_BENCHMARK_RELAY_LLM_PROVIDER || "").trim();
+const relayLlmProvider = inferProviderType(explicitRelayLlmProvider || null, relayLlmHostForContainer);
+const relayLlmProviderSource = explicitRelayLlmProvider
+  ? "ISTARA_BENCHMARK_RELAY_LLM_PROVIDER"
+  : liveLlmProfile.baseUrl
+    ? "inferred-from-testing-live-llm-base-url"
+    : "inferred-from-relay-host";
+const relayLlmHost = stripOpenAIPathForNativeLMStudio(relayLlmHostForContainer, relayLlmProvider);
+const relayLlmHostNormalized = relayLlmHost !== relayLlmHostForContainer;
+const relayLlmModel = (
+  process.env.ISTARA_BENCHMARK_RELAY_LLM_MODEL ||
+  liveLlmProfile.model ||
+  configuredValue(backendEnv, "LMSTUDIO_MODEL", "default") ||
+  "default"
+).trim();
+const relayLlmModelSource = process.env.ISTARA_BENCHMARK_RELAY_LLM_MODEL
+  ? "ISTARA_BENCHMARK_RELAY_LLM_MODEL"
+  : liveLlmProfile.modelSource;
+const relayLlmApiKey = (
+  process.env.ISTARA_BENCHMARK_RELAY_LLM_API_KEY ||
+  liveLlmProfile.apiKey ||
+  configuredValue(backendEnv, "LMSTUDIO_API_KEY", "")
+).trim();
+const relayLlmApiKeySource = process.env.ISTARA_BENCHMARK_RELAY_LLM_API_KEY
+  ? "ISTARA_BENCHMARK_RELAY_LLM_API_KEY"
+  : liveLlmProfile.apiKey
+    ? liveLlmProfile.apiKeySource
+    : backendEnv.__sources?.LMSTUDIO_API_KEY || "unset";
+
+function profileValue(profile, keys) {
+  for (const key of keys) {
+    const value = profile?.[key];
+    if (value !== undefined && value !== null && String(value).trim()) return String(value).trim();
+  }
+  return "";
+}
+
+function normalizeDonorProfile(rawProfile, index, { required = true, defaultKind = "" } = {}) {
+  const raw = rawProfile || {};
+  const envHost = envDonorValue(index, ["LLM_HOST", "HOST", "BASE_URL"]);
+  const envProvider = envDonorValue(index, ["LLM_PROVIDER", "PROVIDER"]);
+  const envModel = envDonorValue(index, ["LLM_MODEL", "MODEL"]);
+  const envApiKey = envDonorValue(index, ["LLM_API_KEY", "API_KEY"]);
+  const envApiKeyName = envDonorValue(index, ["LLM_API_KEY_ENV", "API_KEY_ENV"]);
+  const envConnection = envDonorValue(index, ["CONNECTION_STRING", "COMPUTE_CONNECTION_STRING"]);
+  const isFirstLegacyDefault = index === 1 && !defaultKind;
+  const isQwenDefault = defaultKind === "qwen";
+  const profileProvider = profileValue(raw, ["provider", "llm_provider", "llmProvider"]);
+
+  const id = firstNonEmpty(
+    raw.id,
+    raw.name,
+    isQwenDefault ? `donor-${index}-qwen35-4b` : "",
+    isFirstLegacyDefault ? "donor-1-gemma4" : "",
+    `donor-${index}`,
+  ).replace(/[^a-z0-9_-]+/gi, "-").toLowerCase();
+  const rawHost = firstNonEmpty(
+    envHost.value,
+    profileValue(raw, ["llm_host", "llmHost", "host", "base_url", "baseUrl"]),
+    isQwenDefault ? process.env.ISTARA_BENCHMARK_QWEN_LLM_HOST : "",
+    isFirstLegacyDefault ? relayLlmHostRaw : "",
+  );
+  const hostForContainer = replaceLocalhostForContainer(rawHost);
+  const providerRaw = firstNonEmpty(
+    envProvider.value,
+    profileProvider,
+    isQwenDefault ? (process.env.ISTARA_BENCHMARK_QWEN_LLM_PROVIDER || "lmstudio") : "",
+    isFirstLegacyDefault ? relayLlmProvider : "",
+  );
+  const provider = inferProviderType(providerRaw || null, hostForContainer);
+  const host = stripOpenAIPathForNativeLMStudio(hostForContainer, provider);
+  const apiKeyEnvName = firstNonEmpty(
+    envApiKeyName.value,
+    profileValue(raw, ["api_key_env", "apiKeyEnv", "llm_api_key_env", "llmApiKeyEnv"]),
+    isQwenDefault ? process.env.ISTARA_BENCHMARK_QWEN_LLM_API_KEY_ENV : "",
+  );
+  const apiKeyFromNamedEnv = apiKeyEnvName ? String(process.env[apiKeyEnvName] || "").trim() : "";
+  const apiKey = firstNonEmpty(
+    envApiKey.value,
+    apiKeyFromNamedEnv,
+    profileValue(raw, ["api_key", "apiKey", "llm_api_key", "llmApiKey"]),
+    isQwenDefault ? process.env.ISTARA_BENCHMARK_QWEN_LLM_API_KEY : "",
+    isFirstLegacyDefault ? relayLlmApiKey : "",
+  );
+  const model = firstNonEmpty(
+    envModel.value,
+    profileValue(raw, ["model", "llm_model", "llmModel", "model_id", "modelId"]),
+    isQwenDefault ? (process.env.ISTARA_BENCHMARK_QWEN_LLM_MODEL || FUTURE_QWEN_DONOR_MODEL) : "",
+    isFirstLegacyDefault ? relayLlmModel : "",
+    "default",
+  );
+  const connectionString = firstNonEmpty(
+    envConnection.value,
+    profileValue(raw, ["connection_string", "connectionString", "compute_connection_string", "computeConnectionString"]),
+  );
+  const provisionedOnly = Boolean(raw.provisioned_only ?? raw.provisionedOnly ?? isQwenDefault);
+  const disabledByConfig = raw.enabled === false || raw.disabled === true;
+  const enabled = !disabledByConfig && Boolean(host);
+  const blockedReason = enabled
+    ? ""
+    : disabledByConfig
+      ? "donor-disabled-by-config"
+      : "donor-llm-endpoint-not-configured";
+
+  return {
+    id,
+    index,
+    required,
+    enabled,
+    blockedReason,
+    provisionedOnly,
+    provider,
+    providerSource: envProvider.source || (profileProvider ? "donor-profile" : isFirstLegacyDefault ? relayLlmProviderSource : isQwenDefault ? "future-qwen-profile" : providerRaw ? "configured" : "inferred"),
+    hostRaw: rawHost,
+    hostForContainer,
+    host,
+    hostSource: envHost.source || (rawHost ? (isFirstLegacyDefault ? relayLlmHostSource : "donor-profile") : "unset"),
+    hostNormalized: host !== hostForContainer,
+    apiKey,
+    apiKeySource: envApiKey.source || (apiKeyFromNamedEnv ? `env:${apiKeyEnvName}` : isFirstLegacyDefault && apiKey ? relayLlmApiKeySource : apiKey ? "donor-profile" : "unset"),
+    model,
+    modelSource: envModel.source || (isQwenDefault ? "future-qwen-profile" : isFirstLegacyDefault ? relayLlmModelSource : "donor-profile"),
+    modelFamily: modelFamilyFromId(model),
+    connectionString,
+    connectionStringSource: envConnection.source || (connectionString ? "donor-profile" : "unset"),
+  };
+}
+
+function buildDonorProfiles({ donorCountOverride = null } = {}) {
+  const configuredProfiles = loadConfiguredDonorProfiles();
+  const requested = Number.isFinite(donorCountOverride) && donorCountOverride > 0
+    ? donorCountOverride
+    : intArg("donor-count", Math.max(1, configuredProfiles.length || 1));
+  const total = Math.max(requested, configuredProfiles.length, 1);
+  const profiles = [];
+  for (let index = 1; index <= total; index += 1) {
+    const configured = configuredProfiles[index - 1];
+    const defaultKind = configured ? "" : index === 1 ? "" : "qwen";
+    profiles.push(normalizeDonorProfile(configured || {}, index, {
+      required: index <= requested,
+      defaultKind,
+    }));
+  }
+  return profiles;
+}
+
+function summarizeDonorProfile(profile) {
+  return {
+    id: profile.id,
+    index: profile.index,
+    required: Boolean(profile.required),
+    enabled: Boolean(profile.enabled),
+    blocked_reason: profile.blockedReason || "",
+    provisioned_only: Boolean(profile.provisionedOnly),
+    provider: profile.provider,
+    provider_source: profile.providerSource,
+    host: hostSummary(profile.host),
+    host_source: profile.hostSource,
+    host_localhost_translated_for_container: profile.hostRaw !== profile.hostForContainer,
+    host_openai_path_stripped_for_native_lmstudio: Boolean(profile.hostNormalized),
+    api_key_configured: Boolean(profile.apiKey),
+    api_key_source: profile.apiKeySource,
+    model_family: profile.modelFamily,
+    model_configured: Boolean(profile.model && profile.model !== "default"),
+    model_source: profile.modelSource,
+    model_id_redacted: true,
+    connection_string_configured: Boolean(profile.connectionString),
+    connection_string_source: profile.connectionStringSource,
+  };
+}
+
+let donorProfiles = buildDonorProfiles();
+const serverLmstudioModel = (
+  process.env.ISTARA_BENCHMARK_SERVER_LMSTUDIO_MODEL ||
+  relayLlmModel ||
+  "default"
+).trim();
+const serverLlmProvider = (
+  process.env.ISTARA_BENCHMARK_SERVER_LLM_PROVIDER ||
+  (forceDonatedChat ? "lmstudio" : "ollama")
+).trim();
+const serverLmstudioHost = forceDonatedChat
+  ? "http://127.0.0.1:9"
+  : stripOpenAIPathForNativeLMStudio(
+      replaceLocalhostForContainer(process.env.ISTARA_BENCHMARK_SERVER_LMSTUDIO_HOST || configuredLmStudioHost),
+      inferProviderType(serverLlmProvider, configuredLmStudioHost),
+    );
+const serverOllamaHost = (
+  process.env.ISTARA_BENCHMARK_SERVER_OLLAMA_HOST ||
+  (forceDonatedChat ? "http://127.0.0.1:9" : "http://ollama:11434")
+).trim();
+const serverNeedsOllama = serverLlmProvider === "ollama" && !forceDonatedChat;
+const serverLmstudioAutoLoadEnabled = (
+  process.env.ISTARA_BENCHMARK_LMSTUDIO_AUTO_LOAD_ENABLED ||
+  (requireComputeDonation ? "true" : "false")
+).trim();
+const serverLmstudioAutoContextReload = (
+  process.env.ISTARA_BENCHMARK_LMSTUDIO_AUTO_CONTEXT_RELOAD ||
+  (requireComputeDonation ? "true" : "false")
+).trim();
+const serverStrictAutoRouting = (
+  process.env.ISTARA_BENCHMARK_STRICT_AUTO_ROUTING ||
+  (requireComputeDonation ? "true" : "false")
+).trim();
+const maxChatTurns = intArg("max-chat-turns", mode === "full" ? 100 : mode === "probe" ? 8 : 0);
+const maxTasks = intArg("max-tasks", mode === "full" ? 55 : mode === "probe" ? 8 : 0);
+const maxUploads = intArg("max-uploads", mode === "full" ? 80 : mode === "probe" ? 14 : 0);
+const chatTimeoutMs = intArg("chat-timeout-ms", 120000);
+const keepClientContainers = ["1", "true", "yes"].includes(
+  String(process.env.ISTARA_BENCHMARK_KEEP_CLIENT_CONTAINERS || "").toLowerCase(),
+);
+const colimaStoragePolicy = (process.env.ISTARA_BENCHMARK_COLIMA_STORAGE_POLICY || "warn").trim().toLowerCase();
+const colimaStorageBudget = {
+  actualGb: floatEnv("ISTARA_BENCHMARK_COLIMA_MAX_ACTUAL_GB", 10),
+  apparentGb: floatEnv("ISTARA_BENCHMARK_COLIMA_MAX_APPARENT_GB", 20),
+  toleranceGb: floatEnv("ISTARA_BENCHMARK_COLIMA_STORAGE_TOLERANCE_GB", 0.25),
+};
+let latestColimaStorageSnapshot = null;
+
+const logger = new BenchmarkLogger({ rootDir: resultsRoot, runId, mode });
+logger.init();
+logger.writeJson("run-metadata.json", {
+  run_id: runId,
+  mode,
+  started_at: new Date().toISOString(),
+  cwd: process.cwd(),
+  node: process.version,
+  system_prompt: {
+    source_path: systemPromptPath,
+    version: systemPromptVersion,
+    sha256: systemPromptHash,
+    bytes: Buffer.byteLength(systemPromptContent, "utf8"),
+  },
+});
+logger.writeText("system-prompt.md", systemPromptContent);
+logger.writeJson("benchmark-registry-snapshot.json", benchmarkRegistry);
+logger.action("system_prompt.loaded", {
+  source_path: systemPromptPath,
+  version: systemPromptVersion,
+  sha256: systemPromptHash,
+  bytes: Buffer.byteLength(systemPromptContent, "utf8"),
+});
+for (const warning of startupConfigWarnings) {
+  logger.action("config.warning", warning);
+}
+logger.action("llm.config.sources", {
+  relay_provider: relayLlmProvider,
+  relay_provider_source: relayLlmProviderSource,
+  live_base_url_configured: Boolean(liveLlmProfile.baseUrl),
+  live_base_url_key: liveLlmProfile.baseUrlKey || "unset",
+  live_base_url_source: liveLlmProfile.baseUrlSource,
+  live_env_files_with_relevant_keys: liveLlmProfile.loadedEnvFiles,
+  relay_host_source: relayLlmHostSource,
+  relay_host: hostSummary(relayLlmHost),
+  relay_host_localhost_translated_for_container: relayLlmHostRaw !== relayLlmHostForContainer,
+  relay_host_openai_path_stripped_for_native_lmstudio: relayLlmHostNormalized,
+  relay_model_source: relayLlmModelSource,
+  relay_api_key_source: relayLlmApiKeySource,
+  start_client_sandboxes: startClientSandboxes,
+  external_connection_string_mode: externalConnectionStringMode,
+  researcher_count: runtimeResearcherCount,
+  donor_count_requested: donorProfiles.filter((profile) => profile.required).length,
+  donor_profiles: donorProfiles.map(summarizeDonorProfile),
+  keychain_service_configured: liveLlmProfile.keychainServiceConfigured,
+  keychain_service_source: liveLlmProfile.keychainServiceSource,
+  model_configured: Boolean(relayLlmModel && relayLlmModel !== "default"),
+  model_id_redacted: true,
+  api_key_configured: Boolean(relayLlmApiKey),
+  server_needs_ollama: serverNeedsOllama,
+  server_lmstudio_auto_load_enabled: serverLmstudioAutoLoadEnabled,
+  server_lmstudio_auto_context_reload: serverLmstudioAutoContextReload,
+  server_strict_auto_routing: serverStrictAutoRouting,
+});
+logger.action("benchmark.registry.loaded", {
+  registry_version: benchmarkRegistry.version,
+  companion_suites: benchmarkRegistry.companion_suites?.map((suite) => suite.path) || [],
+  live_model_profile: benchmarkRegistry.live_model_profile || {},
+  agentic_eval_focus: benchmarkRegistry.agentic_eval_focus?.map((item) => item.area) || [],
+  future_multi_donor_profiles: benchmarkRegistry.future_multi_donor_profiles?.map((item) => ({
+    id: item.id,
+    enabled_by_default: Boolean(item.enabled_by_default),
+    model_download_allowed: Boolean(item.model_download_allowed),
+  })) || [],
+});
+logger.appendReport(`# Istara Real User Benchmark Report\n\nRun ID: ${runId}\nMode: ${mode}\nStarted: ${new Date().toISOString()}\n\n`);
+
+const blockers = [];
+const featureResults = {
+  uiVisited: false,
+  uiOnboarding: false,
+  uploadedAndQueried: false,
+  citedSources: false,
+  findingsCreated: false,
+  reportGenerated: false,
+  loops: false,
+  urlFetch: false,
+  interfaces: false,
+  multiDonorCompute: false,
+};
+
+const sandbox = {
+  serverAttempted: false,
+  serverStarted: false,
+  clientAttempted: false,
+  clientStarted: false,
+  relayAttempted: false,
+  relayStarted: false,
+  clientSandboxRequested: startClientSandboxes,
+  relayExpectedCount: donorProfiles.filter((profile) => profile.required).length,
+  relayStartedCount: 0,
+  researcherExpectedCount: runtimeResearcherCount,
+  researcherStartedCount: 0,
+};
+const relayClientContainers = [];
+const extraSensitiveLogValues = new Set();
+let relayClientImageBuilt = false;
+let clientDockerReady = null;
+
+function redactForLog(value) {
+  if (typeof value !== "string") return value;
+  if (value.startsWith("rcl_")) return `${value.slice(0, 18)}...[redacted:${value.length}]`;
+  return value.replace(/rcl_[A-Za-z0-9_.-]{24,}/g, (match) => `${match.slice(0, 18)}...[redacted:${match.length}]`);
+}
+
+function sensitiveLogValues() {
+  return [
+    benchmarkNetworkToken,
+    liveLlmProfile.baseUrl,
+    relayLlmHostRaw,
+    relayLlmHostForContainer,
+    relayLlmHost,
+    relayLlmModel,
+    relayLlmApiKey,
+    ...donorProfiles.flatMap((profile) => [
+      profile.hostRaw,
+      profile.hostForContainer,
+      profile.host,
+      profile.apiKey,
+      profile.connectionString,
+      profile.model,
+    ]),
+    configuredLmStudioHost,
+    serverLmstudioHost,
+    serverLmstudioModel,
+    serverOllamaHost,
+    ...Array.from(extraSensitiveLogValues),
+  ].filter((value) => typeof value === "string" && value.length > 0 && value !== "default");
+}
+
+function sanitizeLogText(text) {
+  let output = redactForLog(String(text || ""));
+  for (const value of sensitiveLogValues()) {
+    const escaped = value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    output = output.replace(new RegExp(escaped, "g"), `[redacted:${value.length}]`);
+  }
+  output = output.replace(/Failed to load LLM '([^']+)'/g, "Failed to load LLM '[redacted-model]'");
+  output = output.replace(/failed to load model \S+ on/gi, "failed to load model [redacted-model] on");
+  output = output.replace(/Model load failed: \S+:/g, "Model load failed: [redacted-model]:");
+  return output;
+}
+
+function redactArgForLog(value, index, args) {
+  const previous = args[index - 1] || "";
+  if (["--llm-host", "--llm-api-key", "--model"].includes(previous)) {
+    return `[redacted-arg:${String(value || "").length}]`;
+  }
+  return sanitizeLogText(value);
+}
+
+function runCommand(label, command, args, options = {}) {
+  const started = Date.now();
+  const loggedArgs = args.map((value, index) => redactArgForLog(value, index, args));
+  logger.action("command.start", { label, command, args: loggedArgs });
+  const result = spawnSync(command, args, {
+    cwd: options.cwd || repoRoot,
+    encoding: "utf8",
+    timeout: options.timeoutMs || 15 * 60 * 1000,
+    env: { ...process.env, ...(options.env || {}) },
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  const payload = {
+    label,
+    command,
+    args: loggedArgs,
+    status: result.status,
+    signal: result.signal,
+    duration_ms: Date.now() - started,
+    stdout: sanitizeLogText(result.stdout || "").slice(-12000),
+    stderr: sanitizeLogText(result.stderr || "").slice(-12000),
+    error: sanitizeLogText(result.error?.message || ""),
+  };
+  logger.action("command.finish", payload);
+  logger.writeText(`logs/${label.replace(/[^a-z0-9_-]+/gi, "-")}.log`, [
+    `$ ${command} ${loggedArgs.join(" ")}`,
+    "",
+    "## stdout",
+    payload.stdout,
+    "",
+    "## stderr",
+    payload.stderr,
+    payload.error ? `\n## error\n${payload.error}` : "",
+  ].join("\n"));
+  return result;
+}
+
+function pruneDanglingDockerImages(label) {
+  if (!boolEnv("ISTARA_BENCHMARK_PRUNE_DANGLING_IMAGES", true)) {
+    logger.action("docker.prune_dangling.skip", { label });
+    return;
+  }
+  runCommand(`docker-prune-dangling-${label}`, "docker", ["image", "prune", "-f"], {
+    timeoutMs: 5 * 60 * 1000,
+  });
+}
+
+function hasExecutable(command) {
+  const result = spawnSync("sh", ["-lc", `command -v ${command}`], {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  return result.status === 0 && Boolean(result.stdout.trim());
+}
+
+function dockerDaemonIsReady() {
+  const result = spawnSync("docker", ["info", "--format", "{{.ServerVersion}}"], {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  return {
+    ok: result.status === 0,
+    stdout: result.stdout || "",
+    stderr: result.stderr || "",
+    status: result.status,
+  };
+}
+
+function formatGiB(bytes) {
+  return Number((bytes / (1024 ** 3)).toFixed(2));
+}
+
+function readDuKiB(target, apparent = false) {
+  if (!existsSync(target)) {
+    return { ok: false, path: target, kib: 0, gib: 0, supported: true, reason: "missing" };
+  }
+  const attempts = apparent
+    ? [["-sk", "-A", target], ["-sk", "--apparent-size", target]]
+    : [["-sk", target]];
+  for (const args of attempts) {
+    const result = spawnSync("du", args, {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    if (result.status !== 0) continue;
+    const kib = Number.parseInt(String(result.stdout || "").trim().split(/\s+/)[0], 10);
+    if (Number.isFinite(kib)) {
+      return {
+        ok: true,
+        path: target,
+        kib,
+        gib: formatGiB(kib * 1024),
+        supported: true,
+      };
+    }
+  }
+  return { ok: false, path: target, kib: 0, gib: 0, supported: false, reason: "du-unsupported" };
+}
+
+function summarizeColimaStorage(snapshot) {
+  const total = snapshot?.paths?.find((entry) => entry.name === "colima-home");
+  return total
+    ? {
+        actual_gb: total.actual?.gib ?? null,
+        apparent_gb: total.apparent?.gib ?? null,
+        over_budget: snapshot.over_budget || [],
+      }
+    : null;
+}
+
+function captureColimaStorageSnapshot(label, { recordIssue = false } = {}) {
+  const home = process.env.HOME || "";
+  if (!home) return null;
+  const paths = [
+    { name: "colima-home", path: join(home, ".colima") },
+    { name: "lima-disks", path: join(home, ".colima", "_lima", "_disks") },
+    { name: "lima-colima-profile", path: join(home, ".colima", "_lima", "colima") },
+  ];
+  const entries = paths.map((item) => ({
+    ...item,
+    exists: existsSync(item.path),
+    actual: readDuKiB(item.path, false),
+    apparent: readDuKiB(item.path, true),
+  }));
+  const total = entries.find((entry) => entry.name === "colima-home");
+  const overBudget = [];
+  if (total?.actual?.ok && total.actual.gib > colimaStorageBudget.actualGb + colimaStorageBudget.toleranceGb) {
+    overBudget.push({
+      measure: "actual",
+      path: total.path,
+      observed_gb: total.actual.gib,
+      budget_gb: colimaStorageBudget.actualGb,
+    });
+  }
+  if (total?.apparent?.ok && total.apparent.gib > colimaStorageBudget.apparentGb + colimaStorageBudget.toleranceGb) {
+    overBudget.push({
+      measure: "apparent",
+      path: total.path,
+      observed_gb: total.apparent.gib,
+      budget_gb: colimaStorageBudget.apparentGb,
+    });
+  }
+  const snapshot = {
+    label,
+    captured_at: new Date().toISOString(),
+    policy: colimaStoragePolicy,
+    budgets_gb: colimaStorageBudget,
+    paths: entries,
+    over_budget: overBudget,
+    remediation: overBudget.length
+      ? "Use a fresh Colima profile with --root-disk 10 --disk 10, or explicitly raise ISTARA_BENCHMARK_COLIMA_MAX_*_GB for larger benchmark images."
+      : "",
+  };
+  latestColimaStorageSnapshot = snapshot;
+  logger.action("storage.colima.snapshot", snapshot);
+  logger.writeJson(`storage/colima-${label.replace(/[^a-z0-9_-]+/gi, "-")}.json`, snapshot);
+  if (recordIssue && overBudget.length) {
+    logger.issue({
+      area: "storage",
+      severity: colimaStoragePolicy === "fail" ? "critical" : "medium",
+      title: "Colima storage budget exceeded",
+      detail: overBudget.map((item) => `${item.measure} ${item.observed_gb}GB > ${item.budget_gb}GB`).join("; "),
+    });
+    if (colimaStoragePolicy === "fail") {
+      blockers.push(`Colima storage budget exceeded: ${overBudget.map((item) => `${item.measure} ${item.observed_gb}GB>${item.budget_gb}GB`).join(", ")}`);
+    }
+  }
+  return snapshot;
+}
+
+function dockerHostAccessArgs() {
+  return process.platform === "linux" ? ["--add-host", "host.docker.internal:host-gateway"] : [];
+}
+
+function containerReachableUrl(url) {
+  return replaceLocalhostForContainer(url).replace(/\/$/, "");
+}
+
+function ensureDockerDaemon() {
+  const first = dockerDaemonIsReady();
+  if (first.ok) {
+    logger.action("docker.daemon.ready", { server_version: first.stdout.trim() });
+    return first;
+  }
+
+  logger.action("docker.daemon.unavailable", {
+    status: first.status,
+    stderr: first.stderr.slice(0, 800),
+  });
+
+  const allowColimaAutostart = !["0", "false", "no"].includes(
+    String(process.env.ISTARA_BENCHMARK_AUTOSTART_COLIMA ?? "1").toLowerCase(),
+  );
+  if (!allowColimaAutostart || !hasExecutable("colima")) {
+    return first;
+  }
+
+  captureColimaStorageSnapshot("before-colima-autostart", { recordIssue: true });
+  const cpu = process.env.ISTARA_BENCHMARK_COLIMA_CPU || "4";
+  const memory = process.env.ISTARA_BENCHMARK_COLIMA_MEMORY || "6";
+  const disk = process.env.ISTARA_BENCHMARK_COLIMA_DISK || "10";
+  const rootDisk = process.env.ISTARA_BENCHMARK_COLIMA_ROOT_DISK || "10";
+  logger.action("colima.autostart.config", {
+    cpu,
+    memory_gb: memory,
+    disk_gb: disk,
+    root_disk_gb: rootDisk,
+    storage_policy: colimaStoragePolicy,
+    budgets_gb: colimaStorageBudget,
+  });
+  runCommand("colima-start", "colima", [
+    "start",
+    "--cpu",
+    cpu,
+    "--memory",
+    memory,
+    "--disk",
+    disk,
+    "--root-disk",
+    rootDisk,
+    "--runtime",
+    "docker",
+  ], {
+    timeoutMs: 15 * 60 * 1000,
+  });
+  captureColimaStorageSnapshot("after-colima-autostart", { recordIssue: true });
+  const second = dockerDaemonIsReady();
+  logger.action("docker.daemon.after_colima", {
+    ok: second.ok,
+    server_version: second.stdout.trim(),
+    stderr: second.stderr.slice(0, 800),
+  });
+  return second;
+}
+
+function ensureClientDockerDaemon(label) {
+  if (!startClientSandboxes) {
+    logger.action("docker.client_daemon.skip", { label, startClientSandboxes });
+    return { ok: false, skipped: true };
+  }
+  if (clientDockerReady) return clientDockerReady;
+  clientDockerReady = ensureDockerDaemon();
+  if (!clientDockerReady.ok) {
+    blockers.push("Client/donor sandbox containers could not start because Docker was unavailable.");
+    logger.issue({
+      area: "client-install",
+      severity: "critical",
+      title: "Docker unavailable for client/donor sandboxes",
+      detail: clientDockerReady.stderr || clientDockerReady.stdout || "docker info failed",
+    });
+  }
+  return clientDockerReady;
+}
+
+function composeCommand() {
+  const configArgs = [
+    "-p",
+    "istara-real-user-benchmark-server",
+    "-f",
+    "docker-compose.yml",
+    "-f",
+    "tests/real_user_benchmark/docker-compose.benchmark.yml",
+    "config",
+    "--services",
+  ];
+  const errors = [];
+  const plugin = spawnSync("docker", ["compose", "version"], {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  if (plugin.status === 0) {
+    const config = spawnSync("docker", ["compose", ...configArgs], {
+      cwd: repoRoot,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    if (config.status === 0) {
+      return { command: "docker", prefixArgs: ["compose"], flavor: "docker compose" };
+    }
+    errors.push(`docker compose config failed: ${(config.stderr || config.stdout || "").slice(0, 500)}`);
+  } else {
+    errors.push((plugin.stderr || plugin.stdout || "docker compose not available").slice(0, 500));
+  }
+  if (hasExecutable("docker-compose")) {
+    const legacy = spawnSync("docker-compose", ["version"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    if (legacy.status === 0) {
+      const config = spawnSync("docker-compose", configArgs, {
+        cwd: repoRoot,
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"],
+      });
+      if (config.status === 0) {
+        return { command: "docker-compose", prefixArgs: [], flavor: "docker-compose" };
+      }
+      errors.push(`docker-compose config failed: ${(config.stderr || config.stdout || "").slice(0, 500)}`);
+    }
+  }
+  return {
+    command: "",
+    prefixArgs: [],
+    flavor: "none",
+    error: errors.join("\n").slice(0, 1200) || "No Docker Compose command found.",
+  };
+}
+
+async function waitForHealth(api, timeoutMs = 180000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const health = await api.health();
+    logger.action("health.poll", health);
+    if (health.ok) return health;
+    await new Promise((resolveDelay) => setTimeout(resolveDelay, 3000));
+  }
+  return { ok: false, error: "Timed out waiting for /api/health" };
+}
+
+function startServerSandboxIfRequested() {
+  if (!startSandbox || skipSandbox || mode === "plan-only") {
+    logger.action("sandbox.server.skip", { startSandbox, skipSandbox, mode });
+    return;
+  }
+  sandbox.serverAttempted = true;
+  const model = process.env.ISTARA_BENCHMARK_LLM_MODEL || process.env.OLLAMA_MODEL || "qwen3:latest";
+  const profile = process.env.ISTARA_BENCHMARK_LLM_PROFILE || "local-bounded";
+  logger.action("sandbox.server.llm_profile", {
+    profile,
+    provider: serverLlmProvider,
+    model_configured: Boolean(serverLmstudioModel),
+    model_id_redacted: true,
+    forceDonatedChat,
+    relay_provider: relayLlmProvider,
+    relay_provider_source: relayLlmProviderSource,
+    relay_host: hostSummary(relayLlmHost),
+    relay_host_source: relayLlmHostSource,
+    relay_host_localhost_translated_for_container: relayLlmHostRaw !== relayLlmHostForContainer,
+    relay_host_openai_path_stripped_for_native_lmstudio: relayLlmHostNormalized,
+    relay_api_key_configured: Boolean(relayLlmApiKey),
+    relay_api_key_source: relayLlmApiKeySource,
+    relay_model_source: relayLlmModelSource,
+    donor_profiles: donorProfiles.map(summarizeDonorProfile),
+    server_needs_ollama: serverNeedsOllama,
+    server_lmstudio_auto_load_enabled: serverLmstudioAutoLoadEnabled,
+    server_lmstudio_auto_context_reload: serverLmstudioAutoContextReload,
+    server_strict_auto_routing: serverStrictAutoRouting,
+    note: "Benchmark is bounded to this single configured LLM model/profile. Sensitive endpoint and model values are redacted.",
+  });
+  const daemon = ensureDockerDaemon();
+  let result;
+  if (!daemon.ok) {
+    result = { status: daemon.status || 1, stderr: daemon.stderr, stdout: daemon.stdout };
+  } else {
+    const compose = composeCommand();
+    logger.action("docker.compose.detected", { flavor: compose.flavor, error: compose.error || "" });
+    if (compose.command) {
+      const composeBaseArgs = [
+        ...compose.prefixArgs,
+        "-p",
+        "istara-real-user-benchmark-server",
+        "-f",
+        "docker-compose.yml",
+        "-f",
+        "tests/real_user_benchmark/docker-compose.benchmark.yml",
+      ];
+      if (freshSandbox) {
+        runCommand("docker-compose-server-down", compose.command, [
+          ...composeBaseArgs,
+          "down",
+          "--remove-orphans",
+        ], {
+          env: {
+            ISTARA_BENCHMARK_TEAM_MODE: benchmarkTeamMode,
+            ISTARA_BENCHMARK_ADMIN_USERNAME: benchmarkAdminUsername,
+            ISTARA_BENCHMARK_ADMIN_PASSWORD: benchmarkAdminPassword,
+            ISTARA_BENCHMARK_DISABLE_BACKGROUND_AGENTS: backgroundAgentsDisabled,
+            NETWORK_ACCESS_TOKEN: benchmarkNetworkToken,
+            ISTARA_BENCHMARK_SERVER_LLM_PROVIDER: serverLlmProvider,
+            ISTARA_BENCHMARK_SERVER_LMSTUDIO_HOST: serverLmstudioHost,
+            ISTARA_BENCHMARK_SERVER_LMSTUDIO_MODEL: serverLmstudioModel,
+            ISTARA_BENCHMARK_SERVER_LMSTUDIO_API_KEY: forceDonatedChat ? "" : relayLlmApiKey,
+            ISTARA_BENCHMARK_LMSTUDIO_AUTO_LOAD_ENABLED: serverLmstudioAutoLoadEnabled,
+            ISTARA_BENCHMARK_LMSTUDIO_AUTO_CONTEXT_RELOAD: serverLmstudioAutoContextReload,
+            ISTARA_BENCHMARK_STRICT_AUTO_ROUTING: serverStrictAutoRouting,
+            ISTARA_BENCHMARK_SERVER_OLLAMA_HOST: serverOllamaHost,
+          },
+          timeoutMs: 5 * 60 * 1000,
+        });
+        for (const volumeName of [
+          "istara-real-user-benchmark-server_istara_benchmark_backend_data",
+          "istara-real-user-benchmark-server_istara_benchmark_watch",
+        ]) {
+          runCommand(`docker-volume-rm-${volumeName}`, "docker", ["volume", "rm", volumeName], {
+            timeoutMs: 60 * 1000,
+          });
+        }
+      }
+      const composeArgs = [
+        ...composeBaseArgs,
+        "up",
+        "-d",
+        "--build",
+        ...(serverNeedsOllama ? [] : ["--no-deps"]),
+        "backend",
+        "frontend",
+      ];
+      result = runCommand(
+        "docker-compose-server-up",
+        compose.command,
+        composeArgs,
+        {
+          env: {
+            OLLAMA_MODEL: model,
+            ISTARA_FIXED_LLM_TEST_MODEL: model,
+            ISTARA_BENCHMARK_TEAM_MODE: benchmarkTeamMode,
+            ISTARA_BENCHMARK_ADMIN_USERNAME: benchmarkAdminUsername,
+            ISTARA_BENCHMARK_ADMIN_PASSWORD: benchmarkAdminPassword,
+            ISTARA_BENCHMARK_DISABLE_BACKGROUND_AGENTS: backgroundAgentsDisabled,
+            NETWORK_ACCESS_TOKEN: benchmarkNetworkToken,
+            ISTARA_BENCHMARK_SERVER_LLM_PROVIDER: serverLlmProvider,
+            ISTARA_BENCHMARK_SERVER_LMSTUDIO_HOST: serverLmstudioHost,
+            ISTARA_BENCHMARK_SERVER_LMSTUDIO_MODEL: serverLmstudioModel,
+            ISTARA_BENCHMARK_SERVER_LMSTUDIO_API_KEY: forceDonatedChat ? "" : relayLlmApiKey,
+            ISTARA_BENCHMARK_LMSTUDIO_AUTO_LOAD_ENABLED: serverLmstudioAutoLoadEnabled,
+            ISTARA_BENCHMARK_LMSTUDIO_AUTO_CONTEXT_RELOAD: serverLmstudioAutoContextReload,
+            ISTARA_BENCHMARK_STRICT_AUTO_ROUTING: serverStrictAutoRouting,
+            ISTARA_BENCHMARK_SERVER_OLLAMA_HOST: serverOllamaHost,
+          },
+          timeoutMs: 25 * 60 * 1000,
+        },
+      );
+      if (result.status === 0) {
+        pruneDanglingDockerImages("server-compose-build");
+      }
+    } else {
+      logger.action("docker.compose.unavailable", { error: compose.error || "" });
+      result = startServerSandboxWithDocker(model);
+    }
+  }
+  sandbox.serverStarted = result.status === 0;
+  if (!sandbox.serverStarted) {
+    blockers.push("Server sandbox did not start successfully. See logs/docker-* in the run folder.");
+    logger.issue({
+      area: "install",
+      severity: "high",
+      title: "Server sandbox start failed",
+      detail: result.stderr || result.error?.message || "docker compose returned non-zero status",
+    });
+  }
+}
+
+function startServerSandboxWithDocker(model) {
+  const network = "istara-real-user-benchmark-net";
+  const commands = [
+    ["docker", ["rm", "-f", "istara-benchmark-frontend", "istara-benchmark-backend", "istara-benchmark-ollama"], { allowFailure: true }],
+    ["docker", ["network", "create", network], { allowFailure: true }],
+    ...(freshSandbox ? [["docker", ["volume", "rm", "istara_benchmark_backend_data"], { allowFailure: true }]] : []),
+    ...(serverNeedsOllama ? [["docker", ["volume", "create", "istara_benchmark_ollama"], {}]] : []),
+    ["docker", ["volume", "create", "istara_benchmark_backend_data"], {}],
+    ...(serverNeedsOllama ? [["docker", [
+      "run",
+      "-d",
+      "--name",
+      "istara-benchmark-ollama",
+      "--network",
+      network,
+      "-v",
+      "istara_benchmark_ollama:/root/.ollama",
+      "ollama/ollama:latest",
+    ], { timeoutMs: 10 * 60 * 1000 }]] : []),
+    ["docker", [
+      "build",
+      "--build-arg",
+      `INSTALL_WHISPER=${process.env.ISTARA_BENCHMARK_INSTALL_WHISPER || "false"}`,
+      "-t",
+      "istara-real-user-benchmark-backend",
+      "backend",
+    ], { timeoutMs: 25 * 60 * 1000 }],
+    ["docker", [
+      "run",
+      "-d",
+      "--name",
+      "istara-benchmark-backend",
+      "--network",
+      network,
+      ...dockerHostAccessArgs(),
+      "-p",
+      "18000:8000",
+      "-v",
+      "istara_benchmark_backend_data:/app/data",
+      "-e",
+      "DATABASE_URL=sqlite+aiosqlite:///./data/istara.db",
+      "-e",
+      "LANCE_DB_PATH=./data/lance_db",
+      "-e",
+      "UPLOAD_DIR=./data/uploads",
+      "-e",
+      "PROJECTS_DIR=./data/projects",
+      "-e",
+      `LLM_PROVIDER=${serverLlmProvider}`,
+      "-e",
+      `LMSTUDIO_AUTO_LOAD_ENABLED=${serverLmstudioAutoLoadEnabled}`,
+      "-e",
+      `LMSTUDIO_AUTO_CONTEXT_RELOAD=${serverLmstudioAutoContextReload}`,
+      "-e",
+      `STRICT_AUTO_ROUTING=${serverStrictAutoRouting}`,
+      "-e",
+      "LMSTUDIO_MAX_LOAD_ATTEMPTS_PER_REQUEST=1",
+      "-e",
+      "LLM_CAPABILITY_ACTIVE_PROBE_ENABLED=false",
+      "-e",
+      `LMSTUDIO_HOST=${serverLmstudioHost}`,
+      "-e",
+      `LMSTUDIO_MODEL=${serverLmstudioModel}`,
+      "-e",
+      `LMSTUDIO_API_KEY=${forceDonatedChat ? "" : relayLlmApiKey}`,
+      "-e",
+      `TEAM_MODE=${benchmarkTeamMode || "true"}`,
+      "-e",
+      `ADMIN_USERNAME=${benchmarkAdminUsername}`,
+      "-e",
+      `ADMIN_PASSWORD=${benchmarkAdminPassword}`,
+      "-e",
+      "RATE_LIMIT_ENABLED=false",
+      "-e",
+      "JWT_SECRET=istara-real-user-benchmark-jwt-secret",
+      "-e",
+      `NETWORK_ACCESS_TOKEN=${benchmarkNetworkToken}`,
+      "-e",
+      "CORS_ORIGINS=http://localhost:13000,http://127.0.0.1:13000",
+      "-e",
+      `OLLAMA_HOST=${serverOllamaHost}`,
+      "-e",
+      `OLLAMA_MODEL=${model}`,
+      "-e",
+      "AUTORESEARCH_ENABLED=false",
+      "-e",
+      "MCP_SERVER_ENABLED=false",
+      "-e",
+      `ISTARA_DISABLE_BACKGROUND_AGENTS=${backgroundAgentsDisabled}`,
+      "istara-real-user-benchmark-backend",
+    ], { timeoutMs: 2 * 60 * 1000 }],
+    ["docker", [
+      "build",
+      "-t",
+      "istara-real-user-benchmark-frontend",
+      "--build-arg",
+      "NEXT_PUBLIC_API_URL=http://localhost:18000",
+      "--build-arg",
+      "NEXT_PUBLIC_WS_URL=ws://localhost:18000",
+      "frontend",
+    ], { timeoutMs: 25 * 60 * 1000 }],
+    ["docker", [
+      "run",
+      "-d",
+      "--name",
+      "istara-benchmark-frontend",
+      "--network",
+      network,
+      "-p",
+      "13000:3000",
+      "-e",
+      "NEXT_PUBLIC_API_URL=http://localhost:18000",
+      "-e",
+      "NEXT_PUBLIC_WS_URL=ws://localhost:18000",
+      "istara-real-user-benchmark-frontend",
+    ], { timeoutMs: 2 * 60 * 1000 }],
+  ];
+
+  let final = { status: 0 };
+  for (const [command, args, options] of commands) {
+    const label = `docker-manual-${args.slice(0, 3).join("-")}`.replace(/[^a-z0-9_-]+/gi, "-");
+    const result = runCommand(label, command, args, options);
+    if (result.status !== 0 && !options.allowFailure) {
+      final = result;
+      break;
+    }
+  }
+  if (final.status === 0) {
+    pruneDanglingDockerImages("server-manual-build");
+  }
+  return final;
+}
+
+function ensureRelayClientImage() {
+  if (relayClientImageBuilt) return true;
+  const daemon = ensureClientDockerDaemon("relay-client-build");
+  if (!daemon.ok) return false;
+  const build = runCommand("docker-build-relay-client", "docker", ["build", "-t", "istara-real-user-benchmark-relay", "relay"], {
+    timeoutMs: 10 * 60 * 1000,
+  });
+  if (build.status !== 0) {
+    blockers.push("Relay/client sandbox image did not build.");
+    return false;
+  }
+  pruneDanglingDockerImages("relay-client-build");
+  relayClientImageBuilt = true;
+  return true;
+}
+
+function startRelayClientSandbox(connectionString, donorProfile = donorProfiles[0], donorIndex = 0) {
+  const donor = donorProfile || donorProfiles[0];
+  if (!startClientSandboxes || !connectionString || mode === "plan-only") {
+    logger.action("sandbox.relay.skip", {
+      donor_id: donor?.id || `donor-${donorIndex + 1}`,
+      hasConnectionString: Boolean(connectionString),
+      startClientSandboxes,
+      mode,
+    });
+    return;
+  }
+  if (!donor?.enabled) {
+    if (donor?.required || requireComputeDonation) {
+      blockers.push(`Compute donor ${donor?.id || donorIndex + 1} could not start: ${donor?.blockedReason || "profile disabled"}.`);
+      logger.issue({
+        area: "compute-donation",
+        severity: "critical",
+        title: "Required donor profile is not runnable",
+        detail: `Donor ${donor?.id || donorIndex + 1}: ${donor?.blockedReason || "profile disabled"}`,
+      });
+    }
+    logger.action("sandbox.relay.profile_skip", {
+      donor: summarizeDonorProfile(donor),
+    });
+    return;
+  }
+  sandbox.relayAttempted = true;
+  if (!benchmarkNetworkToken) {
+    if (requireComputeDonation) {
+      blockers.push("Compute donation was required, but no network access token was available for relay authentication.");
+      logger.issue({
+        area: "compute-donation",
+        severity: "critical",
+        title: "Missing network access token for required compute donation",
+        detail: "Relay connections to /ws/relay require either a network token or JWT. The benchmark could not start a donated-compute client without one.",
+      });
+    }
+    logger.action("sandbox.relay.skip", {
+      donor_id: donor.id,
+      reason: "The default UI benchmark profile runs Team Mode without NETWORK_ACCESS_TOKEN so browser API requests are not blocked. Set ISTARA_BENCHMARK_NETWORK_ACCESS_TOKEN to live-test compute relay connection strings in a separate profile.",
+    });
+    return;
+  }
+  if (!ensureRelayClientImage()) return;
+  const containerName = `istara-rub-relay-${runId}-${donor.id}`.replace(/[^a-z0-9_.-]+/gi, "-").slice(0, 120);
+  rememberConnectionStringSensitiveValues(connectionString);
+  const relayConnection = rewriteRelayConnectionStringForContainer(connectionString);
+  rememberConnectionStringSensitiveValues(relayConnection.connectionString);
+  const relayBootstrapScript = [
+    "mkdir -p \"$HOME/.istara\"",
+    "node -e 'const fs=require(\"fs\"); const cfg={connection_string:process.env.ISTARA_CONNECTION_STRING, provider:process.env.ISTARA_RELAY_LLM_PROVIDER, llm_host:process.env.ISTARA_RELAY_LLM_HOST, llm_api_key:process.env.ISTARA_RELAY_LLM_API_KEY}; fs.writeFileSync(`${process.env.HOME}/.istara/config.json`, JSON.stringify(cfg));'",
+    "exec node index.mjs --heartbeat-interval \"${ISTARA_RELAY_HEARTBEAT_INTERVAL:-10}\"",
+  ].join(" && ");
+  logger.action("sandbox.relay.start", {
+    donor: summarizeDonorProfile(donor),
+    container_name: containerName,
+    connection_string_present: Boolean(connectionString),
+    connection_string_rewritten_for_container: Boolean(relayConnection.rewritten),
+    rewrite_evidence: relayConnection.rewritten
+      ? {
+          before: relayConnection.before,
+          after: relayConnection.after,
+        }
+      : null,
+  });
+  const run = runCommand(`docker-run-relay-client-${donor.id}`, "docker", [
+    "run",
+    "-d",
+    "--name",
+    containerName,
+    ...dockerHostAccessArgs(),
+    "-e",
+    "ISTARA_CONNECTION_STRING",
+    "-e",
+    "ISTARA_RELAY_LLM_PROVIDER",
+    "-e",
+    "ISTARA_RELAY_LLM_HOST",
+    "-e",
+    "ISTARA_RELAY_LLM_API_KEY",
+    "-e",
+    "ISTARA_RELAY_HEARTBEAT_INTERVAL",
+    "istara-real-user-benchmark-relay",
+    "sh",
+    "-lc",
+    relayBootstrapScript,
+  ], {
+    env: {
+      ISTARA_CONNECTION_STRING: relayConnection.connectionString,
+      ISTARA_RELAY_LLM_PROVIDER: donor.provider,
+      ISTARA_RELAY_LLM_HOST: donor.host,
+      ISTARA_RELAY_LLM_API_KEY: donor.apiKey,
+      ISTARA_RELAY_HEARTBEAT_INTERVAL: process.env.ISTARA_BENCHMARK_RELAY_HEARTBEAT_INTERVAL || "10",
+    },
+    timeoutMs: 2 * 60 * 1000,
+  });
+  if (run.status === 0) {
+    sandbox.relayStarted = true;
+    relayClientContainers.push(containerName);
+    sandbox.relayStartedCount += 1;
+  }
+  if (run.status !== 0) {
+    blockers.push(`Relay/client sandbox did not start successfully for donor ${donor.id}.`);
+    logger.issue({
+      area: "client-install",
+      severity: "medium",
+      title: "Relay client sandbox failed to start",
+      detail: run.stderr || run.error?.message || "docker run returned non-zero status",
+    });
+  }
+}
+
+function startInviteClientSandbox(connectionString, index = 0) {
+  if (!startClientSandboxes || !connectionString || mode === "plan-only") {
+    logger.action("sandbox.invite_client.skip", {
+      index,
+      hasConnectionString: Boolean(connectionString),
+      startClientSandboxes,
+      mode,
+    });
+    return;
+  }
+  const daemon = ensureClientDockerDaemon("invite-client");
+  if (!daemon.ok) return;
+  sandbox.clientAttempted = true;
+  const script = `
+const decodePayload = (connectionString) => {
+  const body = connectionString.replace(/^rcl_/, "");
+  const payload = body.split(".")[0] || "";
+  const padded = payload.padEnd(payload.length + ((4 - (payload.length % 4)) % 4), "=");
+  return JSON.parse(Buffer.from(padded.replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("utf8"));
+};
+const post = async (serverUrl, path, body, headers = {}) => {
+  const response = await fetch(serverUrl + path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...headers },
+    body: JSON.stringify(body),
+  });
+  const text = await response.text();
+  let data = text;
+  try { data = text ? JSON.parse(text) : {}; } catch {}
+  if (!response.ok) throw new Error(path + " " + response.status + " " + String(text).slice(0, 300));
+  return data;
+};
+const main = async () => {
+  const connectionString = process.env.ISTARA_CONNECTION_STRING || "";
+  const payload = decodePayload(connectionString);
+  const serverUrl = (process.env.ISTARA_CLIENT_SERVER_URL || payload.server_url || "").replace(/\\/$/, "");
+  const networkAccessToken = process.env.ISTARA_CLIENT_NETWORK_ACCESS_TOKEN || "";
+  const networkHeaders = networkAccessToken ? { "X-Access-Token": networkAccessToken } : {};
+  const username = process.env.ISTARA_CLIENT_USERNAME || "maya-client";
+  const password = process.env.ISTARA_CLIENT_PASSWORD || "IstaraBenchmarkClient123!";
+  const email = process.env.ISTARA_CLIENT_EMAIL || username + "@benchmark.istara.local";
+  const validation = await post(serverUrl, "/api/connections/validate", { connection_string: connectionString }, networkHeaders);
+  if (!validation.valid) throw new Error("Connection string validation failed: " + JSON.stringify(validation));
+  const redemption = await post(serverUrl, "/api/connections/redeem", {
+    connection_string: connectionString,
+    username,
+    password,
+    email,
+    display_name: "Maya Rodrigues Client Sandbox",
+  }, networkHeaders);
+  const meResponse = await fetch(serverUrl + "/api/auth/me", {
+    headers: { Authorization: "Bearer " + redemption.token, ...networkHeaders },
+  });
+  const meText = await meResponse.text();
+  let me = meText;
+  try { me = meText ? JSON.parse(meText) : {}; } catch {}
+  if (!meResponse.ok) throw new Error("/api/auth/me " + meResponse.status + " " + String(meText).slice(0, 300));
+  console.log(JSON.stringify({
+    ok: true,
+    server_url: serverUrl,
+    token_type: validation.token_type,
+    username,
+    user_id: redemption.user && redemption.user.id,
+    role: redemption.user && redemption.user.role,
+    me_id: me.id,
+    me_role: me.role,
+  }));
+};
+main().catch((error) => {
+  console.error(JSON.stringify({ ok: false, error: error.message }));
+  process.exit(1);
+});
+`;
+  const clientUsername = `maya-client-${index + 1}-${runId.replace(/[^a-z0-9]+/gi, "-").slice(0, 26)}`;
+  const result = runCommand(`docker-run-user-invite-client-${index + 1}`, "docker", [
+    "run",
+    "--rm",
+    ...dockerHostAccessArgs(),
+    "-e",
+    "ISTARA_CONNECTION_STRING",
+    "-e",
+    "ISTARA_CLIENT_SERVER_URL",
+    "-e",
+    "ISTARA_CLIENT_USERNAME",
+    "-e",
+    "ISTARA_CLIENT_PASSWORD",
+    "-e",
+    "ISTARA_CLIENT_EMAIL",
+    "-e",
+    "ISTARA_CLIENT_NETWORK_ACCESS_TOKEN",
+    "node:24-slim",
+    "node",
+    "-e",
+    script,
+  ], {
+    env: {
+      ISTARA_CONNECTION_STRING: connectionString,
+      ISTARA_CLIENT_SERVER_URL: process.env.ISTARA_BENCHMARK_CLIENT_SERVER_URL || containerReachableUrl(apiBase),
+      ISTARA_CLIENT_USERNAME: clientUsername,
+      ISTARA_CLIENT_PASSWORD: process.env.ISTARA_BENCHMARK_CLIENT_PASSWORD || "IstaraBenchmarkClient123!",
+      ISTARA_CLIENT_EMAIL: `${clientUsername}@benchmark.istara.local`,
+      ISTARA_CLIENT_NETWORK_ACCESS_TOKEN: benchmarkNetworkToken,
+    },
+    timeoutMs: 3 * 60 * 1000,
+  });
+  sandbox.clientStarted = sandbox.clientStarted || result.status === 0;
+  if (result.status === 0) sandbox.researcherStartedCount += 1;
+  let parsed = null;
+  const lines = String(result.stdout || "").trim().split(/\r?\n/).filter(Boolean);
+  try {
+    parsed = lines.length ? JSON.parse(lines.at(-1)) : null;
+  } catch {}
+  logger.writeJson("connection-client-results.json", {
+    attempted: true,
+    index,
+    ok: result.status === 0,
+    result: parsed,
+    stderr_preview: String(result.stderr || "").slice(-1000),
+  });
+  if (result.status !== 0) {
+    blockers.push("User invite client sandbox did not redeem the connection string successfully.");
+    logger.issue({
+      area: "client-install",
+      severity: "high",
+      title: "User invite client sandbox failed",
+      detail: parsed?.error || result.stderr || result.error?.message || "docker run returned non-zero status",
+    });
+  }
+  return {
+    ok: result.status === 0,
+    username: clientUsername,
+    password: process.env.ISTARA_BENCHMARK_CLIENT_PASSWORD || "IstaraBenchmarkClient123!",
+    email: `${clientUsername}@benchmark.istara.local`,
+    parsed,
+  };
+}
+
+function cleanupRelayClientSandboxes() {
+  if (keepClientContainers || relayClientContainers.length === 0) return;
+  for (const containerName of relayClientContainers) {
+    runCommand(`docker-logs-${containerName}`, "docker", ["logs", containerName], {
+      timeoutMs: 30 * 1000,
+    });
+    runCommand(`docker-rm-${containerName}`, "docker", ["rm", "-f", containerName], {
+      timeoutMs: 30 * 1000,
+    });
+  }
+}
+
+function preflightRelayLlmFromContainer(donorProfile = donorProfiles[0]) {
+  const donor = donorProfile || donorProfiles[0];
+  if (!requireComputeDonation || !startClientSandboxes || mode === "plan-only") {
+    logger.action("compute.preflight.skip", {
+      donor_id: donor?.id || "donor-1",
+      requireComputeDonation,
+      startClientSandboxes,
+      mode,
+    });
+    return { skipped: true };
+  }
+  if (!donor?.enabled) {
+    const preflight = {
+      attempted: false,
+      ok: false,
+      donor: summarizeDonorProfile(donor),
+      reason: donor?.blockedReason || "donor profile disabled",
+    };
+    logger.writeJson(`relay-llm-preflight-${donor?.id || "donor"}.json`, preflight);
+    logger.action("compute.preflight.profile_skip", preflight);
+    if (donor?.required) {
+      blockers.push(`Required compute donor ${donor.id} has no runnable LLM endpoint.`);
+      logger.issue({
+        area: "compute-donation",
+        severity: "critical",
+        title: "Required compute donor has no LLM endpoint",
+        detail: `Donor ${donor.id}: ${donor.blockedReason || "missing host"}. Provide a provisioned LM Studio/OpenAI-compatible endpoint instead of asking the benchmark to download or install a model.`,
+      });
+    }
+    return preflight;
+  }
+  const daemon = ensureClientDockerDaemon(`relay-preflight-${donor.id}`);
+  if (!daemon.ok) return { ok: false, skipped: true };
+  const script = `
+const provider = (process.env.ISTARA_RELAY_LLM_PROVIDER || "lmstudio").toLowerCase();
+const host = (process.env.ISTARA_RELAY_LLM_HOST || "").replace(/\\/+$/, "");
+const apiKey = process.env.ISTARA_RELAY_LLM_API_KEY || "";
+const configuredModel = process.env.ISTARA_RELAY_LLM_MODEL || "";
+const headers = { "Content-Type": "application/json" };
+if (apiKey) headers.Authorization = "Bearer " + apiKey;
+let loadAttempted = false;
+let loadOk = false;
+let loadError = "";
+let modelCount = 0;
+let configuredModelListed = null;
+let selectedModelIdLength = 0;
+let modelListSource = "";
+const redact = (value) => {
+  let output = String(value || "");
+  for (const secret of [host, apiKey, configuredModel].filter(Boolean)) {
+    output = output.split(secret).join("[redacted]");
+  }
+  return output;
+};
+const openAIUrl = (suffix) => {
+  const clean = suffix.replace(/^\\/+/, "");
+  const parsed = new URL(host);
+  const basePath = parsed.pathname.replace(/\\/+$/, "");
+  if (basePath.endsWith("/v1") || basePath.endsWith("/openai")) return host + "/" + clean;
+  return host + "/v1/" + clean;
+};
+const fetchJson = async (url, options = {}) => {
+  const res = await fetch(url, { ...options, headers: { ...headers, ...(options.headers || {}) }, signal: AbortSignal.timeout(30000) });
+  const text = await res.text();
+  let data = text;
+  try { data = text ? JSON.parse(text) : {}; } catch {}
+  if (!res.ok) throw new Error(String(res.status) + " " + String(text).slice(0, 240));
+  return data;
+};
+const modelId = (item) => typeof item === "string" ? item : (item && (item.id || item.name || item.model || item.path)) || "";
+const loadConfiguredModel = async (model) => {
+  if (provider !== "lmstudio" || !model || model === "default") return false;
+  loadAttempted = true;
+  try {
+    await fetchJson(host + "/api/v1/models/load", {
+      method: "POST",
+      body: JSON.stringify({ model, echo_load_config: true })
+    });
+    loadOk = true;
+    return true;
+  } catch (error) {
+    loadError = redact(error.message);
+    return false;
+  }
+};
+const tinyChat = async (model) => fetchJson(openAIUrl("chat/completions"), {
+  method: "POST",
+  body: JSON.stringify({
+    model,
+    messages: [{ role: "user", content: "Reply with the exact marker BENCHMARK_DONATION_READY." }],
+    temperature: 0,
+    max_tokens: 32,
+    stream: false
+  })
+});
+const main = async () => {
+  if (!host) throw new Error("No relay LLM host configured");
+  let modelData;
+  try {
+    modelData = provider === "lmstudio"
+      ? await fetchJson(host + "/api/v1/models")
+      : await fetchJson(openAIUrl("models"));
+    modelListSource = provider === "lmstudio" ? "lmstudio-native" : "openai-compatible";
+  } catch (firstError) {
+    modelData = await fetchJson(openAIUrl("models"));
+    modelListSource = "openai-compatible";
+  }
+  let rawModels = Array.isArray(modelData?.data) ? modelData.data : Array.isArray(modelData?.models) ? modelData.models : [];
+  let models = rawModels.map(modelId).filter(Boolean);
+  if (provider === "lmstudio" && models.length === 0) {
+    try {
+      modelData = await fetchJson(openAIUrl("models"));
+      rawModels = Array.isArray(modelData?.data) ? modelData.data : Array.isArray(modelData?.models) ? modelData.models : [];
+      models = rawModels.map(modelId).filter(Boolean);
+      modelListSource = "openai-compatible";
+    } catch {}
+  }
+  modelCount = models.length;
+  configuredModelListed = configuredModel && configuredModel !== "default" ? models.includes(configuredModel) : null;
+  const model = configuredModel && configuredModel !== "default" ? configuredModel : models[0];
+  selectedModelIdLength = model ? model.length : 0;
+  if (!model) throw new Error("No chat model available from configured relay LLM target");
+  let completion;
+  try {
+    completion = await tinyChat(model);
+  } catch (chatError) {
+    if (
+      provider === "lmstudio"
+      && configuredModel
+      && configuredModel !== "default"
+      && /no models loaded|not loaded|load/i.test(chatError.message)
+    ) {
+      await loadConfiguredModel(configuredModel);
+      completion = await tinyChat(model);
+    } else {
+      throw chatError;
+    }
+  }
+  const content = completion?.choices?.[0]?.message?.content || "";
+  console.log(JSON.stringify({
+    ok: true,
+    provider,
+    model_count: modelCount,
+    configured_model_listed: configuredModelListed,
+    model_list_source: modelListSource,
+    selected_model_source: configuredModel && configuredModel !== "default" ? "configured" : "first-listed",
+    selected_model_id_length: selectedModelIdLength,
+    load_attempted: loadAttempted,
+    load_ok: loadOk,
+    load_error_present: Boolean(loadError),
+    load_error_preview: loadError.slice(0, 240),
+    chat_chars: content.length,
+    contains_marker: /BENCHMARK_DONATION_READY/i.test(content)
+  }));
+};
+main().catch((error) => {
+  console.error(JSON.stringify({ ok: false, error: redact(error.message), model_count: modelCount, configured_model_listed: configuredModelListed, model_list_source: modelListSource, selected_model_source: configuredModel && configuredModel !== "default" ? "configured" : "first-listed", selected_model_id_length: selectedModelIdLength, load_attempted: loadAttempted, load_ok: loadOk, load_error_present: Boolean(loadError), load_error_preview: loadError.slice(0, 240) }));
+  process.exit(1);
+});
+`;
+  const result = runCommand(`docker-run-relay-llm-preflight-${donor.id}`, "docker", [
+    "run",
+    "--rm",
+    ...dockerHostAccessArgs(),
+    "-e",
+    "ISTARA_RELAY_LLM_PROVIDER",
+    "-e",
+    "ISTARA_RELAY_LLM_HOST",
+    "-e",
+    "ISTARA_RELAY_LLM_API_KEY",
+    "-e",
+    "ISTARA_RELAY_LLM_MODEL",
+    "node:24-slim",
+    "node",
+    "-e",
+    script,
+  ], {
+    env: {
+      ISTARA_RELAY_LLM_PROVIDER: donor.provider,
+      ISTARA_RELAY_LLM_HOST: donor.host,
+      ISTARA_RELAY_LLM_API_KEY: donor.apiKey,
+      ISTARA_RELAY_LLM_MODEL: donor.model,
+    },
+    timeoutMs: 2 * 60 * 1000,
+  });
+  let parsed = null;
+  const lines = `${result.stdout || ""}\n${result.stderr || ""}`.trim().split(/\r?\n/).filter(Boolean);
+  for (const line of lines.slice().reverse()) {
+    try {
+      parsed = JSON.parse(line);
+      break;
+    } catch {}
+  }
+  const preflight = {
+    attempted: true,
+    donor: summarizeDonorProfile(donor),
+    ok: result.status === 0 && parsed?.ok === true,
+    result: parsed,
+    stderr_preview: sanitizeLogText(result.stderr || "").slice(-1000),
+    relay_host: hostSummary(donor.host),
+    relay_host_source: donor.hostSource,
+    relay_provider: donor.provider,
+    relay_provider_source: donor.providerSource,
+    relay_host_localhost_translated_for_container: donor.hostRaw !== donor.hostForContainer,
+    relay_host_openai_path_stripped_for_native_lmstudio: donor.hostNormalized,
+    api_key_configured: Boolean(donor.apiKey),
+    api_key_source: donor.apiKeySource,
+    model_configured: Boolean(donor.model && donor.model !== "default"),
+    model_source: donor.modelSource,
+  };
+  logger.writeJson(`relay-llm-preflight-${donor.id}.json`, preflight);
+  if (donor.index === 1) logger.writeJson("relay-llm-preflight.json", preflight);
+  logger.action("compute.preflight.result", preflight);
+  if (!preflight.ok) {
+    blockers.push(`Configured relay target failed the container preflight for donor ${donor.id}.`);
+    logger.issue({
+      area: "compute-donation",
+      severity: "critical",
+      title: "Relay LLM target failed container preflight",
+      detail: parsed?.error || sanitizeLogText(result.stderr || "") || "The client container could not list models and complete a tiny chat request against the configured LM Studio target.",
+    });
+  }
+  return preflight;
+}
+
+async function waitForRelayRegistrations(api, expectedCount = 1, timeoutMs = 90000) {
+  const deadline = Date.now() + timeoutMs;
+  let lastStats = null;
+  while (Date.now() < deadline) {
+    try {
+      lastStats = await api.get("/api/compute/stats", { timeoutMs: 15000 });
+      const nodes = Array.isArray(lastStats.nodes) ? lastStats.nodes : [];
+      const relayNodes = nodes.filter((node) => ["relay", "browser"].includes(node.source));
+      if (relayNodes.length >= expectedCount) {
+        const evidence = relayNodes.map(summarizeRelayNode);
+        logger.action("compute.relay.registered", {
+          expected_count: expectedCount,
+          registered_count: evidence.length,
+          nodes: evidence,
+        });
+        return { ok: true, nodes: evidence, node: evidence[0], stats: summarizeComputeStats(lastStats) };
+      }
+      logger.action("compute.relay.poll", {
+        total_nodes: lastStats.total_nodes,
+        alive_nodes: lastStats.alive_nodes,
+        expected_count: expectedCount,
+        relay_nodes: relayNodes.length,
+      });
+    } catch (error) {
+      logger.action("compute.relay.poll_error", { error: error.message });
+    }
+    await new Promise((resolveDelay) => setTimeout(resolveDelay, 3000));
+  }
+  const nodes = Array.isArray(lastStats?.nodes) ? lastStats.nodes.map(summarizeRelayNode) : [];
+  return { ok: false, expected_count: expectedCount, nodes, stats: summarizeComputeStats(lastStats) };
+}
+
+async function waitForRelayRegistration(api, timeoutMs = 90000) {
+  return waitForRelayRegistrations(api, 1, timeoutMs);
+}
+
+function summarizeRelayNode(node) {
+  const capabilities = node.model_capabilities || {};
+  return {
+    node_id: node.node_id || "",
+    source: node.source || "",
+    provider_type: node.provider_type || "",
+    state: node.state || "",
+    serving_state: node.serving_state || "",
+    health_error_present: Boolean(node.health_error),
+    alive: Boolean(node.alive ?? node.is_healthy),
+    loaded_model_count: Array.isArray(node.loaded_models) ? node.loaded_models.length : 0,
+    capability_model_count: Object.keys(capabilities).length,
+    active_requests: node.active_requests || 0,
+    score: node.score || 0,
+  };
+}
+
+function summarizeComputeStats(stats) {
+  const nodes = Array.isArray(stats?.nodes) ? stats.nodes : [];
+  return {
+    total_nodes: stats?.total_nodes,
+    alive_nodes: stats?.alive_nodes,
+    available_model_count: Array.isArray(stats?.available_models) ? stats.available_models.length : 0,
+    request_slots_total: stats?.request_slots_total,
+    request_slots_used: stats?.request_slots_used,
+    request_slots_available: stats?.request_slots_available,
+    nodes: nodes.map(summarizeRelayNode),
+  };
+}
+
+function captureBackendLogs(label, since = "5m") {
+  if (!startSandbox || skipSandbox) return { stdout: "", stderr: "", status: 0 };
+  return runCommand(`docker-logs-backend-${label}`, "docker", [
+    "logs",
+    "--since",
+    since,
+    "istara-benchmark-backend",
+  ], {
+    timeoutMs: 30 * 1000,
+  });
+}
+
+async function verifyComputeDonation(api, projectId, { activeDonorProfiles = donorProfiles } = {}) {
+  if (!requireComputeDonation) {
+    logger.action("compute.donation.verify.skip", { requireComputeDonation });
+    return { skipped: true };
+  }
+  const expectedRelayCount = Math.max(1, activeDonorProfiles.filter((profile) => profile.enabled).length);
+  const registration = await waitForRelayRegistrations(api, expectedRelayCount);
+  if (!registration.ok) {
+    blockers.push(`Compute donation relay registration incomplete: ${registration.nodes?.length || 0}/${expectedRelayCount} relay nodes observed.`);
+    logger.issue({
+      area: "compute-donation",
+      severity: "critical",
+      title: "Compute donation relay did not register",
+      detail: "The benchmark generated or consumed compute donation strings and started relay clients, but /api/compute/stats did not show the expected relay/browser node count.",
+    });
+    logger.writeJson("compute-donation-results.json", {
+      expected_relay_count: expectedRelayCount,
+      donor_profiles: activeDonorProfiles.map(summarizeDonorProfile),
+      registration,
+    });
+    return { ok: false, registration };
+  }
+
+  const startedAt = Date.now();
+  let chat = null;
+  let chatError = "";
+  try {
+    chat = await api.sendChat({
+      projectId,
+      message: "Benchmark technical probe: answer with the phrase BENCHMARK_DONATION_OK and one short sentence about donated compute being connected.",
+      maxHistory: 0,
+      timeoutMs: chatTimeoutMs,
+    });
+  } catch (error) {
+    chatError = error.message;
+  }
+  const backendLogs = captureBackendLogs("compute-donation-probe", "5m");
+  const routeUsedRelay = /routing (stream|chat) to Relay:/i.test(`${backendLogs.stdout}\n${backendLogs.stderr}`);
+  const routeAttemptedRelay = routeUsedRelay || /(stream|chat) failed on Relay:/i.test(`${backendLogs.stdout}\n${backendLogs.stderr}`);
+  const responseChars = chat?.content?.trim().length || 0;
+  const statsNodes = Array.isArray(registration.stats?.nodes) ? registration.stats.nodes : [];
+  const aliveRelayNodes = statsNodes.filter((node) => ["relay", "browser"].includes(node.source) && node.alive);
+  const aliveDirectNodes = statsNodes.filter((node) => !["relay", "browser"].includes(node.source) && node.alive);
+  const forcedRelayTopology = forceDonatedChat && aliveRelayNodes.length > 0 && aliveDirectNodes.length === 0;
+  const routeVerifiedBy = routeUsedRelay
+    ? "backend-route-log"
+    : forcedRelayTopology
+      ? "forced-topology-only-alive-node"
+      : "unverified";
+  const ok = !chatError && responseChars > 0 && (routeUsedRelay || forcedRelayTopology);
+  const result = {
+    ok,
+    duration_ms: Date.now() - startedAt,
+    expected_relay_count: expectedRelayCount,
+    donor_profiles: activeDonorProfiles.map(summarizeDonorProfile),
+    registration,
+    donated_compute_chat_verified: ok,
+    route_used_relay: routeUsedRelay,
+    route_attempted_relay: routeAttemptedRelay,
+    route_verified_by: routeVerifiedBy,
+    route_evidence_detail: routeUsedRelay
+      ? "Backend logs explicitly reported Relay routing."
+      : forcedRelayTopology
+        ? "The benchmark forced direct server providers unreachable and /api/compute/stats showed the relay as the only alive compute node."
+        : "Relay routing could not be proved from backend logs or forced topology.",
+    forced_relay_topology: forcedRelayTopology,
+    alive_relay_node_count: aliveRelayNodes.length,
+    alive_direct_node_count: aliveDirectNodes.length,
+    multi_donor_registered: expectedRelayCount > 1 && (registration.nodes?.length || 0) >= expectedRelayCount,
+    chat_error: chatError,
+    response_chars: responseChars,
+    response_preview: (chat?.content || "").slice(0, 600),
+    event_count: chat?.events?.length || 0,
+  };
+  logger.writeJson("compute-donation-results.json", result);
+  logger.action("compute.donation.verify.result", result);
+  if (!ok) {
+    blockers.push("Compute donation did not produce a verified relay-routed chat response.");
+    logger.issue({
+      area: "compute-donation",
+      severity: "critical",
+      title: "Donated compute chat was not verified",
+      detail: chatError || (routeAttemptedRelay ? "Relay route was attempted but did not return user-visible chat output." : "Neither backend route logs nor forced-topology evidence proved relay-routed chat."),
+    });
+  } else {
+    featureResults.computeDonation = true;
+    featureResults.multiDonorCompute = expectedRelayCount > 1 && (registration.nodes?.length || 0) >= expectedRelayCount;
+    featureResults.liveChat = true;
+  }
+  return result;
+}
+
+async function createProject(api) {
+  const body = {
+    name: `[RU-BENCH] ${PROJECT_CONTEXT.name} ${runId}`,
+    description: `${PROJECT_CONTEXT.product}. Synthetic long-form benchmark project.`,
+    phase: "discover",
+    company_context: `${PROJECT_CONTEXT.company}: ${PROJECT_CONTEXT.audience}.`,
+    project_context: PROJECT_CONTEXT.researchQuestions.join("\n"),
+    guardrails: PROJECT_CONTEXT.guardrails.join("\n"),
+  };
+  const project = await api.post("/api/projects", body);
+  logger.action("project.created", { project_id: project.id, name: project.name });
+  return project;
+}
+
+async function grantResearcherProjectAccess(api, projectId, inviteResult) {
+  const userId = inviteResult?.parsed?.user_id || inviteResult?.parsed?.me_id || "";
+  if (!userId) {
+    logger.action("researcher.access.skip", { reason: "no-user-id", invite_ok: Boolean(inviteResult?.ok) });
+    return false;
+  }
+  try {
+    await api.post(`/api/projects/${projectId}/members`, {
+      user_id: userId,
+      role: "researcher",
+    });
+    logger.action("researcher.access.granted", { project_id: projectId, user_id: userId, role: "researcher" });
+    return true;
+  } catch (error) {
+    if (/409/.test(error.message)) {
+      logger.action("researcher.access.already_member", { project_id: projectId, user_id: userId });
+      return true;
+    }
+    logger.issue({
+      area: "auth",
+      severity: "high",
+      title: "Could not grant researcher project access",
+      detail: error.message,
+    });
+    return false;
+  }
+}
+
+async function linkProjectFolder(api, projectId, corpusDir) {
+  const folderPath = startSandbox && !skipSandbox ? `/benchmark-results/runs/${runId}/corpus` : corpusDir;
+  try {
+    const linked = await api.post(`/api/projects/${projectId}/link-folder`, { folder_path: folderPath });
+    logger.action("project.folder_linked", { project_id: projectId, folder_path: folderPath, result: linked });
+    return true;
+  } catch (error) {
+    logger.issue({
+      area: "project-context",
+      severity: "low",
+      title: "Could not link generated corpus folder",
+      detail: error.message,
+    });
+    return false;
+  }
+}
+
+async function uploadCorpus(api, projectId, manifest, limit) {
+  const uploaded = [];
+  for (const item of manifest.slice(0, limit)) {
+    try {
+      const result = await api.uploadFile(projectId, item.path, item.file_name);
+      uploaded.push({ ...item, result });
+      logger.action("corpus.uploaded", {
+        file_name: item.file_name,
+        document_id: result.id || result.file_id || result.document_id || "",
+      });
+    } catch (error) {
+      logger.issue({
+        area: "upload",
+        severity: "medium",
+        title: `Upload failed: ${item.file_name}`,
+        detail: error.message,
+      });
+    }
+  }
+  const resolved = await resolveUploadedDocuments(api, projectId, uploaded);
+  logger.writeJson("uploaded-document-manifest.json", resolved);
+  return resolved;
+}
+
+async function resolveUploadedDocuments(api, projectId, uploaded) {
+  try {
+    const listing = await api.get(`/api/files/${projectId}`);
+    const files = Array.isArray(listing.files) ? listing.files : [];
+    const byDisplayName = new Map(files.map((file) => [file.display_name, file]));
+    const byStoredName = new Map(files.map((file) => [file.name, file]));
+    return uploaded.map((item) => {
+      const match = byDisplayName.get(item.file_name) || byStoredName.get(item.result?.saved_as);
+      return {
+        ...item,
+        document_id: match?.document_id || item.result?.doc_id || item.result?.document_id || "",
+        document_status: match?.document_status || "",
+      };
+    });
+  } catch (error) {
+    logger.issue({
+      area: "upload",
+      severity: "medium",
+      title: "Could not resolve uploaded files to document IDs",
+      detail: error.message,
+    });
+    return uploaded;
+  }
+}
+
+function uploadedDocumentIds(uploaded) {
+  return uploaded
+    .map((item) => item.document_id || item.result?.doc_id || item.result?.document_id)
+    .filter(Boolean);
+}
+
+async function createConnectionStrings(api, { donorProfilesForRun = donorProfiles, researcherCount = runtimeResearcherCount } = {}) {
+  const output = {
+    userInvites: [],
+    computeDonations: [],
+  };
+  const defaultConnectionServerUrl = startSandbox && !skipSandbox ? containerReachableUrl(apiBase) : apiBase;
+  const connectionServerUrl = (process.env.ISTARA_BENCHMARK_CONNECTION_SERVER_URL || defaultConnectionServerUrl).replace(/\/$/, "");
+  const connectionWsUrl = (process.env.ISTARA_BENCHMARK_CONNECTION_WS_URL || `${connectionServerUrl.replace(/^http/, "ws")}/ws/relay`).replace(/\/$/, "");
+  for (let index = 0; index < researcherCount; index += 1) {
+    try {
+      const userInvite = await api.post("/api/connections/generate", {
+        server_url: connectionServerUrl,
+        ws_url: connectionWsUrl,
+        label: `Real user benchmark invite ${index + 1} ${runId}`,
+        role: "researcher",
+        expires_hours: 24,
+      });
+      output.userInvites.push(userInvite);
+      if (index === 0) output.userInvite = userInvite;
+      logger.action("connection.user_invite.generated", {
+        index,
+        id: userInvite.id,
+        preview: `${String(userInvite.connection_string).slice(0, 18)}...`,
+      });
+    } catch (error) {
+      blockers.push(`User invite connection string generation failed for researcher ${index + 1}.`);
+      logger.issue({
+        area: "connection-string",
+        severity: "high",
+        title: "User invite connection string generation failed",
+        detail: error.message,
+      });
+    }
+  }
+  for (const donor of donorProfilesForRun.filter((profile) => profile.required)) {
+    try {
+      const computeDonation = await api.post("/api/connections/compute-donation/generate", {
+        server_url: connectionServerUrl,
+        ws_url: connectionWsUrl,
+        label: `Real user benchmark relay ${donor.id} ${runId}`,
+        expires_hours: 24,
+      });
+      output.computeDonations.push({ ...computeDonation, donor_id: donor.id });
+      if (!output.computeDonation) output.computeDonation = computeDonation;
+      logger.action("connection.compute.generated", {
+        donor_id: donor.id,
+        id: computeDonation.id,
+        preview: `${String(computeDonation.connection_string).slice(0, 18)}...`,
+      });
+    } catch (error) {
+      blockers.push(`Compute donation connection string generation failed for donor ${donor.id}.`);
+      logger.issue({
+        area: "connection-string",
+        severity: "high",
+        title: "Compute donation connection string generation failed",
+        detail: error.message,
+      });
+    }
+  }
+  logger.writeJson("connection-string-results.json", {
+    user_invite_generated: Boolean(output.userInvite?.connection_string),
+    compute_donation_generated: Boolean(output.computeDonation?.connection_string),
+    user_invite_count: output.userInvites.length,
+    compute_donation_count: output.computeDonations.length,
+    user_invite_id: output.userInvite?.id || "",
+    compute_donation_id: output.computeDonation?.id || "",
+    donor_profiles: donorProfilesForRun.map(summarizeDonorProfile),
+  });
+  return output;
+}
+
+function connectionListFromPlan(config, keys) {
+  if (!config || typeof config !== "object") return [];
+  for (const key of keys) {
+    if (config[key]) {
+      return asArray(config[key]).map(String).map((item) => item.trim()).filter(Boolean);
+    }
+  }
+  return [];
+}
+
+function loadConnectionStringOverrides() {
+  const fileConfig = readJsonConfigFile(
+    process.env.ISTARA_BENCHMARK_CONNECTION_STRINGS_FILE,
+    "ISTARA_BENCHMARK_CONNECTION_STRINGS_FILE",
+  );
+  const computeFromFile = connectionListFromPlan(fileConfig, [
+    "compute_donations",
+    "computeDonations",
+    "compute_connection_strings",
+    "computeConnectionStrings",
+    "donor_connection_strings",
+    "donorConnectionStrings",
+  ]);
+  const userFromFile = connectionListFromPlan(fileConfig, [
+    "user_invites",
+    "userInvites",
+    "user_invite_connection_strings",
+    "userInviteConnectionStrings",
+    "researcher_invites",
+    "researcherInvites",
+  ]);
+  const computeFromEnv = [
+    ...parseConnectionStringList(process.env.ISTARA_BENCHMARK_COMPUTE_CONNECTION_STRINGS),
+    ...parseConnectionStringList(process.env.ISTARA_BENCHMARK_COMPUTE_CONNECTION_STRING),
+  ];
+  const userFromEnv = [
+    ...parseConnectionStringList(process.env.ISTARA_BENCHMARK_USER_INVITE_CONNECTION_STRINGS),
+    ...parseConnectionStringList(process.env.ISTARA_BENCHMARK_USER_INVITE_CONNECTION_STRING),
+  ];
+  const computeFromProfiles = donorProfiles.map((profile) => profile.connectionString).filter(Boolean);
+  return {
+    computeDonations: [...computeFromFile, ...computeFromEnv, ...computeFromProfiles],
+    userInvites: [...userFromFile, ...userFromEnv],
+    sources: {
+      file: Boolean(fileConfig),
+      compute_env: computeFromEnv.length,
+      user_env: userFromEnv.length,
+      donor_profiles: computeFromProfiles.length,
+    },
+  };
+}
+
+async function maybePromptForConnectionOverrides(overrides) {
+  if (!boolEnv("ISTARA_BENCHMARK_INTERACTIVE_CONNECTION_STRINGS", false)) return overrides;
+  if (!process.stdin.isTTY) {
+    blockers.push("Interactive connection string mode was requested, but stdin is not a TTY.");
+    logger.issue({
+      area: "connection-string",
+      severity: "high",
+      title: "Interactive connection prompt unavailable",
+      detail: "Set ISTARA_BENCHMARK_COMPUTE_CONNECTION_STRINGS and ISTARA_BENCHMARK_USER_INVITE_CONNECTION_STRINGS, or run the benchmark from an interactive terminal.",
+    });
+    return overrides;
+  }
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  try {
+    const currentDonorCount = donorProfiles.filter((profile) => profile.required).length;
+    const donorAnswer = await rl.question(`How many compute donor containers should this run start? [${currentDonorCount}] `);
+    const donorCount = Number.parseInt(donorAnswer.trim(), 10);
+    if (Number.isFinite(donorCount) && donorCount > 0 && donorCount !== currentDonorCount) {
+      donorProfiles = buildDonorProfiles({ donorCountOverride: donorCount });
+      sandbox.relayExpectedCount = donorProfiles.filter((profile) => profile.required).length;
+      logger.action("connection.interactive.donor_count", {
+        requested_count: donorCount,
+        donor_profiles: donorProfiles.map(summarizeDonorProfile),
+      });
+    }
+    const researcherAnswer = await rl.question(`How many researcher invite/client containers should this run start? [${runtimeResearcherCount}] `);
+    const researcherCount = Number.parseInt(researcherAnswer.trim(), 10);
+    if (Number.isFinite(researcherCount) && researcherCount > 0) {
+      runtimeResearcherCount = researcherCount;
+      sandbox.researcherExpectedCount = runtimeResearcherCount;
+    }
+    const requiredDonors = donorProfiles.filter((profile) => profile.required);
+    const computeDonations = [...overrides.computeDonations];
+    for (let index = computeDonations.length; index < requiredDonors.length; index += 1) {
+      const answer = await rl.question(`Paste compute donation connection string for ${requiredDonors[index].id}, or leave blank to generate through the API when possible: `);
+      if (answer.trim()) computeDonations.push(answer.trim());
+    }
+    const userInvites = [...overrides.userInvites];
+    for (let index = userInvites.length; index < runtimeResearcherCount; index += 1) {
+      const answer = await rl.question(`Paste researcher invite connection string ${index + 1}, or leave blank to generate through the API when possible: `);
+      if (answer.trim()) userInvites.push(answer.trim());
+    }
+    return {
+      ...overrides,
+      computeDonations,
+      userInvites,
+      sources: {
+        ...overrides.sources,
+        interactive: true,
+      },
+    };
+  } finally {
+    rl.close();
+  }
+}
+
+function materializeConnectionStrings(generated, overrides) {
+  const computeOverrideStrings = overrides.computeDonations || [];
+  const userOverrideStrings = overrides.userInvites || [];
+  const output = {
+    ...generated,
+    userInvites: [],
+    computeDonations: [],
+  };
+  const generatedUserInvites = generated.userInvites || (generated.userInvite ? [generated.userInvite] : []);
+  const generatedComputeDonations = generated.computeDonations || (generated.computeDonation ? [generated.computeDonation] : []);
+  const userCount = Math.max(runtimeResearcherCount, userOverrideStrings.length, generatedUserInvites.length);
+  for (let index = 0; index < userCount; index += 1) {
+    const override = userOverrideStrings[index];
+    const generatedInvite = generatedUserInvites[index];
+    const invite = override
+      ? { connection_string: override, source: "external-override", id: `external-user-invite-${index + 1}` }
+      : generatedInvite;
+    if (invite?.connection_string) {
+      rememberConnectionStringSensitiveValues(invite.connection_string);
+      output.userInvites.push(invite);
+    }
+  }
+  output.userInvite = output.userInvites[0] || generated.userInvite;
+
+  const requiredDonors = donorProfiles.filter((profile) => profile.required);
+  for (let index = 0; index < requiredDonors.length; index += 1) {
+    const donor = requiredDonors[index];
+    const override = computeOverrideStrings[index] || donor.connectionString;
+    const generatedDonation = generatedComputeDonations[index];
+    const donation = override
+      ? { connection_string: override, source: "external-override", id: `external-compute-${donor.id}`, donor_id: donor.id }
+      : generatedDonation;
+    if (donation?.connection_string) {
+      rememberConnectionStringSensitiveValues(donation.connection_string);
+      output.computeDonations.push({ ...donation, donor_id: donor.id });
+    }
+  }
+  output.computeDonation = output.computeDonations[0] || generated.computeDonation;
+  logger.writeJson("connection-string-plan.json", {
+    external_mode: externalConnectionStringMode,
+    overrides: {
+      compute_count: computeOverrideStrings.length,
+      user_invite_count: userOverrideStrings.length,
+      sources: overrides.sources,
+    },
+    materialized: {
+      compute_count: output.computeDonations.length,
+      user_invite_count: output.userInvites.length,
+    },
+    donor_profiles: donorProfiles.map(summarizeDonorProfile),
+  });
+  logger.action("connection.plan.materialized", {
+    external_mode: externalConnectionStringMode,
+    compute_count: output.computeDonations.length,
+    user_invite_count: output.userInvites.length,
+    donor_count: requiredDonors.length,
+  });
+  return output;
+}
+
+async function runChatBenchmark(api, projectId, turns) {
+  let sessionId = null;
+  const completed = [];
+  for (const turn of turns) {
+    const started = Date.now();
+    try {
+      const response = await api.sendChat({
+        projectId,
+        message: turn.content,
+        sessionId,
+        maxHistory: 40,
+        timeoutMs: chatTimeoutMs,
+      });
+      sessionId = response.session_id || sessionId;
+      const content = response.content || "";
+      if (requireLiveChat && !content.trim()) {
+        throw new Error("Chat returned no assistant text. Live model-backed output is required for this benchmark profile.");
+      }
+      const hasCitation = /interview|survey|usability|diary|ticket|source|file/i.test(content);
+      if (hasCitation) featureResults.citedSources = true;
+      if (content.trim()) featureResults.liveChat = true;
+      completed.push({ turn: turn.turn, ok: true });
+      logger.chatTurn({
+        turn: turn.turn,
+        intent: turn.intent,
+        prompt: turn.content,
+        ok: true,
+        duration_ms: Date.now() - started,
+        response_preview: content.slice(0, 1200),
+        event_count: response.events.length,
+        session_id: sessionId,
+        quality_notes: {
+          mentions_sources: hasCitation,
+          response_chars: content.length,
+        },
+      });
+    } catch (error) {
+      logger.chatTurn({
+        turn: turn.turn,
+        intent: turn.intent,
+        prompt: turn.content,
+        ok: false,
+        duration_ms: Date.now() - started,
+        error: error.message,
+      });
+      logger.issue({
+        area: "chat",
+        severity: "high",
+        title: `Chat turn ${turn.turn} failed`,
+        detail: error.message,
+      });
+      blockers.push(`Chat benchmark stopped at turn ${turn.turn}: ${error.message}`);
+      break;
+    }
+  }
+  if (completed.length > 0) featureResults.uploadedAndQueried = true;
+  return completed.length;
+}
+
+function syntheticAgentNotes(task, { weak = false } = {}) {
+  if (weak) return "Done. Users were confused.";
+  return [
+    `Evidence summary for ${task.title}:`,
+    "Sources reviewed: interviews P01/P06/P13, carenav-survey-180.csv, usability-test-02.md, support-tickets.jsonl.",
+    `Evidence: ${task.description}`,
+    "Interpretation: the strongest pattern is that users need source freshness and role boundaries before they trust readiness automation.",
+    "Recommendation: prototype a timeline that marks required, optional, blocked, and stale tasks, with a caregiver-safe permission label.",
+    "Confidence: medium-high because interviews, survey responses, and tickets converge, but analytics needs a larger post-redesign sample.",
+  ].join("\n");
+}
+
+async function createReviewAndApproveTasks(api, projectId, taskPlan, uploaded) {
+  let approvals = 0;
+  for (const plan of taskPlan) {
+    try {
+      const task = await api.post("/api/tasks", {
+        project_id: projectId,
+        title: plan.title,
+        description: plan.description,
+        skill_name: plan.skill_name,
+        user_context: `Benchmark researcher Maya will review this. Acceptance criteria:\n${plan.acceptance.join("\n")}`,
+        input_document_ids: uploadedDocumentIds(uploaded).slice(0, 8),
+        urls: plan.title.includes("Integration") ? ["https://example.com/healthcare-coordination-benchmark"] : [],
+        instructions: plan.acceptance.join("\n"),
+        labels: plan.labels,
+        priority: plan.priority,
+      });
+      logger.taskReview({
+        task_id: task.id,
+        title: task.title,
+        action: "created",
+        outcome: "created",
+      });
+
+      if (plan.shouldReviseFirst) {
+        const weakNotes = syntheticAgentNotes(plan, { weak: true });
+        const inReview = await api.patch(`/api/tasks/${task.id}`, {
+          status: "in_review",
+          agent_notes: weakNotes,
+          progress: 1,
+          what_to_review: "Check whether this has enough evidence and source specificity.",
+        });
+        const assessment = reviewerAssessment(plan, inReview.agent_notes);
+        await api.post(`/api/tasks/${task.id}/review/request-revision`, {
+          what_to_review: assessment.revisionInstruction,
+          next_status: "in_progress",
+          reviewed_by: "Maya Rodrigues benchmark",
+          severity: "medium",
+          failure_category: "unsupported_summary",
+        });
+        logger.taskReview({
+          task_id: task.id,
+          title: task.title,
+          action: "reviewed",
+          outcome: "revision_requested",
+          issues: assessment.issues,
+          instruction: assessment.revisionInstruction,
+        });
+      }
+
+      const revised = await api.patch(`/api/tasks/${task.id}`, {
+        status: "in_review",
+        agent_notes: syntheticAgentNotes(plan),
+        progress: 1,
+        what_to_review: "Review for grounding, utility, and safety.",
+      });
+      const finalAssessment = reviewerAssessment(plan, revised.agent_notes);
+      if (!finalAssessment.approved) {
+        await api.post(`/api/tasks/${task.id}/review/request-revision`, {
+          what_to_review: finalAssessment.revisionInstruction,
+          next_status: "in_progress",
+          reviewed_by: "Maya Rodrigues benchmark",
+          severity: "high",
+          failure_category: "reviewer_quality_gate",
+        });
+        logger.taskReview({
+          task_id: task.id,
+          title: task.title,
+          action: "reviewed",
+          outcome: "revision_requested",
+          issues: finalAssessment.issues,
+          instruction: finalAssessment.revisionInstruction,
+        });
+        continue;
+      }
+
+      const approved = await api.post(`/api/tasks/${task.id}/review/approve`, {
+        reviewed_by: "Maya Rodrigues benchmark",
+        note: finalAssessment.revisionInstruction,
+      });
+      approvals += 1;
+      logger.taskReview({
+        task_id: task.id,
+        title: task.title,
+        action: "reviewed",
+        outcome: "approved",
+        review_event_id: approved.event?.id || "",
+        note: finalAssessment.revisionInstruction,
+      });
+    } catch (error) {
+      logger.issue({
+        area: "task-review",
+        severity: "high",
+        title: `Task review flow failed for ${plan.title}`,
+        detail: error.message,
+      });
+    }
+  }
+  return approvals;
+}
+
+async function exerciseLoopsAutoresearch(api, projectId) {
+  let ok = false;
+  for (const [label, fn] of [
+    ["loops overview", () => api.get("/api/loops/overview")],
+    ["loops agents", () => api.get("/api/loops/agents")],
+    ["loop schedule create", () => api.post("/api/schedules", {
+      name: `[RU-BENCH] Weekly support ticket review ${runId}`,
+      cron_expression: "0 9 * * 1",
+      project_id: projectId,
+      skill_name: "analyze-interview",
+      description: "Benchmark weekly loop for new support-ticket evidence.",
+    })],
+    ["autoresearch status", () => api.get("/api/autoresearch/status")],
+    ["autoresearch config", () => api.get("/api/autoresearch/config")],
+  ]) {
+    try {
+      const result = await fn();
+      logger.action("feature.loops_autoresearch", { label, ok: true, result: preview(result) });
+      ok = true;
+    } catch (error) {
+      logger.action("feature.loops_autoresearch", { label, ok: false, error: error.message });
+    }
+  }
+  featureResults.loops = ok;
+  return ok;
+}
+
+async function exerciseFindingsReports(api, projectId) {
+  try {
+    const nugget = await api.post("/api/findings/nuggets", {
+      project_id: projectId,
+      text: "Care coordinators need source freshness before trusting readiness automation.",
+      source: "interviews/P06-care-coordinator.md",
+      source_location: "05:42",
+      tags: ["trust", "readiness", "source-trail"],
+      phase: "discover",
+    });
+    const fact = await api.post("/api/findings/facts", {
+      project_id: projectId,
+      text: "Multiple sources converge on missing source trail as a trust blocker.",
+      nugget_ids: [nugget.id],
+      phase: "define",
+    });
+    const insight = await api.post("/api/findings/insights", {
+      project_id: projectId,
+      text: "Readiness automation is not trusted unless it exposes source and freshness.",
+      fact_ids: [fact.id],
+      phase: "define",
+      impact: "high",
+    });
+    await api.post("/api/findings/recommendations", {
+      project_id: projectId,
+      text: "Add source freshness, required/optional labels, and caregiver-safe visibility to the readiness timeline.",
+      insight_ids: [insight.id],
+      phase: "deliver",
+      priority: "high",
+      effort: "medium",
+    });
+    featureResults.findingsCreated = true;
+    logger.action("feature.findings.created", { nugget_id: nugget.id, fact_id: fact.id, insight_id: insight.id });
+  } catch (error) {
+    logger.issue({
+      area: "findings",
+      severity: "medium",
+      title: "Could not create atomic findings",
+      detail: error.message,
+    });
+  }
+  try {
+    const brief = await api.post("/api/interfaces/handoff/brief", { project_id: projectId }, { timeoutMs: 180000 });
+    featureResults.reportGenerated = true;
+    logger.action("feature.report.generated", { result: preview(brief) });
+  } catch (error) {
+    logger.action("feature.report.generated", { ok: false, error: error.message });
+  }
+}
+
+function preview(value) {
+  return JSON.parse(JSON.stringify(value, (_key, val) => {
+    if (typeof val === "string" && val.length > 400) return `${val.slice(0, 400)}...`;
+    return val;
+  }));
+}
+
+function writePlanSnapshot(corpusSummary) {
+  logger.writeJson("benchmark-playbook-snapshot.json", {
+    system_prompt: {
+      source_path: systemPromptPath,
+      copied_to_run: "system-prompt.md",
+      version: systemPromptVersion,
+      sha256: systemPromptHash,
+      bytes: Buffer.byteLength(systemPromptContent, "utf8"),
+    },
+    persona: "Maya Rodrigues, senior UX researcher",
+    project: PROJECT_CONTEXT,
+    requested_full_chat_turns: 100,
+    requested_completed_tasks: 50,
+    requested_researcher_client_count: runtimeResearcherCount,
+    requested_compute_donor_count: donorProfiles.filter((profile) => profile.required).length,
+    compute_donor_profiles: donorProfiles.map(summarizeDonorProfile),
+    generated_chat_turn_templates: buildChatTurns({ total: 108 }),
+    generated_task_templates: buildTaskPlan({ total: 60 }),
+    corpus_summary: {
+      document_count: corpusSummary.document_count,
+      total_bytes: corpusSummary.total_bytes,
+    },
+    integration_policy: "Attempt developer-friendly harnesses first; classify credential-free blockers as product findings.",
+  });
+}
+
+async function main() {
+  captureColimaStorageSnapshot("run-start", { recordIssue: true });
+  logger.action("benchmark.start", {
+    mode,
+    apiBase,
+    frontendUrl,
+    maxChatTurns,
+    maxTasks,
+    maxUploads,
+    startSandbox,
+    skipSandbox,
+    startClientSandboxes,
+    externalConnectionStringMode,
+    freshSandbox,
+    benchmarkTeamMode,
+    hasNetworkAccessToken: Boolean(benchmarkNetworkToken),
+    requireComputeDonation,
+    requireLiveChat,
+    forceDonatedChat,
+    researcher_count: runtimeResearcherCount,
+    donor_count_requested: donorProfiles.filter((profile) => profile.required).length,
+    donor_profiles: donorProfiles.map(summarizeDonorProfile),
+    colima_storage_policy: colimaStoragePolicy,
+    colima_storage_budget: colimaStorageBudget,
+    relayLlm: {
+      provider: relayLlmProvider,
+      provider_source: relayLlmProviderSource,
+      host: hostSummary(relayLlmHost),
+      host_source: relayLlmHostSource,
+      host_localhost_translated_for_container: relayLlmHostRaw !== relayLlmHostForContainer,
+      host_openai_path_stripped_for_native_lmstudio: relayLlmHostNormalized,
+      live_base_url_configured: Boolean(liveLlmProfile.baseUrl),
+      live_base_url_source: liveLlmProfile.baseUrlSource,
+      api_key_configured: Boolean(relayLlmApiKey),
+      api_key_source: relayLlmApiKeySource,
+      model_configured: Boolean(relayLlmModel && relayLlmModel !== "default"),
+      model_source: relayLlmModelSource,
+      model_id_redacted: true,
+    },
+    backgroundAgentsDisabled,
+  });
+
+  const corpus = generateCorpus({ outputDir: logger.paths.corpus, logger });
+  logger.writeJson("corpus-manifest.json", corpus);
+  writePlanSnapshot(corpus);
+
+  if (mode === "plan-only") {
+    blockers.push("Plan-only mode did not attempt live services.");
+    const scorecard = scoreRun({
+      mode,
+      metrics: { corpusDocuments: corpus.document_count },
+      integrationMatrix: [],
+      blockers,
+      completedTasks: 0,
+      chatTurns: 0,
+      uploadedDocuments: 0,
+      sandbox,
+      featureResults,
+    });
+    logger.writeJson("scorecard.json", scorecard);
+    logger.appendReport("Plan-only mode generated the benchmark corpus, playbook snapshot, and scoring scaffold without live app interaction.\n\n");
+    logger.appendReport(writeScorecardMarkdown(scorecard));
+    logger.finalize({ scorecard });
+    return;
+  }
+
+  startServerSandboxIfRequested();
+  const api = new IstaraApiClient({
+    apiBase,
+    repoRoot,
+    logger,
+    networkAccessToken: benchmarkNetworkToken,
+    adminUsername: benchmarkAdminUsername,
+    adminPassword: benchmarkAdminPassword,
+  });
+  const health = await waitForHealth(api, startSandbox && !skipSandbox && sandbox.serverStarted ? 240000 : 15000);
+  if (!health.ok) {
+    blockers.push(`Istara API is unreachable at ${apiBase}.`);
+    logger.issue({
+      area: "install",
+      severity: "critical",
+      title: "Istara API unreachable",
+      detail: health.error || `status=${health.status}`,
+    });
+    const scorecard = scoreRun({
+      mode,
+      metrics: { corpusDocuments: corpus.document_count },
+      integrationMatrix: [],
+      blockers,
+      completedTasks: 0,
+      chatTurns: 0,
+      uploadedDocuments: 0,
+      sandbox,
+      featureResults,
+    });
+    logger.writeJson("scorecard.json", scorecard);
+    logger.appendReport("The benchmark could not reach the Istara API, so the run is a documented environment/product blocker.\n\n");
+    logger.appendReport(writeScorecardMarkdown(scorecard));
+    logger.finalize({ scorecard });
+    return;
+  }
+
+  const auth = await api.authenticate();
+  logger.action("auth.result", auth);
+  if (!auth.ok) {
+    blockers.push(`Benchmark could not authenticate: ${auth.reason || auth.method}`);
+    logger.issue({
+      area: "auth",
+      severity: "critical",
+      title: "Benchmark authentication failed",
+      detail: auth.reason || "No token available.",
+    });
+  }
+
+  let project = null;
+  let uploaded = [];
+  let connectionStrings = {};
+  let integrationMatrix = [];
+  let chatTurnCount = 0;
+  let completedTasks = 0;
+  let researcherInviteResult = null;
+
+  if (auth.ok) {
+    project = await createProject(api);
+    await linkProjectFolder(api, project.id, logger.paths.corpus);
+    uploaded = await uploadCorpus(api, project.id, corpus.manifest, maxUploads);
+    if (uploaded.length > 0) featureResults.uploadedAndQueried = true;
+
+    const initialOverrides = loadConnectionStringOverrides();
+    const connectionOverrides = await maybePromptForConnectionOverrides(initialOverrides);
+    const requiredDonorCount = donorProfiles.filter((profile) => profile.required).length;
+    const hasAllExternalOverrides = connectionOverrides.computeDonations.length >= requiredDonorCount
+      && connectionOverrides.userInvites.length >= runtimeResearcherCount;
+    const shouldGenerateConnectionStrings = !hasAllExternalOverrides || boolEnv("ISTARA_BENCHMARK_GENERATE_CONNECTION_STRINGS_WITH_OVERRIDES", false);
+    const generatedConnectionStrings = shouldGenerateConnectionStrings
+      ? await createConnectionStrings(api, {
+          donorProfilesForRun: donorProfiles,
+          researcherCount: runtimeResearcherCount,
+        })
+      : { userInvites: [], computeDonations: [] };
+    connectionStrings = materializeConnectionStrings(generatedConnectionStrings, connectionOverrides);
+
+    const researcherInviteResults = [];
+    for (let index = 0; index < connectionStrings.userInvites.length; index += 1) {
+      const result = startInviteClientSandbox(connectionStrings.userInvites[index]?.connection_string || "", index);
+      if (result) researcherInviteResults.push(result);
+      await grantResearcherProjectAccess(api, project.id, result);
+    }
+    researcherInviteResult = researcherInviteResults[0] || null;
+    logger.writeJson("connection-client-results.json", {
+      attempted: researcherInviteResults.length > 0,
+      expected_count: runtimeResearcherCount,
+      ok_count: researcherInviteResults.filter((result) => result.ok).length,
+      results: researcherInviteResults.map((result) => ({
+        ok: result.ok,
+        username: result.username,
+        email: result.email,
+        user_id: result.parsed?.user_id || result.parsed?.me_id || "",
+        role: result.parsed?.role || result.parsed?.me_role || "",
+      })),
+    });
+
+    const activeDonorProfiles = [];
+    for (let index = 0; index < donorProfiles.filter((profile) => profile.required).length; index += 1) {
+      const donor = donorProfiles.filter((profile) => profile.required)[index];
+      preflightRelayLlmFromContainer(donor);
+      const donation = connectionStrings.computeDonations.find((item) => item.donor_id === donor.id) || connectionStrings.computeDonations[index];
+      if (donation?.connection_string && donor.enabled) activeDonorProfiles.push(donor);
+      startRelayClientSandbox(donation?.connection_string || "", donor, index);
+    }
+    await verifyComputeDonation(api, project.id, { activeDonorProfiles });
+
+    const uiResult = await runUiJourney({
+      frontendUrl,
+      api,
+      projectId: project.id,
+      logger,
+      chatTurns: buildChatTurns({ total: 5 }),
+      actor: "admin",
+      credentials: {
+        username: benchmarkAdminUsername,
+        password: benchmarkAdminPassword,
+      },
+    });
+    featureResults.uiVisited = uiResult.visited;
+    featureResults.uiOnboarding = uiResult.onboarding;
+
+    if (researcherInviteResult?.ok) {
+      const researcherApi = new IstaraApiClient({
+        apiBase,
+        repoRoot,
+        logger,
+        networkAccessToken: benchmarkNetworkToken,
+        adminUsername: researcherInviteResult.username,
+        adminPassword: researcherInviteResult.password,
+      });
+      const researcherAuth = await researcherApi.authenticate();
+      logger.action("researcher.auth.result", {
+        ok: researcherAuth.ok,
+        method: researcherAuth.method,
+        user_id: researcherAuth.user_id,
+      });
+      if (researcherAuth.ok) {
+        const researcherUiResult = await runUiJourney({
+          frontendUrl,
+          api: researcherApi,
+          projectId: project.id,
+          logger,
+          chatTurns: buildChatTurns({ total: 3 }),
+          actor: "researcher",
+          credentials: {
+            username: researcherInviteResult.username,
+            password: researcherInviteResult.password,
+          },
+        });
+        logger.action("researcher.ui.result", researcherUiResult);
+        featureResults.researcherUi = researcherUiResult.visited && ["chat", "shell", "no_project"].includes(researcherUiResult.finalState);
+      }
+    }
+
+    await exerciseFindingsReports(api, project.id);
+    await exerciseLoopsAutoresearch(api, project.id);
+    integrationMatrix = await runIntegrationMatrix({ api, projectId: project.id, repoRoot, logger });
+    featureResults.interfaces = integrationMatrix.some((item) => ["Google Stitch", "Figma"].includes(item.integration) && item.classification === "developer-harness-tested");
+
+    const turns = buildChatTurns({ total: Math.max(maxChatTurns, 0) }).slice(0, maxChatTurns);
+    if (turns.length > 0) {
+      chatTurnCount = await runChatBenchmark(api, project.id, turns);
+      featureResults.urlFetch = chatTurnCount >= 10 || turns.some((turn) => /URL|fetch|web/i.test(turn.content));
+    }
+
+    completedTasks = await createReviewAndApproveTasks(api, project.id, buildTaskPlan({ total: maxTasks }), uploaded);
+  }
+
+  if (mode === "full" && chatTurnCount < 100) blockers.push(`Full run completed only ${chatTurnCount}/100 required chat turns.`);
+  if (mode === "full" && completedTasks < 50) blockers.push(`Full run completed only ${completedTasks}/50 required reviewed tasks.`);
+
+  captureColimaStorageSnapshot("before-scorecard", { recordIssue: true });
+  const scorecard = scoreRun({
+    mode,
+    metrics: { ...logger.metrics, corpusDocuments: corpus.document_count },
+    integrationMatrix,
+    blockers,
+    completedTasks,
+    chatTurns: chatTurnCount,
+    uploadedDocuments: uploaded.length,
+    sandbox,
+    featureResults,
+  });
+  logger.writeJson("scorecard.json", scorecard);
+  const historyRecord = {
+    run_id: runId,
+    mode,
+    date: new Date().toISOString(),
+    benchmark_id: benchmarkRegistry.benchmark_id,
+    benchmark_registry_version: benchmarkRegistry.version,
+    score: scorecard.total,
+    chat_turns: chatTurnCount,
+    completed_tasks: completedTasks,
+    uploaded_documents: uploaded.length,
+    blocker_count: blockers.length,
+    compute_donation_verified: Boolean(featureResults.computeDonation),
+    multi_donor_compute_verified: Boolean(featureResults.multiDonorCompute),
+    compute_donor_count_requested: donorProfiles.filter((profile) => profile.required).length,
+    compute_donor_count_started: sandbox.relayStartedCount,
+    researcher_client_count_requested: runtimeResearcherCount,
+    researcher_client_count_started: sandbox.researcherStartedCount,
+    live_chat_verified: Boolean(featureResults.liveChat),
+    integration_classifications: scorecard.integration_summary,
+    companion_suites: benchmarkRegistry.companion_suites.map((suite) => suite.path),
+    industry_alignment: benchmarkRegistry.industry_alignment.map((item) => item.reference),
+    live_model_profile: benchmarkRegistry.live_model_profile || { model: PRIMARY_TEST_MODEL },
+    agentic_eval_focus: benchmarkRegistry.agentic_eval_focus?.map((item) => item.area) || [],
+    colima_storage: summarizeColimaStorage(latestColimaStorageSnapshot),
+  };
+  logger.writeJson("history-record.json", historyRecord);
+  logger.rootLine("history.jsonl", historyRecord);
+  logger.writeRootJson("latest-run.json", {
+    ...historyRecord,
+    run_dir: logger.runDir,
+    run_summary: join(logger.runDir, "run-summary.json"),
+    scorecard: join(logger.runDir, "scorecard.json"),
+    report: join(logger.runDir, "report.md"),
+  });
+
+  logger.appendReport("## Run Summary\n\n");
+  logger.appendReport(`Corpus documents generated: ${corpus.document_count}\n\n`);
+  logger.appendReport(`Documents uploaded: ${uploaded.length}\n\n`);
+  logger.appendReport(`Chat turns completed: ${chatTurnCount}\n\n`);
+  logger.appendReport(`Human-approved completed tasks: ${completedTasks}\n\n`);
+  logger.appendReport(`Compute donation verified: ${featureResults.computeDonation ? "yes" : "no"}\n\n`);
+  logger.appendReport(`Compute donor containers: ${sandbox.relayStartedCount}/${donorProfiles.filter((profile) => profile.required).length} started\n\n`);
+  logger.appendReport(`Researcher client containers: ${sandbox.researcherStartedCount}/${runtimeResearcherCount} redeemed\n\n`);
+  logger.appendReport(`Multi-donor compute verified: ${featureResults.multiDonorCompute ? "yes" : "no"}\n\n`);
+  logger.appendReport(`Live model chat verified: ${featureResults.liveChat ? "yes" : "no"}\n\n`);
+  const colimaStorage = summarizeColimaStorage(latestColimaStorageSnapshot);
+  if (colimaStorage) {
+    logger.appendReport(`Colima storage: ${colimaStorage.actual_gb} GB actual, ${colimaStorage.apparent_gb} GB apparent\n\n`);
+  }
+  logger.appendReport(writeScorecardMarkdown(scorecard));
+  logger.appendReport("\n## Actionable Product Improvements\n\n");
+  for (const issue of logger.issues.slice(0, 20)) {
+    logger.appendReport(`- [${issue.severity}] ${issue.area}: ${issue.title}. ${issue.detail}\n`);
+  }
+  cleanupRelayClientSandboxes();
+  logger.finalize({ scorecard, project_id: project?.id || "", uploaded_documents: uploaded.length });
+}
+
+main().catch((error) => {
+  logger.issue({
+    area: "benchmark",
+    severity: "critical",
+    title: "Benchmark crashed",
+    detail: error.stack || error.message,
+  });
+  const scorecard = scoreRun({
+    mode,
+    metrics: logger.metrics,
+    integrationMatrix: [],
+    blockers: [...blockers, error.message],
+    completedTasks: 0,
+    chatTurns: 0,
+    uploadedDocuments: 0,
+    sandbox,
+    featureResults,
+  });
+  logger.writeJson("scorecard.json", scorecard);
+  logger.appendReport("\nBenchmark crashed before completing. See `issues.jsonl` and `action-log.jsonl`.\n\n");
+  logger.appendReport(writeScorecardMarkdown(scorecard));
+  cleanupRelayClientSandboxes();
+  logger.finalize({ scorecard });
+  process.exitCode = 1;
+});

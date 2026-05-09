@@ -1,0 +1,3 @@
+{
+  "scope-boundary": "Change the reusable benchmark implementation, Docker benchmark setup, Playwright UI harness, benchmark docs, and benchmark evidence logging only. Preserve Istara product behavior unless a verified blocker requires a scoped fix. Every failed benchmark action must first diagnose Istara auth, onboarding, project selection, UI readiness, and relevant architecture; correct benchmark misunderstandings; retry; and only then log a product issue with evidence. The benchmark must prove app-shell readiness before UI navigation and must complete the sandboxed server/client install, connection-string flow, chat, task review, integrations, AURA/Telegram, URL fetching, reports, interfaces, and scoring requirements or document a verified blocker."
+}
