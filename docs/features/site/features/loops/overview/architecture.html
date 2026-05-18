@@ -257,6 +257,8 @@
 <h3 id="api-and-backend">API And Backend</h3>
 <ul>
 <li><code>backend/app/api/routes/loops.py</code></li>
+<li>Non-admin requests to overview, health, agent-loop, schedule, and execution endpoints must include the active <code>project_id</code> and pass <code>require_project_access</code>.</li>
+<li><code>frontend/src/stores/loopsStore.ts</code> clears loop state when there is no active project instead of falling back to global automation data.</li>
 </ul>
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
@@ -270,6 +272,8 @@
 </ul>
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>
+<li><code>tests/test_loops.py</code></li>
+<li><code>tests/test_project_scope_contracts.py</code></li>
 <li>No focused test reference recorded yet.</li>
 </ul>
 <h2 id="related-features">Related Features</h2>

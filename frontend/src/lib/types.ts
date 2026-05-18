@@ -490,6 +490,7 @@ export type ExecutionStatus = "success" | "failure" | "running" | "skipped";
 
 export interface LoopExecution {
   id: string; source_type: LoopSourceType; source_id: string; source_name: string;
+  project_id?: string;
   status: ExecutionStatus; started_at: string; finished_at: string | null;
   duration_ms: number | null; error_message: string; findings_count: number;
   metadata: Record<string, unknown>; metadata_json?: Record<string, unknown>; created_at: string;
@@ -497,6 +498,7 @@ export interface LoopExecution {
 
 export interface AgentLoopConfig {
   id: string; agent_id: string; loop_interval_seconds: number; paused: boolean;
+  scope: string; project_id: string;
   skills_to_run: string[]; project_filter: string; last_cycle_at: string | null;
   cycle_count: number;
 }
@@ -510,6 +512,7 @@ export interface ScheduledLoop {
 
 export interface LoopHealthItem {
   source_type: LoopSourceType; source_id: string; source_name: string;
+  project_id: string;
   status: LoopStatus; interval_seconds: number | null;
   last_execution_at: string | null; next_expected_at: string | null;
   behind_by_seconds: number | null; cron_expression?: string; skill_name?: string;

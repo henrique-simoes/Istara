@@ -81,6 +81,23 @@ def test_security_benchmark_detects_notification_project_scope_paths() -> None:
     assert result.scorecard["triggered_paths"] == sorted(changed_paths)
 
 
+def test_security_benchmark_detects_loop_project_scope_paths() -> None:
+    matrix = load_matrix(ROOT / "security" / "control_matrix.json")
+
+    changed_paths = [
+        "backend/app/api/routes/loops.py",
+        "backend/app/services/loop_execution_service.py",
+        "frontend/src/components/loops/LoopOverviewTab.tsx",
+        "frontend/src/stores/loopsStore.ts",
+        "tests/test_loops.py",
+    ]
+    result = evaluate_matrix(matrix, changed_paths=changed_paths)
+
+    assert result.passed is True
+    assert result.scorecard["auth_security_change_detected"] is True
+    assert result.scorecard["triggered_paths"] == sorted(changed_paths)
+
+
 def test_security_benchmark_blocks_failed_control() -> None:
     matrix = load_matrix(ROOT / "security" / "control_matrix.json")
     modified = copy.deepcopy(matrix)

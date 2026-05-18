@@ -48,6 +48,10 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
   _pollTimer: null,
 
   fetchAgents: async (projectId) => {
+    if (!projectId) {
+      set({ agents: [], loading: false, error: null });
+      return;
+    }
     set({ loading: true, error: null });
     try {
       const data = await agentsApi.list(true, projectId);

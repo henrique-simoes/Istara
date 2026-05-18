@@ -677,24 +677,31 @@ export { contextDag } from "./contextDagApi";
 
 // --- Loops & Schedule ---
 export const loops = {
-  overview: () => get<any>("/api/loops/overview"),
-  agents: () => get<any>("/api/loops/agents"),
-  schedules: (params?: Record<string, string>) => get<any>(`/api/schedules${params ? "?" + new URLSearchParams(Object.entries(params).filter(([, v]) => v !== "")).toString() : ""}`),
+  overview: (projectId: string) => get<any>(`/api/loops/overview?project_id=${encodeURIComponent(projectId)}`),
+  agents: (projectId: string) => get<any>(`/api/loops/agents?project_id=${encodeURIComponent(projectId)}`),
+  schedules: (projectId: string) => get<any>(`/api/schedules?project_id=${encodeURIComponent(projectId)}`),
   getSchedule: (scheduleId: string) => get<any>(`/api/schedules/${scheduleId}`),
   createSchedule: (data: { name: string; cron_expression: string; project_id: string; skill_name?: string; description?: string }) => post<any>("/api/schedules", data),
   updateSchedule: (scheduleId: string, data: { name?: string; cron_expression?: string; skill_name?: string; description?: string; enabled?: boolean }) => patch<any>(`/api/schedules/${scheduleId}`, data),
   deleteSchedule: (scheduleId: string) => del(`/api/schedules/${scheduleId}`),
-  agentConfig: (agentId: string) => get<any>(`/api/loops/agents/${agentId}/config`),
-  updateAgentConfig: (agentId: string, data: Record<string, unknown>) =>
-    patch<any>(`/api/loops/agents/${agentId}/config`, data),
-  pauseAgent: (agentId: string) => post<any>(`/api/loops/agents/${agentId}/pause`, {}),
-  resumeAgent: (agentId: string) => post<any>(`/api/loops/agents/${agentId}/resume`, {}),
+  agentConfig: (agentId: string, projectId: string) =>
+    get<any>(`/api/loops/agents/${agentId}/config?project_id=${encodeURIComponent(projectId)}`),
+  updateAgentConfig: (agentId: string, data: Record<string, unknown>, projectId: string) =>
+    patch<any>(`/api/loops/agents/${agentId}/config?project_id=${encodeURIComponent(projectId)}`, data),
+  pauseAgent: (agentId: string, projectId: string) =>
+    post<any>(`/api/loops/agents/${agentId}/pause?project_id=${encodeURIComponent(projectId)}`, {}),
+  resumeAgent: (agentId: string, projectId: string) =>
+    post<any>(`/api/loops/agents/${agentId}/resume?project_id=${encodeURIComponent(projectId)}`, {}),
   executions: (params?: Record<string, string | number>) => {
     const query = params ? "?" + new URLSearchParams(Object.entries(params).map(([k, v]) => [k, String(v)])).toString() : "";
     return get<any>(`/api/loops/executions${query}`);
   },
-  executionStats: (sourceId?: string) => get<any>(`/api/loops/executions/stats${sourceId ? `?${new URLSearchParams({ source_id: sourceId }).toString()}` : ""}`),
-  health: () => get<any>("/api/loops/health"),
+  executionStats: (projectId: string, sourceId?: string) => {
+    const params = new URLSearchParams({ project_id: projectId });
+    if (sourceId) params.set("source_id", sourceId);
+    return get<any>(`/api/loops/executions/stats?${params.toString()}`);
+  },
+  health: (projectId: string) => get<any>(`/api/loops/health?project_id=${encodeURIComponent(projectId)}`),
   createCustom: (data: { name: string; skill_name: string; project_id: string; cron_expression?: string; interval_seconds?: number; description?: string }) =>
     post<any>("/api/loops/custom", data),
 };

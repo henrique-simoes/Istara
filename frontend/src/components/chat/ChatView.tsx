@@ -401,7 +401,7 @@ export default function ChatView() {
   useEffect(() => {
     if (activeProjectId) {
       fetchSessions(activeProjectId).then(() => ensureDefault(activeProjectId));
-      fetchAgents();
+      fetchAgents(activeProjectId);
     }
   }, [activeProjectId, fetchSessions, ensureDefault, fetchAgents]);
 

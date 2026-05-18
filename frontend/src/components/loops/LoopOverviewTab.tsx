@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { Activity, AlertTriangle, Clock, RefreshCw } from "lucide-react";
 import { useLoopsStore } from "@/stores/loopsStore";
+import { useProjectStore } from "@/stores/projectStore";
 import { cn } from "@/lib/utils";
 import type { LoopHealthItem, LoopStatus } from "@/lib/types";
 
@@ -49,18 +50,19 @@ function formatTimeUntil(dateStr: string | null): string {
 
 export default function LoopOverviewTab() {
   const { health, overview, fetchHealth, fetchOverview, loading } = useLoopsStore();
+  const { activeProjectId } = useProjectStore();
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Auto-refresh every 15s
   useEffect(() => {
     intervalRef.current = setInterval(() => {
-      fetchHealth();
-      fetchOverview();
+      fetchHealth(activeProjectId);
+      fetchOverview(activeProjectId);
     }, 15000);
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [fetchHealth, fetchOverview]);
+  }, [activeProjectId, fetchHealth, fetchOverview]);
 
   const activeCount = health.filter((h) => h.status === "active").length;
   const pausedCount = health.filter((h) => h.status === "paused").length;
@@ -93,7 +95,7 @@ export default function LoopOverviewTab() {
           </>
         )}
         <button
-          onClick={() => { fetchHealth(); fetchOverview(); }}
+          onClick={() => { fetchHealth(activeProjectId); fetchOverview(activeProjectId); }}
           className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-400"
           aria-label="Refresh"
         >

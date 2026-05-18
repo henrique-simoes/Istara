@@ -59,8 +59,8 @@ export default function NotificationListTab() {
   const [showFilters, setShowFilters] = useState(true);
 
   useEffect(() => {
-    fetchAgents();
-  }, [fetchAgents]);
+    fetchAgents(activeProjectId || undefined);
+  }, [activeProjectId, fetchAgents]);
 
   const applyFilters = () => {
     fetchNotifications(1, activeProjectId);

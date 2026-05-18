@@ -34,6 +34,7 @@ Agent Loops connects recurring work with configured agents and their automated r
 ### API And Backend
 
 - `backend/app/api/routes/loops.py`
+- Agent-loop configs are visible or mutable only when the agent belongs to the active project or has an explicit loop project filter for that project.
 
 ## Architecture Notes
 
@@ -47,7 +48,8 @@ Agent Loops connects recurring work with configured agents and their automated r
 
 ## Tests And Verification
 
-- No focused test reference recorded yet.
+- `tests/test_loops.py`
+- `tests/test_project_scope_contracts.py`
 
 ## Related Features
 

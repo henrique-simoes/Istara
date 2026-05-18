@@ -33,6 +33,7 @@ Custom loops provide a surface for user-defined recurring or automated research 
 ### API And Backend
 
 - `backend/app/api/routes/loops.py`
+- Custom loops are created for the active project only; list/health data must not include custom schedules from other projects.
 
 ## Architecture Notes
 
@@ -46,7 +47,8 @@ Custom loops provide a surface for user-defined recurring or automated research 
 
 ## Tests And Verification
 
-- No focused test reference recorded yet.
+- `tests/test_loops.py`
+- `tests/test_project_scope_contracts.py`
 
 ## Related Features
 

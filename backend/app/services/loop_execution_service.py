@@ -8,7 +8,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-from sqlalchemy import func, select
+from sqlalchemy import false, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.database import async_session
@@ -73,6 +73,7 @@ async def list_executions(
     source_type: Optional[str] = None,
     source_types: Optional[list[str]] = None,
     source_id: Optional[str] = None,
+    source_ids: Optional[list[str]] = None,
     status: Optional[str] = None,
     started_from: Optional[datetime] = None,
     started_to: Optional[datetime] = None,
@@ -91,6 +92,8 @@ async def list_executions(
         q = q.where(LoopExecution.source_type == source_type)
     if source_id:
         q = q.where(LoopExecution.source_id == source_id)
+    if source_ids is not None:
+        q = q.where(LoopExecution.source_id.in_(source_ids) if source_ids else false())
     if status:
         q = q.where(LoopExecution.status == status)
     if started_from:
@@ -126,6 +129,7 @@ async def list_executions(
 async def get_execution_stats(
     db: AsyncSession,
     source_id: Optional[str] = None,
+    source_ids: Optional[list[str]] = None,
 ) -> dict:
     """Aggregate execution statistics.
 
@@ -134,6 +138,8 @@ async def get_execution_stats(
     base = select(LoopExecution)
     if source_id:
         base = base.where(LoopExecution.source_id == source_id)
+    if source_ids is not None:
+        base = base.where(LoopExecution.source_id.in_(source_ids) if source_ids else false())
 
     # Total
     total_q = select(func.count()).select_from(base.subquery())
@@ -172,6 +178,8 @@ async def get_execution_stats(
     avg_q = select(func.avg(LoopExecution.duration_ms))
     if source_id:
         avg_q = avg_q.where(LoopExecution.source_id == source_id)
+    if source_ids is not None:
+        avg_q = avg_q.where(LoopExecution.source_id.in_(source_ids) if source_ids else false())
     avg_q = avg_q.where(LoopExecution.duration_ms.isnot(None))
     avg_duration = (await db.execute(avg_q)).scalar() or 0.0
 

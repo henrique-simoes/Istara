@@ -33,6 +33,7 @@ Execution History records loop runs, outcomes, and recent automation activity.
 ### API And Backend
 
 - `backend/app/api/routes/loops.py`
+- Execution history is project content: non-admin requests must include an authorized active `project_id`, and execution rows are filtered to source IDs owned by that project.
 
 ## Architecture Notes
 
@@ -46,7 +47,8 @@ Execution History records loop runs, outcomes, and recent automation activity.
 
 ## Tests And Verification
 
-- No focused test reference recorded yet.
+- `tests/test_loops.py`
+- `tests/test_project_scope_contracts.py`
 
 ## Related Features
 

@@ -336,7 +336,7 @@ function AgentMemoryTab({ projectId }: { projectId: string }) {
     const fetchAgents = async () => {
       setLoading(true);
       try {
-        const data = await agentsApi.list(true);
+        const data = await agentsApi.list(true, projectId);
         const agents: AgentInfo[] = (data.agents || data || []).map((a: any) => ({
           id: a.id,
           name: a.name,
@@ -348,7 +348,7 @@ function AgentMemoryTab({ projectId }: { projectId: string }) {
       setLoading(false);
     };
     fetchAgents();
-  }, []);
+  }, [projectId]);
 
   const fetchNotes = useCallback(async (agentId: string) => {
     if (notesByAgent[agentId]) return; // Already fetched

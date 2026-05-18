@@ -75,7 +75,7 @@ The following areas are always treated as ASVS Level 3 style surfaces even when 
 - File upload, document ingestion, folder linking, media preview/serve paths, and any user-controlled artifact that enters RAG/vector/BM25 storage.
 - Connection strings, relay/node joining, pooled compute credentials and project scopes, LLM server API keys, and encrypted provider secrets.
 - MCP client/server tools, webhook ingress, channel integrations, WhatsApp/Telegram connectors, and any public callback endpoint.
-- A2A JSON-RPC, autoresearch, skill evolution, Hyperagent/DGM-H proposals, Memento-style agent creation, ReasoningBank memories, rollback, and proposal approval.
+- A2A JSON-RPC, loop/background process dashboards, autoresearch, skill evolution, Hyperagent/DGM-H proposals, Memento-style agent creation, ReasoningBank memories, rollback, and proposal approval.
 - Prompt-RAG, vector/RAG, BM25, LLMLingua-style compression, model routing, ensemble/consensus, telemetry, and audit logs where prompt or memory content may affect tool use.
 
 Release hardening for these surfaces now includes exact replay rejection for
@@ -85,6 +85,9 @@ auth-origin validation, MCP/LLM endpoint URL validation, prompt-sanitized and
 project-owned MCP client descriptors, untrusted ReasoningBank retrieval wrapping, and backup
 exclusion of secret-like files plus protected local `LLMs/` and
 `Model_Finetuning/` artifact folders.
+Loop health, schedule, agent-loop, and execution-history views are treated as
+project-content surfaces: non-admin users must supply an authorized active
+project before seeing background process state or mutating recurring work.
 Donated relay/browser compute is also a project-content boundary: a relay can
 be connected for status, but prompt and embedding payloads may only route to it
 when the request includes a concrete project and the donor scope was resolved

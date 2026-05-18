@@ -35,6 +35,8 @@ Loops overview summarizes automated and scheduled research loop health.
 ### API And Backend
 
 - `backend/app/api/routes/loops.py`
+- Non-admin requests to overview, health, agent-loop, schedule, and execution endpoints must include the active `project_id` and pass `require_project_access`.
+- `frontend/src/stores/loopsStore.ts` clears loop state when there is no active project instead of falling back to global automation data.
 
 ## Architecture Notes
 
@@ -48,6 +50,8 @@ Loops overview summarizes automated and scheduled research loop health.
 
 ## Tests And Verification
 
+- `tests/test_loops.py`
+- `tests/test_project_scope_contracts.py`
 - No focused test reference recorded yet.
 
 ## Related Features
