@@ -3,11 +3,15 @@
 import pytest
 from httpx import AsyncClient, ASGITransport
 from types import SimpleNamespace
+import uuid
 
 from app.main import app
 from app.config import settings
-from app.models.database import init_db
+from app.models.database import async_session, init_db
 from app.core.auth import create_token
+from app.models.project import Project
+from app.models.research_deployment import ResearchDeployment
+from app.models.task import Task, TaskStatus
 
 
 @pytest.fixture(autouse=True)
@@ -51,7 +55,10 @@ async def test_autoresearch_status_returns_response(auth_headers):
     await init_db()
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.get("/api/autoresearch/status", headers=auth_headers)
+        response = await ac.get(
+            "/api/autoresearch/status?project_id=project-1",
+            headers=auth_headers,
+        )
         assert response.status_code == 200
 
 
@@ -62,12 +69,12 @@ async def test_autoresearch_status_requires_auth():
     settings.team_mode = True
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.get("/api/autoresearch/status")
+        response = await ac.get("/api/autoresearch/status?project_id=project-1")
         assert response.status_code == 401
 
 
 @pytest.mark.asyncio
-async def test_researcher_can_configure_autoresearch(researcher_headers):
+async def test_researcher_cannot_configure_autoresearch(researcher_headers):
     await init_db()
     settings.team_mode = True
     transport = ASGITransport(app=app)
@@ -75,6 +82,20 @@ async def test_researcher_can_configure_autoresearch(researcher_headers):
         response = await ac.patch(
             "/api/autoresearch/config",
             headers=researcher_headers,
+            json={"enabled": True, "max_experiments_per_run": 2},
+        )
+    assert response.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_admin_can_configure_autoresearch(auth_headers):
+    await init_db()
+    settings.team_mode = True
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.patch(
+            "/api/autoresearch/config",
+            headers=auth_headers,
             json={"enabled": True, "max_experiments_per_run": 2},
         )
     assert response.status_code == 200
@@ -88,8 +109,74 @@ async def test_autoresearch_leaderboard_returns_response(auth_headers):
     await init_db()
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.get("/api/autoresearch/leaderboard", headers=auth_headers)
+        response = await ac.get(
+            "/api/autoresearch/leaderboard?project_id=project-1",
+            headers=auth_headers,
+        )
         assert response.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_autoresearch_status_metrics_are_project_scoped(auth_headers):
+    await init_db()
+    suffix = uuid.uuid4().hex[:8]
+    project_a = f"autoresearch-scope-a-{suffix}"
+    project_b = f"autoresearch-scope-b-{suffix}"
+
+    async with async_session() as db:
+        db.add_all([
+            Project(id=project_a, name="Autoresearch Scope A"),
+            Project(id=project_b, name="Autoresearch Scope B"),
+            Task(
+                id=f"ar-task-a-{suffix}",
+                project_id=project_a,
+                title="A done task",
+                status=TaskStatus.DONE,
+                review_state="approved",
+            ),
+            Task(
+                id=f"ar-task-b-{suffix}",
+                project_id=project_b,
+                title="B in review task",
+                status=TaskStatus.IN_REVIEW,
+                review_state="needs_revision",
+            ),
+            ResearchDeployment(
+                id=f"ar-deploy-a-{suffix}",
+                project_id=project_a,
+                name="A deployment",
+                deployment_type="survey",
+                state="active",
+                target_responses=10,
+                current_responses=4,
+            ),
+            ResearchDeployment(
+                id=f"ar-deploy-b-{suffix}",
+                project_id=project_b,
+                name="B deployment",
+                deployment_type="survey",
+                state="active",
+                target_responses=50,
+                current_responses=30,
+            ),
+        ])
+        await db.commit()
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.get(
+            f"/api/autoresearch/status?project_id={project_a}",
+            headers=auth_headers,
+        )
+
+    assert response.status_code == 200
+    metrics = response.json()["operational_metrics"]
+    assert metrics["tasks"]["total"] == 1
+    assert metrics["tasks"]["done"] == 1
+    assert metrics["tasks"]["in_review"] == 0
+    assert metrics["research_collection"]["deployments"] == 1
+    assert metrics["research_collection"]["deployment_responses"] == 4
+    assert metrics["research_collection"]["deployment_targets"] == 10
 
 
 def test_get_runner_returns_runner_instance():
@@ -165,6 +252,9 @@ async def test_stop_autoresearch_requests_stop(monkeypatch):
         def __init__(self):
             self.stopped = False
 
+        def get_current_experiment(self):
+            return {"project_id": "project-1"}
+
         def request_stop(self):
             self.stopped = True
 
@@ -173,7 +263,7 @@ async def test_stop_autoresearch_requests_stop(monkeypatch):
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.post("/api/autoresearch/stop")
+        response = await ac.post("/api/autoresearch/stop?project_id=project-1")
 
     assert response.status_code == 200
     assert fake_engine.stopped is True

@@ -42,7 +42,7 @@ export default function ChannelInstanceCard({ instance, onSelect, selected }: Ch
       } else {
         await channelsApi.start(instance.id);
       }
-      await fetchChannels(undefined, activeProjectId || undefined);
+      await fetchChannels(undefined, activeProjectId);
     } catch {
       // silently fail
     } finally {

@@ -251,10 +251,12 @@
 <h3 id="stores">Stores</h3>
 <ul>
 <li><code>frontend/src/stores/autoresearchStore.ts</code></li>
+<li>Experiment history and start/stop actions are bound to the active project id; the store returns an empty experiment list instead of issuing an unscoped request when no project is active.</li>
 </ul>
 <h3 id="api-and-backend">API And Backend</h3>
 <ul>
 <li><code>backend/app/api/routes/autoresearch.py</code></li>
+<li>Experiment list, start, and stop routes require <code>project_id</code> and enforce project access. Autoresearch engine records and broadcasts the experiment project id, and experiment history filters by <code>AutoresearchExperiment.project_id</code>.</li>
 </ul>
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
@@ -264,11 +266,12 @@
 </ul>
 <h2 id="agents-skills-llm-mcp-and-permissions">Agents, Skills, LLM, MCP, And Permissions</h2>
 <ul>
-<li>No direct agent, skill, LLM, or MCP behavior is asserted beyond the cited source files.</li>
+<li>Autoresearch experiments can mutate strategies that later affect agents, skills, LLM choice, RAG behavior, question banks, or UI simulations. Each experiment must remain attached to the project that authorized it.</li>
 </ul>
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>
-<li>No focused test reference recorded yet.</li>
+<li><code>tests/test_autoresearch.py</code> verifies start/stop routing and project-scoped experiment behavior.</li>
+<li><code>tests/test_project_scope_contracts.py</code> verifies the frontend and backend keep experiment requests project-bound.</li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>
@@ -281,7 +284,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-53 / CF-657</li>
+<li>Spec/task: CF-SPEC-60 / CF-754</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>

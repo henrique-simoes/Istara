@@ -18,6 +18,7 @@ import {
   Gauge,
 } from "lucide-react";
 import { useAutoresearchStore } from "@/stores/autoresearchStore";
+import { useProjectStore } from "@/stores/projectStore";
 import { cn, formatDate } from "@/lib/utils";
 import type { AutoresearchLoopType } from "@/lib/types";
 
@@ -33,25 +34,26 @@ const LOOP_TYPES: { value: AutoresearchLoopType; label: string }[] = [
 export default function ExperimentDashboard() {
   const { status, experiments, fetchStatus, fetchExperiments, startLoop, stopLoop, error } =
     useAutoresearchStore();
+  const { activeProjectId } = useProjectStore();
 
   const [loopType, setLoopType] = useState<string>("model_temp");
   const [target, setTarget] = useState("");
   const [maxIterations, setMaxIterations] = useState(20);
 
   useEffect(() => {
-    fetchStatus();
-    fetchExperiments({ limit: 20 });
-  }, [fetchStatus, fetchExperiments]);
+    fetchStatus(activeProjectId);
+    fetchExperiments({ project_id: activeProjectId, limit: 20 });
+  }, [activeProjectId, fetchStatus, fetchExperiments]);
 
   // Refresh status periodically when a loop is running
   useEffect(() => {
     if (!status?.running) return;
     const interval = setInterval(() => {
-      fetchStatus();
-      fetchExperiments({ limit: 20 });
+      fetchStatus(activeProjectId);
+      fetchExperiments({ project_id: activeProjectId, limit: 20 });
     }, 5000);
     return () => clearInterval(interval);
-  }, [status?.running, fetchStatus, fetchExperiments]);
+  }, [activeProjectId, status?.running, fetchStatus, fetchExperiments]);
 
   const totalExperiments = experiments.length;
   const keptCount = experiments.filter((e) => e.kept).length;
@@ -68,8 +70,13 @@ export default function ExperimentDashboard() {
   const collectionMetrics = status?.operational_metrics?.research_collection;
 
   const handleStart = () => {
-    if (!target.trim()) return;
-    startLoop({ loop_type: loopType, target: target.trim(), max_iterations: maxIterations });
+    if (!activeProjectId || !target.trim()) return;
+    startLoop({
+      loop_type: loopType,
+      target: target.trim(),
+      max_iterations: maxIterations,
+      project_id: activeProjectId,
+    });
   };
 
   return (
@@ -85,7 +92,7 @@ export default function ExperimentDashboard() {
               </h3>
             </div>
             <button
-              onClick={stopLoop}
+              onClick={() => stopLoop(activeProjectId)}
               aria-label="Stop experiment loop"
               className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
             >
@@ -469,11 +476,11 @@ export default function ExperimentDashboard() {
             <div className="flex items-end">
               <button
                 onClick={handleStart}
-                disabled={!target.trim() || !status?.enabled}
+                disabled={!activeProjectId || !target.trim() || !status?.enabled}
                 aria-label="Start experiment loop"
                 className={cn(
                   "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors w-full justify-center",
-                  target.trim() && status?.enabled
+                  activeProjectId && target.trim() && status?.enabled
                     ? "bg-istara-600 text-white hover:bg-istara-700"
                     : "bg-slate-200 dark:bg-slate-700 text-slate-400 dark:text-slate-500 cursor-not-allowed"
                 )}

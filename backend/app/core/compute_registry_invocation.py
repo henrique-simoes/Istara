@@ -160,6 +160,7 @@ class ComputeRegistryInvocationMixin:
         response_format: dict | None = None,
         min_context: int = 0,
         thinking_mode: str | None = None,
+        project_id: str | None = None,
     ) -> dict:
         """Route a chat request to the best available node."""
         model = self._effective_requested_chat_model(model)
@@ -185,6 +186,7 @@ class ComputeRegistryInvocationMixin:
             model=model,
             strict_model=settings.strict_auto_routing,
             include_unhealthy=True,
+            project_id=project_id,
         ):
             if (
                 require_vision
@@ -216,6 +218,7 @@ class ComputeRegistryInvocationMixin:
                                 tools=tools,
                                 response_format=response_format,
                                 thinking_mode=None,
+                                project_id=project_id,
                             )
                             self._record_success(node)
                             return data
@@ -257,6 +260,7 @@ class ComputeRegistryInvocationMixin:
                                 tools=tools,
                                 response_format=response_format,
                                 thinking_mode=None,
+                                project_id=project_id,
                             )
                             self._record_success(node)
                             return data
@@ -409,6 +413,7 @@ class ComputeRegistryInvocationMixin:
         tools: list[dict] | None = None,
         min_context: int = 0,
         thinking_mode: str | None = None,
+        project_id: str | None = None,
     ) -> AsyncGenerator[str | dict, None]:
         """Streaming chat -- yields str chunks and dict for tool calls."""
         model = self._effective_requested_chat_model(model)
@@ -429,6 +434,7 @@ class ComputeRegistryInvocationMixin:
             model=model,
             strict_model=settings.strict_auto_routing,
             include_unhealthy=True,
+            project_id=project_id,
         ):
             if (
                 require_vision
@@ -461,6 +467,7 @@ class ComputeRegistryInvocationMixin:
                                 max_tokens=max_tokens,
                                 tools=tools,
                                 thinking_mode=None,
+                                project_id=project_id,
                             )
                             content = data.get("message", {}).get("content", "")
                             if content:
@@ -509,6 +516,7 @@ class ComputeRegistryInvocationMixin:
                                 max_tokens=max_tokens,
                                 tools=tools,
                                 thinking_mode=None,
+                                project_id=project_id,
                             )
                             content = data.get("message", {}).get("content", "")
                             if content:
@@ -706,18 +714,24 @@ class ComputeRegistryInvocationMixin:
             raise RuntimeError("No vision-capable compute nodes available for image chat")
         raise RuntimeError("No compute nodes available for streaming")
 
-    async def embed(self, text: str, model: str | None = None) -> list[float]:
+    async def embed(
+        self,
+        text: str,
+        model: str | None = None,
+        project_id: str | None = None,
+    ) -> list[float]:
         """Route an embedding request."""
         for node in self._select_candidates(
             model=model,
             strict_model=settings.strict_auto_routing,
+            project_id=project_id,
         ):
             if node.is_anthropic:
                 continue
             node.active_requests += 1
             try:
                 if node.source in ("relay", "browser") and node.websocket:
-                    result = await node.embed(text, model=model)
+                    result = await node.embed(text, model=model, project_id=project_id)
                     self._record_success(node)
                     return result
 
@@ -763,18 +777,24 @@ class ComputeRegistryInvocationMixin:
 
         raise RuntimeError("No compute nodes available for embedding")
 
-    async def embed_batch(self, texts: list[str], model: str | None = None) -> list[list[float]]:
+    async def embed_batch(
+        self,
+        texts: list[str],
+        model: str | None = None,
+        project_id: str | None = None,
+    ) -> list[list[float]]:
         """Route a batch embedding request."""
         for node in self._select_candidates(
             model=model,
             strict_model=settings.strict_auto_routing,
+            project_id=project_id,
         ):
             if node.is_anthropic:
                 continue
             node.active_requests += 1
             try:
                 if node.source in ("relay", "browser") and node.websocket:
-                    result = await node.embed_batch(texts, model=model)
+                    result = await node.embed_batch(texts, model=model, project_id=project_id)
                     self._record_success(node)
                     return result
 

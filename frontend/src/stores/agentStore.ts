@@ -31,7 +31,7 @@ interface AgentStore {
   deleteAgent: (id: string) => Promise<void>;
   pauseAgent: (id: string) => Promise<void>;
   resumeAgent: (id: string) => Promise<void>;
-  fetchA2ALog: (projectId?: string) => Promise<void>;
+  fetchA2ALog: (projectId?: string | null) => Promise<void>;
   fetchCapacity: () => Promise<void>;
   updateHeartbeat: (agentId: string, status: HeartbeatStatus) => void;
 
@@ -126,8 +126,12 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
   },
 
   fetchA2ALog: async (projectId) => {
+    if (!projectId) {
+      set({ a2aMessages: [] });
+      return;
+    }
     try {
-      const data = await agentsApi.a2aLog(100, projectId);
+      const data = await agentsApi.a2aLog(projectId, 100);
       set({ a2aMessages: data.messages || [] });
     } catch {
       // silent

@@ -253,10 +253,13 @@
 <h3 id="stores">Stores</h3>
 <ul>
 <li><code>frontend/src/stores/integrationsStore.ts</code></li>
+<li><code>DeploymentsTab</code> reads <code>activeProjectId</code> from <code>frontend/src/stores/projectStore.ts</code> and passes it into <code>fetchDeployments(activeProjectId)</code> before rendering deployment rows or summary counts.</li>
+<li>The tab derives a <code>scopedDeployments</code> list from the store by matching <code>deployment.project_id</code> to the active project, so stale deployment state from a previous project cannot populate the list, counts, or selected detail view.</li>
 </ul>
 <h3 id="api-and-backend">API And Backend</h3>
 <ul>
 <li><code>backend/app/api/routes/deployments.py</code></li>
+<li>Non-admin deployment list requests must include <code>project_id</code>; the route enforces project access before returning deployment records. The admin dashboard remains the only intended global aggregation surface.</li>
 </ul>
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
@@ -266,11 +269,11 @@
 </ul>
 <h2 id="agents-skills-llm-mcp-and-permissions">Agents, Skills, LLM, MCP, And Permissions</h2>
 <ul>
-<li>No direct agent, skill, LLM, or MCP behavior is asserted beyond the cited source files.</li>
+<li>Deployments are project-owned integration records. Any agent, skill, LLM, MCP, channel, or deployment worker that uses deployment data must preserve the same active-project and authorization boundary before routing participant content or generated research artifacts.</li>
 </ul>
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>
-<li>No focused test reference recorded yet.</li>
+<li><code>tests/test_project_scope_contracts.py</code> asserts that <code>DeploymentsTab</code> imports the project store, fetches deployments with the active project id, renders only <code>scopedDeployments</code>, and does not fall back to a global <code>fetchDeployments()</code> call.</li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>
@@ -284,7 +287,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-53 / CF-657</li>
+<li>Spec/task: CF-SPEC-60 / CF-754</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>

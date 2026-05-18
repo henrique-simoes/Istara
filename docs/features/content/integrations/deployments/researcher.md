@@ -8,9 +8,9 @@ related_features: ["integrations.deployment-dashboard", "integrations.surveys", 
 related_glossary: ["triangulation"]
 code_references: ["frontend/src/components/integrations/DeploymentsTab.tsx", "frontend/src/components/integrations/DeploymentWizard.tsx", "backend/app/api/routes/deployments.py"]
 api_references: ["backend/app/api/routes/deployments.py"]
-test_references: []
-last_verified: 2026-05-15
-compass: CF-SPEC-53 / CF-657
+test_references: ["tests/test_project_scope_contracts.py"]
+last_verified: 2026-05-18
+compass: CF-SPEC-60 / CF-754
 ---
 
 # Research Deployments
@@ -32,7 +32,7 @@ Research Deployments exists so the work represented by Integrations > Deployment
 ## How UX Researchers Use It
 
 - Open Integrations > Deployments from the Istara navigation or the parent tab.
-- Use the visible controls in this surface to work with research deployments in the active project context.
+- Use the visible controls in this surface to work only with research deployments in the active project context.
 - Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.
 
 ## Supported Workflows
@@ -43,8 +43,8 @@ Research Deployments exists so the work represented by Integrations > Deployment
 
 ## Inputs, Outputs, And Expected Outcomes
 
-- Project-scoped state or artifact updates associated with research deployments.
-- Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.
+- Project-scoped state or artifact updates associated with research deployments that belong to the active project and the current user's authorized access.
+- Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes, filtered to the active project before list rows, counts, or detail views are rendered.
 
 ## Caveats
 
@@ -65,4 +65,4 @@ Research Deployments exists so the work represented by Integrations > Deployment
 
 - Source files: `frontend/src/components/integrations/DeploymentsTab.tsx`, `frontend/src/components/integrations/DeploymentWizard.tsx`, `backend/app/api/routes/deployments.py`
 - API references: `backend/app/api/routes/deployments.py`
-- Tests: none recorded
+- Tests: `tests/test_project_scope_contracts.py`

@@ -21,7 +21,7 @@ export async function run(ctx) {
 
   // 2. Verify A2A message system works
   try {
-    const log = await api.get("/api/agents/a2a/log?limit=5");
+    const log = await api.get(`/api/agents/a2a/log?project_id=${encodeURIComponent(projectId)}&limit=5`);
     checks.push({
       name: "A2A message log accessible",
       passed: true,

@@ -241,7 +241,7 @@
   <p class="concept-line"><strong>Concepts:</strong> rag</p>
 </header>
 <h2 id="what-it-does">What It Does</h2>
-<p>Compute Pool provides operational visibility into available compute nodes, routing, and local or pooled execution capacity. If one physical Mac is reachable through more than one local network address, Istara treats those aliases as one machine for the Total RAM, CPU, and connected-node display. A reachable LM Studio server can show as online even when no model is currently loaded; in that state it is visible for capacity and model availability, but not counted as ready for chat routing.</p>
+<p>Compute Pool provides operational visibility into available compute nodes, routing, and local or pooled execution capacity. If one physical Mac is reachable through more than one local network address, Istara treats those aliases as one machine for the Total RAM, CPU, and connected-node display. A reachable LM Studio server can show as online even when no model is currently loaded; in that state it is visible for capacity and model availability, but not counted as ready for chat routing. Donated compute can only receive project prompts or embeddings for projects included in its authorized donation scope.</p>
 <h2 id="why-it-exists">Why It Exists</h2>
 <p>Compute Pool exists so the work represented by Compute Pool has a stable, discoverable place in Istara&#x27;s project workflow. It keeps user actions, generated artifacts, and related follow-up surfaces connected to the active project rather than scattering them across unrelated tools.</p>
 <h2 id="where-it-lives">Where It Lives</h2>
@@ -257,6 +257,7 @@
 <li>Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.</li>
 <li>Use the machine count under Total Nodes as the trusted capacity count when multiple LLM services share the same hardware.</li>
 <li>Read the node status as two separate ideas: online means the provider API is reachable, while ready means a model is loaded and available for routing.</li>
+<li>Treat donated compute as project-bound capacity. If a machine is not authorized for the active project, it may appear in status but is not eligible to process that project&#x27;s content.</li>
 </ul>
 <h2 id="supported-workflows">Supported Workflows</h2>
 <ul>
@@ -270,6 +271,7 @@
 <li>Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.</li>
 <li>RAM and CPU totals reflect unique physical hardware, not every IP address or provider process registered in the pool.</li>
 <li>Servers with no loaded model remain online when reachable and show their loadable model capabilities, but continue to score as not ready until a model is loaded.</li>
+<li>Relay/browser donors without a validated project scope are status-only and cannot receive project chat, task, report, integration, or embedding payloads.</li>
 </ul>
 <h2 id="caveats">Caveats</h2>
 <ul>
@@ -289,7 +291,7 @@
 <ul>
 <li>Source files: <code>frontend/src/components/common/ComputePoolView.tsx</code>, <code>backend/app/api/routes/compute.py</code>, <code>backend/app/core/compute_pool.py</code></li>
 <li>API references: <code>backend/app/api/routes/compute.py</code></li>
-<li>Tests: <code>tests/test_compute_registry_model_loading.py</code>, <code>tests/test_compute_registry_hardening.py</code>, <code>tests/test_network_discovery.py</code></li>
+<li>Tests: <code>tests/test_compute.py</code>, <code>tests/test_compute_registry_model_loading.py</code>, <code>tests/test_compute_registry_hardening.py</code>, <code>tests/test_network_discovery.py</code>, <code>tests/test_project_rbac.py</code></li>
 </ul>
         </article>
         <aside class="toc-panel" aria-label="Page sections">

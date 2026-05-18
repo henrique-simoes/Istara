@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Plus, Rocket, MessageSquare, CheckCircle2, Activity, Users } from "lucide-react";
 import { useIntegrationsStore } from "@/stores/integrationsStore";
+import { useProjectStore } from "@/stores/projectStore";
 import { cn } from "@/lib/utils";
 import DeploymentWizard from "./DeploymentWizard";
 import DeploymentDashboard from "./DeploymentDashboard";
@@ -22,26 +23,36 @@ export default function DeploymentsTab() {
     fetchDeployments,
     selectDeployment,
   } = useIntegrationsStore();
+  const { activeProjectId } = useProjectStore();
 
   const [showWizard, setShowWizard] = useState(false);
 
   useEffect(() => {
-    fetchDeployments();
-  }, [fetchDeployments]);
+    selectDeployment(null);
+    if (activeProjectId) {
+      fetchDeployments(activeProjectId);
+    }
+  }, [activeProjectId, fetchDeployments, selectDeployment]);
 
-  const selectedDeployment = deploymentsList.find((d) => d.id === selectedDeploymentId);
+  const scopedDeployments = activeProjectId
+    ? deploymentsList.filter((d) => d.project_id === activeProjectId)
+    : [];
+  const selectedDeployment = scopedDeployments.find((d) => d.id === selectedDeploymentId);
+  const canCreateDeployment = Boolean(activeProjectId);
 
   // Summary stats
-  const totalConversations = deploymentsList.reduce((acc, d) => acc + d.current_responses, 0);
-  const completedConversations = deploymentsList.filter((d) => d.state === "completed").reduce((acc, d) => acc + d.current_responses, 0);
-  const activeDeployments = deploymentsList.filter((d) => d.state === "active").length;
+  const totalConversations = scopedDeployments.reduce((acc, d) => acc + d.current_responses, 0);
+  const completedConversations = scopedDeployments.filter((d) => d.state === "completed").reduce((acc, d) => acc + d.current_responses, 0);
+  const activeDeployments = scopedDeployments.filter((d) => d.state === "active").length;
 
   if (showWizard) {
     return (
       <DeploymentWizard
         onClose={() => {
           setShowWizard(false);
-          fetchDeployments();
+          if (activeProjectId) {
+            fetchDeployments(activeProjectId);
+          }
         }}
       />
     );
@@ -63,7 +74,8 @@ export default function DeploymentsTab() {
         </div>
         <button
           onClick={() => setShowWizard(true)}
-          className="flex items-center gap-1.5 px-3 py-2 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700 transition-colors"
+          disabled={!canCreateDeployment}
+          className="flex items-center gap-1.5 px-3 py-2 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500 dark:disabled:bg-slate-800 dark:disabled:text-slate-500 transition-colors"
         >
           <Plus size={14} />
           New Deployment
@@ -109,7 +121,7 @@ export default function DeploymentsTab() {
             <div key={i} className="h-24 rounded-xl bg-slate-100 dark:bg-slate-800 animate-pulse" />
           ))}
         </div>
-      ) : deploymentsList.length === 0 ? (
+      ) : scopedDeployments.length === 0 ? (
         <div className="text-center py-16 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl">
           <Rocket size={40} className="mx-auto mb-3 text-slate-300 dark:text-slate-600" />
           <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">No deployments yet</p>
@@ -118,14 +130,15 @@ export default function DeploymentsTab() {
           </p>
           <button
             onClick={() => setShowWizard(true)}
-            className="px-4 py-2 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700 transition-colors"
+            disabled={!canCreateDeployment}
+            className="px-4 py-2 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500 dark:disabled:bg-slate-800 dark:disabled:text-slate-500 transition-colors"
           >
             Create First Deployment
           </button>
         </div>
       ) : (
         <div className="space-y-3">
-          {deploymentsList.map((deployment) => {
+          {scopedDeployments.map((deployment) => {
             const badge = STATE_BADGE[deployment.state] || STATE_BADGE.draft;
             const progress = deployment.target_responses > 0
               ? Math.round((deployment.current_responses / deployment.target_responses) * 100)

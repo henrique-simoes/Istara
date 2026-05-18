@@ -11,6 +11,7 @@ import logging
 import re
 import uuid
 from datetime import datetime, timezone
+from urllib.parse import urlsplit, urlunsplit
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -51,6 +52,7 @@ async def register_server(
     url: str,
     transport: str = "http",
     headers: dict | None = None,
+    project_id: str | None = None,
 ) -> MCPServerConfig:
     """Register a new external MCP server.
 
@@ -77,10 +79,12 @@ async def register_server(
         EndpointPolicy(service_name="MCP server"),
     )
     safe_headers = _validate_headers(headers or {})
+    normalized_project_id = (project_id or "").strip()
 
     existing_result = await db.execute(
         select(MCPServerConfig)
         .where(
+            MCPServerConfig.project_id == normalized_project_id,
             MCPServerConfig.url == normalized_url,
             MCPServerConfig.transport == transport,
             MCPServerConfig.is_active.is_(True),
@@ -103,6 +107,7 @@ async def register_server(
 
     config = MCPServerConfig(
         id=str(uuid.uuid4()),
+        project_id=normalized_project_id,
         name=name,
         url=normalized_url,
         transport=transport,
@@ -328,7 +333,29 @@ async def unregister_server(db: AsyncSession, server_id: str) -> bool:
     return True
 
 
-async def list_servers(db: AsyncSession, active_only: bool = False) -> list[dict]:
+def _dedupe_url(url: str) -> str:
+    raw = (url or "").strip().rstrip("/")
+    try:
+        parsed = urlsplit(raw)
+    except Exception:
+        return raw.lower()
+    scheme = parsed.scheme.lower()
+    hostname = (parsed.hostname or "").lower()
+    try:
+        port = parsed.port
+    except ValueError:
+        port = None
+    if port and not ((scheme == "http" and port == 80) or (scheme == "https" and port == 443)):
+        hostname = f"{hostname}:{port}"
+    path = parsed.path.rstrip("/")
+    return urlunsplit((scheme, hostname, path, "", ""))
+
+
+async def list_servers(
+    db: AsyncSession,
+    active_only: bool = False,
+    project_id: str | None = None,
+) -> list[dict]:
     """List all registered MCP servers."""
     query = select(MCPServerConfig).order_by(
         MCPServerConfig.updated_at.desc(),
@@ -336,11 +363,13 @@ async def list_servers(db: AsyncSession, active_only: bool = False) -> list[dict
     )
     if active_only:
         query = query.where(MCPServerConfig.is_active.is_(True))
+    if project_id is not None:
+        query = query.where(MCPServerConfig.project_id == project_id.strip())
     result = await db.execute(query)
     servers = result.scalars().all()
-    deduped: dict[tuple[str, str], dict] = {}
+    deduped: dict[tuple[str, str, str], dict] = {}
     for server in servers:
-        key = (server.transport, server.url)
+        key = (server.project_id or "", (server.transport or "").lower(), _dedupe_url(server.url))
         if key not in deduped:
             row = server.to_dict()
             row["duplicate_count"] = 1
@@ -350,21 +379,22 @@ async def list_servers(db: AsyncSession, active_only: bool = False) -> list[dict
     return list(deduped.values())
 
 
-async def list_all_tools(db: AsyncSession) -> list[dict]:
+async def list_all_tools(db: AsyncSession, project_id: str | None = None) -> list[dict]:
     """Aggregate cached tools from all active servers.
 
     Returns a flat list of tool descriptors, each annotated with the
     server_id and server_name they belong to.
     """
-    result = await db.execute(
-        select(MCPServerConfig).where(MCPServerConfig.is_active.is_(True))
-    )
+    query = select(MCPServerConfig).where(MCPServerConfig.is_active.is_(True))
+    if project_id is not None:
+        query = query.where(MCPServerConfig.project_id == project_id.strip())
+    result = await db.execute(query)
     servers = result.scalars().all()
 
     all_tools: list[dict] = []
-    seen_servers: set[tuple[str, str]] = set()
+    seen_servers: set[tuple[str, str, str]] = set()
     for server in servers:
-        key = (server.transport, server.url)
+        key = (server.project_id or "", (server.transport or "").lower(), _dedupe_url(server.url))
         if key in seen_servers:
             continue
         seen_servers.add(key)

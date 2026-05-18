@@ -241,7 +241,7 @@
   <p class="concept-line"><strong>Concepts:</strong> wcag</p>
 </header>
 <h2 id="what-it-does">What It Does</h2>
-<p>Compute donation lets a browser session contribute local compute capacity under controlled limits.</p>
+<p>Compute donation lets a browser session contribute local compute capacity under controlled limits. Donated compute is project-bound: a donated machine can only process content for projects included in its authorized scope.</p>
 <h2 id="why-it-exists">Why It Exists</h2>
 <p>Compute Donation exists so the work represented by Settings &gt; Compute Donation has a stable, discoverable place in Istara&#x27;s project workflow. It keeps user actions, generated artifacts, and related follow-up surfaces connected to the active project rather than scattering them across unrelated tools.</p>
 <h2 id="where-it-lives">Where It Lives</h2>
@@ -255,6 +255,7 @@
 <li>Open Settings &gt; Compute Donation from the Istara navigation or the parent tab.</li>
 <li>Use the visible controls in this surface to work with compute donation in the active project context.</li>
 <li>Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.</li>
+<li>Admin-generated donation strings require choosing the project or projects that the donated machine may serve.</li>
 </ul>
 <h2 id="supported-workflows">Supported Workflows</h2>
 <ul>
@@ -266,6 +267,7 @@
 <ul>
 <li>Project-scoped state or artifact updates associated with compute donation.</li>
 <li>Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.</li>
+<li>A donor with no validated project scope may appear connected, but it will not receive project prompts, embeddings, or research content.</li>
 </ul>
 <h2 id="caveats">Caveats</h2>
 <ul>
@@ -285,7 +287,7 @@
 <ul>
 <li>Source files: <code>frontend/src/components/common/DonateComputeToggle.tsx</code>, <code>backend/app/core/compute_pool.py</code></li>
 <li>API references: <code>backend/app/api/routes/compute.py</code></li>
-<li>Tests: none recorded</li>
+<li>Tests: <code>tests/test_compute.py</code>, <code>tests/test_project_rbac.py</code></li>
 </ul>
         </article>
         <aside class="toc-panel" aria-label="Page sections">

@@ -8,9 +8,9 @@ related_features: ["autoresearch.dashboard", "autoresearch.config"]
 related_glossary: ["triangulation"]
 code_references: ["frontend/src/components/autoresearch/AutoresearchView.tsx", "backend/app/core/autoresearch_engine.py"]
 api_references: ["backend/app/api/routes/autoresearch.py"]
-test_references: []
-last_verified: 2026-05-15
-compass: CF-SPEC-53 / CF-657
+test_references: ["tests/test_autoresearch.py", "tests/test_project_scope_contracts.py"]
+last_verified: 2026-05-18
+compass: CF-SPEC-60 / CF-754
 ---
 
 # Autoresearch Experiments
@@ -32,7 +32,7 @@ Autoresearch Experiments exists so the work represented by Autoresearch > Experi
 ## How UX Researchers Use It
 
 - Open Autoresearch > Experiments from the Istara navigation or the parent tab.
-- Use the visible controls in this surface to work with autoresearch experiments in the active project context.
+- Use the visible controls in this surface to start, stop, and inspect only autoresearch experiments in the active project context.
 - Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.
 
 ## Supported Workflows
@@ -43,8 +43,8 @@ Autoresearch Experiments exists so the work represented by Autoresearch > Experi
 
 ## Inputs, Outputs, And Expected Outcomes
 
-- Project-scoped state or artifact updates associated with autoresearch experiments.
-- Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.
+- Project-scoped experiment history and runtime actions associated with the active project.
+- Generated experiment records, reasoning memories, and improvement proposals keep the project id that authorized the run.
 
 ## Caveats
 
@@ -64,4 +64,4 @@ Autoresearch Experiments exists so the work represented by Autoresearch > Experi
 
 - Source files: `frontend/src/components/autoresearch/AutoresearchView.tsx`, `backend/app/core/autoresearch_engine.py`
 - API references: `backend/app/api/routes/autoresearch.py`
-- Tests: none recorded
+- Tests: `tests/test_autoresearch.py`, `tests/test_project_scope_contracts.py`

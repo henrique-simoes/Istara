@@ -10,14 +10,14 @@ code_references: ["frontend/src/components/integrations/MCPTab.tsx", "frontend/s
 api_references: ["backend/app/api/routes/mcp.py"]
 test_references: ["tests/test_mcp.py"]
 last_verified: 2026-05-18
-compass: CF-SPEC-55 / CF-684
+compass: CF-SPEC-55 / CF-684; CF-SPEC-60 / CF-759
 ---
 
 # MCP Integrations Architecture
 
 ## Implementation Summary
 
-The MCP tab configures Model Context Protocol server access, policies, and audit visibility. Registered MCP clients are deduplicated by normalized transport and URL so repeated featured-server connects do not show the same server multiple times.
+The MCP tab configures project-owned Model Context Protocol client connections plus admin-only MCP server exposure controls. Registered MCP clients are scoped by `project_id` and deduplicated by project, normalized transport, and URL so repeated featured-server connects do not show the same server multiple times inside one project.
 
 ## Frontend Surface
 
@@ -40,12 +40,15 @@ The MCP tab configures Model Context Protocol server access, policies, and audit
 
 - The feature is mounted through `frontend/src/components/integrations/MCPTab.tsx` and the UI navigation path recorded in the inventory.
 - Featured server labels must identify the server itself; non-Brazilian servers such as Playwright use a neutral server icon instead of Brazil-specific labeling.
+- `MCPTab` passes the active project id into MCP client listing and featured-server connect flows. Without an active project, project-owned connected-server lists are empty and creation is disabled.
+- `backend/app/api/routes/mcp.py` requires `project_id` for team-mode MCP client registration and featured connects, verifies the project exists, and authorizes the caller as project admin before client discovery, deletion, health checks, tool listing, or tool calls.
+- Legacy/global MCP client rows remain accessible only through explicit global-admin API access without a project filter; project-facing Integrations views do not request or display them.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
 
 ## Agents, Skills, LLM, MCP, And Permissions
 
-- MCP-related behavior must keep access policy, audit evidence, and tool/resource exposure synchronized with the cited route or integration component.
+- MCP-related behavior must keep access policy, audit evidence, tool/resource exposure, and project ownership synchronized with the cited route or integration component.
 
 ## Tests And Verification
 
@@ -62,7 +65,7 @@ The MCP tab configures Model Context Protocol server access, policies, and audit
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-55 / CF-684
+- Spec/task: CF-SPEC-55 / CF-684; CF-SPEC-60 / CF-759
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update

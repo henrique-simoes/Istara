@@ -27,6 +27,7 @@ class ComputeNodeInvocationMixin:
         response_format: dict | None = None,
         min_context: int = 0,
         thinking_mode: str | None = None,
+        project_id: str | None = None,
     ) -> dict:
         """Direct chat on this specific node (backward compat with LLMServerEntry.chat)."""
         msgs = list(messages)
@@ -45,6 +46,7 @@ class ComputeNodeInvocationMixin:
                     "tools": tools,
                     "response_format": response_format,
                     "thinking_mode": thinking_mode,
+                    "project_id": project_id,
                 },
             )
             return response.get("result", {})
@@ -121,6 +123,7 @@ class ComputeNodeInvocationMixin:
         tools: list[dict] | None = None,
         min_context: int = 0,
         thinking_mode: str | None = None,
+        project_id: str | None = None,
     ) -> AsyncGenerator[str | dict, None]:
         """Direct streaming chat on this specific node (backward compat)."""
         msgs = list(messages)
@@ -136,6 +139,7 @@ class ComputeNodeInvocationMixin:
                 max_tokens=max_tokens,
                 tools=tools,
                 thinking_mode=None,
+                project_id=project_id,
             )
             content = result.get("message", {}).get("content", "")
             if content:
@@ -152,6 +156,7 @@ class ComputeNodeInvocationMixin:
                 max_tokens=max_tokens,
                 tools=tools,
                 thinking_mode=None,
+                project_id=project_id,
             )
             content = result.get("message", {}).get("content", "")
             if content:
@@ -263,7 +268,12 @@ class ComputeNodeInvocationMixin:
                     "finish_reason": "tool_calls",
                 }
 
-    async def embed(self, text: str, model: str | None = None) -> list[float]:
+    async def embed(
+        self,
+        text: str,
+        model: str | None = None,
+        project_id: str | None = None,
+    ) -> list[float]:
         """Direct embedding on this specific node (backward compat)."""
         if self.source in ("relay", "browser") and self.websocket:
             response = await self._request_over_websocket(
@@ -271,6 +281,7 @@ class ComputeNodeInvocationMixin:
                 {
                     "input": text,
                     "model": self._resolve_embed_model(model),
+                    "project_id": project_id,
                 },
             )
             result = response.get("result", [])
@@ -295,7 +306,12 @@ class ComputeNodeInvocationMixin:
             items = resp.json().get("data", [])
             return items[0].get("embedding", []) if items else []
 
-    async def embed_batch(self, texts: list[str], model: str | None = None) -> list[list[float]]:
+    async def embed_batch(
+        self,
+        texts: list[str],
+        model: str | None = None,
+        project_id: str | None = None,
+    ) -> list[list[float]]:
         """Direct batch embedding on this specific node (backward compat)."""
         if self.source in ("relay", "browser") and self.websocket:
             response = await self._request_over_websocket(
@@ -303,6 +319,7 @@ class ComputeNodeInvocationMixin:
                 {
                     "input": texts,
                     "model": self._resolve_embed_model(model),
+                    "project_id": project_id,
                 },
             )
             result = response.get("result", [])

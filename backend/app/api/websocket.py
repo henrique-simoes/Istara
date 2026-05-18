@@ -6,7 +6,7 @@ import asyncio
 import json
 import logging
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Any, Optional
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
@@ -18,20 +18,92 @@ class ConnectionManager:
     """Manage active WebSocket connections."""
 
     def __init__(self) -> None:
-        self._connections: list[WebSocket] = []
+        self._connections: list[dict[str, Any]] = []
 
-    async def connect(self, websocket: WebSocket) -> None:
+    async def connect(
+        self,
+        websocket: WebSocket,
+        *,
+        user_context: dict,
+        active_project_id: str | None = None,
+    ) -> None:
         await websocket.accept()
-        self._connections.append(websocket)
+        self._connections.append(
+            {
+                "websocket": websocket,
+                "user_context": user_context,
+                "active_project_id": active_project_id,
+            }
+        )
         logger.info(f"WebSocket connected. Total: {len(self._connections)}")
 
     def disconnect(self, websocket: WebSocket) -> None:
-        if websocket in self._connections:
-            self._connections.remove(websocket)
+        self._connections = [
+            record for record in self._connections if record.get("websocket") is not websocket
+        ]
         logger.info(f"WebSocket disconnected. Total: {len(self._connections)}")
 
+    @staticmethod
+    def _project_id_from_data(data: dict) -> str | None:
+        value = data.get("project_id") or data.get("projectId")
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+        metadata = data.get("metadata")
+        if isinstance(metadata, dict):
+            value = metadata.get("project_id") or metadata.get("projectId")
+            if isinstance(value, str) and value.strip():
+                return value.strip()
+        return None
+
+    async def _resolve_project_id(self, data: dict) -> str | None:
+        project_id = self._project_id_from_data(data)
+        if project_id:
+            return project_id
+
+        try:
+            from app.models.database import async_session
+
+            task_id = data.get("task_id") or data.get("taskId")
+            if isinstance(task_id, str) and task_id:
+                from app.models.task import Task
+
+                async with async_session() as db:
+                    task = await db.get(Task, task_id)
+                    if task and task.project_id:
+                        return str(task.project_id)
+
+            deployment_id = data.get("deployment_id") or data.get("deploymentId")
+            if isinstance(deployment_id, str) and deployment_id:
+                from app.models.research_deployment import ResearchDeployment
+
+                async with async_session() as db:
+                    deployment = await db.get(ResearchDeployment, deployment_id)
+                    if deployment and deployment.project_id:
+                        return str(deployment.project_id)
+
+            instance_id = data.get("instance_id") or data.get("instanceId")
+            if isinstance(instance_id, str) and instance_id:
+                from app.models.channel_instance import ChannelInstance
+
+                async with async_session() as db:
+                    instance = await db.get(ChannelInstance, instance_id)
+                    if instance and instance.project_id:
+                        return str(instance.project_id)
+        except Exception:
+            return None
+        return None
+
+    @staticmethod
+    def _connection_can_receive(record: dict[str, Any], project_id: str | None) -> bool:
+        if not project_id:
+            return True
+        return record.get("active_project_id") == project_id
+
     async def broadcast(self, event_type: str, data: dict) -> None:
-        """Broadcast an event to all connected clients."""
+        """Broadcast an event to connected clients authorized for its project."""
+        project_id = await self._resolve_project_id(data)
+        if project_id and not self._project_id_from_data(data):
+            data = {**data, "project_id": project_id}
         message = json.dumps({
             "type": event_type,
             "data": data,
@@ -39,7 +111,10 @@ class ConnectionManager:
         })
 
         disconnected = []
-        for connection in self._connections:
+        for record in list(self._connections):
+            if not self._connection_can_receive(record, project_id):
+                continue
+            connection = record["websocket"]
             try:
                 await connection.send_text(message)
             except Exception:
@@ -123,7 +198,12 @@ async def websocket_endpoint(websocket: WebSocket):
         return
 
     # Token is valid — now accept and register the connection
-    await manager.connect(websocket)
+    active_project_id = websocket.query_params.get("project_id")
+    await manager.connect(
+        websocket,
+        user_context=payload,
+        active_project_id=active_project_id.strip() if active_project_id else None,
+    )
 
     try:
         # Send initial status
@@ -155,9 +235,12 @@ async def websocket_endpoint(websocket: WebSocket):
 
 # Helper functions for broadcasting events from other modules
 
-async def broadcast_agent_status(status: str, details: str = "") -> None:
+async def broadcast_agent_status(status: str, details: str = "", project_id: str | None = None) -> None:
     """Broadcast agent status update."""
-    await manager.broadcast("agent_status", {"status": status, "details": details})
+    data = {"status": status, "details": details}
+    if project_id:
+        data["project_id"] = project_id
+    await manager.broadcast("agent_status", data)
 
 
 async def broadcast_task_progress(task_id: str, progress: float, notes: str = "") -> None:

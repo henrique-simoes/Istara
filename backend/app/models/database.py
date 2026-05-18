@@ -186,6 +186,10 @@ async def init_db() -> None:
             "ALTER TABLE connection_strings ADD COLUMN intended_role VARCHAR(40) "
             "NOT NULL DEFAULT 'researcher'",
             "ALTER TABLE connection_strings ADD COLUMN connection_string_hash VARCHAR(64)",
+            "ALTER TABLE connection_strings ADD COLUMN allowed_project_ids_json TEXT "
+            "NOT NULL DEFAULT '[]'",
+            "ALTER TABLE mcp_server_configs ADD COLUMN project_id VARCHAR(36) "
+            "NOT NULL DEFAULT ''",
             # Scheduler/loops hardening columns for existing installations.
             "ALTER TABLE scheduled_tasks ADD COLUMN is_running BOOLEAN NOT NULL DEFAULT 0",
             "ALTER TABLE scheduled_tasks ADD COLUMN agent_id VARCHAR(36)",

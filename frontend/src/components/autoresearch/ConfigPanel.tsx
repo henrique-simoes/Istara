@@ -3,16 +3,18 @@
 import { useEffect } from "react";
 import { Power, ExternalLink } from "lucide-react";
 import { useAutoresearchStore } from "@/stores/autoresearchStore";
+import { useProjectStore } from "@/stores/projectStore";
 import { cn } from "@/lib/utils";
 
 export default function ConfigPanel() {
   const { config, fetchConfig, fetchStatus, updateConfig, toggle } =
     useAutoresearchStore();
+  const { activeProjectId } = useProjectStore();
 
   useEffect(() => {
     fetchConfig();
-    fetchStatus();
-  }, [fetchConfig, fetchStatus]);
+    fetchStatus(activeProjectId);
+  }, [activeProjectId, fetchConfig, fetchStatus]);
 
   const enabled = config?.enabled ?? false;
 

@@ -241,7 +241,7 @@
   <p class="concept-line"><strong>Concepts:</strong> mcp</p>
 </header>
 <h2 id="what-it-does">What It Does</h2>
-<p>The MCP tab configures Model Context Protocol server access, policies, and audit visibility.</p>
+<p>The MCP tab configures Model Context Protocol connections for the active project. Admin users can also review global MCP server exposure controls, but connected external MCP clients shown in Integrations are project-owned.</p>
 <h2 id="why-it-exists">Why It Exists</h2>
 <p>MCP Integrations exists so the work represented by Integrations &gt; MCP has a stable, discoverable place in Istara&#x27;s project workflow. It keeps user actions, generated artifacts, and related follow-up surfaces connected to the active project rather than scattering them across unrelated tools.</p>
 <h2 id="where-it-lives">Where It Lives</h2>
@@ -253,7 +253,8 @@
 <h2 id="how-ux-researchers-use-it">How UX Researchers Use It</h2>
 <ul>
 <li>Open Integrations &gt; MCP from the Istara navigation or the parent tab.</li>
-<li>Use the visible controls in this surface to work with mcp integrations in the active project context.</li>
+<li>Use the visible controls in this surface to work with MCP integrations in the active project context.</li>
+<li>Add or connect external MCP servers only after selecting the project that is allowed to use those tools.</li>
 <li>Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.</li>
 </ul>
 <h2 id="supported-workflows">Supported Workflows</h2>
@@ -264,11 +265,13 @@
 </ul>
 <h2 id="inputs-outputs-and-expected-outcomes">Inputs, Outputs, And Expected Outcomes</h2>
 <ul>
-<li>Project-scoped state or artifact updates associated with mcp integrations.</li>
+<li>Project-scoped MCP server registrations associated with the selected project.</li>
 <li>Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.</li>
 </ul>
 <h2 id="caveats">Caveats</h2>
 <ul>
+<li>No active project means the connected MCP server list is empty and new connections are disabled.</li>
+<li>Legacy global MCP clients are admin API inventory and are not shown as project MCP connections.</li>
 <li>Needs interactive verification for exact empty, loading, error, and permission-denied states.</li>
 <li>Do not expand this documentation beyond the cited source files without adding new code or walkthrough evidence.</li>
 </ul>
@@ -285,7 +288,7 @@
 <ul>
 <li>Source files: <code>frontend/src/components/integrations/MCPTab.tsx</code>, <code>frontend/src/components/integrations/MCPAccessPolicyEditor.tsx</code>, <code>frontend/src/components/integrations/MCPAuditLog.tsx</code>, <code>backend/app/api/routes/mcp.py</code></li>
 <li>API references: <code>backend/app/api/routes/mcp.py</code></li>
-<li>Tests: none recorded</li>
+<li>Tests: <code>tests/test_mcp.py</code>, <code>tests/test_project_scope_contracts.py</code></li>
 </ul>
         </article>
         <aside class="toc-panel" aria-label="Page sections">

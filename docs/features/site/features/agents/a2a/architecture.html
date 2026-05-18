@@ -266,8 +266,9 @@
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
 <li>The feature is mounted through <code>frontend/src/components/agents/AgentsView.tsx</code> and the UI navigation path recorded in the inventory.</li>
-<li>Project views pass the active <code>project_id</code> into <code>/api/agents/a2a/log</code>; backend filtering only returns messages tagged with that project or messages that can be traced to a task in that project.</li>
-<li>Unfiltered A2A access remains a global/admin diagnostic path, not the default project view.</li>
+<li>Project views pass the active <code>project_id</code> into <code>/api/agents/a2a/log</code>; the backend requires that scope and only returns messages tagged with that project or messages that can be traced to a task in that project.</li>
+<li>Public A2A JSON-RPC <code>tasks/send</code>, <code>tasks/get</code>, and <code>tasks/list</code> also require <code>project_id</code> and enforce project authorization before project-content messages are persisted or listed.</li>
+<li>Project A2A messages are broadcast with project metadata so realtime clients connected to another active project do not receive them.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>
@@ -277,7 +278,7 @@
 </ul>
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>
-<li><code>tests/test_agents.py</code> verifies that project-scoped A2A logs exclude unrelated project and global messages.</li>
+<li><code>tests/test_agents.py</code> and <code>tests/test_a2a_security.py</code> verify that project-scoped A2A logs exclude unrelated project/global messages and that JSON-RPC task writes cannot be created without a project scope.</li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>

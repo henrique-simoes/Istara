@@ -303,6 +303,7 @@ export async function run(ctx) {
         to_agent_id: receiver.id,
         message_type: "consult",
         content: "[SIM-21] Request quality review of thematic analysis findings",
+        project_id: projectId,
       });
 
       return {
@@ -318,6 +319,7 @@ export async function run(ctx) {
         to_agent_id: null,
         message_type: "broadcast",
         content: "[SIM-21] Analysis phase complete. Findings ready for review.",
+        project_id: projectId,
       });
 
       return {
@@ -329,7 +331,7 @@ export async function run(ctx) {
 
     // Check inbox
     await safeCheck("A2A — receiver inbox has directed message", async () => {
-      const inbox = await api.get(`/api/agents/${receiver.id}/messages?limit=20`);
+      const inbox = await api.get(`/api/agents/${receiver.id}/messages?project_id=${encodeURIComponent(projectId)}&limit=20`);
       const messages = inbox.messages || [];
       const found = messages.some((m) => m.content.includes("[SIM-21] Request quality review"));
 
@@ -340,14 +342,14 @@ export async function run(ctx) {
       };
     });
 
-    // Global A2A log
-    await safeCheck("A2A — global log contains messages", async () => {
-      const log = await api.get("/api/agents/a2a/log?limit=50");
+    // Project A2A log
+    await safeCheck("A2A — project log contains messages", async () => {
+      const log = await api.get(`/api/agents/a2a/log?project_id=${encodeURIComponent(projectId)}&limit=50`);
       const messages = log.messages || [];
       const simMessages = messages.filter((m) => (m.content || "").includes("[SIM-21]"));
 
       return {
-        name: "A2A — global log contains messages",
+        name: "A2A — project log contains messages",
         passed: simMessages.length >= 2,
         detail: `${simMessages.length} simulation messages in log (${messages.length} total)`,
       };
@@ -366,7 +368,7 @@ export async function run(ctx) {
             to: "istara-main",
             message: {
               text: "[SIM-21] A2A task: Analyze checkout usability data",
-              metadata: { priority: "high", source: "simulation" },
+              metadata: { priority: "high", source: "simulation", project_id: projectId },
             },
           },
           id: "sim-21-task-send",
@@ -390,7 +392,7 @@ export async function run(ctx) {
         body: JSON.stringify({
           jsonrpc: "2.0",
           method: "tasks/list",
-          params: { limit: 10 },
+          params: { project_id: projectId, limit: 10 },
           id: "sim-21-task-list",
         }),
       });

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useAutoresearchStore } from "@/stores/autoresearchStore";
+import { useProjectStore } from "@/stores/projectStore";
 import { cn, formatDate } from "@/lib/utils";
 import type { AutoresearchLoopType } from "@/lib/types";
 
@@ -20,17 +21,19 @@ const PAGE_SIZE = 20;
 
 export default function ExperimentHistory() {
   const { experiments, loading, fetchExperiments } = useAutoresearchStore();
+  const { activeProjectId } = useProjectStore();
   const [filterType, setFilterType] = useState("");
   const [filterKept, setFilterKept] = useState<string>("");
   const [page, setPage] = useState(0);
 
   useEffect(() => {
     const params: Record<string, any> = { limit: PAGE_SIZE, offset: page * PAGE_SIZE };
+    params.project_id = activeProjectId;
     if (filterType) params.loop_type = filterType;
     if (filterKept === "true") params.kept = true;
     if (filterKept === "false") params.kept = false;
     fetchExperiments(params);
-  }, [fetchExperiments, filterType, filterKept, page]);
+  }, [activeProjectId, fetchExperiments, filterType, filterKept, page]);
 
   const loopTypeBadgeColor = (lt: AutoresearchLoopType): string => {
     const colors: Record<string, string> = {

@@ -8,9 +8,9 @@ related_features: ["autoresearch.experiments", "chat.model-controls"]
 related_glossary: ["rag"]
 code_references: ["frontend/src/components/autoresearch/AutoresearchView.tsx", "backend/app/core/autoresearch_runners/rag_params.py"]
 api_references: ["backend/app/api/routes/autoresearch.py"]
-test_references: []
-last_verified: 2026-05-15
-compass: CF-SPEC-53 / CF-657
+test_references: ["tests/test_autoresearch.py", "tests/test_project_scope_contracts.py"]
+last_verified: 2026-05-18
+compass: CF-SPEC-60 / CF-754
 ---
 
 # Autoresearch Configuration
@@ -32,7 +32,7 @@ Autoresearch Configuration exists so the work represented by Autoresearch > Conf
 ## How UX Researchers Use It
 
 - Open Autoresearch > Config from the Istara navigation or the parent tab.
-- Use the visible controls in this surface to work with autoresearch configuration in the active project context.
+- Use the visible controls in this surface to review autoresearch configuration; global enable/disable and limit changes require global admin access.
 - Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.
 
 ## Supported Workflows
@@ -43,8 +43,8 @@ Autoresearch Configuration exists so the work represented by Autoresearch > Conf
 
 ## Inputs, Outputs, And Expected Outcomes
 
-- Project-scoped state or artifact updates associated with autoresearch configuration.
-- Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.
+- Global runtime configuration values that contain no project content.
+- Project-scoped status refreshes shown from this tab, filtered to the active project before any operational metrics are rendered.
 
 ## Caveats
 
@@ -64,4 +64,4 @@ Autoresearch Configuration exists so the work represented by Autoresearch > Conf
 
 - Source files: `frontend/src/components/autoresearch/AutoresearchView.tsx`, `backend/app/core/autoresearch_runners/rag_params.py`
 - API references: `backend/app/api/routes/autoresearch.py`
-- Tests: none recorded
+- Tests: `tests/test_autoresearch.py`, `tests/test_project_scope_contracts.py`

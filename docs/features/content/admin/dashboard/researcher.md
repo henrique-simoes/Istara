@@ -8,16 +8,16 @@ related_features: ["settings.users", "settings.connection-strings"]
 related_glossary: ["wcag"]
 code_references: ["frontend/src/components/admin/AdminDashboard.tsx", "backend/app/api/routes/admin.py"]
 api_references: ["backend/app/api/routes/admin.py"]
-test_references: []
-last_verified: 2026-05-15
-compass: CF-SPEC-53 / CF-657
+test_references: ["tests/test_project_rbac.py"]
+last_verified: 2026-05-18
+compass: CF-SPEC-60 / CF-754
 ---
 
 # Admin Dashboard
 
 ## What It Does
 
-The Admin dashboard provides administrator-only operational controls and visibility.
+The Admin dashboard provides administrator-only operational controls and visibility. It may aggregate metrics across projects for admins, but any compute donation string created here is still bound to a selected project.
 
 ## Why It Exists
 
@@ -34,6 +34,7 @@ Admin Dashboard exists so the work represented by Admin has a stable, discoverab
 - Open Admin from the Istara navigation or the parent tab.
 - Use the visible controls in this surface to work with admin dashboard in the active project context.
 - Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.
+- Select a project when creating a compute donation string so the donated machine can only process content for that project.
 
 ## Supported Workflows
 
@@ -45,6 +46,7 @@ Admin Dashboard exists so the work represented by Admin has a stable, discoverab
 
 - Project-scoped state or artifact updates associated with admin dashboard.
 - Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.
+- Global admin metrics do not imply global donated compute access.
 
 ## Caveats
 
@@ -64,4 +66,4 @@ Admin Dashboard exists so the work represented by Admin has a stable, discoverab
 
 - Source files: `frontend/src/components/admin/AdminDashboard.tsx`, `backend/app/api/routes/admin.py`
 - API references: `backend/app/api/routes/admin.py`
-- Tests: none recorded
+- Tests: `tests/test_project_rbac.py`

@@ -44,8 +44,9 @@ The A2A tab displays agent-to-agent communication or coordination events for ope
 ## Architecture Notes
 
 - The feature is mounted through `frontend/src/components/agents/AgentsView.tsx` and the UI navigation path recorded in the inventory.
-- Project views pass the active `project_id` into `/api/agents/a2a/log`; backend filtering only returns messages tagged with that project or messages that can be traced to a task in that project.
-- Unfiltered A2A access remains a global/admin diagnostic path, not the default project view.
+- Project views pass the active `project_id` into `/api/agents/a2a/log`; the backend requires that scope and only returns messages tagged with that project or messages that can be traced to a task in that project.
+- Public A2A JSON-RPC `tasks/send`, `tasks/get`, and `tasks/list` also require `project_id` and enforce project authorization before project-content messages are persisted or listed.
+- Project A2A messages are broadcast with project metadata so realtime clients connected to another active project do not receive them.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
 
@@ -55,7 +56,7 @@ The A2A tab displays agent-to-agent communication or coordination events for ope
 
 ## Tests And Verification
 
-- `tests/test_agents.py` verifies that project-scoped A2A logs exclude unrelated project and global messages.
+- `tests/test_agents.py` and `tests/test_a2a_security.py` verify that project-scoped A2A logs exclude unrelated project/global messages and that JSON-RPC task writes cannot be created without a project scope.
 
 ## Related Features
 

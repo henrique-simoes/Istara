@@ -6,11 +6,11 @@ audience: researcher
 status: documented
 related_features: ["notifications.list", "notifications.preferences"]
 related_glossary: ["wcag"]
-code_references: ["frontend/src/components/layout/Sidebar.tsx", "frontend/src/stores/notificationStore.ts", "backend/app/api/routes/notifications.py"]
-api_references: ["backend/app/api/routes/notifications.py"]
-test_references: []
-last_verified: 2026-05-15
-compass: CF-SPEC-53 / CF-657
+code_references: ["frontend/src/components/layout/Sidebar.tsx", "frontend/src/hooks/useWebSocket.ts", "frontend/src/stores/notificationStore.ts", "backend/app/api/routes/notifications.py", "backend/app/api/websocket.py"]
+api_references: ["backend/app/api/routes/notifications.py", "backend/app/api/websocket.py"]
+test_references: ["tests/test_project_scope_contracts.py"]
+last_verified: 2026-05-18
+compass: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-754
 ---
 
 # Notification Bell
@@ -33,6 +33,7 @@ Notification Bell exists so the work represented by Shell > Notifications Bell h
 
 - Open Shell > Notifications Bell from the Istara navigation or the parent tab.
 - Use the visible controls in this surface to work with notification bell in the active project context.
+- Realtime project notifications follow the active project selection, so events from other projects are not delivered into the current project shell.
 - Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.
 
 ## Supported Workflows
@@ -44,6 +45,7 @@ Notification Bell exists so the work represented by Shell > Notifications Bell h
 ## Inputs, Outputs, And Expected Outcomes
 
 - Project-scoped state or artifact updates associated with notification bell.
+- Project-tagged websocket events must carry or resolve to a project before they can be delivered to project-connected clients.
 - Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.
 
 ## Caveats
@@ -62,6 +64,6 @@ Notification Bell exists so the work represented by Shell > Notifications Bell h
 
 ## Evidence
 
-- Source files: `frontend/src/components/layout/Sidebar.tsx`, `frontend/src/stores/notificationStore.ts`, `backend/app/api/routes/notifications.py`
-- API references: `backend/app/api/routes/notifications.py`
-- Tests: none recorded
+- Source files: `frontend/src/components/layout/Sidebar.tsx`, `frontend/src/hooks/useWebSocket.ts`, `frontend/src/stores/notificationStore.ts`, `backend/app/api/routes/notifications.py`, `backend/app/api/websocket.py`
+- API references: `backend/app/api/routes/notifications.py`, `backend/app/api/websocket.py`
+- Tests: `tests/test_project_scope_contracts.py`

@@ -241,7 +241,7 @@
   <p class="concept-line"><strong>Concepts:</strong> wcag</p>
 </header>
 <h2 id="what-it-does">What It Does</h2>
-<p>Connection string settings provide governed admin-only configuration for sensitive external or local service connection data.</p>
+<p>Connection string settings provide governed admin-only configuration for sensitive external or local service connection data. Compute donation strings are project-scoped, separate from user invite strings, and cannot create user accounts.</p>
 <h2 id="why-it-exists">Why It Exists</h2>
 <p>Connection Strings exists so the work represented by Settings &gt; Connection Strings has a stable, discoverable place in Istara&#x27;s project workflow. It keeps user actions, generated artifacts, and related follow-up surfaces connected to the active project rather than scattering them across unrelated tools.</p>
 <h2 id="where-it-lives">Where It Lives</h2>
@@ -255,6 +255,7 @@
 <li>Open Settings &gt; Connection Strings from the Istara navigation or the parent tab.</li>
 <li>Use the visible controls in this surface to work with connection strings in the active project context.</li>
 <li>Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.</li>
+<li>When generating a compute donation string, choose the project access scope for the donated machine.</li>
 </ul>
 <h2 id="supported-workflows">Supported Workflows</h2>
 <ul>
@@ -266,6 +267,7 @@
 <ul>
 <li>Project-scoped state or artifact updates associated with connection strings.</li>
 <li>Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.</li>
+<li>Donated compute connected with an unscoped or invalid string remains unable to receive project content.</li>
 </ul>
 <h2 id="caveats">Caveats</h2>
 <ul>
@@ -276,6 +278,7 @@
 <ul>
 <li><a href="../llm-servers/researcher.html">settings.llm-servers</a></li>
 <li><a href="../users/researcher.html">settings.users</a></li>
+<li><a href="../compute-donation/researcher.html">settings.compute-donation</a></li>
 </ul>
 <h2 id="related-concepts">Related Concepts</h2>
 <ul>
@@ -285,7 +288,7 @@
 <ul>
 <li>Source files: <code>frontend/src/components/settings/ConnectionStringPanel.tsx</code>, <code>backend/app/api/routes/connections.py</code>, <code>backend/app/core/connection_string.py</code></li>
 <li>API references: <code>backend/app/api/routes/connections.py</code></li>
-<li>Tests: none recorded</li>
+<li>Tests: <code>tests/test_project_rbac.py</code>, <code>tests/test_compute.py</code></li>
 </ul>
         </article>
         <aside class="toc-panel" aria-label="Page sections">

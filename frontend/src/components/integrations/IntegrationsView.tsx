@@ -31,7 +31,7 @@ export default function IntegrationsView() {
   useEffect(() => {
     let cancelled = false;
     setInitialLoading(true);
-    fetchChannels(undefined, activeProjectId || undefined)
+    fetchChannels(undefined, activeProjectId)
       .catch((err: unknown) => {
         console.error("IntegrationsView: failed to fetch channels", err);
       })

@@ -160,6 +160,60 @@ def test_select_candidates_strict_model_filters_missing_models():
     assert [node.node_id for node in candidates] == ["requested"]
 
 
+def test_relay_candidates_require_matching_project_scope_for_project_content():
+    registry = ComputeRegistry()
+    unscoped_relay = ComputeNode(
+        node_id="relay-unscoped",
+        name="Unscoped Relay",
+        host="",
+        source="relay",
+        provider_type="ollama",
+        is_healthy=True,
+        loaded_models=["llama3"],
+    )
+    wrong_project_relay = ComputeNode(
+        node_id="relay-other",
+        name="Other Project Relay",
+        host="",
+        source="relay",
+        provider_type="ollama",
+        is_healthy=True,
+        loaded_models=["llama3"],
+        allowed_project_ids=["project-b"],
+    )
+    scoped_relay = ComputeNode(
+        node_id="relay-a",
+        name="Project A Relay",
+        host="",
+        source="relay",
+        provider_type="ollama",
+        is_healthy=True,
+        loaded_models=["llama3"],
+        allowed_project_ids=["project-a"],
+    )
+    local_node = ComputeNode(
+        node_id="local",
+        name="Server Local",
+        host="http://localhost:1234",
+        source="local",
+        provider_type="lmstudio",
+        is_healthy=True,
+        loaded_models=["llama3"],
+    )
+    registry.register_node(unscoped_relay)
+    registry.register_node(wrong_project_relay)
+    registry.register_node(scoped_relay)
+    registry.register_node(local_node)
+
+    unscoped_candidates = registry._select_candidates()
+    project_candidates = registry._select_candidates(project_id="project-a")
+
+    assert all(node.source != "relay" for node in unscoped_candidates)
+    assert "relay-a" in {node.node_id for node in project_candidates}
+    assert "relay-other" not in {node.node_id for node in project_candidates}
+    assert "relay-unscoped" not in {node.node_id for node in project_candidates}
+
+
 def test_resolve_model_prefers_explicit_capability_over_advertised_fallback():
     node = ComputeNode(
         node_id="gemini",

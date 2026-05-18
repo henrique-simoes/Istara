@@ -35,6 +35,7 @@ export default function AdminDashboard() {
   const [inviteLabel, setInviteLabel] = useState("");
   const [generatedString, setGeneratedString] = useState("");
   const [accessProjectId, setAccessProjectId] = useState("");
+  const [donationProjectId, setDonationProjectId] = useState("");
   const [accessUserId, setAccessUserId] = useState("");
   const [accessRole, setAccessRole] = useState<"project_admin" | "researcher" | "viewer">("researcher");
   const [loading, setLoading] = useState(false);
@@ -81,6 +82,12 @@ export default function AdminDashboard() {
     load();
   }, [load]);
 
+  useEffect(() => {
+    if (!donationProjectId && projects.length > 0) {
+      setDonationProjectId(projects[0].id);
+    }
+  }, [donationProjectId, projects]);
+
   const taskSummary = useMemo(() => {
     const byStatus = overview?.tasks?.by_status || {};
     return `${byStatus.backlog || 0} backlog / ${byStatus.in_progress || 0} active / ${byStatus.in_review || 0} review`;
@@ -104,9 +111,14 @@ export default function AdminDashboard() {
 
   const generateDonation = async () => {
     setError("");
+    if (!donationProjectId) {
+      setError("Select a project for compute donation access.");
+      return;
+    }
     const result = await adminApi.generateComputeDonation({
       server_url: serverUrl,
       label: inviteLabel || "Compute donation",
+      allowed_project_ids: [donationProjectId],
     });
     setGeneratedString(result.connection_string || "");
     await load();
@@ -239,6 +251,12 @@ export default function AdminDashboard() {
                 <option value="researcher">Researcher invite</option>
                 <option value="viewer">Viewer invite</option>
                 <option value="admin">Admin invite</option>
+              </select>
+              <select value={donationProjectId} onChange={(event) => setDonationProjectId(event.target.value)} className="w-full rounded-md border border-slate-200 bg-white px-2 py-1 text-sm dark:border-slate-700 dark:bg-slate-950">
+                <option value="">Project for compute donation</option>
+                {projects.map((project) => (
+                  <option key={project.id} value={project.id}>{project.name}</option>
+                ))}
               </select>
               <div className="grid grid-cols-2 gap-2">
                 <button onClick={generateInvite} className="rounded-md bg-slate-900 px-3 py-2 text-xs font-medium text-white hover:bg-slate-700 dark:bg-white dark:text-slate-950">Generate Invite</button>

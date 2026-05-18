@@ -1,6 +1,7 @@
 """Security tests for the public A2A JSON-RPC endpoint."""
 
 import json
+import uuid
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -13,6 +14,8 @@ from app.main import app
 from app.core.audit_middleware import AuditLog
 from app.models.agent import A2AMessage
 from app.models.database import async_session, init_db
+from app.models.project import Project
+from app.models.project_member import ProjectMember
 
 
 @pytest.fixture(autouse=True)
@@ -42,6 +45,23 @@ async def _clear_a2a_messages() -> None:
     async with async_session() as db:
         await db.execute(delete(A2AMessage))
         await db.commit()
+
+
+async def _seed_a2a_project(user_id: str = "researcher-a2a", role: str = "researcher") -> str:
+    project_id = f"a2a-security-{uuid.uuid4()}"
+    async with async_session() as db:
+        db.add(Project(id=project_id, name="A2A Security Project"))
+        db.add(
+            ProjectMember(
+                id=str(uuid.uuid4()),
+                project_id=project_id,
+                user_id=user_id,
+                role=role,
+                added_by="test",
+            )
+        )
+        await db.commit()
+    return project_id
 
 
 @pytest.mark.asyncio
@@ -84,6 +104,7 @@ async def test_a2a_tasks_send_allows_authenticated_researcher_and_records_actor(
     if not settings.jwt_secret:
         settings.jwt_secret = "test-secret"
     token = create_token("researcher-a2a", "researcher", "researcher")
+    project_id = await _seed_a2a_project()
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
@@ -98,7 +119,7 @@ async def test_a2a_tasks_send_allows_authenticated_researcher_and_records_actor(
                     "to": "istara-main",
                     "message": {
                         "text": "Review this bounded task",
-                        "metadata": {"source": "security-test"},
+                        "metadata": {"source": "security-test", "project_id": project_id},
                     },
                 },
                 "id": "researcher-submit",
@@ -116,8 +137,48 @@ async def test_a2a_tasks_send_allows_authenticated_researcher_and_records_actor(
 
     metadata = json.loads(message.extra_data)
     assert metadata["source"] == "security-test"
+    assert metadata["project_id"] == project_id
     assert metadata["submitted_by_user_id"] == "researcher-a2a"
     assert metadata["submitted_by_username"] == "researcher"
+
+
+@pytest.mark.asyncio
+async def test_a2a_tasks_send_requires_project_scope():
+    """A2A task writes must name a project so messages cannot become global content."""
+    await init_db()
+    await _clear_a2a_messages()
+    settings.team_mode = True
+    if not settings.jwt_secret:
+        settings.jwt_secret = "test-secret"
+    token = create_token("researcher-a2a", "researcher", "researcher")
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.post(
+            "/a2a",
+            headers={"Authorization": f"Bearer {token}"},
+            json={
+                "jsonrpc": "2.0",
+                "method": "tasks/send",
+                "params": {"message": {"text": "No project should not persist"}},
+                "id": "missing-project",
+            },
+        )
+
+    async with async_session() as db:
+        stored = (
+            (
+                await db.execute(
+                    select(A2AMessage).where(A2AMessage.content == "No project should not persist")
+                )
+            )
+            .scalars()
+            .all()
+        )
+
+    assert response.status_code == 400
+    assert response.json()["error"]["message"] == "project_id is required for A2A tasks/send."
+    assert stored == []
 
 
 @pytest.mark.asyncio
@@ -181,10 +242,11 @@ async def test_a2a_tasks_send_rejects_exact_replay_and_preserves_single_message(
     if not settings.jwt_secret:
         settings.jwt_secret = "test-secret"
     token = create_token("researcher-a2a", "researcher", "researcher")
+    project_id = await _seed_a2a_project()
     payload = {
         "jsonrpc": "2.0",
         "method": "tasks/send",
-        "params": {"message": {"text": "Only persist once"}},
+        "params": {"message": {"text": "Only persist once", "metadata": {"project_id": project_id}}},
         "id": "replay-me",
     }
 
@@ -225,6 +287,7 @@ async def test_a2a_tasks_send_has_dedicated_rate_limit():
     if not settings.jwt_secret:
         settings.jwt_secret = "test-secret"
     token = create_token("researcher-a2a", "researcher", "researcher")
+    project_id = await _seed_a2a_project()
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
@@ -234,7 +297,7 @@ async def test_a2a_tasks_send_has_dedicated_rate_limit():
             json={
                 "jsonrpc": "2.0",
                 "method": "tasks/send",
-                "params": {"message": {"text": "first"}},
+                "params": {"message": {"text": "first", "metadata": {"project_id": project_id}}},
                 "id": "rate-1",
             },
         )
@@ -244,7 +307,7 @@ async def test_a2a_tasks_send_has_dedicated_rate_limit():
             json={
                 "jsonrpc": "2.0",
                 "method": "tasks/send",
-                "params": {"message": {"text": "second"}},
+                "params": {"message": {"text": "second", "metadata": {"project_id": project_id}}},
                 "id": "rate-2",
             },
         )

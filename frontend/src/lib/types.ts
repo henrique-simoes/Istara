@@ -717,6 +717,7 @@ export interface SurveyLink {
 
 export interface MCPServerConfig {
   id: string;
+  project_id: string;
   name: string;
   url: string;
   transport: "http" | "stdio" | "websocket";

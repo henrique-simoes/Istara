@@ -3,14 +3,14 @@ stable_id: autoresearch.leaderboard
 title: Autoresearch Leaderboard
 ui_path: Autoresearch > Leaderboard
 audience: architecture
-status: needs-verification
+status: documented
 related_features: ["autoresearch.experiments", "quality.dashboard"]
 related_glossary: ["triangulation"]
 code_references: ["frontend/src/components/autoresearch/AutoresearchView.tsx", "backend/app/api/routes/autoresearch.py"]
 api_references: ["backend/app/api/routes/autoresearch.py"]
-test_references: []
-last_verified: 2026-05-15
-compass: CF-SPEC-53 / CF-657
+test_references: ["tests/test_autoresearch.py", "tests/test_project_scope_contracts.py"]
+last_verified: 2026-05-18
+compass: CF-SPEC-60 / CF-754
 ---
 
 # Autoresearch Leaderboard Architecture
@@ -29,10 +29,12 @@ The leaderboard ranks automated research experiment outcomes for comparison.
 ### Stores
 
 - `frontend/src/stores/autoresearchStore.ts`
+- Leaderboard requests use the active project id and clear leaderboard state when no project is active.
 
 ### API And Backend
 
 - `backend/app/api/routes/autoresearch.py`
+- `/api/autoresearch/leaderboard` requires `project_id`, enforces project visibility, and derives model/temperature rankings from project-scoped telemetry rather than global model statistics.
 
 ## Architecture Notes
 
@@ -42,11 +44,12 @@ The leaderboard ranks automated research experiment outcomes for comparison.
 
 ## Agents, Skills, LLM, MCP, And Permissions
 
-- No direct agent, skill, LLM, or MCP behavior is asserted beyond the cited source files.
+- Leaderboard entries influence model/temperature choices, so they must be computed from telemetry the active project is authorized to expose.
 
 ## Tests And Verification
 
-- No focused test reference recorded yet.
+- `tests/test_autoresearch.py` verifies the leaderboard endpoint requires project-scoped access.
+- `tests/test_project_scope_contracts.py` verifies the frontend and backend do not use unscoped leaderboard calls.
 
 ## Related Features
 
@@ -59,7 +62,7 @@ The leaderboard ranks automated research experiment outcomes for comparison.
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-53 / CF-657
+- Spec/task: CF-SPEC-60 / CF-754
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update

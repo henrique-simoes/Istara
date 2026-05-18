@@ -254,7 +254,7 @@
 <h2 id="how-ux-researchers-use-it">How UX Researchers Use It</h2>
 <ul>
 <li>Open Integrations &gt; Deployments from the Istara navigation or the parent tab.</li>
-<li>Use the visible controls in this surface to work with research deployments in the active project context.</li>
+<li>Use the visible controls in this surface to work only with research deployments in the active project context.</li>
 <li>Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.</li>
 </ul>
 <h2 id="supported-workflows">Supported Workflows</h2>
@@ -265,8 +265,8 @@
 </ul>
 <h2 id="inputs-outputs-and-expected-outcomes">Inputs, Outputs, And Expected Outcomes</h2>
 <ul>
-<li>Project-scoped state or artifact updates associated with research deployments.</li>
-<li>Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.</li>
+<li>Project-scoped state or artifact updates associated with research deployments that belong to the active project and the current user&#x27;s authorized access.</li>
+<li>Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes, filtered to the active project before list rows, counts, or detail views are rendered.</li>
 </ul>
 <h2 id="caveats">Caveats</h2>
 <ul>
@@ -287,7 +287,7 @@
 <ul>
 <li>Source files: <code>frontend/src/components/integrations/DeploymentsTab.tsx</code>, <code>frontend/src/components/integrations/DeploymentWizard.tsx</code>, <code>backend/app/api/routes/deployments.py</code></li>
 <li>API references: <code>backend/app/api/routes/deployments.py</code></li>
-<li>Tests: none recorded</li>
+<li>Tests: <code>tests/test_project_scope_contracts.py</code></li>
 </ul>
         </article>
         <aside class="toc-panel" aria-label="Page sections">

@@ -415,6 +415,7 @@ async def test_admin_overview_is_admin_only():
 @pytest.mark.asyncio
 async def test_connection_strings_split_user_invite_from_compute_donation():
     await init_db()
+    project = await _seed_project(f"Compute Donation {uuid.uuid4()}")
     headers = _headers("admin-user", "admin", "admin")
 
     transport = ASGITransport(app=app)
@@ -427,7 +428,11 @@ async def test_connection_strings_split_user_invite_from_compute_donation():
         donation_response = await ac.post(
             "/api/connections/compute-donation/generate",
             headers=headers,
-            json={"server_url": "http://localhost:3000", "label": "Node"},
+            json={
+                "server_url": "http://localhost:3000",
+                "label": "Node",
+                "allowed_project_ids": [project.id],
+            },
         )
         donation_string = donation_response.json()["connection_string"]
         validate_response = await ac.post(
@@ -451,6 +456,8 @@ async def test_connection_strings_split_user_invite_from_compute_donation():
     assert donation_response.status_code == 200
     donation_payload = decode_connection_string(donation_string)
     assert donation_payload["kind"] == "compute_donation"
+    assert donation_payload["allowed_project_ids"] == [project.id]
+    assert donation_response.json()["allowed_project_ids"] == [project.id]
     assert "jwt" not in donation_payload
     assert validate_response.status_code == 200
     assert validate_response.json()["token_type"] == "compute_donation"
@@ -521,8 +528,11 @@ async def test_uninvited_project_metrics_are_concealed_as_404():
 
 
 @pytest.mark.asyncio
-async def test_mcp_policy_and_client_registry_are_admin_only():
+async def test_mcp_policy_is_admin_only_and_client_registry_is_project_scoped():
     await init_db()
+    project = await _seed_project(f"MCP RBAC {uuid.uuid4()}")
+    project_admin_id = f"project-admin-mcp-{uuid.uuid4()}"
+    await _seed_member(project.id, project_admin_id, "project_admin")
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
@@ -534,13 +544,19 @@ async def test_mcp_policy_and_client_registry_are_admin_only():
             "/api/mcp/clients",
             headers=_headers(f"researcher-mcp-{uuid.uuid4()}", "researcher", "researcher"),
         )
+        project_admin_clients = await ac.get(
+            f"/api/mcp/clients?project_id={project.id}",
+            headers=_headers(project_admin_id, "project-admin-mcp", "researcher"),
+        )
         admin_policy = await ac.get(
             "/api/mcp/server/policy",
             headers=_headers("admin-mcp", "admin", "admin"),
         )
 
     assert researcher_policy.status_code == 403
-    assert researcher_clients.status_code == 403
+    assert researcher_clients.status_code == 400
+    assert researcher_clients.json()["detail"] == "project_id is required"
+    assert project_admin_clients.status_code == 200
     assert admin_policy.status_code == 200
 
 
@@ -564,6 +580,38 @@ async def test_compute_is_researcher_visible_but_steering_and_meta_hyperagent_ar
     assert steering_response.status_code == 403
     assert meta_response.status_code == 403
     assert admin_response.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_compute_donation_strings_require_explicit_project_scope(monkeypatch):
+    await init_db()
+    monkeypatch.setattr(settings, "network_access_token", "test-network-token")
+    project = await _seed_project(f"Compute Scope {uuid.uuid4()}")
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        missing_scope = await ac.post(
+            "/api/connections/compute-donation/generate",
+            headers=_headers("admin-compute-scope", "admin", "admin"),
+            json={"server_url": "http://localhost:3000", "label": "Unscoped donor"},
+        )
+        scoped = await ac.post(
+            "/api/connections/compute-donation/generate",
+            headers=_headers("admin-compute-scope", "admin", "admin"),
+            json={
+                "server_url": "http://localhost:3000",
+                "label": "Scoped donor",
+                "allowed_project_ids": [project.id],
+            },
+        )
+
+    assert missing_scope.status_code == 422
+    assert scoped.status_code == 200
+    body = scoped.json()
+    assert body["allowed_project_ids"] == [project.id]
+    payload = decode_connection_string(body["connection_string"])
+    assert payload["kind"] == "compute_donation"
+    assert payload["allowed_project_ids"] == [project.id]
 
 
 @pytest.mark.asyncio

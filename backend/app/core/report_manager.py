@@ -148,6 +148,7 @@ class ReportManager:
         )
         report_snapshot = SimpleNamespace(
             id=report.id,
+            project_id=report.project_id,
             title=report.title,
             scope=report.scope,
             version=report.version,
@@ -270,7 +271,9 @@ class ReportManager:
                 + "\n\nFormat the summary with clear headings: SITUATION, COMPLICATION, and RESOLUTION. Ensure it addresses executive stakeholders with high clarity and academic rigor."
             )
             response = await llm_router.chat(
-                [{"role": "user", "content": summary_prompt}], temperature=0.3
+                [{"role": "user", "content": summary_prompt}],
+                temperature=0.3,
+                project_id=report.project_id,
             )
             summary = response.get("message", {}).get("content", "")
             if summary and len(summary) > 20:
@@ -324,7 +327,9 @@ class ReportManager:
                 + '\n\nRespond with a JSON array: [{"name": "Action Title Sentence", "description": "So-What explanation...", "finding_ids": ["id1", "id2"]}]'
             )
             response = await llm_router.chat(
-                [{"role": "user", "content": mece_prompt}], temperature=0.3
+                [{"role": "user", "content": mece_prompt}],
+                temperature=0.3,
+                project_id=report.project_id,
             )
             content = response.get("message", {}).get("content", "")
             import re
@@ -389,6 +394,7 @@ class ReportManager:
         l4_id = l4.id
         l4_snapshot = SimpleNamespace(
             id=l4.id,
+            project_id=project_id,
             title=l4.title,
             scope=l4.scope,
             version=l4.version,
@@ -480,7 +486,12 @@ class ReportManager:
             sections = []
             for template in self.REPORT_TEMPLATE:
                 section_content = await self._compose_section(
-                    template, findings, report_snapshot, methodologies, llm_router
+                    template,
+                    findings,
+                    report_snapshot,
+                    methodologies,
+                    llm_router,
+                    project_id=project_id,
                 )
                 if section_content:
                     sections.append(f"## {template['section']}\n\n{section_content}")
@@ -502,7 +513,9 @@ class ReportManager:
                         f'"weakest": "section_name", "reason": "...", "suggestion": "..."}}'
                     )
                     score_response = await llm_router.chat(
-                        [{"role": "user", "content": score_prompt}], temperature=0.2
+                        [{"role": "user", "content": score_prompt}],
+                        temperature=0.2,
+                        project_id=project_id,
                     )
                     score_text = score_response.get("message", {}).get("content", "")
 
@@ -534,6 +547,7 @@ class ReportManager:
                                 methodologies,
                                 llm_router,
                                 refinement_hint=suggestion,
+                                project_id=project_id,
                             )
                             if refined:
                                 sections[i] = f"## {template['section']}\n\n{refined}"
@@ -593,6 +607,7 @@ class ReportManager:
         methodologies: list,
         llm_router,
         refinement_hint: str = "",
+        project_id: str | None = None,
     ) -> str:
         """Compose a single report section from its template definition."""
         source = template["source"]
@@ -626,7 +641,11 @@ class ReportManager:
                     + "\n".join(f"- {i['text']}" for i in items)
                 )
                 try:
-                    response = await llm_router.chat([{"role": "user", "content": prompt}], temperature=0.3)
+                    response = await llm_router.chat(
+                        [{"role": "user", "content": prompt}],
+                        temperature=0.3,
+                        project_id=project_id or getattr(report, "project_id", None),
+                    )
                     return response.get("message", {}).get("content", "Detailed narrative generation failed.")
                 except Exception:
                     fmt = "evidence_table"  # Fallback
@@ -676,7 +695,11 @@ class ReportManager:
                 + "\n".join(f"- {r['text']}" for r in items)
             )
             try:
-                response = await llm_router.chat([{"role": "user", "content": prompt}], temperature=0.3)
+                response = await llm_router.chat(
+                    [{"role": "user", "content": prompt}],
+                    temperature=0.3,
+                    project_id=project_id or getattr(report, "project_id", None),
+                )
                 return response.get("message", {}).get("content", "Recommendation detail generation failed.")
             except Exception:
                 rows = ["| # | Recommendation | Priority |", "|---|---------------|----------|"]
@@ -732,7 +755,9 @@ class ReportManager:
                     prompt += f"\n\nRefinement guidance: {refinement_hint}"
                 prompt += "\n\nBe specific and concise."
                 response = await llm_router.chat(
-                    [{"role": "user", "content": prompt}], temperature=0.3
+                    [{"role": "user", "content": prompt}],
+                    temperature=0.3,
+                    project_id=project_id or getattr(report, "project_id", None),
                 )
                 return response.get("message", {}).get("content", "No gaps analysis available.")
             except Exception:

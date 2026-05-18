@@ -6,11 +6,11 @@ audience: architecture
 status: documented
 related_features: ["settings.compute-donation", "settings.general"]
 related_glossary: ["rag"]
-code_references: ["frontend/src/components/common/ComputePoolView.tsx", "frontend/src/stores/computeStore.ts", "backend/app/api/routes/compute.py", "backend/app/core/compute_registry_helpers.py", "backend/app/core/compute_registry_invocation.py", "backend/app/core/compute_registry_lifecycle.py", "backend/app/core/network_discovery.py", "backend/app/core/compute_pool.py"]
+code_references: ["frontend/src/components/common/ComputePoolView.tsx", "frontend/src/stores/computeStore.ts", "backend/app/api/routes/compute.py", "backend/app/core/compute_registry_helpers.py", "backend/app/core/compute_registry_invocation.py", "backend/app/core/compute_registry_lifecycle.py", "backend/app/core/compute_registry_routing.py", "backend/app/core/network_discovery.py", "backend/app/core/compute_pool.py"]
 api_references: ["backend/app/api/routes/compute.py"]
-test_references: ["tests/test_compute_registry_model_loading.py", "tests/test_compute_registry_hardening.py", "tests/test_network_discovery.py"]
+test_references: ["tests/test_compute.py", "tests/test_compute_registry_model_loading.py", "tests/test_compute_registry_hardening.py", "tests/test_network_discovery.py", "tests/test_project_rbac.py"]
 last_verified: 2026-05-18
-compass: CF-SPEC-58 / CF-731
+compass: CF-SPEC-60 / CF-754
 ---
 
 # Compute Pool Architecture
@@ -18,6 +18,8 @@ compass: CF-SPEC-58 / CF-731
 ## Implementation Summary
 
 Compute Pool provides operational visibility into available compute nodes, routing, and local or pooled execution capacity. Hardware totals are deduplicated by physical provider machine so local/network/relay views of the same server do not inflate RAM or CPU totals. Local interface aliases are canonicalized before endpoint display and capacity aggregation, so one Mac exposed through multiple LAN IP addresses appears as one logical endpoint for the same provider and port. Provider reachability is reported separately from chat readiness: a reachable LM Studio server with loadable models but no model in memory is online, not offline, while routing still treats it as not ready until a model is loaded.
+
+Donated relay/browser nodes are treated as a project-content security boundary. They are visible in pool status, but prompt, chat, embedding, and model-load recovery paths may only select them when the request carries a concrete `project_id` and the node's authenticated donation scope includes that project. Server-owned local/network nodes remain available for unscoped internal work.
 
 ## Frontend Surface
 
@@ -42,6 +44,8 @@ Compute Pool provides operational visibility into available compute nodes, routi
 - Node payloads expose `is_reachable`, `is_ready`, `readiness_state`, and `reachable_nodes` so UI labels can distinguish online/no-model-loaded from offline/unreachable without changing the conservative routing meaning of `alive_nodes`.
 - Compute registry identity uses passive local OS interface aliases to collapse duplicate local endpoints without silently merging unrelated remote machines that happen to expose the same model catalog.
 - Network discovery excludes all known local interface aliases before probing the subnet, preventing the server from discovering itself through a second LAN address.
+- Relay/browser donors carry `allowed_project_ids` resolved from either the authenticated user's project memberships or a validated compute-donation connection string. A bare network token can connect for status only, not receive project content.
+- `ComputeRegistry._select_candidates(..., project_id=...)` is the central guard: relay/browser nodes are excluded unless the project scope matches, preventing unpatched callers without project context from leaking content to donated machines.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
 
@@ -51,6 +55,8 @@ Compute Pool provides operational visibility into available compute nodes, routi
 
 ## Tests And Verification
 
+- `tests/test_compute.py`
+- `tests/test_project_rbac.py`
 - `tests/test_compute_registry_hardening.py`
 - `tests/test_compute_registry_model_loading.py`
 - `tests/test_network_discovery.py`
@@ -66,7 +72,7 @@ Compute Pool provides operational visibility into available compute nodes, routi
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-58 / CF-731
+- Spec/task: CF-SPEC-60 / CF-754
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update

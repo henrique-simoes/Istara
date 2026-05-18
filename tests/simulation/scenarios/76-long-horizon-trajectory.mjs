@@ -91,7 +91,7 @@ export async function run(ctx) {
 
     // 5. A2A Log Verification
     // Check if Cleo sent messages to Sage/Pixel
-    const a2aLog = await api.get("/api/agents/a2a/log?limit=20");
+    const a2aLog = await api.get(`/api/agents/a2a/log?project_id=${encodeURIComponent(projectId)}&limit=20`);
     const messages = a2aLog.messages || a2aLog || [];
     const hasA2A = messages.some(m => m.project_id === projectId);
     checkPass("A2A Coordination", hasA2A ? "Multi-agent messages detected." : "No A2A yet (still planning).");

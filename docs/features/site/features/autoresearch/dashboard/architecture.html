@@ -252,10 +252,12 @@
 <h3 id="stores">Stores</h3>
 <ul>
 <li><code>frontend/src/stores/autoresearchStore.ts</code></li>
+<li>Dashboard status requests use the active project id from <code>frontend/src/stores/projectStore.ts</code>; missing project context clears status instead of querying global metrics.</li>
 </ul>
 <h3 id="api-and-backend">API And Backend</h3>
 <ul>
 <li><code>backend/app/api/routes/autoresearch.py</code></li>
+<li><code>/api/autoresearch/status</code> requires <code>project_id</code>, enforces project access, and returns task, agent, document, finding, telemetry, schedule, and deployment metrics filtered to that project.</li>
 </ul>
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
@@ -265,11 +267,12 @@
 </ul>
 <h2 id="agents-skills-llm-mcp-and-permissions">Agents, Skills, LLM, MCP, And Permissions</h2>
 <ul>
-<li>No direct agent, skill, LLM, or MCP behavior is asserted beyond the cited source files.</li>
+<li>Autoresearch status can inform automated experiment loops, so every operational signal in the dashboard must be scoped to the active project before it can influence agents, skills, LLM routing, or improvement proposals.</li>
 </ul>
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>
-<li>No focused test reference recorded yet.</li>
+<li><code>tests/test_autoresearch.py</code> verifies project-scoped status metrics.</li>
+<li><code>tests/test_project_scope_contracts.py</code> verifies frontend status calls carry the active project id and backend status uses project-filtered queries.</li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>
@@ -282,7 +285,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-53 / CF-657</li>
+<li>Spec/task: CF-SPEC-60 / CF-754</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>

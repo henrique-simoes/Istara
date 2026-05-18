@@ -34,6 +34,37 @@ def test_security_benchmark_detects_auth_security_changed_path() -> None:
     assert result.scorecard["triggered_paths"] == ["backend/app/api/routes/auth.py"]
 
 
+def test_security_benchmark_detects_compute_project_scope_paths() -> None:
+    matrix = load_matrix(ROOT / "security" / "control_matrix.json")
+
+    changed_paths = [
+        "backend/app/core/compute_registry_routing.py",
+        "relay/lib/connection.mjs",
+        "tests/compute_cases/routing.py",
+    ]
+    result = evaluate_matrix(matrix, changed_paths=changed_paths)
+
+    assert result.passed is True
+    assert result.scorecard["auth_security_change_detected"] is True
+    assert result.scorecard["triggered_paths"] == sorted(changed_paths)
+
+
+def test_security_benchmark_detects_mcp_project_scope_paths() -> None:
+    matrix = load_matrix(ROOT / "security" / "control_matrix.json")
+
+    changed_paths = [
+        "backend/app/models/mcp_server_config.py",
+        "frontend/src/components/integrations/MCPTab.tsx",
+        "frontend/src/stores/integrationsStore.ts",
+        "tests/test_mcp.py",
+    ]
+    result = evaluate_matrix(matrix, changed_paths=changed_paths)
+
+    assert result.passed is True
+    assert result.scorecard["auth_security_change_detected"] is True
+    assert result.scorecard["triggered_paths"] == sorted(changed_paths)
+
+
 def test_security_benchmark_blocks_failed_control() -> None:
     matrix = load_matrix(ROOT / "security" / "control_matrix.json")
     modified = copy.deepcopy(matrix)

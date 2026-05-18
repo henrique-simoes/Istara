@@ -59,9 +59,12 @@ class ValidationExecutor:
             'Respond ONLY with JSON: {"code_quality":N,"evidence":N,"chain":N,"hallucination_free":N,"depth":N,"overall":N}'
         )
 
+        project_id = getattr(input_data, "project_id", None)
         try:
             result = await compute_registry.chat(
-                [{"role": "user", "content": prompt}], temperature=0.3
+                [{"role": "user", "content": prompt}],
+                temperature=0.3,
+                project_id=project_id,
             )
             content = result.get("content", "")
             import re

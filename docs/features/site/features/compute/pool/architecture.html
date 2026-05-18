@@ -242,6 +242,7 @@
 </header>
 <h2 id="implementation-summary">Implementation Summary</h2>
 <p>Compute Pool provides operational visibility into available compute nodes, routing, and local or pooled execution capacity. Hardware totals are deduplicated by physical provider machine so local/network/relay views of the same server do not inflate RAM or CPU totals. Local interface aliases are canonicalized before endpoint display and capacity aggregation, so one Mac exposed through multiple LAN IP addresses appears as one logical endpoint for the same provider and port. Provider reachability is reported separately from chat readiness: a reachable LM Studio server with loadable models but no model in memory is online, not offline, while routing still treats it as not ready until a model is loaded.</p>
+<p>Donated relay/browser nodes are treated as a project-content security boundary. They are visible in pool status, but prompt, chat, embedding, and model-load recovery paths may only select them when the request carries a concrete <code>project_id</code> and the node&#x27;s authenticated donation scope includes that project. Server-owned local/network nodes remain available for unscoped internal work.</p>
 <h2 id="frontend-surface">Frontend Surface</h2>
 <ul>
 <li><code>frontend/src/components/common/ComputePoolView.tsx</code></li>
@@ -264,6 +265,8 @@
 <li>Node payloads expose <code>is_reachable</code>, <code>is_ready</code>, <code>readiness_state</code>, and <code>reachable_nodes</code> so UI labels can distinguish online/no-model-loaded from offline/unreachable without changing the conservative routing meaning of <code>alive_nodes</code>.</li>
 <li>Compute registry identity uses passive local OS interface aliases to collapse duplicate local endpoints without silently merging unrelated remote machines that happen to expose the same model catalog.</li>
 <li>Network discovery excludes all known local interface aliases before probing the subnet, preventing the server from discovering itself through a second LAN address.</li>
+<li>Relay/browser donors carry <code>allowed_project_ids</code> resolved from either the authenticated user&#x27;s project memberships or a validated compute-donation connection string. A bare network token can connect for status only, not receive project content.</li>
+<li><code>ComputeRegistry._select_candidates(..., project_id=...)</code> is the central guard: relay/browser nodes are excluded unless the project scope matches, preventing unpatched callers without project context from leaking content to donated machines.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>
@@ -273,6 +276,8 @@
 </ul>
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>
+<li><code>tests/test_compute.py</code></li>
+<li><code>tests/test_project_rbac.py</code></li>
 <li><code>tests/test_compute_registry_hardening.py</code></li>
 <li><code>tests/test_compute_registry_model_loading.py</code></li>
 <li><code>tests/test_network_discovery.py</code></li>
@@ -288,7 +293,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-58 / CF-731</li>
+<li>Spec/task: CF-SPEC-60 / CF-754</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>
