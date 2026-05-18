@@ -8,16 +8,16 @@ related_features: ["shell.notifications-bell", "notifications.preferences"]
 related_glossary: ["wcag"]
 code_references: ["frontend/src/components/notifications/NotificationsView.tsx", "frontend/src/stores/notificationStore.ts", "frontend/src/lib/notificationApi.ts", "backend/app/api/routes/notifications.py"]
 api_references: ["backend/app/api/routes/notifications.py"]
-test_references: []
-last_verified: 2026-05-15
-compass: CF-SPEC-53 / CF-657
+test_references: ["tests/test_notifications.py", "tests/test_project_scope_contracts.py"]
+last_verified: 2026-05-18
+compass: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-759
 ---
 
 # Notifications List Architecture
 
 ## Implementation Summary
 
-Notifications lists system and project notifications with read/unread state.
+Notifications lists active-project notifications with read/unread state. Non-admin team users must provide the active `project_id`; only explicit global-admin callers may use the route without project scope.
 
 ## Frontend Surface
 
@@ -39,6 +39,8 @@ Notifications lists system and project notifications with read/unread state.
 ## Architecture Notes
 
 - The feature is mounted through `frontend/src/components/notifications/NotificationsView.tsx` and the UI navigation path recorded in the inventory.
+- The notification store refuses to list, count, or mark all notifications without an active project selected in the shell.
+- The list UI does not expose an "All projects" filter; project context comes from the active project store and backend RBAC verifies that membership.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
 
@@ -48,7 +50,8 @@ Notifications lists system and project notifications with read/unread state.
 
 ## Tests And Verification
 
-- No focused test reference recorded yet.
+- `tests/test_notifications.py`
+- `tests/test_project_scope_contracts.py`
 
 ## Related Features
 
@@ -61,7 +64,7 @@ Notifications lists system and project notifications with read/unread state.
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-53 / CF-657
+- Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-759
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update

@@ -116,7 +116,7 @@ async def test_notifications_accept_frontend_filter_aliases(auth_headers):
 
 @pytest.mark.asyncio
 async def test_project_member_notifications_are_scoped_without_admin():
-    """Project users should see and mark only their visible project notifications."""
+    """Project users must provide active project scope for notification bulk views."""
     await init_db()
     settings.team_mode = True
     user_id = f"user-{uuid.uuid4()}"
@@ -170,10 +170,37 @@ async def test_project_member_notifications_are_scoped_without_admin():
     headers = {"Authorization": f"Bearer {create_token(user_id, 'scoped', 'researcher')}"}
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        list_response = await ac.get("/api/notifications", headers=headers)
-        count_response = await ac.get("/api/notifications/unread-count", headers=headers)
-        mark_response = await ac.post("/api/notifications/read-all", json={}, headers=headers)
+        no_scope_list = await ac.get("/api/notifications", headers=headers)
+        no_scope_count = await ac.get("/api/notifications/unread-count", headers=headers)
+        no_scope_mark = await ac.post("/api/notifications/read-all", json={}, headers=headers)
+        hidden_response = await ac.get(
+            "/api/notifications",
+            params={"project_id": hidden_project_id},
+            headers=headers,
+        )
+        list_response = await ac.get(
+            "/api/notifications",
+            params={"project_id": project_id},
+            headers=headers,
+        )
+        count_response = await ac.get(
+            "/api/notifications/unread-count",
+            params={"project_id": project_id},
+            headers=headers,
+        )
+        mark_response = await ac.post(
+            "/api/notifications/read-all",
+            json={"project_id": project_id},
+            headers=headers,
+        )
 
+    assert no_scope_list.status_code == 400
+    assert no_scope_list.json()["detail"] == "project_id is required"
+    assert no_scope_count.status_code == 400
+    assert no_scope_count.json()["detail"] == "project_id is required"
+    assert no_scope_mark.status_code == 400
+    assert no_scope_mark.json()["detail"] == "project_id is required"
+    assert hidden_response.status_code == 404
     assert list_response.status_code == 200
     assert [n["title"] for n in list_response.json()["notifications"]] == ["visible unread"]
     assert count_response.json() == {"count": 1}

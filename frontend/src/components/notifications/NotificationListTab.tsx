@@ -55,21 +55,20 @@ export default function NotificationListTab() {
     setFilter, clearFilters, unreadCount, error,
   } = useNotificationStore();
   const { agents, fetchAgents } = useAgentStore();
-  const { projects, fetchProjects } = useProjectStore();
+  const { activeProjectId } = useProjectStore();
   const [showFilters, setShowFilters] = useState(true);
 
   useEffect(() => {
     fetchAgents();
-    fetchProjects();
-  }, [fetchAgents, fetchProjects]);
+  }, [fetchAgents]);
 
   const applyFilters = () => {
-    fetchNotifications(1);
+    fetchNotifications(1, activeProjectId);
   };
 
   const handleClearFilters = () => {
     clearFilters();
-    fetchNotifications(1);
+    fetchNotifications(1, activeProjectId);
   };
 
   const handleNotificationClick = (notification: AppNotification) => {
@@ -131,21 +130,6 @@ export default function NotificationListTab() {
                 <option value="">All agents</option>
                 {agents.map((a) => (
                   <option key={a.id} value={a.id}>{a.name}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Project dropdown */}
-            <div>
-              <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Project</label>
-              <select
-                value={filters.project_id}
-                onChange={(e) => setFilter("project_id", e.target.value)}
-                className="w-full px-2 py-1.5 text-xs rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-istara-500"
-              >
-                <option value="">All projects</option>
-                {projects.map((p) => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
                 ))}
               </select>
             </div>
@@ -234,7 +218,7 @@ export default function NotificationListTab() {
             </span>
           </div>
           <button
-            onClick={() => markAllRead(filters.project_id || undefined)}
+            onClick={() => markAllRead(activeProjectId)}
             className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
           >
             <CheckCheck size={14} />
@@ -339,7 +323,7 @@ export default function NotificationListTab() {
         {totalPages > 1 && (
           <div className="flex items-center justify-center gap-3 py-2 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
             <button
-              onClick={() => fetchNotifications(page - 1)}
+              onClick={() => fetchNotifications(page - 1, activeProjectId)}
               disabled={page <= 1}
               className="p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed text-slate-600 dark:text-slate-400"
               aria-label="Previous page"
@@ -350,7 +334,7 @@ export default function NotificationListTab() {
               Page {page} of {totalPages}
             </span>
             <button
-              onClick={() => fetchNotifications(page + 1)}
+              onClick={() => fetchNotifications(page + 1, activeProjectId)}
               disabled={page >= totalPages}
               className="p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed text-slate-600 dark:text-slate-400"
               aria-label="Next page"

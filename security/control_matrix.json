@@ -21,6 +21,7 @@
       "changed_path_patterns": [
         "backend/app/api/routes/auth.py",
         "backend/app/api/routes/a2a.py",
+        "backend/app/api/routes/notifications.py",
         "backend/app/api/routes/webauthn.py",
         "backend/app/api/routes/connections.py",
         "backend/app/api/routes/files.py",
@@ -64,9 +65,12 @@
         "backend/alembic/versions/*webauthn*.py",
         "backend/alembic/versions/*recovery*.py",
         "frontend/src/stores/authStore.ts",
+        "frontend/src/stores/notificationStore.ts",
         "frontend/src/app/login/page.tsx",
         "frontend/src/components/auth/**",
         "frontend/src/components/common/UserManagement.tsx",
+        "frontend/src/components/layout/Sidebar.tsx",
+        "frontend/src/components/notifications/**",
         "frontend/src/components/admin/AdminDashboard.tsx",
         "frontend/src/components/settings/ConnectionStringPanel.tsx",
         "frontend/src/components/integrations/MCP*.tsx",
@@ -93,6 +97,8 @@
         "tests/test_backup.py",
         "tests/test_llm_servers.py",
         "tests/test_mcp*.py",
+        "tests/test_notifications.py",
+        "tests/test_project_scope_contracts.py",
         "tests/test_rag_resilience.py",
         "tests/test_transport_headers.py",
         "tests/test_*security*.py",
@@ -408,10 +414,12 @@
         "backend/app/api/routes/projects.py",
         "backend/app/api/routes/compute.py",
         "tests/test_project_rbac.py",
+        "tests/test_project_scope_contracts.py",
+        "tests/test_notifications.py",
         "tests/test_auth_security.py"
       ],
       "future_change_trigger": true,
-      "notes": "Global admin, project admin, researcher, viewer, legacy role mappings, and donated-compute project scopes are governed."
+      "notes": "Global admin, project admin, researcher, viewer, legacy role mappings, active-project notification scope, and donated-compute project scopes are governed."
     },
     {
       "id": "AUTHZ-002",

@@ -159,3 +159,38 @@ def test_websocket_project_events_are_active_project_filtered() -> None:
     assert "async def _resolve_project_id" in websocket
     assert "record.get(\"active_project_id\") == project_id" in websocket
     assert "if not self._connection_can_receive(record, project_id):" in websocket
+
+
+def test_notifications_are_active_project_scoped() -> None:
+    sidebar = read_repo("frontend/src/components/layout/Sidebar.tsx")
+    view = read_repo("frontend/src/components/notifications/NotificationsView.tsx")
+    list_tab = read_repo("frontend/src/components/notifications/NotificationListTab.tsx")
+    store = read_repo("frontend/src/stores/notificationStore.ts")
+    navigation = read_repo("frontend/src/lib/navigation.ts")
+    route = read_repo("backend/app/api/routes/notifications.py")
+
+    assert "const { activeProjectId } = useProjectStore();" in sidebar
+    assert "fetchUnreadCount(activeProjectId)" in sidebar
+    assert "setInterval(() => fetchUnreadCount(activeProjectId), 30_000)" in sidebar
+
+    assert "const { activeProjectId } = useProjectStore();" in view
+    assert "fetchNotifications(1, activeProjectId)" in view
+    assert "fetchUnreadCount(activeProjectId)" in view
+
+    assert "const { activeProjectId } = useProjectStore();" in list_tab
+    assert "fetchNotifications(1, activeProjectId)" in list_tab
+    assert "markAllRead(activeProjectId)" in list_tab
+    assert "fetchNotifications(page - 1, activeProjectId)" in list_tab
+    assert "fetchNotifications(page + 1, activeProjectId)" in list_tab
+    assert "All projects" not in list_tab
+
+    assert "fetchNotifications: async (page = 1, projectId) =>" in store
+    assert "if (!projectId)" in store
+    assert "params.project_id = projectId" in store
+    assert "notification.project_id !== activeProjectId" in store
+
+    assert '"backup",\n  "notifications",' in navigation
+    assert "async def _require_notification_project_scope" in route
+    assert 'raise HTTPException(status_code=400, detail="project_id is required")' in route
+    assert "query = query.where(Notification.project_id == scoped_project_id)" in route
+    assert "stmt = stmt.where(Notification.project_id == scoped_project_id)" in route
