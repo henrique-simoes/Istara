@@ -9,7 +9,7 @@ from typing import Iterable
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
-from sqlalchemy import false, func, select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
@@ -17,7 +17,6 @@ from app.core.permissions import get_subject, is_global_admin, require_project_a
 from app.core.security_middleware import require_admin_from_request
 from app.models.database import get_db
 from app.models.notification import Notification, NotificationPreference
-from app.models.project_member import ProjectMember
 
 logger = logging.getLogger(__name__)
 
@@ -101,28 +100,24 @@ def _parse_iso_datetime(value: str | None, label: str) -> datetime | None:
         raise HTTPException(status_code=400, detail=f"Invalid {label}") from exc
 
 
-async def _visible_project_ids(
+async def _require_notification_project_scope(
     db: AsyncSession,
     request: Request,
-) -> list[str] | None:
-    """Return scoped project ids for team users, or None for global visibility."""
+    project_id: str | None,
+) -> str | None:
+    """Return the required active project id, or None for explicit admin-global scope."""
+    scoped_project_id = project_id.strip() if project_id else None
+    if scoped_project_id:
+        await require_project_access(db, request, scoped_project_id, min_role="viewer")
+        return scoped_project_id
+
     if not settings.team_mode:
         return None
+
     subject = get_subject(request)
     if is_global_admin(subject):
         return None
-    result = await db.execute(
-        select(ProjectMember.project_id).where(ProjectMember.user_id == subject.id)
-    )
-    return list(result.scalars().all())
-
-
-def _apply_project_scope(query, project_ids: list[str] | None):
-    if project_ids is None:
-        return query
-    if not project_ids:
-        return query.where(false())
-    return query.where(Notification.project_id.in_(project_ids))
+    raise HTTPException(status_code=400, detail="project_id is required")
 
 
 # ---------------------------------------------------------------------------
@@ -151,14 +146,11 @@ async def list_notifications(
     db: AsyncSession = Depends(get_db),
 ):
     """Paginated notification list with optional filters."""
-    if project_id:
-        await require_project_access(db, request, project_id, min_role="viewer")
-        scoped_project_ids: list[str] | None = None
-    else:
-        scoped_project_ids = await _visible_project_ids(db, request)
+    scoped_project_id = await _require_notification_project_scope(db, request, project_id)
 
     query = select(Notification).order_by(Notification.created_at.desc())
-    query = _apply_project_scope(query, scoped_project_ids)
+    if scoped_project_id:
+        query = query.where(Notification.project_id == scoped_project_id)
 
     category_values = _validate_values(
         _merge_filter_values(category, categories),
@@ -177,8 +169,6 @@ async def list_notifications(
         query = query.where(Notification.category.in_(category_values))
     if agent_id:
         query = query.where(Notification.agent_id == agent_id)
-    if project_id:
-        query = query.where(Notification.project_id == project_id)
     if severity_values:
         query = query.where(Notification.severity.in_(severity_values))
     if unread_only:
@@ -226,15 +216,10 @@ async def unread_count(
     db: AsyncSession = Depends(get_db),
 ):
     """Return the number of unread notifications."""
-    if project_id:
-        await require_project_access(db, request, project_id, min_role="viewer")
-        scoped_project_ids: list[str] | None = None
-    else:
-        scoped_project_ids = await _visible_project_ids(db, request)
+    scoped_project_id = await _require_notification_project_scope(db, request, project_id)
     query = select(func.count(Notification.id)).where(Notification.read.is_(False))
-    query = _apply_project_scope(query, scoped_project_ids)
-    if project_id:
-        query = query.where(Notification.project_id == project_id)
+    if scoped_project_id:
+        query = query.where(Notification.project_id == scoped_project_id)
     count = (await db.execute(query)).scalar() or 0
     return {"count": count}
 
@@ -265,19 +250,18 @@ async def mark_all_read(
     db: AsyncSession = Depends(get_db),
 ):
     """Mark all unread notifications as read, optionally scoped to a project."""
-    if data and data.project_id:
-        await require_project_access(db, request, data.project_id, min_role="viewer")
-        scoped_project_ids: list[str] | None = None
-    else:
-        scoped_project_ids = await _visible_project_ids(db, request)
+    scoped_project_id = await _require_notification_project_scope(
+        db,
+        request,
+        data.project_id if data else None,
+    )
 
     stmt = (
         update(Notification)
         .where(Notification.read.is_(False))
     )
-    stmt = _apply_project_scope(stmt, scoped_project_ids)
-    if data and data.project_id:
-        stmt = stmt.where(Notification.project_id == data.project_id)
+    if scoped_project_id:
+        stmt = stmt.where(Notification.project_id == scoped_project_id)
 
     stmt = stmt.values(read=True)
     result = await db.execute(stmt)

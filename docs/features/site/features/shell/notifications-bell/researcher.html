@@ -241,7 +241,7 @@
   <p class="concept-line"><strong>Concepts:</strong> wcag</p>
 </header>
 <h2 id="what-it-does">What It Does</h2>
-<p>The sidebar notification bell polls unread notification counts and links users into the notifications surface.</p>
+<p>The sidebar notification bell polls unread notification counts for the active project and links users into the notifications surface.</p>
 <h2 id="why-it-exists">Why It Exists</h2>
 <p>Notification Bell exists so the work represented by Shell &gt; Notifications Bell has a stable, discoverable place in Istara&#x27;s project workflow. It keeps user actions, generated artifacts, and related follow-up surfaces connected to the active project rather than scattering them across unrelated tools.</p>
 <h2 id="where-it-lives">Where It Lives</h2>
@@ -254,6 +254,7 @@
 <ul>
 <li>Open Shell &gt; Notifications Bell from the Istara navigation or the parent tab.</li>
 <li>Use the visible controls in this surface to work with notification bell in the active project context.</li>
+<li>The unread badge reflects only the currently selected project and resets when no project is selected.</li>
 <li>Realtime project notifications follow the active project selection, so events from other projects are not delivered into the current project shell.</li>
 <li>Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.</li>
 </ul>
@@ -266,6 +267,7 @@
 <h2 id="inputs-outputs-and-expected-outcomes">Inputs, Outputs, And Expected Outcomes</h2>
 <ul>
 <li>Project-scoped state or artifact updates associated with notification bell.</li>
+<li>Project scope is mandatory for non-admin notification lists, unread counts, and mark-all-read actions.</li>
 <li>Project-tagged websocket events must carry or resolve to a project before they can be delivered to project-connected clients.</li>
 <li>Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.</li>
 </ul>
@@ -287,7 +289,7 @@
 <ul>
 <li>Source files: <code>frontend/src/components/layout/Sidebar.tsx</code>, <code>frontend/src/hooks/useWebSocket.ts</code>, <code>frontend/src/stores/notificationStore.ts</code>, <code>backend/app/api/routes/notifications.py</code>, <code>backend/app/api/websocket.py</code></li>
 <li>API references: <code>backend/app/api/routes/notifications.py</code>, <code>backend/app/api/websocket.py</code></li>
-<li>Tests: <code>tests/test_project_scope_contracts.py</code></li>
+<li>Tests: <code>tests/test_notifications.py</code>, <code>tests/test_project_scope_contracts.py</code></li>
 </ul>
         </article>
         <aside class="toc-panel" aria-label="Page sections">

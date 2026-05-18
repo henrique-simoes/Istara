@@ -110,6 +110,7 @@ export const PROJECT_REQUIRED_VIEW_IDS = new Set<ViewId>([
   "interfaces",
   "autoresearch",
   "backup",
+  "notifications",
 ]);
 
 const ALL_NAV_ITEMS = [...PRIMARY_NAV_ITEMS, ...SECONDARY_NAV_ITEMS, ...UTILITY_NAV_ITEMS];

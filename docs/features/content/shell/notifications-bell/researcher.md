@@ -8,16 +8,16 @@ related_features: ["notifications.list", "notifications.preferences"]
 related_glossary: ["wcag"]
 code_references: ["frontend/src/components/layout/Sidebar.tsx", "frontend/src/hooks/useWebSocket.ts", "frontend/src/stores/notificationStore.ts", "backend/app/api/routes/notifications.py", "backend/app/api/websocket.py"]
 api_references: ["backend/app/api/routes/notifications.py", "backend/app/api/websocket.py"]
-test_references: ["tests/test_project_scope_contracts.py"]
+test_references: ["tests/test_notifications.py", "tests/test_project_scope_contracts.py"]
 last_verified: 2026-05-18
-compass: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-754
+compass: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-754; CF-SPEC-60 / CF-759
 ---
 
 # Notification Bell
 
 ## What It Does
 
-The sidebar notification bell polls unread notification counts and links users into the notifications surface.
+The sidebar notification bell polls unread notification counts for the active project and links users into the notifications surface.
 
 ## Why It Exists
 
@@ -33,6 +33,7 @@ Notification Bell exists so the work represented by Shell > Notifications Bell h
 
 - Open Shell > Notifications Bell from the Istara navigation or the parent tab.
 - Use the visible controls in this surface to work with notification bell in the active project context.
+- The unread badge reflects only the currently selected project and resets when no project is selected.
 - Realtime project notifications follow the active project selection, so events from other projects are not delivered into the current project shell.
 - Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.
 
@@ -45,6 +46,7 @@ Notification Bell exists so the work represented by Shell > Notifications Bell h
 ## Inputs, Outputs, And Expected Outcomes
 
 - Project-scoped state or artifact updates associated with notification bell.
+- Project scope is mandatory for non-admin notification lists, unread counts, and mark-all-read actions.
 - Project-tagged websocket events must carry or resolve to a project before they can be delivered to project-connected clients.
 - Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.
 
@@ -66,4 +68,4 @@ Notification Bell exists so the work represented by Shell > Notifications Bell h
 
 - Source files: `frontend/src/components/layout/Sidebar.tsx`, `frontend/src/hooks/useWebSocket.ts`, `frontend/src/stores/notificationStore.ts`, `backend/app/api/routes/notifications.py`, `backend/app/api/websocket.py`
 - API references: `backend/app/api/routes/notifications.py`, `backend/app/api/websocket.py`
-- Tests: `tests/test_project_scope_contracts.py`
+- Tests: `tests/test_notifications.py`, `tests/test_project_scope_contracts.py`

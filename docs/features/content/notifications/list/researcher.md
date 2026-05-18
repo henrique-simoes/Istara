@@ -8,16 +8,16 @@ related_features: ["shell.notifications-bell", "notifications.preferences"]
 related_glossary: ["wcag"]
 code_references: ["frontend/src/components/notifications/NotificationsView.tsx", "frontend/src/stores/notificationStore.ts", "frontend/src/lib/notificationApi.ts", "backend/app/api/routes/notifications.py"]
 api_references: ["backend/app/api/routes/notifications.py"]
-test_references: []
-last_verified: 2026-05-15
-compass: CF-SPEC-53 / CF-657
+test_references: ["tests/test_notifications.py", "tests/test_project_scope_contracts.py"]
+last_verified: 2026-05-18
+compass: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-759
 ---
 
 # Notifications List
 
 ## What It Does
 
-Notifications lists system and project notifications with read/unread state.
+Notifications lists notifications for the currently selected project with read/unread state.
 
 ## Why It Exists
 
@@ -33,6 +33,7 @@ Notifications List exists so the work represented by Notifications > All has a s
 
 - Open Notifications > All from the Istara navigation or the parent tab.
 - Use the visible controls in this surface to work with notifications list in the active project context.
+- The list, unread count, pagination, and mark-all-read action stay on the selected project; there is no cross-project "All projects" view for project researchers.
 - Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.
 
 ## Supported Workflows
@@ -64,4 +65,4 @@ Notifications List exists so the work represented by Notifications > All has a s
 
 - Source files: `frontend/src/components/notifications/NotificationsView.tsx`, `frontend/src/stores/notificationStore.ts`, `frontend/src/lib/notificationApi.ts`, `backend/app/api/routes/notifications.py`
 - API references: `backend/app/api/routes/notifications.py`
-- Tests: none recorded
+- Tests: `tests/test_notifications.py`, `tests/test_project_scope_contracts.py`

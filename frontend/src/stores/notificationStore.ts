@@ -2,6 +2,7 @@
 
 import { create } from "zustand";
 import { notificationsApi } from "@/lib/api";
+import { useProjectStore } from "@/stores/projectStore";
 import type { AppNotification, NotificationPreference } from "@/lib/types";
 
 type NotificationsTab = "all" | "preferences";
@@ -10,7 +11,6 @@ interface NotificationFilters {
   categories: string[];
   severities: string[];
   agent_id: string;
-  project_id: string;
   search: string;
   from_date: string;
   to_date: string;
@@ -30,10 +30,10 @@ interface NotificationStore {
   total: number;
 
   setActiveTab: (tab: NotificationsTab) => void;
-  fetchNotifications: (page?: number) => Promise<void>;
-  fetchUnreadCount: (projectId?: string) => Promise<void>;
+  fetchNotifications: (page?: number, projectId?: string | null) => Promise<void>;
+  fetchUnreadCount: (projectId?: string | null) => Promise<void>;
   markRead: (id: string) => Promise<void>;
-  markAllRead: (projectId?: string) => Promise<void>;
+  markAllRead: (projectId?: string | null) => Promise<void>;
   deleteNotification: (id: string) => Promise<void>;
   fetchPreferences: () => Promise<void>;
   updatePreferences: (prefs: NotificationPreference[]) => Promise<void>;
@@ -46,7 +46,6 @@ const DEFAULT_FILTERS: NotificationFilters = {
   categories: [],
   severities: [],
   agent_id: "",
-  project_id: "",
   search: "",
   from_date: "",
   to_date: "",
@@ -67,15 +66,19 @@ export const useNotificationStore = create<NotificationStore>((set, get) => ({
 
   setActiveTab: (tab) => set({ activeTab: tab }),
 
-  fetchNotifications: async (page = 1) => {
+  fetchNotifications: async (page = 1, projectId) => {
     set({ loading: true, error: null });
+    if (!projectId) {
+      set({ notifications: [], page, totalPages: 1, total: 0, loading: false });
+      return;
+    }
     try {
       const filters = get().filters;
       const params: Record<string, string | number | boolean> = { page, page_size: 20 };
       if (filters.categories.length > 0) params.categories = filters.categories.join(",");
       if (filters.severities.length > 0) params.severities = filters.severities.join(",");
       if (filters.agent_id) params.agent_id = filters.agent_id;
-      if (filters.project_id) params.project_id = filters.project_id;
+      params.project_id = projectId;
       if (filters.search) params.search = filters.search;
       if (filters.from_date) params.from_date = filters.from_date;
       if (filters.to_date) params.to_date = filters.to_date;
@@ -94,6 +97,10 @@ export const useNotificationStore = create<NotificationStore>((set, get) => ({
   },
 
   fetchUnreadCount: async (projectId) => {
+    if (!projectId) {
+      set({ unreadCount: 0 });
+      return;
+    }
     try {
       const data = await notificationsApi.unreadCount(projectId);
       set({ unreadCount: data.count });
@@ -118,6 +125,10 @@ export const useNotificationStore = create<NotificationStore>((set, get) => ({
   },
 
   markAllRead: async (projectId) => {
+    if (!projectId) {
+      set({ error: "Select a project before marking notifications read." });
+      return;
+    }
     try {
       await notificationsApi.markAllRead(projectId);
       set((s) => ({
@@ -177,6 +188,8 @@ export const useNotificationStore = create<NotificationStore>((set, get) => ({
   },
 
   addRealtimeNotification: (notification) => {
+    const activeProjectId = useProjectStore.getState().activeProjectId;
+    if (!activeProjectId || notification.project_id !== activeProjectId) return;
     set((s) => ({
       notifications: [notification, ...s.notifications],
       unreadCount: s.unreadCount + 1,

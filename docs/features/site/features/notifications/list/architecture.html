@@ -241,7 +241,7 @@
   <p class="concept-line"><strong>Concepts:</strong> wcag</p>
 </header>
 <h2 id="implementation-summary">Implementation Summary</h2>
-<p>Notifications lists system and project notifications with read/unread state.</p>
+<p>Notifications lists active-project notifications with read/unread state. Non-admin team users must provide the active <code>project_id</code>; only explicit global-admin callers may use the route without project scope.</p>
 <h2 id="frontend-surface">Frontend Surface</h2>
 <ul>
 <li><code>frontend/src/components/notifications/NotificationsView.tsx</code></li>
@@ -261,6 +261,8 @@
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
 <li>The feature is mounted through <code>frontend/src/components/notifications/NotificationsView.tsx</code> and the UI navigation path recorded in the inventory.</li>
+<li>The notification store refuses to list, count, or mark all notifications without an active project selected in the shell.</li>
+<li>The list UI does not expose an &quot;All projects&quot; filter; project context comes from the active project store and backend RBAC verifies that membership.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>
@@ -270,7 +272,8 @@
 </ul>
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>
-<li>No focused test reference recorded yet.</li>
+<li><code>tests/test_notifications.py</code></li>
+<li><code>tests/test_project_scope_contracts.py</code></li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>
@@ -283,7 +286,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-53 / CF-657</li>
+<li>Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-759</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>
