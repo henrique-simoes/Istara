@@ -258,8 +258,8 @@ export default function KanbanBoard() {
   }, [activeProjectId, fetchTasks]);
 
   useEffect(() => {
-    if (agents.length === 0) fetchAgents();
-  }, [agents.length, fetchAgents]);
+    if (activeProjectId && agents.length === 0) fetchAgents(activeProjectId);
+  }, [activeProjectId, agents.length, fetchAgents]);
 
   const handleCreate = async (status: TaskStatus) => {
     if (!newTaskTitle.trim() || !activeProjectId || !canWriteActiveProject()) return;

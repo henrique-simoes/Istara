@@ -10,7 +10,6 @@ import CronBuilder from "./CronBuilder";
 interface ScheduleForm {
   name: string;
   skill_name: string;
-  project_id: string;
   cron_expression: string;
   description: string;
 }
@@ -18,7 +17,6 @@ interface ScheduleForm {
 const EMPTY_FORM: ScheduleForm = {
   name: "",
   skill_name: "",
-  project_id: "",
   cron_expression: "0 * * * *",
   description: "",
 };
@@ -43,22 +41,21 @@ function formatTimeUntil(dateStr: string | null): string {
 
 export default function SchedulesTab() {
   const { schedules, loading, createSchedule, updateSchedule, deleteSchedule, fetchSchedules } = useLoopsStore();
-  const { projects, fetchProjects } = useProjectStore();
+  const { activeProjectId } = useProjectStore();
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<ScheduleForm>({ ...EMPTY_FORM });
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchSchedules();
-    fetchProjects();
-  }, [fetchSchedules, fetchProjects]);
+    fetchSchedules(activeProjectId);
+  }, [activeProjectId, fetchSchedules]);
 
   const handleCreate = async () => {
-    if (!form.name.trim() || !form.project_id.trim()) return;
+    if (!form.name.trim() || !activeProjectId) return;
     await createSchedule({
       name: form.name,
       skill_name: form.skill_name,
-      project_id: form.project_id,
+      project_id: activeProjectId,
       cron_expression: form.cron_expression,
       description: form.description,
     });
@@ -109,19 +106,6 @@ export default function SchedulesTab() {
             </div>
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Project</label>
-            <select
-              value={form.project_id}
-              onChange={(e) => setForm({ ...form, project_id: e.target.value })}
-              className="w-full px-3 py-1.5 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-istara-500"
-            >
-              <option value="">Select project...</option>
-              {projects.map((project) => (
-                <option key={project.id} value={project.id}>{project.name}</option>
-              ))}
-            </select>
-          </div>
-          <div>
             <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Description</label>
             <input
               type="text"
@@ -138,7 +122,7 @@ export default function SchedulesTab() {
           <div className="flex items-center gap-2 pt-2">
             <button
               onClick={handleCreate}
-              disabled={!form.name.trim() || !form.project_id.trim()}
+              disabled={!form.name.trim() || !activeProjectId}
               className="px-4 py-1.5 text-sm font-medium rounded-lg bg-istara-600 text-white hover:bg-istara-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Create
@@ -188,7 +172,7 @@ export default function SchedulesTab() {
                   <span>Next: {formatTimeUntil(schedule.next_run)}</span>
                   <button
                     type="button"
-                    onClick={() => updateSchedule(schedule.id, { enabled: !schedule.enabled })}
+                    onClick={() => updateSchedule(schedule.id, { enabled: !schedule.enabled }, activeProjectId)}
                     className={cn(
                       "p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800",
                       schedule.enabled ? "text-yellow-600 dark:text-yellow-400" : "text-green-600 dark:text-green-400"
@@ -200,7 +184,7 @@ export default function SchedulesTab() {
                   {deleteConfirm === schedule.id ? (
                     <button
                       type="button"
-                      onClick={() => deleteSchedule(schedule.id).then(() => setDeleteConfirm(null))}
+                      onClick={() => deleteSchedule(schedule.id, activeProjectId).then(() => setDeleteConfirm(null))}
                       className="px-2 py-1 text-[10px] font-medium rounded bg-red-600 text-white hover:bg-red-700"
                     >
                       Confirm

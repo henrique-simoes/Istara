@@ -26,7 +26,7 @@ from app.agents.ux_eval_agent import ux_eval_agent
 from app.agents.user_sim_agent import user_sim_agent
 from app.config import settings
 from app.core.improvement_governance import improvement_governance
-from app.core.permissions import require_project_access
+from app.core.permissions import get_subject, is_global_admin, require_project_access
 from app.core.resource_governor import governor
 from app.core.security_middleware import require_admin_from_request
 from app.core.context_hierarchy import context_hierarchy, ContextDocument
@@ -124,12 +124,19 @@ class UpdateAgentRequest(BaseModel):
 
 @router.get("/agents")
 async def list_agents(
+    request: Request,
     include_system: bool = True,
     project_id: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     """List agents — universal agents are always included, project-scoped
     agents are filtered to the given project_id."""
+    subject = get_subject(request)
+    if project_id:
+        await require_project_access(db, request, project_id, min_role="viewer")
+    elif settings.team_mode and not is_global_admin(subject):
+        raise HTTPException(status_code=400, detail="project_id is required")
+
     agents = await agent_service.list_agents(db, include_system)
     if project_id:
         # Show universal agents + agents scoped to this project

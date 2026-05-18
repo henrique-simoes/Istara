@@ -35,6 +35,7 @@ Schedules configure recurring loop timing, including cron-style recurrence contr
 
 - `backend/app/api/routes/scheduler.py`
 - `backend/app/api/routes/loops.py`
+- Schedule listing and creation operate only in the active project context; the project-facing UI does not expose a cross-project selector.
 
 ## Architecture Notes
 
@@ -48,7 +49,8 @@ Schedules configure recurring loop timing, including cron-style recurrence contr
 
 ## Tests And Verification
 
-- No focused test reference recorded yet.
+- `tests/test_loops.py`
+- `tests/test_project_scope_contracts.py`
 
 ## Related Features
 

@@ -1,5 +1,6 @@
 """Tests for Loops/Scheduler API routes — overview, agents, executions, health, custom."""
 
+import json
 from datetime import datetime, timedelta, timezone
 import uuid
 
@@ -12,6 +13,7 @@ from app.config import settings
 from app.core.scheduler import ScheduledTask, scheduler
 from app.core.auth import create_token
 from app.models.database import async_session, init_db
+from app.models.agent import Agent, AgentRole, AgentState
 from app.models.loop_execution import LoopExecution
 from app.models.project import Project
 from app.models.project_member import ProjectMember
@@ -58,6 +60,95 @@ async def _seed_project_member(project_id: str, user_id: str, role: str) -> None
         await db.commit()
 
 
+async def _seed_loop_scope_fixture(user_id: str) -> dict[str, str]:
+    visible_project_id = f"project-visible-{uuid.uuid4()}"
+    hidden_project_id = f"project-hidden-{uuid.uuid4()}"
+    visible_schedule_id = str(uuid.uuid4())
+    hidden_schedule_id = str(uuid.uuid4())
+    visible_agent_id = str(uuid.uuid4())
+    hidden_agent_id = str(uuid.uuid4())
+    now = datetime.now(timezone.utc)
+    async with async_session() as db:
+        db.add_all([
+            Project(id=visible_project_id, name="Visible Loops Project"),
+            Project(id=hidden_project_id, name="Hidden Loops Project"),
+            ProjectMember(
+                id=str(uuid.uuid4()),
+                project_id=visible_project_id,
+                user_id=user_id,
+                role="researcher",
+                added_by="test",
+            ),
+            Agent(
+                id=visible_agent_id,
+                name="Visible Loop Agent",
+                role=AgentRole.CUSTOM,
+                state=AgentState.IDLE,
+                scope="project",
+                project_id=visible_project_id,
+                memory=json.dumps({"loop_config": {"skills_to_run": ["visible-skill"]}}),
+            ),
+            Agent(
+                id=hidden_agent_id,
+                name="Hidden Loop Agent",
+                role=AgentRole.CUSTOM,
+                state=AgentState.IDLE,
+                scope="project",
+                project_id=hidden_project_id,
+                memory=json.dumps({"loop_config": {"skills_to_run": ["hidden-skill"]}}),
+            ),
+            ScheduledTask(
+                id=visible_schedule_id,
+                name="Visible Project Schedule",
+                description="",
+                cron_expression="0 * * * *",
+                skill_name="visible_skill",
+                project_id=visible_project_id,
+                next_run=now + timedelta(hours=1),
+            ),
+            ScheduledTask(
+                id=hidden_schedule_id,
+                name="Hidden Project Schedule",
+                description="",
+                cron_expression="0 * * * *",
+                skill_name="hidden_skill",
+                project_id=hidden_project_id,
+                next_run=now + timedelta(hours=1),
+            ),
+            LoopExecution(
+                id=str(uuid.uuid4()),
+                source_type="schedule",
+                source_id=visible_schedule_id,
+                source_name="Visible Project Schedule",
+                status="success",
+                started_at=now - timedelta(minutes=10),
+                finished_at=now - timedelta(minutes=9),
+                duration_ms=60000,
+                metadata_json=json.dumps({"project_id": visible_project_id}),
+            ),
+            LoopExecution(
+                id=str(uuid.uuid4()),
+                source_type="schedule",
+                source_id=hidden_schedule_id,
+                source_name="Hidden Project Schedule",
+                status="failure",
+                started_at=now - timedelta(minutes=8),
+                finished_at=now - timedelta(minutes=7),
+                duration_ms=60000,
+                metadata_json=json.dumps({"project_id": hidden_project_id}),
+            ),
+        ])
+        await db.commit()
+    return {
+        "visible_project_id": visible_project_id,
+        "hidden_project_id": hidden_project_id,
+        "visible_schedule_id": visible_schedule_id,
+        "hidden_schedule_id": hidden_schedule_id,
+        "visible_agent_id": visible_agent_id,
+        "hidden_agent_id": hidden_agent_id,
+    }
+
+
 @pytest.mark.asyncio
 async def test_loops_overview_returns_response(auth_headers):
     """GET /api/loops/overview returns loop overview."""
@@ -83,6 +174,81 @@ async def test_loops_overview_requires_auth():
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         response = await ac.get("/api/loops/overview")
         assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_project_member_loop_surfaces_require_active_project_scope(researcher_headers):
+    """Non-admin loop surfaces must not fall back to global data."""
+    await init_db()
+    settings.team_mode = True
+    ids = await _seed_loop_scope_fixture("researcher-loops")
+
+    visible_project_id = ids["visible_project_id"]
+    hidden_project_id = ids["hidden_project_id"]
+    visible_schedule_id = ids["visible_schedule_id"]
+    hidden_schedule_id = ids["hidden_schedule_id"]
+    visible_agent_id = ids["visible_agent_id"]
+    hidden_agent_id = ids["hidden_agent_id"]
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        no_scope = await ac.get("/api/loops/overview", headers=researcher_headers)
+        assert no_scope.status_code == 400
+        assert no_scope.json()["detail"] == "project_id is required"
+
+        hidden_scope = await ac.get(
+            f"/api/loops/overview?project_id={hidden_project_id}",
+            headers=researcher_headers,
+        )
+        assert hidden_scope.status_code == 404
+
+        overview = await ac.get(
+            f"/api/loops/overview?project_id={visible_project_id}",
+            headers=researcher_headers,
+        )
+        assert overview.status_code == 200
+        body = overview.json()
+        assert {item["id"] for item in body["schedules"]} == {visible_schedule_id}
+        assert {item["agent_id"] for item in body["agents"]} == {visible_agent_id}
+        assert visible_schedule_id in {item["id"] for item in body["schedules"]}
+        assert hidden_schedule_id not in {item["id"] for item in body["schedules"]}
+        assert hidden_agent_id not in {item["agent_id"] for item in body["agents"]}
+        assert body["total_executions_24h"] == 1
+
+        health = await ac.get(
+            f"/api/loops/health?project_id={visible_project_id}",
+            headers=researcher_headers,
+        )
+        assert health.status_code == 200
+        health_sources = {item["source_id"] for item in health.json()["health"]}
+        assert visible_schedule_id in health_sources
+        assert visible_agent_id in health_sources
+        assert hidden_schedule_id not in health_sources
+        assert hidden_agent_id not in health_sources
+
+        agents = await ac.get(
+            f"/api/loops/agents?project_id={visible_project_id}",
+            headers=researcher_headers,
+        )
+        assert agents.status_code == 200
+        assert {item["agent_id"] for item in agents.json()["agents"]} == {visible_agent_id}
+
+        executions = await ac.get(
+            f"/api/loops/executions?project_id={visible_project_id}",
+            headers=researcher_headers,
+        )
+        assert executions.status_code == 200
+        execution_ids = {item["source_id"] for item in executions.json()["executions"]}
+        assert execution_ids == {visible_schedule_id}
+
+        stats = await ac.get(
+            f"/api/loops/executions/stats?project_id={visible_project_id}",
+            headers=researcher_headers,
+        )
+        assert stats.status_code == 200
+        assert stats.json()["total"] == 1
+        assert stats.json()["success"] == 1
+        assert stats.json()["failure"] == 0
 
 
 @pytest.mark.asyncio

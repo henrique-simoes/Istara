@@ -140,13 +140,85 @@ def test_agents_a2a_project_view_passes_active_project_id() -> None:
 
     assert "const { activeProjectId } = useProjectStore();" in view
     assert "fetchA2ALog(activeProjectId)" in view
+    assert "fetchAgents(activeProjectId || undefined)" in view
+    assert "if (!projectId)" in store
     assert "fetchA2ALog: async (projectId) =>" in store
     assert "if (!projectId)" in store
     assert "const data = await agentsApi.a2aLog(projectId, 100);" in store
     assert "a2aLog: (projectId: string, limit = 100)" in api
     assert 'params.set("project_id", projectId);' in api
+    assert 'raise HTTPException(status_code=400, detail="project_id is required")' in route
+    assert "await require_project_access(db, request, project_id, min_role=\"viewer\")" in route
     assert "await require_project_access(db, request, project_id, min_role=\"viewer\")" in route
     assert "messages = await a2a.get_full_log(db, limit, project_id=project_id)" in route
+
+
+def test_loops_views_and_api_require_active_project_scope() -> None:
+    loops_view = read_repo("frontend/src/components/loops/LoopsView.tsx")
+    overview_tab = read_repo("frontend/src/components/loops/LoopOverviewTab.tsx")
+    agent_tab = read_repo("frontend/src/components/loops/AgentLoopsTab.tsx")
+    schedules_tab = read_repo("frontend/src/components/loops/SchedulesTab.tsx")
+    custom_tab = read_repo("frontend/src/components/loops/CustomLoopsTab.tsx")
+    history_tab = read_repo("frontend/src/components/loops/ExecutionHistoryTab.tsx")
+    store = read_repo("frontend/src/stores/loopsStore.ts")
+    api = read_repo("frontend/src/lib/api.ts")
+    route = read_repo("backend/app/api/routes/loops.py")
+    service = read_repo("backend/app/services/loop_execution_service.py")
+
+    assert "const { activeProjectId } = useProjectStore();" in loops_view
+    assert "fetchOverview(activeProjectId)" in loops_view
+    assert "fetchHealth(activeProjectId)" in loops_view
+
+    assert "const { activeProjectId } = useProjectStore();" in overview_tab
+    assert "fetchHealth(activeProjectId)" in overview_tab
+    assert "fetchOverview(activeProjectId)" in overview_tab
+
+    assert "const { activeProjectId } = useProjectStore();" in agent_tab
+    assert "fetchAgentLoops(activeProjectId)" in agent_tab
+    assert "fetchAgents(activeProjectId || undefined)" in agent_tab
+    assert "updateAgentConfig(agent.id, data, activeProjectId)" in agent_tab
+    assert "pauseAgent(agent.id, activeProjectId)" in agent_tab
+    assert "resumeAgent(agent.id, activeProjectId)" in agent_tab
+
+    assert "fetchSchedules(activeProjectId)" in schedules_tab
+    assert "project_id: activeProjectId" in schedules_tab
+    assert "updateSchedule(schedule.id, { enabled: !schedule.enabled }, activeProjectId)" in schedules_tab
+    assert "deleteSchedule(schedule.id, activeProjectId)" in schedules_tab
+    assert "Select project..." not in schedules_tab
+
+    assert "fetchHealth(activeProjectId)" in custom_tab
+    assert "project_id: activeProjectId" in custom_tab
+    assert "Select project..." not in custom_tab
+
+    assert "fetchExecutions(1, activeProjectId)" in history_tab
+    assert "fetchExecutions(executionPage - 1, activeProjectId)" in history_tab
+    assert "fetchExecutions(executionPage + 1, activeProjectId)" in history_tab
+
+    assert "fetchOverview: async (projectId) =>" in store
+    assert "if (!projectId)" in store
+    assert "const data = await loopsApi.overview(projectId)" in store
+    assert "const data = await loopsApi.health(projectId)" in store
+    assert "project_id: projectId" in store
+    assert "await get().fetchSchedules(data.project_id)" in store
+    assert "await get().fetchHealth(data.project_id)" in store
+
+    assert "overview: (projectId: string)" in api
+    assert "/api/loops/overview?project_id=" in api
+    assert "agents: (projectId: string)" in api
+    assert "/api/loops/agents?project_id=" in api
+    assert "schedules: (projectId: string)" in api
+    assert "/api/schedules?project_id=" in api
+    assert "executionStats: (projectId: string" in api
+    assert "health: (projectId: string)" in api
+
+    assert "async def _require_loop_project_scope" in route
+    assert 'raise HTTPException(status_code=400, detail="project_id is required")' in route
+    assert "await require_project_access(db, request, scoped_project_id, min_role=min_role)" in route
+    assert "ScheduledTask.project_id == project_id" in route
+    assert "source_ids=source_ids" in route
+    assert '"project_id": s.project_id' in route
+    assert "source_ids: Optional[list[str]] = None" in service
+    assert "LoopExecution.source_id.in_(source_ids) if source_ids else false()" in service
 
 
 def test_websocket_project_events_are_active_project_filtered() -> None:
