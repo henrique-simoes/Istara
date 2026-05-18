@@ -29,10 +29,15 @@ interface ComputeNode {
   score: number;
   latency_ms: number;
   alive: boolean;
+  is_healthy?: boolean;
+  is_ready?: boolean;
+  is_reachable?: boolean;
+  online?: boolean;
   source?: "local" | "network" | "relay" | "browser";
   host?: string;
   health_error?: string;
   serving_state?: string;
+  readiness_state?: string;
   capability_probe_status?: "available" | "unavailable" | "not_applicable";
   model_list_stale?: boolean;
   model_capabilities?: Record<string, ModelCapability>;
@@ -41,6 +46,9 @@ interface ComputeNode {
 interface ComputeStats {
   total_nodes: number;
   alive_nodes: number;
+  ready_nodes?: number;
+  reachable_nodes?: number;
+  hardware_node_count?: number;
   total_ram_gb: number;
   available_ram_gb: number;
   total_cpu_cores: number;

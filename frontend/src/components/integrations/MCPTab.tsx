@@ -335,7 +335,13 @@ function FeaturedServersSection({ onConnect }: { onConnect: () => Promise<void> 
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="text-lg">🇧🇷</span>
+                    {server.id === "mcp-brasil" ? (
+                      <span className="inline-flex h-5 min-w-5 items-center justify-center rounded bg-green-100 px-1 text-[10px] font-semibold text-green-700 dark:bg-green-900/30 dark:text-green-300">
+                        BR
+                      </span>
+                    ) : (
+                      <Server size={18} className="text-slate-500 dark:text-slate-400" />
+                    )}
                     <h3 className="font-semibold text-slate-900 dark:text-white">{server.name}</h3>
                     <span className="px-2 py-0.5 text-xs bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 rounded-full">
                       {server.tool_count} tools

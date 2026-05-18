@@ -26,8 +26,8 @@ Read these in this order when the change is non-trivial:
 3. Treat Compass as part of the product's operating system. If the change alters how future agents should understand, verify, navigate, or safely modify Istara, update Compass in the same change.
 4. Do not trust memory for architecture. Re-read the current files and generated docs before making structural changes.
 5. Use `SYSTEM_CHANGE_MATRIX.md` to expand every local change into its dependent backend, frontend, UX, test, release, and documentation surfaces.
-6. When adding or changing a route, model, type, store, view, menu item, skill, persona, background workflow, or integration, update the implementation and then regenerate the living docs in the same change.
-7. If the generated docs fail to capture an important architectural fact, improve `scripts/update_agent_md.py` so the fact becomes automatic.
+6. When adding or changing a route, model, type, store, view, menu item, skill, persona, background workflow, or integration, update the implementation and then regenerate the living docs in the same change. This includes the agent maps from `scripts/update_agent_md.py` and the UI-organized feature docs under `docs/features/` when feature behavior is affected.
+7. If generated docs fail to capture an important architectural fact, improve the relevant generator so the fact becomes automatic: `scripts/update_agent_md.py` for system maps or `scripts/feature_docs.py` for feature pages/manifests.
 8. Keep the docs drift-resistant. Avoid one-off manual summaries when the information can be scanned from the repository.
 
 ## Non-Negotiable Governance Rules
@@ -77,6 +77,7 @@ Istara has three test layers. Every meaningful change must include tests at the 
 | New system-wide feature | ✅ Infrastructure tests | ✅ New phase | ✅ New scenario |
 | Navigation / menu change | — | ✅ Frontend phase | ✅ Update navigation scenario |
 | Agent behavior change | ✅ Agent tests | ✅ Agent phase | ✅ Agent architecture scenario |
+| Feature docs inventory/generator change | ✅ `tests/test_feature_docs.py` | — | — |
 
 ### Non-Negotiable Test Rules
 - **No change ships without tests.** Code without test coverage is incomplete.
@@ -91,6 +92,13 @@ Run these after architecture-affecting work:
 ```bash
 python scripts/update_agent_md.py
 python scripts/check_integrity.py
+```
+
+Run these after UI/menu/route/store/agent/skill/model/test behavior changes that affect feature documentation:
+
+```bash
+python scripts/feature_docs.py --seed-missing --generate-site --check
+pytest tests/test_feature_docs.py -q
 ```
 
 ## Commit Authorship Rules

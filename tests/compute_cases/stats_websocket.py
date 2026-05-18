@@ -42,6 +42,13 @@ def test_compute_stats_include_capacity_envelope():
     assert stats["hardware_load_pct"] == 65.0
 
 
+def test_relay_websocket_is_registered_at_connection_string_path():
+    websocket_paths = {getattr(route, "path", "") for route in app.routes}
+
+    assert "/ws/relay" in websocket_paths
+    assert "/api/ws/relay" in websocket_paths
+
+
 class FakeRelayWebSocket:
     def __init__(self, *, headers=None, query_params=None, messages=None):
         self.headers = headers or {}

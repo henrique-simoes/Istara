@@ -47,7 +47,7 @@ export default function AdminDashboard() {
     setLoading(true);
     setError("");
     try {
-      const [overviewData, projectData, userData, accessData, connectionData, requestData] = await Promise.all([
+      const results = await Promise.allSettled([
         adminApi.overview(),
         adminApi.projects(),
         adminApi.users(),
@@ -55,12 +55,21 @@ export default function AdminDashboard() {
         adminApi.connectionStrings(),
         permissionRequests.list({ status: "pending" }),
       ]);
-      setOverview(overviewData);
-      setProjects(projectData.projects || []);
-      setUsers(userData.users || []);
-      setMemberships(accessData.memberships || []);
-      setConnections(connectionData);
-      setRequests(requestData.requests || []);
+      const failures: string[] = [];
+      const [overviewData, projectData, userData, accessData, connectionData, requestData] = results;
+      if (overviewData.status === "fulfilled") setOverview(overviewData.value);
+      else failures.push("overview");
+      if (projectData.status === "fulfilled") setProjects(projectData.value.projects || []);
+      else failures.push("projects");
+      if (userData.status === "fulfilled") setUsers(userData.value.users || []);
+      else failures.push("users");
+      if (accessData.status === "fulfilled") setMemberships(accessData.value.memberships || []);
+      else failures.push("access");
+      if (connectionData.status === "fulfilled") setConnections(connectionData.value);
+      else failures.push("connection strings");
+      if (requestData.status === "fulfilled") setRequests(requestData.value.requests || []);
+      else setRequests([]);
+      setError(failures.length ? `Could not load ${failures.join(", ")}.` : "");
     } catch (err: any) {
       setError(err.message || "Could not load admin dashboard.");
     } finally {

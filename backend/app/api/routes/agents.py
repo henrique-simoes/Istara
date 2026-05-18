@@ -166,9 +166,16 @@ async def heartbeat_status(db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/agents/a2a/log")
-async def get_a2a_log(limit: int = 100, db: AsyncSession = Depends(get_db)):
-    """Get the full A2A message log."""
-    messages = await a2a.get_full_log(db, limit)
+async def get_a2a_log(
+    request: Request,
+    limit: int = 100,
+    project_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
+    """Get the A2A message log, optionally scoped to a project."""
+    if project_id:
+        await require_project_access(db, request, project_id, min_role="viewer")
+    messages = await a2a.get_full_log(db, limit, project_id=project_id)
     return {"messages": messages}
 
 
@@ -922,8 +929,17 @@ class A2AMessageRequest(BaseModel):
 
 
 @router.get("/agents/{agent_id}/messages")
-async def get_messages(agent_id: str, limit: int = 50, unread_only: bool = False, db: AsyncSession = Depends(get_db)):
-    messages = await a2a.get_messages(db, agent_id, limit, unread_only)
+async def get_messages(
+    agent_id: str,
+    request: Request,
+    limit: int = 50,
+    unread_only: bool = False,
+    project_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
+    if project_id:
+        await require_project_access(db, request, project_id, min_role="viewer")
+    messages = await a2a.get_messages(db, agent_id, limit, unread_only, project_id=project_id)
     return {"messages": messages}
 
 

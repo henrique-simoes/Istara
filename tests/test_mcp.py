@@ -1,7 +1,9 @@
 """Tests for MCP API routes — server status/toggle/policy, clients CRUD, tools, call."""
 
-import pytest
+import uuid
 from types import SimpleNamespace
+
+import pytest
 from httpx import AsyncClient, ASGITransport
 from app.main import app
 from app.config import settings
@@ -168,6 +170,33 @@ async def test_mcp_client_registration_rejects_metadata_service_url(auth_headers
 
     assert response.status_code == 422
     assert "not allowed" in response.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_mcp_client_registration_reuses_same_http_server(auth_headers):
+    await init_db()
+    path = f"/mcp-dedupe-{uuid.uuid4()}"
+    url = f"http://localhost:3001{path}"
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        first = await ac.post(
+            "/api/mcp/clients",
+            headers=auth_headers,
+            json={"name": "MCP Brasil", "url": url, "transport": "http"},
+        )
+        second = await ac.post(
+            "/api/mcp/clients",
+            headers=auth_headers,
+            json={"name": "MCP Brasil", "url": url, "transport": "http"},
+        )
+        listed = await ac.get("/api/mcp/clients", headers=auth_headers)
+
+    assert first.status_code == 201
+    assert second.status_code == 201
+    assert second.json()["id"] == first.json()["id"]
+    matches = [server for server in listed.json()["servers"] if server["url"] == url]
+    assert len(matches) == 1
+    assert matches[0]["duplicate_count"] == 1
 
 
 def test_mcp_tool_descriptor_sanitizes_prompt_injection_and_caps_schema():

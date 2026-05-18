@@ -93,8 +93,8 @@ class ComputeNodeModelMixin:
                     self.last_health_check = time.time()
                 else:
                     self.is_healthy = False
-                    self.health_state = "unhealthy"
-                    self.health_error = "No LLM models advertised by this host"
+                    self.health_state = "no_model_loaded"
+                    self.health_error = "Server is reachable, but no chat model is loaded"
             elif resp.status_code in (401, 403):
                 # Auth failure — server requires an API key
                 self.health_state = "auth_required"

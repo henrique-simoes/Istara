@@ -457,7 +457,7 @@ async def system_status():
         },
         "services": {
             "backend": "running",
-            "llm": "connected" if llm_ready else "disconnected",
+            "llm": "connected" if llm_healthy else "disconnected",
         },
         "config": {
             "model": active,

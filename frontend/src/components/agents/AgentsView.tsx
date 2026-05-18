@@ -534,6 +534,7 @@ export default function AgentsView() {
   const [activeTab, setActiveTab] = useState<"agents" | "a2a" | "proposals" | "create">("agents");
   const [expandedAgent, setExpandedAgent] = useState<string | null>(null);
   const [agentProposals, setAgentProposals] = useState<any[]>([]);
+  const { activeProjectId } = useProjectStore();
 
   const fetchAgentProposals = async () => {
     try {
@@ -544,12 +545,12 @@ export default function AgentsView() {
 
   // Initial fetch + start polling every 10s to keep agent statuses current
   useEffect(() => {
-    fetchAgents();
-    startPolling();
+    fetchAgents(activeProjectId || undefined);
+    startPolling(activeProjectId || undefined);
     return () => {
       stopPolling();
     };
-  }, [fetchAgents, startPolling, stopPolling]);
+  }, [activeProjectId, fetchAgents, startPolling, stopPolling]);
 
   // Subscribe to WebSocket agent_status events for real-time updates
   const handleWSEvent = useCallback(
@@ -568,9 +569,9 @@ export default function AgentsView() {
   useWebSocket(handleWSEvent);
 
   useEffect(() => {
-    if (activeTab === "a2a") fetchA2ALog();
+    if (activeTab === "a2a") fetchA2ALog(activeProjectId || undefined);
     if (activeTab === "proposals") fetchAgentProposals();
-  }, [activeTab, fetchA2ALog]);
+  }, [activeProjectId, activeTab, fetchA2ALog]);
 
   const systemAgents = agents.filter((a) => a.is_system);
   const userAgents = agents.filter((a) => !a.is_system);
@@ -677,7 +678,7 @@ export default function AgentsView() {
                           const data = JSON.parse(text);
                           const agentData = data.agent || data;
                           await agentsApi.importConfig(agentData);
-                          fetchAgents();
+                          fetchAgents(activeProjectId || undefined);
                         } catch (err) {
                           console.error("Import failed:", err);
                         }
@@ -858,7 +859,10 @@ export default function AgentsView() {
                     onClick={async () => {
                       try {
                         await agentsApi.creationProposals.approve(p.id);
-                        await Promise.all([fetchAgents(), fetchAgentProposals()]);
+                        await Promise.all([
+                          fetchAgents(activeProjectId || undefined),
+                          fetchAgentProposals(),
+                        ]);
                       } catch (e) { console.error("Approve failed:", e); }
                     }}
                     className="flex items-center gap-1 px-3 py-1 rounded-lg bg-purple-600 text-white text-xs font-medium hover:bg-purple-700"
@@ -903,7 +907,12 @@ export default function AgentsView() {
 
         {activeTab === "create" && (
           <div className="max-w-lg mx-auto">
-            <CreateAgentWizard onDone={() => { setActiveTab("agents"); fetchAgents(); }} />
+            <CreateAgentWizard
+              onDone={() => {
+                setActiveTab("agents");
+                fetchAgents(activeProjectId || undefined);
+              }}
+            />
           </div>
         )}
       </div>

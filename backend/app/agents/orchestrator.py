@@ -428,6 +428,7 @@ class MetaOrchestrator:
                                 content=f"Task '{task.title}' needs your expertise. Specialties: {', '.join(routing['specialties_needed'])}. Please review when complete and provide feedback.",
                                 metadata={
                                     "task_id": task.id,
+                                    "project_id": task.project_id,
                                     "task_title": task.title,
                                     "specialties_needed": routing["specialties_needed"],
                                 },

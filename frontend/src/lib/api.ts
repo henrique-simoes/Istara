@@ -374,14 +374,21 @@ export const agents = {
   memory: (id: string) => request<any>(`/api/agents/${id}/memory`),
   updateMemory: (id: string, data: Record<string, unknown>) =>
     request<any>(`/api/agents/${id}/memory`, { method: "PATCH", body: JSON.stringify(data) }),
-  messages: (id: string, limit = 50) =>
-    request<any>(`/api/agents/${id}/messages?limit=${limit}`),
+  messages: (id: string, limit = 50, projectId?: string) => {
+    const params = new URLSearchParams({ limit: String(limit) });
+    if (projectId) params.set("project_id", projectId);
+    return request<any>(`/api/agents/${id}/messages?${params}`);
+  },
   sendMessage: (
     id: string,
     data: { to_agent_id?: string; content: string; message_type?: string }
   ) =>
     request<any>(`/api/agents/${id}/messages`, { method: "POST", body: JSON.stringify(data) }),
-  a2aLog: (limit = 100) => request<any>(`/api/agents/a2a/log?limit=${limit}`),
+  a2aLog: (limit = 100, projectId?: string) => {
+    const params = new URLSearchParams({ limit: String(limit) });
+    if (projectId) params.set("project_id", projectId);
+    return request<any>(`/api/agents/a2a/log?${params}`);
+  },
   heartbeat: () => request<any>("/api/agents/heartbeat/status"),
   capacity: () => request<any>("/api/agents/capacity"),
   getIdentity: (id: string) =>

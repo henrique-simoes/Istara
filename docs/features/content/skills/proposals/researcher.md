@@ -1,0 +1,67 @@
+---
+stable_id: skills.proposals
+title: Skill Proposals
+ui_path: Skills > Proposals
+audience: researcher
+status: needs-verification
+related_features: ["skills.catalog", "agents.proposals"]
+related_glossary: ["mcp"]
+code_references: ["frontend/src/components/skills/SkillsView.tsx", "backend/app/api/routes/skills.py"]
+api_references: ["backend/app/api/routes/skills.py"]
+test_references: []
+last_verified: 2026-05-15
+compass: CF-SPEC-53 / CF-657
+---
+
+# Skill Proposals
+
+## What It Does
+
+Skill proposal flows present candidate tool or capability changes for review before they are adopted.
+
+## Why It Exists
+
+Skill Proposals exists so the work represented by Skills > Proposals has a stable, discoverable place in Istara's project workflow. It keeps user actions, generated artifacts, and related follow-up surfaces connected to the active project rather than scattering them across unrelated tools.
+
+## Where It Lives
+
+- UI path: Skills > Proposals
+- Navigation group: Skills
+- Primary component: `SkillsView`
+
+## How UX Researchers Use It
+
+- Open Skills > Proposals from the Istara navigation or the parent tab.
+- Use the visible controls in this surface to work with skill proposals in the active project context.
+- Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.
+
+## Supported Workflows
+
+- Start from Skills > Proposals when the current research task needs skill proposals.
+- Use the visible controls to create, inspect, refine, or route project work without leaving the active Istara context.
+- Move to related surfaces when needed: skills.catalog, agents.proposals.
+
+## Inputs, Outputs, And Expected Outcomes
+
+- Project-scoped state or artifact updates associated with skill proposals.
+- Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.
+
+## Caveats
+
+- Needs interactive verification for exact empty, loading, error, and permission-denied states.
+- Do not expand this documentation beyond the cited source files without adding new code or walkthrough evidence.
+
+## Related Features
+
+- [skills.catalog](../../skills/catalog/researcher.md)
+- [agents.proposals](../../agents/proposals/researcher.md)
+
+## Related Concepts
+
+- [mcp](../../../glossary/mcp.md)
+
+## Evidence
+
+- Source files: `frontend/src/components/skills/SkillsView.tsx`, `backend/app/api/routes/skills.py`
+- API references: `backend/app/api/routes/skills.py`
+- Tests: none recorded

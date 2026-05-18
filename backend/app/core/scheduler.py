@@ -15,6 +15,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.datetime_utils import ensure_utc
 from app.models.database import Base, async_session
+from app.models.project import Project
 
 logger = logging.getLogger(__name__)
 
@@ -239,7 +240,7 @@ class Scheduler:
 
                 permanent_failure = False
                 try:
-                    await self._execute(task, db)
+                    exec_status = await self._execute(task, db)
                 except PermanentScheduleError as exc:
                     permanent_failure = True
                     exec_status = "failure"
@@ -312,9 +313,18 @@ class Scheduler:
             logger.warning("Released %s stale scheduled task leases", reset_count)
             await db.commit()
 
-    async def _execute(self, task: ScheduledTask, db: AsyncSession) -> None:
+    async def _execute(self, task: ScheduledTask, db: AsyncSession) -> str:
         """Execute a single scheduled task."""
         logger.info(f"Executing scheduled task: {task.name} (skill={task.skill_name or 'none'})")
+
+        project = await db.get(Project, task.project_id)
+        if project and project.is_paused:
+            logger.info(
+                "Skipping scheduled task %s because project %s is paused",
+                task.id,
+                task.project_id,
+            )
+            return "paused"
 
         if task.skill_name:
             # Run the named skill via the registry
@@ -346,6 +356,8 @@ class Scheduler:
                 project_id=task.project_id,
                 action="scheduled_reminder",
             )
+
+        return "success"
 
 
 # Module-level singleton

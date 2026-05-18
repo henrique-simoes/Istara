@@ -11,17 +11,21 @@ from app.core.compute_registry import ComputeNode, ComputeRegistry
 def reset_settings():
     original_lmstudio_host = settings.lmstudio_host
     original_lmstudio_model = settings.lmstudio_model
+    original_llm_provider = settings.llm_provider
     original_lmstudio_auto_load_enabled = settings.lmstudio_auto_load_enabled
     original_lmstudio_auto_context_reload = settings.lmstudio_auto_context_reload
     original_lmstudio_max_load_attempts = settings.lmstudio_max_load_attempts_per_request
     original_lmstudio_allow_unload = settings.lmstudio_allow_unload_on_reload
+    original_strict_auto_routing = settings.strict_auto_routing
     yield
     settings.lmstudio_host = original_lmstudio_host
     settings.lmstudio_model = original_lmstudio_model
+    settings.llm_provider = original_llm_provider
     settings.lmstudio_auto_load_enabled = original_lmstudio_auto_load_enabled
     settings.lmstudio_auto_context_reload = original_lmstudio_auto_context_reload
     settings.lmstudio_max_load_attempts_per_request = original_lmstudio_max_load_attempts
     settings.lmstudio_allow_unload_on_reload = original_lmstudio_allow_unload
+    settings.strict_auto_routing = original_strict_auto_routing
 
 
 class _LMLoadThenChatClient:
@@ -420,6 +424,100 @@ async def test_registry_recovers_lmstudio_no_models_loaded_with_discovered_fallb
     assert client.load_attempts == ["bad-model", "good-model"]
     assert node.loaded_models == ["bad-model", "good-model"]
     assert node.is_healthy is True
+
+
+@pytest.mark.asyncio
+async def test_strict_routing_uses_configured_lmstudio_model_when_request_omits_model(
+    monkeypatch,
+):
+    monkeypatch.setattr(settings, "llm_provider", "lmstudio")
+    monkeypatch.setattr(settings, "lmstudio_model", "google/gemma-4-e4b")
+    monkeypatch.setattr(settings, "strict_auto_routing", True)
+    registry = ComputeRegistry()
+    client = _LMLoadThenChatClient()
+    node = ComputeNode(
+        node_id="lmstudio",
+        name="LM Studio",
+        host="http://relay.example",
+        source="relay",
+        provider_type="lmstudio",
+        is_healthy=True,
+        loaded_models=[],
+        model_capabilities={
+            "gemma-4-26b-a4b-it-assistant": {
+                "is_loaded": False,
+                "loadable": True,
+                "context_length": 262144,
+            },
+            "google/gemma-4-e4b": {
+                "is_loaded": False,
+                "loadable": True,
+                "context_length": 8192,
+            },
+        },
+    )
+
+    async def get_client():
+        return client
+
+    monkeypatch.setattr(node, "_get_client", get_client)
+    registry.register_node(node)
+
+    result = await registry.chat([{"role": "user", "content": "hello"}])
+
+    assert result["message"]["content"] == "loaded answer"
+    assert client.posts[0][0] == "api/v1/models/load"
+    assert client.posts[0][1]["model"] == "google/gemma-4-e4b"
+    assert client.posts[1][1]["model"] == "google/gemma-4-e4b"
+
+
+@pytest.mark.asyncio
+async def test_strict_routing_does_not_recover_context_with_different_lmstudio_model(
+    monkeypatch,
+):
+    monkeypatch.setattr(settings, "lmstudio_auto_context_reload", True)
+    monkeypatch.setattr(settings, "strict_auto_routing", True)
+    registry = ComputeRegistry()
+    client = _LMLoadThenChatClient()
+    node = ComputeNode(
+        node_id="lmstudio",
+        name="LM Studio",
+        host="http://localhost:1234",
+        source="local",
+        provider_type="lmstudio",
+        is_healthy=True,
+        loaded_models=["google/gemma-4-e4b", "gemma-4-26b-a4b-it-assistant"],
+        model_capabilities={
+            "google/gemma-4-e4b": {
+                "is_loaded": True,
+                "loadable": True,
+                "context_length": 2048,
+                "loaded_context_length": 2048,
+                "trained_context_length": 8192,
+            },
+            "gemma-4-26b-a4b-it-assistant": {
+                "is_loaded": False,
+                "loadable": True,
+                "context_length": 262144,
+                "trained_context_length": 262144,
+            },
+        },
+    )
+
+    async def get_client():
+        return client
+
+    monkeypatch.setattr(node, "_get_client", get_client)
+    registry.register_node(node)
+
+    with pytest.raises(RuntimeError, match="No compute nodes available for chat"):
+        await registry.chat(
+            [{"role": "user", "content": "hello"}],
+            model="google/gemma-4-e4b",
+            min_context=9000,
+        )
+
+    assert client.posts == []
 
 
 @pytest.mark.asyncio

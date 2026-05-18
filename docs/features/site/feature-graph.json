@@ -1,0 +1,1106 @@
+{
+  "edges": [
+    {
+      "source": "shell.navigation",
+      "target": "shell.projects"
+    },
+    {
+      "source": "shell.navigation",
+      "target": "shell.search"
+    },
+    {
+      "source": "shell.navigation",
+      "target": "shell.keyboard-shortcuts"
+    },
+    {
+      "source": "shell.navigation",
+      "target": "shell.onboarding"
+    },
+    {
+      "source": "shell.projects",
+      "target": "shell.navigation"
+    },
+    {
+      "source": "shell.projects",
+      "target": "chat.overview"
+    },
+    {
+      "source": "shell.projects",
+      "target": "tasks.kanban"
+    },
+    {
+      "source": "shell.search",
+      "target": "shell.navigation"
+    },
+    {
+      "source": "shell.search",
+      "target": "shell.keyboard-shortcuts"
+    },
+    {
+      "source": "shell.notifications-bell",
+      "target": "notifications.list"
+    },
+    {
+      "source": "shell.notifications-bell",
+      "target": "notifications.preferences"
+    },
+    {
+      "source": "shell.keyboard-shortcuts",
+      "target": "shell.search"
+    },
+    {
+      "source": "shell.keyboard-shortcuts",
+      "target": "shell.navigation"
+    },
+    {
+      "source": "shell.onboarding",
+      "target": "shell.navigation"
+    },
+    {
+      "source": "shell.onboarding",
+      "target": "chat.overview"
+    },
+    {
+      "source": "auth.login",
+      "target": "settings.security-factors"
+    },
+    {
+      "source": "auth.login",
+      "target": "settings.sessions"
+    },
+    {
+      "source": "chat.overview",
+      "target": "chat.sessions"
+    },
+    {
+      "source": "chat.overview",
+      "target": "chat.model-controls"
+    },
+    {
+      "source": "chat.overview",
+      "target": "chat.files"
+    },
+    {
+      "source": "chat.overview",
+      "target": "chat.audio"
+    },
+    {
+      "source": "chat.overview",
+      "target": "chat.steering"
+    },
+    {
+      "source": "chat.sessions",
+      "target": "chat.overview"
+    },
+    {
+      "source": "chat.sessions",
+      "target": "history.version"
+    },
+    {
+      "source": "chat.model-controls",
+      "target": "settings.llm-servers"
+    },
+    {
+      "source": "chat.model-controls",
+      "target": "settings.general"
+    },
+    {
+      "source": "chat.model-controls",
+      "target": "compute.pool"
+    },
+    {
+      "source": "chat.files",
+      "target": "documents.upload"
+    },
+    {
+      "source": "chat.files",
+      "target": "documents.library"
+    },
+    {
+      "source": "chat.files",
+      "target": "chat.overview"
+    },
+    {
+      "source": "chat.audio",
+      "target": "chat.overview"
+    },
+    {
+      "source": "chat.audio",
+      "target": "interviews.transcription"
+    },
+    {
+      "source": "chat.steering",
+      "target": "chat.overview"
+    },
+    {
+      "source": "chat.steering",
+      "target": "context.editor"
+    },
+    {
+      "source": "findings.evidence",
+      "target": "findings.phase-tabs"
+    },
+    {
+      "source": "findings.evidence",
+      "target": "findings.codebook"
+    },
+    {
+      "source": "findings.evidence",
+      "target": "findings.reports"
+    },
+    {
+      "source": "findings.phase-tabs",
+      "target": "findings.evidence"
+    },
+    {
+      "source": "findings.codebook",
+      "target": "findings.evidence"
+    },
+    {
+      "source": "findings.codebook",
+      "target": "findings.review"
+    },
+    {
+      "source": "findings.review",
+      "target": "findings.codebook"
+    },
+    {
+      "source": "findings.review",
+      "target": "tasks.review"
+    },
+    {
+      "source": "findings.reports",
+      "target": "findings.evidence"
+    },
+    {
+      "source": "findings.reports",
+      "target": "tasks.send-report"
+    },
+    {
+      "source": "findings.reports",
+      "target": "interfaces.handoff"
+    },
+    {
+      "source": "findings.slide-instructions",
+      "target": "findings.reports"
+    },
+    {
+      "source": "findings.slide-instructions",
+      "target": "interfaces.handoff"
+    },
+    {
+      "source": "laws.catalog",
+      "target": "laws.compliance"
+    },
+    {
+      "source": "laws.catalog",
+      "target": "findings.evidence"
+    },
+    {
+      "source": "laws.compliance",
+      "target": "laws.catalog"
+    },
+    {
+      "source": "laws.compliance",
+      "target": "quality.dashboard"
+    },
+    {
+      "source": "tasks.kanban",
+      "target": "tasks.editor"
+    },
+    {
+      "source": "tasks.kanban",
+      "target": "tasks.review"
+    },
+    {
+      "source": "tasks.kanban",
+      "target": "tasks.send-report"
+    },
+    {
+      "source": "tasks.editor",
+      "target": "tasks.kanban"
+    },
+    {
+      "source": "tasks.editor",
+      "target": "tasks.attachments"
+    },
+    {
+      "source": "tasks.review",
+      "target": "findings.review"
+    },
+    {
+      "source": "tasks.review",
+      "target": "agents.proposals"
+    },
+    {
+      "source": "tasks.attachments",
+      "target": "documents.upload"
+    },
+    {
+      "source": "tasks.attachments",
+      "target": "tasks.editor"
+    },
+    {
+      "source": "tasks.send-report",
+      "target": "findings.reports"
+    },
+    {
+      "source": "tasks.send-report",
+      "target": "tasks.review"
+    },
+    {
+      "source": "interviews.files",
+      "target": "interviews.transcription"
+    },
+    {
+      "source": "interviews.files",
+      "target": "documents.upload"
+    },
+    {
+      "source": "interviews.transcription",
+      "target": "interviews.files"
+    },
+    {
+      "source": "interviews.transcription",
+      "target": "findings.evidence"
+    },
+    {
+      "source": "interviews.preview-tags",
+      "target": "agents.registry"
+    },
+    {
+      "source": "interviews.preview-tags",
+      "target": "interviews.files"
+    },
+    {
+      "source": "documents.library",
+      "target": "documents.upload"
+    },
+    {
+      "source": "documents.library",
+      "target": "documents.preview"
+    },
+    {
+      "source": "documents.library",
+      "target": "chat.files"
+    },
+    {
+      "source": "documents.upload",
+      "target": "documents.library"
+    },
+    {
+      "source": "documents.upload",
+      "target": "chat.files"
+    },
+    {
+      "source": "documents.upload",
+      "target": "tasks.attachments"
+    },
+    {
+      "source": "documents.preview",
+      "target": "documents.library"
+    },
+    {
+      "source": "documents.preview",
+      "target": "documents.suggestions"
+    },
+    {
+      "source": "documents.suggestions",
+      "target": "documents.preview"
+    },
+    {
+      "source": "documents.suggestions",
+      "target": "chat.overview"
+    },
+    {
+      "source": "context.editor",
+      "target": "chat.steering"
+    },
+    {
+      "source": "context.editor",
+      "target": "memory.context-dag"
+    },
+    {
+      "source": "skills.catalog",
+      "target": "skills.proposals"
+    },
+    {
+      "source": "skills.catalog",
+      "target": "agents.registry"
+    },
+    {
+      "source": "skills.proposals",
+      "target": "skills.catalog"
+    },
+    {
+      "source": "skills.proposals",
+      "target": "agents.proposals"
+    },
+    {
+      "source": "skills.create",
+      "target": "skills.catalog"
+    },
+    {
+      "source": "skills.create",
+      "target": "agents.create"
+    },
+    {
+      "source": "agents.registry",
+      "target": "agents.detail"
+    },
+    {
+      "source": "agents.registry",
+      "target": "agents.a2a"
+    },
+    {
+      "source": "agents.registry",
+      "target": "agents.create"
+    },
+    {
+      "source": "agents.detail",
+      "target": "agents.registry"
+    },
+    {
+      "source": "agents.detail",
+      "target": "memory.agent"
+    },
+    {
+      "source": "agents.a2a",
+      "target": "agents.registry"
+    },
+    {
+      "source": "agents.a2a",
+      "target": "loops.agent-loops"
+    },
+    {
+      "source": "agents.proposals",
+      "target": "agents.registry"
+    },
+    {
+      "source": "agents.proposals",
+      "target": "skills.proposals"
+    },
+    {
+      "source": "agents.proposals",
+      "target": "tasks.review"
+    },
+    {
+      "source": "agents.create",
+      "target": "agents.registry"
+    },
+    {
+      "source": "agents.create",
+      "target": "skills.catalog"
+    },
+    {
+      "source": "memory.knowledge",
+      "target": "memory.agent"
+    },
+    {
+      "source": "memory.knowledge",
+      "target": "memory.context-dag"
+    },
+    {
+      "source": "memory.knowledge",
+      "target": "documents.library"
+    },
+    {
+      "source": "memory.agent",
+      "target": "agents.detail"
+    },
+    {
+      "source": "memory.agent",
+      "target": "memory.knowledge"
+    },
+    {
+      "source": "memory.health",
+      "target": "memory.knowledge"
+    },
+    {
+      "source": "memory.health",
+      "target": "quality.dashboard"
+    },
+    {
+      "source": "memory.context-dag",
+      "target": "context.editor"
+    },
+    {
+      "source": "memory.context-dag",
+      "target": "memory.knowledge"
+    },
+    {
+      "source": "interfaces.design-chat",
+      "target": "interfaces.generate"
+    },
+    {
+      "source": "interfaces.design-chat",
+      "target": "interfaces.findings-picker"
+    },
+    {
+      "source": "interfaces.generate",
+      "target": "interfaces.screens"
+    },
+    {
+      "source": "interfaces.generate",
+      "target": "interfaces.design-chat"
+    },
+    {
+      "source": "interfaces.screens",
+      "target": "interfaces.generate"
+    },
+    {
+      "source": "interfaces.screens",
+      "target": "interfaces.handoff"
+    },
+    {
+      "source": "interfaces.figma",
+      "target": "interfaces.screens"
+    },
+    {
+      "source": "interfaces.figma",
+      "target": "integrations.overview"
+    },
+    {
+      "source": "interfaces.handoff",
+      "target": "interfaces.screens"
+    },
+    {
+      "source": "interfaces.handoff",
+      "target": "findings.reports"
+    },
+    {
+      "source": "interfaces.findings-picker",
+      "target": "findings.evidence"
+    },
+    {
+      "source": "interfaces.findings-picker",
+      "target": "interfaces.design-chat"
+    },
+    {
+      "source": "integrations.overview",
+      "target": "integrations.messaging"
+    },
+    {
+      "source": "integrations.overview",
+      "target": "integrations.deployments"
+    },
+    {
+      "source": "integrations.overview",
+      "target": "integrations.mcp"
+    },
+    {
+      "source": "integrations.messaging",
+      "target": "integrations.overview"
+    },
+    {
+      "source": "integrations.messaging",
+      "target": "integrations.deployment-dashboard"
+    },
+    {
+      "source": "integrations.surveys",
+      "target": "integrations.deployments"
+    },
+    {
+      "source": "integrations.surveys",
+      "target": "findings.evidence"
+    },
+    {
+      "source": "integrations.mcp",
+      "target": "skills.catalog"
+    },
+    {
+      "source": "integrations.mcp",
+      "target": "agents.registry"
+    },
+    {
+      "source": "integrations.deployments",
+      "target": "integrations.deployment-dashboard"
+    },
+    {
+      "source": "integrations.deployments",
+      "target": "integrations.surveys"
+    },
+    {
+      "source": "integrations.deployments",
+      "target": "integrations.messaging"
+    },
+    {
+      "source": "integrations.deployment-dashboard",
+      "target": "integrations.deployments"
+    },
+    {
+      "source": "integrations.deployment-dashboard",
+      "target": "findings.evidence"
+    },
+    {
+      "source": "loops.overview",
+      "target": "loops.schedules"
+    },
+    {
+      "source": "loops.overview",
+      "target": "loops.agent-loops"
+    },
+    {
+      "source": "loops.schedules",
+      "target": "loops.overview"
+    },
+    {
+      "source": "loops.schedules",
+      "target": "loops.history"
+    },
+    {
+      "source": "loops.agent-loops",
+      "target": "agents.registry"
+    },
+    {
+      "source": "loops.agent-loops",
+      "target": "loops.schedules"
+    },
+    {
+      "source": "loops.custom",
+      "target": "loops.schedules"
+    },
+    {
+      "source": "loops.custom",
+      "target": "skills.catalog"
+    },
+    {
+      "source": "loops.history",
+      "target": "loops.overview"
+    },
+    {
+      "source": "loops.history",
+      "target": "history.version"
+    },
+    {
+      "source": "settings.general",
+      "target": "settings.llm-servers"
+    },
+    {
+      "source": "settings.general",
+      "target": "compute.pool"
+    },
+    {
+      "source": "settings.llm-servers",
+      "target": "chat.model-controls"
+    },
+    {
+      "source": "settings.llm-servers",
+      "target": "settings.connection-strings"
+    },
+    {
+      "source": "settings.users",
+      "target": "auth.login"
+    },
+    {
+      "source": "settings.users",
+      "target": "settings.security-factors"
+    },
+    {
+      "source": "settings.connection-strings",
+      "target": "settings.llm-servers"
+    },
+    {
+      "source": "settings.connection-strings",
+      "target": "settings.users"
+    },
+    {
+      "source": "settings.security-factors",
+      "target": "auth.login"
+    },
+    {
+      "source": "settings.security-factors",
+      "target": "settings.sessions"
+    },
+    {
+      "source": "settings.sessions",
+      "target": "auth.login"
+    },
+    {
+      "source": "settings.sessions",
+      "target": "settings.security-factors"
+    },
+    {
+      "source": "settings.updates",
+      "target": "settings.general"
+    },
+    {
+      "source": "settings.governed-evolution",
+      "target": "meta.hyperagent"
+    },
+    {
+      "source": "settings.governed-evolution",
+      "target": "quality.dashboard"
+    },
+    {
+      "source": "settings.compute-donation",
+      "target": "compute.pool"
+    },
+    {
+      "source": "settings.compute-donation",
+      "target": "settings.general"
+    },
+    {
+      "source": "settings.project",
+      "target": "shell.projects"
+    },
+    {
+      "source": "settings.project",
+      "target": "settings.general"
+    },
+    {
+      "source": "autoresearch.dashboard",
+      "target": "autoresearch.experiments"
+    },
+    {
+      "source": "autoresearch.dashboard",
+      "target": "autoresearch.leaderboard"
+    },
+    {
+      "source": "autoresearch.experiments",
+      "target": "autoresearch.dashboard"
+    },
+    {
+      "source": "autoresearch.experiments",
+      "target": "autoresearch.config"
+    },
+    {
+      "source": "autoresearch.leaderboard",
+      "target": "autoresearch.experiments"
+    },
+    {
+      "source": "autoresearch.leaderboard",
+      "target": "quality.dashboard"
+    },
+    {
+      "source": "autoresearch.config",
+      "target": "autoresearch.experiments"
+    },
+    {
+      "source": "autoresearch.config",
+      "target": "chat.model-controls"
+    },
+    {
+      "source": "compute.pool",
+      "target": "settings.compute-donation"
+    },
+    {
+      "source": "compute.pool",
+      "target": "settings.general"
+    },
+    {
+      "source": "ensemble.health",
+      "target": "quality.dashboard"
+    },
+    {
+      "source": "ensemble.health",
+      "target": "compute.pool"
+    },
+    {
+      "source": "quality.dashboard",
+      "target": "ensemble.health"
+    },
+    {
+      "source": "quality.dashboard",
+      "target": "settings.governed-evolution"
+    },
+    {
+      "source": "backup.view",
+      "target": "history.version"
+    },
+    {
+      "source": "backup.view",
+      "target": "settings.project"
+    },
+    {
+      "source": "meta.hyperagent",
+      "target": "settings.governed-evolution"
+    },
+    {
+      "source": "meta.hyperagent",
+      "target": "agents.registry"
+    },
+    {
+      "source": "admin.dashboard",
+      "target": "settings.users"
+    },
+    {
+      "source": "admin.dashboard",
+      "target": "settings.connection-strings"
+    },
+    {
+      "source": "history.version",
+      "target": "backup.view"
+    },
+    {
+      "source": "history.version",
+      "target": "chat.sessions"
+    },
+    {
+      "source": "history.version",
+      "target": "loops.history"
+    },
+    {
+      "source": "notifications.list",
+      "target": "shell.notifications-bell"
+    },
+    {
+      "source": "notifications.list",
+      "target": "notifications.preferences"
+    },
+    {
+      "source": "notifications.preferences",
+      "target": "notifications.list"
+    },
+    {
+      "source": "notifications.preferences",
+      "target": "shell.notifications-bell"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "shell.navigation",
+      "title": "Application Navigation"
+    },
+    {
+      "id": "shell.projects",
+      "title": "Project Switcher"
+    },
+    {
+      "id": "shell.search",
+      "title": "Global Search"
+    },
+    {
+      "id": "shell.notifications-bell",
+      "title": "Notification Bell"
+    },
+    {
+      "id": "shell.keyboard-shortcuts",
+      "title": "Keyboard Shortcuts"
+    },
+    {
+      "id": "shell.onboarding",
+      "title": "View Onboarding"
+    },
+    {
+      "id": "auth.login",
+      "title": "Login And Session Bootstrap"
+    },
+    {
+      "id": "chat.overview",
+      "title": "Chat Workspace"
+    },
+    {
+      "id": "chat.sessions",
+      "title": "Chat Sessions"
+    },
+    {
+      "id": "chat.model-controls",
+      "title": "Chat Model Controls"
+    },
+    {
+      "id": "chat.files",
+      "title": "Chat File Attachments"
+    },
+    {
+      "id": "chat.audio",
+      "title": "Chat Audio Conversation"
+    },
+    {
+      "id": "chat.steering",
+      "title": "Chat Steering"
+    },
+    {
+      "id": "findings.evidence",
+      "title": "Findings Evidence"
+    },
+    {
+      "id": "findings.phase-tabs",
+      "title": "Findings Phase Tabs"
+    },
+    {
+      "id": "findings.codebook",
+      "title": "Findings Codebook"
+    },
+    {
+      "id": "findings.review",
+      "title": "Findings Code Review"
+    },
+    {
+      "id": "findings.reports",
+      "title": "Project Reports"
+    },
+    {
+      "id": "findings.slide-instructions",
+      "title": "Report Slide Instructions"
+    },
+    {
+      "id": "laws.catalog",
+      "title": "UX Laws Catalog"
+    },
+    {
+      "id": "laws.compliance",
+      "title": "UX Laws Compliance"
+    },
+    {
+      "id": "tasks.kanban",
+      "title": "Task Kanban Board"
+    },
+    {
+      "id": "tasks.editor",
+      "title": "Task Editor"
+    },
+    {
+      "id": "tasks.review",
+      "title": "Human Task Review"
+    },
+    {
+      "id": "tasks.attachments",
+      "title": "Task Attachments"
+    },
+    {
+      "id": "tasks.send-report",
+      "title": "Send Task To Report"
+    },
+    {
+      "id": "interviews.files",
+      "title": "Interview Files"
+    },
+    {
+      "id": "interviews.transcription",
+      "title": "Interview Transcription"
+    },
+    {
+      "id": "interviews.preview-tags",
+      "title": "Interview Preview And Tags"
+    },
+    {
+      "id": "documents.library",
+      "title": "Document Library"
+    },
+    {
+      "id": "documents.upload",
+      "title": "Document Upload"
+    },
+    {
+      "id": "documents.preview",
+      "title": "Document Preview"
+    },
+    {
+      "id": "documents.suggestions",
+      "title": "Document Suggestions"
+    },
+    {
+      "id": "context.editor",
+      "title": "Project Context Editor"
+    },
+    {
+      "id": "skills.catalog",
+      "title": "Skills Catalog"
+    },
+    {
+      "id": "skills.proposals",
+      "title": "Skill Proposals"
+    },
+    {
+      "id": "skills.create",
+      "title": "Create Skill"
+    },
+    {
+      "id": "agents.registry",
+      "title": "Agent Registry"
+    },
+    {
+      "id": "agents.detail",
+      "title": "Agent Detail Panels"
+    },
+    {
+      "id": "agents.a2a",
+      "title": "Agent-To-Agent Log"
+    },
+    {
+      "id": "agents.proposals",
+      "title": "Agent Proposals"
+    },
+    {
+      "id": "agents.create",
+      "title": "Create Agent"
+    },
+    {
+      "id": "memory.knowledge",
+      "title": "Knowledge Memory"
+    },
+    {
+      "id": "memory.agent",
+      "title": "Agent Memory"
+    },
+    {
+      "id": "memory.health",
+      "title": "Memory Health"
+    },
+    {
+      "id": "memory.context-dag",
+      "title": "Context DAG"
+    },
+    {
+      "id": "interfaces.design-chat",
+      "title": "Interface Design Chat"
+    },
+    {
+      "id": "interfaces.generate",
+      "title": "Generate Interfaces"
+    },
+    {
+      "id": "interfaces.screens",
+      "title": "Screens Gallery"
+    },
+    {
+      "id": "interfaces.figma",
+      "title": "Configuration"
+    },
+    {
+      "id": "interfaces.handoff",
+      "title": "Interface Handoff"
+    },
+    {
+      "id": "interfaces.findings-picker",
+      "title": "Findings Picker"
+    },
+    {
+      "id": "integrations.overview",
+      "title": "Integrations Overview"
+    },
+    {
+      "id": "integrations.messaging",
+      "title": "Messaging Integrations"
+    },
+    {
+      "id": "integrations.surveys",
+      "title": "Survey Integrations"
+    },
+    {
+      "id": "integrations.mcp",
+      "title": "MCP Integrations"
+    },
+    {
+      "id": "integrations.deployments",
+      "title": "Research Deployments"
+    },
+    {
+      "id": "integrations.deployment-dashboard",
+      "title": "Deployment Dashboard"
+    },
+    {
+      "id": "loops.overview",
+      "title": "Loops Overview"
+    },
+    {
+      "id": "loops.schedules",
+      "title": "Loop Schedules"
+    },
+    {
+      "id": "loops.agent-loops",
+      "title": "Agent Loops"
+    },
+    {
+      "id": "loops.custom",
+      "title": "Custom Loops"
+    },
+    {
+      "id": "loops.history",
+      "title": "Loop Execution History"
+    },
+    {
+      "id": "settings.general",
+      "title": "System Status And Models"
+    },
+    {
+      "id": "settings.llm-servers",
+      "title": "LLM Server Settings"
+    },
+    {
+      "id": "settings.users",
+      "title": "User Management"
+    },
+    {
+      "id": "settings.connection-strings",
+      "title": "Connection Strings"
+    },
+    {
+      "id": "settings.security-factors",
+      "title": "Passkeys And Two-Factor Authentication"
+    },
+    {
+      "id": "settings.sessions",
+      "title": "Active Sessions"
+    },
+    {
+      "id": "settings.updates",
+      "title": "Software Updates"
+    },
+    {
+      "id": "settings.governed-evolution",
+      "title": "Governed Evolution"
+    },
+    {
+      "id": "settings.compute-donation",
+      "title": "Compute Donation"
+    },
+    {
+      "id": "settings.project",
+      "title": "Project Settings"
+    },
+    {
+      "id": "autoresearch.dashboard",
+      "title": "Autoresearch Dashboard"
+    },
+    {
+      "id": "autoresearch.experiments",
+      "title": "Autoresearch Experiments"
+    },
+    {
+      "id": "autoresearch.leaderboard",
+      "title": "Autoresearch Leaderboard"
+    },
+    {
+      "id": "autoresearch.config",
+      "title": "Autoresearch Configuration"
+    },
+    {
+      "id": "compute.pool",
+      "title": "Compute Pool"
+    },
+    {
+      "id": "ensemble.health",
+      "title": "Ensemble Health"
+    },
+    {
+      "id": "quality.dashboard",
+      "title": "Quality Dashboard"
+    },
+    {
+      "id": "backup.view",
+      "title": "Backup"
+    },
+    {
+      "id": "meta.hyperagent",
+      "title": "Meta-Agent"
+    },
+    {
+      "id": "admin.dashboard",
+      "title": "Admin Dashboard"
+    },
+    {
+      "id": "history.version",
+      "title": "Version History"
+    },
+    {
+      "id": "notifications.list",
+      "title": "Notifications List"
+    },
+    {
+      "id": "notifications.preferences",
+      "title": "Notification Preferences"
+    }
+  ]
+}

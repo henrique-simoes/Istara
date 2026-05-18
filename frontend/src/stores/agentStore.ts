@@ -15,8 +15,8 @@ interface AgentStore {
   capacity: AgentCapacityCheck | null;
   _pollTimer: ReturnType<typeof setInterval> | null;
 
-  fetchAgents: () => Promise<void>;
-  startPolling: () => void;
+  fetchAgents: (projectId?: string) => Promise<void>;
+  startPolling: (projectId?: string) => void;
   stopPolling: () => void;
   updateAgentStatus: (agentId: string, state: string, currentTask?: string) => void;
   selectAgent: (id: string | null) => void;
@@ -31,7 +31,7 @@ interface AgentStore {
   deleteAgent: (id: string) => Promise<void>;
   pauseAgent: (id: string) => Promise<void>;
   resumeAgent: (id: string) => Promise<void>;
-  fetchA2ALog: () => Promise<void>;
+  fetchA2ALog: (projectId?: string) => Promise<void>;
   fetchCapacity: () => Promise<void>;
   updateHeartbeat: (agentId: string, status: HeartbeatStatus) => void;
 
@@ -47,21 +47,21 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
   capacity: null,
   _pollTimer: null,
 
-  fetchAgents: async () => {
+  fetchAgents: async (projectId) => {
     set({ loading: true, error: null });
     try {
-      const data = await agentsApi.list();
+      const data = await agentsApi.list(true, projectId);
       set({ agents: data.agents || [], loading: false });
     } catch (e: any) {
       set({ error: e.message, loading: false });
     }
   },
 
-  startPolling: () => {
+  startPolling: (projectId) => {
     const { _pollTimer, fetchAgents } = get();
     if (_pollTimer) return; // already polling
     const timer = setInterval(() => {
-      fetchAgents();
+      fetchAgents(projectId);
     }, POLL_INTERVAL_MS);
     set({ _pollTimer: timer });
   },
@@ -125,9 +125,9 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
     }));
   },
 
-  fetchA2ALog: async () => {
+  fetchA2ALog: async (projectId) => {
     try {
-      const data = await agentsApi.a2aLog();
+      const data = await agentsApi.a2aLog(100, projectId);
       set({ a2aMessages: data.messages || [] });
     } catch {
       // silent

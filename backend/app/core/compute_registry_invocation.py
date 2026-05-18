@@ -38,7 +38,117 @@ from app.core.token_counter import count_tokens
 
 logger = logging.getLogger("app.core.compute_registry")
 
+
+def _hardware_resource_key(node: ComputeNode) -> tuple[str, str]:
+    host = getattr(node, "host", "") or getattr(node, "provider_host", "") or ""
+    if host:
+        _, hostname, _, _ = _server_endpoint_identity(host)
+        if hostname == "local":
+            return ("machine", "local")
+        return ("machine", hostname)
+    if getattr(node, "source", "") in {"relay", "browser"}:
+        return ("donor", getattr(node, "user_id", "") or getattr(node, "node_id", ""))
+    return ("node", getattr(node, "node_id", ""))
+
+
+def _unique_hardware_resource_nodes(nodes: list[ComputeNode]) -> list[ComputeNode]:
+    resources: dict[tuple[str, str], ComputeNode] = {}
+    for node in nodes:
+        key = _hardware_resource_key(node)
+        current = resources.get(key)
+        if current is None:
+            resources[key] = node
+            continue
+        if getattr(node, "ram_total_gb", 0) > getattr(current, "ram_total_gb", 0):
+            resources[key] = node
+            continue
+        if (
+            getattr(node, "ram_total_gb", 0) == getattr(current, "ram_total_gb", 0)
+            and getattr(node, "ram_available_gb", 0) > getattr(current, "ram_available_gb", 0)
+        ):
+            resources[key] = node
+            continue
+        if getattr(node, "is_healthy", False) and not getattr(current, "is_healthy", False):
+            resources[key] = node
+    return list(resources.values())
+
+
+def _endpoint_resource_key(node: ComputeNode) -> tuple:
+    host = getattr(node, "host", "") or getattr(node, "provider_host", "") or ""
+    if host:
+        return (
+            "endpoint",
+            getattr(node, "provider_type", ""),
+            *_server_endpoint_identity(host),
+        )
+    return ("node", getattr(node, "node_id", ""))
+
+
+def _source_snapshot_rank(node: ComputeNode) -> int:
+    source = getattr(node, "source", "")
+    if source == "local":
+        return 30
+    if source in {"relay", "browser"}:
+        return 20
+    if source == "network":
+        return 10
+    return 0
+
+
+def _prefer_node_snapshot(current: ComputeNode, candidate: ComputeNode) -> ComputeNode:
+    candidate_source_rank = _source_snapshot_rank(candidate)
+    current_source_rank = _source_snapshot_rank(current)
+    if candidate_source_rank != current_source_rank:
+        return candidate if candidate_source_rank > current_source_rank else current
+    candidate_healthy = getattr(candidate, "is_healthy", False)
+    current_healthy = getattr(current, "is_healthy", False)
+    if candidate_healthy != current_healthy:
+        return candidate if candidate_healthy else current
+    if getattr(candidate, "priority", 10) < getattr(current, "priority", 10):
+        return candidate
+    candidate_models = len(getattr(candidate, "loaded_models", []) or []) + len(
+        getattr(candidate, "model_capabilities", {}) or {}
+    )
+    current_models = len(getattr(current, "loaded_models", []) or []) + len(
+        getattr(current, "model_capabilities", {}) or {}
+    )
+    if candidate_models > current_models:
+        return candidate
+    if getattr(candidate, "last_heartbeat", 0) > getattr(current, "last_heartbeat", 0):
+        return candidate
+    return current
+
+
+def _unique_endpoint_nodes(nodes: list[ComputeNode]) -> list[ComputeNode]:
+    endpoints: dict[tuple, ComputeNode] = {}
+    order: list[tuple] = []
+    for node in nodes:
+        key = _endpoint_resource_key(node)
+        current = endpoints.get(key)
+        if current is None:
+            endpoints[key] = node
+            order.append(key)
+            continue
+        endpoints[key] = _prefer_node_snapshot(current, node)
+    return [endpoints[key] for key in order]
+
+
 class ComputeRegistryInvocationMixin:
+    @staticmethod
+    def _effective_requested_chat_model(model: str | None) -> str | None:
+        requested = (model or "").strip()
+        if requested and requested != "default":
+            return requested
+        configured = (settings.lmstudio_model or "").strip()
+        if (
+            settings.strict_auto_routing
+            and settings.llm_provider == "lmstudio"
+            and configured
+            and configured != "default"
+        ):
+            return configured
+        return model
+
     async def chat(
         self,
         messages: list[dict],
@@ -52,6 +162,7 @@ class ComputeRegistryInvocationMixin:
         thinking_mode: str | None = None,
     ) -> dict:
         """Route a chat request to the best available node."""
+        model = self._effective_requested_chat_model(model)
         msgs = list(messages)
         if system:
             msgs = [{"role": "system", "content": system}, *msgs]
@@ -300,6 +411,7 @@ class ComputeRegistryInvocationMixin:
         thinking_mode: str | None = None,
     ) -> AsyncGenerator[str | dict, None]:
         """Streaming chat -- yields str chunks and dict for tool calls."""
+        model = self._effective_requested_chat_model(model)
         msgs = list(messages)
         if system:
             msgs = [{"role": "system", "content": system}, *msgs]
@@ -708,7 +820,9 @@ class ComputeRegistryInvocationMixin:
         for node in self._select_candidates():
             try:
                 if node.source in ("relay", "browser"):
-                    for name in node.loaded_models:
+                    for name in _unique_model_names(
+                        list(node.loaded_models or []) + list(node.model_capabilities.keys())
+                    ):
                         all_models.append(self._model_record_for_node(node, name))
                     continue
 
@@ -860,15 +974,19 @@ class ComputeRegistryInvocationMixin:
         registry_nodes = list(self._nodes.values())
         for node in registry_nodes:
             _hydrate_local_resources(node)
-        nodes = [n.to_dict() for n in registry_nodes]
-        alive = sum(1 for n in registry_nodes if n.is_healthy)
+        logical_nodes = _unique_endpoint_nodes(registry_nodes)
+        nodes = [n.to_dict() for n in logical_nodes]
+        alive = sum(1 for n in logical_nodes if n.is_healthy)
+        reachable = sum(1 for n in nodes if n.get("is_reachable"))
         all_models: set[str] = set()
-        for n in registry_nodes:
+        for n in logical_nodes:
             all_models.update(n.loaded_models or [])
-        total_ram = sum(n.ram_total_gb for n in registry_nodes)
-        avail_ram = sum(n.ram_available_gb for n in registry_nodes)
-        total_cpu = sum(n.cpu_cores for n in registry_nodes)
-        capacity = compute_capacity_envelope(registry_nodes)
+            all_models.update(str(name) for name in n.model_capabilities.keys())
+        hardware_nodes = _unique_hardware_resource_nodes(logical_nodes)
+        total_ram = sum(n.ram_total_gb for n in hardware_nodes)
+        avail_ram = sum(n.ram_available_gb for n in hardware_nodes)
+        total_cpu = sum(n.cpu_cores for n in hardware_nodes)
+        capacity = compute_capacity_envelope(logical_nodes)
 
         if alive >= 8:
             tier = "full_swarm"
@@ -884,6 +1002,9 @@ class ComputeRegistryInvocationMixin:
         return {
             "total_nodes": len(nodes),
             "alive_nodes": alive,
+            "ready_nodes": alive,
+            "reachable_nodes": reachable,
+            "hardware_node_count": len(hardware_nodes),
             "total_ram_gb": round(total_ram, 1),
             "available_ram_gb": round(avail_ram, 1),
             "total_cpu_cores": total_cpu,

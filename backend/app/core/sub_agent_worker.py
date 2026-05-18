@@ -17,6 +17,7 @@ from datetime import datetime, timezone
 from sqlalchemy import case, select, or_
 
 from app.models.database import async_session
+from app.models.project import Project
 from app.models.task import Task, TaskStatus
 from app.models.agent import Agent, AgentState
 from app.api.websocket import broadcast_agent_status, broadcast_task_progress
@@ -102,9 +103,11 @@ class SubAgentWorker:
 
             result = await db.execute(
                 select(Task)
+                .join(Project, Project.id == Task.project_id)
                 .where(
                     Task.status.in_([TaskStatus.BACKLOG, TaskStatus.IN_PROGRESS]),
                     Task.agent_id == self._agent_id,
+                    Project.is_paused.is_(False),
                     or_(
                         Task.locked_by.is_(None),
                         Task.locked_by == self._agent_id,
@@ -137,6 +140,17 @@ class SubAgentWorker:
         if not project:
             logger.warning(f"Project {task.project_id} not found for task {task.id}")
             return
+        if project.is_paused:
+            logger.info(
+                "SubAgent %s deferring task %s because project %s is paused",
+                self._agent_id,
+                task.id,
+                project.id,
+            )
+            task.status = TaskStatus.BACKLOG
+            task.agent_notes = "Project is paused; agent execution deferred."
+            await db.commit()
+            return
 
         try:
             await executor._execute_task(db, task, project)
@@ -146,6 +160,7 @@ class SubAgentWorker:
             task.last_retry_at = datetime.now(timezone.utc)
             task.agent_notes = f"Execution failed: {str(e)[:200]}"
 
+            event = None
             if task.retry_count < (task.max_retries or 3):
                 task.status = TaskStatus.BACKLOG
             else:
@@ -166,6 +181,10 @@ class SubAgentWorker:
                 )
                 await diagnose_review_event(db, event.id)
             await db.commit()
+            if event is not None:
+                from app.core.task_review import record_review_side_effects
+
+                await record_review_side_effects(event)
 
     async def check_collaboration_requests(self) -> list[dict]:
         """Check A2A inbox for collaboration requests."""

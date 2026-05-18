@@ -125,6 +125,116 @@ class _InlineThinkingStreamClient:
         return _InlineThinkingStreamResponse()
 
 
+class _NoLoadedModelsClient:
+    async def get(self, path: str, timeout: float | None = None):
+        return httpx.Response(
+            200,
+            request=httpx.Request("GET", f"http://test/{path}"),
+            json={"data": []},
+        )
+
+
+@pytest.mark.asyncio
+async def test_lmstudio_no_loaded_model_is_reachable_not_ready(monkeypatch):
+    node = ComputeNode(
+        node_id="lmstudio",
+        name="Local LM Studio",
+        host="http://localhost:1234",
+        source="local",
+        provider_type="lmstudio",
+    )
+    client = _NoLoadedModelsClient()
+
+    async def get_client():
+        return client
+
+    monkeypatch.setattr(node, "_get_client", get_client)
+
+    healthy = await node.check_health()
+    payload = node.to_dict()
+
+    assert healthy is False
+    assert node.is_healthy is False
+    assert node.health_state == "no_model_loaded"
+    assert payload["alive"] is False
+    assert payload["is_ready"] is False
+    assert payload["is_reachable"] is True
+    assert payload["online"] is True
+    assert payload["readiness_state"] == "no_model_loaded"
+
+
+def test_compute_stats_count_reachable_nodes_separately_from_ready_nodes():
+    registry = ComputeRegistry()
+    registry.register_node(
+        ComputeNode(
+            node_id="lmstudio",
+            name="Local LM Studio",
+            host="http://localhost:1234",
+            source="local",
+            provider_type="lmstudio",
+            is_healthy=False,
+            health_state="no_model_loaded",
+            model_capabilities={
+                "qwen3": {
+                    "is_loaded": False,
+                    "loadable": True,
+                    "supports_tools": True,
+                }
+            },
+        )
+    )
+
+    stats = registry.get_stats()
+
+    assert stats["alive_nodes"] == 0
+    assert stats["ready_nodes"] == 0
+    assert stats["reachable_nodes"] == 1
+    assert stats["available_models"] == ["qwen3"]
+    assert stats["nodes"][0]["alive"] is False
+    assert stats["nodes"][0]["is_reachable"] is True
+
+
+@pytest.mark.asyncio
+async def test_health_check_discovers_lmstudio_capabilities_without_loaded_model(monkeypatch):
+    registry = ComputeRegistry()
+    node = ComputeNode(
+        node_id="lmstudio",
+        name="Local LM Studio",
+        host="http://localhost:1234",
+        source="local",
+        provider_type="lmstudio",
+    )
+    client = _NoLoadedModelsClient()
+
+    async def get_client():
+        return client
+
+    async def detect_capabilities(host, api_key="", provider_type="openai_compat", active_probe=None):
+        return {
+            "qwen3": SimpleNamespace(
+                to_dict=lambda: {
+                    "is_loaded": False,
+                    "loadable": True,
+                    "supports_tools": True,
+                }
+            )
+        }
+
+    monkeypatch.setattr(node, "_get_client", get_client)
+    monkeypatch.setattr(
+        "app.core.model_capabilities.detect_capabilities_generic",
+        detect_capabilities,
+    )
+    registry.register_node(node)
+
+    results = await registry.check_all_health()
+
+    assert results["lmstudio"] is False
+    assert node.is_healthy is False
+    assert node.health_state == "no_model_loaded"
+    assert node.model_capabilities["qwen3"]["loadable"] is True
+
+
 def test_local_compute_node_hydrates_hardware_resources(monkeypatch):
     import app.core.compute_registry_helpers as compute_registry_helpers
 
@@ -154,6 +264,209 @@ def test_local_compute_node_hydrates_hardware_resources(monkeypatch):
     assert stats["available_ram_gb"] == 42.5
     assert stats["total_cpu_cores"] == 12
     assert stats["nodes"][0]["gpu_name"] == "Test GPU"
+
+
+def test_compute_stats_count_duplicate_local_hardware_once():
+    registry = ComputeRegistry()
+    registry.register_node(
+        ComputeNode(
+            node_id="local-lmstudio",
+            name="Local LM Studio",
+            host="http://localhost:1234",
+            source="local",
+            provider_type="lmstudio",
+            is_healthy=True,
+            ram_total_gb=64.0,
+            ram_available_gb=40.0,
+            cpu_cores=12,
+            loaded_models=["qwen3"],
+        )
+    )
+    registry.register_node(
+        ComputeNode(
+            node_id="local-ollama",
+            name="Local Ollama",
+            host="http://localhost:11434",
+            source="local",
+            provider_type="ollama",
+            is_healthy=True,
+            ram_total_gb=64.0,
+            ram_available_gb=39.0,
+            cpu_cores=12,
+            loaded_models=["nomic-embed-text"],
+        )
+    )
+
+    stats = registry.get_stats()
+
+    assert stats["total_nodes"] == 2
+    assert stats["hardware_node_count"] == 1
+    assert stats["total_ram_gb"] == 64.0
+    assert stats["available_ram_gb"] == 40.0
+    assert stats["total_cpu_cores"] == 12
+
+
+def test_compute_stats_collapse_local_ip_aliases_before_display_and_ram(monkeypatch):
+    import app.core.compute_registry_helpers as compute_registry_helpers
+
+    monkeypatch.setattr(
+        compute_registry_helpers,
+        "_local_machine_aliases",
+        lambda: {"localhost", "127.0.0.1", "192.0.2.142", "192.0.2.215"},
+    )
+    registry = ComputeRegistry()
+    registry.register_node(
+        ComputeNode(
+            node_id="network-142",
+            name="Mac Studio via .142",
+            host="http://192.0.2.142:1234",
+            source="network",
+            provider_type="lmstudio",
+            is_healthy=True,
+            ram_total_gb=36.0,
+            ram_available_gb=23.4,
+            cpu_cores=16,
+            loaded_models=["qwen3"],
+        )
+    )
+    registry.register_node(
+        ComputeNode(
+            node_id="network-215",
+            name="Mac Studio via .215",
+            host="http://192.0.2.215:1234",
+            source="network",
+            provider_type="lmstudio",
+            is_healthy=True,
+            ram_total_gb=36.0,
+            ram_available_gb=22.8,
+            cpu_cores=16,
+            loaded_models=["qwen3"],
+        )
+    )
+
+    stats = registry.get_stats()
+
+    assert stats["total_nodes"] == 1
+    assert stats["hardware_node_count"] == 1
+    assert stats["total_ram_gb"] == 36.0
+    assert stats["available_ram_gb"] == 23.4
+    assert stats["total_cpu_cores"] == 16
+    assert [node["node_id"] for node in stats["nodes"]] == ["network-142"]
+
+
+def test_relay_alias_replaces_network_discovery_for_same_endpoint(monkeypatch):
+    import app.core.compute_registry_helpers as compute_registry_helpers
+
+    monkeypatch.setattr(
+        compute_registry_helpers,
+        "_local_machine_aliases",
+        lambda: {"localhost", "127.0.0.1", "192.0.2.142"},
+    )
+    registry = ComputeRegistry()
+    registry.register_node(
+        ComputeNode(
+            node_id="network-142",
+            name="Network LM Studio",
+            host="http://192.0.2.142:1234",
+            source="network",
+            provider_type="lmstudio",
+            is_healthy=True,
+            priority=10,
+            loaded_models=["qwen3"],
+        )
+    )
+    registry.register_node(
+        ComputeNode(
+            node_id="relay-142",
+            name="Relay Mac Studio",
+            host="http://192.0.2.142:1234",
+            source="relay",
+            provider_type="lmstudio",
+            is_relay=True,
+            is_healthy=True,
+            priority=20,
+            loaded_models=["qwen3"],
+        )
+    )
+
+    stats = registry.get_stats()
+
+    assert list(registry._nodes) == ["relay-142"]
+    assert stats["total_nodes"] == 1
+    assert stats["nodes"][0]["node_id"] == "relay-142"
+
+
+def test_compute_stats_keep_distinct_local_services_but_count_machine_ram_once(monkeypatch):
+    import app.core.compute_registry_helpers as compute_registry_helpers
+
+    monkeypatch.setattr(
+        compute_registry_helpers,
+        "_local_machine_aliases",
+        lambda: {"localhost", "127.0.0.1", "192.0.2.142", "192.0.2.215"},
+    )
+    registry = ComputeRegistry()
+    registry.register_node(
+        ComputeNode(
+            node_id="lmstudio",
+            name="Local LM Studio",
+            host="http://192.0.2.142:1234",
+            source="network",
+            provider_type="lmstudio",
+            is_healthy=True,
+            ram_total_gb=36.0,
+            ram_available_gb=23.4,
+            cpu_cores=16,
+            loaded_models=["qwen3"],
+        )
+    )
+    registry.register_node(
+        ComputeNode(
+            node_id="ollama",
+            name="Local Ollama",
+            host="http://192.0.2.215:11434",
+            source="network",
+            provider_type="ollama",
+            is_healthy=True,
+            ram_total_gb=36.0,
+            ram_available_gb=21.0,
+            cpu_cores=16,
+            loaded_models=["nomic-embed-text"],
+        )
+    )
+
+    stats = registry.get_stats()
+
+    assert stats["total_nodes"] == 2
+    assert stats["hardware_node_count"] == 1
+    assert stats["total_ram_gb"] == 36.0
+    assert stats["available_ram_gb"] == 23.4
+    assert stats["total_cpu_cores"] == 16
+
+
+def test_compute_stats_include_capability_only_models():
+    registry = ComputeRegistry()
+    registry.register_node(
+        ComputeNode(
+            node_id="relay-capabilities",
+            name="Relay Capabilities",
+            host="http://192.0.2.10:1234",
+            source="relay",
+            provider_type="lmstudio",
+            is_healthy=True,
+            model_capabilities={
+                "google/gemma-4-e4b": {
+                    "supports_tools": True,
+                    "supports_vision": False,
+                    "context_length": 8192,
+                }
+            },
+        )
+    )
+
+    stats = registry.get_stats()
+
+    assert stats["available_models"] == ["google/gemma-4-e4b"]
+    assert "google/gemma-4-e4b" in stats["nodes"][0]["model_capabilities"]
 
 
 def test_compute_registry_registration_logs_redact_endpoint(caplog):

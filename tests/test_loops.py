@@ -375,3 +375,40 @@ async def test_scheduler_records_missing_skill_as_failure(auth_headers):
         )).scalars().all()
         assert task.execution_count == 1
         assert len(executions) == 1
+
+
+@pytest.mark.asyncio
+async def test_scheduler_skips_paused_project_without_running_skill(auth_headers):
+    """Due schedules are recorded as paused when their project is paused."""
+    await init_db()
+    project_id = str(uuid.uuid4())
+    schedule_id = str(uuid.uuid4())
+    now = datetime.now(timezone.utc)
+    async with async_session() as db:
+        db.add(Project(id=project_id, name="Paused schedule project", is_paused=True))
+        db.add(ScheduledTask(
+            id=schedule_id,
+            name="Paused Project Schedule",
+            description="",
+            cron_expression="* * * * *",
+            skill_name="missing-skill-that-should-not-run",
+            project_id=project_id,
+            next_run=now - timedelta(minutes=1),
+        ))
+        await db.commit()
+
+    await scheduler._tick()
+
+    async with async_session() as db:
+        task = (await db.execute(
+            select(ScheduledTask).where(ScheduledTask.id == schedule_id)
+        )).scalar_one()
+        execution = (await db.execute(
+            select(LoopExecution).where(LoopExecution.source_id == schedule_id)
+        )).scalars().first()
+
+    assert task.enabled is True
+    assert task.last_status == "paused"
+    assert task.execution_count >= 1
+    assert execution is not None
+    assert execution.status == "paused"

@@ -9,6 +9,7 @@ Use it with:
 - Compass Forge status/brief/impact/gates for the current repository map
 - `CHANGE_CHECKLIST.md` for step-by-step execution
 - `DOCUMENTATION.md`, `TESTING.md`, and `SECURITY.md` when docs, verification history, or release/security process changes
+- `docs/features/README.md`, `docs/features/inventory.json`, and generated feature manifests when UI or user-facing architecture changes
 - Compass Forge specs/tasks/evidence for future plans, deferred hardening, stale-branch analysis, and review/correction workflows
 
 The rule is simple: no change is local unless proven otherwise.
@@ -31,6 +32,7 @@ For any non-trivial change, check these six surfaces:
 | Data shape | models, route responses, `frontend/src/lib/types.ts`, stores, renderers | Type/serialization drift breaks UI and agents |
 | Endpoint behavior | `frontend/src/lib/api.ts`, calling stores/components, e2e/simulation flows | API consumers silently desync |
 | View/menu structure | `Sidebar.tsx`, `HomeClient.tsx`, mobile nav, search/shortcuts, simulation coverage | UI routes and navigation contracts drift |
+| Feature documentation inventory | `docs/features/inventory.json`, `docs/features/content/`, `docs/features/glossary/`, generated `site/`, `llms.txt`, `tests/test_feature_docs.py` | Future users and agents lose the current UI/architecture map |
 | Background jobs/events | websocket broadcasters, frontend listeners, notification handling, loops/autoresearch views | Async systems fail indirectly |
 | Persona or skill behavior | persona files, skill definitions, routing/recommendation logic, tests, docs | Agent behavior changes without architectural memory |
 | Release/update flow | version script, workflows, updater routes, desktop tray update logic, docs | Shipping/install/update path breaks |
@@ -100,6 +102,7 @@ For any non-trivial change, check these six surfaces:
 | `frontend/src/components/layout/Sidebar.tsx` | `HomeClient.tsx`, `MobileNav.tsx`, search modal results, keyboard shortcuts, simulation navigation scenarios, Compass Forge freshness |
 | `frontend/src/components/layout/HomeClient.tsx` view switch | sidebar IDs, mobile nav IDs, onboarding/tour transitions, project-required guards, Compass Forge freshness |
 | active view IDs | localStorage key usage, deep-link/navigation events, right panel logic, notifications and suggestions that navigate |
+| feature docs inventory paths | source feature pages, generated site manifests, `llms.txt`, feature-doc validator |
 
 ### Stores and Client State
 
@@ -176,6 +179,8 @@ If a change would confuse a future agent reading the UI or API map, it probably 
 | workflow/process expectations | `SYSTEM_PROMPT.md`, `AGENTS.md`, `CHANGE_CHECKLIST.md`, model wrappers, contributor docs |
 | release/update behavior | `Tech.md`, release workflow docs, updater descriptions, versioning script references |
 | user-facing capabilities | README/wiki/docs feature docs where applicable |
+| UI menu/tab/sub-feature behavior | `docs/features/inventory.json`, both `researcher.md` and `architecture.md` pages, glossary terms, generated `docs/features/site/`, `docs/features/llms.txt`, `tests/test_feature_docs.py` |
+| feature docs generator/schema | `scripts/feature_docs.py`, `tests/test_feature_docs.py`, all generated manifests, `docs/features/README.md` |
 | Istara-agent understanding of a feature | relevant persona files in `backend/app/agents/personas/`, prompt/process docs, Compass Forge freshness if inventory changed |
 
 ### Required Governance Checks
@@ -185,6 +190,13 @@ After architecture-affecting changes, run:
 ```bash
 python scripts/check_integrity.py
 python scripts/check_ci_governance.py
+```
+
+After feature documentation changes, run:
+
+```bash
+python scripts/feature_docs.py --seed-missing --generate-site --check
+pytest tests/test_feature_docs.py -q
 ```
 
 ## Release, Versioning, and Update Matrix
@@ -241,7 +253,8 @@ If you add a new `reports` view:
 - update search/keyboard shortcuts if relevant
 - add or update store/API wiring
 - add a simulation scenario or extend an existing one
-- regenerate docs
+- update `docs/features/inventory.json` and the two source pages for the new view
+- regenerate feature docs with `python scripts/feature_docs.py --seed-missing --generate-site --check`
 
 ### Example 3: Change task status logic
 
