@@ -35,7 +35,7 @@ export default function DeploymentWizard({ onClose }: DeploymentWizardProps) {
   const [deployed, setDeployed] = useState(false);
 
   useEffect(() => {
-    fetchChannels(undefined, activeProjectId || undefined);
+    fetchChannels(undefined, activeProjectId);
   }, [activeProjectId, fetchChannels]);
 
   const stepIndex = STEPS.indexOf(currentStep);

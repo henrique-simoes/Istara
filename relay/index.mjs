@@ -134,6 +134,7 @@ const stats = await getSystemStats();
 const ws = createConnection(opts.server, {
   token: opts.token,
   networkToken: opts.networkToken || "",
+  connectionString: connStr || "",
   onOpen: async () => {
     console.log("✅ Connected to Istara server");
     stateMachine.transition("idle");

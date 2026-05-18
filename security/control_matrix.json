@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "benchmark_version": "2026.05.08",
-  "last_reviewed": "2026-05-08",
+  "benchmark_version": "2026.05.18",
+  "last_reviewed": "2026-05-18",
   "owner": "Istara release governance",
   "thresholds": {
     "production_release": {
@@ -42,7 +42,9 @@
         "backend/app/core/permissions.py",
         "backend/app/core/field_encryption.py",
         "backend/app/core/connection_string.py",
-        "backend/app/core/compute_registry.py",
+        "backend/app/core/compute_registry*.py",
+        "backend/app/core/compute_node*.py",
+        "backend/app/core/compute_pool.py",
         "backend/app/core/compute_capacity.py",
         "backend/app/core/improvement_governance*.py",
         "backend/app/core/meta_hyperagent.py",
@@ -52,6 +54,7 @@
         "backend/app/mcp/**",
         "backend/app/services/mcp_client_manager.py",
         "backend/app/services/a2a.py",
+        "backend/app/models/mcp*.py",
         "backend/app/models/agent.py",
         "backend/app/models/user.py",
         "backend/app/models/*auth*.py",
@@ -64,10 +67,15 @@
         "frontend/src/app/login/page.tsx",
         "frontend/src/components/auth/**",
         "frontend/src/components/common/UserManagement.tsx",
+        "frontend/src/components/admin/AdminDashboard.tsx",
+        "frontend/src/components/settings/ConnectionStringPanel.tsx",
+        "frontend/src/components/integrations/MCP*.tsx",
+        "frontend/src/stores/integrationsStore.ts",
         "frontend/src/components/settings/PasskeyManager.tsx",
         "frontend/src/components/settings/TOTPManager.tsx",
         "frontend/src/lib/improvementGovernance*.ts",
         "frontend/src/lib/reasoningBank*.ts",
+        "relay/**",
         "scripts/security_benchmark.py",
         "scripts/security_release_readiness.py",
         "scripts/check_change_obligations.py",
@@ -79,6 +87,8 @@
         "tests/test_a2a_security.py",
         "tests/test_webauthn.py",
         "tests/test_connections.py",
+        "tests/test_compute.py",
+        "tests/compute_cases/*.py",
         "tests/test_files.py",
         "tests/test_backup.py",
         "tests/test_llm_servers.py",
@@ -396,11 +406,12 @@
       "evidence": [
         "backend/app/core/permissions.py",
         "backend/app/api/routes/projects.py",
+        "backend/app/api/routes/compute.py",
         "tests/test_project_rbac.py",
         "tests/test_auth_security.py"
       ],
       "future_change_trigger": true,
-      "notes": "Global admin, project admin, researcher, viewer, and legacy role mappings are governed."
+      "notes": "Global admin, project admin, researcher, viewer, legacy role mappings, and donated-compute project scopes are governed."
     },
     {
       "id": "AUTHZ-002",
@@ -548,12 +559,17 @@
       "evidence": [
         "backend/app/core/connection_string.py",
         "backend/app/api/routes/connections.py",
+        "backend/app/api/routes/compute.py",
         "backend/app/core/compute_registry.py",
+        "backend/app/core/compute_registry_routing.py",
+        "backend/app/core/compute_node.py",
+        "relay/lib/connection.mjs",
         "tests/test_connections.py",
-        "tests/test_compute.py"
+        "tests/test_compute.py",
+        "tests/test_project_rbac.py"
       ],
       "future_change_trigger": true,
-      "notes": "Connection string lifecycle is part of auth, not a separate trust path."
+      "notes": "Connection string lifecycle is part of auth, not a separate trust path; compute donation strings carry explicit allowed_project_ids and are revalidated before relay nodes receive project content."
     },
     {
       "id": "MCP-001",
@@ -570,12 +586,14 @@
       "evidence": [
         "backend/app/api/routes/mcp.py",
         "backend/app/services/mcp_client_manager.py",
+        "backend/app/models/mcp_server_config.py",
+        "frontend/src/components/integrations/MCPTab.tsx",
         "backend/app/mcp/server.py",
         "tests/test_mcp.py",
         "tests/simulation/scenarios/56-mcp-server-security.mjs"
       ],
       "future_change_trigger": true,
-      "notes": "Tool execution must remain policy-mediated and visible to audit processes; external MCP URLs and cached tool descriptors are validated, bounded, and prompt-sanitized."
+      "notes": "Tool execution must remain policy-mediated and visible to audit processes; external MCP URLs and cached tool descriptors are validated, bounded, prompt-sanitized, and project-owned when shown in project-facing Integrations views."
     },
     {
       "id": "WEBHOOK-001",
@@ -618,13 +636,15 @@
         "backend/app/core/endpoint_security.py",
         "backend/app/core/model_capabilities.py",
         "backend/app/core/compute_registry.py",
+        "backend/app/core/compute_registry_routing.py",
         "tests/test_content_guard.py",
         "tests/test_llm_servers.py",
         "tests/test_files.py",
-        "tests/test_rag_resilience.py"
+        "tests/test_rag_resilience.py",
+        "tests/test_compute.py"
       ],
       "future_change_trigger": true,
-      "notes": "BM25/RAG/prompt-RAG/LLMLingua changes must not compress away governance, tool, or credential boundaries; retrieved context remains wrapped as untrusted and suspicious uploads are quarantined before indexing."
+      "notes": "BM25/RAG/prompt-RAG/LLMLingua changes must not compress away governance, tool, credential, or project compute boundaries; retrieved context remains wrapped as untrusted and suspicious uploads are quarantined before indexing."
     },
     {
       "id": "AI-002",

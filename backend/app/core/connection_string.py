@@ -81,6 +81,7 @@ def create_compute_donation_string(
     ws_url: str | None = None,
     label: str = "",
     expires_hours: int = 168,
+    allowed_project_ids: list[str] | None = None,
 ) -> str:
     """Generate a tamper-proof compute donation string.
 
@@ -98,6 +99,11 @@ def create_compute_donation_string(
         "server_url": server_url.rstrip("/"),
         "ws_url": relay_ws_url,
         "network_token": settings.network_access_token or "",
+        "allowed_project_ids": [
+            str(project_id).strip()
+            for project_id in (allowed_project_ids or [])
+            if str(project_id).strip()
+        ],
         "expires_at": expires_at,
         "label": label,
     }

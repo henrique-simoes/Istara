@@ -28,8 +28,13 @@ export default function SurveysTab() {
 
   const fetchLinks = useCallback(async () => {
     setLinksLoading(true);
+    if (!activeProjectId) {
+      setLinkedSurveys([]);
+      setLinksLoading(false);
+      return;
+    }
     try {
-      const links = await surveysApi.links.list(activeProjectId || undefined);
+      const links = await surveysApi.links.list(activeProjectId);
       setLinkedSurveys(links);
     } catch {
       // silent
@@ -39,7 +44,7 @@ export default function SurveysTab() {
   }, [activeProjectId]);
 
   useEffect(() => {
-    fetchSurveyIntegrations(activeProjectId || undefined);
+    fetchSurveyIntegrations(activeProjectId);
     fetchLinks();
   }, [activeProjectId, fetchSurveyIntegrations, fetchLinks]);
 
@@ -68,7 +73,7 @@ export default function SurveysTab() {
           payload_summary: `Integration id: ${id}`,
         });
       }
-      await fetchSurveyIntegrations(activeProjectId || undefined);
+      await fetchSurveyIntegrations(activeProjectId);
     } catch {
       // silent
     }
@@ -93,7 +98,7 @@ export default function SurveysTab() {
       <SurveySetupWizard
         onClose={() => {
           setShowWizard(false);
-          fetchSurveyIntegrations(activeProjectId || undefined);
+          fetchSurveyIntegrations(activeProjectId);
         }}
       />
     );

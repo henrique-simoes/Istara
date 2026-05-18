@@ -5,10 +5,11 @@ import { X, CheckCircle2, AlertCircle, Server, RefreshCw } from "lucide-react";
 import { mcp as mcpApi } from "@/lib/api";
 
 interface MCPServerSetupProps {
+  projectId: string | null;
   onClose: () => void;
 }
 
-export default function MCPServerSetup({ onClose }: MCPServerSetupProps) {
+export default function MCPServerSetup({ projectId, onClose }: MCPServerSetupProps) {
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
   const [transport] = useState("http");
@@ -43,6 +44,7 @@ export default function MCPServerSetup({ onClose }: MCPServerSetupProps) {
         url,
         transport,
         headers: parsedHeaders,
+        project_id: projectId || undefined,
       });
       serverId = server.id;
 
@@ -87,6 +89,7 @@ export default function MCPServerSetup({ onClose }: MCPServerSetupProps) {
         url,
         transport,
         headers: parsedHeaders,
+        project_id: projectId || undefined,
       });
       setSaved(true);
     } catch (e: any) {
@@ -194,7 +197,7 @@ export default function MCPServerSetup({ onClose }: MCPServerSetupProps) {
         <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-slate-200 dark:border-slate-800">
           <button
             onClick={handleTest}
-            disabled={!url.trim() || testing}
+            disabled={!url.trim() || !projectId || testing}
             className="flex items-center gap-1.5 px-3 py-2 text-sm text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-50 transition-colors"
           >
             <RefreshCw size={14} className={testing ? "animate-spin" : ""} />
@@ -202,7 +205,7 @@ export default function MCPServerSetup({ onClose }: MCPServerSetupProps) {
           </button>
           <button
             onClick={handleSave}
-            disabled={!url.trim() || saving}
+            disabled={!url.trim() || !projectId || saving}
             className="px-4 py-2 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700 disabled:opacity-50 transition-colors"
           >
             {saving ? "Saving..." : "Save Server"}

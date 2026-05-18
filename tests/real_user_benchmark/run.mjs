@@ -2667,7 +2667,7 @@ async function exerciseLoopsAutoresearch(api, projectId) {
       skill_name: "analyze-interview",
       description: "Benchmark weekly loop for new support-ticket evidence.",
     })],
-    ["autoresearch status", () => api.get("/api/autoresearch/status")],
+    ["autoresearch status", () => api.get(`/api/autoresearch/status?project_id=${projectId}`)],
     ["autoresearch config", () => api.get("/api/autoresearch/config")],
   ]) {
     try {

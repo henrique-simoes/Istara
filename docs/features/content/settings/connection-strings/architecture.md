@@ -4,20 +4,20 @@ title: Connection Strings
 ui_path: Settings > Connection Strings
 audience: architecture
 status: documented
-related_features: ["settings.llm-servers", "settings.users"]
+related_features: ["settings.llm-servers", "settings.users", "settings.compute-donation"]
 related_glossary: ["wcag"]
 code_references: ["frontend/src/components/settings/ConnectionStringPanel.tsx", "backend/app/api/routes/connections.py", "backend/app/core/connection_string.py"]
 api_references: ["backend/app/api/routes/connections.py"]
-test_references: []
-last_verified: 2026-05-15
-compass: CF-SPEC-53 / CF-657
+test_references: ["tests/test_project_rbac.py", "tests/test_compute.py"]
+last_verified: 2026-05-18
+compass: CF-SPEC-60 / CF-754
 ---
 
 # Connection Strings Architecture
 
 ## Implementation Summary
 
-Connection string settings provide governed admin-only configuration for sensitive external or local service connection data.
+Connection string settings provide governed admin-only configuration for sensitive external or local service connection data. User invites create account access, while compute donation strings authorize relay compute and carry an explicit `allowed_project_ids` scope.
 
 ## Frontend Surface
 
@@ -38,21 +38,25 @@ Connection string settings provide governed admin-only configuration for sensiti
 ## Architecture Notes
 
 - The feature is mounted through `frontend/src/components/settings/ConnectionStringPanel.tsx` and the UI navigation path recorded in the inventory.
+- In team mode, compute donation strings require at least one selected project and persist that scope in both the signed payload and the server-side connection-string record.
+- Relay connections must present the issued compute-donation string for scoped donated routing; the shared network token alone is not enough to receive project content.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
 
 ## Agents, Skills, LLM, MCP, And Permissions
 
-- No direct agent, skill, LLM, or MCP behavior is asserted beyond the cited source files.
+- Compute donation strings control which project-scoped LLM requests may be routed to a donated node.
 
 ## Tests And Verification
 
-- No focused test reference recorded yet.
+- `tests/test_project_rbac.py`
+- `tests/test_compute.py`
 
 ## Related Features
 
 - [settings.llm-servers](../../settings/llm-servers/architecture.md)
 - [settings.users](../../settings/users/architecture.md)
+- [settings.compute-donation](../../settings/compute-donation/architecture.md)
 
 ## Related Concepts
 
@@ -60,7 +64,7 @@ Connection string settings provide governed admin-only configuration for sensiti
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-53 / CF-657
+- Spec/task: CF-SPEC-60 / CF-754
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update

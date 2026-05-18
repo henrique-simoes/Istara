@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { AlertTriangle, Shield, Plus, Server, RefreshCw, Trash2, Wrench, Activity } from "lucide-react";
 import { mcp as mcpApi } from "@/lib/api";
 import { useIntegrationsStore } from "@/stores/integrationsStore";
+import { useProjectStore } from "@/stores/projectStore";
+import { useAuthStore } from "@/stores/authStore";
 import { cn } from "@/lib/utils";
 import MCPAccessPolicyEditor from "./MCPAccessPolicyEditor";
 import MCPAuditLog from "./MCPAuditLog";
@@ -12,6 +14,8 @@ import type { MCPServerConfig } from "@/lib/types";
 
 export default function MCPTab() {
   const { mcpServerStatus, mcpClients, mcpLoading, fetchMCPStatus, fetchMCPClients } = useIntegrationsStore();
+  const activeProjectId = useProjectStore((s) => s.activeProjectId);
+  const isGlobalAdmin = useAuthStore((s) => s.user?.role === "admin");
   const [showServerSetup, setShowServerSetup] = useState(false);
   const [showPolicyEditor, setShowPolicyEditor] = useState(false);
   const [showAuditLog, setShowAuditLog] = useState(false);
@@ -21,9 +25,11 @@ export default function MCPTab() {
   const [discovering, setDiscovering] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchMCPStatus();
-    fetchMCPClients();
-  }, [fetchMCPStatus, fetchMCPClients]);
+    if (isGlobalAdmin) {
+      fetchMCPStatus();
+    }
+    fetchMCPClients(activeProjectId);
+  }, [activeProjectId, fetchMCPStatus, fetchMCPClients, isGlobalAdmin]);
 
   const handleToggleServer = async () => {
     if (!confirmToggle) {
@@ -48,7 +54,7 @@ export default function MCPTab() {
     setDiscovering(clientId);
     try {
       await mcpApi.clients.discover(clientId);
-      await fetchMCPClients();
+      await fetchMCPClients(activeProjectId);
     } catch {
       // silent
     } finally {
@@ -59,7 +65,7 @@ export default function MCPTab() {
   const handleDeleteClient = async (clientId: string) => {
     try {
       await mcpApi.clients.delete(clientId);
-      await fetchMCPClients();
+      await fetchMCPClients(activeProjectId);
     } catch {
       // silent
     }
@@ -72,9 +78,10 @@ export default function MCPTab() {
   if (showServerSetup) {
     return (
       <MCPServerSetup
+        projectId={activeProjectId}
         onClose={() => {
           setShowServerSetup(false);
-          fetchMCPClients();
+          fetchMCPClients(activeProjectId);
         }}
       />
     );
@@ -109,6 +116,7 @@ export default function MCPTab() {
   return (
     <div className="flex-1 overflow-y-auto p-6 space-y-8">
       {/* Section 1: Istara as MCP Server */}
+      {isGlobalAdmin && (
       <section>
         <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-1">Istara as MCP Server</h2>
         <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
@@ -203,6 +211,7 @@ export default function MCPTab() {
           </div>
         </div>
       </section>
+      )}
 
       {/* Section 2: Connected MCP Servers */}
       <section>
@@ -215,14 +224,23 @@ export default function MCPTab() {
           </div>
           <button
             onClick={() => setShowServerSetup(true)}
-            className="flex items-center gap-1.5 px-3 py-2 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700 transition-colors"
+            disabled={!activeProjectId}
+            className="flex items-center gap-1.5 px-3 py-2 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700 disabled:opacity-50 transition-colors"
           >
             <Plus size={14} />
             Add Server
           </button>
         </div>
 
-        {mcpLoading ? (
+        {!activeProjectId ? (
+          <div className="text-center py-12 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl">
+            <Server size={32} className="mx-auto mb-3 text-slate-300 dark:text-slate-600" />
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">No active project selected</p>
+            <p className="text-xs text-slate-400 dark:text-slate-500">
+              Select a project before connecting MCP servers.
+            </p>
+          </div>
+        ) : mcpLoading ? (
           <div className="space-y-3">
             {Array.from({ length: 2 }).map((_, i) => (
               <div key={i} className="h-20 rounded-xl bg-slate-100 dark:bg-slate-800 animate-pulse" />
@@ -237,6 +255,7 @@ export default function MCPTab() {
             </p>
             <button
               onClick={() => setShowServerSetup(true)}
+              disabled={!activeProjectId}
               className="px-4 py-2 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700 transition-colors"
             >
               Add First Server
@@ -258,7 +277,12 @@ export default function MCPTab() {
       </section>
 
       {/* Section 3: Featured MCP Servers */}
-      <FeaturedServersSection onConnect={async () => { await fetchMCPClients(); }} />
+      {activeProjectId && (
+        <FeaturedServersSection
+          projectId={activeProjectId}
+          onConnect={async () => { await fetchMCPClients(activeProjectId); }}
+        />
+      )}
 
       {/* Section 4: Connection Guide */}
       <section>
@@ -292,7 +316,13 @@ export default function MCPTab() {
 
 // --- Featured Servers Section ---
 
-function FeaturedServersSection({ onConnect }: { onConnect: () => Promise<void> }) {
+function FeaturedServersSection({
+  projectId,
+  onConnect,
+}: {
+  projectId: string;
+  onConnect: () => Promise<void>;
+}) {
   const [featured, setFeatured] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState<string | null>(null);
@@ -300,13 +330,13 @@ function FeaturedServersSection({ onConnect }: { onConnect: () => Promise<void> 
   const [connectResult, setConnectResult] = useState<{ id: string; message: string } | null>(null);
 
   useEffect(() => {
-    mcpApi.featured.list().then((list) => { setFeatured(list); setLoading(false); }).catch(() => setLoading(false));
-  }, []);
+    mcpApi.featured.list(projectId).then((list) => { setFeatured(list); setLoading(false); }).catch(() => setLoading(false));
+  }, [projectId]);
 
   const handleConnect = async (serverId: string) => {
     setConnecting(serverId);
     try {
-      const result = await mcpApi.featured.connect(serverId);
+      const result = await mcpApi.featured.connect(serverId, undefined, projectId);
       setConnectResult({ id: serverId, message: result.message || "Connected!" });
       await onConnect();
     } catch (e: any) {
@@ -335,13 +365,7 @@ function FeaturedServersSection({ onConnect }: { onConnect: () => Promise<void> 
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
-                    {server.id === "mcp-brasil" ? (
-                      <span className="inline-flex h-5 min-w-5 items-center justify-center rounded bg-green-100 px-1 text-[10px] font-semibold text-green-700 dark:bg-green-900/30 dark:text-green-300">
-                        BR
-                      </span>
-                    ) : (
-                      <Server size={18} className="text-slate-500 dark:text-slate-400" />
-                    )}
+                    <Server size={18} className="text-slate-500 dark:text-slate-400" />
                     <h3 className="font-semibold text-slate-900 dark:text-white">{server.name}</h3>
                     <span className="px-2 py-0.5 text-xs bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 rounded-full">
                       {server.tool_count} tools

@@ -117,7 +117,7 @@ class CustomAgentWorker:
         await db.commit()
 
         await self._update_db_state(AgentState.WORKING, task.title)
-        await broadcast_agent_status("working", f"{self.agent_name}: {task.title}")
+        await broadcast_agent_status("working", f"{self.agent_name}: {task.title}", project_id=task.project_id)
 
         try:
             # Delegate to the main agent orchestrator's skill execution

@@ -43,6 +43,14 @@ def _message_task_id(message: A2AMessage) -> str | None:
     return _metadata_text(_message_metadata(message), "task_id", "taskId")
 
 
+def _message_to_dict(message: A2AMessage) -> dict:
+    payload = message.to_dict()
+    project_id = _message_project_id(message)
+    if project_id:
+        payload["project_id"] = project_id
+    return payload
+
+
 def _project_scoped_fetch_limit(limit: int) -> int:
     return min(max(limit * 10, 200), 1000)
 
@@ -145,7 +153,7 @@ async def send_message(
     await db.commit()
     await db.refresh(msg)
 
-    result = msg.to_dict()
+    result = _message_to_dict(msg)
 
     # Broadcast via WebSocket (if available)
     try:
@@ -315,7 +323,7 @@ async def get_messages(
     messages = list(result.scalars().all())
     if project_id:
         messages = await _filter_messages_by_project(db, messages, project_id)
-    return [m.to_dict() for m in messages[:limit]]
+    return [_message_to_dict(m) for m in messages[:limit]]
 
 
 async def get_conversation(
@@ -333,7 +341,7 @@ async def get_conversation(
     ).order_by(A2AMessage.created_at.desc()).limit(limit)
 
     result = await db.execute(query)
-    return [m.to_dict() for m in result.scalars().all()]
+    return [_message_to_dict(m) for m in result.scalars().all()]
 
 
 async def get_conversation_thread(
@@ -355,7 +363,7 @@ async def get_conversation_thread(
         try:
             extra = json.loads(msg.extra_data or "{}") if isinstance(msg.extra_data, str) else (msg.extra_data or {})
             if extra.get("context_id") == context_id or msg.id == context_id:
-                thread.append(msg.to_dict())
+                thread.append(_message_to_dict(msg))
         except Exception:
             continue
     return thread[:limit]
@@ -373,7 +381,7 @@ async def get_full_log(
     messages = list(result.scalars().all())
     if project_id:
         messages = await _filter_messages_by_project(db, messages, project_id)
-    return [m.to_dict() for m in messages[:limit]]
+    return [_message_to_dict(m) for m in messages[:limit]]
 
 
 async def mark_read(db: AsyncSession, message_id: str) -> bool:

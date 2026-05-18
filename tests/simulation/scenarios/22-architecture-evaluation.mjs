@@ -244,7 +244,7 @@ export async function run(ctx) {
   await safeCheck("[A2A] JSON-RPC — all methods respond correctly", async () => {
     const methods = [
       { method: "agent/discover", params: {} },
-      { method: "tasks/list", params: { limit: 5 } },
+      { method: "tasks/list", params: { project_id: evalProjectId, limit: 5 } },
       { method: "tasks/cancel", params: { id: "test" } },
     ];
 

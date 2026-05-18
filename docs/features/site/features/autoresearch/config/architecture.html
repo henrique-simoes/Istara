@@ -251,10 +251,12 @@
 <h3 id="stores">Stores</h3>
 <ul>
 <li><code>frontend/src/stores/autoresearchStore.ts</code></li>
+<li>Configuration reads are global runtime settings, but status refreshes shown in this tab still use the active project id.</li>
 </ul>
 <h3 id="api-and-backend">API And Backend</h3>
 <ul>
 <li><code>backend/app/api/routes/autoresearch.py</code></li>
+<li>Autoresearch configuration mutations and global enable/disable toggles require global admin access because they affect every project. Project-facing status, experiments, and leaderboard routes remain project-scoped.</li>
 </ul>
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
@@ -264,11 +266,12 @@
 </ul>
 <h2 id="agents-skills-llm-mcp-and-permissions">Agents, Skills, LLM, MCP, And Permissions</h2>
 <ul>
-<li>RAG-related behavior depends on project context, documents, memory, or retrieval material referenced by the cited stores and routes.</li>
+<li>RAG-related behavior depends on project context, documents, memory, or retrieval material referenced by the cited stores and routes. Global config changes must not expose or process project content; runtime experiment execution still requires project authorization.</li>
 </ul>
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>
-<li>No focused test reference recorded yet.</li>
+<li><code>tests/test_autoresearch.py</code> verifies non-admin researchers cannot mutate global autoresearch config and admins can.</li>
+<li><code>tests/test_project_scope_contracts.py</code> verifies project-facing autoresearch calls carry project ids.</li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>
@@ -281,7 +284,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-53 / CF-657</li>
+<li>Spec/task: CF-SPEC-60 / CF-754</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>

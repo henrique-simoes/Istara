@@ -230,7 +230,10 @@ async def _generate_adaptive_followup(
             "Only output the question text, nothing else."
         )
 
-        result = await llm_router.chat([{"role": "user", "content": prompt}])
+        result = await llm_router.chat(
+            [{"role": "user", "content": prompt}],
+            project_id=deployment.project_id,
+        )
         followup = result.get("content", "").strip()
         if followup and followup.upper() != "NONE":
             return followup

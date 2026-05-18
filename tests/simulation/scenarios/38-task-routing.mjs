@@ -155,7 +155,7 @@ export async function run(ctx) {
 
   // ── 8. A2A collaboration messages endpoint ──
   try {
-    const log = await api.get("/api/agents/a2a/log?limit=50");
+    const log = await api.get(`/api/agents/a2a/log?project_id=${encodeURIComponent(ctx.projectId)}&limit=50`);
     const collabMsgs = (log.messages || []).filter(
       (m) => m.message_type === "collaboration_request" || m.message_type === "task_request"
     );

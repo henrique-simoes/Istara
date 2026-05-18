@@ -10,7 +10,7 @@ code_references: ["frontend/src/components/integrations/IntegrationsView.tsx", "
 api_references: ["backend/app/api/routes/channels.py", "backend/app/api/routes/deployments.py"]
 test_references: ["tests/test_project_scope_contracts.py"]
 last_verified: 2026-05-18
-compass: CF-SPEC-56 / CF-698; CF-SPEC-59 / CF-740
+compass: CF-SPEC-56 / CF-698; CF-SPEC-59 / CF-740; CF-SPEC-60 / CF-759
 ---
 
 # Integrations Overview
@@ -32,7 +32,8 @@ Integrations Overview exists so the work represented by Integrations > Overview 
 ## How UX Researchers Use It
 
 - Open Integrations > Overview from the Istara navigation or the parent tab.
-- Review channels, deployments, and survey integrations that belong to the active project.
+- Review channels, deployments, survey integrations, and MCP client/tool totals that belong to the active project.
+- When no active project is selected, project-owned activity remains empty instead of showing integrations from other projects.
 - Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.
 
 ## Supported Workflows
@@ -43,9 +44,9 @@ Integrations Overview exists so the work represented by Integrations > Overview 
 
 ## Inputs, Outputs, And Expected Outcomes
 
-- Project-scoped channels, deployments, and survey integrations associated with integrations overview.
+- Project-scoped channels, deployments, survey integrations, and MCP client registrations associated with integrations overview.
 - Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.
-- Recent Activity is expected to show only channels and deployments associated with the active project; global MCP inventory is separate from project-owned activity.
+- Recent Activity is expected to show only channels and deployments associated with the active project; MCP tool counts are also project-scoped and do not summarize another project's connected servers.
 
 ## Caveats
 

@@ -6,12 +6,13 @@ MCP Client endpoints manage connections TO external MCP servers.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.core.env_persistence import persist_env_value
+from app.core.permissions import ProjectRole, get_subject, is_global_admin, require_project_access
 from app.core.security_middleware import require_admin_from_request
 from app.models.database import get_db
 from app.models.mcp_server_config import MCPServerConfig
@@ -59,11 +60,53 @@ class ClientRegisterRequest(BaseModel):
     url: str
     transport: str = "http"
     headers: dict | None = None
+    project_id: str | None = None
 
 
 class ToolCallRequest(BaseModel):
     tool_name: str
     arguments: dict = {}
+
+
+async def _require_project_or_global_admin(
+    db: AsyncSession,
+    request: Request,
+    project_id: str | None,
+    *,
+    min_role: ProjectRole = "project_admin",
+) -> str | None:
+    project_id = (project_id or "").strip()
+    if project_id:
+        from app.models.project import Project
+
+        project = await db.get(Project, project_id)
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+        await require_project_access(db, request, project_id, min_role=min_role)
+        return project_id
+    subject = get_subject(request)
+    if is_global_admin(subject):
+        return None
+    if settings.team_mode:
+        raise HTTPException(status_code=400, detail="project_id is required")
+    return None
+
+
+async def _get_client_for_project(
+    db: AsyncSession,
+    request: Request,
+    server_id: str,
+    *,
+    min_role: ProjectRole = "project_admin",
+) -> MCPServerConfig:
+    server = await db.get(MCPServerConfig, server_id)
+    if not server:
+        raise HTTPException(status_code=404, detail="MCP server not found")
+    if server.project_id:
+        await require_project_access(db, request, server.project_id, min_role=min_role)
+    else:
+        require_admin_from_request(request)
+    return server
 
 
 # ===========================================================================
@@ -342,13 +385,16 @@ async def get_exposure(request: Request, db: AsyncSession = Depends(get_db)):
 async def list_clients(
     request: Request,
     active_only: bool = False,
+    project_id: str | None = Query(None, description="Filter by active project"),
     db: AsyncSession = Depends(get_db),
 ):
-    """List all registered external MCP servers."""
-    require_admin_from_request(request)
+    """List registered external MCP servers for a project, or all for global admins."""
+    scoped_project_id = await _require_project_or_global_admin(
+        db, request, project_id, min_role="project_admin"
+    )
     from app.services.mcp_client_manager import list_servers
 
-    servers = await list_servers(db, active_only=active_only)
+    servers = await list_servers(db, active_only=active_only, project_id=scoped_project_id)
     return {"servers": servers, "count": len(servers)}
 
 
@@ -357,7 +403,11 @@ async def register_client(
     data: ClientRegisterRequest, request: Request, db: AsyncSession = Depends(get_db)
 ):
     """Register a new external MCP server."""
-    require_admin_from_request(request)
+    project_id = await _require_project_or_global_admin(
+        db, request, data.project_id, min_role="project_admin"
+    )
+    if settings.team_mode and not project_id:
+        raise HTTPException(status_code=422, detail="project_id is required")
     from app.services.mcp_client_manager import register_server
 
     try:
@@ -367,6 +417,7 @@ async def register_client(
             url=data.url,
             transport=data.transport,
             headers=data.headers,
+            project_id=project_id,
         )
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
@@ -382,6 +433,7 @@ async def register_client(
             evidence={
                 "passed": True,
                 "server_id": server.id,
+                "project_id": project_id,
                 "name": server.name,
                 "transport": server.transport,
             },
@@ -395,12 +447,18 @@ async def register_client(
 
 
 @router.get("/mcp/clients/tools")
-async def list_all_client_tools(request: Request, db: AsyncSession = Depends(get_db)):
-    """Aggregate cached tools from ALL active external MCP servers."""
-    require_admin_from_request(request)
+async def list_all_client_tools(
+    request: Request,
+    project_id: str | None = Query(None, description="Filter by active project"),
+    db: AsyncSession = Depends(get_db),
+):
+    """Aggregate cached tools from active external MCP servers."""
+    scoped_project_id = await _require_project_or_global_admin(
+        db, request, project_id, min_role="project_admin"
+    )
     from app.services.mcp_client_manager import list_all_tools
 
-    tools = await list_all_tools(db)
+    tools = await list_all_tools(db, project_id=scoped_project_id)
     return {"tools": tools, "count": len(tools)}
 
 
@@ -410,7 +468,7 @@ async def list_all_client_tools(request: Request, db: AsyncSession = Depends(get
 @router.delete("/mcp/clients/{server_id}", status_code=204)
 async def unregister_client(server_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     """Remove an external MCP server from the registry. Admin only."""
-    require_admin_from_request(request)
+    await _get_client_for_project(db, request, server_id, min_role="project_admin")
     from app.services.mcp_client_manager import unregister_server
 
     removed = await unregister_server(db, server_id)
@@ -423,18 +481,15 @@ async def discover_client_tools(
     server_id: str, request: Request, db: AsyncSession = Depends(get_db)
 ):
     """Connect to an external MCP server and discover its available tools."""
-    require_admin_from_request(request)
     from app.services.mcp_client_manager import MCP_CLIENT_AVAILABLE, discover_tools
+
+    server = await _get_client_for_project(db, request, server_id, min_role="project_admin")
 
     if not MCP_CLIENT_AVAILABLE:
         raise HTTPException(
             status_code=400,
             detail="MCP client library not installed. Run: pip install mcp",
         )
-
-    server = await db.get(MCPServerConfig, server_id)
-    if not server:
-        raise HTTPException(status_code=404, detail="MCP server not found")
 
     tools = await discover_tools(db, server_id)
     await db.refresh(server)
@@ -468,12 +523,8 @@ async def discover_client_tools(
 @router.get("/mcp/clients/{server_id}/tools")
 async def get_client_tools(server_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     """Get cached tools for an external MCP server (from last discovery)."""
-    require_admin_from_request(request)
+    server = await _get_client_for_project(db, request, server_id, min_role="project_admin")
     import json
-
-    server = await db.get(MCPServerConfig, server_id)
-    if not server:
-        raise HTTPException(status_code=404, detail="MCP server not found")
 
     tools = json.loads(server.tools_json) if server.tools_json else []
     return {
@@ -495,7 +546,7 @@ async def call_client_tool(
     db: AsyncSession = Depends(get_db),
 ):
     """Call a tool on an external MCP server."""
-    require_admin_from_request(request)
+    await _get_client_for_project(db, request, server_id, min_role="project_admin")
     from app.services.mcp_client_manager import MCP_CLIENT_AVAILABLE, call_tool
 
     if not MCP_CLIENT_AVAILABLE:
@@ -537,7 +588,7 @@ async def call_client_tool(
 @router.get("/mcp/clients/{server_id}/health")
 async def check_client_health(server_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     """Check connectivity to an external MCP server."""
-    require_admin_from_request(request)
+    await _get_client_for_project(db, request, server_id, min_role="project_admin")
     from app.services.mcp_client_manager import health_check
 
     result = await health_check(db, server_id)
@@ -550,9 +601,13 @@ async def check_client_health(server_id: str, request: Request, db: AsyncSession
 
 
 @router.get("/mcp/featured")
-async def list_featured_servers(request: Request):
+async def list_featured_servers(
+    request: Request,
+    project_id: str | None = Query(None, description="Active project for authorization"),
+    db: AsyncSession = Depends(get_db),
+):
     """List pre-configured MCP servers available for one-click connection."""
-    require_admin_from_request(request)
+    await _require_project_or_global_admin(db, request, project_id, min_role="project_admin")
     import json
     from pathlib import Path
 
@@ -567,9 +622,14 @@ async def list_featured_servers(request: Request):
 
 
 @router.get("/mcp/featured/{server_id}")
-async def get_featured_server(server_id: str, request: Request):
+async def get_featured_server(
+    server_id: str,
+    request: Request,
+    project_id: str | None = Query(None, description="Active project for authorization"),
+    db: AsyncSession = Depends(get_db),
+):
     """Get details for a featured MCP server."""
-    require_admin_from_request(request)
+    await _require_project_or_global_admin(db, request, project_id, min_role="project_admin")
     import json
     from pathlib import Path
 
@@ -590,6 +650,7 @@ async def get_featured_server(server_id: str, request: Request):
 
 class ConnectFeaturedRequest(BaseModel):
     env_vars: dict[str, str] = {}  # Optional API keys
+    project_id: str | None = None
 
 
 @router.post("/mcp/featured/{server_id}/connect", status_code=201)
@@ -604,7 +665,11 @@ async def connect_featured_server(
     Creates a new MCP client config from the featured server's definition,
     optionally setting environment variables (API keys).
     """
-    require_admin_from_request(request)
+    project_id = await _require_project_or_global_admin(
+        db, request, body.project_id, min_role="project_admin"
+    )
+    if settings.team_mode and not project_id:
+        raise HTTPException(status_code=422, detail="project_id is required")
 
     import json
     from pathlib import Path
@@ -641,6 +706,7 @@ async def connect_featured_server(
             url=url,
             transport="http",
             headers={"X-Featured-Server": server_id},
+            project_id=project_id,
         )
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))

@@ -297,7 +297,7 @@ class AgentLifecycleMixin:
                 task.status = TaskStatus.BACKLOG
                 task.agent_notes = "Project is paused; agent execution deferred."
                 await db.commit()
-                await broadcast_agent_status("paused", f"Project paused: {project.name}")
+                await broadcast_agent_status("paused", f"Project paused: {project.name}", project_id=project.id)
                 return False
 
             # 3. Execute the task (register with governor for concurrent limits)
@@ -315,12 +315,20 @@ class AgentLifecycleMixin:
             pending_result = await db.execute(
                 select(func.count(Task.id))
                 .join(Project, Project.id == Task.project_id)
-                .where(Task.status == TaskStatus.BACKLOG, Project.is_paused.is_(False))
+                .where(
+                    Task.status == TaskStatus.BACKLOG,
+                    Project.is_paused.is_(False),
+                    Task.project_id == task.project_id,
+                )
             )
             in_progress_result = await db.execute(
                 select(func.count(Task.id))
                 .join(Project, Project.id == Task.project_id)
-                .where(Task.status == TaskStatus.IN_PROGRESS, Project.is_paused.is_(False))
+                .where(
+                    Task.status == TaskStatus.IN_PROGRESS,
+                    Project.is_paused.is_(False),
+                    Task.project_id == task.project_id,
+                )
             )
             done_result = await db.execute(
                 select(func.count(Task.id)).where(
@@ -338,11 +346,13 @@ class AgentLifecycleMixin:
             if (pending + in_progress) > 0:
                 self._loop_interval = 5  # Process queue quickly
                 await broadcast_agent_status(
-                    "working", f"Task complete. {pending + in_progress} remaining in queue."
+                    "working",
+                    f"Task complete. {pending + in_progress} remaining in queue.",
+                    project_id=task.project_id,
                 )
             else:
                 self._loop_interval = 30  # Back to normal
-                await broadcast_agent_status("idle", "All tasks processed.")
+                await broadcast_agent_status("idle", "All tasks processed.", project_id=task.project_id)
 
             # ── Check follow-up queue — only processed when agent would
             # otherwise stop (no more tasks in the pipeline). This matches

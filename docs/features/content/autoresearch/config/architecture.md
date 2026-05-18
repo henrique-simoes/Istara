@@ -8,9 +8,9 @@ related_features: ["autoresearch.experiments", "chat.model-controls"]
 related_glossary: ["rag"]
 code_references: ["frontend/src/components/autoresearch/AutoresearchView.tsx", "backend/app/core/autoresearch_runners/rag_params.py"]
 api_references: ["backend/app/api/routes/autoresearch.py"]
-test_references: []
-last_verified: 2026-05-15
-compass: CF-SPEC-53 / CF-657
+test_references: ["tests/test_autoresearch.py", "tests/test_project_scope_contracts.py"]
+last_verified: 2026-05-18
+compass: CF-SPEC-60 / CF-754
 ---
 
 # Autoresearch Configuration Architecture
@@ -29,10 +29,12 @@ Autoresearch configuration sets parameters for automated research strategies and
 ### Stores
 
 - `frontend/src/stores/autoresearchStore.ts`
+- Configuration reads are global runtime settings, but status refreshes shown in this tab still use the active project id.
 
 ### API And Backend
 
 - `backend/app/api/routes/autoresearch.py`
+- Autoresearch configuration mutations and global enable/disable toggles require global admin access because they affect every project. Project-facing status, experiments, and leaderboard routes remain project-scoped.
 
 ## Architecture Notes
 
@@ -42,11 +44,12 @@ Autoresearch configuration sets parameters for automated research strategies and
 
 ## Agents, Skills, LLM, MCP, And Permissions
 
-- RAG-related behavior depends on project context, documents, memory, or retrieval material referenced by the cited stores and routes.
+- RAG-related behavior depends on project context, documents, memory, or retrieval material referenced by the cited stores and routes. Global config changes must not expose or process project content; runtime experiment execution still requires project authorization.
 
 ## Tests And Verification
 
-- No focused test reference recorded yet.
+- `tests/test_autoresearch.py` verifies non-admin researchers cannot mutate global autoresearch config and admins can.
+- `tests/test_project_scope_contracts.py` verifies project-facing autoresearch calls carry project ids.
 
 ## Related Features
 
@@ -59,7 +62,7 @@ Autoresearch configuration sets parameters for automated research strategies and
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-53 / CF-657
+- Spec/task: CF-SPEC-60 / CF-754
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update

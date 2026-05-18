@@ -8,16 +8,16 @@ related_features: ["settings.users", "settings.connection-strings"]
 related_glossary: ["wcag"]
 code_references: ["frontend/src/components/admin/AdminDashboard.tsx", "backend/app/api/routes/admin.py"]
 api_references: ["backend/app/api/routes/admin.py"]
-test_references: []
+test_references: ["tests/test_project_rbac.py"]
 last_verified: 2026-05-18
-compass: CF-SPEC-55 / CF-684
+compass: CF-SPEC-60 / CF-754
 ---
 
 # Admin Dashboard Architecture
 
 ## Implementation Summary
 
-The Admin dashboard provides administrator-only operational controls and visibility. Core sections load independently so a secondary endpoint failure, such as permission requests, does not blank Users, Projects, Access, or Connection Strings.
+The Admin dashboard provides administrator-only operational controls and visibility. Core sections load independently so a secondary endpoint failure, such as permission requests, does not blank Users, Projects, Access, or Connection Strings. Admin is the explicit global aggregation exception, but compute donation strings generated here still require a selected project scope.
 
 ## Frontend Surface
 
@@ -38,16 +38,17 @@ The Admin dashboard provides administrator-only operational controls and visibil
 
 - The feature is mounted through `frontend/src/components/admin/AdminDashboard.tsx` and the UI navigation path recorded in the inventory.
 - The dashboard should prefer partial data with an explicit section error over all-or-nothing loading.
+- The dashboard's donation-string action sends `allowed_project_ids` for the chosen project so donated compute does not become a global content processor.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
 
 ## Agents, Skills, LLM, MCP, And Permissions
 
-- No direct agent, skill, LLM, or MCP behavior is asserted beyond the cited source files.
+- Admin aggregates global metrics, while delegated compute remains project-scoped for LLM routing.
 
 ## Tests And Verification
 
-- No focused test reference recorded yet.
+- `tests/test_project_rbac.py`
 
 ## Related Features
 
@@ -60,7 +61,7 @@ The Admin dashboard provides administrator-only operational controls and visibil
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-55 / CF-684
+- Spec/task: CF-SPEC-60 / CF-754
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update

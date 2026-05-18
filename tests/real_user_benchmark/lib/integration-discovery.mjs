@@ -225,12 +225,14 @@ export async function runIntegrationMatrix({ api, projectId, repoRoot, logger })
   }
 
   const mcpStatus = await attempt(logger, "mcp", "GET /api/mcp/server/status", () => api.get("/api/mcp/server/status"));
-  const mcpClients = await attempt(logger, "mcp", "GET /api/mcp/clients", () => api.get("/api/mcp/clients"));
+  const mcpProjectQuery = `?project_id=${encodeURIComponent(projectId)}`;
+  const mcpClients = await attempt(logger, "mcp", "GET /api/mcp/clients", () => api.get(`/api/mcp/clients${mcpProjectQuery}`));
   const mcpClient = await attempt(logger, "mcp", "POST /api/mcp/clients fake HTTP", () => api.post("/api/mcp/clients", {
     name: "SIM: Fake local HTTP MCP server",
     transport: "http",
     url: "http://127.0.0.1:9/mcp",
     headers: { "X-Benchmark": "real-user" },
+    project_id: projectId,
   }));
   let mcpClassification = mcpStatus.ok || mcpClients.ok ? CLASSIFICATIONS.setup : CLASSIFICATIONS.blocked;
   if (mcpClient.ok) {

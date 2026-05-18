@@ -198,6 +198,7 @@ async def test_a2a_accepts_system_message_type_contract(auth_headers):
                         "to_agent_id": None if message_type == "broadcast" else agent_b,
                         "message_type": message_type,
                         "content": f"Contract probe for {message_type}",
+                        "project_id": "a2a-contract-project",
                     },
                 )
                 assert response.status_code == 200
@@ -210,6 +211,7 @@ async def test_a2a_accepts_system_message_type_contract(auth_headers):
                     "to_agent_id": agent_b,
                     "message_type": "not_allowed",
                     "content": "Invalid message type should be a client error.",
+                    "project_id": "a2a-contract-project",
                 },
             )
             assert invalid.status_code == 400
@@ -272,6 +274,9 @@ async def test_a2a_log_filters_by_project_id(auth_headers):
             assert message_a in contents
             assert message_b not in contents
             assert message_global not in contents
+
+            unscoped = await ac.get("/api/agents/a2a/log?limit=20", headers=auth_headers)
+            assert unscoped.status_code == 422
     finally:
         async with async_session() as db:
             await db.execute(delete(A2AMessage).where(A2AMessage.id.in_(message_ids)))

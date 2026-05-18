@@ -8,9 +8,9 @@ related_features: ["autoresearch.experiments", "autoresearch.leaderboard"]
 related_glossary: ["triangulation"]
 code_references: ["frontend/src/components/autoresearch/AutoresearchView.tsx", "frontend/src/stores/autoresearchStore.ts", "backend/app/api/routes/autoresearch.py"]
 api_references: ["backend/app/api/routes/autoresearch.py"]
-test_references: []
-last_verified: 2026-05-15
-compass: CF-SPEC-53 / CF-657
+test_references: ["tests/test_autoresearch.py", "tests/test_project_scope_contracts.py"]
+last_verified: 2026-05-18
+compass: CF-SPEC-60 / CF-754
 ---
 
 # Autoresearch Dashboard Architecture
@@ -30,10 +30,12 @@ The Autoresearch dashboard summarizes automated research experiment status and r
 ### Stores
 
 - `frontend/src/stores/autoresearchStore.ts`
+- Dashboard status requests use the active project id from `frontend/src/stores/projectStore.ts`; missing project context clears status instead of querying global metrics.
 
 ### API And Backend
 
 - `backend/app/api/routes/autoresearch.py`
+- `/api/autoresearch/status` requires `project_id`, enforces project access, and returns task, agent, document, finding, telemetry, schedule, and deployment metrics filtered to that project.
 
 ## Architecture Notes
 
@@ -43,11 +45,12 @@ The Autoresearch dashboard summarizes automated research experiment status and r
 
 ## Agents, Skills, LLM, MCP, And Permissions
 
-- No direct agent, skill, LLM, or MCP behavior is asserted beyond the cited source files.
+- Autoresearch status can inform automated experiment loops, so every operational signal in the dashboard must be scoped to the active project before it can influence agents, skills, LLM routing, or improvement proposals.
 
 ## Tests And Verification
 
-- No focused test reference recorded yet.
+- `tests/test_autoresearch.py` verifies project-scoped status metrics.
+- `tests/test_project_scope_contracts.py` verifies frontend status calls carry the active project id and backend status uses project-filtered queries.
 
 ## Related Features
 
@@ -60,7 +63,7 @@ The Autoresearch dashboard summarizes automated research experiment status and r
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-53 / CF-657
+- Spec/task: CF-SPEC-60 / CF-754
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update

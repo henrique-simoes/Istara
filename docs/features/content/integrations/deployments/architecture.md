@@ -8,9 +8,9 @@ related_features: ["integrations.deployment-dashboard", "integrations.surveys", 
 related_glossary: ["triangulation"]
 code_references: ["frontend/src/components/integrations/DeploymentsTab.tsx", "frontend/src/components/integrations/DeploymentWizard.tsx", "backend/app/api/routes/deployments.py"]
 api_references: ["backend/app/api/routes/deployments.py"]
-test_references: []
-last_verified: 2026-05-15
-compass: CF-SPEC-53 / CF-657
+test_references: ["tests/test_project_scope_contracts.py"]
+last_verified: 2026-05-18
+compass: CF-SPEC-60 / CF-754
 ---
 
 # Research Deployments Architecture
@@ -30,10 +30,13 @@ Deployments configure participant-facing research deployments and link them to c
 ### Stores
 
 - `frontend/src/stores/integrationsStore.ts`
+- `DeploymentsTab` reads `activeProjectId` from `frontend/src/stores/projectStore.ts` and passes it into `fetchDeployments(activeProjectId)` before rendering deployment rows or summary counts.
+- The tab derives a `scopedDeployments` list from the store by matching `deployment.project_id` to the active project, so stale deployment state from a previous project cannot populate the list, counts, or selected detail view.
 
 ### API And Backend
 
 - `backend/app/api/routes/deployments.py`
+- Non-admin deployment list requests must include `project_id`; the route enforces project access before returning deployment records. The admin dashboard remains the only intended global aggregation surface.
 
 ## Architecture Notes
 
@@ -43,11 +46,11 @@ Deployments configure participant-facing research deployments and link them to c
 
 ## Agents, Skills, LLM, MCP, And Permissions
 
-- No direct agent, skill, LLM, or MCP behavior is asserted beyond the cited source files.
+- Deployments are project-owned integration records. Any agent, skill, LLM, MCP, channel, or deployment worker that uses deployment data must preserve the same active-project and authorization boundary before routing participant content or generated research artifacts.
 
 ## Tests And Verification
 
-- No focused test reference recorded yet.
+- `tests/test_project_scope_contracts.py` asserts that `DeploymentsTab` imports the project store, fetches deployments with the active project id, renders only `scopedDeployments`, and does not fall back to a global `fetchDeployments()` call.
 
 ## Related Features
 
@@ -61,7 +64,7 @@ Deployments configure participant-facing research deployments and link them to c
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-53 / CF-657
+- Spec/task: CF-SPEC-60 / CF-754
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update

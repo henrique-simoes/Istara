@@ -8,11 +8,12 @@ export const id = "61-autoresearch-isolation";
 
 export async function run(ctx) {
   const { api } = ctx;
+  const projectId = ctx.projectId || "sim-project-001";
   const checks = [];
 
   // ── 1. Autoresearch disabled by default ──
   try {
-    const status = await api.get("/api/autoresearch/status");
+    const status = await api.get(`/api/autoresearch/status?project_id=${projectId}`);
     checks.push({
       name: "Autoresearch not running by default",
       passed: status.running === false,
@@ -48,7 +49,7 @@ export async function run(ctx) {
 
   // ── 4. Experiments endpoint returns array ──
   try {
-    const experiments = await api.get("/api/autoresearch/experiments");
+    const experiments = await api.get(`/api/autoresearch/experiments?project_id=${projectId}`);
     const list = Array.isArray(experiments) ? experiments : experiments?.experiments || [];
     checks.push({
       name: "Experiments endpoint returns array",
@@ -61,7 +62,7 @@ export async function run(ctx) {
 
   // ── 5. Leaderboard endpoint returns array ──
   try {
-    const leaderboard = await api.get("/api/autoresearch/leaderboard");
+    const leaderboard = await api.get(`/api/autoresearch/leaderboard?project_id=${projectId}`);
     const list = Array.isArray(leaderboard) ? leaderboard : leaderboard?.leaderboard || [];
     checks.push({
       name: "Leaderboard endpoint returns array",
@@ -88,7 +89,7 @@ export async function run(ctx) {
 
   // ── 7. Stop endpoint works (even when not running) ──
   try {
-    const result = await api.post("/api/autoresearch/stop", {});
+    const result = await api.post(`/api/autoresearch/stop?project_id=${projectId}`, {});
     checks.push({
       name: "Stop endpoint doesn't error when idle",
       passed: true,
@@ -107,6 +108,7 @@ export async function run(ctx) {
     await api.post("/api/autoresearch/start", {
       loop_type: "invalid_type",
       target: "test",
+      project_id: projectId,
     });
     checks.push({
       name: "Invalid loop_type rejected",
@@ -123,7 +125,7 @@ export async function run(ctx) {
 
   // ── 9. Experiment filtering works ──
   try {
-    const kept = await api.get("/api/autoresearch/experiments?kept=true&limit=5");
+    const kept = await api.get(`/api/autoresearch/experiments?project_id=${projectId}&kept=true&limit=5`);
     const list = Array.isArray(kept) ? kept : kept?.experiments || [];
     checks.push({
       name: "Experiment filtering by kept=true works",
@@ -136,7 +138,7 @@ export async function run(ctx) {
 
   // ── 10. Status shows running state correctly ──
   try {
-    const status = await api.get("/api/autoresearch/status");
+    const status = await api.get(`/api/autoresearch/status?project_id=${projectId}`);
     checks.push({
       name: "Status endpoint reports running=false when idle",
       passed: status.running === false,
@@ -149,7 +151,7 @@ export async function run(ctx) {
   // ── 11. Toggle off ──
   try {
     await api.post("/api/autoresearch/toggle", { enabled: false });
-    const status = await api.get("/api/autoresearch/status");
+    const status = await api.get(`/api/autoresearch/status?project_id=${projectId}`);
     checks.push({
       name: "Toggle off disables autoresearch",
       passed: status.enabled === false,

@@ -569,7 +569,7 @@ export default function AgentsView() {
   useWebSocket(handleWSEvent);
 
   useEffect(() => {
-    if (activeTab === "a2a") fetchA2ALog(activeProjectId || undefined);
+    if (activeTab === "a2a") fetchA2ALog(activeProjectId);
     if (activeTab === "proposals") fetchAgentProposals();
   }, [activeProjectId, activeTab, fetchA2ALog]);
 

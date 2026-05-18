@@ -8,7 +8,10 @@ import WebSocket from "ws";
 const RECONNECT_DELAY_MS = 5000;
 const MAX_RECONNECT_DELAY_MS = 60000;
 
-export function createConnection(url, { token, networkToken, onOpen, onMessage, onClose, onError }) {
+export function createConnection(
+  url,
+  { token, networkToken, connectionString, onOpen, onMessage, onClose, onError },
+) {
   let ws;
   let reconnectDelay = RECONNECT_DELAY_MS;
   let reconnectTimer = null;
@@ -21,6 +24,9 @@ export function createConnection(url, { token, networkToken, onOpen, onMessage, 
     // Send network access token for relay auth (if available from connection string)
     if (networkToken) {
       headers["X-Access-Token"] = networkToken;
+    }
+    if (connectionString) {
+      headers["X-Istara-Connection-String"] = connectionString;
     }
 
     ws = new WebSocket(url, { headers });

@@ -251,10 +251,12 @@
 <h3 id="stores">Stores</h3>
 <ul>
 <li><code>frontend/src/stores/autoresearchStore.ts</code></li>
+<li>Leaderboard requests use the active project id and clear leaderboard state when no project is active.</li>
 </ul>
 <h3 id="api-and-backend">API And Backend</h3>
 <ul>
 <li><code>backend/app/api/routes/autoresearch.py</code></li>
+<li><code>/api/autoresearch/leaderboard</code> requires <code>project_id</code>, enforces project visibility, and derives model/temperature rankings from project-scoped telemetry rather than global model statistics.</li>
 </ul>
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
@@ -264,11 +266,12 @@
 </ul>
 <h2 id="agents-skills-llm-mcp-and-permissions">Agents, Skills, LLM, MCP, And Permissions</h2>
 <ul>
-<li>No direct agent, skill, LLM, or MCP behavior is asserted beyond the cited source files.</li>
+<li>Leaderboard entries influence model/temperature choices, so they must be computed from telemetry the active project is authorized to expose.</li>
 </ul>
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>
-<li>No focused test reference recorded yet.</li>
+<li><code>tests/test_autoresearch.py</code> verifies the leaderboard endpoint requires project-scoped access.</li>
+<li><code>tests/test_project_scope_contracts.py</code> verifies the frontend and backend do not use unscoped leaderboard calls.</li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>
@@ -281,7 +284,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-53 / CF-657</li>
+<li>Spec/task: CF-SPEC-60 / CF-754</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>

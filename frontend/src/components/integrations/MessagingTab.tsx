@@ -38,7 +38,7 @@ export default function MessagingTab() {
   const canManageChannels = user?.role === "admin" || canAdminActiveProject();
 
   useEffect(() => {
-    fetchChannels(platformFilter || undefined, activeProjectId || undefined);
+    fetchChannels(platformFilter || undefined, activeProjectId);
   }, [activeProjectId, fetchChannels, platformFilter]);
 
   const selectedInstance = channelInstances.find((c) => c.id === selectedInstanceId);
@@ -48,7 +48,7 @@ export default function MessagingTab() {
       <ChannelSetupWizard
         onClose={() => {
           setShowWizard(false);
-          fetchChannels(undefined, activeProjectId || undefined);
+          fetchChannels(undefined, activeProjectId);
         }}
       />
     );

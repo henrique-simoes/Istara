@@ -3,10 +3,12 @@
 import { useEffect, useRef, useCallback, useState } from "react";
 import type { WSEvent } from "@/lib/types";
 import { WS_BASE } from "@/lib/runtimeConfig";
+import { useProjectStore } from "@/stores/projectStore";
 
 const WS_URL = `${WS_BASE}/ws`;
 
 export function useWebSocket(onEvent?: (event: WSEvent) => void) {
+  const { activeProjectId } = useProjectStore();
   const wsRef = useRef<WebSocket | null>(null);
   const [connected, setConnected] = useState(false);
   const [status, setStatus] = useState<"connecting" | "connected" | "reconnecting" | "disconnected" | "auth_failed">("connecting");
@@ -30,9 +32,9 @@ export function useWebSocket(onEvent?: (event: WSEvent) => void) {
       return;
     }
     setStatus("connecting");
-    const wsUrl = token
-      ? `${WS_URL}?token=${encodeURIComponent(token)}`
-      : WS_URL;
+    const params = new URLSearchParams({ token });
+    if (activeProjectId) params.set("project_id", activeProjectId);
+    const wsUrl = `${WS_URL}?${params.toString()}`;
     const ws = new WebSocket(wsUrl);
 
     ws.onopen = () => {
@@ -75,7 +77,7 @@ export function useWebSocket(onEvent?: (event: WSEvent) => void) {
     };
 
     wsRef.current = ws;
-  }, []);
+  }, [activeProjectId]);
 
   useEffect(() => {
     connect();

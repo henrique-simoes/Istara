@@ -8,9 +8,9 @@ related_features: ["autoresearch.dashboard", "autoresearch.config"]
 related_glossary: ["triangulation"]
 code_references: ["frontend/src/components/autoresearch/AutoresearchView.tsx", "backend/app/core/autoresearch_engine.py"]
 api_references: ["backend/app/api/routes/autoresearch.py"]
-test_references: []
-last_verified: 2026-05-15
-compass: CF-SPEC-53 / CF-657
+test_references: ["tests/test_autoresearch.py", "tests/test_project_scope_contracts.py"]
+last_verified: 2026-05-18
+compass: CF-SPEC-60 / CF-754
 ---
 
 # Autoresearch Experiments Architecture
@@ -29,10 +29,12 @@ Experiments configure and inspect automated research runs across strategies or p
 ### Stores
 
 - `frontend/src/stores/autoresearchStore.ts`
+- Experiment history and start/stop actions are bound to the active project id; the store returns an empty experiment list instead of issuing an unscoped request when no project is active.
 
 ### API And Backend
 
 - `backend/app/api/routes/autoresearch.py`
+- Experiment list, start, and stop routes require `project_id` and enforce project access. Autoresearch engine records and broadcasts the experiment project id, and experiment history filters by `AutoresearchExperiment.project_id`.
 
 ## Architecture Notes
 
@@ -42,11 +44,12 @@ Experiments configure and inspect automated research runs across strategies or p
 
 ## Agents, Skills, LLM, MCP, And Permissions
 
-- No direct agent, skill, LLM, or MCP behavior is asserted beyond the cited source files.
+- Autoresearch experiments can mutate strategies that later affect agents, skills, LLM choice, RAG behavior, question banks, or UI simulations. Each experiment must remain attached to the project that authorized it.
 
 ## Tests And Verification
 
-- No focused test reference recorded yet.
+- `tests/test_autoresearch.py` verifies start/stop routing and project-scoped experiment behavior.
+- `tests/test_project_scope_contracts.py` verifies the frontend and backend keep experiment requests project-bound.
 
 ## Related Features
 
@@ -59,7 +62,7 @@ Experiments configure and inspect automated research runs across strategies or p
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-53 / CF-657
+- Spec/task: CF-SPEC-60 / CF-754
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update

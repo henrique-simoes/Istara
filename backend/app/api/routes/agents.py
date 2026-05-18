@@ -15,7 +15,7 @@ def _get_version() -> str:
     except Exception:
         return "dev"
 
-from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -169,12 +169,11 @@ async def heartbeat_status(db: AsyncSession = Depends(get_db)):
 async def get_a2a_log(
     request: Request,
     limit: int = 100,
-    project_id: str | None = None,
+    project_id: str = Query(...),
     db: AsyncSession = Depends(get_db),
 ):
-    """Get the A2A message log, optionally scoped to a project."""
-    if project_id:
-        await require_project_access(db, request, project_id, min_role="viewer")
+    """Get the A2A message log for one authorized project."""
+    await require_project_access(db, request, project_id, min_role="viewer")
     messages = await a2a.get_full_log(db, limit, project_id=project_id)
     return {"messages": messages}
 
@@ -925,6 +924,7 @@ class A2AMessageRequest(BaseModel):
     to_agent_id: str | None = None
     message_type: str = "consult"
     content: str
+    project_id: str | None = None
     metadata: dict | None = None
 
 
@@ -934,11 +934,10 @@ async def get_messages(
     request: Request,
     limit: int = 50,
     unread_only: bool = False,
-    project_id: str | None = None,
+    project_id: str = Query(...),
     db: AsyncSession = Depends(get_db),
 ):
-    if project_id:
-        await require_project_access(db, request, project_id, min_role="viewer")
+    await require_project_access(db, request, project_id, min_role="viewer")
     messages = await a2a.get_messages(db, agent_id, limit, unread_only, project_id=project_id)
     return {"messages": messages}
 
@@ -951,6 +950,13 @@ async def send_message(
     db: AsyncSession = Depends(get_db),
 ):
     require_admin_from_request(request)
+    metadata = dict(data.metadata or {})
+    project_id = data.project_id or metadata.get("project_id") or metadata.get("projectId")
+    if not isinstance(project_id, str) or not project_id.strip():
+        raise HTTPException(status_code=400, detail="project_id is required")
+    project_id = project_id.strip()
+    await require_project_access(db, request, project_id, min_role="researcher")
+    metadata["project_id"] = project_id
     try:
         msg = await a2a.send_message(
             db,
@@ -958,7 +964,7 @@ async def send_message(
             to_agent_id=data.to_agent_id,
             message_type=data.message_type,
             content=data.content,
-            metadata=data.metadata,
+            metadata=metadata,
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc

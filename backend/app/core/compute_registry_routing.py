@@ -87,6 +87,7 @@ class ComputeRegistryRoutingMixin:
         model: str | None = None,
         strict_model: bool = False,
         include_unhealthy: bool = False,
+        project_id: str | None = None,
     ) -> list[ComputeNode]:
         """Get candidate nodes sorted by score, filtered by capabilities and circuit breaker."""
         candidates = [
@@ -116,6 +117,10 @@ class ComputeRegistryRoutingMixin:
                 )
             ]
             candidates.extend(rescue_candidates)
+
+        candidates = [
+            n for n in candidates if self._node_authorized_for_project_content(n, project_id)
+        ]
 
         if require_tools and candidates:
             tool_capable = [
@@ -169,6 +174,30 @@ class ComputeRegistryRoutingMixin:
 
         candidates.sort(key=lambda n: (not n.is_healthy, n.priority, -n.score()))
         return candidates
+
+    @staticmethod
+    def _node_authorized_for_project_content(
+        node: ComputeNode,
+        project_id: str | None,
+    ) -> bool:
+        """Return whether a node may receive project prompt/embedding content.
+
+        Server-owned local/network nodes are controlled by the Istara host and
+        remain eligible. Donated relay/browser nodes are untrusted compute
+        boundaries: they only receive content when the request has a concrete
+        project_id and the node's authenticated donation scope includes it.
+        """
+        if node.source not in {"relay", "browser"}:
+            return True
+        requested_project = (project_id or "").strip()
+        if not requested_project:
+            return False
+        allowed = {
+            str(pid).strip()
+            for pid in getattr(node, "allowed_project_ids", []) or []
+            if str(pid).strip()
+        }
+        return "*" in allowed or requested_project in allowed
 
     @staticmethod
     def _model_aliases(model: str) -> set[str]:

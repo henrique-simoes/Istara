@@ -241,7 +241,7 @@
   <p class="concept-line"><strong>Concepts:</strong> mcp</p>
 </header>
 <h2 id="implementation-summary">Implementation Summary</h2>
-<p>The MCP tab configures Model Context Protocol server access, policies, and audit visibility. Registered MCP clients are deduplicated by normalized transport and URL so repeated featured-server connects do not show the same server multiple times.</p>
+<p>The MCP tab configures project-owned Model Context Protocol client connections plus admin-only MCP server exposure controls. Registered MCP clients are scoped by <code>project_id</code> and deduplicated by project, normalized transport, and URL so repeated featured-server connects do not show the same server multiple times inside one project.</p>
 <h2 id="frontend-surface">Frontend Surface</h2>
 <ul>
 <li><code>frontend/src/components/integrations/MCPTab.tsx</code></li>
@@ -262,12 +262,15 @@
 <ul>
 <li>The feature is mounted through <code>frontend/src/components/integrations/MCPTab.tsx</code> and the UI navigation path recorded in the inventory.</li>
 <li>Featured server labels must identify the server itself; non-Brazilian servers such as Playwright use a neutral server icon instead of Brazil-specific labeling.</li>
+<li><code>MCPTab</code> passes the active project id into MCP client listing and featured-server connect flows. Without an active project, project-owned connected-server lists are empty and creation is disabled.</li>
+<li><code>backend/app/api/routes/mcp.py</code> requires <code>project_id</code> for team-mode MCP client registration and featured connects, verifies the project exists, and authorizes the caller as project admin before client discovery, deletion, health checks, tool listing, or tool calls.</li>
+<li>Legacy/global MCP client rows remain accessible only through explicit global-admin API access without a project filter; project-facing Integrations views do not request or display them.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>
 <h2 id="agents-skills-llm-mcp-and-permissions">Agents, Skills, LLM, MCP, And Permissions</h2>
 <ul>
-<li>MCP-related behavior must keep access policy, audit evidence, and tool/resource exposure synchronized with the cited route or integration component.</li>
+<li>MCP-related behavior must keep access policy, audit evidence, tool/resource exposure, and project ownership synchronized with the cited route or integration component.</li>
 </ul>
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>
@@ -284,7 +287,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-55 / CF-684</li>
+<li>Spec/task: CF-SPEC-55 / CF-684; CF-SPEC-60 / CF-759</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>

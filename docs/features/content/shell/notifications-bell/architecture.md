@@ -6,11 +6,11 @@ audience: architecture
 status: documented
 related_features: ["notifications.list", "notifications.preferences"]
 related_glossary: ["wcag"]
-code_references: ["frontend/src/components/layout/Sidebar.tsx", "frontend/src/stores/notificationStore.ts", "backend/app/api/routes/notifications.py"]
-api_references: ["backend/app/api/routes/notifications.py"]
-test_references: []
-last_verified: 2026-05-15
-compass: CF-SPEC-53 / CF-657
+code_references: ["frontend/src/components/layout/Sidebar.tsx", "frontend/src/hooks/useWebSocket.ts", "frontend/src/stores/notificationStore.ts", "backend/app/api/routes/notifications.py", "backend/app/api/websocket.py"]
+api_references: ["backend/app/api/routes/notifications.py", "backend/app/api/websocket.py"]
+test_references: ["tests/test_project_scope_contracts.py"]
+last_verified: 2026-05-18
+compass: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-754
 ---
 
 # Notification Bell Architecture
@@ -22,8 +22,10 @@ The sidebar notification bell polls unread notification counts and links users i
 ## Frontend Surface
 
 - `frontend/src/components/layout/Sidebar.tsx`
+- `frontend/src/hooks/useWebSocket.ts`
 - `frontend/src/stores/notificationStore.ts`
 - `backend/app/api/routes/notifications.py`
+- `backend/app/api/websocket.py`
 
 ## State, API, And Backend Contracts
 
@@ -34,10 +36,13 @@ The sidebar notification bell polls unread notification counts and links users i
 ### API And Backend
 
 - `backend/app/api/routes/notifications.py`
+- `backend/app/api/websocket.py`
 
 ## Architecture Notes
 
 - The feature is mounted through `frontend/src/components/layout/Sidebar.tsx` and the UI navigation path recorded in the inventory.
+- Realtime websocket connections include the active `project_id`; project-tagged events are delivered only to clients connected to that same active project.
+- The websocket manager infers project scope from event data, A2A metadata, task ids, deployment ids, or channel instance ids before sending and before notification persistence.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
 
@@ -47,7 +52,7 @@ The sidebar notification bell polls unread notification counts and links users i
 
 ## Tests And Verification
 
-- No focused test reference recorded yet.
+- `tests/test_project_scope_contracts.py`
 
 ## Related Features
 
@@ -60,7 +65,7 @@ The sidebar notification bell polls unread notification counts and links users i
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-53 / CF-657
+- Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-754
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update

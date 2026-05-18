@@ -27,11 +27,11 @@ interface IntegrationsStore {
   error: string | null;
 
   setActiveTab: (tab: IntegrationsTab) => void;
-  fetchChannels: (platform?: string, projectId?: string) => Promise<void>;
-  fetchDeployments: (projectId?: string) => Promise<void>;
-  fetchSurveyIntegrations: (projectId?: string) => Promise<void>;
+  fetchChannels: (platform?: string, projectId?: string | null) => Promise<void>;
+  fetchDeployments: (projectId?: string | null) => Promise<void>;
+  fetchSurveyIntegrations: (projectId?: string | null) => Promise<void>;
   fetchMCPStatus: () => Promise<void>;
-  fetchMCPClients: () => Promise<void>;
+  fetchMCPClients: (projectId?: string | null) => Promise<void>;
   selectInstance: (id: string | null) => void;
   selectDeployment: (id: string | null) => void;
 }
@@ -55,6 +55,10 @@ export const useIntegrationsStore = create<IntegrationsStore>((set) => ({
 
   fetchChannels: async (platform, projectId) => {
     set({ channelLoading: true, error: null });
+    if (!projectId) {
+      set({ channelInstances: [], channelLoading: false });
+      return;
+    }
     try {
       const list = await channels.list(platform, projectId);
       set({ channelInstances: list, channelLoading: false });
@@ -65,6 +69,10 @@ export const useIntegrationsStore = create<IntegrationsStore>((set) => ({
 
   fetchDeployments: async (projectId) => {
     set({ deploymentLoading: true, error: null });
+    if (!projectId) {
+      set({ deploymentsList: [], selectedDeploymentId: null, deploymentLoading: false });
+      return;
+    }
     try {
       const list = await deployments.list(projectId);
       set({ deploymentsList: list, deploymentLoading: false });
@@ -75,6 +83,10 @@ export const useIntegrationsStore = create<IntegrationsStore>((set) => ({
 
   fetchSurveyIntegrations: async (projectId) => {
     set({ surveyLoading: true, error: null });
+    if (!projectId) {
+      set({ surveyIntegrations: [], surveyLoading: false });
+      return;
+    }
     try {
       const list = await surveys.integrations.list(projectId);
       set({ surveyIntegrations: list, surveyLoading: false });
@@ -93,9 +105,13 @@ export const useIntegrationsStore = create<IntegrationsStore>((set) => ({
     }
   },
 
-  fetchMCPClients: async () => {
+  fetchMCPClients: async (projectId) => {
+    if (!projectId) {
+      set({ mcpClients: [] });
+      return;
+    }
     try {
-      const list = await mcp.clients.list();
+      const list = await mcp.clients.list(projectId);
       set({ mcpClients: list });
     } catch (e: any) {
       set({ error: e.message });

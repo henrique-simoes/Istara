@@ -4,20 +4,20 @@ title: Connection Strings
 ui_path: Settings > Connection Strings
 audience: researcher
 status: documented
-related_features: ["settings.llm-servers", "settings.users"]
+related_features: ["settings.llm-servers", "settings.users", "settings.compute-donation"]
 related_glossary: ["wcag"]
 code_references: ["frontend/src/components/settings/ConnectionStringPanel.tsx", "backend/app/api/routes/connections.py", "backend/app/core/connection_string.py"]
 api_references: ["backend/app/api/routes/connections.py"]
-test_references: []
-last_verified: 2026-05-15
-compass: CF-SPEC-53 / CF-657
+test_references: ["tests/test_project_rbac.py", "tests/test_compute.py"]
+last_verified: 2026-05-18
+compass: CF-SPEC-60 / CF-754
 ---
 
 # Connection Strings
 
 ## What It Does
 
-Connection string settings provide governed admin-only configuration for sensitive external or local service connection data.
+Connection string settings provide governed admin-only configuration for sensitive external or local service connection data. Compute donation strings are project-scoped, separate from user invite strings, and cannot create user accounts.
 
 ## Why It Exists
 
@@ -34,6 +34,7 @@ Connection Strings exists so the work represented by Settings > Connection Strin
 - Open Settings > Connection Strings from the Istara navigation or the parent tab.
 - Use the visible controls in this surface to work with connection strings in the active project context.
 - Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.
+- When generating a compute donation string, choose the project access scope for the donated machine.
 
 ## Supported Workflows
 
@@ -45,6 +46,7 @@ Connection Strings exists so the work represented by Settings > Connection Strin
 
 - Project-scoped state or artifact updates associated with connection strings.
 - Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.
+- Donated compute connected with an unscoped or invalid string remains unable to receive project content.
 
 ## Caveats
 
@@ -55,6 +57,7 @@ Connection Strings exists so the work represented by Settings > Connection Strin
 
 - [settings.llm-servers](../../settings/llm-servers/researcher.md)
 - [settings.users](../../settings/users/researcher.md)
+- [settings.compute-donation](../../settings/compute-donation/researcher.md)
 
 ## Related Concepts
 
@@ -64,4 +67,4 @@ Connection Strings exists so the work represented by Settings > Connection Strin
 
 - Source files: `frontend/src/components/settings/ConnectionStringPanel.tsx`, `backend/app/api/routes/connections.py`, `backend/app/core/connection_string.py`
 - API references: `backend/app/api/routes/connections.py`
-- Tests: none recorded
+- Tests: `tests/test_project_rbac.py`, `tests/test_compute.py`

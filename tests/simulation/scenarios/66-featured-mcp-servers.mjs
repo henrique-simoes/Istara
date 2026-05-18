@@ -9,11 +9,22 @@ export const id = "66-featured-mcp-servers";
 export async function run(ctx) {
   const { api } = ctx;
   const checks = [];
+  const projectId = ctx.projectId;
+  const projectQuery = projectId ? `?project_id=${encodeURIComponent(projectId)}` : "";
+
+  if (!projectId) {
+    checks.push({
+      name: "Featured MCP catalog requires project context",
+      passed: false,
+      detail: "No project_id available in scenario context",
+    });
+    return checks;
+  }
 
   // ── 1. GET /api/mcp/featured — returns array of featured servers ──
   let featured = [];
   try {
-    featured = await api.get("/api/mcp/featured");
+    featured = await api.get(`/api/mcp/featured${projectQuery}`);
     checks.push({
       name: "GET /api/mcp/featured returns array",
       passed: Array.isArray(featured) && featured.length >= 1,
@@ -42,7 +53,7 @@ export async function run(ctx) {
 
   // ── 4. GET /api/mcp/featured/mcp-brasil — single server detail ──
   try {
-    const detail = await api.get("/api/mcp/featured/mcp-brasil");
+    const detail = await api.get(`/api/mcp/featured/mcp-brasil${projectQuery}`);
     checks.push({
       name: "GET /api/mcp/featured/mcp-brasil returns full detail",
       passed: detail.id === "mcp-brasil" && detail.features && detail.features.length > 0,
@@ -94,7 +105,7 @@ export async function run(ctx) {
 
   // ── 9. Unknown featured server returns 404 ──
   try {
-    await api.get("/api/mcp/featured/nonexistent-server");
+    await api.get(`/api/mcp/featured/nonexistent-server${projectQuery}`);
     checks.push({ name: "Unknown featured server returns 404", passed: false, detail: "Should have thrown" });
   } catch (e) {
     checks.push({
@@ -106,7 +117,7 @@ export async function run(ctx) {
 
   // ── 10. Connect endpoint exists (will fail without actual server running) ──
   try {
-    await api.post("/api/mcp/featured/mcp-brasil/connect", { env_vars: {} });
+    await api.post("/api/mcp/featured/mcp-brasil/connect", { env_vars: {}, project_id: projectId });
     checks.push({
       name: "Connect endpoint responds",
       passed: true,

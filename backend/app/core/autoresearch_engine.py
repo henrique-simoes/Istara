@@ -110,6 +110,7 @@ class AutoresearchEngine:
                         "id": experiment_id,
                         "loop_type": runner.loop_type,
                         "target_name": target,
+                        "project_id": project_id,
                         "iteration": i + 1,
                         "baseline_score": best_score,
                     }
@@ -229,6 +230,7 @@ class AutoresearchEngine:
                 await manager.broadcast(
                     "autoresearch_complete",
                     {
+                        "project_id": project_id,
                         "loop_type": runner.loop_type,
                         "total": len(results),
                         "kept": sum(1 for r in results if r.get("kept")),
@@ -361,6 +363,7 @@ class AutoresearchEngine:
 
     async def get_experiments(
         self,
+        project_id: str,
         loop_type: str | None = None,
         kept: bool | None = None,
         limit: int = 50,
@@ -372,7 +375,7 @@ class AutoresearchEngine:
         async with async_session() as db:
             query = select(AutoresearchExperiment).order_by(
                 AutoresearchExperiment.started_at.desc()
-            )
+            ).where(AutoresearchExperiment.project_id == project_id)
             if loop_type:
                 query = query.where(AutoresearchExperiment.loop_type == loop_type)
             if kept is not None:
@@ -392,27 +395,58 @@ class AutoresearchEngine:
             record = result.scalar_one_or_none()
             return record.to_dict() if record else None
 
-    async def get_leaderboard(self) -> list[dict]:
-        """Get best model+temp per skill from model_skill_stats."""
-        from sqlalchemy import select
+    async def get_leaderboard(self, project_id: str) -> list[dict]:
+        """Get best model+temp per skill from project-scoped telemetry."""
+        from sqlalchemy import func, select
 
-        from app.models.model_skill_stats import ModelSkillStats
+        from app.models.telemetry_span import TelemetrySpan
 
         async with async_session() as db:
             result = await db.execute(
-                select(ModelSkillStats)
-                .where(ModelSkillStats.executions >= 3)
-                .order_by(ModelSkillStats.best_quality.desc())
+                select(
+                    TelemetrySpan.skill_name,
+                    TelemetrySpan.model_name,
+                    func.coalesce(TelemetrySpan.temperature, 0.0),
+                    func.count(TelemetrySpan.id),
+                    func.avg(TelemetrySpan.quality_score),
+                    func.max(TelemetrySpan.quality_score),
+                )
+                .where(
+                    TelemetrySpan.project_id == project_id,
+                    TelemetrySpan.skill_name != "",
+                    TelemetrySpan.model_name != "",
+                    TelemetrySpan.quality_score.is_not(None),
+                )
+                .group_by(
+                    TelemetrySpan.skill_name,
+                    TelemetrySpan.model_name,
+                    TelemetrySpan.temperature,
+                )
+                .having(func.count(TelemetrySpan.id) >= 3)
+                .order_by(func.max(TelemetrySpan.quality_score).desc())
             )
-            stats = result.scalars().all()
+            stats = result.all()
             # Group by skill, pick best
             best_per_skill: dict[str, dict] = {}
             for s in stats:
+                skill_name = str(s[0] or "")
+                model_name = str(s[1] or "")
+                avg_quality = float(s[4] or 0.0)
+                best_quality = float(s[5] or 0.0)
+                entry = {
+                    "skill_name": skill_name,
+                    "model_name": model_name,
+                    "temperature": float(s[2] or 0.0),
+                    "executions": int(s[3] or 0),
+                    "avg_quality": avg_quality,
+                    "quality_ema": avg_quality,
+                    "best_quality": best_quality,
+                }
                 if (
-                    s.skill_name not in best_per_skill
-                    or s.best_quality > best_per_skill[s.skill_name]["best_quality"]
+                    skill_name not in best_per_skill
+                    or best_quality > best_per_skill[skill_name]["best_quality"]
                 ):
-                    best_per_skill[s.skill_name] = s.to_dict()
+                    best_per_skill[skill_name] = entry
             return list(best_per_skill.values())
 
 

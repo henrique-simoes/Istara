@@ -3,14 +3,14 @@ stable_id: autoresearch.leaderboard
 title: Autoresearch Leaderboard
 ui_path: Autoresearch > Leaderboard
 audience: researcher
-status: needs-verification
+status: documented
 related_features: ["autoresearch.experiments", "quality.dashboard"]
 related_glossary: ["triangulation"]
 code_references: ["frontend/src/components/autoresearch/AutoresearchView.tsx", "backend/app/api/routes/autoresearch.py"]
 api_references: ["backend/app/api/routes/autoresearch.py"]
-test_references: []
-last_verified: 2026-05-15
-compass: CF-SPEC-53 / CF-657
+test_references: ["tests/test_autoresearch.py", "tests/test_project_scope_contracts.py"]
+last_verified: 2026-05-18
+compass: CF-SPEC-60 / CF-754
 ---
 
 # Autoresearch Leaderboard
@@ -32,7 +32,7 @@ Autoresearch Leaderboard exists so the work represented by Autoresearch > Leader
 ## How UX Researchers Use It
 
 - Open Autoresearch > Leaderboard from the Istara navigation or the parent tab.
-- Use the visible controls in this surface to work with autoresearch leaderboard in the active project context.
+- Use the visible controls in this surface to work with model and temperature rankings derived from the active project's telemetry.
 - Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.
 
 ## Supported Workflows
@@ -43,8 +43,8 @@ Autoresearch Leaderboard exists so the work represented by Autoresearch > Leader
 
 ## Inputs, Outputs, And Expected Outcomes
 
-- Project-scoped state or artifact updates associated with autoresearch leaderboard.
-- Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.
+- Project-scoped model and temperature rankings associated with the active project's experiment telemetry.
+- Empty leaderboard state when the active project has no qualifying telemetry, rather than falling back to global model statistics.
 
 ## Caveats
 
@@ -64,4 +64,4 @@ Autoresearch Leaderboard exists so the work represented by Autoresearch > Leader
 
 - Source files: `frontend/src/components/autoresearch/AutoresearchView.tsx`, `backend/app/api/routes/autoresearch.py`
 - API references: `backend/app/api/routes/autoresearch.py`
-- Tests: none recorded
+- Tests: `tests/test_autoresearch.py`, `tests/test_project_scope_contracts.py`

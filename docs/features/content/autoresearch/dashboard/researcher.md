@@ -8,9 +8,9 @@ related_features: ["autoresearch.experiments", "autoresearch.leaderboard"]
 related_glossary: ["triangulation"]
 code_references: ["frontend/src/components/autoresearch/AutoresearchView.tsx", "frontend/src/stores/autoresearchStore.ts", "backend/app/api/routes/autoresearch.py"]
 api_references: ["backend/app/api/routes/autoresearch.py"]
-test_references: []
-last_verified: 2026-05-15
-compass: CF-SPEC-53 / CF-657
+test_references: ["tests/test_autoresearch.py", "tests/test_project_scope_contracts.py"]
+last_verified: 2026-05-18
+compass: CF-SPEC-60 / CF-754
 ---
 
 # Autoresearch Dashboard
@@ -32,7 +32,7 @@ Autoresearch Dashboard exists so the work represented by Autoresearch > Dashboar
 ## How UX Researchers Use It
 
 - Open Autoresearch > Dashboard from the Istara navigation or the parent tab.
-- Use the visible controls in this surface to work with autoresearch dashboard in the active project context.
+- Use the visible controls in this surface to work only with autoresearch dashboard data from the active project context.
 - Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.
 
 ## Supported Workflows
@@ -43,8 +43,8 @@ Autoresearch Dashboard exists so the work represented by Autoresearch > Dashboar
 
 ## Inputs, Outputs, And Expected Outcomes
 
-- Project-scoped state or artifact updates associated with autoresearch dashboard.
-- Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.
+- Project-scoped status and operational metrics associated with the active project.
+- Visible task, agent, document, finding, deployment, telemetry, schedule, and experiment counts filtered to the project the current user is authorized to access.
 
 ## Caveats
 
@@ -64,4 +64,4 @@ Autoresearch Dashboard exists so the work represented by Autoresearch > Dashboar
 
 - Source files: `frontend/src/components/autoresearch/AutoresearchView.tsx`, `frontend/src/stores/autoresearchStore.ts`, `backend/app/api/routes/autoresearch.py`
 - API references: `backend/app/api/routes/autoresearch.py`
-- Tests: none recorded
+- Tests: `tests/test_autoresearch.py`, `tests/test_project_scope_contracts.py`

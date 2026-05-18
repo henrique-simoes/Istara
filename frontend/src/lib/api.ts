@@ -381,12 +381,12 @@ export const agents = {
   },
   sendMessage: (
     id: string,
-    data: { to_agent_id?: string; content: string; message_type?: string }
+    data: { to_agent_id?: string; content: string; message_type?: string; project_id: string; metadata?: Record<string, unknown> }
   ) =>
     request<any>(`/api/agents/${id}/messages`, { method: "POST", body: JSON.stringify(data) }),
-  a2aLog: (limit = 100, projectId?: string) => {
+  a2aLog: (projectId: string, limit = 100) => {
     const params = new URLSearchParams({ limit: String(limit) });
-    if (projectId) params.set("project_id", projectId);
+    params.set("project_id", projectId);
     return request<any>(`/api/agents/a2a/log?${params}`);
   },
   heartbeat: () => request<any>("/api/agents/heartbeat/status"),
@@ -875,11 +875,12 @@ export const mcp = {
     exposure: () => get<any>("/api/mcp/server/exposure"),
   },
   clients: {
-    list: async (): Promise<MCPServerConfig[]> => {
-      const res = await get<any>("/api/mcp/clients");
+    list: async (projectId?: string | null): Promise<MCPServerConfig[]> => {
+      const suffix = projectId ? `?project_id=${encodeURIComponent(projectId)}` : "";
+      const res = await get<any>(`/api/mcp/clients${suffix}`);
       return Array.isArray(res) ? res : (res?.servers ?? []);
     },
-    create: (data: { name: string; url: string; transport?: string; headers?: any }) =>
+    create: (data: { name: string; url: string; transport?: string; headers?: any; project_id?: string }) =>
       post<MCPServerConfig>("/api/mcp/clients", data),
     delete: (id: string) => del(`/api/mcp/clients/${id}`),
     discover: (id: string) => post<any>(`/api/mcp/clients/${id}/discover`, {}),
@@ -887,25 +888,37 @@ export const mcp = {
     call: (id: string, toolName: string, args: any) =>
       post<any>(`/api/mcp/clients/${id}/call`, { tool_name: toolName, arguments: args }),
     health: (id: string) => get<any>(`/api/mcp/clients/${id}/health`),
-    allTools: async (): Promise<any[]> => {
-      const res = await get<any>("/api/mcp/clients/tools");
+    allTools: async (projectId?: string | null): Promise<any[]> => {
+      const suffix = projectId ? `?project_id=${encodeURIComponent(projectId)}` : "";
+      const res = await get<any>(`/api/mcp/clients/tools${suffix}`);
       return Array.isArray(res) ? res : (res?.tools ?? []);
     },
   },
   featured: {
-    list: () => get<FeaturedMCPServer[]>("/api/mcp/featured"),
-    get: (id: string) => get<FeaturedMCPServer>(`/api/mcp/featured/${id}`),
-    connect: (id: string, envVars?: Record<string, string>) =>
-      post<any>(`/api/mcp/featured/${id}/connect`, { env_vars: envVars || {} }),
+    list: (projectId?: string | null) => {
+      const suffix = projectId ? `?project_id=${encodeURIComponent(projectId)}` : "";
+      return get<FeaturedMCPServer[]>(`/api/mcp/featured${suffix}`);
+    },
+    get: (id: string, projectId?: string | null) => {
+      const suffix = projectId ? `?project_id=${encodeURIComponent(projectId)}` : "";
+      return get<FeaturedMCPServer>(`/api/mcp/featured/${id}${suffix}`);
+    },
+    connect: (id: string, envVars?: Record<string, string>, projectId?: string | null) =>
+      post<any>(`/api/mcp/featured/${id}/connect`, {
+        env_vars: envVars || {},
+        project_id: projectId || undefined,
+      }),
   },
 };
 
 // --- Autoresearch ---
 
 export const autoresearch = {
-  status: () => get<AutoresearchStatus>("/api/autoresearch/status"),
-  experiments: (params?: { loop_type?: string; kept?: boolean; limit?: number; offset?: number }) => {
+  status: (projectId: string) =>
+    get<AutoresearchStatus>(`/api/autoresearch/status?project_id=${encodeURIComponent(projectId)}`),
+  experiments: (params: { project_id: string; loop_type?: string; kept?: boolean; limit?: number; offset?: number }) => {
     const p = new URLSearchParams();
+    p.set("project_id", params.project_id);
     if (params?.loop_type) p.set("loop_type", params.loop_type);
     if (params?.kept !== undefined) p.set("kept", String(params.kept));
     if (params?.limit) p.set("limit", String(params.limit));
@@ -915,10 +928,12 @@ export const autoresearch = {
   experiment: (id: string) => get<AutoresearchExperiment>(`/api/autoresearch/experiments/${id}`),
   start: (data: { loop_type: string; target: string; max_iterations?: number; project_id?: string }) =>
     post<any>("/api/autoresearch/start", data),
-  stop: () => post<any>("/api/autoresearch/stop", {}),
+  stop: (projectId: string) =>
+    post<any>(`/api/autoresearch/stop?project_id=${encodeURIComponent(projectId)}`, {}),
   config: () => get<AutoresearchConfig>("/api/autoresearch/config"),
   updateConfig: (data: Record<string, any>) => patch<AutoresearchConfig>("/api/autoresearch/config", data),
-  leaderboard: () => get<ModelSkillLeaderboard[]>("/api/autoresearch/leaderboard"),
+  leaderboard: (projectId: string) =>
+    get<ModelSkillLeaderboard[]>(`/api/autoresearch/leaderboard?project_id=${encodeURIComponent(projectId)}`),
   toggle: (enabled: boolean) => post<any>("/api/autoresearch/toggle", { enabled }),
 };
 
@@ -969,7 +984,7 @@ export const admin = {
     del(`/api/projects/${projectId}`),
   generateUserInvite: (data: { server_url: string; ws_url?: string; label?: string; expires_hours?: number; role?: string }) =>
     post<any>("/api/connections/generate", data),
-  generateComputeDonation: (data: { server_url: string; ws_url?: string; label?: string; expires_hours?: number }) =>
+  generateComputeDonation: (data: { server_url: string; ws_url?: string; label?: string; expires_hours?: number; allowed_project_ids?: string[] }) =>
     post<any>("/api/connections/compute-donation/generate", data),
 };
 

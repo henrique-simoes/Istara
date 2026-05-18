@@ -6,6 +6,7 @@ export const id = "14-agent-communication";
 export async function run(ctx) {
   const { api } = ctx;
   const checks = [];
+  const projectId = ctx.projectId || "sim-project-001";
 
   // 1. Create two test agents
   let agentA = null;
@@ -52,6 +53,7 @@ export async function run(ctx) {
         to_agent_id: agentB.id,
         message_type: "consult",
         content: "[SIM] Alpha consulting Beta on research methodology",
+        project_id: projectId,
       });
       checks.push({
         name: "Directed message A→B",
@@ -70,6 +72,7 @@ export async function run(ctx) {
         to_agent_id: agentA.id,
         message_type: "response",
         content: "[SIM] Beta suggests using thematic analysis approach",
+        project_id: projectId,
       });
       checks.push({
         name: "Response message B→A",
@@ -88,6 +91,7 @@ export async function run(ctx) {
         to_agent_id: null,
         message_type: "finding",
         content: "[SIM] Alpha discovered pattern: users prefer guided onboarding",
+        project_id: projectId,
       });
       checks.push({
         name: "Broadcast message from A",
@@ -102,7 +106,7 @@ export async function run(ctx) {
   // 5. Check inbox for B — should have directed message from A
   if (agentB) {
     try {
-      const inbox = await api.get(`/api/agents/${agentB.id}/messages?limit=10`);
+      const inbox = await api.get(`/api/agents/${agentB.id}/messages?project_id=${encodeURIComponent(projectId)}&limit=10`);
       const messages = inbox.messages || [];
       const hasDirected = messages.some(
         (m) => m.from_agent_id === agentA?.id && m.message_type === "consult"
@@ -119,7 +123,7 @@ export async function run(ctx) {
 
   // 6. Check A2A log contains all messages
   try {
-    const log = await api.get("/api/agents/a2a/log?limit=50");
+    const log = await api.get(`/api/agents/a2a/log?project_id=${encodeURIComponent(projectId)}&limit=50`);
     const messages = log.messages || [];
     const simMessages = messages.filter((m) => m.content.includes("[SIM]"));
     checks.push({
@@ -140,6 +144,7 @@ export async function run(ctx) {
           to_agent_id: agentB?.id || null,
           message_type: msgType,
           content: `[SIM] Test ${msgType} message`,
+          project_id: projectId,
         });
         checks.push({
           name: `Message type: ${msgType}`,

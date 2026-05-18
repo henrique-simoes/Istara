@@ -32,27 +32,30 @@ export default function IntegrationsOverview() {
 
   useEffect(() => {
     Promise.all([
-      fetchChannels(undefined, activeProjectId || undefined),
-      fetchDeployments(activeProjectId || undefined),
-      fetchSurveyIntegrations(activeProjectId || undefined),
-      fetchMCPClients(),
+      fetchChannels(undefined, activeProjectId),
+      fetchDeployments(activeProjectId),
+      fetchSurveyIntegrations(activeProjectId),
+      fetchMCPClients(activeProjectId),
     ]).finally(() => setLoaded(true));
   }, [activeProjectId, fetchChannels, fetchDeployments, fetchSurveyIntegrations, fetchMCPClients]);
 
   const scopedChannels = activeProjectId
     ? (channelInstances || []).filter((c) => c.project_id === activeProjectId)
-    : (channelInstances || []);
+    : [];
   const scopedDeployments = activeProjectId
     ? (deploymentsList || []).filter((d) => d.project_id === activeProjectId)
-    : (deploymentsList || []);
+    : [];
   const scopedSurveyIntegrations = activeProjectId
     ? (surveyIntegrations || []).filter((s) => s.project_id === activeProjectId)
-    : (surveyIntegrations || []);
+    : [];
+  const scopedMCPClients = activeProjectId
+    ? (mcpClients || []).filter((c) => c.project_id === activeProjectId)
+    : [];
 
   const activeChannels = scopedChannels.filter((c) => c.is_active).length;
   const activeDeployments = scopedDeployments.filter((d) => d.state === "active").length;
   const totalSurveyResponses = scopedSurveyIntegrations.length;
-  const totalMCPTools = (mcpClients || []).reduce((acc, c) => acc + (c.tools?.length || 0), 0);
+  const totalMCPTools = scopedMCPClients.reduce((acc, c) => acc + (c.tools?.length || 0), 0);
 
   const stats: StatCard[] = [
     { label: "Channels Active", value: activeChannels, icon: MessageSquare, color: "text-blue-500", tab: "messaging" },

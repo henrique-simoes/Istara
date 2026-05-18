@@ -33,6 +33,7 @@ Agent-To-Agent Log exists so the work represented by Agents > A2A has a stable, 
 
 - Open Agents > A2A from the Istara navigation or the parent tab.
 - Review only the agent messages connected to the active project context.
+- If no active project is selected, the A2A log stays empty instead of falling back to a global message feed.
 - Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.
 
 ## Supported Workflows
@@ -44,6 +45,7 @@ Agent-To-Agent Log exists so the work represented by Agents > A2A has a stable, 
 ## Inputs, Outputs, And Expected Outcomes
 
 - Project-scoped A2A messages associated with the active project.
+- External A2A JSON-RPC task submissions must carry `project_id`, so submitted work is attached to a project before it can appear in Istara.
 - Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.
 
 ## Caveats

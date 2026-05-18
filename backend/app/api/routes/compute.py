@@ -3,12 +3,18 @@
 import json
 import logging
 import uuid
+from datetime import UTC, datetime
 from urllib.parse import urlparse, urlunparse
 
 from fastapi import APIRouter, Request, WebSocket, WebSocketDisconnect
+from sqlalchemy import select
 
+from app.config import settings
 from app.core.compute_registry import ComputeNode, compute_registry, infer_provider_type
+from app.core.connection_string import decode_connection_string, hash_connection_string
 from app.core.permissions import require_global_role
+from app.models.connection_string import ConnectionString
+from app.models.project_member import ProjectMember
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -17,6 +23,95 @@ logger = logging.getLogger(__name__)
 def _infer_relay_provider_type(provider_host: str, requested_provider: str | None) -> str:
     """Infer the safest provider contract for a relay donor's advertised host."""
     return infer_provider_type(requested_provider, provider_host)
+
+
+def _normalize_project_scope(values: object) -> list[str]:
+    if not isinstance(values, list):
+        return []
+    normalized: list[str] = []
+    for value in values:
+        project_id = str(value or "").strip()
+        if project_id and project_id not in normalized:
+            normalized.append(project_id)
+    return normalized
+
+
+def _parse_connection_scope(conn: ConnectionString | None, payload: dict) -> list[str]:
+    from_db: list[str] = []
+    if conn is not None:
+        try:
+            from_db = _normalize_project_scope(json.loads(conn.allowed_project_ids_json or "[]"))
+        except Exception:
+            from_db = []
+    from_payload = _normalize_project_scope(payload.get("allowed_project_ids"))
+    return from_db or from_payload
+
+
+def _is_connection_expired(conn: ConnectionString) -> bool:
+    expires_at = conn.expires_at
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=UTC)
+    return expires_at < datetime.now(UTC)
+
+
+async def _scope_from_connection_string(
+    db,
+    connection_string: str,
+) -> tuple[list[str], str]:
+    payload = decode_connection_string(connection_string)
+    if not payload:
+        return [], "invalid"
+    if payload.get("kind") != "compute_donation":
+        return [], "wrong_type"
+    if payload.get("network_token") != settings.network_access_token:
+        return [], "token_mismatch"
+
+    result = await db.execute(
+        select(ConnectionString).where(
+            ConnectionString.connection_string_hash == hash_connection_string(connection_string)
+        )
+    )
+    conn = result.scalar_one_or_none()
+    if conn is None:
+        return [], "missing"
+    if conn.token_type != "compute_donation":
+        return [], "wrong_type"
+    if not conn.is_active or conn.is_redeemed or _is_connection_expired(conn):
+        return [], "inactive"
+
+    conn.last_validated_at = datetime.now(UTC)
+    await db.commit()
+    return _parse_connection_scope(conn, payload), "ok"
+
+
+async def _scope_from_user(db, user_id: str, role: str) -> list[str]:
+    if not user_id:
+        return []
+    if role == "admin":
+        return ["*"]
+    result = await db.execute(
+        select(ProjectMember.project_id).where(ProjectMember.user_id == user_id)
+    )
+    return _normalize_project_scope(list(result.scalars().all()))
+
+
+def _combine_project_scopes(
+    first: list[str] | None,
+    second: list[str] | None,
+) -> list[str]:
+    scopes = [scope for scope in (first, second) if scope is not None]
+    if not scopes:
+        return []
+    if len(scopes) == 1:
+        return scopes[0]
+
+    left, right = scopes
+    if "*" in left:
+        return right
+    if "*" in right:
+        return left
+    right_set = set(right)
+    return [project_id for project_id in left if project_id in right_set]
 
 
 @router.get("/compute/nodes")
@@ -63,12 +158,15 @@ async def relay_websocket(ws: WebSocket):
     # Always authenticate relay connections — regardless of team_mode or localhost.
     # A relay/browser node can provide either the network access token from an
     # invite string or a valid user JWT from an authenticated browser session.
-    from app.config import settings
     from app.core.auth import verify_token
     from app.core.auth_sessions import validate_auth_session
     from app.models.database import async_session
 
     network_token = ws.headers.get("x-access-token", "") or ws.query_params.get("access_token", "")
+    connection_string = (
+        ws.headers.get("x-istara-connection-string", "")
+        or ws.query_params.get("connection_string", "")
+    )
     auth_header = ws.headers.get("authorization", "")
     jwt_token = (
         auth_header.removeprefix("Bearer ").strip() if auth_header.startswith("Bearer ") else ""
@@ -88,6 +186,18 @@ async def relay_websocket(ws: WebSocket):
         await ws.close(code=4001, reason="Authentication required for relay connections")
         return
     authenticated_user_id = str(jwt_payload.get("sub", "")) if jwt_payload else ""
+    authenticated_role = str(jwt_payload.get("role", "")) if jwt_payload else ""
+    connection_scope: list[str] | None = None
+    user_scope: list[str] | None = None
+    async with async_session() as db:
+        if connection_string:
+            connection_scope, reason = await _scope_from_connection_string(db, connection_string)
+            if reason != "ok":
+                await ws.close(code=4001, reason="Invalid compute donation connection string")
+                return
+        if jwt_payload is not None:
+            user_scope = await _scope_from_user(db, authenticated_user_id, authenticated_role)
+    allowed_project_ids = _combine_project_scopes(user_scope, connection_scope)
 
     await ws.accept()
     node_id = str(uuid.uuid4())
@@ -135,6 +245,7 @@ async def relay_websocket(ws: WebSocket):
                     user_id=authenticated_user_id or msg.get("user_id", "anonymous"),
                     ip_address=ip_addr,
                     provider_host=provider_host,
+                    allowed_project_ids=allowed_project_ids,
                     ram_total_gb=msg.get("ram_total_gb", 0),
                     ram_available_gb=msg.get("ram_available_gb", 0),
                     cpu_cores=msg.get("cpu_cores", 0),
@@ -175,7 +286,17 @@ async def relay_websocket(ws: WebSocket):
                     except Exception as e:
                         logger.debug(f"Relay immediate capability detection failed: {e}")
 
-                await ws.send_json({"type": "registered", "node_id": node_id})
+                await ws.send_json(
+                    {
+                        "type": "registered",
+                        "node_id": node_id,
+                        "authorized_project_count": (
+                            "all"
+                            if "*" in allowed_project_ids
+                            else len(allowed_project_ids)
+                        ),
+                    }
+                )
                 logger.info(f"Relay node registered: {node.name} ({node_id})")
 
             elif msg_type == "heartbeat" and node:

@@ -21,14 +21,15 @@ interface AutoresearchStore {
   error: string | null;
 
   setActiveTab: (tab: AutoresearchTab) => void;
-  fetchStatus: () => Promise<void>;
+  fetchStatus: (projectId: string | null) => Promise<void>;
   fetchExperiments: (params?: {
+    project_id?: string | null;
     loop_type?: string;
     kept?: boolean;
     limit?: number;
     offset?: number;
   }) => Promise<void>;
-  fetchLeaderboard: () => Promise<void>;
+  fetchLeaderboard: (projectId: string | null) => Promise<void>;
   fetchConfig: () => Promise<void>;
   startLoop: (data: {
     loop_type: string;
@@ -36,7 +37,7 @@ interface AutoresearchStore {
     max_iterations?: number;
     project_id?: string;
   }) => Promise<void>;
-  stopLoop: () => Promise<void>;
+  stopLoop: (projectId: string | null) => Promise<void>;
   updateConfig: (data: Record<string, any>) => Promise<void>;
   toggle: (enabled: boolean) => Promise<void>;
 }
@@ -52,9 +53,13 @@ export const useAutoresearchStore = create<AutoresearchStore>((set, get) => ({
 
   setActiveTab: (tab) => set({ activeTab: tab }),
 
-  fetchStatus: async () => {
+  fetchStatus: async (projectId) => {
+    if (!projectId) {
+      set({ status: null });
+      return;
+    }
     try {
-      const status = await autoresearch.status();
+      const status = await autoresearch.status(projectId);
       set({ status });
     } catch (e: any) {
       set({ error: e.message });
@@ -62,19 +67,30 @@ export const useAutoresearchStore = create<AutoresearchStore>((set, get) => ({
   },
 
   fetchExperiments: async (params) => {
+    if (!params?.project_id) {
+      set({ experiments: [] });
+      return;
+    }
     set({ loading: true });
     try {
-      const data = await autoresearch.experiments(params);
+      const data = await autoresearch.experiments({
+        ...params,
+        project_id: params.project_id,
+      });
       set({ experiments: Array.isArray(data) ? data : [], loading: false });
     } catch (e: any) {
       set({ loading: false, error: e.message });
     }
   },
 
-  fetchLeaderboard: async () => {
+  fetchLeaderboard: async (projectId) => {
+    if (!projectId) {
+      set({ leaderboard: [] });
+      return;
+    }
     set({ loading: true });
     try {
-      const data = await autoresearch.leaderboard();
+      const data = await autoresearch.leaderboard(projectId);
       set({ leaderboard: Array.isArray(data) ? data : [], loading: false });
     } catch (e: any) {
       set({ loading: false, error: e.message });
@@ -94,17 +110,18 @@ export const useAutoresearchStore = create<AutoresearchStore>((set, get) => ({
     set({ error: null });
     try {
       await autoresearch.start(data);
-      await get().fetchStatus();
+      await get().fetchStatus(data.project_id || null);
     } catch (e: any) {
       set({ error: e.message });
     }
   },
 
-  stopLoop: async () => {
+  stopLoop: async (projectId) => {
     set({ error: null });
     try {
-      await autoresearch.stop();
-      await get().fetchStatus();
+      if (!projectId) return;
+      await autoresearch.stop(projectId);
+      await get().fetchStatus(projectId);
     } catch (e: any) {
       set({ error: e.message });
     }
@@ -122,7 +139,8 @@ export const useAutoresearchStore = create<AutoresearchStore>((set, get) => ({
   toggle: async (enabled) => {
     try {
       await autoresearch.toggle(enabled);
-      await get().fetchStatus();
+      const projectId = get().status?.current_experiment?.project_id || null;
+      await get().fetchStatus(projectId);
       await get().fetchConfig();
     } catch (e: any) {
       set({ error: e.message });

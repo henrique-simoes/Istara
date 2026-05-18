@@ -253,7 +253,7 @@
 <h2 id="how-ux-researchers-use-it">How UX Researchers Use It</h2>
 <ul>
 <li>Open Autoresearch &gt; Leaderboard from the Istara navigation or the parent tab.</li>
-<li>Use the visible controls in this surface to work with autoresearch leaderboard in the active project context.</li>
+<li>Use the visible controls in this surface to work with model and temperature rankings derived from the active project&#x27;s telemetry.</li>
 <li>Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.</li>
 </ul>
 <h2 id="supported-workflows">Supported Workflows</h2>
@@ -264,8 +264,8 @@
 </ul>
 <h2 id="inputs-outputs-and-expected-outcomes">Inputs, Outputs, And Expected Outcomes</h2>
 <ul>
-<li>Project-scoped state or artifact updates associated with autoresearch leaderboard.</li>
-<li>Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.</li>
+<li>Project-scoped model and temperature rankings associated with the active project&#x27;s experiment telemetry.</li>
+<li>Empty leaderboard state when the active project has no qualifying telemetry, rather than falling back to global model statistics.</li>
 </ul>
 <h2 id="caveats">Caveats</h2>
 <ul>
@@ -285,7 +285,7 @@
 <ul>
 <li>Source files: <code>frontend/src/components/autoresearch/AutoresearchView.tsx</code>, <code>backend/app/api/routes/autoresearch.py</code></li>
 <li>API references: <code>backend/app/api/routes/autoresearch.py</code></li>
-<li>Tests: none recorded</li>
+<li>Tests: <code>tests/test_autoresearch.py</code>, <code>tests/test_project_scope_contracts.py</code></li>
 </ul>
         </article>
         <aside class="toc-panel" aria-label="Page sections">

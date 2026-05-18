@@ -8,16 +8,16 @@ related_features: ["skills.catalog", "agents.registry"]
 related_glossary: ["mcp"]
 code_references: ["frontend/src/components/integrations/MCPTab.tsx", "frontend/src/components/integrations/MCPAccessPolicyEditor.tsx", "frontend/src/components/integrations/MCPAuditLog.tsx", "backend/app/api/routes/mcp.py"]
 api_references: ["backend/app/api/routes/mcp.py"]
-test_references: []
-last_verified: 2026-05-15
-compass: CF-SPEC-53 / CF-657
+test_references: ["tests/test_mcp.py", "tests/test_project_scope_contracts.py"]
+last_verified: 2026-05-18
+compass: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-759
 ---
 
 # MCP Integrations
 
 ## What It Does
 
-The MCP tab configures Model Context Protocol server access, policies, and audit visibility.
+The MCP tab configures Model Context Protocol connections for the active project. Admin users can also review global MCP server exposure controls, but connected external MCP clients shown in Integrations are project-owned.
 
 ## Why It Exists
 
@@ -32,7 +32,8 @@ MCP Integrations exists so the work represented by Integrations > MCP has a stab
 ## How UX Researchers Use It
 
 - Open Integrations > MCP from the Istara navigation or the parent tab.
-- Use the visible controls in this surface to work with mcp integrations in the active project context.
+- Use the visible controls in this surface to work with MCP integrations in the active project context.
+- Add or connect external MCP servers only after selecting the project that is allowed to use those tools.
 - Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.
 
 ## Supported Workflows
@@ -43,11 +44,13 @@ MCP Integrations exists so the work represented by Integrations > MCP has a stab
 
 ## Inputs, Outputs, And Expected Outcomes
 
-- Project-scoped state or artifact updates associated with mcp integrations.
+- Project-scoped MCP server registrations associated with the selected project.
 - Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.
 
 ## Caveats
 
+- No active project means the connected MCP server list is empty and new connections are disabled.
+- Legacy global MCP clients are admin API inventory and are not shown as project MCP connections.
 - Needs interactive verification for exact empty, loading, error, and permission-denied states.
 - Do not expand this documentation beyond the cited source files without adding new code or walkthrough evidence.
 
@@ -64,4 +67,4 @@ MCP Integrations exists so the work represented by Integrations > MCP has a stab
 
 - Source files: `frontend/src/components/integrations/MCPTab.tsx`, `frontend/src/components/integrations/MCPAccessPolicyEditor.tsx`, `frontend/src/components/integrations/MCPAuditLog.tsx`, `backend/app/api/routes/mcp.py`
 - API references: `backend/app/api/routes/mcp.py`
-- Tests: none recorded
+- Tests: `tests/test_mcp.py`, `tests/test_project_scope_contracts.py`
