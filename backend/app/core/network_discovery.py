@@ -87,7 +87,12 @@ def _get_local_subnets() -> list[str]:
 
 def _get_local_ips() -> set[str]:
     """Get all local IP addresses to exclude from scanning."""
-    local = {"127.0.0.1", "localhost"}
+    try:
+        from app.core.compute_registry_helpers import _local_machine_aliases
+
+        local = set(_local_machine_aliases())
+    except Exception:
+        local = {"127.0.0.1", "localhost"}
     try:
         hostname = socket.gethostname()
         for info in socket.getaddrinfo(hostname, None, socket.AF_INET):

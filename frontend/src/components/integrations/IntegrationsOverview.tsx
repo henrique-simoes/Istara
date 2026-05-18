@@ -33,15 +33,25 @@ export default function IntegrationsOverview() {
   useEffect(() => {
     Promise.all([
       fetchChannels(undefined, activeProjectId || undefined),
-      fetchDeployments(),
+      fetchDeployments(activeProjectId || undefined),
       fetchSurveyIntegrations(activeProjectId || undefined),
       fetchMCPClients(),
     ]).finally(() => setLoaded(true));
   }, [activeProjectId, fetchChannels, fetchDeployments, fetchSurveyIntegrations, fetchMCPClients]);
 
-  const activeChannels = (channelInstances || []).filter((c) => c.is_active).length;
-  const activeDeployments = (deploymentsList || []).filter((d) => d.state === "active").length;
-  const totalSurveyResponses = (surveyIntegrations || []).length;
+  const scopedChannels = activeProjectId
+    ? (channelInstances || []).filter((c) => c.project_id === activeProjectId)
+    : (channelInstances || []);
+  const scopedDeployments = activeProjectId
+    ? (deploymentsList || []).filter((d) => d.project_id === activeProjectId)
+    : (deploymentsList || []);
+  const scopedSurveyIntegrations = activeProjectId
+    ? (surveyIntegrations || []).filter((s) => s.project_id === activeProjectId)
+    : (surveyIntegrations || []);
+
+  const activeChannels = scopedChannels.filter((c) => c.is_active).length;
+  const activeDeployments = scopedDeployments.filter((d) => d.state === "active").length;
+  const totalSurveyResponses = scopedSurveyIntegrations.length;
   const totalMCPTools = (mcpClients || []).reduce((acc, c) => acc + (c.tools?.length || 0), 0);
 
   const stats: StatCard[] = [
@@ -53,14 +63,14 @@ export default function IntegrationsOverview() {
 
   // Build recent activity from channel instances + deployments
   const recentActivity = [
-    ...(channelInstances || []).slice(0, 3).map((c) => ({
+    ...scopedChannels.slice(0, 3).map((c) => ({
       id: c.id,
       type: "channel" as const,
       label: `${c.platform} channel "${c.name}"`,
       detail: c.is_active ? "Active" : "Inactive",
       time: c.updated_at,
     })),
-    ...(deploymentsList || []).slice(0, 3).map((d) => ({
+    ...scopedDeployments.slice(0, 3).map((d) => ({
       id: d.id,
       type: "deployment" as const,
       label: `${d.deployment_type} "${d.name}"`,

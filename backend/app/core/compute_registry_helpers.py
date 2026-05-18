@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import socket
 from typing import Any
 from urllib.parse import urlparse
 
@@ -60,6 +61,71 @@ def infer_provider_type(provider_type: str | None, host: str | None) -> str:
     return requested or "openai_compat"
 
 
+def _normalize_hostname(hostname: str | None) -> str:
+    return (hostname or "").strip().lower().rstrip(".")
+
+
+def _local_machine_aliases() -> set[str]:
+    """Return passive hostname/IP aliases for this machine.
+
+    This intentionally uses local OS interface data only. It lets the compute
+    pool recognize that ``localhost`` and LAN IP aliases are the same physical
+    host without guessing that two remote machines with similar models are one
+    machine.
+    """
+    aliases = {"localhost", "127.0.0.1", "::1", "0.0.0.0"}
+    host_candidates = {
+        _normalize_hostname(socket.gethostname()),
+        _normalize_hostname(socket.getfqdn()),
+    }
+    for hostname in list(host_candidates):
+        if not hostname:
+            continue
+        aliases.add(hostname)
+        try:
+            for info in socket.getaddrinfo(hostname, None):
+                aliases.add(_normalize_hostname(info[4][0].split("%", 1)[0]))
+        except Exception:
+            pass
+
+    sock = None
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.settimeout(0.1)
+        sock.connect(("8.8.8.8", 80))
+        aliases.add(_normalize_hostname(sock.getsockname()[0]))
+    except Exception:
+        pass
+    finally:
+        if sock is not None:
+            try:
+                sock.close()
+            except Exception:
+                pass
+
+    try:
+        import psutil
+
+        for addresses in psutil.net_if_addrs().values():
+            for address in addresses:
+                value = _normalize_hostname(getattr(address, "address", "").split("%", 1)[0])
+                if value:
+                    aliases.add(value)
+    except Exception:
+        pass
+
+    return aliases
+
+
+def _canonical_endpoint_hostname(hostname: str | None) -> str:
+    normalized = _normalize_hostname(hostname)
+    if not normalized:
+        return ""
+    if normalized in _local_machine_aliases():
+        return "local"
+    return normalized
+
+
 def _server_endpoint_identity(host: str) -> tuple[str, str, int | None, str]:
     """Canonicalize an LLM server endpoint enough to catch accidental duplicates."""
     parsed = urlparse(host if "://" in host else f"http://{host}")
@@ -68,7 +134,7 @@ def _server_endpoint_identity(host: str) -> tuple[str, str, int | None, str]:
         path = ""
     return (
         (parsed.scheme or "http").lower(),
-        (parsed.hostname or "").lower(),
+        _canonical_endpoint_hostname(parsed.hostname),
         parsed.port,
         path,
     )

@@ -290,11 +290,24 @@ class ComputeRegistryRoutingMixin:
         except Exception:
             pass
 
+        requested_model = (model or "").strip()
+        strict_requested_model = (
+            settings.strict_auto_routing
+            and requested_model
+            and requested_model != "default"
+        )
+
         loaded_models = [
             name
             for name in self._node_explicit_loaded_model_names(node)
             if not require_vision or self._node_supports_vision_model(node, name)
         ]
+        if strict_requested_model:
+            loaded_models = [
+                name
+                for name in loaded_models
+                if name in self._model_aliases(requested_model)
+            ]
         if loaded_models:
             candidates = loaded_models
         else:
@@ -304,11 +317,14 @@ class ComputeRegistryRoutingMixin:
                 node.is_healthy = False
                 return None
             max_attempts = max(1, int(settings.lmstudio_max_load_attempts_per_request or 1))
-            candidates = self._node_load_candidates(
-                node,
-                model,
-                require_vision=require_vision,
-            )[:max_attempts]
+            if strict_requested_model:
+                candidates = [requested_model]
+            else:
+                candidates = self._node_load_candidates(
+                    node,
+                    model,
+                    require_vision=require_vision,
+                )[:max_attempts]
 
         errors: list[str] = []
         for candidate in candidates:
@@ -400,11 +416,19 @@ class ComputeRegistryRoutingMixin:
             )
             return None
 
-        candidates = self._node_load_candidates(
-            node,
-            model,
-            require_vision=require_vision,
-        )
+        requested_model = (model or "").strip()
+        if (
+            settings.strict_auto_routing
+            and requested_model
+            and requested_model != "default"
+        ):
+            candidates = [requested_model]
+        else:
+            candidates = self._node_load_candidates(
+                node,
+                model,
+                require_vision=require_vision,
+            )
         context_capable = []
         for candidate in candidates:
             caps = node.model_capabilities.get(candidate)

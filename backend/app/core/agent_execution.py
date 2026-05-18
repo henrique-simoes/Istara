@@ -59,6 +59,20 @@ class AgentExecutionMixin:
         """Execute a task using the appropriate skill."""
         logger.info(f"Executing task: {task.title} (skill: {task.skill_name or 'auto'})")
 
+        if project.is_paused:
+            logger.info(
+                "Project %s is paused; task %s will stay in backlog",
+                project.id,
+                task.id,
+            )
+            task.status = TaskStatus.BACKLOG
+            task.progress = 0.0
+            task.agent_notes = "Project is paused; agent execution deferred."
+            await db.commit()
+            await broadcast_agent_status("paused", f"Project paused: {project.name}")
+            await broadcast_task_progress(task.id, 0.0, "Project paused; task deferred.")
+            return
+
         # Checkpoint: started
         await create_checkpoint(db, task.id, self._agent_id, "started")
 

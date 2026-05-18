@@ -15,6 +15,77 @@ from app.models.agent import A2AMessage
 logger = logging.getLogger(__name__)
 
 
+def _message_metadata(message: A2AMessage) -> dict:
+    try:
+        if isinstance(message.extra_data, str):
+            parsed = json.loads(message.extra_data or "{}")
+            return parsed if isinstance(parsed, dict) else {}
+        if isinstance(message.extra_data, dict):
+            return message.extra_data
+    except (json.JSONDecodeError, TypeError):
+        return {}
+    return {}
+
+
+def _metadata_text(metadata: dict, *keys: str) -> str | None:
+    for key in keys:
+        value = metadata.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return None
+
+
+def _message_project_id(message: A2AMessage) -> str | None:
+    return _metadata_text(_message_metadata(message), "project_id", "projectId")
+
+
+def _message_task_id(message: A2AMessage) -> str | None:
+    return _metadata_text(_message_metadata(message), "task_id", "taskId")
+
+
+def _project_scoped_fetch_limit(limit: int) -> int:
+    return min(max(limit * 10, 200), 1000)
+
+
+async def _filter_messages_by_project(
+    db: AsyncSession,
+    messages: list[A2AMessage],
+    project_id: str,
+) -> list[A2AMessage]:
+    task_ids = {
+        task_id
+        for message in messages
+        if _message_project_id(message) is None
+        for task_id in [_message_task_id(message)]
+        if task_id
+    }
+    task_project_ids: dict[str, str] = {}
+    if task_ids:
+        from app.models.task import Task
+
+        result = await db.execute(
+            select(Task.id, Task.project_id).where(Task.id.in_(task_ids))
+        )
+        task_project_ids = {
+            str(task_id): str(task_project_id)
+            for task_id, task_project_id in result.all()
+            if task_project_id
+        }
+
+    filtered: list[A2AMessage] = []
+    for message in messages:
+        message_project_id = _message_project_id(message)
+        if message_project_id == project_id:
+            filtered.append(message)
+            continue
+
+        task_id = _message_task_id(message)
+        if message_project_id is None and task_id and task_project_ids.get(task_id) == project_id:
+            filtered.append(message)
+
+    return filtered
+
+
 async def send_message(
     db: AsyncSession,
     from_agent_id: str,
@@ -225,6 +296,7 @@ async def get_messages(
     agent_id: str,
     limit: int = 50,
     unread_only: bool = False,
+    project_id: str | None = None,
 ) -> list[dict]:
     """Get messages for an agent (sent to it or broadcast)."""
     query = select(A2AMessage).where(
@@ -237,9 +309,13 @@ async def get_messages(
     if unread_only:
         query = query.where(A2AMessage.read == False)
 
-    query = query.order_by(A2AMessage.created_at.desc()).limit(limit)
+    fetch_limit = _project_scoped_fetch_limit(limit) if project_id else limit
+    query = query.order_by(A2AMessage.created_at.desc()).limit(fetch_limit)
     result = await db.execute(query)
-    return [m.to_dict() for m in result.scalars().all()]
+    messages = list(result.scalars().all())
+    if project_id:
+        messages = await _filter_messages_by_project(db, messages, project_id)
+    return [m.to_dict() for m in messages[:limit]]
 
 
 async def get_conversation(
@@ -285,11 +361,19 @@ async def get_conversation_thread(
     return thread[:limit]
 
 
-async def get_full_log(db: AsyncSession, limit: int = 100) -> list[dict]:
+async def get_full_log(
+    db: AsyncSession,
+    limit: int = 100,
+    project_id: str | None = None,
+) -> list[dict]:
     """Get the full A2A message log."""
-    query = select(A2AMessage).order_by(A2AMessage.created_at.desc()).limit(limit)
+    fetch_limit = _project_scoped_fetch_limit(limit) if project_id else limit
+    query = select(A2AMessage).order_by(A2AMessage.created_at.desc()).limit(fetch_limit)
     result = await db.execute(query)
-    return [m.to_dict() for m in result.scalars().all()]
+    messages = list(result.scalars().all())
+    if project_id:
+        messages = await _filter_messages_by_project(db, messages, project_id)
+    return [m.to_dict() for m in messages[:limit]]
 
 
 async def mark_read(db: AsyncSession, message_id: str) -> bool:

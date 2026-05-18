@@ -21,7 +21,7 @@ function IstaraVersion() {
 export default function StatusBar() {
   const [agentStatus, setAgentStatus] = useState("Idle");
   const [agentDetail, setAgentDetail] = useState("");
-  const [llmStatus, setLlmStatus] = useState<"ok" | "slow" | "down">("ok");
+  const [llmStatus, setLlmStatus] = useState<"ok" | "not_ready" | "slow" | "down">("ok");
   const [serverOnline, setServerOnline] = useState<boolean | null>(null);
 
   const handleEvent = (event: WSEvent) => {
@@ -82,6 +82,38 @@ export default function StatusBar() {
     };
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    const checkLLM = async () => {
+      try {
+        const token = localStorage.getItem("istara_token");
+        const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
+        const res = await fetch(`${API_BASE}/api/settings/status`, {
+          cache: "no-store",
+          headers,
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (cancelled) return;
+        if (!data.llm_readiness?.reachable) {
+          setLlmStatus("down");
+        } else if (!data.llm_readiness?.chat_ready) {
+          setLlmStatus("not_ready");
+        } else {
+          setLlmStatus("ok");
+        }
+      } catch {
+        if (!cancelled) setLlmStatus("down");
+      }
+    };
+    checkLLM();
+    const timer = window.setInterval(checkLLM, 15000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, []);
+
   const connectionLabel = !serverOnline
     ? "Server offline"
     : connected
@@ -135,6 +167,12 @@ export default function StatusBar() {
           <div className="flex items-center gap-1.5 px-2 py-0.5 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 rounded">
             <Wifi size={12} />
             LLM responding slowly
+          </div>
+        )}
+        {llmStatus === "not_ready" && (
+          <div className="flex items-center gap-1.5 px-2 py-0.5 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 rounded">
+            <Wifi size={12} />
+            LLM connected; chat model not ready
           </div>
         )}
       </div>

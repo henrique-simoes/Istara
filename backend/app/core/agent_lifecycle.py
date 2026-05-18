@@ -186,7 +186,7 @@ class AgentLifecycleMixin:
         reason: str,
         *,
         next_review_state: str = "system_failed",
-    ) -> None:
+    ):
         """Expose agent/self-verification failure to humans instead of hiding it as Done."""
         from app.core.task_review import (
             SYSTEM_FAILED,
@@ -208,6 +208,7 @@ class AgentLifecycleMixin:
             context_extra={"source": "agent_orchestrator"},
         )
         await diagnose_review_event(db, event.id)
+        return event
 
     async def _persist_agent_state(self, state: AgentState, current_task: str = "") -> None:
         """Persist the agent state to the database so the frontend can read it."""
@@ -274,13 +275,29 @@ class AgentLifecycleMixin:
                     f"Project not found for task {task.id} — sending to review (orphaned)"
                 )
                 task.agent_notes = f"Project not found: {task.project_id}"
-                await self._record_system_failed_review(
+                event = await self._record_system_failed_review(
                     db,
                     task,
                     f"Project not found for task {task.id}: {task.project_id}",
                     next_review_state="blocked",
                 )
                 await db.commit()
+                from app.core.task_review import record_review_side_effects
+
+                await record_review_side_effects(event)
+                return False
+
+            if project.is_paused:
+                logger.info(
+                    "Project %s is paused; deferring task %s for agent %s",
+                    project.id,
+                    task.id,
+                    self._agent_id,
+                )
+                task.status = TaskStatus.BACKLOG
+                task.agent_notes = "Project is paused; agent execution deferred."
+                await db.commit()
+                await broadcast_agent_status("paused", f"Project paused: {project.name}")
                 return False
 
             # 3. Execute the task (register with governor for concurrent limits)
@@ -296,10 +313,14 @@ class AgentLifecycleMixin:
 
             # 4. Check queue depth and adapt loop interval
             pending_result = await db.execute(
-                select(func.count(Task.id)).where(Task.status == TaskStatus.BACKLOG)
+                select(func.count(Task.id))
+                .join(Project, Project.id == Task.project_id)
+                .where(Task.status == TaskStatus.BACKLOG, Project.is_paused.is_(False))
             )
             in_progress_result = await db.execute(
-                select(func.count(Task.id)).where(Task.status == TaskStatus.IN_PROGRESS)
+                select(func.count(Task.id))
+                .join(Project, Project.id == Task.project_id)
+                .where(Task.status == TaskStatus.IN_PROGRESS, Project.is_paused.is_(False))
             )
             done_result = await db.execute(
                 select(func.count(Task.id)).where(
@@ -608,7 +629,12 @@ class AgentLifecycleMixin:
                 to_agent_id=msg_from,
                 message_type="collaboration_response",
                 content=analysis[:2000],
-                metadata={"task_id": task_id, "context_id": context_id, "responding_to": msg_id},
+                metadata={
+                    "task_id": task_id,
+                    "project_id": task.project_id,
+                    "context_id": context_id,
+                    "responding_to": msg_id,
+                },
             )
 
             # Append to task notes
@@ -646,7 +672,11 @@ class AgentLifecycleMixin:
                     "I need a critical review of this analysis.\n\n"
                     f"Task: {task.title}\n\nOutput:\n{output.summary[:1500]}"
                 ),
-                metadata={"task_id": task.id, "context_id": context_id},
+                metadata={
+                    "task_id": task.id,
+                    "project_id": task.project_id,
+                    "context_id": context_id,
+                },
             )
             logger.info(f"A2A debate initiated with {target} for task {task.id}")
 
@@ -735,6 +765,7 @@ class AgentLifecycleMixin:
                 metadata={
                     "context_id": metadata.get("context_id", ""),
                     "task_id": metadata.get("task_id", ""),
+                    "project_id": metadata.get("project_id", ""),
                 },
             )
         except Exception as e:
@@ -800,9 +831,11 @@ class AgentLifecycleMixin:
         # First: tasks assigned to THIS agent
         result = await db.execute(
             select(Task)
+            .join(Project, Project.id == Task.project_id)
             .where(
                 Task.status.in_([TaskStatus.BACKLOG, TaskStatus.IN_PROGRESS]),
                 Task.agent_id == self._agent_id,
+                Project.is_paused.is_(False),
                 # Skip locked tasks (locked by someone else)
                 or_(
                     Task.locked_by.is_(None),
@@ -821,9 +854,11 @@ class AgentLifecycleMixin:
         if self._agent_id == "istara-main":
             result = await db.execute(
                 select(Task)
+                .join(Project, Project.id == Task.project_id)
                 .where(
                     Task.status.in_([TaskStatus.BACKLOG, TaskStatus.IN_PROGRESS]),
                     Task.agent_id.is_(None),
+                    Project.is_paused.is_(False),
                 )
                 .order_by(priority_order, Task.position.asc(), Task.created_at.asc())
                 .limit(10)

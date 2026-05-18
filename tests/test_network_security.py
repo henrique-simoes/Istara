@@ -118,3 +118,24 @@ def test_remote_local_admin_block_reason_denies_remote_api_access():
     assert "Remote requests are denied" in reason
     assert remote_local_admin_block_reason("127.0.0.1", "/api/agents/status") is None
     assert remote_local_admin_block_reason("203.0.113.10", "/api/health") is None
+
+
+@pytest.mark.asyncio
+async def test_network_security_allows_cors_preflight_without_token():
+    """Browser OPTIONS preflight must reach CORS before token enforcement."""
+    from app.config import settings
+    from app.core.network_security import NetworkSecurityMiddleware
+
+    settings.network_access_token = "network-secret"
+    request = MagicMock()
+    request.method = "OPTIONS"
+    request.client = type("Client", (), {"host": "203.0.113.10"})()
+    request.url = type("URL", (), {"path": "/api/auth/me"})()
+
+    async def call_next(received_request):
+        assert received_request is request
+        return "preflight-ok"
+
+    middleware = NetworkSecurityMiddleware(app=MagicMock())
+
+    assert await middleware.dispatch(request, call_next) == "preflight-ok"

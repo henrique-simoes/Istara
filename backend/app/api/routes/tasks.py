@@ -461,6 +461,9 @@ async def move_task(
         if position is not None:
             task.position = position
         await db.commit()
+        from app.core.task_review import record_review_side_effects
+
+        await record_review_side_effects(event)
         await db.refresh(task)
         return task
 
@@ -512,6 +515,9 @@ async def verify_task(task_id: str, request: Request, db: AsyncSession = Depends
     if verified and task.status == TaskStatus.IN_REVIEW:
         event = await _approve_task(db, task, reviewed_by="local", note="Approved via legacy verify endpoint.")
         await db.commit()
+        from app.core.task_review import record_review_side_effects
+
+        await record_review_side_effects(event)
 
     return {
         "task_id": task_id,
@@ -538,6 +544,9 @@ async def approve_task_review(
     body = data or ReviewApproveRequest()
     event = await _approve_task(db, task, body.reviewed_by, body.note)
     await db.commit()
+    from app.core.task_review import record_review_side_effects
+
+    await record_review_side_effects(event)
     await db.refresh(task)
     return {"task": TaskResponse.model_validate(task).model_dump(mode="json"), "event": event.to_dict()}
 
@@ -593,6 +602,9 @@ async def request_task_revision(
     )
     await diagnose_review_event(db, event.id)
     await db.commit()
+    from app.core.task_review import record_review_side_effects
+
+    await record_review_side_effects(event)
     await db.refresh(task)
     if data.next_status == TaskStatus.IN_PROGRESS or task.agent_id == "istara-main":
         agent_orchestrator.wake()

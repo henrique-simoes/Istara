@@ -1,10 +1,16 @@
 """Tests for Agents API routes — CRUD, identity, memory, messages, proposals."""
 
+import json
+import uuid
+
 import pytest
+from sqlalchemy import delete
+
 from app.config import settings
 from app.core.auth import create_token
 from app.main import app
-from app.models.database import init_db
+from app.models.agent import A2AMessage
+from app.models.database import async_session, init_db
 from httpx import ASGITransport, AsyncClient
 from types import SimpleNamespace
 
@@ -210,6 +216,66 @@ async def test_a2a_accepts_system_message_type_contract(auth_headers):
         finally:
             await ac.delete(f"/api/agents/{agent_a}", headers=auth_headers)
             await ac.delete(f"/api/agents/{agent_b}", headers=auth_headers)
+
+
+@pytest.mark.asyncio
+async def test_a2a_log_filters_by_project_id(auth_headers):
+    """Project-scoped A2A logs should not include unrelated project or global messages."""
+    await init_db()
+    project_a = f"cf56-project-a-{uuid.uuid4()}"
+    project_b = f"cf56-project-b-{uuid.uuid4()}"
+    message_ids = [str(uuid.uuid4()) for _ in range(3)]
+    message_a = "CF56 project A A2A message"
+    message_b = "CF56 project B A2A message"
+    message_global = "CF56 global A2A message"
+
+    async with async_session() as db:
+        db.add_all(
+            [
+                A2AMessage(
+                    id=message_ids[0],
+                    from_agent_id="agent-a",
+                    to_agent_id="agent-b",
+                    message_type="a2a_task",
+                    content=message_a,
+                    extra_data=json.dumps({"project_id": project_a}),
+                ),
+                A2AMessage(
+                    id=message_ids[1],
+                    from_agent_id="agent-a",
+                    to_agent_id="agent-b",
+                    message_type="a2a_task",
+                    content=message_b,
+                    extra_data=json.dumps({"project_id": project_b}),
+                ),
+                A2AMessage(
+                    id=message_ids[2],
+                    from_agent_id="agent-a",
+                    to_agent_id="agent-b",
+                    message_type="a2a_task",
+                    content=message_global,
+                    extra_data=json.dumps({}),
+                ),
+            ]
+        )
+        await db.commit()
+
+    try:
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as ac:
+            response = await ac.get(
+                f"/api/agents/a2a/log?project_id={project_a}&limit=20",
+                headers=auth_headers,
+            )
+            assert response.status_code == 200
+            contents = [message["content"] for message in response.json()["messages"]]
+            assert message_a in contents
+            assert message_b not in contents
+            assert message_global not in contents
+    finally:
+        async with async_session() as db:
+            await db.execute(delete(A2AMessage).where(A2AMessage.id.in_(message_ids)))
+            await db.commit()
 
 
 @pytest.mark.asyncio

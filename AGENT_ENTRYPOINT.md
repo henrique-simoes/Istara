@@ -68,6 +68,8 @@ Read these in order before non-trivial work:
   Execution checklist for making and shipping changes safely.
 - `DOCUMENTATION.md`
   Canonical documentation map, including which markdown files are current, generated, historical, or runtime-only.
+- `docs/features/README.md`
+  Living feature documentation process, editable feature source pages, generated HTML site, machine manifests, glossary, and `llms.txt`.
 - `TESTING.md`
   Top-level testing, benchmark, eval, and artifact-history guide.
 - `SECURITY.md`
@@ -87,12 +89,13 @@ Together, these documents are Compass.
 ## Live Snapshot
 
 - Version: `2026.04.27`
-- Backend route modules: 45 with 429 detected endpoints
+- Backend route modules: 50 with 431 detected endpoints
 - Frontend mounted views: 24
 - Frontend stores: 15
 - Data models: 51
 - Personas: 6 (`design-lead`, `istara-devops`, `istara-main`, `istara-sim`, `istara-ui-audit`, `istara-ux-eval`)
-- Active test files: 92 across 4 layers
+- Active test files: 110 across 5 layers
+- Living feature docs: 86 tracked UI feature surfaces in `docs/features/inventory.json`
 
 ## Current Product Surface
 
@@ -121,7 +124,7 @@ If you add, remove, rename, or change an endpoint or payload:
 - Update `tests/e2e_test.py` and/or `tests/simulation/scenarios/`
 - Update `Tech.md` if the system/API behavior story changed
 - Update persona files if Istara's own agents should understand or use the new capability
-- Regenerate docs and run integrity checks
+- Regenerate system docs, update/regenerate affected `docs/features/` pages and manifests, and run integrity checks
 
 ### 2. Model, Schema, or Persistence Change
 
@@ -136,7 +139,7 @@ If you add/change/delete a model, field, relationship, or persistence rule:
 - Check project deletion/cascade behavior if project-scoped
 - Update tests covering integrity, CRUD, and downstream UI behavior
 - Update `Tech.md` if the data model or architecture meaning changed
-- Regenerate docs and run integrity checks
+- Regenerate system docs, update/regenerate affected `docs/features/` pages and manifests, and run integrity checks
 
 ### 3. Frontend View, Menu, Navigation, or UX Flow Change
 
@@ -151,7 +154,8 @@ If you add/change a page, tab, submenu, view ID, navigation rule, onboarding ste
 - Update `tests/e2e_test.py` if it changes the Sarah journey or major product flow
 - Update `Tech.md` if the user-facing system story changed
 - Update persona files if Istara's own agents should discuss or navigate this feature
-- Regenerate docs and run integrity checks
+- Update `docs/features/inventory.json` and both feature doc audiences for affected menus, tabs, or sub-features
+- Regenerate system docs, update/regenerate affected `docs/features/` pages and manifests, and run integrity checks
 
 ### 4. WebSocket, Notification, or Async Workflow Change
 
@@ -163,7 +167,7 @@ If you change event names, payloads, broadcast timing, notification categories, 
 - Update notifications UI/prefs if categories or event semantics changed
 - Update tests/scenarios that depend on real-time behavior
 - Update `Tech.md` if the runtime behavior story changed
-- Regenerate docs and run integrity checks
+- Regenerate system docs, update/regenerate affected `docs/features/` pages and manifests, and run integrity checks
 
 ### 5. Skill, Persona, Agent, or Prompt Change
 
@@ -176,7 +180,7 @@ If you add/change a skill, system persona, agent behavior, routing logic, or rep
 - Update tests or scenarios covering execution/routing behavior
 - Update `Tech.md` if this changes how Istara works conceptually
 - Update `SYSTEM_PROMPT.md`, `SYSTEM_CHANGE_MATRIX.md`, or `CHANGE_CHECKLIST.md` if repo doctrine changed
-- Regenerate docs and run integrity checks
+- Regenerate system docs, update/regenerate affected `docs/features/` pages and manifests, and run integrity checks
 
 ### 6. Integrations, Channels, MCP, Deployments, or External Connectors
 
@@ -188,7 +192,7 @@ If you change third-party connections or distributed workflows:
 - Update fixtures and tests for security, setup, ingestion, and end-to-end behavior
 - Update `Tech.md` if the integration model or security model changed
 - Update persona files if Istara's own agents should know how to reason about the new connector/workflow
-- Regenerate docs and run integrity checks
+- Regenerate system docs, update/regenerate affected `docs/features/` pages and manifests, and run integrity checks
 
 ### 7. Release, Versioning, Installer, or Auto-Update Change
 
@@ -202,7 +206,7 @@ If you change how Istara is versioned, packaged, released, installed, or updated
 - Update installer/build files
 - Update `Tech.md`
 - Update tests if release/update behavior has automated coverage
-- Regenerate docs and run integrity checks
+- Regenerate system docs, update/regenerate affected `docs/features/` pages and manifests, and run integrity checks
 - Make sure the docs describe the same model: only release-worthy `main` pushes publish installers/releases, while tag/manual flow remains available for explicit release control
 
 <!-- ENTRYPOINT_GENERATED_END -->
@@ -213,7 +217,8 @@ For meaningful changes, make sure:
 
 - code is updated
 - relevant tests are updated
-- generated docs are regenerated
+- generated system docs are regenerated
+- affected `docs/features/` source pages, generated site, manifests, and `llms.txt` are regenerated
 - `Tech.md` is updated when the system story changed
 - persona files are updated when Istara's own agents need to understand the change
 - release-worthy pushes to `main` publish the expected installer/release artifacts
@@ -224,6 +229,8 @@ Run:
 ```bash
 python scripts/update_agent_md.py
 python scripts/check_integrity.py
+python scripts/feature_docs.py --seed-missing --generate-site --check
+pytest tests/test_feature_docs.py -q
 ```
 
 ## Fast Decision Rules
@@ -237,6 +244,7 @@ When unsure, use these heuristics:
 - If Compass would mislead the next agent after your change, update Compass in the same change.
 - If Istara's own agents should talk about or use the feature, persona files should probably change too.
 - If future agents will need to discover the new structure automatically, `scripts/update_agent_md.py` may need to change too.
+- If a visible feature, menu, submenu, tab, route, store, agent, skill, model, or test expectation changed, `docs/features/inventory.json` and the paired feature pages may need to change too.
 - If you are preparing a release, use `./scripts/prepare-release.sh --bump` instead of hand-running a partial sequence.
 
 ## Minimum Completion Standard

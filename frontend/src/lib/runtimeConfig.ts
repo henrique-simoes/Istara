@@ -1,7 +1,10 @@
 const DEFAULT_BACKEND_PORT = "8000";
 
 function readPublicRuntimeSetting(name: "NEXT_PUBLIC_API_URL" | "NEXT_PUBLIC_WS_URL"): string {
-  return process.env[name]?.trim() || "";
+  if (name === "NEXT_PUBLIC_API_URL") {
+    return process.env.NEXT_PUBLIC_API_URL?.trim() || "";
+  }
+  return process.env.NEXT_PUBLIC_WS_URL?.trim() || "";
 }
 
 function withoutTrailingSlash(value: string): string {

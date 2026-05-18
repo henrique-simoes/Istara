@@ -1,0 +1,97 @@
+# Istara Feature Documentation
+
+Purpose: agent-friendly map of Istara's UI-organized feature docs.
+Source inventory: docs/features/inventory.json
+HTML entrypoint: docs/features/site/index.html
+Machine manifest: docs/features/site/manifest.json
+Graph: docs/features/site/feature-graph.json
+Search index: docs/features/site/search-index.json
+Glossary: docs/features/site/glossary/index.html
+
+Feature pages:
+- shell.navigation: Application Navigation | docs/features/content/shell/navigation/researcher.md | docs/features/content/shell/navigation/architecture.md
+- shell.projects: Project Switcher | docs/features/content/shell/projects/researcher.md | docs/features/content/shell/projects/architecture.md
+- shell.search: Global Search | docs/features/content/shell/search/researcher.md | docs/features/content/shell/search/architecture.md
+- shell.notifications-bell: Notification Bell | docs/features/content/shell/notifications-bell/researcher.md | docs/features/content/shell/notifications-bell/architecture.md
+- shell.keyboard-shortcuts: Keyboard Shortcuts | docs/features/content/shell/keyboard-shortcuts/researcher.md | docs/features/content/shell/keyboard-shortcuts/architecture.md
+- shell.onboarding: View Onboarding | docs/features/content/shell/onboarding/researcher.md | docs/features/content/shell/onboarding/architecture.md
+- auth.login: Login And Session Bootstrap | docs/features/content/auth/login/researcher.md | docs/features/content/auth/login/architecture.md
+- chat.overview: Chat Workspace | docs/features/content/chat/overview/researcher.md | docs/features/content/chat/overview/architecture.md
+- chat.sessions: Chat Sessions | docs/features/content/chat/sessions/researcher.md | docs/features/content/chat/sessions/architecture.md
+- chat.model-controls: Chat Model Controls | docs/features/content/chat/model-controls/researcher.md | docs/features/content/chat/model-controls/architecture.md
+- chat.files: Chat File Attachments | docs/features/content/chat/files/researcher.md | docs/features/content/chat/files/architecture.md
+- chat.audio: Chat Audio Conversation | docs/features/content/chat/audio/researcher.md | docs/features/content/chat/audio/architecture.md
+- chat.steering: Chat Steering | docs/features/content/chat/steering/researcher.md | docs/features/content/chat/steering/architecture.md
+- findings.evidence: Findings Evidence | docs/features/content/findings/evidence/researcher.md | docs/features/content/findings/evidence/architecture.md
+- findings.phase-tabs: Findings Phase Tabs | docs/features/content/findings/phase-tabs/researcher.md | docs/features/content/findings/phase-tabs/architecture.md
+- findings.codebook: Findings Codebook | docs/features/content/findings/codebook/researcher.md | docs/features/content/findings/codebook/architecture.md
+- findings.review: Findings Code Review | docs/features/content/findings/review/researcher.md | docs/features/content/findings/review/architecture.md
+- findings.reports: Project Reports | docs/features/content/findings/reports/researcher.md | docs/features/content/findings/reports/architecture.md
+- findings.slide-instructions: Report Slide Instructions | docs/features/content/findings/slide-instructions/researcher.md | docs/features/content/findings/slide-instructions/architecture.md
+- laws.catalog: UX Laws Catalog | docs/features/content/laws/catalog/researcher.md | docs/features/content/laws/catalog/architecture.md
+- laws.compliance: UX Laws Compliance | docs/features/content/laws/compliance/researcher.md | docs/features/content/laws/compliance/architecture.md
+- tasks.kanban: Task Kanban Board | docs/features/content/tasks/kanban/researcher.md | docs/features/content/tasks/kanban/architecture.md
+- tasks.editor: Task Editor | docs/features/content/tasks/editor/researcher.md | docs/features/content/tasks/editor/architecture.md
+- tasks.review: Human Task Review | docs/features/content/tasks/review/researcher.md | docs/features/content/tasks/review/architecture.md
+- tasks.attachments: Task Attachments | docs/features/content/tasks/attachments/researcher.md | docs/features/content/tasks/attachments/architecture.md
+- tasks.send-report: Send Task To Report | docs/features/content/tasks/send-report/researcher.md | docs/features/content/tasks/send-report/architecture.md
+- interviews.files: Interview Files | docs/features/content/interviews/files/researcher.md | docs/features/content/interviews/files/architecture.md
+- interviews.transcription: Interview Transcription | docs/features/content/interviews/transcription/researcher.md | docs/features/content/interviews/transcription/architecture.md
+- interviews.preview-tags: Interview Preview And Tags | docs/features/content/interviews/preview-tags/researcher.md | docs/features/content/interviews/preview-tags/architecture.md
+- documents.library: Document Library | docs/features/content/documents/library/researcher.md | docs/features/content/documents/library/architecture.md
+- documents.upload: Document Upload | docs/features/content/documents/upload/researcher.md | docs/features/content/documents/upload/architecture.md
+- documents.preview: Document Preview | docs/features/content/documents/preview/researcher.md | docs/features/content/documents/preview/architecture.md
+- documents.suggestions: Document Suggestions | docs/features/content/documents/suggestions/researcher.md | docs/features/content/documents/suggestions/architecture.md
+- context.editor: Project Context Editor | docs/features/content/context/editor/researcher.md | docs/features/content/context/editor/architecture.md
+- skills.catalog: Skills Catalog | docs/features/content/skills/catalog/researcher.md | docs/features/content/skills/catalog/architecture.md
+- skills.proposals: Skill Proposals | docs/features/content/skills/proposals/researcher.md | docs/features/content/skills/proposals/architecture.md
+- skills.create: Create Skill | docs/features/content/skills/create/researcher.md | docs/features/content/skills/create/architecture.md
+- agents.registry: Agent Registry | docs/features/content/agents/registry/researcher.md | docs/features/content/agents/registry/architecture.md
+- agents.detail: Agent Detail Panels | docs/features/content/agents/detail/researcher.md | docs/features/content/agents/detail/architecture.md
+- agents.a2a: Agent-To-Agent Log | docs/features/content/agents/a2a/researcher.md | docs/features/content/agents/a2a/architecture.md
+- agents.proposals: Agent Proposals | docs/features/content/agents/proposals/researcher.md | docs/features/content/agents/proposals/architecture.md
+- agents.create: Create Agent | docs/features/content/agents/create/researcher.md | docs/features/content/agents/create/architecture.md
+- memory.knowledge: Knowledge Memory | docs/features/content/memory/knowledge/researcher.md | docs/features/content/memory/knowledge/architecture.md
+- memory.agent: Agent Memory | docs/features/content/memory/agent/researcher.md | docs/features/content/memory/agent/architecture.md
+- memory.health: Memory Health | docs/features/content/memory/health/researcher.md | docs/features/content/memory/health/architecture.md
+- memory.context-dag: Context DAG | docs/features/content/memory/context-dag/researcher.md | docs/features/content/memory/context-dag/architecture.md
+- interfaces.design-chat: Interface Design Chat | docs/features/content/interfaces/design-chat/researcher.md | docs/features/content/interfaces/design-chat/architecture.md
+- interfaces.generate: Generate Interfaces | docs/features/content/interfaces/generate/researcher.md | docs/features/content/interfaces/generate/architecture.md
+- interfaces.screens: Screens Gallery | docs/features/content/interfaces/screens/researcher.md | docs/features/content/interfaces/screens/architecture.md
+- interfaces.figma: Configuration | docs/features/content/interfaces/figma/researcher.md | docs/features/content/interfaces/figma/architecture.md
+- interfaces.handoff: Interface Handoff | docs/features/content/interfaces/handoff/researcher.md | docs/features/content/interfaces/handoff/architecture.md
+- interfaces.findings-picker: Findings Picker | docs/features/content/interfaces/findings-picker/researcher.md | docs/features/content/interfaces/findings-picker/architecture.md
+- integrations.overview: Integrations Overview | docs/features/content/integrations/overview/researcher.md | docs/features/content/integrations/overview/architecture.md
+- integrations.messaging: Messaging Integrations | docs/features/content/integrations/messaging/researcher.md | docs/features/content/integrations/messaging/architecture.md
+- integrations.surveys: Survey Integrations | docs/features/content/integrations/surveys/researcher.md | docs/features/content/integrations/surveys/architecture.md
+- integrations.mcp: MCP Integrations | docs/features/content/integrations/mcp/researcher.md | docs/features/content/integrations/mcp/architecture.md
+- integrations.deployments: Research Deployments | docs/features/content/integrations/deployments/researcher.md | docs/features/content/integrations/deployments/architecture.md
+- integrations.deployment-dashboard: Deployment Dashboard | docs/features/content/integrations/deployment-dashboard/researcher.md | docs/features/content/integrations/deployment-dashboard/architecture.md
+- loops.overview: Loops Overview | docs/features/content/loops/overview/researcher.md | docs/features/content/loops/overview/architecture.md
+- loops.schedules: Loop Schedules | docs/features/content/loops/schedules/researcher.md | docs/features/content/loops/schedules/architecture.md
+- loops.agent-loops: Agent Loops | docs/features/content/loops/agent-loops/researcher.md | docs/features/content/loops/agent-loops/architecture.md
+- loops.custom: Custom Loops | docs/features/content/loops/custom/researcher.md | docs/features/content/loops/custom/architecture.md
+- loops.history: Loop Execution History | docs/features/content/loops/history/researcher.md | docs/features/content/loops/history/architecture.md
+- settings.general: System Status And Models | docs/features/content/settings/general/researcher.md | docs/features/content/settings/general/architecture.md
+- settings.llm-servers: LLM Server Settings | docs/features/content/settings/llm-servers/researcher.md | docs/features/content/settings/llm-servers/architecture.md
+- settings.users: User Management | docs/features/content/settings/users/researcher.md | docs/features/content/settings/users/architecture.md
+- settings.connection-strings: Connection Strings | docs/features/content/settings/connection-strings/researcher.md | docs/features/content/settings/connection-strings/architecture.md
+- settings.security-factors: Passkeys And Two-Factor Authentication | docs/features/content/settings/security-factors/researcher.md | docs/features/content/settings/security-factors/architecture.md
+- settings.sessions: Active Sessions | docs/features/content/settings/sessions/researcher.md | docs/features/content/settings/sessions/architecture.md
+- settings.updates: Software Updates | docs/features/content/settings/updates/researcher.md | docs/features/content/settings/updates/architecture.md
+- settings.governed-evolution: Governed Evolution | docs/features/content/settings/governed-evolution/researcher.md | docs/features/content/settings/governed-evolution/architecture.md
+- settings.compute-donation: Compute Donation | docs/features/content/settings/compute-donation/researcher.md | docs/features/content/settings/compute-donation/architecture.md
+- settings.project: Project Settings | docs/features/content/settings/project/researcher.md | docs/features/content/settings/project/architecture.md
+- autoresearch.dashboard: Autoresearch Dashboard | docs/features/content/autoresearch/dashboard/researcher.md | docs/features/content/autoresearch/dashboard/architecture.md
+- autoresearch.experiments: Autoresearch Experiments | docs/features/content/autoresearch/experiments/researcher.md | docs/features/content/autoresearch/experiments/architecture.md
+- autoresearch.leaderboard: Autoresearch Leaderboard | docs/features/content/autoresearch/leaderboard/researcher.md | docs/features/content/autoresearch/leaderboard/architecture.md
+- autoresearch.config: Autoresearch Configuration | docs/features/content/autoresearch/config/researcher.md | docs/features/content/autoresearch/config/architecture.md
+- compute.pool: Compute Pool | docs/features/content/compute/pool/researcher.md | docs/features/content/compute/pool/architecture.md
+- ensemble.health: Ensemble Health | docs/features/content/ensemble/health/researcher.md | docs/features/content/ensemble/health/architecture.md
+- quality.dashboard: Quality Dashboard | docs/features/content/quality/dashboard/researcher.md | docs/features/content/quality/dashboard/architecture.md
+- backup.view: Backup | docs/features/content/backup/view/researcher.md | docs/features/content/backup/view/architecture.md
+- meta.hyperagent: Meta-Agent | docs/features/content/meta/hyperagent/researcher.md | docs/features/content/meta/hyperagent/architecture.md
+- admin.dashboard: Admin Dashboard | docs/features/content/admin/dashboard/researcher.md | docs/features/content/admin/dashboard/architecture.md
+- history.version: Version History | docs/features/content/history/version/researcher.md | docs/features/content/history/version/architecture.md
+- notifications.list: Notifications List | docs/features/content/notifications/list/researcher.md | docs/features/content/notifications/list/architecture.md
+- notifications.preferences: Notification Preferences | docs/features/content/notifications/preferences/researcher.md | docs/features/content/notifications/preferences/architecture.md

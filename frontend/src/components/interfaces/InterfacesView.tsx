@@ -19,7 +19,7 @@ const TABS: { id: InterfacesTab; icon: any; label: string }[] = [
   { id: "design-chat", icon: Bot, label: "Design Chat" },
   { id: "generate", icon: Wand2, label: "Generate" },
   { id: "screens", icon: LayoutGrid, label: "Screens" },
-  { id: "figma", icon: ExternalLink, label: "Figma" },
+  { id: "figma", icon: ExternalLink, label: "Configuration" },
   { id: "handoff", icon: FileOutput, label: "Handoff" },
 ];
 

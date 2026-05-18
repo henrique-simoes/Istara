@@ -331,6 +331,19 @@ class ComputeNodeInvocationMixin:
             capability_probe_status = "available" if self.model_capabilities else "unavailable"
         elif self.model_capabilities:
             capability_probe_status = "available"
+        reachable_states = {
+            "ready",
+            "no_model_loaded",
+            "auth_required",
+            "degraded",
+            "slow",
+        }
+        is_reachable = bool(self.is_healthy or self.health_state in reachable_states)
+        if self.health_state in {"unreachable", "timeout"}:
+            is_reachable = False
+        readiness_state = self.health_state or "unknown"
+        if self.is_healthy and readiness_state in {"unknown", "unhealthy"}:
+            readiness_state = "ready"
         model_list_stale = bool(
             self.source in ("relay", "browser")
             and self.last_heartbeat
@@ -345,11 +358,15 @@ class ComputeNodeInvocationMixin:
             "provider_type": self.provider_type,
             "state": self.health_state,
             "serving_state": "serving" if self.is_healthy and self.websocket else self.health_state,
+            "readiness_state": readiness_state,
             "health_error": self.health_error,
             "capability_probe_status": capability_probe_status,
             "model_list_stale": model_list_stale,
             "last_heartbeat": self.last_heartbeat,
             "is_healthy": self.is_healthy,
+            "is_ready": self.is_healthy,
+            "is_reachable": is_reachable,
+            "online": is_reachable,
             "is_local": self.is_local,
             "priority": self.priority,
             "latency_ms": self.latency_ms,

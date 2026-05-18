@@ -68,7 +68,7 @@ class _ReachableButNotChatReadyRegistry:
 
 
 @pytest.mark.asyncio
-async def test_settings_status_reports_llm_disconnected_until_chat_ready(monkeypatch):
+async def test_settings_status_reports_llm_connected_when_reachable_but_not_chat_ready(monkeypatch):
     from app.api.routes import settings as settings_routes
     import app.core.ollama as ollama_module
 
@@ -79,7 +79,7 @@ async def test_settings_status_reports_llm_disconnected_until_chat_ready(monkeyp
     response = await settings_routes.system_status()
 
     assert response["llm_readiness"] == {"reachable": True, "chat_ready": False}
-    assert response["services"]["llm"] == "disconnected"
+    assert response["services"]["llm"] == "connected"
     assert response["status"] == "degraded"
     assert fake_registry.ensure_kwargs["probe_lmstudio"] is False
     assert fake_registry.ensure_kwargs["allow_model_load"] is False

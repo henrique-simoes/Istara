@@ -78,6 +78,29 @@ async def register_server(
     )
     safe_headers = _validate_headers(headers or {})
 
+    existing_result = await db.execute(
+        select(MCPServerConfig)
+        .where(
+            MCPServerConfig.url == normalized_url,
+            MCPServerConfig.transport == transport,
+            MCPServerConfig.is_active.is_(True),
+        )
+        .order_by(MCPServerConfig.updated_at.desc())
+    )
+    existing = existing_result.scalars().first()
+    if existing:
+        existing.name = name
+        existing.headers_json = encrypt_field(json.dumps(safe_headers))
+        existing.updated_at = datetime.now(timezone.utc)
+        await db.commit()
+        await db.refresh(existing)
+        logger.info(
+            "Reused MCP server '%s' at %s",
+            name,
+            redacted_endpoint_label(normalized_url),
+        )
+        return existing
+
     config = MCPServerConfig(
         id=str(uuid.uuid4()),
         name=name,
@@ -307,12 +330,24 @@ async def unregister_server(db: AsyncSession, server_id: str) -> bool:
 
 async def list_servers(db: AsyncSession, active_only: bool = False) -> list[dict]:
     """List all registered MCP servers."""
-    query = select(MCPServerConfig).order_by(MCPServerConfig.created_at.desc())
+    query = select(MCPServerConfig).order_by(
+        MCPServerConfig.updated_at.desc(),
+        MCPServerConfig.created_at.desc(),
+    )
     if active_only:
         query = query.where(MCPServerConfig.is_active.is_(True))
     result = await db.execute(query)
     servers = result.scalars().all()
-    return [s.to_dict() for s in servers]
+    deduped: dict[tuple[str, str], dict] = {}
+    for server in servers:
+        key = (server.transport, server.url)
+        if key not in deduped:
+            row = server.to_dict()
+            row["duplicate_count"] = 1
+            deduped[key] = row
+        else:
+            deduped[key]["duplicate_count"] += 1
+    return list(deduped.values())
 
 
 async def list_all_tools(db: AsyncSession) -> list[dict]:
@@ -327,7 +362,12 @@ async def list_all_tools(db: AsyncSession) -> list[dict]:
     servers = result.scalars().all()
 
     all_tools: list[dict] = []
+    seen_servers: set[tuple[str, str]] = set()
     for server in servers:
+        key = (server.transport, server.url)
+        if key in seen_servers:
+            continue
+        seen_servers.add(key)
         tools = json.loads(server.tools_json) if server.tools_json else []
         for tool in tools:
             all_tools.append({

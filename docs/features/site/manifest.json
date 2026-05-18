@@ -1,0 +1,1582 @@
+{
+  "features": [
+    {
+      "architecture_url": "features/shell/navigation/architecture.html",
+      "glossary_terms": [
+        "wcag",
+        "compass-forge"
+      ],
+      "id": "shell.navigation",
+      "nav_group": "Shell",
+      "related_features": [
+        "shell.projects",
+        "shell.search",
+        "shell.keyboard-shortcuts",
+        "shell.onboarding"
+      ],
+      "researcher_url": "features/shell/navigation/researcher.html",
+      "title": "Application Navigation",
+      "ui_path": [
+        "Shell",
+        "Navigation"
+      ]
+    },
+    {
+      "architecture_url": "features/shell/projects/architecture.html",
+      "glossary_terms": [
+        "compass-forge"
+      ],
+      "id": "shell.projects",
+      "nav_group": "Shell",
+      "related_features": [
+        "shell.navigation",
+        "chat.overview",
+        "tasks.kanban"
+      ],
+      "researcher_url": "features/shell/projects/researcher.html",
+      "title": "Project Switcher",
+      "ui_path": [
+        "Shell",
+        "Projects"
+      ]
+    },
+    {
+      "architecture_url": "features/shell/search/architecture.html",
+      "glossary_terms": [
+        "wcag"
+      ],
+      "id": "shell.search",
+      "nav_group": "Shell",
+      "related_features": [
+        "shell.navigation",
+        "shell.keyboard-shortcuts"
+      ],
+      "researcher_url": "features/shell/search/researcher.html",
+      "title": "Global Search",
+      "ui_path": [
+        "Shell",
+        "Search"
+      ]
+    },
+    {
+      "architecture_url": "features/shell/notifications-bell/architecture.html",
+      "glossary_terms": [
+        "wcag"
+      ],
+      "id": "shell.notifications-bell",
+      "nav_group": "Shell",
+      "related_features": [
+        "notifications.list",
+        "notifications.preferences"
+      ],
+      "researcher_url": "features/shell/notifications-bell/researcher.html",
+      "title": "Notification Bell",
+      "ui_path": [
+        "Shell",
+        "Notifications Bell"
+      ]
+    },
+    {
+      "architecture_url": "features/shell/keyboard-shortcuts/architecture.html",
+      "glossary_terms": [
+        "wcag"
+      ],
+      "id": "shell.keyboard-shortcuts",
+      "nav_group": "Shell",
+      "related_features": [
+        "shell.search",
+        "shell.navigation"
+      ],
+      "researcher_url": "features/shell/keyboard-shortcuts/researcher.html",
+      "title": "Keyboard Shortcuts",
+      "ui_path": [
+        "Shell",
+        "Keyboard Shortcuts"
+      ]
+    },
+    {
+      "architecture_url": "features/shell/onboarding/architecture.html",
+      "glossary_terms": [
+        "wcag"
+      ],
+      "id": "shell.onboarding",
+      "nav_group": "Shell",
+      "related_features": [
+        "shell.navigation",
+        "chat.overview"
+      ],
+      "researcher_url": "features/shell/onboarding/researcher.html",
+      "title": "View Onboarding",
+      "ui_path": [
+        "Shell",
+        "Onboarding"
+      ]
+    },
+    {
+      "architecture_url": "features/auth/login/architecture.html",
+      "glossary_terms": [
+        "webauthn",
+        "totp"
+      ],
+      "id": "auth.login",
+      "nav_group": "Shell",
+      "related_features": [
+        "settings.security-factors",
+        "settings.sessions"
+      ],
+      "researcher_url": "features/auth/login/researcher.html",
+      "title": "Login And Session Bootstrap",
+      "ui_path": [
+        "Shell",
+        "Authentication"
+      ]
+    },
+    {
+      "architecture_url": "features/chat/overview/architecture.html",
+      "glossary_terms": [
+        "rag",
+        "mcp"
+      ],
+      "id": "chat.overview",
+      "nav_group": "Chat",
+      "related_features": [
+        "chat.sessions",
+        "chat.model-controls",
+        "chat.files",
+        "chat.audio",
+        "chat.steering"
+      ],
+      "researcher_url": "features/chat/overview/researcher.html",
+      "title": "Chat Workspace",
+      "ui_path": [
+        "Chat"
+      ]
+    },
+    {
+      "architecture_url": "features/chat/sessions/architecture.html",
+      "glossary_terms": [
+        "rag"
+      ],
+      "id": "chat.sessions",
+      "nav_group": "Chat",
+      "related_features": [
+        "chat.overview",
+        "history.version"
+      ],
+      "researcher_url": "features/chat/sessions/researcher.html",
+      "title": "Chat Sessions",
+      "ui_path": [
+        "Chat",
+        "Sessions"
+      ]
+    },
+    {
+      "architecture_url": "features/chat/model-controls/architecture.html",
+      "glossary_terms": [
+        "rag"
+      ],
+      "id": "chat.model-controls",
+      "nav_group": "Chat",
+      "related_features": [
+        "settings.llm-servers",
+        "settings.general",
+        "compute.pool"
+      ],
+      "researcher_url": "features/chat/model-controls/researcher.html",
+      "title": "Chat Model Controls",
+      "ui_path": [
+        "Chat",
+        "Model Controls"
+      ]
+    },
+    {
+      "architecture_url": "features/chat/files/architecture.html",
+      "glossary_terms": [
+        "rag"
+      ],
+      "id": "chat.files",
+      "nav_group": "Chat",
+      "related_features": [
+        "documents.upload",
+        "documents.library",
+        "chat.overview"
+      ],
+      "researcher_url": "features/chat/files/researcher.html",
+      "title": "Chat File Attachments",
+      "ui_path": [
+        "Chat",
+        "File Attachments"
+      ]
+    },
+    {
+      "architecture_url": "features/chat/audio/architecture.html",
+      "glossary_terms": [
+        "wcag"
+      ],
+      "id": "chat.audio",
+      "nav_group": "Chat",
+      "related_features": [
+        "chat.overview",
+        "interviews.transcription"
+      ],
+      "researcher_url": "features/chat/audio/researcher.html",
+      "title": "Chat Audio Conversation",
+      "ui_path": [
+        "Chat",
+        "Audio"
+      ]
+    },
+    {
+      "architecture_url": "features/chat/steering/architecture.html",
+      "glossary_terms": [
+        "rag"
+      ],
+      "id": "chat.steering",
+      "nav_group": "Chat",
+      "related_features": [
+        "chat.overview",
+        "context.editor"
+      ],
+      "researcher_url": "features/chat/steering/researcher.html",
+      "title": "Chat Steering",
+      "ui_path": [
+        "Chat",
+        "Steering"
+      ]
+    },
+    {
+      "architecture_url": "features/findings/evidence/architecture.html",
+      "glossary_terms": [
+        "atomic-research",
+        "triangulation"
+      ],
+      "id": "findings.evidence",
+      "nav_group": "Findings",
+      "related_features": [
+        "findings.phase-tabs",
+        "findings.codebook",
+        "findings.reports"
+      ],
+      "researcher_url": "features/findings/evidence/researcher.html",
+      "title": "Findings Evidence",
+      "ui_path": [
+        "Findings",
+        "Evidence"
+      ]
+    },
+    {
+      "architecture_url": "features/findings/phase-tabs/architecture.html",
+      "glossary_terms": [
+        "atomic-research"
+      ],
+      "id": "findings.phase-tabs",
+      "nav_group": "Findings",
+      "related_features": [
+        "findings.evidence"
+      ],
+      "researcher_url": "features/findings/phase-tabs/researcher.html",
+      "title": "Findings Phase Tabs",
+      "ui_path": [
+        "Findings",
+        "Evidence",
+        "Phase Tabs"
+      ]
+    },
+    {
+      "architecture_url": "features/findings/codebook/architecture.html",
+      "glossary_terms": [
+        "atomic-research"
+      ],
+      "id": "findings.codebook",
+      "nav_group": "Findings",
+      "related_features": [
+        "findings.evidence",
+        "findings.review"
+      ],
+      "researcher_url": "features/findings/codebook/researcher.html",
+      "title": "Findings Codebook",
+      "ui_path": [
+        "Findings",
+        "Codebook"
+      ]
+    },
+    {
+      "architecture_url": "features/findings/review/architecture.html",
+      "glossary_terms": [
+        "triangulation"
+      ],
+      "id": "findings.review",
+      "nav_group": "Findings",
+      "related_features": [
+        "findings.codebook",
+        "tasks.review"
+      ],
+      "researcher_url": "features/findings/review/researcher.html",
+      "title": "Findings Code Review",
+      "ui_path": [
+        "Findings",
+        "Review"
+      ]
+    },
+    {
+      "architecture_url": "features/findings/reports/architecture.html",
+      "glossary_terms": [
+        "minto-pyramid",
+        "scr",
+        "triangulation"
+      ],
+      "id": "findings.reports",
+      "nav_group": "Findings",
+      "related_features": [
+        "findings.evidence",
+        "tasks.send-report",
+        "interfaces.handoff"
+      ],
+      "researcher_url": "features/findings/reports/researcher.html",
+      "title": "Project Reports",
+      "ui_path": [
+        "Findings",
+        "Reports"
+      ]
+    },
+    {
+      "architecture_url": "features/findings/slide-instructions/architecture.html",
+      "glossary_terms": [
+        "minto-pyramid"
+      ],
+      "id": "findings.slide-instructions",
+      "nav_group": "Findings",
+      "related_features": [
+        "findings.reports",
+        "interfaces.handoff"
+      ],
+      "researcher_url": "features/findings/slide-instructions/researcher.html",
+      "title": "Report Slide Instructions",
+      "ui_path": [
+        "Findings",
+        "Reports",
+        "Slide Instructions"
+      ]
+    },
+    {
+      "architecture_url": "features/laws/catalog/architecture.html",
+      "glossary_terms": [
+        "wcag"
+      ],
+      "id": "laws.catalog",
+      "nav_group": "UX Laws",
+      "related_features": [
+        "laws.compliance",
+        "findings.evidence"
+      ],
+      "researcher_url": "features/laws/catalog/researcher.html",
+      "title": "UX Laws Catalog",
+      "ui_path": [
+        "UX Laws",
+        "Catalog"
+      ]
+    },
+    {
+      "architecture_url": "features/laws/compliance/architecture.html",
+      "glossary_terms": [
+        "wcag"
+      ],
+      "id": "laws.compliance",
+      "nav_group": "UX Laws",
+      "related_features": [
+        "laws.catalog",
+        "quality.dashboard"
+      ],
+      "researcher_url": "features/laws/compliance/researcher.html",
+      "title": "UX Laws Compliance",
+      "ui_path": [
+        "UX Laws",
+        "Compliance"
+      ]
+    },
+    {
+      "architecture_url": "features/tasks/kanban/architecture.html",
+      "glossary_terms": [
+        "scr"
+      ],
+      "id": "tasks.kanban",
+      "nav_group": "Tasks",
+      "related_features": [
+        "tasks.editor",
+        "tasks.review",
+        "tasks.send-report"
+      ],
+      "researcher_url": "features/tasks/kanban/researcher.html",
+      "title": "Task Kanban Board",
+      "ui_path": [
+        "Tasks",
+        "Kanban"
+      ]
+    },
+    {
+      "architecture_url": "features/tasks/editor/architecture.html",
+      "glossary_terms": [
+        "scr"
+      ],
+      "id": "tasks.editor",
+      "nav_group": "Tasks",
+      "related_features": [
+        "tasks.kanban",
+        "tasks.attachments"
+      ],
+      "researcher_url": "features/tasks/editor/researcher.html",
+      "title": "Task Editor",
+      "ui_path": [
+        "Tasks",
+        "Task Editor"
+      ]
+    },
+    {
+      "architecture_url": "features/tasks/review/architecture.html",
+      "glossary_terms": [
+        "triangulation"
+      ],
+      "id": "tasks.review",
+      "nav_group": "Tasks",
+      "related_features": [
+        "findings.review",
+        "agents.proposals"
+      ],
+      "researcher_url": "features/tasks/review/researcher.html",
+      "title": "Human Task Review",
+      "ui_path": [
+        "Tasks",
+        "Review"
+      ]
+    },
+    {
+      "architecture_url": "features/tasks/attachments/architecture.html",
+      "glossary_terms": [
+        "rag"
+      ],
+      "id": "tasks.attachments",
+      "nav_group": "Tasks",
+      "related_features": [
+        "documents.upload",
+        "tasks.editor"
+      ],
+      "researcher_url": "features/tasks/attachments/researcher.html",
+      "title": "Task Attachments",
+      "ui_path": [
+        "Tasks",
+        "Attachments"
+      ]
+    },
+    {
+      "architecture_url": "features/tasks/send-report/architecture.html",
+      "glossary_terms": [
+        "minto-pyramid"
+      ],
+      "id": "tasks.send-report",
+      "nav_group": "Tasks",
+      "related_features": [
+        "findings.reports",
+        "tasks.review"
+      ],
+      "researcher_url": "features/tasks/send-report/researcher.html",
+      "title": "Send Task To Report",
+      "ui_path": [
+        "Tasks",
+        "Send To Report"
+      ]
+    },
+    {
+      "architecture_url": "features/interviews/files/architecture.html",
+      "glossary_terms": [
+        "atomic-research"
+      ],
+      "id": "interviews.files",
+      "nav_group": "Interviews",
+      "related_features": [
+        "interviews.transcription",
+        "documents.upload"
+      ],
+      "researcher_url": "features/interviews/files/researcher.html",
+      "title": "Interview Files",
+      "ui_path": [
+        "Interviews",
+        "Files"
+      ]
+    },
+    {
+      "architecture_url": "features/interviews/transcription/architecture.html",
+      "glossary_terms": [
+        "atomic-research"
+      ],
+      "id": "interviews.transcription",
+      "nav_group": "Interviews",
+      "related_features": [
+        "interviews.files",
+        "findings.evidence"
+      ],
+      "researcher_url": "features/interviews/transcription/researcher.html",
+      "title": "Interview Transcription",
+      "ui_path": [
+        "Interviews",
+        "Transcription"
+      ]
+    },
+    {
+      "architecture_url": "features/interviews/preview-tags/architecture.html",
+      "glossary_terms": [
+        "atomic-research"
+      ],
+      "id": "interviews.preview-tags",
+      "nav_group": "Interviews",
+      "related_features": [
+        "agents.registry",
+        "interviews.files"
+      ],
+      "researcher_url": "features/interviews/preview-tags/researcher.html",
+      "title": "Interview Preview And Tags",
+      "ui_path": [
+        "Interviews",
+        "Preview And Tags"
+      ]
+    },
+    {
+      "architecture_url": "features/documents/library/architecture.html",
+      "glossary_terms": [
+        "rag"
+      ],
+      "id": "documents.library",
+      "nav_group": "Documents",
+      "related_features": [
+        "documents.upload",
+        "documents.preview",
+        "chat.files"
+      ],
+      "researcher_url": "features/documents/library/researcher.html",
+      "title": "Document Library",
+      "ui_path": [
+        "Documents",
+        "Library"
+      ]
+    },
+    {
+      "architecture_url": "features/documents/upload/architecture.html",
+      "glossary_terms": [
+        "rag"
+      ],
+      "id": "documents.upload",
+      "nav_group": "Documents",
+      "related_features": [
+        "documents.library",
+        "chat.files",
+        "tasks.attachments"
+      ],
+      "researcher_url": "features/documents/upload/researcher.html",
+      "title": "Document Upload",
+      "ui_path": [
+        "Documents",
+        "Upload"
+      ]
+    },
+    {
+      "architecture_url": "features/documents/preview/architecture.html",
+      "glossary_terms": [
+        "rag"
+      ],
+      "id": "documents.preview",
+      "nav_group": "Documents",
+      "related_features": [
+        "documents.library",
+        "documents.suggestions"
+      ],
+      "researcher_url": "features/documents/preview/researcher.html",
+      "title": "Document Preview",
+      "ui_path": [
+        "Documents",
+        "Preview"
+      ]
+    },
+    {
+      "architecture_url": "features/documents/suggestions/architecture.html",
+      "glossary_terms": [
+        "rag"
+      ],
+      "id": "documents.suggestions",
+      "nav_group": "Documents",
+      "related_features": [
+        "documents.preview",
+        "chat.overview"
+      ],
+      "researcher_url": "features/documents/suggestions/researcher.html",
+      "title": "Document Suggestions",
+      "ui_path": [
+        "Documents",
+        "Suggestions"
+      ]
+    },
+    {
+      "architecture_url": "features/context/editor/architecture.html",
+      "glossary_terms": [
+        "rag"
+      ],
+      "id": "context.editor",
+      "nav_group": "Context",
+      "related_features": [
+        "chat.steering",
+        "memory.context-dag"
+      ],
+      "researcher_url": "features/context/editor/researcher.html",
+      "title": "Project Context Editor",
+      "ui_path": [
+        "Context",
+        "Editor"
+      ]
+    },
+    {
+      "architecture_url": "features/skills/catalog/architecture.html",
+      "glossary_terms": [
+        "mcp"
+      ],
+      "id": "skills.catalog",
+      "nav_group": "Skills",
+      "related_features": [
+        "skills.proposals",
+        "agents.registry"
+      ],
+      "researcher_url": "features/skills/catalog/researcher.html",
+      "title": "Skills Catalog",
+      "ui_path": [
+        "Skills",
+        "Catalog"
+      ]
+    },
+    {
+      "architecture_url": "features/skills/proposals/architecture.html",
+      "glossary_terms": [
+        "mcp"
+      ],
+      "id": "skills.proposals",
+      "nav_group": "Skills",
+      "related_features": [
+        "skills.catalog",
+        "agents.proposals"
+      ],
+      "researcher_url": "features/skills/proposals/researcher.html",
+      "title": "Skill Proposals",
+      "ui_path": [
+        "Skills",
+        "Proposals"
+      ]
+    },
+    {
+      "architecture_url": "features/skills/create/architecture.html",
+      "glossary_terms": [
+        "mcp"
+      ],
+      "id": "skills.create",
+      "nav_group": "Skills",
+      "related_features": [
+        "skills.catalog",
+        "agents.create"
+      ],
+      "researcher_url": "features/skills/create/researcher.html",
+      "title": "Create Skill",
+      "ui_path": [
+        "Skills",
+        "Create"
+      ]
+    },
+    {
+      "architecture_url": "features/agents/registry/architecture.html",
+      "glossary_terms": [
+        "a2a",
+        "mcp"
+      ],
+      "id": "agents.registry",
+      "nav_group": "Agents",
+      "related_features": [
+        "agents.detail",
+        "agents.a2a",
+        "agents.create"
+      ],
+      "researcher_url": "features/agents/registry/researcher.html",
+      "title": "Agent Registry",
+      "ui_path": [
+        "Agents",
+        "Agents"
+      ]
+    },
+    {
+      "architecture_url": "features/agents/detail/architecture.html",
+      "glossary_terms": [
+        "a2a"
+      ],
+      "id": "agents.detail",
+      "nav_group": "Agents",
+      "related_features": [
+        "agents.registry",
+        "memory.agent"
+      ],
+      "researcher_url": "features/agents/detail/researcher.html",
+      "title": "Agent Detail Panels",
+      "ui_path": [
+        "Agents",
+        "Agents",
+        "Detail"
+      ]
+    },
+    {
+      "architecture_url": "features/agents/a2a/architecture.html",
+      "glossary_terms": [
+        "a2a"
+      ],
+      "id": "agents.a2a",
+      "nav_group": "Agents",
+      "related_features": [
+        "agents.registry",
+        "loops.agent-loops"
+      ],
+      "researcher_url": "features/agents/a2a/researcher.html",
+      "title": "Agent-To-Agent Log",
+      "ui_path": [
+        "Agents",
+        "A2A"
+      ]
+    },
+    {
+      "architecture_url": "features/agents/proposals/architecture.html",
+      "glossary_terms": [
+        "a2a"
+      ],
+      "id": "agents.proposals",
+      "nav_group": "Agents",
+      "related_features": [
+        "agents.registry",
+        "skills.proposals",
+        "tasks.review"
+      ],
+      "researcher_url": "features/agents/proposals/researcher.html",
+      "title": "Agent Proposals",
+      "ui_path": [
+        "Agents",
+        "Proposals"
+      ]
+    },
+    {
+      "architecture_url": "features/agents/create/architecture.html",
+      "glossary_terms": [
+        "a2a",
+        "mcp"
+      ],
+      "id": "agents.create",
+      "nav_group": "Agents",
+      "related_features": [
+        "agents.registry",
+        "skills.catalog"
+      ],
+      "researcher_url": "features/agents/create/researcher.html",
+      "title": "Create Agent",
+      "ui_path": [
+        "Agents",
+        "Create"
+      ]
+    },
+    {
+      "architecture_url": "features/memory/knowledge/architecture.html",
+      "glossary_terms": [
+        "rag"
+      ],
+      "id": "memory.knowledge",
+      "nav_group": "Memory",
+      "related_features": [
+        "memory.agent",
+        "memory.context-dag",
+        "documents.library"
+      ],
+      "researcher_url": "features/memory/knowledge/researcher.html",
+      "title": "Knowledge Memory",
+      "ui_path": [
+        "Memory",
+        "Knowledge"
+      ]
+    },
+    {
+      "architecture_url": "features/memory/agent/architecture.html",
+      "glossary_terms": [
+        "rag",
+        "a2a"
+      ],
+      "id": "memory.agent",
+      "nav_group": "Memory",
+      "related_features": [
+        "agents.detail",
+        "memory.knowledge"
+      ],
+      "researcher_url": "features/memory/agent/researcher.html",
+      "title": "Agent Memory",
+      "ui_path": [
+        "Memory",
+        "Agent"
+      ]
+    },
+    {
+      "architecture_url": "features/memory/health/architecture.html",
+      "glossary_terms": [
+        "rag"
+      ],
+      "id": "memory.health",
+      "nav_group": "Memory",
+      "related_features": [
+        "memory.knowledge",
+        "quality.dashboard"
+      ],
+      "researcher_url": "features/memory/health/researcher.html",
+      "title": "Memory Health",
+      "ui_path": [
+        "Memory",
+        "Health"
+      ]
+    },
+    {
+      "architecture_url": "features/memory/context-dag/architecture.html",
+      "glossary_terms": [
+        "rag"
+      ],
+      "id": "memory.context-dag",
+      "nav_group": "Memory",
+      "related_features": [
+        "context.editor",
+        "memory.knowledge"
+      ],
+      "researcher_url": "features/memory/context-dag/researcher.html",
+      "title": "Context DAG",
+      "ui_path": [
+        "Memory",
+        "Context DAG"
+      ]
+    },
+    {
+      "architecture_url": "features/interfaces/design-chat/architecture.html",
+      "glossary_terms": [
+        "minto-pyramid"
+      ],
+      "id": "interfaces.design-chat",
+      "nav_group": "Interfaces",
+      "related_features": [
+        "interfaces.generate",
+        "interfaces.findings-picker"
+      ],
+      "researcher_url": "features/interfaces/design-chat/researcher.html",
+      "title": "Interface Design Chat",
+      "ui_path": [
+        "Interfaces",
+        "Design Chat"
+      ]
+    },
+    {
+      "architecture_url": "features/interfaces/generate/architecture.html",
+      "glossary_terms": [
+        "minto-pyramid"
+      ],
+      "id": "interfaces.generate",
+      "nav_group": "Interfaces",
+      "related_features": [
+        "interfaces.screens",
+        "interfaces.design-chat"
+      ],
+      "researcher_url": "features/interfaces/generate/researcher.html",
+      "title": "Generate Interfaces",
+      "ui_path": [
+        "Interfaces",
+        "Generate"
+      ]
+    },
+    {
+      "architecture_url": "features/interfaces/screens/architecture.html",
+      "glossary_terms": [
+        "wcag"
+      ],
+      "id": "interfaces.screens",
+      "nav_group": "Interfaces",
+      "related_features": [
+        "interfaces.generate",
+        "interfaces.handoff"
+      ],
+      "researcher_url": "features/interfaces/screens/researcher.html",
+      "title": "Screens Gallery",
+      "ui_path": [
+        "Interfaces",
+        "Screens"
+      ]
+    },
+    {
+      "architecture_url": "features/interfaces/figma/architecture.html",
+      "glossary_terms": [
+        "wcag"
+      ],
+      "id": "interfaces.figma",
+      "nav_group": "Interfaces",
+      "related_features": [
+        "interfaces.screens",
+        "integrations.overview"
+      ],
+      "researcher_url": "features/interfaces/figma/researcher.html",
+      "title": "Configuration",
+      "ui_path": [
+        "Interfaces",
+        "Configuration"
+      ]
+    },
+    {
+      "architecture_url": "features/interfaces/handoff/architecture.html",
+      "glossary_terms": [
+        "minto-pyramid"
+      ],
+      "id": "interfaces.handoff",
+      "nav_group": "Interfaces",
+      "related_features": [
+        "interfaces.screens",
+        "findings.reports"
+      ],
+      "researcher_url": "features/interfaces/handoff/researcher.html",
+      "title": "Interface Handoff",
+      "ui_path": [
+        "Interfaces",
+        "Handoff"
+      ]
+    },
+    {
+      "architecture_url": "features/interfaces/findings-picker/architecture.html",
+      "glossary_terms": [
+        "atomic-research"
+      ],
+      "id": "interfaces.findings-picker",
+      "nav_group": "Interfaces",
+      "related_features": [
+        "findings.evidence",
+        "interfaces.design-chat"
+      ],
+      "researcher_url": "features/interfaces/findings-picker/researcher.html",
+      "title": "Findings Picker",
+      "ui_path": [
+        "Interfaces",
+        "Findings Picker"
+      ]
+    },
+    {
+      "architecture_url": "features/integrations/overview/architecture.html",
+      "glossary_terms": [
+        "mcp"
+      ],
+      "id": "integrations.overview",
+      "nav_group": "Integrations",
+      "related_features": [
+        "integrations.messaging",
+        "integrations.deployments",
+        "integrations.mcp"
+      ],
+      "researcher_url": "features/integrations/overview/researcher.html",
+      "title": "Integrations Overview",
+      "ui_path": [
+        "Integrations",
+        "Overview"
+      ]
+    },
+    {
+      "architecture_url": "features/integrations/messaging/architecture.html",
+      "glossary_terms": [
+        "mcp"
+      ],
+      "id": "integrations.messaging",
+      "nav_group": "Integrations",
+      "related_features": [
+        "integrations.overview",
+        "integrations.deployment-dashboard"
+      ],
+      "researcher_url": "features/integrations/messaging/researcher.html",
+      "title": "Messaging Integrations",
+      "ui_path": [
+        "Integrations",
+        "Messaging"
+      ]
+    },
+    {
+      "architecture_url": "features/integrations/surveys/architecture.html",
+      "glossary_terms": [
+        "triangulation"
+      ],
+      "id": "integrations.surveys",
+      "nav_group": "Integrations",
+      "related_features": [
+        "integrations.deployments",
+        "findings.evidence"
+      ],
+      "researcher_url": "features/integrations/surveys/researcher.html",
+      "title": "Survey Integrations",
+      "ui_path": [
+        "Integrations",
+        "Surveys"
+      ]
+    },
+    {
+      "architecture_url": "features/integrations/mcp/architecture.html",
+      "glossary_terms": [
+        "mcp"
+      ],
+      "id": "integrations.mcp",
+      "nav_group": "Integrations",
+      "related_features": [
+        "skills.catalog",
+        "agents.registry"
+      ],
+      "researcher_url": "features/integrations/mcp/researcher.html",
+      "title": "MCP Integrations",
+      "ui_path": [
+        "Integrations",
+        "MCP"
+      ]
+    },
+    {
+      "architecture_url": "features/integrations/deployments/architecture.html",
+      "glossary_terms": [
+        "triangulation"
+      ],
+      "id": "integrations.deployments",
+      "nav_group": "Integrations",
+      "related_features": [
+        "integrations.deployment-dashboard",
+        "integrations.surveys",
+        "integrations.messaging"
+      ],
+      "researcher_url": "features/integrations/deployments/researcher.html",
+      "title": "Research Deployments",
+      "ui_path": [
+        "Integrations",
+        "Deployments"
+      ]
+    },
+    {
+      "architecture_url": "features/integrations/deployment-dashboard/architecture.html",
+      "glossary_terms": [
+        "triangulation"
+      ],
+      "id": "integrations.deployment-dashboard",
+      "nav_group": "Integrations",
+      "related_features": [
+        "integrations.deployments",
+        "findings.evidence"
+      ],
+      "researcher_url": "features/integrations/deployment-dashboard/researcher.html",
+      "title": "Deployment Dashboard",
+      "ui_path": [
+        "Integrations",
+        "Deployments",
+        "Dashboard"
+      ]
+    },
+    {
+      "architecture_url": "features/loops/overview/architecture.html",
+      "glossary_terms": [
+        "a2a"
+      ],
+      "id": "loops.overview",
+      "nav_group": "Loops",
+      "related_features": [
+        "loops.schedules",
+        "loops.agent-loops"
+      ],
+      "researcher_url": "features/loops/overview/researcher.html",
+      "title": "Loops Overview",
+      "ui_path": [
+        "Loops",
+        "Overview"
+      ]
+    },
+    {
+      "architecture_url": "features/loops/schedules/architecture.html",
+      "glossary_terms": [
+        "a2a"
+      ],
+      "id": "loops.schedules",
+      "nav_group": "Loops",
+      "related_features": [
+        "loops.overview",
+        "loops.history"
+      ],
+      "researcher_url": "features/loops/schedules/researcher.html",
+      "title": "Loop Schedules",
+      "ui_path": [
+        "Loops",
+        "Schedules"
+      ]
+    },
+    {
+      "architecture_url": "features/loops/agent-loops/architecture.html",
+      "glossary_terms": [
+        "a2a"
+      ],
+      "id": "loops.agent-loops",
+      "nav_group": "Loops",
+      "related_features": [
+        "agents.registry",
+        "loops.schedules"
+      ],
+      "researcher_url": "features/loops/agent-loops/researcher.html",
+      "title": "Agent Loops",
+      "ui_path": [
+        "Loops",
+        "Agent Loops"
+      ]
+    },
+    {
+      "architecture_url": "features/loops/custom/architecture.html",
+      "glossary_terms": [
+        "mcp"
+      ],
+      "id": "loops.custom",
+      "nav_group": "Loops",
+      "related_features": [
+        "loops.schedules",
+        "skills.catalog"
+      ],
+      "researcher_url": "features/loops/custom/researcher.html",
+      "title": "Custom Loops",
+      "ui_path": [
+        "Loops",
+        "Custom"
+      ]
+    },
+    {
+      "architecture_url": "features/loops/history/architecture.html",
+      "glossary_terms": [
+        "a2a"
+      ],
+      "id": "loops.history",
+      "nav_group": "Loops",
+      "related_features": [
+        "loops.overview",
+        "history.version"
+      ],
+      "researcher_url": "features/loops/history/researcher.html",
+      "title": "Loop Execution History",
+      "ui_path": [
+        "Loops",
+        "History"
+      ]
+    },
+    {
+      "architecture_url": "features/settings/general/architecture.html",
+      "glossary_terms": [
+        "rag"
+      ],
+      "id": "settings.general",
+      "nav_group": "Settings",
+      "related_features": [
+        "settings.llm-servers",
+        "compute.pool"
+      ],
+      "researcher_url": "features/settings/general/researcher.html",
+      "title": "System Status And Models",
+      "ui_path": [
+        "Settings",
+        "System Status And Models"
+      ]
+    },
+    {
+      "architecture_url": "features/settings/llm-servers/architecture.html",
+      "glossary_terms": [
+        "rag"
+      ],
+      "id": "settings.llm-servers",
+      "nav_group": "Settings",
+      "related_features": [
+        "chat.model-controls",
+        "settings.connection-strings"
+      ],
+      "researcher_url": "features/settings/llm-servers/researcher.html",
+      "title": "LLM Server Settings",
+      "ui_path": [
+        "Settings",
+        "LLM Servers"
+      ]
+    },
+    {
+      "architecture_url": "features/settings/users/architecture.html",
+      "glossary_terms": [
+        "wcag"
+      ],
+      "id": "settings.users",
+      "nav_group": "Settings",
+      "related_features": [
+        "auth.login",
+        "settings.security-factors"
+      ],
+      "researcher_url": "features/settings/users/researcher.html",
+      "title": "User Management",
+      "ui_path": [
+        "Settings",
+        "Users"
+      ]
+    },
+    {
+      "architecture_url": "features/settings/connection-strings/architecture.html",
+      "glossary_terms": [
+        "wcag"
+      ],
+      "id": "settings.connection-strings",
+      "nav_group": "Settings",
+      "related_features": [
+        "settings.llm-servers",
+        "settings.users"
+      ],
+      "researcher_url": "features/settings/connection-strings/researcher.html",
+      "title": "Connection Strings",
+      "ui_path": [
+        "Settings",
+        "Connection Strings"
+      ]
+    },
+    {
+      "architecture_url": "features/settings/security-factors/architecture.html",
+      "glossary_terms": [
+        "webauthn",
+        "totp"
+      ],
+      "id": "settings.security-factors",
+      "nav_group": "Settings",
+      "related_features": [
+        "auth.login",
+        "settings.sessions"
+      ],
+      "researcher_url": "features/settings/security-factors/researcher.html",
+      "title": "Passkeys And Two-Factor Authentication",
+      "ui_path": [
+        "Settings",
+        "Security Factors"
+      ]
+    },
+    {
+      "architecture_url": "features/settings/sessions/architecture.html",
+      "glossary_terms": [
+        "webauthn",
+        "totp"
+      ],
+      "id": "settings.sessions",
+      "nav_group": "Settings",
+      "related_features": [
+        "auth.login",
+        "settings.security-factors"
+      ],
+      "researcher_url": "features/settings/sessions/researcher.html",
+      "title": "Active Sessions",
+      "ui_path": [
+        "Settings",
+        "Sessions"
+      ]
+    },
+    {
+      "architecture_url": "features/settings/updates/architecture.html",
+      "glossary_terms": [
+        "compass-forge"
+      ],
+      "id": "settings.updates",
+      "nav_group": "Settings",
+      "related_features": [
+        "settings.general"
+      ],
+      "researcher_url": "features/settings/updates/researcher.html",
+      "title": "Software Updates",
+      "ui_path": [
+        "Settings",
+        "Software Updates"
+      ]
+    },
+    {
+      "architecture_url": "features/settings/governed-evolution/architecture.html",
+      "glossary_terms": [
+        "compass-forge"
+      ],
+      "id": "settings.governed-evolution",
+      "nav_group": "Settings",
+      "related_features": [
+        "meta.hyperagent",
+        "quality.dashboard"
+      ],
+      "researcher_url": "features/settings/governed-evolution/researcher.html",
+      "title": "Governed Evolution",
+      "ui_path": [
+        "Settings",
+        "Governed Evolution"
+      ]
+    },
+    {
+      "architecture_url": "features/settings/compute-donation/architecture.html",
+      "glossary_terms": [
+        "wcag"
+      ],
+      "id": "settings.compute-donation",
+      "nav_group": "Settings",
+      "related_features": [
+        "compute.pool",
+        "settings.general"
+      ],
+      "researcher_url": "features/settings/compute-donation/researcher.html",
+      "title": "Compute Donation",
+      "ui_path": [
+        "Settings",
+        "Compute Donation"
+      ]
+    },
+    {
+      "architecture_url": "features/settings/project/architecture.html",
+      "glossary_terms": [
+        "compass-forge"
+      ],
+      "id": "settings.project",
+      "nav_group": "Secondary",
+      "related_features": [
+        "shell.projects",
+        "settings.general"
+      ],
+      "researcher_url": "features/settings/project/researcher.html",
+      "title": "Project Settings",
+      "ui_path": [
+        "Project Settings"
+      ]
+    },
+    {
+      "architecture_url": "features/autoresearch/dashboard/architecture.html",
+      "glossary_terms": [
+        "triangulation"
+      ],
+      "id": "autoresearch.dashboard",
+      "nav_group": "Autoresearch",
+      "related_features": [
+        "autoresearch.experiments",
+        "autoresearch.leaderboard"
+      ],
+      "researcher_url": "features/autoresearch/dashboard/researcher.html",
+      "title": "Autoresearch Dashboard",
+      "ui_path": [
+        "Autoresearch",
+        "Dashboard"
+      ]
+    },
+    {
+      "architecture_url": "features/autoresearch/experiments/architecture.html",
+      "glossary_terms": [
+        "triangulation"
+      ],
+      "id": "autoresearch.experiments",
+      "nav_group": "Autoresearch",
+      "related_features": [
+        "autoresearch.dashboard",
+        "autoresearch.config"
+      ],
+      "researcher_url": "features/autoresearch/experiments/researcher.html",
+      "title": "Autoresearch Experiments",
+      "ui_path": [
+        "Autoresearch",
+        "Experiments"
+      ]
+    },
+    {
+      "architecture_url": "features/autoresearch/leaderboard/architecture.html",
+      "glossary_terms": [
+        "triangulation"
+      ],
+      "id": "autoresearch.leaderboard",
+      "nav_group": "Autoresearch",
+      "related_features": [
+        "autoresearch.experiments",
+        "quality.dashboard"
+      ],
+      "researcher_url": "features/autoresearch/leaderboard/researcher.html",
+      "title": "Autoresearch Leaderboard",
+      "ui_path": [
+        "Autoresearch",
+        "Leaderboard"
+      ]
+    },
+    {
+      "architecture_url": "features/autoresearch/config/architecture.html",
+      "glossary_terms": [
+        "rag"
+      ],
+      "id": "autoresearch.config",
+      "nav_group": "Autoresearch",
+      "related_features": [
+        "autoresearch.experiments",
+        "chat.model-controls"
+      ],
+      "researcher_url": "features/autoresearch/config/researcher.html",
+      "title": "Autoresearch Configuration",
+      "ui_path": [
+        "Autoresearch",
+        "Config"
+      ]
+    },
+    {
+      "architecture_url": "features/compute/pool/architecture.html",
+      "glossary_terms": [
+        "rag"
+      ],
+      "id": "compute.pool",
+      "nav_group": "Secondary",
+      "related_features": [
+        "settings.compute-donation",
+        "settings.general"
+      ],
+      "researcher_url": "features/compute/pool/researcher.html",
+      "title": "Compute Pool",
+      "ui_path": [
+        "Compute Pool"
+      ]
+    },
+    {
+      "architecture_url": "features/ensemble/health/architecture.html",
+      "glossary_terms": [
+        "fleiss-kappa"
+      ],
+      "id": "ensemble.health",
+      "nav_group": "Secondary",
+      "related_features": [
+        "quality.dashboard",
+        "compute.pool"
+      ],
+      "researcher_url": "features/ensemble/health/researcher.html",
+      "title": "Ensemble Health",
+      "ui_path": [
+        "Ensemble Health"
+      ]
+    },
+    {
+      "architecture_url": "features/quality/dashboard/architecture.html",
+      "glossary_terms": [
+        "triangulation",
+        "fleiss-kappa"
+      ],
+      "id": "quality.dashboard",
+      "nav_group": "Secondary",
+      "related_features": [
+        "ensemble.health",
+        "settings.governed-evolution"
+      ],
+      "researcher_url": "features/quality/dashboard/researcher.html",
+      "title": "Quality Dashboard",
+      "ui_path": [
+        "Quality Dashboard"
+      ]
+    },
+    {
+      "architecture_url": "features/backup/view/architecture.html",
+      "glossary_terms": [
+        "compass-forge"
+      ],
+      "id": "backup.view",
+      "nav_group": "Secondary",
+      "related_features": [
+        "history.version",
+        "settings.project"
+      ],
+      "researcher_url": "features/backup/view/researcher.html",
+      "title": "Backup",
+      "ui_path": [
+        "Backup"
+      ]
+    },
+    {
+      "architecture_url": "features/meta/hyperagent/architecture.html",
+      "glossary_terms": [
+        "a2a",
+        "compass-forge"
+      ],
+      "id": "meta.hyperagent",
+      "nav_group": "Secondary",
+      "related_features": [
+        "settings.governed-evolution",
+        "agents.registry"
+      ],
+      "researcher_url": "features/meta/hyperagent/researcher.html",
+      "title": "Meta-Agent",
+      "ui_path": [
+        "Meta-Agent"
+      ]
+    },
+    {
+      "architecture_url": "features/admin/dashboard/architecture.html",
+      "glossary_terms": [
+        "wcag"
+      ],
+      "id": "admin.dashboard",
+      "nav_group": "Secondary",
+      "related_features": [
+        "settings.users",
+        "settings.connection-strings"
+      ],
+      "researcher_url": "features/admin/dashboard/researcher.html",
+      "title": "Admin Dashboard",
+      "ui_path": [
+        "Admin"
+      ]
+    },
+    {
+      "architecture_url": "features/history/version/architecture.html",
+      "glossary_terms": [
+        "compass-forge"
+      ],
+      "id": "history.version",
+      "nav_group": "Secondary",
+      "related_features": [
+        "backup.view",
+        "chat.sessions",
+        "loops.history"
+      ],
+      "researcher_url": "features/history/version/researcher.html",
+      "title": "Version History",
+      "ui_path": [
+        "History"
+      ]
+    },
+    {
+      "architecture_url": "features/notifications/list/architecture.html",
+      "glossary_terms": [
+        "wcag"
+      ],
+      "id": "notifications.list",
+      "nav_group": "Notifications",
+      "related_features": [
+        "shell.notifications-bell",
+        "notifications.preferences"
+      ],
+      "researcher_url": "features/notifications/list/researcher.html",
+      "title": "Notifications List",
+      "ui_path": [
+        "Notifications",
+        "All"
+      ]
+    },
+    {
+      "architecture_url": "features/notifications/preferences/architecture.html",
+      "glossary_terms": [
+        "wcag"
+      ],
+      "id": "notifications.preferences",
+      "nav_group": "Notifications",
+      "related_features": [
+        "notifications.list",
+        "shell.notifications-bell"
+      ],
+      "researcher_url": "features/notifications/preferences/researcher.html",
+      "title": "Notification Preferences",
+      "ui_path": [
+        "Notifications",
+        "Preferences"
+      ]
+    }
+  ],
+  "generated_at": "2026-05-18T21:04:16.414878+00:00",
+  "search_index": "docs/features/site/search-index.json",
+  "site_entrypoint": "docs/features/site/index.html",
+  "source_inventory": "docs/features/inventory.json",
+  "title": "Istara Living Feature Documentation"
+}

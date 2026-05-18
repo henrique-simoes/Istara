@@ -171,7 +171,10 @@ async def record_task_review_event(
 ) -> TaskReviewEvent:
     """Create a review event and update task summary counters.
 
-    Caller is responsible for committing the session.
+    Caller is responsible for committing the session, then calling
+    ``record_review_side_effects`` after commit. The side effects open their
+    own database sessions; running them before commit can make SQLite wait on
+    the review transaction's write lock.
     """
     previous_status = _status_value(task.status)
     previous_review_state = task.review_state or "none"
@@ -235,12 +238,14 @@ async def record_task_review_event(
         updated_at=now,
     )
     db.add(event)
-    await _record_review_side_effects(event, score)
     return event
 
 
-async def _record_review_side_effects(event: TaskReviewEvent, score: float) -> None:
+async def record_review_side_effects(event: TaskReviewEvent, score: float | None = None) -> None:
     """Best-effort telemetry/model/learning side effects."""
+    score = event.quality_score if score is None else score
+    if score is None:
+        score = 0.0
     try:
         from app.core.telemetry import telemetry_recorder
 

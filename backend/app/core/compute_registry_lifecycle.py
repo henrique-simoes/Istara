@@ -75,10 +75,8 @@ class ComputeRegistryLifecycleMixin:
                     continue
                 if _server_endpoint_identity(existing.host) != new_identity:
                     continue
-                if (
-                    existing.provider_type != node.provider_type
-                    and existing.priority <= node.priority
-                ):
+                if self._should_keep_duplicate_node(existing, node):
+                    self._merge_duplicate_node(existing, node)
                     logger.info(
                         "ComputeRegistry: skipped duplicate node '%s' (%s @ %s); "
                         "existing node '%s' already owns that endpoint as %s.",
@@ -89,17 +87,17 @@ class ComputeRegistryLifecycleMixin:
                         existing.provider_type,
                     )
                     return
-                if existing.provider_type != node.provider_type:
-                    removed = self._nodes.pop(existing_id, None)
-                    if removed:
-                        asyncio.ensure_future(removed.close())
-                        logger.info(
-                            "ComputeRegistry: replaced duplicate node '%s' (%s) with '%s' (%s).",
-                            removed.name,
-                            removed.provider_type,
-                            node.name,
-                            node.provider_type,
-                        )
+                self._merge_duplicate_node(node, existing)
+                removed = self._nodes.pop(existing_id, None)
+                if removed:
+                    asyncio.ensure_future(removed.close())
+                    logger.info(
+                        "ComputeRegistry: replaced duplicate node '%s' (%s) with '%s' (%s).",
+                        removed.name,
+                        removed.provider_type,
+                        node.name,
+                        node.provider_type,
+                    )
         if not node.connected_at:
             node.connected_at = time.time()
         if not node.last_heartbeat:
@@ -112,6 +110,55 @@ class ComputeRegistryLifecycleMixin:
             node.name,
             _redacted_endpoint_for_log(node.host),
         )
+
+    @staticmethod
+    def _duplicate_source_rank(node: ComputeNode) -> int:
+        if node.source == "local":
+            return 30
+        if node.source in {"relay", "browser"}:
+            return 20
+        if node.source == "network":
+            return 10
+        return 0
+
+    @classmethod
+    def _should_keep_duplicate_node(
+        cls,
+        existing: ComputeNode,
+        incoming: ComputeNode,
+    ) -> bool:
+        existing_rank = cls._duplicate_source_rank(existing)
+        incoming_rank = cls._duplicate_source_rank(incoming)
+        if existing_rank != incoming_rank:
+            return existing_rank > incoming_rank
+        return existing.priority <= incoming.priority
+
+    @staticmethod
+    def _merge_duplicate_node(target: ComputeNode, incoming: ComputeNode) -> None:
+        """Preserve useful runtime metadata when duplicate endpoints collapse."""
+        target.loaded_models = _unique_model_names(
+            tuple(list(target.loaded_models or []) + list(incoming.loaded_models or []))
+        )
+        if incoming.model_capabilities:
+            target.model_capabilities = {
+                **incoming.model_capabilities,
+                **target.model_capabilities,
+            }
+        if incoming.is_healthy and not target.is_healthy:
+            target.is_healthy = True
+            target.health_state = incoming.health_state
+            target.health_error = incoming.health_error
+        for field in ("ram_total_gb", "ram_available_gb", "cpu_cores", "gpu_vram_mb"):
+            if not getattr(target, field, 0) and getattr(incoming, field, 0):
+                setattr(target, field, getattr(incoming, field))
+        if not target.gpu_name and incoming.gpu_name:
+            target.gpu_name = incoming.gpu_name
+        if not target.provider_host and incoming.provider_host:
+            target.provider_host = incoming.provider_host
+        if not target.ip_address and incoming.ip_address:
+            target.ip_address = incoming.ip_address
+        if incoming.last_heartbeat > target.last_heartbeat:
+            target.last_heartbeat = incoming.last_heartbeat
 
     def register_server(self, entry) -> None:
         """Backward compat: accepts LLMServerEntry-like objects.
@@ -264,8 +311,10 @@ class ComputeRegistryLifecycleMixin:
             healthy = await node.check_health()
             results[nid] = healthy
 
-            # Detect capabilities for healthy nodes
-            if healthy:
+            # Detect capabilities for online nodes, even when LM Studio has no
+            # model loaded yet. This is passive metadata discovery; readiness
+            # still stays false until chat has a loaded or explicitly loaded model.
+            if healthy or node.health_state == "no_model_loaded":
                 try:
                     from app.core.model_capabilities import detect_capabilities_generic
 
