@@ -125,6 +125,11 @@ Memory and Context DAG inspection are project-content surfaces too: memory
 indexes may only open after the requested project exists and is visible to the
 caller, and every Context DAG structure, health, expansion, search, node, and
 compaction request must bind the session id to the caller's active project id.
+Context hierarchy prompts and previews are project-content surfaces too:
+database-backed company, product, project, task, and agent context documents
+may only compose when their `project_id` exactly matches the active project.
+Unassigned/admin-only context rows must not be inherited into project prompt
+composition; shared platform guidance belongs in reviewed code defaults.
 Findings evidence, evidence-chain traversal, shell findings search, and project
 reports are project-content surfaces: project-facing list/search/report clients
 and APIs require an explicit authorized active project, linked evidence rows are

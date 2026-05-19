@@ -636,6 +636,27 @@ def test_chat_sessions_require_active_project_scope() -> None:
     assert "Message.project_id == scoped_project_id" in route
 
 
+def test_context_hierarchy_project_composition_is_project_local() -> None:
+    core = read_repo("backend/app/core/context_hierarchy.py")
+    route = read_repo("backend/app/api/routes/context_hierarchy.py")
+    preview = read_repo("frontend/src/components/common/ContextPreview.tsx")
+    docs = read_repo("docs/features/content/context/editor/architecture.md")
+
+    assert "scoped_project_id = self._normalize_project_id(project_id)" in core
+    assert "query = query.where(ContextDocument.project_id == scoped_project_id)" in core
+    assert "(ContextDocument.project_id == project_id) |" not in core
+    assert "(ContextDocument.project_id == \"\") |" not in core
+    assert "ContextDocument.level <= 2" not in core
+
+    assert "scoped_project_id = str(project_id or \"\").strip()" in route
+    assert "await require_project_access(db, request, scoped_project_id, min_role=\"viewer\")" in route
+    assert "await require_project_access(db, request, scoped_project_id, min_role=\"researcher\")" in route
+    assert "composed = await context_hierarchy.compose_context(db, scoped_project_id)" in route
+
+    assert "Composed from active project context layers" in preview
+    assert "context hierarchy prompt composition is project-local" in docs
+
+
 def test_agent_detail_status_and_log_routes_require_active_project_scope() -> None:
     view = read_repo("frontend/src/components/agents/AgentsView.tsx")
     visuals = read_repo("frontend/src/components/agents/AgentVisuals.tsx")

@@ -385,7 +385,10 @@ def test_security_benchmark_detects_context_hierarchy_project_scope_paths() -> N
 
     changed_paths = [
         "backend/app/api/routes/context_hierarchy.py",
+        "backend/app/core/context_hierarchy.py",
         "backend/app/main.py",
+        "frontend/src/components/common/ContextPreview.tsx",
+        "tests/test_context_hierarchy.py",
     ]
     result = evaluate_matrix(matrix, changed_paths=changed_paths)
 
