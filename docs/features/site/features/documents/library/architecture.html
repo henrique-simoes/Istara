@@ -253,10 +253,13 @@
 <h3 id="stores">Stores</h3>
 <ul>
 <li><code>frontend/src/stores/documentStore.ts</code></li>
+<li>The document store is keyed by the active project id. Project changes clear documents, tags, stats, pagination, and the selected preview id before loading the next project&#x27;s material.</li>
 </ul>
 <h3 id="api-and-backend">API And Backend</h3>
 <ul>
 <li><code>backend/app/api/routes/documents.py</code></li>
+<li>Document listing requires an explicit <code>project_id</code>; project-facing document library views do not fall back to a global document list.</li>
+<li>ID-based document operations require the same active <code>project_id</code> used by the UI and load records by <code>(document_id, project_id)</code> so stale IDs from another authorized project resolve as not found.</li>
 </ul>
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
@@ -270,7 +273,8 @@
 </ul>
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>
-<li>No focused test reference recorded yet.</li>
+<li><code>tests/test_documents.py</code></li>
+<li><code>tests/test_project_rbac.py</code></li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>

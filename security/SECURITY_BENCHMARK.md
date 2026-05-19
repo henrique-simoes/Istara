@@ -108,6 +108,11 @@ Stitch/Figma credentials are also project-content surfaces: status/list/helper
 APIs require an authorized active project, frontend stores clear stale project
 data on project switches, and Figma/Stitch secrets are stored in project-owned
 encrypted records instead of process-wide configuration.
+Document library and preview are project-content surfaces as well: list and
+ID-based document APIs require an authorized active project, records are loaded
+by both document id and project id, and frontend document state clears on
+project switches so stale documents from another authorized project cannot
+render in the current project view.
 Donated relay/browser compute is also a project-content boundary: a relay can
 be connected for status, but prompt and embedding payloads may only route to it
 when the request includes a concrete project and the donor scope was resolved

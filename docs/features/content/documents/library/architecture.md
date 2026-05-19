@@ -8,8 +8,8 @@ related_features: ["documents.upload", "documents.preview", "chat.files"]
 related_glossary: ["rag"]
 code_references: ["frontend/src/components/documents/DocumentsView.tsx", "frontend/src/stores/documentStore.ts", "backend/app/api/routes/documents.py"]
 api_references: ["backend/app/api/routes/documents.py"]
-test_references: []
-last_verified: 2026-05-15
+test_references: ["tests/test_documents.py", "tests/test_project_rbac.py"]
+last_verified: 2026-05-19
 compass: CF-SPEC-53 / CF-657
 ---
 
@@ -30,10 +30,13 @@ Documents centralizes project documents and makes source material available for 
 ### Stores
 
 - `frontend/src/stores/documentStore.ts`
+- The document store is keyed by the active project id. Project changes clear documents, tags, stats, pagination, and the selected preview id before loading the next project's material.
 
 ### API And Backend
 
 - `backend/app/api/routes/documents.py`
+- Document listing requires an explicit `project_id`; project-facing document library views do not fall back to a global document list.
+- ID-based document operations require the same active `project_id` used by the UI and load records by `(document_id, project_id)` so stale IDs from another authorized project resolve as not found.
 
 ## Architecture Notes
 
@@ -47,7 +50,8 @@ Documents centralizes project documents and makes source material available for 
 
 ## Tests And Verification
 
-- No focused test reference recorded yet.
+- `tests/test_documents.py`
+- `tests/test_project_rbac.py`
 
 ## Related Features
 

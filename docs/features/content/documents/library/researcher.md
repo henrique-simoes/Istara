@@ -8,8 +8,8 @@ related_features: ["documents.upload", "documents.preview", "chat.files"]
 related_glossary: ["rag"]
 code_references: ["frontend/src/components/documents/DocumentsView.tsx", "frontend/src/stores/documentStore.ts", "backend/app/api/routes/documents.py"]
 api_references: ["backend/app/api/routes/documents.py"]
-test_references: []
-last_verified: 2026-05-15
+test_references: ["tests/test_documents.py", "tests/test_project_rbac.py"]
+last_verified: 2026-05-19
 compass: CF-SPEC-53 / CF-657
 ---
 
@@ -45,6 +45,7 @@ Document Library exists so the work represented by Documents > Library has a sta
 
 - Project-scoped state or artifact updates associated with document library.
 - Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.
+- Switching projects clears the visible document library before the next project loads, so stale documents from another project should not remain on screen.
 
 ## Caveats
 
@@ -65,4 +66,4 @@ Document Library exists so the work represented by Documents > Library has a sta
 
 - Source files: `frontend/src/components/documents/DocumentsView.tsx`, `frontend/src/stores/documentStore.ts`, `backend/app/api/routes/documents.py`
 - API references: `backend/app/api/routes/documents.py`
-- Tests: none recorded
+- Tests: `tests/test_documents.py`, `tests/test_project_rbac.py`

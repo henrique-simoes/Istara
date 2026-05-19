@@ -266,6 +266,7 @@
 <ul>
 <li>Project-scoped state or artifact updates associated with document preview.</li>
 <li>Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.</li>
+<li>A preview opens only for documents that belong to the active project. Stale document IDs from another project should be blocked before content is requested.</li>
 </ul>
 <h2 id="caveats">Caveats</h2>
 <ul>
@@ -285,7 +286,7 @@
 <ul>
 <li>Source files: <code>frontend/src/components/documents/DocumentsView.tsx</code>, <code>frontend/src/components/common/ContextPreview.tsx</code></li>
 <li>API references: <code>backend/app/api/routes/documents.py</code></li>
-<li>Tests: none recorded</li>
+<li>Tests: <code>tests/test_documents.py</code>, <code>tests/test_project_rbac.py</code></li>
 </ul>
         </article>
         <aside class="toc-panel" aria-label="Page sections">

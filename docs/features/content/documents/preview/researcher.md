@@ -8,8 +8,8 @@ related_features: ["documents.library", "documents.suggestions"]
 related_glossary: ["rag"]
 code_references: ["frontend/src/components/documents/DocumentsView.tsx", "frontend/src/components/common/ContextPreview.tsx"]
 api_references: ["backend/app/api/routes/documents.py"]
-test_references: []
-last_verified: 2026-05-15
+test_references: ["tests/test_documents.py", "tests/test_project_rbac.py"]
+last_verified: 2026-05-19
 compass: CF-SPEC-53 / CF-657
 ---
 
@@ -45,6 +45,7 @@ Document Preview exists so the work represented by Documents > Preview has a sta
 
 - Project-scoped state or artifact updates associated with document preview.
 - Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.
+- A preview opens only for documents that belong to the active project. Stale document IDs from another project should be blocked before content is requested.
 
 ## Caveats
 
@@ -64,4 +65,4 @@ Document Preview exists so the work represented by Documents > Preview has a sta
 
 - Source files: `frontend/src/components/documents/DocumentsView.tsx`, `frontend/src/components/common/ContextPreview.tsx`
 - API references: `backend/app/api/routes/documents.py`
-- Tests: none recorded
+- Tests: `tests/test_documents.py`, `tests/test_project_rbac.py`
