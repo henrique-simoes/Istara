@@ -102,7 +102,10 @@ events are also project-content surfaces: non-admin users must supply an
 authorized active project, project-scoped agents cannot be read from another
 project, universal agent runtime memory/current-task state is redacted in
 project views unless a global admin is using an admin surface, and malformed
-project-bound websocket events must not fall back to global delivery.
+project-bound websocket events must not fall back to global delivery. Realtime
+fan-out must recheck project membership before delivery so revoked access stops
+receiving project events immediately, and browser websocket consumers must
+discard project-bound events that do not carry the active project id.
 A2A background processing follows the same boundary: autonomous agent inbox
 polling excludes messages without a resolved project, project-scoped agents only
 consume inbox messages for their own project, conversation/debate thread context

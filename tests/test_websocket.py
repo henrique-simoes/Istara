@@ -122,6 +122,8 @@ async def test_websocket_project_subscription_requires_membership():
         assert await _can_subscribe_to_project(db, user_context, visible_project_id) is True
         assert await _can_subscribe_to_project(db, user_context, hidden_project_id) is False
         assert await _can_subscribe_to_project(db, admin_context, hidden_project_id) is True
+        assert await _can_subscribe_to_project(db, user_context, None) is False
+        assert await _can_subscribe_to_project(db, admin_context, None) is True
 
 
 @pytest.mark.asyncio
@@ -168,3 +170,69 @@ async def test_project_bound_websocket_events_without_scope_are_not_broadcast():
 
     assert project_ws.sent == []
     assert global_ws.sent == []
+
+
+@pytest.mark.asyncio
+async def test_websocket_broadcast_rechecks_project_membership():
+    """Project event fan-out must stop after a user loses project access."""
+    await init_db()
+    settings.team_mode = True
+    project_id = f"ws-revoke-project-{uuid.uuid4()}"
+    user_id = f"ws-revoke-user-{uuid.uuid4()}"
+    member_id = str(uuid.uuid4())
+
+    async with async_session() as db:
+        db.add(Project(id=project_id, name="Revoked websocket project"))
+        db.add(
+            ProjectMember(
+                id=member_id,
+                project_id=project_id,
+                user_id=user_id,
+                role="viewer",
+                added_by="test",
+            )
+        )
+        await db.commit()
+
+    from app.api.websocket import ConnectionManager
+
+    class FakeWebSocket:
+        def __init__(self) -> None:
+            self.sent: list[dict] = []
+
+        async def send_text(self, message: str) -> None:
+            self.sent.append(json.loads(message))
+
+    project_ws = FakeWebSocket()
+    manager = ConnectionManager()
+
+    async def skip_persist(_event_type: str, _data: dict) -> None:
+        return None
+
+    manager._persist_notification = skip_persist  # type: ignore[method-assign]
+    manager._connections = [
+        {
+            "websocket": project_ws,
+            "user_context": {"id": user_id, "username": "researcher", "role": "researcher"},
+            "active_project_id": project_id,
+        }
+    ]
+
+    await manager.broadcast(
+        "file_processed",
+        {"filename": "visible.txt", "chunks": 1, "project_id": project_id},
+    )
+    assert [event["data"]["filename"] for event in project_ws.sent] == ["visible.txt"]
+
+    async with async_session() as db:
+        member = await db.get(ProjectMember, member_id)
+        assert member is not None
+        await db.delete(member)
+        await db.commit()
+
+    await manager.broadcast(
+        "file_processed",
+        {"filename": "hidden.txt", "chunks": 1, "project_id": project_id},
+    )
+
+    assert [event["data"]["filename"] for event in project_ws.sent] == ["visible.txt"]
