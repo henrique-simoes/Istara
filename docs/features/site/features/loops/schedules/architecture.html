@@ -265,6 +265,7 @@
 <li>Creating a schedule, re-enabling a schedule, or editing a schedule that remains enabled requires an unpaused project. Disabling a schedule in a paused project remains allowed so teams can stop queued work.</li>
 <li>The scheduler selects due work only for non-paused projects and treats missing project ownership as a permanent schedule error instead of executing against a dangling project id.</li>
 <li>Scheduler execution records persist the schedule&#x27;s project id before they appear in loop history or loop statistics.</li>
+<li>Simulation scenario 49 creates, lists, verifies, and deletes test schedules with the active simulation <code>project_id</code>; when no active project id exists, it records scoped skips instead of hitting schedule endpoints globally.</li>
 </ul>
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
@@ -282,6 +283,8 @@
 <ul>
 <li><code>tests/test_loops.py</code></li>
 <li><code>tests/test_project_scope_contracts.py</code></li>
+<li><code>tests/test_simulation_project_scope_contracts.py</code></li>
+<li><code>tests/simulation/scenarios/49-loops-schedule.mjs</code></li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>
@@ -294,7 +297,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-61 / CF-779; CF-SPEC-68 / CF-870; CF-SPEC-97 / CF-1237</li>
+<li>Spec/task: CF-SPEC-61 / CF-779; CF-SPEC-68 / CF-870; CF-SPEC-97 / CF-1237; CF-SPEC-107 / CF-1351</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>

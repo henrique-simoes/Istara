@@ -8,9 +8,9 @@ related_features: ["agents.registry", "loops.schedules"]
 related_glossary: ["a2a"]
 code_references: ["frontend/src/components/loops/AgentLoopsTab.tsx", "backend/app/api/routes/loops.py", "backend/app/core/scheduler.py", "backend/app/main.py", "backend/app/agents/orchestrator.py"]
 api_references: ["backend/app/api/routes/loops.py"]
-test_references: ["tests/test_loops.py", "tests/test_project_scope_contracts.py"]
+test_references: ["tests/test_loops.py", "tests/test_project_scope_contracts.py", "tests/test_simulation_project_scope_contracts.py", "tests/simulation/scenarios/49-loops-schedule.mjs"]
 last_verified: 2026-05-19
-compass: CF-SPEC-60 / CF-776; CF-SPEC-68 / CF-870
+compass: CF-SPEC-60 / CF-776; CF-SPEC-68 / CF-870; CF-SPEC-107 / CF-1351
 ---
 
 # Agent Loops Architecture
@@ -39,6 +39,7 @@ Agent Loops connects recurring work with configured agents and their automated r
 - Agent-loop configs are visible or mutable only when the agent belongs to the active project or has an explicit loop project filter for that project.
 - Resuming a paused agent loop requires the requested project to be active and unpaused; pausing remains allowed so work can be stopped without reactivating a project.
 - Startup keeps project-scoped task workers available for assigned active-project work, but DevOps/UI/UX/User Simulation quality loops are disabled by default and run only when `autonomous_quality_agents_enabled` is explicitly enabled.
+- Simulation scenario 49 passes the active simulation `project_id` to agent-loop listing, config, pause, resume, and restore calls rather than exercising agent-loop routes globally by omission.
 
 ## Architecture Notes
 
@@ -56,6 +57,8 @@ Agent Loops connects recurring work with configured agents and their automated r
 
 - `tests/test_loops.py`
 - `tests/test_project_scope_contracts.py`
+- `tests/test_simulation_project_scope_contracts.py`
+- `tests/simulation/scenarios/49-loops-schedule.mjs`
 
 ## Related Features
 
@@ -68,7 +71,7 @@ Agent Loops connects recurring work with configured agents and their automated r
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-60 / CF-776; CF-SPEC-68 / CF-870
+- Spec/task: CF-SPEC-60 / CF-776; CF-SPEC-68 / CF-870; CF-SPEC-107 / CF-1351
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update

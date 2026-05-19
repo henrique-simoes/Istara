@@ -256,6 +256,7 @@
 <ul>
 <li><code>backend/app/api/routes/loops.py</code></li>
 <li>Custom loops are created for the active project only; list/health data must not include custom schedules from other projects.</li>
+<li>Simulation scenario 49 creates custom loops with the active simulation <code>project_id</code> and skips the endpoint when no scoped project id is available.</li>
 </ul>
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
@@ -271,6 +272,8 @@
 <ul>
 <li><code>tests/test_loops.py</code></li>
 <li><code>tests/test_project_scope_contracts.py</code></li>
+<li><code>tests/test_simulation_project_scope_contracts.py</code></li>
+<li><code>tests/simulation/scenarios/49-loops-schedule.mjs</code></li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>
@@ -283,7 +286,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-53 / CF-657</li>
+<li>Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-107 / CF-1351</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>

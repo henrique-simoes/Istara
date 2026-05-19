@@ -236,7 +236,9 @@ def test_security_benchmark_detects_loop_project_scope_paths() -> None:
         "backend/alembic/versions/018_loop_execution_project_scope.py",
         "frontend/src/components/loops/LoopOverviewTab.tsx",
         "frontend/src/stores/loopsStore.ts",
+        "tests/simulation/scenarios/49-loops-schedule.mjs",
         "tests/test_loops.py",
+        "tests/test_simulation_project_scope_contracts.py",
     ]
     result = evaluate_matrix(matrix, changed_paths=changed_paths)
 
