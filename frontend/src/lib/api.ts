@@ -765,21 +765,21 @@ export const metaHyperagent = {
 // --- ReasoningBank ---
 
 export const reasoningBank = {
-  summary: (projectId?: string) =>
-    get<ReasoningBankSummary>(`/api/reasoning-bank/summary${projectId ? `?project_id=${projectId}` : ""}`),
-  memories: (params?: { project_id?: string; source_kind?: string; outcome?: string; limit?: number; offset?: number }) => {
+  summary: (projectId: string) =>
+    get<ReasoningBankSummary>(`/api/reasoning-bank/summary?project_id=${encodeURIComponent(projectId)}`),
+  memories: (params: { project_id: string; source_kind?: string; outcome?: string; limit?: number; offset?: number }) => {
     const p = new URLSearchParams();
-    if (params?.project_id) p.set("project_id", params.project_id);
-    if (params?.source_kind) p.set("source_kind", params.source_kind);
-    if (params?.outcome) p.set("outcome", params.outcome);
-    if (params?.limit) p.set("limit", String(params.limit));
-    if (params?.offset) p.set("offset", String(params.offset));
+    p.set("project_id", params.project_id);
+    if (params.source_kind) p.set("source_kind", params.source_kind);
+    if (params.outcome) p.set("outcome", params.outcome);
+    if (params.limit) p.set("limit", String(params.limit));
+    if (params.offset) p.set("offset", String(params.offset));
     return get<{ memories: ReasoningMemoryItem[]; count: number; limit: number; offset: number }>(
       `/api/reasoning-bank/memories?${p}`
     );
   },
   create: (data: {
-    project_id?: string;
+    project_id: string;
     agent_id?: string;
     source_kind?: string;
     source_id?: string;
@@ -794,15 +794,15 @@ export const reasoningBank = {
     confidence?: number;
   }) => post<{ memory: ReasoningMemoryItem }>("/api/reasoning-bank/memories", data),
   retrieve: (data: {
-    project_id?: string;
+    project_id: string;
     query: string;
     agent_id?: string | null;
     source_kinds?: string[] | null;
     limit?: number;
   }) => post<{ memories: ReasoningMemoryItem[]; context: string }>("/api/reasoning-bank/retrieve", data),
-  consolidate: (projectId?: string) =>
+  consolidate: (projectId: string) =>
     post<{ merged: number; active: number }>(
-      `/api/reasoning-bank/consolidate${projectId ? `?project_id=${projectId}` : ""}`,
+      `/api/reasoning-bank/consolidate?project_id=${encodeURIComponent(projectId)}`,
       {}
     ),
 };

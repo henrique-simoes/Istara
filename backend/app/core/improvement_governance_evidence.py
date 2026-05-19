@@ -48,6 +48,7 @@ class ImprovementGovernanceEvidenceMixin:
             existing = await self.get_proposal_by_source(
                 source_system=source_system,
                 source_id=proposal_source_id,
+                project_id=project_id,
                 db=session,
             )
             event = {

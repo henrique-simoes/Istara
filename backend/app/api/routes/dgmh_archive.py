@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dgmh_archive import ARCHIVE_STATUS, dgmh_archive
+from app.core.permissions import get_visible_project_or_404
 from app.core.security_middleware import get_user_from_request, require_admin_from_request
 from app.models.database import get_db
 
@@ -55,6 +56,35 @@ class DGMHVariantApplyRequest(BaseModel):
     evidence: dict = Field(default_factory=dict)
 
 
+def _require_project_id(project_id: str | None) -> str:
+    scoped_project_id = (project_id or "").strip()
+    if not scoped_project_id:
+        raise HTTPException(status_code=400, detail="project_id is required")
+    return scoped_project_id
+
+
+async def _require_admin_project_scope(
+    db: AsyncSession,
+    request: Request,
+    project_id: str | None,
+) -> str:
+    require_admin_from_request(request)
+    scoped_project_id = _require_project_id(project_id)
+    await get_visible_project_or_404(db, request, scoped_project_id, min_role="viewer")
+    return scoped_project_id
+
+
+async def _get_project_variant_or_404(
+    variant_id: str,
+    project_id: str,
+    db: AsyncSession,
+):
+    variant = await dgmh_archive.get_variant(variant_id, db=db)
+    if variant is None or variant.project_id != project_id:
+        raise HTTPException(status_code=404, detail="DGM-H archive variant not found")
+    return variant
+
+
 @router.get("/variants")
 async def list_variants(
     request: Request,
@@ -69,9 +99,9 @@ async def list_variants(
     db: AsyncSession = Depends(get_db),
 ):
     """List DGM-H archive variants. Admin-only because variants expose system internals."""
-    require_admin_from_request(request)
+    scoped_project_id = await _require_admin_project_scope(db, request, project_id)
     variants = await dgmh_archive.list_variants(
-        project_id=project_id,
+        project_id=scoped_project_id,
         source_system=source_system,
         status=status,
         target_system=target_system,
@@ -91,28 +121,39 @@ async def create_variant(
     db: AsyncSession = Depends(get_db),
 ):
     """Create a manual DGM-H candidate variant."""
-    require_admin_from_request(request)
-    variant = await dgmh_archive.register_variant(**body.model_dump(), db=db)
+    scoped_project_id = await _require_admin_project_scope(db, request, body.project_id)
+    data = body.model_dump()
+    data["project_id"] = scoped_project_id
+    variant = await dgmh_archive.register_variant(**data, db=db)
     await db.commit()
     await db.refresh(variant)
     return {"variant": variant.to_dict()}
 
 
 @router.get("/variants/{variant_id}")
-async def get_variant(variant_id: str, request: Request, db: AsyncSession = Depends(get_db)):
+async def get_variant(
+    variant_id: str,
+    request: Request,
+    project_id: str | None = Query(default=None),
+    db: AsyncSession = Depends(get_db),
+):
     """Get one DGM-H archive variant."""
-    require_admin_from_request(request)
-    variant = await dgmh_archive.get_variant(variant_id, db=db)
-    if variant is None:
-        raise HTTPException(status_code=404, detail="DGM-H archive variant not found")
+    scoped_project_id = await _require_admin_project_scope(db, request, project_id)
+    variant = await _get_project_variant_or_404(variant_id, scoped_project_id, db)
     return {"variant": variant.to_dict()}
 
 
 @router.get("/variants/{variant_id}/lineage")
-async def get_lineage(variant_id: str, request: Request):
+async def get_lineage(
+    variant_id: str,
+    request: Request,
+    project_id: str | None = Query(default=None),
+    db: AsyncSession = Depends(get_db),
+):
     """Return a variant's archive lineage."""
-    require_admin_from_request(request)
-    result = await dgmh_archive.lineage(variant_id)
+    scoped_project_id = await _require_admin_project_scope(db, request, project_id)
+    await _get_project_variant_or_404(variant_id, scoped_project_id, db)
+    result = await dgmh_archive.lineage(variant_id, project_id=scoped_project_id)
     if "error" in result:
         raise HTTPException(status_code=404, detail=result["error"])
     return result
@@ -123,10 +164,12 @@ async def record_evaluation(
     variant_id: str,
     body: DGMHVariantEvaluationRequest,
     request: Request,
+    project_id: str | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
 ):
     """Append measured evidence to a DGM-H archive variant."""
-    require_admin_from_request(request)
+    scoped_project_id = await _require_admin_project_scope(db, request, project_id)
+    await _get_project_variant_or_404(variant_id, scoped_project_id, db)
     result = await dgmh_archive.record_evaluation(
         variant_id,
         metrics_before=body.metrics_before,
@@ -148,10 +191,12 @@ async def approve_variant(
     variant_id: str,
     request: Request,
     body: DGMHVariantStatusRequest | None = None,
+    project_id: str | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
 ):
     """Approve a DGM-H candidate for application through its owning subsystem."""
-    require_admin_from_request(request)
+    scoped_project_id = await _require_admin_project_scope(db, request, project_id)
+    await _get_project_variant_or_404(variant_id, scoped_project_id, db)
     user = get_user_from_request(request)
     result = await dgmh_archive.set_variant_status(
         variant_id,
@@ -171,10 +216,12 @@ async def apply_variant(
     variant_id: str,
     request: Request,
     body: DGMHVariantApplyRequest | None = None,
+    project_id: str | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
 ):
     """Mark an approved archive variant as active after the subsystem applies it."""
-    require_admin_from_request(request)
+    scoped_project_id = await _require_admin_project_scope(db, request, project_id)
+    await _get_project_variant_or_404(variant_id, scoped_project_id, db)
     user = get_user_from_request(request)
     result = await dgmh_archive.apply_variant(
         variant_id,
@@ -193,10 +240,12 @@ async def confirm_variant(
     variant_id: str,
     request: Request,
     body: DGMHVariantStatusRequest | None = None,
+    project_id: str | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
 ):
     """Confirm a variant after observed production improvement."""
-    require_admin_from_request(request)
+    scoped_project_id = await _require_admin_project_scope(db, request, project_id)
+    await _get_project_variant_or_404(variant_id, scoped_project_id, db)
     user = get_user_from_request(request)
     result = await dgmh_archive.set_variant_status(
         variant_id,
@@ -216,10 +265,12 @@ async def revert_variant(
     variant_id: str,
     request: Request,
     body: DGMHVariantStatusRequest | None = None,
+    project_id: str | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
 ):
     """Mark a variant reverted after its rollback plan is executed."""
-    require_admin_from_request(request)
+    scoped_project_id = await _require_admin_project_scope(db, request, project_id)
+    await _get_project_variant_or_404(variant_id, scoped_project_id, db)
     user = get_user_from_request(request)
     result = await dgmh_archive.set_variant_status(
         variant_id,
@@ -239,10 +290,12 @@ async def quarantine_variant(
     variant_id: str,
     request: Request,
     body: DGMHVariantStatusRequest | None = None,
+    project_id: str | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
 ):
     """Quarantine a suspicious archive variant or reasoning trace."""
-    require_admin_from_request(request)
+    scoped_project_id = await _require_admin_project_scope(db, request, project_id)
+    await _get_project_variant_or_404(variant_id, scoped_project_id, db)
     user = get_user_from_request(request)
     result = await dgmh_archive.set_variant_status(
         variant_id,
@@ -267,22 +320,26 @@ async def select_parent(
     db: AsyncSession = Depends(get_db),
 ):
     """Select the best archive parent using UCB-style exploration."""
-    require_admin_from_request(request)
+    scoped_project_id = await _require_admin_project_scope(db, request, project_id)
     parent = await dgmh_archive.select_parent(
         target_system=target_system,
         artifact_kind=artifact_kind,
         mutation_surface=mutation_surface,
-        project_id=project_id,
+        project_id=scoped_project_id,
         db=db,
     )
     return {"parent": parent}
 
 
 @router.get("/summary")
-async def archive_summary(request: Request, project_id: str | None = Query(default=None)):
+async def archive_summary(
+    request: Request,
+    project_id: str | None = Query(default=None),
+    db: AsyncSession = Depends(get_db),
+):
     """Return aggregate DGM-H archive counts for dashboards and telemetry."""
-    require_admin_from_request(request)
-    return await dgmh_archive.summary(project_id=project_id)
+    scoped_project_id = await _require_admin_project_scope(db, request, project_id)
+    return await dgmh_archive.summary(project_id=scoped_project_id)
 
 
 # Route coverage hints: /dgmh-archive/variants /dgmh-archive/variants/{variant_id}

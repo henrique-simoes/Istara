@@ -1,5 +1,7 @@
 """Tests for ReasoningBank memory service and API."""
 
+import uuid
+
 import pytest
 from httpx import ASGITransport, AsyncClient
 
@@ -7,7 +9,8 @@ from app.config import settings
 from app.core.auth import create_token
 from app.core.reasoning_bank import reasoning_bank
 from app.main import app
-from app.models.database import init_db
+from app.models.database import async_session, init_db
+from app.models.project import Project
 
 
 @pytest.fixture(autouse=True)
@@ -25,6 +28,12 @@ def auth_headers():
         settings.jwt_secret = "test-secret"
     token = create_token("user1", "testuser", "admin")
     return {"Authorization": f"Bearer {token}"}
+
+
+async def create_project(project_id: str, name: str = "Reasoning Test Project") -> None:
+    async with async_session() as db:
+        db.add(Project(id=project_id, name=name))
+        await db.commit()
 
 
 @pytest.mark.asyncio
@@ -123,14 +132,31 @@ async def test_reasoning_bank_records_autoresearch_failures():
 async def test_reasoning_bank_api_creates_and_retrieves_memory(auth_headers):
     await init_db()
     settings.team_mode = True
+    project_id = f"reasoning-api-{uuid.uuid4().hex[:8]}"
+    await create_project(project_id)
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        missing_scope = await ac.get("/api/reasoning-bank/memories", headers=auth_headers)
+        assert missing_scope.status_code == 400
+        assert missing_scope.json()["detail"] == "project_id is required"
+
+        unknown_project = await ac.post(
+            "/api/reasoning-bank/memories",
+            headers=auth_headers,
+            json={
+                "project_id": "missing-reasoning-project",
+                "title": "Unknown project memory",
+                "content": "Should not store without a visible project.",
+            },
+        )
+        assert unknown_project.status_code == 404
+
         created = await ac.post(
             "/api/reasoning-bank/memories",
             headers=auth_headers,
             json={
-                "project_id": "reasoning-project-api",
+                "project_id": project_id,
                 "source_kind": "manual",
                 "outcome": "success",
                 "title": "Use bilingual transcription guard",
@@ -141,11 +167,20 @@ async def test_reasoning_bank_api_creates_and_retrieves_memory(auth_headers):
         )
         assert created.status_code == 200
 
+        await reasoning_bank.record_memory(
+            project_id="",
+            source_kind="manual",
+            outcome="success",
+            title="Global bilingual transcription guard",
+            content="Global memory should not appear in project-scoped API retrieval.",
+            tags=["transcription", "language-detection"],
+        )
+
         retrieved = await ac.post(
             "/api/reasoning-bank/retrieve",
             headers=auth_headers,
             json={
-                "project_id": "reasoning-project-api",
+                "project_id": project_id,
                 "query": "Portuguese English transcription language detection",
                 "limit": 5,
             },
@@ -154,6 +189,11 @@ async def test_reasoning_bank_api_creates_and_retrieves_memory(auth_headers):
         body = retrieved.json()
         assert body["memories"]
         assert "Relevant Reasoning Memory" in body["context"]
+        assert all(item["project_id"] == project_id for item in body["memories"])
+
+        summary = await ac.get(f"/api/reasoning-bank/summary?project_id={project_id}", headers=auth_headers)
+        assert summary.status_code == 200
+        assert summary.json()["total"] == 1
 
 
 @pytest.mark.asyncio

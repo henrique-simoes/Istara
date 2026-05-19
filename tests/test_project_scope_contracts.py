@@ -396,6 +396,47 @@ def test_loops_views_and_api_require_active_project_scope() -> None:
     assert "LoopExecution.source_id.in_(source_ids) if source_ids else false()" in service
 
 
+def test_governed_evolution_requires_active_project_scope() -> None:
+    view = read_repo("frontend/src/components/settings/GovernedEvolutionView.tsx")
+    governance_api = read_repo("frontend/src/lib/improvementGovernanceApi.ts")
+    archive_api = read_repo("frontend/src/lib/dgmhArchiveApi.ts")
+    api = read_repo("frontend/src/lib/api.ts")
+    governance_route = read_repo("backend/app/api/routes/improvement_governance.py")
+    archive_route = read_repo("backend/app/api/routes/dgmh_archive.py")
+    reasoning_route = read_repo("backend/app/api/routes/reasoning_bank.py")
+    reasoning_core = read_repo("backend/app/core/reasoning_bank.py")
+    archive_core = read_repo("backend/app/core/dgmh_archive.py")
+
+    assert "if (!projectId)" in view
+    assert "improvementGovernance.summary(projectId)" in view
+    assert "improvementGovernance.proposals({ project_id: projectId" in view
+    assert "dgmhArchive.variants({ project_id: projectId" in view
+    assert "reasoningBank.summary(projectId)" in view
+    assert "reasoningBank.memories({ project_id: projectId" in view
+    assert "Select a project to view governed evolution." in view
+
+    assert "summary: (projectId: string)" in governance_api
+    assert "proposals: (params: {" in governance_api
+    assert "project_id: string;" in governance_api
+    assert "sandboxEvaluation: (id: string, projectId: string" in governance_api
+    assert "summary: (projectId: string)" in archive_api
+    assert "variants: (params: {" in archive_api
+    assert "project_id: string;" in archive_api
+    assert "approve: (id: string, projectId: string" in archive_api
+    assert "summary: (projectId: string)" in api
+    assert "memories: (params: { project_id: string" in api
+
+    for route in (governance_route, archive_route, reasoning_route):
+        assert "async def _require_admin_project_scope" in route
+        assert 'raise HTTPException(status_code=400, detail="project_id is required")' in route
+        assert "await get_visible_project_or_404(db, request, scoped_project_id" in route
+
+    assert "include_global=False" in reasoning_route
+    assert "include_global: bool = True" in reasoning_core
+    assert "DGMHArchiveVariant.project_id == safe_project_id" in archive_core
+    assert "DGMHArchiveVariant.project_id == project_id" in archive_core
+
+
 def test_websocket_project_events_are_active_project_filtered() -> None:
     hook = read_repo("frontend/src/hooks/useWebSocket.ts")
     websocket = read_repo("backend/app/api/websocket.py")

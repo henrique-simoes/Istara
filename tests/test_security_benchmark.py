@@ -218,6 +218,29 @@ def test_security_benchmark_detects_memory_context_project_scope_paths() -> None
     assert result.scorecard["triggered_paths"] == sorted(changed_paths)
 
 
+def test_security_benchmark_detects_governed_evolution_project_scope_paths() -> None:
+    matrix = load_matrix(ROOT / "security" / "control_matrix.json")
+
+    changed_paths = [
+        "backend/app/api/routes/dgmh_archive.py",
+        "backend/app/api/routes/improvement_governance.py",
+        "backend/app/api/routes/reasoning_bank.py",
+        "backend/app/core/dgmh_archive.py",
+        "backend/app/core/reasoning_bank.py",
+        "frontend/src/components/settings/GovernedEvolutionView.tsx",
+        "frontend/src/lib/dgmhArchiveApi.ts",
+        "frontend/src/lib/improvementGovernanceApi.ts",
+        "tests/test_dgmh_archive.py",
+        "tests/test_improvement_governance.py",
+        "tests/test_reasoning_bank.py",
+    ]
+    result = evaluate_matrix(matrix, changed_paths=changed_paths)
+
+    assert result.passed is True
+    assert result.scorecard["auth_security_change_detected"] is True
+    assert result.scorecard["triggered_paths"] == sorted(changed_paths)
+
+
 def test_security_benchmark_detects_context_hierarchy_project_scope_paths() -> None:
     matrix = load_matrix(ROOT / "security" / "control_matrix.json")
 

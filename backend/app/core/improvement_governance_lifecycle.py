@@ -80,11 +80,13 @@ class ImprovementGovernanceLifecycleMixin:
         async def _create(session: AsyncSession) -> ImprovementProposal:
             safe_source = _clean_string(source_system, max_chars=60) or "manual"
             safe_source_id = _clean_string(source_id, max_chars=120)
+            safe_project_id = _clean_string(project_id, max_chars=36)
             if safe_source_id:
                 existing = await session.execute(
                     select(ImprovementProposal).where(
                         ImprovementProposal.source_system == safe_source,
                         ImprovementProposal.source_id == safe_source_id,
+                        ImprovementProposal.project_id == safe_project_id,
                     )
                 )
                 existing_proposal = existing.scalar_one_or_none()
@@ -107,7 +109,7 @@ class ImprovementGovernanceLifecycleMixin:
             proposal = ImprovementProposal(
                 source_system=safe_source,
                 source_id=safe_source_id,
-                project_id=_clean_string(project_id, max_chars=36),
+                project_id=safe_project_id,
                 agent_id=_clean_string(agent_id, max_chars=100),
                 title=_clean_string(title, max_chars=255),
                 summary=_clean_string(summary, max_chars=4000),
@@ -160,15 +162,17 @@ class ImprovementGovernanceLifecycleMixin:
         *,
         source_system: str,
         source_id: str,
+        project_id: str | None = None,
         db: AsyncSession | None = None,
     ) -> ImprovementProposal | None:
         async def _get(session: AsyncSession) -> ImprovementProposal | None:
-            result = await session.execute(
-                select(ImprovementProposal).where(
-                    ImprovementProposal.source_system == source_system,
-                    ImprovementProposal.source_id == source_id,
-                )
+            stmt = select(ImprovementProposal).where(
+                ImprovementProposal.source_system == source_system,
+                ImprovementProposal.source_id == source_id,
             )
+            if project_id is not None:
+                stmt = stmt.where(ImprovementProposal.project_id == project_id)
+            result = await session.execute(stmt)
             return result.scalar_one_or_none()
 
         if db is not None:

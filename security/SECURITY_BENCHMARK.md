@@ -93,6 +93,10 @@ diagnostic, and A2A message views are also project-content surfaces: non-admin
 users must supply an authorized active project, project-scoped agents cannot be
 read from another project, and universal agent runtime memory/current-task state
 is redacted in project views unless a global admin is using an admin surface.
+Governed Evolution, DGM-H archive, and ReasoningBank review surfaces are also
+project-content surfaces: proposal/archive/reasoning lists and mutation actions
+must carry an explicit `project_id`, bind record ids back to that project, and
+avoid mixing project-facing retrieval with unscoped reasoning memories.
 Chat sessions, chat history, active-session persistence, and related context DAG
 pickers are project-content surfaces: session-by-id APIs require the caller's
 authorized active project, frontend session state is stored per project, and a

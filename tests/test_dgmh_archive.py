@@ -10,7 +10,8 @@ from app.core.auth import create_token
 from app.core.dgmh_archive import dgmh_archive
 from app.core.improvement_governance import improvement_governance
 from app.main import app
-from app.models.database import init_db
+from app.models.database import async_session, init_db
+from app.models.project import Project
 
 
 @pytest.fixture(autouse=True)
@@ -28,6 +29,12 @@ def auth_headers():
         settings.jwt_secret = "test-secret"
     token = create_token("user1", "testuser", "admin")
     return {"Authorization": f"Bearer {token}"}
+
+
+async def create_project(project_id: str, name: str = "DGM-H Test Project") -> None:
+    async with async_session() as db:
+        db.add(Project(id=project_id, name=name))
+        await db.commit()
 
 
 @pytest.mark.asyncio
@@ -143,15 +150,34 @@ async def test_dgmh_archive_api_contract_and_admin_guard(auth_headers):
     await init_db()
     settings.team_mode = True
     target = f"api-dgmh-{uuid.uuid4().hex[:8]}"
+    project_id = f"dgmh-api-{uuid.uuid4().hex[:8]}"
+    other_project_id = f"dgmh-api-other-{uuid.uuid4().hex[:8]}"
+    await create_project(project_id)
+    await create_project(other_project_id, "Other DGM-H Test Project")
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        missing_scope = await ac.get("/api/dgmh-archive/variants", headers=auth_headers)
+        assert missing_scope.status_code == 400
+        assert missing_scope.json()["detail"] == "project_id is required"
+
+        unknown_project = await ac.post(
+            "/api/dgmh-archive/variants",
+            headers=auth_headers,
+            json={
+                "project_id": "missing-dgmh-project",
+                "title": "Unknown project archive candidate",
+            },
+        )
+        assert unknown_project.status_code == 404
+
         created = await ac.post(
             "/api/dgmh-archive/variants",
             headers=auth_headers,
             json={
                 "source_system": "manual",
                 "source_id": f"api-{uuid.uuid4().hex[:8]}",
+                "project_id": project_id,
                 "target_system": target,
                 "mutation_surface": "configs",
                 "artifact_kind": "parameter_variant",
@@ -166,7 +192,7 @@ async def test_dgmh_archive_api_contract_and_admin_guard(auth_headers):
         variant_id = created.json()["variant"]["id"]
 
         approved = await ac.post(
-            f"/api/dgmh-archive/variants/{variant_id}/approve",
+            f"/api/dgmh-archive/variants/{variant_id}/approve?project_id={project_id}",
             headers=auth_headers,
             json={"reason": "reviewed"},
         )
@@ -174,7 +200,7 @@ async def test_dgmh_archive_api_contract_and_admin_guard(auth_headers):
         assert approved.json()["variant"]["status"] == "approved"
 
         applied = await ac.post(
-            f"/api/dgmh-archive/variants/{variant_id}/apply",
+            f"/api/dgmh-archive/variants/{variant_id}/apply?project_id={project_id}",
             headers=auth_headers,
             json={"evidence": {"command": "pytest tests/test_dgmh_archive.py"}},
         )
@@ -182,15 +208,29 @@ async def test_dgmh_archive_api_contract_and_admin_guard(auth_headers):
         assert applied.json()["variant"]["status"] == "active"
 
         listed = await ac.get(
-            f"/api/dgmh-archive/variants?target_system={target}",
+            f"/api/dgmh-archive/variants?project_id={project_id}&target_system={target}",
             headers=auth_headers,
         )
         assert listed.status_code == 200
         assert any(item["id"] == variant_id for item in listed.json()["variants"])
 
-        summary = await ac.get("/api/dgmh-archive/summary", headers=auth_headers)
+        other_listed = await ac.get(
+            f"/api/dgmh-archive/variants?project_id={other_project_id}&target_system={target}",
+            headers=auth_headers,
+        )
+        assert other_listed.status_code == 200
+        assert all(item["id"] != variant_id for item in other_listed.json()["variants"])
+
+        summary = await ac.get(f"/api/dgmh-archive/summary?project_id={project_id}", headers=auth_headers)
         assert summary.status_code == 200
         assert summary.json()["total"] >= 1
+
+        wrong_scope = await ac.post(
+            f"/api/dgmh-archive/variants/{variant_id}/confirm?project_id={other_project_id}",
+            headers=auth_headers,
+            json={"reason": "wrong project"},
+        )
+        assert wrong_scope.status_code == 404
 
     token = create_token("user2", "researcher", "researcher")
     async with AsyncClient(transport=transport, base_url="http://test") as ac:

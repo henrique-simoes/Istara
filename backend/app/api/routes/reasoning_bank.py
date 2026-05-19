@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.permissions import get_visible_project_or_404
 from app.core.reasoning_bank import reasoning_bank
 from app.core.security_middleware import require_admin_from_request
 from app.models.database import get_db
@@ -37,6 +38,24 @@ class ReasoningMemoryRetrieveRequest(BaseModel):
     limit: int = Field(default=5, ge=1, le=20)
 
 
+def _require_project_id(project_id: str | None) -> str:
+    scoped_project_id = (project_id or "").strip()
+    if not scoped_project_id:
+        raise HTTPException(status_code=400, detail="project_id is required")
+    return scoped_project_id
+
+
+async def _require_admin_project_scope(
+    db: AsyncSession,
+    request: Request,
+    project_id: str | None,
+) -> str:
+    require_admin_from_request(request)
+    scoped_project_id = _require_project_id(project_id)
+    await get_visible_project_or_404(db, request, scoped_project_id, min_role="viewer")
+    return scoped_project_id
+
+
 @router.get("/memories")
 async def list_memories(
     request: Request,
@@ -48,9 +67,9 @@ async def list_memories(
     db: AsyncSession = Depends(get_db),
 ):
     """List active reasoning memories. Admin-only because memories can include traces."""
-    require_admin_from_request(request)
+    scoped_project_id = await _require_admin_project_scope(db, request, project_id)
     memories = await reasoning_bank.list_memories(
-        project_id=project_id,
+        project_id=scoped_project_id,
         source_kind=source_kind,
         outcome=outcome,
         limit=limit,
@@ -64,10 +83,13 @@ async def list_memories(
 async def create_memory(
     body: ReasoningMemoryCreateRequest,
     request: Request,
+    db: AsyncSession = Depends(get_db),
 ):
     """Create a manual reasoning memory item."""
-    require_admin_from_request(request)
-    item = await reasoning_bank.record_memory(**body.model_dump())
+    scoped_project_id = await _require_admin_project_scope(db, request, body.project_id)
+    data = body.model_dump()
+    data["project_id"] = scoped_project_id
+    item = await reasoning_bank.record_memory(**data)
     return {"memory": item.to_dict()}
 
 
@@ -75,22 +97,25 @@ async def create_memory(
 async def retrieve_memories(
     body: ReasoningMemoryRetrieveRequest,
     request: Request,
+    db: AsyncSession = Depends(get_db),
 ):
     """Retrieve reasoning memories and their prompt-ready context."""
-    require_admin_from_request(request)
+    scoped_project_id = await _require_admin_project_scope(db, request, body.project_id)
     memories = await reasoning_bank.retrieve(
-        project_id=body.project_id,
+        project_id=scoped_project_id,
         query=body.query,
         agent_id=body.agent_id,
         source_kinds=body.source_kinds,
         limit=body.limit,
+        include_global=False,
     )
     context = await reasoning_bank.context_for_query(
-        project_id=body.project_id,
+        project_id=scoped_project_id,
         query=body.query,
         agent_id=body.agent_id,
         source_kinds=body.source_kinds,
         limit=body.limit,
+        include_global=False,
     )
     return {"memories": memories, "context": context}
 
@@ -99,17 +124,19 @@ async def retrieve_memories(
 async def consolidate_memories(
     request: Request,
     project_id: str | None = Query(default=None),
+    db: AsyncSession = Depends(get_db),
 ):
     """Merge exact duplicate active memories."""
-    require_admin_from_request(request)
-    return await reasoning_bank.consolidate_duplicates(project_id=project_id)
+    scoped_project_id = await _require_admin_project_scope(db, request, project_id)
+    return await reasoning_bank.consolidate_duplicates(project_id=scoped_project_id)
 
 
 @router.get("/summary")
 async def reasoning_memory_summary(
     request: Request,
     project_id: str | None = Query(default=None),
+    db: AsyncSession = Depends(get_db),
 ):
     """Return aggregate ReasoningBank counts for dashboards and meta-agents."""
-    require_admin_from_request(request)
-    return await reasoning_bank.summary(project_id=project_id)
+    scoped_project_id = await _require_admin_project_scope(db, request, project_id)
+    return await reasoning_bank.summary(project_id=scoped_project_id)

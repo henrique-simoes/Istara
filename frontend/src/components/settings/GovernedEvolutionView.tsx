@@ -79,18 +79,29 @@ export default function GovernedEvolutionView() {
   const [featureContract, setFeatureContract] = useState<ImprovementFeatureContract[]>([]);
 
   const fetchAll = useCallback(async () => {
+    if (!projectId) {
+      setSummary(null);
+      setProposals([]);
+      setVariants([]);
+      setReasoningSummary(null);
+      setMemories([]);
+      setFeatureContract([]);
+      setError(null);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
       const [nextSummary, nextProposals, nextVariants, nextReasoning, nextMemories, nextContract] =
         await Promise.all([
-          improvementGovernance.summary(projectId || undefined).catch(() => null),
-          improvementGovernance.proposals({ project_id: projectId || undefined, limit: 12 }).catch(() => ({
+          improvementGovernance.summary(projectId).catch(() => null),
+          improvementGovernance.proposals({ project_id: projectId, limit: 12 }).catch(() => ({
             proposals: [],
           })),
-          dgmhArchive.variants({ project_id: projectId || undefined, limit: 12 }).catch(() => ({ variants: [] })),
-          reasoningBank.summary(projectId || undefined).catch(() => null),
-          reasoningBank.memories({ project_id: projectId || undefined, limit: 8 }).catch(() => ({ memories: [] })),
+          dgmhArchive.variants({ project_id: projectId, limit: 12 }).catch(() => ({ variants: [] })),
+          reasoningBank.summary(projectId).catch(() => null),
+          reasoningBank.memories({ project_id: projectId, limit: 8 }).catch(() => ({ memories: [] })),
           improvementGovernance.featureContract().catch(() => ({ features: [] })),
         ]);
       setSummary(nextSummary);
@@ -116,19 +127,23 @@ export default function GovernedEvolutionView() {
   );
 
   const runProposalAction = async (id: string, action: "sandbox" | "approve" | "apply" | "reject" | "revert") => {
+    if (!projectId) {
+      setError("Select a project before reviewing governed evolution.");
+      return;
+    }
     setActionId(`${action}-${id}`);
     setError(null);
     try {
       if (action === "sandbox") {
-        await improvementGovernance.sandboxEvaluation(id, { evidence: { source: "settings_governance_ui" } });
+        await improvementGovernance.sandboxEvaluation(id, projectId, { evidence: { source: "settings_governance_ui" } });
       } else if (action === "approve") {
-        await improvementGovernance.approve(id, "Approved in governed evolution review");
+        await improvementGovernance.approve(id, projectId, "Approved in governed evolution review");
       } else if (action === "apply") {
-        await improvementGovernance.apply(id, { source: "settings_governance_ui" });
+        await improvementGovernance.apply(id, projectId, { source: "settings_governance_ui" });
       } else if (action === "reject") {
-        await improvementGovernance.reject(id, "Rejected in governed evolution review");
+        await improvementGovernance.reject(id, projectId, "Rejected in governed evolution review");
       } else {
-        await improvementGovernance.revert(id, "Reverted in governed evolution review");
+        await improvementGovernance.revert(id, projectId, "Reverted in governed evolution review");
       }
       await fetchAll();
     } catch (err) {
@@ -138,14 +153,18 @@ export default function GovernedEvolutionView() {
   };
 
   const runVariantAction = async (id: string, action: "approve" | "apply" | "confirm" | "revert" | "quarantine") => {
+    if (!projectId) {
+      setError("Select a project before reviewing governed evolution.");
+      return;
+    }
     setActionId(`${action}-${id}`);
     setError(null);
     try {
-      if (action === "approve") await dgmhArchive.approve(id, "Approved in governed evolution review");
-      if (action === "apply") await dgmhArchive.apply(id, { source: "settings_governance_ui" });
-      if (action === "confirm") await dgmhArchive.confirm(id, "Confirmed in governed evolution review");
-      if (action === "revert") await dgmhArchive.revert(id, "Reverted in governed evolution review");
-      if (action === "quarantine") await dgmhArchive.quarantine(id, "Quarantined in governed evolution review");
+      if (action === "approve") await dgmhArchive.approve(id, projectId, "Approved in governed evolution review");
+      if (action === "apply") await dgmhArchive.apply(id, projectId, { source: "settings_governance_ui" });
+      if (action === "confirm") await dgmhArchive.confirm(id, projectId, "Confirmed in governed evolution review");
+      if (action === "revert") await dgmhArchive.revert(id, projectId, "Reverted in governed evolution review");
+      if (action === "quarantine") await dgmhArchive.quarantine(id, projectId, "Quarantined in governed evolution review");
       await fetchAll();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Action failed");
@@ -162,7 +181,7 @@ export default function GovernedEvolutionView() {
         </h3>
         <button
           onClick={fetchAll}
-          disabled={loading}
+          disabled={loading || !projectId}
           title="Refresh"
           className="inline-flex items-center gap-1.5 self-start rounded-lg bg-slate-100 px-2.5 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-200 disabled:opacity-50 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600"
         >
@@ -202,7 +221,9 @@ export default function GovernedEvolutionView() {
         ))}
       </div>
 
-      {tab === "proposals" && (
+      {!projectId && <EmptyState label="Select a project to view governed evolution." />}
+
+      {projectId && tab === "proposals" && (
         <div className="space-y-3">
           {proposals.length === 0 && <EmptyState label="No proposals found." />}
           {proposals.map((proposal) => {
@@ -296,7 +317,7 @@ export default function GovernedEvolutionView() {
         </div>
       )}
 
-      {tab === "archive" && (
+      {projectId && tab === "archive" && (
         <div className="space-y-3">
           {variants.length === 0 && <EmptyState label="No archive variants found." />}
           {variants.map((variant) => (
@@ -369,7 +390,7 @@ export default function GovernedEvolutionView() {
         </div>
       )}
 
-      {tab === "reasoning" && (
+      {projectId && tab === "reasoning" && (
         <div className="space-y-3">
           <div className="grid grid-cols-3 gap-3">
             <Metric label="Successes" value={reasoningSummary?.recent_successes_24h || 0} tone="green" />
@@ -405,7 +426,7 @@ export default function GovernedEvolutionView() {
         </div>
       )}
 
-      {tab === "contract" && (
+      {projectId && tab === "contract" && (
         <div className="grid gap-3 md:grid-cols-2">
           {featureContract.map((feature) => (
             <article key={feature.feature} className="rounded-lg border border-slate-200 p-3 dark:border-slate-700">
