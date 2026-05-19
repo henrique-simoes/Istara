@@ -30,10 +30,15 @@ export async function run(ctx) {
       } catch {}
     }
   }
+  const withProject = (url) => {
+    if (!projectId) return url;
+    const separator = url.includes("?") ? "&" : "?";
+    return `${url}${separator}project_id=${encodeURIComponent(projectId)}`;
+  };
 
   // ── 1. GET /api/notifications — returns paginated list ──
   try {
-    const result = await api.get("/api/notifications");
+    const result = await api.get(withProject("/api/notifications"));
     const hasNotifications = Array.isArray(result.notifications);
     const hasPagination = result.total !== undefined && result.page !== undefined;
     checks.push({
@@ -48,7 +53,7 @@ export async function run(ctx) {
   // ── 2. GET /api/notifications/unread-count — returns count ──
   let initialUnreadCount = 0;
   try {
-    const result = await api.get("/api/notifications/unread-count");
+    const result = await api.get(withProject("/api/notifications/unread-count"));
     initialUnreadCount = result.count;
     checks.push({
       name: "GET /api/notifications/unread-count returns {count: number}",
@@ -86,7 +91,7 @@ export async function run(ctx) {
   // ── 4. GET /api/notifications — check if any notifications exist ──
   let firstNotificationId = null;
   try {
-    const result = await api.get("/api/notifications");
+    const result = await api.get(withProject("/api/notifications"));
     const list = result.notifications || [];
     const hasNotifications = list.length > 0;
     if (hasNotifications) {
@@ -104,7 +109,7 @@ export async function run(ctx) {
   // ── 5. Check notification has required fields ──
   if (firstNotificationId) {
     try {
-      const result = await api.get("/api/notifications?page_size=1");
+      const result = await api.get(withProject("/api/notifications?page_size=1"));
       const notif = (result.notifications || [])[0];
       const hasRequiredFields =
         notif.type !== undefined &&
@@ -133,7 +138,7 @@ export async function run(ctx) {
   // ── 6. POST /api/notifications/{id}/read — mark as read ──
   if (firstNotificationId) {
     try {
-      const result = await api.post(`/api/notifications/${firstNotificationId}/read`, {});
+      const result = await api.post(withProject(`/api/notifications/${firstNotificationId}/read`), {});
       checks.push({
         name: "POST /api/notifications/{id}/read returns success",
         passed: result.success === true,
@@ -152,7 +157,7 @@ export async function run(ctx) {
 
   // ── 7. GET /api/notifications/unread-count — count may have decreased ──
   try {
-    const result = await api.get("/api/notifications/unread-count");
+    const result = await api.get(withProject("/api/notifications/unread-count"));
     checks.push({
       name: "GET /api/notifications/unread-count after mark-read returns valid count",
       passed: typeof result.count === "number",
@@ -164,7 +169,7 @@ export async function run(ctx) {
 
   // ── 8. POST /api/notifications/read-all — mark all read ──
   try {
-    const result = await api.post("/api/notifications/read-all", {});
+    const result = await api.post("/api/notifications/read-all", { project_id: projectId });
     checks.push({
       name: "POST /api/notifications/read-all returns {success, count}",
       passed: result.success === true && typeof result.count === "number",
@@ -176,7 +181,7 @@ export async function run(ctx) {
 
   // ── 9. GET /api/notifications?category=task_progress — filter by category ──
   try {
-    const result = await api.get("/api/notifications?category=task_progress");
+    const result = await api.get(withProject("/api/notifications?category=task_progress"));
     const list = result.notifications || [];
     const allMatch = list.every((n) => n.category === "task_progress");
     checks.push({
@@ -190,7 +195,7 @@ export async function run(ctx) {
 
   // ── 10. GET /api/notifications?severity=info — filter by severity ──
   try {
-    const result = await api.get("/api/notifications?severity=info");
+    const result = await api.get(withProject("/api/notifications?severity=info"));
     const list = result.notifications || [];
     const allMatch = list.every((n) => n.severity === "info");
     checks.push({
@@ -241,7 +246,7 @@ export async function run(ctx) {
   // ── 13. DELETE /api/notifications/{id} — delete notification ──
   if (firstNotificationId) {
     try {
-      const res = await fetch(`http://localhost:8000/api/notifications/${firstNotificationId}`, {
+      const res = await fetch(`http://localhost:8000${withProject(`/api/notifications/${firstNotificationId}`)}`, {
         method: "DELETE",
         headers: api._headers(),
       });
@@ -263,7 +268,7 @@ export async function run(ctx) {
 
   // ── 14. GET /api/notifications?search=SIM-50 — search ──
   try {
-    const result = await api.get("/api/notifications?search=SIM-50");
+    const result = await api.get(withProject("/api/notifications?search=SIM-50"));
     const list = result.notifications || [];
     checks.push({
       name: "GET /api/notifications?search=SIM-50 returns filtered results",
@@ -276,7 +281,7 @@ export async function run(ctx) {
 
   // ── 15. Verify unread count is 0 after mark-all-read ──
   try {
-    const result = await api.get("/api/notifications/unread-count");
+    const result = await api.get(withProject("/api/notifications/unread-count"));
     checks.push({
       name: "Unread count is 0 after mark-all-read",
       passed: result.count === 0,
@@ -291,7 +296,7 @@ export async function run(ctx) {
     try { await fetch(`http://localhost:8000/api/tasks/${id}`, { method: "DELETE", headers: api._headers() }); } catch {}
   }
   // Mark all notifications as read to leave system clean
-  try { await api.post("/api/notifications/read-all", {}); } catch {}
+  try { await api.post("/api/notifications/read-all", { project_id: projectId }); } catch {}
   try {
     await fetch("http://localhost:8000/api/notifications/preferences", {
       method: "PUT",

@@ -103,14 +103,42 @@ async def _require_notification_project_scope(
     db: AsyncSession,
     request: Request,
     project_id: str | None,
+    *,
+    min_role: str = "viewer",
 ) -> str:
     """Return the required active project id for project-facing notification APIs."""
     scoped_project_id = project_id.strip() if project_id else ""
     if not scoped_project_id:
         raise HTTPException(status_code=400, detail="project_id is required")
 
-    await require_project_access(db, request, scoped_project_id, min_role="viewer")
+    await require_project_access(db, request, scoped_project_id, min_role=min_role)
     return scoped_project_id
+
+
+async def _get_project_notification_or_404(
+    db: AsyncSession,
+    request: Request,
+    notification_id: str,
+    project_id: str | None,
+    *,
+    min_role: str,
+) -> Notification:
+    scoped_project_id = await _require_notification_project_scope(
+        db,
+        request,
+        project_id,
+        min_role=min_role,
+    )
+    result = await db.execute(
+        select(Notification).where(
+            Notification.id == notification_id,
+            Notification.project_id == scoped_project_id,
+        )
+    )
+    notification = result.scalar_one_or_none()
+    if not notification:
+        raise HTTPException(status_code=404, detail="Notification not found")
+    return notification
 
 
 # ---------------------------------------------------------------------------
@@ -216,18 +244,20 @@ async def unread_count(
 
 
 @router.post("/notifications/{notification_id}/read")
-async def mark_read(notification_id: str, request: Request, db: AsyncSession = Depends(get_db)):
+async def mark_read(
+    notification_id: str,
+    request: Request,
+    project_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
     """Mark a single notification as read."""
-    result = await db.execute(
-        select(Notification).where(Notification.id == notification_id)
+    notification = await _get_project_notification_or_404(
+        db,
+        request,
+        notification_id,
+        project_id,
+        min_role="viewer",
     )
-    notification = result.scalar_one_or_none()
-    if not notification:
-        raise HTTPException(status_code=404, detail="Notification not found")
-    if notification.project_id:
-        await require_project_access(db, request, notification.project_id, min_role="viewer")
-    else:
-        require_admin_from_request(request)
 
     notification.read = True
     await db.commit()
@@ -264,19 +294,17 @@ async def mark_all_read(
 async def delete_notification(
     notification_id: str,
     request: Request,
+    project_id: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     """Delete a single notification."""
-    result = await db.execute(
-        select(Notification).where(Notification.id == notification_id)
+    notification = await _get_project_notification_or_404(
+        db,
+        request,
+        notification_id,
+        project_id,
+        min_role="researcher",
     )
-    notification = result.scalar_one_or_none()
-    if not notification:
-        raise HTTPException(status_code=404, detail="Notification not found")
-    if notification.project_id:
-        await require_project_access(db, request, notification.project_id, min_role="researcher")
-    else:
-        require_admin_from_request(request)
 
     await db.delete(notification)
     await db.commit()

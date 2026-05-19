@@ -174,7 +174,9 @@ def test_security_benchmark_detects_notification_project_scope_paths() -> None:
 
     changed_paths = [
         "backend/app/api/routes/notifications.py",
+        "frontend/src/components/notifications/NotificationListTab.tsx",
         "frontend/src/components/notifications/NotificationsView.tsx",
+        "frontend/src/lib/notificationApi.ts",
         "frontend/src/stores/notificationStore.ts",
         "tests/test_notifications.py",
     ]
