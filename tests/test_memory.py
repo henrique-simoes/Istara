@@ -9,6 +9,7 @@ from app.config import settings
 from app.core.rag import RAGContext, RetrievalResult
 from app.models.database import async_session, init_db
 from app.models.project import Project
+from app.models.project_member import ProjectMember
 from app.core.auth import create_token
 
 
@@ -38,16 +39,31 @@ async def _seed_project() -> Project:
     return project
 
 
+async def _seed_member(project_id: str, user_id: str, role: str) -> None:
+    async with async_session() as db:
+        db.add(
+            ProjectMember(
+                id=str(uuid.uuid4()),
+                project_id=project_id,
+                user_id=user_id,
+                role=role,
+                added_by="test",
+            )
+        )
+        await db.commit()
+
+
 @pytest.mark.asyncio
 async def test_memory_list_returns_list(auth_headers):
     """GET /api/memory/{project_id} returns memory entries."""
     await init_db()
+    project = await _seed_project()
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.get("/api/memory/test-project", headers=auth_headers)
-        assert response.status_code in (200, 404, 500)
-        if response.status_code == 200:
-            assert isinstance(response.json(), dict)
+        response = await ac.get(f"/api/memory/{project.id}", headers=auth_headers)
+
+    assert response.status_code == 200
+    assert isinstance(response.json(), dict)
 
 
 @pytest.mark.asyncio
@@ -65,20 +81,64 @@ async def test_memory_list_requires_auth():
 async def test_memory_search_returns_response(auth_headers):
     """GET /api/memory/{project_id}/search returns search results."""
     await init_db()
+    project = await _seed_project()
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.get("/api/memory/test-project/search?q=test", headers=auth_headers)
-        assert response.status_code in (200, 404, 500)
+        response = await ac.get(f"/api/memory/{project.id}/search", headers=auth_headers)
+
+    assert response.status_code == 200
+    assert response.json() == {"results": [], "query": "", "total": 0}
 
 
 @pytest.mark.asyncio
 async def test_memory_stats_returns_response(auth_headers):
     """GET /api/memory/{project_id}/stats returns stats."""
     await init_db()
+    project = await _seed_project()
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.get("/api/memory/test-project/stats", headers=auth_headers)
-        assert response.status_code in (200, 404, 500)
+        response = await ac.get(f"/api/memory/{project.id}/stats", headers=auth_headers)
+
+    assert response.status_code == 200
+    assert isinstance(response.json(), dict)
+
+
+@pytest.mark.asyncio
+async def test_memory_routes_reject_unknown_project(auth_headers):
+    """Memory APIs should not open project storage for unknown projects."""
+    await init_db()
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        list_response = await ac.get("/api/memory/not-a-project", headers=auth_headers)
+        search_response = await ac.get(
+            "/api/memory/not-a-project/search",
+            headers=auth_headers,
+            params={"q": "pricing"},
+        )
+        stats_response = await ac.get("/api/memory/not-a-project/stats", headers=auth_headers)
+
+    assert list_response.status_code == 404
+    assert search_response.status_code == 404
+    assert stats_response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_memory_routes_conceal_uninvited_projects_in_team_mode():
+    """Project memory must only be visible to members of that project."""
+    await init_db()
+    settings.team_mode = True
+    visible = await _seed_project()
+    hidden = await _seed_project()
+    await _seed_member(visible.id, "researcher-1", "researcher")
+    headers = {"Authorization": f"Bearer {create_token('researcher-1', 'researcher', 'researcher')}"}
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        visible_response = await ac.get(f"/api/memory/{visible.id}", headers=headers)
+        hidden_response = await ac.get(f"/api/memory/{hidden.id}", headers=headers)
+
+    assert visible_response.status_code == 200
+    assert hidden_response.status_code == 404
 
 
 @pytest.mark.asyncio

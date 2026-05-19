@@ -241,7 +241,7 @@
   <p class="concept-line"><strong>Concepts:</strong> rag, a2a</p>
 </header>
 <h2 id="implementation-summary">Implementation Summary</h2>
-<p>The Agent memory tab exposes memory tied to agent behavior and project collaboration.</p>
+<p>The Agent memory tab exposes memory tied to agent behavior and project collaboration in the active project.</p>
 <h2 id="frontend-surface">Frontend Surface</h2>
 <ul>
 <li><code>frontend/src/components/memory/MemoryView.tsx</code></li>
@@ -259,6 +259,8 @@
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
 <li>The feature is mounted through <code>frontend/src/components/memory/MemoryView.tsx</code> and the UI navigation path recorded in the inventory.</li>
+<li>Agent notes are read through <code>backend/app/api/routes/memory.py</code>, which validates project visibility before loading project agent-memory data.</li>
+<li><code>MemoryView</code> remounts the Agent memory tab on active-project changes so notes cached for one project are not reused in another project view.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>
@@ -269,7 +271,7 @@
 </ul>
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>
-<li>No focused test reference recorded yet.</li>
+<li><code>tests/test_memory.py</code></li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>
@@ -283,7 +285,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-53 / CF-657</li>
+<li>Spec/task: CF-SPEC-60 / CF-757</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>

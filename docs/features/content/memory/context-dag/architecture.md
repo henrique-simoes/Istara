@@ -8,7 +8,7 @@ related_features: ["context.editor", "memory.knowledge", "chat.sessions"]
 related_glossary: ["rag"]
 code_references: ["frontend/src/components/memory/MemoryView.tsx", "frontend/src/components/memory/ContextDAGView.tsx", "frontend/src/stores/sessionStore.ts", "frontend/src/lib/contextDagApi.ts", "backend/app/api/routes/context_dag.py", "backend/app/core/context_dag.py"]
 api_references: ["backend/app/api/routes/context_dag.py"]
-test_references: ["tests/test_project_scope_contracts.py"]
+test_references: ["tests/test_context_dag.py", "tests/test_project_scope_contracts.py"]
 last_verified: 2026-05-19
 compass: CF-SPEC-60 / CF-761
 ---
@@ -17,7 +17,7 @@ compass: CF-SPEC-60 / CF-761
 
 ## Implementation Summary
 
-The Context DAG tab visualizes or inspects relationships across project context nodes. Its chat-session picker only renders sessions from the active project, so context DAG reads cannot be driven by a stale session selection from another project.
+The Context DAG tab visualizes or inspects relationships across project context nodes. Its chat-session picker only renders sessions from the active project, and every Context DAG API call carries the active project id so stale session ids cannot read a previous project's graph.
 
 ## Frontend Surface
 
@@ -42,6 +42,7 @@ The Context DAG tab visualizes or inspects relationships across project context 
 
 - The feature is mounted through `frontend/src/components/memory/MemoryView.tsx` and the UI navigation path recorded in the inventory.
 - `ContextDAGView` derives `scopedSessions` from the active project before rendering the session selector and derives `scopedActiveSessionId` before calling context DAG structure, health, expand, grep, or compact APIs.
+- `backend/app/api/routes/context_dag.py` requires `project_id` on session-by-id routes and loads the session by both `session_id` and `project_id` before returning structure, health, expansion, search, node metadata, or compaction output.
 - When no active project session is selected, the DAG stays in the empty selection state instead of rendering or querying a session from another project.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
@@ -52,6 +53,7 @@ The Context DAG tab visualizes or inspects relationships across project context 
 
 ## Tests And Verification
 
+- `tests/test_context_dag.py`
 - `tests/test_project_scope_contracts.py`
 
 ## Related Features

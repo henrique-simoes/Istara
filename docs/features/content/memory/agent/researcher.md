@@ -8,16 +8,16 @@ related_features: ["agents.detail", "memory.knowledge"]
 related_glossary: ["rag", "a2a"]
 code_references: ["frontend/src/components/memory/MemoryView.tsx", "backend/app/core/agent_memory.py"]
 api_references: ["backend/app/api/routes/memory.py"]
-test_references: []
-last_verified: 2026-05-15
-compass: CF-SPEC-53 / CF-657
+test_references: ["tests/test_memory.py"]
+last_verified: 2026-05-19
+compass: CF-SPEC-60 / CF-757
 ---
 
 # Agent Memory
 
 ## What It Does
 
-The Agent memory tab exposes memory tied to agent behavior and project collaboration.
+The Agent memory tab exposes memory tied to agent behavior and project collaboration in the active project.
 
 ## Why It Exists
 
@@ -33,6 +33,7 @@ Agent Memory exists so the work represented by Memory > Agent has a stable, disc
 
 - Open Memory > Agent from the Istara navigation or the parent tab.
 - Use the visible controls in this surface to work with agent memory in the active project context.
+- Project switches clear loaded agent notes before the next project's agents are fetched.
 - Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.
 
 ## Supported Workflows
@@ -65,4 +66,4 @@ Agent Memory exists so the work represented by Memory > Agent has a stable, disc
 
 - Source files: `frontend/src/components/memory/MemoryView.tsx`, `backend/app/core/agent_memory.py`
 - API references: `backend/app/api/routes/memory.py`
-- Tests: none recorded
+- Tests: `tests/test_memory.py`

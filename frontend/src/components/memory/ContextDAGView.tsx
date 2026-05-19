@@ -255,13 +255,13 @@ export default function ContextDAGView() {
 
   // Fetch DAG structure when session changes
   const fetchDAG = useCallback(async () => {
-    if (!scopedActiveSessionId) return;
+    if (!activeProjectId || !scopedActiveSessionId) return;
     setLoading(true);
     setError(null);
     try {
       const [data, healthData] = await Promise.all([
-        contextDag.getStructure(scopedActiveSessionId),
-        contextDag.health(scopedActiveSessionId),
+        contextDag.getStructure(scopedActiveSessionId, activeProjectId),
+        contextDag.health(scopedActiveSessionId, activeProjectId),
       ]);
       setNodes(Array.isArray(data.nodes) ? data.nodes : []);
       setHealth(healthData || data.stats);
@@ -271,7 +271,7 @@ export default function ContextDAGView() {
       setHealth(null);
     }
     setLoading(false);
-  }, [scopedActiveSessionId]);
+  }, [activeProjectId, scopedActiveSessionId]);
 
   useEffect(() => {
     fetchDAG();
@@ -296,10 +296,14 @@ export default function ContextDAGView() {
       setExpandedNodes((prev) => new Set(prev).add(nodeId));
 
       // Only fetch if we don't already have the content
-      if (!expandedContent[nodeId] && scopedActiveSessionId) {
+      if (!expandedContent[nodeId] && activeProjectId && scopedActiveSessionId) {
         setExpandingNodeId(nodeId);
         try {
-          const result = await contextDag.expand(scopedActiveSessionId, nodeId);
+          const result = await contextDag.expand(
+            scopedActiveSessionId,
+            activeProjectId,
+            nodeId
+          );
           setExpandedContent((prev) => ({ ...prev, [nodeId]: result }));
         } catch (e: any) {
           setError(e.message || "Failed to expand DAG node");
@@ -308,17 +312,21 @@ export default function ContextDAGView() {
         setExpandingNodeId(null);
       }
     },
-    [expandedNodes, expandedContent, scopedActiveSessionId]
+    [activeProjectId, expandedNodes, expandedContent, scopedActiveSessionId]
   );
 
   const handleSearch = async () => {
-    if (!searchQuery.trim() || !scopedActiveSessionId) {
+    if (!searchQuery.trim() || !activeProjectId || !scopedActiveSessionId) {
       setSearchResults(null);
       return;
     }
     setSearching(true);
     try {
-      const results = await contextDag.grep(scopedActiveSessionId, searchQuery);
+      const results = await contextDag.grep(
+        scopedActiveSessionId,
+        activeProjectId,
+        searchQuery
+      );
       setSearchResults(results);
     } catch (e: any) {
       setError(e.message || "DAG search failed");
@@ -328,9 +336,9 @@ export default function ContextDAGView() {
   };
 
   const handleCompact = async () => {
-    if (!scopedActiveSessionId) return;
+    if (!activeProjectId || !scopedActiveSessionId) return;
     try {
-      await contextDag.compact(scopedActiveSessionId);
+      await contextDag.compact(scopedActiveSessionId, activeProjectId);
       fetchDAG();
     } catch (e: any) {
       setError(e.message || "DAG compaction failed");

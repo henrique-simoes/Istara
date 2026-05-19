@@ -670,10 +670,16 @@ export default function MemoryView() {
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-4" role="region" aria-label="Memory content" tabIndex={0}>
-        {activeTab === "knowledge" && <KnowledgeBaseTab projectId={activeProjectId} />}
-        {activeTab === "agent" && <AgentMemoryTab projectId={activeProjectId} />}
-        {activeTab === "health" && <HealthTab projectId={activeProjectId} />}
-        {activeTab === "context-dag" && <ContextDAGView />}
+        {activeTab === "knowledge" && (
+          <KnowledgeBaseTab key={`knowledge-${activeProjectId}`} projectId={activeProjectId} />
+        )}
+        {activeTab === "agent" && (
+          <AgentMemoryTab key={`agent-${activeProjectId}`} projectId={activeProjectId} />
+        )}
+        {activeTab === "health" && (
+          <HealthTab key={`health-${activeProjectId}`} projectId={activeProjectId} />
+        )}
+        {activeTab === "context-dag" && <ContextDAGView key={`context-dag-${activeProjectId}`} />}
       </div>
     </div>
   );

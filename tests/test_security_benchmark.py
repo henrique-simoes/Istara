@@ -198,6 +198,26 @@ def test_security_benchmark_detects_document_project_scope_paths() -> None:
     assert result.scorecard["triggered_paths"] == sorted(changed_paths)
 
 
+def test_security_benchmark_detects_memory_context_project_scope_paths() -> None:
+    matrix = load_matrix(ROOT / "security" / "control_matrix.json")
+
+    changed_paths = [
+        "backend/app/api/routes/context_dag.py",
+        "backend/app/api/routes/memory.py",
+        "frontend/src/components/memory/ContextDAGView.tsx",
+        "frontend/src/components/memory/MemoryView.tsx",
+        "frontend/src/lib/contextDagApi.ts",
+        "frontend/src/lib/memoryApi.ts",
+        "tests/test_context_dag.py",
+        "tests/test_memory.py",
+    ]
+    result = evaluate_matrix(matrix, changed_paths=changed_paths)
+
+    assert result.passed is True
+    assert result.scorecard["auth_security_change_detected"] is True
+    assert result.scorecard["triggered_paths"] == sorted(changed_paths)
+
+
 def test_security_benchmark_detects_context_hierarchy_project_scope_paths() -> None:
     matrix = load_matrix(ROOT / "security" / "control_matrix.json")
 
