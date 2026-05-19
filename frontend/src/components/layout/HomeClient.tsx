@@ -248,11 +248,11 @@ export default function HomeClient() {
           if (activeProjectId) {
             if (detail.session_id) {
               // Navigate to a specific session (from InteractiveSuggestionBox)
-              selectSession(detail.session_id);
+              selectSession(activeProjectId, detail.session_id);
             } else if (detail.agent_id) {
-              const existing = sessions.find((s) => s.agent_id === detail.agent_id);
+              const existing = sessions.find((s) => s.project_id === activeProjectId && s.agent_id === detail.agent_id);
               if (existing) {
-                selectSession(existing.id);
+                selectSession(activeProjectId, existing.id);
               } else {
                 const agents = useAgentStore.getState().agents;
                 const agent = agents.find((a) => a.id === detail.agent_id);

@@ -19,6 +19,35 @@ from app.core.llm_thinking import ThinkingMode, normalize_thinking_mode
 router = APIRouter()
 
 
+def require_project_id(project_id: str | None) -> str:
+    """Require project-facing session-by-id routes to carry active project context."""
+    if not project_id or not project_id.strip():
+        raise HTTPException(status_code=400, detail="project_id is required")
+    return project_id.strip()
+
+
+async def require_active_project_session(
+    db: AsyncSession,
+    request: Request,
+    session_id: str,
+    project_id: str | None,
+    *,
+    min_role: str,
+) -> tuple[str, ChatSession]:
+    scoped_project_id = require_project_id(project_id)
+    await require_project_access(db, request, scoped_project_id, min_role=min_role)
+    result = await db.execute(
+        select(ChatSession).where(
+            ChatSession.id == session_id,
+            ChatSession.project_id == scoped_project_id,
+        )
+    )
+    session = result.scalar_one_or_none()
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    return scoped_project_id, session
+
+
 class CreateSessionRequest(BaseModel):
     project_id: str = Field(..., min_length=1, max_length=36)
     title: str = Field(default="New Chat", min_length=1, max_length=255)
@@ -98,18 +127,25 @@ async def create_session(data: CreateSessionRequest, request: Request, db: Async
 
 
 @router.get("/sessions/detail/{session_id}")
-async def get_session(session_id: str, request: Request, db: AsyncSession = Depends(get_db)):
+async def get_session(
+    session_id: str,
+    request: Request,
+    project_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
     """Get a specific session with its messages."""
-    result = await db.execute(select(ChatSession).where(ChatSession.id == session_id))
-    session = result.scalar_one_or_none()
-    if not session:
-        raise HTTPException(status_code=404, detail="Session not found")
-    await require_project_access(db, request, session.project_id, min_role="viewer")
+    scoped_project_id, session = await require_active_project_session(
+        db,
+        request,
+        session_id,
+        project_id,
+        min_role="viewer",
+    )
 
     # Get messages
     msg_result = await db.execute(
         select(Message)
-        .where(Message.session_id == session_id)
+        .where(Message.session_id == session_id, Message.project_id == scoped_project_id)
         .order_by(Message.created_at.asc())
     )
     messages = msg_result.scalars().all()
@@ -133,14 +169,17 @@ async def update_session(
     session_id: str,
     data: UpdateSessionRequest,
     request: Request,
+    project_id: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     """Update a chat session."""
-    result = await db.execute(select(ChatSession).where(ChatSession.id == session_id))
-    session = result.scalar_one_or_none()
-    if not session:
-        raise HTTPException(status_code=404, detail="Session not found")
-    await require_project_access(db, request, session.project_id, min_role="researcher")
+    _, session = await require_active_project_session(
+        db,
+        request,
+        session_id,
+        project_id,
+        min_role="researcher",
+    )
 
     updates = data.model_dump(exclude_unset=True)
     for key, value in updates.items():
@@ -154,13 +193,20 @@ async def update_session(
 
 
 @router.delete("/sessions/{session_id}", status_code=204)
-async def delete_session(session_id: str, request: Request, db: AsyncSession = Depends(get_db)):
+async def delete_session(
+    session_id: str,
+    request: Request,
+    project_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
     """Delete a chat session and its messages."""
-    result = await db.execute(select(ChatSession).where(ChatSession.id == session_id))
-    session = result.scalar_one_or_none()
-    if not session:
-        raise HTTPException(status_code=404, detail="Session not found")
-    await require_project_access(db, request, session.project_id, min_role="researcher")
+    _, session = await require_active_project_session(
+        db,
+        request,
+        session_id,
+        project_id,
+        min_role="researcher",
+    )
 
     # Clean up DAG nodes (no FK constraint on session_id)
     from app.models.context_dag import ContextDAGNode
@@ -173,13 +219,20 @@ async def delete_session(session_id: str, request: Request, db: AsyncSession = D
 
 
 @router.post("/sessions/{session_id}/star")
-async def toggle_star(session_id: str, request: Request, db: AsyncSession = Depends(get_db)):
+async def toggle_star(
+    session_id: str,
+    request: Request,
+    project_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
     """Toggle starred status."""
-    result = await db.execute(select(ChatSession).where(ChatSession.id == session_id))
-    session = result.scalar_one_or_none()
-    if not session:
-        raise HTTPException(status_code=404, detail="Session not found")
-    await require_project_access(db, request, session.project_id, min_role="researcher")
+    _, session = await require_active_project_session(
+        db,
+        request,
+        session_id,
+        project_id,
+        min_role="researcher",
+    )
 
     session.starred = not session.starred
     await db.commit()

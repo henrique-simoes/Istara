@@ -93,6 +93,11 @@ diagnostic, and A2A message views are also project-content surfaces: non-admin
 users must supply an authorized active project, project-scoped agents cannot be
 read from another project, and universal agent runtime memory/current-task state
 is redacted in project views unless a global admin is using an admin surface.
+Chat sessions, chat history, active-session persistence, and related context DAG
+pickers are project-content surfaces: session-by-id APIs require the caller's
+authorized active project, frontend session state is stored per project, and a
+stale session id from another authorized project must not render or mutate chat
+messages in the current project view.
 Project-facing integrations, deployments, survey links, channel records, and
 MCP client registries are project-content surfaces for every user role: list
 APIs require an explicit authorized active project and must not silently fall

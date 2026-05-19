@@ -8,16 +8,16 @@ related_features: ["chat.overview", "history.version"]
 related_glossary: ["rag"]
 code_references: ["frontend/src/components/chat/ChatSessionsSidebar.tsx", "frontend/src/stores/sessionStore.ts", "backend/app/api/routes/sessions.py"]
 api_references: ["frontend/src/lib/sessionsApi.ts", "backend/app/api/routes/sessions.py"]
-test_references: []
-last_verified: 2026-05-15
-compass: CF-SPEC-53 / CF-657
+test_references: ["tests/test_sessions.py", "tests/test_project_scope_contracts.py"]
+last_verified: 2026-05-19
+compass: CF-SPEC-60 / CF-761
 ---
 
 # Chat Sessions
 
 ## What It Does
 
-The chat session sidebar manages project-scoped conversation history and new session creation.
+The chat session sidebar manages project-scoped conversation history and new session creation. A saved chat selection belongs to one project only, so switching projects cannot show another project's conversation even when the same user is authorized in both projects.
 
 ## Why It Exists
 
@@ -33,6 +33,7 @@ Chat Sessions exists so the work represented by Chat > Sessions has a stable, di
 
 - Open Chat > Sessions from the Istara navigation or the parent tab.
 - Use the visible controls in this surface to work with chat sessions in the active project context.
+- Rename, star, delete, and reopen sessions only inside the active project; stale sessions from another project are cleared before the new project's list loads.
 - Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.
 
 ## Supported Workflows
@@ -45,6 +46,7 @@ Chat Sessions exists so the work represented by Chat > Sessions has a stable, di
 
 - Project-scoped state or artifact updates associated with chat sessions.
 - Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.
+- Session history and messages whose `project_id` matches the active project and the current user's authorization.
 
 ## Caveats
 
@@ -64,4 +66,4 @@ Chat Sessions exists so the work represented by Chat > Sessions has a stable, di
 
 - Source files: `frontend/src/components/chat/ChatSessionsSidebar.tsx`, `frontend/src/stores/sessionStore.ts`, `backend/app/api/routes/sessions.py`
 - API references: `frontend/src/lib/sessionsApi.ts`, `backend/app/api/routes/sessions.py`
-- Tests: none recorded
+- Tests: `tests/test_sessions.py`, `tests/test_project_scope_contracts.py`
