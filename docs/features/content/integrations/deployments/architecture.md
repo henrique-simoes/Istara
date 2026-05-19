@@ -8,9 +8,9 @@ related_features: ["integrations.deployment-dashboard", "integrations.surveys", 
 related_glossary: ["triangulation"]
 code_references: ["frontend/src/components/integrations/DeploymentsTab.tsx", "frontend/src/components/integrations/DeploymentWizard.tsx", "frontend/src/components/integrations/DeploymentDashboard.tsx", "frontend/src/components/integrations/ConversationTranscript.tsx", "frontend/src/lib/api.ts", "backend/app/api/routes/deployments.py", "backend/app/services/deployment_service.py"]
 api_references: ["backend/app/api/routes/deployments.py", "backend/app/services/deployment_service.py"]
-test_references: ["tests/test_deployments.py", "tests/test_project_scope_contracts.py"]
+test_references: ["tests/test_deployments.py", "tests/test_project_scope_contracts.py", "tests/test_integration_simulation_scope.py"]
 last_verified: 2026-05-19
-compass: CF-SPEC-60 / CF-767; CF-SPEC-60 / CF-773; CF-SPEC-62 / CF-793; CF-SPEC-75 / CF-964
+compass: CF-SPEC-60 / CF-767; CF-SPEC-60 / CF-773; CF-SPEC-62 / CF-793; CF-SPEC-75 / CF-964; CF-SPEC-82 / CF-1061
 ---
 
 # Research Deployments Architecture
@@ -50,6 +50,7 @@ Deployments configure participant-facing research deployments and link them to c
 - Inbound channel processors attach participant messages only to same-project deployments that explicitly list the receiving channel instance; deployments with no channels are not a global fallback.
 - Deployment activation and participant response handling reject paused projects before dispatching participant-facing work, updating adaptive conversation state, or reaching LLM-backed follow-up generation.
 - Deployment response handling, conversations, transcripts, analytics, and overview counters all require the conversation/deployment/channel records to match the same project boundary before participant content or findings are read, updated, or summarized.
+- Simulation and real-user benchmark deployment paths must carry active project scope on by-id lifecycle, response, analytics, conversation, delete, and channel cleanup calls, proving the same boundary exercised by the UI.
 
 ## Architecture Notes
 
@@ -65,6 +66,7 @@ Deployments configure participant-facing research deployments and link them to c
 
 - `tests/test_deployments.py` exercises API-level project isolation for deployment channel ownership, deployment overview conversation counts, by-id active-project matching across detail/lifecycle/conversation/transcript routes, direct service-helper project scope enforcement, and cross-project response rejection.
 - `tests/test_project_scope_contracts.py` asserts that `DeploymentsTab`, `DeploymentDashboard`, `ConversationTranscript`, and the deployment API client pass the active project id into list, detail, lifecycle, analytics, conversation, and transcript calls rather than falling back to global deployment ids.
+- `tests/test_integration_simulation_scope.py` prevents simulation and real-user benchmark deployment calls from reintroducing unscoped by-id integration paths.
 
 ## Related Features
 
@@ -78,7 +80,7 @@ Deployments configure participant-facing research deployments and link them to c
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-60 / CF-767; CF-SPEC-60 / CF-773; CF-SPEC-62 / CF-793; CF-SPEC-75 / CF-964
+- Spec/task: CF-SPEC-60 / CF-767; CF-SPEC-60 / CF-773; CF-SPEC-62 / CF-793; CF-SPEC-75 / CF-964; CF-SPEC-82 / CF-1061
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update

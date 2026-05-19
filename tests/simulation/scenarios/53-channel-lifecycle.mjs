@@ -50,7 +50,7 @@ export async function run(ctx) {
   // ── 3. GET /api/channels/{id} — instance details ──
   if (telegramInstance) {
     try {
-      const detail = await api.get(`/api/channels/${telegramInstance.id}`);
+      const detail = await api.get(`/api/channels/${telegramInstance.id}?${projectQuery}`);
       checks.push({
         name: "GET /api/channels/{id} returns instance details",
         passed: detail.id === telegramInstance.id && detail.platform === "telegram",
@@ -97,7 +97,7 @@ export async function run(ctx) {
   // ── 6. PATCH /api/channels/{id} — update name ──
   if (telegramInstance) {
     try {
-      const updated = await api.patch(`/api/channels/${telegramInstance.id}`, {
+      const updated = await api.patch(`/api/channels/${telegramInstance.id}?${projectQuery}`, {
         name: "SIM: Updated Telegram Bot",
       });
       checks.push({
@@ -113,7 +113,7 @@ export async function run(ctx) {
   // ── 7. GET /api/channels/{id}/health — health check ──
   if (telegramInstance) {
     try {
-      const health = await api.get(`/api/channels/${telegramInstance.id}/health`);
+      const health = await api.get(`/api/channels/${telegramInstance.id}/health?${projectQuery}`);
       checks.push({
         name: "GET /api/channels/{id}/health returns health data",
         passed: health.status !== undefined || health.health_status !== undefined,
@@ -127,7 +127,7 @@ export async function run(ctx) {
   // ── 8. GET /api/channels/{id}/messages — empty initially ──
   if (telegramInstance) {
     try {
-      const messages = await api.get(`/api/channels/${telegramInstance.id}/messages`);
+      const messages = await api.get(`/api/channels/${telegramInstance.id}/messages?${projectQuery}`);
       const msgList = Array.isArray(messages) ? messages : messages?.messages || [];
       checks.push({
         name: "GET /api/channels/{id}/messages returns array",
@@ -142,7 +142,7 @@ export async function run(ctx) {
   // ── 9. GET /api/channels/{id}/conversations — empty initially ──
   if (telegramInstance) {
     try {
-      const convos = await api.get(`/api/channels/${telegramInstance.id}/conversations`);
+      const convos = await api.get(`/api/channels/${telegramInstance.id}/conversations?${projectQuery}`);
       const convoList = Array.isArray(convos) ? convos : convos?.conversations || [];
       checks.push({
         name: "GET /api/channels/{id}/conversations returns array",
@@ -170,7 +170,7 @@ export async function run(ctx) {
   // ── 11. DELETE /api/channels/{id} — delete Slack instance ──
   if (slackInstance) {
     try {
-      await api.delete(`/api/channels/${slackInstance.id}`);
+      await api.delete(`/api/channels/${slackInstance.id}?${projectQuery}`);
       cleanup.instanceIds = cleanup.instanceIds.filter((id) => id !== slackInstance.id);
       checks.push({
         name: "DELETE /api/channels/{id} removes instance",
@@ -296,7 +296,7 @@ export async function run(ctx) {
   // ── Cleanup ──
   for (const id of cleanup.instanceIds) {
     try {
-      await api.delete(`/api/channels/${id}`);
+      await api.delete(`/api/channels/${id}?${projectQuery}`);
     } catch (_) {}
   }
 

@@ -62,7 +62,7 @@ export async function run(ctx) {
   // ── 3. GET /api/mcp/clients/{id}/tools — cached tools (empty initially) ──
   if (testServer) {
     try {
-      const tools = await api.get(`/api/mcp/clients/${testServer.id}/tools`);
+      const tools = await api.get(`/api/mcp/clients/${testServer.id}/tools${projectQuery}`);
       const list = Array.isArray(tools) ? tools : tools?.tools || [];
       checks.push({
         name: "GET /api/mcp/clients/{id}/tools returns array",
@@ -77,7 +77,7 @@ export async function run(ctx) {
   // ── 4. GET /api/mcp/clients/{id}/health — health check ──
   if (testServer) {
     try {
-      const health = await api.get(`/api/mcp/clients/${testServer.id}/health`);
+      const health = await api.get(`/api/mcp/clients/${testServer.id}/health${projectQuery}`);
       checks.push({
         name: "GET /api/mcp/clients/{id}/health returns status",
         passed: typeof health.healthy === "boolean",
@@ -143,7 +143,7 @@ export async function run(ctx) {
   // ── 8. DELETE /api/mcp/clients/{id} — unregister ──
   if (testServer2) {
     try {
-      await api.delete(`/api/mcp/clients/${testServer2.id}`);
+      await api.delete(`/api/mcp/clients/${testServer2.id}${projectQuery}`);
       cleanup.serverIds = cleanup.serverIds.filter((id) => id !== testServer2.id);
       checks.push({
         name: "DELETE /api/mcp/clients/{id} removes server",
@@ -194,7 +194,7 @@ export async function run(ctx) {
 
   // ── Cleanup ──
   for (const id of cleanup.serverIds) {
-    try { await api.delete(`/api/mcp/clients/${id}`); } catch (_) {}
+    try { await api.delete(`/api/mcp/clients/${id}${projectQuery}`); } catch (_) {}
   }
 
   return {

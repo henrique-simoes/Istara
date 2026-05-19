@@ -8,9 +8,9 @@ related_features: ["skills.catalog", "agents.registry"]
 related_glossary: ["mcp"]
 code_references: ["frontend/src/components/integrations/MCPTab.tsx", "frontend/src/components/integrations/MCPServerSetup.tsx", "frontend/src/components/integrations/MCPAccessPolicyEditor.tsx", "frontend/src/components/integrations/MCPAuditLog.tsx", "frontend/src/stores/integrationsStore.ts", "frontend/src/lib/api.ts", "backend/app/api/routes/mcp.py", "backend/app/mcp/server.py", "backend/app/services/mcp_client_manager.py", "backend/app/services/mcp_security.py"]
 api_references: ["backend/app/api/routes/mcp.py", "backend/app/mcp/server.py", "backend/app/services/mcp_client_manager.py", "backend/app/services/mcp_security.py"]
-test_references: ["tests/test_mcp.py", "tests/test_project_scope_contracts.py"]
+test_references: ["tests/test_mcp.py", "tests/test_project_scope_contracts.py", "tests/test_integration_simulation_scope.py"]
 last_verified: 2026-05-19
-compass: CF-SPEC-55 / CF-684; CF-SPEC-60 / CF-762; CF-SPEC-60 / CF-776; CF-SPEC-65 / CF-842; CF-SPEC-68 / CF-870; CF-SPEC-75 / CF-964
+compass: CF-SPEC-55 / CF-684; CF-SPEC-60 / CF-762; CF-SPEC-60 / CF-776; CF-SPEC-65 / CF-842; CF-SPEC-68 / CF-870; CF-SPEC-75 / CF-964; CF-SPEC-82 / CF-1061
 ---
 
 # MCP Integrations Architecture
@@ -56,6 +56,7 @@ The MCP tab configures project-owned Model Context Protocol client connections p
 - MCP `search_memory` calls project-scoped retrieval with the requested project id rather than an empty/global memory id. MCP deployment status is filtered by project, and skill/report execution is rejected for paused projects before content processing.
 - MCP `list_projects` is filtered by the access policy allowlist and returns an empty list when no project ids are allowed, preventing external agents from enumerating project names by default.
 - Legacy/global MCP client rows are not returned by project-facing Integrations APIs; any cross-project MCP reporting must use a dedicated global-admin surface.
+- Simulation and benchmark MCP client calls must include active project scope on by-id tool, health, discovery, delete, and cleanup URLs so repeated or cross-project server registrations cannot be hidden by global harness paths.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
 
@@ -68,6 +69,7 @@ The MCP tab configures project-owned Model Context Protocol client connections p
 
 - `tests/test_mcp.py`
 - `tests/test_project_scope_contracts.py`
+- `tests/test_integration_simulation_scope.py`
 
 ## Related Features
 
@@ -80,7 +82,7 @@ The MCP tab configures project-owned Model Context Protocol client connections p
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-55 / CF-684; CF-SPEC-60 / CF-762; CF-SPEC-60 / CF-776; CF-SPEC-65 / CF-842; CF-SPEC-68 / CF-870; CF-SPEC-75 / CF-964
+- Spec/task: CF-SPEC-55 / CF-684; CF-SPEC-60 / CF-762; CF-SPEC-60 / CF-776; CF-SPEC-65 / CF-842; CF-SPEC-68 / CF-870; CF-SPEC-75 / CF-964; CF-SPEC-82 / CF-1061
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update

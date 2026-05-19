@@ -273,7 +273,7 @@ export async function run(ctx) {
     try { await api.delete(deploymentPath(id)); } catch (_) {}
   }
   for (const id of cleanup.channelIds) {
-    try { await api.delete(`/api/channels/${id}`); } catch (_) {}
+    try { await api.delete(`/api/channels/${id}?project_id=${projectQuery}`); } catch (_) {}
   }
 
   return checks;
