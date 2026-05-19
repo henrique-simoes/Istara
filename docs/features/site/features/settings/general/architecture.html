@@ -241,7 +241,7 @@
   <p class="concept-line"><strong>Concepts:</strong> rag</p>
 </header>
 <h2 id="implementation-summary">Implementation Summary</h2>
-<p>Settings shows backend, LLM, hardware, model recommendation, and available model status for the local installation. LLM service connectivity is based on passive server reachability; chat readiness is exposed separately so the status bar does not call a reachable provider &quot;disconnected&quot; just because no chat-ready model has been confirmed.</p>
+<p>Settings shows backend, LLM, hardware, model recommendation, and available model status for the local installation. Public status is intentionally minimal: <code>/api/settings/status</code> exposes backend health, team mode, cached LLM reachability/readiness, and frontend freshness only. Provider, model, hardware, integration, vector-health, maintenance, and data-integrity details are shared infrastructure metadata and require global admin access in team mode.</p>
 <h2 id="frontend-surface">Frontend Surface</h2>
 <ul>
 <li><code>frontend/src/components/common/SettingsView.tsx</code></li>
@@ -260,7 +260,9 @@
 <ul>
 <li>The feature is mounted through <code>frontend/src/components/common/SettingsView.tsx</code> and the UI navigation path recorded in the inventory.</li>
 <li><code>frontend/src/components/layout/StatusBar.tsx</code> reconciles WebSocket LLM events with passive <code>/api/settings/status</code> polling.</li>
-<li><code>/api/settings/status</code> reports <code>services.llm</code> from provider reachability and <code>llm_readiness.chat_ready</code> separately, so status bars and guided checks can distinguish connected-but-not-ready from disconnected.</li>
+<li><code>/api/settings/status</code> reports <code>services.llm</code> from cached provider reachability and <code>llm_readiness.chat_ready</code> separately, so status bars and guided checks can distinguish connected-but-not-ready from disconnected without running provider probes.</li>
+<li><code>/api/settings/status</code> does not expose provider names, active model identifiers, embedding model identifiers, RAG configuration, or loaded-model discovery results. Admin-only settings views read model/provider details from <code>/api/settings/models</code>.</li>
+<li><code>/api/settings/hardware</code>, <code>/api/settings/models</code>, <code>/api/settings/maintenance</code>, <code>/api/settings/integrations-status</code>, <code>/api/settings/vector-health</code>, <code>/api/settings/data-integrity</code>, <code>/api/settings/model</code>, and <code>/api/settings/provider</code> require global admin access in team mode.</li>
 <li><code>/api/settings/status</code> also includes <code>runtime.frontend</code> freshness diagnostics. The status bar shows <code>Runtime bundle stale</code> when the production Next build predates tracked frontend source files, preventing stale bundles from being mistaken for current project-isolation behavior.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>

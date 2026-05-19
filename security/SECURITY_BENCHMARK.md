@@ -90,7 +90,12 @@ Global LLM server inventory, registration, network discovery, deletion, and
 manual health-check endpoints are shared infrastructure surfaces, not
 project-content lists, but they are still security-sensitive: team-mode callers
 must be global admins before provider endpoint status, capability metadata,
-router health, or explicit health/discovery probes are exposed.
+router health, model/provider switches, hardware/integration/vector/data
+integrity metadata, or explicit health/discovery probes are exposed. The public
+`/api/settings/status` health endpoint remains unauthenticated for login,
+onboarding, and status bars, but it must be passive and redacted: no provider
+endpoint details, active model identifiers, embedding model identifiers, RAG
+configuration, loaded-model discovery, or explicit LLM probes.
 Loop health, schedule, agent-loop, and execution-history views are treated as
 project-content surfaces: non-admin users must supply an authorized active
 project before seeing background process state or mutating recurring work.

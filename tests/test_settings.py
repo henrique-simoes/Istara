@@ -37,6 +37,14 @@ def auth_headers():
     return {"Authorization": f"Bearer {token}"}
 
 
+@pytest.fixture
+def researcher_headers():
+    if not settings.jwt_secret:
+        settings.jwt_secret = "test-secret"
+    token = create_token("user2", "researcher", "researcher")
+    return {"Authorization": f"Bearer {token}"}
+
+
 @pytest.mark.asyncio
 async def test_settings_status_returns_response(auth_headers):
     """GET /api/settings/status returns system status."""
@@ -49,33 +57,44 @@ async def test_settings_status_returns_response(auth_headers):
         assert isinstance(response.json(), dict)
         assert response.json()["strict_auto_routing"] is True
         assert "runtime" in response.json()
+        assert "provider" not in response.json()
+        assert "config" not in response.json()
 
 
-class _ReachableButNotChatReadyRegistry:
+class _CachedNode:
+    def __init__(self, *, reachable: bool, ready: bool):
+        self.reachable = reachable
+        self.ready = ready
+
+    def to_dict(self):
+        return {
+            "is_reachable": self.reachable,
+            "is_ready": self.ready,
+        }
+
+
+class _PassiveCachedRegistry:
     def __init__(self):
-        self.check_all_health_calls = 0
-        self.ensure_kwargs = {}
+        self._nodes = {
+            "node": _CachedNode(reachable=True, ready=False),
+        }
 
-    async def check_all_health(self):
-        self.check_all_health_calls += 1
-        return {"node": True}
+    async def check_all_health(self):  # pragma: no cover - must not be called
+        raise AssertionError("status must not probe registry health")
 
-    async def health(self):
-        return True
+    async def health(self):  # pragma: no cover - must not be called
+        raise AssertionError("status must not probe provider health")
 
-    async def ensure_chat_ready(self, model=None, **kwargs):
-        self.ensure_kwargs = kwargs
-        return False
+    async def ensure_chat_ready(self, model=None, **kwargs):  # pragma: no cover
+        raise AssertionError("status must not probe chat readiness")
 
 
 @pytest.mark.asyncio
-async def test_settings_status_reports_llm_connected_when_reachable_but_not_chat_ready(monkeypatch):
+async def test_settings_status_uses_cached_llm_readiness_without_probes(monkeypatch):
     from app.api.routes import settings as settings_routes
-    import app.core.ollama as ollama_module
 
-    fake_registry = _ReachableButNotChatReadyRegistry()
+    fake_registry = _PassiveCachedRegistry()
     monkeypatch.setattr(settings_routes, "ollama", fake_registry)
-    monkeypatch.setattr(ollama_module, "ollama", fake_registry)
     monkeypatch.setattr(
         settings_routes,
         "detect_runtime_freshness",
@@ -87,11 +106,9 @@ async def test_settings_status_reports_llm_connected_when_reachable_but_not_chat
     assert response["llm_readiness"] == {"reachable": True, "chat_ready": False}
     assert response["services"]["llm"] == "connected"
     assert response["status"] == "degraded"
-    assert fake_registry.ensure_kwargs["probe_lmstudio"] is False
-    assert fake_registry.ensure_kwargs["allow_model_load"] is False
-    assert fake_registry.ensure_kwargs["refresh_health"] is False
-    assert fake_registry.check_all_health_calls == 0
     assert response["runtime"]["frontend"]["stale"] is True
+    assert "provider" not in response
+    assert "config" not in response
 
 
 @pytest.mark.asyncio
@@ -119,14 +136,61 @@ async def test_strict_routing_toggle_updates_runtime_and_persists(auth_headers, 
 
 
 @pytest.mark.asyncio
-async def test_settings_status_requires_auth():
-    """Settings status requires authentication in team mode."""
+async def test_settings_status_is_public_but_redacted_in_team_mode():
+    """Settings status stays public for UI health checks but omits sensitive details."""
     await init_db()
     settings.team_mode = True
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         response = await ac.get("/api/settings/status")
-        assert response.status_code in (401, 200)
+        assert response.status_code == 200
+        body = response.json()
+        assert body["team_mode"] is True
+        assert "llm_readiness" in body
+        assert "provider" not in body
+        assert "config" not in body
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/api/settings/hardware",
+        "/api/settings/models",
+        "/api/settings/maintenance",
+        "/api/settings/integrations-status",
+        "/api/settings/vector-health",
+        "/api/settings/data-integrity",
+    ],
+)
+async def test_settings_infrastructure_metadata_requires_global_admin_in_team_mode(
+    path, researcher_headers
+):
+    await init_db()
+    settings.team_mode = True
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.get(path, headers=researcher_headers)
+        assert response.status_code == 403
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/api/settings/model?model_name=test-model",
+        "/api/settings/provider?provider=ollama",
+    ],
+)
+async def test_settings_llm_mutations_require_global_admin_in_team_mode(
+    path, researcher_headers
+):
+    await init_db()
+    settings.team_mode = True
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.post(path, headers=researcher_headers)
+        assert response.status_code == 403
 
 
 @pytest.mark.asyncio

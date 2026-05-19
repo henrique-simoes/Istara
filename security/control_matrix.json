@@ -49,6 +49,7 @@
         "backend/app/api/routes/surveys.py",
         "backend/app/api/routes/tasks.py",
         "backend/app/api/routes/llm_servers.py",
+        "backend/app/api/routes/settings.py",
         "backend/app/api/routes/webhooks.py",
         "backend/app/api/routes/autoresearch.py",
         "backend/app/api/routes/loops.py",
@@ -205,6 +206,7 @@
         "tests/test_context_hierarchy.py",
         "tests/test_backup.py",
         "tests/test_llm_servers.py",
+        "tests/test_settings.py",
         "tests/test_mcp*.py",
         "tests/test_surveys.py",
         "tests/test_tasks.py",
@@ -545,6 +547,7 @@
         "backend/app/api/routes/tasks.py",
         "backend/app/api/routes/compute.py",
         "backend/app/api/routes/llm_servers.py",
+        "backend/app/api/routes/settings.py",
         "frontend/src/components/common/SettingsView.tsx",
         "backend/app/api/routes/channels.py",
         "backend/app/api/routes/deployments.py",
@@ -629,6 +632,7 @@
         "tests/test_interfaces.py",
         "tests/test_project_scope_contracts.py",
         "tests/test_llm_servers.py",
+        "tests/test_settings.py",
         "tests/test_channel_inbound.py",
         "tests/test_channels.py",
         "tests/test_deployments.py",
@@ -649,7 +653,7 @@
         "tests/test_auth_security.py"
       ],
       "future_change_trigger": true,
-      "notes": "Global admin, project admin, researcher, viewer, legacy role mappings, active-project notification list/count/read-all/mark-read/delete scope, permission request list/review scope, websocket subscription, chat session/history scope, Context hierarchy prompt/list/by-id active-project scope, Context DAG session scope, memory/index scope, findings/evidence/search/report/codebook/code-review scope, task list/detail/mutation/Kanban scope, governed-evolution proposal/archive/reasoning scope, Meta-Hyperagent proposal/observation/variant scope, agent status/log/detail/learning/self-evolution/realtime/A2A-discovery, loop/background-process scope, project-owned Interfaces screens/briefs/status/configuration, integration/deployment/MCP-client list/detail/lifecycle routes, MCP client discovery/tool/call/health/delete routes, survey integration/link action routes, channel message/conversation detail scope, document library/preview routes, LLM server inventory/registration/health-check/discovery admin access, and donated-compute project scopes are governed. Project-facing APIs require an explicit active project, including notification list/count/read-all and by-id mark-read/delete actions for global admins, permission request queues/reviews for non-admin project surfaces, context document by-id routes, finding evidence-chain/link/delete by-id routes, codebook/code by-id routes, code-application review routes, and task by-id reads/mutations/review/lock/report routes; admin-only global aggregation belongs to dedicated admin surfaces. Notification persistence helpers fail closed for project-bound records without project scope, and system-wide notification-style websocket events are limited to global admins. Shared LLM provider inventory, registration, deletion, discovery, and manual health-check endpoints are not project-content lists, but they require global admin access before endpoint status, capabilities, or explicit probes are exposed. Realtime project event delivery rechecks project membership during fan-out, and browser websocket consumers reject project-bound events without the active project id. Deployment, channel, MCP client, A2A message service writes/mutations, task, context hierarchy, findings evidence, skill proposal, loop execution history/statistics, and external MCP server helpers also require explicit project scope so internal and external callers cannot fall back to global record ids. A2A and loop execution rows persist first-class project ids for new background writes and allow only active-project legacy fallback for older rows. Startup QA/simulation loops are opt-in; project task workers, schedule execution, orchestrator routing, skill execution/planning, skill proposal producers/governance registration, channel adapter startup/inbound processing, deployment activation/response dispatch, autoresearch, Meta-Hyperagent starts/applies, and persona self-evolution skip paused or missing project context before model, proposal, or mutation work."
+      "notes": "Global admin, project admin, researcher, viewer, legacy role mappings, active-project notification list/count/read-all/mark-read/delete scope, permission request list/review scope, websocket subscription, chat session/history scope, Context hierarchy prompt/list/by-id active-project scope, Context DAG session scope, memory/index scope, findings/evidence/search/report/codebook/code-review scope, task list/detail/mutation/Kanban scope, governed-evolution proposal/archive/reasoning scope, Meta-Hyperagent proposal/observation/variant scope, agent status/log/detail/learning/self-evolution/realtime/A2A-discovery, loop/background-process scope, project-owned Interfaces screens/briefs/status/configuration, integration/deployment/MCP-client list/detail/lifecycle routes, MCP client discovery/tool/call/health/delete routes, survey integration/link action routes, channel message/conversation detail scope, document library/preview routes, LLM server inventory/registration/health-check/discovery admin access, and donated-compute project scopes are governed. Project-facing APIs require an explicit active project, including notification list/count/read-all and by-id mark-read/delete actions for global admins, permission request queues/reviews for non-admin project surfaces, context document by-id routes, finding evidence-chain/link/delete by-id routes, codebook/code by-id routes, code-application review routes, and task by-id reads/mutations/review/lock/report routes; admin-only global aggregation belongs to dedicated admin surfaces. Notification persistence helpers fail closed for project-bound records without project scope, and system-wide notification-style websocket events are limited to global admins. Shared LLM provider inventory, registration, deletion, discovery, manual health-check, model/provider switch, hardware, integration, vector-health, maintenance, and data-integrity endpoints are not project-content lists, but they require global admin access before endpoint status, capabilities, infrastructure metadata, or explicit probes are exposed. Public settings status remains unauthenticated for UI health checks but is passive and redacted to backend, team-mode, routing flag, cached LLM reachability/readiness, and frontend freshness only. Realtime project event delivery rechecks project membership during fan-out, and browser websocket consumers reject project-bound events without the active project id. Deployment, channel, MCP client, A2A message service writes/mutations, task, context hierarchy, findings evidence, skill proposal, loop execution history/statistics, and external MCP server helpers also require explicit project scope so internal and external callers cannot fall back to global record ids. A2A and loop execution rows persist first-class project ids for new background writes and allow only active-project legacy fallback for older rows. Startup QA/simulation loops are opt-in; project task workers, schedule execution, orchestrator routing, skill execution/planning, skill proposal producers/governance registration, channel adapter startup/inbound processing, deployment activation/response dispatch, autoresearch, Meta-Hyperagent starts/applies, and persona self-evolution skip paused or missing project context before model, proposal, or mutation work."
     },
     {
       "id": "AUTHZ-002",

@@ -39,8 +39,11 @@ The LLM server inventory, registration, deletion, discovery, and manual
 health-check endpoints are global infrastructure surfaces rather than
 project-content lists. They require a global admin in team mode before exposing
 provider endpoint status, router health, capability metadata, or running
-explicit health/discovery probes. Local mode keeps the same developer behavior
-through the shared permission helper.
+explicit health/discovery probes. The legacy settings model inventory and
+model/provider switch routes follow the same global-admin boundary in team
+mode; public `/api/settings/status` is redacted and passive, so it does not
+leak provider or model identifiers. Local mode keeps the same developer
+behavior through the shared permission helper.
 
 ## Architecture Notes
 
