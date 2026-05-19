@@ -77,6 +77,10 @@ The following areas are always treated as ASVS Level 3 style surfaces even when 
 - MCP client/server tools, webhook ingress, channel integrations, WhatsApp/Telegram connectors, Interfaces Figma/Stitch configuration, and any public callback endpoint.
 - A2A JSON-RPC, loop/background process dashboards, autoresearch, skill evolution, Hyperagent/DGM-H proposals, Memento-style agent creation, ReasoningBank memories, rollback, and proposal approval.
 - Prompt-RAG, vector/RAG, BM25, LLMLingua-style compression, model routing, ensemble/consensus, telemetry, and audit logs where prompt or memory content may affect tool use.
+- Chat voice transcription uploads: callers must submit the active
+  `project_id`, the project must exist and be visible to the caller, and
+  researcher-level project access must be proven before uploaded audio bytes
+  are read or transcription/model-adjacent processing starts.
 
 Release hardening for these surfaces now includes exact replay rejection for
 webhook and A2A mutation ingress, optional upload scanner hooks, deterministic

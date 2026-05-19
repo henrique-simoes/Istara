@@ -1,5 +1,6 @@
 """Team-mode project RBAC tests."""
 
+from types import SimpleNamespace
 import uuid
 
 import pytest
@@ -427,18 +428,110 @@ async def test_chat_rejects_session_from_another_project():
 
 
 @pytest.mark.asyncio
-async def test_global_viewer_cannot_use_legacy_chat_voice_transcription_endpoint():
+async def test_chat_voice_transcription_requires_project_id_before_transcription(monkeypatch):
     await init_db()
+    calls: list[str] = []
+
+    monkeypatch.setattr(
+        "app.core.transcription.convert_audio_to_wav",
+        lambda path: calls.append("convert") or path,
+    )
+    monkeypatch.setattr(
+        "app.core.transcription.transcribe_audio",
+        lambda path, language=None: calls.append("transcribe") or SimpleNamespace(
+            text="should not run",
+            language="en",
+            confidence=1.0,
+            icr_kappa=1.0,
+            icr_confidence="high",
+            needs_review=False,
+            tags=[],
+        ),
+    )
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.post(
+        missing_scope = await ac.post(
             "/api/chat/voice",
-            headers=_headers(f"viewer-voice-{uuid.uuid4()}", "viewer", "viewer"),
+            headers=_headers(f"admin-voice-{uuid.uuid4()}", "admin", "admin"),
+            files={"audio": ("sample.ogg", b"not-a-real-audio-file", "audio/ogg")},
+        )
+        blank_scope = await ac.post(
+            "/api/chat/voice",
+            headers=_headers(f"admin-voice-{uuid.uuid4()}", "admin", "admin"),
+            data={"project_id": "   "},
             files={"audio": ("sample.ogg", b"not-a-real-audio-file", "audio/ogg")},
         )
 
-    assert response.status_code == 403
+    assert missing_scope.status_code == 422
+    assert blank_scope.status_code == 400
+    assert calls == []
+
+
+@pytest.mark.asyncio
+async def test_chat_voice_transcription_requires_project_researcher_role_before_audio_processing(monkeypatch):
+    await init_db()
+    project = await _seed_project(f"Voice Upload {uuid.uuid4()}")
+    hidden_project_id = str(uuid.uuid4())
+    viewer_id = f"viewer-voice-{uuid.uuid4()}"
+    researcher_id = f"researcher-voice-{uuid.uuid4()}"
+    outsider_id = f"outsider-voice-{uuid.uuid4()}"
+    await _seed_member(project.id, viewer_id, "viewer")
+    await _seed_member(project.id, researcher_id, "researcher")
+    calls: list[tuple[str, str | None]] = []
+
+    def fake_convert(path: str) -> str:
+        calls.append(("convert", None))
+        return path
+
+    def fake_transcribe(path: str, language: str | None = None) -> SimpleNamespace:
+        calls.append(("transcribe", language))
+        return SimpleNamespace(
+            text="Scoped voice note",
+            language=language or "en",
+            confidence=0.91,
+            icr_kappa=0.82,
+            icr_confidence="high",
+            needs_review=False,
+            tags=["usability"],
+        )
+
+    monkeypatch.setattr("app.core.transcription.convert_audio_to_wav", fake_convert)
+    monkeypatch.setattr("app.core.transcription.transcribe_audio", fake_transcribe)
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        viewer_response = await ac.post(
+            "/api/chat/voice",
+            headers=_headers(viewer_id, "viewer", "viewer"),
+            data={"project_id": project.id},
+            files={"audio": ("sample.ogg", b"not-a-real-audio-file", "audio/ogg")},
+        )
+        outsider_response = await ac.post(
+            "/api/chat/voice",
+            headers=_headers(outsider_id, "researcher", "researcher"),
+            data={"project_id": project.id},
+            files={"audio": ("sample.ogg", b"not-a-real-audio-file", "audio/ogg")},
+        )
+        hidden_response = await ac.post(
+            "/api/chat/voice",
+            headers=_headers(f"admin-voice-{uuid.uuid4()}", "admin", "admin"),
+            data={"project_id": hidden_project_id},
+            files={"audio": ("sample.ogg", b"not-a-real-audio-file", "audio/ogg")},
+        )
+        researcher_response = await ac.post(
+            "/api/chat/voice",
+            headers=_headers(researcher_id, "researcher", "researcher"),
+            data={"project_id": project.id, "language": "pt"},
+            files={"audio": ("sample.ogg", b"not-a-real-audio-file", "audio/ogg")},
+        )
+
+    assert viewer_response.status_code == 403
+    assert outsider_response.status_code == 404
+    assert hidden_response.status_code == 404
+    assert researcher_response.status_code == 200
+    assert calls == [("convert", None), ("transcribe", "pt")]
+    assert researcher_response.json()["text"] == "Scoped voice note"
 
 
 @pytest.mark.asyncio

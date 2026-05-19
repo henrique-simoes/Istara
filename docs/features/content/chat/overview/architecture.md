@@ -8,9 +8,9 @@ related_features: ["chat.sessions", "chat.model-controls", "chat.files", "chat.a
 related_glossary: ["rag", "mcp"]
 code_references: ["frontend/src/components/chat/ChatView.tsx", "frontend/src/stores/chatStore.ts", "frontend/src/stores/sessionStore.ts", "backend/app/api/routes/chat.py", "backend/app/api/routes/sessions.py"]
 api_references: ["backend/app/api/routes/chat.py", "backend/app/api/routes/sessions.py", "frontend/src/lib/chatApi.ts", "frontend/src/lib/sessionsApi.ts"]
-test_references: ["tests/test_chat.py", "tests/test_sessions.py", "tests/test_project_scope_contracts.py"]
+test_references: ["tests/test_chat.py", "tests/test_sessions.py", "tests/test_project_rbac.py", "tests/test_project_scope_contracts.py"]
 last_verified: 2026-05-19
-compass: CF-SPEC-84 / CF-1089
+compass: CF-SPEC-102 / CF-1295
 ---
 
 # Chat Workspace Architecture
@@ -48,6 +48,7 @@ Chat is the project-scoped conversational workspace for working with Istara agen
 - Session detail fetches include the active project id and the backend authorizes that project before loading the session and its messages.
 - Toolbar session updates carry the active project id so model, agent, preset, and thinking-mode changes cannot mutate a stale session from another project.
 - Chat session agent assignment is server-validated before create, update, or LLM prompt composition: project-owned agents must belong to the active project, inactive or foreign agents return 404, and universal system agents remain usable.
+- Voice transcription uploads must carry the active project id and pass project researcher authorization before Istara reads audio bytes or invokes transcription. Missing, blank, hidden, or viewer-only project claims fail before audio processing.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
 
@@ -61,6 +62,7 @@ Chat is the project-scoped conversational workspace for working with Istara agen
 
 - `tests/test_chat.py`
 - `tests/test_sessions.py`
+- `tests/test_project_rbac.py`
 - `tests/test_project_scope_contracts.py`
 
 ## Related Features
@@ -78,7 +80,7 @@ Chat is the project-scoped conversational workspace for working with Istara agen
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-84 / CF-1089
+- Spec/task: CF-SPEC-102 / CF-1295
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update

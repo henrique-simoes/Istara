@@ -282,9 +282,13 @@ def test_security_benchmark_detects_chat_session_project_scope_paths() -> None:
         "backend/app/api/routes/sessions.py",
         "frontend/src/components/chat/ChatSessionsSidebar.tsx",
         "frontend/src/components/chat/ChatView.tsx",
+        "frontend/src/components/interfaces/DesignChatTab.tsx",
         "frontend/src/components/memory/ContextDAGView.tsx",
+        "frontend/src/hooks/useVoiceRecorder.ts",
+        "frontend/src/lib/chatApi.ts",
         "frontend/src/lib/sessionsApi.ts",
         "frontend/src/stores/chatStore.ts",
+        "tests/test_project_rbac.py",
         "frontend/src/stores/sessionStore.ts",
         "tests/test_sessions.py",
     ]
