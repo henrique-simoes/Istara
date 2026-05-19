@@ -56,6 +56,21 @@ def test_security_benchmark_detects_compute_project_scope_paths() -> None:
     assert result.scorecard["triggered_paths"] == sorted(changed_paths)
 
 
+def test_security_benchmark_detects_llm_server_security_paths() -> None:
+    matrix = load_matrix(ROOT / "security" / "control_matrix.json")
+
+    changed_paths = [
+        "backend/app/api/routes/llm_servers.py",
+        "tests/test_llm_servers.py",
+        "tests/test_project_scope_contracts.py",
+    ]
+    result = evaluate_matrix(matrix, changed_paths=changed_paths)
+
+    assert result.passed is True
+    assert result.scorecard["auth_security_change_detected"] is True
+    assert result.scorecard["triggered_paths"] == sorted(changed_paths)
+
+
 def test_security_benchmark_detects_mcp_project_scope_paths() -> None:
     matrix = load_matrix(ROOT / "security" / "control_matrix.json")
 

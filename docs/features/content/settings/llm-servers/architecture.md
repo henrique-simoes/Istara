@@ -8,9 +8,9 @@ related_features: ["chat.model-controls", "settings.connection-strings"]
 related_glossary: ["rag"]
 code_references: ["frontend/src/components/common/SettingsView.tsx", "frontend/src/lib/modelProviders.ts", "backend/app/api/routes/llm_servers.py"]
 api_references: ["backend/app/api/routes/llm_servers.py"]
-test_references: ["frontend/src/lib/modelProviders.test.ts"]
-last_verified: 2026-05-15
-compass: CF-SPEC-53 / CF-657
+test_references: ["frontend/src/lib/modelProviders.test.ts", "tests/test_llm_servers.py", "tests/test_project_scope_contracts.py"]
+last_verified: 2026-05-19
+compass: CF-SPEC-77 / CF-986
 ---
 
 # LLM Server Settings Architecture
@@ -35,6 +35,12 @@ Settings manages configured LLM providers, server endpoints, provider labels, an
 
 - `backend/app/api/routes/llm_servers.py`
 
+The LLM server inventory and manual health-check endpoints are global
+infrastructure surfaces rather than project-content lists. They still require an
+authenticated global role in team mode before exposing provider endpoint status,
+router health, capability metadata, or running an explicit health probe. Local
+mode keeps the same developer behavior through the shared permission helper.
+
 ## Architecture Notes
 
 - The feature is mounted through `frontend/src/components/common/SettingsView.tsx` and the UI navigation path recorded in the inventory.
@@ -48,6 +54,8 @@ Settings manages configured LLM providers, server endpoints, provider labels, an
 ## Tests And Verification
 
 - `frontend/src/lib/modelProviders.test.ts`
+- `tests/test_llm_servers.py`
+- `tests/test_project_scope_contracts.py`
 
 ## Related Features
 
@@ -60,7 +68,7 @@ Settings manages configured LLM providers, server endpoints, provider labels, an
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-53 / CF-657
+- Spec/task: CF-SPEC-77 / CF-986
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update

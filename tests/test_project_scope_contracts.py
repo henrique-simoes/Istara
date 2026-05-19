@@ -577,6 +577,23 @@ def test_compute_pool_requires_active_project_scope() -> None:
     assert "compute_registry.get_stats(project_id=None)" in admin_route
 
 
+def test_llm_server_inventory_and_health_checks_require_authenticated_global_access() -> None:
+    route = read_repo("backend/app/api/routes/llm_servers.py")
+
+    assert (
+        'async def list_llm_servers(request: Request, db: AsyncSession = Depends(get_db)):\n'
+        '    """List all registered LLM servers."""\n'
+        '    require_global_role(request, "viewer")'
+    ) in route
+    assert (
+        "async def health_check_server(\n"
+        "    server_id: str, request: Request, db: AsyncSession = Depends(get_db)\n"
+        "):\n"
+        '    """Run a health check on a specific LLM server."""\n'
+        '    require_global_role(request, "viewer")'
+    ) in route
+
+
 def test_autoresearch_project_surfaces_require_active_project_scope() -> None:
     api = read_repo("frontend/src/lib/api.ts")
     store = read_repo("frontend/src/stores/autoresearchStore.ts")

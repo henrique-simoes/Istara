@@ -85,6 +85,11 @@ auth-origin validation, MCP/LLM endpoint URL validation, prompt-sanitized and
 project-owned MCP client descriptors, untrusted ReasoningBank retrieval wrapping, and backup
 exclusion of secret-like files plus protected local `LLMs/` and
 `Model_Finetuning/` artifact folders.
+Global LLM server inventory and manual health-check endpoints are shared
+infrastructure surfaces, not project-content lists, but they are still
+security-sensitive: team-mode callers must be authenticated before provider
+endpoint status, capability metadata, router health, or explicit health probes
+are exposed.
 Loop health, schedule, agent-loop, and execution-history views are treated as
 project-content surfaces: non-admin users must supply an authorized active
 project before seeing background process state or mutating recurring work.

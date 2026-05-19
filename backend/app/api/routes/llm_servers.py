@@ -79,8 +79,9 @@ async def _register_and_probe_server(server: LLMServer) -> tuple[object, bool]:
 
 
 @router.get("/llm-servers")
-async def list_llm_servers(db: AsyncSession = Depends(get_db)):
+async def list_llm_servers(request: Request, db: AsyncSession = Depends(get_db)):
     """List all registered LLM servers."""
+    require_global_role(request, "viewer")
     result = await db.execute(select(LLMServer).order_by(LLMServer.priority))
     servers = result.scalars().all()
 
@@ -175,8 +176,11 @@ async def add_llm_server(
 
 
 @router.post("/llm-servers/{server_id}/health-check")
-async def health_check_server(server_id: str, db: AsyncSession = Depends(get_db)):
+async def health_check_server(
+    server_id: str, request: Request, db: AsyncSession = Depends(get_db)
+):
     """Run a health check on a specific LLM server."""
+    require_global_role(request, "viewer")
     result = await db.execute(select(LLMServer).where(LLMServer.id == server_id))
     server = result.scalar_one_or_none()
     if not server:
