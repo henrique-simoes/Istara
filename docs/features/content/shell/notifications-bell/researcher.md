@@ -10,7 +10,7 @@ code_references: ["frontend/src/components/layout/Sidebar.tsx", "frontend/src/ho
 api_references: ["backend/app/api/routes/notifications.py", "backend/app/api/websocket.py"]
 test_references: ["tests/test_notifications.py", "tests/test_project_scope_contracts.py", "tests/test_websocket.py"]
 last_verified: 2026-05-19
-compass: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-754; CF-SPEC-60 / CF-759; CF-SPEC-60 / CF-776
+compass: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-754; CF-SPEC-60 / CF-759; CF-SPEC-60 / CF-776; CF-SPEC-71 / CF-913
 ---
 
 # Notification Bell
@@ -47,7 +47,7 @@ Notification Bell exists so the work represented by Shell > Notifications Bell h
 ## Inputs, Outputs, And Expected Outcomes
 
 - Project-scoped state or artifact updates associated with notification bell.
-- Project scope is mandatory for non-admin notification lists, unread counts, and mark-all-read actions.
+- Project scope is mandatory for notification lists, unread counts, and mark-all-read actions for every role, including admins using project-facing notification surfaces.
 - Project-tagged websocket events must carry or resolve to a project before they can be delivered to project-connected clients.
 - Project-bound realtime events that cannot be resolved to a project are not shown as global notifications.
 - Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.
