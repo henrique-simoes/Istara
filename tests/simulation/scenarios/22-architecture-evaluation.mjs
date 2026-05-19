@@ -12,6 +12,7 @@ export async function run(ctx) {
   const checks = [];
   const evalProjectId = typeof ctx.projectId === "string" ? ctx.projectId.trim() : "";
   const projectQuery = evalProjectId ? `project_id=${encodeURIComponent(evalProjectId)}` : "";
+  const scopedSkipDetail = "[skipped] No active project id; scoped endpoint not called";
 
   async function safeCheck(checkName, fn) {
     try {
@@ -634,8 +635,12 @@ export async function run(ctx) {
   // ═══════════════════════════════════════════════════════════════════
 
   await safeCheck("[Scheduler] Endpoint responds", async () => {
+    if (!evalProjectId) {
+      return { name: "[Scheduler] Endpoint responds", passed: true, detail: scopedSkipDetail };
+    }
+
     try {
-      const res = await fetch("http://localhost:8000/api/schedules", { headers: api._headers() });
+      const res = await fetch(`http://localhost:8000/api/schedules?${projectQuery}`, { headers: api._headers() });
       return {
         name: "[Scheduler] Endpoint responds",
         passed: res.status === 200,

@@ -8,9 +8,9 @@ related_features: ["loops.overview", "loops.history"]
 related_glossary: ["a2a"]
 code_references: ["frontend/src/components/loops/SchedulesTab.tsx", "frontend/src/components/loops/CronBuilder.tsx", "backend/app/api/routes/scheduler.py", "backend/app/core/scheduler.py", "backend/app/services/loop_execution_service.py", "backend/app/models/loop_execution.py"]
 api_references: ["backend/app/api/routes/scheduler.py", "backend/app/api/routes/loops.py"]
-test_references: ["tests/test_loops.py", "tests/test_project_scope_contracts.py", "tests/test_simulation_project_scope_contracts.py", "tests/simulation/scenarios/49-loops-schedule.mjs"]
+test_references: ["tests/test_loops.py", "tests/test_project_scope_contracts.py", "tests/test_simulation_project_scope_contracts.py", "tests/simulation/scenarios/01-health-check.mjs", "tests/simulation/scenarios/22-architecture-evaluation.mjs", "tests/simulation/scenarios/30-event-wiring-audit.mjs", "tests/simulation/scenarios/49-loops-schedule.mjs"]
 last_verified: 2026-05-19
-compass: CF-SPEC-61 / CF-779; CF-SPEC-68 / CF-870; CF-SPEC-97 / CF-1237; CF-SPEC-107 / CF-1351
+compass: CF-SPEC-61 / CF-779; CF-SPEC-68 / CF-870; CF-SPEC-97 / CF-1237; CF-SPEC-107 / CF-1351; CF-SPEC-108 / CF-1365
 ---
 
 # Loop Schedules Architecture
@@ -44,6 +44,7 @@ Schedules configure recurring loop timing, including cron-style recurrence contr
 - The scheduler selects due work only for non-paused projects and treats missing project ownership as a permanent schedule error instead of executing against a dangling project id.
 - Scheduler execution records persist the schedule's project id before they appear in loop history or loop statistics.
 - Simulation scenario 49 creates, lists, verifies, and deletes test schedules with the active simulation `project_id`; when no active project id exists, it records scoped skips instead of hitting schedule endpoints globally.
+- Simulation scheduler smoke and architecture/event-wiring audit probes in scenarios 01, 22, and 30 also pass the active simulation `project_id`; when no active project id exists, they record scoped skips instead of probing `/api/schedules` globally.
 
 ## Architecture Notes
 
@@ -62,6 +63,9 @@ Schedules configure recurring loop timing, including cron-style recurrence contr
 - `tests/test_loops.py`
 - `tests/test_project_scope_contracts.py`
 - `tests/test_simulation_project_scope_contracts.py`
+- `tests/simulation/scenarios/01-health-check.mjs`
+- `tests/simulation/scenarios/22-architecture-evaluation.mjs`
+- `tests/simulation/scenarios/30-event-wiring-audit.mjs`
 - `tests/simulation/scenarios/49-loops-schedule.mjs`
 
 ## Related Features
@@ -75,7 +79,7 @@ Schedules configure recurring loop timing, including cron-style recurrence contr
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-61 / CF-779; CF-SPEC-68 / CF-870; CF-SPEC-97 / CF-1237; CF-SPEC-107 / CF-1351
+- Spec/task: CF-SPEC-61 / CF-779; CF-SPEC-68 / CF-870; CF-SPEC-97 / CF-1237; CF-SPEC-107 / CF-1351; CF-SPEC-108 / CF-1365
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update
