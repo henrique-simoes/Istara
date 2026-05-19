@@ -241,7 +241,7 @@
   <p class="concept-line"><strong>Concepts:</strong> compass-forge</p>
 </header>
 <h2 id="implementation-summary">Implementation Summary</h2>
-<p>Project Settings configure project-specific metadata and operational preferences separate from global system settings. Pausing a project is an execution boundary: agent pickers, direct execution, sub-agent workers, schedules, and watched-folder ingestion defer work for paused projects instead of reaching LLM, embedding, or skill-improvement paths.</p>
+<p>Project Settings configure project-specific metadata and operational preferences separate from global system settings. Pausing a project is an execution boundary: agent pickers, direct execution, sub-agent workers, schedules, and watched-folder ingestion defer work for paused projects instead of reaching LLM, embedding, or skill-improvement paths. Project-admin permission request queues and review actions are also active-project-bound, so stale request ids from another project cannot be reviewed from the current project&#x27;s settings.</p>
 <h2 id="frontend-surface">Frontend Surface</h2>
 <ul>
 <li><code>frontend/src/components/settings/ProjectSettingsView.tsx</code></li>
@@ -261,6 +261,7 @@
 <li>The feature is mounted through <code>frontend/src/components/settings/ProjectSettingsView.tsx</code> and the UI navigation path recorded in the inventory.</li>
 <li>Paused projects may still keep backlog tasks, scheduled tasks, and watched-folder configuration, but those surfaces must not dispatch work until the project is unpaused.</li>
 <li>Paused projects also block project-content skill execution/planning, autoresearch runs, self-evolution scans/promotions, Meta-Hyperagent starts/applies, loop resume, and schedule creation or re-enable paths.</li>
+<li>Project Settings lists pending permission requests with <code>project_id=activeProjectId</code> and sends the same active project id when approving or rejecting, while the backend resolves request ids by both request id and project id before authorization or mutation.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>
@@ -277,6 +278,8 @@
 <li><code>tests/test_meta_hyperagent.py</code></li>
 <li><code>tests/test_skills.py</code></li>
 <li><code>tests/test_file_watcher_config.py</code></li>
+<li><code>tests/test_project_rbac.py</code></li>
+<li><code>tests/test_project_scope_contracts.py</code></li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>
@@ -289,7 +292,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-55 / CF-684</li>
+<li>Spec/task: CF-SPEC-55 / CF-684; CF-SPEC-72 / CF-927</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>

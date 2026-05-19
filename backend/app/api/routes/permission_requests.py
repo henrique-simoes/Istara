@@ -52,6 +52,30 @@ async def _get_permission_request(db: AsyncSession, request_id: str) -> Permissi
     return item
 
 
+async def _get_project_permission_request(
+    db: AsyncSession,
+    request_id: str,
+    project_id: str,
+) -> PermissionRequest:
+    result = await db.execute(
+        select(PermissionRequest).where(
+            PermissionRequest.id == request_id,
+            PermissionRequest.project_id == project_id,
+        )
+    )
+    item = result.scalar_one_or_none()
+    if not item:
+        raise HTTPException(status_code=404, detail="Permission request not found")
+    return item
+
+
+def _require_project_id(project_id: str | None) -> str:
+    scoped_project_id = (project_id or "").strip()
+    if not scoped_project_id:
+        raise HTTPException(status_code=400, detail="project_id is required")
+    return scoped_project_id
+
+
 @router.post("/permission-requests", status_code=201)
 async def create_permission_request(
     data: PermissionRequestCreate,
@@ -59,10 +83,11 @@ async def create_permission_request(
     db: AsyncSession = Depends(get_db),
 ):
     """Create a project-admin approval request for a gated action."""
+    scoped_project_id = _require_project_id(data.project_id)
     subject = await require_project_access(
         db,
         request,
-        data.project_id,
+        scoped_project_id,
         min_role="viewer",
         conceal_unrelated=True,
     )
@@ -71,7 +96,7 @@ async def create_permission_request(
     history = [_history_event(subject.id, subject.username, "created")]
     item = PermissionRequest(
         id=str(uuid.uuid4()),
-        project_id=data.project_id.strip(),
+        project_id=scoped_project_id,
         requester_user_id=subject.id,
         requester_username=subject.username,
         action=data.action.strip(),
@@ -117,21 +142,20 @@ async def list_permission_requests(
     if status:
         query = query.where(PermissionRequest.status == status)
 
-    if project_id:
+    scoped_project_id = (project_id or "").strip()
+    if scoped_project_id:
         if is_global_admin(subject):
             pass
         elif mine:
-            await require_project_access(db, request, project_id, min_role="viewer")
+            await require_project_access(db, request, scoped_project_id, min_role="viewer")
             query = query.where(PermissionRequest.requester_user_id == subject.id)
         else:
-            await require_project_access(db, request, project_id, min_role="project_admin")
-        query = query.where(PermissionRequest.project_id == project_id)
+            await require_project_access(db, request, scoped_project_id, min_role="project_admin")
+        query = query.where(PermissionRequest.project_id == scoped_project_id)
     elif is_global_admin(subject):
         pass
-    elif mine:
-        query = query.where(PermissionRequest.requester_user_id == subject.id)
     else:
-        raise HTTPException(status_code=400, detail="project_id or mine=true is required")
+        raise HTTPException(status_code=400, detail="project_id is required")
 
     result = await db.execute(query.limit(min(max(limit, 1), 250)).offset(max(offset, 0)))
     items = result.scalars().all()
@@ -143,17 +167,25 @@ async def review_permission_request(
     request_id: str,
     data: PermissionRequestReview,
     request: Request,
+    project_id: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     """Approve or reject a permission request."""
-    item = await _get_permission_request(db, request_id)
-    subject = await require_project_access(
-        db,
-        request,
-        item.project_id,
-        min_role="project_admin",
-        conceal_unrelated=True,
-    )
+    subject = get_subject(request)
+    scoped_project_id = (project_id or "").strip()
+    if scoped_project_id:
+        item = await _get_project_permission_request(db, request_id, scoped_project_id)
+        subject = await require_project_access(
+            db,
+            request,
+            scoped_project_id,
+            min_role="project_admin",
+            conceal_unrelated=True,
+        )
+    elif is_global_admin(subject):
+        item = await _get_permission_request(db, request_id)
+    else:
+        raise HTTPException(status_code=400, detail="project_id is required")
     item.status = data.status
     item.reviewer_user_id = subject.id
     item.reviewer_username = subject.username

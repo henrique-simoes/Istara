@@ -241,7 +241,7 @@
   <p class="concept-line"><strong>Concepts:</strong> compass-forge</p>
 </header>
 <h2 id="what-it-does">What It Does</h2>
-<p>Project Settings configure project-specific metadata and operational preferences separate from global system settings.</p>
+<p>Project Settings configure project-specific metadata and operational preferences separate from global system settings. Permission requests shown here belong to the active project only.</p>
 <h2 id="why-it-exists">Why It Exists</h2>
 <p>Project Settings exists so the work represented by Project Settings has a stable, discoverable place in Istara&#x27;s project workflow. It keeps user actions, generated artifacts, and related follow-up surfaces connected to the active project rather than scattering them across unrelated tools.</p>
 <h2 id="where-it-lives">Where It Lives</h2>
@@ -259,6 +259,7 @@
 <h2 id="supported-workflows">Supported Workflows</h2>
 <ul>
 <li>Start from Project Settings when the current research task needs project settings.</li>
+<li>Project admins can review only the permission requests for the active project shown in this settings view.</li>
 <li>Use the visible controls to create, inspect, refine, or route project work without leaving the active Istara context.</li>
 <li>Move to related surfaces when needed: shell.projects, settings.general.</li>
 </ul>
@@ -285,7 +286,7 @@
 <ul>
 <li>Source files: <code>frontend/src/components/settings/ProjectSettingsView.tsx</code>, <code>backend/app/api/routes/projects.py</code></li>
 <li>API references: <code>backend/app/api/routes/projects.py</code></li>
-<li>Tests: none recorded</li>
+<li>Tests: <code>tests/test_project_rbac.py</code>, <code>tests/test_project_scope_contracts.py</code></li>
 </ul>
         </article>
         <aside class="toc-panel" aria-label="Page sections">

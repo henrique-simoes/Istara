@@ -6,18 +6,18 @@ audience: architecture
 status: documented
 related_features: ["settings.users", "settings.connection-strings", "compute.pool"]
 related_glossary: ["wcag"]
-code_references: ["frontend/src/components/admin/AdminDashboard.tsx", "backend/app/api/routes/admin.py", "backend/app/core/compute_registry_invocation.py"]
-api_references: ["backend/app/api/routes/admin.py"]
+code_references: ["frontend/src/components/admin/AdminDashboard.tsx", "backend/app/api/routes/admin.py", "backend/app/api/routes/permission_requests.py", "backend/app/core/compute_registry_invocation.py"]
+api_references: ["backend/app/api/routes/admin.py", "backend/app/api/routes/permission_requests.py"]
 test_references: ["tests/test_project_rbac.py", "tests/test_compute.py", "tests/test_project_scope_contracts.py"]
 last_verified: 2026-05-19
-compass: CF-SPEC-60 / CF-754; CF-SPEC-63 / CF-815
+compass: CF-SPEC-60 / CF-754; CF-SPEC-63 / CF-815; CF-SPEC-72 / CF-927
 ---
 
 # Admin Dashboard Architecture
 
 ## Implementation Summary
 
-The Admin dashboard provides administrator-only operational controls and visibility. Core sections load independently so a secondary endpoint failure, such as permission requests, does not blank Users, Projects, Access, or Connection Strings. Admin is the explicit global aggregation exception, but global compute capacity comes from `/api/admin/compute/stats` after `require_global_admin`; project-facing Compute Pool routes still require an active `project_id`. Compute donation strings generated here still require a selected project scope.
+The Admin dashboard provides administrator-only operational controls and visibility. Core sections load independently so a secondary endpoint failure, such as permission requests, does not blank Users, Projects, Access, or Connection Strings. Admin is the explicit global aggregation exception, but global compute capacity comes from `/api/admin/compute/stats` after `require_global_admin`; project-facing Compute Pool routes still require an active `project_id`. Compute donation strings generated here still require a selected project scope. The dashboard's pending permission request queue is also an explicit global-admin exception; project-facing request queues and reviews remain active-project-bound.
 
 ## Frontend Surface
 
@@ -40,6 +40,7 @@ The Admin dashboard provides administrator-only operational controls and visibil
 - The dashboard should prefer partial data with an explicit section error over all-or-nothing loading.
 - The dashboard loads compute capacity through the admin-only aggregate endpoint instead of reusing project-facing `/api/compute/*` routes.
 - The dashboard's donation-string action sends `allowed_project_ids` for the chosen project so donated compute does not become a global content processor.
+- The dashboard may list and review pending permission requests without `project_id` only because the route checks global admin status; Project Settings must pass the active project id for the same permission-request APIs.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
 
@@ -65,7 +66,7 @@ The Admin dashboard provides administrator-only operational controls and visibil
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-60 / CF-754; CF-SPEC-63 / CF-815
+- Spec/task: CF-SPEC-60 / CF-754; CF-SPEC-63 / CF-815; CF-SPEC-72 / CF-927
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update

@@ -956,8 +956,10 @@ export const permissionRequests = {
     details?: string;
     payload_summary?: string;
   }) => post<PermissionRequestItem>("/api/permission-requests", data),
-  review: (id: string, data: { status: "approved" | "rejected"; review_note?: string }) =>
-    patch<PermissionRequestItem>(`/api/permission-requests/${id}`, data),
+  review: (id: string, data: { status: "approved" | "rejected"; review_note?: string }, projectId?: string) => {
+    const suffix = projectId ? `?project_id=${encodeURIComponent(projectId)}` : "";
+    return patch<PermissionRequestItem>(`/api/permission-requests/${id}${suffix}`, data);
+  },
 };
 
 // --- MCP ---
