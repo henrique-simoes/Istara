@@ -53,6 +53,7 @@ from app.api.routes import connections as connection_routes
 from app.api.routes import (
     context_dag as context_dag_routes,
 )
+from app.api.routes import context_hierarchy as context_hierarchy_routes
 from app.api.routes import deployments as deployment_routes
 from app.api.routes import dgmh_archive as dgmh_archive_routes
 from app.api.routes import improvement_governance as improvement_governance_routes
@@ -790,6 +791,7 @@ app.include_router(settings.router, prefix="/api", tags=["Settings"])
 app.include_router(audit.router, prefix="/api", tags=["Audit"])
 app.include_router(skills.router, prefix="/api", tags=["Skills"])
 app.include_router(agents.router, prefix="/api", tags=["Agents"])
+app.include_router(context_hierarchy_routes.router, prefix="/api", tags=["Context"])
 app.include_router(metrics.router, prefix="/api", tags=["Metrics"])
 app.include_router(scheduler_routes.router, prefix="/api", tags=["Schedules"])
 app.include_router(channels.router, prefix="/api", tags=["Channels"])

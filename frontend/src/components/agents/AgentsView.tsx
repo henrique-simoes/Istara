@@ -39,14 +39,24 @@ import CreateAgentWizard from "./CreateAgentWizard";
 // ─── Recent Errors ───
 
 function RecentErrors({ agentId }: { agentId: string }) {
+  const { activeProjectId } = useProjectStore();
   const [errors, setErrors] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [fetched, setFetched] = useState(false);
 
   useEffect(() => {
+    setFetched(false);
+  }, [agentId, activeProjectId]);
+
+  useEffect(() => {
     if (fetched) return;
+    if (!activeProjectId) {
+      setErrors([]);
+      setFetched(true);
+      return;
+    }
     setLoading(true);
-    agentsApi.recentLog(agentId, 5)
+    agentsApi.recentLog(agentId, 5, activeProjectId)
       .then((data) => {
         setErrors(data.log || data.entries || data.logs || []);
       })
@@ -57,7 +67,7 @@ function RecentErrors({ agentId }: { agentId: string }) {
         setLoading(false);
         setFetched(true);
       });
-  }, [agentId, fetched]);
+  }, [activeProjectId, agentId, fetched]);
 
   return (
     <div>
@@ -122,9 +132,9 @@ function AgentDetail({ agent }: { agent: Agent }) {
 
   // Fetch identity files when the identity tab is opened
   useEffect(() => {
-    if (tab !== "identity" || identityFetched) return;
+    if (tab !== "identity" || identityFetched || !activeProjectId) return;
     setIdentityLoading(true);
-    agentsApi.getIdentity(agent.id)
+    agentsApi.getIdentity(agent.id, activeProjectId)
       .then((data) => {
         setIdentityFiles(data.files || {});
       })
@@ -135,7 +145,7 @@ function AgentDetail({ agent }: { agent: Agent }) {
         setIdentityLoading(false);
         setIdentityFetched(true);
       });
-  }, [tab, identityFetched, agent.id]);
+  }, [tab, identityFetched, activeProjectId, agent.id]);
 
   // Fetch RAG-stored agent notes when the memory tab is opened
   useEffect(() => {

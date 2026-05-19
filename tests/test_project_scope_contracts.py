@@ -153,6 +153,34 @@ def test_agents_a2a_project_view_passes_active_project_id() -> None:
     assert "messages = await a2a.get_full_log(db, limit, project_id=project_id)" in route
 
 
+def test_agent_detail_status_and_log_routes_require_active_project_scope() -> None:
+    view = read_repo("frontend/src/components/agents/AgentsView.tsx")
+    visuals = read_repo("frontend/src/components/agents/AgentVisuals.tsx")
+    api = read_repo("frontend/src/lib/api.ts")
+    route = read_repo("backend/app/api/routes/agents.py")
+    scope = read_repo("backend/app/api/agent_project_scope.py")
+
+    assert "async def require_agent_project_access" in scope
+    assert 'raise HTTPException(status_code=400, detail="project_id is required")' in scope
+    assert "await require_agent_project_access(" in scope
+    assert "def redact_global_agent_state_for_project_view" in scope
+    assert 'redacted["memory"] = {}' in scope
+    assert 'redacted["current_task"] = ""' in scope
+    assert "await require_agent_by_id(db, request, agent_id, project_id=project_id)" in route
+    assert "async def get_orchestrator_status(request: Request)" in route
+    assert "require_admin_from_request(request)" in route
+
+    assert "recentLog: (agentId?: string, limit = 50, projectId?: string | null)" in api
+    assert "getIdentity: (id: string, projectId?: string | null)" in api
+    assert "avatarUrl: (id: string, projectId?: string | null)" in api
+    assert "heartbeat: (projectId?: string | null)" in api
+    assert "messages: (id: string, projectId: string, limit = 50)" in api
+
+    assert "agentsApi.recentLog(agentId, 5, activeProjectId)" in view
+    assert "agentsApi.getIdentity(agent.id, activeProjectId)" in view
+    assert "agentsApi.avatarUrl(agent.id, activeProjectId)" in visuals
+
+
 def test_loops_views_and_api_require_active_project_scope() -> None:
     loops_view = read_repo("frontend/src/components/loops/LoopsView.tsx")
     overview_tab = read_repo("frontend/src/components/loops/LoopOverviewTab.tsx")

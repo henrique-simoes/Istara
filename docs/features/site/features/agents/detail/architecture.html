@@ -261,6 +261,9 @@
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
 <li>The feature is mounted through <code>frontend/src/components/agents/AgentsView.tsx</code> and the UI navigation path recorded in the inventory.</li>
+<li>Shared detail access policy lives in <code>backend/app/api/agent_project_scope.py</code>, with the route layer passing active project ids from <code>frontend/src/lib/api.ts</code>.</li>
+<li>Detail, identity, prompt diagnostic, learning, and memory reads must include the active project for non-admin users. The backend verifies that project-scoped agents belong to that project before returning agent data.</li>
+<li>Universal agent runtime memory is not exposed in project detail panels for non-admin users; project-specific notes should be read through the project-scoped memory APIs.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>
@@ -270,7 +273,7 @@
 </ul>
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>
-<li>No focused test reference recorded yet.</li>
+<li><code>tests/test_agents.py</code> verifies active-project guards for detail, identity, memory, recent logs, promotion requests, and A2A messages.</li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>

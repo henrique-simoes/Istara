@@ -2,6 +2,7 @@ import Image from "next/image";
 
 import { agents as agentsApi } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { useProjectStore } from "@/stores/projectStore";
 import type { Agent, HeartbeatStatus } from "@/lib/types";
 
 export function HeartbeatDot({
@@ -39,6 +40,7 @@ export function HeartbeatDot({
 }
 
 export function AgentAvatar({ agent, size = "md" }: { agent: Agent; size?: "sm" | "md" | "lg" }) {
+  const { activeProjectId } = useProjectStore();
   const sizeClasses = { sm: "w-8 h-8 text-xs", md: "w-10 h-10 text-sm", lg: "w-14 h-14 text-lg" };
   const initial = agent.name.charAt(0).toUpperCase();
   const bgColors = [
@@ -57,7 +59,7 @@ export function AgentAvatar({ agent, size = "md" }: { agent: Agent; size?: "sm" 
     const pixelSize = size === "lg" ? 56 : size === "md" ? 40 : 32;
     return (
       <Image
-        src={agentsApi.avatarUrl(agent.id)}
+        src={agentsApi.avatarUrl(agent.id, activeProjectId)}
         alt={agent.name}
         width={pixelSize}
         height={pixelSize}

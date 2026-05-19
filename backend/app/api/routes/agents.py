@@ -26,10 +26,17 @@ from app.agents.ux_eval_agent import ux_eval_agent
 from app.agents.user_sim_agent import user_sim_agent
 from app.config import settings
 from app.core.improvement_governance import improvement_governance
-from app.core.permissions import get_subject, is_global_admin, require_project_access
-from app.core.resource_governor import governor
+from app.core.permissions import require_project_access
 from app.core.security_middleware import require_admin_from_request
-from app.core.context_hierarchy import context_hierarchy, ContextDocument
+from app.api.agent_project_scope import (
+    agent_project_id,
+    filter_agent_dicts_for_project,
+    filter_work_log,
+    is_team_non_admin,
+    redact_global_agent_state_for_project_view,
+    require_agent_by_id,
+    require_agent_collection_scope,
+)
 from app.models.database import get_db
 from app.services import agent_service, a2a
 
@@ -89,19 +96,6 @@ def _resolve_avatar_path(avatar_path: str) -> Path:
     return resolved
 
 
-async def _require_context_access(
-    db: AsyncSession,
-    request: Request,
-    doc: ContextDocument,
-    *,
-    min_role: str = "viewer",
-) -> None:
-    if doc.project_id:
-        await require_project_access(db, request, doc.project_id, min_role=min_role)
-        return
-    require_admin_from_request(request)
-
-
 # ───── Agent CRUD ─────
 
 
@@ -131,21 +125,9 @@ async def list_agents(
 ):
     """List agents — universal agents are always included, project-scoped
     agents are filtered to the given project_id."""
-    subject = get_subject(request)
-    if project_id:
-        await require_project_access(db, request, project_id, min_role="viewer")
-    elif settings.team_mode and not is_global_admin(subject):
-        raise HTTPException(status_code=400, detail="project_id is required")
-
+    scoped_project_id = await require_agent_collection_scope(db, request, project_id)
     agents = await agent_service.list_agents(db, include_system)
-    if project_id:
-        # Show universal agents + agents scoped to this project
-        agents = [
-            a for a in agents
-            if a.get("scope", "universal") == "universal"
-            or a.get("project_id") == project_id
-        ]
-    return {"agents": agents}
+    return {"agents": filter_agent_dicts_for_project(agents, scoped_project_id, request)}
 
 
 @router.get("/agents/capacity")
@@ -155,9 +137,15 @@ async def check_capacity():
 
 
 @router.get("/agents/heartbeat/status")
-async def heartbeat_status(db: AsyncSession = Depends(get_db)):
-    """Get heartbeat status for all agents."""
+async def heartbeat_status(
+    request: Request,
+    project_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
+    """Get heartbeat status for agents visible in one project, or all for admins."""
+    scoped_project_id = await require_agent_collection_scope(db, request, project_id)
     agents = await agent_service.list_agents(db)
+    agents = filter_agent_dicts_for_project(agents, scoped_project_id, request)
     return {
         "agents": [
             {
@@ -186,18 +174,33 @@ async def get_a2a_log(
 
 
 @router.get("/agents/status")
-async def get_orchestrator_status():
+async def get_orchestrator_status(request: Request):
     """Get full orchestrator status."""
+    require_admin_from_request(request)
     return meta_orchestrator.get_status()
 
 
 @router.get("/agents/log/recent")
-async def get_agent_log(agent_id: str | None = None, limit: int = 50):
+async def get_agent_log(
+    request: Request,
+    agent_id: str | None = None,
+    limit: int = 50,
+    project_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
     limit = max(1, min(limit, 100))
+    scoped_project_id = await require_agent_collection_scope(db, request, project_id)
+    if agent_id and (scoped_project_id or is_team_non_admin(request)):
+        await require_agent_by_id(db, request, agent_id, project_id=scoped_project_id)
     log = meta_orchestrator.get_work_log(limit=limit)
-    if agent_id:
-        log = [entry for entry in log if entry.get("agent_id") == agent_id]
-    return {"log": log[-limit:]}
+    return {
+        "log": filter_work_log(
+            log,
+            project_id=scoped_project_id,
+            agent_id=agent_id,
+            limit=limit,
+        )
+    }
 
 
 @router.post("/agents", status_code=201)
@@ -255,12 +258,15 @@ async def create_agent(
 
 
 @router.get("/agents/{agent_id}")
-async def get_agent(agent_id: str, db: AsyncSession = Depends(get_db)):
+async def get_agent(
+    agent_id: str,
+    request: Request,
+    project_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
     """Get a specific agent's full details."""
-    agent = await agent_service.get_agent(db, agent_id)
-    if not agent:
-        raise HTTPException(status_code=404, detail="Agent not found")
-    return agent
+    agent = await require_agent_by_id(db, request, agent_id, project_id=project_id)
+    return redact_global_agent_state_for_project_view(agent.to_dict(), request)
 
 
 @router.patch("/agents/{agent_id}")
@@ -372,15 +378,17 @@ async def set_agent_scope(
 
 
 @router.post("/agents/{agent_id}/request-promotion")
-async def request_promotion(agent_id: str, request: Request, db: AsyncSession = Depends(get_db)):
+async def request_promotion(
+    agent_id: str,
+    request: Request,
+    project_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
     """Submit a request to promote a project-scoped agent to universal.
     Creates a notification for admins to review."""
-    from app.models.agent import Agent
-
-    result = await db.execute(select(Agent).where(Agent.id == agent_id))
-    agent = result.scalar_one_or_none()
-    if not agent:
-        raise HTTPException(status_code=404, detail="Agent not found")
+    agent = await require_agent_by_id(
+        db, request, agent_id, project_id=project_id, min_role="researcher"
+    )
 
     if agent.scope == "universal":
         return {"status": "already_universal"}
@@ -436,12 +444,18 @@ async def upload_avatar(
 
 
 @router.get("/agents/{agent_id}/avatar")
-async def get_avatar(agent_id: str, db: AsyncSession = Depends(get_db)):
+async def get_avatar(
+    agent_id: str,
+    request: Request,
+    project_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
     """Serve an agent's avatar image."""
-    agent = await agent_service.get_agent(db, agent_id)
-    if not agent or not agent.get("avatar_path"):
+    agent = await require_agent_by_id(db, request, agent_id, project_id=project_id)
+    serialized = agent.to_dict()
+    if not serialized.get("avatar_path"):
         raise HTTPException(status_code=404, detail="No avatar found")
-    path = _resolve_avatar_path(agent["avatar_path"])
+    path = _resolve_avatar_path(serialized["avatar_path"])
     if not path.exists():
         raise HTTPException(status_code=404, detail="Avatar file missing")
     return FileResponse(path)
@@ -451,7 +465,12 @@ async def get_avatar(agent_id: str, db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/agents/{agent_id}/identity")
-async def get_identity(agent_id: str):
+async def get_identity(
+    agent_id: str,
+    request: Request,
+    project_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
     """Get an agent's full identity from its persona MD files."""
     from app.core.agent_identity import (
         load_agent_identity,
@@ -459,6 +478,8 @@ async def get_identity(agent_id: str):
         IDENTITY_FILES,
         persona_file_path,
     )
+
+    await require_agent_by_id(db, request, agent_id, project_id=project_id)
 
     display_name = get_agent_display_name(agent_id)
     identity = load_agent_identity(agent_id)
@@ -536,8 +557,9 @@ async def update_identity(agent_id: str, data: dict, request: Request):
 
 
 @router.get("/agents/personas/list")
-async def list_personas():
+async def list_personas(request: Request):
     """List all agents that have persona directories."""
+    require_admin_from_request(request)
     from app.core.agent_identity import list_agent_personas, get_agent_display_name
     personas = list_agent_personas()
     return {
@@ -554,11 +576,17 @@ async def list_personas():
 @router.get("/agents/{agent_id}/learnings")
 async def get_learnings(
     agent_id: str,
+    request: Request,
     category: str | None = None,
     limit: int = 20,
+    project_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
 ):
     """Get an agent's structured learnings."""
     from app.core.agent_learning import agent_learning
+    agent = await require_agent_by_id(db, request, agent_id, project_id=project_id)
+    if is_team_non_admin(request) and not agent_project_id(agent):
+        return {"agent_id": agent_id, "learnings": []}
     learnings = await agent_learning.get_relevant_learnings(
         agent_id, category=category, limit=limit
     )
@@ -811,10 +839,17 @@ async def reject_proposal(
 
 
 @router.get("/agents/{agent_id}/prompt/stats")
-async def get_prompt_stats(agent_id: str):
+async def get_prompt_stats(
+    agent_id: str,
+    request: Request,
+    project_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
     """Get compression stats for an agent's system prompt."""
     from app.core.agent_identity import load_agent_identity, _estimate_tokens
     from app.core.prompt_compressor import compress_prompt
+
+    await require_agent_by_id(db, request, agent_id, project_id=project_id)
 
     full = load_agent_identity(agent_id)
     if not full:
@@ -839,7 +874,13 @@ class PromptComposeRequest(BaseModel):
 
 
 @router.post("/agents/{agent_id}/prompt/compose")
-async def compose_prompt_for_query(agent_id: str, data: PromptComposeRequest):
+async def compose_prompt_for_query(
+    agent_id: str,
+    data: PromptComposeRequest,
+    request: Request,
+    project_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
     """Compose a query-aware prompt via Prompt RAG and return diagnostic info.
 
     This endpoint reveals which persona sections are selected for a given
@@ -854,6 +895,8 @@ async def compose_prompt_for_query(agent_id: str, data: PromptComposeRequest):
         _keyword_similarity,
     )
     from app.core.agent_identity import load_agent_identity, _estimate_tokens
+
+    await require_agent_by_id(db, request, agent_id, project_id=project_id)
 
     full_identity = load_agent_identity(agent_id)
     if not full_identity:
@@ -907,7 +950,15 @@ async def compose_prompt_for_query(agent_id: str, data: PromptComposeRequest):
 
 
 @router.get("/agents/{agent_id}/memory")
-async def get_memory(agent_id: str, db: AsyncSession = Depends(get_db)):
+async def get_memory(
+    agent_id: str,
+    request: Request,
+    project_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
+    agent = await require_agent_by_id(db, request, agent_id, project_id=project_id)
+    if is_team_non_admin(request) and not agent_project_id(agent):
+        return {"agent_id": agent_id, "memory": {}}
     memory = await agent_service.get_agent_memory(db, agent_id)
     return {"agent_id": agent_id, "memory": memory}
 
@@ -945,6 +996,7 @@ async def get_messages(
     db: AsyncSession = Depends(get_db),
 ):
     await require_project_access(db, request, project_id, min_role="viewer")
+    await require_agent_by_id(db, request, agent_id, project_id=project_id)
     messages = await a2a.get_messages(db, agent_id, limit, unread_only, project_id=project_id)
     return {"messages": messages}
 
@@ -963,6 +1015,9 @@ async def send_message(
         raise HTTPException(status_code=400, detail="project_id is required")
     project_id = project_id.strip()
     await require_project_access(db, request, project_id, min_role="researcher")
+    await require_agent_by_id(db, request, agent_id, project_id=project_id)
+    if data.to_agent_id:
+        await require_agent_by_id(db, request, data.to_agent_id, project_id=project_id)
     metadata["project_id"] = project_id
     try:
         msg = await a2a.send_message(
@@ -1059,135 +1114,3 @@ async def import_agent(data: AgentExportData, request: Request, db: AsyncSession
         await agent_service.update_agent_memory(db, agent["id"], data.memory)
         agent = await agent_service.get_agent(db, agent["id"])
     return agent
-
-
-# ───── Resource Governor ─────
-
-
-@router.get("/resources")
-async def get_resource_status():
-    return governor.get_status()
-
-
-# ───── Context Hierarchy ─────
-
-
-class ContextCreateRequest(BaseModel):
-    name: str
-    level_type: str
-    content: str
-    project_id: str = ""
-    parent_id: str = ""
-    priority: int = 0
-
-
-class ContextUpdateRequest(BaseModel):
-    name: str | None = None
-    content: str | None = None
-    priority: int | None = None
-    enabled: bool | None = None
-
-
-@router.get("/contexts")
-async def list_contexts(
-    request: Request,
-    level_type: str | None = None,
-    project_id: str | None = None,
-    db: AsyncSession = Depends(get_db),
-):
-    if project_id:
-        await require_project_access(db, request, project_id, min_role="viewer")
-    else:
-        require_admin_from_request(request)
-
-    docs = await context_hierarchy.list_contexts(db, level_type, project_id)
-    return {
-        "contexts": [
-            {
-                "id": d.id, "name": d.name, "level": d.level,
-                "level_type": d.level_type, "content_preview": d.content[:200],
-                "content_length": len(d.content), "priority": d.priority,
-                "enabled": d.enabled, "project_id": d.project_id,
-            }
-            for d in docs
-        ]
-    }
-
-
-@router.post("/contexts", status_code=201)
-async def create_context(
-    data: ContextCreateRequest,
-    request: Request,
-    db: AsyncSession = Depends(get_db),
-):
-    if data.project_id:
-        await require_project_access(db, request, data.project_id, min_role="researcher")
-    else:
-        require_admin_from_request(request)
-
-    valid_types = {"platform", "company", "product", "project", "task", "agent"}
-    if data.level_type not in valid_types:
-        raise HTTPException(status_code=400, detail=f"Invalid level_type. Must be: {', '.join(valid_types)}")
-    doc = await context_hierarchy.create_context(
-        db, data.name, data.level_type, data.content,
-        data.project_id, data.parent_id, data.priority,
-    )
-    return {"id": doc.id, "name": doc.name, "level": doc.level, "level_type": doc.level_type}
-
-
-@router.get("/contexts/{doc_id}")
-async def get_context(doc_id: str, request: Request, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(ContextDocument).where(ContextDocument.id == doc_id))
-    doc = result.scalar_one_or_none()
-    if not doc:
-        raise HTTPException(status_code=404, detail="Context not found")
-    await _require_context_access(db, request, doc, min_role="viewer")
-    return {
-        "id": doc.id, "name": doc.name, "level": doc.level,
-        "level_type": doc.level_type, "content": doc.content,
-        "priority": doc.priority, "enabled": doc.enabled,
-        "project_id": doc.project_id, "parent_id": doc.parent_id,
-    }
-
-
-@router.patch("/contexts/{doc_id}")
-async def update_context(
-    doc_id: str,
-    data: ContextUpdateRequest,
-    request: Request,
-    db: AsyncSession = Depends(get_db),
-):
-    result = await db.execute(select(ContextDocument).where(ContextDocument.id == doc_id))
-    existing = result.scalar_one_or_none()
-    if not existing:
-        raise HTTPException(status_code=404, detail="Context not found")
-    await _require_context_access(db, request, existing, min_role="researcher")
-
-    updates = data.model_dump(exclude_unset=True)
-    doc = await context_hierarchy.update_context(db, doc_id, updates)
-    if not doc:
-        raise HTTPException(status_code=404, detail="Context not found")
-    return {"id": doc.id, "name": doc.name, "updated": True}
-
-
-@router.delete("/contexts/{doc_id}", status_code=204)
-async def delete_context(doc_id: str, request: Request, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(ContextDocument).where(ContextDocument.id == doc_id))
-    existing = result.scalar_one_or_none()
-    if not existing:
-        raise HTTPException(status_code=404, detail="Context not found")
-    await _require_context_access(db, request, existing, min_role="researcher")
-
-    if not await context_hierarchy.delete_context(db, doc_id):
-        raise HTTPException(status_code=404, detail="Context not found")
-
-
-@router.get("/contexts/composed/{project_id}")
-async def get_composed_context(
-    project_id: str,
-    request: Request,
-    db: AsyncSession = Depends(get_db),
-):
-    await require_project_access(db, request, project_id, min_role="viewer")
-    composed = await context_hierarchy.compose_context(db, project_id)
-    return {"project_id": project_id, "composed_context": composed, "length": len(composed)}
