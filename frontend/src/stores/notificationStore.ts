@@ -32,9 +32,9 @@ interface NotificationStore {
   setActiveTab: (tab: NotificationsTab) => void;
   fetchNotifications: (page?: number, projectId?: string | null) => Promise<void>;
   fetchUnreadCount: (projectId?: string | null) => Promise<void>;
-  markRead: (id: string) => Promise<void>;
+  markRead: (id: string, projectId?: string | null) => Promise<void>;
   markAllRead: (projectId?: string | null) => Promise<void>;
-  deleteNotification: (id: string) => Promise<void>;
+  deleteNotification: (id: string, projectId?: string | null) => Promise<void>;
   fetchPreferences: () => Promise<void>;
   updatePreferences: (prefs: NotificationPreference[]) => Promise<void>;
   setFilter: (key: string, value: any) => void;
@@ -109,9 +109,13 @@ export const useNotificationStore = create<NotificationStore>((set, get) => ({
     }
   },
 
-  markRead: async (id) => {
+  markRead: async (id, projectId) => {
+    if (!projectId) {
+      set({ error: "Select a project before marking a notification read." });
+      return;
+    }
     try {
-      await notificationsApi.markRead(id);
+      await notificationsApi.markRead(id, projectId);
       set((s) => ({
         notifications: s.notifications.map((n) => (n.id === id ? { ...n, read: true } : n)),
         unreadCount: Math.max(
@@ -140,9 +144,13 @@ export const useNotificationStore = create<NotificationStore>((set, get) => ({
     }
   },
 
-  deleteNotification: async (id) => {
+  deleteNotification: async (id, projectId) => {
+    if (!projectId) {
+      set({ error: "Select a project before deleting a notification." });
+      return;
+    }
     try {
-      await notificationsApi.delete(id);
+      await notificationsApi.delete(id, projectId);
       set((s) => ({
         notifications: s.notifications.filter((n) => n.id !== id),
         unreadCount: Math.max(

@@ -96,12 +96,13 @@ project before seeing background process state or mutating recurring work.
 Schedule detail, update, and delete routes also require the active `project_id`,
 so stale schedule ids from another project resolve as not found instead of
 letting project-facing clients operate by global id.
-Notification list, unread-count, and mark-all-read routes are also
-project-content surfaces: every caller, including global admins, must provide an
-authorized active `project_id`, and missing project scope must return an error
-instead of falling back to a global inbox. Cross-project notification
-aggregation belongs only on explicit admin reporting surfaces; single
-global/system notification item operations remain admin-only.
+Notification list, unread-count, mark-all-read, mark-read, and delete routes
+are also project-content surfaces: every caller, including global admins, must
+provide an authorized active `project_id`, and missing project scope must return
+an error instead of falling back to a global inbox. By-id notification actions
+must constrain the lookup by both notification id and active project id so stale
+ids from another project resolve as not found. Cross-project notification
+aggregation belongs only on explicit admin reporting surfaces.
 Permission request queues and reviews are project-content surfaces too:
 project-facing request lists require an authorized active `project_id`, requester
 `mine=true` lists cannot fall back to a cross-project inbox, and project-admin

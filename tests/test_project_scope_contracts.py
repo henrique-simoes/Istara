@@ -1155,6 +1155,7 @@ def test_notifications_are_active_project_scoped() -> None:
     view = read_repo("frontend/src/components/notifications/NotificationsView.tsx")
     list_tab = read_repo("frontend/src/components/notifications/NotificationListTab.tsx")
     store = read_repo("frontend/src/stores/notificationStore.ts")
+    api = read_repo("frontend/src/lib/notificationApi.ts")
     navigation = read_repo("frontend/src/lib/navigation.ts")
     route = read_repo("backend/app/api/routes/notifications.py")
 
@@ -1169,6 +1170,7 @@ def test_notifications_are_active_project_scoped() -> None:
     assert "const { activeProjectId } = useProjectStore();" in list_tab
     assert "fetchNotifications(1, activeProjectId)" in list_tab
     assert "markAllRead(activeProjectId)" in list_tab
+    assert "markRead(notification.id, activeProjectId)" in list_tab and "deleteNotification(notification.id, activeProjectId)" in list_tab
     assert "fetchNotifications(page - 1, activeProjectId)" in list_tab
     assert "fetchNotifications(page + 1, activeProjectId)" in list_tab
     assert "All projects" not in list_tab
@@ -1176,10 +1178,16 @@ def test_notifications_are_active_project_scoped() -> None:
     assert "fetchNotifications: async (page = 1, projectId) =>" in store
     assert "if (!projectId)" in store
     assert "params.project_id = projectId" in store
+    assert "markRead: async (id, projectId) =>" in store and "await notificationsApi.markRead(id, projectId)" in store
+    assert "deleteNotification: async (id, projectId) =>" in store and "await notificationsApi.delete(id, projectId)" in store
     assert "notification.project_id !== activeProjectId" in store
+
+    assert "markRead: (id: string, projectId: string)" in api and "`/api/notifications/${id}/read${queryString({ project_id: projectId })}`" in api
+    assert "delete: (id: string, projectId: string)" in api and "`/api/notifications/${id}${queryString({ project_id: projectId })}`" in api
 
     assert '"backup",\n  "notifications",' in navigation
     assert "async def _require_notification_project_scope" in route
+    assert "async def _get_project_notification_or_404" in route and "await require_project_access(db, request, scoped_project_id, min_role=min_role)" in route
     assert "from app.config import settings" not in route
     assert "get_subject" not in route
     assert "is_global_admin" not in route
@@ -1188,3 +1196,4 @@ def test_notifications_are_active_project_scoped() -> None:
     assert 'raise HTTPException(status_code=400, detail="project_id is required")' in route
     assert "query = query.where(Notification.project_id == scoped_project_id)" in route
     assert ".where(Notification.project_id == scoped_project_id)" in route
+    assert "Notification.id == notification_id" in route and "Notification.project_id == scoped_project_id" in route

@@ -73,7 +73,7 @@ export default function NotificationListTab() {
 
   const handleNotificationClick = (notification: AppNotification) => {
     if (!notification.read) {
-      markRead(notification.id);
+      markRead(notification.id, activeProjectId);
     }
     if (notification.action_target) {
       window.dispatchEvent(
@@ -283,11 +283,11 @@ export default function NotificationListTab() {
                         {!notification.read && (
                           <span className="w-2 h-2 rounded-full bg-istara-500" aria-hidden="true" />
                         )}
-	                        <button
-	                          onClick={(e) => { e.stopPropagation(); deleteNotification(notification.id); }}
-	                          className="p-0.5 rounded hover:bg-slate-200 dark:hover:bg-slate-700 opacity-0 group-hover:opacity-100 focus:opacity-100 text-slate-400 hover:text-red-500"
-	                          aria-label="Delete notification"
-	                        >
+                        <button
+                          onClick={(e) => { e.stopPropagation(); deleteNotification(notification.id, activeProjectId); }}
+                          className="p-0.5 rounded hover:bg-slate-200 dark:hover:bg-slate-700 opacity-0 group-hover:opacity-100 focus:opacity-100 text-slate-400 hover:text-red-500"
+                          aria-label="Delete notification"
+                        >
                           <Trash2 size={12} />
                         </button>
                       </div>

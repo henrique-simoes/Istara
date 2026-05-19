@@ -329,6 +329,129 @@ async def test_project_member_notifications_are_scoped_without_admin():
 
 
 @pytest.mark.asyncio
+async def test_notification_item_actions_are_bound_to_active_project():
+    """Stale notification ids from another accessible project cannot be mutated."""
+    await init_db()
+    settings.team_mode = True
+    user_id = f"user-{uuid.uuid4()}"
+    project_id = str(uuid.uuid4())
+    other_project_id = str(uuid.uuid4())
+    read_id = str(uuid.uuid4())
+    delete_id = str(uuid.uuid4())
+    other_id = str(uuid.uuid4())
+    async with async_session() as db:
+        db.add_all(
+            [
+                Project(id=project_id, name="Notification item scope"),
+                Project(id=other_project_id, name="Other notification item scope"),
+                ProjectMember(
+                    id=str(uuid.uuid4()),
+                    project_id=project_id,
+                    user_id=user_id,
+                    role="researcher",
+                    added_by="test",
+                ),
+                ProjectMember(
+                    id=str(uuid.uuid4()),
+                    project_id=other_project_id,
+                    user_id=user_id,
+                    role="researcher",
+                    added_by="test",
+                ),
+                Notification(
+                    id=read_id,
+                    type="document_created",
+                    title="read me in active project",
+                    message="visible",
+                    category="document",
+                    severity="info",
+                    project_id=project_id,
+                    read=False,
+                ),
+                Notification(
+                    id=delete_id,
+                    type="document_created",
+                    title="delete me in active project",
+                    message="visible",
+                    category="document",
+                    severity="info",
+                    project_id=project_id,
+                    read=False,
+                ),
+                Notification(
+                    id=other_id,
+                    type="document_created",
+                    title="other project item",
+                    message="other",
+                    category="document",
+                    severity="info",
+                    project_id=other_project_id,
+                    read=False,
+                ),
+            ]
+        )
+        await db.commit()
+
+    headers = {"Authorization": f"Bearer {create_token(user_id, 'scoped', 'researcher')}"}
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        no_scope_read = await ac.post(
+            f"/api/notifications/{read_id}/read",
+            json={},
+            headers=headers,
+        )
+        wrong_scope_read = await ac.post(
+            f"/api/notifications/{read_id}/read",
+            params={"project_id": other_project_id},
+            json={},
+            headers=headers,
+        )
+        correct_scope_read = await ac.post(
+            f"/api/notifications/{read_id}/read",
+            params={"project_id": project_id},
+            json={},
+            headers=headers,
+        )
+        no_scope_delete = await ac.delete(
+            f"/api/notifications/{delete_id}",
+            headers=headers,
+        )
+        wrong_scope_delete = await ac.delete(
+            f"/api/notifications/{delete_id}",
+            params={"project_id": other_project_id},
+            headers=headers,
+        )
+        correct_scope_delete = await ac.delete(
+            f"/api/notifications/{delete_id}",
+            params={"project_id": project_id},
+            headers=headers,
+        )
+
+    assert no_scope_read.status_code == 400
+    assert no_scope_read.json()["detail"] == "project_id is required"
+    assert wrong_scope_read.status_code == 404
+    assert correct_scope_read.status_code == 200
+    assert no_scope_delete.status_code == 400
+    assert no_scope_delete.json()["detail"] == "project_id is required"
+    assert wrong_scope_delete.status_code == 404
+    assert correct_scope_delete.status_code == 204
+
+    async with async_session() as db:
+        rows = (
+            await db.execute(
+                select(Notification.id, Notification.read).where(
+                    Notification.id.in_([read_id, delete_id, other_id])
+                )
+            )
+        ).all()
+
+    assert dict(rows) == {
+        read_id: True,
+        other_id: False,
+    }
+
+
+@pytest.mark.asyncio
 async def test_notification_preferences_use_wrapped_payload_and_validate_categories(auth_headers):
     """Preference updates should match the frontend API helper and reject orphans."""
     await init_db()
