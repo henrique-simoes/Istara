@@ -677,7 +677,7 @@ async def test_a2a_thread_context_resolves_task_project_scope():
     task_a = f"a2a-thread-task-a-{uuid.uuid4()}"
     task_b = f"a2a-thread-task-b-{uuid.uuid4()}"
     context_id = f"a2a-shared-context-{uuid.uuid4()}"
-    message_ids = [str(uuid.uuid4()) for _ in range(2)]
+    message_ids = [str(uuid.uuid4()) for _ in range(3)]
     async with async_session() as db:
         db.add_all(
             [
@@ -700,6 +700,16 @@ async def test_a2a_thread_context_resolves_task_project_scope():
                     message_type="collaboration_request",
                     content="hidden project thread content",
                     extra_data=json.dumps({"task_id": task_b, "context_id": context_id}),
+                ),
+                A2AMessage(
+                    id=message_ids[2],
+                    from_agent_id="agent-b",
+                    to_agent_id="agent-a",
+                    message_type="collaboration_request",
+                    content="conflicting project thread content",
+                    extra_data=json.dumps(
+                        {"project_id": project_a, "task_id": task_b, "context_id": context_id}
+                    ),
                 ),
             ]
         )

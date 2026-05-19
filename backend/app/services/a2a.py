@@ -43,6 +43,14 @@ def _message_task_id(message: A2AMessage) -> str | None:
     return _metadata_text(_message_metadata(message), "task_id", "taskId")
 
 
+def _message_agent_ids(message: A2AMessage) -> list[str]:
+    agent_ids: list[str] = []
+    for agent_id in (message.from_agent_id, message.to_agent_id):
+        if isinstance(agent_id, str) and agent_id.strip():
+            agent_ids.append(agent_id.strip())
+    return list(dict.fromkeys(agent_ids))
+
+
 def _message_to_dict(message: A2AMessage, project_id: str | None = None) -> dict:
     payload = message.to_dict()
     resolved_project_id = project_id or _message_project_id(message)
@@ -75,20 +83,13 @@ async def _resolve_message_project_ids(
     db: AsyncSession,
     messages: list[A2AMessage],
 ) -> dict[str, str]:
-    """Resolve message project identity from metadata, then task fallback."""
-    resolved: dict[str, str] = {}
+    """Resolve message project identity only when available ownership claims agree."""
     task_ids = {
         task_id
         for message in messages
-        if _message_project_id(message) is None
         for task_id in [_message_task_id(message)]
         if task_id
     }
-    for message in messages:
-        message_project_id = _message_project_id(message)
-        if message_project_id:
-            resolved[str(message.id)] = message_project_id
-
     task_project_ids: dict[str, str] = {}
     if task_ids:
         from app.models.task import Task
@@ -102,12 +103,49 @@ async def _resolve_message_project_ids(
             if task_project_id
         }
 
+    agent_ids = {
+        agent_id
+        for message in messages
+        for agent_id in _message_agent_ids(message)
+    }
+    agent_project_ids: dict[str, str] = {}
+    if agent_ids:
+        from app.models.agent import Agent
+
+        result = await db.execute(
+            select(Agent.id, Agent.project_id, Agent.scope).where(Agent.id.in_(agent_ids))
+        )
+        agent_project_ids = {
+            str(agent_id): str(agent_project_id)
+            for agent_id, agent_project_id, scope in result.all()
+            if scope == "project" and agent_project_id
+        }
+
+    resolved: dict[str, str] = {}
     for message in messages:
-        if str(message.id) in resolved:
-            continue
+        claims: dict[str, str] = {}
+        message_project_id = _message_project_id(message)
+        if message_project_id:
+            claims["metadata"] = message_project_id
         task_id = _message_task_id(message)
         if task_id and task_project_ids.get(task_id):
-            resolved[str(message.id)] = task_project_ids[task_id]
+            claims["task"] = task_project_ids[task_id]
+        for agent_id in _message_agent_ids(message):
+            agent_project_id = agent_project_ids.get(agent_id)
+            if agent_project_id:
+                claims[f"agent:{agent_id}"] = agent_project_id
+
+        unique_project_ids = set(claims.values())
+        has_metadata_or_task_claim = bool(message_project_id) or bool(
+            task_id and task_project_ids.get(task_id)
+        )
+        if len(unique_project_ids) == 1 and has_metadata_or_task_claim:
+            resolved[str(message.id)] = next(iter(unique_project_ids))
+        elif len(unique_project_ids) > 1:
+            logger.warning(
+                "A2A message %s has conflicting project ownership claims; excluding from project views.",
+                message.id,
+            )
 
     return resolved
 

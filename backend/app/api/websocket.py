@@ -121,38 +121,106 @@ class ConnectionManager:
                 return value.strip()
         return None
 
+    @staticmethod
+    def _explicit_project_claims(data: dict) -> list[tuple[str, str]]:
+        claims: list[tuple[str, str]] = []
+        for key in ("project_id", "projectId"):
+            value = data.get(key)
+            if isinstance(value, str) and value.strip():
+                claims.append((key, value.strip()))
+        metadata = data.get("metadata")
+        if isinstance(metadata, dict):
+            for key in ("project_id", "projectId"):
+                value = metadata.get(key)
+                if isinstance(value, str) and value.strip():
+                    claims.append((f"metadata.{key}", value.strip()))
+        return claims
+
+    @staticmethod
+    def _data_or_metadata_text(data: dict, *keys: str) -> str | None:
+        for key in keys:
+            value = data.get(key)
+            if isinstance(value, str) and value.strip():
+                return value.strip()
+        metadata = data.get("metadata")
+        if isinstance(metadata, dict):
+            for key in keys:
+                value = metadata.get(key)
+                if isinstance(value, str) and value.strip():
+                    return value.strip()
+        return None
+
+    @staticmethod
+    def _has_reference_claims(data: dict) -> bool:
+        reference_keys = (
+            "task_id",
+            "taskId",
+            "deployment_id",
+            "deploymentId",
+            "instance_id",
+            "instanceId",
+            "agent_id",
+            "agentId",
+            "from_agent_id",
+            "fromAgentId",
+            "to_agent_id",
+            "toAgentId",
+        )
+        if any(isinstance(data.get(key), str) and data[key].strip() for key in reference_keys):
+            return True
+        metadata = data.get("metadata")
+        return isinstance(metadata, dict) and any(
+            isinstance(metadata.get(key), str) and metadata[key].strip()
+            for key in reference_keys
+        )
+
+    @staticmethod
+    def _consistent_project_claim(
+        claims: list[tuple[str, str]],
+        event_type: str = "event",
+    ) -> str | None:
+        unique_project_ids = {project_id for _source, project_id in claims}
+        if len(unique_project_ids) == 1:
+            return next(iter(unique_project_ids))
+        if len(unique_project_ids) > 1:
+            logger.warning(
+                "Dropping %s websocket event with conflicting project claims.",
+                event_type,
+            )
+        return None
+
     async def _resolve_project_id(self, data: dict) -> str | None:
-        project_id = self._project_id_from_data(data)
-        if project_id:
-            return project_id
+        claims = self._explicit_project_claims(data)
+        if not self._has_reference_claims(data):
+            return self._consistent_project_claim(claims, "project-bound")
 
         try:
             from app.models.database import async_session
 
             async with async_session() as db:
-                task_id = data.get("task_id") or data.get("taskId")
+                task_id = self._data_or_metadata_text(data, "task_id", "taskId")
                 if isinstance(task_id, str) and task_id:
                     from app.models.task import Task
 
                     task = await db.get(Task, task_id)
                     if task and task.project_id:
-                        return str(task.project_id)
+                        claims.append(("task", str(task.project_id)))
 
-                deployment_id = data.get("deployment_id") or data.get("deploymentId")
+                deployment_id = self._data_or_metadata_text(data, "deployment_id", "deploymentId")
                 if isinstance(deployment_id, str) and deployment_id:
                     from app.models.research_deployment import ResearchDeployment
 
                     deployment = await db.get(ResearchDeployment, deployment_id)
                     if deployment and deployment.project_id:
-                        return str(deployment.project_id)
+                        claims.append(("deployment", str(deployment.project_id)))
 
-                instance_id = data.get("instance_id") or data.get("instanceId")
+                instance_id = self._data_or_metadata_text(data, "instance_id", "instanceId")
                 if isinstance(instance_id, str) and instance_id:
                     from app.models.channel_instance import ChannelInstance
 
                     instance = await db.get(ChannelInstance, instance_id)
                     if instance and instance.project_id:
-                        return str(instance.project_id)
+                        claims.append(("channel_instance", str(instance.project_id)))
 
                 from app.models.agent import Agent
 
@@ -169,11 +237,11 @@ class ConnectionManager:
                         continue
                     agent = await db.get(Agent, agent_id)
                     agent_project_id = _clean_project_id(agent.project_id if agent else None)
-                    if agent_project_id:
-                        return agent_project_id
+                    if agent and agent.scope == "project" and agent_project_id:
+                        claims.append((agent_key, agent_project_id))
         except Exception:
             return None
-        return None
+        return self._consistent_project_claim(claims, "project-bound")
 
     @staticmethod
     async def _connection_can_receive(

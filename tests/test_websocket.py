@@ -10,6 +10,7 @@ from app.models.agent import Agent
 from app.models.database import async_session, init_db
 from app.models.project import Project
 from app.models.project_member import ProjectMember
+from app.models.task import Task
 
 
 @pytest.fixture(autouse=True)
@@ -144,6 +145,80 @@ async def test_websocket_resolves_project_from_agent_id():
     resolved = await manager._resolve_project_id({"agent_id": agent_id, "thought": "project work"})
 
     assert resolved == project_id
+
+
+@pytest.mark.asyncio
+async def test_project_bound_websocket_events_with_conflicting_claims_are_not_broadcast():
+    """Realtime project events should drop instead of trusting mismatched metadata."""
+    await init_db()
+    project_a = f"ws-claim-project-a-{uuid.uuid4()}"
+    project_b = f"ws-claim-project-b-{uuid.uuid4()}"
+    task_a = f"ws-claim-task-a-{uuid.uuid4()}"
+    task_b = f"ws-claim-task-b-{uuid.uuid4()}"
+    hidden_agent_id = f"ws-claim-hidden-agent-{uuid.uuid4()}"
+
+    async with async_session() as db:
+        db.add_all(
+            [
+                Project(id=project_a, name="Websocket Claim Project A"),
+                Project(id=project_b, name="Websocket Claim Project B"),
+                Task(id=task_a, project_id=project_a, title="Visible websocket task"),
+                Task(id=task_b, project_id=project_b, title="Hidden websocket task"),
+                Agent(
+                    id=hidden_agent_id,
+                    name="Hidden realtime agent",
+                    scope="project",
+                    project_id=project_b,
+                ),
+            ]
+        )
+        await db.commit()
+
+    from app.api.websocket import ConnectionManager
+
+    class FakeWebSocket:
+        def __init__(self) -> None:
+            self.sent: list[dict] = []
+
+        async def send_text(self, message: str) -> None:
+            self.sent.append(json.loads(message))
+
+    async def skip_persist(_event_type: str, _data: dict) -> None:
+        return None
+
+    project_ws = FakeWebSocket()
+    manager = ConnectionManager()
+    manager._persist_notification = skip_persist  # type: ignore[method-assign]
+    manager._connections = [
+        {
+            "websocket": project_ws,
+            "user_context": {"id": "admin", "role": "admin"},
+            "active_project_id": project_a,
+        }
+    ]
+
+    valid_project = await manager._resolve_project_id({"project_id": project_a, "task_id": task_a})
+    conflict_project = await manager._resolve_project_id(
+        {
+            "project_id": project_a,
+            "metadata": {"task_id": task_b},
+            "from_agent_id": hidden_agent_id,
+        }
+    )
+
+    await manager.broadcast(
+        "a2a_message",
+        {
+            "content": "hidden realtime content",
+            "project_id": project_a,
+            "metadata": {"task_id": task_b},
+            "from_agent_id": hidden_agent_id,
+        },
+    )
+
+    assert valid_project == project_a
+    assert conflict_project is None
+    assert project_ws.sent == []
 
 
 @pytest.mark.asyncio

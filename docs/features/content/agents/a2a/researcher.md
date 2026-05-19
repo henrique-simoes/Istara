@@ -8,9 +8,9 @@ related_features: ["agents.registry", "loops.agent-loops"]
 related_glossary: ["a2a"]
 code_references: ["frontend/src/components/agents/AgentsView.tsx", "frontend/src/stores/agentStore.ts", "frontend/src/lib/api.ts", "backend/app/api/routes/agents.py", "backend/app/api/routes/a2a.py", "backend/app/api/websocket.py", "backend/app/services/a2a.py", "backend/app/core/agent_lifecycle.py", "backend/app/core/sub_agent_worker.py"]
 api_references: ["backend/app/api/routes/agents.py", "backend/app/api/routes/a2a.py", "backend/app/api/websocket.py"]
-test_references: ["tests/test_agents.py", "tests/test_a2a_security.py", "tests/test_websocket.py", "tests/test_project_scope_contracts.py"]
+test_references: ["tests/test_agents.py", "tests/test_a2a_project_claims.py", "tests/test_a2a_security.py", "tests/test_websocket.py", "tests/test_project_scope_contracts.py"]
 last_verified: 2026-05-19
-compass: CF-SPEC-56 / CF-698; CF-SPEC-60 / CF-776; CF-SPEC-64 / CF-828
+compass: CF-SPEC-56 / CF-698; CF-SPEC-60 / CF-776; CF-SPEC-64 / CF-828; CF-SPEC-74 / CF-949
 ---
 
 # Agent-To-Agent Log
@@ -47,9 +47,10 @@ Agent-To-Agent Log exists so the work represented by Agents > A2A has a stable, 
 ## Inputs, Outputs, And Expected Outcomes
 
 - Project-scoped A2A messages associated with the active project.
+- A2A messages only appear when their metadata, task ownership, and project-scoped sender/recipient agents agree on the active project.
 - External A2A JSON-RPC task submissions must carry `project_id`, so submitted work is attached to a project before it can appear in Istara.
 - Autonomous agent inboxes and collaboration/debate threads use the same project boundary before building LLM prompt context, so messages from another project are not used as hidden coordination history.
-- Realtime A2A and agent-thinking updates must resolve to the same active project before they can appear in the shell.
+- Realtime A2A and agent-thinking updates must resolve to the same active project from consistent metadata, task/deployment/channel, and agent ownership claims before they can appear in the shell.
 - Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.
 
 ## Caveats
@@ -70,4 +71,4 @@ Agent-To-Agent Log exists so the work represented by Agents > A2A has a stable, 
 
 - Source files: `frontend/src/components/agents/AgentsView.tsx`, `frontend/src/stores/agentStore.ts`, `frontend/src/lib/api.ts`, `backend/app/api/routes/agents.py`, `backend/app/api/routes/a2a.py`, `backend/app/api/websocket.py`, `backend/app/services/a2a.py`
 - API references: `backend/app/api/routes/agents.py`, `backend/app/api/routes/a2a.py`, `backend/app/api/websocket.py`
-- Tests: `tests/test_agents.py`, `tests/test_a2a_security.py`, `tests/test_websocket.py`, `tests/test_project_scope_contracts.py`
+- Tests: `tests/test_agents.py`, `tests/test_a2a_project_claims.py`, `tests/test_a2a_security.py`, `tests/test_websocket.py`, `tests/test_project_scope_contracts.py`
