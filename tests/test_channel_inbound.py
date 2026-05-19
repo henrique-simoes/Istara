@@ -73,6 +73,64 @@ async def test_inbound_message_without_deployment_is_persisted():
 
 
 @pytest.mark.asyncio
+async def test_inbound_message_ignores_unbound_deployment_from_another_project():
+    await init_db()
+    instance_id = str(uuid.uuid4())
+    project_id = str(uuid.uuid4())
+    other_project_id = str(uuid.uuid4())
+
+    async with async_session() as db:
+        db.add(
+            ChannelInstance(
+                id=instance_id,
+                platform="whatsapp",
+                name="Project WhatsApp",
+                config_json="{}",
+                project_id=project_id,
+            )
+        )
+        db.add(
+            ResearchDeployment(
+                id=str(uuid.uuid4()),
+                project_id=other_project_id,
+                name="Other Project Deployment",
+                deployment_type="interview",
+                questions_json=json.dumps([{"text": "Should not route"}]),
+                config_json=json.dumps({"intro_message": "Hello from another project"}),
+                channel_instance_ids_json=json.dumps([]),
+                state="active",
+            )
+        )
+        await db.commit()
+
+    response = await process_inbound_channel_message(
+        IncomingMessage(
+            channel="whatsapp",
+            channel_id="5511888888888",
+            sender_id="5511888888888",
+            sender_name="Lin",
+            text="Hello",
+            instance_id=instance_id,
+            metadata={"content_type": "text", "external_message_id": "msg-cross-project"},
+        )
+    )
+
+    assert response is None
+    async with async_session() as db:
+        conversation = (
+            await db.execute(
+                select(ChannelConversation).where(
+                    ChannelConversation.channel_instance_id == instance_id,
+                    ChannelConversation.participant_id == "5511888888888",
+                )
+            )
+        ).scalar_one()
+
+    assert conversation.project_id == project_id
+    assert conversation.deployment_id is None
+
+
+@pytest.mark.asyncio
 async def test_inbound_active_deployment_advances_questions_without_repeating():
     await init_db()
     instance_id = str(uuid.uuid4())

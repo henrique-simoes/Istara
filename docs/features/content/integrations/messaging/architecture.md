@@ -6,11 +6,11 @@ audience: architecture
 status: documented
 related_features: ["integrations.overview", "integrations.deployment-dashboard"]
 related_glossary: ["mcp"]
-code_references: ["frontend/src/components/integrations/MessagingTab.tsx", "frontend/src/components/integrations/ChannelSetupWizard.tsx", "backend/app/api/routes/channels.py"]
+code_references: ["frontend/src/components/integrations/MessagingTab.tsx", "frontend/src/components/integrations/ChannelSetupWizard.tsx", "backend/app/api/routes/channels.py", "backend/app/api/routes/webhooks.py", "backend/app/services/inbound_processor.py"]
 api_references: ["backend/app/api/routes/channels.py", "backend/app/api/routes/webhooks.py"]
-test_references: ["tests/test_channels.py", "tests/test_project_scope_contracts.py"]
+test_references: ["tests/test_channels.py", "tests/test_channel_inbound.py", "tests/test_project_scope_contracts.py"]
 last_verified: 2026-05-19
-compass: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-762
+compass: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-762; CF-SPEC-60 / CF-773
 ---
 
 # Messaging Integrations Architecture
@@ -24,6 +24,8 @@ Messaging connects external conversation channels such as team or participant me
 - `frontend/src/components/integrations/MessagingTab.tsx`
 - `frontend/src/components/integrations/ChannelSetupWizard.tsx`
 - `backend/app/api/routes/channels.py`
+- `backend/app/api/routes/webhooks.py`
+- `backend/app/services/inbound_processor.py`
 
 ## State, API, And Backend Contracts
 
@@ -35,12 +37,14 @@ Messaging connects external conversation channels such as team or participant me
 
 - `backend/app/api/routes/channels.py`
 - `backend/app/api/routes/webhooks.py`
+- `backend/app/services/inbound_processor.py`
 
 ## Architecture Notes
 
 - The feature is mounted through `frontend/src/components/integrations/MessagingTab.tsx` and the UI navigation path recorded in the inventory.
 - `MessagingTab` passes the active project into channel listing, clears stale channel state during project changes, and renders only channel records whose `project_id` matches the active project.
 - `backend/app/api/routes/channels.py` requires an explicit `project_id` for project-facing channel lists and enforces project viewer access for reads; channel creation and lifecycle mutations remain project-admin operations.
+- Inbound message routing resolves active deployments only within the receiving channel instance's project and only when the deployment explicitly lists that channel instance, so an active deployment from another project or an unbound deployment cannot receive participant content.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
 
@@ -51,6 +55,7 @@ Messaging connects external conversation channels such as team or participant me
 ## Tests And Verification
 
 - `tests/test_channels.py`
+- `tests/test_channel_inbound.py`
 - `tests/test_project_scope_contracts.py`
 
 ## Related Features
@@ -64,7 +69,7 @@ Messaging connects external conversation channels such as team or participant me
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-762
+- Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-762; CF-SPEC-60 / CF-773
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update

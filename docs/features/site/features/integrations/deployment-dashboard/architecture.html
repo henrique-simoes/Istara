@@ -245,6 +245,8 @@
 <h2 id="frontend-surface">Frontend Surface</h2>
 <ul>
 <li><code>frontend/src/components/integrations/DeploymentDashboard.tsx</code></li>
+<li><code>frontend/src/components/integrations/ConversationTranscript.tsx</code></li>
+<li><code>frontend/src/lib/api.ts</code></li>
 <li><code>backend/app/api/routes/deployments.py</code></li>
 <li><code>backend/app/services/deployment_service.py</code></li>
 </ul>
@@ -257,11 +259,13 @@
 <ul>
 <li><code>backend/app/api/routes/deployments.py</code></li>
 <li><code>backend/app/services/deployment_service.py</code></li>
+<li><code>DeploymentDashboard</code> uses the selected deployment&#x27;s <code>project_id</code> when loading analytics and conversations and when invoking lifecycle actions, so a stale deployment id cannot open or mutate another active project&#x27;s deployment.</li>
+<li><code>ConversationTranscript</code> receives the same project id and sends it to the transcript API before participant messages are read.</li>
 </ul>
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
 <li>The feature is mounted through <code>frontend/src/components/integrations/DeploymentDashboard.tsx</code> and the UI navigation path recorded in the inventory.</li>
-<li>Conversation detail, transcript, response handling, and analytics routes verify that the conversation and deployment belong to the same project before exposing or updating participant content.</li>
+<li>Deployment detail, lifecycle, conversation detail, transcript, response handling, and analytics routes require the caller&#x27;s active project id and verify that the conversation and deployment belong to that project before exposing or updating participant content.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>
@@ -272,6 +276,7 @@
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>
 <li><code>tests/test_deployments.py</code></li>
+<li><code>tests/test_project_scope_contracts.py</code></li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>
@@ -284,7 +289,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-767</li>
+<li>Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-767; CF-SPEC-60 / CF-773</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>

@@ -116,6 +116,10 @@ def test_integrations_overview_recent_activity_is_project_scoped() -> None:
 
 def test_integrations_deployments_tab_is_project_scoped() -> None:
     source = read_repo("frontend/src/components/integrations/DeploymentsTab.tsx")
+    wizard = read_repo("frontend/src/components/integrations/DeploymentWizard.tsx")
+    dashboard = read_repo("frontend/src/components/integrations/DeploymentDashboard.tsx")
+    transcript = read_repo("frontend/src/components/integrations/ConversationTranscript.tsx")
+    api = read_repo("frontend/src/lib/api.ts")
 
     assert 'import { useProjectStore } from "@/stores/projectStore";' in source
     assert "const { activeProjectId } = useProjectStore();" in source
@@ -128,12 +132,34 @@ def test_integrations_deployments_tab_is_project_scoped() -> None:
     assert "deploymentsList.map" not in source
     assert "deploymentsList.reduce" not in source
     assert "fetchDeployments();" not in source
+    assert "if (!activeProjectId || !deploymentType) return;" in wizard
+    assert "fetchChannels(undefined, activeProjectId)" in wizard
+    assert "channelInstances.filter((c) => c.is_active && c.project_id === activeProjectId)" in wizard
+    assert "project_id: activeProjectId" in wizard
+    assert "deploymentsApi.analytics(deployment.id, projectId)" in dashboard
+    assert "deploymentsApi.conversations(deployment.id, projectId)" in dashboard
+    assert "deploymentsApi.activate(deployment.id, projectId)" in dashboard
+    assert "projectId={projectId}" in dashboard
+    assert "deploymentsApi.transcript(deploymentId, conversationId, projectId)" in transcript
+    assert "list: (projectId: string)" in api
+    assert "get: (id: string, projectId: string)" in api
+    assert "activate: (id: string, projectId: string)" in api
+    assert "analytics: (id: string, projectId: string)" in api
+    assert "/api/deployments/${id}?project_id=${encodeURIComponent(projectId)}" in api
+    assert "/api/deployments/${id}/analytics?project_id=${encodeURIComponent(projectId)}" in api
+    assert "/api/deployments/${deploymentId}/conversations/${conversationId}/transcript?project_id=${encodeURIComponent(projectId)}" in api
 
 
 def test_backend_deployments_enforce_project_owned_channels_and_conversations() -> None:
     route = read_repo("backend/app/api/routes/deployments.py")
     service = read_repo("backend/app/services/deployment_service.py")
+    inbound = read_repo("backend/app/services/inbound_processor.py")
 
+    assert "async def _get_active_project_deployment_or_404" in route
+    assert 'raise HTTPException(status_code=400, detail="project_id is required")' in route
+    assert 'raise HTTPException(status_code=404, detail="Deployment not found")' in route
+    assert "deployment.project_id != scoped_project_id" in route
+    assert "await require_project_access(db, request, scoped_project_id, min_role=min_role)" in route
     assert "validate_channel_instances_for_project" in service
     assert "instance.project_id != project_id" in service
     assert "channel_instance_ids_json=json.dumps(scoped_channel_instance_ids)" in service
@@ -144,6 +170,8 @@ def test_backend_deployments_enforce_project_owned_channels_and_conversations() 
     assert "ChannelConversation.project_id == project_id" in service
     assert "ChannelMessage.project_id == deployment.project_id" in service
     assert "ChannelMessage.project_id == conversation.project_id" in service
+    assert "ResearchDeployment.project_id == instance.project_id" in inbound
+    assert "if instance.id in channel_ids:" in inbound
 
 
 def test_integrations_subtabs_defensively_filter_by_active_project() -> None:

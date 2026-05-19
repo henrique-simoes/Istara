@@ -202,8 +202,9 @@ export async function runIntegrationMatrix({ api, projectId, repoRoot, logger })
   }));
   let auraClassification = deployment.ok ? CLASSIFICATIONS.setup : CLASSIFICATIONS.blocked;
   if (deployment.ok) {
-    await attempt(logger, "aura", "POST /api/deployments/{id}/activate", () => api.post(`/api/deployments/${deployment.result.id}/activate`, {}));
-    const response = await attempt(logger, "aura", "POST /api/deployments/{id}/respond without conversation harness", () => api.post(`/api/deployments/${deployment.result.id}/respond`, {
+    const deploymentProjectQuery = `project_id=${encodeURIComponent(projectId)}`;
+    await attempt(logger, "aura", "POST /api/deployments/{id}/activate", () => api.post(`/api/deployments/${deployment.result.id}/activate?${deploymentProjectQuery}`, {}));
+    const response = await attempt(logger, "aura", "POST /api/deployments/{id}/respond without conversation harness", () => api.post(`/api/deployments/${deployment.result.id}/respond?${deploymentProjectQuery}`, {
       conversation_id: "simulated-conversation-without-create-api",
       message_text: "I missed my lab reminder because it came while I was at work.",
     }));

@@ -6,11 +6,11 @@ audience: researcher
 status: documented
 related_features: ["integrations.deployments", "findings.evidence"]
 related_glossary: ["triangulation"]
-code_references: ["frontend/src/components/integrations/DeploymentDashboard.tsx", "backend/app/api/routes/deployments.py", "backend/app/services/deployment_service.py"]
+code_references: ["frontend/src/components/integrations/DeploymentDashboard.tsx", "frontend/src/components/integrations/ConversationTranscript.tsx", "frontend/src/lib/api.ts", "backend/app/api/routes/deployments.py", "backend/app/services/deployment_service.py"]
 api_references: ["backend/app/api/routes/deployments.py", "backend/app/services/deployment_service.py"]
-test_references: ["tests/test_deployments.py"]
+test_references: ["tests/test_deployments.py", "tests/test_project_scope_contracts.py"]
 last_verified: 2026-05-19
-compass: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-767
+compass: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-767; CF-SPEC-60 / CF-773
 ---
 
 # Deployment Dashboard
@@ -45,7 +45,7 @@ Deployment Dashboard exists so the work represented by Integrations > Deployment
 
 - Project-scoped state or artifact updates associated with deployment dashboard.
 - Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.
-- Conversation details, transcripts, responses, and analytics are read or updated only when they belong to the same project as the selected deployment.
+- Detail views, lifecycle actions, conversation details, transcripts, responses, and analytics are read or updated only when they belong to the same active project as the selected deployment.
 
 ## Caveats
 
@@ -63,6 +63,6 @@ Deployment Dashboard exists so the work represented by Integrations > Deployment
 
 ## Evidence
 
-- Source files: `frontend/src/components/integrations/DeploymentDashboard.tsx`, `backend/app/api/routes/deployments.py`, `backend/app/services/deployment_service.py`
+- Source files: `frontend/src/components/integrations/DeploymentDashboard.tsx`, `frontend/src/components/integrations/ConversationTranscript.tsx`, `frontend/src/lib/api.ts`, `backend/app/api/routes/deployments.py`, `backend/app/services/deployment_service.py`
 - API references: `backend/app/api/routes/deployments.py`, `backend/app/services/deployment_service.py`
-- Tests: `tests/test_deployments.py`
+- Tests: `tests/test_deployments.py`, `tests/test_project_scope_contracts.py`

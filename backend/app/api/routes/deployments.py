@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.permissions import require_project_access
+from app.core.permissions import ProjectRole, require_project_access
 from app.models.channel_conversation import ChannelConversation
 from app.models.database import get_db
 from app.models.research_deployment import ResearchDeployment
@@ -22,6 +22,29 @@ async def _get_deployment_or_404(db: AsyncSession, deployment_id: str) -> Resear
     deployment = await deployment_service.get_deployment(db, deployment_id)
     if not deployment:
         raise HTTPException(status_code=404, detail="Deployment not found")
+    return deployment
+
+
+def _require_project_id(project_id: str | None) -> str:
+    scoped_project_id = (project_id or "").strip()
+    if not scoped_project_id:
+        raise HTTPException(status_code=400, detail="project_id is required")
+    return scoped_project_id
+
+
+async def _get_active_project_deployment_or_404(
+    db: AsyncSession,
+    request: Request,
+    deployment_id: str,
+    project_id: str | None,
+    *,
+    min_role: ProjectRole,
+) -> ResearchDeployment:
+    scoped_project_id = _require_project_id(project_id)
+    deployment = await _get_deployment_or_404(db, deployment_id)
+    if deployment.project_id != scoped_project_id:
+        raise HTTPException(status_code=404, detail="Deployment not found")
+    await require_project_access(db, request, scoped_project_id, min_role=min_role)
     return deployment
 
 
@@ -142,9 +165,8 @@ async def list_deployments(
     project_id: str | None = Query(None),
     db: AsyncSession = Depends(get_db),
 ):
-    """List deployments, optionally filtered by project_id."""
-    if not project_id:
-        raise HTTPException(status_code=400, detail="project_id is required")
+    """List deployments for the active project."""
+    project_id = _require_project_id(project_id)
     await require_project_access(db, request, project_id, min_role="viewer")
 
     deployments = await deployment_service.list_deployments(db, project_id=project_id)
@@ -154,10 +176,11 @@ async def list_deployments(
 @router.get("/deployments/overview")
 async def deployment_overview(
     request: Request,
-    project_id: str = Query(...),
+    project_id: str | None = Query(None),
     db: AsyncSession = Depends(get_db),
 ):
     """Cross-deployment summary for a project."""
+    project_id = _require_project_id(project_id)
     await require_project_access(db, request, project_id, min_role="viewer")
     return await deployment_service.get_deployment_overview(db, project_id)
 
@@ -166,11 +189,13 @@ async def deployment_overview(
 async def get_deployment(
     deployment_id: str,
     request: Request,
+    project_id: str | None = Query(None),
     db: AsyncSession = Depends(get_db),
 ):
     """Get a single deployment by ID."""
-    deployment = await _get_deployment_or_404(db, deployment_id)
-    await require_project_access(db, request, deployment.project_id, min_role="viewer")
+    deployment = await _get_active_project_deployment_or_404(
+        db, request, deployment_id, project_id, min_role="viewer"
+    )
     return DeploymentResponse.from_model(deployment)
 
 
@@ -183,11 +208,13 @@ async def get_deployment(
 async def deployment_analytics(
     deployment_id: str,
     request: Request,
+    project_id: str | None = Query(None),
     db: AsyncSession = Depends(get_db),
 ):
     """Full analytics for a deployment — response rates, per-question stats, completion times."""
-    deployment = await _get_deployment_or_404(db, deployment_id)
-    await require_project_access(db, request, deployment.project_id, min_role="viewer")
+    deployment = await _get_active_project_deployment_or_404(
+        db, request, deployment_id, project_id, min_role="viewer"
+    )
 
     analytics = await deployment_service.get_deployment_analytics(db, deployment_id)
     if not analytics:
@@ -204,11 +231,13 @@ async def deployment_analytics(
 async def activate_deployment(
     deployment_id: str,
     request: Request,
+    project_id: str | None = Query(None),
     db: AsyncSession = Depends(get_db),
 ):
     """Activate a deployment — starts accepting participant responses."""
-    deployment = await _get_deployment_or_404(db, deployment_id)
-    await require_project_access(db, request, deployment.project_id, min_role="researcher")
+    deployment = await _get_active_project_deployment_or_404(
+        db, request, deployment_id, project_id, min_role="researcher"
+    )
 
     try:
         result = await deployment_service.activate_deployment(db, deployment_id)
@@ -233,11 +262,13 @@ async def activate_deployment(
 async def pause_deployment(
     deployment_id: str,
     request: Request,
+    project_id: str | None = Query(None),
     db: AsyncSession = Depends(get_db),
 ):
     """Pause a deployment — stops sending new questions to participants."""
-    deployment = await _get_deployment_or_404(db, deployment_id)
-    await require_project_access(db, request, deployment.project_id, min_role="researcher")
+    await _get_active_project_deployment_or_404(
+        db, request, deployment_id, project_id, min_role="researcher"
+    )
 
     try:
         return await deployment_service.pause_deployment(db, deployment_id)
@@ -249,11 +280,13 @@ async def pause_deployment(
 async def complete_deployment(
     deployment_id: str,
     request: Request,
+    project_id: str | None = Query(None),
     db: AsyncSession = Depends(get_db),
 ):
     """Complete a deployment — marks it finished and triggers final analysis."""
-    deployment = await _get_deployment_or_404(db, deployment_id)
-    await require_project_access(db, request, deployment.project_id, min_role="researcher")
+    await _get_active_project_deployment_or_404(
+        db, request, deployment_id, project_id, min_role="researcher"
+    )
 
     try:
         result = await deployment_service.complete_deployment(db, deployment_id)
@@ -284,6 +317,7 @@ async def handle_response(
     deployment_id: str,
     data: HandleResponseRequest,
     request: Request,
+    project_id: str | None = Query(None),
     db: AsyncSession = Depends(get_db),
 ):
     """Process a participant response and return the next action.
@@ -293,8 +327,9 @@ async def handle_response(
     - question: (if next_question or ask_followup) the text to send
     - thank_you: (if complete) the closing message
     """
-    deployment = await _get_deployment_or_404(db, deployment_id)
-    await require_project_access(db, request, deployment.project_id, min_role="researcher")
+    deployment = await _get_active_project_deployment_or_404(
+        db, request, deployment_id, project_id, min_role="researcher"
+    )
     await _get_project_deployment_conversation_or_404(
         db, deployment, data.conversation_id
     )
@@ -347,11 +382,13 @@ async def handle_response(
 async def list_conversations(
     deployment_id: str,
     request: Request,
+    project_id: str | None = Query(None),
     db: AsyncSession = Depends(get_db),
 ):
     """List all conversations for a deployment."""
-    deployment = await _get_deployment_or_404(db, deployment_id)
-    await require_project_access(db, request, deployment.project_id, min_role="viewer")
+    deployment = await _get_active_project_deployment_or_404(
+        db, request, deployment_id, project_id, min_role="viewer"
+    )
 
     conversations = await deployment_service.list_conversations(db, deployment_id)
     return [c.to_dict() for c in conversations]
@@ -362,11 +399,13 @@ async def get_conversation(
     deployment_id: str,
     conversation_id: str,
     request: Request,
+    project_id: str | None = Query(None),
     db: AsyncSession = Depends(get_db),
 ):
     """Get a single conversation detail."""
-    deployment = await _get_deployment_or_404(db, deployment_id)
-    await require_project_access(db, request, deployment.project_id, min_role="viewer")
+    deployment = await _get_active_project_deployment_or_404(
+        db, request, deployment_id, project_id, min_role="viewer"
+    )
 
     conversation = await _get_project_deployment_conversation_or_404(
         db, deployment, conversation_id
@@ -381,11 +420,13 @@ async def get_conversation_transcript(
     deployment_id: str,
     conversation_id: str,
     request: Request,
+    project_id: str | None = Query(None),
     db: AsyncSession = Depends(get_db),
 ):
     """Get the full message transcript for a conversation."""
-    deployment = await _get_deployment_or_404(db, deployment_id)
-    await require_project_access(db, request, deployment.project_id, min_role="viewer")
+    deployment = await _get_active_project_deployment_or_404(
+        db, request, deployment_id, project_id, min_role="viewer"
+    )
 
     conversation = await _get_project_deployment_conversation_or_404(
         db, deployment, conversation_id

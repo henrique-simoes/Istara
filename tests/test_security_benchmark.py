@@ -79,13 +79,38 @@ def test_security_benchmark_detects_integration_project_scope_paths() -> None:
         "backend/app/api/routes/deployments.py",
         "backend/app/api/routes/surveys.py",
         "backend/app/services/deployment_service.py",
+        "backend/app/services/inbound_processor.py",
+        "frontend/src/components/integrations/ConversationTranscript.tsx",
+        "frontend/src/components/integrations/DeploymentDashboard.tsx",
+        "frontend/src/components/integrations/DeploymentWizard.tsx",
         "frontend/src/components/integrations/DeploymentsTab.tsx",
         "frontend/src/components/integrations/IntegrationsOverview.tsx",
         "frontend/src/components/integrations/MessagingTab.tsx",
         "frontend/src/components/integrations/SurveysTab.tsx",
+        "frontend/src/lib/api.ts",
+        "tests/real_user_benchmark/lib/integration-discovery.mjs",
+        "tests/simulation/scenarios/58-research-deployment.mjs",
+        "tests/test_channel_inbound.py",
         "tests/test_channels.py",
         "tests/test_deployments.py",
+        "tests/test_project_scope_contracts.py",
         "tests/test_surveys.py",
+    ]
+    result = evaluate_matrix(matrix, changed_paths=changed_paths)
+
+    assert result.passed is True
+    assert result.scorecard["auth_security_change_detected"] is True
+    assert result.scorecard["triggered_paths"] == sorted(changed_paths)
+
+
+def test_security_benchmark_detects_report_project_scope_paths() -> None:
+    matrix = load_matrix(ROOT / "security" / "control_matrix.json")
+
+    changed_paths = [
+        "backend/app/api/routes/reports.py",
+        "backend/app/core/report_manager.py",
+        "backend/app/core/reporting_worker.py",
+        "tests/test_research_integrity_reports.py",
     ]
     result = evaluate_matrix(matrix, changed_paths=changed_paths)
 
