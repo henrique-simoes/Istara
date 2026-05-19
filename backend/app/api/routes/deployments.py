@@ -53,12 +53,13 @@ async def _get_project_deployment_conversation_or_404(
     deployment: ResearchDeployment,
     conversation_id: str,
 ) -> ChannelConversation:
-    conversation = await deployment_service.get_conversation(db, conversation_id)
-    if (
-        not conversation
-        or conversation.deployment_id != deployment.id
-        or conversation.project_id != deployment.project_id
-    ):
+    conversation = await deployment_service.get_conversation(
+        db,
+        conversation_id,
+        deployment_id=deployment.id,
+        project_id=deployment.project_id,
+    )
+    if not conversation:
         raise HTTPException(status_code=404, detail="Conversation not found")
     return conversation
 
@@ -216,7 +217,11 @@ async def deployment_analytics(
         db, request, deployment_id, project_id, min_role="viewer"
     )
 
-    analytics = await deployment_service.get_deployment_analytics(db, deployment_id)
+    analytics = await deployment_service.get_deployment_analytics(
+        db,
+        deployment_id,
+        project_id=deployment.project_id,
+    )
     if not analytics:
         raise HTTPException(status_code=404, detail="Deployment not found")
     return analytics
@@ -240,14 +245,20 @@ async def activate_deployment(
     )
 
     try:
-        result = await deployment_service.activate_deployment(db, deployment_id)
+        result = await deployment_service.activate_deployment(
+            db,
+            deployment_id,
+            project_id=deployment.project_id,
+        )
 
         # Broadcast progress update
         try:
             from app.api.websocket import broadcast_deployment_progress
 
             analytics = await deployment_service.get_deployment_analytics(
-                db, deployment_id
+                db,
+                deployment_id,
+                project_id=deployment.project_id,
             )
             await broadcast_deployment_progress(deployment_id, analytics)
         except Exception:
@@ -266,12 +277,16 @@ async def pause_deployment(
     db: AsyncSession = Depends(get_db),
 ):
     """Pause a deployment — stops sending new questions to participants."""
-    await _get_active_project_deployment_or_404(
+    deployment = await _get_active_project_deployment_or_404(
         db, request, deployment_id, project_id, min_role="researcher"
     )
 
     try:
-        return await deployment_service.pause_deployment(db, deployment_id)
+        return await deployment_service.pause_deployment(
+            db,
+            deployment_id,
+            project_id=deployment.project_id,
+        )
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
@@ -284,19 +299,25 @@ async def complete_deployment(
     db: AsyncSession = Depends(get_db),
 ):
     """Complete a deployment — marks it finished and triggers final analysis."""
-    await _get_active_project_deployment_or_404(
+    deployment = await _get_active_project_deployment_or_404(
         db, request, deployment_id, project_id, min_role="researcher"
     )
 
     try:
-        result = await deployment_service.complete_deployment(db, deployment_id)
+        result = await deployment_service.complete_deployment(
+            db,
+            deployment_id,
+            project_id=deployment.project_id,
+        )
 
         # Broadcast final progress
         try:
             from app.api.websocket import broadcast_deployment_progress
 
             analytics = await deployment_service.get_deployment_analytics(
-                db, deployment_id
+                db,
+                deployment_id,
+                project_id=deployment.project_id,
             )
             await broadcast_deployment_progress(deployment_id, analytics)
         except Exception:
@@ -339,6 +360,7 @@ async def handle_response(
         deployment_id=deployment_id,
         conversation_id=data.conversation_id,
         message_text=data.message_text,
+        project_id=deployment.project_id,
     )
 
     # Broadcast events based on the action
@@ -364,7 +386,9 @@ async def handle_response(
 
         if result.get("action") == "complete":
             analytics = await deployment_service.get_deployment_analytics(
-                db, deployment_id
+                db,
+                deployment_id,
+                project_id=deployment.project_id,
             )
             await broadcast_deployment_progress(deployment_id, analytics)
     except Exception:
@@ -390,7 +414,11 @@ async def list_conversations(
         db, request, deployment_id, project_id, min_role="viewer"
     )
 
-    conversations = await deployment_service.list_conversations(db, deployment_id)
+    conversations = await deployment_service.list_conversations(
+        db,
+        deployment_id,
+        project_id=deployment.project_id,
+    )
     return [c.to_dict() for c in conversations]
 
 
@@ -432,7 +460,10 @@ async def get_conversation_transcript(
         db, deployment, conversation_id
     )
     transcript = await deployment_service.get_conversation_transcript(
-        db, conversation_id
+        db,
+        conversation_id,
+        deployment_id=deployment.id,
+        project_id=deployment.project_id,
     )
     return {
         "deployment_id": deployment_id,

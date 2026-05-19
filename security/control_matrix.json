@@ -543,6 +543,7 @@
         "backend/app/core/agent_learning.py",
         "backend/app/core/self_evolution.py",
         "backend/app/services/channel_service.py",
+        "backend/app/services/deployment_service.py",
         "backend/app/core/report_manager.py",
         "backend/app/core/reporting_worker.py",
         "backend/app/core/scheduler.py",
@@ -596,6 +597,7 @@
         "tests/test_project_scope_contracts.py",
         "tests/test_channel_inbound.py",
         "tests/test_channels.py",
+        "tests/test_deployments.py",
         "tests/test_mcp.py",
         "tests/test_surveys.py",
         "tests/test_loops.py",
@@ -611,7 +613,7 @@
         "tests/test_auth_security.py"
       ],
       "future_change_trigger": true,
-      "notes": "Global admin, project admin, researcher, viewer, legacy role mappings, active-project notification, websocket subscription, chat session/history scope, Context hierarchy prompt/list scope, Context DAG session scope, memory/index scope, findings/evidence/search/report scope, task/Kanban scope, governed-evolution proposal/archive/reasoning scope, Meta-Hyperagent proposal/observation/variant scope, agent status/log/detail/learning/self-evolution/realtime/A2A-discovery, loop/background-process scope, project-owned Interfaces screens/briefs/status/configuration, integration/deployment/MCP-client list/detail/lifecycle routes, MCP client discovery/tool/call/health/delete routes, survey integration/link action routes, channel message/conversation detail scope, document library/preview routes, and donated-compute project scopes are governed. Project-facing APIs require an explicit active project; admin-only global aggregation belongs to dedicated admin surfaces. Startup QA/simulation loops are opt-in; project task workers, schedule execution, orchestrator routing, and persona self-evolution skip paused or missing project context before model, proposal, or mutation work."
+      "notes": "Global admin, project admin, researcher, viewer, legacy role mappings, active-project notification, websocket subscription, chat session/history scope, Context hierarchy prompt/list scope, Context DAG session scope, memory/index scope, findings/evidence/search/report scope, task/Kanban scope, governed-evolution proposal/archive/reasoning scope, Meta-Hyperagent proposal/observation/variant scope, agent status/log/detail/learning/self-evolution/realtime/A2A-discovery, loop/background-process scope, project-owned Interfaces screens/briefs/status/configuration, integration/deployment/MCP-client list/detail/lifecycle routes, MCP client discovery/tool/call/health/delete routes, survey integration/link action routes, channel message/conversation detail scope, document library/preview routes, and donated-compute project scopes are governed. Project-facing APIs require an explicit active project; admin-only global aggregation belongs to dedicated admin surfaces. Deployment service helpers also require explicit project scope so internal callers cannot fall back to global deployment or conversation ids. Startup QA/simulation loops are opt-in; project task workers, schedule execution, orchestrator routing, and persona self-evolution skip paused or missing project context before model, proposal, or mutation work."
     },
     {
       "id": "AUTHZ-002",

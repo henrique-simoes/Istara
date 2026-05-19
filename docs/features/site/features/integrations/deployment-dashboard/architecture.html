@@ -260,12 +260,13 @@
 <li><code>backend/app/api/routes/deployments.py</code></li>
 <li><code>backend/app/services/deployment_service.py</code></li>
 <li><code>DeploymentDashboard</code> uses the selected deployment&#x27;s <code>project_id</code> when loading analytics and conversations and when invoking lifecycle actions, so a stale deployment id cannot open or mutate another active project&#x27;s deployment.</li>
+<li>The service methods behind analytics, lifecycle, participant response handling, conversations, and transcripts require the same <code>project_id</code>, which keeps internal/background callers bound to the selected project&#x27;s deployment instead of global ids.</li>
 <li><code>ConversationTranscript</code> receives the same project id and sends it to the transcript API before participant messages are read.</li>
 </ul>
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
 <li>The feature is mounted through <code>frontend/src/components/integrations/DeploymentDashboard.tsx</code> and the UI navigation path recorded in the inventory.</li>
-<li>Deployment detail, lifecycle, conversation detail, transcript, response handling, and analytics routes require the caller&#x27;s active project id and verify that the conversation and deployment belong to that project before exposing or updating participant content.</li>
+<li>Deployment detail, lifecycle, conversation detail, transcript, response handling, and analytics routes require the caller&#x27;s active project id and verify that the conversation and deployment belong to that project before exposing or updating participant content. The route layer passes that authorized project id into service helpers for defense in depth.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>
