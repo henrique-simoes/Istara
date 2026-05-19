@@ -1146,6 +1146,7 @@ def test_websocket_project_events_are_active_project_filtered() -> None:
     assert "Project access denied" in websocket
     assert "async def _resolve_project_id" in websocket
     assert '"agent_id"' in websocket and '"from_agent_id"' in websocket and '"to_agent_id"' in websocket
+    assert '"deployment_id"' in websocket and '"deploymentId"' in websocket
     assert "PROJECT_BOUND_EVENT_TYPES" in websocket
     assert "Dropping project-bound websocket event without resolvable project_id" in websocket
     assert "record.get(\"active_project_id\") != project_id" in websocket

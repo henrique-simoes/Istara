@@ -51,6 +51,7 @@ Deployments configure participant-facing research deployments and link them to c
 - Inbound channel processors attach participant messages only to same-project deployments that explicitly list the receiving channel instance; deployments with no channels are not a global fallback.
 - Deployment activation and participant response handling reject paused projects before dispatching participant-facing work, updating adaptive conversation state, or reaching LLM-backed follow-up generation.
 - Deployment response handling, conversations, transcripts, analytics, and overview counters all require the conversation/deployment/channel records to match the same project boundary before participant content or findings are read, updated, or summarized.
+- Deployment websocket progress, response, and finding events resolve project ownership from `deployment_id`, deliver only to sockets subscribed to that project, and drop events with conflicting deployment/project claims.
 - Simulation and real-user benchmark deployment paths must carry active project scope on by-id lifecycle, response, analytics, conversation, delete, and channel cleanup calls, proving the same boundary exercised by the UI.
 
 ## Architecture Notes
@@ -67,6 +68,7 @@ Deployments configure participant-facing research deployments and link them to c
 
 - `tests/test_deployments.py` exercises API-level project isolation for active-project creation, deployment channel ownership, deployment overview conversation counts, by-id active-project matching across detail/lifecycle/conversation/transcript routes, direct service-helper project scope enforcement, and cross-project response rejection.
 - `tests/test_project_scope_contracts.py` asserts that `DeploymentsTab`, `DeploymentDashboard`, `ConversationTranscript`, and the deployment API client pass the active project id into list, detail, lifecycle, analytics, conversation, and transcript calls rather than falling back to global deployment ids.
+- `tests/test_websocket.py` proves deployment realtime events inherit project scope from the deployment id before fan-out and reject conflicting project claims.
 - `tests/test_integration_simulation_scope.py` prevents simulation and real-user benchmark deployment calls from reintroducing unscoped by-id integration paths.
 
 ## Related Features
