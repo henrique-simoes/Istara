@@ -264,6 +264,7 @@
 <li>All project-facing Meta-Hyperagent status, proposals, observations, variants, toggle, and mutation routes require an explicit <code>project_id</code>, verify the project is visible to the admin subject, and filter persisted records by exact project id.</li>
 <li>The observation loop is no longer started globally during application startup. It starts only from a project-scoped UI/API request and records its active project id.</li>
 <li>Skill usage stats now maintain per-project counters so Meta-Hyperagent skill-selection analysis does not infer proposals from another project&#x27;s execution history.</li>
+<li>Self-evolution tuning proposals require project-local learning evidence. An empty project, or a project with only global/other-project learning history, must not generate threshold-lowering proposals.</li>
 <li>Confirmed Meta-Hyperagent overrides are persisted under project-specific override buckets instead of process-wide override keys.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>

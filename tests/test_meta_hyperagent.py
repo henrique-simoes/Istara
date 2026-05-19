@@ -165,6 +165,38 @@ async def test_meta_hyperagent_observes_reasoning_bank(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_meta_hyperagent_requires_project_evidence_for_self_evolution_proposal():
+    from app.core.meta_hyperagent import MetaHyperagent
+
+    mh = MetaHyperagent()
+    mh._save = lambda: None
+    mh._log_audit = lambda *_args, **_kwargs: None
+    mh._proposals = []
+    mh._variants = []
+    mh._recent_observations = [
+        {
+            "timestamp": "2026-05-19T00:00:00+00:00",
+            "project_id": "empty-project",
+            "task_routing": {},
+            "self_evolution": {
+                "thresholds": {"min_occurrences": 3},
+                "project_learning_count": 0,
+                "project_promoted_count": 0,
+            },
+            "skill_selection": {"total_executions": 0, "semantic_fallback_count": 0},
+            "quality_eval": {"verification_passes": 0, "verification_fails": 0},
+            "agent_capabilities": {},
+            "reasoning_bank": {},
+        }
+    ]
+
+    proposals = await mh.analyze_and_propose(project_id="empty-project")
+
+    assert proposals == []
+    assert mh._proposals == []
+
+
+@pytest.mark.asyncio
 async def test_meta_hyperagent_filters_proposals_by_project():
     from app.core.meta_hyperagent import MetaHyperagent
 

@@ -194,6 +194,7 @@ class Settings(BaseSettings):
     prompt_rag_top_k: int = 8  # Number of dynamic sections to retrieve
     self_evolution_enabled: bool = True  # Enable auto self-evolution scan
     self_evolution_auto_promote: bool = False  # Auto-promote (vs user approval)
+    autonomous_quality_agents_enabled: bool = False  # Dev/Admin QA loops only when explicitly enabled
 
     # Meta-Hyperagent (optional layer that tunes subsystem parameters)
     meta_hyperagent_enabled: bool = False

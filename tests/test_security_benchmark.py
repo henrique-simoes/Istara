@@ -330,10 +330,30 @@ def test_security_benchmark_detects_meta_hyperagent_project_scope_paths() -> Non
     changed_paths = [
         "backend/app/api/routes/meta_hyperagent.py",
         "backend/app/core/meta_hyperagent.py",
+        "backend/app/core/agent_learning.py",
         "backend/app/skills/skill_usage.py",
         "frontend/src/components/meta/MetaHyperagentView.tsx",
         "frontend/src/lib/types.ts",
         "tests/test_meta_hyperagent.py",
+        "tests/test_agent_learning_scope.py",
+    ]
+    result = evaluate_matrix(matrix, changed_paths=changed_paths)
+
+    assert result.passed is True
+    assert result.scorecard["auth_security_change_detected"] is True
+    assert result.scorecard["triggered_paths"] == sorted(changed_paths)
+
+
+def test_security_benchmark_detects_background_process_project_scope_paths() -> None:
+    matrix = load_matrix(ROOT / "security" / "control_matrix.json")
+
+    changed_paths = [
+        "backend/app/main.py",
+        "backend/app/agents/orchestrator.py",
+        "backend/app/core/scheduler.py",
+        "backend/app/core/agent_learning.py",
+        "tests/test_project_scope_contracts.py",
+        "tests/test_agent_learning_scope.py",
     ]
     result = evaluate_matrix(matrix, changed_paths=changed_paths)
 

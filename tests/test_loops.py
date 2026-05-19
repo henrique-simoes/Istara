@@ -546,7 +546,7 @@ async def test_scheduler_records_missing_skill_as_failure(auth_headers):
 
 @pytest.mark.asyncio
 async def test_scheduler_skips_paused_project_without_running_skill(auth_headers):
-    """Due schedules are recorded as paused when their project is paused."""
+    """Due schedules for paused projects do not mutate or run skills."""
     await init_db()
     project_id = str(uuid.uuid4())
     schedule_id = str(uuid.uuid4())
@@ -575,7 +575,6 @@ async def test_scheduler_skips_paused_project_without_running_skill(auth_headers
         )).scalars().first()
 
     assert task.enabled is True
-    assert task.last_status == "paused"
-    assert task.execution_count >= 1
-    assert execution is not None
-    assert execution.status == "paused"
+    assert task.last_status == ""
+    assert task.execution_count == 0
+    assert execution is None

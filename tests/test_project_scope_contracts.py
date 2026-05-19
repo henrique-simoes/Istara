@@ -466,6 +466,8 @@ def test_meta_hyperagent_surfaces_require_active_project_scope() -> None:
     assert "async def observe_cycle(self, project_id: str | None = None)" in core
     assert "reasoning_bank.summary(\n                project_id=scoped_project_id" in core
     assert "skill_manager.get_usage_stats(project_id=scoped_project_id)" in core
+    assert "project_learning_count" in core
+    assert "learning_count >= 10" in core
     assert "self._matches_project(p, scoped_project_id)" in core
     assert "register_meta_proposal(\n                        asdict(proposal),\n                        project_id=scoped_project_id" in core
 
@@ -473,6 +475,7 @@ def test_meta_hyperagent_surfaces_require_active_project_scope() -> None:
     assert "mh.start()" not in main
     assert "project_id: str | None = None" in usage
     assert "projects = stats.setdefault(\"projects\", {})" in usage
+    assert "Ignoring automatic global lifecycle mutation" in usage
 
 
 def test_skills_surfaces_require_active_project_scope() -> None:
@@ -520,6 +523,37 @@ def test_skills_surfaces_require_active_project_scope() -> None:
     assert "project_id=task.project_id" in execution
     assert "async def register_skill_update_proposal(" in governance
     assert "project_id=scoped_project_id" in governance
+
+
+def test_background_autonomous_processes_are_project_safe_by_default() -> None:
+    """Startup QA loops must not create global activity or LLM work by default."""
+    config = read_repo("backend/app/config.py")
+    main = read_repo("backend/app/main.py")
+    orchestrator = read_repo("backend/app/agents/orchestrator.py")
+    scheduler = read_repo("backend/app/core/scheduler.py")
+    agents_route = read_repo("backend/app/api/routes/agents.py")
+    learning = read_repo("backend/app/core/agent_learning.py")
+
+    assert "autonomous_quality_agents_enabled: bool = False" in config
+    assert "autonomous_quality_agents_enabled = app_settings.autonomous_quality_agents_enabled" in main
+    assert "Autonomous quality audit/simulation agents disabled" in main
+    assert "devops_agent.start_task_worker()" in main
+    assert "ui_audit_agent.start_task_worker()" in main
+    assert "ux_eval_agent.start_task_worker()" in main
+    assert "user_sim_agent.start_task_worker()" in main
+
+    assert ".join(Project, Project.id == Task.project_id)" in orchestrator
+    assert "Project.is_paused.is_(False)" in orchestrator
+    assert ".outerjoin(Project, Project.id == ScheduledTask.project_id)" in scheduler
+    assert "Project.is_paused.is_(False)" in scheduler
+
+    assert "async def get_ux_eval(request: Request)" in agents_route
+    assert "async def get_sim_report(request: Request)" in agents_route
+    assert "require_admin_from_request(request)" in agents_route
+
+    assert "project_id is required" in learning
+    assert "AgentLearning.project_id == scoped_project_id" in learning
+    assert "append_learning(" not in learning
 
 
 def test_chat_sessions_require_active_project_scope() -> None:

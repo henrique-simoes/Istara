@@ -537,7 +537,11 @@ class AgentExecutionMixin:
             try:
                 from app.core.agent_learning import agent_learning
 
-                resolution = await agent_learning.get_error_resolution(self._agent_id, error_msg)
+                resolution = await agent_learning.get_error_resolution(
+                    self._agent_id,
+                    error_msg,
+                    project_id=task.project_id,
+                )
                 if resolution:
                     resolution_hint = f"\n\nKnown resolution: {resolution}"
                     logger.info(f"Found known resolution for error: {resolution}")

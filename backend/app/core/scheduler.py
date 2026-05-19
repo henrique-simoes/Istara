@@ -9,7 +9,7 @@ import asyncio
 import logging
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import Boolean, DateTime, Integer, String, Text, delete, select
+from sqlalchemy import Boolean, DateTime, Integer, String, Text, delete, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -214,13 +214,15 @@ class Scheduler:
         async with async_session() as db:
             await self._reset_stale_running_tasks(db, now)
 
-            # Fetch all enabled tasks then filter in Python to avoid
-            # SQLite naive-vs-aware datetime comparison crashes.
-            # Also skip tasks that are currently running.
+            # Fetch enabled tasks for active projects, then filter due time in
+            # Python to avoid SQLite naive-vs-aware datetime comparison crashes.
             result = await db.execute(
-                select(ScheduledTask).where(
+                select(ScheduledTask)
+                .outerjoin(Project, Project.id == ScheduledTask.project_id)
+                .where(
                     ScheduledTask.enabled.is_(True),
                     ScheduledTask.is_running.is_(False),
+                    or_(Project.id.is_(None), Project.is_paused.is_(False)),
                 )
             )
             all_enabled = result.scalars().all()
@@ -318,6 +320,10 @@ class Scheduler:
         logger.info(f"Executing scheduled task: {task.name} (skill={task.skill_name or 'none'})")
 
         project = await db.get(Project, task.project_id)
+        if not project:
+            raise PermanentScheduleError(
+                f"Project {task.project_id!r} not found for scheduled task {task.id}"
+            )
         if project and project.is_paused:
             logger.info(
                 "Skipping scheduled task %s because project %s is paused",

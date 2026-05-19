@@ -22,7 +22,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.database import Base, async_session
-from app.core.agent_identity import append_learning
 
 logger = logging.getLogger(__name__)
 
@@ -85,6 +84,13 @@ class AgentLearningManager:
         from app.core.autoresearch_isolation import is_autoresearch_active
         if is_autoresearch_active():
             return
+        scoped_project_id = str(project_id or "").strip()
+        if not scoped_project_id:
+            logger.debug(
+                "Skipping agent learning for %s because project_id is required",
+                agent_id,
+            )
+            return
 
         learning_text = (
             f"When encountering '{error_message[:200]}', "
@@ -99,6 +105,7 @@ class AgentLearningManager:
                         AgentLearning.agent_id == agent_id,
                         AgentLearning.category == "error_pattern",
                         AgentLearning.trigger == error_message[:500],
+                        AgentLearning.project_id == scoped_project_id,
                     )
                 )
                 existing_record = existing.scalar_one_or_none()
@@ -132,19 +139,12 @@ class AgentLearningManager:
                         resolution=resolution[:500],
                         learning=learning_text,
                         confidence=60,
-                        project_id=project_id,
+                        project_id=scoped_project_id,
                     )
                     db.add(record)
                     await db.commit()
                     logger.info(
                         f"New error learning for {agent_id}: {error_message[:60]}"
-                    )
-
-                    # Also persist to MEMORY.md
-                    append_learning(
-                        agent_id,
-                        "Error Patterns & Resolutions",
-                        learning_text,
                     )
         except Exception as e:
             logger.warning(f"Failed to record error learning: {e}")
@@ -159,6 +159,13 @@ class AgentLearningManager:
         from app.core.autoresearch_isolation import is_autoresearch_active
         if is_autoresearch_active():
             return
+        scoped_project_id = str(project_id or "").strip()
+        if not scoped_project_id:
+            logger.debug(
+                "Skipping workflow learning for %s because project_id is required",
+                agent_id,
+            )
+            return
         try:
             async with async_session() as db:
                 record = AgentLearning(
@@ -167,12 +174,10 @@ class AgentLearningManager:
                     trigger="workflow_observation",
                     learning=pattern[:1000],
                     confidence=50,
-                    project_id=project_id,
+                    project_id=scoped_project_id,
                 )
                 db.add(record)
                 await db.commit()
-
-                append_learning(agent_id, "Workflow Patterns", pattern[:500])
         except Exception as e:
             logger.warning(f"Failed to record workflow learning: {e}")
 
@@ -187,6 +192,13 @@ class AgentLearningManager:
         from app.core.autoresearch_isolation import is_autoresearch_active
         if is_autoresearch_active():
             return
+        scoped_project_id = str(project_id or "").strip()
+        if not scoped_project_id:
+            logger.debug(
+                "Skipping user feedback learning for %s because project_id is required",
+                agent_id,
+            )
+            return
         try:
             async with async_session() as db:
                 record = AgentLearning(
@@ -195,12 +207,10 @@ class AgentLearningManager:
                     trigger=context[:500],
                     learning=feedback[:1000],
                     confidence=70,
-                    project_id=project_id,
+                    project_id=scoped_project_id,
                 )
                 db.add(record)
                 await db.commit()
-
-                append_learning(agent_id, "User Preferences", feedback[:500])
         except Exception as e:
             logger.warning(f"Failed to record user feedback: {e}")
 
@@ -274,11 +284,15 @@ class AgentLearningManager:
         context: str = "",
         category: str | None = None,
         limit: int = 10,
+        project_id: str | None = None,
     ) -> list[dict]:
         """Retrieve relevant learnings for an agent, optionally filtered.
 
         Returns learnings ordered by confidence (descending) and recency.
         """
+        scoped_project_id = str(project_id or "").strip()
+        if not scoped_project_id:
+            return []
         try:
             async with async_session() as db:
                 query = (
@@ -286,6 +300,7 @@ class AgentLearningManager:
                     .where(
                         AgentLearning.agent_id == agent_id,
                         AgentLearning.active == True,
+                        AgentLearning.project_id == scoped_project_id,
                     )
                     .order_by(
                         AgentLearning.confidence.desc(),
@@ -315,13 +330,16 @@ class AgentLearningManager:
             return []
 
     async def get_error_resolution(
-        self, agent_id: str, error_message: str
+        self, agent_id: str, error_message: str, project_id: str | None = None
     ) -> str | None:
         """Look up a known resolution for an error pattern.
 
         Returns the resolution string if a matching pattern is found,
         None otherwise.  Used by the error-resilient agent loop.
         """
+        scoped_project_id = str(project_id or "").strip()
+        if not scoped_project_id:
+            return None
         try:
             async with async_session() as db:
                 # Search for similar error patterns
@@ -331,6 +349,7 @@ class AgentLearningManager:
                         AgentLearning.agent_id == agent_id,
                         AgentLearning.category == "error_pattern",
                         AgentLearning.active == True,
+                        AgentLearning.project_id == scoped_project_id,
                     )
                     .order_by(AgentLearning.confidence.desc())
                     .limit(20)
@@ -355,7 +374,11 @@ class AgentLearningManager:
         return None
 
     async def propose_evolution(
-        self, agent_id: str, proposal: str, reason: str
+        self,
+        agent_id: str,
+        proposal: str,
+        reason: str,
+        project_id: str | None = None,
     ) -> None:
         """Record an evolution proposal for an agent.
 
@@ -363,6 +386,13 @@ class AgentLearningManager:
         skills, or protocols.  They can be auto-applied (self-evolving)
         or require user approval.
         """
+        scoped_project_id = str(project_id or "").strip()
+        if not scoped_project_id:
+            logger.debug(
+                "Skipping evolution proposal for %s because project_id is required",
+                agent_id,
+            )
+            return
         try:
             async with async_session() as db:
                 record = AgentLearning(
@@ -371,15 +401,10 @@ class AgentLearningManager:
                     trigger=reason[:500],
                     learning=proposal[:1000],
                     confidence=40,  # Proposals start with low confidence
+                    project_id=scoped_project_id,
                 )
                 db.add(record)
                 await db.commit()
-
-                append_learning(
-                    agent_id,
-                    "Evolution Proposals",
-                    f"[PENDING] {proposal[:300]} (Reason: {reason[:200]})",
-                )
                 logger.info(f"Evolution proposal for {agent_id}: {proposal[:80]}")
         except Exception as e:
             logger.warning(f"Failed to record evolution proposal: {e}")

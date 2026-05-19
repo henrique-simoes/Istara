@@ -591,13 +591,24 @@ async def get_learnings(
 ):
     """Get an agent's structured learnings."""
     from app.core.agent_learning import agent_learning
-    agent = await require_agent_by_id(db, request, agent_id, project_id=project_id)
+    scoped_project_id = clean_project_id(project_id)
+    if not scoped_project_id:
+        raise HTTPException(status_code=400, detail="project_id is required")
+    agent = await require_agent_by_id(
+        db,
+        request,
+        agent_id,
+        project_id=scoped_project_id,
+    )
     if is_team_non_admin(request) and not agent_project_id(agent):
         return {"agent_id": agent_id, "learnings": []}
     learnings = await agent_learning.get_relevant_learnings(
-        agent_id, category=category, limit=limit
+        agent_id,
+        category=category,
+        limit=limit,
+        project_id=scoped_project_id,
     )
-    return {"agent_id": agent_id, "learnings": learnings}
+    return {"agent_id": agent_id, "project_id": scoped_project_id, "learnings": learnings}
 
 
 # ───── Self-Evolution ─────
@@ -1080,7 +1091,8 @@ async def send_message(
 
 
 @router.get("/audit/ux/latest")
-async def get_ux_eval():
+async def get_ux_eval(request: Request):
+    require_admin_from_request(request)
     report = ux_eval_agent.get_latest_report()
     if not report:
         return {"status": "no_reports", "message": "No UX evaluation has run yet."}
@@ -1094,7 +1106,8 @@ async def trigger_ux_eval(request: Request):
 
 
 @router.get("/audit/sim/latest")
-async def get_sim_report():
+async def get_sim_report(request: Request):
+    require_admin_from_request(request)
     report = user_sim_agent.get_latest_report()
     if not report:
         return {"status": "no_reports", "message": "No simulation has run yet."}

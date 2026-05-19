@@ -615,17 +615,37 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         "ISTARA_DISABLE_BACKGROUND_AGENTS", ""
     ).lower() in {"1", "true", "yes"}
 
-    # Start all agents and orchestrator unless a live harness explicitly needs
-    # exclusive model access from process start.
+    autonomous_quality_agents_enabled = app_settings.autonomous_quality_agents_enabled
+
+    # Start project-scoped task workers and orchestrators unless a live harness
+    # explicitly needs exclusive model access from process start. Synthetic
+    # Dev/Admin QA loops are opt-in because they can create test projects,
+    # call audit endpoints, and ask the LLM outside the user's active project.
     if disable_background_agents:
         _log.info("Background agents and scheduler disabled for this process.")
         bg_tasks = []
-    else:
+    elif autonomous_quality_agents_enabled:
+        _log.info("Autonomous quality audit/simulation agents enabled.")
         bg_tasks = [
             asyncio.create_task(devops_agent.start()),
             asyncio.create_task(ui_audit_agent.start()),
             asyncio.create_task(ux_eval_agent.start()),
             asyncio.create_task(user_sim_agent.start()),
+            asyncio.create_task(agent_orchestrator.start()),
+            asyncio.create_task(meta_orchestrator.start()),
+            asyncio.create_task(heartbeat_manager.start()),
+            asyncio.create_task(scheduler.start()),
+        ]
+    else:
+        _log.info(
+            "Autonomous quality audit/simulation agents disabled; "
+            "starting project-scoped task workers only."
+        )
+        bg_tasks = [
+            devops_agent.start_task_worker(),
+            ui_audit_agent.start_task_worker(),
+            ux_eval_agent.start_task_worker(),
+            user_sim_agent.start_task_worker(),
             asyncio.create_task(agent_orchestrator.start()),
             asyncio.create_task(meta_orchestrator.start()),
             asyncio.create_task(heartbeat_manager.start()),
