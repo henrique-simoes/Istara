@@ -130,6 +130,22 @@ def test_integrations_deployments_tab_is_project_scoped() -> None:
     assert "fetchDeployments();" not in source
 
 
+def test_backend_deployments_enforce_project_owned_channels_and_conversations() -> None:
+    route = read_repo("backend/app/api/routes/deployments.py")
+    service = read_repo("backend/app/services/deployment_service.py")
+
+    assert "validate_channel_instances_for_project" in service
+    assert "instance.project_id != project_id" in service
+    assert "channel_instance_ids_json=json.dumps(scoped_channel_instance_ids)" in service
+    assert "_get_project_deployment_conversation_or_404" in route
+    assert "conversation.project_id != deployment.project_id" in route
+    assert "conversation.project_id != deployment.project_id" in service
+    assert "ResearchDeployment.project_id == project_id" in service
+    assert "ChannelConversation.project_id == project_id" in service
+    assert "ChannelMessage.project_id == deployment.project_id" in service
+    assert "ChannelMessage.project_id == conversation.project_id" in service
+
+
 def test_integrations_subtabs_defensively_filter_by_active_project() -> None:
     messaging = read_repo("frontend/src/components/integrations/MessagingTab.tsx")
     surveys = read_repo("frontend/src/components/integrations/SurveysTab.tsx")

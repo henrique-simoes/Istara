@@ -266,6 +266,7 @@
 <ul>
 <li>Project-scoped state or artifact updates associated with deployment dashboard.</li>
 <li>Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.</li>
+<li>Conversation details, transcripts, responses, and analytics are read or updated only when they belong to the same project as the selected deployment.</li>
 </ul>
 <h2 id="caveats">Caveats</h2>
 <ul>
@@ -283,9 +284,9 @@
 </ul>
 <h2 id="evidence">Evidence</h2>
 <ul>
-<li>Source files: <code>frontend/src/components/integrations/DeploymentDashboard.tsx</code>, <code>backend/app/api/routes/deployments.py</code></li>
-<li>API references: <code>backend/app/api/routes/deployments.py</code></li>
-<li>Tests: none recorded</li>
+<li>Source files: <code>frontend/src/components/integrations/DeploymentDashboard.tsx</code>, <code>backend/app/api/routes/deployments.py</code>, <code>backend/app/services/deployment_service.py</code></li>
+<li>API references: <code>backend/app/api/routes/deployments.py</code>, <code>backend/app/services/deployment_service.py</code></li>
+<li>Tests: <code>tests/test_deployments.py</code></li>
 </ul>
         </article>
         <aside class="toc-panel" aria-label="Page sections">

@@ -6,11 +6,11 @@ audience: architecture
 status: documented
 related_features: ["integrations.deployment-dashboard", "integrations.surveys", "integrations.messaging"]
 related_glossary: ["triangulation"]
-code_references: ["frontend/src/components/integrations/DeploymentsTab.tsx", "frontend/src/components/integrations/DeploymentWizard.tsx", "backend/app/api/routes/deployments.py"]
-api_references: ["backend/app/api/routes/deployments.py"]
-test_references: ["tests/test_project_scope_contracts.py"]
+code_references: ["frontend/src/components/integrations/DeploymentsTab.tsx", "frontend/src/components/integrations/DeploymentWizard.tsx", "backend/app/api/routes/deployments.py", "backend/app/services/deployment_service.py"]
+api_references: ["backend/app/api/routes/deployments.py", "backend/app/services/deployment_service.py"]
+test_references: ["tests/test_deployments.py", "tests/test_project_scope_contracts.py"]
 last_verified: 2026-05-19
-compass: CF-SPEC-60 / CF-762
+compass: CF-SPEC-60 / CF-767
 ---
 
 # Research Deployments Architecture
@@ -24,6 +24,7 @@ Deployments configure participant-facing research deployments and link them to c
 - `frontend/src/components/integrations/DeploymentsTab.tsx`
 - `frontend/src/components/integrations/DeploymentWizard.tsx`
 - `backend/app/api/routes/deployments.py`
+- `backend/app/services/deployment_service.py`
 
 ## State, API, And Backend Contracts
 
@@ -36,7 +37,10 @@ Deployments configure participant-facing research deployments and link them to c
 ### API And Backend
 
 - `backend/app/api/routes/deployments.py`
+- `backend/app/services/deployment_service.py`
 - Deployment list requests must include `project_id`; the route enforces project access before returning deployment records, including for global admins using the project-facing Integrations route. The admin dashboard remains the only intended global aggregation surface.
+- Deployment creation validates every `channel_instance_id` against the deployment `project_id` before storing the deployment, so a deployment in one project cannot route participant content through another project's messaging channel.
+- Deployment response handling, conversations, transcripts, analytics, and overview counters all require the conversation/deployment/channel records to match the same project boundary before participant content or findings are read, updated, or summarized.
 
 ## Architecture Notes
 
@@ -50,6 +54,7 @@ Deployments configure participant-facing research deployments and link them to c
 
 ## Tests And Verification
 
+- `tests/test_deployments.py` exercises API-level project isolation for deployment channel ownership, deployment overview conversation counts, and cross-project response rejection.
 - `tests/test_project_scope_contracts.py` asserts that `DeploymentsTab` imports the project store, fetches deployments with the active project id, renders only `scopedDeployments`, and does not fall back to a global `fetchDeployments()` call.
 
 ## Related Features
@@ -64,7 +69,7 @@ Deployments configure participant-facing research deployments and link them to c
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-60 / CF-762
+- Spec/task: CF-SPEC-60 / CF-767
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update
