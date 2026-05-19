@@ -258,6 +258,7 @@
 <li>Open Chat from the Istara navigation or the parent tab.</li>
 <li>Use the visible controls in this surface to work with chat workspace in the active project context.</li>
 <li>Project switches clear the prior project&#x27;s session history before the active project&#x27;s chat loads.</li>
+<li>Agent selection is project-bound: project-owned agents can only be attached to sessions in their own project, while universal Istara system agents remain available.</li>
 <li>Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.</li>
 </ul>
 <h2 id="supported-workflows">Supported Workflows</h2>
@@ -270,7 +271,7 @@
 <ul>
 <li>Project-scoped state or artifact updates associated with chat workspace.</li>
 <li>Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.</li>
-<li>Chat messages and session settings that belong to the active project and the current user&#x27;s authorization.</li>
+<li>Chat messages, agent selection, and session settings that belong to the active project and the current user&#x27;s authorization.</li>
 </ul>
 <h2 id="caveats">Caveats</h2>
 <ul>
@@ -294,7 +295,7 @@
 <ul>
 <li>Source files: <code>frontend/src/components/chat/ChatView.tsx</code>, <code>frontend/src/stores/chatStore.ts</code>, <code>frontend/src/stores/sessionStore.ts</code>, <code>backend/app/api/routes/chat.py</code>, <code>backend/app/api/routes/sessions.py</code></li>
 <li>API references: <code>backend/app/api/routes/chat.py</code>, <code>backend/app/api/routes/sessions.py</code>, <code>frontend/src/lib/chatApi.ts</code>, <code>frontend/src/lib/sessionsApi.ts</code></li>
-<li>Tests: <code>tests/test_sessions.py</code>, <code>tests/test_project_scope_contracts.py</code></li>
+<li>Tests: <code>tests/test_chat.py</code>, <code>tests/test_sessions.py</code>, <code>tests/test_project_scope_contracts.py</code></li>
 </ul>
         </article>
         <aside class="toc-panel" aria-label="Page sections">

@@ -10,7 +10,7 @@ code_references: ["frontend/src/components/chat/ChatSessionsSidebar.tsx", "front
 api_references: ["frontend/src/lib/sessionsApi.ts", "backend/app/api/routes/sessions.py"]
 test_references: ["tests/test_sessions.py", "tests/test_project_scope_contracts.py"]
 last_verified: 2026-05-19
-compass: CF-SPEC-60 / CF-761
+compass: CF-SPEC-84 / CF-1089
 ---
 
 # Chat Sessions Architecture
@@ -45,6 +45,7 @@ The chat session sidebar manages project-scoped conversation history and new ses
 - `sessionStore` persists active session ids under per-project keys, clears session state on project switches, and only restores a saved id if that id exists in the active project's fetched sessions.
 - `sessionsApi.get`, `update`, `delete`, and `star` all include `project_id`; the backend verifies access to that active project and then looks up the chat session with both `ChatSession.id` and `ChatSession.project_id`.
 - Session detail responses load messages with both `Message.session_id` and `Message.project_id`, and a cross-project active scope returns 404 instead of revealing that another project's session exists.
+- Session create and update validate `agent_id` against the same active project before storing it. Universal system agents are allowed; project-owned agents from another project, inactive agents, and orphaned project-scoped agents are rejected.
 - The sidebar derives `scopedSessions` from the active project before rendering rows, counts, and actions.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
@@ -52,6 +53,7 @@ The chat session sidebar manages project-scoped conversation history and new ses
 ## Agents, Skills, LLM, MCP, And Permissions
 
 - RAG-related behavior depends on project context, documents, memory, or retrieval material referenced by the cited stores and routes.
+- Agent-specific chat personas are only valid when the selected session agent is universal or belongs to the active project.
 
 ## Tests And Verification
 
@@ -69,7 +71,7 @@ The chat session sidebar manages project-scoped conversation history and new ses
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-60 / CF-761
+- Spec/task: CF-SPEC-84 / CF-1089
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update

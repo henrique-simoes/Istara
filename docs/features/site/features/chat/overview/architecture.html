@@ -272,6 +272,7 @@
 <li>Chat history fetches clear previous messages before loading the active project&#x27;s session history; errors also clear messages so stale conversations cannot remain visible.</li>
 <li>Session detail fetches include the active project id and the backend authorizes that project before loading the session and its messages.</li>
 <li>Toolbar session updates carry the active project id so model, agent, preset, and thinking-mode changes cannot mutate a stale session from another project.</li>
+<li>Chat session agent assignment is server-validated before create, update, or LLM prompt composition: project-owned agents must belong to the active project, inactive or foreign agents return 404, and universal system agents remain usable.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>
@@ -279,9 +280,11 @@
 <ul>
 <li>MCP-related behavior must keep access policy, audit evidence, and tool/resource exposure synchronized with the cited route or integration component.</li>
 <li>RAG-related behavior depends on project context, documents, memory, or retrieval material referenced by the cited stores and routes.</li>
+<li>Agent persona and system-prompt loading only occurs after the stored <code>agent_id</code> is proven assignable to the active project session.</li>
 </ul>
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>
+<li><code>tests/test_chat.py</code></li>
 <li><code>tests/test_sessions.py</code></li>
 <li><code>tests/test_project_scope_contracts.py</code></li>
 </ul>
@@ -300,7 +303,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-60 / CF-761</li>
+<li>Spec/task: CF-SPEC-84 / CF-1089</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>

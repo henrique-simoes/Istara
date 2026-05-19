@@ -255,6 +255,7 @@
 <li>Open Chat &gt; Sessions from the Istara navigation or the parent tab.</li>
 <li>Use the visible controls in this surface to work with chat sessions in the active project context.</li>
 <li>Rename, star, delete, and reopen sessions only inside the active project; stale sessions from another project are cleared before the new project&#x27;s list loads.</li>
+<li>Attach agents only from the active project&#x27;s visible agent list; the backend rejects stale agent ids from other projects before saving or using the session.</li>
 <li>Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.</li>
 </ul>
 <h2 id="supported-workflows">Supported Workflows</h2>
@@ -267,7 +268,7 @@
 <ul>
 <li>Project-scoped state or artifact updates associated with chat sessions.</li>
 <li>Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.</li>
-<li>Session history and messages whose <code>project_id</code> matches the active project and the current user&#x27;s authorization.</li>
+<li>Session history, messages, and agent selection whose <code>project_id</code> matches the active project and the current user&#x27;s authorization.</li>
 </ul>
 <h2 id="caveats">Caveats</h2>
 <ul>

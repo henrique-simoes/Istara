@@ -10,7 +10,7 @@ code_references: ["frontend/src/components/chat/ChatSessionsSidebar.tsx", "front
 api_references: ["frontend/src/lib/sessionsApi.ts", "backend/app/api/routes/sessions.py"]
 test_references: ["tests/test_sessions.py", "tests/test_project_scope_contracts.py"]
 last_verified: 2026-05-19
-compass: CF-SPEC-60 / CF-761
+compass: CF-SPEC-84 / CF-1089
 ---
 
 # Chat Sessions
@@ -34,6 +34,7 @@ Chat Sessions exists so the work represented by Chat > Sessions has a stable, di
 - Open Chat > Sessions from the Istara navigation or the parent tab.
 - Use the visible controls in this surface to work with chat sessions in the active project context.
 - Rename, star, delete, and reopen sessions only inside the active project; stale sessions from another project are cleared before the new project's list loads.
+- Attach agents only from the active project's visible agent list; the backend rejects stale agent ids from other projects before saving or using the session.
 - Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.
 
 ## Supported Workflows
@@ -46,7 +47,7 @@ Chat Sessions exists so the work represented by Chat > Sessions has a stable, di
 
 - Project-scoped state or artifact updates associated with chat sessions.
 - Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.
-- Session history and messages whose `project_id` matches the active project and the current user's authorization.
+- Session history, messages, and agent selection whose `project_id` matches the active project and the current user's authorization.
 
 ## Caveats
 

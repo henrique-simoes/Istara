@@ -8,9 +8,9 @@ related_features: ["chat.sessions", "chat.model-controls", "chat.files", "chat.a
 related_glossary: ["rag", "mcp"]
 code_references: ["frontend/src/components/chat/ChatView.tsx", "frontend/src/stores/chatStore.ts", "frontend/src/stores/sessionStore.ts", "backend/app/api/routes/chat.py", "backend/app/api/routes/sessions.py"]
 api_references: ["backend/app/api/routes/chat.py", "backend/app/api/routes/sessions.py", "frontend/src/lib/chatApi.ts", "frontend/src/lib/sessionsApi.ts"]
-test_references: ["tests/test_sessions.py", "tests/test_project_scope_contracts.py"]
+test_references: ["tests/test_chat.py", "tests/test_sessions.py", "tests/test_project_scope_contracts.py"]
 last_verified: 2026-05-19
-compass: CF-SPEC-60 / CF-761
+compass: CF-SPEC-84 / CF-1089
 ---
 
 # Chat Workspace Architecture
@@ -47,6 +47,7 @@ Chat is the project-scoped conversational workspace for working with Istara agen
 - Chat history fetches clear previous messages before loading the active project's session history; errors also clear messages so stale conversations cannot remain visible.
 - Session detail fetches include the active project id and the backend authorizes that project before loading the session and its messages.
 - Toolbar session updates carry the active project id so model, agent, preset, and thinking-mode changes cannot mutate a stale session from another project.
+- Chat session agent assignment is server-validated before create, update, or LLM prompt composition: project-owned agents must belong to the active project, inactive or foreign agents return 404, and universal system agents remain usable.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
 
@@ -54,9 +55,11 @@ Chat is the project-scoped conversational workspace for working with Istara agen
 
 - MCP-related behavior must keep access policy, audit evidence, and tool/resource exposure synchronized with the cited route or integration component.
 - RAG-related behavior depends on project context, documents, memory, or retrieval material referenced by the cited stores and routes.
+- Agent persona and system-prompt loading only occurs after the stored `agent_id` is proven assignable to the active project session.
 
 ## Tests And Verification
 
+- `tests/test_chat.py`
 - `tests/test_sessions.py`
 - `tests/test_project_scope_contracts.py`
 
@@ -75,7 +78,7 @@ Chat is the project-scoped conversational workspace for working with Istara agen
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-60 / CF-761
+- Spec/task: CF-SPEC-84 / CF-1089
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update
