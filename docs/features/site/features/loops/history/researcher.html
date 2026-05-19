@@ -254,6 +254,7 @@
 <ul>
 <li>Open Loops &gt; History from the Istara navigation or the parent tab.</li>
 <li>Use the visible controls in this surface to work with loop execution history in the active project context.</li>
+<li>History and statistics show only execution rows for the active project; legacy rows without a saved row scope are admitted only when their metadata or source belongs to the active project.</li>
 <li>Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.</li>
 </ul>
 <h2 id="supported-workflows">Supported Workflows</h2>
@@ -265,6 +266,7 @@
 <h2 id="inputs-outputs-and-expected-outcomes">Inputs, Outputs, And Expected Outcomes</h2>
 <ul>
 <li>Project-scoped state or artifact updates associated with loop execution history.</li>
+<li>Persisted execution records include a project id so background schedule outcomes remain tied to the project that produced them.</li>
 <li>Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.</li>
 </ul>
 <h2 id="caveats">Caveats</h2>
@@ -283,9 +285,9 @@
 </ul>
 <h2 id="evidence">Evidence</h2>
 <ul>
-<li>Source files: <code>frontend/src/components/loops/ExecutionHistoryTab.tsx</code>, <code>backend/app/api/routes/loops.py</code></li>
+<li>Source files: <code>frontend/src/components/loops/ExecutionHistoryTab.tsx</code>, <code>backend/app/api/routes/loops.py</code>, <code>backend/app/services/loop_execution_service.py</code>, <code>backend/app/models/loop_execution.py</code></li>
 <li>API references: <code>backend/app/api/routes/loops.py</code></li>
-<li>Tests: none recorded</li>
+<li>Tests: <code>tests/test_loops.py</code>, <code>tests/test_project_scope_contracts.py</code></li>
 </ul>
         </article>
         <aside class="toc-panel" aria-label="Page sections">

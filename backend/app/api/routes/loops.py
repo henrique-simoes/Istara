@@ -10,7 +10,7 @@ from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
-from sqlalchemy import false, func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.datetime_utils import ensure_utc
@@ -18,9 +18,11 @@ from app.core.permissions import get_active_project_or_404, require_project_acce
 from app.core.scheduler import CronParser, ScheduledTask
 from app.models.agent import Agent, AgentState
 from app.models.database import get_db
-from app.models.loop_execution import LoopExecution
 from app.services import agent_service
-from app.services.loop_execution_service import get_execution_stats, list_executions as list_recorded_executions
+from app.services.loop_execution_service import (
+    get_execution_stats,
+    list_executions as list_recorded_executions,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -327,13 +329,19 @@ async def loops_overview(
     }
     since_24h = datetime.now(timezone.utc) - timedelta(hours=24)
     source_ids = await _project_loop_source_ids(db, scoped_project_id)
-    total_24h_query = select(func.count(LoopExecution.id)).where(LoopExecution.started_at >= since_24h)
-    if source_ids is not None:
-        total_24h_query = total_24h_query.where(
-            LoopExecution.source_id.in_(source_ids) if source_ids else false()
-        )
-    total_24h = (await db.execute(total_24h_query)).scalar() or 0
-    execution_stats = await get_execution_stats(db, source_ids=source_ids)
+    recent_executions = await list_recorded_executions(
+        db,
+        project_id=scoped_project_id,
+        source_ids=source_ids,
+        started_from=since_24h,
+        page_size=1,
+    )
+    total_24h = recent_executions["total"]
+    execution_stats = await get_execution_stats(
+        db,
+        project_id=scoped_project_id,
+        source_ids=source_ids,
+    )
     success_rate = (execution_stats.get("success_rate", 0.0) or 0.0) / 100
 
     return {
@@ -499,6 +507,7 @@ async def list_executions(
         source_types=_normalize_source_type(source_type),
         source_id=source_id,
         source_ids=source_ids,
+        project_id=scoped_project_id,
         status=status,
         started_from=_parse_filter_datetime(from_date),
         started_to=_parse_filter_datetime(to_date, end_of_day=True),
@@ -527,7 +536,12 @@ async def execution_stats(
     """Aggregated execution statistics."""
     scoped_project_id = await _require_loop_project_scope(db, request, project_id)
     source_ids = await _project_loop_source_ids(db, scoped_project_id)
-    stats = await get_execution_stats(db, source_id=source_id, source_ids=source_ids)
+    stats = await get_execution_stats(
+        db,
+        source_id=source_id,
+        source_ids=source_ids,
+        project_id=scoped_project_id,
+    )
     return {
         "total": stats["total"],
         "success": stats["success_count"],

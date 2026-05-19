@@ -248,6 +248,8 @@
 <li><code>frontend/src/components/loops/LoopOverviewTab.tsx</code></li>
 <li><code>frontend/src/stores/loopsStore.ts</code></li>
 <li><code>backend/app/api/routes/loops.py</code></li>
+<li><code>backend/app/services/loop_execution_service.py</code></li>
+<li><code>backend/app/models/loop_execution.py</code></li>
 </ul>
 <h2 id="state-api-and-backend-contracts">State, API, And Backend Contracts</h2>
 <h3 id="stores">Stores</h3>
@@ -258,6 +260,7 @@
 <ul>
 <li><code>backend/app/api/routes/loops.py</code></li>
 <li>Project-facing requests to overview, health, agent-loop, schedule, and execution endpoints must include the active <code>project_id</code> and pass <code>require_project_access</code>; global admins do not get a projectless fallback on these feature surfaces.</li>
+<li>Recent execution counts and success rates are computed through the loop execution service with the active project id, not by a global count of matching source ids.</li>
 <li><code>frontend/src/stores/loopsStore.ts</code> clears loop state when there is no active project instead of falling back to global automation data.</li>
 </ul>
 <h2 id="architecture-notes">Architecture Notes</h2>
@@ -287,7 +290,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-68 / CF-870</li>
+<li>Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-68 / CF-870; CF-SPEC-97 / CF-1237</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>

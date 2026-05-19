@@ -248,6 +248,8 @@
 <li><code>frontend/src/components/loops/CronBuilder.tsx</code></li>
 <li><code>backend/app/api/routes/scheduler.py</code></li>
 <li><code>backend/app/core/scheduler.py</code></li>
+<li><code>backend/app/services/loop_execution_service.py</code></li>
+<li><code>backend/app/models/loop_execution.py</code></li>
 </ul>
 <h2 id="state-api-and-backend-contracts">State, API, And Backend Contracts</h2>
 <h3 id="stores">Stores</h3>
@@ -262,6 +264,7 @@
 <li>Schedule detail, enable/disable, cron edits, and deletion require the active <code>project_id</code>; missing project scope returns 400, and a schedule id from another project returns 404 rather than falling back to the schedule&#x27;s owning project.</li>
 <li>Creating a schedule, re-enabling a schedule, or editing a schedule that remains enabled requires an unpaused project. Disabling a schedule in a paused project remains allowed so teams can stop queued work.</li>
 <li>The scheduler selects due work only for non-paused projects and treats missing project ownership as a permanent schedule error instead of executing against a dangling project id.</li>
+<li>Scheduler execution records persist the schedule&#x27;s project id before they appear in loop history or loop statistics.</li>
 </ul>
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
@@ -291,7 +294,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-61 / CF-779; CF-SPEC-68 / CF-870</li>
+<li>Spec/task: CF-SPEC-61 / CF-779; CF-SPEC-68 / CF-870; CF-SPEC-97 / CF-1237</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>

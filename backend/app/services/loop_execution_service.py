@@ -8,7 +8,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-from sqlalchemy import false, func, select
+from sqlalchemy import false, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.database import async_session
@@ -21,9 +21,59 @@ logger = logging.getLogger(__name__)
 # Record execution
 # ---------------------------------------------------------------------------
 
+
+def _clean_project_id(value: Any) -> str:
+    if value is None:
+        return ""
+    return str(value).strip()
+
+
+def _metadata_dict(execution: LoopExecution) -> dict[str, Any]:
+    metadata = LoopExecution._parse_json_dict(execution.metadata_json)
+    return metadata if isinstance(metadata, dict) else {}
+
+
+def _metadata_project_id(execution: LoopExecution) -> str:
+    return _clean_project_id(_metadata_dict(execution).get("project_id"))
+
+
+def _execution_project_id(execution: LoopExecution) -> str:
+    return _clean_project_id(getattr(execution, "project_id", "")) or _metadata_project_id(
+        execution
+    )
+
+
+def _execution_matches_project(
+    execution: LoopExecution,
+    scoped_project_id: str,
+    source_id_scope: set[str] | None,
+) -> bool:
+    row_project_id = _clean_project_id(getattr(execution, "project_id", ""))
+    if row_project_id:
+        return row_project_id == scoped_project_id
+
+    legacy_metadata_project_id = _metadata_project_id(execution)
+    if legacy_metadata_project_id:
+        return legacy_metadata_project_id == scoped_project_id
+
+    return source_id_scope is not None and execution.source_id in source_id_scope
+
+
+def _execution_to_dict(
+    execution: LoopExecution,
+    scoped_project_id: str | None = None,
+) -> dict[str, Any]:
+    data = execution.to_dict()
+    data["project_id"] = data.get("project_id") or _execution_project_id(execution)
+    if not data["project_id"] and scoped_project_id:
+        data["project_id"] = scoped_project_id
+    return data
+
+
 async def record_execution(
     source_type: str,
     source_id: str,
+    project_id: str | None = None,
     source_name: str = "",
     status: str = "success",
     started_at: Optional[datetime] = None,
@@ -33,6 +83,14 @@ async def record_execution(
     metadata: Optional[dict[str, Any]] = None,
 ) -> LoopExecution:
     """Create a LoopExecution record and persist it."""
+    metadata_payload = dict(metadata or {})
+    scoped_project_id = _clean_project_id(project_id) or _clean_project_id(
+        metadata_payload.get("project_id")
+    )
+    if not scoped_project_id:
+        raise ValueError("project_id is required for loop execution records")
+    metadata_payload["project_id"] = scoped_project_id
+
     now = datetime.now(timezone.utc)
     start = started_at or now
     end = finished_at
@@ -46,13 +104,14 @@ async def record_execution(
         source_type=source_type,
         source_id=source_id,
         source_name=source_name,
+        project_id=scoped_project_id,
         status=status,
         started_at=start,
         finished_at=end,
         duration_ms=duration_ms,
         error_message=error_message or "",
         findings_count=findings_count,
-        metadata_json=json.dumps(metadata or {}, default=str),
+        metadata_json=json.dumps(metadata_payload, default=str),
         created_at=now,
     )
 
@@ -74,6 +133,7 @@ async def list_executions(
     source_types: Optional[list[str]] = None,
     source_id: Optional[str] = None,
     source_ids: Optional[list[str]] = None,
+    project_id: Optional[str] = None,
     status: Optional[str] = None,
     started_from: Optional[datetime] = None,
     started_to: Optional[datetime] = None,
@@ -101,18 +161,35 @@ async def list_executions(
     if started_to:
         q = q.where(LoopExecution.started_at < started_to)
 
-    # Count
-    count_q = select(func.count()).select_from(q.subquery())
-    total = (await db.execute(count_q)).scalar() or 0
-
-    # Paginate
     safe_page = max(page, 1)
     safe_page_size = min(max(page_size, 1), 100)
     offset = (safe_page - 1) * safe_page_size
-    q = q.offset(offset).limit(safe_page_size)
 
-    result = await db.execute(q)
-    items = [e.to_dict() for e in result.scalars().all()]
+    scoped_project_id = _clean_project_id(project_id)
+    if scoped_project_id:
+        q = q.where(
+            or_(
+                LoopExecution.project_id == scoped_project_id,
+                LoopExecution.project_id == "",
+            )
+        )
+        source_id_scope = set(source_ids) if source_ids is not None else None
+        result = await db.execute(q)
+        filtered = [
+            execution
+            for execution in result.scalars().all()
+            if _execution_matches_project(execution, scoped_project_id, source_id_scope)
+        ]
+        total = len(filtered)
+        page_items = filtered[offset : offset + safe_page_size]
+        items = [_execution_to_dict(execution, scoped_project_id) for execution in page_items]
+    else:
+        count_q = select(func.count()).select_from(q.subquery())
+        total = (await db.execute(count_q)).scalar() or 0
+
+        q = q.offset(offset).limit(safe_page_size)
+        result = await db.execute(q)
+        items = [_execution_to_dict(execution) for execution in result.scalars().all()]
 
     return {
         "items": items,
@@ -130,6 +207,7 @@ async def get_execution_stats(
     db: AsyncSession,
     source_id: Optional[str] = None,
     source_ids: Optional[list[str]] = None,
+    project_id: Optional[str] = None,
 ) -> dict:
     """Aggregate execution statistics.
 
@@ -140,6 +218,53 @@ async def get_execution_stats(
         base = base.where(LoopExecution.source_id == source_id)
     if source_ids is not None:
         base = base.where(LoopExecution.source_id.in_(source_ids) if source_ids else false())
+
+    scoped_project_id = _clean_project_id(project_id)
+    if scoped_project_id:
+        base = base.where(
+            or_(
+                LoopExecution.project_id == scoped_project_id,
+                LoopExecution.project_id == "",
+            )
+        )
+        source_id_scope = set(source_ids) if source_ids is not None else None
+        result = await db.execute(base.order_by(LoopExecution.started_at.desc()))
+        executions = [
+            execution
+            for execution in result.scalars().all()
+            if _execution_matches_project(execution, scoped_project_id, source_id_scope)
+        ]
+        total = len(executions)
+        if total == 0:
+            return {
+                "total": 0,
+                "success_count": 0,
+                "failure_count": 0,
+                "running_count": 0,
+                "skipped_count": 0,
+                "success_rate": 0.0,
+                "avg_duration_ms": 0.0,
+            }
+        success_count = sum(1 for execution in executions if execution.status == "success")
+        failure_count = sum(1 for execution in executions if execution.status == "failure")
+        running_count = sum(1 for execution in executions if execution.status == "running")
+        skipped_count = sum(1 for execution in executions if execution.status == "skipped")
+        durations = [
+            execution.duration_ms
+            for execution in executions
+            if execution.duration_ms is not None
+        ]
+        avg_duration = sum(durations) / len(durations) if durations else 0.0
+        success_rate = (success_count / total * 100) if total > 0 else 0.0
+        return {
+            "total": total,
+            "success_count": success_count,
+            "failure_count": failure_count,
+            "running_count": running_count,
+            "skipped_count": skipped_count,
+            "success_rate": round(success_rate, 2),
+            "avg_duration_ms": round(float(avg_duration), 2),
+        }
 
     # Total
     total_q = select(func.count()).select_from(base.subquery())

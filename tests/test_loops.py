@@ -120,6 +120,7 @@ async def _seed_loop_scope_fixture(user_id: str) -> dict[str, str]:
                 source_type="schedule",
                 source_id=visible_schedule_id,
                 source_name="Visible Project Schedule",
+                project_id=visible_project_id,
                 status="success",
                 started_at=now - timedelta(minutes=10),
                 finished_at=now - timedelta(minutes=9),
@@ -131,6 +132,7 @@ async def _seed_loop_scope_fixture(user_id: str) -> dict[str, str]:
                 source_type="schedule",
                 source_id=hidden_schedule_id,
                 source_name="Hidden Project Schedule",
+                project_id=hidden_project_id,
                 status="failure",
                 started_at=now - timedelta(minutes=8),
                 finished_at=now - timedelta(minutes=7),
@@ -253,6 +255,125 @@ async def test_project_member_loop_surfaces_require_active_project_scope(researc
         assert stats.json()["total"] == 1
         assert stats.json()["success"] == 1
         assert stats.json()["failure"] == 0
+
+
+@pytest.mark.asyncio
+async def test_loop_execution_project_scope_uses_row_scope_and_legacy_fallback(auth_headers):
+    """Execution history must prefer row project_id and only fall back inside scope."""
+    await init_db()
+    project_a = f"loop-row-scope-{uuid.uuid4()}"
+    project_b = f"loop-hidden-scope-{uuid.uuid4()}"
+    schedule_a = str(uuid.uuid4())
+    schedule_b = str(uuid.uuid4())
+    now = datetime.now(timezone.utc)
+    async with async_session() as db:
+        db.add_all([
+            Project(id=project_a, name="Loop Row Scope"),
+            Project(id=project_b, name="Loop Hidden Scope"),
+            ScheduledTask(
+                id=schedule_a,
+                name="Visible Schedule",
+                description="",
+                cron_expression="0 * * * *",
+                skill_name="visible_skill",
+                project_id=project_a,
+                next_run=now + timedelta(hours=1),
+            ),
+            ScheduledTask(
+                id=schedule_b,
+                name="Hidden Schedule",
+                description="",
+                cron_expression="0 * * * *",
+                skill_name="hidden_skill",
+                project_id=project_b,
+                next_run=now + timedelta(hours=1),
+            ),
+            LoopExecution(
+                id=str(uuid.uuid4()),
+                source_type="schedule",
+                source_id=schedule_a,
+                source_name="Row Scope Wins",
+                project_id=project_a,
+                status="success",
+                started_at=now - timedelta(minutes=6),
+                finished_at=now - timedelta(minutes=5),
+                duration_ms=60000,
+                metadata_json=json.dumps({"project_id": project_b}),
+            ),
+            LoopExecution(
+                id=str(uuid.uuid4()),
+                source_type="schedule",
+                source_id=schedule_a,
+                source_name="Legacy Metadata Scope",
+                project_id="",
+                status="failure",
+                started_at=now - timedelta(minutes=5),
+                finished_at=now - timedelta(minutes=4),
+                duration_ms=60000,
+                metadata_json=json.dumps({"project_id": project_a}),
+            ),
+            LoopExecution(
+                id=str(uuid.uuid4()),
+                source_type="schedule",
+                source_id=schedule_a,
+                source_name="Legacy Source Scope",
+                project_id="",
+                status="skipped",
+                started_at=now - timedelta(minutes=4),
+                finished_at=now - timedelta(minutes=3),
+                duration_ms=60000,
+                metadata_json="{}",
+            ),
+            LoopExecution(
+                id=str(uuid.uuid4()),
+                source_type="schedule",
+                source_id=schedule_b,
+                source_name="Hidden Row Scope",
+                project_id=project_b,
+                status="success",
+                started_at=now - timedelta(minutes=3),
+                finished_at=now - timedelta(minutes=2),
+                duration_ms=60000,
+                metadata_json=json.dumps({"project_id": project_b}),
+            ),
+            LoopExecution(
+                id=str(uuid.uuid4()),
+                source_type="schedule",
+                source_id=schedule_a,
+                source_name="Hidden Legacy Metadata",
+                project_id="",
+                status="running",
+                started_at=now - timedelta(minutes=2),
+                finished_at=None,
+                duration_ms=None,
+                metadata_json=json.dumps({"project_id": project_b}),
+            ),
+        ])
+        await db.commit()
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.get(
+            f"/api/loops/executions?project_id={project_a}",
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        executions = response.json()["executions"]
+        names = {item["source_name"] for item in executions}
+        assert names == {"Row Scope Wins", "Legacy Metadata Scope", "Legacy Source Scope"}
+        assert {item["project_id"] for item in executions} == {project_a}
+
+        stats = await ac.get(
+            f"/api/loops/executions/stats?project_id={project_a}",
+            headers=auth_headers,
+        )
+        assert stats.status_code == 200
+        stats_body = stats.json()
+        assert stats_body["total"] == 3
+        assert stats_body["success"] == 1
+        assert stats_body["failure"] == 1
+        assert stats_body["skipped"] == 1
+        assert stats_body["running"] == 0
 
 
 @pytest.mark.asyncio
@@ -565,17 +686,20 @@ async def test_execution_history_uses_persisted_records_and_aliases(auth_headers
             next_run=finished + timedelta(hours=1),
         ))
         await db.commit()
-    await record_execution(
+    created_execution = await record_execution(
         source_type="schedule",
         source_id=schedule_id,
+        project_id=project_id,
         source_name="History Contract Check",
         status="failure",
         started_at=started,
         finished_at=finished,
         error_message="boom",
         findings_count=2,
-        metadata={"schedule_id": schedule_id, "project_id": project_id},
+        metadata={"schedule_id": schedule_id},
     )
+    assert created_execution.project_id == project_id
+    assert created_execution.to_dict()["metadata"]["project_id"] == project_id
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
@@ -594,6 +718,7 @@ async def test_execution_history_uses_persisted_records_and_aliases(auth_headers
         assert execution["duration_ms"] is not None
         assert execution["error_message"] == "boom"
         assert execution["findings_count"] == 2
+        assert execution["project_id"] == project_id
 
         stats = await ac.get(
             f"/api/loops/executions/stats?project_id={project_id}&source_id={schedule_id}",
@@ -638,6 +763,8 @@ async def test_scheduler_records_missing_skill_as_failure(auth_headers):
             select(LoopExecution).where(LoopExecution.source_id == schedule_id)
         )).scalars().first()
         assert execution is not None
+        assert execution.project_id == project_id
+        assert json.loads(execution.metadata_json)["project_id"] == project_id
         assert execution.status == "failure"
 
     await scheduler._tick()
@@ -687,3 +814,14 @@ async def test_scheduler_skips_paused_project_without_running_skill(auth_headers
     assert task.last_status == ""
     assert task.execution_count == 0
     assert execution is None
+
+
+@pytest.mark.asyncio
+async def test_record_execution_requires_project_id():
+    await init_db()
+
+    with pytest.raises(ValueError, match="project_id is required"):
+        await record_execution(
+            source_type="schedule",
+            source_id=str(uuid.uuid4()),
+        )
