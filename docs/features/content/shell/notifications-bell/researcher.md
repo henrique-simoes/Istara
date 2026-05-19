@@ -6,11 +6,11 @@ audience: researcher
 status: documented
 related_features: ["notifications.list", "notifications.preferences"]
 related_glossary: ["wcag"]
-code_references: ["frontend/src/components/layout/Sidebar.tsx", "frontend/src/hooks/useWebSocket.ts", "frontend/src/stores/notificationStore.ts", "backend/app/api/routes/notifications.py", "backend/app/api/websocket.py"]
+code_references: ["frontend/src/components/layout/Sidebar.tsx", "frontend/src/hooks/useWebSocket.ts", "frontend/src/stores/notificationStore.ts", "backend/app/api/routes/notifications.py", "backend/app/api/websocket.py", "backend/app/services/notification_service.py"]
 api_references: ["backend/app/api/routes/notifications.py", "backend/app/api/websocket.py"]
 test_references: ["tests/test_notifications.py", "tests/test_project_scope_contracts.py", "tests/test_websocket.py"]
 last_verified: 2026-05-19
-compass: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-754; CF-SPEC-60 / CF-759; CF-SPEC-60 / CF-776; CF-SPEC-71 / CF-913
+compass: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-754; CF-SPEC-60 / CF-759; CF-SPEC-60 / CF-776; CF-SPEC-71 / CF-913; CF-SPEC-94 / CF-1205
 ---
 
 # Notification Bell
@@ -36,6 +36,7 @@ Notification Bell exists so the work represented by Shell > Notifications Bell h
 - The unread badge reflects only the currently selected project and resets when no project is selected.
 - Realtime project notifications follow the active project selection, so events from other projects are not delivered into the current project shell.
 - If the realtime connection names a project the user cannot access, the socket is rejected instead of receiving that project's events.
+- Project-bound notification records are not persisted when a producer omits the project id.
 - Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.
 
 ## Supported Workflows
@@ -50,6 +51,7 @@ Notification Bell exists so the work represented by Shell > Notifications Bell h
 - Project scope is mandatory for notification lists, unread counts, and mark-all-read actions for every role, including admins using project-facing notification surfaces.
 - Project-tagged websocket events must carry or resolve to a project before they can be delivered to project-connected clients.
 - Project-bound realtime events that cannot be resolved to a project are not shown as global notifications.
+- System-wide backup, update, and resource-throttle notifications are kept out of project-user sockets unless the user is a global admin.
 - Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.
 
 ## Caveats
@@ -68,6 +70,6 @@ Notification Bell exists so the work represented by Shell > Notifications Bell h
 
 ## Evidence
 
-- Source files: `frontend/src/components/layout/Sidebar.tsx`, `frontend/src/hooks/useWebSocket.ts`, `frontend/src/stores/notificationStore.ts`, `backend/app/api/routes/notifications.py`, `backend/app/api/websocket.py`
+- Source files: `frontend/src/components/layout/Sidebar.tsx`, `frontend/src/hooks/useWebSocket.ts`, `frontend/src/stores/notificationStore.ts`, `backend/app/api/routes/notifications.py`, `backend/app/api/websocket.py`, `backend/app/services/notification_service.py`
 - API references: `backend/app/api/routes/notifications.py`, `backend/app/api/websocket.py`
 - Tests: `tests/test_notifications.py`, `tests/test_project_scope_contracts.py`, `tests/test_websocket.py`

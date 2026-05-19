@@ -88,7 +88,7 @@ export default function ProjectReportsView({
     setError(null);
     try {
       const data = await reportsApi.list(projectId);
-      setAllReports(data);
+      setAllReports(data.filter((report) => report.project_id === projectId));
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to load reports"
@@ -98,14 +98,25 @@ export default function ProjectReportsView({
   }, [projectId]);
 
   useEffect(() => {
+    setAllReports([]);
+    setSelectedReportId(null);
+    setSlideInstructions(null);
+    setSlideError(null);
+    setCopied(false);
     loadReports();
   }, [loadReports]);
+
+  const activeReports = allReports.filter((report) => report.project_id === projectId);
 
   const fetchSlideInstructions = async (reportId: string) => {
     setLoadingSlides(true);
     setSlideError(null);
     try {
-      const data = await presentationApi.slideInstructions(reportId);
+      const report = activeReports.find((item) => item.id === reportId);
+      if (!report || report.project_id !== projectId) {
+        throw new Error("Report is not in the active project.");
+      }
+      const data = await presentationApi.slideInstructions(reportId, projectId);
       setSlideInstructions({
         title: data.title,
         content: data.instructions,
@@ -125,9 +136,9 @@ export default function ProjectReportsView({
   };
 
   // Group reports by layer
-  const l2Reports = allReports.filter((r) => r.layer === 2);
-  const l3Reports = allReports.filter((r) => r.layer === 3);
-  const l4Reports = allReports.filter((r) => r.layer === 4);
+  const l2Reports = activeReports.filter((r) => r.layer === 2);
+  const l3Reports = activeReports.filter((r) => r.layer === 3);
+  const l4Reports = activeReports.filter((r) => r.layer === 4);
 
   // Loading state
   if (loading) {
@@ -186,7 +197,7 @@ export default function ProjectReportsView({
   }
 
   // Empty state
-  if (allReports.length === 0) {
+  if (activeReports.length === 0) {
     return (
       <div className="flex-1 flex items-center justify-center p-8" role="status">
         <div className="text-center">
@@ -220,7 +231,7 @@ export default function ProjectReportsView({
             Convergence Pyramid
           </h2>
           <span className="text-xs bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 px-2 py-0.5 rounded-full">
-            {allReports.length} report{allReports.length !== 1 ? "s" : ""}
+            {activeReports.length} report{activeReports.length !== 1 ? "s" : ""}
           </span>
         </div>
         <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
@@ -289,7 +300,7 @@ export default function ProjectReportsView({
 
         {/* Selected report detail panel */}
         {selectedReportId && (() => {
-          const report = allReports.find((r) => r.id === selectedReportId);
+          const report = activeReports.find((r) => r.id === selectedReportId);
           if (!report) return null;
           const layerConfig = LAYER_CONFIG[report.layer];
           const statusConfig = STATUS_BADGE[report.status] || STATUS_BADGE.draft;

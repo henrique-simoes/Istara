@@ -452,6 +452,109 @@ async def test_notification_item_actions_are_bound_to_active_project():
 
 
 @pytest.mark.asyncio
+async def test_persist_notification_drops_project_bound_events_without_project_scope():
+    """Direct notification persistence must not create orphan project-content records."""
+    await init_db()
+    from app.services.notification_service import persist_notification
+
+    notification = await persist_notification(
+        "document_created",
+        {"title": "orphaned document", "message": "missing project"},
+    )
+
+    assert notification is None
+    async with async_session() as db:
+        rows = (
+            await db.execute(
+                select(Notification).where(Notification.message == "missing project")
+            )
+        ).scalars().all()
+    assert rows == []
+
+
+@pytest.mark.asyncio
+async def test_notification_service_helpers_require_project_scope():
+    """Lower-level notification helpers should fail closed instead of global queries."""
+    await init_db()
+    project_id = str(uuid.uuid4())
+    other_project_id = str(uuid.uuid4())
+    read_id = str(uuid.uuid4())
+    delete_id = str(uuid.uuid4())
+    other_id = str(uuid.uuid4())
+    async with async_session() as db:
+        db.add_all(
+            [
+                Project(id=project_id, name="Notification helper scope"),
+                Project(id=other_project_id, name="Notification helper hidden scope"),
+                Notification(
+                    id=read_id,
+                    type="document_created",
+                    title="helper visible unread",
+                    message="visible",
+                    category="document",
+                    severity="info",
+                    project_id=project_id,
+                    read=False,
+                ),
+                Notification(
+                    id=delete_id,
+                    type="document_created",
+                    title="helper delete visible",
+                    message="visible",
+                    category="document",
+                    severity="info",
+                    project_id=project_id,
+                    read=False,
+                ),
+                Notification(
+                    id=other_id,
+                    type="document_created",
+                    title="helper hidden unread",
+                    message="hidden",
+                    category="document",
+                    severity="info",
+                    project_id=other_project_id,
+                    read=False,
+                ),
+            ]
+        )
+        await db.commit()
+
+        from app.services import notification_service
+
+        with pytest.raises(ValueError, match="project_id is required"):
+            await notification_service.get_unread_count(db)
+        with pytest.raises(ValueError, match="project_id is required"):
+            await notification_service.mark_all_read(db)
+        with pytest.raises(ValueError, match="project_id is required"):
+            await notification_service.mark_read(db, read_id)
+        with pytest.raises(ValueError, match="project_id is required"):
+            await notification_service.delete_notification(db, delete_id)
+
+        assert await notification_service.get_unread_count(db, project_id=project_id) == 2
+        assert await notification_service.mark_read(db, read_id, project_id=project_id) is True
+        assert await notification_service.delete_notification(
+            db,
+            other_id,
+            project_id=project_id,
+        ) is False
+        assert await notification_service.mark_all_read(db, project_id=project_id) == 1
+
+        rows = (
+            await db.execute(
+                select(Notification.id, Notification.read).where(
+                    Notification.id.in_([read_id, delete_id, other_id])
+                )
+            )
+        ).all()
+    assert dict(rows) == {
+        read_id: True,
+        delete_id: True,
+        other_id: False,
+    }
+
+
+@pytest.mark.asyncio
 async def test_notification_preferences_use_wrapped_payload_and_validate_categories(auth_headers):
     """Preference updates should match the frontend API helper and reject orphans."""
     await init_db()

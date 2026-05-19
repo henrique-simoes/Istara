@@ -42,6 +42,18 @@ PROJECT_BOUND_EVENT_TYPES = frozenset(
     }
 )
 
+GLOBAL_ADMIN_ONLY_EVENT_TYPES = frozenset(
+    {
+        "backup_completed",
+        "backup_failed",
+        "backup_started",
+        "resource_throttle",
+        "update_available",
+        "update_failed",
+        "update_started",
+    }
+)
+
 
 def _clean_project_id(value: str | None) -> str | None:
     cleaned = (value or "").strip()
@@ -255,6 +267,13 @@ class ConnectionManager:
             return False
         return await _can_subscribe_to_project(db, record.get("user_context") or {}, project_id)
 
+    @staticmethod
+    async def _connection_can_receive_global_admin_event(
+        db: Any,
+        record: dict[str, Any],
+    ) -> bool:
+        return await _can_subscribe_to_project(db, record.get("user_context") or {}, None)
+
     async def broadcast(self, event_type: str, data: dict) -> None:
         """Broadcast an event to connected clients authorized for its project."""
         project_id = await self._resolve_project_id(data)
@@ -279,6 +298,18 @@ class ConnectionManager:
             async with async_session() as db:
                 for record in list(self._connections):
                     if not await self._connection_can_receive(db, record, project_id):
+                        continue
+                    connection = record["websocket"]
+                    try:
+                        await connection.send_text(message)
+                    except Exception:
+                        disconnected.append(connection)
+        elif event_type in GLOBAL_ADMIN_ONLY_EVENT_TYPES:
+            from app.models.database import async_session
+
+            async with async_session() as db:
+                for record in list(self._connections):
+                    if not await self._connection_can_receive_global_admin_event(db, record):
                         continue
                     connection = record["websocket"]
                     try:

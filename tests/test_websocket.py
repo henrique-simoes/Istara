@@ -299,15 +299,64 @@ async def test_websocket_broadcast_rechecks_project_membership():
     )
     assert [event["data"]["filename"] for event in project_ws.sent] == ["visible.txt"]
 
+
+@pytest.mark.asyncio
+async def test_global_notification_websocket_events_are_admin_only():
+    """System-wide notification events must not fan out to project user sockets."""
+    await init_db()
+    settings.team_mode = True
+    project_id = f"ws-global-project-{uuid.uuid4()}"
+    user_id = f"ws-global-user-{uuid.uuid4()}"
+
     async with async_session() as db:
-        member = await db.get(ProjectMember, member_id)
-        assert member is not None
-        await db.delete(member)
+        db.add(Project(id=project_id, name="Global websocket notification project"))
+        db.add(
+            ProjectMember(
+                id=str(uuid.uuid4()),
+                project_id=project_id,
+                user_id=user_id,
+                role="viewer",
+                added_by="test",
+            )
+        )
         await db.commit()
 
+    from app.api.websocket import ConnectionManager
+
+    class FakeWebSocket:
+        def __init__(self) -> None:
+            self.sent: list[dict] = []
+
+        async def send_text(self, message: str) -> None:
+            self.sent.append(json.loads(message))
+
+    async def skip_persist(_event_type: str, _data: dict) -> None:
+        return None
+
+    admin_ws = FakeWebSocket()
+    project_ws = FakeWebSocket()
+    manager = ConnectionManager()
+    manager._persist_notification = skip_persist  # type: ignore[method-assign]
+    manager._connections = [
+        {
+            "websocket": admin_ws,
+            "user_context": {"id": "admin-user", "username": "admin", "role": "admin"},
+            "active_project_id": None,
+        },
+        {
+            "websocket": project_ws,
+            "user_context": {"id": user_id, "username": "researcher", "role": "researcher"},
+            "active_project_id": project_id,
+        },
+    ]
+
     await manager.broadcast(
-        "file_processed",
-        {"filename": "hidden.txt", "chunks": 1, "project_id": project_id},
+        "resource_throttle",
+        {
+            "reason": "System resources under pressure",
+            "resources": {"ram_gb": 64},
+        },
     )
 
-    assert [event["data"]["filename"] for event in project_ws.sent] == ["visible.txt"]
+    assert [event["type"] for event in admin_ws.sent] == ["resource_throttle"]
+    assert project_ws.sent == []

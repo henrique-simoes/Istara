@@ -241,7 +241,7 @@
   <p class="concept-line"><strong>Concepts:</strong> minto-pyramid</p>
 </header>
 <h2 id="implementation-summary">Implementation Summary</h2>
-<p>Report-related surfaces support presentation or slide guidance that can carry research findings into communicable report artifacts.</p>
+<p>Report-related surfaces support presentation or slide guidance that can carry research findings into communicable report artifacts. Slide-instruction requests are bound to the active project by requiring <code>project_id</code> on the report-id route and rejecting stale report ids from other projects.</p>
 <h2 id="frontend-surface">Frontend Surface</h2>
 <ul>
 <li><code>frontend/src/components/findings/ProjectReportsView.tsx</code></li>
@@ -256,6 +256,7 @@
 <ul>
 <li><code>backend/app/api/routes/presentation.py</code></li>
 <li><code>backend/app/api/routes/reports.py</code></li>
+<li><code>GET /api/presentation/reports/{report_id}/slide-instructions</code> requires <code>project_id</code> and returns instructions only when the report belongs to that same project and the caller can view it.</li>
 </ul>
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
@@ -269,7 +270,7 @@
 </ul>
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>
-<li>No focused test reference recorded yet.</li>
+<li><code>tests/test_reports.py</code> verifies fallback instruction generation and rejects missing or mismatched active-project scope.</li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>

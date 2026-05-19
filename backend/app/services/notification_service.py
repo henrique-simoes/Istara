@@ -105,6 +105,35 @@ EVENT_METADATA: dict[str, dict[str, Any] | None] = {
     "connected": None,
 }
 
+PROJECT_BOUND_NOTIFICATION_TYPES = frozenset(
+    {
+        "agent_status",
+        "document_created",
+        "document_updated",
+        "file_processed",
+        "finding_created",
+        "loop_execution",
+        "scheduled_reminder",
+        "suggestion",
+        "task_progress",
+        "task_queue_update",
+    }
+)
+
+
+def _clean_project_id(project_id: Any) -> str | None:
+    if not isinstance(project_id, str):
+        return None
+    cleaned = project_id.strip()
+    return cleaned or None
+
+
+def _require_project_id(project_id: Optional[str]) -> str:
+    scoped_project_id = _clean_project_id(project_id)
+    if not scoped_project_id:
+        raise ValueError("project_id is required for notification queries and mutations")
+    return scoped_project_id
+
 
 # ---------------------------------------------------------------------------
 # Persist notification
@@ -119,6 +148,16 @@ async def persist_notification(event_type: str, data: dict) -> Optional[Notifica
     if meta is None:
         # Explicitly skipped or unknown — do not persist
         return None
+
+    project_id = _clean_project_id(data.get("project_id") or data.get("projectId"))
+    if event_type in PROJECT_BOUND_NOTIFICATION_TYPES and not project_id:
+        logger.warning(
+            "Skipping project-bound notification without project_id: %s",
+            event_type,
+        )
+        return None
+    if project_id:
+        data = {**data, "project_id": project_id}
 
     title_template = meta.get("title_template", event_type)
     try:
@@ -142,7 +181,7 @@ async def persist_notification(event_type: str, data: dict) -> Optional[Notifica
         message=str(message)[:2000],
         category=meta.get("category", "system"),
         agent_id=data.get("agent_id"),
-        project_id=data.get("project_id"),
+        project_id=project_id,
         severity=meta.get("severity", "info"),
         read=False,
         action_type=meta.get("action_type", ""),
@@ -180,14 +219,14 @@ async def list_notifications(
 
     Returns ``{"items": [...], "total": int, "page": int, "page_size": int}``.
     """
+    scoped_project_id = _require_project_id(project_id)
     q = select(Notification).order_by(Notification.created_at.desc())
+    q = q.where(Notification.project_id == scoped_project_id)
 
     if category:
         q = q.where(Notification.category == category)
     if agent_id:
         q = q.where(Notification.agent_id == agent_id)
-    if project_id:
-        q = q.where(Notification.project_id == project_id)
     if severity:
         q = q.where(Notification.severity == severity)
     if read is not None:
@@ -221,10 +260,18 @@ async def list_notifications(
     }
 
 
-async def mark_read(db: AsyncSession, notification_id: str) -> bool:
+async def mark_read(
+    db: AsyncSession,
+    notification_id: str,
+    project_id: Optional[str] = None,
+) -> bool:
     """Mark a single notification as read. Returns True if found."""
+    scoped_project_id = _require_project_id(project_id)
     result = await db.execute(
-        select(Notification).where(Notification.id == notification_id)
+        select(Notification).where(
+            Notification.id == notification_id,
+            Notification.project_id == scoped_project_id,
+        )
     )
     notif = result.scalar_one_or_none()
     if not notif:
@@ -236,19 +283,30 @@ async def mark_read(db: AsyncSession, notification_id: str) -> bool:
 
 async def mark_all_read(db: AsyncSession, project_id: Optional[str] = None) -> int:
     """Mark all unread notifications as read. Returns count updated."""
-    stmt = update(Notification).where(Notification.read.is_(False))
-    if project_id:
-        stmt = stmt.where(Notification.project_id == project_id)
+    scoped_project_id = _require_project_id(project_id)
+    stmt = (
+        update(Notification)
+        .where(Notification.read.is_(False))
+        .where(Notification.project_id == scoped_project_id)
+    )
     stmt = stmt.values(read=True)
     result = await db.execute(stmt)
     await db.commit()
     return result.rowcount  # type: ignore[return-value]
 
 
-async def delete_notification(db: AsyncSession, notification_id: str) -> bool:
+async def delete_notification(
+    db: AsyncSession,
+    notification_id: str,
+    project_id: Optional[str] = None,
+) -> bool:
     """Delete a notification by id. Returns True if found and deleted."""
+    scoped_project_id = _require_project_id(project_id)
     result = await db.execute(
-        select(Notification).where(Notification.id == notification_id)
+        select(Notification).where(
+            Notification.id == notification_id,
+            Notification.project_id == scoped_project_id,
+        )
     )
     notif = result.scalar_one_or_none()
     if not notif:
@@ -260,9 +318,12 @@ async def delete_notification(db: AsyncSession, notification_id: str) -> bool:
 
 async def get_unread_count(db: AsyncSession, project_id: Optional[str] = None) -> int:
     """Count unread notifications, optionally filtered by project."""
-    q = select(func.count(Notification.id)).where(Notification.read.is_(False))
-    if project_id:
-        q = q.where(Notification.project_id == project_id)
+    scoped_project_id = _require_project_id(project_id)
+    q = (
+        select(func.count(Notification.id))
+        .where(Notification.read.is_(False))
+        .where(Notification.project_id == scoped_project_id)
+    )
     result = await db.execute(q)
     return result.scalar() or 0
 

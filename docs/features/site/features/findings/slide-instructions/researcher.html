@@ -241,7 +241,7 @@
   <p class="concept-line"><strong>Concepts:</strong> minto-pyramid</p>
 </header>
 <h2 id="what-it-does">What It Does</h2>
-<p>Report-related surfaces support presentation or slide guidance that can carry research findings into communicable report artifacts.</p>
+<p>Report-related surfaces support presentation or slide guidance that can carry research findings into communicable report artifacts. The slide-instruction action only works for reports that belong to the currently active project.</p>
 <h2 id="why-it-exists">Why It Exists</h2>
 <p>Report Slide Instructions exists so the work represented by Findings &gt; Reports &gt; Slide Instructions has a stable, discoverable place in Istara&#x27;s project workflow. It keeps user actions, generated artifacts, and related follow-up surfaces connected to the active project rather than scattering them across unrelated tools.</p>
 <h2 id="where-it-lives">Where It Lives</h2>
@@ -265,6 +265,7 @@
 <h2 id="inputs-outputs-and-expected-outcomes">Inputs, Outputs, And Expected Outcomes</h2>
 <ul>
 <li>Project-scoped state or artifact updates associated with report slide instructions.</li>
+<li>Slide instructions generated from the selected active-project report; stale report ids from another project are rejected.</li>
 <li>Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.</li>
 </ul>
 <h2 id="caveats">Caveats</h2>
@@ -285,7 +286,7 @@
 <ul>
 <li>Source files: <code>frontend/src/components/findings/ProjectReportsView.tsx</code>, <code>backend/app/api/routes/presentation.py</code></li>
 <li>API references: <code>backend/app/api/routes/presentation.py</code>, <code>backend/app/api/routes/reports.py</code></li>
-<li>Tests: none recorded</li>
+<li>Tests: <code>tests/test_reports.py</code></li>
 </ul>
         </article>
         <aside class="toc-panel" aria-label="Page sections">
