@@ -48,6 +48,10 @@ export default function SurveysTab() {
     fetchLinks();
   }, [activeProjectId, fetchSurveyIntegrations, fetchLinks]);
 
+  const scopedSurveyIntegrations = activeProjectId
+    ? surveyIntegrations.filter((integration) => integration.project_id === activeProjectId)
+    : [];
+
   const handleSync = async (linkId: string) => {
     setSyncing(linkId);
     try {
@@ -116,7 +120,8 @@ export default function SurveysTab() {
         </div>
         <button
           onClick={handleConnectPlatform}
-          className="flex items-center gap-1.5 px-3 py-2 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700 transition-colors"
+          disabled={!activeProjectId}
+          className="flex items-center gap-1.5 px-3 py-2 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500 dark:disabled:bg-slate-800 dark:disabled:text-slate-500 transition-colors"
         >
           <Plus size={14} />
           {canManageSurveyIntegrations ? "Connect Platform" : "Request Platform"}
@@ -130,7 +135,7 @@ export default function SurveysTab() {
             <div key={i} className="h-32 rounded-xl bg-slate-100 dark:bg-slate-800 animate-pulse" />
           ))}
         </div>
-      ) : surveyIntegrations.length === 0 ? (
+      ) : scopedSurveyIntegrations.length === 0 ? (
         <div className="text-center py-12 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl">
           <FileQuestion size={40} className="mx-auto mb-3 text-slate-300 dark:text-slate-600" />
           <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">No survey platforms connected</p>
@@ -139,14 +144,15 @@ export default function SurveysTab() {
           </p>
           <button
             onClick={handleConnectPlatform}
-            className="px-4 py-2 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700 transition-colors"
+            disabled={!activeProjectId}
+            className="px-4 py-2 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500 dark:disabled:bg-slate-800 dark:disabled:text-slate-500 transition-colors"
           >
             {canManageSurveyIntegrations ? "Connect First Platform" : "Request Platform Access"}
           </button>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {surveyIntegrations.map((integration) => {
+          {scopedSurveyIntegrations.map((integration) => {
             const meta = PLATFORM_META[integration.platform] || { label: integration.platform, color: "text-slate-500", bg: "bg-slate-100" };
             return (
               <div
@@ -182,7 +188,7 @@ export default function SurveysTab() {
       )}
 
       {/* Linked Surveys table */}
-      {surveyIntegrations.length > 0 && (
+      {scopedSurveyIntegrations.length > 0 && (
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl">
           <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 dark:border-slate-800">
             <div className="flex items-center gap-2">

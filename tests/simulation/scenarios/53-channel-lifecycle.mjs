@@ -11,11 +11,13 @@ export async function run(ctx) {
   const { api } = ctx;
   const checks = [];
   const cleanup = { instanceIds: [] };
+  const projectId = ctx.projectId || "sim-project-001";
+  const projectQuery = `project_id=${encodeURIComponent(projectId)}`;
 
   // ── 1. GET /api/channels — returns array (initially empty or existing) ──
   let initialList = [];
   try {
-    const result = await api.get("/api/channels");
+    const result = await api.get(`/api/channels?${projectQuery}`);
     initialList = Array.isArray(result) ? result : result?.channels || [];
     checks.push({
       name: "GET /api/channels returns array",
@@ -33,6 +35,7 @@ export async function run(ctx) {
       platform: "telegram",
       name: "SIM: Test Telegram Bot",
       config: { bot_token: "sim-test-token-123456" },
+      project_id: projectId,
     });
     cleanup.instanceIds.push(telegramInstance.id);
     checks.push({
@@ -65,6 +68,7 @@ export async function run(ctx) {
       platform: "slack",
       name: "SIM: Test Slack Workspace",
       config: { bot_token: "xoxb-sim-test-123", signing_secret: "sim-secret-456" },
+      project_id: projectId,
     });
     cleanup.instanceIds.push(slackInstance.id);
     checks.push({
@@ -78,7 +82,7 @@ export async function run(ctx) {
 
   // ── 5. GET /api/channels?platform=telegram — filter by platform ──
   try {
-    const filtered = await api.get("/api/channels?platform=telegram");
+    const filtered = await api.get(`/api/channels?platform=telegram&${projectQuery}`);
     const list = Array.isArray(filtered) ? filtered : filtered?.channels || [];
     const allTelegram = list.every((c) => c.platform === "telegram");
     checks.push({
@@ -152,7 +156,7 @@ export async function run(ctx) {
 
   // ── 10. GET /api/channels — count after creation ──
   try {
-    const allChannels = await api.get("/api/channels");
+    const allChannels = await api.get(`/api/channels?${projectQuery}`);
     const list = Array.isArray(allChannels) ? allChannels : allChannels?.channels || [];
     checks.push({
       name: "GET /api/channels shows correct count after creation",
@@ -180,7 +184,7 @@ export async function run(ctx) {
 
   // ── 12. GET /api/channels — count after deletion ──
   try {
-    const afterDelete = await api.get("/api/channels");
+    const afterDelete = await api.get(`/api/channels?${projectQuery}`);
     const list = Array.isArray(afterDelete) ? afterDelete : afterDelete?.channels || [];
     checks.push({
       name: "GET /api/channels shows correct count after deletion",
@@ -198,6 +202,7 @@ export async function run(ctx) {
       platform: "whatsapp",
       name: "SIM: Test WhatsApp",
       config: { phone_number_id: "sim-123", access_token: "sim-token-xyz" },
+      project_id: projectId,
     });
     cleanup.instanceIds.push(whatsappInstance.id);
     checks.push({
@@ -216,6 +221,7 @@ export async function run(ctx) {
       platform: "google_chat",
       name: "SIM: Test Google Chat",
       config: { webhook_url: "https://sim.test/webhook" },
+      project_id: projectId,
     });
     cleanup.instanceIds.push(gchatInstance.id);
     checks.push({
@@ -229,7 +235,7 @@ export async function run(ctx) {
 
   // ── 15. All 4 platforms represented ──
   try {
-    const allChannels = await api.get("/api/channels");
+    const allChannels = await api.get(`/api/channels?${projectQuery}`);
     const list = Array.isArray(allChannels) ? allChannels : allChannels?.channels || [];
     const platforms = new Set(list.map((c) => c.platform));
     const hasFour = platforms.has("telegram") && platforms.has("whatsapp") && platforms.has("google_chat");

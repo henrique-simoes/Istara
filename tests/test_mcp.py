@@ -92,13 +92,25 @@ async def test_mcp_server_status_requires_auth():
 async def test_mcp_clients_returns_list(auth_headers):
     """GET /api/mcp/clients returns MCP clients."""
     await init_db()
+    project = await _seed_project()
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.get("/api/mcp/clients", headers=auth_headers)
+        response = await ac.get(f"/api/mcp/clients?project_id={project.id}", headers=auth_headers)
         assert response.status_code == 200
         body = response.json()
         assert isinstance(body["servers"], list)
         assert body["count"] == len(body["servers"])
+
+
+@pytest.mark.asyncio
+async def test_mcp_clients_require_project_id_for_project_facing_api(auth_headers):
+    await init_db()
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.get("/api/mcp/clients", headers=auth_headers)
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "project_id is required"
 
 
 @pytest.mark.asyncio
@@ -318,7 +330,7 @@ async def test_mcp_client_registration_requires_project_in_team_mode(auth_header
             json={"name": "Global MCP", "url": "http://localhost:3001/mcp", "transport": "http"},
         )
 
-    assert response.status_code == 422
+    assert response.status_code == 400
     assert response.json()["detail"] == "project_id is required"
 
 

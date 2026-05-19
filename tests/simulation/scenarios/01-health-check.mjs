@@ -65,7 +65,8 @@ export async function run(ctx) {
 
   // 7. Channels API
   try {
-    const channels = await api.get("/api/channels");
+    const projectId = encodeURIComponent(ctx.projectId || "sim-project-001");
+    const channels = await api.get(`/api/channels?project_id=${projectId}`);
     checks.push({ name: "Channels API responds", passed: true, detail: JSON.stringify(channels) });
   } catch (e) {
     checks.push({ name: "Channels API responds", passed: false, detail: e.message });

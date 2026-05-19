@@ -10,10 +10,12 @@ export async function run(ctx) {
   const { api } = ctx;
   const checks = [];
   const cleanup = { integrationIds: [], linkIds: [] };
+  const projectId = ctx.projectId || "sim-project-001";
+  const projectQuery = `project_id=${encodeURIComponent(projectId)}`;
 
   // ── 1. GET /api/surveys/integrations — returns array ──
   try {
-    const result = await api.get("/api/surveys/integrations");
+    const result = await api.get(`/api/surveys/integrations?${projectQuery}`);
     const list = Array.isArray(result) ? result : result?.integrations || [];
     checks.push({
       name: "GET /api/surveys/integrations returns array",
@@ -31,6 +33,7 @@ export async function run(ctx) {
       platform: "typeform",
       name: "SIM: Test Typeform",
       config: { api_token: "sim-typeform-token-123" },
+      project_id: projectId,
     });
     cleanup.integrationIds.push(typeformIntegration.id);
     checks.push({
@@ -49,6 +52,7 @@ export async function run(ctx) {
       platform: "surveymonkey",
       name: "SIM: Test SurveyMonkey",
       config: { access_token: "sim-sm-token-456" },
+      project_id: projectId,
     });
     cleanup.integrationIds.push(smIntegration.id);
     checks.push({
@@ -67,6 +71,7 @@ export async function run(ctx) {
       platform: "google_forms",
       name: "SIM: Test Google Forms",
       config: { service_account_json: "{}" },
+      project_id: projectId,
     });
     cleanup.integrationIds.push(gfIntegration.id);
     checks.push({
@@ -80,7 +85,7 @@ export async function run(ctx) {
 
   // ── 5. GET /api/surveys/integrations — lists all 3 ──
   try {
-    const result = await api.get("/api/surveys/integrations");
+    const result = await api.get(`/api/surveys/integrations?${projectQuery}`);
     const list = Array.isArray(result) ? result : result?.integrations || [];
     const simOnes = list.filter((i) => i.name && i.name.startsWith("SIM:"));
     checks.push({
@@ -98,7 +103,7 @@ export async function run(ctx) {
     try {
       testLink = await api.post("/api/surveys/links", {
         integration_id: typeformIntegration.id,
-        project_id: "sim-project-001",
+        project_id: projectId,
         external_survey_id: "sim-survey-abc",
         external_survey_name: "SIM: User Experience Survey",
       });
@@ -115,12 +120,12 @@ export async function run(ctx) {
 
   // ── 7. GET /api/surveys/links — list links ──
   try {
-    const result = await api.get("/api/surveys/links?project_id=sim-project-001");
+    const result = await api.get(`/api/surveys/links?${projectQuery}`);
     const list = Array.isArray(result) ? result : result?.links || [];
     checks.push({
       name: "GET /api/surveys/links returns project links",
       passed: list.length >= 1,
-      detail: `${list.length} links for sim-project-001`,
+      detail: `${list.length} links for ${projectId}`,
     });
   } catch (e) {
     checks.push({ name: "GET /api/surveys/links returns project links", passed: false, detail: e.message });
@@ -172,7 +177,7 @@ export async function run(ctx) {
 
   // ── 11. Verify count decreased ──
   try {
-    const result = await api.get("/api/surveys/integrations");
+    const result = await api.get(`/api/surveys/integrations?${projectQuery}`);
     const list = Array.isArray(result) ? result : result?.integrations || [];
     const simOnes = list.filter((i) => i.name && i.name.startsWith("SIM:"));
     checks.push({
@@ -190,6 +195,7 @@ export async function run(ctx) {
       platform: "microsoft_forms",
       name: "SIM: Should Fail",
       config: {},
+      project_id: projectId,
     });
     // If it succeeds, that's unexpected
     checks.push({

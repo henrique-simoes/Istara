@@ -10,6 +10,8 @@ export async function run(ctx) {
   const { api } = ctx;
   const checks = [];
   const cleanup = { deploymentIds: [], channelIds: [] };
+  const projectId = ctx.projectId || "sim-project-001";
+  const projectQuery = encodeURIComponent(projectId);
 
   // ── 1. Create a channel instance for deployment ──
   let channel = null;
@@ -18,6 +20,7 @@ export async function run(ctx) {
       platform: "telegram",
       name: "SIM: Deployment Channel",
       config: { bot_token: "sim-deploy-bot-token" },
+      project_id: projectId,
     });
     cleanup.channelIds.push(channel.id);
     checks.push({
@@ -33,7 +36,7 @@ export async function run(ctx) {
   let deployment = null;
   try {
     deployment = await api.post("/api/deployments", {
-      project_id: "sim-project-001",
+      project_id: projectId,
       name: "SIM: User Interview Study",
       deployment_type: "interview",
       questions: [
@@ -63,7 +66,7 @@ export async function run(ctx) {
 
   // ── 3. GET /api/deployments — list ──
   try {
-    const result = await api.get("/api/deployments?project_id=sim-project-001");
+    const result = await api.get(`/api/deployments?project_id=${projectQuery}`);
     const list = Array.isArray(result) ? result : result?.deployments || [];
     checks.push({
       name: "GET /api/deployments returns project deployments",
@@ -176,7 +179,7 @@ export async function run(ctx) {
 
   // ── 11. GET /api/deployments/overview — cross-deployment summary ──
   try {
-    const overview = await api.get("/api/deployments/overview?project_id=sim-project-001");
+    const overview = await api.get(`/api/deployments/overview?project_id=${projectQuery}`);
     checks.push({
       name: "GET /api/deployments/overview returns summary",
       passed: overview.total_deployments !== undefined || overview.active_deployments !== undefined,
@@ -190,7 +193,7 @@ export async function run(ctx) {
   let surveyDeployment = null;
   try {
     surveyDeployment = await api.post("/api/deployments", {
-      project_id: "sim-project-001",
+      project_id: projectId,
       name: "SIM: Quick Survey",
       deployment_type: "survey",
       questions: [
@@ -214,7 +217,7 @@ export async function run(ctx) {
   let diaryDeployment = null;
   try {
     diaryDeployment = await api.post("/api/deployments", {
-      project_id: "sim-project-001",
+      project_id: projectId,
       name: "SIM: Week-long Diary",
       deployment_type: "diary_study",
       questions: [
@@ -236,7 +239,7 @@ export async function run(ctx) {
 
   // ── 14. All 3 deployment types in project ──
   try {
-    const result = await api.get("/api/deployments?project_id=sim-project-001");
+    const result = await api.get(`/api/deployments?project_id=${projectQuery}`);
     const list = Array.isArray(result) ? result : result?.deployments || [];
     const types = new Set(list.map((d) => d.deployment_type));
     checks.push({

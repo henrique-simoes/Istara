@@ -260,6 +260,8 @@
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
 <li>The feature is mounted through <code>frontend/src/components/integrations/SurveysTab.tsx</code> and the UI navigation path recorded in the inventory.</li>
+<li><code>SurveysTab</code> requests survey integrations and links with the active project id, clears stale integration state on project changes, and renders only survey integrations whose <code>project_id</code> matches the active project.</li>
+<li><code>backend/app/api/routes/surveys.py</code> requires <code>project_id</code> on project-facing integration and survey-link lists, and survey links must use an integration bound to the same project before syncing or returning responses.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>
@@ -269,7 +271,8 @@
 </ul>
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>
-<li>No focused test reference recorded yet.</li>
+<li><code>tests/test_surveys.py</code></li>
+<li><code>tests/test_project_scope_contracts.py</code></li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>
@@ -282,7 +285,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-53 / CF-657</li>
+<li>Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-762</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>

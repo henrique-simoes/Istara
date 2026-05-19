@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.core.env_persistence import persist_env_value
-from app.core.permissions import ProjectRole, get_subject, is_global_admin, require_project_access
+from app.core.permissions import ProjectRole, require_project_access
 from app.core.security_middleware import require_admin_from_request
 from app.models.database import get_db
 from app.models.mcp_server_config import MCPServerConfig
@@ -68,28 +68,23 @@ class ToolCallRequest(BaseModel):
     arguments: dict = {}
 
 
-async def _require_project_or_global_admin(
+async def _require_project_scope(
     db: AsyncSession,
     request: Request,
     project_id: str | None,
     *,
-    min_role: ProjectRole = "project_admin",
-) -> str | None:
-    project_id = (project_id or "").strip()
-    if project_id:
-        from app.models.project import Project
-
-        project = await db.get(Project, project_id)
-        if not project:
-            raise HTTPException(status_code=404, detail="Project not found")
-        await require_project_access(db, request, project_id, min_role=min_role)
-        return project_id
-    subject = get_subject(request)
-    if is_global_admin(subject):
-        return None
-    if settings.team_mode:
+    min_role: ProjectRole = "viewer",
+) -> str:
+    scoped_project_id = (project_id or "").strip()
+    if not scoped_project_id:
         raise HTTPException(status_code=400, detail="project_id is required")
-    return None
+    from app.models.project import Project
+
+    project = await db.get(Project, scoped_project_id)
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    await require_project_access(db, request, scoped_project_id, min_role=min_role)
+    return scoped_project_id
 
 
 async def _get_client_for_project(
@@ -389,9 +384,7 @@ async def list_clients(
     db: AsyncSession = Depends(get_db),
 ):
     """List registered external MCP servers for a project, or all for global admins."""
-    scoped_project_id = await _require_project_or_global_admin(
-        db, request, project_id, min_role="project_admin"
-    )
+    scoped_project_id = await _require_project_scope(db, request, project_id, min_role="viewer")
     from app.services.mcp_client_manager import list_servers
 
     servers = await list_servers(db, active_only=active_only, project_id=scoped_project_id)
@@ -403,11 +396,7 @@ async def register_client(
     data: ClientRegisterRequest, request: Request, db: AsyncSession = Depends(get_db)
 ):
     """Register a new external MCP server."""
-    project_id = await _require_project_or_global_admin(
-        db, request, data.project_id, min_role="project_admin"
-    )
-    if settings.team_mode and not project_id:
-        raise HTTPException(status_code=422, detail="project_id is required")
+    project_id = await _require_project_scope(db, request, data.project_id, min_role="project_admin")
     from app.services.mcp_client_manager import register_server
 
     try:
@@ -453,9 +442,7 @@ async def list_all_client_tools(
     db: AsyncSession = Depends(get_db),
 ):
     """Aggregate cached tools from active external MCP servers."""
-    scoped_project_id = await _require_project_or_global_admin(
-        db, request, project_id, min_role="project_admin"
-    )
+    scoped_project_id = await _require_project_scope(db, request, project_id, min_role="viewer")
     from app.services.mcp_client_manager import list_all_tools
 
     tools = await list_all_tools(db, project_id=scoped_project_id)
@@ -607,7 +594,7 @@ async def list_featured_servers(
     db: AsyncSession = Depends(get_db),
 ):
     """List pre-configured MCP servers available for one-click connection."""
-    await _require_project_or_global_admin(db, request, project_id, min_role="project_admin")
+    await _require_project_scope(db, request, project_id, min_role="viewer")
     import json
     from pathlib import Path
 
@@ -629,7 +616,7 @@ async def get_featured_server(
     db: AsyncSession = Depends(get_db),
 ):
     """Get details for a featured MCP server."""
-    await _require_project_or_global_admin(db, request, project_id, min_role="project_admin")
+    await _require_project_scope(db, request, project_id, min_role="viewer")
     import json
     from pathlib import Path
 
@@ -665,11 +652,7 @@ async def connect_featured_server(
     Creates a new MCP client config from the featured server's definition,
     optionally setting environment variables (API keys).
     """
-    project_id = await _require_project_or_global_admin(
-        db, request, body.project_id, min_role="project_admin"
-    )
-    if settings.team_mode and not project_id:
-        raise HTTPException(status_code=422, detail="project_id is required")
+    project_id = await _require_project_scope(db, request, body.project_id, min_role="project_admin")
 
     import json
     from pathlib import Path

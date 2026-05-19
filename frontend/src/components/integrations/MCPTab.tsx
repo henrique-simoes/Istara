@@ -74,6 +74,9 @@ export default function MCPTab() {
   const serverEnabled = mcpServerStatus?.enabled;
   const mcpLibraryInstalled = mcpServerStatus?.mcp_library_installed !== false;
   const exposure = mcpServerStatus?.exposure;
+  const scopedMCPClients = activeProjectId
+    ? mcpClients.filter((client) => client.project_id === activeProjectId)
+    : [];
 
   if (showServerSetup) {
     return (
@@ -246,7 +249,7 @@ export default function MCPTab() {
               <div key={i} className="h-20 rounded-xl bg-slate-100 dark:bg-slate-800 animate-pulse" />
             ))}
           </div>
-        ) : mcpClients.length === 0 ? (
+        ) : scopedMCPClients.length === 0 ? (
           <div className="text-center py-12 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl">
             <Server size={32} className="mx-auto mb-3 text-slate-300 dark:text-slate-600" />
             <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">No MCP servers connected</p>
@@ -263,7 +266,7 @@ export default function MCPTab() {
           </div>
         ) : (
           <div className="space-y-3">
-            {mcpClients.map((client) => (
+            {scopedMCPClients.map((client) => (
               <MCPClientCard
                 key={client.id}
                 client={client}

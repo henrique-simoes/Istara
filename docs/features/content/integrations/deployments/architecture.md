@@ -9,8 +9,8 @@ related_glossary: ["triangulation"]
 code_references: ["frontend/src/components/integrations/DeploymentsTab.tsx", "frontend/src/components/integrations/DeploymentWizard.tsx", "backend/app/api/routes/deployments.py"]
 api_references: ["backend/app/api/routes/deployments.py"]
 test_references: ["tests/test_project_scope_contracts.py"]
-last_verified: 2026-05-18
-compass: CF-SPEC-60 / CF-754
+last_verified: 2026-05-19
+compass: CF-SPEC-60 / CF-762
 ---
 
 # Research Deployments Architecture
@@ -36,7 +36,7 @@ Deployments configure participant-facing research deployments and link them to c
 ### API And Backend
 
 - `backend/app/api/routes/deployments.py`
-- Non-admin deployment list requests must include `project_id`; the route enforces project access before returning deployment records. The admin dashboard remains the only intended global aggregation surface.
+- Deployment list requests must include `project_id`; the route enforces project access before returning deployment records, including for global admins using the project-facing Integrations route. The admin dashboard remains the only intended global aggregation surface.
 
 ## Architecture Notes
 
@@ -64,7 +64,7 @@ Deployments configure participant-facing research deployments and link them to c
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-60 / CF-754
+- Spec/task: CF-SPEC-60 / CF-762
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update

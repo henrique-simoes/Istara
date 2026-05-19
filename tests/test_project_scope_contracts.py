@@ -59,6 +59,34 @@ def test_integrations_deployments_tab_is_project_scoped() -> None:
     assert "fetchDeployments();" not in source
 
 
+def test_integrations_subtabs_defensively_filter_by_active_project() -> None:
+    messaging = read_repo("frontend/src/components/integrations/MessagingTab.tsx")
+    surveys = read_repo("frontend/src/components/integrations/SurveysTab.tsx")
+    mcp_tab = read_repo("frontend/src/components/integrations/MCPTab.tsx")
+    store = read_repo("frontend/src/stores/integrationsStore.ts")
+
+    assert "const scopedChannelInstances = activeProjectId" in messaging
+    assert "channelInstances.filter((c) => c.project_id === activeProjectId)" in messaging
+    assert "const selectedInstance = scopedChannelInstances.find" in messaging
+    assert "scopedChannelInstances.map((instance)" in messaging
+    assert "channelInstances.map((instance)" not in messaging
+
+    assert "const scopedSurveyIntegrations = activeProjectId" in surveys
+    assert "surveyIntegrations.filter((integration) => integration.project_id === activeProjectId)" in surveys
+    assert "scopedSurveyIntegrations.map((integration)" in surveys
+    assert "surveyIntegrations.map((integration)" not in surveys
+
+    assert "const scopedMCPClients = activeProjectId" in mcp_tab
+    assert "mcpClients.filter((client) => client.project_id === activeProjectId)" in mcp_tab
+    assert "scopedMCPClients.map((client)" in mcp_tab
+    assert "mcpClients.map((client)" not in mcp_tab
+
+    assert "set({ channelInstances: [], selectedInstanceId: null, channelLoading: true, error: null });" in store
+    assert "set({ deploymentsList: [], selectedDeploymentId: null, deploymentLoading: true, error: null });" in store
+    assert "set({ surveyIntegrations: [], surveyLoading: true, error: null });" in store
+    assert "set({ mcpClients: [], mcpLoading: true, error: null });" in store
+
+
 def test_integrations_store_and_api_accept_project_filters() -> None:
     store = read_repo("frontend/src/stores/integrationsStore.ts")
     api = read_repo("frontend/src/lib/api.ts")
@@ -84,11 +112,11 @@ def test_backend_project_owned_integration_lists_require_scope_for_non_admins() 
         "backend/app/api/routes/channels.py": 'raise HTTPException(status_code=400, detail="project_id is required")',
         "backend/app/api/routes/deployments.py": 'raise HTTPException(status_code=400, detail="project_id is required")',
         "backend/app/api/routes/surveys.py": 'raise HTTPException(status_code=400, detail="project_id is required")',
+        "backend/app/api/routes/mcp.py": 'raise HTTPException(status_code=400, detail="project_id is required")',
     }
 
     for path, required_error in route_contracts.items():
         source = read_repo(path)
-        assert "elif not is_global_admin(subject):" in source
         assert required_error in source
 
 
