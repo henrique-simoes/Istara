@@ -39,7 +39,7 @@ export default function SurveySetupWizard({ onClose }: SurveySetupWizardProps) {
   const goNext = () => { if (stepIndex < STEPS.length - 1) setCurrentStep(STEPS[stepIndex + 1]); };
 
   const handleTest = async () => {
-    if (!selectedPlatform) return;
+    if (!selectedPlatform || !activeProjectId) return;
     setTesting(true);
     setTestResult(null);
     setTestError(null);
@@ -48,7 +48,7 @@ export default function SurveySetupWizard({ onClose }: SurveySetupWizardProps) {
         platform: selectedPlatform,
         name: `${PLATFORMS.find((p) => p.id === selectedPlatform)?.label} Integration`,
         config: credentials,
-        project_id: activeProjectId || undefined,
+        project_id: activeProjectId,
       });
       setTestResult("success");
       goNext();
@@ -149,13 +149,13 @@ export default function SurveySetupWizard({ onClose }: SurveySetupWizardProps) {
                 <div className="space-y-3">
                   <AlertCircle size={48} className="mx-auto text-red-500" />
                   <p className="text-sm text-red-600 dark:text-red-400">{testError || "Connection failed"}</p>
-                  <button onClick={handleTest} disabled={testing} className="px-4 py-2 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700 disabled:opacity-50 transition-colors">
+                  <button onClick={handleTest} disabled={testing || !activeProjectId} className="px-4 py-2 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700 disabled:opacity-50 transition-colors">
                     {testing ? "Testing..." : "Retry"}
                   </button>
                 </div>
               ) : (
                 <div className="space-y-3">
-                  <button onClick={handleTest} disabled={testing} className="px-6 py-2.5 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700 disabled:opacity-50 transition-colors">
+                  <button onClick={handleTest} disabled={testing || !activeProjectId} className="px-6 py-2.5 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700 disabled:opacity-50 transition-colors">
                     {testing ? "Connecting..." : "Test Connection"}
                   </button>
                 </div>

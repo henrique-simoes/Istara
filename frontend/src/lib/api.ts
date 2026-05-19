@@ -919,15 +919,21 @@ export const surveys = {
     },
     create: (data: { platform: string; name: string; config: Record<string, any>; project_id?: string }) =>
       post<SurveyIntegration>("/api/surveys/integrations", data),
-    delete: (id: string) => del(`/api/surveys/integrations/${id}`),
-    surveys: (id: string) => get<any[]>(`/api/surveys/integrations/${id}/surveys`),
-    createSurvey: (id: string, data: any) => post<any>(`/api/surveys/integrations/${id}/create`, data),
+    delete: (id: string, projectId: string) =>
+      del(`/api/surveys/integrations/${id}?project_id=${encodeURIComponent(projectId)}`),
+    surveys: (id: string, projectId: string) =>
+      get<any[]>(`/api/surveys/integrations/${id}/surveys?project_id=${encodeURIComponent(projectId)}`),
+    createSurvey: (id: string, data: any, projectId: string) =>
+      post<any>(`/api/surveys/integrations/${id}/create?project_id=${encodeURIComponent(projectId)}`, data),
   },
   links: {
-    list: (projectId?: string) => get<SurveyLink[]>(`/api/surveys/links${projectId ? `?project_id=${projectId}` : ""}`),
+    list: (projectId?: string) =>
+      get<SurveyLink[]>(`/api/surveys/links${projectId ? `?project_id=${encodeURIComponent(projectId)}` : ""}`),
     create: (data: any) => post<SurveyLink>("/api/surveys/links", data),
-    sync: (id: string) => post<any>(`/api/surveys/links/${id}/sync`, {}),
-    responses: (id: string) => get<any[]>(`/api/surveys/links/${id}/responses`),
+    sync: (id: string, projectId: string) =>
+      post<any>(`/api/surveys/links/${id}/sync?project_id=${encodeURIComponent(projectId)}`, {}),
+    responses: (id: string, projectId: string) =>
+      get<any[]>(`/api/surveys/links/${id}/responses?project_id=${encodeURIComponent(projectId)}`),
   },
 };
 

@@ -141,10 +141,12 @@ MCP client registries are project-content surfaces for every user role: list
 APIs require an explicit authorized active project and must not silently fall
 back to global admin lists. MCP client detail/action routes, including
 discovery, cached tools, tool calls, health checks, and deletion, must carry the
-active project and reject server ids from any other project. Channel detail,
-lifecycle, health, message-history, conversation, and manual-send endpoints
-must also carry the active project and verify that the channel instance and
-returned rows belong to that project.
+active project and reject server ids from any other project. Survey integration
+and link detail/action routes, including deletion, platform survey creation,
+sync, and response reads, must carry the active project and reject stale ids
+from any other project. Channel detail, lifecycle, health, message-history,
+conversation, and manual-send endpoints must also carry the active project and
+verify that the channel instance and returned rows belong to that project.
 Deployment creation must only attach channel instances owned by the same
 project, and deployment detail, lifecycle,
 response, conversation, transcript, analytics, and overview counters must

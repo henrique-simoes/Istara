@@ -95,6 +95,7 @@ def test_security_benchmark_detects_integration_project_scope_paths() -> None:
         "frontend/src/components/integrations/DeploymentsTab.tsx",
         "frontend/src/components/integrations/IntegrationsOverview.tsx",
         "frontend/src/components/integrations/MessagingTab.tsx",
+        "frontend/src/components/integrations/SurveySetupWizard.tsx",
         "frontend/src/components/integrations/SurveysTab.tsx",
         "frontend/src/lib/api.ts",
         "tests/real_user_benchmark/lib/integration-discovery.mjs",
