@@ -85,11 +85,11 @@ auth-origin validation, MCP/LLM endpoint URL validation, prompt-sanitized and
 project-owned MCP client descriptors, untrusted ReasoningBank retrieval wrapping, and backup
 exclusion of secret-like files plus protected local `LLMs/` and
 `Model_Finetuning/` artifact folders.
-Global LLM server inventory and manual health-check endpoints are shared
-infrastructure surfaces, not project-content lists, but they are still
-security-sensitive: team-mode callers must be authenticated before provider
-endpoint status, capability metadata, router health, or explicit health probes
-are exposed.
+Global LLM server inventory, registration, network discovery, deletion, and
+manual health-check endpoints are shared infrastructure surfaces, not
+project-content lists, but they are still security-sensitive: team-mode callers
+must be global admins before provider endpoint status, capability metadata,
+router health, or explicit health/discovery probes are exposed.
 Loop health, schedule, agent-loop, and execution-history views are treated as
 project-content surfaces: non-admin users must supply an authorized active
 project before seeing background process state or mutating recurring work.
@@ -216,6 +216,9 @@ must receive `project_id`, pass a non-empty MCP allowlist check, avoid empty or
 global memory retrieval, and filter deployment status by the requested project.
 MCP project listing must be constrained to the allowlist and return no projects
 when no ids are explicitly allowed.
+MCP audit entries persist project evidence from tool arguments, project-facing
+audit reads require an authorized active project, and omitted `project_id`
+remains an explicit global-admin-only audit aggregation path.
 Deployment creation must only attach channel instances owned by the same
 project, and deployment detail, lifecycle, response, conversation, transcript,
 analytics, and overview counters must require the caller's active project,

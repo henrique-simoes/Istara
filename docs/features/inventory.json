@@ -1042,7 +1042,7 @@
       "code_refs": ["frontend/src/components/common/SettingsView.tsx", "frontend/src/lib/modelProviders.ts", "backend/app/api/routes/llm_servers.py"],
       "store_refs": [],
       "api_refs": ["backend/app/api/routes/llm_servers.py"],
-      "test_refs": ["frontend/src/lib/modelProviders.test.ts"],
+      "test_refs": ["frontend/src/lib/modelProviders.test.ts", "tests/test_llm_servers.py"],
       "related_features": ["chat.model-controls", "settings.connection-strings"],
       "glossary_terms": ["rag"],
       "status": "documented"

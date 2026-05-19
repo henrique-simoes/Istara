@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Cpu, HardDrive, Monitor, Wifi, WifiOff, RefreshCw, Plus, Server, Trash2, Users, Lock, Gauge, Download } from "lucide-react";
 import { settings as settingsApi, llmServers, telemetry as telemetryApi } from "@/lib/api";
 import type { HardwareInfo, ModelRecommendation } from "@/lib/types";
@@ -500,6 +500,7 @@ function TelemetrySection() {
 }
 
 function LLMServersSection() {
+  const { user, teamMode } = useAuthStore();
   const [servers, setServers] = useState<any[]>([]);
   const [showAdd, setShowAdd] = useState(false);
   const [newName, setNewName] = useState("");
@@ -508,20 +509,29 @@ function LLMServersSection() {
   const [newApiKey, setNewApiKey] = useState("");
   const [addError, setAddError] = useState<string | null>(null);
   const selectedProvider = MODEL_PROVIDER_OPTIONS.find((option) => option.value === newType);
+  const canManageLLMServers = !teamMode || user?.role === "admin";
 
-  const fetchServers = async () => {
+  const fetchServers = useCallback(async () => {
+    if (!canManageLLMServers) {
+      setServers([]);
+      return;
+    }
     try {
       const data = await llmServers.list();
       setServers(data.servers || []);
     } catch {}
-  };
+  }, [canManageLLMServers]);
 
   useEffect(() => {
-    fetchServers();
-  }, []);
+    if (!canManageLLMServers) {
+      setServers([]);
+      return;
+    }
+    void fetchServers();
+  }, [canManageLLMServers, fetchServers]);
 
   const handleAdd = async () => {
-    if (!newName.trim() || !newHost.trim()) return;
+    if (!canManageLLMServers || !newName.trim() || !newHost.trim()) return;
     setAddError(null);
     try {
       const result = await llmServers.add({
@@ -553,6 +563,7 @@ function LLMServersSection() {
   };
 
   const handleDelete = async (id: string) => {
+    if (!canManageLLMServers) return;
     try {
       await llmServers.delete(id);
       await fetchServers();
@@ -570,6 +581,7 @@ function LLMServersSection() {
   };
 
   const handleHealthCheck = async (id: string) => {
+    if (!canManageLLMServers) return;
     try {
       await llmServers.healthCheck(id);
       await fetchServers();
@@ -585,6 +597,23 @@ function LLMServersSection() {
       );
     }
   };
+
+  if (!canManageLLMServers) {
+    return (
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-medium text-slate-900 dark:text-white flex items-center gap-2">
+            <Server size={18} />
+            LLM Servers
+          </h3>
+          <Lock size={16} className="text-slate-400" aria-hidden="true" />
+        </div>
+        <p className="text-sm text-slate-500">
+          Global admin access is required to manage shared provider endpoints.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">

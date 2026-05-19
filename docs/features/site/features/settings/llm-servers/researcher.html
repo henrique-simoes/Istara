@@ -234,7 +234,7 @@
     <div><dt>UI Path</dt><dd>Settings &gt; LLM Servers</dd></div>
     <div><dt>Component</dt><dd><code>SettingsView</code></dd></div>
     <div><dt>Source Refs</dt><dd>3</dd></div>
-    <div><dt>Tests</dt><dd>1</dd></div>
+    <div><dt>Tests</dt><dd>2</dd></div>
   </dl>
   <div class="link-cluster" aria-label="Related feature links"><a href="../../chat/model-controls/researcher.html">Chat Model Controls</a>
 <a href="../connection-strings/researcher.html">Connection Strings</a></div>
@@ -253,7 +253,7 @@
 <h2 id="how-ux-researchers-use-it">How UX Researchers Use It</h2>
 <ul>
 <li>Open Settings &gt; LLM Servers from the Istara navigation or the parent tab.</li>
-<li>Use the visible controls in this surface to work with llm server settings in the active project context.</li>
+<li>Global admins can use the visible controls to manage shared LLM provider endpoints. Non-admin team-mode users see the locked state instead of shared endpoint details.</li>
 <li>Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.</li>
 </ul>
 <h2 id="supported-workflows">Supported Workflows</h2>
@@ -264,8 +264,8 @@
 </ul>
 <h2 id="inputs-outputs-and-expected-outcomes">Inputs, Outputs, And Expected Outcomes</h2>
 <ul>
-<li>Project-scoped state or artifact updates associated with llm server settings.</li>
-<li>Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.</li>
+<li>Admin-only shared provider endpoint inventory, status, forms, and health-check results shown by the referenced component and routes.</li>
+<li>Non-admin users receive a permission-gated state with no endpoint inventory or probe controls.</li>
 </ul>
 <h2 id="caveats">Caveats</h2>
 <ul>

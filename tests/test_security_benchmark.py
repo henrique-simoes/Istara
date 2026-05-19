@@ -61,6 +61,7 @@ def test_security_benchmark_detects_llm_server_security_paths() -> None:
 
     changed_paths = [
         "backend/app/api/routes/llm_servers.py",
+        "frontend/src/components/common/SettingsView.tsx",
         "tests/test_llm_servers.py",
         "tests/test_project_scope_contracts.py",
     ]
@@ -77,6 +78,7 @@ def test_security_benchmark_detects_mcp_project_scope_paths() -> None:
     changed_paths = [
         "backend/app/api/routes/mcp.py",
         "backend/app/mcp/server.py",
+        "backend/app/models/mcp_audit_log.py",
         "backend/app/models/mcp_server_config.py",
         "frontend/src/components/integrations/MCPServerSetup.tsx",
         "frontend/src/components/integrations/MCPTab.tsx",

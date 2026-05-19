@@ -10,7 +10,7 @@ code_references: ["frontend/src/components/common/SettingsView.tsx", "frontend/s
 api_references: ["backend/app/api/routes/llm_servers.py"]
 test_references: ["frontend/src/lib/modelProviders.test.ts", "tests/test_llm_servers.py", "tests/test_project_scope_contracts.py"]
 last_verified: 2026-05-19
-compass: CF-SPEC-77 / CF-986
+compass: CF-SPEC-94 / CF-1193
 ---
 
 # LLM Server Settings Architecture
@@ -35,11 +35,12 @@ Settings manages configured LLM providers, server endpoints, provider labels, an
 
 - `backend/app/api/routes/llm_servers.py`
 
-The LLM server inventory and manual health-check endpoints are global
-infrastructure surfaces rather than project-content lists. They still require an
-authenticated global role in team mode before exposing provider endpoint status,
-router health, capability metadata, or running an explicit health probe. Local
-mode keeps the same developer behavior through the shared permission helper.
+The LLM server inventory, registration, deletion, discovery, and manual
+health-check endpoints are global infrastructure surfaces rather than
+project-content lists. They require a global admin in team mode before exposing
+provider endpoint status, router health, capability metadata, or running
+explicit health/discovery probes. Local mode keeps the same developer behavior
+through the shared permission helper.
 
 ## Architecture Notes
 
@@ -68,7 +69,7 @@ mode keeps the same developer behavior through the shared permission helper.
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-77 / CF-986
+- Spec/task: CF-SPEC-94 / CF-1193
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update

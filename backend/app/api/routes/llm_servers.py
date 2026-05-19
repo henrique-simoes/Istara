@@ -81,7 +81,7 @@ async def _register_and_probe_server(server: LLMServer) -> tuple[object, bool]:
 @router.get("/llm-servers")
 async def list_llm_servers(request: Request, db: AsyncSession = Depends(get_db)):
     """List all registered LLM servers."""
-    require_global_role(request, "viewer")
+    require_global_role(request, "admin")
     result = await db.execute(select(LLMServer).order_by(LLMServer.priority))
     servers = result.scalars().all()
 
@@ -130,7 +130,7 @@ async def add_llm_server(
     db: AsyncSession = Depends(get_db),
 ):
     """Add a new external LLM server."""
-    require_global_role(request, "viewer")
+    require_global_role(request, "admin")
     try:
         normalized_host = normalized_service_url(
             data.host,
@@ -180,7 +180,7 @@ async def health_check_server(
     server_id: str, request: Request, db: AsyncSession = Depends(get_db)
 ):
     """Run a health check on a specific LLM server."""
-    require_global_role(request, "viewer")
+    require_global_role(request, "admin")
     result = await db.execute(select(LLMServer).where(LLMServer.id == server_id))
     server = result.scalar_one_or_none()
     if not server:
@@ -242,7 +242,7 @@ async def update_llm_server(
     server_id: str, data: LLMServerUpdate, request: Request, db: AsyncSession = Depends(get_db)
 ):
     """Update an LLM server's configuration."""
-    require_global_role(request, "viewer")
+    require_global_role(request, "admin")
     result = await db.execute(select(LLMServer).where(LLMServer.id == server_id))
     server = result.scalar_one_or_none()
     if not server:
@@ -291,7 +291,7 @@ async def update_llm_server(
 @router.delete("/llm-servers/{server_id}")
 async def delete_llm_server(server_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     """Remove an LLM server."""
-    require_global_role(request, "viewer")
+    require_global_role(request, "admin")
     result = await db.execute(select(LLMServer).where(LLMServer.id == server_id))
     server = result.scalar_one_or_none()
     if not server:
@@ -310,7 +310,7 @@ async def delete_llm_server(server_id: str, request: Request, db: AsyncSession =
 @router.post("/llm-servers/discover")
 async def discover_network_llm_servers(request: Request):
     """Scan local network for LLM servers (LM Studio, Ollama, OpenAI-compatible)."""
-    require_global_role(request, "viewer")
+    require_global_role(request, "admin")
     from app.core.network_discovery import discover_and_register
 
     discovered = await discover_and_register()
