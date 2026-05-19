@@ -48,6 +48,7 @@
         "backend/app/api/routes/webhooks.py",
         "backend/app/api/routes/autoresearch.py",
         "backend/app/api/routes/loops.py",
+        "backend/app/api/routes/scheduler.py",
         "backend/app/api/routes/dgmh_archive.py",
         "backend/app/api/routes/improvement_governance.py",
         "backend/app/api/routes/meta_hyperagent.py",

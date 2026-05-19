@@ -266,6 +266,7 @@
 <ul>
 <li>Project-scoped state or artifact updates associated with loop schedules.</li>
 <li>Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.</li>
+<li>Existing schedules can be viewed, paused/resumed, edited, or deleted only when the active project matches the schedule&#x27;s project.</li>
 </ul>
 <h2 id="caveats">Caveats</h2>
 <ul>
@@ -285,7 +286,7 @@
 <ul>
 <li>Source files: <code>frontend/src/components/loops/SchedulesTab.tsx</code>, <code>frontend/src/components/loops/CronBuilder.tsx</code>, <code>backend/app/api/routes/scheduler.py</code></li>
 <li>API references: <code>backend/app/api/routes/scheduler.py</code>, <code>backend/app/api/routes/loops.py</code></li>
-<li>Tests: none recorded</li>
+<li>Tests: <code>tests/test_loops.py</code>, <code>tests/test_project_scope_contracts.py</code></li>
 </ul>
         </article>
         <aside class="toc-panel" aria-label="Page sections">

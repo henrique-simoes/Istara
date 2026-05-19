@@ -139,7 +139,7 @@ export const useLoopsStore = create<LoopsStore>((set, get) => ({
     try {
       const scopedProjectId = projectId || get().schedules.find((s) => s.id === scheduleId)?.project_id;
       if (!scopedProjectId) return;
-      await loopsApi.updateSchedule(scheduleId, data);
+      await loopsApi.updateSchedule(scheduleId, data, scopedProjectId);
       await get().fetchSchedules(scopedProjectId);
       await get().fetchHealth(scopedProjectId);
     } catch (e: any) {
@@ -152,7 +152,7 @@ export const useLoopsStore = create<LoopsStore>((set, get) => ({
     try {
       const scopedProjectId = projectId || get().schedules.find((s) => s.id === scheduleId)?.project_id;
       if (!scopedProjectId) return;
-      await loopsApi.deleteSchedule(scheduleId);
+      await loopsApi.deleteSchedule(scheduleId, scopedProjectId);
       await get().fetchSchedules(scopedProjectId);
       await get().fetchHealth(scopedProjectId);
     } catch (e: any) {

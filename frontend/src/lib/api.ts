@@ -727,10 +727,13 @@ export const loops = {
   overview: (projectId: string) => get<any>(`/api/loops/overview?project_id=${encodeURIComponent(projectId)}`),
   agents: (projectId: string) => get<any>(`/api/loops/agents?project_id=${encodeURIComponent(projectId)}`),
   schedules: (projectId: string) => get<any>(`/api/schedules?project_id=${encodeURIComponent(projectId)}`),
-  getSchedule: (scheduleId: string) => get<any>(`/api/schedules/${scheduleId}`),
+  getSchedule: (scheduleId: string, projectId: string) =>
+    get<any>(`/api/schedules/${scheduleId}?project_id=${encodeURIComponent(projectId)}`),
   createSchedule: (data: { name: string; cron_expression: string; project_id: string; skill_name?: string; description?: string }) => post<any>("/api/schedules", data),
-  updateSchedule: (scheduleId: string, data: { name?: string; cron_expression?: string; skill_name?: string; description?: string; enabled?: boolean }) => patch<any>(`/api/schedules/${scheduleId}`, data),
-  deleteSchedule: (scheduleId: string) => del(`/api/schedules/${scheduleId}`),
+  updateSchedule: (scheduleId: string, data: { name?: string; cron_expression?: string; skill_name?: string; description?: string; enabled?: boolean }, projectId: string) =>
+    patch<any>(`/api/schedules/${scheduleId}?project_id=${encodeURIComponent(projectId)}`, data),
+  deleteSchedule: (scheduleId: string, projectId: string) =>
+    del(`/api/schedules/${scheduleId}?project_id=${encodeURIComponent(projectId)}`),
   agentConfig: (agentId: string, projectId: string) =>
     get<any>(`/api/loops/agents/${agentId}/config?project_id=${encodeURIComponent(projectId)}`),
   updateAgentConfig: (agentId: string, data: Record<string, unknown>, projectId: string) =>

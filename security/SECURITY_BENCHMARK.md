@@ -88,6 +88,9 @@ exclusion of secret-like files plus protected local `LLMs/` and
 Loop health, schedule, agent-loop, and execution-history views are treated as
 project-content surfaces: non-admin users must supply an authorized active
 project before seeing background process state or mutating recurring work.
+Schedule detail, update, and delete routes also require the active `project_id`,
+so stale schedule ids from another project resolve as not found instead of
+letting project-facing clients operate by global id.
 Startup quality/audit/simulation loops are opt-in because they may create test
 projects, call app/API state, or use LLMs; normal project task workers,
 orchestrator routing, and schedules must skip paused projects before model work
