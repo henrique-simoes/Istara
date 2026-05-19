@@ -123,7 +123,10 @@ polling excludes messages without a resolved project, project-scoped agents only
 consume inbox messages for their own project, conversation/debate thread context
 is rebuilt with the task project's id, and LLM-callable task/A2A system actions
 must resolve tasks, documents, and target agents inside the active project before
-mutating or sending content.
+mutating or sending content. Metadata, task, and project-scoped sender/recipient
+agent claims must agree before an A2A message or realtime event is considered
+project-resolved; conflicting claims are excluded instead of being delivered to
+the claimed project.
 Structured agent learnings and error-resolution lookup are project-content too:
 task/review learnings must carry the source project and must not append private
 project observations into universal persona MEMORY overlays.

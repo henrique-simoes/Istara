@@ -967,7 +967,7 @@
         "tests/test_project_scope_contracts.py"
       ],
       "future_change_trigger": true,
-      "notes": "The non-/api A2A protocol now uses route-level auth, optional team-mode agent-card auth, local-mode network-token semantics, request size caps, metadata limits, per-client rate limits, replay rejection, audit events, actor traceability, project-authorized discovery, project-resolved realtime delivery, project-resolved background agent inboxes, project-bound conversation/debate thread reconstruction, and active-project guarded LLM-callable task/A2A actions."
+      "notes": "The non-/api A2A protocol now uses route-level auth, optional team-mode agent-card auth, local-mode network-token semantics, request size caps, metadata limits, per-client rate limits, replay rejection, audit events, actor traceability, project-authorized discovery, project-resolved realtime delivery, project-resolved background agent inboxes, project-bound conversation/debate thread reconstruction, and active-project guarded LLM-callable task/A2A actions. Metadata, task, and project-scoped sender/recipient agent project claims must agree before A2A records or realtime events are considered project-resolved; conflicting claims are excluded rather than trusted."
     },
     {
       "id": "AUDIT-001",

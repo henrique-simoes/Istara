@@ -268,9 +268,10 @@
 <h2 id="inputs-outputs-and-expected-outcomes">Inputs, Outputs, And Expected Outcomes</h2>
 <ul>
 <li>Project-scoped A2A messages associated with the active project.</li>
+<li>A2A messages only appear when their metadata, task ownership, and project-scoped sender/recipient agents agree on the active project.</li>
 <li>External A2A JSON-RPC task submissions must carry <code>project_id</code>, so submitted work is attached to a project before it can appear in Istara.</li>
 <li>Autonomous agent inboxes and collaboration/debate threads use the same project boundary before building LLM prompt context, so messages from another project are not used as hidden coordination history.</li>
-<li>Realtime A2A and agent-thinking updates must resolve to the same active project before they can appear in the shell.</li>
+<li>Realtime A2A and agent-thinking updates must resolve to the same active project from consistent metadata, task/deployment/channel, and agent ownership claims before they can appear in the shell.</li>
 <li>Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.</li>
 </ul>
 <h2 id="caveats">Caveats</h2>
@@ -291,7 +292,7 @@
 <ul>
 <li>Source files: <code>frontend/src/components/agents/AgentsView.tsx</code>, <code>frontend/src/stores/agentStore.ts</code>, <code>frontend/src/lib/api.ts</code>, <code>backend/app/api/routes/agents.py</code>, <code>backend/app/api/routes/a2a.py</code>, <code>backend/app/api/websocket.py</code>, <code>backend/app/services/a2a.py</code></li>
 <li>API references: <code>backend/app/api/routes/agents.py</code>, <code>backend/app/api/routes/a2a.py</code>, <code>backend/app/api/websocket.py</code></li>
-<li>Tests: <code>tests/test_agents.py</code>, <code>tests/test_a2a_security.py</code>, <code>tests/test_websocket.py</code>, <code>tests/test_project_scope_contracts.py</code></li>
+<li>Tests: <code>tests/test_agents.py</code>, <code>tests/test_a2a_project_claims.py</code>, <code>tests/test_a2a_security.py</code>, <code>tests/test_websocket.py</code>, <code>tests/test_project_scope_contracts.py</code></li>
 </ul>
         </article>
         <aside class="toc-panel" aria-label="Page sections">

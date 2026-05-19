@@ -271,13 +271,13 @@
 <li>Project views pass the active <code>project_id</code> into <code>/api/agents/a2a/log</code>; the backend requires that scope and only returns messages tagged with that project or messages that can be traced to a task in that project.</li>
 <li>Direct <code>/api/agents/{agent_id}/messages</code> reads and writes also validate that the source and destination agents are visible in the supplied project before returning or persisting A2A records.</li>
 <li>Public A2A JSON-RPC <code>tasks/send</code>, <code>tasks/get</code>, <code>tasks/list</code>, and <code>agent/discover</code> also require <code>project_id</code> and enforce project authorization before project-content messages or agent catalogs are persisted, listed, or disclosed.</li>
-<li><code>backend/app/services/a2a.py</code> resolves each message&#x27;s project from explicit metadata first, then from <code>task_id</code> ownership, and autonomous inbox helpers exclude global/unresolved messages rather than letting background agents process them.</li>
+<li><code>backend/app/services/a2a.py</code> resolves each message&#x27;s project only when explicit metadata or <code>task_id</code> ownership agrees with any project-scoped sender/recipient agent claims; conflicting claims are treated as unresolved and excluded from project logs, inboxes, and thread context.</li>
 <li>Conversation and debate thread reconstruction requires the task&#x27;s project id, so two projects that accidentally share a <code>context_id</code> cannot contribute messages to the same LLM prompt.</li>
 <li>Project-scoped sub-agents only receive inbox messages for their own project; universal system agents may process multiple projects only as separate project-resolved messages with <code>project_id</code> attached.</li>
 <li>LLM-callable system actions that assign agents, move/update tasks, attach/read documents, or send A2A messages look up tasks, documents, and target agents inside the active project before mutating or persisting coordination records.</li>
 <li>The frontend A2A store clears stale rows before each project fetch and on errors, then defensively keeps only messages whose payload or metadata project id matches the active project.</li>
 <li>Project A2A messages are broadcast with project metadata so realtime clients connected to another active project do not receive them.</li>
-<li>Agent realtime events resolve project scope from agent ids before delivery, and malformed project-bound events are dropped instead of falling back to global delivery.</li>
+<li>Agent realtime events resolve project scope from explicit metadata, task/deployment/channel ownership, and project-scoped agent ids only when those claims are consistent; malformed or conflicting project-bound events are dropped instead of falling back to global delivery.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>
@@ -287,7 +287,7 @@
 </ul>
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>
-<li><code>tests/test_agents.py</code>, <code>tests/test_a2a_security.py</code>, <code>tests/test_websocket.py</code>, and <code>tests/test_project_scope_contracts.py</code> verify that project-scoped A2A logs exclude unrelated project/global messages, JSON-RPC task writes and discovery cannot proceed without project scope, background inbox/thread helpers do not mix projects, and realtime delivery resolves agent-owned project ids.</li>
+<li><code>tests/test_agents.py</code>, <code>tests/test_a2a_project_claims.py</code>, <code>tests/test_a2a_security.py</code>, <code>tests/test_websocket.py</code>, and <code>tests/test_project_scope_contracts.py</code> verify that project-scoped A2A logs exclude unrelated project/global messages, conflicting metadata/task/agent project claims are dropped, JSON-RPC task writes and discovery cannot proceed without project scope, background inbox/thread helpers do not mix projects, and realtime delivery resolves only consistent project claims.</li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>
@@ -300,7 +300,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-56 / CF-698; CF-SPEC-60 / CF-776; CF-SPEC-64 / CF-828</li>
+<li>Spec/task: CF-SPEC-56 / CF-698; CF-SPEC-60 / CF-776; CF-SPEC-64 / CF-828; CF-SPEC-74 / CF-949</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>
