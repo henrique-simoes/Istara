@@ -202,6 +202,42 @@ def test_integrations_subtabs_defensively_filter_by_active_project() -> None:
     assert "set({ mcpClients: [], mcpLoading: true, error: null });" in store
 
 
+def test_integrations_mcp_detail_actions_require_active_project_scope() -> None:
+    api = read_repo("frontend/src/lib/api.ts")
+    mcp_tab = read_repo("frontend/src/components/integrations/MCPTab.tsx")
+    setup = read_repo("frontend/src/components/integrations/MCPServerSetup.tsx")
+    route = read_repo("backend/app/api/routes/mcp.py")
+
+    assert "delete: (id: string, projectId: string)" in api
+    assert "discover: (id: string, projectId: string)" in api
+    assert "tools: (id: string, projectId: string)" in api
+    assert "call: (id: string, toolName: string, args: any, projectId: string)" in api
+    assert "health: (id: string, projectId: string)" in api
+    assert "/api/mcp/clients/${id}?project_id=${encodeURIComponent(projectId)}" in api
+    assert "/api/mcp/clients/${id}/discover?project_id=${encodeURIComponent(projectId)}" in api
+    assert "/api/mcp/clients/${id}/tools?project_id=${encodeURIComponent(projectId)}" in api
+    assert "/api/mcp/clients/${id}/call?project_id=${encodeURIComponent(projectId)}" in api
+    assert "/api/mcp/clients/${id}/health?project_id=${encodeURIComponent(projectId)}" in api
+
+    assert "if (!activeProjectId) return;" in mcp_tab
+    assert "mcpApi.clients.discover(clientId, activeProjectId)" in mcp_tab
+    assert "mcpApi.clients.delete(clientId, activeProjectId)" in mcp_tab
+    assert "fetchMCPClients(activeProjectId)" in mcp_tab
+
+    assert "projectId: string | null;" in setup
+    assert "if (!projectId) return;" in setup
+    assert "project_id: projectId" in setup
+    assert "mcpApi.clients.discover(server.id, projectId)" in setup
+    assert "mcpApi.clients.delete(serverId, projectId)" in setup
+    assert "disabled={!url.trim() || !projectId || testing}" in setup
+    assert "disabled={!url.trim() || !projectId || saving}" in setup
+
+    assert "async def _get_project_client_or_404" in route
+    assert "server.project_id != scoped_project_id" in route
+    assert route.count('project_id: str | None = Query(None, description="Active project")') >= 5
+    assert "await _get_project_client_or_404(\n        db, request, server_id, project_id" in route
+
+
 def test_integrations_messaging_detail_panels_require_active_project_scope() -> None:
     api = read_repo("frontend/src/lib/api.ts")
     messaging = read_repo("frontend/src/components/integrations/MessagingTab.tsx")

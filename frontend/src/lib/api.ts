@@ -975,12 +975,19 @@ export const mcp = {
     },
     create: (data: { name: string; url: string; transport?: string; headers?: any; project_id?: string }) =>
       post<MCPServerConfig>("/api/mcp/clients", data),
-    delete: (id: string) => del(`/api/mcp/clients/${id}`),
-    discover: (id: string) => post<any>(`/api/mcp/clients/${id}/discover`, {}),
-    tools: (id: string) => get<any[]>(`/api/mcp/clients/${id}/tools`),
-    call: (id: string, toolName: string, args: any) =>
-      post<any>(`/api/mcp/clients/${id}/call`, { tool_name: toolName, arguments: args }),
-    health: (id: string) => get<any>(`/api/mcp/clients/${id}/health`),
+    delete: (id: string, projectId: string) =>
+      del(`/api/mcp/clients/${id}?project_id=${encodeURIComponent(projectId)}`),
+    discover: (id: string, projectId: string) =>
+      post<any>(`/api/mcp/clients/${id}/discover?project_id=${encodeURIComponent(projectId)}`, {}),
+    tools: (id: string, projectId: string) =>
+      get<any[]>(`/api/mcp/clients/${id}/tools?project_id=${encodeURIComponent(projectId)}`),
+    call: (id: string, toolName: string, args: any, projectId: string) =>
+      post<any>(`/api/mcp/clients/${id}/call?project_id=${encodeURIComponent(projectId)}`, {
+        tool_name: toolName,
+        arguments: args,
+      }),
+    health: (id: string, projectId: string) =>
+      get<any>(`/api/mcp/clients/${id}/health?project_id=${encodeURIComponent(projectId)}`),
     allTools: async (projectId?: string | null): Promise<any[]> => {
       const suffix = projectId ? `?project_id=${encodeURIComponent(projectId)}` : "";
       const res = await get<any>(`/api/mcp/clients/tools${suffix}`);

@@ -22,6 +22,7 @@ export default function MCPServerSetup({ projectId, onClose }: MCPServerSetupPro
   const [createdServerId, setCreatedServerId] = useState<string | null>(null);
 
   const handleTest = async () => {
+    if (!projectId) return;
     setTesting(true);
     setTestResult(null);
     setTestError(null);
@@ -44,12 +45,12 @@ export default function MCPServerSetup({ projectId, onClose }: MCPServerSetupPro
         url,
         transport,
         headers: parsedHeaders,
-        project_id: projectId || undefined,
+        project_id: projectId,
       });
       serverId = server.id;
 
       // Try discovery
-      const discovery = await mcpApi.clients.discover(server.id);
+      const discovery = await mcpApi.clients.discover(server.id, projectId);
       if (discovery?.count === 0) {
         throw new Error("Connected, but no MCP tools were discovered.");
       }
@@ -58,7 +59,7 @@ export default function MCPServerSetup({ projectId, onClose }: MCPServerSetupPro
     } catch (e: any) {
       if (serverId) {
         try {
-          await mcpApi.clients.delete(serverId);
+          await mcpApi.clients.delete(serverId, projectId);
         } catch {
           // Best-effort cleanup. The connection error remains the useful signal.
         }
@@ -71,6 +72,7 @@ export default function MCPServerSetup({ projectId, onClose }: MCPServerSetupPro
   };
 
   const handleSave = async () => {
+    if (!projectId) return;
     if (testResult === "success" && createdServerId) {
       // Already created during test
       setSaved(true);
@@ -89,7 +91,7 @@ export default function MCPServerSetup({ projectId, onClose }: MCPServerSetupPro
         url,
         transport,
         headers: parsedHeaders,
-        project_id: projectId || undefined,
+        project_id: projectId,
       });
       setSaved(true);
     } catch (e: any) {

@@ -308,7 +308,7 @@ async def test_mcp_project_admin_can_discover_project_client(auth_headers, monke
             },
         )
         response = await ac.post(
-            f"/api/mcp/clients/{created.json()['id']}/discover",
+            f"/api/mcp/clients/{created.json()['id']}/discover?project_id={project.id}",
             headers=project_admin_headers,
             json={},
         )
@@ -316,6 +316,69 @@ async def test_mcp_project_admin_can_discover_project_client(auth_headers, monke
     assert created.status_code == 201
     assert response.status_code == 400
     assert "MCP client library not installed" in response.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_mcp_client_detail_actions_require_active_project_scope(auth_headers, monkeypatch):
+    await init_db()
+    project_a = await _seed_project("MCP Detail Scope A")
+    project_b = await _seed_project("MCP Detail Scope B")
+    monkeypatch.setattr("app.services.mcp_client_manager.MCP_CLIENT_AVAILABLE", False)
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        created = await ac.post(
+            "/api/mcp/clients",
+            headers=auth_headers,
+            json={
+                "name": "Scoped Detail",
+                "url": f"http://localhost:3001/mcp-detail-{uuid.uuid4()}",
+                "transport": "http",
+                "project_id": project_a.id,
+            },
+        )
+        server_id = created.json()["id"]
+        missing_discover = await ac.post(
+            f"/api/mcp/clients/{server_id}/discover",
+            headers=auth_headers,
+            json={},
+        )
+        wrong_tools = await ac.get(
+            f"/api/mcp/clients/{server_id}/tools?project_id={project_b.id}",
+            headers=auth_headers,
+        )
+        correct_tools = await ac.get(
+            f"/api/mcp/clients/{server_id}/tools?project_id={project_a.id}",
+            headers=auth_headers,
+        )
+        wrong_health = await ac.get(
+            f"/api/mcp/clients/{server_id}/health?project_id={project_b.id}",
+            headers=auth_headers,
+        )
+        missing_delete = await ac.delete(
+            f"/api/mcp/clients/{server_id}",
+            headers=auth_headers,
+        )
+        wrong_delete = await ac.delete(
+            f"/api/mcp/clients/{server_id}?project_id={project_b.id}",
+            headers=auth_headers,
+        )
+        correct_delete = await ac.delete(
+            f"/api/mcp/clients/{server_id}?project_id={project_a.id}",
+            headers=auth_headers,
+        )
+
+    assert created.status_code == 201
+    assert missing_discover.status_code == 400
+    assert missing_discover.json()["detail"] == "project_id is required"
+    assert wrong_tools.status_code == 404
+    assert correct_tools.status_code == 200
+    assert correct_tools.json()["project_id"] == project_a.id
+    assert wrong_health.status_code == 404
+    assert missing_delete.status_code == 400
+    assert missing_delete.json()["detail"] == "project_id is required"
+    assert wrong_delete.status_code == 404
+    assert correct_delete.status_code == 204
 
 
 @pytest.mark.asyncio
