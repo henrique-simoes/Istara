@@ -266,6 +266,7 @@
 <li>Linked surveys are cleared before each project fetch and filtered by active <code>project_id</code> before rendering, preventing survey links from a previous project from lingering in the table while a new project loads.</li>
 <li><code>SurveysTab</code> passes the active project id into survey link sync and integration deletion actions, while <code>SurveySetupWizard</code> refuses connection tests without an active project and stamps new integrations with that project id.</li>
 <li><code>backend/app/api/routes/surveys.py</code> requires <code>project_id</code> on project-facing integration and survey-link lists, integration deletion, platform survey listing/creation, link sync, and response reads. Survey links must use an integration bound to the same active project before syncing or returning responses, and stale ids from another project resolve as not found.</li>
+<li>Simulation and benchmark survey integration calls must include the active project id on by-id sync, response, deletion, and cleanup URLs, so the harness cannot validate global survey-link behavior by accident.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>
@@ -277,6 +278,7 @@
 <ul>
 <li><code>tests/test_surveys.py</code></li>
 <li><code>tests/test_project_scope_contracts.py</code></li>
+<li><code>tests/test_integration_simulation_scope.py</code></li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>
@@ -289,7 +291,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-762; CF-SPEC-60 / CF-776; CF-SPEC-65 / CF-842</li>
+<li>Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-762; CF-SPEC-60 / CF-776; CF-SPEC-65 / CF-842; CF-SPEC-82 / CF-1061</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>

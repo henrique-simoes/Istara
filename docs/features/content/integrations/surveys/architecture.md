@@ -8,9 +8,9 @@ related_features: ["integrations.deployments", "findings.evidence"]
 related_glossary: ["triangulation"]
 code_references: ["frontend/src/components/integrations/SurveysTab.tsx", "frontend/src/components/integrations/SurveySetupWizard.tsx", "frontend/src/stores/integrationsStore.ts", "frontend/src/lib/api.ts", "backend/app/api/routes/surveys.py"]
 api_references: ["backend/app/api/routes/surveys.py"]
-test_references: ["tests/test_surveys.py", "tests/test_project_scope_contracts.py"]
+test_references: ["tests/test_surveys.py", "tests/test_project_scope_contracts.py", "tests/test_integration_simulation_scope.py"]
 last_verified: 2026-05-19
-compass: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-762; CF-SPEC-60 / CF-776; CF-SPEC-65 / CF-842
+compass: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-762; CF-SPEC-60 / CF-776; CF-SPEC-65 / CF-842; CF-SPEC-82 / CF-1061
 ---
 
 # Survey Integrations Architecture
@@ -44,6 +44,7 @@ Surveys configures participant question and survey collection flows connected to
 - Linked surveys are cleared before each project fetch and filtered by active `project_id` before rendering, preventing survey links from a previous project from lingering in the table while a new project loads.
 - `SurveysTab` passes the active project id into survey link sync and integration deletion actions, while `SurveySetupWizard` refuses connection tests without an active project and stamps new integrations with that project id.
 - `backend/app/api/routes/surveys.py` requires `project_id` on project-facing integration and survey-link lists, integration deletion, platform survey listing/creation, link sync, and response reads. Survey links must use an integration bound to the same active project before syncing or returning responses, and stale ids from another project resolve as not found.
+- Simulation and benchmark survey integration calls must include the active project id on by-id sync, response, deletion, and cleanup URLs, so the harness cannot validate global survey-link behavior by accident.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
 
@@ -55,6 +56,7 @@ Surveys configures participant question and survey collection flows connected to
 
 - `tests/test_surveys.py`
 - `tests/test_project_scope_contracts.py`
+- `tests/test_integration_simulation_scope.py`
 
 ## Related Features
 
@@ -67,7 +69,7 @@ Surveys configures participant question and survey collection flows connected to
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-762; CF-SPEC-60 / CF-776; CF-SPEC-65 / CF-842
+- Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-762; CF-SPEC-60 / CF-776; CF-SPEC-65 / CF-842; CF-SPEC-82 / CF-1061
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update

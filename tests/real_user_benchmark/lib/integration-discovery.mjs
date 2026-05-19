@@ -83,6 +83,8 @@ export async function runIntegrationMatrix({ api, projectId, repoRoot, logger })
   const staticHarnesses = discoverStaticHarnesses(repoRoot);
   logger.writeJson("integration-static-discovery.json", staticHarnesses);
   const matrix = [];
+  const projectScopeQuery = `project_id=${encodeURIComponent(projectId)}`;
+  const projectQuerySuffix = `?${projectScopeQuery}`;
 
   const interfaceStatus = await attempt(logger, "interfaces", "GET /api/interfaces/status", () => api.get("/api/interfaces/status"));
 
@@ -144,8 +146,8 @@ export async function runIntegrationMatrix({ api, projectId, repoRoot, logger })
         external_survey_name: `SIM: ${label} caregiver readiness survey`,
       }));
       if (link.ok) {
-        await attempt(logger, label, "POST /api/surveys/links/{id}/sync", () => api.post(`/api/surveys/links/${link.result.id}/sync`, {}));
-        await attempt(logger, label, "GET /api/surveys/links/{id}/responses", () => api.get(`/api/surveys/links/${link.result.id}/responses`));
+        await attempt(logger, label, "POST /api/surveys/links/{id}/sync", () => api.post(`/api/surveys/links/${link.result.id}/sync${projectQuerySuffix}`, {}));
+        await attempt(logger, label, "GET /api/surveys/links/{id}/responses", () => api.get(`/api/surveys/links/${link.result.id}/responses${projectQuerySuffix}`));
       }
     } else if (!staticHarnesses.surveys[`supports${label.replace(/\s/g, "")}`]) {
       classification = CLASSIFICATIONS.missing;
@@ -165,8 +167,8 @@ export async function runIntegrationMatrix({ api, projectId, repoRoot, logger })
   }));
   let telegramClassification = telegram.ok ? CLASSIFICATIONS.setup : CLASSIFICATIONS.blocked;
   if (telegram.ok) {
-    const start = await attempt(logger, "telegram", "POST /api/channels/{id}/start", () => api.post(`/api/channels/${telegram.result.id}/start`, {}));
-    const health = await attempt(logger, "telegram", "GET /api/channels/{id}/health", () => api.get(`/api/channels/${telegram.result.id}/health`));
+    const start = await attempt(logger, "telegram", "POST /api/channels/{id}/start", () => api.post(`/api/channels/${telegram.result.id}/start${projectQuerySuffix}`, {}));
+    const health = await attempt(logger, "telegram", "GET /api/channels/{id}/health", () => api.get(`/api/channels/${telegram.result.id}/health${projectQuerySuffix}`));
     telegramClassification = start.ok && start.result?.status === "started" ? CLASSIFICATIONS.live : CLASSIFICATIONS.setup;
     matrix.push({
       integration: "Telegram",
@@ -202,7 +204,7 @@ export async function runIntegrationMatrix({ api, projectId, repoRoot, logger })
   }));
   let auraClassification = deployment.ok ? CLASSIFICATIONS.setup : CLASSIFICATIONS.blocked;
   if (deployment.ok) {
-    const deploymentProjectQuery = `project_id=${encodeURIComponent(projectId)}`;
+    const deploymentProjectQuery = projectScopeQuery;
     await attempt(logger, "aura", "POST /api/deployments/{id}/activate", () => api.post(`/api/deployments/${deployment.result.id}/activate?${deploymentProjectQuery}`, {}));
     const response = await attempt(logger, "aura", "POST /api/deployments/{id}/respond without conversation harness", () => api.post(`/api/deployments/${deployment.result.id}/respond?${deploymentProjectQuery}`, {
       conversation_id: "simulated-conversation-without-create-api",
@@ -237,7 +239,7 @@ export async function runIntegrationMatrix({ api, projectId, repoRoot, logger })
   }));
   let mcpClassification = mcpStatus.ok || mcpClients.ok ? CLASSIFICATIONS.setup : CLASSIFICATIONS.blocked;
   if (mcpClient.ok) {
-    const discover = await attempt(logger, "mcp", "POST /api/mcp/clients/{id}/discover", () => api.post(`/api/mcp/clients/${mcpClient.result.id}/discover`, {}));
+    const discover = await attempt(logger, "mcp", "POST /api/mcp/clients/{id}/discover", () => api.post(`/api/mcp/clients/${mcpClient.result.id}/discover${mcpProjectQuery}`, {}));
     mcpClassification = discover.ok ? CLASSIFICATIONS.harness : CLASSIFICATIONS.setup;
   }
   matrix.push({

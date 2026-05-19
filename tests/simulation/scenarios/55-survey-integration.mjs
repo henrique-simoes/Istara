@@ -134,7 +134,7 @@ export async function run(ctx) {
   // ── 8. POST /api/surveys/links/{id}/sync — manual sync ──
   if (testLink) {
     try {
-      const syncResult = await api.post(`/api/surveys/links/${testLink.id}/sync`, {});
+      const syncResult = await api.post(`/api/surveys/links/${testLink.id}/sync?${projectQuery}`, {});
       checks.push({
         name: "POST /api/surveys/links/{id}/sync returns result",
         passed: syncResult !== undefined,
@@ -148,7 +148,7 @@ export async function run(ctx) {
   // ── 9. GET /api/surveys/links/{id}/responses — get responses ──
   if (testLink) {
     try {
-      const responses = await api.get(`/api/surveys/links/${testLink.id}/responses`);
+      const responses = await api.get(`/api/surveys/links/${testLink.id}/responses?${projectQuery}`);
       const list = Array.isArray(responses) ? responses : responses?.responses || [];
       checks.push({
         name: "GET /api/surveys/links/{id}/responses returns array",
@@ -163,7 +163,7 @@ export async function run(ctx) {
   // ── 10. DELETE /api/surveys/integrations/{id} — delete ──
   if (gfIntegration) {
     try {
-      await api.delete(`/api/surveys/integrations/${gfIntegration.id}`);
+      await api.delete(`/api/surveys/integrations/${gfIntegration.id}?${projectQuery}`);
       cleanup.integrationIds = cleanup.integrationIds.filter((id) => id !== gfIntegration.id);
       checks.push({
         name: "DELETE /api/surveys/integrations/{id} removes integration",
@@ -213,10 +213,10 @@ export async function run(ctx) {
 
   // ── Cleanup ──
   for (const id of cleanup.linkIds) {
-    try { await api.delete(`/api/surveys/links/${id}`); } catch (_) {}
+    try { await api.delete(`/api/surveys/links/${id}?${projectQuery}`); } catch (_) {}
   }
   for (const id of cleanup.integrationIds) {
-    try { await api.delete(`/api/surveys/integrations/${id}`); } catch (_) {}
+    try { await api.delete(`/api/surveys/integrations/${id}?${projectQuery}`); } catch (_) {}
   }
 
   return checks;
