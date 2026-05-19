@@ -53,33 +53,23 @@ def _require_project_id(project_id: str | None) -> str:
     return scoped_project_id
 
 
-async def _require_channel_access(
-    db: AsyncSession,
-    request: Request,
-    instance: ChannelInstance,
-    *,
-    min_role: ProjectRole,
-) -> None:
-    subject = get_subject(request)
-    if is_global_admin(subject):
-        return
-    if not instance.project_id:
-        raise HTTPException(status_code=403, detail="Global admin access required.")
-    await require_project_access(db, request, instance.project_id, min_role=min_role)
-
-
-async def _get_channel_for_admin(
+async def _get_project_channel_or_404(
     db: AsyncSession,
     request: Request,
     instance_id: str,
+    project_id: str | None,
     *,
-    min_role: ProjectRole = "project_admin",
-) -> ChannelInstance:
+    min_role: ProjectRole,
+) -> tuple[str, ChannelInstance]:
+    scoped_project_id = _require_project_id(project_id)
+    await require_project_access(db, request, scoped_project_id, min_role=min_role)
     instance = await channel_service.get_channel_instance(db, instance_id)
-    if instance is None:
-        raise HTTPException(status_code=404, detail=f"Channel instance '{instance_id}' not found")
-    await _require_channel_access(db, request, instance, min_role=min_role)
-    return instance
+    if instance is None or instance.project_id != scoped_project_id:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Channel instance '{instance_id}' not found",
+        )
+    return scoped_project_id, instance
 
 
 @router.get("/channels")
@@ -107,7 +97,9 @@ async def create_channel(
     subject = get_subject(request)
     scoped_project_id = _require_project_id(body.project_id)
     if not is_global_admin(subject):
-        await require_project_access(db, request, scoped_project_id, min_role="project_admin")
+        await require_project_access(
+            db, request, scoped_project_id, min_role="project_admin"
+        )
     try:
         instance = await channel_service.create_channel_instance(
             db,
@@ -125,10 +117,13 @@ async def create_channel(
 async def get_channel(
     instance_id: str,
     request: Request,
+    project_id: Optional[str] = Query(None, description="Active project"),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Get details of a single channel instance."""
-    instance = await _get_channel_for_admin(db, request, instance_id, min_role="viewer")
+    _, instance = await _get_project_channel_or_404(
+        db, request, instance_id, project_id, min_role="viewer"
+    )
     return instance.to_dict()
 
 
@@ -137,12 +132,18 @@ async def update_channel(
     instance_id: str,
     body: UpdateChannelRequest,
     request: Request,
+    project_id: Optional[str] = Query(None, description="Active project"),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Update a channel instance."""
-    instance = await _get_channel_for_admin(db, request, instance_id)
-    if body.project_id and body.project_id != instance.project_id:
-        await require_project_access(db, request, body.project_id, min_role="project_admin")
+    scoped_project_id, _ = await _get_project_channel_or_404(
+        db, request, instance_id, project_id, min_role="project_admin"
+    )
+    if body.project_id is not None and body.project_id != scoped_project_id:
+        raise HTTPException(
+            status_code=400,
+            detail="project_id cannot move a channel across projects",
+        )
     try:
         instance = await channel_service.update_channel_instance(
             db,
@@ -153,20 +154,29 @@ async def update_channel(
         )
         return instance.to_dict()
     except KeyError:
-        raise HTTPException(status_code=404, detail=f"Channel instance '{instance_id}' not found")
+        raise HTTPException(
+            status_code=404,
+            detail=f"Channel instance '{instance_id}' not found",
+        )
 
 
 @router.delete("/channels/{instance_id}")
 async def delete_channel(
     instance_id: str,
     request: Request,
+    project_id: Optional[str] = Query(None, description="Active project"),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Delete a channel instance (stops it first if running)."""
-    await _get_channel_for_admin(db, request, instance_id)
+    await _get_project_channel_or_404(
+        db, request, instance_id, project_id, min_role="project_admin"
+    )
     deleted = await channel_service.delete_channel_instance(db, instance_id)
     if not deleted:
-        raise HTTPException(status_code=404, detail=f"Channel instance '{instance_id}' not found")
+        raise HTTPException(
+            status_code=404,
+            detail=f"Channel instance '{instance_id}' not found",
+        )
     return {"status": "deleted", "instance_id": instance_id}
 
 
@@ -174,15 +184,21 @@ async def delete_channel(
 async def start_channel(
     instance_id: str,
     request: Request,
+    project_id: Optional[str] = Query(None, description="Active project"),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Start a channel instance (instantiate adapter and begin polling/listening)."""
-    await _get_channel_for_admin(db, request, instance_id)
+    await _get_project_channel_or_404(
+        db, request, instance_id, project_id, min_role="project_admin"
+    )
     try:
         result = await channel_service.start_channel_instance(db, instance_id)
         return result
     except KeyError:
-        raise HTTPException(status_code=404, detail=f"Channel instance '{instance_id}' not found")
+        raise HTTPException(
+            status_code=404,
+            detail=f"Channel instance '{instance_id}' not found",
+        )
     except RuntimeError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
@@ -191,53 +207,75 @@ async def start_channel(
 async def stop_channel(
     instance_id: str,
     request: Request,
+    project_id: Optional[str] = Query(None, description="Active project"),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Stop a running channel instance."""
-    await _get_channel_for_admin(db, request, instance_id)
+    await _get_project_channel_or_404(
+        db, request, instance_id, project_id, min_role="project_admin"
+    )
     try:
         result = await channel_service.stop_channel_instance(db, instance_id)
         return result
     except KeyError:
-        raise HTTPException(status_code=404, detail=f"Channel instance '{instance_id}' not found")
+        raise HTTPException(
+            status_code=404,
+            detail=f"Channel instance '{instance_id}' not found",
+        )
 
 
 @router.get("/channels/{instance_id}/health")
 async def health_check_channel(
     instance_id: str,
     request: Request,
+    project_id: Optional[str] = Query(None, description="Active project"),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Run a health check on a channel instance."""
-    await _get_channel_for_admin(db, request, instance_id)
+    await _get_project_channel_or_404(
+        db, request, instance_id, project_id, min_role="project_admin"
+    )
     try:
         return await channel_service.health_check_instance(db, instance_id)
     except KeyError:
-        raise HTTPException(status_code=404, detail=f"Channel instance '{instance_id}' not found")
+        raise HTTPException(
+            status_code=404,
+            detail=f"Channel instance '{instance_id}' not found",
+        )
 
 
 @router.get("/channels/{instance_id}/messages")
 async def get_channel_messages(
     instance_id: str,
     request: Request,
+    project_id: Optional[str] = Query(None, description="Active project"),
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
 ) -> list[dict]:
     """Get message history for a channel instance."""
-    await _get_channel_for_admin(db, request, instance_id, min_role="viewer")
-    return await channel_service.get_message_history(db, instance_id, limit=limit, offset=offset)
+    scoped_project_id, _ = await _get_project_channel_or_404(
+        db, request, instance_id, project_id, min_role="viewer"
+    )
+    return await channel_service.get_message_history(
+        db, instance_id, limit=limit, offset=offset, project_id=scoped_project_id
+    )
 
 
 @router.get("/channels/{instance_id}/conversations")
 async def get_channel_conversations(
     instance_id: str,
     request: Request,
+    project_id: Optional[str] = Query(None, description="Active project"),
     db: AsyncSession = Depends(get_db),
 ) -> list[dict]:
     """Get conversations for a channel instance."""
-    await _get_channel_for_admin(db, request, instance_id, min_role="viewer")
-    return await channel_service.get_conversations(db, instance_id)
+    scoped_project_id, _ = await _get_project_channel_or_404(
+        db, request, instance_id, project_id, min_role="viewer"
+    )
+    return await channel_service.get_conversations(
+        db, instance_id, project_id=scoped_project_id
+    )
 
 
 @router.post("/channels/{instance_id}/send")
@@ -245,10 +283,13 @@ async def send_channel_message(
     instance_id: str,
     body: SendMessageRequest,
     request: Request,
+    project_id: Optional[str] = Query(None, description="Active project"),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Send a manual message through a channel instance."""
-    await _get_channel_for_admin(db, request, instance_id)
+    scoped_project_id, _ = await _get_project_channel_or_404(
+        db, request, instance_id, project_id, min_role="project_admin"
+    )
     try:
         return await channel_service.send_message(
             db,
@@ -256,8 +297,12 @@ async def send_channel_message(
             channel_id=body.channel_id,
             text=body.text,
             metadata=body.metadata,
+            project_id=scoped_project_id,
         )
     except KeyError:
-        raise HTTPException(status_code=404, detail=f"Channel instance '{instance_id}' not found")
+        raise HTTPException(
+            status_code=404,
+            detail=f"Channel instance '{instance_id}' not found",
+        )
     except RuntimeError as exc:
         raise HTTPException(status_code=400, detail=str(exc))

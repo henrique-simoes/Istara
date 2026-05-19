@@ -266,6 +266,7 @@
 <ul>
 <li>Project-scoped state or artifact updates associated with messaging integrations.</li>
 <li>Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.</li>
+<li>Channel details, message history, conversations, health checks, and lifecycle controls are bound to the active project; a channel id from another project should not render in this view.</li>
 <li>Inbound participant messages are routed only to active deployments in the same project that explicitly list the receiving channel.</li>
 </ul>
 <h2 id="caveats">Caveats</h2>
@@ -284,7 +285,7 @@
 </ul>
 <h2 id="evidence">Evidence</h2>
 <ul>
-<li>Source files: <code>frontend/src/components/integrations/MessagingTab.tsx</code>, <code>frontend/src/components/integrations/ChannelSetupWizard.tsx</code>, <code>backend/app/api/routes/channels.py</code>, <code>backend/app/api/routes/webhooks.py</code>, <code>backend/app/services/inbound_processor.py</code></li>
+<li>Source files: <code>frontend/src/components/integrations/MessagingTab.tsx</code>, <code>frontend/src/components/integrations/ChannelInstanceCard.tsx</code>, <code>frontend/src/components/integrations/ChannelMessagesPanel.tsx</code>, <code>frontend/src/components/integrations/ChannelConversationsPanel.tsx</code>, <code>frontend/src/components/integrations/ChannelSetupWizard.tsx</code>, <code>backend/app/api/routes/channels.py</code>, <code>backend/app/api/routes/webhooks.py</code>, <code>backend/app/services/channel_service.py</code>, <code>backend/app/services/inbound_processor.py</code></li>
 <li>API references: <code>backend/app/api/routes/channels.py</code>, <code>backend/app/api/routes/webhooks.py</code></li>
 <li>Tests: <code>tests/test_channels.py</code>, <code>tests/test_channel_inbound.py</code>, <code>tests/test_project_scope_contracts.py</code></li>
 </ul>

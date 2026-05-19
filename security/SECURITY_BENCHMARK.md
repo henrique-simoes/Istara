@@ -139,8 +139,11 @@ on explicit admin dashboard/reporting routes.
 Project-facing integrations, deployments, survey links, channel records, and
 MCP client registries are project-content surfaces for every user role: list
 APIs require an explicit authorized active project and must not silently fall
-back to global admin lists. Deployment creation must only attach channel
-instances owned by the same project, and deployment detail, lifecycle,
+back to global admin lists. Channel detail, lifecycle, health, message-history,
+conversation, and manual-send endpoints must also carry the active project and
+verify that the channel instance and returned rows belong to that project.
+Deployment creation must only attach channel instances owned by the same
+project, and deployment detail, lifecycle,
 response, conversation, transcript, analytics, and overview counters must
 require the caller's active project and verify matching deployment/project
 ownership before reading, mutating, or summarizing participant content. Global

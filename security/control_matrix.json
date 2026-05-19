@@ -87,6 +87,7 @@
         "backend/app/services/loop_execution_service.py",
         "backend/app/services/agent_service.py",
         "backend/app/services/a2a.py",
+        "backend/app/services/channel_service.py",
         "backend/app/services/deployment_service.py",
         "backend/app/services/inbound_processor.py",
         "backend/app/services/figma_service.py",
@@ -137,6 +138,7 @@
         "frontend/src/components/admin/AdminDashboard.tsx",
         "frontend/src/components/settings/ConnectionStringPanel.tsx",
         "frontend/src/components/settings/GovernedEvolutionView.tsx",
+        "frontend/src/components/integrations/Channel*.tsx",
         "frontend/src/components/integrations/MessagingTab.tsx",
         "frontend/src/components/integrations/DeploymentsTab.tsx",
         "frontend/src/components/integrations/DeploymentWizard.tsx",
@@ -538,6 +540,7 @@
         "backend/app/agents/devops_agent.py",
         "backend/app/core/agent_learning.py",
         "backend/app/core/self_evolution.py",
+        "backend/app/services/channel_service.py",
         "backend/app/core/report_manager.py",
         "backend/app/core/reporting_worker.py",
         "backend/app/core/scheduler.py",
@@ -556,6 +559,10 @@
         "frontend/src/components/common/ContextPreview.tsx",
         "frontend/src/components/memory/ContextDAGView.tsx",
         "frontend/src/components/memory/MemoryView.tsx",
+        "frontend/src/components/integrations/ChannelConversationsPanel.tsx",
+        "frontend/src/components/integrations/ChannelInstanceCard.tsx",
+        "frontend/src/components/integrations/ChannelMessagesPanel.tsx",
+        "frontend/src/components/integrations/ChannelSetupWizard.tsx",
         "frontend/src/components/integrations/MessagingTab.tsx",
         "frontend/src/components/integrations/DeploymentWizard.tsx",
         "frontend/src/components/integrations/DeploymentDashboard.tsx",
@@ -600,7 +607,7 @@
         "tests/test_auth_security.py"
       ],
       "future_change_trigger": true,
-      "notes": "Global admin, project admin, researcher, viewer, legacy role mappings, active-project notification, websocket subscription, chat session/history scope, Context hierarchy prompt/list scope, Context DAG session scope, memory/index scope, findings/evidence/search/report scope, task/Kanban scope, governed-evolution proposal/archive/reasoning scope, Meta-Hyperagent proposal/observation/variant scope, agent status/log/detail/learning/self-evolution/realtime/A2A-discovery, loop/background-process scope, project-owned Interfaces screens/briefs/status/configuration, integration/deployment/MCP-client list/detail/lifecycle routes, document library/preview routes, and donated-compute project scopes are governed. Project-facing APIs require an explicit active project; admin-only global aggregation belongs to dedicated admin surfaces. Startup QA/simulation loops are opt-in; project task workers, schedule execution, orchestrator routing, and persona self-evolution skip paused or missing project context before model, proposal, or mutation work."
+      "notes": "Global admin, project admin, researcher, viewer, legacy role mappings, active-project notification, websocket subscription, chat session/history scope, Context hierarchy prompt/list scope, Context DAG session scope, memory/index scope, findings/evidence/search/report scope, task/Kanban scope, governed-evolution proposal/archive/reasoning scope, Meta-Hyperagent proposal/observation/variant scope, agent status/log/detail/learning/self-evolution/realtime/A2A-discovery, loop/background-process scope, project-owned Interfaces screens/briefs/status/configuration, integration/deployment/MCP-client list/detail/lifecycle routes, channel message/conversation detail scope, document library/preview routes, and donated-compute project scopes are governed. Project-facing APIs require an explicit active project; admin-only global aggregation belongs to dedicated admin surfaces. Startup QA/simulation loops are opt-in; project task workers, schedule execution, orchestrator routing, and persona self-evolution skip paused or missing project context before model, proposal, or mutation work."
     },
     {
       "id": "AUTHZ-002",
@@ -807,6 +814,7 @@
         "backend/app/api/routes/channels.py",
         "backend/app/api/routes/deployments.py",
         "backend/app/api/routes/surveys.py",
+        "backend/app/services/channel_service.py",
         "backend/app/services/inbound_processor.py",
         "tests/test_webhooks_security.py",
         "tests/test_channel_file_security.py",

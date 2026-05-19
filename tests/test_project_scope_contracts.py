@@ -202,6 +202,51 @@ def test_integrations_subtabs_defensively_filter_by_active_project() -> None:
     assert "set({ mcpClients: [], mcpLoading: true, error: null });" in store
 
 
+def test_integrations_messaging_detail_panels_require_active_project_scope() -> None:
+    api = read_repo("frontend/src/lib/api.ts")
+    messaging = read_repo("frontend/src/components/integrations/MessagingTab.tsx")
+    messages_panel = read_repo("frontend/src/components/integrations/ChannelMessagesPanel.tsx")
+    conversations_panel = read_repo("frontend/src/components/integrations/ChannelConversationsPanel.tsx")
+    instance_card = read_repo("frontend/src/components/integrations/ChannelInstanceCard.tsx")
+    setup_wizard = read_repo("frontend/src/components/integrations/ChannelSetupWizard.tsx")
+    route = read_repo("backend/app/api/routes/channels.py")
+    service = read_repo("backend/app/services/channel_service.py")
+
+    assert "get: (id: string, projectId: string)" in api
+    assert "update: (id: string, data: Record<string, any>, projectId: string)" in api
+    assert "delete: (id: string, projectId: string)" in api
+    assert "start: (id: string, projectId: string)" in api
+    assert "stop: (id: string, projectId: string)" in api
+    assert "health: (id: string, projectId: string)" in api
+    assert "messages: (id: string, projectId: string" in api
+    assert "conversations: (id: string, projectId: string)" in api
+    assert "send: (id: string, data: { channel_id: string; text: string; metadata?: any }, projectId: string)" in api
+    assert "channelProjectQuery(projectId)" in api
+
+    assert "selectedInstance && activeProjectId" in messaging
+    assert "projectId={activeProjectId}" in messaging
+    assert "channelsApi.messages(channelId, projectId)" in messages_panel
+    assert "channelsApi.conversations(channelId, projectId)" in conversations_panel
+    assert "channelsApi.start(instance.id, projectId)" in instance_card
+    assert "channelsApi.stop(instance.id, projectId)" in instance_card
+    assert "channelsApi.start(instance.id, activeProjectId)" in setup_wizard
+    assert "channelsApi.health(instance.id, activeProjectId)" in setup_wizard
+    assert "channelsApi.delete(instanceId, activeProjectId)" in setup_wizard
+
+    assert "async def _get_project_channel_or_404" in route
+    assert "scoped_project_id = _require_project_id(project_id)" in route
+    assert "await require_project_access(db, request, scoped_project_id, min_role=min_role)" in route
+    assert "instance is None or instance.project_id != scoped_project_id" in route
+    assert "project_id: Optional[str] = Query(None, description=\"Active project\")" in route
+    assert "project_id=scoped_project_id" in route
+
+    assert "ChannelMessage.project_id == project_id" in service
+    assert "ChannelConversation.project_id == project_id" in service
+    assert "resolved_project_id = project_id" in service
+    assert "resolved_project_id = instance.project_id" in service
+    assert "project_id=resolved_project_id" in service
+
+
 def test_integrations_store_and_api_accept_project_filters() -> None:
     store = read_repo("frontend/src/stores/integrationsStore.ts")
     api = read_repo("frontend/src/lib/api.ts")

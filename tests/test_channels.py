@@ -1,6 +1,7 @@
 """Tests for Channels API routes — CRUD, start/stop, health, messages, conversations, send."""
 
 import json
+import uuid
 
 import pytest
 from httpx import AsyncClient, ASGITransport
@@ -12,6 +13,8 @@ from app.config import settings
 from app.models.database import init_db
 from app.models.database import async_session
 from app.models.channel_instance import ChannelInstance
+from app.models.channel_message import ChannelMessage
+from app.models.channel_conversation import ChannelConversation
 from app.core.field_encryption import decrypt_field
 from app.core.auth import create_token
 
@@ -53,6 +56,130 @@ async def test_channels_list_requires_project_id_for_project_facing_api(auth_hea
 
     assert response.status_code == 400
     assert response.json()["detail"] == "project_id is required"
+
+
+@pytest.mark.asyncio
+async def test_channel_detail_routes_are_bound_to_active_project(auth_headers):
+    await init_db()
+    project_id = f"channel-detail-project-{uuid.uuid4()}"
+    other_project_id = f"channel-detail-other-{uuid.uuid4()}"
+    transport = ASGITransport(app=app)
+
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        created = await ac.post(
+            "/api/channels",
+            headers=auth_headers,
+            json={
+                "platform": "slack",
+                "name": "Project Slack",
+                "project_id": project_id,
+                "config": {"Bot Token": "xoxb-test", "Signing Secret": "secret"},
+            },
+        )
+        assert created.status_code == 200
+        instance_id = created.json()["id"]
+
+        missing_scope = await ac.get(f"/api/channels/{instance_id}", headers=auth_headers)
+        wrong_scope = await ac.get(
+            f"/api/channels/{instance_id}?project_id={other_project_id}",
+            headers=auth_headers,
+        )
+        correct_scope = await ac.get(
+            f"/api/channels/{instance_id}?project_id={project_id}",
+            headers=auth_headers,
+        )
+
+    assert missing_scope.status_code == 400
+    assert wrong_scope.status_code == 404
+    assert correct_scope.status_code == 200
+    assert correct_scope.json()["project_id"] == project_id
+
+
+@pytest.mark.asyncio
+async def test_channel_messages_and_conversations_filter_by_active_project(auth_headers):
+    await init_db()
+    project_id = f"channel-messages-project-{uuid.uuid4()}"
+    other_project_id = f"channel-messages-other-{uuid.uuid4()}"
+    transport = ASGITransport(app=app)
+
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        created = await ac.post(
+            "/api/channels",
+            headers=auth_headers,
+            json={
+                "platform": "slack",
+                "name": "Scoped Slack",
+                "project_id": project_id,
+                "config": {"Bot Token": "xoxb-test", "Signing Secret": "secret"},
+            },
+        )
+        assert created.status_code == 200
+        instance_id = created.json()["id"]
+
+    visible_message_id = str(uuid.uuid4())
+    hidden_message_id = str(uuid.uuid4())
+    visible_conversation_id = str(uuid.uuid4())
+    hidden_conversation_id = str(uuid.uuid4())
+    async with async_session() as db:
+        db.add_all(
+            [
+                ChannelMessage(
+                    id=visible_message_id,
+                    channel_instance_id=instance_id,
+                    project_id=project_id,
+                    direction="inbound",
+                    sender_id="participant-1",
+                    sender_name="Participant 1",
+                    content="visible project message",
+                ),
+                ChannelMessage(
+                    id=hidden_message_id,
+                    channel_instance_id=instance_id,
+                    project_id=other_project_id,
+                    direction="inbound",
+                    sender_id="participant-2",
+                    sender_name="Participant 2",
+                    content="hidden cross-project message",
+                ),
+                ChannelConversation(
+                    id=visible_conversation_id,
+                    channel_instance_id=instance_id,
+                    project_id=project_id,
+                    participant_id="participant-1",
+                    participant_name="Participant 1",
+                ),
+                ChannelConversation(
+                    id=hidden_conversation_id,
+                    channel_instance_id=instance_id,
+                    project_id=other_project_id,
+                    participant_id="participant-2",
+                    participant_name="Participant 2",
+                ),
+            ]
+        )
+        await db.commit()
+
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        messages = await ac.get(
+            f"/api/channels/{instance_id}/messages?project_id={project_id}",
+            headers=auth_headers,
+        )
+        missing_scope = await ac.get(f"/api/channels/{instance_id}/messages", headers=auth_headers)
+        wrong_scope = await ac.get(
+            f"/api/channels/{instance_id}/messages?project_id={other_project_id}",
+            headers=auth_headers,
+        )
+        conversations = await ac.get(
+            f"/api/channels/{instance_id}/conversations?project_id={project_id}",
+            headers=auth_headers,
+        )
+
+    assert messages.status_code == 200
+    assert [item["id"] for item in messages.json()] == [visible_message_id]
+    assert missing_scope.status_code == 400
+    assert wrong_scope.status_code == 404
+    assert conversations.status_code == 200
+    assert [item["id"] for item in conversations.json()] == [visible_conversation_id]
 
 
 @pytest.mark.asyncio
@@ -118,8 +245,14 @@ async def test_channel_start_missing_config_reports_not_enabled(auth_headers, mo
         assert created.status_code == 200
         instance_id = created.json()["id"]
 
-        started = await ac.post(f"/api/channels/{instance_id}/start", headers=auth_headers)
-        health = await ac.get(f"/api/channels/{instance_id}/health", headers=auth_headers)
+        started = await ac.post(
+            f"/api/channels/{instance_id}/start?project_id=channel-missing-config-project",
+            headers=auth_headers,
+        )
+        health = await ac.get(
+            f"/api/channels/{instance_id}/health?project_id=channel-missing-config-project",
+            headers=auth_headers,
+        )
 
     assert started.status_code == 200
     assert started.json()["status"] == "not_enabled"
