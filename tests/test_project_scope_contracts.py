@@ -618,43 +618,38 @@ def test_llm_server_inventory_and_health_checks_require_global_admin_access() ->
     assert "Global admin access is required to manage shared provider endpoints." in settings_view
 
 def test_autoresearch_project_surfaces_require_active_project_scope() -> None:
-    api = read_repo("frontend/src/lib/api.ts")
-    store = read_repo("frontend/src/stores/autoresearchStore.ts")
-    dashboard = read_repo("frontend/src/components/autoresearch/ExperimentDashboard.tsx")
-    history = read_repo("frontend/src/components/autoresearch/ExperimentHistory.tsx")
-    leaderboard = read_repo("frontend/src/components/autoresearch/LeaderboardTab.tsx")
-    route = read_repo("backend/app/api/routes/autoresearch.py")
-    engine = read_repo("backend/app/core/autoresearch_engine.py")
+    api = read_repo("frontend/src/lib/api.ts"); store = read_repo("frontend/src/stores/autoresearchStore.ts")
+    dashboard = read_repo("frontend/src/components/autoresearch/ExperimentDashboard.tsx"); history = read_repo("frontend/src/components/autoresearch/ExperimentHistory.tsx")
+    leaderboard = read_repo("frontend/src/components/autoresearch/LeaderboardTab.tsx"); route = read_repo("backend/app/api/routes/autoresearch.py")
+    engine = read_repo("backend/app/core/autoresearch_engine.py"); runner_base = read_repo("backend/app/core/autoresearch_runners/__init__.py"); question_bank = read_repo("backend/app/core/autoresearch_runners/question_bank.py")
 
-    assert "autoresearch.status(projectId)" in store
-    assert "autoresearch.leaderboard(projectId)" in store
-    assert "project_id: params.project_id" in store
-    assert "fetchStatus(activeProjectId)" in dashboard
-    assert "fetchExperiments({ project_id: activeProjectId, limit: 20 })" in dashboard
-    assert "project_id: activeProjectId" in dashboard
-    assert "stopLoop(activeProjectId)" in dashboard
+    assert all(
+        marker in store
+        for marker in ("autoresearch.status(projectId)", "autoresearch.leaderboard(projectId)", "project_id: params.project_id")
+    )
+    assert all(
+        marker in dashboard
+        for marker in ("fetchStatus(activeProjectId)", "fetchExperiments({ project_id: activeProjectId, limit: 20 })", "project_id: activeProjectId", "stopLoop(activeProjectId)")
+    )
     assert "params.project_id = activeProjectId" in history
     assert "fetchLeaderboard(activeProjectId)" in leaderboard
 
-    assert "status: (projectId: string)" in api
-    assert "/api/autoresearch/status?project_id=" in api
-    assert 'p.set("project_id", params.project_id);' in api
-    assert "/api/autoresearch/leaderboard?project_id=" in api
-    assert "/api/autoresearch/stop?project_id=" in api
+    assert all(
+        marker in api
+        for marker in ("status: (projectId: string)", "/api/autoresearch/status?project_id=", 'p.set("project_id", params.project_id);', "/api/autoresearch/leaderboard?project_id=", "/api/autoresearch/stop?project_id=")
+    )
 
-    assert "async def _require_project_scope" in route
-    assert 'raise HTTPException(status_code=400, detail="project_id is required")' in route
-    assert "operational_metrics\": await _build_operational_metrics(db, project_id)" in route
-    assert "return await engine.get_leaderboard(project_id=project_id)" in route
+    assert all(
+        marker in route
+        for marker in ("async def _require_project_scope", 'raise HTTPException(status_code=400, detail="project_id is required")', "operational_metrics\": await _build_operational_metrics(db, project_id)", "return await engine.get_leaderboard(project_id=project_id)", "Task.project_id == project_id", "ResearchDeployment.project_id == project_id", "TelemetrySpan.project_id == project_id", "ScheduledTask.project_id == project_id")
+    )
     assert "await engine.get_experiments(" in route and "project_id=project_id" in route
-    assert "Task.project_id == project_id" in route
-    assert "ResearchDeployment.project_id == project_id" in route
-    assert "TelemetrySpan.project_id == project_id" in route
-    assert "ScheduledTask.project_id == project_id" in route
-
-    assert '"project_id": project_id' in engine
-    assert "AutoresearchExperiment.project_id == project_id" in engine
-    assert "TelemetrySpan.project_id == project_id" in engine
+    assert all(
+        marker in engine
+        for marker in ('"project_id": project_id', 'bind_project(project_id)', "AutoresearchExperiment.project_id == project_id", "TelemetrySpan.project_id == project_id")
+    )
+    assert all(marker in runner_base for marker in ("def bind_project(self, project_id: str) -> None:", 'raise RuntimeError("project_id is required for autoresearch runner")'))
+    assert all(marker in question_bank for marker in ("ResearchDeployment.project_id == project_id", "project_id=self.require_project_id()"))
 
 
 def test_agents_a2a_project_view_passes_active_project_id() -> None:

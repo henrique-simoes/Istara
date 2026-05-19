@@ -6,11 +6,11 @@ audience: researcher
 status: documented
 related_features: ["autoresearch.dashboard", "autoresearch.config"]
 related_glossary: ["triangulation"]
-code_references: ["frontend/src/components/autoresearch/AutoresearchView.tsx", "backend/app/core/autoresearch_engine.py"]
+code_references: ["frontend/src/components/autoresearch/AutoresearchView.tsx", "backend/app/core/autoresearch_engine.py", "backend/app/core/autoresearch_runners/question_bank.py"]
 api_references: ["backend/app/api/routes/autoresearch.py"]
 test_references: ["tests/test_autoresearch.py", "tests/test_project_scope_contracts.py"]
-last_verified: 2026-05-18
-compass: CF-SPEC-60 / CF-754
+last_verified: 2026-05-19
+compass: CF-SPEC-60 / CF-754; CF-SPEC-96 / CF-1226
 ---
 
 # Autoresearch Experiments
@@ -45,6 +45,7 @@ Autoresearch Experiments exists so the work represented by Autoresearch > Experi
 
 - Project-scoped experiment history and runtime actions associated with the active project.
 - Generated experiment records, reasoning memories, and improvement proposals keep the project id that authorized the run.
+- Question-bank experiments can only evaluate or rewrite deployments that belong to the active project; stale deployment ids from another project are treated as not found before LLM evaluation or mutation.
 
 ## Caveats
 
@@ -62,6 +63,6 @@ Autoresearch Experiments exists so the work represented by Autoresearch > Experi
 
 ## Evidence
 
-- Source files: `frontend/src/components/autoresearch/AutoresearchView.tsx`, `backend/app/core/autoresearch_engine.py`
+- Source files: `frontend/src/components/autoresearch/AutoresearchView.tsx`, `backend/app/core/autoresearch_engine.py`, `backend/app/core/autoresearch_runners/question_bank.py`
 - API references: `backend/app/api/routes/autoresearch.py`
 - Tests: `tests/test_autoresearch.py`, `tests/test_project_scope_contracts.py`

@@ -1,5 +1,6 @@
 """Tests for Autoresearch API routes — status, experiments, start/stop, config, leaderboard, toggle."""
 
+import json
 import pytest
 from httpx import AsyncClient, ASGITransport
 from types import SimpleNamespace
@@ -284,6 +285,68 @@ async def test_start_autoresearch_rejects_paused_project(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_question_bank_runner_rejects_cross_project_deployment_target():
+    await init_db()
+    from app.core.autoresearch_runners.question_bank import QuestionBankRunner
+
+    project_a = f"question-bank-a-{uuid.uuid4().hex[:8]}"
+    project_b = f"question-bank-b-{uuid.uuid4().hex[:8]}"
+    deployment_a = f"deployment-a-{uuid.uuid4().hex[:8]}"
+    deployment_b = f"deployment-b-{uuid.uuid4().hex[:8]}"
+
+    async with async_session() as db:
+        db.add_all(
+            [
+                Project(id=project_a, name="Question Bank A"),
+                Project(id=project_b, name="Question Bank B"),
+                ResearchDeployment(
+                    id=deployment_a,
+                    project_id=project_a,
+                    name="Owned Deployment",
+                    deployment_type="survey",
+                    questions_json=json.dumps([{"text": "Owned?", "type": "open"}]),
+                    config_json=json.dumps({}),
+                    channel_instance_ids_json=json.dumps([]),
+                ),
+                ResearchDeployment(
+                    id=deployment_b,
+                    project_id=project_b,
+                    name="Other Deployment",
+                    deployment_type="survey",
+                    questions_json=json.dumps([{"text": "Other?", "type": "open"}]),
+                    config_json=json.dumps({}),
+                    channel_instance_ids_json=json.dumps([]),
+                ),
+            ]
+        )
+        await db.commit()
+
+    runner = QuestionBankRunner()
+    with pytest.raises(RuntimeError, match="project_id is required for autoresearch runner"):
+        await runner._load_deployment(deployment_a)
+
+    runner.bind_project(project_a)
+    owned = await runner._load_deployment(deployment_a)
+    assert owned.project_id == project_a
+
+    with pytest.raises(ValueError, match="Deployment not found"):
+        await runner._load_deployment(deployment_b)
+
+    with pytest.raises(ValueError, match="Deployment not found"):
+        await runner._update_deployment(
+            deployment_b,
+            json.dumps([{"text": "Leaked mutation", "type": "open"}]),
+            json.dumps({"mutated": True}),
+        )
+
+    async with async_session() as db:
+        cross_project = await db.get(ResearchDeployment, deployment_b)
+        assert cross_project is not None
+        assert json.loads(cross_project.questions_json) == [{"text": "Other?", "type": "open"}]
+        assert json.loads(cross_project.config_json) == {}
+
+
+@pytest.mark.asyncio
 async def test_stop_autoresearch_requests_stop(monkeypatch):
     await init_db()
     settings.team_mode = False
@@ -355,8 +418,15 @@ async def test_autoresearch_records_reasoning_memory_ids(monkeypatch):
         loop_type = "model_temp"
         needs_persona_lock = False
 
+        def __init__(self):
+            self.project_id = ""
+
+        def bind_project(self, project_id):
+            self.project_id = project_id
+
         async def measure_baseline(self, target):
             assert is_autoresearch_active() is True
+            assert self.project_id == project_id
             return 0.5
 
         async def hypothesize(self, target, best_score, results):
@@ -370,6 +440,7 @@ async def test_autoresearch_records_reasoning_memory_ids(monkeypatch):
 
         async def measure(self, target):
             assert is_autoresearch_active() is True
+            assert self.project_id == project_id
             return 0.6
 
     async def allow_experiment(db, target):
@@ -392,8 +463,9 @@ async def test_autoresearch_records_reasoning_memory_ids(monkeypatch):
     monkeypatch.setattr(AutoresearchEngine, "_register_improvement_proposals", fake_register)
 
     engine = AutoresearchEngine()
+    runner = FakeRunner()
     results = await engine.run_loop(
-        FakeRunner(),
+        runner,
         target="kappa-thematic-analysis",
         max_iterations=1,
         project_id=project_id,
@@ -403,6 +475,7 @@ async def test_autoresearch_records_reasoning_memory_ids(monkeypatch):
     assert results[0]["kept"] is True
     assert results[0]["reasoning_memory_ids"] == ["memory-1"]
     assert results[0]["improvement_proposal_ids"] == ["proposal-1"]
+    assert runner.project_id == ""
 
 
 @pytest.mark.asyncio

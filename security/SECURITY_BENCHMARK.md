@@ -159,6 +159,11 @@ mutations are also project-content surfaces: they must receive an explicit
 authorized active project id, qualify learnings only from that project, and must
 not use cross-project or paused-project learning evidence to mutate persona
 files.
+Autoresearch runners inherit the same boundary: the engine binds the authorized
+active project into runner work before baseline measurement, and question-bank
+deployment targets must be loaded, evaluated, and updated by both deployment id
+and project id so stale cross-project deployment ids cannot drive LLM evaluation
+or mutation.
 Governed Evolution, DGM-H archive, and ReasoningBank review surfaces are also
 project-content surfaces: proposal/archive/reasoning lists and mutation actions
 must carry an explicit `project_id`, bind record ids back to that project, and

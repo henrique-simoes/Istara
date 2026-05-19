@@ -6,11 +6,11 @@ audience: architecture
 status: documented
 related_features: ["autoresearch.dashboard", "autoresearch.config"]
 related_glossary: ["triangulation"]
-code_references: ["frontend/src/components/autoresearch/AutoresearchView.tsx", "backend/app/core/autoresearch_engine.py"]
+code_references: ["frontend/src/components/autoresearch/AutoresearchView.tsx", "backend/app/core/autoresearch_engine.py", "backend/app/core/autoresearch_runners/__init__.py", "backend/app/core/autoresearch_runners/question_bank.py"]
 api_references: ["backend/app/api/routes/autoresearch.py"]
 test_references: ["tests/test_autoresearch.py", "tests/test_project_scope_contracts.py"]
-last_verified: 2026-05-18
-compass: CF-SPEC-60 / CF-754; CF-SPEC-68 / CF-870
+last_verified: 2026-05-19
+compass: CF-SPEC-60 / CF-754; CF-SPEC-68 / CF-870; CF-SPEC-96 / CF-1226
 ---
 
 # Autoresearch Experiments Architecture
@@ -23,6 +23,8 @@ Experiments configure and inspect automated research runs across strategies or p
 
 - `frontend/src/components/autoresearch/AutoresearchView.tsx`
 - `backend/app/core/autoresearch_engine.py`
+- `backend/app/core/autoresearch_runners/__init__.py`
+- `backend/app/core/autoresearch_runners/question_bank.py`
 
 ## State, API, And Backend Contracts
 
@@ -36,6 +38,7 @@ Experiments configure and inspect automated research runs across strategies or p
 - `backend/app/api/routes/autoresearch.py`
 - Experiment list, start, and stop routes require `project_id` and enforce project access. Autoresearch engine records and broadcasts the experiment project id, and experiment history filters by `AutoresearchExperiment.project_id`.
 - Starting an experiment requires the requested project to be active and unpaused before the runner is constructed or scheduled. The engine records the active project owner for the whole run, including baseline measurement, and repeats the active-project check before baseline and iteration work so a paused or missing project cannot keep processing in the background.
+- The engine binds the authorized project id into each loop runner before baseline measurement. Question-bank runners then load and update `ResearchDeployment` rows by both deployment id and that bound project id, so a stale deployment id from another project cannot be measured, mutated, reverted, or sent into LLM evaluation.
 
 ## Architecture Notes
 
@@ -51,7 +54,7 @@ Experiments configure and inspect automated research runs across strategies or p
 
 ## Tests And Verification
 
-- `tests/test_autoresearch.py` verifies start/stop routing and project-scoped experiment behavior.
+- `tests/test_autoresearch.py` verifies start/stop routing, runner project binding, and project-scoped question-bank deployment behavior.
 - `tests/test_project_scope_contracts.py` verifies the frontend and backend keep experiment requests project-bound.
 
 ## Related Features
@@ -65,7 +68,7 @@ Experiments configure and inspect automated research runs across strategies or p
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-60 / CF-754; CF-SPEC-68 / CF-870
+- Spec/task: CF-SPEC-60 / CF-754; CF-SPEC-68 / CF-870; CF-SPEC-96 / CF-1226
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update
