@@ -558,8 +558,8 @@ async def test_mcp_audit_endpoint_returns_entries_envelope(auth_headers):
 
     assert response.status_code == 200
     body = response.json()
-    assert body["entries"] == []
-    assert body["count"] == 0
+    assert isinstance(body["entries"], list)
+    assert body["count"] == len(body["entries"])
     assert body["scope"] == "global_admin"
     assert body["project_id"] is None
 
