@@ -10,7 +10,7 @@ code_references: ["frontend/src/components/integrations/DeploymentsTab.tsx", "fr
 api_references: ["backend/app/api/routes/deployments.py", "backend/app/services/deployment_service.py"]
 test_references: ["tests/test_deployments.py", "tests/test_project_scope_contracts.py", "tests/test_integration_simulation_scope.py"]
 last_verified: 2026-05-19
-compass: CF-SPEC-60 / CF-767; CF-SPEC-60 / CF-773; CF-SPEC-62 / CF-793; CF-SPEC-75 / CF-964; CF-SPEC-82 / CF-1061
+compass: CF-SPEC-60 / CF-767; CF-SPEC-60 / CF-773; CF-SPEC-62 / CF-793; CF-SPEC-75 / CF-964; CF-SPEC-82 / CF-1061; CF-SPEC-93 / CF-1184
 ---
 
 # Research Deployments Architecture
@@ -46,6 +46,7 @@ Deployments configure participant-facing research deployments and link them to c
 - Deployment detail, analytics, lifecycle, conversation list, conversation detail, and transcript routes also require the active `project_id`; an omitted project id returns 400, and a deployment id from another project resolves as 404 instead of silently using the record's owning project.
 - By-id deployment routes authorize the requested active project before loading the deployment, then fetch by both deployment id and project id so stale cross-project ids cannot drive project-facing actions or existence checks.
 - `deployment_service` helpers for deployment lookup, lifecycle, response handling, analytics, conversations, and transcripts also require `project_id`, so background jobs or future internal callers cannot accidentally resolve deployment or conversation records by global id alone.
+- Deployment creation validates the project with the same active-project helper used by dispatch paths before writing a row; global admins cannot create deployments for missing or paused projects through the project-facing Integrations API.
 - Deployment creation validates every `channel_instance_id` against the deployment `project_id` before storing the deployment, so a deployment in one project cannot route participant content through another project's messaging channel.
 - Inbound channel processors attach participant messages only to same-project deployments that explicitly list the receiving channel instance; deployments with no channels are not a global fallback.
 - Deployment activation and participant response handling reject paused projects before dispatching participant-facing work, updating adaptive conversation state, or reaching LLM-backed follow-up generation.
@@ -64,7 +65,7 @@ Deployments configure participant-facing research deployments and link them to c
 
 ## Tests And Verification
 
-- `tests/test_deployments.py` exercises API-level project isolation for deployment channel ownership, deployment overview conversation counts, by-id active-project matching across detail/lifecycle/conversation/transcript routes, direct service-helper project scope enforcement, and cross-project response rejection.
+- `tests/test_deployments.py` exercises API-level project isolation for active-project creation, deployment channel ownership, deployment overview conversation counts, by-id active-project matching across detail/lifecycle/conversation/transcript routes, direct service-helper project scope enforcement, and cross-project response rejection.
 - `tests/test_project_scope_contracts.py` asserts that `DeploymentsTab`, `DeploymentDashboard`, `ConversationTranscript`, and the deployment API client pass the active project id into list, detail, lifecycle, analytics, conversation, and transcript calls rather than falling back to global deployment ids.
 - `tests/test_integration_simulation_scope.py` prevents simulation and real-user benchmark deployment calls from reintroducing unscoped by-id integration paths.
 
@@ -80,7 +81,7 @@ Deployments configure participant-facing research deployments and link them to c
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-60 / CF-767; CF-SPEC-60 / CF-773; CF-SPEC-62 / CF-793; CF-SPEC-75 / CF-964; CF-SPEC-82 / CF-1061
+- Spec/task: CF-SPEC-60 / CF-767; CF-SPEC-60 / CF-773; CF-SPEC-62 / CF-793; CF-SPEC-75 / CF-964; CF-SPEC-82 / CF-1061; CF-SPEC-93 / CF-1184
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update

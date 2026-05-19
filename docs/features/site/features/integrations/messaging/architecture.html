@@ -272,6 +272,7 @@
 <li><code>MessagingTab</code> passes the active project into channel listing, clears stale channel state during project changes, and renders only channel records whose <code>project_id</code> matches the active project.</li>
 <li>Channel cards, setup testing, message history, and conversation detail panels pass the active project into every channel detail, lifecycle, health, message, conversation, and cleanup call so stale channel ids from another project cannot be dereferenced.</li>
 <li><code>backend/app/api/routes/channels.py</code> requires an explicit <code>project_id</code> for project-facing channel lists and detail routes, verifies the channel instance belongs to that same project even for global admins, and enforces project viewer access for reads; channel creation and lifecycle mutations remain project-admin operations.</li>
+<li>Channel creation uses the active-project authorization helper before persisting a channel instance, so global admins cannot create project-facing channel records for missing or paused projects that would later appear in Integrations as orphan activity.</li>
 <li><code>backend/app/services/channel_service.py</code> list, update, delete, start, stop, health, message-history, conversation, and manual-send helpers require a project id and load by both record id and project id, preventing internal callers from bypassing route-level active-project checks.</li>
 <li>Channel start and startup auto-loading treat <code>Project.is_paused</code> as a dispatch boundary. A paused or missing project cannot start or auto-start channel adapters, even when a channel instance row is still marked active.</li>
 <li><code>backend/app/services/channel_service.py</code> filters message and conversation rows by the same project, stamps new recorded messages with the owning channel instance project when a caller does not already provide one, and rejects explicit project-id claims that do not match the channel instance.</li>
@@ -303,7 +304,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-762; CF-SPEC-60 / CF-773; CF-SPEC-60 / CF-776; CF-SPEC-65 / CF-842; CF-SPEC-75 / CF-964; CF-SPEC-82 / CF-1061</li>
+<li>Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-762; CF-SPEC-60 / CF-773; CF-SPEC-60 / CF-776; CF-SPEC-65 / CF-842; CF-SPEC-75 / CF-964; CF-SPEC-82 / CF-1061; CF-SPEC-93 / CF-1184</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>

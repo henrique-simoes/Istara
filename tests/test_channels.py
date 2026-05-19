@@ -61,11 +61,54 @@ async def test_channels_list_requires_project_id_for_project_facing_api(auth_hea
 
 
 @pytest.mark.asyncio
+async def test_channel_create_requires_existing_active_project_for_admin(auth_headers):
+    await init_db()
+    missing_project_id = f"missing-channel-project-{uuid.uuid4()}"
+    paused_project_id = f"paused-channel-create-project-{uuid.uuid4()}"
+    transport = ASGITransport(app=app)
+
+    async with async_session() as db:
+        db.add(Project(id=paused_project_id, name="Paused Channel Create", is_paused=True))
+        await db.commit()
+
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        missing = await ac.post(
+            "/api/channels",
+            headers=auth_headers,
+            json={
+                "platform": "slack",
+                "name": "Missing Project Slack",
+                "project_id": missing_project_id,
+                "config": {"Bot Token": "xoxb-test", "Signing Secret": "secret"},
+            },
+        )
+        paused = await ac.post(
+            "/api/channels",
+            headers=auth_headers,
+            json={
+                "platform": "slack",
+                "name": "Paused Project Slack",
+                "project_id": paused_project_id,
+                "config": {"Bot Token": "xoxb-test", "Signing Secret": "secret"},
+            },
+        )
+
+    assert missing.status_code == 404
+    assert missing.json()["detail"] == "Project not found"
+    assert paused.status_code == 409
+    assert paused.json()["detail"] == "Project is paused"
+
+
+@pytest.mark.asyncio
 async def test_channel_detail_routes_are_bound_to_active_project(auth_headers):
     await init_db()
     project_id = f"channel-detail-project-{uuid.uuid4()}"
     other_project_id = f"channel-detail-other-{uuid.uuid4()}"
     transport = ASGITransport(app=app)
+
+    async with async_session() as db:
+        db.add(Project(id=project_id, name="Channel Detail Project"))
+        await db.commit()
 
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         created = await ac.post(
@@ -103,6 +146,10 @@ async def test_channel_messages_and_conversations_filter_by_active_project(auth_
     project_id = f"channel-messages-project-{uuid.uuid4()}"
     other_project_id = f"channel-messages-other-{uuid.uuid4()}"
     transport = ASGITransport(app=app)
+
+    async with async_session() as db:
+        db.add(Project(id=project_id, name="Channel Messages Project"))
+        await db.commit()
 
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         created = await ac.post(
@@ -231,6 +278,11 @@ async def test_channels_list_requires_auth():
 async def test_channel_create_normalizes_ui_credential_labels(auth_headers):
     await init_db()
     transport = ASGITransport(app=app)
+    project_id = "channel-credentials-project"
+
+    async with async_session() as db:
+        db.add(Project(id=project_id, name="Channel Credentials Project"))
+        await db.commit()
 
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         response = await ac.post(
@@ -239,7 +291,7 @@ async def test_channel_create_normalizes_ui_credential_labels(auth_headers):
             json={
                 "platform": "slack",
                 "name": "Research Slack",
-                "project_id": "channel-credentials-project",
+                "project_id": project_id,
                 "config": {
                     "Bot Token": " xoxb-test ",
                     "Signing Secret": " secret ",
@@ -308,30 +360,26 @@ async def test_channel_start_rejects_paused_project(auth_headers):
 
     async with async_session() as db:
         db.add(Project(id=project_id, name="Paused Channel Project", is_paused=True))
+        db.add(
+            ChannelInstance(
+                id="paused-slack-channel",
+                platform="slack",
+                name="Paused Slack",
+                config_json="{}",
+                project_id=project_id,
+            )
+        )
         await db.commit()
 
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        created = await ac.post(
-            "/api/channels",
-            headers=auth_headers,
-            json={
-                "platform": "slack",
-                "name": "Paused Slack",
-                "project_id": project_id,
-                "config": {"Bot Token": "xoxb-test", "Signing Secret": "secret"},
-            },
-        )
-        assert created.status_code == 200
-        instance_id = created.json()["id"]
-
         started = await ac.post(
-            f"/api/channels/{instance_id}/start?project_id={project_id}",
+            f"/api/channels/paused-slack-channel/start?project_id={project_id}",
             headers=auth_headers,
         )
 
     assert started.status_code == 409
     assert started.json()["detail"] == "Project is paused"
-    assert channel_router.get(instance_id) is None
+    assert channel_router.get("paused-slack-channel") is None
 
 
 @pytest.mark.asyncio

@@ -12,8 +12,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.permissions import (
     ProjectRole,
     get_active_project_or_404,
-    get_subject,
-    is_global_admin,
     require_project_access,
 )
 from app.models.channel_instance import ChannelInstance
@@ -101,12 +99,10 @@ async def create_channel(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Create a new channel instance."""
-    subject = get_subject(request)
     scoped_project_id = _require_project_id(body.project_id)
-    if not is_global_admin(subject):
-        await require_project_access(
-            db, request, scoped_project_id, min_role="project_admin"
-        )
+    await get_active_project_or_404(
+        db, request, scoped_project_id, min_role="project_admin"
+    )
     try:
         instance = await channel_service.create_channel_instance(
             db,

@@ -10,7 +10,7 @@ code_references: ["frontend/src/components/integrations/IntegrationsView.tsx", "
 api_references: ["backend/app/api/routes/channels.py", "backend/app/api/routes/deployments.py", "backend/app/api/routes/surveys.py", "backend/app/api/routes/mcp.py", "backend/app/services/deployment_service.py", "backend/app/services/channel_service.py", "backend/app/services/mcp_client_manager.py"]
 test_references: ["tests/test_channels.py", "tests/test_mcp.py", "tests/test_deployments.py", "tests/test_project_scope_contracts.py", "tests/test_integration_simulation_scope.py"]
 last_verified: 2026-05-19
-compass: CF-SPEC-56 / CF-698; CF-SPEC-59 / CF-740; CF-SPEC-60 / CF-767; CF-SPEC-65 / CF-842; CF-SPEC-82 / CF-1061
+compass: CF-SPEC-56 / CF-698; CF-SPEC-59 / CF-740; CF-SPEC-60 / CF-767; CF-SPEC-65 / CF-842; CF-SPEC-82 / CF-1061; CF-SPEC-93 / CF-1184
 ---
 
 # Integrations Overview Architecture
@@ -51,6 +51,7 @@ The Integrations overview summarizes connected channels, deployment surfaces, an
 - If there is no active project, the integrations store clears project-owned channel, deployment, survey, and MCP client lists rather than calling list endpoints without a project scope.
 - The integrations store filters every fetched channel, deployment, survey integration, and MCP client by the active `project_id` before storing; MCP clients are also deduplicated within that project by normalized transport and URL.
 - Project-owned integration list APIs require `project_id` even for global admins; admin dashboard/reporting routes are the only intended cross-project aggregation surfaces.
+- Project-facing channel and deployment creation APIs also validate that the requested project exists, is active, and authorizes the caller before any integration row is stored, so orphan or paused-project records cannot later surface as unexplained Recent Activity.
 - Deployment overview metrics count only conversations attached to deployments in the active project, preventing another project's deployment activity from appearing as Recent Activity or summary volume.
 - MCP client/tool totals are project-owned inventory in the Integrations view; global MCP server exposure controls remain admin-only management state.
 - `tests/test_channels.py` and `tests/test_mcp.py` exercise service/API scope boundaries for channel and MCP helper paths; `tests/test_deployments.py` exercises the API-level conversation count boundary; `tests/test_project_scope_contracts.py` locks the source contract so project-owned recent activity is built from scoped collections and not from global integration lists.
@@ -82,7 +83,7 @@ The Integrations overview summarizes connected channels, deployment surfaces, an
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-56 / CF-698; CF-SPEC-59 / CF-740; CF-SPEC-60 / CF-767; CF-SPEC-65 / CF-842; CF-SPEC-82 / CF-1061
+- Spec/task: CF-SPEC-56 / CF-698; CF-SPEC-59 / CF-740; CF-SPEC-60 / CF-767; CF-SPEC-65 / CF-842; CF-SPEC-82 / CF-1061; CF-SPEC-93 / CF-1184
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update

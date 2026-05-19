@@ -141,13 +141,16 @@ async def create_deployment(
     db: AsyncSession = Depends(get_db),
 ):
     """Create a new research deployment."""
-    await require_project_access(db, request, data.project_id, min_role="researcher")
+    scoped_project_id = _require_project_id(data.project_id)
+    await get_active_project_or_404(
+        db, request, scoped_project_id, min_role="researcher"
+    )
 
     questions = [q.model_dump() for q in data.questions]
     try:
         deployment = await deployment_service.create_deployment(
             db=db,
-            project_id=data.project_id,
+            project_id=scoped_project_id,
             name=data.name,
             deployment_type=data.deployment_type,
             questions=questions,
