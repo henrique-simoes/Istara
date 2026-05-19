@@ -7,6 +7,12 @@ import type { WSEvent } from "@/lib/types";
 
 import { API_BASE } from "@/lib/runtimeConfig";
 
+type FrontendRuntimeFreshness = {
+  stale?: boolean;
+  message?: string | null;
+  status?: string;
+};
+
 function IstaraVersion() {
   const [version, setVersion] = useState("...");
   useEffect(() => {
@@ -23,6 +29,7 @@ export default function StatusBar() {
   const [agentDetail, setAgentDetail] = useState("");
   const [llmStatus, setLlmStatus] = useState<"ok" | "not_ready" | "slow" | "down">("ok");
   const [serverOnline, setServerOnline] = useState<boolean | null>(null);
+  const [runtimeFreshness, setRuntimeFreshness] = useState<FrontendRuntimeFreshness | null>(null);
 
   const handleEvent = (event: WSEvent) => {
     switch (event.type) {
@@ -95,6 +102,7 @@ export default function StatusBar() {
         if (!res.ok) return;
         const data = await res.json();
         if (cancelled) return;
+        setRuntimeFreshness(data.runtime?.frontend || null);
         if (!data.llm_readiness?.reachable) {
           setLlmStatus("down");
         } else if (!data.llm_readiness?.chat_ready) {
@@ -173,6 +181,15 @@ export default function StatusBar() {
           <div className="flex items-center gap-1.5 px-2 py-0.5 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 rounded">
             <Wifi size={12} />
             LLM connected; chat model not ready
+          </div>
+        )}
+        {runtimeFreshness?.stale && (
+          <div
+            className="flex items-center gap-1.5 px-2 py-0.5 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded"
+            title={runtimeFreshness.message || "The running frontend bundle is older than source changes."}
+          >
+            <Cpu size={12} />
+            Runtime bundle stale
           </div>
         )}
       </div>

@@ -46,6 +46,7 @@ The Integrations overview summarizes connected channels, deployment surfaces, an
 
 - The feature is mounted through `frontend/src/components/integrations/IntegrationsView.tsx` and the UI navigation path recorded in the inventory.
 - `frontend/src/components/integrations/IntegrationsOverview.tsx` passes the active project into channel, deployment, survey, and MCP-client fetches, then defensively filters recent activity and summary counts by `project_id`.
+- If the live browser shows unscoped Recent Activity despite the source contracts above, operators should check the status bar for `Runtime bundle stale`. That signal comes from `/api/settings/status` and indicates the running production frontend build predates source fixes.
 - The overview resets its loaded state on active-project changes and ignores stale fetch completions from the previous project, so old Recent Activity rows cannot linger while a new project is loading.
 - If there is no active project, the integrations store clears project-owned channel, deployment, survey, and MCP client lists rather than calling list endpoints without a project scope.
 - The integrations store filters every fetched channel, deployment, survey integration, and MCP client by the active `project_id` before storing; MCP clients are also deduplicated within that project by normalized transport and URL.

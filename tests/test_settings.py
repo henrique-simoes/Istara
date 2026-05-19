@@ -48,6 +48,7 @@ async def test_settings_status_returns_response(auth_headers):
         assert response.status_code == 200
         assert isinstance(response.json(), dict)
         assert response.json()["strict_auto_routing"] is True
+        assert "runtime" in response.json()
 
 
 class _ReachableButNotChatReadyRegistry:
@@ -75,6 +76,11 @@ async def test_settings_status_reports_llm_connected_when_reachable_but_not_chat
     fake_registry = _ReachableButNotChatReadyRegistry()
     monkeypatch.setattr(settings_routes, "ollama", fake_registry)
     monkeypatch.setattr(ollama_module, "ollama", fake_registry)
+    monkeypatch.setattr(
+        settings_routes,
+        "detect_runtime_freshness",
+        lambda: {"frontend": {"stale": True, "status": "stale"}},
+    )
 
     response = await settings_routes.system_status()
 
@@ -85,6 +91,7 @@ async def test_settings_status_reports_llm_connected_when_reachable_but_not_chat
     assert fake_registry.ensure_kwargs["allow_model_load"] is False
     assert fake_registry.ensure_kwargs["refresh_health"] is False
     assert fake_registry.check_all_health_calls == 0
+    assert response["runtime"]["frontend"]["stale"] is True
 
 
 @pytest.mark.asyncio
