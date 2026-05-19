@@ -106,6 +106,49 @@ async def test_deployment_project_lists_require_active_project_scope(admin_auth_
 
 
 @pytest.mark.asyncio
+async def test_deployment_create_requires_existing_active_project_for_admin(admin_auth_headers):
+    await init_db()
+    missing_project_id = _id("missing-deployment-project")
+    paused_project_id = _id("paused-deployment-create-project")
+    transport = ASGITransport(app=app)
+
+    async with async_session() as db:
+        db.add(Project(id=paused_project_id, name="Paused Deployment Create", is_paused=True))
+        await db.commit()
+
+    payload = {
+        "name": "Scoped Deployment",
+        "deployment_type": "survey",
+        "questions": [{"text": "How was it?", "type": "open"}],
+        "channel_instance_ids": [],
+    }
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        missing = await ac.post(
+            "/api/deployments",
+            headers=admin_auth_headers,
+            json={"project_id": missing_project_id, **payload},
+        )
+        paused = await ac.post(
+            "/api/deployments",
+            headers=admin_auth_headers,
+            json={"project_id": paused_project_id, **payload},
+        )
+
+    assert missing.status_code == 404
+    assert missing.json()["detail"] == "Project not found"
+    assert paused.status_code == 409
+    assert paused.json()["detail"] == "Project is paused"
+
+    async with async_session() as db:
+        result = await db.execute(
+            select(ResearchDeployment).where(
+                ResearchDeployment.project_id.in_([missing_project_id, paused_project_id])
+            )
+        )
+        assert result.scalars().all() == []
+
+
+@pytest.mark.asyncio
 async def test_deployment_create_rejects_channel_from_another_project(admin_auth_headers):
     await init_db()
     project_a = _id("project-a")
@@ -123,6 +166,12 @@ async def test_deployment_create_rejects_channel_from_another_project(admin_auth
         project_id=project_b,
     )
     async with async_session() as db:
+        db.add_all(
+            [
+                Project(id=project_a, name="Deployment Create Project A"),
+                Project(id=project_b, name="Deployment Create Project B"),
+            ]
+        )
         db.add_all([channel_a, channel_b])
         await db.commit()
 

@@ -187,7 +187,7 @@ def test_backend_deployments_enforce_project_owned_channels_and_conversations() 
     assert 'raise HTTPException(status_code=404, detail="Deployment not found")' in route
     assert "ResearchDeployment.id == deployment_id" in route
     assert "ResearchDeployment.project_id == scoped_project_id" in route
-    assert "await require_project_access(db, request, scoped_project_id, min_role=min_role)" in route
+    assert "await require_project_access(db, request, scoped_project_id, min_role=min_role)" in route and "await get_active_project_or_404(\n        db, request, scoped_project_id, min_role=\"researcher\"" in route
     assert "async def _get_deployment_or_404" not in route
     assert "validate_channel_instances_for_project" in service
     assert "instance.project_id != project_id" in service
@@ -407,7 +407,7 @@ def test_integrations_messaging_detail_panels_require_active_project_scope() -> 
     assert "channelsApi.delete(instanceId, activeProjectId)" in setup_wizard
 
     assert "async def _get_project_channel_or_404" in route
-    assert "scoped_project_id = _require_project_id(project_id)" in route
+    assert "scoped_project_id = _require_project_id(project_id)" in route and "await get_active_project_or_404(\n        db, request, scoped_project_id, min_role=\"project_admin\"" in route
     assert "await require_project_access(db, request, scoped_project_id, min_role=min_role)" in route
     assert "instance is None or instance.project_id != scoped_project_id" in route
     assert "project_id: Optional[str] = Query(None, description=\"Active project\")" in route

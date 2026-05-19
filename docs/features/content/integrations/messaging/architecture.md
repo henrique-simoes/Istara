@@ -10,7 +10,7 @@ code_references: ["frontend/src/components/integrations/MessagingTab.tsx", "fron
 api_references: ["backend/app/api/routes/channels.py", "backend/app/api/routes/webhooks.py"]
 test_references: ["tests/test_channels.py", "tests/test_channel_inbound.py", "tests/test_project_scope_contracts.py", "tests/test_integration_simulation_scope.py"]
 last_verified: 2026-05-19
-compass: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-762; CF-SPEC-60 / CF-773; CF-SPEC-60 / CF-776; CF-SPEC-65 / CF-842; CF-SPEC-75 / CF-964; CF-SPEC-82 / CF-1061
+compass: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-762; CF-SPEC-60 / CF-773; CF-SPEC-60 / CF-776; CF-SPEC-65 / CF-842; CF-SPEC-75 / CF-964; CF-SPEC-82 / CF-1061; CF-SPEC-93 / CF-1184
 ---
 
 # Messaging Integrations Architecture
@@ -50,6 +50,7 @@ Messaging connects external conversation channels such as team or participant me
 - `MessagingTab` passes the active project into channel listing, clears stale channel state during project changes, and renders only channel records whose `project_id` matches the active project.
 - Channel cards, setup testing, message history, and conversation detail panels pass the active project into every channel detail, lifecycle, health, message, conversation, and cleanup call so stale channel ids from another project cannot be dereferenced.
 - `backend/app/api/routes/channels.py` requires an explicit `project_id` for project-facing channel lists and detail routes, verifies the channel instance belongs to that same project even for global admins, and enforces project viewer access for reads; channel creation and lifecycle mutations remain project-admin operations.
+- Channel creation uses the active-project authorization helper before persisting a channel instance, so global admins cannot create project-facing channel records for missing or paused projects that would later appear in Integrations as orphan activity.
 - `backend/app/services/channel_service.py` list, update, delete, start, stop, health, message-history, conversation, and manual-send helpers require a project id and load by both record id and project id, preventing internal callers from bypassing route-level active-project checks.
 - Channel start and startup auto-loading treat `Project.is_paused` as a dispatch boundary. A paused or missing project cannot start or auto-start channel adapters, even when a channel instance row is still marked active.
 - `backend/app/services/channel_service.py` filters message and conversation rows by the same project, stamps new recorded messages with the owning channel instance project when a caller does not already provide one, and rejects explicit project-id claims that do not match the channel instance.
@@ -81,7 +82,7 @@ Messaging connects external conversation channels such as team or participant me
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-762; CF-SPEC-60 / CF-773; CF-SPEC-60 / CF-776; CF-SPEC-65 / CF-842; CF-SPEC-75 / CF-964; CF-SPEC-82 / CF-1061
+- Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-762; CF-SPEC-60 / CF-773; CF-SPEC-60 / CF-776; CF-SPEC-65 / CF-842; CF-SPEC-75 / CF-964; CF-SPEC-82 / CF-1061; CF-SPEC-93 / CF-1184
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update
