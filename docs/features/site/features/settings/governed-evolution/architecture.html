@@ -271,19 +271,21 @@
 <li>The feature is mounted through <code>frontend/src/components/settings/GovernedEvolutionView.tsx</code> and the UI navigation path recorded in the inventory.</li>
 <li>The view does not fetch governed evolution data without an active project. Proposal, archive, and ReasoningBank requests pass the active <code>project_id</code>; backend routes reject missing project scope and verify that the project exists before returning project content.</li>
 <li>Proposal and archive action routes bind the record id to the same <code>project_id</code> supplied by the UI, so approvals, sandbox evaluations, applies, reverts, and quarantines cannot act on records from another project.</li>
+<li>Agent self-evolution scan, auto-evolution, and promotion routes also require a <code>project_id</code>. Candidate qualification uses only project-local learning records; DevOps global audits no longer run persona self-evolution scans without project context.</li>
 <li>ReasoningBank retrieval through this API excludes global memories when a project scope is supplied, preventing project-facing prompt context from mixing with unscoped traces.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>
 <h2 id="agents-skills-llm-mcp-and-permissions">Agents, Skills, LLM, MCP, And Permissions</h2>
 <ul>
-<li>Governed evolution, DGM-H archive, and ReasoningBank are agentic governance surfaces. They remain admin-only, but this project-facing settings surface still requires an explicit active project; cross-project aggregation belongs to dedicated admin reporting surfaces.</li>
+<li>Governed evolution, DGM-H archive, ReasoningBank, and self-evolution promotion controls are agentic governance surfaces. They remain admin-only, but this project-facing settings surface still requires an explicit active project; cross-project aggregation belongs to dedicated admin reporting surfaces.</li>
 </ul>
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>
 <li><code>tests/test_improvement_governance.py</code></li>
 <li><code>tests/test_dgmh_archive.py</code></li>
 <li><code>tests/test_reasoning_bank.py</code></li>
+<li><code>tests/test_agent_learning_scope.py</code></li>
 <li><code>tests/test_project_scope_contracts.py</code></li>
 </ul>
 <h2 id="related-features">Related Features</h2>

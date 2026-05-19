@@ -190,28 +190,14 @@ class DevOpsAuditAgent:
         }
 
     async def _run_evolution_scan(self) -> dict | None:
-        """Run self-evolution scan for all agents as part of the audit cycle."""
-        try:
-            from app.core.self_evolution import self_evolution
-            results = await self_evolution.scan_all_agents()
-            total_candidates = sum(len(v) for v in results.values())
+        """Do not run self-evolution from a global audit cycle.
 
-            if total_candidates > 0:
-                logger.info(
-                    f"Self-evolution scan: {total_candidates} candidates "
-                    f"across {len(results)} agents"
-                )
-
-            return {
-                "agents_scanned": len(results),
-                "total_candidates": total_candidates,
-                "agent_candidates": {
-                    k: len(v) for k, v in results.items()
-                },
-            }
-        except Exception as e:
-            logger.debug(f"Evolution scan skipped: {e}")
-            return None
+        Self-evolution candidates can include project task learnings and can
+        mutate persona files. They must be reviewed through the project-scoped
+        evolution routes instead of a global DevOps audit pass.
+        """
+        logger.debug("Evolution scan skipped: project_id is required")
+        return None
 
     async def _check_data_integrity(self, db: AsyncSession) -> list[dict]:
         """Check for data integrity issues across the database."""

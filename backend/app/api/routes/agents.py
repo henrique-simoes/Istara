@@ -614,30 +614,37 @@ async def get_learnings(
 # ───── Self-Evolution ─────
 
 
-@router.get("/agents/{agent_id}/evolution/candidates")
-async def get_evolution_candidates(agent_id: str, request: Request):
-    """Scan an agent's learnings for patterns ready for promotion."""
+async def _require_self_evolution_project_scope(
+    db: AsyncSession, request: Request, project_id: str | None, *, min_role: str = "project_admin",
+) -> str:
     require_admin_from_request(request)
+    scoped_project_id = clean_project_id(project_id)
+    if not scoped_project_id:
+        raise HTTPException(status_code=400, detail="project_id is required")
+    await require_project_access(db, request, scoped_project_id, min_role=min_role)
+    return scoped_project_id
+
+
+@router.get("/agents/{agent_id}/evolution/candidates")
+async def get_evolution_candidates(agent_id: str, request: Request, project_id: str | None = None, db: AsyncSession = Depends(get_db)):
+    """Scan an agent's learnings for patterns ready for promotion."""
+    scoped_project_id = await _require_self_evolution_project_scope(db, request, project_id)
+    await require_agent_by_id(db, request, agent_id, project_id=scoped_project_id)
     from app.core.self_evolution import self_evolution
-    candidates = await self_evolution.scan_for_promotions(agent_id)
-    return {
-        "agent_id": agent_id,
-        "candidates": candidates,
-        "count": len(candidates),
-    }
+    candidates = await self_evolution.scan_for_promotions(agent_id, project_id=scoped_project_id)
+    return {"agent_id": agent_id, "project_id": scoped_project_id, "candidates": candidates, "count": len(candidates)}
 
 
 @router.post("/agents/{agent_id}/evolution/promote/{learning_id}")
 async def promote_learning(
-    agent_id: str,
-    learning_id: int,
-    request: Request,
-    target_file: str | None = None,
+    agent_id: str, learning_id: int, request: Request, target_file: str | None = None,
+    project_id: str | None = None, db: AsyncSession = Depends(get_db),
 ):
     """Promote a specific learning into the agent's persona files."""
-    require_admin_from_request(request)
+    scoped_project_id = await _require_self_evolution_project_scope(db, request, project_id)
+    await require_agent_by_id(db, request, agent_id, project_id=scoped_project_id)
     from app.core.self_evolution import self_evolution
-    result = await self_evolution.promote_learning(agent_id, learning_id, target_file)
+    result = await self_evolution.promote_learning(agent_id, learning_id, target_file, project_id=scoped_project_id)
     if not result.get("success"):
         raise HTTPException(status_code=400, detail=result.get("error", "Promotion failed"))
     try:
@@ -648,11 +655,12 @@ async def promote_learning(
 
 
 @router.post("/agents/{agent_id}/evolution/auto")
-async def auto_evolve(agent_id: str, request: Request):
+async def auto_evolve(agent_id: str, request: Request, project_id: str | None = None, db: AsyncSession = Depends(get_db)):
     """Run the full self-evolution cycle (auto-promote mature patterns)."""
-    require_admin_from_request(request)
+    scoped_project_id = await _require_self_evolution_project_scope(db, request, project_id)
+    await require_agent_by_id(db, request, agent_id, project_id=scoped_project_id)
     from app.core.self_evolution import self_evolution
-    promotions = await self_evolution.auto_evolve(agent_id)
+    promotions = await self_evolution.auto_evolve(agent_id, project_id=scoped_project_id)
     for promotion in promotions:
         try:
             await improvement_governance.register_self_evolution_promotion(promotion, applied=True)
@@ -660,23 +668,20 @@ async def auto_evolve(agent_id: str, request: Request):
             pass
     return {
         "agent_id": agent_id,
+        "project_id": scoped_project_id,
         "promotions_applied": len(promotions),
         "promotions": promotions,
     }
 
 
 @router.get("/agents/evolution/scan")
-async def scan_all_evolution(request: Request):
+async def scan_all_evolution(request: Request, project_id: str | None = None, db: AsyncSession = Depends(get_db)):
     """Scan all agents for promotable learnings."""
-    require_admin_from_request(request)
+    scoped_project_id = await _require_self_evolution_project_scope(db, request, project_id)
     from app.core.self_evolution import self_evolution
-    results = await self_evolution.scan_all_agents()
+    results = await self_evolution.scan_all_agents(project_id=scoped_project_id)
     total = sum(len(v) for v in results.values())
-    return {
-        "agents_with_candidates": len(results),
-        "total_candidates": total,
-        "results": results,
-    }
+    return {"project_id": scoped_project_id, "agents_with_candidates": len(results), "total_candidates": total, "results": results}
 
 
 # ───── Agent Creation Proposals (Memento-Skills) ─────

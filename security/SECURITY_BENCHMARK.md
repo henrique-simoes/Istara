@@ -102,6 +102,10 @@ project-bound websocket events must not fall back to global delivery.
 Structured agent learnings and error-resolution lookup are project-content too:
 task/review learnings must carry the source project and must not append private
 project observations into universal persona MEMORY overlays.
+Self-evolution candidate scans, all-agent scans, auto-evolution, and promotion
+mutations are also project-content surfaces: they must receive an explicit
+authorized project id, qualify learnings only from that project, and must not
+use cross-project learning evidence to mutate persona files.
 Governed Evolution, DGM-H archive, and ReasoningBank review surfaces are also
 project-content surfaces: proposal/archive/reasoning lists and mutation actions
 must carry an explicit `project_id`, bind record ids back to that project, and

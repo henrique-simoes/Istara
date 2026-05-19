@@ -1,7 +1,7 @@
 """Self-Evolution Engine — OpenClaw-inspired .learnings → promotion pipeline.
 
 Agents learn from errors, workflows, and user feedback.  When a learning
-pattern reaches promotion thresholds (recurrence, distinct contexts,
+pattern reaches promotion thresholds (recurrence within the active project,
 time window, confidence), it gets promoted from the transient DB into
 permanent persona MD files — literally rewriting the agent's identity.
 
@@ -13,7 +13,7 @@ Promotion targets:
 
 Thresholds (modeled after OpenClaw's self-improving-agent):
     ≥ 3 occurrences  (times_applied)
-    ≥ 2 distinct project contexts  (project_id diversity)
+    Active project scope required; cross-project evidence is never used
     Within 30-day recency window
     ≥ 70% confidence
     ≥ 60% success rate (times_successful / times_applied)
@@ -29,7 +29,7 @@ import logging
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
-from sqlalchemy import select, func, distinct
+from sqlalchemy import select, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.agent_identity import (
@@ -51,7 +51,7 @@ logger = logging.getLogger(__name__)
 
 PROMOTION_THRESHOLDS = {
     "min_occurrences": 3,       # Pattern seen at least 3 times
-    "min_contexts": 2,          # Across at least 2 distinct project contexts
+    "min_contexts": 1,          # Within the authorized active project
     "max_age_days": 30,         # Within a 30-day window
     "min_confidence": 70,       # Minimum confidence score (0-100)
     "min_success_rate": 0.6,    # 60% success rate when applied
@@ -82,15 +82,29 @@ PROMOTION_SECTIONS = {
 class SelfEvolutionEngine:
     """Scans agent learnings and promotes mature patterns into persona files."""
 
+    @staticmethod
+    def _normalize_project_id(project_id: str | None) -> str:
+        return str(project_id or "").strip()
+
     async def scan_for_promotions(
         self,
         agent_id: str,
         thresholds: dict | None = None,
+        project_id: str | None = None,
     ) -> list[dict]:
         """Scan an agent's learnings for patterns ready for promotion.
 
         Returns a list of promotion candidates with their details.
+        Project scope is mandatory so learnings from one project cannot
+        qualify or expose self-evolution changes in another project.
         """
+        scoped_project_id = self._normalize_project_id(project_id)
+        if not scoped_project_id:
+            logger.warning(
+                "Skipping self-evolution scan for %s because project_id is required",
+                agent_id,
+            )
+            return []
         th = thresholds or PROMOTION_THRESHOLDS
         cutoff = datetime.now(timezone.utc) - timedelta(days=th["max_age_days"])
         candidates = []
@@ -99,11 +113,12 @@ class SelfEvolutionEngine:
             from app.core.agent_learning import AgentLearning
 
             async with async_session() as db:
-                # Get all active, non-promoted learnings for this agent
+                # Get all active, non-promoted learnings for this agent/project
                 # Exclude autoresearch-tagged learnings (defensive layer)
                 result = await db.execute(
                     select(AgentLearning).where(
                         AgentLearning.agent_id == agent_id,
+                        AgentLearning.project_id == scoped_project_id,
                         AgentLearning.active == True,
                         AgentLearning.updated_at >= cutoff,
                         ~AgentLearning.trigger.like("[autoresearch]%"),
@@ -123,17 +138,10 @@ class SelfEvolutionEngine:
                         successful / occurrences if occurrences > 0 else 0
                     )
 
-                    # Count distinct project contexts for this pattern
-                    ctx_result = await db.execute(
-                        select(func.count(distinct(AgentLearning.project_id)))
-                        .where(
-                            AgentLearning.agent_id == agent_id,
-                            AgentLearning.category == learning.category,
-                            AgentLearning.trigger == learning.trigger,
-                            AgentLearning.active == True,
-                        )
-                    )
-                    distinct_contexts = ctx_result.scalar() or 1
+                    # The active project is the authorization boundary. Older
+                    # builds counted distinct project ids here, which let other
+                    # projects make a learning qualify for promotion.
+                    distinct_contexts = 1
 
                     # Check all thresholds
                     meets_occurrences = occurrences >= th["min_occurrences"]
@@ -156,6 +164,7 @@ class SelfEvolutionEngine:
                         candidates.append({
                             "learning_id": learning.id,
                             "agent_id": agent_id,
+                            "project_id": scoped_project_id,
                             "category": learning.category,
                             "learning": learning.learning,
                             "trigger": learning.trigger,
@@ -183,12 +192,17 @@ class SelfEvolutionEngine:
         agent_id: str,
         learning_id: int,
         target_file: str | None = None,
+        project_id: str | None = None,
     ) -> dict:
         """Promote a specific learning into the agent's persona file.
 
         Returns a dict with promotion result details.
         Blocked if persona is locked (e.g. during autoresearch Loop 5).
         """
+        scoped_project_id = self._normalize_project_id(project_id)
+        if not scoped_project_id:
+            return {"success": False, "error": "project_id is required"}
+
         from app.core.agent_identity import is_persona_locked
         if is_persona_locked(agent_id):
             return {"success": False, "error": f"Persona locked for {agent_id} (autoresearch in progress)"}
@@ -198,14 +212,15 @@ class SelfEvolutionEngine:
 
             async with async_session() as db:
                 result = await db.execute(
-                    select(AgentLearning).where(AgentLearning.id == learning_id)
+                    select(AgentLearning).where(
+                        AgentLearning.id == learning_id,
+                        AgentLearning.agent_id == agent_id,
+                        AgentLearning.project_id == scoped_project_id,
+                    )
                 )
                 learning = result.scalar_one_or_none()
                 if not learning:
-                    return {"success": False, "error": "Learning not found"}
-
-                if learning.agent_id != agent_id:
-                    return {"success": False, "error": "Learning belongs to another agent"}
+                    return {"success": False, "error": "Learning not found for project"}
 
                 # Determine target file
                 tf = target_file or PROMOTION_TARGETS.get(
@@ -235,6 +250,7 @@ class SelfEvolutionEngine:
                         "success": True,
                         "agent_id": agent_id,
                         "learning_id": learning_id,
+                        "project_id": scoped_project_id,
                         "target_file": tf,
                         "target_section": section,
                         "promotion_text": promotion_text,
@@ -249,13 +265,21 @@ class SelfEvolutionEngine:
             logger.error(f"Promotion failed for learning {learning_id}: {e}")
             return {"success": False, "error": str(e)}
 
-    async def auto_evolve(self, agent_id: str) -> list[dict]:
+    async def auto_evolve(self, agent_id: str, project_id: str | None = None) -> list[dict]:
         """Run the full self-evolution cycle for an agent.
 
         Scans for promotable learnings and auto-applies them.
         Returns a list of promotions that were applied.
         """
-        candidates = await self.scan_for_promotions(agent_id)
+        scoped_project_id = self._normalize_project_id(project_id)
+        if not scoped_project_id:
+            logger.warning(
+                "Skipping auto-evolution for %s because project_id is required",
+                agent_id,
+            )
+            return []
+
+        candidates = await self.scan_for_promotions(agent_id, project_id=scoped_project_id)
         promotions = []
 
         for candidate in candidates:
@@ -263,6 +287,7 @@ class SelfEvolutionEngine:
                 agent_id=agent_id,
                 learning_id=candidate["learning_id"],
                 target_file=candidate["target_file"],
+                project_id=scoped_project_id,
             )
             if result.get("success"):
                 promotions.append(result)
@@ -274,13 +299,21 @@ class SelfEvolutionEngine:
 
         return promotions
 
-    async def scan_all_agents(self) -> dict[str, list[dict]]:
-        """Scan all agents with persona directories for promotable learnings."""
+    async def scan_all_agents(self, project_id: str | None = None) -> dict[str, list[dict]]:
+        """Scan agents for promotable learnings within one active project."""
+        scoped_project_id = self._normalize_project_id(project_id)
+        if not scoped_project_id:
+            logger.warning("Skipping all-agent evolution scan because project_id is required")
+            return {}
+
         from app.core.agent_identity import list_agent_personas
 
         results = {}
         for agent_id in list_agent_personas():
-            candidates = await self.scan_for_promotions(agent_id)
+            candidates = await self.scan_for_promotions(
+                agent_id,
+                project_id=scoped_project_id,
+            )
             if candidates:
                 results[agent_id] = candidates
 
@@ -290,12 +323,23 @@ class SelfEvolutionEngine:
 
             async with async_session() as db:
                 db_result = await db.execute(
-                    select(Agent.id).where(Agent.is_active == True)
+                    select(Agent.id).where(
+                        Agent.is_active == True,
+                        or_(
+                            Agent.scope != "project",
+                            Agent.project_id == scoped_project_id,
+                            Agent.project_id == "",
+                            Agent.project_id.is_(None),
+                        ),
+                    )
                 )
                 for row in db_result.fetchall():
                     aid = row[0]
                     if aid not in results:
-                        candidates = await self.scan_for_promotions(aid)
+                        candidates = await self.scan_for_promotions(
+                            aid,
+                            project_id=scoped_project_id,
+                        )
                         if candidates:
                             results[aid] = candidates
         except Exception:

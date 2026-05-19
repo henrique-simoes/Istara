@@ -556,6 +556,38 @@ def test_background_autonomous_processes_are_project_safe_by_default() -> None:
     assert "append_learning(" not in learning
 
 
+def test_self_evolution_routes_and_engine_require_active_project_scope() -> None:
+    route = read_repo("backend/app/api/routes/agents.py")
+    engine = read_repo("backend/app/core/self_evolution.py")
+    api = read_repo("frontend/src/lib/api.ts")
+    docs = read_repo("docs/features/content/agents/detail/architecture.md")
+
+    assert "async def _require_self_evolution_project_scope" in route
+    assert 'raise HTTPException(status_code=400, detail="project_id is required")' in route
+    assert "await require_project_access(db, request, scoped_project_id, min_role=min_role)" in route
+    assert "await require_agent_by_id(db, request, agent_id, project_id=scoped_project_id)" in route
+    assert "self_evolution.scan_for_promotions(" in route
+    assert "project_id=scoped_project_id" in route
+    assert "self_evolution.scan_all_agents(project_id=scoped_project_id)" in route
+
+    assert "def _normalize_project_id(project_id: str | None) -> str:" in engine
+    assert '"Skipping self-evolution scan for %s because project_id is required"' in engine
+    assert "AgentLearning.project_id == scoped_project_id" in engine
+    assert '"project_id": scoped_project_id' in engine
+    assert '"Learning not found for project"' in engine
+    assert "scan_all_agents(self, project_id: str | None = None)" in engine
+    assert 'logger.warning("Skipping all-agent evolution scan because project_id is required")' in engine
+    assert "Agent.project_id == scoped_project_id" in engine
+
+    assert "scan: (projectId: string)" in api
+    assert "candidates: (id: string, projectId: string)" in api
+    assert "promote: (id: string, learningId: number, projectId: string" in api
+    assert "auto: (id: string, projectId: string)" in api
+    assert "project_id=${encodeURIComponent(projectId)}" in api
+
+    assert "Self-evolution candidate scans, auto-evolution, and promotion mutations require an explicit active project id." in docs
+
+
 def test_chat_sessions_require_active_project_scope() -> None:
     sessions_api = read_repo("frontend/src/lib/sessionsApi.ts")
     session_store = read_repo("frontend/src/stores/sessionStore.ts")
