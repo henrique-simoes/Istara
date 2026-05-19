@@ -155,8 +155,10 @@ project, and deployment detail, lifecycle, response, conversation, transcript,
 analytics, and overview counters must require the caller's active project,
 authorize that project before by-id lookups, and verify matching
 deployment/project ownership before reading, mutating, or summarizing
-participant content. Global cross-project aggregation belongs only on dedicated
-admin reporting surfaces.
+participant content. Deployment service helpers must also require an explicit
+project id so background processes, future tools, or internal callers cannot
+fall back to global deployment or conversation ids. Global cross-project
+aggregation belongs only on dedicated admin reporting surfaces.
 Inbound channel processors must resolve deployments only inside the channel
 instance's project and only when the active deployment explicitly lists that
 channel instance; unbound or other-project deployments must not receive

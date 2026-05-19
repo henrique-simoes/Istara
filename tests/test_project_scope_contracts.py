@@ -165,8 +165,14 @@ def test_backend_deployments_enforce_project_owned_channels_and_conversations() 
     assert "validate_channel_instances_for_project" in service
     assert "instance.project_id != project_id" in service
     assert "channel_instance_ids_json=json.dumps(scoped_channel_instance_ids)" in service
+    assert "async def get_deployment(\n    db: AsyncSession,\n    deployment_id: str,\n    *,\n    project_id: str," in service
+    assert "async def list_deployments(\n    db: AsyncSession,\n    *,\n    project_id: str," in service
+    assert "async def activate_deployment(\n    db: AsyncSession,\n    deployment_id: str,\n    *,\n    project_id: str," in service
+    assert "async def handle_response(\n    db: AsyncSession,\n    deployment_id: str,\n    conversation_id: str,\n    message_text: str,\n    *,\n    project_id: str," in service
+    assert "deployment_service.activate_deployment(\n            db,\n            deployment_id,\n            project_id=deployment.project_id," in route
+    assert "deployment_service.get_deployment_analytics(\n        db,\n        deployment_id,\n        project_id=deployment.project_id," in route
     assert "_get_project_deployment_conversation_or_404" in route
-    assert "conversation.project_id != deployment.project_id" in route
+    assert "deployment_service.get_conversation(\n        db,\n        conversation_id,\n        deployment_id=deployment.id,\n        project_id=deployment.project_id," in route
     assert "conversation.project_id != deployment.project_id" in service
     assert "ResearchDeployment.project_id == project_id" in service
     assert "ChannelConversation.project_id == project_id" in service

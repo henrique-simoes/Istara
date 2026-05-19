@@ -83,18 +83,33 @@ async def create_deployment(
     return deployment
 
 
-async def get_deployment(db: AsyncSession, deployment_id: str) -> ResearchDeployment | None:
-    """Fetch a single deployment by id."""
-    return await db.get(ResearchDeployment, deployment_id)
+async def get_deployment(
+    db: AsyncSession,
+    deployment_id: str,
+    *,
+    project_id: str,
+) -> ResearchDeployment | None:
+    """Fetch a single deployment only inside the caller's active project scope."""
+    result = await db.execute(
+        select(ResearchDeployment).where(
+            ResearchDeployment.id == deployment_id,
+            ResearchDeployment.project_id == project_id,
+        )
+    )
+    return result.scalar_one_or_none()
 
 
 async def list_deployments(
-    db: AsyncSession, project_id: str | None = None
+    db: AsyncSession,
+    *,
+    project_id: str,
 ) -> list[ResearchDeployment]:
-    """List deployments, optionally filtered by project."""
-    query = select(ResearchDeployment).order_by(ResearchDeployment.created_at.desc())
-    if project_id:
-        query = query.where(ResearchDeployment.project_id == project_id)
+    """List deployments for exactly one active project."""
+    query = (
+        select(ResearchDeployment)
+        .where(ResearchDeployment.project_id == project_id)
+        .order_by(ResearchDeployment.created_at.desc())
+    )
     result = await db.execute(query)
     return list(result.scalars().all())
 
@@ -104,9 +119,14 @@ async def list_deployments(
 # ---------------------------------------------------------------------------
 
 
-async def activate_deployment(db: AsyncSession, deployment_id: str) -> dict:
+async def activate_deployment(
+    db: AsyncSession,
+    deployment_id: str,
+    *,
+    project_id: str,
+) -> dict:
     """Activate a deployment — marks it ready to receive responses."""
-    deployment = await db.get(ResearchDeployment, deployment_id)
+    deployment = await get_deployment(db, deployment_id, project_id=project_id)
     if not deployment:
         raise ValueError(f"Deployment {deployment_id} not found")
 
@@ -133,9 +153,14 @@ async def activate_deployment(db: AsyncSession, deployment_id: str) -> dict:
     }
 
 
-async def pause_deployment(db: AsyncSession, deployment_id: str) -> dict:
+async def pause_deployment(
+    db: AsyncSession,
+    deployment_id: str,
+    *,
+    project_id: str,
+) -> dict:
     """Pause a deployment — no new messages are sent to participants."""
-    deployment = await db.get(ResearchDeployment, deployment_id)
+    deployment = await get_deployment(db, deployment_id, project_id=project_id)
     if not deployment:
         raise ValueError(f"Deployment {deployment_id} not found")
     deployment.state = "paused"
@@ -144,9 +169,14 @@ async def pause_deployment(db: AsyncSession, deployment_id: str) -> dict:
     return {"status": "paused", "deployment_id": deployment_id}
 
 
-async def complete_deployment(db: AsyncSession, deployment_id: str) -> dict:
+async def complete_deployment(
+    db: AsyncSession,
+    deployment_id: str,
+    *,
+    project_id: str,
+) -> dict:
     """Mark a deployment as completed."""
-    deployment = await db.get(ResearchDeployment, deployment_id)
+    deployment = await get_deployment(db, deployment_id, project_id=project_id)
     if not deployment:
         raise ValueError(f"Deployment {deployment_id} not found")
     deployment.state = "completed"
@@ -165,6 +195,8 @@ async def handle_response(
     deployment_id: str,
     conversation_id: str,
     message_text: str,
+    *,
+    project_id: str,
 ) -> dict:
     """Process a participant response and determine the next action.
 
@@ -174,8 +206,13 @@ async def handle_response(
     - complete: all questions answered
     - error: something went wrong
     """
-    conversation = await db.get(ChannelConversation, conversation_id)
-    deployment = await db.get(ResearchDeployment, deployment_id)
+    deployment = await get_deployment(db, deployment_id, project_id=project_id)
+    conversation = await get_conversation(
+        db,
+        conversation_id,
+        deployment_id=deployment_id,
+        project_id=project_id,
+    )
     if not conversation or not deployment:
         return {"action": "error", "error": "Conversation or deployment not found"}
     if (
@@ -285,9 +322,14 @@ async def _generate_adaptive_followup(
 # ---------------------------------------------------------------------------
 
 
-async def get_deployment_analytics(db: AsyncSession, deployment_id: str) -> dict:
+async def get_deployment_analytics(
+    db: AsyncSession,
+    deployment_id: str,
+    *,
+    project_id: str,
+) -> dict:
     """Get comprehensive analytics for a deployment."""
-    deployment = await db.get(ResearchDeployment, deployment_id)
+    deployment = await get_deployment(db, deployment_id, project_id=project_id)
     if not deployment:
         return {}
 
@@ -433,10 +475,13 @@ async def get_deployment_overview(db: AsyncSession, project_id: str) -> dict:
 
 
 async def list_conversations(
-    db: AsyncSession, deployment_id: str
+    db: AsyncSession,
+    deployment_id: str,
+    *,
+    project_id: str,
 ) -> list[ChannelConversation]:
     """List all conversations for a deployment."""
-    deployment = await db.get(ResearchDeployment, deployment_id)
+    deployment = await get_deployment(db, deployment_id, project_id=project_id)
     if not deployment:
         return []
 
@@ -452,17 +497,37 @@ async def list_conversations(
 
 
 async def get_conversation(
-    db: AsyncSession, conversation_id: str
+    db: AsyncSession,
+    conversation_id: str,
+    *,
+    deployment_id: str,
+    project_id: str,
 ) -> ChannelConversation | None:
-    """Get a single conversation by id."""
-    return await db.get(ChannelConversation, conversation_id)
+    """Get a single conversation only inside a scoped deployment/project pair."""
+    result = await db.execute(
+        select(ChannelConversation).where(
+            ChannelConversation.id == conversation_id,
+            ChannelConversation.deployment_id == deployment_id,
+            ChannelConversation.project_id == project_id,
+        )
+    )
+    return result.scalar_one_or_none()
 
 
 async def get_conversation_transcript(
-    db: AsyncSession, conversation_id: str
+    db: AsyncSession,
+    conversation_id: str,
+    *,
+    deployment_id: str,
+    project_id: str,
 ) -> list[dict]:
     """Get the full message transcript for a conversation."""
-    conversation = await db.get(ChannelConversation, conversation_id)
+    conversation = await get_conversation(
+        db,
+        conversation_id,
+        deployment_id=deployment_id,
+        project_id=project_id,
+    )
     if not conversation:
         return []
 

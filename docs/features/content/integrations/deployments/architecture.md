@@ -45,6 +45,7 @@ Deployments configure participant-facing research deployments and link them to c
 - Deployment list requests must include `project_id`; the route enforces project access before returning deployment records, including for global admins using the project-facing Integrations route. The admin dashboard remains the only intended global aggregation surface.
 - Deployment detail, analytics, lifecycle, conversation list, conversation detail, and transcript routes also require the active `project_id`; an omitted project id returns 400, and a deployment id from another project resolves as 404 instead of silently using the record's owning project.
 - By-id deployment routes authorize the requested active project before loading the deployment, then fetch by both deployment id and project id so stale cross-project ids cannot drive project-facing actions or existence checks.
+- `deployment_service` helpers for deployment lookup, lifecycle, response handling, analytics, conversations, and transcripts also require `project_id`, so background jobs or future internal callers cannot accidentally resolve deployment or conversation records by global id alone.
 - Deployment creation validates every `channel_instance_id` against the deployment `project_id` before storing the deployment, so a deployment in one project cannot route participant content through another project's messaging channel.
 - Inbound channel processors attach participant messages only to same-project deployments that explicitly list the receiving channel instance; deployments with no channels are not a global fallback.
 - Deployment response handling, conversations, transcripts, analytics, and overview counters all require the conversation/deployment/channel records to match the same project boundary before participant content or findings are read, updated, or summarized.
@@ -61,7 +62,7 @@ Deployments configure participant-facing research deployments and link them to c
 
 ## Tests And Verification
 
-- `tests/test_deployments.py` exercises API-level project isolation for deployment channel ownership, deployment overview conversation counts, by-id active-project matching across detail/lifecycle/conversation/transcript routes, and cross-project response rejection.
+- `tests/test_deployments.py` exercises API-level project isolation for deployment channel ownership, deployment overview conversation counts, by-id active-project matching across detail/lifecycle/conversation/transcript routes, direct service-helper project scope enforcement, and cross-project response rejection.
 - `tests/test_project_scope_contracts.py` asserts that `DeploymentsTab`, `DeploymentDashboard`, `ConversationTranscript`, and the deployment API client pass the active project id into list, detail, lifecycle, analytics, conversation, and transcript calls rather than falling back to global deployment ids.
 
 ## Related Features

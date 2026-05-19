@@ -38,12 +38,13 @@ The deployment dashboard has sub-tabs for live status, questions, participants, 
 - `backend/app/api/routes/deployments.py`
 - `backend/app/services/deployment_service.py`
 - `DeploymentDashboard` uses the selected deployment's `project_id` when loading analytics and conversations and when invoking lifecycle actions, so a stale deployment id cannot open or mutate another active project's deployment.
+- The service methods behind analytics, lifecycle, participant response handling, conversations, and transcripts require the same `project_id`, which keeps internal/background callers bound to the selected project's deployment instead of global ids.
 - `ConversationTranscript` receives the same project id and sends it to the transcript API before participant messages are read.
 
 ## Architecture Notes
 
 - The feature is mounted through `frontend/src/components/integrations/DeploymentDashboard.tsx` and the UI navigation path recorded in the inventory.
-- Deployment detail, lifecycle, conversation detail, transcript, response handling, and analytics routes require the caller's active project id and verify that the conversation and deployment belong to that project before exposing or updating participant content.
+- Deployment detail, lifecycle, conversation detail, transcript, response handling, and analytics routes require the caller's active project id and verify that the conversation and deployment belong to that project before exposing or updating participant content. The route layer passes that authorized project id into service helpers for defense in depth.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
 

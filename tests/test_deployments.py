@@ -17,6 +17,7 @@ from app.models.channel_instance import ChannelInstance
 from app.models.channel_message import ChannelMessage
 from app.models.database import async_session, init_db
 from app.models.research_deployment import ResearchDeployment
+from app.services import deployment_service
 
 
 def _id(prefix: str) -> str:
@@ -425,3 +426,93 @@ async def test_deployment_response_rejects_cross_project_conversation(admin_auth
         assert updated is not None
         assert updated.current_question_index == 0
         assert updated.state == "active"
+
+
+@pytest.mark.asyncio
+async def test_deployment_service_helpers_require_project_scope():
+    await init_db()
+    project_a = _id("project-a")
+    project_b = _id("project-b")
+    channel_a = ChannelInstance(
+        id=_id("channel-a"),
+        platform="slack",
+        name="Project A Slack",
+        project_id=project_a,
+    )
+    deployment_a = _deployment(
+        project_id=project_a,
+        channel_instance_id=channel_a.id,
+        state="draft",
+    )
+    conversation_a = _conversation(
+        project_id=project_a,
+        channel_instance_id=channel_a.id,
+        deployment_id=deployment_a.id,
+    )
+    message_a = _message(
+        project_id=project_a,
+        channel_instance_id=channel_a.id,
+        conversation_id=conversation_a.id,
+    )
+    cross_project_message = _message(
+        project_id=project_b,
+        channel_instance_id=channel_a.id,
+        conversation_id=conversation_a.id,
+    )
+
+    async with async_session() as db:
+        db.add_all([channel_a, deployment_a, conversation_a, message_a, cross_project_message])
+        await db.commit()
+
+        assert await deployment_service.get_deployment(
+            db,
+            deployment_a.id,
+            project_id=project_b,
+        ) is None
+        assert await deployment_service.list_deployments(
+            db,
+            project_id=project_b,
+        ) == []
+        assert await deployment_service.get_deployment_analytics(
+            db,
+            deployment_a.id,
+            project_id=project_b,
+        ) == {}
+        assert await deployment_service.list_conversations(
+            db,
+            deployment_a.id,
+            project_id=project_b,
+        ) == []
+        assert await deployment_service.get_conversation(
+            db,
+            conversation_a.id,
+            deployment_id=deployment_a.id,
+            project_id=project_b,
+        ) is None
+        assert await deployment_service.get_conversation_transcript(
+            db,
+            conversation_a.id,
+            deployment_id=deployment_a.id,
+            project_id=project_b,
+        ) == []
+
+        with pytest.raises(ValueError, match="Deployment .* not found"):
+            await deployment_service.activate_deployment(
+                db,
+                deployment_a.id,
+                project_id=project_b,
+            )
+
+        assert await deployment_service.get_deployment(
+            db,
+            deployment_a.id,
+            project_id=project_a,
+        ) is not None
+        transcript = await deployment_service.get_conversation_transcript(
+            db,
+            conversation_a.id,
+            deployment_id=deployment_a.id,
+            project_id=project_a,
+        )
+
+    assert [message["project_id"] for message in transcript] == [project_a]
