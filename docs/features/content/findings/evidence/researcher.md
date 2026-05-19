@@ -45,10 +45,11 @@ Findings Evidence exists so the work represented by Findings > Evidence has a st
 
 - Project-scoped state or artifact updates associated with findings evidence.
 - Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.
+- Evidence chains, evidence-link edits, and finding rollback/deletes are tied to the active project, so an id from another project cannot be opened or changed from this view.
 
 ## Caveats
 
-- Findings lists and evidence chains are limited to the active project. Cross-project findings search is reserved for explicit admin reporting surfaces.
+- Findings lists, evidence chains, evidence links, and deletes are limited to the active project. Cross-project findings search is reserved for explicit admin reporting surfaces.
 - Needs interactive verification for exact empty, loading, error, and permission-denied states.
 - Do not expand this documentation beyond the cited source files without adding new code or walkthrough evidence.
 

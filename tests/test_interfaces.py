@@ -494,7 +494,7 @@ async def test_mock_endpoints_are_blocked_in_public_profile(auth_headers):
 
 @pytest.mark.asyncio
 async def test_query_style_evidence_chain_includes_design_nodes(auth_headers):
-    """Legacy query-style evidence-chain callers receive the extended chain."""
+    """Query-style evidence-chain callers receive the extended chain within the active project."""
     await init_db()
     project = await _seed_project("Evidence Chain")
     rec = await _seed_recommendation(project.id)
@@ -522,7 +522,7 @@ async def test_query_style_evidence_chain_includes_design_nodes(auth_headers):
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         response = await ac.get(
-            f"/api/findings/evidence-chain?finding_type=recommendation&finding_id={rec.id}",
+            f"/api/findings/evidence-chain?finding_type=recommendation&finding_id={rec.id}&project_id={project.id}",
             headers=auth_headers,
         )
 

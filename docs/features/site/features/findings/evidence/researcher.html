@@ -267,10 +267,11 @@
 <ul>
 <li>Project-scoped state or artifact updates associated with findings evidence.</li>
 <li>Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.</li>
+<li>Evidence chains, evidence-link edits, and finding rollback/deletes are tied to the active project, so an id from another project cannot be opened or changed from this view.</li>
 </ul>
 <h2 id="caveats">Caveats</h2>
 <ul>
-<li>Findings lists and evidence chains are limited to the active project. Cross-project findings search is reserved for explicit admin reporting surfaces.</li>
+<li>Findings lists, evidence chains, evidence links, and deletes are limited to the active project. Cross-project findings search is reserved for explicit admin reporting surfaces.</li>
 <li>Needs interactive verification for exact empty, loading, error, and permission-denied states.</li>
 <li>Do not expand this documentation beyond the cited source files without adding new code or walkthrough evidence.</li>
 </ul>

@@ -258,6 +258,7 @@
 <li><code>backend/app/api/routes/findings.py</code></li>
 <li>Project-facing findings list routes require <code>project_id</code> and verify project access before returning nuggets, facts, insights, recommendations, or design decisions.</li>
 <li>Evidence-chain traversal filters linked records by the originating finding&#x27;s project before returning nested nuggets, facts, insights, recommendations, design decisions, or screens.</li>
+<li>Evidence-chain, link, delete, and design-decision by-id routes also require the active <code>project_id</code> and load records by both id and project id. A stale finding id from another project resolves as not found even when the user can access both projects.</li>
 </ul>
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
@@ -268,7 +269,7 @@
 </ul>
 <h2 id="agents-skills-llm-mcp-and-permissions">Agents, Skills, LLM, MCP, And Permissions</h2>
 <ul>
-<li>Findings evidence is project content. Every non-admin read must be bound to the caller&#x27;s authorized active project, and global aggregation belongs only to dedicated admin surfaces.</li>
+<li>Findings evidence is project content. Every project-facing read or mutation must be bound to the caller&#x27;s authorized active project, and global aggregation belongs only to dedicated admin surfaces.</li>
 </ul>
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>

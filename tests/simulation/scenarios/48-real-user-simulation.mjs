@@ -603,7 +603,7 @@ export async function run(ctx) {
 
     // Evidence chain traversal endpoint
     try {
-      const chain = await api.get(`/api/findings/evidence-chain?finding_type=recommendation&finding_id=${recId}`);
+      const chain = await api.get(`/api/findings/evidence-chain?finding_type=recommendation&finding_id=${recId}&project_id=${projectId}`);
       checks.push({
         name: "Evidence chain traversal from recommendation returns data",
         passed: !!chain && !!chain.chain,
@@ -722,20 +722,20 @@ export async function run(ctx) {
   }
   for (const id of cleanup.decisionIds) {
     try {
-      await fetch(`http://localhost:8000/api/findings/design-decisions/${id}`, { method: "DELETE", headers: api._headers() });
+      await fetch(`http://localhost:8000/api/findings/design-decisions/${id}?project_id=${projectId}`, { method: "DELETE", headers: api._headers() });
     } catch {}
   }
   for (const id of cleanup.recIds) {
-    try { await api.delete(`/api/findings/recommendations/${id}`); } catch {}
+    try { await api.delete(`/api/findings/recommendations/${id}?project_id=${projectId}`); } catch {}
   }
   for (const id of cleanup.insightIds) {
-    try { await api.delete(`/api/findings/insights/${id}`); } catch {}
+    try { await api.delete(`/api/findings/insights/${id}?project_id=${projectId}`); } catch {}
   }
   for (const id of cleanup.factIds) {
-    try { await api.delete(`/api/findings/facts/${id}`); } catch {}
+    try { await api.delete(`/api/findings/facts/${id}?project_id=${projectId}`); } catch {}
   }
   for (const id of cleanup.nuggetIds) {
-    try { await api.delete(`/api/findings/nuggets/${id}`); } catch {}
+    try { await api.delete(`/api/findings/nuggets/${id}?project_id=${projectId}`); } catch {}
   }
   for (const id of cleanup.briefIds) {
     try {

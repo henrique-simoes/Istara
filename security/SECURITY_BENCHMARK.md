@@ -181,9 +181,11 @@ composition; shared platform guidance belongs in reviewed code defaults.
 Findings evidence, evidence-chain traversal, shell findings search, and project
 reports are project-content surfaces: project-facing list/search/report clients
 and APIs require an explicit authorized active project, linked evidence rows are
-filtered by the same project before being returned, report-summary LLM calls
-carry the report's project id, and cross-project findings search belongs only
-on explicit admin dashboard/reporting routes. Research-integrity codebook,
+filtered by the same project before being returned, evidence-chain/link/delete
+by-id routes load findings and design decisions by both id and active project,
+report-summary LLM calls carry the report's project id, and cross-project
+findings search belongs only on explicit admin dashboard/reporting routes.
+Research-integrity codebook,
 code, and code-application review by-id routes also require the caller's active
 project and load records by both id and project id, so stale ids from another
 authorized project cannot render or mutate the current project view.

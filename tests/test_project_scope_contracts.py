@@ -473,33 +473,21 @@ def test_findings_search_and_lists_require_active_project_scope() -> None:
     modal = read_repo("frontend/src/components/common/SearchModal.tsx")
     route = read_repo("backend/app/api/routes/findings.py")
 
-    assert "nuggets: (projectId: string)" in api
-    assert "facts: (projectId: string)" in api
-    assert "insights: (projectId: string)" in api
-    assert "recommendations: (projectId: string)" in api
-    assert "/api/findings/nuggets?project_id=${encodeURIComponent(projectId)}" in api
+    api_markers = ("nuggets: (projectId: string)", "facts: (projectId: string)", "insights: (projectId: string)", "recommendations: (projectId: string)", "/api/findings/nuggets?project_id=${encodeURIComponent(projectId)}", "evidenceChain: (findingType: string, findingId: string, projectId: string)", "/api/findings/${findingType}/${findingId}/evidence-chain?project_id=${encodeURIComponent(projectId)}", "linkEvidence: (findingType: string, findingId: string, linkId: string, linkType: string, projectId: string)", "/api/findings/${findingType}/${findingId}/link?project_id=${encodeURIComponent(projectId)}", 'delete: (type: "nugget" | "fact" | "insight" | "recommendation", id: string, projectId: string)')
+    assert all(marker in api for marker in api_markers)
 
-    assert "if (!query.trim() || !activeProjectId) return;" in modal
-    assert "findingsApi.nuggets(activeProjectId)" in modal
-    assert "findingsApi.facts(activeProjectId)" in modal
-    assert "findingsApi.insights(activeProjectId)" in modal
-    assert "findingsApi.recommendations(activeProjectId)" in modal
+    modal_markers = ("if (!query.trim() || !activeProjectId) return;", "findingsApi.nuggets(activeProjectId)", "findingsApi.facts(activeProjectId)", "findingsApi.insights(activeProjectId)", "findingsApi.recommendations(activeProjectId)")
+    assert all(marker in modal for marker in modal_markers)
     assert "findingsApi.nuggets()" not in modal
     assert "Search across all projects" not in modal
 
-    assert "async def _require_project_scope" in route
-    assert 'raise HTTPException(status_code=422, detail="project_id is required")' in route
-    assert "Nugget.project_id == scoped_project_id" in route
-    assert "Fact.project_id == scoped_project_id" in route
-    assert "Insight.project_id == scoped_project_id" in route
-    assert "Recommendation.project_id == scoped_project_id" in route
-    assert "DesignDecision.project_id == scoped_project_id" in route
-    assert "Nugget.project_id == project_id" in route
-    assert "Fact.project_id == project_id" in route
-    assert "Insight.project_id == project_id" in route
-    assert "Recommendation.project_id == project_id" in route
-    assert "DesignScreen.project_id == project_id" in route
-    assert "Global findings search requires admin access" in route
+    route_markers = ("async def _require_project_scope", 'raise HTTPException(status_code=422, detail="project_id is required")', "Nugget.project_id == scoped_project_id", "Fact.project_id == scoped_project_id", "Insight.project_id == scoped_project_id", "Recommendation.project_id == scoped_project_id", "DesignDecision.project_id == scoped_project_id", "Nugget.project_id == project_id", "Fact.project_id == project_id", "Insight.project_id == project_id", "Recommendation.project_id == project_id", "DesignScreen.project_id == project_id", "async def _get_project_record_or_404", "model.id == record_id", "model.project_id == scoped_project_id", 'project_id: str | None = Query(None, description="Active project")', "Global findings search requires admin access")
+    assert all(marker in route for marker in route_markers)
+
+    drilldown = read_repo("frontend/src/components/findings/AtomicDrilldown.tsx")
+    timeline = read_repo("frontend/src/components/agents/AgentTimeline.tsx")
+    assert all(marker in drilldown for marker in ("findingsApi.evidenceChain(type, id, projectId)", "findingsApi.linkEvidence(activeFinding.type, activeFinding.id, linkId, linkInfo.linkType, projectId)"))
+    assert "findingsApi.delete(entry.type, id, activeProjectId)" in timeline
 
 
 def test_task_kanban_requires_active_project_scope() -> None:
