@@ -76,6 +76,30 @@ async def require_agent_by_id(
     return agent
 
 
+async def require_project_owned_agent(
+    db: AsyncSession,
+    request: Request,
+    agent_id: str,
+    project_id: str | None,
+    *,
+    min_role: str = "project_admin",
+) -> Agent:
+    scoped_project_id = clean_project_id(project_id)
+    if not scoped_project_id:
+        raise HTTPException(status_code=400, detail="project_id is required")
+    await require_project_access(db, request, scoped_project_id, min_role=min_role)
+    agent = await require_agent_by_id(
+        db,
+        request,
+        agent_id,
+        project_id=scoped_project_id,
+        min_role=min_role,
+    )
+    if agent_project_id(agent) != scoped_project_id:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    return agent
+
+
 async def require_agent_collection_scope(
     db: AsyncSession,
     request: Request,

@@ -27,10 +27,10 @@ interface AgentStore {
     capabilities?: string[];
     heartbeat_interval?: number;
   }, projectId: string) => Promise<Agent>;
-  updateAgent: (id: string, data: Record<string, unknown>) => Promise<void>;
-  deleteAgent: (id: string) => Promise<void>;
-  pauseAgent: (id: string) => Promise<void>;
-  resumeAgent: (id: string) => Promise<void>;
+  updateAgent: (id: string, data: Record<string, unknown>, projectId: string) => Promise<void>;
+  deleteAgent: (id: string, projectId: string) => Promise<void>;
+  pauseAgent: (id: string, projectId: string) => Promise<void>;
+  resumeAgent: (id: string, projectId: string) => Promise<void>;
   fetchA2ALog: (projectId?: string | null) => Promise<void>;
   fetchCapacity: () => Promise<void>;
   updateHeartbeat: (agentId: string, status: HeartbeatStatus) => void;
@@ -96,23 +96,23 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
     return agent;
   },
 
-  updateAgent: async (id, data) => {
-    const updated = await agentsApi.update(id, data);
+  updateAgent: async (id, data, projectId) => {
+    const updated = await agentsApi.update(id, data, projectId);
     set((s) => ({
       agents: s.agents.map((a) => (a.id === id ? { ...a, ...updated } : a)),
     }));
   },
 
-  deleteAgent: async (id) => {
-    await agentsApi.delete(id);
+  deleteAgent: async (id, projectId) => {
+    await agentsApi.delete(id, projectId);
     set((s) => ({
       agents: s.agents.filter((a) => a.id !== id),
       selectedAgentId: s.selectedAgentId === id ? null : s.selectedAgentId,
     }));
   },
 
-  pauseAgent: async (id) => {
-    await agentsApi.pause(id);
+  pauseAgent: async (id, projectId) => {
+    await agentsApi.pause(id, projectId);
     set((s) => ({
       agents: s.agents.map((a) =>
         a.id === id ? { ...a, state: "paused" as const } : a
@@ -120,8 +120,8 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
     }));
   },
 
-  resumeAgent: async (id) => {
-    await agentsApi.resume(id);
+  resumeAgent: async (id, projectId) => {
+    await agentsApi.resume(id, projectId);
     set((s) => ({
       agents: s.agents.map((a) =>
         a.id === id ? { ...a, state: "idle" as const } : a

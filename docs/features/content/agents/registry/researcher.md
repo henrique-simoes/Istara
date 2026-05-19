@@ -6,11 +6,11 @@ audience: researcher
 status: documented
 related_features: ["agents.detail", "agents.a2a", "agents.create"]
 related_glossary: ["a2a", "mcp"]
-code_references: ["frontend/src/components/agents/AgentsView.tsx", "frontend/src/stores/agentStore.ts", "backend/app/api/routes/agents.py"]
+code_references: ["frontend/src/components/agents/AgentsView.tsx", "frontend/src/stores/agentStore.ts", "frontend/src/lib/api.ts", "backend/app/api/routes/agents.py"]
 api_references: ["backend/app/api/routes/agents.py"]
-test_references: ["tests/test_agents.py"]
-last_verified: 2026-05-18
-compass: CF-SPEC-56 / CF-698
+test_references: ["tests/test_agents.py", "tests/test_agent_mutation_scope.py", "tests/test_agent_scope_contracts.py", "tests/test_project_scope_contracts.py"]
+last_verified: 2026-05-19
+compass: CF-SPEC-56 / CF-698; CF-SPEC-83 / CF-1075
 ---
 
 # Agent Registry
@@ -33,6 +33,7 @@ Agent Registry exists so the work represented by Agents > Agents has a stable, d
 
 - Open Agents > Agents from the Istara navigation or the parent tab.
 - Use the visible controls in this surface to work with universal agents and agents scoped to the active project.
+- Project-owned controls such as pause, resume, delete, export, and permission edits are available only for agents attached to the active project.
 - Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.
 
 ## Supported Workflows
@@ -44,6 +45,7 @@ Agent Registry exists so the work represented by Agents > Agents has a stable, d
 ## Inputs, Outputs, And Expected Outcomes
 
 - Universal system agents and project-scoped custom agents associated with the active project.
+- Project-owned custom-agent changes stay bound to the active project instead of applying to a global agent record.
 - Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.
 
 ## Caveats
@@ -66,4 +68,4 @@ Agent Registry exists so the work represented by Agents > Agents has a stable, d
 
 - Source files: `frontend/src/components/agents/AgentsView.tsx`, `frontend/src/stores/agentStore.ts`, `backend/app/api/routes/agents.py`
 - API references: `backend/app/api/routes/agents.py`
-- Tests: `tests/test_agents.py`
+- Tests: `tests/test_agents.py`, `tests/test_agent_mutation_scope.py`, `tests/test_agent_scope_contracts.py`, `tests/test_project_scope_contracts.py`

@@ -346,6 +346,20 @@ export const skills = {
 
 // --- Agents ---
 
+const agentScopeParams = (
+  projectId: string,
+  values: Record<string, string | number | boolean | undefined | null> = {}
+) => {
+  const params = new URLSearchParams({ project_id: projectId });
+  for (const [key, value] of Object.entries(values)) {
+    if (value !== undefined && value !== null) params.set(key, String(value));
+  }
+  return params.toString();
+};
+
+const agentProjectPath = (id: string, projectId: string, suffix = "") =>
+  `/api/agents/${id}${suffix}?${agentScopeParams(projectId)}`;
+
 export const agents = {
   list: (includeSystem = true, projectId?: string) => {
     const params = new URLSearchParams({ include_system: String(includeSystem) });
@@ -367,12 +381,12 @@ export const agents = {
       method: "POST",
       body: JSON.stringify({ ...data, project_id: projectId }),
     }),
-  update: (id: string, data: Record<string, unknown>) =>
-    request<any>(`/api/agents/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
-  delete: (id: string) => del(`/api/agents/${id}`),
-  pause: (id: string) => request<any>(`/api/agents/${id}/pause`, { method: "POST" }),
-  resume: (id: string) => request<any>(`/api/agents/${id}/resume`, { method: "POST" }),
-  restart: (id: string) => request<any>(`/api/agents/${id}/restart`, { method: "POST" }),
+  update: (id: string, data: Record<string, unknown>, projectId: string) =>
+    request<any>(agentProjectPath(id, projectId), { method: "PATCH", body: JSON.stringify(data) }),
+  delete: (id: string, projectId: string) => del(agentProjectPath(id, projectId)),
+  pause: (id: string, projectId: string) => request<any>(agentProjectPath(id, projectId, "/pause"), { method: "POST" }),
+  resume: (id: string, projectId: string) => request<any>(agentProjectPath(id, projectId, "/resume"), { method: "POST" }),
+  restart: (id: string, projectId: string) => request<any>(agentProjectPath(id, projectId, "/restart"), { method: "POST" }),
   setScope: (id: string, scope: string, projectId?: string) => request<any>(`/api/agents/${id}/set-scope`, { method: "POST", body: JSON.stringify({ scope, project_id: projectId || "" }) }),
   requestPromotion: (id: string, projectId?: string | null) => {
     const suffix = projectId ? `?project_id=${encodeURIComponent(projectId)}` : "";
@@ -384,10 +398,10 @@ export const agents = {
     if (projectId) params.set("project_id", projectId);
     return request<any>(`/api/agents/log/recent?${params}`);
   },
-  uploadAvatar: async (id: string, file: File) => {
+  uploadAvatar: async (id: string, file: File, projectId: string) => {
     const formData = new FormData();
     formData.append("file", file);
-    const res = await fetch(`${API_BASE}/api/agents/${id}/avatar`, {
+    const res = await fetch(`${API_BASE}${agentProjectPath(id, projectId, "/avatar")}`, {
       method: "POST",
       headers: { ..._getAuthHeaders() },
       body: formData,
@@ -401,8 +415,8 @@ export const agents = {
     const suffix = projectId ? `?project_id=${encodeURIComponent(projectId)}` : "";
     return request<any>(`/api/agents/${id}/memory${suffix}`);
   },
-  updateMemory: (id: string, data: Record<string, unknown>) =>
-    request<any>(`/api/agents/${id}/memory`, { method: "PATCH", body: JSON.stringify(data) }),
+  updateMemory: (id: string, data: Record<string, unknown>, projectId: string) =>
+    request<any>(agentProjectPath(id, projectId, "/memory"), { method: "PATCH", body: JSON.stringify(data) }),
   messages: (id: string, projectId: string, limit = 50) => {
     const params = new URLSearchParams({ limit: String(limit) });
     params.set("project_id", projectId);
@@ -433,8 +447,8 @@ export const agents = {
       files: Record<string, string>;
     }>(`/api/agents/${id}/identity${suffix}`);
   },
-  updateIdentity: (id: string, files: Record<string, string>) =>
-    request<any>(`/api/agents/${id}/identity`, {
+  updateIdentity: (id: string, files: Record<string, string>, projectId: string) =>
+    request<any>(agentProjectPath(id, projectId, "/identity"), {
       method: "PUT",
       body: JSON.stringify({ files }),
     }),
@@ -452,8 +466,10 @@ export const agents = {
     reject: (id: string, projectId: string, reason = "") =>
       request<any>(`/api/agents/creation-proposals/${id}/reject?project_id=${encodeURIComponent(projectId)}`, { method: "POST", body: JSON.stringify({ reason }) }),
   },
-  exportConfig: (id: string) => request<any>(`/api/agents/${id}/export`),
-  importConfig: (data: Record<string, unknown>) => request<any>("/api/agents/import", { method: "POST", body: JSON.stringify(data) }),
+  exportConfig: (id: string, projectId: string) =>
+    request<any>(agentProjectPath(id, projectId, "/export")),
+  importConfig: (data: Record<string, unknown>, projectId: string) =>
+    request<any>("/api/agents/import", { method: "POST", body: JSON.stringify({ ...data, project_id: projectId }) }),
   evolution: {
     scan: (projectId: string) =>
       request<any>(`/api/agents/evolution/scan?project_id=${encodeURIComponent(projectId)}`),

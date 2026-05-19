@@ -348,7 +348,7 @@ async def test_agent_loop_config_persists_skills_and_project_filter(auth_headers
         )
         assert invalid.status_code == 422
 
-        await ac.delete(f"/api/agents/{agent_id}", headers=auth_headers)
+        await ac.delete(f"/api/agents/{agent_id}?project_id={project_id}", headers=auth_headers)
 
 
 @pytest.mark.asyncio

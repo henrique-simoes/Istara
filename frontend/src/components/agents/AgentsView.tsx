@@ -118,6 +118,7 @@ interface AgentRAGNote {
 function AgentDetail({ agent }: { agent: Agent }) {
   const { updateAgent, pauseAgent, resumeAgent, deleteAgent } = useAgentStore();
   const { activeProjectId } = useProjectStore();
+  const isProjectOwnedAgent = Boolean(activeProjectId && agent.project_id === activeProjectId);
   const [tab, setTab] = useState<"overview" | "identity" | "memory" | "permissions">("overview");
   const [ragNotes, setRagNotes] = useState<AgentRAGNote[]>([]);
   const [ragLoading, setRagLoading] = useState(false);
@@ -239,34 +240,38 @@ function AgentDetail({ agent }: { agent: Agent }) {
           {/* Recent Errors section */}
           <RecentErrors agentId={agent.id} />
           <div className="flex flex-wrap gap-2">
-            {agent.state === "paused" ? (
-              <button onClick={() => resumeAgent(agent.id)} className="flex items-center gap-1 px-3 py-1.5 text-xs bg-green-100 text-green-700 rounded-lg hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400">
-                <Play size={12} /> Resume
-              </button>
-            ) : (
-              <button onClick={() => pauseAgent(agent.id)} className="flex items-center gap-1 px-3 py-1.5 text-xs bg-yellow-100 text-yellow-700 rounded-lg hover:bg-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-400">
-                <Pause size={12} /> Pause
+            {isProjectOwnedAgent && (
+              agent.state === "paused" ? (
+                <button onClick={() => resumeAgent(agent.id, activeProjectId!)} className="flex items-center gap-1 px-3 py-1.5 text-xs bg-green-100 text-green-700 rounded-lg hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400">
+                  <Play size={12} /> Resume
+                </button>
+              ) : (
+                <button onClick={() => pauseAgent(agent.id, activeProjectId!)} className="flex items-center gap-1 px-3 py-1.5 text-xs bg-yellow-100 text-yellow-700 rounded-lg hover:bg-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-400">
+                  <Pause size={12} /> Pause
+                </button>
+              )
+            )}
+            {isProjectOwnedAgent && (
+              <button
+                onClick={async () => {
+                  try {
+                    const data = await agentsApi.exportConfig(agent.id, activeProjectId!);
+                    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = `${agent.name.replace(/\s+/g, "-").toLowerCase()}-config.json`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                  } catch (e) {
+                    console.error("Export failed:", e);
+                  }
+                }}
+                className="flex items-center gap-1 px-2 py-1 text-xs bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded hover:bg-slate-200 dark:hover:bg-slate-600"
+              >
+                <Download size={12} /> Export
               </button>
             )}
-            <button
-              onClick={async () => {
-                try {
-                  const data = await agentsApi.exportConfig(agent.id);
-                  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement("a");
-                  a.href = url;
-                  a.download = `${agent.name.replace(/\s+/g, "-").toLowerCase()}-config.json`;
-                  a.click();
-                  URL.revokeObjectURL(url);
-                } catch (e) {
-                  console.error("Export failed:", e);
-                }
-              }}
-              className="flex items-center gap-1 px-2 py-1 text-xs bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded hover:bg-slate-200 dark:hover:bg-slate-600"
-            >
-              <Download size={12} /> Export
-            </button>
             <button
               onClick={() => {
                 window.dispatchEvent(new CustomEvent("istara:navigate", {
@@ -277,11 +282,11 @@ function AgentDetail({ agent }: { agent: Agent }) {
             >
               <MessageSquare size={12} /> Chat
             </button>
-            {!agent.is_system && (
+            {isProjectOwnedAgent && !agent.is_system && (
               <button
                 onClick={async () => {
                   if (confirm(`Delete agent "${agent.name}"? This cannot be undone.`)) {
-                    await deleteAgent(agent.id);
+                    await deleteAgent(agent.id, activeProjectId!);
                   }
                 }}
                 className="flex items-center gap-1 px-2 py-1 text-xs bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded hover:bg-red-200"
@@ -343,12 +348,13 @@ function AgentDetail({ agent }: { agent: Agent }) {
                           <>
                             <button
                               onClick={async () => {
+                                if (!isProjectOwnedAgent) return;
                                 setIdentitySaving(true);
                                 try {
                                   await agentsApi.updateIdentity(agent.id, {
                                     ...identityFiles,
                                     [filename]: editContent,
-                                  });
+                                  }, activeProjectId!);
                                   setIdentityFiles((prev) => ({ ...prev, [filename]: editContent }));
                                   setEditingFile(null);
                                   setIdentityDirty(false);
@@ -372,6 +378,7 @@ function AgentDetail({ agent }: { agent: Agent }) {
                         ) : (
                           <button
                             onClick={() => { setEditingFile(filename); setEditContent(content); }}
+                            disabled={!isProjectOwnedAgent}
                             className="flex items-center gap-1 px-2 py-1 text-xs bg-slate-100 text-slate-600 rounded hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300"
                           >
                             <Edit3 size={10} /> Edit
@@ -466,16 +473,19 @@ function AgentDetail({ agent }: { agent: Agent }) {
             </div>
             <button
               onClick={async () => {
+                if (!isProjectOwnedAgent) return;
                 if (agent.is_active) {
-                  await pauseAgent(agent.id);
-                  await updateAgent(agent.id, { is_active: false });
+                  await pauseAgent(agent.id, activeProjectId!);
+                  await updateAgent(agent.id, { is_active: false }, activeProjectId!);
                 } else {
-                  await resumeAgent(agent.id);
-                  await updateAgent(agent.id, { is_active: true });
+                  await resumeAgent(agent.id, activeProjectId!);
+                  await updateAgent(agent.id, { is_active: true }, activeProjectId!);
                 }
               }}
+              disabled={!isProjectOwnedAgent}
               className={cn(
                 "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
+                !isProjectOwnedAgent && "cursor-not-allowed opacity-50",
                 agent.is_active ? "bg-istara-600" : "bg-slate-300 dark:bg-slate-600"
               )}
               role="switch"
@@ -501,13 +511,16 @@ function AgentDetail({ agent }: { agent: Agent }) {
                   </div>
                   <button
                     onClick={async () => {
+                      if (!isProjectOwnedAgent) return;
                       const newCaps = enabled
                         ? agent.capabilities.filter((c) => c !== cap.id)
                         : [...agent.capabilities, cap.id];
-                      await updateAgent(agent.id, { capabilities: newCaps });
+                      await updateAgent(agent.id, { capabilities: newCaps }, activeProjectId!);
                     }}
+                    disabled={!isProjectOwnedAgent}
                     className={cn(
                       "relative inline-flex h-5 w-9 items-center rounded-full transition-colors",
+                      !isProjectOwnedAgent && "cursor-not-allowed opacity-50",
                       enabled ? "bg-istara-500" : "bg-slate-300 dark:bg-slate-600"
                     )}
                     role="switch"
@@ -691,7 +704,8 @@ export default function AgentsView() {
                           const text = await file.text();
                           const data = JSON.parse(text);
                           const agentData = data.agent || data;
-                          await agentsApi.importConfig(agentData);
+                          if (!activeProjectId) return;
+                          await agentsApi.importConfig(agentData, activeProjectId);
                           fetchAgents(activeProjectId || undefined);
                         } catch (err) {
                           console.error("Import failed:", err);

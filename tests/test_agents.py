@@ -512,7 +512,10 @@ async def test_agent_restart_scope_and_promotion_routes_use_persistent_agent(aut
         assert created.json()["project_id"] == "project-test"
         agent_id = created.json()["id"]
 
-        restart = await ac.post(f"/api/agents/{agent_id}/restart", headers=auth_headers)
+        restart = await ac.post(
+            f"/api/agents/{agent_id}/restart?project_id=project-test",
+            headers=auth_headers,
+        )
         assert restart.status_code == 200
         assert restart.json()["status"] == "restarted"
 
@@ -536,7 +539,7 @@ async def test_agent_restart_scope_and_promotion_routes_use_persistent_agent(aut
         assert promotion.status_code == 200
         assert promotion.json()["status"] == "requested"
 
-        await ac.delete(f"/api/agents/{agent_id}", headers=auth_headers)
+        await ac.delete(f"/api/agents/{agent_id}?project_id=project-test", headers=auth_headers)
 
 
 @pytest.mark.asyncio
@@ -599,8 +602,14 @@ async def test_a2a_accepts_system_message_type_contract(auth_headers):
             )
             assert invalid.status_code == 400
         finally:
-            await ac.delete(f"/api/agents/{agent_a}", headers=auth_headers)
-            await ac.delete(f"/api/agents/{agent_b}", headers=auth_headers)
+            await ac.delete(
+                f"/api/agents/{agent_a}?project_id=a2a-contract-project",
+                headers=auth_headers,
+            )
+            await ac.delete(
+                f"/api/agents/{agent_b}?project_id=a2a-contract-project",
+                headers=auth_headers,
+            )
 
 
 @pytest.mark.asyncio
@@ -907,6 +916,8 @@ async def test_agent_export_requires_admin_role():
     """Export includes prompt and memory, so it should stay admin-only in team mode."""
     await init_db()
     settings.team_mode = True
+    project_id = f"agent-export-project-{uuid.uuid4()}"
+    await _seed_project_member(project_id, "user2", "researcher")
     if not settings.jwt_secret:
         settings.jwt_secret = "test-secret"
     token = create_token("user2", "researcher", "researcher")
@@ -914,7 +925,10 @@ async def test_agent_export_requires_admin_role():
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.get("/api/agents/istara-main/export", headers=headers)
+        response = await ac.get(
+            f"/api/agents/istara-main/export?project_id={project_id}",
+            headers=headers,
+        )
         assert response.status_code == 403
 
 
