@@ -241,11 +241,14 @@
   <p class="concept-line"><strong>Concepts:</strong> rag</p>
 </header>
 <h2 id="implementation-summary">Implementation Summary</h2>
-<p>The Context view edits project background, goals, assumptions, and other structured context used by Istara workflows.</p>
+<p>The Context view edits project background, goals, assumptions, and other structured context used by Istara workflows. The context hierarchy prompt composition is project-local: database-backed company, product, project, task, and agent context rows are loaded only when their <code>project_id</code> matches the active project. Shared platform guidance comes from the built-in platform prompt, not mutable global context rows.</p>
 <h2 id="frontend-surface">Frontend Surface</h2>
 <ul>
 <li><code>frontend/src/components/projects/ContextEditor.tsx</code></li>
+<li><code>frontend/src/components/common/ContextPreview.tsx</code></li>
 <li><code>backend/app/api/routes/projects.py</code></li>
+<li><code>backend/app/api/routes/context_hierarchy.py</code></li>
+<li><code>backend/app/core/context_hierarchy.py</code></li>
 </ul>
 <h2 id="state-api-and-backend-contracts">State, API, And Backend Contracts</h2>
 <h3 id="stores">Stores</h3>
@@ -255,20 +258,25 @@
 <h3 id="api-and-backend">API And Backend</h3>
 <ul>
 <li><code>backend/app/api/routes/projects.py</code></li>
+<li><code>backend/app/api/routes/context_hierarchy.py</code></li>
 </ul>
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
 <li>The feature is mounted through <code>frontend/src/components/projects/ContextEditor.tsx</code> and the UI navigation path recorded in the inventory.</li>
+<li>Context preview calls <code>/api/contexts/composed/{project_id}</code> for the active project. The route verifies project viewer access and the backend composer filters context rows by exact project id.</li>
+<li>Admin-only unscoped context maintenance may list unassigned rows, but those rows are not inherited by project prompt composition.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>
 <h2 id="agents-skills-llm-mcp-and-permissions">Agents, Skills, LLM, MCP, And Permissions</h2>
 <ul>
 <li>RAG-related behavior depends on project context, documents, memory, or retrieval material referenced by the cited stores and routes.</li>
+<li>Database-backed context hierarchy rows are project content. They must not be treated as org-global inheritance for project-facing prompts, previews, or agent execution.</li>
 </ul>
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>
-<li>No focused test reference recorded yet.</li>
+<li><code>tests/test_context_hierarchy.py</code></li>
+<li><code>tests/test_project_scope_contracts.py</code></li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>
@@ -281,7 +289,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-53 / CF-657</li>
+<li>Spec/task: CF-SPEC-60 / CF-776</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>

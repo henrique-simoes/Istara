@@ -57,12 +57,13 @@ async def list_contexts(
     project_id: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
-    if project_id:
-        await require_project_access(db, request, project_id, min_role="viewer")
+    scoped_project_id = str(project_id or "").strip()
+    if scoped_project_id:
+        await require_project_access(db, request, scoped_project_id, min_role="viewer")
     else:
         require_admin_from_request(request)
 
-    docs = await context_hierarchy.list_contexts(db, level_type, project_id)
+    docs = await context_hierarchy.list_contexts(db, level_type, scoped_project_id)
     return {
         "contexts": [
             {
@@ -87,8 +88,11 @@ async def create_context(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
-    if data.project_id:
-        await require_project_access(db, request, data.project_id, min_role="researcher")
+    scoped_project_id = data.project_id.strip()
+    parent_id = data.parent_id.strip()
+
+    if scoped_project_id:
+        await require_project_access(db, request, scoped_project_id, min_role="researcher")
     else:
         require_admin_from_request(request)
 
@@ -103,8 +107,8 @@ async def create_context(
         data.name,
         data.level_type,
         data.content,
-        data.project_id,
-        data.parent_id,
+        scoped_project_id,
+        parent_id,
         data.priority,
     )
     return {"id": doc.id, "name": doc.name, "level": doc.level, "level_type": doc.level_type}
@@ -168,6 +172,7 @@ async def get_composed_context(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
-    await require_project_access(db, request, project_id, min_role="viewer")
-    composed = await context_hierarchy.compose_context(db, project_id)
-    return {"project_id": project_id, "composed_context": composed, "length": len(composed)}
+    scoped_project_id = project_id.strip()
+    await require_project_access(db, request, scoped_project_id, min_role="viewer")
+    composed = await context_hierarchy.compose_context(db, scoped_project_id)
+    return {"project_id": scoped_project_id, "composed_context": composed, "length": len(composed)}
