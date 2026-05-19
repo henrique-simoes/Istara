@@ -227,16 +227,10 @@ class AgentLifecycleMixin:
 
     async def _work_cycle(self) -> bool:
         """Run one work cycle. Returns True if a task was executed."""
-        # ── Check steering queue FIRST — if there are pending steering
-        # messages, create a steering task and execute it before checking
-        # the normal task queue. This implements pi-mono's steering pattern:
-        # steering messages are injected while the agent is idle or working,
-        # and picked up at the next opportunity.
-        steering_msgs = await steering_manager.get_steering(self._agent_id)
-        if steering_msgs:
-            logger.info(f"Steering messages detected for {self._agent_id}: {len(steering_msgs)}")
-            for msg in steering_msgs:
-                await self._execute_steering_message(msg)
+        # ── Check project-bound steering queue FIRST — if there are pending
+        # steering messages, create a steering task and execute it before
+        # checking the normal task queue.
+        if await self._process_project_steering():
             return True
 
         # Check resource budget before doing work
@@ -303,13 +297,13 @@ class AgentLifecycleMixin:
             # 3. Execute the task (register with governor for concurrent limits)
             governor.register_agent("task-executor")
             self._current_task_id = task.id
-            await steering_manager.mark_working(self._agent_id)
+            await steering_manager.mark_working(self._agent_id, project_id=task.project_id)
             try:
                 await self._execute_task(db, task, project)
             finally:
                 self._current_task_id = None
                 governor.unregister_agent("task-executor")
-                await steering_manager.mark_idle(self._agent_id)
+                await steering_manager.mark_idle(self._agent_id, project_id=task.project_id)
 
             # 4. Check queue depth and adapt loop interval
             pending_result = await db.execute(
@@ -357,20 +351,71 @@ class AgentLifecycleMixin:
             # ── Check follow-up queue — only processed when agent would
             # otherwise stop (no more tasks in the pipeline). This matches
             # pi-mono's followUpQueue pattern.
-            follow_up_msgs = await steering_manager.get_follow_up(self._agent_id)
+            follow_up_msgs = await steering_manager.get_follow_up(
+                self._agent_id,
+                project_id=task.project_id,
+            )
             if follow_up_msgs:
                 logger.info(f"Follow-up messages for {self._agent_id}: {len(follow_up_msgs)}")
                 for msg in follow_up_msgs:
-                    await self._execute_steering_message(msg)
+                    await steering_manager.mark_working(self._agent_id, project_id=project.id)
+                    try:
+                        await self._execute_steering_message(msg, project)
+                    finally:
+                        await steering_manager.mark_idle(self._agent_id, project_id=project.id)
                 return True
 
             return True
+
+    async def _process_project_steering(self) -> bool:
+        project_ids = await steering_manager.project_ids_with_queued_steering(self._agent_id)
+        if not project_ids:
+            return False
+
+        async with async_session() as db:
+            for project_id in project_ids:
+                project = await self._get_project(db, project_id)
+                if not project:
+                    logger.warning(
+                        "Dropping steering messages for missing project %s and agent %s",
+                        project_id,
+                        self._agent_id,
+                    )
+                    await steering_manager.clear_steering(self._agent_id, project_id=project_id)
+                    continue
+                if project.is_paused:
+                    logger.info(
+                        "Project %s is paused; deferring steering for agent %s",
+                        project.id,
+                        self._agent_id,
+                    )
+                    continue
+                steering_msgs = await steering_manager.get_steering(
+                    self._agent_id,
+                    project_id=project.id,
+                )
+                if not steering_msgs:
+                    continue
+                logger.info(
+                    "Project-scoped steering messages detected for %s in %s: %s",
+                    self._agent_id,
+                    project.id,
+                    len(steering_msgs),
+                )
+                for msg in steering_msgs:
+                    await steering_manager.mark_working(self._agent_id, project_id=project.id)
+                    try:
+                        await self._execute_steering_message(msg, project)
+                    finally:
+                        await steering_manager.mark_idle(self._agent_id, project_id=project.id)
+                return True
+        return False
 
     async def _get_project(self, db: AsyncSession, project_id: str) -> Project | None:
         result = await db.execute(select(Project).where(Project.id == project_id))
         return result.scalar_one_or_none()
 
-    async def _execute_steering_message(self, msg) -> None:
+    async def _execute_steering_message(self, msg, project: Project | None = None) -> None:
         """Execute a steering message as an interim task.
 
         Steering messages are user-injected mid-execution instructions.
@@ -383,11 +428,52 @@ class AgentLifecycleMixin:
 
         message_text = msg.message if hasattr(msg, "message") else str(msg)
         source = msg.source if hasattr(msg, "source") else "user"
-        logger.info(f"Executing steering message ({source}): {message_text[:100]}")
+        metadata = getattr(msg, "metadata", {}) if hasattr(msg, "metadata") else {}
+        project_id = str(metadata.get("project_id") or "").strip()
+
+        if project is None and project_id:
+            async with async_session() as db:
+                project = await self._get_project(db, project_id)
+
+        if not project:
+            logger.warning(
+                "Skipping steering message for %s because it has no valid project context",
+                self._agent_id,
+            )
+            return
+
+        if project.is_paused:
+            logger.info(
+                "Skipping steering message for paused project %s and agent %s",
+                project.id,
+                self._agent_id,
+            )
+            await broadcast_agent_status("paused", f"Project paused: {project.name}", project_id=project.id)
+            return
+
+        project_context = "\n".join(
+            part
+            for part in [
+                project.name,
+                project.description,
+                project.project_context,
+                project.guardrails,
+            ]
+            if part
+        )
+
+        logger.info(
+            "Executing steering message (%s) for project %s: %s",
+            source,
+            project.id,
+            message_text[:100],
+        )
 
         # Broadcast that we're processing a steering message
         await broadcast_agent_status(
-            "working", f"Processing steering message: {message_text[:80]}..."
+            "working",
+            f"Processing steering message: {message_text[:80]}...",
+            project_id=project.id,
         )
 
         try:
@@ -411,12 +497,12 @@ class AgentLifecycleMixin:
             if skill:
                 # Execute the skill with the steering message as context
                 skill_input = SkillInput(
-                    project_id="",  # Steering messages don't require a project
+                    project_id=project.id,
                     task_id="",
                     parameters={"mode": "analyze"},
                     user_context=message_text,
-                    project_context="",
-                    company_context="",
+                    project_context=project_context,
+                    company_context=project.company_context or "",
                 )
                 output = await asyncio.wait_for(skill.execute(skill_input), timeout=120)
 
@@ -426,6 +512,7 @@ class AgentLifecycleMixin:
                     f"Steering message processed ({skill.display_name}): {output.summary[:120]}..."
                     if output.summary
                     else f"Steering message processed ({skill.display_name})",
+                    project_id=project.id,
                 )
             else:
                 # No matching skill — use the general LLM to respond
@@ -435,20 +522,32 @@ class AgentLifecycleMixin:
                             "role": "system",
                             "content": (
                                 "You are Istara's main agent. Respond helpfully to the "
-                                "user's steering message."
+                                f"user's steering message for project {project.name}."
                             ),
                         },
                         {"role": "user", "content": message_text},
                     ]
                 )
                 reply = response.get("message", {}).get("content", "")
-                await broadcast_agent_status("idle", f"Steering response: {reply[:200]}...")
+                await broadcast_agent_status(
+                    "idle",
+                    f"Steering response: {reply[:200]}...",
+                    project_id=project.id,
+                )
         except TimeoutError:
             logger.warning("Steering message execution timed out")
-            await broadcast_agent_status("warning", "Steering message timed out after 2 minutes")
+            await broadcast_agent_status(
+                "warning",
+                "Steering message timed out after 2 minutes",
+                project_id=project.id,
+            )
         except Exception as e:
             logger.error(f"Steering message execution failed: {e}")
-            await broadcast_agent_status("warning", f"Steering message failed: {str(e)[:100]}")
+            await broadcast_agent_status(
+                "warning",
+                f"Steering message failed: {str(e)[:100]}",
+                project_id=project.id,
+            )
 
     def _is_in_backoff(self, task: Task) -> bool:
         """Check if a task is still within its retry backoff window."""

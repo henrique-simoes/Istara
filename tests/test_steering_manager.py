@@ -194,6 +194,60 @@ class TestSteeringManager:
         assert msgs[0].source == "extension"
         assert msgs[0].metadata == {"ext": "mcp"}
 
+    @pytest.mark.asyncio
+    async def test_project_scoped_messages_do_not_drain_globally(self, manager, agent_id):
+        await manager.steer(agent_id, "project a", project_id="project-a")
+        await manager.steer(agent_id, "project b", project_id="project-b")
+
+        assert await manager.get_steering(agent_id) == []
+
+        msgs = await manager.get_steering(agent_id, project_id="project-a")
+        assert [msg.message for msg in msgs] == ["project a"]
+
+        remaining = manager.get_queues(agent_id, project_id="project-b")
+        assert [msg.message for msg in remaining["steering"]] == ["project b"]
+
+    @pytest.mark.asyncio
+    async def test_project_scoped_clear_preserves_other_projects(self, manager, agent_id):
+        await manager.steer(agent_id, "project a", project_id="project-a")
+        await manager.follow_up(agent_id, "project a follow", project_id="project-a")
+        await manager.steer(agent_id, "project b", project_id="project-b")
+        await manager.follow_up(agent_id, "project b follow", project_id="project-b")
+
+        cleared = await manager.clear_all(agent_id, project_id="project-a")
+        assert [msg.message for msg in cleared["steering"]] == ["project a"]
+        assert [msg.message for msg in cleared["follow_up"]] == ["project a follow"]
+
+        status_b = manager.get_status(agent_id, project_id="project-b")
+        assert status_b["steering_queue_count"] == 1
+        assert status_b["follow_up_queue_count"] == 1
+
+    @pytest.mark.asyncio
+    async def test_project_scoped_status_and_working_state_are_project_bound(self, manager, agent_id):
+        await manager.steer(agent_id, "project a", project_id="project-a")
+        await manager.follow_up(agent_id, "project b follow", project_id="project-b")
+        await manager.mark_working(agent_id, project_id="project-a")
+
+        status_a = manager.get_status(agent_id, project_id="project-a")
+        status_b = manager.get_status(agent_id, project_id="project-b")
+
+        assert status_a["is_working"] is True
+        assert status_a["steering_queue_count"] == 1
+        assert status_a["follow_up_queue_count"] == 0
+        assert status_b["is_working"] is False
+        assert status_b["steering_queue_count"] == 0
+        assert status_b["follow_up_queue_count"] == 1
+
+    @pytest.mark.asyncio
+    async def test_project_ids_with_queued_steering_only_returns_scoped_projects(self, manager, agent_id):
+        await manager.steer(agent_id, "legacy")
+        await manager.steer(agent_id, "project a", project_id="project-a")
+        await manager.steer(agent_id, "project b", project_id="project-b")
+        await manager.steer(agent_id, "project a second", project_id="project-a")
+
+        project_ids = await manager.project_ids_with_queued_steering(agent_id)
+        assert project_ids == ["project-a", "project-b"]
+
 
 # ============================================================
 # API Route Tests

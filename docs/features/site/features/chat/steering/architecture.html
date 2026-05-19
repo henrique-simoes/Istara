@@ -241,34 +241,48 @@
   <p class="concept-line"><strong>Concepts:</strong> rag</p>
 </header>
 <h2 id="implementation-summary">Implementation Summary</h2>
-<p>Steering controls collect lightweight user guidance that can shape downstream assistant behavior and project context.</p>
+<p>Steering controls collect lightweight user guidance that can shape downstream assistant behavior inside the active project only. Every steering message, follow-up, queue read, queue clear, abort, and status request carries an explicit <code>project_id</code>, verifies that the project exists, and enforces project access before it touches the in-memory agent queue.</p>
 <h2 id="frontend-surface">Frontend Surface</h2>
 <ul>
 <li><code>frontend/src/components/common/SteeringInput.tsx</code></li>
+<li><code>frontend/src/components/chat/ChatView.tsx</code></li>
+<li><code>frontend/src/components/agents/AgentsView.tsx</code></li>
+<li><code>frontend/src/lib/researchIntegrityApi.ts</code></li>
 <li><code>backend/app/api/routes/steering.py</code></li>
+<li><code>backend/app/core/steering.py</code></li>
+<li><code>backend/app/core/agent_lifecycle.py</code></li>
 </ul>
 <h2 id="state-api-and-backend-contracts">State, API, And Backend Contracts</h2>
 <h3 id="stores">Stores</h3>
 <ul>
-<li>None recorded.</li>
+<li><code>SteeringInput</code> receives <code>projectId</code> from the active project store and does not render or send when there is no active project.</li>
+<li><code>ChatView</code> requests all queue status for the active project only.</li>
 </ul>
 <h3 id="api-and-backend">API And Backend</h3>
 <ul>
-<li><code>backend/app/api/routes/steering.py</code></li>
+<li><code>POST /api/steering/{agent_id}</code> and <code>POST /api/steering/{agent_id}/follow-up</code> require <code>project_id</code> in the body.</li>
+<li><code>GET /api/steering/{agent_id}/status</code>, <code>GET /api/steering/{agent_id}/queues</code>, <code>DELETE /api/steering/{agent_id}/queues</code>, <code>POST /api/steering/{agent_id}/abort</code>, <code>GET /api/steering/{agent_id}/idle</code>, and <code>GET /api/steering</code> require <code>project_id</code> in the query string.</li>
+<li>The route loads the project, keeps the existing admin gate, and then calls <code>require_project_access</code>.</li>
+<li>Project-owned agents can only be steered for their own project. System agents remain universal identities, but their steering messages are still queued and drained by project.</li>
 </ul>
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
-<li>The feature is mounted through <code>frontend/src/components/common/SteeringInput.tsx</code> and the UI navigation path recorded in the inventory.</li>
-<li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
-<li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
+<li><code>backend/app/core/steering.py</code> stores queue metadata per message and filters by <code>metadata.project_id</code> for status, read, clear, abort, and drain operations.</li>
+<li>A drain call without a project only sees legacy unscoped messages. Project-bound messages are never drained by a global <code>agent_id</code> call.</li>
+<li><code>backend/app/core/agent_lifecycle.py</code> discovers queued project ids, loads the matching project, skips paused or missing projects, and executes steering with <code>SkillInput.project_id</code>, project context, company context, and project-scoped websocket broadcasts.</li>
 </ul>
 <h2 id="agents-skills-llm-mcp-and-permissions">Agents, Skills, LLM, MCP, And Permissions</h2>
 <ul>
-<li>RAG-related behavior depends on project context, documents, memory, or retrieval material referenced by the cited stores and routes.</li>
+<li>Steering is security-sensitive because a message can contain project research context and can trigger skill or LLM execution.</li>
+<li>The API requires admin access plus project authorization, and queue contents are filtered by active project before being returned to the browser.</li>
+<li>Project-scoped database agents reject steering requests for any other project.</li>
+<li>Universal/system agents can be steered only through project-bound queue messages, so one project cannot see or drain another project&#x27;s pending guidance.</li>
 </ul>
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>
 <li><code>tests/test_steering_api.py</code></li>
+<li><code>tests/test_steering_manager.py</code></li>
+<li><code>tests/test_steering_project_scope_contracts.py</code></li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>
@@ -281,7 +295,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-53 / CF-657</li>
+<li>Spec/task: CF-SPEC-87 / CF-1117</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>

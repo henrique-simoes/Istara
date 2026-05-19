@@ -7,10 +7,24 @@ export async function run(ctx) {
   const { api, report } = ctx;
   const checks = [];
   const agentId = "istara-main";
+  const projectId = ctx.projectId;
+  const projectQuery = projectId ? `?project_id=${encodeURIComponent(projectId)}` : "";
+
+  if (!projectId) {
+    return {
+      checks: [{
+        name: "Project scope available",
+        passed: false,
+        detail: "Mid-execution steering requires ctx.projectId for project-scoped endpoints",
+      }],
+      passed: 0,
+      failed: 1,
+    };
+  }
 
   // 1. Steering API endpoint responds with auth
   try {
-    const status = await api.get(`/api/steering/${agentId}/status`);
+    const status = await api.get(`/api/steering/${agentId}/status${projectQuery}`);
     checks.push({
       name: "Steering status endpoint responds",
       passed: status !== null && typeof status === "object",
@@ -24,6 +38,7 @@ export async function run(ctx) {
   try {
     const result = await api.post(`/api/steering/${agentId}`, {
       message: "Simulation: also check accessibility compliance",
+      project_id: projectId,
     });
     checks.push({
       name: "Queue steering message",
@@ -38,6 +53,7 @@ export async function run(ctx) {
   try {
     const result = await api.post(`/api/steering/${agentId}/follow-up`, {
       message: "Simulation: after that, run the heuristic evaluation",
+      project_id: projectId,
     });
     checks.push({
       name: "Queue follow-up message",
@@ -50,7 +66,7 @@ export async function run(ctx) {
 
   // 4. Verify steering status shows queued messages
   try {
-    const status = await api.get(`/api/steering/${agentId}/status`);
+    const status = await api.get(`/api/steering/${agentId}/status${projectQuery}`);
     const steeringCount = status?.steering_queue_count ?? status?.steering_count ?? 0;
     const followUpCount = status?.follow_up_queue_count ?? status?.follow_up_count ?? 0;
     checks.push({
@@ -64,7 +80,7 @@ export async function run(ctx) {
 
   // 5. Get all steering queues
   try {
-    const queues = await api.get(`/api/steering/${agentId}/queues`);
+    const queues = await api.get(`/api/steering/${agentId}/queues${projectQuery}`);
     checks.push({
       name: "Get steering queues",
       passed: queues !== null && typeof queues === "object",
@@ -76,7 +92,7 @@ export async function run(ctx) {
 
   // 6. Clear steering queues
   try {
-    const result = await api.delete(`/api/steering/${agentId}/queues`);
+    const result = await api.delete(`/api/steering/${agentId}/queues${projectQuery}`);
     checks.push({
       name: "Clear steering queues",
       passed: result !== null,
@@ -88,7 +104,7 @@ export async function run(ctx) {
 
   // 7. Abort agent work
   try {
-    const result = await api.post(`/api/steering/${agentId}/abort`, {});
+    const result = await api.post(`/api/steering/${agentId}/abort${projectQuery}`, {});
     checks.push({
       name: "Abort agent work",
       passed: result !== null,
@@ -100,7 +116,7 @@ export async function run(ctx) {
 
   // 8. Verify queues are empty after abort
   try {
-    const status = await api.get(`/api/steering/${agentId}/status`);
+    const status = await api.get(`/api/steering/${agentId}/status${projectQuery}`);
     const steeringCount = status?.steering_queue_count ?? status?.steering_count ?? -1;
     const followUpCount = status?.follow_up_queue_count ?? status?.follow_up_count ?? -1;
     checks.push({

@@ -42,91 +42,16 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import time
-from collections import defaultdict
-from dataclasses import dataclass, field
-from typing import Any, Literal
+from typing import Any
+
+from app.core.steering_types import (
+    AgentSteeringState,
+    SteeringMessage,
+    SteeringMode,
+    SteeringQueue,
+)
 
 logger = logging.getLogger(__name__)
-
-# ---------------------------------------------------------------------------
-# Data types
-# ---------------------------------------------------------------------------
-
-SteeringMode = Literal["one-at-a-time", "all"]
-
-
-@dataclass
-class SteeringMessage:
-    """A single steering message from a user or extension."""
-    message: str
-    timestamp: float = field(default_factory=time.time)
-    source: str = "user"  # "user", "extension", "system"
-    metadata: dict[str, Any] = field(default_factory=dict)
-
-
-@dataclass
-class AgentSteeringState:
-    """Per-agent steering state."""
-    steering_queue: list[SteeringMessage] = field(default_factory=list)
-    follow_up_queue: list[SteeringMessage] = field(default_factory=list)
-    steering_mode: SteeringMode = "one-at-a-time"
-    follow_up_mode: SteeringMode = "one-at-a-time"
-    is_working: bool = False
-    work_complete_event: asyncio.Event = field(default_factory=asyncio.Event)
-    lock: asyncio.Lock = field(default_factory=asyncio.Lock)
-
-
-# ---------------------------------------------------------------------------
-# Steering Queue (inspired by pi-mono's PendingMessageQueue)
-# ---------------------------------------------------------------------------
-
-class SteeringQueue:
-    """Thread-safe steering queue with configurable drain mode.
-
-    Mirrors pi-mono's PendingMessageQueue:
-    - "one-at-a-time": drain() returns first message only
-    - "all": drain() returns all messages
-    """
-
-    def __init__(self, mode: SteeringMode = "one-at-a-time"):
-        self._messages: list[SteeringMessage] = []
-        self._mode: SteeringMode = mode
-
-    @property
-    def mode(self) -> SteeringMode:
-        return self._mode
-
-    @mode.setter
-    def mode(self, value: SteeringMode) -> None:
-        self._mode = value
-
-    def enqueue(self, message: SteeringMessage) -> None:
-        self._messages.append(message)
-
-    def has_items(self) -> bool:
-        return len(self._messages) > 0
-
-    def drain(self) -> list[SteeringMessage]:
-        if not self._messages:
-            return []
-        if self._mode == "all":
-            drained = self._messages[:]
-            self._messages.clear()
-            return drained
-        # one-at-a-time: return first message only
-        first = self._messages.pop(0)
-        return [first]
-
-    def clear(self) -> list[SteeringMessage]:
-        """Clear and return all queued messages (for abort restoration)."""
-        messages = self._messages[:]
-        self._messages.clear()
-        return messages
-
-    def count(self) -> int:
-        return len(self._messages)
-
 
 # ---------------------------------------------------------------------------
 # Steering Manager — global registry of per-agent steering state
@@ -153,6 +78,53 @@ class SteeringManager:
             self._agents[agent_id] = AgentSteeringState()
         return self._agents[agent_id]
 
+    @staticmethod
+    def _normalize_project_id(project_id: str | None) -> str | None:
+        if project_id is None:
+            return None
+        normalized = str(project_id).strip()
+        return normalized or None
+
+    def _matches_project(self, message: SteeringMessage, project_id: str | None) -> bool:
+        return self._normalize_project_id(message.metadata.get("project_id")) == (
+            self._normalize_project_id(project_id)
+        )
+
+    def _drain_matching(
+        self,
+        messages: list[SteeringMessage],
+        *,
+        mode: SteeringMode,
+        project_id: str | None,
+    ) -> list[SteeringMessage]:
+        if not messages:
+            return []
+        if mode == "all":
+            drained = [msg for msg in messages if self._matches_project(msg, project_id)]
+            messages[:] = [msg for msg in messages if not self._matches_project(msg, project_id)]
+            return drained
+        for idx, msg in enumerate(messages):
+            if self._matches_project(msg, project_id):
+                return [messages.pop(idx)]
+        return []
+
+    def _clear_matching(
+        self,
+        messages: list[SteeringMessage],
+        *,
+        project_id: str | None,
+    ) -> list[SteeringMessage]:
+        cleared = [msg for msg in messages if self._matches_project(msg, project_id)]
+        messages[:] = [msg for msg in messages if not self._matches_project(msg, project_id)]
+        return cleared
+
+    def _matching_messages(
+        self,
+        messages: list[SteeringMessage],
+        project_id: str | None,
+    ) -> list[SteeringMessage]:
+        return [msg for msg in messages if self._matches_project(msg, project_id)]
+
     # -----------------------------------------------------------------------
     # Steering message queueing
     # -----------------------------------------------------------------------
@@ -163,11 +135,19 @@ class SteeringManager:
         message: str,
         source: str = "user",
         metadata: dict[str, Any] | None = None,
+        project_id: str | None = None,
+        mode: SteeringMode | None = None,
     ) -> None:
         """Queue a steering message to be injected after current skill execution."""
         state = self._get_or_create(agent_id)
         async with state.lock:
-            msg = SteeringMessage(message=message, source=source, metadata=metadata or {})
+            if mode is not None:
+                state.steering_mode = mode
+            msg_metadata = dict(metadata or {})
+            scoped_project_id = self._normalize_project_id(project_id)
+            if scoped_project_id is not None:
+                msg_metadata["project_id"] = scoped_project_id
+            msg = SteeringMessage(message=message, source=source, metadata=msg_metadata)
             state.steering_queue.append(msg)
             logger.info(f"Steering queued for {agent_id}: {message[:80]}...")
 
@@ -177,11 +157,19 @@ class SteeringManager:
         message: str,
         source: str = "user",
         metadata: dict[str, Any] | None = None,
+        project_id: str | None = None,
+        mode: SteeringMode | None = None,
     ) -> None:
         """Queue a follow-up message to be injected when agent would otherwise stop."""
         state = self._get_or_create(agent_id)
         async with state.lock:
-            msg = SteeringMessage(message=message, source=source, metadata=metadata or {})
+            if mode is not None:
+                state.follow_up_mode = mode
+            msg_metadata = dict(metadata or {})
+            scoped_project_id = self._normalize_project_id(project_id)
+            if scoped_project_id is not None:
+                msg_metadata["project_id"] = scoped_project_id
+            msg = SteeringMessage(message=message, source=source, metadata=msg_metadata)
             state.follow_up_queue.append(msg)
             logger.info(f"Follow-up queued for {agent_id}: {message[:80]}...")
 
@@ -189,82 +177,129 @@ class SteeringManager:
     # Steering message retrieval (called by agent work cycle)
     # -----------------------------------------------------------------------
 
-    async def get_steering(self, agent_id: str) -> list[SteeringMessage]:
+    async def get_steering(
+        self,
+        agent_id: str,
+        project_id: str | None = None,
+    ) -> list[SteeringMessage]:
         """Drain steering queue. Called by agent after each skill execution completes."""
         state = self._get_or_create(agent_id)
         async with state.lock:
-            sq = SteeringQueue(state.steering_mode)
-            sq._messages = state.steering_queue
-            drained = sq.drain()
-            # If we drained the whole queue, update the reference
-            if state.steering_mode == "all":
-                state.steering_queue = []
-            return drained
+            return self._drain_matching(
+                state.steering_queue,
+                mode=state.steering_mode,
+                project_id=project_id,
+            )
 
-    async def get_follow_up(self, agent_id: str) -> list[SteeringMessage]:
+    async def get_follow_up(
+        self,
+        agent_id: str,
+        project_id: str | None = None,
+    ) -> list[SteeringMessage]:
         """Drain follow-up queue. Called when agent would otherwise stop working."""
         state = self._get_or_create(agent_id)
         async with state.lock:
-            fq = SteeringQueue(state.follow_up_mode)
-            fq._messages = state.follow_up_queue
-            drained = fq.drain()
-            if state.follow_up_mode == "all":
-                state.follow_up_queue = []
-            return drained
+            return self._drain_matching(
+                state.follow_up_queue,
+                mode=state.follow_up_mode,
+                project_id=project_id,
+            )
 
     # -----------------------------------------------------------------------
     # Queue management
     # -----------------------------------------------------------------------
 
-    async def clear_steering(self, agent_id: str) -> list[SteeringMessage]:
+    async def clear_steering(
+        self,
+        agent_id: str,
+        project_id: str | None = None,
+    ) -> list[SteeringMessage]:
         """Clear and return all queued steering messages."""
         state = self._get_or_create(agent_id)
         async with state.lock:
-            messages = state.steering_queue[:]
-            state.steering_queue.clear()
-            return messages
+            return self._clear_matching(state.steering_queue, project_id=project_id)
 
-    async def clear_follow_up(self, agent_id: str) -> list[SteeringMessage]:
+    async def clear_follow_up(
+        self,
+        agent_id: str,
+        project_id: str | None = None,
+    ) -> list[SteeringMessage]:
         """Clear and return all queued follow-up messages."""
         state = self._get_or_create(agent_id)
         async with state.lock:
-            messages = state.follow_up_queue[:]
-            state.follow_up_queue.clear()
-            return messages
+            return self._clear_matching(state.follow_up_queue, project_id=project_id)
 
-    async def clear_all(self, agent_id: str) -> dict[str, list[SteeringMessage]]:
+    async def clear_all(
+        self,
+        agent_id: str,
+        project_id: str | None = None,
+    ) -> dict[str, list[SteeringMessage]]:
         """Clear both queues and return the cleared messages."""
         return {
-            "steering": await self.clear_steering(agent_id),
-            "follow_up": await self.clear_follow_up(agent_id),
+            "steering": await self.clear_steering(agent_id, project_id=project_id),
+            "follow_up": await self.clear_follow_up(agent_id, project_id=project_id),
         }
+
+    def get_queues(
+        self,
+        agent_id: str,
+        project_id: str | None = None,
+    ) -> dict[str, list[SteeringMessage]]:
+        state = self._get_or_create(agent_id)
+        return {
+            "steering": self._matching_messages(state.steering_queue, project_id),
+            "follow_up": self._matching_messages(state.follow_up_queue, project_id),
+        }
+
+    async def project_ids_with_queued_steering(self, agent_id: str) -> list[str]:
+        """Return project ids that currently have queued steering messages."""
+        state = self._get_or_create(agent_id)
+        async with state.lock:
+            project_ids: list[str] = []
+            for msg in state.steering_queue:
+                msg_project_id = self._normalize_project_id(msg.metadata.get("project_id"))
+                if msg_project_id and msg_project_id not in project_ids:
+                    project_ids.append(msg_project_id)
+            return project_ids
 
     # -----------------------------------------------------------------------
     # Agent state management
     # -----------------------------------------------------------------------
 
-    async def mark_working(self, agent_id: str) -> None:
+    async def mark_working(self, agent_id: str, project_id: str | None = None) -> None:
         """Mark agent as currently working (starting a task/skill)."""
         state = self._get_or_create(agent_id)
         async with state.lock:
             state.is_working = True
+            state.active_project_id = self._normalize_project_id(project_id) or ""
             state.work_complete_event.clear()
 
-    async def mark_idle(self, agent_id: str) -> None:
+    async def mark_idle(self, agent_id: str, project_id: str | None = None) -> None:
         """Mark agent as idle (finished all work)."""
         state = self._get_or_create(agent_id)
         async with state.lock:
-            state.is_working = False
-            state.work_complete_event.set()
+            scoped_project_id = self._normalize_project_id(project_id)
+            if scoped_project_id is None or state.active_project_id == scoped_project_id:
+                state.is_working = False
+                state.active_project_id = ""
+                state.work_complete_event.set()
 
     def is_working(self, agent_id: str) -> bool:
         """Check if agent is currently working."""
         state = self._get_or_create(agent_id)
         return state.is_working
 
-    async def wait_for_idle(self, agent_id: str, timeout: float = 300.0) -> bool:
+    async def wait_for_idle(
+        self,
+        agent_id: str,
+        timeout: float = 300.0,
+        project_id: str | None = None,
+    ) -> bool:
         """Wait until agent finishes all work (steering + follow-up processed)."""
         state = self._get_or_create(agent_id)
+        scoped_project_id = self._normalize_project_id(project_id)
+        if scoped_project_id and state.active_project_id != scoped_project_id:
+            return True
         try:
             await asyncio.wait_for(state.work_complete_event.wait(), timeout=timeout)
             return True
@@ -276,28 +311,50 @@ class SteeringManager:
     # Status inspection
     # -----------------------------------------------------------------------
 
-    def get_status(self, agent_id: str) -> dict[str, Any]:
+    def get_status(
+        self,
+        agent_id: str,
+        project_id: str | None = None,
+    ) -> dict[str, Any]:
         """Get steering status for an agent."""
         state = self._get_or_create(agent_id)
+        scoped_project_id = self._normalize_project_id(project_id)
+        steering_count = len(self._matching_messages(state.steering_queue, scoped_project_id))
+        follow_up_count = len(self._matching_messages(state.follow_up_queue, scoped_project_id))
+        is_working = state.is_working
+        if scoped_project_id is not None:
+            is_working = state.is_working and state.active_project_id == scoped_project_id
         return {
             "agent_id": agent_id,
-            "is_working": state.is_working,
-            "steering_queue_count": len(state.steering_queue),
-            "follow_up_queue_count": len(state.follow_up_queue),
+            "project_id": scoped_project_id or "",
+            "is_working": is_working,
+            "steering_queue_count": steering_count,
+            "follow_up_queue_count": follow_up_count,
             "steering_mode": state.steering_mode,
             "follow_up_mode": state.follow_up_mode,
-            "has_queued_messages": len(state.steering_queue) > 0 or len(state.follow_up_queue) > 0,
+            "has_queued_messages": steering_count > 0 or follow_up_count > 0,
         }
 
-    def get_all_status(self) -> dict[str, dict[str, Any]]:
+    def get_all_status(self, project_id: str | None = None) -> dict[str, dict[str, Any]]:
         """Get steering status for all agents."""
-        return {agent_id: self.get_status(agent_id) for agent_id in self._agents}
+        statuses = {agent_id: self.get_status(agent_id, project_id=project_id) for agent_id in self._agents}
+        if self._normalize_project_id(project_id) is None:
+            return statuses
+        return {
+            agent_id: status
+            for agent_id, status in statuses.items()
+            if status["has_queued_messages"] or status["is_working"]
+        }
 
     # -----------------------------------------------------------------------
     # Abort
     # -----------------------------------------------------------------------
 
-    async def abort(self, agent_id: str) -> dict[str, list[SteeringMessage]]:
+    async def abort(
+        self,
+        agent_id: str,
+        project_id: str | None = None,
+    ) -> dict[str, list[SteeringMessage]]:
         """Abort current work and clear steering queues.
 
         Returns cleared messages so caller can restore them to editor
@@ -305,14 +362,15 @@ class SteeringManager:
         """
         state = self._get_or_create(agent_id)
         async with state.lock:
-            state.is_working = False
-            state.work_complete_event.set()
+            scoped_project_id = self._normalize_project_id(project_id)
+            if scoped_project_id is None or state.active_project_id == scoped_project_id:
+                state.is_working = False
+                state.active_project_id = ""
+                state.work_complete_event.set()
             res = {
-                "steering": state.steering_queue[:],
-                "follow_up": state.follow_up_queue[:],
+                "steering": self._clear_matching(state.steering_queue, project_id=scoped_project_id),
+                "follow_up": self._clear_matching(state.follow_up_queue, project_id=scoped_project_id),
             }
-            state.steering_queue.clear()
-            state.follow_up_queue.clear()
             return res
 
 
