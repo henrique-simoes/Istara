@@ -15,6 +15,7 @@ from app.models.channel_conversation import ChannelConversation
 from app.models.channel_instance import ChannelInstance
 from app.models.channel_message import ChannelMessage
 from app.models.database import async_session
+from app.models.project import Project
 from app.models.research_deployment import ResearchDeployment
 from app.services.adaptive_interview import get_next_action, update_conversation_metadata
 
@@ -66,6 +67,7 @@ async def _get_or_create_conversation(
 ) -> ChannelConversation:
     conditions = [
         ChannelConversation.channel_instance_id == instance_id,
+        ChannelConversation.project_id == project_id,
         ChannelConversation.participant_id == participant_id,
     ]
     if deployment_id:
@@ -117,6 +119,26 @@ async def process_inbound_channel_message(
                 "Dropping inbound %s message for unknown channel instance %s",
                 message.channel,
                 message.instance_id,
+            )
+            return None
+        if not instance.project_id:
+            logger.warning(
+                "Dropping inbound %s message for unscoped channel instance %s",
+                message.channel,
+                message.instance_id,
+            )
+            return None
+        project = await db.get(Project, instance.project_id)
+        if project is None or project.is_paused:
+            logger.info(
+                "Dropping inbound %s message for paused or missing project %s",
+                message.channel,
+                instance.project_id,
+            )
+            await broadcast_channel_status(
+                message.instance_id,
+                "paused",
+                "Project is paused or not found; inbound processing skipped.",
             )
             return None
 

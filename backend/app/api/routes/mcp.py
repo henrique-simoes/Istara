@@ -417,6 +417,7 @@ async def register_client(
             feature="mcp_integrations_and_aura_research",
             source_system="mcp_client",
             source_id=f"register:{server.id}",
+            project_id=project_id,
             agent_id="mcp-client",
             summary="External MCP server registered.",
             evidence={
@@ -426,6 +427,7 @@ async def register_client(
                 "name": server.name,
                 "transport": server.transport,
             },
+            db=db,
         )
     except Exception:
         pass
@@ -504,6 +506,7 @@ async def discover_client_tools(
             feature="mcp_integrations_and_aura_research",
             source_system="mcp_client",
             source_id=f"discover:{server_id}",
+            project_id=scoped_project_id,
             agent_id="mcp-client",
             summary="External MCP tool discovery completed.",
             evidence={
@@ -514,6 +517,7 @@ async def discover_client_tools(
                 "health_status": server.health_status,
             },
             metrics_after={"tool_count": len(tools)},
+            db=db,
         )
     except Exception:
         pass
@@ -584,6 +588,7 @@ async def call_client_tool(
             feature="mcp_integrations_and_aura_research",
             source_system="mcp_client",
             source_id=f"call:{server_id}:{data.tool_name}",
+            project_id=scoped_project_id,
             agent_id="mcp-client",
             summary="External MCP tool call completed.",
             evidence={
@@ -593,6 +598,7 @@ async def call_client_tool(
                 "tool_name": data.tool_name,
                 "argument_keys": sorted((data.arguments or {}).keys()),
             },
+            db=db,
         )
     except Exception:
         pass

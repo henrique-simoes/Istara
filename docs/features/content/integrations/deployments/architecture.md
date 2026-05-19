@@ -10,7 +10,7 @@ code_references: ["frontend/src/components/integrations/DeploymentsTab.tsx", "fr
 api_references: ["backend/app/api/routes/deployments.py", "backend/app/services/deployment_service.py"]
 test_references: ["tests/test_deployments.py", "tests/test_project_scope_contracts.py"]
 last_verified: 2026-05-19
-compass: CF-SPEC-60 / CF-767; CF-SPEC-60 / CF-773; CF-SPEC-62 / CF-793
+compass: CF-SPEC-60 / CF-767; CF-SPEC-60 / CF-773; CF-SPEC-62 / CF-793; CF-SPEC-75 / CF-964
 ---
 
 # Research Deployments Architecture
@@ -48,6 +48,7 @@ Deployments configure participant-facing research deployments and link them to c
 - `deployment_service` helpers for deployment lookup, lifecycle, response handling, analytics, conversations, and transcripts also require `project_id`, so background jobs or future internal callers cannot accidentally resolve deployment or conversation records by global id alone.
 - Deployment creation validates every `channel_instance_id` against the deployment `project_id` before storing the deployment, so a deployment in one project cannot route participant content through another project's messaging channel.
 - Inbound channel processors attach participant messages only to same-project deployments that explicitly list the receiving channel instance; deployments with no channels are not a global fallback.
+- Deployment activation and participant response handling reject paused projects before dispatching participant-facing work, updating adaptive conversation state, or reaching LLM-backed follow-up generation.
 - Deployment response handling, conversations, transcripts, analytics, and overview counters all require the conversation/deployment/channel records to match the same project boundary before participant content or findings are read, updated, or summarized.
 
 ## Architecture Notes
@@ -77,7 +78,7 @@ Deployments configure participant-facing research deployments and link them to c
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-60 / CF-767; CF-SPEC-60 / CF-773; CF-SPEC-62 / CF-793
+- Spec/task: CF-SPEC-60 / CF-767; CF-SPEC-60 / CF-773; CF-SPEC-62 / CF-793; CF-SPEC-75 / CF-964
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update

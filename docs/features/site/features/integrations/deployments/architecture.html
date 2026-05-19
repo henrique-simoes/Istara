@@ -271,6 +271,7 @@
 <li><code>deployment_service</code> helpers for deployment lookup, lifecycle, response handling, analytics, conversations, and transcripts also require <code>project_id</code>, so background jobs or future internal callers cannot accidentally resolve deployment or conversation records by global id alone.</li>
 <li>Deployment creation validates every <code>channel_instance_id</code> against the deployment <code>project_id</code> before storing the deployment, so a deployment in one project cannot route participant content through another project&#x27;s messaging channel.</li>
 <li>Inbound channel processors attach participant messages only to same-project deployments that explicitly list the receiving channel instance; deployments with no channels are not a global fallback.</li>
+<li>Deployment activation and participant response handling reject paused projects before dispatching participant-facing work, updating adaptive conversation state, or reaching LLM-backed follow-up generation.</li>
 <li>Deployment response handling, conversations, transcripts, analytics, and overview counters all require the conversation/deployment/channel records to match the same project boundary before participant content or findings are read, updated, or summarized.</li>
 </ul>
 <h2 id="architecture-notes">Architecture Notes</h2>
@@ -300,7 +301,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-60 / CF-767; CF-SPEC-60 / CF-773; CF-SPEC-62 / CF-793</li>
+<li>Spec/task: CF-SPEC-60 / CF-767; CF-SPEC-60 / CF-773; CF-SPEC-62 / CF-793; CF-SPEC-75 / CF-964</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>

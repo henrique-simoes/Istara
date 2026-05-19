@@ -320,6 +320,10 @@ def test_integrations_mcp_detail_actions_require_active_project_scope() -> None:
     assert route.count('project_id: str | None = Query(None, description="Active project")') >= 5
     assert "await _get_project_client_or_404(\n        db, request, server_id, project_id" in route
     assert "removed = await unregister_server(db, server_id, project_id=scoped_project_id)" in route
+    assert "source_id=f\"register:{server.id}\",\n            project_id=project_id," in route
+    assert "source_id=f\"discover:{server_id}\",\n            project_id=scoped_project_id," in route
+    assert "source_id=f\"call:{server_id}:{data.tool_name}\",\n            project_id=scoped_project_id," in route
+    assert route.count("db=db,") >= 6
 
     assert "async def register_server(" in service and "project_id: str," in service
     assert "async def discover_tools(" in service and "project_id: str," in service
@@ -384,6 +388,9 @@ def test_integrations_messaging_detail_panels_require_active_project_scope() -> 
 
     assert "async def list_channel_instances(" in service and "project_id: str," in service
     assert "async def start_channel_instance(" in service and "project_id: str," in service
+    assert "Project.is_paused.is_(False)" in service
+    assert 'raise RuntimeError("Project is paused or not found")' in service
+    assert "project_id does not match channel instance" in service
     assert "async def stop_channel_instance(" in service and "project_id: str," in service
     assert "async def health_check_instance(" in service and "project_id: str," in service
     assert "async def get_message_history(" in service and "project_id: str," in service
@@ -392,8 +399,8 @@ def test_integrations_messaging_detail_panels_require_active_project_scope() -> 
     assert "ChannelInstance.project_id == scoped_project_id" in service
     assert "ChannelMessage.project_id == scoped_project_id" in service
     assert "ChannelConversation.project_id == scoped_project_id" in service
-    assert "resolved_project_id = project_id" in service
-    assert "resolved_project_id = instance.project_id" in service
+    assert "resolved_project_id = (project_id or instance.project_id or \"\").strip()" in service
+    assert "if not resolved_project_id:" in service
     assert "project_id=resolved_project_id" in service
 
 
