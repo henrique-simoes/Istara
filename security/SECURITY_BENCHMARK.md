@@ -91,6 +91,12 @@ project before seeing background process state or mutating recurring work.
 Schedule detail, update, and delete routes also require the active `project_id`,
 so stale schedule ids from another project resolve as not found instead of
 letting project-facing clients operate by global id.
+Notification list, unread-count, and mark-all-read routes are also
+project-content surfaces: every caller, including global admins, must provide an
+authorized active `project_id`, and missing project scope must return an error
+instead of falling back to a global inbox. Cross-project notification
+aggregation belongs only on explicit admin reporting surfaces; single
+global/system notification item operations remain admin-only.
 Startup quality/audit/simulation loops are opt-in because they may create test
 projects, call app/API state, or use LLMs; normal project task workers,
 orchestrator routing, schedules, skill execution/planning, autoresearch,

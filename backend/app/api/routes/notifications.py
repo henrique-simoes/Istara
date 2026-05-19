@@ -12,8 +12,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import settings
-from app.core.permissions import get_subject, is_global_admin, require_project_access
+from app.core.permissions import require_project_access
 from app.core.security_middleware import require_admin_from_request
 from app.models.database import get_db
 from app.models.notification import Notification, NotificationPreference
@@ -43,7 +42,7 @@ ALLOWED_SEVERITIES = {"info", "warning", "error", "success"}
 
 
 class MarkAllReadRequest(BaseModel):
-    """Optional body for mark-all-read — can scope to a project."""
+    """Project scope body for mark-all-read."""
 
     project_id: str | None = Field(default=None, max_length=36)
 
@@ -104,20 +103,14 @@ async def _require_notification_project_scope(
     db: AsyncSession,
     request: Request,
     project_id: str | None,
-) -> str | None:
-    """Return the required active project id, or None for explicit admin-global scope."""
-    scoped_project_id = project_id.strip() if project_id else None
-    if scoped_project_id:
-        await require_project_access(db, request, scoped_project_id, min_role="viewer")
-        return scoped_project_id
+) -> str:
+    """Return the required active project id for project-facing notification APIs."""
+    scoped_project_id = project_id.strip() if project_id else ""
+    if not scoped_project_id:
+        raise HTTPException(status_code=400, detail="project_id is required")
 
-    if not settings.team_mode:
-        return None
-
-    subject = get_subject(request)
-    if is_global_admin(subject):
-        return None
-    raise HTTPException(status_code=400, detail="project_id is required")
+    await require_project_access(db, request, scoped_project_id, min_role="viewer")
+    return scoped_project_id
 
 
 # ---------------------------------------------------------------------------
@@ -149,8 +142,7 @@ async def list_notifications(
     scoped_project_id = await _require_notification_project_scope(db, request, project_id)
 
     query = select(Notification).order_by(Notification.created_at.desc())
-    if scoped_project_id:
-        query = query.where(Notification.project_id == scoped_project_id)
+    query = query.where(Notification.project_id == scoped_project_id)
 
     category_values = _validate_values(
         _merge_filter_values(category, categories),
@@ -218,8 +210,7 @@ async def unread_count(
     """Return the number of unread notifications."""
     scoped_project_id = await _require_notification_project_scope(db, request, project_id)
     query = select(func.count(Notification.id)).where(Notification.read.is_(False))
-    if scoped_project_id:
-        query = query.where(Notification.project_id == scoped_project_id)
+    query = query.where(Notification.project_id == scoped_project_id)
     count = (await db.execute(query)).scalar() or 0
     return {"count": count}
 
@@ -249,7 +240,7 @@ async def mark_all_read(
     data: MarkAllReadRequest | None = Body(default=None),
     db: AsyncSession = Depends(get_db),
 ):
-    """Mark all unread notifications as read, optionally scoped to a project."""
+    """Mark all unread notifications as read for the active project."""
     scoped_project_id = await _require_notification_project_scope(
         db,
         request,
@@ -259,9 +250,8 @@ async def mark_all_read(
     stmt = (
         update(Notification)
         .where(Notification.read.is_(False))
+        .where(Notification.project_id == scoped_project_id)
     )
-    if scoped_project_id:
-        stmt = stmt.where(Notification.project_id == scoped_project_id)
 
     stmt = stmt.values(read=True)
     result = await db.execute(stmt)

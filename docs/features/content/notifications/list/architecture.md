@@ -9,15 +9,15 @@ related_glossary: ["wcag"]
 code_references: ["frontend/src/components/notifications/NotificationsView.tsx", "frontend/src/stores/notificationStore.ts", "frontend/src/lib/notificationApi.ts", "backend/app/api/routes/notifications.py"]
 api_references: ["backend/app/api/routes/notifications.py"]
 test_references: ["tests/test_notifications.py", "tests/test_project_scope_contracts.py"]
-last_verified: 2026-05-18
-compass: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-759
+last_verified: 2026-05-19
+compass: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-759; CF-SPEC-71 / CF-913
 ---
 
 # Notifications List Architecture
 
 ## Implementation Summary
 
-Notifications lists active-project notifications with read/unread state. Non-admin team users must provide the active `project_id`; only explicit global-admin callers may use the route without project scope.
+Notifications lists active-project notifications with read/unread state. List, unread-count, and mark-all-read routes require the active `project_id` for every caller, including global admins.
 
 ## Frontend Surface
 
@@ -41,6 +41,8 @@ Notifications lists active-project notifications with read/unread state. Non-adm
 - The feature is mounted through `frontend/src/components/notifications/NotificationsView.tsx` and the UI navigation path recorded in the inventory.
 - The notification store refuses to list, count, or mark all notifications without an active project selected in the shell.
 - The list UI does not expose an "All projects" filter; project context comes from the active project store and backend RBAC verifies that membership.
+- The backend list, unread-count, and mark-all-read APIs never fall back to a global inbox; cross-project notification aggregation belongs only on explicit admin reporting surfaces.
+- Single global/system notification item read/delete remains admin-only, but those records are not exposed by project-facing bulk list, count, or mark-all-read routes.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
 
@@ -64,7 +66,7 @@ Notifications lists active-project notifications with read/unread state. Non-adm
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-759
+- Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-759; CF-SPEC-71 / CF-913
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update

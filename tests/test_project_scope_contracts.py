@@ -1067,6 +1067,11 @@ def test_notifications_are_active_project_scoped() -> None:
 
     assert '"backup",\n  "notifications",' in navigation
     assert "async def _require_notification_project_scope" in route
+    assert "from app.config import settings" not in route
+    assert "get_subject" not in route
+    assert "is_global_admin" not in route
+    assert "explicit admin-global scope" not in route
+    assert 'scoped_project_id = project_id.strip() if project_id else ""' in route
     assert 'raise HTTPException(status_code=400, detail="project_id is required")' in route
     assert "query = query.where(Notification.project_id == scoped_project_id)" in route
-    assert "stmt = stmt.where(Notification.project_id == scoped_project_id)" in route
+    assert ".where(Notification.project_id == scoped_project_id)" in route

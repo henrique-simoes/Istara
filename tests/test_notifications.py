@@ -34,15 +34,15 @@ def auth_headers():
 
 
 @pytest.mark.asyncio
-async def test_notifications_list_returns_list(auth_headers):
-    """GET /api/notifications returns a list."""
+async def test_notifications_list_requires_active_project_scope_for_admin(auth_headers):
+    """Project-facing notification lists require an active project for every role."""
     await init_db()
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         response = await ac.get("/api/notifications", headers=auth_headers)
-        assert response.status_code in (200, 404, 500)
-        if response.status_code == 200:
-            assert isinstance(response.json(), dict)
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "project_id is required"
 
 
 @pytest.mark.asyncio
@@ -61,10 +61,12 @@ async def test_notifications_accept_frontend_filter_aliases(auth_headers):
     """Frontend plural aliases and date aliases should filter the API response."""
     await init_db()
     marker = f"alias-{uuid.uuid4()}"
+    project_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc)
     async with async_session() as db:
         db.add_all(
             [
+                Project(id=project_id, name="Alias notification project"),
                 Notification(
                     id=str(uuid.uuid4()),
                     type="agent_status",
@@ -72,6 +74,7 @@ async def test_notifications_accept_frontend_filter_aliases(auth_headers):
                     message="agent failed",
                     category="agent_status",
                     severity="error",
+                    project_id=project_id,
                     read=False,
                     metadata_json='{"source":"test"}',
                     created_at=now,
@@ -83,6 +86,7 @@ async def test_notifications_accept_frontend_filter_aliases(auth_headers):
                     message="system info",
                     category="system",
                     severity="info",
+                    project_id=project_id,
                     read=True,
                     created_at=now,
                 ),
@@ -95,6 +99,7 @@ async def test_notifications_accept_frontend_filter_aliases(auth_headers):
         response = await ac.get(
             "/api/notifications",
             params={
+                "project_id": project_id,
                 "categories": "agent_status,system",
                 "severities": "error",
                 "unread_only": "true",
@@ -112,6 +117,107 @@ async def test_notifications_accept_frontend_filter_aliases(auth_headers):
     assert data["total_pages"] == 1
     assert data["notifications"][0]["title"] == f"{marker} keep"
     assert data["notifications"][0]["metadata"] == {"source": "test"}
+
+
+@pytest.mark.asyncio
+async def test_global_admin_notification_bulk_routes_are_project_scoped(auth_headers):
+    """Global admins cannot use project-facing notification routes as a global inbox."""
+    await init_db()
+    settings.team_mode = True
+    project_id = str(uuid.uuid4())
+    hidden_project_id = str(uuid.uuid4())
+    async with async_session() as db:
+        db.add_all(
+            [
+                Project(id=project_id, name="Visible admin notifications"),
+                Project(id=hidden_project_id, name="Hidden admin notifications"),
+                Notification(
+                    id=str(uuid.uuid4()),
+                    type="document_created",
+                    title="visible admin unread",
+                    message="visible",
+                    category="document",
+                    severity="info",
+                    project_id=project_id,
+                    read=False,
+                ),
+                Notification(
+                    id=str(uuid.uuid4()),
+                    type="document_created",
+                    title="hidden admin unread",
+                    message="hidden",
+                    category="document",
+                    severity="info",
+                    project_id=hidden_project_id,
+                    read=False,
+                ),
+                Notification(
+                    id=str(uuid.uuid4()),
+                    type="system",
+                    title="global admin unread",
+                    message="global",
+                    category="system",
+                    severity="info",
+                    read=False,
+                ),
+            ]
+        )
+        await db.commit()
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        no_scope_list = await ac.get("/api/notifications", headers=auth_headers)
+        no_scope_count = await ac.get("/api/notifications/unread-count", headers=auth_headers)
+        no_scope_mark = await ac.post("/api/notifications/read-all", json={}, headers=auth_headers)
+        list_response = await ac.get(
+            "/api/notifications",
+            params={"project_id": project_id},
+            headers=auth_headers,
+        )
+        count_response = await ac.get(
+            "/api/notifications/unread-count",
+            params={"project_id": project_id},
+            headers=auth_headers,
+        )
+        mark_response = await ac.post(
+            "/api/notifications/read-all",
+            json={"project_id": project_id},
+            headers=auth_headers,
+        )
+
+    assert no_scope_list.status_code == 400
+    assert no_scope_list.json()["detail"] == "project_id is required"
+    assert no_scope_count.status_code == 400
+    assert no_scope_count.json()["detail"] == "project_id is required"
+    assert no_scope_mark.status_code == 400
+    assert no_scope_mark.json()["detail"] == "project_id is required"
+    assert list_response.status_code == 200
+    assert [n["title"] for n in list_response.json()["notifications"]] == [
+        "visible admin unread"
+    ]
+    assert count_response.json() == {"count": 1}
+    assert mark_response.status_code == 200
+    assert mark_response.json()["count"] == 1
+
+    async with async_session() as db:
+        rows = (
+            await db.execute(
+                select(Notification.title, Notification.read).where(
+                    Notification.title.in_(
+                        [
+                            "visible admin unread",
+                            "hidden admin unread",
+                            "global admin unread",
+                        ]
+                    )
+                )
+            )
+        ).all()
+    assert dict(rows) == {
+        "visible admin unread": True,
+        "hidden admin unread": False,
+        "global admin unread": False,
+    }
 
 
 @pytest.mark.asyncio
