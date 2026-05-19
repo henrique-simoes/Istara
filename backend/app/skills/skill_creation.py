@@ -18,6 +18,13 @@ logger = logging.getLogger(__name__)
 
 
 class SkillCreationMixin:
+    @staticmethod
+    def _require_creation_project_id(project_id: str | None) -> str:
+        scoped_project_id = str(project_id or "").strip()
+        if not scoped_project_id:
+            raise ValueError("project_id is required for skill creation proposals")
+        return scoped_project_id
+
     def propose_skill_creation(
         self,
         definition: dict,
@@ -28,6 +35,7 @@ class SkillCreationMixin:
         project_id: str = "",
     ) -> SkillCreationProposal:
         """Create a proposal for a brand-new skill definition."""
+        scoped_project_id = self._require_creation_project_id(project_id)
         required = [
             "name",
             "display_name",
@@ -60,7 +68,7 @@ class SkillCreationMixin:
             source_agent_id=agent_id,
             reason=reason,
             confidence=confidence,
-            project_id=str(project_id or "").strip(),
+            project_id=scoped_project_id,
             created_at=datetime.now(timezone.utc).isoformat(),
         )
         self._creation_proposals.append(proposal)

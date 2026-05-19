@@ -788,12 +788,17 @@ def test_skills_surfaces_require_active_project_scope() -> None:
     assert "skill_manager.approve_creation_proposal(" in route and "project_id=scoped_project_id" in route
 
     assert "project_id: str = \"\"" in models
+    assert "project_id is required for skill improvement proposals" in proposals
+    assert "project_id is required for skill creation proposals" in creation
     assert "proposal.project_id == scoped_project_id" in proposals
     assert "proposal.project_id == scoped_project_id" in creation
     assert "def get_skill_health(self, name: str, project_id: str | None = None)" in usage
     assert "skill_manager.get_skill_health(skill.name, project_id=task.project_id)" in execution
     assert "project_id=task.project_id" in execution
     assert "async def register_skill_update_proposal(" in governance
+    assert "project_id is required for {source_system} proposals" in governance
+    assert '"skill_evolution"' in governance
+    assert '"memento_skill_factory"' in governance
     assert "project_id=scoped_project_id" in governance
 
 

@@ -310,6 +310,50 @@ async def test_hyperagent_proposal_registers_governance_contract():
 
 
 @pytest.mark.asyncio
+async def test_skill_proposal_governance_registration_requires_project_id():
+    """Project-owned skill governance producers must not create global proposals."""
+    await init_db()
+    update_source_id = f"skill-update-{uuid.uuid4().hex[:8]}"
+    creation_source_id = f"skill-create-{uuid.uuid4().hex[:8]}"
+
+    with pytest.raises(ValueError, match="project_id is required"):
+        await improvement_governance.register_skill_update_proposal(
+            {
+                "id": update_source_id,
+                "skill_name": "card-sorting",
+                "field": "execute_prompt",
+                "current_value": "old",
+                "proposed_value": "new",
+                "reason": "missing project",
+                "confidence": 0.6,
+            }
+        )
+
+    with pytest.raises(ValueError, match="project_id is required"):
+        await improvement_governance.register_skill_creation_proposal(
+            {
+                "id": creation_source_id,
+                "proposed_definition": {"name": "auto-missing-project"},
+                "source_task_id": "task-1",
+                "source_agent_id": "agent-1",
+                "reason": "missing project",
+                "confidence": 70,
+            }
+        )
+
+    assert await improvement_governance.get_proposal_by_source(
+        source_system="skill_evolution",
+        source_id=update_source_id,
+        project_id="",
+    ) is None
+    assert await improvement_governance.get_proposal_by_source(
+        source_system="memento_skill_factory",
+        source_id=creation_source_id,
+        project_id="",
+    ) is None
+
+
+@pytest.mark.asyncio
 async def test_feature_evidence_records_auto_applied_proposal_and_archive_variant():
     await init_db()
     evidence_id = f"transcription-doc-{uuid.uuid4().hex[:8]}"

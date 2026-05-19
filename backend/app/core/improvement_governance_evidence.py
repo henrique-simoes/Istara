@@ -21,6 +21,14 @@ from app.core.sandbox_evaluation import sandbox_evaluation
 from app.models.database import async_session
 from app.models.improvement_governance import ImprovementProposal
 
+
+def _require_project_owned_producer_id(project_id: str, source_system: str) -> str:
+    scoped_project_id = str(project_id or "").strip()
+    if not scoped_project_id:
+        raise ValueError(f"project_id is required for {source_system} proposals")
+    return scoped_project_id
+
+
 class ImprovementGovernanceEvidenceMixin:
     async def record_feature_evidence(
         self,
@@ -314,7 +322,10 @@ class ImprovementGovernanceEvidenceMixin:
         *,
         project_id: str = "",
     ) -> str | None:
-        scoped_project_id = str(proposal.get("project_id") or project_id or "")
+        scoped_project_id = _require_project_owned_producer_id(
+            proposal.get("project_id") or project_id or "",
+            "skill_evolution",
+        )
         created = await self.create_proposal(
             source_system="skill_evolution",
             source_id=str(proposal.get("id", "")),
@@ -358,7 +369,10 @@ class ImprovementGovernanceEvidenceMixin:
         project_id: str = "",
     ) -> str | None:
         definition = proposal.get("proposed_definition") or {}
-        scoped_project_id = str(proposal.get("project_id") or project_id or "")
+        scoped_project_id = _require_project_owned_producer_id(
+            proposal.get("project_id") or project_id or "",
+            "memento_skill_factory",
+        )
         created = await self.create_proposal(
             source_system="memento_skill_factory",
             source_id=str(proposal.get("id", "")),

@@ -8,9 +8,9 @@ related_features: ["skills.catalog", "agents.proposals"]
 related_glossary: ["mcp"]
 code_references: ["frontend/src/components/skills/SkillsView.tsx", "backend/app/api/routes/skills.py"]
 api_references: ["backend/app/api/routes/skills.py"]
-test_references: ["tests/test_skills.py", "tests/test_project_scope_contracts.py"]
+test_references: ["tests/test_skills.py", "tests/test_improvement_governance.py", "tests/test_project_scope_contracts.py"]
 last_verified: 2026-05-19
-compass: CF-SPEC-53 / CF-657; CF-SPEC-68 / CF-870
+compass: CF-SPEC-53 / CF-657; CF-SPEC-68 / CF-870; CF-SPEC-76 / CF-972
 ---
 
 # Skill Proposals Architecture
@@ -38,6 +38,7 @@ Skill proposal flows present candidate tool or capability changes for review bef
 
 - The feature is mounted through `frontend/src/components/skills/SkillsView.tsx` and the UI navigation path recorded in the inventory.
 - Skill update proposals are stored with their source `project_id`; list, approve, and reject APIs require the active project and return 404 for proposals from another project.
+- Skill update proposal producers reject missing or blank `project_id` before persistence or governed-evolution registration so autonomous improvement work cannot become global activity by omission.
 - Approving skill update or skill creation proposals requires an active, unpaused project. Rejecting old proposals can still happen while a project is paused so stale improvement work can be cleared without dispatching new processing.
 - `SkillsView` clears and reloads proposal state when the active project changes so self-evolution review never carries proposals from a previous project.
 - Skill execution health is tracked per project for proposal review. Low utility no longer auto-deprecates or mutates a global skill definition from one project's execution history.
@@ -47,6 +48,7 @@ Skill proposal flows present candidate tool or capability changes for review bef
 ## Agents, Skills, LLM, MCP, And Permissions
 
 - Agent execution passes the task project into skill improvement proposals and governed-evolution evidence, preserving project authorization for review.
+- Governed-evolution registration for `skill_evolution` requires the proposal source project id before creating evidence records.
 - Proposal generation and approval are treated as project content processing; paused projects must not create new skill improvement work from background execution or apply project-specific proposals into the shared catalog.
 - Project-scoped low-utility warnings are broadcast only to the owning project; global skill lifecycle changes require explicit governed review rather than background mutation.
 - MCP-related behavior must keep access policy, audit evidence, and tool/resource exposure synchronized with the cited route or integration component.
@@ -54,6 +56,7 @@ Skill proposal flows present candidate tool or capability changes for review bef
 ## Tests And Verification
 
 - `tests/test_skills.py`
+- `tests/test_improvement_governance.py`
 - `tests/test_project_scope_contracts.py`
 
 ## Related Features
@@ -67,7 +70,7 @@ Skill proposal flows present candidate tool or capability changes for review bef
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-68 / CF-870
+- Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-68 / CF-870; CF-SPEC-76 / CF-972
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update
